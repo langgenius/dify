@@ -91,7 +91,6 @@
   "studio.accessPoint.embedIntoSite": "ฝังในเว็บไซต์",
   "studio.accessPoint.goToPublish": "ไปที่การเผยแพร่",
   "studio.accessPoint.mcpDescription": "เปิดแอปเป็นเครื่องมือสำหรับเอเจนต์และแอป AI",
-  "studio.accessPoint.mcpTriggerUnsupported": "เวิร์กโฟลว์ที่เริ่มจากทริกเกอร์ไม่สามารถเรียกผ่าน MCP ได้",
   "studio.accessPoint.noPublishedDescription": "เผยแพร่เวอร์ชันเพื่อให้จุดเชื่อมต่อในตัวพร้อมใช้งาน",
   "studio.accessPoint.noPublishedTitle": "ยังไม่มีเวอร์ชันที่เผยแพร่",
   "studio.accessPoint.notSupported": "ไม่รองรับ",

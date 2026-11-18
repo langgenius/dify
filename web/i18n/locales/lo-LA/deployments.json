@@ -91,7 +91,6 @@
   "studio.accessPoint.embedIntoSite": "ຝັງໄວ້ໃນເວັບໄຊ",
   "studio.accessPoint.goToPublish": "ໄປທີ່ການເຜີຍແຜ່",
   "studio.accessPoint.mcpDescription": "ເປີດໃຊ້ແອັບເປັນເຄື່ອງມືສຳລັບ agent ແລະແອັບ AI",
-  "studio.accessPoint.mcpTriggerUnsupported": "ບໍ່ສາມາດເອີ້ນເວີກໂຟລທີ່ເລີ່ມຈາກທຣິກເກີຜ່ານ MCP ໄດ້.",
   "studio.accessPoint.noPublishedDescription": "ເຜີຍແຜ່ Workflow ຂອງທ່ານເພື່ອໃຫ້ສາມາດເຂົ້າເຖິງໄດ້ຜ່ານເວັບແອັບ, API, MCP ແລະ ຕົວກະຕຸ້ນ.",
   "studio.accessPoint.noPublishedTitle": "ຍັງບໍ່ມີເວີຊັນທີ່ເຜີຍແຜ່",
   "studio.accessPoint.notSupported": "ບໍ່ຮອງຮັບ",

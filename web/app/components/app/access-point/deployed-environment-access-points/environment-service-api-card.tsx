@@ -13,6 +13,8 @@ type EnvironmentServiceApiCardProps = {
   environmentId: string
   canManageAccessPoint: boolean
   highlighted?: boolean
+  // The serving version starts from triggers, which rules this access point out, as in Built-in.
+  servesTriggers?: boolean
 }
 
 export function EnvironmentServiceApiCard({
@@ -20,6 +22,7 @@ export function EnvironmentServiceApiCard({
   environmentId,
   canManageAccessPoint,
   highlighted,
+  servesTriggers = false,
 }: EnvironmentServiceApiCardProps) {
   const { t } = useTranslation(['common'])
   const { data: appMode } = useSuspenseQuery(
@@ -55,10 +58,11 @@ export function EnvironmentServiceApiCard({
   const pendingEnabled = apiMutation.variables?.body.enabled
   const optimisticEnabled =
     apiMutation.isPending && pendingEnabled !== undefined ? pendingEnabled : Boolean(api?.enabled)
-  const running = apiQuery.isSuccess && optimisticEnabled
+  const available = apiQuery.isSuccess && !servesTriggers
+  const running = available && optimisticEnabled
   const status = apiQuery.isPending
     ? 'loading'
-    : apiQuery.isError
+    : !available
       ? 'unavailable'
       : running
         ? 'inService'
@@ -81,16 +85,16 @@ export function EnvironmentServiceApiCard({
           environmentId={environmentId}
           apiKeyCount={api?.api_key_count}
           canManage={canManageAccessPoint}
-          disabled={!apiQuery.isSuccess}
+          disabled={!available}
         />
       }
       apiUrl={api?.base_url ?? ''}
       appMode={appMode}
-      available={apiQuery.isSuccess}
+      available={available}
       status={status}
       highlighted={highlighted}
       switchDisabled={!canManageAccessPoint}
-      onEnabledChange={apiQuery.isSuccess ? handleEnabledChange : undefined}
+      onEnabledChange={available ? handleEnabledChange : undefined}
     />
   )
 }

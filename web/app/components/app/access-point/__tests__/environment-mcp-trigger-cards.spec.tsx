@@ -144,17 +144,16 @@ describe('EnvironmentMcpCard', () => {
     ])
   })
 
-  it('offers no switch for a workflow that starts from triggers', async () => {
+  it('is unavailable for a workflow that starts from triggers, as in Built-in', async () => {
     server = { server_code: 'code-1', url: 'https://api.test/mcp/x', enabled: true }
     serving.trigger_workflow = true
     renderCard(<EnvironmentMcpCard appId="app-1" environmentId="staging" canManageAccessPoint />)
 
     expect(
-      await screen.findByText('deployments.studio.accessPoint.mcpTriggerUnsupported'),
-    ).toBeInTheDocument()
-    expect(screen.getByText('deployments.studio.accessPoint.notSupported')).toBeInTheDocument()
-    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
-    expect(screen.queryByText('https://api.test/mcp/x')).not.toBeInTheDocument()
+      (await screen.findAllByText('deployments.health.ENVIRONMENT_STATUS_FAILED')).length,
+    ).toBeGreaterThan(0)
+    expect(screen.queryByRole('switch', { checked: true })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /tools\.mcp\.server\.edit/ })).toBeDisabled()
   })
 })
 

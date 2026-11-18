@@ -91,7 +91,6 @@
   "studio.accessPoint.embedIntoSite": "Nhúng vào trang web",
   "studio.accessPoint.goToPublish": "Đi đến xuất bản",
   "studio.accessPoint.mcpDescription": "Cung cấp ứng dụng dưới dạng công cụ cho tác nhân và ứng dụng AI",
-  "studio.accessPoint.mcpTriggerUnsupported": "Không thể gọi qua MCP các quy trình bắt đầu từ trình kích hoạt.",
   "studio.accessPoint.noPublishedDescription": "Xuất bản một phiên bản để sử dụng các điểm truy cập tích hợp.",
   "studio.accessPoint.noPublishedTitle": "Chưa có phiên bản nào được xuất bản",
   "studio.accessPoint.notSupported": "Không được hỗ trợ",

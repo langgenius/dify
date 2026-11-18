@@ -91,7 +91,6 @@
   "studio.accessPoint.embedIntoSite": "Sematkan ke situs",
   "studio.accessPoint.goToPublish": "Buka publikasi",
   "studio.accessPoint.mcpDescription": "Ekspos aplikasi sebagai alat untuk agen dan aplikasi AI",
-  "studio.accessPoint.mcpTriggerUnsupported": "Alur kerja yang dimulai dari pemicu tidak dapat dipanggil melalui MCP.",
   "studio.accessPoint.noPublishedDescription": "Publikasikan versi agar titik akses bawaan tersedia.",
   "studio.accessPoint.noPublishedTitle": "Belum ada versi yang dipublikasikan",
   "studio.accessPoint.notSupported": "Tidak didukung",

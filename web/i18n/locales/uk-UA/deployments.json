@@ -95,7 +95,6 @@
   "studio.accessPoint.embedIntoSite": "Вбудувати на сайт",
   "studio.accessPoint.goToPublish": "Перейти до публікації",
   "studio.accessPoint.mcpDescription": "Надайте застосунок як інструмент для агентів і ШІ-застосунків",
-  "studio.accessPoint.mcpTriggerUnsupported": "Робочі процеси, що запускаються тригерами, не можна викликати через MCP.",
   "studio.accessPoint.noPublishedDescription": "Опублікуйте версію, щоб вбудовані точки доступу стали доступними.",
   "studio.accessPoint.noPublishedTitle": "Опублікованих версій ще немає",
   "studio.accessPoint.notSupported": "Не підтримується",

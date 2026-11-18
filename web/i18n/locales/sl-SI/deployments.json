@@ -95,7 +95,6 @@
   "studio.accessPoint.embedIntoSite": "Vdelaj v spletno mesto",
   "studio.accessPoint.goToPublish": "Pojdi na objavo",
   "studio.accessPoint.mcpDescription": "Izpostavite aplikacijo kot orodje za agente in aplikacije umetne inteligence",
-  "studio.accessPoint.mcpTriggerUnsupported": "Delovnih tokov, ki se začnejo s sprožilci, ni mogoče klicati prek MCP.",
   "studio.accessPoint.noPublishedDescription": "Objavite različico, da omogočite vgrajene dostopne točke.",
   "studio.accessPoint.noPublishedTitle": "Objavljena ni še nobena različica",
   "studio.accessPoint.notSupported": "Ni podprto",

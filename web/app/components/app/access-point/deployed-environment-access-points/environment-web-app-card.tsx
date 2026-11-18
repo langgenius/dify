@@ -44,6 +44,8 @@ type EnvironmentWebAppCardProps = {
   environmentId: string
   canManageAccessPoint: boolean
   highlighted?: boolean
+  // The serving version starts from triggers, which rules this access point out, as in Built-in.
+  servesTriggers?: boolean
 }
 
 export function EnvironmentWebAppCard({
@@ -51,6 +53,7 @@ export function EnvironmentWebAppCard({
   environmentId,
   canManageAccessPoint,
   highlighted,
+  servesTriggers = false,
 }: EnvironmentWebAppCardProps) {
   const { t } = useTranslation([
     'agentV2',
@@ -136,11 +139,12 @@ export function EnvironmentWebAppCard({
   const pendingEnabled = siteMutation.variables?.body.enabled
   const optimisticEnabled =
     siteMutation.isPending && pendingEnabled !== undefined ? pendingEnabled : Boolean(site?.enabled)
-  const running = siteQuery.isSuccess && optimisticEnabled
+  const available = siteQuery.isSuccess && !servesTriggers
+  const running = available && optimisticEnabled
   const actionsAvailable = running && !siteMutation.isPending
   const status = siteQuery.isPending
     ? 'loading'
-    : siteQuery.isError
+    : !available
       ? 'unavailable'
       : running
         ? 'inService'
@@ -182,7 +186,7 @@ export function EnvironmentWebAppCard({
         highlighted={highlighted}
         switchDisabled={!canManageAccessPoint}
         switchLabel={t(($) => $['overview.appInfo.title'], { ns: 'appOverview' })}
-        onEnabledChange={siteQuery.isSuccess ? handleEnabledChange : undefined}
+        onEnabledChange={available ? handleEnabledChange : undefined}
         actions={
           <>
             <CustomizeDialog
@@ -200,7 +204,7 @@ export function EnvironmentWebAppCard({
                   ? { id: appInfo.id, mode: appInfo.mode, site: appInfo.site }
                   : undefined
               }
-              disabled={!siteQuery.isSuccess || !canManageAccessPoint}
+              disabled={!available || !canManageAccessPoint}
               onSave={actions.saveSiteConfig}
             />
           </>
@@ -211,7 +215,7 @@ export function EnvironmentWebAppCard({
           value={webAppUrl}
           enabled={running}
           loading={siteQuery.isPending}
-          unavailable={siteQuery.isError}
+          unavailable={!siteQuery.isPending && !available}
           unavailableLabel={t(($) => $['health.ENVIRONMENT_STATUS_FAILED'], {
             ns: 'deployments',
           })}

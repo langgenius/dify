@@ -91,7 +91,6 @@
   "studio.accessPoint.embedIntoSite": "Siteye göm",
   "studio.accessPoint.goToPublish": "Yayınlamaya git",
   "studio.accessPoint.mcpDescription": "Uygulamayı aracılar ve yapay zekâ uygulamaları için bir araç olarak sunun",
-  "studio.accessPoint.mcpTriggerUnsupported": "Tetikleyicilerle başlayan iş akışları MCP üzerinden çağrılamaz.",
   "studio.accessPoint.noPublishedDescription": "Yerleşik erişim noktalarını kullanıma açmak için bir sürüm yayınlayın.",
   "studio.accessPoint.noPublishedTitle": "Henüz yayınlanmış sürüm yok",
   "studio.accessPoint.notSupported": "Desteklenmiyor",

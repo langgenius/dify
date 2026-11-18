@@ -93,7 +93,6 @@
   "studio.accessPoint.embedIntoSite": "Încorporează în site",
   "studio.accessPoint.goToPublish": "Mergi la publicare",
   "studio.accessPoint.mcpDescription": "Expune aplicația ca instrument pentru agenți și aplicații AI",
-  "studio.accessPoint.mcpTriggerUnsupported": "Fluxurile de lucru pornite de declanșatoare nu pot fi apelate prin MCP.",
   "studio.accessPoint.noPublishedDescription": "Publică o versiune pentru a face disponibile punctele de acces încorporate.",
   "studio.accessPoint.noPublishedTitle": "Nu există încă versiuni publicate",
   "studio.accessPoint.notSupported": "Nesuportat",

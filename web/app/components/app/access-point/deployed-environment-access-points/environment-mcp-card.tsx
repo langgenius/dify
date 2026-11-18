@@ -15,7 +15,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AccessPointCard, AccessPointEmptyContent } from '@/app/components/base/access-point/card'
+import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import { MCPServerForm } from '@/app/components/tools/mcp/mcp-server-form'
 import { toast } from '@/app/notifications'
@@ -80,20 +80,17 @@ export function EnvironmentMcpCard({
       ? pendingEnabled
       : Boolean(server?.enabled)
   const loading = serverQuery.isPending
-  const unavailable = serverQuery.isError
-  // MCP does not serve workflows that start from triggers.
-  const unsupported = Boolean(server?.trigger_workflow)
+  // MCP does not serve workflows that start from triggers, as in Built-in.
+  const unavailable = serverQuery.isError || Boolean(server?.trigger_workflow)
   const status = loading
     ? 'loading'
     : unavailable
       ? 'unavailable'
-      : unsupported
-        ? 'unsupported'
-        : enabled
-          ? 'inService'
-          : 'disabled'
+      : enabled
+        ? 'inService'
+        : 'disabled'
   const statusLabel = useAccessPointStatusLabel(status)
-  const usable = !loading && !unavailable && !unsupported
+  const usable = !loading && !unavailable
 
   const handleEnabledChange = (nextEnabled: boolean) => {
     if (!canManageAccessPoint) return
@@ -138,43 +135,35 @@ export function EnvironmentMcpCard({
         switchLabel={t(($) => $['mcp.server.title'], { ns: 'tools' })}
         onEnabledChange={usable ? handleEnabledChange : undefined}
         actions={
-          unsupported ? undefined : (
-            <Button
-              variant="secondary"
-              disabled={!usable || !canManageAccessPoint}
-              onClick={() => setShowForm(true)}
-              className="flex items-center gap-1 px-3"
-            >
-              <span aria-hidden className="i-ri-draft-line size-4" />
-              {created
-                ? t(($) => $['mcp.server.edit'], { ns: 'tools' })
-                : t(($) => $['mcp.server.addDescription'], { ns: 'tools' })}
-            </Button>
-          )
+          <Button
+            variant="secondary"
+            disabled={!usable || !canManageAccessPoint}
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-1 px-3"
+          >
+            <span aria-hidden className="i-ri-draft-line size-4" />
+            {created
+              ? t(($) => $['mcp.server.edit'], { ns: 'tools' })
+              : t(($) => $['mcp.server.addDescription'], { ns: 'tools' })}
+          </Button>
         }
       >
-        {unsupported ? (
-          <AccessPointEmptyContent>
-            {t(($) => $['studio.accessPoint.mcpTriggerUnsupported'], { ns: 'deployments' })}
-          </AccessPointEmptyContent>
-        ) : (
-          <AccessPointUrl
-            label={t(($) => $['mcp.server.url'], { ns: 'tools' })}
-            value={created ? (server?.url ?? '') : '***********'}
-            enabled={enabled}
-            copyDisabled={!created}
-            loading={loading}
-            unavailable={unavailable}
-            unavailableLabel={t(($) => $['health.ENVIRONMENT_STATUS_FAILED'], {
-              ns: 'deployments',
-            })}
-            showRegenerate
-            regenerateLabel={t(($) => $['overview.appInfo.regenerate'], { ns: 'appOverview' })}
-            regenerateDisabled={!canManageAccessPoint || !created}
-            regenerating={refreshMutation.isPending}
-            onRegenerate={() => setShowRegenerate(true)}
-          />
-        )}
+        <AccessPointUrl
+          label={t(($) => $['mcp.server.url'], { ns: 'tools' })}
+          value={created ? (server?.url ?? '') : '***********'}
+          enabled={enabled}
+          copyDisabled={!created}
+          loading={loading}
+          unavailable={unavailable}
+          unavailableLabel={t(($) => $['health.ENVIRONMENT_STATUS_FAILED'], {
+            ns: 'deployments',
+          })}
+          showRegenerate
+          regenerateLabel={t(($) => $['overview.appInfo.regenerate'], { ns: 'appOverview' })}
+          regenerateDisabled={!canManageAccessPoint || !created || !usable}
+          regenerating={refreshMutation.isPending}
+          onRegenerate={() => setShowRegenerate(true)}
+        />
       </AccessPointCard>
 
       {showForm && (

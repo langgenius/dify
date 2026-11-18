@@ -99,7 +99,6 @@
   "studio.accessPoint.embedIntoSite": "تضمين في الموقع",
   "studio.accessPoint.goToPublish": "الانتقال إلى النشر",
   "studio.accessPoint.mcpDescription": "اعرض التطبيق كأداة للوكلاء وتطبيقات الذكاء الاصطناعي",
-  "studio.accessPoint.mcpTriggerUnsupported": "لا يمكن استدعاء مسارات العمل التي تبدأ بالمشغّلات عبر MCP.",
   "studio.accessPoint.noPublishedDescription": "انشر إصدارًا لإتاحة نقاط الوصول المضمّنة.",
   "studio.accessPoint.noPublishedTitle": "لا توجد إصدارات منشورة بعد",
   "studio.accessPoint.notSupported": "غير مدعوم",

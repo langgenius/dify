@@ -95,7 +95,6 @@
   "studio.accessPoint.embedIntoSite": "Osadź w witrynie",
   "studio.accessPoint.goToPublish": "Przejdź do publikowania",
   "studio.accessPoint.mcpDescription": "Udostępnij aplikację jako narzędzie dla agentów i aplikacji AI",
-  "studio.accessPoint.mcpTriggerUnsupported": "Przepływów pracy uruchamianych przez wyzwalacze nie można wywołać przez MCP.",
   "studio.accessPoint.noPublishedDescription": "Opublikuj wersję, aby udostępnić wbudowane punkty dostępu.",
   "studio.accessPoint.noPublishedTitle": "Nie opublikowano jeszcze żadnej wersji",
   "studio.accessPoint.notSupported": "Nieobsługiwane",

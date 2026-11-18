@@ -91,7 +91,6 @@
   "studio.accessPoint.embedIntoSite": "In Website einbetten",
   "studio.accessPoint.goToPublish": "Zur Veröffentlichung",
   "studio.accessPoint.mcpDescription": "Stellen Sie die App als Tool für Agenten und KI-Apps bereit",
-  "studio.accessPoint.mcpTriggerUnsupported": "Workflows, die mit Triggern starten, können nicht über MCP aufgerufen werden.",
   "studio.accessPoint.noPublishedDescription": "Veröffentlichen Sie eine Version, um integrierte Zugriffspunkte verfügbar zu machen.",
   "studio.accessPoint.noPublishedTitle": "Noch keine Version veröffentlicht",
   "studio.accessPoint.notSupported": "Nicht unterstützt",

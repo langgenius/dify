@@ -93,7 +93,6 @@
   "studio.accessPoint.embedIntoSite": "Insertar en el sitio",
   "studio.accessPoint.goToPublish": "Ir a publicar",
   "studio.accessPoint.mcpDescription": "Expón la aplicación como una herramienta para agentes y aplicaciones de IA",
-  "studio.accessPoint.mcpTriggerUnsupported": "Los flujos de trabajo que se inician con disparadores no se pueden llamar mediante MCP.",
   "studio.accessPoint.noPublishedDescription": "Publica una versión para habilitar los puntos de acceso integrados.",
   "studio.accessPoint.noPublishedTitle": "Aún no hay versiones publicadas",
   "studio.accessPoint.notSupported": "No compatible",

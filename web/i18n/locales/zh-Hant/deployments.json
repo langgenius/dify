@@ -91,7 +91,6 @@
   "studio.accessPoint.embedIntoSite": "嵌入網站",
   "studio.accessPoint.goToPublish": "前往發佈",
   "studio.accessPoint.mcpDescription": "將應用程式作為工具提供給 Agent 和 AI 應用程式",
-  "studio.accessPoint.mcpTriggerUnsupported": "由觸發器啟動的工作流程無法透過 MCP 呼叫。",
   "studio.accessPoint.noPublishedDescription": "發佈版本後即可使用內建存取點。",
   "studio.accessPoint.noPublishedTitle": "尚未發佈任何版本",
   "studio.accessPoint.notSupported": "不支援",

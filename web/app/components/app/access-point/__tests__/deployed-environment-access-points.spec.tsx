@@ -44,6 +44,42 @@ describe('DeployedEnvironmentAccessPoints', () => {
     }
   })
 
+  it('rules out Web App, API and MCP while the serving version starts from triggers', async () => {
+    const queryClient = createTestQueryClient()
+    seedAccessPointQueries(queryClient, 'app-1', ['staging'])
+    queryClient.setQueryData(
+      consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+      createAppDetailFixture({ id: 'app-1', mode: 'workflow', site: createAppSiteFixture() }),
+    )
+    queryClient.setQueryData(
+      consoleQuery.enterprise.appDeploy.accessService.getEnvironmentMcpServer.queryKey({
+        input: { params: { app_id: 'app-1', environment_id: 'staging' } },
+      }),
+      { enabled: true, server_code: 'mcp-code', url: 'https://x/mcp', trigger_workflow: true },
+    )
+    renderWithConsoleQuery(
+      <NuqsTestingAdapter>
+        <DeployedEnvironmentAccessPoints
+          appId="app-1"
+          environmentId="staging"
+          canManageAccessPoint
+        />
+      </NuqsTestingAdapter>,
+      { queryClient },
+    )
+
+    expect(
+      await screen.findByText('deployments.studio.accessPoint.triggerExclusiveNotice'),
+    ).toBeInTheDocument()
+    // Seeded as switched on, yet none of them serves; the trigger switch stays usable.
+    const checked = screen
+      .getAllByRole('switch')
+      .filter((control) => control.getAttribute('aria-checked') === 'true')
+    expect(checked.map((control) => control.getAttribute('aria-label'))).toEqual([
+      'navigation.settings.trigger',
+    ])
+  })
+
   it.each([false, true])(
     'enforces management permission %s on deployed environment controls',
     (canManageAccessPoint) => {
