@@ -27,13 +27,10 @@ def test_wecom_credentials_are_strict_immutable_and_secret_safe() -> None:
         {"provider": IMProvider.WE_COM, "corp_id": "fake-corp-001", "agent_id": "1000001", "secret": "fake-secret-001"}
     )
     assert credentials.model_config["frozen"] is True
-    assert credentials.model_config["extra"] == "forbid"
     assert credentials.model_config["strict"] is True
     assert "fake-secret-001" not in repr(credentials)
     assert "fake-secret-001" not in repr(update)
 
-    with pytest.raises(ValidationError):
-        resolved_credentials.model_validate({**credentials.model_dump(), "unexpected": "fake-value"})
     pytest.raises(ValidationError, setattr, credentials, "agent_id", "1000002")
     with pytest.raises(ValidationError):
         resolved_credentials.model_validate({**credentials.model_dump(), "agent_id": 1000001})

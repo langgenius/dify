@@ -35,7 +35,8 @@ describe('env runtime transport', () => {
   })
 
   it.each([
-    [undefined, false],
+    [undefined, true],
+    ['', true],
     ['false', false],
     ['true', true],
     ['0', false],
@@ -62,10 +63,10 @@ describe('env runtime transport', () => {
     },
   )
 
-  it('keeps HITL IM disabled when the browser runtime attribute is absent', async () => {
-    vi.stubEnv('NEXT_PUBLIC_ENABLE_HITL_IM', 'true')
+  it('enables HITL IM by default when the browser runtime attribute is absent', async () => {
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_HITL_IM', 'false')
     const { env } = await import('../env')
-    expect(env.NEXT_PUBLIC_ENABLE_HITL_IM).toBe(false)
+    expect(env.NEXT_PUBLIC_ENABLE_HITL_IM).toBe(true)
   })
 
   it('preserves runtime configuration when modules load before the streamed body', async () => {

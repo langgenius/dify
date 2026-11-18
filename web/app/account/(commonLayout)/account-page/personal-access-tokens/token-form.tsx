@@ -207,7 +207,7 @@ export default function TokenForm({
           </p>
           <div className="mt-12 flex items-center justify-between gap-4">
             <a
-              href={docLink('/api-reference/guides/get-started')}
+              href={docLink('/cli/personal-access-tokens')}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex shrink-0 items-center gap-1 system-xs-medium text-text-accent hover:underline"
