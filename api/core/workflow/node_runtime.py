@@ -171,8 +171,21 @@ def apply_dify_debug_email_recipient(
 
 
 class DifyFileReferenceFactory(FileReferenceFactoryProtocol):
-    def __init__(self, run_context: Mapping[str, Any] | DifyRunContext) -> None:
+    def __init__(
+        self,
+        run_context: Mapping[str, Any] | DifyRunContext,
+        *,
+        signed_file_url_generator: file_factory.SignedFileUrlGenerator | None = None,
+    ) -> None:
+        """Create a tenant-scoped factory with the default or injected URL generator.
+
+        Preconditions: ``run_context`` contains a valid Dify context. A supplied
+        signed URL generator returns an absolute URL for persisted upload files.
+        Postconditions: subsequent mappings are validated against ``FileMapping``
+        and resolved for the context tenant; no state is mutated by construction.
+        """
         self._run_context = resolve_dify_run_context(run_context)
+        self._signed_file_url_generator = signed_file_url_generator
 
     @override
     def build_from_mapping(self, *, mapping: Mapping[str, Any]) -> File:
@@ -192,6 +205,7 @@ class DifyFileReferenceFactory(FileReferenceFactoryProtocol):
             mapping=parsed_mapping,
             tenant_id=self._run_context.tenant_id,
             access_controller=_file_access_controller,
+            signed_file_url_generator=self._signed_file_url_generator,
         )
 
 
@@ -586,9 +600,20 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         session_maker: sessionmaker[Session] | None = None,
         execution_driver: WorkflowRunDriver | None = None,
         workflow_tools: Mapping[str, WorkflowTool] | None = None,
+        signed_file_url_generator: file_factory.SignedFileUrlGenerator | None = None,
     ) -> None:
+        """Build a tool runtime with its tenant-scoped file-reference factory.
+
+        Preconditions: ``run_context`` is a valid Dify run context; an optional
+        signed URL generator returns an absolute URL for persisted upload files.
+        Postconditions: file mappings validate and resolve within the run tenant;
+        existing runtime dependencies retain their default behavior when omitted.
+        """
         self._run_context = resolve_dify_run_context(run_context)
-        self._file_reference_factory = DifyFileReferenceFactory(self._run_context)
+        self._file_reference_factory = DifyFileReferenceFactory(
+            self._run_context,
+            signed_file_url_generator=signed_file_url_generator,
+        )
         self._session_maker = session_maker
         self._execution_driver = execution_driver
         self._workflow_tools = workflow_tools if workflow_tools is not None else {}
