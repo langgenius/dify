@@ -272,9 +272,6 @@ class _RepoRecorder:
     def save_synchronously(self, entity):
         self.synchronously_saved.append(entity)
 
-    def save_execution_data(self, entity):
-        self.saved_exec_data.append(entity)
-
     def save_with_execution_data(self, entity: object) -> None:
         self.saved.append(entity)
         self.saved_exec_data.append(entity)

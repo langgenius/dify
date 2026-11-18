@@ -494,7 +494,7 @@ class TestSqlalchemyWorkflowNodeExecutionRepositoryCases:
         existing.outputs = {"result": 2}
         existing.process_data = {"step": 3}
         monkeypatch.setattr(repo, "_truncate_and_upload", lambda *_args, **_kwargs: None)
-        repo.save_execution_data(existing)
+        repo._save_execution_data(existing)
         with sqlite_session_factory() as session:
             persisted = session.get(
                 _sqlalchemy_workflow_node_execution_repository_WorkflowNodeExecutionModel, existing.id
@@ -512,7 +512,7 @@ class TestSqlalchemyWorkflowNodeExecutionRepositoryCases:
         missing = _sqlalchemy_workflow_node_execution_repository_execution(
             execution_id="missing", node_execution_id="missing-node", inputs={"new": True}
         )
-        repo.save_execution_data(missing)
+        repo._save_execution_data(missing)
         with sqlite_session_factory() as session:
             persisted = session.get(
                 _sqlalchemy_workflow_node_execution_repository_WorkflowNodeExecutionModel, missing.id
@@ -568,7 +568,7 @@ class TestSqlalchemyWorkflowNodeExecutionRepositoryCases:
         )
         result = SimpleNamespace(truncated_value={"large": "truncated"}, offload=offload)
         monkeypatch.setattr(repo, "_truncate_and_upload", lambda values, *_args: result if values else None)
-        repo.save_execution_data(execution)
+        repo._save_execution_data(execution)
         with sqlite_session_factory() as session:
             persisted = session.get(
                 _sqlalchemy_workflow_node_execution_repository_WorkflowNodeExecutionModel, execution.id
@@ -628,7 +628,7 @@ class TestSqlalchemyWorkflowNodeExecutionRepositoryCases:
                 repo.save_with_execution_data(finished)
             else:
                 repo.save(finished)
-                repo.save_execution_data(finished)
+                repo._save_execution_data(finished)
 
         run_node("two-step", combined=False)
         run_node("combined", combined=True)
@@ -692,7 +692,7 @@ class TestSqlalchemyWorkflowNodeExecutionRepositoryCases:
         sqlite_session_factory: sessionmaker[Session],
         offload_type: ExecutionOffLoadType,
     ) -> None:
-        """A value over the truncation limit still goes through save_execution_data and is offloaded."""
+        """A value over the truncation limit still goes through _save_execution_data and is offloaded."""
         monkeypatch.setattr(dify_config, "WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE", 200)
         monkeypatch.setattr(dify_config, "WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH", 100)
         repo = _repository(monkeypatch, sqlite_session_factory)
