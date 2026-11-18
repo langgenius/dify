@@ -2825,7 +2825,6 @@ export const zDraftWorkflowResponse = z.object({
   hash: z.string(),
   id: z.string(),
   loro_draft_epoch: z.string().nullish(),
-  loro_draft_format: z.literal(2).nullish(),
   marked_comment: z.string(),
   marked_name: z.string(),
   rag_pipeline_variables: z.array(zPipelineVariableResponse),

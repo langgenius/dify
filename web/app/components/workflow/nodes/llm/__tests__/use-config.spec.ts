@@ -135,7 +135,7 @@ it('resolves updated shared metadata and preserves its latest identity when retu
 
 it('keeps typing visible during the initial sync and stops accepting edits when the canvas becomes read only', () => {
   const { store, result } = setup()
-  const identity = { accountId: 'editor', epoch: 'initial', format: 2 as const }
+  const identity = { accountId: 'editor', epoch: 'initial' }
   const queue = vi.spyOn(collaborationManager, 'queueInitialLlmPrompt').mockReturnValue(true)
   act(() => store.setState({ loroDraft: identity }))
   const changed = [{ ...prompt, text: 'Keep typing before the handshake' }]

@@ -2,8 +2,10 @@ import type { LoroDraftIdentity } from '../loro-draft-provider'
 import type { LoroDraftRetirement } from '../loro-draft-storage'
 import { deleteDB } from 'idb'
 import { LoroDoc, VersionVector } from 'loro-crdt'
+import { projectDraftGraph } from '../loro-draft-edits'
 import { LoroDraftProvider } from '../loro-draft-provider'
 import { LoroDraftStorage } from '../loro-draft-storage'
+import { createNodeDraft, renameDraftNode } from './test-loro-draft-server'
 import { createSocket } from './test-socket'
 
 type Request = { epoch: string; version: Uint8Array; update?: Uint8Array }
@@ -15,13 +17,6 @@ afterEach(async () => {
   vi.restoreAllMocks()
   await deleteDB('dify-workflow-loro')
 })
-
-function document(title: string) {
-  const doc = new LoroDoc()
-  doc.getMap('nodes').set('node', { title })
-  doc.commit()
-  return doc
-}
 
 const identity = (epoch: string): LoroDraftIdentity => ({ accountId: 'editor', epoch })
 const scope = (epoch: string) => JSON.stringify(['editor', 'app', epoch])
@@ -36,7 +31,7 @@ async function stored(epoch: string) {
 
 function fixture() {
   let epoch = 'a'
-  let server = document('Original')
+  let server = createNodeDraft('Original')
   const exchange = vi.fn((request: Request, acknowledge: Acknowledge) => {
     if (request.epoch !== epoch) {
       acknowledge(null, { msg: 'epoch_changed' }, 409)
@@ -76,7 +71,6 @@ function fixture() {
       retirements,
       doc,
       socket: transport.socket,
-      isEmpty: () => doc.getMap('nodes').size === 0,
       ...callbacks,
     })
     providers.push(provider)
@@ -88,7 +82,7 @@ function fixture() {
     exchange,
     replace: (next: string) => {
       epoch = next
-      server = document(`Replacement ${next}`)
+      server = createNodeDraft(`Replacement ${next}`)
     },
   }
 }
@@ -96,9 +90,8 @@ function fixture() {
 async function offlineEdit(editor: ReturnType<ReturnType<typeof fixture>['open']>) {
   await vi.waitFor(() => expect(editor.onConfirmed).toHaveBeenCalled())
   editor.provider.leave()
-  editor.doc.getMap('nodes').set('node', { title: 'Offline edit' })
-  editor.doc.commit()
-  await vi.waitFor(async () => expect((await stored('a')).edits).toHaveLength(1))
+  renameDraftNode(editor.doc, 'Offline edit')
+  await vi.waitFor(async () => expect((await stored('a')).edits).toHaveLength(2))
 }
 
 it('keeps the old payload on load failure and finishes cleanup after reopening the new draft', async () => {
@@ -113,8 +106,10 @@ it('keeps the old payload on load failure and finishes cleanup after reopening t
   await vi.waitFor(() => expect(server.exchange).toHaveBeenCalledTimes(2))
   expect(failed.onReady).not.toHaveBeenCalled()
   expect(failed.onConfirmed).not.toHaveBeenCalled()
-  expect(await stored('a')).toMatchObject({ retired: true, edits: [expect.anything()] })
-  expect((await stored('a')).checkpoint).toBeDefined()
+  const retired = await stored('a')
+  expect(retired.retired).toBe(true)
+  expect(retired.edits).toHaveLength(2)
+  expect(retired.checkpoint).toBeDefined()
   failed.provider.destroy()
 
   const reopened = server.open('b')
@@ -123,7 +118,9 @@ it('keeps the old payload on load failure and finishes cleanup after reopening t
       expect.objectContaining({ cleanup: 'cleared' }),
     ),
   )
-  expect(reopened.doc.toJSON()).toMatchObject({ nodes: { node: { title: 'Replacement b' } } })
+  expect(projectDraftGraph(reopened.doc).nodes).toEqual([
+    { id: 'node-1', data: { title: 'Replacement b' } },
+  ])
   expect(await stored('a')).toEqual({ checkpoint: undefined, edits: [], retired: true })
   expect((await stored('b')).checkpoint).toBeDefined()
   await reopened.provider.flush()
@@ -148,8 +145,7 @@ it('rejects another tab’s late append and checkpoint after cleanup without dis
         expect.objectContaining({ cleanup: 'cleared' }),
       ),
     )
-    late.doc.getMap('nodes').set('node', { title: 'Late edit' })
-    late.doc.commit()
+    renameDraftNode(late.doc, 'Late edit')
     await vi.waitFor(() => expect(late.onEpochChanged).toHaveBeenCalled())
     expect(late.onUnavailable).not.toHaveBeenCalled()
     expect(
@@ -161,7 +157,7 @@ it('rejects another tab’s late append and checkpoint after cleanup without dis
     expect(await stored('a')).toEqual({ checkpoint: undefined, edits: [], retired: true })
     const next = server.open('b', late.provider.retirementCandidates)
     await vi.waitFor(() => expect(next.onConfirmed).toHaveBeenCalled())
-    expect(next.doc.toJSON()).toEqual(replacement.doc.toJSON())
+    expect(projectDraftGraph(next.doc)).toEqual(projectDraftGraph(replacement.doc))
   } finally {
     storage.close()
   }
@@ -203,7 +199,7 @@ it('keeps the new draft usable when cleanup fails and automatically retries the 
   )
   expect(b.onReady).toHaveBeenCalledOnce()
   expect(b.onUnavailable).not.toHaveBeenCalled()
-  expect((await stored('a')).edits).toHaveLength(1)
+  expect((await stored('a')).edits).toHaveLength(2)
   await vi.waitFor(
     () =>
       expect(b.onConfirmed).toHaveBeenCalledWith(expect.objectContaining({ cleanup: 'cleared' })),
@@ -261,7 +257,7 @@ it('refreshes a reopened retired tab and refuses its late cleanup request agains
   await vi.waitFor(() => expect(reopened.onEpochChanged).toHaveBeenCalled())
   expect(reopened.onReady).not.toHaveBeenCalled()
   expect(reopened.onUnavailable).not.toHaveBeenCalled()
-  expect(reopened.doc.getMap('nodes').size).toBe(0)
+  expect(projectDraftGraph(reopened.doc).nodes).toHaveLength(0)
   const stale = await LoroDraftStorage.open(scope('b'))
   try {
     expect(await stale.queueRetirements([{ scope: scope('c'), hadPendingEdits: false }])).toBe(

@@ -38,7 +38,7 @@ it('jumps and clears only the editor’s collaborative history', async () => {
     nodes: [],
     edges: [],
     resource: { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled: true },
-    initialStoreState: { loroDraft: { epoch: 'initial', accountId: 'editor', format: 2 } },
+    initialStoreState: { loroDraft: { epoch: 'initial', accountId: 'editor' } },
   })
   const localUndo = vi.spyOn(store.temporal.getState(), 'undo')
   const localClear = vi.spyOn(store.temporal.getState(), 'clear')

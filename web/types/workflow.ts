@@ -129,7 +129,6 @@ type VersionEnvironment = {
 export type FetchWorkflowDraftResponse = {
   id: string
   loro_draft_epoch?: string | null
-  loro_draft_format?: 2 | null
   graph: {
     nodes: Node[]
     edges: Edge[]

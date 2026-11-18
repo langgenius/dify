@@ -983,7 +983,7 @@ it('imports a DSL file and replaces the graph through the real update event', as
 })
 
 it('switches to the replacement draft’s history and ignores an older pending refresh', async () => {
-  const previous = { accountId: 'editor', epoch: 'original', format: 2 as const }
+  const previous = { accountId: 'editor', epoch: 'original' }
   const replace = vi.spyOn(collaborationManager, 'replaceLoroDraft').mockReturnValue(true)
   const { store } = await renderMain({
     initialStoreState: { loroDraft: previous, hasPendingLoroDraftChanges: true },
@@ -993,7 +993,6 @@ it('switches to the replacement draft’s history and ignores an older pending r
     draft({
       hash: 'replacement-hash',
       loro_draft_epoch: 'new-epoch',
-      loro_draft_format: 2,
     }),
   )
   const oldRefresh = updateWorkflow()
@@ -1013,29 +1012,11 @@ it('switches to the replacement draft’s history and ignores an older pending r
   })
 })
 
-it('keeps a blocked offline edit pending and reports the upgrade conflict on the canvas', async () => {
-  const failure = vi.spyOn(collaborationManager, 'onJoinFailure')
-  const pending = vi.spyOn(collaborationManager, 'onLoroDraftPendingChange')
-  const { store } = await renderMain({
-    initialStoreState: { loroDraft: { accountId: 'editor', epoch: 'shared', format: 2 } },
-  })
-  act(() => {
-    pending.mock.lastCall![0](true)
-    failure.mock.lastCall![0]('legacy_edit_conflict')
-    events.ready.forEach((handler) => handler(false))
-  })
-  expect(screen.getByText('workflow.collaboration.localEditConflict')).toBeVisible()
-  expect(store.getState().hasPendingLoroDraftChanges).toBe(true)
-  expect(
-    screen.queryByRole('button', { name: 'workflow.collaboration.reloadPage' }),
-  ).not.toBeInTheDocument()
-})
-
 it('uses the confirmed graph and revision for an empty draft after local undo', async () => {
   const confirmed = vi.spyOn(collaborationManager, 'onLoroDraftConfirmed')
   const pending = vi.spyOn(collaborationManager, 'onLoroDraftPendingChange')
   const { store } = await renderMain({
-    initialStoreState: { loroDraft: { accountId: 'editor', epoch: 'shared', format: 2 } },
+    initialStoreState: { loroDraft: { accountId: 'editor', epoch: 'shared' } },
   })
   const hydrate = vi.mocked(collaborationManager.connect).mock.lastCall?.[1]?.hydrateGraph
   expect(hydrate?.({ nodes: [], edges: [] }).nodes.map((node) => node.data.type)).toEqual([

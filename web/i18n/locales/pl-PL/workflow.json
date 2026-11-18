@@ -114,7 +114,6 @@
   "collaboration.historyAction.generic": "Współpracownik wykonał cofnięcie/ponowienie",
   "collaboration.joinDenied": "Nie można dołączyć do współpracy. Sprawdź dostęp i plan obszaru roboczego, a następnie otwórz edytor ponownie.",
   "collaboration.joinUnavailable": "Nie udało się połączyć ze współpracą. Zmiany na tym obszarze roboczym mogły nie zostać zapisane.",
-  "collaboration.localEditConflict": "Zmiany wprowadzone offline są w konflikcie z udostępnioną wersją roboczą. Nadal są zapisane w tej przeglądarce.",
   "collaboration.reloadPage": "Odśwież stronę",
   "collaboration.replacedWithPendingEdits": "Wersja robocza została przywrócona lub zastąpiona przez import. Wczytano najnowszą wersję i usunięto niepotwierdzone lokalne zmiany poprzedniej wersji.",
   "common.accessAPIReference": "Uzyskaj dostęp do dokumentacji API",

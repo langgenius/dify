@@ -56,11 +56,11 @@ const ConfigPrompt: FC<Props> = ({
   const { t } = useTranslation(['workflow', 'workflowModels'])
   const workflowStore = useWorkflowStore()
   const { setControlPromptEditorRerenderKey } = workflowStore.getState()
-  const selectiveHistory = useStore((s) => s.loroDraft?.format === 2)
+  const hasLoroDraft = useStore((s) => !!s.loroDraft)
   const prompts = useMemo(() => {
     if (!isChatModel || !Array.isArray(payload)) return []
-    return selectiveHistory ? payload : payload.map((item) => ({ ...item, id: item.id || uuid4() }))
-  }, [isChatModel, payload, selectiveHistory])
+    return hasLoroDraft ? payload : payload.map((item) => ({ ...item, id: item.id || uuid4() }))
+  }, [isChatModel, payload, hasLoroDraft])
   const keyboardSort = useKeyboardSortable({
     items: prompts,
     onChange,

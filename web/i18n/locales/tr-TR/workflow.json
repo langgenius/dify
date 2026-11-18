@@ -114,7 +114,6 @@
   "collaboration.historyAction.generic": "Bir işbirlikçi geri alma/yeniden yapma gerçekleştirdi",
   "collaboration.joinDenied": "Ortak düzenlemeye katılamadınız. Erişim izninizi ve çalışma alanı planını kontrol edip düzenleyiciyi yeniden açın.",
   "collaboration.joinUnavailable": "Ortak düzenlemeye bağlanılamadı. Bu tuvaldeki değişiklikler kaydedilmemiş olabilir.",
-  "collaboration.localEditConflict": "Çevrimdışı değişiklikleriniz paylaşılan taslakla çakışıyor. Değişiklikleriniz hâlâ bu tarayıcıda kayıtlı.",
   "collaboration.reloadPage": "Sayfayı Yenile",
   "collaboration.replacedWithPendingEdits": "Taslak geri yüklendi veya içe aktarmayla değiştirildi. En son taslak yüklendi ve eski taslağın kaydı onaylanmamış yerel değişiklikleri temizlendi.",
   "common.accessAPIReference": "API Referansına Eriş",

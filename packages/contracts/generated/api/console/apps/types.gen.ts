@@ -1334,7 +1334,6 @@ export type DraftWorkflowResponse = {
   hash: string
   id: string
   loro_draft_epoch?: string | null
-  loro_draft_format?: 2 | null
   marked_comment: string
   marked_name: string
   rag_pipeline_variables: Array<PipelineVariableResponse>

@@ -26419,7 +26419,6 @@ The epoch is present only when the existing collaboration policy enables Loro.
 | hash | string |  | Yes |
 | id | string |  | Yes |
 | loro_draft_epoch | string |  | No |
-| loro_draft_format | integer |  | No |
 | marked_comment | string |  | Yes |
 | marked_name | string |  | Yes |
 | rag_pipeline_variables | [ [PipelineVariableResponse](#pipelinevariableresponse) ] |  | Yes |

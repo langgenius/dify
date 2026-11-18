@@ -5,7 +5,7 @@ import { useStore } from '../../../store'
 
 const useNodeCrud = <T>(id: string, data: CommonNodeType<T>) => {
   const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
-  const selectiveHistory = useStore((s) => s.loroDraft?.format === 2)
+  const hasLoroDraft = useStore((s) => !!s.loroDraft)
   const updateRef = useRef(handleNodeDataUpdateWithSyncDraft)
   useEffect(() => {
     updateRef.current = handleNodeDataUpdateWithSyncDraft
@@ -28,7 +28,7 @@ const useNodeCrud = <T>(id: string, data: CommonNodeType<T>) => {
 
   return {
     inputs: data,
-    setInputs: selectiveHistory ? setDraftInputs : setLocalInputs,
+    setInputs: hasLoroDraft ? setDraftInputs : setLocalInputs,
   }
 }
 

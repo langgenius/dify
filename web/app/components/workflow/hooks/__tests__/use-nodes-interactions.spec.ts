@@ -682,7 +682,7 @@ it('remaps iteration children and their internal references while the HITL gate 
 
 it('uses only the active peer history when offline and blocks canvas history while a replacement draft loads', () => {
   const { result, store } = setup({ collaboration: true, nodes: [codeNode('remote')] })
-  const identity = { epoch: 'loaded', accountId: 'editor', format: 2 as const }
+  const identity = { epoch: 'loaded', accountId: 'editor' }
   act(() => {
     store.getState().setWorkflowHistory({
       nodes: [codeNode('outdated')],

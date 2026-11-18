@@ -87,7 +87,7 @@ export function useWorkflowHistoryStore() {
         ({
           getState: () => workflowStore.getState().workflowHistory,
           setState: (state: WorkflowHistoryState) => {
-            if (workflowStore.getState().loroDraft?.format === 2) return
+            if (workflowStore.getState().loroDraft) return
             workflowStore.getState().setWorkflowHistory(sanitizeWorkflowHistory(state))
           },
           subscribe: (listener: (state: WorkflowHistoryState) => void) => {

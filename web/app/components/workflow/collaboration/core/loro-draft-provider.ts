@@ -5,7 +5,7 @@ import { decodeImportBlobMeta, LoroDoc, VersionVector } from 'loro-crdt'
 import { projectDraftGraph } from './loro-draft-edits'
 import { LoroDraftStorage } from './loro-draft-storage'
 
-export type LoroDraftIdentity = Readonly<{ epoch: string; accountId: string; format?: 2 }>
+export type LoroDraftIdentity = Readonly<{ epoch: string; accountId: string }>
 export type LoroDraftConfirmation = WorkflowSyncResult & {
   isEmpty: boolean
   cleanup?: 'cleared' | 'failed'
@@ -17,12 +17,11 @@ type Options = {
   retirements?: readonly LoroDraftRetirement[]
   doc: LoroDoc
   socket: Socket
-  isEmpty: () => boolean
   onReady: () => void
   onConfirmed: (result: LoroDraftConfirmation) => void
   onPendingChange: (pending: boolean) => void
   onEpochChanged: () => void
-  onUnavailable: (reason?: 'legacy_edit_conflict') => void
+  onUnavailable: () => void
   onUnauthorized: () => void
 }
 
@@ -37,11 +36,13 @@ const bytes = (value: unknown) =>
       ? value
       : undefined
 
-const hasSelectiveHistory = (doc: LoroDoc) =>
-  !!doc.getShallowValue().draftFormat && doc.getMap('draftFormat').get('version') === 2
-
 const covers = (version: VersionVector, target: VersionVector) =>
   (version.compare(target) ?? -1) >= 0
+
+function isDraftEmpty(doc: LoroDoc) {
+  const { nodes, edges } = projectDraftGraph(doc)
+  return nodes.length === 0 && edges.length === 0
+}
 
 class SyncRejected extends Error {
   readonly status: number
@@ -73,7 +74,6 @@ export class LoroDraftProvider {
   private cleanupFailureReported = false
   private joined = false
   private connection = 0
-  private formatConfirmed = false
   private requested = false
   private timer?: ReturnType<typeof setTimeout>
   private inFlight?: Promise<WorkflowSyncResult>
@@ -131,9 +131,7 @@ export class LoroDraftProvider {
     if (doc.exportPendingUpdates()) throw new Error('Incomplete local Loro draft history.')
     edits.forEach((edit) => this.edits.set(edit.id, edit))
     this.options.onPendingChange(this.edits.size > 0)
-    const isSelectiveDraft = hasSelectiveHistory(this.serverDoc)
-    if (isSelectiveDraft && this.options.identity.format !== 2) this.markUnavailable()
-    else if (isSelectiveDraft || this.options.identity.format !== 2) this.markReady()
+    this.markReady()
   }
 
   get retirementCandidates(): readonly LoroDraftRetirement[] {
@@ -152,10 +150,10 @@ export class LoroDraftProvider {
     this.options.onReady()
   }
 
-  private markUnavailable = (reason?: unknown) => {
+  private markUnavailable = () => {
     if (this.closed || this.unavailable) return
     this.unavailable = true
-    this.options.onUnavailable(reason === 'legacy_edit_conflict' ? reason : undefined)
+    this.options.onUnavailable()
   }
 
   get isUnavailable() {
@@ -171,7 +169,6 @@ export class LoroDraftProvider {
   leave() {
     this.joined = false
     this.connection += 1
-    this.formatConfirmed = false
     clearTimeout(this.timer)
     this.timer = undefined
   }
@@ -194,7 +191,7 @@ export class LoroDraftProvider {
     await this.restored
     if (!this.ready) throw new Error('Loro draft has not been loaded.')
     const target = this.options.doc.version()
-    if (allowEmpty && this.options.isEmpty()) this.confirmedEmpty = target
+    if (allowEmpty && isDraftEmpty(this.options.doc)) this.confirmedEmpty = target
     const result = await this.sync()
     if (covers(this.serverDoc.version(), target)) return result
     const next = await this.sync()
@@ -220,11 +217,9 @@ export class LoroDraftProvider {
         } else if (error instanceof SyncRejected && error.code === 'epoch_changed') {
           this.options.onEpochChanged()
           retry = true
-        } else if (error instanceof SyncRejected && error.code === 'legacy_edit_conflict') {
-          this.markUnavailable(error.code)
         } else if (
           error instanceof SyncRejected &&
-          (error.status === 403 || error.status === 404 || error.code === 'client_upgrade_required')
+          (error.status === 403 || error.status === 404)
         ) {
           this.markUnavailable()
         } else {
@@ -248,13 +243,8 @@ export class LoroDraftProvider {
     const target = doc.version()
     const base = this.serverDoc.version()
     const allowEmpty = !!this.confirmedEmpty && covers(this.confirmedEmpty, target)
-    const requiresFormatProbe =
-      identity.format === 2 && !this.formatConfirmed && hasSelectiveHistory(this.serverDoc)
     const update =
-      !requiresFormatProbe &&
-      !this.retired &&
-      !covers(base, target) &&
-      (!this.options.isEmpty() || allowEmpty)
+      !this.retired && !covers(base, target) && (allowEmpty || !isDraftEmpty(doc))
         ? doc.export({ mode: 'update', from: base })
         : undefined
     // Capture the delta before awaiting the writes. Edits made during the wait belong to the next batch.
@@ -268,9 +258,6 @@ export class LoroDraftProvider {
           'loro_draft_sync',
           {
             epoch: identity.epoch,
-            format: identity.format,
-            legacy_update:
-              !!update && identity.format === 2 && !hasSelectiveHistory(this.serverDoc),
             version: base.encode(),
             update,
             allow_empty: allowEmpty,
@@ -288,15 +275,12 @@ export class LoroDraftProvider {
     const body = response as Partial<
       WorkflowSyncResult & {
         epoch: string
-        format: number
         version: unknown
         update: unknown
         msg: unknown
       }
     > | null
     if (status !== 200) throw new SyncRejected(status, body?.msg)
-    if (identity.format === 2 && body?.format !== 2)
-      throw new SyncRejected(409, 'client_upgrade_required')
     const encodedVersion = bytes(body?.version)
     if (
       body?.epoch !== identity.epoch ||
@@ -312,12 +296,6 @@ export class LoroDraftProvider {
     if (this.serverDoc.version().compare(confirmed) !== 0 || (update && !covers(confirmed, target)))
       throw new Error('Incomplete Loro draft confirmation.')
 
-    if (identity.format === 2) {
-      if (!hasSelectiveHistory(this.serverDoc))
-        throw new SyncRejected(409, 'client_upgrade_required')
-      this.formatConfirmed = true
-      if (requiresFormatProbe && !covers(confirmed, target)) this.requested = true
-    }
     const coveredIds = [...this.edits.values()]
       .filter((edit) => covers(confirmed, VersionVector.decode(edit.endVersion)))
       .map((edit) => edit.id)
@@ -354,13 +332,10 @@ export class LoroDraftProvider {
     }
     if (this.closed) throw new Error('Loro draft connection closed.')
     const result = { hash: body.hash, updatedAt: body.updatedAt }
-    const graph = identity.format === 2 ? projectDraftGraph(this.serverDoc) : undefined
     this.options.onConfirmed({
       ...result,
       cleanup,
-      isEmpty: graph
-        ? !graph.nodes.length && !graph.edges.length
-        : this.serverDoc.getMap('nodes').size === 0 && this.serverDoc.getMap('edges').size === 0,
+      isEmpty: isDraftEmpty(this.serverDoc),
     })
     return result
   }

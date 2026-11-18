@@ -114,7 +114,6 @@
   "collaboration.historyAction.generic": "Əməkdaş əməliyyatı geri qaytardı və ya yenidən tətbiq etdi",
   "collaboration.joinDenied": "Birgə redaktəyə qoşulmaq mümkün olmadı. Giriş icazənizi və iş sahəsinin planını yoxlayın, sonra redaktoru yenidən açın.",
   "collaboration.joinUnavailable": "Birgə redaktəyə qoşulmaq olmadı. Bu lövhədəki dəyişikliklər saxlanmamış ola bilər.",
-  "collaboration.localEditConflict": "Oflayn dəyişiklikləriniz paylaşılan qaralama ilə ziddiyyət təşkil edir. Onlar bu brauzerdə saxlanılır.",
   "collaboration.reloadPage": "Səhifəni yenidən yüklə",
   "collaboration.replacedWithPendingEdits": "Qaralama bərpa edildi və ya idxalla əvəzləndi. Ən son qaralama yükləndi və köhnə qaralamanın saxlanması təsdiqlənməmiş yerli dəyişiklikləri silindi.",
   "common.accessAPIReference": "API istinad sənədlərinə keç",

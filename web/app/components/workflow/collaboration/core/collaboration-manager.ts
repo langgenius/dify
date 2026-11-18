@@ -207,7 +207,7 @@ export class CollaborationManager {
   private crdtRuntimePromise: Promise<CrdtRuntime> | null = null
   private targetAppId: string | null = null
   private targetLoroDraft?: LoroDraftIdentity
-  private initialLlmPrompts?: Map<string, { before?: Prompt; prompt: Prompt }>
+  private initialLlmPrompts?: Map<string, { before: Prompt; prompt: Prompt }>
   private draftHistory: DraftHistory = { undo: [], redo: [] }
   private draftInitialization?: { before?: Record<string, unknown> }
   private draftAction?: DraftAction
@@ -451,11 +451,7 @@ export class CollaborationManager {
     }
   }
 
-  private populateNodeContainer(
-    container: LoroMap<Record<string, Value>>,
-    node: Node,
-    previous?: Node,
-  ): void {
+  private populateNodeContainer(container: LoroMap<Record<string, Value>>, node: Node): void {
     const listFields = new Set(['variables', 'parameters'])
     const properties: Array<keyof Node> = [
       'id',
@@ -487,7 +483,6 @@ export class CollaborationManager {
 
     properties.forEach((prop) => {
       const value = node[prop]
-      if (previous && isEqual(previous[prop], value)) return
       if (value === undefined) container.delete(prop as string)
       else container.set(prop as string, toLoroValue(value))
     })
@@ -498,18 +493,13 @@ export class CollaborationManager {
     Object.entries(node.data || {}).forEach(([key, value]) => {
       if (!this.shouldSyncDataKey(key)) return
       handledKeys.add(key)
-      if (previous && isEqual((previous.data as Record<string, unknown>)[key], value)) return
 
-      if (
-        listFields.has(key) ||
-        (!this.loroDraft && key === 'prompt_template' && Array.isArray(value))
-      )
+      if (listFields.has(key) || (key === 'prompt_template' && Array.isArray(value)))
         this.syncList(container, key, Array.isArray(value) ? value : [])
       else dataContainer.set(key, toLoroValue(value))
     })
 
-    const existingData = previous ? previous.data : dataContainer.toJSON()
-    Object.keys(existingData).forEach((key) => {
+    Object.keys(dataContainer.toJSON()).forEach((key) => {
       if (!this.shouldSyncDataKey(key)) return
       if (handledKeys.has(key)) return
 
@@ -634,7 +624,7 @@ export class CollaborationManager {
       newNodes = newNodes.filter(isDraftNode)
     }
     this.captureSetNodesAnomaly(oldNodes, newNodes, source)
-    if (this.loroDraft?.format === 2) {
+    if (this.loroDraft) {
       this.recordDraftEdits(diffDraftEntities('nodes', oldNodes, newNodes, this.getNodes()), true)
       return
     }
@@ -661,8 +651,6 @@ export class CollaborationManager {
         !edge.data?._isTemp && !skipped.has(edge.source) && !skipped.has(edge.target)
       oldEdges = oldEdges.filter(isDraftEdge)
       newEdges = newEdges.filter(isDraftEdge)
-    }
-    if (this.loroDraft?.format === 2) {
       this.recordDraftEdits(diffDraftEntities('edges', oldEdges, newEdges, this.getEdges()), true)
       return
     }
@@ -711,68 +699,67 @@ export class CollaborationManager {
     this.pendingImportLog = null
 
     this.resetDraftHistory()
-    this.undoManager =
-      this.loroDraft?.format === 2
-        ? new UndoManager(this.doc, {
-            maxUndoSteps: 100,
-            mergeInterval: 0,
-            excludeOriginPrefixes: ['draft-system'],
-          })
-        : new UndoManager(this.doc, {
-            maxUndoSteps: 100,
-            mergeInterval: 500,
-            excludeOriginPrefixes: [],
-            onPush: (_isUndo, _range, _event) => {
-              const selectedNode = this.reactFlowStore
-                ?.getState()
-                .getNodes()
-                .find((n: Node) => n.data?.selected)
+    this.undoManager = this.loroDraft
+      ? new UndoManager(this.doc, {
+          maxUndoSteps: 100,
+          mergeInterval: 0,
+          excludeOriginPrefixes: ['draft-system'],
+        })
+      : new UndoManager(this.doc, {
+          maxUndoSteps: 100,
+          mergeInterval: 500,
+          excludeOriginPrefixes: [],
+          onPush: (_isUndo, _range, _event) => {
+            const selectedNode = this.reactFlowStore
+              ?.getState()
+              .getNodes()
+              .find((n: Node) => n.data?.selected)
 
-              setTimeout(() => {
-                this.eventEmitter.emit('undoRedoStateChange', {
-                  canUndo: this.undoManager?.canUndo() || false,
-                  canRedo: this.undoManager?.canRedo() || false,
-                })
-              }, 0)
+            setTimeout(() => {
+              this.eventEmitter.emit('undoRedoStateChange', {
+                canUndo: this.undoManager?.canUndo() || false,
+                canRedo: this.undoManager?.canRedo() || false,
+              })
+            }, 0)
 
-              return {
-                value: {
-                  selectedNodeId: selectedNode?.id || null,
-                  timestamp: Date.now(),
-                },
-                cursors: [],
+            return {
+              value: {
+                selectedNodeId: selectedNode?.id || null,
+                timestamp: Date.now(),
+              },
+              cursors: [],
+            }
+          },
+          onPop: (_isUndo, value, _counterRange) => {
+            if (
+              value?.value &&
+              typeof value.value === 'object' &&
+              'selectedNodeId' in value.value &&
+              this.reactFlowStore
+            ) {
+              const selectedNodeId = (value.value as { selectedNodeId?: string | null })
+                .selectedNodeId
+              if (selectedNodeId) {
+                const state = this.reactFlowStore.getState()
+                const { setNodes } = state
+                const nodes = state.getNodes()
+                const newNodes = nodes.map((n: Node) => ({
+                  ...n,
+                  data: {
+                    ...n.data,
+                    selected: n.id === selectedNodeId,
+                  },
+                }))
+                this.captureSetNodesAnomaly(
+                  nodes,
+                  newNodes,
+                  'reactflow-native:undo-redo-selection-restore',
+                )
+                setNodes(newNodes)
               }
-            },
-            onPop: (_isUndo, value, _counterRange) => {
-              if (
-                value?.value &&
-                typeof value.value === 'object' &&
-                'selectedNodeId' in value.value &&
-                this.reactFlowStore
-              ) {
-                const selectedNodeId = (value.value as { selectedNodeId?: string | null })
-                  .selectedNodeId
-                if (selectedNodeId) {
-                  const state = this.reactFlowStore.getState()
-                  const { setNodes } = state
-                  const nodes = state.getNodes()
-                  const newNodes = nodes.map((n: Node) => ({
-                    ...n,
-                    data: {
-                      ...n.data,
-                      selected: n.id === selectedNodeId,
-                    },
-                  }))
-                  this.captureSetNodesAnomaly(
-                    nodes,
-                    newNodes,
-                    'reactflow-native:undo-redo-selection-restore',
-                  )
-                  setNodes(newNodes)
-                }
-              }
-            },
-          })
+            }
+          },
+        })
 
     if (this.loroDraft && this.currentAppId) {
       const appId = this.currentAppId
@@ -783,7 +770,6 @@ export class CollaborationManager {
         retirements,
         doc: this.doc,
         socket,
-        isEmpty: () => this.getNodes().length === 0 && this.getEdges().length === 0,
         onReady: () => {
           this.applyInitialLlmPrompts()
           this.crdtTrusted = true
@@ -798,9 +784,9 @@ export class CollaborationManager {
           this.emitGraphReadyState()
           this.eventEmitter.emit('workflowUpdate', { appId, timestamp: Date.now() })
         },
-        onUnavailable: (reason) => {
+        onUnavailable: () => {
           this.initialLlmPrompts = undefined
-          this.joinFailure = reason ?? 'session_unavailable'
+          this.joinFailure = 'session_unavailable'
           this.crdtTrusted = false
           this.eventEmitter.emit('joinFailure', this.joinFailure)
           this.emitGraphReadyState()
@@ -1011,13 +997,13 @@ export class CollaborationManager {
   }
 
   getNodes(): Node[] {
-    if (this.loroDraft?.format === 2 && this.doc) return projectDraftGraph(this.doc).nodes
+    if (this.loroDraft && this.doc) return projectDraftGraph(this.doc).nodes
     if (!this.nodesMap) return []
     return Array.from(this.nodesMap.keys()).map((id) => this.exportNode(id as string))
   }
 
   getEdges(): Edge[] {
-    if (this.loroDraft?.format === 2 && this.doc) return projectDraftGraph(this.doc).edges
+    if (this.loroDraft && this.doc) return projectDraftGraph(this.doc).edges
     return this.edgesMap ? (Array.from(this.edgesMap.values()) as Edge[]) : []
   }
 
@@ -1287,7 +1273,7 @@ export class CollaborationManager {
     identity: LoroDraftIdentity,
     nodeId: string,
     prompt: Prompt,
-    previousPrompt?: Prompt,
+    previousPrompt: Prompt,
   ): boolean {
     if (
       !this.initialLlmPrompts ||
@@ -1310,36 +1296,15 @@ export class CollaborationManager {
     this.initialLlmPrompts = undefined
     if (!prompts?.size) return
 
-    if (this.loroDraft?.format === 2) {
-      for (const [nodeId, { before, prompt }] of prompts) {
-        const node = this.getNodes().find((item) => item.id === nodeId)
-        if (node?.data.type !== BlockEnum.LLM) continue
-        const current = (node.data as LLMNodeType).prompt_template
-        if (current !== undefined && Array.isArray(current) !== Array.isArray(prompt)) continue
-        this.recordDraftEdits(
-          diffDraftValue(
-            'nodes',
-            nodeId,
-            ['data', 'prompt_template'],
-            before ?? current,
-            prompt,
-            current,
-          ),
-        )
-      }
-      return
-    }
-    const { LoroMap } = this.getCrdtRuntime()
-    for (const [nodeId, { prompt }] of prompts) {
-      const node: unknown = this.nodesMap?.get(nodeId)
-      if (!(node instanceof LoroMap)) continue
-      const data = node.get('data')
-      if (!(data instanceof LoroMap) || data.get('type') !== BlockEnum.LLM) continue
-      const current = data.get('prompt_template')
+    for (const [nodeId, { before, prompt }] of prompts) {
+      const node = this.getNodes().find((item) => item.id === nodeId)
+      if (node?.data.type !== BlockEnum.LLM) continue
+      const current = (node.data as LLMNodeType).prompt_template
       if (current !== undefined && Array.isArray(current) !== Array.isArray(prompt)) continue
-      data.set('prompt_template', toLoroValue(prompt))
+      this.recordDraftEdits(
+        diffDraftValue('nodes', nodeId, ['data', 'prompt_template'], before, prompt, current),
+      )
     }
-    this.doc?.commit()
   }
 
   replaceLoroDraft(appId: string, identity: LoroDraftIdentity): boolean {
@@ -1531,7 +1496,6 @@ export class CollaborationManager {
   isDraftHistoryReady(appId: string, identity: LoroDraftIdentity): boolean {
     return (
       this.currentAppId === appId &&
-      this.loroDraft?.format === 2 &&
       isEqual(identity, this.loroDraft) &&
       this.canPersistLocalGraph()
     )
@@ -1622,7 +1586,7 @@ export class CollaborationManager {
     before: Record<string, unknown>,
     after: Record<string, unknown>,
   ): boolean {
-    if (this.loroDraft?.format !== 2 || !this.canPersistLocalGraph()) return false
+    if (!this.loroDraft || !this.canPersistLocalGraph()) return false
     const local = this.reactFlowStore
       ?.getState()
       .getNodes()
@@ -1680,7 +1644,7 @@ export class CollaborationManager {
 
   // Collaborative undo/redo methods
   undo(): boolean {
-    if (this.loroDraft?.format === 2) return this.applyDraftHistory('undo')
+    if (this.loroDraft) return this.applyDraftHistory('undo')
     if (!this.undoManager) return false
 
     const canUndo = this.undoManager.canUndo()
@@ -1721,7 +1685,7 @@ export class CollaborationManager {
   }
 
   redo(): boolean {
-    if (this.loroDraft?.format === 2) return this.applyDraftHistory('redo')
+    if (this.loroDraft) return this.applyDraftHistory('redo')
     if (!this.undoManager) return false
 
     const canRedo = this.undoManager.canRedo()
@@ -1774,7 +1738,7 @@ export class CollaborationManager {
   clearUndoStack(): void {
     if (!this.undoManager) return
     this.undoManager.clear()
-    if (this.loroDraft?.format === 2) {
+    if (this.loroDraft) {
       this.resetDraftHistory()
       this.publishDraftHistory()
     }
@@ -1797,10 +1761,8 @@ export class CollaborationManager {
       if (oldNode && oldNode === newNode) return
       if (oldNode && isEqual(oldNode, newNode)) return
 
-      // A remote deletion may have reached the document before the canvas rerenders.
-      if (this.loroDraft && oldNode && !this.nodesMap?.get(newNode.id)) return
       const nodeContainer = this.getNodeContainer(newNode.id)
-      this.populateNodeContainer(nodeContainer, newNode, this.loroDraft ? oldNode : undefined)
+      this.populateNodeContainer(nodeContainer, newNode)
     })
   }
 
@@ -2011,7 +1973,7 @@ export class CollaborationManager {
 
   private emitImportedGraph(graph: { nodes: Node[]; edges: Edge[] }): void {
     const local = this.reactFlowStore?.getState()
-    if (this.loroDraft?.format === 2 && local) {
+    if (this.loroDraft && local) {
       const transient = local
         .getNodes()
         .filter((node) => !isDraftNode(node) && node.data.type !== BlockEnum.StartPlaceholder)
@@ -2043,7 +2005,7 @@ export class CollaborationManager {
       }
     }
     const hydrated = (this.loroDraft && this.reactFlowStore?.hydrateGraph?.(graph)) || graph
-    if (this.loroDraft?.format === 2) {
+    if (this.loroDraft) {
       const source = new Map(this.getNodes().map((node) => [node.id, node.data]))
       const localData = new Map(local?.getNodes().map((node) => [node.id, node.data]))
       for (const node of hydrated.nodes) {
@@ -2085,8 +2047,7 @@ export class CollaborationManager {
       )
         nextDataRecord.selected = localNode.selected
 
-      if (this.loroDraft?.format === 2 && localNode.selected !== undefined)
-        nextNode.selected = localNode.selected
+      if (this.loroDraft && localNode.selected !== undefined) nextNode.selected = localNode.selected
       nextNode.data = nextData
       return nextNode
     })

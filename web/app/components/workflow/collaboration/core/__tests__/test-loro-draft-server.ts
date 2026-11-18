@@ -1,5 +1,5 @@
-import type { LoroDoc } from 'loro-crdt'
-import { VersionVector } from 'loro-crdt'
+import { LoroDoc, VersionVector } from 'loro-crdt'
+import { appendDraftEdit } from '../loro-draft-edits'
 import { LoroDraftStorage } from '../loro-draft-storage'
 import { createSocket } from './test-socket'
 
@@ -7,10 +7,22 @@ type Request = {
   epoch: string
   version: Uint8Array
   update?: Uint8Array
-  format?: 2
   allow_empty: boolean
 }
 type Acknowledge = (error: Error | null, response?: unknown, status?: number) => void
+
+export function createNodeDraft(title = 'Before') {
+  const doc = new LoroDoc()
+  doc.getMap('nodes').set('node-1', { id: 'node-1', data: { title } })
+  doc.commit()
+  return doc
+}
+
+export function renameDraftNode(doc: LoroDoc, title: string) {
+  appendDraftEdit(doc, [
+    { kind: 'nodes', id: 'node-1', path: ['data', 'title'], op: 'set', value: title },
+  ])
+}
 
 export function createDraftServer(seed: (title: string) => LoroDoc) {
   let doc = seed('Before')
@@ -22,14 +34,9 @@ export function createDraftServer(seed: (title: string) => LoroDoc) {
   const response = (request: Request) => {
     const before = doc.version()
     if (request.update) doc.import(request.update)
-    if (request.format === 2) {
-      doc.getMap('draftFormat').set('version', 2)
-      doc.commit()
-    }
     if (doc.version().compare(before) !== 0) revision += 1
     return {
       epoch,
-      format: request.format ?? 1,
       version: doc.version().encode(),
       update: doc.export({ mode: 'update', from: VersionVector.decode(request.version) }),
       hash: `hash-${revision}`,

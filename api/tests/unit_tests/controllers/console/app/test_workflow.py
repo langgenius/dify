@@ -839,10 +839,8 @@ class TestWorkflowCases:
 
         if collaboration_enabled:
             assert response["loro_draft_epoch"] == workflow.id
-            assert response["loro_draft_format"] == 2
         else:
             assert "loro_draft_epoch" not in response
-            assert "loro_draft_format" not in response
         assert response["id"] == "workflow-1"
         assert response["graph"] == {"nodes": [], "edges": []}
         assert response["features"] == {"file_upload": {"enabled": False}}

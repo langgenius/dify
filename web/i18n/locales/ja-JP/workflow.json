@@ -114,7 +114,6 @@
   "collaboration.historyAction.generic": "共同編集者が元に戻す/やり直しを実行しました",
   "collaboration.joinDenied": "共同編集に参加できません。アクセス権とワークスペースのプランを確認し、エディターを開き直してください。",
   "collaboration.joinUnavailable": "共同編集に接続できません。このキャンバスの変更は保存されていない可能性があります。",
-  "collaboration.localEditConflict": "オフラインでの変更が共有の下書きと競合しています。変更内容はこのブラウザーに保存されています。",
   "collaboration.reloadPage": "ページを再読み込み",
   "collaboration.replacedWithPendingEdits": "下書きが復元されたか、インポートで上書きされました。最新の下書きに切り替わり、古い下書きの保存が未確認のローカル編集内容は削除されました。",
   "common.accessAPIReference": "API リファレンス",

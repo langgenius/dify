@@ -385,11 +385,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
 
         const nextEpoch = response.loro_draft_epoch
         if (activeDraft && nextEpoch && nextEpoch !== activeDraft.epoch) {
-          const identity = {
-            ...activeDraft,
-            epoch: nextEpoch,
-            format: response.loro_draft_format ?? undefined,
-          }
+          const identity = { ...activeDraft, epoch: nextEpoch }
           if (!collaborationManager.replaceLoroDraft(appId, identity)) return
           workflowStore.setState({ loroDraft: identity, hasPendingLoroDraftChanges: false })
         }
@@ -636,11 +632,9 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
                   <span>
                     {joinFailure === 'denied'
                       ? t(($) => $['collaboration.joinDenied'], { ns: 'workflow' })
-                      : joinFailure === 'legacy_edit_conflict'
-                        ? t(($) => $['collaboration.localEditConflict'], { ns: 'workflow' })
-                        : t(($) => $['collaboration.joinUnavailable'], { ns: 'workflow' })}
+                      : t(($) => $['collaboration.joinUnavailable'], { ns: 'workflow' })}
                   </span>
-                  {(joinFailure === 'denied' || joinFailure === 'unavailable') && (
+                  {joinFailure !== 'session_unavailable' && (
                     <Button
                       size="small"
                       variant="secondary"

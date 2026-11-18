@@ -24,7 +24,7 @@ export const useNodeDataUpdate = () => {
 
   const handleNodeDataUpdate = useCallback(
     ({ id, data, previousData }: NodeDataUpdatePayload) => {
-      if (previousData && identity?.format === 2) {
+      if (previousData && identity) {
         const appId = atomStore.get(editorAppIdAtom)
         if (!appId || !collaborationManager.isDraftHistoryReady(appId, identity)) return
         if (collaborationManager.updateDraftNodeData(id, previousData, data)) return

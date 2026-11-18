@@ -1,6 +1,6 @@
 import type { Edge, Node, PromptItem } from '@/app/components/workflow/types'
 import { deleteDB } from 'idb'
-import { LoroDoc, LoroMap } from 'loro-crdt'
+import { LoroDoc } from 'loro-crdt'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { CollaborationManager, collaborationManager } from '../collaboration-manager'
 import { appendDraftEdit, projectDraftGraph } from '../loro-draft-edits'
@@ -18,20 +18,18 @@ afterEach(async () => {
 
 function graphDocument(title: string, promptTemplate?: PromptItem[] | PromptItem) {
   const doc = new LoroDoc()
-  const node = new LoroMap()
-  node.set('id', 'node-1')
-  node.set('type', 'custom')
-  node.set('position', { x: 0, y: 0 })
-  const data = new LoroMap()
-  data.set('type', promptTemplate ? BlockEnum.LLM : BlockEnum.Start)
-  data.set('title', title)
-  data.set('desc', '')
-  if (promptTemplate) {
-    data.set('model', createLLMNode(promptTemplate).data.model)
-    data.set('prompt_template', promptTemplate)
-  }
-  node.setContainer('data', data)
-  doc.getMap('nodes').setContainer('node-1', node)
+  const data = promptTemplate
+    ? {
+        type: BlockEnum.LLM,
+        title,
+        desc: '',
+        model: createLLMNode(promptTemplate).data.model,
+        prompt_template: promptTemplate,
+      }
+    : { type: BlockEnum.Start, title, desc: '' }
+  doc
+    .getMap('nodes')
+    .set('node-1', { id: 'node-1', type: 'custom', position: { x: 0, y: 0 }, data })
   doc.commit()
   return doc
 }
@@ -39,7 +37,6 @@ function graphDocument(title: string, promptTemplate?: PromptItem[] | PromptItem
 function connectManager(
   server: ReturnType<typeof createDraftServer>,
   nodes: Node[] = [],
-  format?: 2,
   manager = new CollaborationManager(),
 ) {
   const transport = server.transport()
@@ -62,11 +59,7 @@ function connectManager(
     },
   }
   managers.push(manager)
-  const connected = manager.connect(
-    'app-1',
-    { getState: () => state },
-    { ...server.identity, ...(format ? { format } : {}) },
-  )
+  const connected = manager.connect('app-1', { getState: () => state }, server.identity)
   const join = async () => {
     await connected
     transport.receive('status', { isLeader: false })
@@ -76,41 +69,51 @@ function connectManager(
   return { manager, state, connected, join, ...transport }
 }
 
-it('publishes the final prompt edit on the server node, including a cleared prompt', async () => {
+it('publishes a prompt cleared during bootstrap and keeps edits to other messages', async () => {
+  const userMessage: PromptItem = { role: 'user', text: 'Initial user' }
+  const remoteMessage = { ...userMessage, text: 'Updated remotely' }
   const server = createDraftServer((title) =>
-    graphDocument(title, [{ role: 'system', text: title }]),
+    graphDocument(title, [{ role: 'system', text: title }, remoteMessage]),
   )
-  const localNode = { ...createLLMNode([{ role: 'system', text: 'Before' }]), id: 'node-1' }
+  const original: PromptItem[] = [{ role: 'system', text: 'Before' }, userMessage]
+  const localNode = { ...createLLMNode(original), id: 'node-1' }
   const editor = connectManager(server, [localNode])
   const imported = vi.fn<(graph: { nodes: Node[]; edges: Edge[] }) => void>()
   editor.manager.onGraphImport(imported)
-  const cleared: PromptItem[] = [{ role: 'system', text: '' }]
+  const typing: PromptItem[] = [{ role: 'system', text: 'Typing' }, userMessage]
+  const cleared: PromptItem[] = [{ role: 'system', text: '' }, userMessage]
   expect(
-    editor.manager.queueInitialLlmPrompt('another-app', server.identity, localNode.id, cleared),
+    editor.manager.queueInitialLlmPrompt(
+      'another-app',
+      server.identity,
+      localNode.id,
+      typing,
+      original,
+    ),
   ).toBe(false)
   expect(
     editor.manager.queueInitialLlmPrompt(
       'app-1',
       { ...server.identity, accountId: 'another-account' },
       localNode.id,
-      cleared,
+      typing,
+      original,
     ),
   ).toBe(false)
   expect(
-    editor.manager.queueInitialLlmPrompt('app-1', server.identity, localNode.id, [
-      { role: 'system', text: 'Typing' },
-    ]),
+    editor.manager.queueInitialLlmPrompt('app-1', server.identity, localNode.id, typing, original),
   ).toBe(true)
   await editor.connected
   expect(
-    editor.manager.queueInitialLlmPrompt('app-1', server.identity, localNode.id, cleared),
+    editor.manager.queueInitialLlmPrompt('app-1', server.identity, localNode.id, cleared, typing),
   ).toBe(true)
   await editor.join()
 
-  const data = { title: 'Before', prompt_template: cleared }
+  const data = { title: 'Before', prompt_template: [{ role: 'system', text: '' }, remoteMessage] }
   expect(imported.mock.calls[0]?.[0].nodes).toMatchObject([{ id: localNode.id, data }])
   await vi.waitFor(
-    () => expect(server.document().toJSON()).toMatchObject({ nodes: { 'node-1': { data } } }),
+    () =>
+      expect(projectDraftGraph(server.document()).nodes).toMatchObject([{ id: 'node-1', data }]),
     { timeout: 3000 },
   )
 })
@@ -120,11 +123,15 @@ it('drops pending prompt edits to nodes deleted or retyped in the initial server
   const nodes = ['deleted', 'node-1'].map((id) => ({ ...createLLMNode([{ text: 'Before' }]), id }))
   const editor = connectManager(server, nodes)
   await editor.connected
-  for (const { id } of nodes)
+  for (const { id, data } of nodes)
     expect(
-      editor.manager.queueInitialLlmPrompt('app-1', server.identity, id, [
-        { text: 'Typed locally' },
-      ]),
+      editor.manager.queueInitialLlmPrompt(
+        'app-1',
+        server.identity,
+        id,
+        [{ text: 'Typed locally' }],
+        data.prompt_template,
+      ),
     ).toBe(true)
   const baseline = server.document().toJSON()
   await editor.join()
@@ -142,10 +149,11 @@ it.each([
   'preserves the remote prompt when the model switches to $mode during bootstrap',
   async ({ remote, local }) => {
     const server = createDraftServer((title) => graphDocument(title, remote))
-    const localNode = { ...createLLMNode(local), id: 'node-1' }
+    const before = Array.isArray(local) ? [{ text: 'Before' }] : { text: 'Before' }
+    const localNode = { ...createLLMNode(before), id: 'node-1' }
     const editor = connectManager(server, [localNode])
     expect(
-      editor.manager.queueInitialLlmPrompt('app-1', server.identity, localNode.id, local),
+      editor.manager.queueInitialLlmPrompt('app-1', server.identity, localNode.id, local, before),
     ).toBe(true)
     const baseline = server.document().toJSON()
     await editor.join()
@@ -162,15 +170,35 @@ it('discards local prompt input when the draft is replaced before the first sync
   const editor = connectManager(server, [localNode])
   await editor.connected
   const stale = [{ text: 'Old draft' }]
-  expect(editor.manager.queueInitialLlmPrompt('app-1', server.identity, localNode.id, stale)).toBe(
-    true,
-  )
+  expect(
+    editor.manager.queueInitialLlmPrompt(
+      'app-1',
+      server.identity,
+      localNode.id,
+      stale,
+      localNode.data.prompt_template,
+    ),
+  ).toBe(true)
   const next = server.replace()
   expect(editor.manager.replaceLoroDraft('app-1', next)).toBe(true)
-  expect(editor.manager.queueInitialLlmPrompt('app-1', server.identity, localNode.id, stale)).toBe(
-    false,
-  )
-  expect(editor.manager.queueInitialLlmPrompt('app-1', next, localNode.id, stale)).toBe(false)
+  expect(
+    editor.manager.queueInitialLlmPrompt(
+      'app-1',
+      server.identity,
+      localNode.id,
+      stale,
+      localNode.data.prompt_template,
+    ),
+  ).toBe(false)
+  expect(
+    editor.manager.queueInitialLlmPrompt(
+      'app-1',
+      next,
+      localNode.id,
+      stale,
+      localNode.data.prompt_template,
+    ),
+  ).toBe(false)
   const replacement = server.document().toJSON()
   await editor.join()
   await editor.manager.syncLoroDraft('app-1')
@@ -186,9 +214,15 @@ it('retains a pending prompt across a successful rejoin after the initial sync r
   const localNode = { ...createLLMNode({ text: 'Before' }), id: 'node-1' }
   const editor = connectManager(server, [localNode])
   const prompt = { text: 'Typed before rejoin' }
-  expect(editor.manager.queueInitialLlmPrompt('app-1', server.identity, localNode.id, prompt)).toBe(
-    true,
-  )
+  expect(
+    editor.manager.queueInitialLlmPrompt(
+      'app-1',
+      server.identity,
+      localNode.id,
+      prompt,
+      localNode.data.prompt_template,
+    ),
+  ).toBe(true)
   await editor.connected
   editor.receive('status', { isLeader: false })
   editor.acknowledge('user_connect', { msg: 'connected' }, 200)
@@ -198,9 +232,9 @@ it('retains a pending prompt across a successful rejoin after the initial sync r
   await editor.join()
   await editor.manager.syncLoroDraft('app-1')
 
-  expect(server.document().toJSON()).toMatchObject({
-    nodes: { 'node-1': { data: { prompt_template: prompt } } },
-  })
+  expect(projectDraftGraph(server.document()).nodes).toMatchObject([
+    { id: 'node-1', data: { prompt_template: prompt } },
+  ])
 })
 
 it('persists a follower edit after reconnect without falling back to HTTP saving', async () => {
@@ -224,10 +258,10 @@ it('persists a follower edit after reconnect without falling back to HTTP saving
   editor.receive('status', { isLeader: false })
   editor.acknowledge('user_connect', { msg: 'connected' }, 200)
   await editor.manager.syncLoroDraft('app-1')
-  expect(server.document().toJSON()).toMatchObject({
-    nodes: { 'node-1': { data: { title: 'Offline follower' } } },
-    graph: { viewport: { x: 10, y: 20, zoom: 1 } },
-  })
+  expect(projectDraftGraph(server.document()).nodes).toMatchObject([
+    { id: 'node-1', data: { title: 'Offline follower' } },
+  ])
+  expect(server.document().getMap('graph').get('viewport')).toEqual({ x: 10, y: 20, zoom: 1 })
   expect((await server.read()).edits).toEqual([])
 })
 
@@ -261,13 +295,15 @@ it('gates old mutations during epoch replacement and keeps the existing room sub
   expect(webSocketClient.disconnect).not.toHaveBeenCalled()
   await vi.waitFor(async () => expect((await server.read()).edits).toEqual([]))
   expect((await server.read()).checkpoint).toBeUndefined()
-  const sourceNode = server.document().getMap('nodes').get('node-1')
-  expect(sourceNode).toBeInstanceOf(LoroMap)
-  if (!(sourceNode instanceof LoroMap)) throw new TypeError('Expected a native node map')
-  const sourceData = sourceNode.get('data')
-  if (!(sourceData instanceof LoroMap)) throw new TypeError('Expected a native data map')
-  sourceData.set('title', 'Remote edit in new epoch')
-  server.document().commit()
+  appendDraftEdit(server.document(), [
+    {
+      kind: 'nodes',
+      id: 'node-1',
+      path: ['data', 'title'],
+      op: 'set',
+      value: 'Remote edit in new epoch',
+    },
+  ])
   editor.receive('loro_draft_changed', { epoch: nextIdentity.epoch })
   await vi.waitFor(() =>
     expect(editor.manager.getNodes()[0]?.data.title).toBe('Remote edit in new epoch'),
@@ -281,13 +317,12 @@ it('keeps only local actions in draft history, including input before the first 
   const server = createDraftServer((title) =>
     graphDocument(title, [{ role: 'system', text: title }]),
   )
-  const identity = { ...server.identity, format: 2 as const }
-  const editor = connectManager(server, [], 2)
+  const editor = connectManager(server)
   const original: PromptItem[] = [{ role: 'system', text: 'Before' }]
   expect(
     editor.manager.queueInitialLlmPrompt(
       'app-1',
-      identity,
+      server.identity,
       'node-1',
       [{ ...original[0]!, text: 'Local' }],
       original,
@@ -295,13 +330,13 @@ it('keeps only local actions in draft history, including input before the first 
   ).toBe(true)
   await editor.join()
   await editor.manager.syncLoroDraft('app-1')
-  expect(editor.manager.isDraftHistoryReady('app-1', identity)).toBe(true)
+  expect(editor.manager.isDraftHistoryReady('app-1', server.identity)).toBe(true)
   expect(editor.manager.getDraftHistory()).toEqual({ undo: ['NodeChange'], redo: [] })
   editor.manager.setLoroDraftViewport({ x: 10, y: 20, zoom: 2 })
   appendDraftEdit(server.document(), [
     { kind: 'nodes', id: 'node-1', path: ['data', 'title'], op: 'set', value: 'Remote title' },
   ])
-  editor.receive('loro_draft_changed', { epoch: identity.epoch })
+  editor.receive('loro_draft_changed', { epoch: server.identity.epoch })
   await vi.waitFor(() => expect(editor.manager.getNodes()[0]?.data.title).toBe('Remote title'))
   expect(editor.manager.undo()).toBe(true)
   expect(editor.manager.getNodes()[0]?.data).toMatchObject({
@@ -320,7 +355,7 @@ it('keeps only local actions in draft history, including input before the first 
 
 it('preserves local selection, panel state and temporary canvas items while editing a draft node', async () => {
   const server = createDraftServer(graphDocument)
-  const editor = connectManager(server, [], 2)
+  const editor = connectManager(server)
   await editor.join()
   const node = editor.manager.getNodes()[0]!
   const candidate = { ...node, id: 'candidate', data: { ...node.data, _isTempNode: true } }
@@ -393,9 +428,8 @@ it('opens a legacy template with saved defaults and leaves undo available only f
     doc.commit()
     return doc
   })
-  const editor = connectManager(server, [node], 2, collaborationManager)
+  const editor = connectManager(server, [node], collaborationManager)
   await editor.join()
-  const identity = { ...server.identity, format: 2 as const }
   const openPanel = (template: string) =>
     renderNodeConfig(
       useConfig,
@@ -403,7 +437,7 @@ it('opens a legacy template with saved defaults and leaves undo available only f
       {
         resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
         initialStoreState: {
-          loroDraft: identity,
+          loroDraft: server.identity,
           nodesDefaultConfigs: {
             [BlockEnum.TemplateTransform]: { ...data, template: '{{ input }}' },
           },
