@@ -24,6 +24,10 @@ Older configurations can omit the identifier and retain plugin-ID dispatch.
 
 ## Per-operation call limits
 
+Native toolset execution requires the `dify-agent[server]` extra. Schema
+validation libraries remain server dependencies; configuration DTOs and the
+HTTP client can still be installed with the package's default dependencies.
+
 Prepared plugin and core-tool declarations accept `max_calls_per_run`, a strict
 positive integer or `null`. An absent value or `null` is unlimited. The Agent
 Soul configuration uses the same field on a concrete `dify_tools` operation;

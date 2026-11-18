@@ -1508,7 +1508,7 @@ def test_agent_node_cancelled_run_closes_unfinished_tool_calls(stream_text: bool
 
 
 @pytest.mark.parametrize("stream_text", [True, False])
-def test_agent_node_retains_terminal_reservations_and_marks_missing_results_unconfirmed(stream_text: bool):
+def test_agent_node_retains_terminal_reservations_and_marks_missing_results_unconfirmed(stream_text: bool) -> None:
     summary = ToolCallLimitSnapshot(
         tool_identity="operation",
         limit=3,
