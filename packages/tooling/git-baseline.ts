@@ -23,7 +23,7 @@ export function resolveEditionGuardBase(cwd: string): string {
 export function editionBaseline(cwd: string, filename: string, exemptPaths: ReadonlySet<string>) {
   const root = git(cwd, ['rev-parse', '--show-toplevel']).trim()
   const path = relative(root, resolve(cwd, filename)).replaceAll('\\', '/')
-  if (exemptPaths.has(path)) return { path, source: '' }
+  if (exemptPaths.has(path)) return { path, filename: resolve(root, path), source: '' }
   const base = resolveEditionGuardBase(root)
   const renames = git(root, [
     'diff',
@@ -42,5 +42,9 @@ export function editionBaseline(cwd: string, filename: string, exemptPaths: Read
   const exists =
     !exemptPaths.has(oldPath) &&
     git(root, ['ls-tree', '--name-only', base, '--', oldPath]).length > 0
-  return { path, source: exists ? git(root, ['show', `${base}:${oldPath}`]) : '' }
+  return {
+    path,
+    filename: resolve(root, oldPath),
+    source: exists ? git(root, ['show', `${base}:${oldPath}`]) : '',
+  }
 }

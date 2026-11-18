@@ -84,6 +84,8 @@ it.each([
   "import { type DeploymentEdition as Edition } from '@dify/contracts/api/console/system-features/types.gen'\n",
   atomImport,
   "import { deploymentEditionAtom as raw } from '@/features/system-features/state'\n",
+  "import { deploymentEditionAtom as raw } from './features/system-features/state'\n",
+  "import * as features from '@/features/system-features/state'\nconst state = features\nconst raw = state.deploymentEditionAtom\n",
   check,
   "const enabled = 'ENTERPRISE' !== features.deployment_edition\n",
   "const enabled = features['deployment_edition'] === 'CLOUD'\n",
@@ -175,6 +177,27 @@ it('preserves ordinary file renames but removes feature policy exemptions on a m
   expect(
     lintFixture(check, { before: check, oldPath: 'web/features/agent-v2/feature-flag.ts' }),
   ).toHaveLength(1)
+})
+
+it('resolves relative imports against the original filename when a module moves', () => {
+  const before = [
+    "import { deploymentEditionAtom as raw } from './features/system-features/state'",
+    'export function useExistingCapability() {',
+    '  const currentEdition = useAtomValue(raw)',
+    "  return currentEdition === 'CLOUD'",
+    '}',
+    'export function useExistingWorkspaceCapability() {',
+    '  const currentEdition = useAtomValue(raw)',
+    "  return currentEdition === 'ENTERPRISE'",
+    '}',
+  ].join('\n')
+  expect(
+    lintFixture(before.replace("'./features/", "'../features/"), {
+      before,
+      oldPath: 'web/example.tsx',
+      path: 'web/components/example.tsx',
+    }),
+  ).toEqual([])
 })
 
 it('provides actionable guidance and reports invalid baselines', () => {

@@ -1,4 +1,5 @@
 import type { Rule } from 'eslint'
+import { dirname, resolve } from 'node:path'
 import ts from 'typescript'
 import { editionBaseline } from '../../../git-baseline.ts'
 
@@ -29,6 +30,16 @@ const stateModule = '@/features/system-features/state'
 type Bindings = { names: Map<string, string>; types: Set<string>; namespaces: Set<string> }
 type Occurrence = { node: ts.Node; key: string }
 
+function moduleSource(node: ts.ImportDeclaration, file: ts.SourceFile): string {
+  if (!ts.isStringLiteral(node.moduleSpecifier)) return ''
+  const source = node.moduleSpecifier.text.replace(/\.ts$/, '')
+  if (source.startsWith('.')) {
+    const absolute = resolve(dirname(file.fileName), source).replaceAll('\\', '/')
+    if (absolute.endsWith('/web/features/system-features/state')) return stateModule
+  }
+  return source
+}
+
 function walk(node: ts.Node, visit: (node: ts.Node) => void) {
   visit(node)
   ts.forEachChild(node, (child) => walk(child, visit))
@@ -56,7 +67,7 @@ function sourceBindings(file: ts.SourceFile): Bindings {
   }
   walk(file, (node) => {
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
-      const source = node.moduleSpecifier.text.replace(/\.ts$/, '')
+      const source = moduleSource(node, file)
       const imported = node.importClause?.namedBindings
       if (
         imported &&
@@ -90,6 +101,8 @@ function sourceBindings(file: ts.SourceFile): Bindings {
             bindings.namespaces.has(typeName.left.text) &&
             typeName.right.text === 'DeploymentEdition'))
       const initializer = node.initializer
+      if (initializer && ts.isIdentifier(initializer) && bindings.namespaces.has(initializer.text))
+        bindings.namespaces.add(node.name.text)
       const directAlias =
         initializer &&
         (ts.isIdentifier(initializer) ||
@@ -143,7 +156,7 @@ function occurrences(file: ts.SourceFile): Occurrence[] {
   walk(file, (node) => {
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
       const imported = node.importClause?.namedBindings
-      const source = node.moduleSpecifier.text.replace(/\.ts$/, '')
+      const source = moduleSource(node, file)
       if (imported && ts.isNamedImports(imported)) {
         for (const specifier of imported.elements) {
           const original = (specifier.propertyName ?? specifier.name).text
@@ -228,7 +241,7 @@ const rule: Rule.RuleModule = {
           const baseline = editionBaseline(context.cwd, context.filename, policyModules)
           if (!baseline.path.startsWith('web/') || policyModules.has(baseline.path)) return
           const before = ts.createSourceFile(
-            context.filename,
+            baseline.filename,
             baseline.source,
             ts.ScriptTarget.Latest,
             true,
