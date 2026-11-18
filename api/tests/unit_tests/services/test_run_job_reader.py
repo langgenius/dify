@@ -10,7 +10,7 @@ from graphon.enums import WorkflowExecutionStatus
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from repositories.run_job_store import RedisRunJobStore
-from services.run_job_contracts import JobFailure, JobOwner, JobPatch, JobRecord, JobStatus
+from services.run_job_contracts import JobFailure, JobIds, JobOwner, JobRecord, JobStatus
 from services.run_job_reader import RUN_STATUS_TO_JOB_STATUS, read_to_end
 from tests.unit_tests.services.run_job_fakes import InMemoryRedis, RecordingJobStopper
 
@@ -174,7 +174,7 @@ def test_message_end_after_a_stop_request_marks_the_job_stopped(
     store: RedisRunJobStore, stopper: RecordingJobStopper
 ) -> None:
     _open(store, AppMode.CHAT)
-    store.patch(JOB_ID, JobPatch(stop_requested=True))
+    store.request_stop(JOB_ID)
 
     record = _read(store, stopper, [_frame(StreamEvent.MESSAGE_END, task_id="task-1", id="msg-1", metadata={})])
 
@@ -268,7 +268,7 @@ def test_a_pending_stop_is_applied_once_the_task_id_arrives(
     store: RedisRunJobStore, stopper: RecordingJobStopper
 ) -> None:
     _open(store, AppMode.WORKFLOW)
-    store.patch(JOB_ID, JobPatch(stop_requested=True))
+    store.request_stop(JOB_ID)
     frames = [
         _frame(StreamEvent.WORKFLOW_STARTED, **IDS, data={}),
         _frame(StreamEvent.NODE_STARTED, **IDS, data={}),
@@ -294,7 +294,7 @@ def test_a_stop_requested_after_the_ids_are_stored_is_not_sent_by_the_reader(
     def late_stop() -> Iterator[str]:
         for index, frame in enumerate(frames):
             if index == 1:
-                store.patch(JOB_ID, JobPatch(stop_requested=True))
+                store.request_stop(JOB_ID)
             yield frame
 
     _read(store, stopper, late_stop())
@@ -401,21 +401,21 @@ def test_the_alive_refresh_stops_when_the_reader_ends(redis: InMemoryRedis, stop
     assert store.touches == after_end
 
 
-class PatchFailsOnceStore(RedisRunJobStore):
+class IdsFailOnceStore(RedisRunJobStore):
     def __init__(self, redis: InMemoryRedis) -> None:
         super().__init__(redis_client=redis)
         self.failures_left = 0
 
     @override
-    def patch(self, job_id: str, patch: JobPatch) -> None:
+    def record_ids(self, job_id: str, ids: JobIds) -> None:
         if self.failures_left > 0:
             self.failures_left -= 1
             raise ConnectionError("redis blip")
-        super().patch(job_id, patch)
+        super().record_ids(job_id, ids)
 
 
 def test_ids_whose_save_failed_are_saved_by_the_next_frame(redis: InMemoryRedis, stopper: RecordingJobStopper) -> None:
-    store = PatchFailsOnceStore(redis)
+    store = IdsFailOnceStore(redis)
     _open(store, AppMode.WORKFLOW)
     store.failures_left = 1
     frames = [_frame(StreamEvent.WORKFLOW_STARTED, **IDS, data={}), _frame(StreamEvent.NODE_STARTED, **IDS, data={})]
@@ -426,9 +426,9 @@ def test_ids_whose_save_failed_are_saved_by_the_next_frame(redis: InMemoryRedis,
 
 
 def test_a_pending_stop_is_sent_once_after_a_failed_id_save(redis: InMemoryRedis, stopper: RecordingJobStopper) -> None:
-    store = PatchFailsOnceStore(redis)
+    store = IdsFailOnceStore(redis)
     _open(store, AppMode.WORKFLOW)
-    store.patch(JOB_ID, JobPatch(stop_requested=True))
+    store.request_stop(JOB_ID)
     store.failures_left = 1
     frames = [
         _frame(StreamEvent.WORKFLOW_STARTED, **IDS, data={}),

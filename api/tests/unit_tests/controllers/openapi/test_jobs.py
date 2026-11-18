@@ -27,7 +27,7 @@ from models import Account
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from repositories.run_job_store import RedisRunJobStore
-from services.run_job_contracts import JobOwner, JobPatch, JobStatus
+from services.run_job_contracts import JobEnding, JobIds, JobOwner, JobStatus
 from services.run_job_service import (
     WAIT_DEFAULT_SECONDS,
     WAIT_MAX_SECONDS,
@@ -72,12 +72,16 @@ class World:
             caller_id=caller_id or self.caller_id,
         )
 
-    def open_job(self, *, caller_id: str | None = None, patch: JobPatch | None = None) -> str:
+    def open_job(
+        self, *, caller_id: str | None = None, ids: JobIds | None = None, ending: JobEnding | None = None
+    ) -> str:
         opened = self.service.open(
             JobOpening(owner=self.owner(caller_id), mode=AppMode.WORKFLOW, op="start.x", idempotency_key=None)
         )
-        if patch is not None:
-            self.store.patch(opened.record.id, patch)
+        if ids is not None:
+            self.store.record_ids(opened.record.id, ids)
+        if ending is not None:
+            self.store.settle(opened.record.id, ending)
         return opened.record.id
 
     def wait(self, job_id: str, query: str = "wait_seconds=0") -> TestResponse:
@@ -123,7 +127,7 @@ def _wait_hint(job_id: str, app_id: str, summary: str) -> dict[str, object]:
 
 
 def test_wait_returns_the_state_of_the_callers_job(world: World) -> None:
-    job_id = world.open_job(patch=JobPatch(status=JobStatus.SUCCEEDED, run_id=RUN_ID))
+    job_id = world.open_job(ids=JobIds(run_id=RUN_ID), ending=JobEnding(status=JobStatus.SUCCEEDED))
     world.results.runs[(world.client.workspace_id, RUN_ID)] = RunResult(status=JobStatus.SUCCEEDED, outputs={"x": 1})
 
     response = world.wait(job_id)
@@ -168,7 +172,7 @@ def _pause_run(world: World, form: Mapping[str, object] | None) -> None:
 
 
 def test_a_paused_job_hints_the_form_submit_op_then_wait(world: World) -> None:
-    job_id = world.open_job(patch=JobPatch(task_id=TASK_ID, run_id=RUN_ID))
+    job_id = world.open_job(ids=JobIds(task_id=TASK_ID, run_id=RUN_ID))
     _pause_run(world, FORM)
 
     body = world.wait(job_id).get_json()
@@ -191,7 +195,7 @@ def test_a_paused_job_hints_the_form_submit_op_then_wait(world: World) -> None:
 
 
 def test_a_paused_job_without_a_form_hints_only_wait(world: World) -> None:
-    job_id = world.open_job(patch=JobPatch(task_id=TASK_ID, run_id=RUN_ID))
+    job_id = world.open_job(ids=JobIds(task_id=TASK_ID, run_id=RUN_ID))
     _pause_run(world, None)
 
     body = world.wait(job_id).get_json()
@@ -200,7 +204,7 @@ def test_a_paused_job_without_a_form_hints_only_wait(world: World) -> None:
 
 
 def test_a_paused_job_with_a_form_missing_its_task_id_hints_only_wait(world: World) -> None:
-    job_id = world.open_job(patch=JobPatch(run_id=RUN_ID))
+    job_id = world.open_job(ids=JobIds(run_id=RUN_ID))
     _pause_run(world, FORM)
 
     body = world.wait(job_id).get_json()
@@ -209,7 +213,7 @@ def test_a_paused_job_with_a_form_missing_its_task_id_hints_only_wait(world: Wor
 
 
 def test_a_paused_job_with_an_unreadable_form_hints_only_wait(world: World) -> None:
-    job_id = world.open_job(patch=JobPatch(task_id=TASK_ID, run_id=RUN_ID))
+    job_id = world.open_job(ids=JobIds(task_id=TASK_ID, run_id=RUN_ID))
     _pause_run(world, {"unexpected": 1})
 
     body = world.wait(job_id).get_json()
@@ -219,7 +223,7 @@ def test_a_paused_job_with_an_unreadable_form_hints_only_wait(world: World) -> N
 
 @pytest.mark.parametrize("status", [JobStatus.SUCCEEDED, JobStatus.FAILED, JobStatus.STOPPED])
 def test_a_final_job_carries_no_hints(world: World, status: JobStatus) -> None:
-    job_id = world.open_job(patch=JobPatch(status=status))
+    job_id = world.open_job(ending=JobEnding(status=status))
 
     body = world.wait(job_id).get_json()
 
@@ -232,7 +236,7 @@ def test_every_status_has_a_hint_builder() -> None:
 
 
 def test_stop_marks_the_job_and_answers_its_state(world: World) -> None:
-    job_id = world.open_job(patch=JobPatch(run_id=RUN_ID))
+    job_id = world.open_job(ids=JobIds(run_id=RUN_ID))
 
     response = world.stop(job_id)
 

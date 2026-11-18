@@ -10,10 +10,11 @@ from repositories.run_job_store import RedisRunJobStore
 from services.run_job_contracts import (
     ALIVE_TTL_SECONDS,
     JOB_TTL_SECONDS,
+    JobEnding,
     JobFailure,
     JobFamily,
+    JobIds,
     JobOwner,
-    JobPatch,
     JobRecord,
     JobStatus,
 )
@@ -91,37 +92,69 @@ def test_the_same_key_on_another_app_opens_a_new_job(store: RedisRunJobStore) ->
     assert other.record.id != first.record.id
 
 
-def test_patch_changes_only_the_given_fields(store: RedisRunJobStore, redis: InMemoryRedis) -> None:
+def test_record_ids_changes_only_the_given_ids(store: RedisRunJobStore, redis: InMemoryRedis) -> None:
     job = _record()
     store.open(job, idempotency_key=None)
     redis.ttls.clear()
 
-    store.patch(job.id, JobPatch(run_id="r1"))
+    store.record_ids(job.id, JobIds(run_id="r1"))
 
-    got = store.get(job.id)
-    assert got is not None
-    assert got.run_id == "r1"
-    assert got.status is JobStatus.RUNNING
-    assert got.stop_requested is False
+    assert store.get(job.id) == replace(job, run_id="r1")
     assert redis.ttls[f"openapi:job:{job.id}"] == JOB_TTL_SECONDS
 
 
-def test_patch_can_set_false_stop_flag_and_status(store: RedisRunJobStore) -> None:
+def test_record_ids_without_ids_writes_nothing(store: RedisRunJobStore, redis: InMemoryRedis) -> None:
+    job = _record()
+    store.open(job, idempotency_key=None)
+    redis.ttls.clear()
+
+    store.record_ids(job.id, JobIds())
+
+    assert store.get(job.id) == job
+    assert redis.ttls == {}
+
+
+def test_request_stop_sets_only_the_flag(store: RedisRunJobStore) -> None:
     job = _record()
     store.open(job, idempotency_key=None)
 
-    store.patch(job.id, JobPatch(stop_requested=True, status=JobStatus.STOPPED, error="boom"))
+    store.request_stop(job.id)
 
-    got = store.get(job.id)
-    assert got is not None
-    assert got.stop_requested is True
-    assert got.status is JobStatus.STOPPED
-    assert got.error == "boom"
+    assert store.get(job.id) == replace(job, stop_requested=True)
 
 
-def test_patch_of_an_expired_job_does_not_recreate_it(store: RedisRunJobStore) -> None:
-    store.patch("gone", JobPatch(run_id="r1"))
+def test_settle_writes_the_first_final_status_only(store: RedisRunJobStore, redis: InMemoryRedis) -> None:
+    job = _record()
+    store.open(job, idempotency_key=None)
+    redis.ttls.clear()
 
+    first = store.settle(job.id, JobEnding(status=JobStatus.FAILED, error="boom"))
+    second = store.settle(job.id, JobEnding(status=JobStatus.SUCCEEDED))
+
+    assert (first, second) == (True, False)
+    assert store.get(job.id) == replace(job, status=JobStatus.FAILED, error="boom")
+    assert redis.ttls[f"openapi:job:{job.id}"] == JOB_TTL_SECONDS
+
+
+def test_settle_clears_an_error_it_does_not_set(store: RedisRunJobStore) -> None:
+    job = _record()
+    store.open(job, idempotency_key=None)
+
+    store.settle(job.id, JobEnding(status=JobStatus.STOPPED))
+
+    assert store.get(job.id) == replace(job, status=JobStatus.STOPPED)
+
+
+def test_an_ending_must_be_final() -> None:
+    with pytest.raises(ValueError, match="final"):
+        JobEnding(status=JobStatus.RUNNING)
+
+
+def test_writes_to_an_expired_job_do_not_recreate_it(store: RedisRunJobStore) -> None:
+    store.record_ids("gone", JobIds(run_id="r1"))
+    store.request_stop("gone")
+
+    assert store.settle("gone", JobEnding(status=JobStatus.FAILED)) is False
     assert store.get("gone") is None
 
 
@@ -169,7 +202,7 @@ def test_each_failure_reason_carries_its_message() -> None:
 def test_a_failure_reason_round_trips_through_the_store(store: RedisRunJobStore) -> None:
     store.open(_record(), idempotency_key=None)
 
-    store.patch("job-1", JobPatch(status=JobStatus.FAILED, failure=JobFailure.NO_RESULT))
+    store.settle("job-1", JobEnding(status=JobStatus.FAILED, failure=JobFailure.NO_RESULT))
 
     stored = store.get("job-1")
     assert stored is not None
@@ -227,17 +260,6 @@ def test_discard_leaves_a_key_bound_to_another_job(store: RedisRunJobStore, redi
     store.discard("job-2", idempotency_key="k")
 
     assert redis.values["openapi:job:idem:t1:app-1:account:acct-1:k"] == "job-1"
-
-
-def test_empty_patch_is_a_no_op(store: RedisRunJobStore, redis: InMemoryRedis) -> None:
-    job = _record()
-    store.open(job, idempotency_key=None)
-    redis.ttls.clear()
-
-    store.patch(job.id, JobPatch())
-
-    assert store.get(job.id) == job
-    assert redis.ttls == {}
 
 
 def test_a_hash_with_fields_from_a_newer_version_still_decodes(store: RedisRunJobStore, redis: InMemoryRedis) -> None:

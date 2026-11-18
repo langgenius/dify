@@ -12,7 +12,7 @@ from models.enums import CreatorUserRole
 from models.model import AppMode
 from repositories.run_job_store import RedisRunJobStore
 from services.app_task_service import WorkflowStopOutcome
-from services.run_job_contracts import JobFailure, JobOwner, JobPatch, JobRecord, JobStatus, OpenedJob
+from services.run_job_contracts import JobEnding, JobFailure, JobIds, JobOwner, JobRecord, JobStatus, OpenedJob
 from services.run_job_service import (
     POLL_INTERVAL_SECONDS,
     WAIT_MAX_SECONDS,
@@ -151,7 +151,8 @@ def test_attach_refuses_a_job_it_holds_no_slot_for() -> None:
 def test_view_of_a_graph_job_with_an_invisible_run_uses_the_record() -> None:
     harness = _harness()
     opened = harness.service.open(_opening())
-    harness.store.patch(opened.record.id, JobPatch(run_id="run-1", status=JobStatus.STOPPED))
+    harness.store.record_ids(opened.record.id, JobIds(run_id="run-1"))
+    harness.store.settle(opened.record.id, JobEnding(status=JobStatus.STOPPED))
 
     view = harness.service.view(OWNER, opened.record.id)
 
@@ -161,7 +162,7 @@ def test_view_of_a_graph_job_with_an_invisible_run_uses_the_record() -> None:
 def test_stop_of_a_final_job_sends_nothing() -> None:
     harness = _harness()
     opened = harness.service.open(_opening())
-    harness.store.patch(opened.record.id, JobPatch(run_id="run-1"))
+    harness.store.record_ids(opened.record.id, JobIds(run_id="run-1"))
     harness.results.runs[("t1", "run-1")] = RunResult(status=JobStatus.SUCCEEDED)
 
     view = harness.service.stop(OWNER, opened.record.id)
@@ -176,7 +177,7 @@ def test_stop_of_a_final_job_sends_nothing() -> None:
 def test_stop_of_a_paused_job_still_stops_the_run() -> None:
     harness = _harness()
     opened = harness.service.open(_opening())
-    harness.store.patch(opened.record.id, JobPatch(run_id="run-1"))
+    harness.store.record_ids(opened.record.id, JobIds(run_id="run-1"))
     harness.results.runs[("t1", "run-1")] = RunResult(status=JobStatus.PAUSED)
 
     harness.service.stop(OWNER, opened.record.id)
@@ -257,7 +258,7 @@ def test_view_hides_a_job_from_another_owner() -> None:
 def test_view_of_a_graph_job_reads_status_and_outputs_from_the_run() -> None:
     harness = _harness()
     opened = harness.service.open(_opening())
-    harness.store.patch(opened.record.id, JobPatch(run_id="run-1"))
+    harness.store.record_ids(opened.record.id, JobIds(run_id="run-1"))
     harness.results.runs[("t1", "run-1")] = RunResult(status=JobStatus.SUCCEEDED, outputs={"text": "hi"})
 
     view = harness.service.view(OWNER, opened.record.id)
@@ -270,7 +271,7 @@ def test_view_of_a_graph_job_reads_status_and_outputs_from_the_run() -> None:
 def test_view_of_a_paused_graph_job_carries_the_pending_form() -> None:
     harness = _harness()
     opened = harness.service.open(_opening())
-    harness.store.patch(opened.record.id, JobPatch(run_id="run-1"))
+    harness.store.record_ids(opened.record.id, JobIds(run_id="run-1"))
     harness.results.runs[("t1", "run-1")] = RunResult(status=JobStatus.PAUSED)
     harness.results.forms[("t1", "a1", "run-1", AppMode.WORKFLOW)] = {"form_id": "f1"}
 
@@ -321,7 +322,7 @@ def test_view_of_a_graph_job_without_a_run_id_and_with_a_live_reader_keeps_runni
 def test_view_of_a_graph_job_with_a_run_id_ignores_the_alive_key() -> None:
     harness = _harness()
     opened = harness.service.open(_opening())
-    harness.store.patch(opened.record.id, JobPatch(run_id="run-1"))
+    harness.store.record_ids(opened.record.id, JobIds(run_id="run-1"))
     harness.results.runs[("t1", "run-1")] = RunResult(status=JobStatus.SUCCEEDED, outputs={"x": 1})
     _lapse_alive_key(harness, opened.record.id)
 
@@ -348,7 +349,7 @@ def test_a_graph_job_reported_not_confirmed_never_changes_when_its_run_appears_l
     opened = harness.service.open(_opening())
     _lapse_alive_key(harness, opened.record.id)
     reported = harness.service.view(OWNER, opened.record.id)
-    harness.store.patch(opened.record.id, JobPatch(run_id="run-1"))
+    harness.store.record_ids(opened.record.id, JobIds(run_id="run-1"))
     harness.store.touch(opened.record.id)
     harness.results.runs[("t1", "run-1")] = RunResult(status=JobStatus.SUCCEEDED, outputs={"x": 1})
 
@@ -363,7 +364,8 @@ def test_a_run_error_with_the_not_confirmed_text_is_still_read_from_the_run() ->
     harness = _harness()
     opened = harness.service.open(_opening())
     text = JobFailure.RUN_NOT_CONFIRMED.message
-    harness.store.patch(opened.record.id, JobPatch(run_id="run-1", status=JobStatus.FAILED, error=text))
+    harness.store.record_ids(opened.record.id, JobIds(run_id="run-1"))
+    harness.store.settle(opened.record.id, JobEnding(status=JobStatus.FAILED, error=text))
     harness.results.runs[("t1", "run-1")] = RunResult(status=JobStatus.FAILED, outputs={"x": 1}, error=text)
 
     view = harness.service.view(OWNER, opened.record.id)
@@ -374,7 +376,7 @@ def test_a_run_error_with_the_not_confirmed_text_is_still_read_from_the_run() ->
 def test_view_of_a_message_job_uses_the_record() -> None:
     harness = _harness()
     opened = harness.service.open(_opening(AppMode.CHAT))
-    harness.store.patch(opened.record.id, JobPatch(status=JobStatus.FAILED, error="boom"))
+    harness.store.settle(opened.record.id, JobEnding(status=JobStatus.FAILED, error="boom"))
 
     view = harness.service.view(OWNER, opened.record.id)
 
@@ -395,7 +397,7 @@ def test_wait_zero_never_sleeps() -> None:
 def test_wait_returns_as_soon_as_the_job_is_final() -> None:
     harness = _harness()
     opened = harness.service.open(_opening(AppMode.CHAT))
-    harness.store.patch(opened.record.id, JobPatch(status=JobStatus.SUCCEEDED))
+    harness.store.settle(opened.record.id, JobEnding(status=JobStatus.SUCCEEDED))
 
     view = harness.service.wait(OWNER, opened.record.id, wait_seconds=10)
 
@@ -425,7 +427,7 @@ def test_wait_is_clamped_to_the_cap() -> None:
 def test_wait_returns_when_the_job_pauses() -> None:
     harness = _harness()
     opened = harness.service.open(_opening())
-    harness.store.patch(opened.record.id, JobPatch(run_id="run-1"))
+    harness.store.record_ids(opened.record.id, JobIds(run_id="run-1"))
     harness.results.runs[("t1", "run-1")] = RunResult(status=JobStatus.PAUSED)
     harness.results.forms[("t1", "a1", "run-1", AppMode.WORKFLOW)] = {"form_id": "f"}
 
@@ -439,7 +441,7 @@ def test_wait_returns_when_the_job_pauses() -> None:
 def test_wait_keeps_polling_a_paused_job_without_a_waiting_form() -> None:
     harness = _harness()
     opened = harness.service.open(_opening())
-    harness.store.patch(opened.record.id, JobPatch(run_id="run-1"))
+    harness.store.record_ids(opened.record.id, JobIds(run_id="run-1"))
     harness.results.runs[("t1", "run-1")] = RunResult(status=JobStatus.PAUSED)
 
     view = harness.service.wait(OWNER, opened.record.id, wait_seconds=3)
@@ -503,8 +505,8 @@ def test_stop_of_a_graph_job_stops_the_run_and_of_a_message_job_the_task() -> No
     harness = _harness()
     graph = harness.service.open(_opening(AppMode.WORKFLOW))
     message = harness.service.open(_opening(AppMode.CHAT))
-    harness.store.patch(graph.record.id, JobPatch(run_id="run-1", task_id="task-g"))
-    harness.store.patch(message.record.id, JobPatch(task_id="task-m"))
+    harness.store.record_ids(graph.record.id, JobIds(run_id="run-1", task_id="task-g"))
+    harness.store.record_ids(message.record.id, JobIds(task_id="task-m"))
 
     harness.service.stop(OWNER, graph.record.id)
     view = harness.service.stop(OWNER, message.record.id)
@@ -555,7 +557,7 @@ def test_stop_returns_the_view_after_the_stop() -> None:
     harness = _harness()
     harness.service._stopper = TaskControlStopper(StopFlipsRunTaskControl(harness.results))
     opened = harness.service.open(_opening())
-    harness.store.patch(opened.record.id, JobPatch(run_id="run-1"))
+    harness.store.record_ids(opened.record.id, JobIds(run_id="run-1"))
     harness.results.runs[("t1", "run-1")] = RunResult(status=JobStatus.PAUSED)
     harness.results.forms[("t1", "a1", "run-1", AppMode.WORKFLOW)] = {"form_id": "f"}
 
@@ -570,10 +572,9 @@ class IdsArriveWhileStoppingStore(RedisRunJobStore):
     """Stores the run ids right after the stop flag, as the reader thread would."""
 
     @override
-    def patch(self, job_id: str, patch: JobPatch) -> None:
-        super().patch(job_id, patch)
-        if patch.stop_requested:
-            super().patch(job_id, JobPatch(run_id="run-1", task_id="task-1"))
+    def request_stop(self, job_id: str) -> None:
+        super().request_stop(job_id)
+        self.record_ids(job_id, JobIds(run_id="run-1", task_id="task-1"))
 
 
 def test_stop_sends_the_stop_when_the_ids_arrive_while_it_is_recording_the_request() -> None:

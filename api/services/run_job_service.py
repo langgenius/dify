@@ -15,10 +15,10 @@ from flask import copy_current_request_context
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from services.run_job_contracts import (
+    JobEnding,
     JobFailure,
     JobFamily,
     JobOwner,
-    JobPatch,
     JobRecord,
     JobStatus,
     OpenedJob,
@@ -99,15 +99,13 @@ def fail_if_reader_dead(store: RunJobStore, record: JobRecord, failure: JobFailu
 
     Precondition: record is the stored state of the job. The reader refreshes the alive key on a timer for as long as
     it runs, frames or not, so the key lapses only when the reader has ended.
-    Postcondition: the record unchanged when it is final or its alive key is live; otherwise the record as FAILED
-    for the given reason, which is also saved with store.patch.
+    Postcondition: the record unchanged while its alive key is live; otherwise the job is settled as FAILED for the
+    given reason unless it is final already, and the stored record is returned (record, if the job is gone).
     """
-    if record.status.is_final:
-        return record
     if store.is_alive(record.id):
         return record
-    store.patch(record.id, JobPatch(status=JobStatus.FAILED, failure=failure))
-    return replace(record, status=JobStatus.FAILED, failure=failure)
+    store.settle(record.id, JobEnding(status=JobStatus.FAILED, failure=failure))
+    return store.get(record.id) or record
 
 
 class _Counter:
@@ -438,7 +436,7 @@ class RunJobService:
         view = self._view_of(record)
         if view.status.is_final:
             return view
-        self._store.patch(job_id, JobPatch(stop_requested=True))
+        self._store.request_stop(job_id)
         # Re-read so ids stored by the reader since the first read are not missed.
         stopping = replace(self._store.get(job_id) or record, stop_requested=True)
         self._stopper.stop(stopping)
