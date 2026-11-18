@@ -2,12 +2,14 @@ import importlib.util
 import sqlite3
 import sys
 from collections.abc import Callable, Iterator
+from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 from types import ModuleType
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 from sqlalchemy import Connection, create_engine, event, select
 from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
 from sqlalchemy.pool import ConnectionPoolEntry
@@ -15,6 +17,13 @@ from sqlalchemy.pool import ConnectionPoolEntry
 from graphon.entities.pause_reason import PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.file import FileTransferMethod, FileType
+from models.agent import (
+    AgentConfigVersionKind,
+    AgentWorkingResourceStatus,
+    AgentWorkspace,
+    AgentWorkspaceBinding,
+    AgentWorkspaceOwnerType,
+)
 from models.base import Base
 from models.enums import (
     AppTriggerType,
@@ -59,6 +68,8 @@ TABLES = [
     Base.metadata.tables[model.__tablename__]
     for model in (
         Conversation,
+        AgentWorkspace,
+        AgentWorkspaceBinding,
         Message,
         AppAnnotationHitHistory,
         DatasetRetrieverResource,
@@ -311,6 +322,7 @@ def test_delete_batch_keeps_cascade_in_caller_transaction(
 
     repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
     with session_maker() as session:
+        retired_workspace_ids_by_tenant: dict[str, list[str]] = {}
         if outcome == "failure":
 
             @event.listens_for(session, "do_orm_execute")
@@ -318,7 +330,13 @@ def test_delete_batch_keeps_cascade_in_caller_transaction(
                 if state.is_delete and state.bind_mapper is not None and state.bind_mapper.class_ is WorkflowRun:
                     raise RuntimeError("Fail after deleting related rows")
 
-        assert cleanup_module._delete_batch(session, repository, [run], attempt_count=0) is (outcome != "failure")
+        assert cleanup_module._delete_batch(
+            session,
+            repository,
+            [run],
+            attempt_count=0,
+            retired_workspace_ids_by_tenant=retired_workspace_ids_by_tenant,
+        ) is (outcome != "failure")
         assert session.in_transaction()
         assert not session.in_nested_transaction()
         assert _row_ids(session) == (original_rows if outcome == "failure" else retained_rows)
@@ -332,3 +350,139 @@ def test_delete_batch_keeps_cascade_in_caller_transaction(
 
     with session_maker() as session:
         assert _row_ids(session) == (retained_rows if outcome == "commit" else original_rows)
+
+
+@pytest.mark.parametrize("fail_run_deletion", [False, True], ids=["commit", "rollback"])
+def test_delete_batch_retires_conversation_owned_agent_workspace(
+    cleanup_module: ModuleType,
+    session_maker: sessionmaker[Session],
+    fail_run_deletion: bool,
+) -> None:
+    with session_maker.begin() as session:
+        run = _seed_batch(session)
+        conversation_id = session.scalar(select(Message.conversation_id).where(Message.workflow_run_id == run.id))
+        assert conversation_id is not None
+        workspace_id, binding_id = str(uuid4()), str(uuid4())
+        session.add_all(
+            [
+                AgentWorkspace(
+                    id=workspace_id,
+                    tenant_id=run.tenant_id,
+                    app_id=run.app_id,
+                    owner_type=AgentWorkspaceOwnerType.CONVERSATION,
+                    owner_id=conversation_id,
+                    owner_scope_key="root",
+                    backend_workspace_ref="backend-workspace",
+                    status=AgentWorkingResourceStatus.ACTIVE,
+                    active_guard=1,
+                ),
+                AgentWorkspaceBinding(
+                    id=binding_id,
+                    tenant_id=run.tenant_id,
+                    app_id=run.app_id,
+                    workspace_id=workspace_id,
+                    agent_id=str(uuid4()),
+                    base_home_snapshot_id=None,
+                    agent_config_version_id=str(uuid4()),
+                    agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+                    backend_binding_ref="backend-binding",
+                    status=AgentWorkingResourceStatus.ACTIVE,
+                ),
+            ]
+        )
+
+    repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+    retired_workspace_ids_by_tenant: dict[str, list[str]] = {}
+    with session_maker() as session:
+        if fail_run_deletion:
+
+            @event.listens_for(session, "do_orm_execute")
+            def fail_run_delete(state: ORMExecuteState) -> None:
+                if state.is_delete and state.bind_mapper is not None and state.bind_mapper.class_ is WorkflowRun:
+                    raise RuntimeError("Fail after retiring related workspace")
+
+        assert (
+            cleanup_module._delete_batch(
+                session,
+                repository,
+                [run],
+                attempt_count=0,
+                retired_workspace_ids_by_tenant=retired_workspace_ids_by_tenant,
+            )
+            is not fail_run_deletion
+        )
+        workspace = session.get(AgentWorkspace, workspace_id)
+        binding = session.get(AgentWorkspaceBinding, binding_id)
+        assert workspace is not None
+        assert binding is not None
+        if fail_run_deletion:
+            assert workspace.status == AgentWorkingResourceStatus.ACTIVE
+            assert binding.status == AgentWorkingResourceStatus.ACTIVE
+            assert session.get(Conversation, conversation_id) is not None
+            assert retired_workspace_ids_by_tenant == {}
+        else:
+            assert workspace.status == AgentWorkingResourceStatus.RETIRED
+            assert binding.status == AgentWorkingResourceStatus.RETIRED
+            assert session.get(Conversation, conversation_id) is None
+            assert retired_workspace_ids_by_tenant == {run.tenant_id: [workspace_id]}
+        session.commit()
+
+
+def test_cleanup_enqueues_retired_workspace_after_commit(
+    cleanup_module: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    flask_app = Flask("test-clean-workflow-runlogs-precise")
+    flask_app.config.update(SQLALCHEMY_DATABASE_URI="sqlite://", SQLALCHEMY_TRACK_MODIFICATIONS=False)
+    cleanup_module.db.init_app(flask_app)
+    with flask_app.app_context():
+        engine = cleanup_module.db.engine
+        Base.metadata.create_all(engine, tables=TABLES)
+        session_factory = sessionmaker(bind=engine, expire_on_commit=False)
+        with session_factory.begin() as session:
+            run = _seed_batch(session)
+            run.created_at = datetime.now() - timedelta(days=90)
+            conversation_id = session.scalar(select(Message.conversation_id).where(Message.workflow_run_id == run.id))
+            assert conversation_id is not None
+            workspace_id, binding_id = str(uuid4()), str(uuid4())
+            session.add_all(
+                [
+                    AgentWorkspace(
+                        id=workspace_id,
+                        tenant_id=run.tenant_id,
+                        app_id=run.app_id,
+                        owner_type=AgentWorkspaceOwnerType.CONVERSATION,
+                        owner_id=conversation_id,
+                        owner_scope_key="root",
+                        backend_workspace_ref="backend-workspace",
+                        status=AgentWorkingResourceStatus.ACTIVE,
+                        active_guard=1,
+                    ),
+                    AgentWorkspaceBinding(
+                        id=binding_id,
+                        tenant_id=run.tenant_id,
+                        app_id=run.app_id,
+                        workspace_id=workspace_id,
+                        agent_id=str(uuid4()),
+                        base_home_snapshot_id=None,
+                        agent_config_version_id=str(uuid4()),
+                        agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+                        backend_binding_ref="backend-binding",
+                        status=AgentWorkingResourceStatus.ACTIVE,
+                    ),
+                ]
+            )
+
+        enqueued: list[dict[str, object]] = []
+
+        def enqueue_after_commit(**kwargs: object) -> None:
+            with session_factory() as session:
+                workspace = session.get(AgentWorkspace, workspace_id)
+                assert workspace is not None
+                assert workspace.status == AgentWorkingResourceStatus.RETIRED
+            enqueued.append(kwargs)
+
+        monkeypatch.setattr(cleanup_module, "enqueue_agent_resource_collection", enqueue_after_commit)
+        cleanup_module.clean_workflow_runlogs_precise()
+
+        assert enqueued == [{"tenant_id": run.tenant_id, "workspace_ids": [workspace_id]}]
