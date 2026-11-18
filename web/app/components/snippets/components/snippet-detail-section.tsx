@@ -1,14 +1,11 @@
 'use client'
 
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { useShallow } from 'zustand/react/shallow'
-import { useEvaluationRequiresUpgrade } from '@/app/components/billing/use-snippets-and-evaluation-access'
+import { useEvaluationAccess } from '@/app/components/billing/use-evaluation-access'
 import { SnippetCollapsedPreview } from '@/app/components/snippets/components/snippet-collapsed-preview'
 import { SnippetSidebarContent } from '@/app/components/snippets/components/snippet-sidebar'
 import { useSnippetDraftStore } from '@/app/components/snippets/draft-store'
 import { useSnippetDetailStore } from '@/app/components/snippets/store'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { isEvaluationEdition } from '@/features/system-features/utils'
 import { usePathname } from '@/next/navigation'
 
 type SnippetDetailSectionProps = {
@@ -17,14 +14,10 @@ type SnippetDetailSectionProps = {
 
 export function SnippetDetailSection({ expand }: SnippetDetailSectionProps) {
   const pathname = usePathname()
-  const { data: deploymentEdition } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: ({ deployment_edition }) => deployment_edition,
-  })
-  const evaluationEnabled = isEvaluationEdition(deploymentEdition)
-  const evaluationRequiresUpgrade = useEvaluationRequiresUpgrade()
+  const { isVisible: isEvaluationVisible, requiresUpgrade: evaluationRequiresUpgrade } =
+    useEvaluationAccess()
   const section =
-    evaluationEnabled && pathname.endsWith('/evaluation') ? 'evaluation' : 'orchestrate'
+    isEvaluationVisible && pathname.endsWith('/evaluation') ? 'evaluation' : 'orchestrate'
   const snippetNavigation = useSnippetDetailStore(
     useShallow((state) => ({
       onFieldsChange: state.onFieldsChange,
@@ -41,7 +34,7 @@ export function SnippetDetailSection({ expand }: SnippetDetailSectionProps) {
         snippetId={snippetNavigation.snippet?.id}
         section={section}
         isPublished={snippetNavigation.snippet?.is_published}
-        evaluationEnabled={evaluationEnabled}
+        evaluationEnabled={isEvaluationVisible}
         evaluationRequiresUpgrade={evaluationRequiresUpgrade}
       />
     )
@@ -59,7 +52,7 @@ export function SnippetDetailSection({ expand }: SnippetDetailSectionProps) {
       fields={snippetInputFields}
       readonly={snippetNavigation.readonly}
       onFieldsChange={snippetNavigation.onFieldsChange}
-      evaluationEnabled={evaluationEnabled}
+      evaluationEnabled={isEvaluationVisible}
       evaluationRequiresUpgrade={evaluationRequiresUpgrade}
     />
   )

@@ -154,6 +154,9 @@ class FeatureModel(FeatureResponseModel):
     enable_file_scan: bool = False
     workflow_collaboration_enabled: bool = False
     workflow_collaboration_upgrade_available: bool = False
+    # Evaluation (including Snippet evaluation) is usable now; the upgrade flag marks Cloud Sandbox.
+    evaluation_enabled: bool = False
+    evaluation_upgrade_available: bool = False
     members: LimitationModel = LimitationModel(size=0, limit=1)
     apps: LimitationModel = LimitationModel(size=0, limit=10)
     # Indexing tasks still consume this internally; Console queries vector usage separately.
