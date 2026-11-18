@@ -15,7 +15,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
-from core.db.session_factory import session_factory
 from core.rag.extractor.blob.blob import Blob
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
@@ -51,8 +50,7 @@ class PdfExtractor(BaseExtractor):
         session: Optional caller-owned session used to persist extracted images.
             The caller commits it. Without one, image records are written in a
             short-lived session that commits on its own.
-        session_maker: Factory for that short-lived session. Defaults to the
-            application session factory.
+        session_maker: Factory for that short-lived session.
     """
 
     # Magic bytes for image format detection: (magic_bytes, extension, mime_type)
@@ -69,7 +67,7 @@ class PdfExtractor(BaseExtractor):
     )
     MAX_MAGIC_LEN = max(len(m) for m, _, _ in IMAGE_FORMATS)
     _session: Session | None
-    _session_maker: sessionmaker[Session] | None
+    _session_maker: sessionmaker[Session]
     _source_file_id: str | None
 
     def __init__(
@@ -81,7 +79,7 @@ class PdfExtractor(BaseExtractor):
         source_file_id: str | None = None,
         *,
         session: Session | None = None,
-        session_maker: sessionmaker[Session] | None = None,
+        session_maker: sessionmaker[Session],
     ):
         """Initialize PdfExtractor."""
         self._file_path = file_path
@@ -280,6 +278,5 @@ class PdfExtractor(BaseExtractor):
         if self._session is not None:
             yield self._session
             return
-        maker = self._session_maker or session_factory.get_session_maker()
-        with maker() as session, session.begin():
+        with self._session_maker() as session, session.begin():
             yield session

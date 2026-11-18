@@ -19,6 +19,9 @@ from tests.helpers.unit.config_override import apply_config_overrides
 TENANT_ID = str(uuid4())
 USER_ID = str(uuid4())
 
+# Unbound, so any query or flush through it fails: for extractors that must not touch the database.
+_NO_DATABASE: sessionmaker[Session] = sessionmaker()
+
 
 class _Storage:
     saves: list[tuple[str, bytes]]
@@ -127,7 +130,7 @@ def test_extract_images_get_objects_scenarios(
     else:
         mock_page.get_objects.return_value = get_objects_return_value
 
-    extractor = pe.PdfExtractor(file_path="test.pdf", tenant_id=TENANT_ID, user_id=USER_ID)
+    extractor = pe.PdfExtractor(file_path="test.pdf", tenant_id=TENANT_ID, user_id=USER_ID, session_maker=_NO_DATABASE)
 
     with patch("pypdfium2.raw", autospec=True) as mock_raw:
         mock_raw.FPDF_PAGEOBJ_IMAGE = 1
@@ -154,7 +157,9 @@ def test_extract_calls_extract_images(monkeypatch: pytest.MonkeyPatch) -> None:
         mock_blob = MagicMock()
         mock_blob.source = "test.pdf"
         with patch("core.rag.extractor.pdf_extractor.Blob.from_path", return_value=mock_blob, autospec=True):
-            extractor = pe.PdfExtractor(file_path="test.pdf", tenant_id=TENANT_ID, user_id=USER_ID)
+            extractor = pe.PdfExtractor(
+                file_path="test.pdf", tenant_id=TENANT_ID, user_id=USER_ID, session_maker=_NO_DATABASE
+            )
 
             # Mock _extract_images to return a known string
             monkeypatch.setattr(extractor, "_extract_images", lambda _page, _page_number=0: "![image](img_url)")
@@ -209,7 +214,7 @@ def test_extract_images_skipped_without_tenant_context() -> None:
     """PDFs loaded from a URL have no tenant/user context; image extraction must be skipped."""
     mock_page = MagicMock()
 
-    extractor = pe.PdfExtractor(file_path="test.pdf")
+    extractor = pe.PdfExtractor(file_path="test.pdf", session_maker=_NO_DATABASE)
 
     result = extractor._extract_images(mock_page)
 

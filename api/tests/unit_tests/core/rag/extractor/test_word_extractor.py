@@ -31,6 +31,10 @@ class _TextOxmlElement(Protocol):
     text: str | None
 
 
+# Unbound, so any query or flush through it fails: for extractors that must not touch the database.
+_NO_DATABASE: sessionmaker[Session] = sessionmaker()
+
+
 def _set_oxml_text(element: object, text: str) -> None:
     cast(_TextOxmlElement, element).text = text
 
@@ -103,7 +107,7 @@ def test_init_downloads_via_remote_fetcher(monkeypatch: pytest.MonkeyPatch, tmp_
 
     with tempfile.NamedTemporaryFile(delete=False, dir=tmp_path) as temp_file:
         monkeypatch.setattr(we.tempfile, "NamedTemporaryFile", lambda **kwargs: temp_file)
-        extractor = WordExtractor("https://example.com/test.docx", "tenant_id", "user_id")
+        extractor = WordExtractor("https://example.com/test.docx", "tenant_id", "user_id", session_maker=_NO_DATABASE)
         try:
             assert calls
             assert calls[0][0] == "get"
@@ -148,7 +152,7 @@ def test_init_removes_temp_file_on_failure(monkeypatch: pytest.MonkeyPatch, tmp_
     monkeypatch.setattr(we.tempfile, "NamedTemporaryFile", failing_temp_file)
 
     with pytest.raises(OSError, match="temporary file failed"):
-        WordExtractor("https://example.com/test.docx", "tenant", "user")
+        WordExtractor("https://example.com/test.docx", "tenant", "user", session_maker=_NO_DATABASE)
 
     assert response.is_closed
     assert not path.exists()
@@ -164,7 +168,7 @@ def test_init_closes_response_when_temp_creation_fails(monkeypatch: pytest.Monke
     monkeypatch.setattr(we.tempfile, "NamedTemporaryFile", fail_creation)
 
     with pytest.raises(OSError, match="temporary file failed"):
-        WordExtractor("https://example.com/test.docx", "tenant", "user")
+        WordExtractor("https://example.com/test.docx", "tenant", "user", session_maker=_NO_DATABASE)
 
     assert response.is_closed
 
@@ -307,7 +311,7 @@ def test_extract_hyperlinks(monkeypatch: pytest.MonkeyPatch, unbound_session: Se
         tmp_path = tmp.name
 
     try:
-        extractor = WordExtractor(tmp_path, "tenant_id", "user_id", session=unbound_session)
+        extractor = WordExtractor(tmp_path, "tenant_id", "user_id", session=unbound_session, session_maker=_NO_DATABASE)
         docs = extractor.extract()
         # Verify modern hyperlink extraction
         assert "Visit[Dify](https://dify.ai)" in docs[0].page_content
@@ -365,7 +369,7 @@ def test_extract_legacy_hyperlinks(monkeypatch: pytest.MonkeyPatch, unbound_sess
         tmp_path = tmp.name
 
     try:
-        extractor = WordExtractor(tmp_path, "tenant_id", "user_id", session=unbound_session)
+        extractor = WordExtractor(tmp_path, "tenant_id", "user_id", session=unbound_session, session_maker=_NO_DATABASE)
         docs = extractor.extract()
         # Verify legacy hyperlink extraction
         assert "[Example](http://example.com)" in docs[0].page_content
@@ -379,7 +383,7 @@ def test_init_rejects_invalid_url_status(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(we.remote_fetcher, "make_request", lambda method, url, **kwargs: response)
 
     with pytest.raises(ValueError, match="returned status code 404"):
-        WordExtractor("https://example.com/missing.docx", "tenant", "user")
+        WordExtractor("https://example.com/missing.docx", "tenant", "user", session_maker=_NO_DATABASE)
 
     assert response.is_closed
 
@@ -395,12 +399,12 @@ def test_init_expands_home_path_and_invalid_local_path(monkeypatch, tmp_path: Pa
         lambda p: p == str(target_file),
     )
 
-    extractor = WordExtractor("~/expanded.docx", "tenant", "user")
+    extractor = WordExtractor("~/expanded.docx", "tenant", "user", session_maker=_NO_DATABASE)
     assert extractor.file_path == str(target_file)
 
     monkeypatch.setattr(we.os.path, "isfile", lambda p: False)
     with pytest.raises(ValueError, match="is not a valid file or url"):
-        WordExtractor("not-a-file", "tenant", "user")
+        WordExtractor("not-a-file", "tenant", "user", session_maker=_NO_DATABASE)
 
 
 def test_close_removes_temp_file(tmp_path: Path):
@@ -442,7 +446,7 @@ def test_close_tolerates_missing_temp_file(tmp_path: Path):
 def test_close_preserves_local_file(tmp_path: Path):
     path = tmp_path / "local.docx"
     path.write_bytes(b"content")
-    extractor = WordExtractor(str(path), "tenant", "user")
+    extractor = WordExtractor(str(path), "tenant", "user", session_maker=_NO_DATABASE)
 
     extractor.close()
 
@@ -453,7 +457,7 @@ def test_close_logs_cleanup_failure(monkeypatch: pytest.MonkeyPatch, caplog: pyt
     """Cleanup failures for an owned download are logged without escaping close."""
     response = Response(200, content=b"document")
     monkeypatch.setattr(we.remote_fetcher, "make_request", lambda *args, **kwargs: response)
-    extractor = WordExtractor("https://example.com/test.docx", "tenant", "user")
+    extractor = WordExtractor("https://example.com/test.docx", "tenant", "user", session_maker=_NO_DATABASE)
     path = Path(extractor.file_path)
 
     def fail_unlink(path: str):
@@ -492,7 +496,7 @@ def test_extract_images_handles_invalid_external_cases(monkeypatch: pytest.Monke
     extractor.user_id = "user"
     extractor._session = None
     # An unbound factory fails on any query or flush, so this also checks that nothing touches the database.
-    extractor._session_maker = sessionmaker()
+    extractor._session_maker = _NO_DATABASE
 
     result = extractor._extract_images_from_docx(doc)
 
@@ -523,6 +527,7 @@ def test_extract_images_accepts_content_type_with_parameters(monkeypatch: pytest
         tenant_id="00000000-0000-0000-0000-000000000001",
         user_id="00000000-0000-0000-0000-000000000002",
         session=sqlite_session,
+        session_maker=_NO_DATABASE,
     )
 
     image_map = extractor._extract_images_from_docx(doc)
@@ -878,6 +883,7 @@ def test_extract_preserves_image_relationships_regardless_of_part_name(
             "00000000-0000-0000-0000-000000000001",
             "00000000-0000-0000-0000-000000000002",
             session=sqlite_session,
+            session_maker=_NO_DATABASE,
         )
         .extract()[0]
         .page_content
@@ -899,7 +905,11 @@ def test_extract_ignores_non_image_relationship_with_image_in_target(
     path = tmp_path / "metadata.docx"
     doc.save(str(path))
 
-    content = WordExtractor(str(path), "tenant", "user", session=sqlite_session).extract()[0].page_content
+    content = (
+        WordExtractor(str(path), "tenant", "user", session=sqlite_session, session_maker=_NO_DATABASE)
+        .extract()[0]
+        .page_content
+    )
 
     assert content == "Visible text"
     assert sqlite_session.scalars(select(UploadFile)).all() == []

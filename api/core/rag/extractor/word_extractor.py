@@ -23,7 +23,6 @@ from docx.text.run import Run
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
-from core.db.session_factory import session_factory
 from core.file import remote_fetcher
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
@@ -45,13 +44,12 @@ class WordExtractor(BaseExtractor):
         session: Optional caller-owned session used to persist extracted images.
             The caller commits it. Without one, image records are written in a
             short-lived session that commits on its own.
-        session_maker: Factory for that short-lived session. Defaults to the
-            application session factory.
+        session_maker: Factory for that short-lived session.
     """
 
     _closed: bool
     _session: Session | None
-    _session_maker: sessionmaker[Session] | None
+    _session_maker: sessionmaker[Session]
 
     def __init__(
         self,
@@ -60,7 +58,7 @@ class WordExtractor(BaseExtractor):
         user_id: str,
         *,
         session: Session | None = None,
-        session_maker: sessionmaker[Session] | None = None,
+        session_maker: sessionmaker[Session],
     ):
         """Initialize from a local file or a downloadable URL.
 
@@ -228,8 +226,7 @@ class WordExtractor(BaseExtractor):
         if self._session is not None:
             yield self._session
             return
-        maker = self._session_maker or session_factory.get_session_maker()
-        with maker() as session, session.begin():
+        with self._session_maker() as session, session.begin():
             yield session
 
     def _table_to_markdown(self, table, image_map):
