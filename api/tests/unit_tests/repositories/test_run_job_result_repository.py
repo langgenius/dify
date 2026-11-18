@@ -6,6 +6,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.entities.task_entities import HumanInputRequiredResponse
 from extensions.ext_application_services import ApplicationServices
 from graphon.enums import WorkflowExecutionStatus
 from models.enums import CreatorUserRole
@@ -15,6 +16,7 @@ from repositories import run_job_result_repository
 from repositories.run_job_result_repository import SQLAlchemyRunResultReader
 from services.run_job_contracts import JobStatus
 from services.run_job_service import RunJobService
+from tests.unit_tests.services.run_job_fakes import human_input_form
 
 
 def _add_run(
@@ -126,8 +128,9 @@ class _RecordedFrames:
         self.closed = True
 
 
-_FORM_FRAME = {"event": "human_input_required", "data": {"form_token": "t1"}}
-_PAUSED_FRAME = {"event": "workflow_paused", "data": {"form_token": "t1"}}
+_FORM = human_input_form("f1")
+_FORM_FRAME = _FORM.model_dump(mode="json")
+_PAUSED_FRAME: dict[str, object] = {"event": "workflow_paused", "data": {}}
 _PING_FRAME: dict[str, object] = {"event": "node_started", "data": {}}
 
 
@@ -144,7 +147,7 @@ def _patch_stream(monkeypatch: pytest.MonkeyPatch, frames: _RecordedFrames) -> l
 
 def _read_form(
     sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], mode: AppMode = AppMode.WORKFLOW
-) -> Mapping[str, object] | None:
+) -> HumanInputRequiredResponse | None:
     tenant_id = str(uuid4())
     row = _add_run(sqlite_session, tenant_id=tenant_id, status=WorkflowExecutionStatus.PAUSED)
     return SQLAlchemyRunResultReader(session_factory=sqlite_session_factory).pending_form(
@@ -160,7 +163,7 @@ def test_pending_form_returns_the_last_human_input_event(
 
     form = _read_form(sqlite_session, sqlite_session_factory)
 
-    assert form == {"form_token": "t1"}
+    assert form == _FORM
     assert calls[0]["idle_timeout"] == 2
     assert calls[0]["close_on_pause"] is True
 
@@ -168,15 +171,24 @@ def test_pending_form_returns_the_last_human_input_event(
 def test_pending_form_stops_at_the_pause_and_closes_the_stream(
     sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    later_form = {"event": "human_input_required", "data": {"form_token": "t2"}}
+    later_form = human_input_form("f2").model_dump(mode="json")
     frames = _RecordedFrames([_PING_FRAME, _FORM_FRAME, _PAUSED_FRAME, later_form])
     _patch_stream(monkeypatch, frames)
 
     form = _read_form(sqlite_session, sqlite_session_factory, AppMode.ADVANCED_CHAT)
 
-    assert form == {"form_token": "t1"}
+    assert form == _FORM
     assert frames.read == 3
     assert frames.closed
+
+
+def test_pending_form_is_none_when_the_last_form_does_not_fit_cores_model(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    unreadable = {"event": "human_input_required", "data": {"form_token": "t2"}}
+    _patch_stream(monkeypatch, _RecordedFrames([_FORM_FRAME, unreadable, _PAUSED_FRAME]))
+
+    assert _read_form(sqlite_session, sqlite_session_factory) is None
 
 
 class _RaisingFrames(_RecordedFrames):
