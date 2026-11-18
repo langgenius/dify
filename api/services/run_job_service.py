@@ -32,6 +32,8 @@ WAIT_DEFAULT_SECONDS: Final = 25
 WAIT_MAX_SECONDS: Final = 45
 POLL_INTERVAL_SECONDS: Final = 1.0
 READER_THREAD_NAME: Final = "run-job-reader"
+# Keyed job ids are uuid5 names in this namespace, so a repeated key names the same job.
+JOB_ID_NAMESPACE: Final = uuid.UUID("5c1f2f86-6a47-4d3e-9a39-2f0b8d7c4e21")
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -105,6 +107,15 @@ def fail_if_reader_dead(store: RunJobStore, record: JobRecord, failure: JobFailu
         return record
     store.settle(record.id, JobEnding(status=JobStatus.FAILED, failure=failure))
     return store.get(record.id) or record
+
+
+def _job_id(opening: JobOpening) -> str:
+    """Postcondition: a random id without an idempotency key; with one, the same id for the same owner and key."""
+    if opening.idempotency_key is None:
+        return str(uuid.uuid4())
+    owner = opening.owner
+    name = f"{owner.tenant_id}:{owner.app_id}:{owner.caller_role}:{owner.caller_id}:{opening.idempotency_key}"
+    return str(uuid.uuid5(JOB_ID_NAMESPACE, name))
 
 
 class _Counter:
@@ -233,35 +244,36 @@ class RunJobService:
         self._sleep = sleep
         self._monotonic = monotonic
 
-    def start(self, opening: JobOpening, launch: Callable[[], Iterable[str]]) -> JobRecord:
+    def start(self, opening: JobOpening, launch: Callable[[], Iterable[str]]) -> str:
         """Create a job and start its run, or return the earlier job for the same idempotency key.
 
         Precondition: called inside a request context; opening.mode supports run jobs; launch starts the run and
         returns its SSE frames.
-        Postcondition: for a new job, launch ran once and a daemon reader thread holds one background slot until the
-        stream ends. An earlier job is returned without launching or taking a slot. When the store raises, nothing
-        ran. At the cap, JobCapacityError is raised before launching and the new job is removed. When launch or the
-        reader start raises, the frames are closed, the slot is released, the job is removed and the error
-        propagates.
+        Postcondition: returns the job id: derived from the owner and the key when a key is given, so the earlier
+        job of a repeated key is returned without launching or taking a slot; random otherwise. For a new job,
+        launch ran once and a daemon reader thread holds one background slot until the stream ends. When the store
+        raises, nothing ran. At the cap, JobCapacityError is raised before launching and the new job is removed.
+        When launch or the reader start raises, the frames are closed, the slot is released, the job is removed
+        and the error propagates.
         """
-        record = JobRecord(id=str(uuid.uuid4()), owner=opening.owner, mode=opening.mode, op=opening.op)
+        job_id = _job_id(opening)
+        record = JobRecord(id=job_id, owner=opening.owner, mode=opening.mode, op=opening.op)
         # Store first so a repeated key at the cap still returns its earlier job.
-        opened = self._store.open(record, idempotency_key=opening.idempotency_key)
-        if not opened.created:
-            return opened.record
+        if not self._store.create(record):
+            return job_id
         if not self._slots.try_acquire():
-            self._store.discard(record.id, idempotency_key=opening.idempotency_key)
+            self._store.discard(job_id)
             raise JobCapacityError("Too many background runs are active")
         frames: Iterable[str] = ()
         try:
             frames = launch()
-            self._read_in_background(record.id, frames)
+            self._read_in_background(job_id, frames)
         except BaseException:
             self._slots.release()
             close_frames(frames)
-            self._store.discard(record.id, idempotency_key=opening.idempotency_key)
+            self._store.discard(job_id)
             raise
-        return record
+        return job_id
 
     def _read_in_background(self, job_id: str, frames: Iterable[str]) -> None:
         """Read the run's frames on a daemon thread that releases the job's slot when the stream ends.

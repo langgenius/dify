@@ -79,12 +79,13 @@ class World:
     def open_job(
         self, *, caller_id: str | None = None, ids: JobIds | None = None, ending: JobEnding | None = None
     ) -> str:
-        opened = self.store.open(_record(self.owner(caller_id)), idempotency_key=None)
+        record = _record(self.owner(caller_id))
+        self.store.create(record)
         if ids is not None:
-            self.store.record_ids(opened.record.id, ids)
+            self.store.record_ids(record.id, ids)
         if ending is not None:
-            self.store.settle(opened.record.id, ending)
-        return opened.record.id
+            self.store.settle(record.id, ending)
+        return record.id
 
     def wait(self, job_id: str, query: str = "wait_seconds=0") -> TestResponse:
         url = WAIT_ROUTE.format(app_id=self.client.app_id, job_id=job_id) + f"?{query}"
@@ -303,9 +304,10 @@ def test_a_job_of_another_app_is_a_404_for_the_same_caller(
         caller_role=CreatorUserRole.ACCOUNT,
         caller_id=world.caller_id,
     )
-    opened = world.store.open(_record(other_app), idempotency_key=None)
+    record = _record(other_app)
+    world.store.create(record)
 
-    response = request_route(world, opened.record.id)
+    response = request_route(world, record.id)
 
     assert response.status_code == 404
     assert response.get_json()["code"] == OpenApiErrorCode.JOB_NOT_FOUND

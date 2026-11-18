@@ -61,12 +61,12 @@ def start_job(ctx: Context, body: StartPayload, *, op: str, modes: tuple[AppMode
     opening = JobOpening(owner=owner, mode=AppMode.value_of(ctx.app.mode), op=op, idempotency_key=body.idempotency_key)
     run_jobs = application_services().run_jobs
     try:
-        record = run_jobs.start(opening, lambda: _launch(ctx, body))
+        job_id = run_jobs.start(opening, lambda: _launch(ctx, body))
     except JobCapacityError as ex:
         raise JobCapacityReached() from ex
     end_read_transaction(ctx.session)
     try:
-        view = run_jobs.wait(owner, record.id, wait_seconds=body.wait_seconds)
+        view = run_jobs.wait(owner, job_id, wait_seconds=body.wait_seconds)
     except JobNotFoundError as ex:
         raise JobNotFound() from ex
     return job_state(view, app_id=ctx.app.id)

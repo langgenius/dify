@@ -1,7 +1,7 @@
 """Redis store for app run jobs.
 
-Each job is a hash with one JSON-encoded field per JobRecord attribute, plus an alive key
-that the running side refreshes and an optional idempotency key that maps to the job id.
+Each job is a hash: the record as created in one field written once, then one JSON-encoded field per later change
+(run ids, the stop request, the ending). The alive key is refreshed while a reader runs.
 """
 
 import json
@@ -21,30 +21,20 @@ from services.run_job_contracts import (
     JobOwner,
     JobRecord,
     JobStatus,
-    OpenedJob,
 )
 
 _JOB_KEY = "openapi:job:{job_id}"
 _ALIVE_KEY = "openapi:job:{job_id}:alive"
-_IDEMPOTENCY_KEY = "openapi:job:idem:{tenant_id}:{app_id}:{caller_role}:{caller_id}:{key}"
 _ALIVE_VALUE = "1"
+_CREATED_FIELD: Final = "record"
 _ENDING_FIELD: Final = "ending"
 _RECORD_FIELDS = frozenset(field.name for field in dataclass_fields(JobRecord))
-_REQUIRED_FIELDS = _RECORD_FIELDS - {_ENDING_FIELD}
-_DELETE_IF_EQUAL = """
-if redis.call('GET', KEYS[1]) == ARGV[1] then
-    return redis.call('DEL', KEYS[1])
-end
-return 0
-"""
 
 
 class RunJobRedis(Protocol):
     """The Redis calls the store makes; RedisClientWrapper satisfies it."""
 
     def set(self, name: str, value: Any, ex: int | None = None, *, nx: bool = False) -> Any: ...
-
-    def get(self, name: str) -> Any: ...
 
     def hset(self, name: str, *, mapping: Mapping[str, str]) -> Any: ...
 
@@ -58,21 +48,10 @@ class RunJobRedis(Protocol):
 
     def delete(self, *names: str) -> Any: ...
 
-    def register_script(self, script: str) -> Any: ...
-
 
 def _text(value: bytes | str) -> str:
     """Decode Redis output. Precondition: bytes or str. Postcondition: the str form."""
     return value.decode("utf-8") if isinstance(value, bytes) else value
-
-
-def _encode_record(record: JobRecord) -> dict[str, str]:
-    """Encode the record. Precondition: JSON-serialisable fields. Postcondition: one JSON string per field; no
-    ending field while the record has no ending, so settle can add it once."""
-    fields = {name: json.dumps(value) for name, value in asdict(record).items()}
-    if record.ending is None:
-        fields.pop(_ENDING_FIELD)
-    return fields
 
 
 def _decode_ending(raw: Mapping[str, Any] | None) -> JobEnding | None:
@@ -88,19 +67,17 @@ def _decode_ending(raw: Mapping[str, Any] | None) -> JobEnding | None:
 
 
 def _decode_record(raw: Mapping[bytes | str, bytes | str]) -> JobRecord | None:
-    """Rebuild a record from a hash. Precondition: none. Postcondition: None unless every record field but the ending
-    is present; fields that are not record fields (written by a newer version) are ignored."""
-    if not _REQUIRED_FIELDS.issubset(_text(name) for name in raw):
+    """Rebuild a record from a hash. Precondition: none. Postcondition: None without the created record; otherwise
+    the created record with every later change applied. Fields a newer version added are ignored."""
+    stored = {_text(name): json.loads(_text(value)) for name, value in raw.items()}
+    created = stored.pop(_CREATED_FIELD, None)
+    if created is None:
         return None
-    fields = {_text(name): json.loads(_text(value)) for name, value in raw.items() if _text(name) in _RECORD_FIELDS}
-    fields["owner"] = JobOwner(
-        tenant_id=fields["owner"]["tenant_id"],
-        app_id=fields["owner"]["app_id"],
-        caller_role=CreatorUserRole(fields["owner"]["caller_role"]),
-        caller_id=fields["owner"]["caller_id"],
-    )
+    fields = {name: value for name, value in {**created, **stored}.items() if name in _RECORD_FIELDS}
+    owner = fields["owner"]
+    fields["owner"] = JobOwner(**{**owner, "caller_role": CreatorUserRole(owner["caller_role"])})
     fields["mode"] = AppMode(fields["mode"])
-    fields[_ENDING_FIELD] = _decode_ending(fields.get(_ENDING_FIELD))
+    fields[_ENDING_FIELD] = _decode_ending(fields[_ENDING_FIELD])
     return JobRecord(**fields)
 
 
@@ -113,28 +90,19 @@ class RedisRunJobStore:
         """
         self._redis = redis_client
 
-    def open(self, record: JobRecord, *, idempotency_key: str | None) -> OpenedJob:
-        """Store a new job, or return the job already bound to the idempotency key.
+    def create(self, record: JobRecord) -> bool:
+        """Store a new job unless a job with its id exists.
 
-        Precondition: record.id is unused; idempotency_key is None or unique per caller and request.
-        Postcondition: when created is True, the record, its alive key and (if given) the idempotency
-        key exist with their TTLs; when False, no new job remains and record is the earlier job.
+        Precondition: record is a new job: no ids, no stop request, no ending.
+        Postcondition: true when this call stored it (one HSETNX, so exactly one of several racing calls does):
+        the job and its alive key exist with their TTLs. False with nothing written when the job already existed.
         """
-        self._write_new(record)
-        if idempotency_key is None:
-            return OpenedJob(record=record, created=True)
-        idem_name = self._idempotency_name(record.owner, idempotency_key)
-        reserved, existing = self._bind(idem_name, record.id)
-        if not reserved:
-            if existing is None:
-                self._release_stale(idem_name)
-                reserved, existing = self._bind(idem_name, record.id)
-        if reserved:
-            return OpenedJob(record=record, created=True)
-        self.discard(record.id, idempotency_key=None)
-        if existing is None:
-            raise RuntimeError("Idempotency key is contended; retry the request")
-        return OpenedJob(record=existing, created=False)
+        name = self._job_name(record.id)
+        if not self._redis.hsetnx(name, _CREATED_FIELD, json.dumps(asdict(record))):
+            return False
+        self._redis.expire(name, JOB_TTL_SECONDS)
+        self.touch(record.id)
+        return True
 
     def get(self, job_id: str) -> JobRecord | None:
         """Load a job.
@@ -191,25 +159,9 @@ class RedisRunJobStore:
         self._redis.hset(name, mapping=fields)
         self._redis.expire(name, JOB_TTL_SECONDS)
 
-    def discard(self, job_id: str, *, idempotency_key: str | None) -> None:
-        """Remove a job, its alive key and its idempotency key.
-
-        Precondition: when idempotency_key is given, the job is still stored so the owner can be read.
-        Postcondition: the job and alive keys are gone; the idempotency key is gone if it pointed here.
-        """
-        record = self.get(job_id)
+    def discard(self, job_id: str) -> None:
+        """Remove a job and its alive key. Precondition: none. Postcondition: both keys are gone."""
         self._redis.delete(self._job_name(job_id), self._alive_name(job_id))
-        if idempotency_key is None:
-            return
-        if record is None:
-            return
-        idem_name = self._idempotency_name(record.owner, idempotency_key)
-        bound_id = self._redis.get(idem_name)
-        if bound_id is None:
-            return
-        if _text(bound_id) != job_id:
-            return
-        self._redis.delete(idem_name)
 
     def touch(self, job_id: str) -> None:
         """Refresh the alive key.
@@ -223,45 +175,9 @@ class RedisRunJobStore:
         """Report whether the alive key is present.
 
         Precondition: none.
-        Postcondition: true only if touch or open ran within ALIVE_TTL_SECONDS.
+        Postcondition: true only if touch or create ran within ALIVE_TTL_SECONDS.
         """
         return bool(self._redis.exists(self._alive_name(job_id)))
-
-    def _reserve(self, idem_name: str, job_id: str) -> bool:
-        """Bind the idempotency key. Precondition: none. Postcondition: true only if this call bound it."""
-        return bool(self._redis.set(idem_name, job_id, nx=True, ex=JOB_TTL_SECONDS))
-
-    def _bind(self, idem_name: str, job_id: str) -> tuple[bool, JobRecord | None]:
-        """Try to bind the key. Precondition: none. Postcondition: (True, None) when bound; else False and the job
-        the key names, or None when that job vanished."""
-        if self._reserve(idem_name, job_id):
-            return True, None
-        return False, self._bound_job(idem_name)
-
-    def _bound_job(self, idem_name: str) -> JobRecord | None:
-        """Load the job a key names. Precondition: none. Postcondition: None if unbound or the job vanished."""
-        bound_id = self._redis.get(idem_name)
-        return None if bound_id is None else self.get(_text(bound_id))
-
-    def _release_stale(self, idem_name: str) -> None:
-        """Free a key whose job vanished. Precondition: none.
-
-        Postcondition: the key is deleted only if it still holds the id read now and that job is gone.
-        """
-        bound_id = self._redis.get(idem_name)
-        if bound_id is None:
-            return
-        if self.get(_text(bound_id)) is not None:
-            return
-        delete_if_equal = self._redis.register_script(_DELETE_IF_EQUAL)
-        delete_if_equal(keys=[idem_name], args=[_text(bound_id)])
-
-    def _write_new(self, record: JobRecord) -> None:
-        """Persist a record. Precondition: none. Postcondition: hash and alive key exist with their TTLs."""
-        name = self._job_name(record.id)
-        self._redis.hset(name, mapping=_encode_record(record))
-        self._redis.expire(name, JOB_TTL_SECONDS)
-        self.touch(record.id)
 
     @staticmethod
     def _job_name(job_id: str) -> str:
@@ -272,14 +188,3 @@ class RedisRunJobStore:
     def _alive_name(job_id: str) -> str:
         """Alive key. Precondition: none. Postcondition: the key."""
         return _ALIVE_KEY.format(job_id=job_id)
-
-    @staticmethod
-    def _idempotency_name(owner: JobOwner, key: str) -> str:
-        """Idempotency key. Precondition: none. Postcondition: scoped to tenant, app, role and caller."""
-        return _IDEMPOTENCY_KEY.format(
-            tenant_id=owner.tenant_id,
-            app_id=owner.app_id,
-            caller_role=owner.caller_role.value,
-            caller_id=owner.caller_id,
-            key=key,
-        )
