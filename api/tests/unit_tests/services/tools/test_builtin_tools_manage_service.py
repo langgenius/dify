@@ -3,7 +3,7 @@
 import json
 from collections.abc import Callable
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
@@ -12,6 +12,8 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
+from core.helper import encrypter
+from core.helper.provider_cache import ToolProviderCredentialsCache
 from core.plugin.entities.oauth import OAuthSchema
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl import base as client_module
@@ -724,6 +726,118 @@ class TestGetBuiltinToolProviderCredentials:
         stored = repository_session.get(BuiltinToolProvider, "cred-1")
         assert stored is not None
         assert stored.is_default is False
+
+
+class TestGetBuiltinToolProviderRuntimeCredentials:
+    @staticmethod
+    def _provider(*, needs_credentials: bool) -> PluginToolProviderController:
+        return PluginToolProviderController(
+            entity=ToolProviderEntityWithPlugin(
+                identity=ToolProviderIdentity(
+                    author="test",
+                    name="google",
+                    description=I18nObject(en_US="Google"),
+                    icon="google.svg",
+                    label=I18nObject(en_US="Google"),
+                ),
+                credentials_schema=[ProviderConfig(name="key", type=ProviderConfigType.SECRET_INPUT)]
+                if needs_credentials
+                else [],
+            ),
+            plugin_id="langgenius/google",
+            plugin_unique_identifier="langgenius/google:1.0.0@" + "a" * 32,
+            tenant_id="tenant-1",
+        )
+
+    @pytest.fixture
+    def runtime_provider(self, monkeypatch: pytest.MonkeyPatch) -> PluginToolProviderController:
+        controller = self._provider(needs_credentials=True)
+        monkeypatch.setattr(service_module.ToolManager, "get_plugin_provider", lambda _provider, _tenant_id: controller)
+        # Keep the real credential schema and encrypter while isolating Redis and token encryption.
+        monkeypatch.setattr(ToolProviderCredentialsCache, "get", lambda _self: None)
+        monkeypatch.setattr(ToolProviderCredentialsCache, "set", lambda _self, _config: None)
+        monkeypatch.setattr(encrypter, "decrypt_token", lambda _tenant_id, token: token)
+        return controller
+
+    def test_returns_unauthorized_when_provider_does_not_need_credentials(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        controller = self._provider(needs_credentials=False)
+        monkeypatch.setattr(service_module.ToolManager, "get_plugin_provider", lambda _provider, _tenant_id: controller)
+
+        credentials, credential_type, plugin_unique_identifier = (
+            BuiltinToolManageService.get_builtin_tool_provider_runtime_credentials("tenant-1", "google", None)
+        )
+
+        assert plugin_unique_identifier == "langgenius/google:1.0.0@" + "a" * 32
+        assert credentials == {}
+        assert credential_type == CredentialType.UNAUTHORIZED.value
+
+    def test_decrypts_the_credential_selected_by_id(
+        self,
+        repository_session: Session,
+        runtime_provider: PluginToolProviderController,
+    ) -> None:
+        _persist_provider(repository_session, credential_id="cred-1", name="First", credentials={"key": "first"})
+        _persist_provider(repository_session, credential_id="cred-2", name="Second", credentials={"key": "second"})
+        with patch.object(encrypter, "decrypt_token", return_value="decrypted-second") as decrypt_token:
+            credentials, credential_type, plugin_unique_identifier = (
+                BuiltinToolManageService.get_builtin_tool_provider_runtime_credentials("tenant-1", "google", "cred-2")
+            )
+
+        assert plugin_unique_identifier == "langgenius/google:1.0.0@" + "a" * 32
+        assert credentials == {"key": "decrypted-second"}
+        assert credential_type == CredentialType.API_KEY
+        decrypt_token.assert_called_once_with("tenant-1", "second")
+
+    def test_falls_back_to_the_default_credential(
+        self,
+        repository_session: Session,
+        runtime_provider: PluginToolProviderController,
+    ) -> None:
+        _persist_provider(
+            repository_session,
+            credential_id="older",
+            name="Older",
+            is_default=False,
+            credentials={"key": "older"},
+        )
+        _persist_provider(
+            repository_session,
+            credential_id="default",
+            name="Default",
+            is_default=True,
+            credentials={"key": "default"},
+        )
+        credentials, _credential_type, plugin_unique_identifier = (
+            BuiltinToolManageService.get_builtin_tool_provider_runtime_credentials("tenant-1", "google", None)
+        )
+
+        assert plugin_unique_identifier == "langgenius/google:1.0.0@" + "a" * 32
+        assert credentials == {"key": "default"}
+
+    def test_raises_when_no_credential_exists(
+        self,
+        repository_session: Session,
+        runtime_provider: PluginToolProviderController,
+    ) -> None:
+        with pytest.raises(ValueError, match="Builtin provider google not found"):
+            BuiltinToolManageService.get_builtin_tool_provider_runtime_credentials("tenant-1", "google", "missing")
+
+    @pytest.mark.parametrize(("tenant_id", "provider"), [("other-tenant", "google"), ("tenant-1", "other-provider")])
+    def test_rejects_credentials_outside_the_resolved_provider(
+        self,
+        repository_session: Session,
+        runtime_provider: PluginToolProviderController,
+        tenant_id: str,
+        provider: str,
+    ) -> None:
+        _persist_provider(repository_session, tenant_id=tenant_id, provider=provider)
+
+        with pytest.raises(ValueError, match="Builtin provider google not found"):
+            BuiltinToolManageService.get_builtin_tool_provider_runtime_credentials(
+                "tenant-1", "langgenius/google/google", "cred-1"
+            )
 
 
 class TestGetBuiltinProvider:

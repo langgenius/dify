@@ -511,15 +511,17 @@ export const get51Errors = { plugin_error: { status: 400, data: zPluginError } }
 
 export const post46Errors = { plugin_error: { status: 400, data: zPluginError } }
 
+export const get52Errors = { plugin_error: { status: 400, data: zPluginError } }
+
 export const post48Errors = { plugin_error: { status: 400, data: zPluginError } }
 
 export const post49Errors = { plugin_error: { status: 400, data: zPluginError } }
 
 export const post50Errors = { plugin_error: { status: 400, data: zPluginError } }
 
-export const get54Errors = { plugin_error: { status: 400, data: zPluginError } }
-
 export const get55Errors = { plugin_error: { status: 400, data: zPluginError } }
+
+export const get56Errors = { plugin_error: { status: 400, data: zPluginError } }
 
 export const post51Errors = { plugin_error: { status: 400, data: zPluginError } }
 
@@ -531,7 +533,7 @@ export const post55Errors = { plugin_error: { status: 400, data: zPluginError } 
 
 export const post56Errors = { plugin_error: { status: 400, data: zPluginError } }
 
-export const get56Errors = { plugin_error: { status: 400, data: zPluginError } }
+export const get57Errors = { plugin_error: { status: 400, data: zPluginError } }
 
 export const post61Errors = {
   filename_missing: { status: 400, data: zFilenameMissingError },
@@ -544,9 +546,9 @@ export const post63Errors = { invalid_request: { status: 400, data: zInvalidRequ
 
 export const post65Errors = { invalid_request: { status: 400, data: zInvalidRequestError } }
 
-export const get97Errors = { invalid_request: { status: 400, data: zInvalidRequestError } }
-
 export const get98Errors = { invalid_request: { status: 400, data: zInvalidRequestError } }
+
+export const get99Errors = { invalid_request: { status: 400, data: zInvalidRequestError } }
 
 export const patch6Errors = { invalid_request: { status: 400, data: zInvalidRequestError } }
 
@@ -564,11 +566,11 @@ export const patch8Errors = { invalid_request: { status: 400, data: zInvalidRequ
 
 export const post68Errors = { invalid_request: { status: 400, data: zInvalidRequestError } }
 
-export const get104Errors = {
+export const get105Errors = {
   current_workspace_archived: { status: 409, data: zCurrentWorkspaceArchivedError },
 }
 
-export const get130Errors = {
+export const get131Errors = {
   trigger_oauth_client_config_invalid: { status: 500, data: zTriggerOauthClientConfigInvalidError },
 }
 
@@ -583,7 +585,7 @@ export const post85Errors = {
   trigger_subscription_provider_error: { status: 502, data: zTriggerSubscriptionProviderError },
 }
 
-export const get134Errors = {
+export const get135Errors = {
   trigger_oauth_client_config_invalid: { status: 500, data: zTriggerOauthClientConfigInvalidError },
   trigger_oauth_provider_error: { status: 502, data: zTriggerOauthProviderError },
 }

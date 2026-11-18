@@ -54,6 +54,7 @@ const createProvider = () => {
       max: 10,
       label: { en_US: 'Count', zh_Hans: null },
       description: { en_US: 'How many documents' },
+      dynamic_select_lazy_load: false,
     },
     {
       name: 'enabled',
@@ -62,6 +63,7 @@ const createProvider = () => {
       default: false,
       label: { en_US: 'Enabled' },
       description: { en_US: 'Include archived documents' },
+      dynamic_select_lazy_load: false,
     },
   ]
   return provider
