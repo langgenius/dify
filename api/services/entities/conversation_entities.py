@@ -128,6 +128,23 @@ class ConversationLogExportCounts:
 
 
 @dataclass(frozen=True, slots=True)
+class ConversationLogExportRow:
+    """One message and its optional identity, feedback and conversation status."""
+
+    conversation_id: str
+    message_id: str
+    created_at: datetime
+    end_user_id: str | None
+    account_id: str | None
+    account_name: str | None
+    user_input: str
+    app_response: str
+    feedback_rating: str | None
+    feedback_content: str | None
+    status: str | None
+
+
+@dataclass(frozen=True, slots=True)
 class ConsoleConversationAccount:
     id: str
     name: str

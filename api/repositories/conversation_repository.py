@@ -1,5 +1,6 @@
 """Persist conversations within their end-user, installed-account, or Console app scope."""
 
+from collections.abc import Iterator
 from copy import deepcopy
 from dataclasses import replace
 from datetime import datetime
@@ -7,18 +8,20 @@ from typing import cast
 
 from psycopg2.errors import QueryCanceled
 from pydantic import JsonValue
-from sqlalchemy import Select, and_, exists, func, or_, select, text, update
+from sqlalchemy import DateTime, Select, and_, case, exists, func, literal, or_, select, text, tuple_, update
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import InstrumentedAttribute, Session, sessionmaker
 
+from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from libs.helper import escape_like_pattern
 from libs.pagination import paginate_query
 from machinery.context import RequestContext
 from models.account import Account
-from models.enums import ConversationFromSource, CreatorUserRole, InvokeFrom
-from models.model import App, AppMode, Conversation, EndUser, InstalledApp, Message, MessageAnnotation
+from models.enums import ConversationFromSource, CreatorUserRole, FeedbackFromSource, InvokeFrom
+from models.model import App, AppMode, Conversation, EndUser, InstalledApp, Message, MessageAnnotation, MessageFeedback
 from models.web import PinnedConversation
+from models.workflow import WorkflowRun
 from repositories.app.console_repository import find_console_app
 from repositories.conversation_lifecycle import retire_conversation, retire_debug_conversation_workspaces
 from repositories.message_projection import snapshot_console_message
@@ -44,6 +47,7 @@ from services.entities.conversation_entities import (
     ConversationInputValue,
     ConversationListSource,
     ConversationLogExportCounts,
+    ConversationLogExportRow,
     ConversationNameSource,
     ConversationPage,
     ConversationRecord,
@@ -59,6 +63,7 @@ from services.errors.message import MessageNotExistsError
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
 
 _LOG_EXPORT_COUNT_TIMEOUT_MS = 1500
+_LOG_EXPORT_BATCH_SIZE = 500
 
 
 class ConversationRepository:
@@ -320,6 +325,199 @@ class ConversationRepository:
             return ConversationLogExportCounts(
                 conversation_count=int(conversation_count), message_count=int(message_count)
             )
+
+    def iter_console_log_export_rows(
+        self, *, scope: ConsoleConversationScope, filters: ConsoleConversationLogFilters
+    ) -> Iterator[ConversationLogExportRow]:
+        """Yield one row per message of the owned app's matching conversations.
+
+        Exclude new conversations and messages using the export start time. Release the read
+        session before yielding each batch so the caller can write it outside a transaction.
+        """
+        end_before = naive_utc_now()
+        conversation_cursor: tuple[datetime, str] | None = None
+        has_more_conversations = True
+        while has_more_conversations:
+            conversation_ids, statuses, conversation_cursor = self._console_log_export_selection(
+                scope=scope, filters=filters, end_before=end_before, cursor=conversation_cursor
+            )
+            has_more_conversations = conversation_cursor is not None
+            message_cursor: tuple[datetime, str] | None = None
+            has_more_messages = bool(conversation_ids)
+            while has_more_messages:
+                rows = self._console_log_export_message_batch(
+                    scope=scope,
+                    conversation_ids=conversation_ids,
+                    statuses=statuses,
+                    end_before=end_before,
+                    cursor=message_cursor,
+                )
+                yield from rows
+                has_more_messages = len(rows) == _LOG_EXPORT_BATCH_SIZE
+                if has_more_messages:
+                    last = rows[-1]
+                    message_cursor = (last.created_at, last.message_id)
+
+    def _console_log_export_selection(
+        self,
+        *,
+        scope: ConsoleConversationScope,
+        filters: ConsoleConversationLogFilters,
+        end_before: datetime,
+        cursor: tuple[datetime, str] | None,
+    ) -> tuple[tuple[str, ...], dict[str, str], tuple[datetime, str] | None]:
+        """Select matching IDs and statuses within one candidate page of the owned app.
+
+        The next cursor advances over the candidate page even when it yields no matches.
+        Return None as the cursor when there are no more candidates to scan.
+        """
+        with self._session_factory() as session:
+            app = find_console_app(session, workspace_id=scope.tenant_id, app_id=scope.app_id)
+            if app is None or app.mode != scope.app_mode:
+                raise ConsoleAppNotFoundError("App not found.")
+
+            # Page the inexpensive predicates before applying keyword and annotation joins.
+            candidates, _ = self._filter_console_conversations(
+                select(Conversation.created_at, Conversation.id),
+                app_id=app.id,
+                mode=app.mode,
+                filters=replace(filters, keyword=None, annotation_status="all"),
+            )
+            candidates = candidates.where(Conversation.created_at < end_before)
+            if cursor is not None:
+                candidates = candidates.where(
+                    tuple_(Conversation.created_at, Conversation.id)
+                    > tuple_(
+                        literal(cursor[0], type_=Conversation.created_at.type),
+                        literal(cursor[1], type_=Conversation.id.type),
+                    )
+                )
+            page = (
+                session.execute(
+                    candidates.order_by(Conversation.created_at, Conversation.id).limit(_LOG_EXPORT_BATCH_SIZE)
+                )
+                .tuples()
+                .all()
+            )
+            if not page:
+                return (), {}, None
+
+            conversation_ids = tuple(conversation_id for _, conversation_id in page)
+            if filters.keyword or filters.annotation_status != "all":
+                matches, _ = self._filter_console_conversations(
+                    select(Conversation.id).where(Conversation.id.in_(conversation_ids)),
+                    app_id=app.id,
+                    mode=app.mode,
+                    filters=filters,
+                )
+                conversation_ids = tuple(session.scalars(matches))
+
+            statuses = (
+                self._chatflow_log_export_statuses(session, scope, conversation_ids, end_before)
+                if conversation_ids and app.mode == AppMode.ADVANCED_CHAT
+                else {}
+            )
+            next_cursor = (page[-1][0], page[-1][1]) if len(page) == _LOG_EXPORT_BATCH_SIZE else None
+            return conversation_ids, statuses, next_cursor
+
+    def _console_log_export_message_batch(
+        self,
+        *,
+        scope: ConsoleConversationScope,
+        conversation_ids: tuple[str, ...],
+        statuses: dict[str, str],
+        end_before: datetime,
+        cursor: tuple[datetime, str] | None,
+    ) -> list[ConversationLogExportRow]:
+        """Read a bounded message batch for the selected conversations of the admitted app."""
+        with self._session_factory() as session:
+            app = find_console_app(session, workspace_id=scope.tenant_id, app_id=scope.app_id)
+            if app is None or app.mode != scope.app_mode:
+                raise ConsoleAppNotFoundError("App not found.")
+            # Select only one user feedback even if old data has more than one per message.
+            feedback_id = (
+                select(MessageFeedback.id)
+                .where(
+                    MessageFeedback.message_id == Message.id,
+                    MessageFeedback.app_id == app.id,
+                    MessageFeedback.from_source == FeedbackFromSource.USER,
+                )
+                .order_by(MessageFeedback.updated_at.desc(), MessageFeedback.id.desc())
+                .limit(1)
+                .correlate(Message)
+                .scalar_subquery()
+            )
+            statement = (
+                select(
+                    Message.conversation_id,
+                    Message.id,
+                    Message.created_at,
+                    EndUser.session_id,
+                    Conversation.from_account_id,
+                    Account.name,
+                    Message.query,
+                    Message.answer,
+                    MessageFeedback.rating,
+                    MessageFeedback.content,
+                )
+                .select_from(Message)
+                .join(Conversation, Conversation.id == Message.conversation_id)
+                .outerjoin(
+                    EndUser, and_(EndUser.id == Conversation.from_end_user_id, EndUser.tenant_id == scope.tenant_id)
+                )
+                .outerjoin(Account, Account.id == Conversation.from_account_id)
+                .outerjoin(MessageFeedback, MessageFeedback.id == feedback_id)
+                .where(
+                    Message.app_id == app.id,
+                    Conversation.app_id == app.id,
+                    Conversation.is_deleted.is_(False),
+                    Message.conversation_id.in_(conversation_ids),
+                    Message.created_at < end_before,
+                )
+                .order_by(Message.created_at, Message.id)
+                .limit(_LOG_EXPORT_BATCH_SIZE)
+            )
+            if cursor is not None:
+                statement = statement.where(
+                    tuple_(Message.created_at, Message.id)
+                    > tuple_(literal(cursor[0], type_=DateTime()), literal(cursor[1], type_=Message.id.type))
+                )
+
+            rows = session.execute(statement).tuples().all()
+            return [ConversationLogExportRow(*row, status=statuses.get(row[0])) for row in rows]
+
+    @staticmethod
+    def _chatflow_log_export_statuses(
+        session: Session, scope: ConsoleConversationScope, conversation_ids: tuple[str, ...], end_before: datetime
+    ) -> dict[str, str]:
+        """Resolve the Logs status for each batch conversation's exported messages with linked runs."""
+        # The Logs UI prioritizes paused, failed and partial success in that order.
+        statuses = (
+            WorkflowExecutionStatus.SUCCEEDED,
+            WorkflowExecutionStatus.PARTIAL_SUCCEEDED,
+            WorkflowExecutionStatus.FAILED,
+            WorkflowExecutionStatus.PAUSED,
+        )
+        priority = case({status: index for index, status in enumerate(statuses)}, value=WorkflowRun.status, else_=0)
+        statement = (
+            select(Message.conversation_id, func.max(priority))
+            .outerjoin(
+                WorkflowRun,
+                and_(
+                    WorkflowRun.id == Message.workflow_run_id,
+                    WorkflowRun.app_id == scope.app_id,
+                    WorkflowRun.tenant_id == scope.tenant_id,
+                ),
+            )
+            .where(
+                Message.app_id == scope.app_id,
+                Message.conversation_id.in_(conversation_ids),
+                Message.workflow_run_id.is_not(None),
+                Message.created_at < end_before,
+            )
+            .group_by(Message.conversation_id)
+        )
+        return {conversation_id: statuses[index].value for conversation_id, index in session.execute(statement)}
 
     def get_console_detail(
         self, context: RequestContext, app_id: str, conversation_id: str, *, kind: ConsoleConversationKind

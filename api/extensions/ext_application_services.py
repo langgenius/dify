@@ -219,6 +219,7 @@ from services.recommended_app_package_service import RecommendedAppPackageServic
 from services.recommended_app_query_service import RecommendedAppQueryService
 from services.remote_file_service import RemoteFileService
 from services.resource_access_token_service import ResourceAccessTokenService
+from services.retention.conversation.log_export_service import ConversationLogExportService
 from services.retention.workflow_run.archive_download_adapters import (
     dispatch_workflow_run_archive_deletion_task,
     dispatch_workflow_run_archive_download_task,
@@ -347,6 +348,7 @@ class ApplicationServices:
     conversation_names: ConversationNameService
     conversation_commands: ConversationCommandService
     conversation_queries: ConversationQueryService
+    conversation_log_exports: ConversationLogExportService
     data_sources: DataSourceServices
     knowledge: KnowledgeServices
     app_scoped_end_users: AppScopedEndUserServices
@@ -689,6 +691,7 @@ def build_application_services(
         conversation_names=conversation_names,
         conversation_commands=conversation_commands,
         conversation_queries=conversation_queries,
+        conversation_log_exports=ConversationLogExportService(conversations=conversations),
         accounts=account_services,
         apps=apps,
         credential_queries=credential_queries,
