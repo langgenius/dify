@@ -34,6 +34,7 @@ from models.enums import AppStatus, ConversationFromSource, ConversationStatus, 
 from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message
 from models.workflow import Workflow
 from repositories.app.agent_app_queries import get_app_backing_agent, get_roster_agent_app
+from repositories.tag_repository import TagRepository
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import (
@@ -224,17 +225,37 @@ class AgentRosterService:
         keyword: str | None = None,
         app_id: str | None = None,
         accessible_agent_ids: Sequence[str] | None = None,
+        tag_ids: tuple[str, ...] = (),
     ) -> dict[str, Any]:
-        """List active roster Agents whose published snapshot can be called by Workflow."""
+        """List existing callable roster candidates matching all selected Agent tags.
 
-        stmt = self._build_roster_agents_stmt(tenant_id=tenant_id, keyword=keyword).where(
-            Agent.active_config_has_model.is_(True),
-            workflow_callable_active_snapshot_filter(),
+        Preconditions: tenant and filters are validated; the caller owns the
+        supplied session. Postconditions: visibility, count and pagination
+        share the same filter; no tags preserves the previous candidate rules,
+        while selecting tags permits only Dify Agents. Returned labels come
+        from the workspace's independent Agent pool. This read never commits.
+        """
+
+        stmt = (
+            self._build_roster_agents_stmt(tenant_id=tenant_id, keyword=keyword)
+            .where(
+                Agent.active_config_has_model.is_(True),
+                workflow_callable_active_snapshot_filter(),
+            )
+            .order_by(Agent.id)
         )
         if accessible_agent_ids is not None:
             stmt = stmt.where(Agent.id.in_(accessible_agent_ids))
+        if tag_ids:
+            target_ids = TagRepository.get_target_ids_by_tag_ids(
+                "agent", tenant_id, list(tag_ids), self._session, match_all=True
+            )
+            stmt = stmt.where(Agent.agent_kind == AgentKind.DIFY_AGENT, Agent.id.in_(target_ids))
         total = self._session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
         agents = list(self._session.scalars(stmt.offset((page - 1) * limit).limit(limit)).all())
+        tags = TagRepository.load_tags_for_targets(
+            self._session, tenant_id=tenant_id, tag_type="agent", target_ids=[agent.id for agent in agents]
+        )
         versions_by_id = self._load_versions_by_id(
             [agent.active_config_snapshot_id for agent in agents if agent.active_config_snapshot_id]
         )
@@ -287,6 +308,7 @@ class AgentRosterService:
 
         for item in data:
             existing_node_ids = usage_by_agent_id.get(item["id"], [])
+            item["tags"] = tags.get(item["id"], [])
             item["is_in_current_workflow"] = bool(existing_node_ids)
             item["in_current_workflow_count"] = len(existing_node_ids)
             item["existing_node_ids"] = existing_node_ids

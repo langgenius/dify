@@ -1,12 +1,14 @@
+import json
 from http import HTTPStatus
 from typing import Literal
 from uuid import UUID
 
 from flask import abort, request
 from flask_restx import Resource
-from pydantic import AliasChoices, BaseModel, Field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, ValidationError, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import UnprocessableEntity
 
 from configs import dify_config
 from controllers.common.agent_access import resolve_agent_access_filter
@@ -83,6 +85,7 @@ from models.account import TenantAccountRole
 from models.agent import Agent, AgentStatus
 from models.agent_config_entities import AgentSoulConfig
 from models.model import App, IconType
+from repositories.tag_repository import TagRepository
 from services.agent.composer_service import AgentComposerService
 from services.agent.errors import (
     AgentAccessNotReadyError,
@@ -117,6 +120,7 @@ AgentPublicationStatus = Literal["published", "drafts"]
 
 class AgentInviteOptionsQuery(RosterListQuery):
     app_id: str | None = Field(default=None, description="Workflow app id for in-current-workflow markers")
+    tag_ids: list[UUID] = Field(default_factory=list, description="Agent tag IDs; every selected tag must match")
 
 
 class AgentAppListQuery(AppListQuery):
@@ -400,6 +404,10 @@ def _serialize_agent_app_detail(
     id, and `role` is injected from the backing roster Agent. Keeping that
     remap in this serializer lets generated console/agent contracts expose the
     roster persona fields without widening the shared /apps detail schema.
+
+    Preconditions: the caller owns the tenant-scoped session and admitted account.
+    Postconditions: tags come from the canonical Agent pool rather than the
+    underlying Studio App; no additional session is opened for tag projection.
     """
 
     access_mode = None
@@ -425,6 +433,10 @@ def _serialize_agent_app_detail(
     )
     if not agent:
         raise AgentNotFoundError()
+    tags = TagRepository.load_tags_for_targets(
+        session, tenant_id=app_model.tenant_id, tag_type="agent", target_ids=[agent.id]
+    )
+    payload["tags"] = tags.get(agent.id, [])
     payload.pop("bound_agent_id", None)
     payload["app_id"] = agent.app_id
     payload["backing_app_id"] = roster_service.runtime_backing_app_id(agent)
@@ -485,6 +497,10 @@ def _serialize_agent_app_pagination(
     `bound_agent_id`, rewrites `id` to the backing roster Agent id, stores the
     original App id in `app_id`, and injects roster-only `role` when a backing
     Agent is present.
+
+    Preconditions: app_pagination was filtered in this tenant before pagination.
+    Postconditions: each card shows its canonical Agent's independent tags and
+    keeps the existing permission, publication and Build conversation metadata.
     """
 
     app_ids = [str(app.id) for app in app_pagination.items]
@@ -492,6 +508,9 @@ def _serialize_agent_app_pagination(
     agents_by_app_id = roster_service.load_app_backing_agents_by_app_id(
         tenant_id=tenant_id,
         app_ids=app_ids,
+    )
+    tags = TagRepository.load_tags_for_targets(
+        session, tenant_id=tenant_id, tag_type="agent", target_ids=[agent.id for agent in agents_by_app_id.values()]
     )
     active_config_is_published_by_agent_id = roster_service.load_active_config_is_published_by_agent_id(
         tenant_id=tenant_id,
@@ -530,6 +549,7 @@ def _serialize_agent_app_pagination(
         app_id = item["id"]
         item.pop("bound_agent_id", None)
         agent = agents_by_app_id.get(app_id)
+        item["tags"] = tags.get(agent.id, []) if agent else []
         if agent:
             item["app_id"] = app_id
             item["backing_app_id"] = agent.backing_app_id or app_id
@@ -1057,14 +1077,24 @@ class AgentInviteOptionsApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @with_session(write=False)
-    @model_validate(AgentInviteOptionsQuery)
     def get(
         self,
-        req_data: AgentInviteOptionsQuery,
         session: Session,
         tenant_id: str,
         current_user: Account,
     ):
+        """Return existing callable candidates narrowed by every selected Agent tag.
+
+        Preconditions: legacy Console admission supplied this tenant and account.
+        Postconditions: repeated tag IDs are UUID-validated before querying, old
+        visibility rules remain in force, and invalid filters retain the 422
+        validation contract without exposing submitted values.
+        """
+        try:
+            req_data = query_params_from_request(AgentInviteOptionsQuery, list_fields=("tag_ids",))
+        except ValidationError as exc:
+            errors = exc.errors(include_url=False, include_input=False, include_context=False)
+            raise UnprocessableEntity(json.dumps(errors)) from None
         accessible_agent_ids = None
         if dify_config.RBAC_ENABLED:
             permissions = application_services().rbac.members.permissions(
@@ -1088,6 +1118,7 @@ class AgentInviteOptionsApi(Resource):
                 keyword=req_data.keyword,
                 app_id=req_data.app_id,
                 accessible_agent_ids=accessible_agent_ids,
+                tag_ids=tuple(str(tag_id) for tag_id in req_data.tag_ids),
             ),
         )
 

@@ -34,6 +34,7 @@ from models.agent import (
     APP_BACKED_AGENT_SOURCES,
     Agent,
     AgentIconType,
+    AgentKind,
     AgentScope,
     AgentStatus,
     AgentWorkingResourceStatus,
@@ -42,7 +43,8 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig
-from models.model import App, AppMode, AppModelConfig, IconType, Site, load_annotation_reply_config
+from models.enums import TagType
+from models.model import App, AppMode, AppModelConfig, IconType, Site, Tag, TagBinding, load_annotation_reply_config
 from models.provider_ids import ModelProviderID
 from models.skill import AgentSkillBinding
 from models.workflow import Workflow
@@ -223,6 +225,12 @@ class AppService:
     def _build_app_list_filters(
         user_id: str, tenant_id: str, params: AppListBaseParams, session: Session
     ) -> list[sa.ColumnElement[bool]]:
+        """Build existing App filters with tags from the requested resource pool.
+
+        Preconditions: tenant and filters are caller-validated. Postconditions:
+        Agent tags match canonical roster IDs before App counting/pagination;
+        other modes retain Studio tags and invalid selections return no result.
+        """
         filters = [App.tenant_id == tenant_id, App.is_universal.is_(False)]
 
         if params.mode == "workflow":
@@ -267,9 +275,24 @@ class AppService:
             escaped_name = escape_like_pattern(name)
             filters.append(App.name.ilike(f"%{escaped_name}%", escape="\\"))
         if params.tag_ids and len(params.tag_ids) > 0:
-            target_ids = TagService.get_target_ids_by_tag_ids("app", tenant_id, params.tag_ids, session, match_all=True)
+            target_ids = TagService.get_target_ids_by_tag_ids(
+                "agent" if params.mode == "agent" else "app", tenant_id, params.tag_ids, session, match_all=True
+            )
             if target_ids and len(target_ids) > 0:
-                filters.append(App.id.in_(target_ids))
+                if params.mode == "agent":
+                    filters.append(
+                        App.id.in_(
+                            select(Agent.app_id).where(
+                                Agent.tenant_id == tenant_id,
+                                Agent.scope == AgentScope.ROSTER,
+                                Agent.status == AgentStatus.ACTIVE,
+                                Agent.agent_kind == AgentKind.DIFY_AGENT,
+                                Agent.id.in_(target_ids),
+                            )
+                        )
+                    )
+                else:
+                    filters.append(App.id.in_(target_ids))
             else:
                 return []
 
@@ -787,10 +810,21 @@ class AppService:
         After commit, the main App cleanup is published first, followed by
         workflow-only Agent retirement and the Roster resource collector. Any
         publication failure propagates.
+
+        Preconditions: the caller owns the App's tenant-scoped transaction.
+        Postconditions: archived roster Agents have no Agent tag bindings and
+        other assets' tags remain unchanged, including after concurrent binds.
         """
         app_was_deleted.send(app)
 
         backing_agent = self._get_backing_agent(app, session=session)
+        if backing_agent is not None:
+            backing_agent = session.scalar(
+                select(Agent)
+                .where(Agent.tenant_id == app.tenant_id, Agent.id == backing_agent.id)
+                .with_for_update()
+                .execution_options(populate_existing=True)
+            )
         workflow_agent_ids = set(
             session.scalars(
                 select(Agent.id).where(
@@ -833,6 +867,15 @@ class AppService:
         if account_id is ...:
             account_id = current_user.id if current_user else None
         if backing_agent is not None:
+            session.execute(
+                delete(TagBinding).where(
+                    TagBinding.tenant_id == app.tenant_id,
+                    TagBinding.target_id == backing_agent.id,
+                    TagBinding.tag_id.in_(
+                        select(Tag.id).where(Tag.tenant_id == app.tenant_id, Tag.type == TagType.AGENT)
+                    ),
+                )
+            )
             now = naive_utc_now()
             backing_agent.status = AgentStatus.ARCHIVED
             backing_agent.archived_by = account_id
