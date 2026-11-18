@@ -1270,7 +1270,10 @@ class _FakeStreams:
         return [(key, entries[start:end])]
 
 
-def _publish_events(app_mode: AppMode, run_id: str, events: Sequence[Mapping[str, object]]) -> None:
+type JsonValue = str | int | float | bool | None | list[JsonValue] | dict[str, JsonValue]
+
+
+def _publish_events(app_mode: AppMode, run_id: str, events: Sequence[Mapping[str, JsonValue]]) -> None:
     # Publish events to the same topic used by MessageGenerator
     topic = MessageGenerator.get_response_topic(app_mode, run_id)
     for ev in events:
