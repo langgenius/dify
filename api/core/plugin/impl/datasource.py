@@ -1,4 +1,4 @@
-from collections.abc import Generator, Mapping
+from collections.abc import Callable, Generator, Mapping
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict
@@ -18,6 +18,7 @@ from core.plugin.entities.plugin_daemon import (
     PluginDatasourceProviderEntity,
 )
 from core.plugin.impl.base import BasePluginClient
+from core.plugin.plugin_service import PluginService
 from core.schemas.resolver import SchemaType, resolve_dify_schema_refs
 from models.provider_ids import DatasourceProviderID, GenericProviderID
 from services.plugin.dispatch_identity import plugin_dispatch_headers
@@ -79,6 +80,27 @@ class PluginDatasourceSinglePayload(PluginDatasourcePayloadModel):
 
 
 class PluginDatasourceManager(BasePluginClient):
+    def __init__(
+        self,
+        *,
+        plugin_unique_identifier: str | None = None,
+        get_plugin_icon_url: Callable[[str, str], str] = PluginService.get_plugin_icon_url,
+    ) -> None:
+        """Configure the plugin icon URL callback used for datasource providers.
+
+        Inputs: ``plugin_unique_identifier`` is ``None`` or a non-empty identifier;
+        ``get_plugin_icon_url`` accepts a tenant ID and icon filename.
+        Preconditions: The callback is callable with those two string arguments.
+        Result and side effects: The callback is stored for later provider repacking
+        and is not invoked during construction; base identifier validation remains
+        in effect.
+        Failure behavior: An empty ``plugin_unique_identifier`` raises the same
+        ``ValueError`` as ``BasePluginClient`` and no instance is returned. Errors
+        from the callback propagate when provider fetching later invokes it.
+        """
+        super().__init__(plugin_unique_identifier=plugin_unique_identifier)
+        self._get_plugin_icon_url = get_plugin_icon_url
+
     def fetch_datasource_providers(self, tenant_id: str) -> list[PluginDatasourceProviderEntity]:
         """
         Fetch datasource providers for the given tenant.
@@ -110,7 +132,9 @@ class PluginDatasourceManager(BasePluginClient):
         )
 
         for provider in response:
-            ToolTransformService.repack_provider(tenant_id=tenant_id, provider=provider)
+            ToolTransformService.repack_provider(
+                tenant_id=tenant_id, provider=provider, get_plugin_icon_url=self._get_plugin_icon_url
+            )
         all_response = [local_file_datasource_provider] + response
 
         for provider in all_response:
@@ -150,7 +174,9 @@ class PluginDatasourceManager(BasePluginClient):
         )
 
         for provider in response:
-            ToolTransformService.repack_provider(tenant_id=tenant_id, provider=provider)
+            ToolTransformService.repack_provider(
+                tenant_id=tenant_id, provider=provider, get_plugin_icon_url=self._get_plugin_icon_url
+            )
 
         for provider in response:
             provider.declaration.identity.name = f"{provider.plugin_id}/{provider.declaration.identity.name}"

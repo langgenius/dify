@@ -5,16 +5,20 @@ from typing import TypedDict, Unpack
 from pytest_mock import MockerFixture
 
 from core.datasource.entities.datasource_entities import (
+    DatasourceProviderType,
     GetOnlineDocumentPageContentRequest,
     OnlineDriveBrowseFilesRequest,
     OnlineDriveDownloadFileRequest,
     OnlineDriveDownloadMessage,
 )
+from core.plugin.entities.plugin_daemon import PluginDatasourceProviderEntity
 from core.plugin.impl.datasource import (
     PluginDatasourceListPayload,
     PluginDatasourceManager,
     PluginDatasourceSinglePayload,
 )
+from core.plugin.plugin_service import PluginService
+from tests.helpers.unit.core.datasource.factories import provider_entity as datasource_provider_entity
 
 
 class PluginDatasourceListRequestKwargs(TypedDict):
@@ -79,7 +83,9 @@ class TestPluginDatasourceManager:
         assert result[0].plugin_id == "langgenius/file"
         assert result[1].declaration.identity.name == "org/plugin/remote"
         assert result[1].declaration.datasources[0].identity.provider == "org/plugin/remote"
-        repack.assert_called_once_with(tenant_id="tenant-1", provider=provider)
+        repack.assert_called_once_with(
+            tenant_id="tenant-1", provider=provider, get_plugin_icon_url=PluginService.get_plugin_icon_url
+        )
 
     def test_fetch_installed_datasource_providers(self, mocker: MockerFixture) -> None:
         manager = PluginDatasourceManager()
@@ -113,7 +119,9 @@ class TestPluginDatasourceManager:
         assert len(result) == 1
         assert result[0].declaration.identity.name == "org/plugin/remote"
         assert result[0].declaration.datasources[0].identity.provider == "org/plugin/remote"
-        repack.assert_called_once_with(tenant_id="tenant-1", provider=provider)
+        repack.assert_called_once_with(
+            tenant_id="tenant-1", provider=provider, get_plugin_icon_url=PluginService.get_plugin_icon_url
+        )
 
     def test_fetch_datasource_provider_local_and_remote(self, mocker: MockerFixture) -> None:
         manager = PluginDatasourceManager()
@@ -154,14 +162,12 @@ class TestPluginDatasourceManager:
         assert result.declaration.datasources[0].identity.provider == "org/plugin/provider"
 
     def test_list_transformer_keeps_providers_without_declaration_or_identity(self, mocker: MockerFixture) -> None:
-        manager = PluginDatasourceManager()
-        repack = mocker.patch("core.plugin.impl.datasource.ToolTransformService.repack_provider")
-        resolver = mocker.patch("core.plugin.impl.datasource.resolve_dify_schema_refs")
-        provider = _datasource_provider("remote")
+        manager = PluginDatasourceManager(get_plugin_icon_url=PluginService.get_plugin_icon_url)
+        providers: list[PluginDatasourceProviderEntity] = []
 
         def fake_request(
             method: str, path: str, type_: object, **kwargs: Unpack[PluginDatasourceListRequestKwargs]
-        ) -> list[SimpleNamespace]:
+        ) -> list[PluginDatasourceProviderEntity]:
             transformer = kwargs["transformer"]
             transformed = transformer(
                 {
@@ -193,6 +199,13 @@ class TestPluginDatasourceManager:
             assert named.datasources is not None
             assert named.datasources[0].identity.provider == "remote"
             assert "output_schema" not in named.datasources[0].model_dump(exclude_unset=True)
+            provider = PluginDatasourceProviderEntity(
+                provider="remote",
+                plugin_unique_identifier="org/plugin@1.0.0",
+                plugin_id="org/plugin",
+                declaration=datasource_provider_entity(DatasourceProviderType.ONLINE_DOCUMENT),
+            )
+            providers.append(provider)
             return [provider]
 
         mocker.patch.object(manager, "_request_with_plugin_daemon_response", side_effect=fake_request)
@@ -200,8 +213,10 @@ class TestPluginDatasourceManager:
         manager.fetch_datasource_providers("tenant-1")
         manager.fetch_installed_datasource_providers("tenant-1")
 
-        resolver.assert_not_called()
-        assert repack.call_count == 2
+        expected_icon_url = PluginService.get_plugin_icon_url(tenant_id="tenant-1", filename="icon.svg")
+        assert expected_icon_url != "icon.svg"
+        assert len(providers) == 2
+        assert [provider.declaration.identity.icon for provider in providers] == [expected_icon_url, expected_icon_url]
 
     def test_single_transformer_tolerates_missing_data_and_declaration(self, mocker: MockerFixture) -> None:
         manager = PluginDatasourceManager()
