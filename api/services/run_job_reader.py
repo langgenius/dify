@@ -238,13 +238,17 @@ def _keep_alive(*, job_id: str, store: RunJobStore, stop: threading.Event, inter
     Precondition: runs on its own thread while read_to_end runs.
     Postcondition: returns soon after stop is set; a failed refresh is logged and retried at the next tick.
     """
-    while True:
-        try:
-            store.touch(job_id)
-        except Exception:
-            logger.exception("Run job %s alive refresh failed", job_id)
-        if stop.wait(interval):
-            return
+    _refresh_alive(job_id, store)
+    while not stop.wait(interval):
+        _refresh_alive(job_id, store)
+
+
+def _refresh_alive(job_id: str, store: RunJobStore) -> None:
+    """Postcondition: the alive key is refreshed, or the failure is logged."""
+    try:
+        store.touch(job_id)
+    except Exception:
+        logger.exception("Run job %s alive refresh failed", job_id)
 
 
 def read_to_end(
