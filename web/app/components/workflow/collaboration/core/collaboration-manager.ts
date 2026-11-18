@@ -2,6 +2,7 @@
 
 import type { LoroDoc, LoroList, LoroMap, UndoManager, Value } from 'loro-crdt'
 import type { Socket } from 'socket.io-client'
+import type { LLMNodeType } from '../../nodes/llm/types'
 import type { CommonNodeType, Edge, Node } from '../../types'
 import type {
   CollaborationState,
@@ -179,6 +180,7 @@ export class CollaborationManager {
   private crdtRuntimePromise: Promise<CrdtRuntime> | null = null
   private targetAppId: string | null = null
   private targetLoroDraft?: LoroDraftIdentity
+  private initialLlmPrompts?: Map<string, LLMNodeType['prompt_template']>
   private connectGeneration = 0
   private doc: LoroDoc | null = null
   private undoManager: UndoManager | null = null
@@ -265,6 +267,7 @@ export class CollaborationManager {
     else return
 
     this.joinPending = false
+    this.initialLlmPrompts = undefined
     this.crdtTrusted = false
     this.eventEmitter.emit('joinFailure', this.joinFailure)
     this.emitGraphReadyState()
@@ -733,6 +736,7 @@ export class CollaborationManager {
         socket,
         isEmpty: () => this.nodesMap?.size === 0 && this.edgesMap?.size === 0,
         onReady: () => {
+          this.applyInitialLlmPrompts()
           this.crdtTrusted = true
           this.refreshGraphSynchronously()
           this.emitGraphReadyState()
@@ -740,11 +744,13 @@ export class CollaborationManager {
         onConfirmed: (result) => this.eventEmitter.emit('loroDraftConfirmed', result),
         onPendingChange: (pending) => this.eventEmitter.emit('loroDraftPendingChange', pending),
         onEpochChanged: () => {
+          this.initialLlmPrompts = undefined
           this.crdtTrusted = false
           this.emitGraphReadyState()
           this.eventEmitter.emit('workflowUpdate', { appId, timestamp: Date.now() })
         },
         onUnavailable: () => {
+          this.initialLlmPrompts = undefined
           this.joinFailure = 'session_unavailable'
           this.crdtTrusted = false
           this.eventEmitter.emit('joinFailure', this.joinFailure)
@@ -794,6 +800,7 @@ export class CollaborationManager {
   ): Promise<string> {
     const connectionId = Math.random().toString(36).substring(2, 11)
     if (this.targetAppId !== appId || !isEqual(this.targetLoroDraft, loroDraft)) {
+      this.initialLlmPrompts = loroDraft && this.targetAppId !== appId ? new Map() : undefined
       this.targetAppId = appId
       this.targetLoroDraft = loroDraft
       this.connectGeneration += 1
@@ -914,6 +921,7 @@ export class CollaborationManager {
 
     this.activeConnections.clear()
     if (!preserveConnectIntent) {
+      this.initialLlmPrompts = undefined
       this.targetAppId = null
       this.targetLoroDraft = undefined
       this.connectGeneration += 1
@@ -1204,11 +1212,49 @@ export class CollaborationManager {
     return this.currentAppId === appId && this.loroDraft !== undefined
   }
 
+  queueInitialLlmPrompt(
+    appId: string,
+    identity: LoroDraftIdentity,
+    nodeId: string,
+    prompt: LLMNodeType['prompt_template'],
+  ): boolean {
+    if (
+      !this.initialLlmPrompts ||
+      this.targetAppId !== appId ||
+      !isEqual(this.targetLoroDraft, identity) ||
+      this.graphViewActive === false ||
+      (typeof document !== 'undefined' && document.visibilityState === 'hidden')
+    )
+      return false
+
+    this.initialLlmPrompts.set(nodeId, prompt)
+    return true
+  }
+
+  private applyInitialLlmPrompts(): void {
+    const prompts = this.initialLlmPrompts
+    this.initialLlmPrompts = undefined
+    if (!prompts?.size) return
+
+    const { LoroMap } = this.getCrdtRuntime()
+    for (const [nodeId, prompt] of prompts) {
+      const node: unknown = this.nodesMap?.get(nodeId)
+      if (!(node instanceof LoroMap)) continue
+      const data = node.get('data')
+      if (!(data instanceof LoroMap) || data.get('type') !== BlockEnum.LLM) continue
+      const current = data.get('prompt_template')
+      if (current !== undefined && Array.isArray(current) !== Array.isArray(prompt)) continue
+      data.set('prompt_template', toLoroValue(prompt))
+    }
+    this.doc?.commit()
+  }
+
   replaceLoroDraft(appId: string, identity: LoroDraftIdentity): boolean {
     const socket = this.getActiveSocket()
     if (!this.usesLoroDraft(appId) || !socket) return false
 
     const retirements = this.loroProvider?.retirementCandidates
+    this.initialLlmPrompts = undefined
     this.crdtTrusted = false
     this.loroProvider?.destroy()
     this.loroDraft = identity
