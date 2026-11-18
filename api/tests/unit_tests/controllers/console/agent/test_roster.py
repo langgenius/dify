@@ -34,7 +34,6 @@ from controllers.console.agent.roster import (
     AgentBuildDraftCheckoutPayload,
     AgentDebugConversationRefreshApi,
     AgentInviteOptionsApi,
-    AgentInviteOptionsQuery,
     AgentLogMessagesApi,
     AgentLogsApi,
     AgentLogSourcesApi,
@@ -264,7 +263,7 @@ def test_agent_app_list_and_create_use_agent_route(
     captured: dict[str, object] = {}
     listed_app = _app_detail_obj(id="app-list")
     created_app = _app_detail_obj(id="app-created", enable_site=True)
-    tag = Tag(tenant_id="tenant-1", type=TagType.APP, name="Agent tag", created_by=account_id)
+    tag = Tag(tenant_id="tenant-1", type=TagType.AGENT, name="Agent tag", created_by=account_id)
     sqlite_session.add_all([listed_app, created_app, tag])
     sqlite_session.flush()
     sqlite_session.add_all(
@@ -276,7 +275,7 @@ def test_agent_app_list_and_create_use_agent_route(
                 default_language="en-US",
                 customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
             ),
-            TagBinding(tenant_id="tenant-1", tag_id=tag.id, target_id=listed_app.id, created_by=account_id),
+            TagBinding(tenant_id="tenant-1", tag_id=tag.id, target_id="agent-list", created_by=account_id),
         ]
     )
     sqlite_session.flush()
@@ -434,7 +433,7 @@ def test_agent_app_list_and_create_use_agent_route(
     assert listed["data"][0]["debug_conversation_id"] == "debug-conversation-list"
     assert listed["data"][0]["permission_keys"] == ["agent.acl.preview"]
     assert listed["data"][0]["role"] == "List role"
-    assert listed["data"][0]["tags"] == [{"id": tag.id, "name": "Agent tag", "type": "app"}]
+    assert listed["data"][0]["tags"] == [{"id": tag.id, "name": "Agent tag", "type": "agent"}]
     assert listed["data"][0]["active_config_is_published"] is False
     assert listed["data"][0]["reference_count"] == 2
     assert listed["data"][0]["published_reference_count"] == 1
@@ -776,10 +775,13 @@ def test_invite_options_get_parses_app_id(app: Flask, monkeypatch: pytest.Monkey
         return {"data": [], "page": kwargs["page"], "limit": kwargs["limit"], "total": 0, "has_more": False}
 
     monkeypatch.setattr(roster_controller.AgentRosterService, "list_invite_options", list_invite_options)
-    with app.test_request_context("/console/api/agent/invite-options?page=1&limit=10&app_id=app-1"):
+    first_tag = "a0000000-0000-4000-8000-000000000001"
+    second_tag = "a0000000-0000-4000-8000-000000000002"
+    with app.test_request_context(
+        f"/console/api/agent/invite-options?page=1&limit=10&app_id=app-1&tag_ids={first_tag}&tag_ids={second_tag}"
+    ):
         result = unwrap(AgentInviteOptionsApi.get)(
             AgentInviteOptionsApi(),
-            AgentInviteOptionsQuery(page=1, limit=10, app_id="app-1"),
             MagicMock(),
             "tenant-1",
             _account(),
@@ -792,6 +794,7 @@ def test_invite_options_get_parses_app_id(app: Flask, monkeypatch: pytest.Monkey
         "keyword": None,
         "app_id": "app-1",
         "accessible_agent_ids": None,
+        "tag_ids": (first_tag, second_tag),
     }
 
 
@@ -824,7 +827,6 @@ def test_invite_options_get_applies_resource_visibility(
     with app.test_request_context("/console/api/agent/invite-options?page=1&limit=10"):
         unwrap(AgentInviteOptionsApi.get)(
             AgentInviteOptionsApi(),
-            AgentInviteOptionsQuery(page=1, limit=10),
             MagicMock(),
             "tenant-1",
             _account(),
