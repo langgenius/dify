@@ -28,7 +28,6 @@ from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 MCP_PATH = "/openapi/v1/mcp"
 PROTOCOL_HEADER = "MCP-Protocol-Version"
 UNAUTHORIZED_BODY = {"code": "unauthorized", "message": "invalid bearer", "status": 401}
-BEARER_REQUIRED_BODY = {"code": "unauthorized", "message": "bearer required", "status": 401}
 
 JSON_RPC_ERROR_BODY = pytest.mark.allow_error_contract_violations
 
@@ -78,7 +77,7 @@ def test_initialize_without_a_token_is_http_401_with_www_authenticate(openapi_ap
     response = _post(openapi_app.test_client(), _initialize())
 
     assert response.status_code == 401
-    assert response.get_json() == BEARER_REQUIRED_BODY
+    assert response.get_json() == UNAUTHORIZED_BODY
     assert response.headers["WWW-Authenticate"]
 
 
@@ -115,7 +114,7 @@ def test_tools_list_without_a_token_is_http_401(openapi_app: Flask) -> None:
     response = _post(openapi_app.test_client(), _rpc("tools/list"))
 
     assert response.status_code == 401
-    assert response.get_json() == BEARER_REQUIRED_BODY
+    assert response.get_json() == UNAUTHORIZED_BODY
 
 
 def test_initialize_runs_no_operation(admitted_bearer: AdmittedWorld, monkeypatch: pytest.MonkeyPatch) -> None:
