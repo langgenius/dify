@@ -15,10 +15,16 @@ import { BlockEnum } from '../../types'
 import { writeWorkflowClipboard } from '../../utils/clipboard'
 import { useNodesInteractions } from '../use-nodes-interactions'
 
+// boundary: enable the deployment flag for Human Input v2 creation.
 vi.mock('@/config', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/config')>()),
   ENABLE_HITL_IM: true,
 }))
+
+const serverMessageTemplate = {
+  subject: 'Approval requested by the server',
+  body: 'Use the server-provided review link: {{#url#}}',
+}
 
 const legacyNode = () =>
   createNode({
@@ -29,14 +35,19 @@ const legacyNode = () =>
       title: 'Legacy approval',
     },
   })
-const v2Node = () =>
+const v2Node = (messageTemplate = HumanInputV2Default.defaultValue.message_template) =>
   createNode({
     id: 'copied-v2',
-    data: { ...HumanInputV2Default.defaultValue, type: BlockEnum.HumanInput, title: 'Approval' },
+    data: {
+      ...HumanInputV2Default.defaultValue,
+      type: BlockEnum.HumanInput,
+      title: 'Approval',
+      message_template: messageTemplate,
+    },
   })
 const Catalog = ({ children }: { children: ReactNode }) =>
   createElement(Fragment, null, createElement(CanvasNodesCatalogProbe), children)
-function setup(nodes: Node[]) {
+function setup(nodes: Node[], kind: 'app' | 'snippet' = 'app') {
   const { queryClient } = createConsoleQueryWrapper()
   seedModelProviderQueries(queryClient)
   seedAppDslVersion(queryClient, '1.0.0')
@@ -48,6 +59,15 @@ function setup(nodes: Node[]) {
     {
       nodes,
       edges: [],
+      initialStoreState: {
+        nodesDefaultConfigs: {
+          [BlockEnum.HumanInput]: { version: '2', message_template: serverMessageTemplate },
+        },
+      },
+      resource:
+        kind === 'app'
+          ? { kind: 'app', appId: 'app-1', mode: 'workflow' }
+          : { kind: 'snippet', snippetId: 'snippet-1' },
       queryClient,
       historyStore: { nodes, edges: [] },
       wrapper: Catalog,
@@ -99,6 +119,7 @@ it.each([undefined, BlockEnum.Iteration, BlockEnum.Loop])(
       type: BlockEnum.HumanInput,
       version: '2',
       recipients_spec: [],
+      message_template: serverMessageTemplate,
       timeout: 36,
       timeout_unit: 'hour',
     })
@@ -113,6 +134,51 @@ it.each([undefined, BlockEnum.Iteration, BlockEnum.Loop])(
       })
   },
 )
+
+it('uses the loaded node template when adding Human Input v2 to a snippet', () => {
+  const { result } = setup([createNode({ id: 'node-1' })], 'snippet')
+
+  act(() =>
+    result.current.handleNodeAdd({ nodeType: BlockEnum.HumanInputV2 }, { prevNodeId: 'node-1' }),
+  )
+
+  expect(
+    result.current.canvas
+      .getState()
+      .getNodes()
+      .find((node) => node.data.version === '2')?.data,
+  ).toMatchObject({ message_template: serverMessageTemplate })
+})
+
+it('uses the loaded node template when replacing a node with Human Input v2', () => {
+  const { result } = setup([createNode({ id: 'node-1' })])
+
+  act(() => result.current.handleNodeChange('node-1', BlockEnum.HumanInputV2, 'source'))
+
+  expect(
+    result.current.canvas
+      .getState()
+      .getNodes()
+      .find((node) => node.data.version === '2')?.data,
+  ).toMatchObject({ message_template: serverMessageTemplate })
+})
+
+it.each([
+  { subject: 'Edited subject', body: 'Edited request {{#url#}}' },
+  { subject: '', body: '' },
+])('preserves an existing template when duplicating a node: %j', async (messageTemplate) => {
+  const existing = v2Node(messageTemplate)
+  const { result } = setup([existing])
+
+  await act(async () => result.current.handleNodesDuplicate(existing.id))
+
+  const nodes = result.current.canvas.getState().getNodes()
+  expect(nodes).toHaveLength(2)
+  expect(nodes.map((node) => node.data.message_template)).toEqual([
+    messageTemplate,
+    messageTemplate,
+  ])
+})
 
 it.each(['add', 'paste', 'duplicate'] as const)(
   'preserves the canvas when legacy approval blocks %s',
