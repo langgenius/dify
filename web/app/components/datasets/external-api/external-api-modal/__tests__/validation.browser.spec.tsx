@@ -75,7 +75,10 @@ it('reports a short key without discarding the draft or sending a request', asyn
   await expect
     .element(screen.getByText('API-key length cannot be less than 5 characters'))
     .toBeVisible()
-  await expect.element(screen.getByRole('dialog')).toBeVisible()
+  // The error toast is also a dialog; name the form so the query does not wait for it to close.
+  await expect
+    .element(screen.getByRole('dialog', { name: 'Add an External Knowledge API' }))
+    .toBeVisible()
   await expect.element(screen.getByLabelText(/Name/)).toHaveValue('Product API')
   expect(api.create).not.toHaveBeenCalled()
 })

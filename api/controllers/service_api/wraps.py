@@ -24,6 +24,7 @@ from controllers.service_api.schema import (
     USER_QUERY_PARAM,
     USER_REQUIRED_ATTR,
 )
+from core.db.session_factory import release_session_connection
 from enums import CloudPlan, DeploymentEdition
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
@@ -157,6 +158,9 @@ def validate_app_token[**P, R](
 
             # If caller needs end-user context, attach EndUser to current_user
             if fetch_user_arg:
+                # End-user provisioning and the handler open their own sessions; the
+                # request-scoped session must not keep a pooled connection across them.
+                release_session_connection(db.session())
                 kwargs["end_user"] = resolve_service_api_end_user(
                     tenant_id=app_model.tenant_id, app_id=app_model.id, fetch_user_arg=fetch_user_arg
                 )
@@ -181,6 +185,7 @@ def validate_app_token[**P, R](
                     user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
                 else:
                     raise Unauthorized("Tenant owner account not found or tenant is not active.")
+                release_session_connection(db.session())
 
             return view_func(*args, **kwargs)
 
@@ -428,6 +433,9 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
 
         if accepts_dataset_grant:
             kwargs["dataset_grant"] = dataset_grant
+
+        # Dataset handlers open their own sessions; see release_session_connection.
+        release_session_connection(db.session())
 
         if expects_bound_instance:
             if not args:

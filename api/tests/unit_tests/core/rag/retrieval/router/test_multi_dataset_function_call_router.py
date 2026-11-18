@@ -1,7 +1,14 @@
 from unittest.mock import Mock
 
+import pytest
+
+from core.app.apps.exc import ModerationInvocationError
 from core.rag.retrieval.router.multi_dataset_function_call_router import FunctionCallMultiDatasetRouter
 from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.model_runtime.entities.message_entities import PromptMessageTool
+from services.moderation_service import ModerationPhase
+from tests.helpers.unit.core.model_fixtures import make_model_config
+from tests.helpers.unit.core.model_moderation_fixtures import make_failing_moderated_model
 
 
 class TestFunctionCallMultiDatasetRouter:
@@ -17,6 +24,24 @@ class TestFunctionCallMultiDatasetRouter:
 
         assert dataset_id is None
         assert usage == LLMUsage.empty_usage()
+
+    @pytest.mark.parametrize("phase", ["input", "output"])
+    @pytest.mark.parametrize("unavailable", [False, True])
+    def test_moderation_failure_is_not_an_empty_route(self, phase: ModerationPhase, unavailable: bool) -> None:
+        model, provider = make_failing_moderated_model(phase=phase, unavailable=unavailable)
+        tools = [PromptMessageTool(name=name, description=name, parameters={}) for name in ("dataset-1", "dataset-2")]
+        with pytest.raises(ModerationInvocationError) as rejected:
+            FunctionCallMultiDatasetRouter().invoke(
+                query="content",
+                dataset_tools=tools,
+                model_config=make_model_config(provider="test-provider", model="test-model", mode="chat"),
+                model_instance=model,
+            )
+        assert rejected.value.error_code == ("moderation_unavailable" if unavailable else "moderation_rejected")
+        assert provider.invocations == (0 if phase == "input" else 1)
+        assert len(model.reservations) == (0 if phase == "input" else 1)
+        if model.reservations:
+            assert model.reservations[0].commits
 
     def test_invoke_returns_single_tool_directly(self) -> None:
         router = FunctionCallMultiDatasetRouter()

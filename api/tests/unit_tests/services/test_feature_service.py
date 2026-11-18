@@ -20,24 +20,26 @@ def test_education_feature_is_disabled_by_default() -> None:
 
 
 @pytest.mark.parametrize(
-    ("edition", "plan", "enabled", "expected"),
+    ("edition", "plan", "enabled", "expected", "upgrade_available"),
     [
-        (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, True, False),
-        (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL, True, True),
-        (DeploymentEdition.CLOUD, CloudPlan.TEAM, True, True),
-        (DeploymentEdition.CLOUD, CloudPlan.TEAM, False, False),
-        (DeploymentEdition.COMMUNITY, CloudPlan.SANDBOX, True, True),
-        (DeploymentEdition.ENTERPRISE, CloudPlan.SANDBOX, True, True),
-        (DeploymentEdition.COMMUNITY, CloudPlan.SANDBOX, False, False),
+        (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, True, False, True),
+        (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, False, False, False),
+        (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL, True, True, False),
+        (DeploymentEdition.CLOUD, CloudPlan.TEAM, True, True, False),
+        (DeploymentEdition.CLOUD, CloudPlan.TEAM, False, False, False),
+        (DeploymentEdition.COMMUNITY, CloudPlan.SANDBOX, True, True, False),
+        (DeploymentEdition.ENTERPRISE, CloudPlan.SANDBOX, True, True, False),
+        (DeploymentEdition.COMMUNITY, CloudPlan.SANDBOX, False, False, False),
     ],
 )
-def test_workflow_collaboration_feature_uses_the_loaded_plan(
+def test_workflow_collaboration_feature_and_upgrade_use_the_loaded_plan(
     monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
     edition: DeploymentEdition,
     plan: CloudPlan,
     enabled: bool,
     expected: bool,
+    upgrade_available: bool,
 ) -> None:
     config_overrides(DEPLOYMENT_EDITION=edition, ENABLE_COLLABORATION_MODE=enabled)
     billing_calls: list[str] = []
@@ -57,6 +59,7 @@ def test_workflow_collaboration_feature_uses_the_loaded_plan(
     features = FeatureService.get_features("tenant-1")
 
     assert features.workflow_collaboration_enabled is expected
+    assert features.workflow_collaboration_upgrade_available is upgrade_available
     assert billing_calls == (["tenant-1"] if edition == DeploymentEdition.CLOUD else [])
 
 
