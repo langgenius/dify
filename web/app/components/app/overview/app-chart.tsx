@@ -17,9 +17,9 @@ import { consoleQuery } from '@/service/console'
 import {
   buildChartOptions,
   CHART_TYPE_CONFIG,
-  defaultPeriod,
   getChartValueField,
   getDefaultChartData,
+  getDefaultPeriod,
   getSummaryValue,
   getTokenSummary,
   hasNonZeroChartData,
@@ -91,7 +91,7 @@ function ChartFrame({
           </div>
           {explanation && (
             <Infotip>
-              <InfotipTrigger aria-labelledby={titleId} className="ml-1" />
+              <InfotipTrigger aria-labelledby={titleId} className="ms-1" />
               <InfotipContent aria-labelledby={titleId} className="w-60">
                 {explanation}
               </InfotipContent>
@@ -280,7 +280,7 @@ function ChartCard({
   const noDataFlag = !response.data || response.data.length === 0
   const fallbackData = {
     data: getDefaultChartData({
-      ...(period.query ?? defaultPeriod),
+      ...(period.query ?? getDefaultPeriod()),
       ...(fallbackKey ? { key: fallbackKey } : {}),
     }),
   }

@@ -38,10 +38,7 @@ from repositories.human_input_v2.sqlalchemy_im_binding_repository import SQLAlch
 from repositories.human_input_v2.sqlalchemy_im_channel_repository import DeploymentIMChannelWriter
 from repositories.human_input_v2.sqlalchemy_im_identity_repository import SQLAlchemyIMIdentityRepository
 
-
-def _require_postgresql() -> None:
-    if db.engine.dialect.name != "postgresql":
-        pytest.skip("requires the CI PostgreSQL integration database")
+pytestmark = pytest.mark.usefixtures("flask_req_ctx_with_containers")
 
 
 def _channel() -> IMChannel:
@@ -88,8 +85,7 @@ def _persist_channel(session_maker: sessionmaker[Session], channel: IMChannel) -
         DeploymentIMChannelWriter(session).create(channel)
 
 
-def test_concurrent_sync_triggers_create_at_most_one_active_run(flask_req_ctx: object) -> None:
-    _require_postgresql()
+def test_concurrent_sync_triggers_create_at_most_one_active_run() -> None:
     session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
     channel = _channel()
     _persist_channel(session_maker, channel)
@@ -122,8 +118,7 @@ def test_concurrent_sync_triggers_create_at_most_one_active_run(flask_req_ctx: o
         _cleanup(session_maker, channel.id)
 
 
-def test_concurrent_default_binding_conflict_commits_at_most_one_endpoint(flask_req_ctx: object) -> None:
-    _require_postgresql()
+def test_concurrent_default_binding_conflict_commits_at_most_one_endpoint() -> None:
     session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
     channel = _channel()
     _persist_channel(session_maker, channel)

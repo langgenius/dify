@@ -40,7 +40,6 @@
     "@playwright/test": "catalog:",
     "@t3-oss/env-core": "catalog:",
     "@types/node": "catalog:",
-    "@typescript/native": "catalog:",
     "eventsource-parser": "catalog:",
     "tsrs": "catalog:",
     "typescript": "catalog:",

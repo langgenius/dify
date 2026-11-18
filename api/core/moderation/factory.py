@@ -2,11 +2,16 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from flask import current_app
+from flask import current_app, has_app_context
 from pydantic import JsonValue
 
 from core.extension.extensible import ExtensionModule
-from core.moderation.base import Moderation, ModerationInputsResult, ModerationOutputsResult
+from core.moderation.base import (
+    AppModeration,
+    Moderation,
+    ModerationInputsResult,
+    ModerationOutputsResult,
+)
 from domain.moderation.api_config import DisabledDirection, EnabledDirection, parse_direction, parse_form
 from extensions.ext_code_based_extension import code_based_extension
 
@@ -53,6 +58,16 @@ def _moderation_class(name: str) -> type[Moderation]:
     if not issubclass(extension_class, Moderation):
         raise TypeError(f"Extension {name} is not a moderation provider")
     return extension_class
+
+
+def get_app_moderation() -> AppModeration | None:
+    """Return the injected policy or None for standalone kernel execution; malformed registrations fail closed."""
+    if not has_app_context():
+        return None
+    moderation = current_app.extensions.get("app_moderation")
+    if moderation is not None and not isinstance(moderation, AppModeration):
+        raise TypeError("Invalid app moderation policy registration.")
+    return moderation
 
 
 class ModerationFactory:
