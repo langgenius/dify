@@ -141,15 +141,10 @@ class JobIds:
     conversation_id: str | None = None
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
-class OpenedJob:
-    record: JobRecord
-    created: bool
-
-
 class RunJobStore(Protocol):
-    def open(self, record: JobRecord, *, idempotency_key: str | None) -> OpenedJob:
-        """Precondition: record.id unused. Postcondition: created=True stores the job; False returns the earlier one."""
+    def create(self, record: JobRecord) -> bool:
+        """Precondition: record is a new job. Postcondition: true when stored; false, writing nothing, when a job with
+        its id exists. Atomic on the job's key."""
 
     def get(self, job_id: str) -> JobRecord | None:
         """Precondition: none. Postcondition: the stored record, or None."""
@@ -164,7 +159,7 @@ class RunJobStore(Protocol):
     def request_stop(self, job_id: str) -> None:
         """Precondition: none. Postcondition: stop_requested is set; a missing job is not recreated."""
 
-    def discard(self, job_id: str, *, idempotency_key: str | None) -> None:
+    def discard(self, job_id: str) -> None:
         """Precondition: none. Postcondition: the job and its alive key are gone."""
 
     def touch(self, job_id: str) -> None:

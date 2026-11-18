@@ -71,14 +71,13 @@ def stopper() -> RecordingJobStopper:
 
 
 def _open(store: RedisRunJobStore, mode: AppMode) -> None:
-    store.open(
+    store.create(
         JobRecord(
             id=JOB_ID,
             owner=JobOwner(tenant_id="t1", app_id="app-1", caller_role=CreatorUserRole.ACCOUNT, caller_id="acct-1"),
             mode=mode,
             op="start.console_app.test",
-        ),
-        idempotency_key=None,
+        )
     )
 
 
@@ -163,7 +162,7 @@ def test_message_end_finishes_a_message_job_but_not_a_graph_job(
 
     assert _read(store, stopper, [end]).status is JobStatus.SUCCEEDED
 
-    store.discard(JOB_ID, idempotency_key=None)
+    store.discard(JOB_ID)
     _open(store, AppMode.WORKFLOW)
 
     assert _read(store, stopper, [end]).status is JobStatus.RUNNING
@@ -245,7 +244,7 @@ def test_a_stream_that_raises_fails_a_message_job_and_leaves_a_graph_job_running
     _open(store, AppMode.CHAT)
     message_job = _read(store, stopper, RaisingFrames([PING]))
 
-    store.discard(JOB_ID, idempotency_key=None)
+    store.discard(JOB_ID)
     _open(store, AppMode.WORKFLOW)
     graph_job = _read(store, stopper, RaisingFrames([PING]))
 

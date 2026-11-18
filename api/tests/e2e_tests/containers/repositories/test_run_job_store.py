@@ -43,7 +43,7 @@ def _record() -> JobRecord:
 
 def test_settle_writes_the_first_ending_only(store: RedisRunJobStore) -> None:
     job = _record()
-    store.open(job, idempotency_key=None)
+    store.create(job)
 
     first = store.settle(job.id, JobEnding(status=JobStatus.FAILED, failure=JobFailure.NO_RESULT))
     second = store.settle(job.id, JobEnding(status=JobStatus.SUCCEEDED, error="late"))
@@ -59,9 +59,25 @@ def test_settle_of_a_missing_job_writes_nothing(store: RedisRunJobStore) -> None
     assert store.get(job.id) is None
 
 
+def test_concurrent_creates_of_one_job_let_exactly_one_win(store: RedisRunJobStore) -> None:
+    job = _record()
+    barrier = Barrier(RACERS)
+    racers = [replace(job, op=f"start.racer{index}") for index in range(RACERS)]
+
+    def create(record: JobRecord) -> bool:
+        barrier.wait()
+        return store.create(record)
+
+    with ThreadPoolExecutor(max_workers=RACERS) as pool:
+        won = list(pool.map(create, racers))
+
+    assert won.count(True) == 1
+    assert store.get(job.id) == racers[won.index(True)]
+
+
 def test_concurrent_settles_let_exactly_one_win(store: RedisRunJobStore) -> None:
     job = _record()
-    store.open(job, idempotency_key=None)
+    store.create(job)
     barrier = Barrier(RACERS)
     endings = [JobEnding(status=JobStatus.FAILED, error=f"racer {index}") for index in range(RACERS)]
 
