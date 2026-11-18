@@ -66,6 +66,7 @@ from services.app_tracing_config_service import AppTraceSettings
 from services.entities.app_entities import (
     RECENT_APP_MODES,
     SUPPORTED_APP_TYPES,
+    AgentAppPublicationCounts,
     AppAgentBinding,
     AppChange,
     AppCreationSettings,
@@ -538,11 +539,11 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
     def _build_app_list_filters(
         user_id: str, tenant_id: str, params: AppListBaseParams, session: Session
     ) -> list[sa.ColumnElement[bool]]:
-        """Build tenant-owned filters before App counting and pagination.
+        """Build tenant-owned filters, matching all tags in the resource's own pool.
 
-        Preconditions: params is caller-validated and session is caller-owned.
-        Postconditions: Agent mode matches all tags against canonical Dify roster
-        IDs, while other modes keep the existing Studio App tag behavior.
+        Preconditions: params is transport-validated and session is caller-owned.
+        Postconditions: Agent tags match roster IDs while App tags match App IDs;
+        an unknown, foreign or wrong-type selected tag yields an empty result.
         """
         filters = [App.tenant_id == tenant_id, App.is_universal.is_(False)]
 
@@ -603,6 +604,7 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
             )
             if target_ids and len(target_ids) > 0:
                 if params.mode == "agent":
+                    # Agent tags bind canonical roster IDs, independently of Studio App tags.
                     filters.append(
                         App.id.in_(
                             select(Agent.app_id).where(
@@ -724,6 +726,33 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
             app.is_starred = str(app.id) in starred_app_ids
 
         return app_models
+
+    @classmethod
+    def get_agent_publication_counts(
+        cls,
+        user_id: str,
+        tenant_id: str,
+        params: AppListParams,
+        session: Session,
+    ) -> AgentAppPublicationCounts:
+        """Count visible Agent Apps by publication state before the publication filter."""
+        unfiltered_params = params.model_copy(update={"agent_is_published": None})
+        filters = cls._build_app_list_filters(user_id, tenant_id, unfiltered_params, session)
+        if not filters:
+            return AgentAppPublicationCounts(published=0, drafts=0)
+
+        published_filter = cls._agent_app_exists_filter(tenant_id, is_published=True)
+        draft_filter = cls._agent_app_exists_filter(tenant_id, is_published=False)
+        published_count, draft_count = session.execute(
+            sa.select(
+                sa.func.coalesce(sa.func.sum(sa.case((published_filter, 1), else_=0)), 0),
+                sa.func.coalesce(sa.func.sum(sa.case((draft_filter, 1), else_=0)), 0),
+            )
+            .select_from(App)
+            .where(*filters)
+        ).one()
+
+        return AgentAppPublicationCounts(published=int(published_count), drafts=int(draft_count))
 
     @classmethod
     def get_recent_apps(
@@ -1180,6 +1209,8 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
         app_event = AppEvent(app.id, app.tenant_id, str(app.mode))
         backing_agent = cls._get_backing_agent(app, session=session)
         if backing_agent is not None:
+            # Binding writes lock this same row before validating the active
+            # target, so archival cannot miss a concurrently inserted binding.
             backing_agent = session.scalar(
                 select(Agent)
                 .where(Agent.tenant_id == app.tenant_id, Agent.id == backing_agent.id)

@@ -47,6 +47,14 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'tags.get': () =>
+        ['Research', 'Finance', 'Support', 'Sales', 'Design', 'Operations', 'Writing'].map(
+          (name) => ({
+            id: name.toLowerCase(),
+            name,
+            type: 'agent',
+          }),
+        ),
       'externalAgents.get': mocks.fetchExternal,
       'externalAgents.capabilities.get': () => createExternalAgentCapabilities(),
       'agent.inviteOptions.get': (
@@ -55,7 +63,17 @@ vi.mock('@/service/console', async (importOriginal) => {
         mocks.fetchAgents(input)
         const keyword = input?.query?.keyword?.toLowerCase() ?? ''
         const data = [difyAgent].filter((agent) => agent.name.toLowerCase().includes(keyword))
-        return { data, has_more: false, limit: 8, page: 1, total: data.length }
+        const page = input?.query?.page ?? 1
+        if (input?.query?.tag_ids?.includes('research')) {
+          return {
+            data: [{ ...difyAgent, id: `match-${page}`, name: `Research match ${page}` }],
+            has_more: page === 1,
+            limit: 8,
+            page,
+            total: 2,
+          }
+        }
+        return { data, has_more: false, limit: 8, page, total: data.length }
       },
     }),
   }
@@ -312,4 +330,43 @@ it('loads another server page before selecting an external agent outside the fir
   expect(mocks.fetchExternal).toHaveBeenLastCalledWith({ query: { page: 2, limit: 20 } })
   await picker.getByRole('button', { name: /Later page Agent/ }).click()
   expect(onSelectExternal).toHaveBeenCalledWith(later)
+})
+
+it('keeps the tag popup above Dify results and pages through tagged agents in All', async () => {
+  const { picker } = await setup()
+  await picker.getByRole('tab', { name: 'Dify', exact: true }).click()
+  const candidate = picker.getByRole('button', { name: /Research Agent/ })
+  await expect.element(candidate).toBeVisible()
+  await picker.getByRole('combobox', { name: 'Tags' }).click()
+  const popup = page.getByRole('dialog', { name: 'Tags', exact: true })
+  const option = popup.getByRole('option', { name: 'Research', exact: true })
+  await expect.element(option).toBeVisible()
+  const start = picker.getByRole('button', { name: 'Start from Scratch' })
+  const manage = picker.getByRole('link', { name: 'Manage in Agents' })
+  const icons = [
+    candidate.getByText('🤖').element(),
+    start.element().querySelector('[aria-hidden="true"]')!,
+    manage.element().querySelector('[aria-hidden="true"]')!,
+  ]
+  for (const icon of icons) {
+    const { x, y, width, height } = icon.getBoundingClientRect()
+    expect(popup.element().contains(document.elementFromPoint(x + width / 2, y + height / 2))).toBe(
+      true,
+    )
+  }
+  await option.click()
+  await userEvent.keyboard('{Escape}')
+  await picker.getByRole('tab', { name: 'All', exact: true }).click()
+  await expect.element(picker.getByRole('button', { name: /Research match 1/ })).toBeVisible()
+  await expect
+    .element(picker.getByRole('button', { name: /Contract Review Agent/ }))
+    .not.toBeInTheDocument()
+  await picker.getByRole('button', { name: 'Load more', exact: true }).click()
+  await expect.element(picker.getByRole('button', { name: /Research match 2/ })).toBeVisible()
+  expect(mocks.fetchAgents).toHaveBeenLastCalledWith({
+    query: { app_id: 'workflow-app', tag_ids: ['research'], page: 2, limit: 8 },
+  })
+  await picker.getByRole('tab', { name: 'External', exact: true }).click()
+  await expect.element(picker.getByRole('button', { name: /Contract Review Agent/ })).toBeVisible()
+  await expect.element(picker.getByRole('combobox')).not.toBeInTheDocument()
 })

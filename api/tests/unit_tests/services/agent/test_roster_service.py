@@ -1,5 +1,6 @@
 import json
 from contextlib import nullcontext
+from dataclasses import asdict
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, call
@@ -8,7 +9,7 @@ import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy import event, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidationError
 from models.account import Account
@@ -43,6 +44,12 @@ from models.model import App, AppMode, AppModelConfig, Conversation, IconType, M
 from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion, SkillVersionManifest
 from models.tools import ToolFile
 from models.workflow import Workflow
+from repositories.agent_roster_queries import load_reference_counts_by_agent_id
+from repositories.agent_roster_repository import list_invite_options_in_session
+from repositories.agent_version_queries import visible_version_operations
+from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
+from repositories.app.agent_app_queries import load_app_backing_agents_by_app_id
+from repositories.app.console_repository import ConsoleAppRepository
 from services.agent import composer_service, roster_service
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_service import AgentComposerService
@@ -57,16 +64,18 @@ from services.agent.errors import (
     InvalidComposerConfigError,
 )
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
+from services.agent.invite_options_store import AgentInviteOptionsPage
 from services.agent.roster_service import AgentRosterService
+from services.agent.version_store import AgentVersionUnavailableError
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.agent.workspace_service import AgentWorkspaceService
-from services.app_service import AppListParams, AppService
 from services.entities.agent_entities import (
     AgentSoulConfig,
     ComposerSavePayload,
     ComposerSaveStrategy,
     ComposerVariant,
 )
+from services.entities.app_entities import AppListParams
 from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_workflow
 
 
@@ -3963,7 +3972,7 @@ def test_composer_current_version_and_error_paths(monkeypatch: pytest.MonkeyPatc
         )
 
 
-def test_roster_list_and_invite_options(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+def test_roster_list_and_invite_options(sqlite_session: Session) -> None:
     session = sqlite_session
     created_at = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
     updated_at = datetime(2026, 1, 3, 3, 4, 5, tzinfo=UTC)
@@ -4032,18 +4041,21 @@ def test_roster_list_and_invite_options(monkeypatch: pytest.MonkeyPatch, sqlite_
         revision=1,
         operation=AgentConfigRevisionOperation.PUBLISH_DRAFT,
     )
-    session.add_all([agent, unconfigured_agent, version, unconfigured_version, workflow_row, binding, publish_revision])
+    app = _app(app_id=workflow_row.app_id)
+    session.add_all(
+        [agent, unconfigured_agent, version, unconfigured_version, workflow_row, binding, publish_revision, app]
+    )
     session.commit()
     service = AgentRosterService(session)
-    monkeypatch.setattr(service, "_load_published_references_by_agent_id", lambda **kwargs: {})
-    monkeypatch.setattr(service, "_load_reference_counts_by_agent_id", lambda **kwargs: {"agent-1": 1})
 
     listed = service.list_roster_agents(tenant_id="tenant-1", page=1, limit=20)
-    invited = service.list_invite_options(tenant_id="tenant-1", page=1, limit=20, app_id="app-1")
+    invited = list_invite_options_in_session(
+        session, tenant_id="tenant-1", page=1, limit=20, app_id="app-1", keyword=None, accessible_agent_ids=None
+    )
 
     assert [item["id"] for item in listed["data"]] == ["agent-1", "agent-2"]
-    assert [item["id"] for item in invited["data"]] == ["agent-1"]
-    assert invited["total"] == 1
+    assert [item.id for item in invited.data] == ["agent-1"]
+    assert invited.total == 1
     assert listed["data"][0]["active_config_snapshot"]["id"] == "version-1"
     assert listed["data"][0]["role"] == "researcher"
     assert listed["data"][0]["created_at"] == int(created_at.timestamp())
@@ -4052,11 +4064,11 @@ def test_roster_list_and_invite_options(monkeypatch: pytest.MonkeyPatch, sqlite_
     assert listed["data"][0]["active_config_is_published"] is True
     assert listed["data"][0]["reference_count"] == 1
     assert listed["data"][1]["active_config_is_published"] is False
-    assert invited["data"][0]["is_in_current_workflow"] is True
-    assert invited["data"][0]["existing_node_ids"] == ["node-1"]
+    assert invited.data[0].is_in_current_workflow is True
+    assert invited.data[0].existing_node_ids == ("node-1",)
 
 
-def test_invite_options_uses_db_filtered_pagination(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+def test_invite_options_uses_db_filtered_pagination(sqlite_session: Session):
     session = sqlite_session
     configured_agent = Agent(
         id="agent-2",
@@ -4087,15 +4099,14 @@ def test_invite_options_uses_db_filtered_pagination(monkeypatch: pytest.MonkeyPa
     )
     session.add_all([configured_agent, version, publish_revision])
     session.commit()
-    service = AgentRosterService(session)
-    monkeypatch.setattr(service, "_load_published_references_by_agent_id", lambda **kwargs: {})
-    monkeypatch.setattr(service, "_load_reference_counts_by_agent_id", lambda **kwargs: {})
 
-    result = service.list_invite_options(tenant_id="tenant-1", page=1, limit=1)
+    result = list_invite_options_in_session(
+        session, tenant_id="tenant-1", page=1, limit=1, app_id=None, keyword=None, accessible_agent_ids=None
+    )
 
-    assert result["total"] == 1
-    assert result["has_more"] is False
-    assert [item["id"] for item in result["data"]] == ["agent-2"]
+    assert result.total == 1
+    assert result.has_more is False
+    assert [item.id for item in result.data] == ["agent-2"]
 
     research = Tag(tenant_id="tenant-1", type=TagType.AGENT, name="Research", created_by="account-1")
     finance = Tag(tenant_id="tenant-1", type=TagType.AGENT, name="Finance", created_by="account-1")
@@ -4107,19 +4118,30 @@ def test_invite_options_uses_db_filtered_pagination(monkeypatch: pytest.MonkeyPa
         for tag in (research, finance)
     )
     session.commit()
-    tagged = service.list_invite_options(
-        tenant_id="tenant-1", page=1, limit=1, tag_ids=(research.id, finance.id, research.id)
-    )
-    assert tagged["total"] == 1
-    assert tagged["has_more"] is False
-    assert [item["id"] for item in tagged["data"]] == [configured_agent.id]
-    assert {tag["id"] for tag in tagged["data"][0]["tags"]} == {research.id, finance.id}
-    assert {tag["type"] for tag in tagged["data"][0]["tags"]} == {"agent"}
-    assert service.list_invite_options(tenant_id="tenant-1", tag_ids=(research.id, studio.id))["total"] == 0
-    assert (
-        service.list_invite_options(tenant_id="tenant-1", tag_ids=(research.id,), accessible_agent_ids=[])["total"] == 0
-    )
-    assert service.list_invite_options(tenant_id="tenant-1", tag_ids=(research.id,), keyword="missing")["total"] == 0
+
+    def invite_by_tags(
+        tag_ids: tuple[str, ...], *, accessible_agent_ids: set[str] | None = None, keyword: str | None = None
+    ) -> AgentInviteOptionsPage:
+        return list_invite_options_in_session(
+            session,
+            tenant_id="tenant-1",
+            page=1,
+            limit=1,
+            tag_ids=tag_ids,
+            app_id=None,
+            keyword=keyword,
+            accessible_agent_ids=accessible_agent_ids,
+        )
+
+    tagged = invite_by_tags((research.id, finance.id, research.id))
+    assert tagged.total == 1
+    assert tagged.has_more is False
+    assert [item.id for item in tagged.data] == [configured_agent.id]
+    assert {tag["id"] for tag in tagged.data[0].tags} == {research.id, finance.id}
+    assert {tag["type"] for tag in tagged.data[0].tags} == {"agent"}
+    assert invite_by_tags((research.id, studio.id)).total == 0
+    assert invite_by_tags((research.id,), accessible_agent_ids=set()).total == 0
+    assert invite_by_tags((research.id,), keyword="missing").total == 0
 
 
 def test_active_config_is_published_flags_use_stored_agent_state(sqlite_session: Session):
@@ -4223,7 +4245,8 @@ def test_load_app_backing_agents_skips_empty_agent_ids(sqlite_session: Session):
 
     session.add_all([valid_agent, empty_id_agent])
     session.commit()
-    result = AgentRosterService(session).load_app_backing_agents_by_app_id(
+    result = load_app_backing_agents_by_app_id(
+        session,
         tenant_id="tenant-1",
         app_ids=["app-1", "app-2"],
     )
@@ -4333,9 +4356,7 @@ def test_reference_counts_include_draft_and_published_bindings_once_per_app(sqli
     stale_workflow.version = "current-version"
     session.add_all([*bindings, app_one, app_two, draft_workflow, published_workflow, stale_workflow])
     session.commit()
-    service = AgentRosterService(session)
-
-    result = service._load_reference_counts_by_agent_id(tenant_id="tenant-1", agent_ids=["agent-1"])
+    result = load_reference_counts_by_agent_id(session, tenant_id="tenant-1", agent_ids=["agent-1"])
 
     assert result == {"agent-1": 1}
 
@@ -4407,8 +4428,9 @@ def test_roster_update_versions_and_detail(monkeypatch: pytest.MonkeyPatch, sqli
         account_id="account-1",
         payload=roster_service.RosterAgentUpdatePayload(description="new"),
     )
-    versions = service.list_agent_versions(tenant_id="tenant-1", agent_id="agent-1")
-    detail = service.get_agent_version_detail(tenant_id="tenant-1", agent_id="agent-1", version_id="version-2")
+    versions_repo = SQLAlchemyAgentVersionRepository(session_factory=sessionmaker(bind=session.get_bind()))
+    versions = [asdict(item) for item in versions_repo.list_versions(tenant_id="tenant-1", agent_id="agent-1")]
+    detail = asdict(versions_repo.get_version(tenant_id="tenant-1", agent_id="agent-1", version_id="version-2"))
 
     assert updated["description"] == "new"
     assert versions[0]["id"] == "version-4"
@@ -4418,13 +4440,13 @@ def test_roster_update_versions_and_detail(monkeypatch: pytest.MonkeyPatch, sqli
     assert versions[1]["id"] == "version-2"
     assert versions[1]["version"] == 1
     assert versions[1]["snapshot_version"] == 2
-    assert versions[0]["created_at"] == int(listed_version_created_at.timestamp())
+    assert versions[0]["created_at"] == int(listed_version_created_at.replace(tzinfo=None).timestamp())
     assert detail["version"] == 1
     assert detail["display_version"] == 1
     assert detail["snapshot_version"] == 2
-    assert detail["config_snapshot"] == {"prompt": {}}
-    assert detail["created_at"] == int(older_listed_version.created_at.timestamp())
-    assert detail["revisions"][0]["created_at"] == int(revision_created_at.timestamp())
+    assert AgentSoulConfig.model_validate(detail["config_snapshot"]) == AgentSoulConfig()
+    assert detail["created_at"] == int(older_listed_version.created_at.replace(tzinfo=None).timestamp())
+    assert detail["revisions"][0]["created_at"] == int(revision_created_at.replace(tzinfo=None).timestamp())
 
 
 def test_roster_create_detail_and_lookup_helpers(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
@@ -4662,28 +4684,8 @@ def test_agent_app_debug_conversation_requires_app_binding(sqlite_session: Sessi
         )
 
 
-def test_load_or_create_build_conversations_supports_runtime_backed_agents(sqlite_session: Session):
+def test_build_conversation_creates_runtime_app_for_workflow_agent(sqlite_session: Session):
     session = sqlite_session
-    valid_agent = Agent(
-        id="agent-1",
-        tenant_id="tenant-1",
-        app_id="app-1",
-        name="Analyst",
-        description="",
-        scope=AgentScope.ROSTER,
-        source=AgentSource.AGENT_APP,
-        status=AgentStatus.ACTIVE,
-    )
-    wrong_tenant_agent = Agent(
-        id="agent-2",
-        tenant_id="tenant-2",
-        app_id="app-2",
-        name="Other tenant",
-        description="",
-        scope=AgentScope.ROSTER,
-        source=AgentSource.AGENT_APP,
-        status=AgentStatus.ACTIVE,
-    )
     workflow_agent = Agent(
         id="agent-3",
         tenant_id="tenant-1",
@@ -4697,30 +4699,25 @@ def test_load_or_create_build_conversations_supports_runtime_backed_agents(sqlit
         workflow_node_id="node-1",
     )
 
-    session.add_all([valid_agent, wrong_tenant_agent, workflow_agent])
+    session.add(workflow_agent)
     session.commit()
-    result = AgentRosterService(session).load_or_create_build_conversation_ids_by_agent_id(
-        tenant_id="tenant-1",
-        agents=[valid_agent, wrong_tenant_agent, workflow_agent],
-        account_id="account-1",
+
+    conversation_id = AgentRosterService(session).get_or_create_build_conversation(
+        tenant_id="tenant-1", agent_id=workflow_agent.id, account_id="account-1"
     )
 
-    assert list(result) == ["agent-1", "agent-3"]
-    assert result["agent-1"]
-    assert result["agent-3"]
-    mappings = list(
-        session.scalars(select(AgentDebugConversation).where(AgentDebugConversation.tenant_id == "tenant-1"))
-    )
-    assert len(mappings) == 2
-    assert all(mapping.draft_type == AgentConfigDraftType.DEBUG_BUILD for mapping in mappings)
+    mapping = session.scalars(select(AgentDebugConversation)).one()
+    assert mapping.draft_type == AgentConfigDraftType.DEBUG_BUILD
+    assert mapping.conversation_id == conversation_id
+    assert mapping.app_id == workflow_agent.backing_app_id
 
 
 def test_agent_app_visible_versions_exclude_draft_saves():
     agent_app = Agent(tenant_id="tenant-1", name="Agent", scope=AgentScope.ROSTER, source=AgentSource.AGENT_APP)
     roster_agent = Agent(tenant_id="tenant-1", name="Agent", scope=AgentScope.ROSTER, source=AgentSource.ROSTER)
 
-    agent_app_operations = AgentRosterService._visible_version_operations(agent_app)
-    roster_operations = AgentRosterService._visible_version_operations(roster_agent)
+    agent_app_operations = visible_version_operations(agent_app)
+    roster_operations = visible_version_operations(roster_agent)
 
     assert agent_app_operations == {
         AgentConfigRevisionOperation.PUBLISH_DRAFT,
@@ -4738,7 +4735,6 @@ def test_restore_roster_agent_version_switches_active_snapshot(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ):
     session = sqlite_session
-    service = AgentRosterService(session)
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -4769,12 +4765,16 @@ def test_restore_roster_agent_version_switches_active_snapshot(
     session.add_all([agent, version, revision])
     session.commit()
 
-    restored = service.restore_agent_version(
-        tenant_id="tenant-1",
-        agent_id="agent-1",
-        version_id="version-2",
-        account_id="account-1",
+    versions_repo = SQLAlchemyAgentVersionRepository(session_factory=sessionmaker(bind=session.get_bind()))
+    restored = asdict(
+        versions_repo.restore_version(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            version_id="version-2",
+            account_id="account-1",
+        )
     )
+    session.expire_all()
 
     assert restored == {
         "result": "success",
@@ -4800,7 +4800,6 @@ def test_restore_roster_agent_version_rejects_invisible_versions(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ):
     session = sqlite_session
-    service = AgentRosterService(session)
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -4822,8 +4821,9 @@ def test_restore_roster_agent_version_rejects_invisible_versions(
     session.add_all([agent, version])
     session.commit()
 
-    with pytest.raises(roster_service.AgentVersionNotFoundError):
-        service.restore_agent_version(
+    versions_repo = SQLAlchemyAgentVersionRepository(session_factory=sessionmaker(bind=session.get_bind()))
+    with pytest.raises(AgentVersionUnavailableError):
+        versions_repo.restore_version(
             tenant_id="tenant-1",
             agent_id="agent-1",
             version_id="version-2",
@@ -4835,14 +4835,18 @@ def test_restore_roster_agent_version_rejects_invisible_versions(
 
 
 def test_app_list_all_excludes_agent_apps_by_default(sqlite_session: Session):
-    filters = AppService._build_app_list_filters("account-1", "tenant-1", AppListParams(mode="all"), sqlite_session)
+    filters = ConsoleAppRepository._build_app_list_filters(
+        "account-1", "tenant-1", AppListParams(mode="all"), sqlite_session
+    )
     sql = " ".join(str(filter_) for filter_ in filters)
 
     assert "apps.mode != :mode_1" in sql
 
 
 def test_app_list_agent_mode_requires_visible_roster_backing_agent(sqlite_session: Session):
-    filters = AppService._build_app_list_filters("account-1", "tenant-1", AppListParams(mode="agent"), sqlite_session)
+    filters = ConsoleAppRepository._build_app_list_filters(
+        "account-1", "tenant-1", AppListParams(mode="agent"), sqlite_session
+    )
     sql = " ".join(str(filter_) for filter_ in filters)
 
     assert "EXISTS" in sql

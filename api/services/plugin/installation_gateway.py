@@ -76,6 +76,7 @@ class LegacyPluginInstallationGateway:
             PluginService._check_plugin_installation_scope(decode_response.verification)
             marketplace.record_install_plugin_event(new_plugin_unique_identifier)
 
+        PluginService._retain_plugin_version_for_enterprise(tenant_id, original_plugin_unique_identifier)
         result = manager.upgrade_plugin(
             tenant_id,
             original_plugin_unique_identifier,
@@ -102,6 +103,7 @@ class LegacyPluginInstallationGateway:
         """
         PluginService._check_marketplace_only_permission()
         manager = PluginInstaller()
+        PluginService._retain_plugin_version_for_enterprise(tenant_id, original_plugin_unique_identifier)
         result = manager.upgrade_plugin(
             tenant_id,
             original_plugin_unique_identifier,

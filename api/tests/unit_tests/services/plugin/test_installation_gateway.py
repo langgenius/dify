@@ -608,3 +608,71 @@ def test_marketplace_invalid_cached_dto_does_not_fall_back_to_package_download(
     assert daemon.installs == []
     assert cache.calls == []
     assert [kind for kind, _ in daemon.calls] == ["fetch", "decode"]
+
+
+class TestEnterpriseRetainsReplacedPluginVersion:
+    """Upgrades tell the enterprise plugin manager about the version they replace, like uninstalls do.
+
+    Without the call the plugin daemon drops the replaced version once no tenant uses it, and its
+    runtime (DifyPlugin and pods on Kubernetes) is left behind where the enterprise console cannot
+    list or remove it.
+    """
+
+    @staticmethod
+    def _upgrade(source: str) -> list[object]:
+        """Run one upgrade and return what reached the plugin manager hook and the daemon, in order."""
+        calls: list[object] = []
+
+        def record_pre_uninstall(body: object) -> None:
+            calls.append(body)
+
+        def record_upgrade(*_args: object) -> PluginInstallTaskStartResponse:
+            calls.append("upgrade_plugin")
+            return PluginInstallTaskStartResponse(all_installed=False, task_id="task-id", task=None)
+
+        with (
+            patch(f"{MODULE}.SystemFeatureService") as feature_service,
+            patch(f"{MODULE}.PluginService._check_marketplace_only_permission"),
+            patch("services.plugin.installation_gateway.PluginInstaller") as installer_cls,
+            patch("services.plugin.installation_gateway.marketplace"),
+            patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache"),
+            patch(f"{MODULE}.PluginManagerService.try_pre_uninstall_plugin", side_effect=record_pre_uninstall),
+        ):
+            feature_service.get_plugin_installation_permission.return_value = PluginInstallationPermissionModel(
+                restrict_to_marketplace_only=False,
+                plugin_installation_scope=PluginInstallationScope.ALL,
+            )
+            installer = installer_cls.return_value
+            installer.decode_plugin_from_identifier.return_value.verification = None
+            installer.upgrade_plugin.side_effect = record_upgrade
+
+            if source == "marketplace":
+                result = LegacyPluginInstallationGateway.upgrade_plugin_with_marketplace(
+                    "tenant-1", "old-uid", "new-uid"
+                )
+            else:
+                result = LegacyPluginInstallationGateway.upgrade_plugin_with_github(
+                    "tenant-1", "old-uid", "new-uid", "langgenius/openai", "1.0.0", "openai.difypkg"
+                )
+
+        assert result.task_id == "task-id"
+        return calls
+
+    @pytest.mark.parametrize("source", ["marketplace", "github"])
+    def test_enterprise_upgrade_keeps_replaced_version_before_upgrading(
+        self, source: str, config_overrides: Callable[..., None]
+    ) -> None:
+        from services.enterprise.plugin_manager_service import PreUninstallPluginRequest
+
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+
+        calls = self._upgrade(source)
+
+        assert calls == [
+            PreUninstallPluginRequest(tenant_id="tenant-1", plugin_unique_identifier="old-uid"),
+            "upgrade_plugin",
+        ]
+
+    @pytest.mark.parametrize("source", ["marketplace", "github"])
+    def test_community_upgrade_does_not_call_enterprise_plugin_manager(self, source: str) -> None:
+        assert self._upgrade(source) == ["upgrade_plugin"]

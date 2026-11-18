@@ -16,6 +16,7 @@ from configs import dify_config
 from core.helper.http_client_pooling import get_pooled_http_client
 from enums import CloudPlan, DeploymentEdition
 from extensions.ext_redis import redis_client
+from services.billing_client import billing
 from services.billing_portal_service import BillingPortalLink
 from services.compliance_download_service import ComplianceDownloadLink
 from services.entities.tokener_metering import (
@@ -102,6 +103,8 @@ def _safe_billing_error_code(response: httpx.Response) -> str | None:
         candidates.append(nested_error.get("code"))
     if _TOKENER_EDUCATION_CHECKOUT_UNSUPPORTED in candidates:
         return _TOKENER_EDUCATION_CHECKOUT_UNSUPPORTED
+    if "ANNUAL_DISCOUNT_ACTIVE" in candidates:
+        return "ANNUAL_DISCOUNT_ACTIVE"
     if _CREDIT_MANAGED_BY_TOKENER in candidates:
         return _CREDIT_MANAGED_BY_TOKENER
     return None
@@ -486,6 +489,20 @@ class BillingService:
         return _billing_info_adapter.validate_python(billing_info)
 
     @classmethod
+    def is_cloud_paid_plan(cls, tenant_id: str) -> bool:
+        try:
+            info = cls.get_info(tenant_id, exclude_vector_space=True)
+        except (httpx.RequestError, _BillingHTTPStatusError) as error:
+            raise BillingUpstreamUnavailableError from error
+        except (ValidationError, json.JSONDecodeError, UnicodeDecodeError) as error:
+            raise BillingUpstreamInvalidResponseError from error
+        if isinstance(info, billing.GetSubscriptionInfoReply):
+            plan = info.subscription.plan
+        else:
+            plan = info["subscription"]["plan"]
+        return plan in (CloudPlan.PROFESSIONAL, CloudPlan.TEAM)
+
+    @classmethod
     def get_vector_space(cls, tenant_id: str, bypass_cache: bool = False) -> _VectorSpaceQuota:
         params = {"tenant_id": tenant_id}
         if bypass_cache:
@@ -748,6 +765,14 @@ class BillingService:
             response = cls._send_request("GET", endpoint, params=params)
             return _billing_portal_link_adapter.validate_python(response)
         except _BillingHTTPStatusError as error:
+            if (
+                endpoint == "/subscription/payment-link"
+                and error.status_code == httpx.codes.CONFLICT
+                and error.upstream_error_code == "ANNUAL_DISCOUNT_ACTIVE"
+            ):
+                raise billing.BillingSubscriptionUpstreamInvalidResponseError(
+                    status_code=error.status_code, reason="ANNUAL_DISCOUNT_ACTIVE"
+                ) from error
             if (
                 error.status_code == httpx.codes.CONFLICT
                 and error.upstream_error_code == _TOKENER_EDUCATION_CHECKOUT_UNSUPPORTED

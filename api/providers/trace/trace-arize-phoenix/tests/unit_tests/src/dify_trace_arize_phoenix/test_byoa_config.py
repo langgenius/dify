@@ -44,7 +44,7 @@ def test_empty_projects_fall_back_to_default(project: str | None, expected: str)
 
 def test_phoenix_endpoint_keeps_its_path() -> None:
     assert PhoenixConfig(endpoint=" https://phoenix.example.com/s/space/ ").endpoint == (
-        "https://phoenix.example.com/s/space/"
+        "https://phoenix.example.com/s/space"
     )
     assert PhoenixConfig(endpoint=" ").endpoint == "https://app.phoenix.arize.com"
 

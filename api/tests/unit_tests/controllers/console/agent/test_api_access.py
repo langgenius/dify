@@ -17,7 +17,18 @@ from werkzeug.test import TestResponse
 
 from constants import HEADER_NAME_CSRF_TOKEN
 from controllers.console.agent.api_access import AgentApiAccessApi, AgentApiStatusApi
-from controllers.console.agent.roster import AgentAppApi, AgentLogMessagesApi
+from controllers.console.agent.roster import (
+    AgentAppApi,
+    AgentAppListApi,
+    AgentInviteOptionsApi,
+    AgentLogMessagesApi,
+    AgentLogsApi,
+    AgentLogSourcesApi,
+    AgentRosterVersionDetailApi,
+    AgentRosterVersionRestoreApi,
+    AgentRosterVersionsApi,
+    AgentStatisticsSummaryApi,
+)
 from controllers.console.app.message import AgentChatMessageListApi
 from controllers.console.wraps import _is_setup_completed
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -132,8 +143,16 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
         api = ExternalApi(blueprint)
         api.add_resource(AgentApiAccessApi, "/agent/<uuid:agent_id>/api-access")
         api.add_resource(AgentApiStatusApi, "/agent/<uuid:agent_id>/api-enable")
-        api.add_resource(AgentAppApi, "/agent/<uuid:agent_id>")
+        api.add_resource(AgentAppListApi, "/agent")
+        api.add_resource(AgentInviteOptionsApi, "/agent/invite-options")
+        api.add_resource(AgentLogsApi, "/agent/<uuid:agent_id>/logs")
         api.add_resource(AgentLogMessagesApi, "/agent/<uuid:agent_id>/logs/<uuid:conversation_id>/messages")
+        api.add_resource(AgentLogSourcesApi, "/agent/<uuid:agent_id>/log-sources")
+        api.add_resource(AgentStatisticsSummaryApi, "/agent/<uuid:agent_id>/statistics/summary")
+        api.add_resource(AgentAppApi, "/agent/<uuid:agent_id>")
+        api.add_resource(AgentRosterVersionsApi, "/agent/<uuid:agent_id>/versions")
+        api.add_resource(AgentRosterVersionDetailApi, "/agent/<uuid:agent_id>/versions/<uuid:version_id>")
+        api.add_resource(AgentRosterVersionRestoreApi, "/agent/<uuid:agent_id>/versions/<uuid:version_id>/restore")
         api.add_resource(AgentChatMessageListApi, "/agent/<uuid:agent_id>/chat-messages")
         app.register_blueprint(blueprint)
         now = naive_utc_now()

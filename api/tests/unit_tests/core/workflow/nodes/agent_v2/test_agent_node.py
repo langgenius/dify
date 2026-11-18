@@ -46,6 +46,7 @@ from clients.agent_backend import (
     FakeAgentBackendScenario,
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
+from core.app.llm.model_access import ModelRuntimeProfile
 from core.workflow.agent_log_events import AgentLogEvent, NodeRunAgentLogEvent
 from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.agent_v2 import DifyAgentNode
@@ -91,10 +92,10 @@ from services.agent.workspace_service import AgentWorkspaceNotFoundError
 
 
 @pytest.fixture(autouse=True)
-def _stub_model_context_window(monkeypatch: pytest.MonkeyPatch) -> None:
+def _stub_model_runtime_profile(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.resolve_model_context_window",
-        lambda **_kwargs: None,
+        "core.app.llm.model_access.resolve_model_runtime_profile",
+        lambda **_kwargs: ModelRuntimeProfile(None, []),
     )
 
 
@@ -630,6 +631,7 @@ def _node(
     runtime_request_builder: WorkflowAgentRuntimeRequestBuilder | None = None,
     workflow_tool_invocation_id: str | None = None,
     error_strategy: ErrorStrategy | None = None,
+    capture_agent_evaluation_trace: bool = False,
 ) -> DifyAgentNode:
     graph_init_params = InitParams(
         workflow_id="workflow-1",
@@ -642,6 +644,7 @@ def _node(
                 user_from=UserFrom.ACCOUNT,
                 invoke_from=InvokeFrom.DEBUGGER,
                 workflow_tool_invocation_id=workflow_tool_invocation_id,
+                capture_agent_evaluation_trace=capture_agent_evaluation_trace,
             )
         },
         call_depth=0,
@@ -731,6 +734,27 @@ def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():
     assert "credentials" not in layers["llm"]["config"]
     assert DIFY_AGENT_OUTPUT_LAYER_ID not in layers
     assert "output_type_check" not in agent_log
+    assert "evaluation_trace" not in agent_log
+
+
+def test_agent_node_captures_trace_only_for_evaluation_execution() -> None:
+    events = list(
+        _node(
+            agent_backend_client=AgentMessageDeltaBackendClient(),
+            capture_agent_evaluation_trace=True,
+        )._run()
+    )
+
+    result = next(event for event in events if isinstance(event, StreamCompletedEvent)).node_run_result
+    trace = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["evaluation_trace"]
+    assert trace["schema_version"] == "1.0"
+    assert trace["trajectory"]["source"] == "agent_v2"
+    assert [step["step_type"] for step in trace["trajectory"]["steps"]] == [
+        "agent_message",
+        "final_output",
+    ]
+    assert trace["trajectory"]["steps"][0]["content"] == "hello "
+    assert trace["trajectory"]["steps"][-1]["content"] == "hello agent"
 
 
 def test_agent_node_structured_success_preserves_text_and_checks_only_custom_outputs():

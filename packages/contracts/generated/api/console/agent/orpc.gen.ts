@@ -237,12 +237,22 @@ import {
   zPutAgentByAgentIdResponse,
 } from './zod.gen.ts'
 
+/**
+ * Return visible Workflow-callable Agents matching validated tag filters
+ *
+ * Preconditions: Console admission supplies the active workspace identity.
+ * Postconditions: repeated tag_ids are validated as UUIDs and passed with
+ * name/pagination filters; the response contains detached Agent tags.
+ */
 export const get = oc
   .route({
+    description:
+      'Preconditions: Console admission supplies the active workspace identity.\nPostconditions: repeated tag_ids are validated as UUIDs and passed with\nname/pagination filters; the response contains detached Agent tags.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentInviteOptions',
     path: '/agent/invite-options',
+    summary: 'Return visible Workflow-callable Agents matching validated tag filters',
     tags: ['console'],
   })
   .input(z.object({ query: zGetAgentInviteOptionsQuery.optional() }).optional())
@@ -1120,12 +1130,16 @@ export const feedbacks = {
   post: post15,
 }
 
+/**
+ * Return the admitted Agent's available log sources
+ */
 export const get19 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentByAgentIdLogSources',
     path: '/agent/{agent_id}/log-sources',
+    summary: "Return the admitted Agent's available log sources",
     tags: ['console'],
   })
   .input(z.object({ params: zGetAgentByAgentIdLogSourcesPath }))
@@ -1136,12 +1150,16 @@ export const logSources = {
   get: get19,
 }
 
+/**
+ * Return the admitted Agent's messages for a conversation
+ */
 export const get20 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentByAgentIdLogsByConversationIdMessages',
     path: '/agent/{agent_id}/logs/{conversation_id}/messages',
+    summary: "Return the admitted Agent's messages for a conversation",
     tags: ['console'],
   })
   .input(
@@ -1161,12 +1179,16 @@ export const byConversationId = {
   messages,
 }
 
+/**
+ * Return the admitted Agent's conversation logs
+ */
 export const get21 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentByAgentIdLogs',
     path: '/agent/{agent_id}/logs',
+    summary: "Return the admitted Agent's conversation logs",
     tags: ['console'],
   })
   .input(
@@ -1366,12 +1388,16 @@ export const sandbox = {
   files: files3,
 }
 
+/**
+ * Return Agent monitoring data using the admitted account's timezone
+ */
 export const get27 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentByAgentIdStatisticsSummary',
     path: '/agent/{agent_id}/statistics/summary',
+    summary: "Return Agent monitoring data using the admitted account's timezone",
     tags: ['console'],
   })
   .input(

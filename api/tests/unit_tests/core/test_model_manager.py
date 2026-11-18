@@ -41,7 +41,7 @@ def _legacy_model_billing_profile() -> Iterator[None]:
 
 
 @pytest.fixture
-def lb_model_manager():
+def lb_model_manager(monkeypatch: pytest.MonkeyPatch) -> LBModelManager:
     load_balancing_configs = [
         ModelLoadBalancingConfiguration(id="id1", name="__inherit__", credentials={}),
         ModelLoadBalancingConfiguration(id="id2", name="first", credentials={"openai_api_key": "fake_key"}),
@@ -57,23 +57,23 @@ def lb_model_manager():
         managed_credentials={"openai_api_key": "fake_key"},
     )
 
-    lb_model_manager.cooldown = MagicMock(return_value=None)
+    monkeypatch.setattr(lb_model_manager, "cooldown", MagicMock(return_value=None))
 
-    def is_cooldown(config: ModelLoadBalancingConfiguration):
+    def is_cooldown(config: ModelLoadBalancingConfiguration) -> bool:
         return config.id == "id1"
 
-    lb_model_manager.in_cooldown = MagicMock(side_effect=is_cooldown)
+    monkeypatch.setattr(lb_model_manager, "in_cooldown", MagicMock(side_effect=is_cooldown))
 
     return lb_model_manager
 
 
-def test_model_manager_with_cache_enabled_reuses_stored_credentials():
+def test_model_manager_with_cache_enabled_reuses_stored_credentials() -> None:
     """With ``enable_credentials_cache=True``, later calls for the same key return cached creds."""
     provider_manager = MagicMock()
     bundle = MagicMock()
     bundle.configuration.provider.provider = "openai"
     bundle.configuration.tenant_id = "tenant-1"
-    bundle.configuration.model_settings = []
+    bundle.configuration.model_settings = list[object]()
     bundle.model_type_instance.model_type = ModelType.LLM
     get_creds = MagicMock(return_value={"api_key": "first"})
     bundle.configuration.get_current_credentials = get_creds
@@ -100,7 +100,7 @@ def _build_model_manager_bundle(
     bundle = MagicMock()
     bundle.configuration.provider.provider = "openai"
     bundle.configuration.tenant_id = "tenant-1"
-    bundle.configuration.model_settings = []
+    bundle.configuration.model_settings = list[object]()
     bundle.configuration.using_provider_type = provider_type
     bundle.configuration.system_configuration.current_quota_type = ProviderQuotaType.TRIAL
     bundle.configuration.system_configuration.quota_configurations = [
@@ -360,7 +360,7 @@ def test_quota_managed_stream_releases_when_provider_fails_before_first_chunk() 
     model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.LLM, "gpt-4")
     reservation = MagicMock(commit_before_delivery=True)
 
-    def failing_stream():
+    def failing_stream() -> Iterator[LLMResultChunk]:
         raise RuntimeError("provider failed")
         yield
 
@@ -398,7 +398,7 @@ def test_quota_managed_usage_stream_commits_before_delivering_buffered_chunks() 
     events: list[str] = []
     reservation.commit.side_effect = lambda _usage: events.append("commit")
 
-    def provider_stream():
+    def provider_stream() -> Iterator[LLMResultChunk]:
         for index, chunk in enumerate(chunks):
             events.append(f"provider-{index}")
             yield chunk
@@ -535,7 +535,7 @@ def test_quota_managed_tts_commits_before_first_chunk() -> None:
     events: list[str] = []
     reservation.commit.side_effect = lambda: events.append("commit")
 
-    def provider_stream():
+    def provider_stream() -> Iterator[bytes]:
         events.append("provider")
         yield b"audio"
 
@@ -587,7 +587,7 @@ def test_quota_managed_tts_releases_when_provider_fails_before_first_chunk() -> 
     model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.TTS, "tts-model")
     reservation = MagicMock()
 
-    def failing_stream():
+    def failing_stream() -> Iterator[bytes]:
         raise RuntimeError("provider failed")
         yield b""
 
@@ -621,7 +621,7 @@ def test_quota_managed_non_inference_helper_does_not_reserve_quota() -> None:
     reserve.assert_not_called()
 
 
-def test_lb_model_manager_fetch_next(mocker: MockerFixture, lb_model_manager: LBModelManager):
+def test_lb_model_manager_fetch_next(mocker: MockerFixture, lb_model_manager: LBModelManager) -> None:
     # initialize redis client
     redis_client.initialize(redis.Redis())
 
@@ -637,7 +637,7 @@ def test_lb_model_manager_fetch_next(mocker: MockerFixture, lb_model_manager: LB
 
     start_index = 0
 
-    def incr(key):
+    def incr(key: str) -> int:
         nonlocal start_index
         start_index += 1
         return start_index

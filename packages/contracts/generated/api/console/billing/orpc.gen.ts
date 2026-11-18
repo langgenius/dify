@@ -2,7 +2,12 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import { zBillingOperationFailedError, zBillingUnavailableError } from './zod.gen.ts'
+import {
+  zAnnualDiscountActiveError,
+  zBillingOperationFailedError,
+  zBillingUnavailableError,
+  zTokenerEducationCheckoutUnsupportedError,
+} from './zod.gen.ts'
 import {
   zGetBillingInvoicesResponse,
   zGetBillingSubscriptionQuery,
@@ -38,8 +43,13 @@ export const get2 = oc
   .input(z.object({ query: zGetBillingSubscriptionQuery }))
   .output(zGetBillingSubscriptionResponse)
   .errors({
+    annual_discount_active: { status: 409, data: zAnnualDiscountActiveError },
     billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
     billing_unavailable: { status: 503, data: zBillingUnavailableError },
+    tokener_education_checkout_unsupported: {
+      status: 409,
+      data: zTokenerEducationCheckoutUnsupportedError,
+    },
   })
 
 export const subscription = {

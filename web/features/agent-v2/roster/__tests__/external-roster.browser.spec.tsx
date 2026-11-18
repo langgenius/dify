@@ -42,6 +42,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'agent.get': requests.difyList,
+      'tags.get': () => [],
       'externalAgents.get': requests.list,
       'externalAgents.capabilities.get': requests.capabilities,
       'externalAgents.byAgentId.get': requests.detail,

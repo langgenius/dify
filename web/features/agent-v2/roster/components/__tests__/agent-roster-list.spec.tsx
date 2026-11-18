@@ -1,11 +1,11 @@
 import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentRosterListState } from '../agent-roster-list'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
 import { AgentPermission } from '@/features/agent-v2/acl'
 import { consoleQuery } from '@/service/console'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { AgentRosterList } from '../agent-roster-list'
 
@@ -40,6 +40,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'agent.byAgentId.copy.post': duplicateAgentMutationFn,
+      'tags.get': () => [],
     }),
   }
 })
@@ -62,21 +63,17 @@ const createAgent = (overrides: Partial<AgentAppPartial> = {}): AgentAppPartial 
   ...overrides,
 })
 
-const renderState = (state: AgentRosterListState) => {
-  const queryClient = new QueryClient()
-
-  const result = render(
-    <QueryClientProvider client={queryClient}>
+const renderState = (state: AgentRosterListState) =>
+  renderWithConsoleQuery(
+    <>
       <h1 id="agent-roster-title">Agents</h1>
-      <AgentRosterList aria-labelledby="agent-roster-title" state={state} />
-    </QueryClientProvider>,
+      <AgentRosterList
+        aria-labelledby="agent-roster-title"
+        state={state}
+        onOpenTagManagement={vi.fn()}
+      />
+    </>,
   )
-
-  return {
-    ...result,
-    queryClient,
-  }
-}
 
 type ReadyState = Extract<AgentRosterListState, { status: 'ready' }>
 

@@ -100,7 +100,7 @@ export function ExternalAgentField({
           </p>
         )}
       </div>
-      <PopoverContent align="start" className="w-92 max-w-[calc(100vw-2rem)] overflow-hidden">
+      <PopoverContent align="start" className="w-92 max-w-[calc(100vw-2rem)] overflow-visible">
         <PopoverTitle className="sr-only">
           {t(($) => $['roster.nodeSelector.dialogLabel'], { ns: 'agentRoster' })}
         </PopoverTitle>

@@ -3,6 +3,8 @@ import type { PermissionKey } from '@/models/access-control'
 import { SnippetPermission } from '@/app/components/snippets/utils/permission'
 
 export const getTagManagePermissionKey = (type: TagType): PermissionKey => {
+  if (type === 'agent') return 'agent.tag.manage'
+
   if (type === 'app') return 'app.tag.manage'
 
   if (type === 'snippet') return SnippetPermission.CreateAndModify

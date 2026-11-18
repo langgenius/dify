@@ -121,7 +121,10 @@ def test_real_sqlite_upgrade_preserves_native_rows_and_merges_heads() -> None:
         assert not added.intersection(column["name"] for column in sa.inspect(connection).get_columns(legacy.name))
     engine.dispose()
     scripts = ScriptDirectory(str(API / "migrations"))
-    assert scripts.get_heads() == ["d3046fe1115"]
+    head = scripts.get_current_head()
+    assert head is not None
+    revisions = {rev.revision for rev in scripts.iterate_revisions(head, "base")}
+    assert {"d3046fe1115", "a6d8e0f2b413", "f8b6e2c4a901"} <= revisions
     external = scripts.get_revision("c3025a2a1109")
     assert external is not None
     assert external.down_revision == "e4f9a2c7b681"

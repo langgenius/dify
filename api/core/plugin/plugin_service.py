@@ -1049,6 +1049,26 @@ class PluginService:
         return manager.delete_plugin_installation_task_item(tenant_id, task_id, identifier)
 
     @staticmethod
+    def _retain_plugin_version_for_enterprise(tenant_id: str, plugin_unique_identifier: str) -> None:
+        """Tell the enterprise plugin manager before a tenant drops a plugin version.
+
+        Uninstalling and upgrading both remove a version from the tenant. When no tenant uses
+        the version any more, the plugin daemon deletes its records, but nothing deletes the
+        version's runtime (on Kubernetes: its DifyPlugin, Deployment and pods). The enterprise
+        plugin manager therefore keeps the version referenced, so it stays listed in the
+        enterprise console and its runtime is removed when an admin uninstalls it there.
+        The call is synchronous and never raises: a failure is logged and the caller goes on.
+        """
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
+            return
+        PluginManagerService.try_pre_uninstall_plugin(
+            PreUninstallPluginRequest(
+                tenant_id=tenant_id,
+                plugin_unique_identifier=plugin_unique_identifier,
+            )
+        )
+
+    @staticmethod
     def upload_pkg(tenant_id: str, pkg: bytes, verify_signature: bool = False) -> PluginDecodeResponse:
         """
         Upload plugin package files
@@ -1157,13 +1177,7 @@ class PluginService:
                 PluginService.invalidate_plugin_model_providers_cache(tenant_id)
             return result
 
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
-            PluginManagerService.try_pre_uninstall_plugin(
-                PreUninstallPluginRequest(
-                    tenant_id=tenant_id,
-                    plugin_unique_identifier=plugin.plugin_unique_identifier,
-                )
-            )
+        PluginService._retain_plugin_version_for_enterprise(tenant_id, plugin.plugin_unique_identifier)
 
         result = manager.uninstall(tenant_id, plugin_installation_id)
         if not result:

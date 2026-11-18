@@ -13,7 +13,7 @@ from yarl import URL
 
 from configs.app_config import DifyConfig
 from configs.deploy import IMEventTransportMode
-from configs.feature import OpsTraceConfig
+from configs.feature import EvaluationConfig, OpsTraceConfig
 from configs.tokener_mapping_registry import TokenerMappingConfigurationError
 from enums import DeploymentEdition
 
@@ -53,6 +53,24 @@ def test_im_event_transport_mode_defaults_to_webhook() -> None:
 def test_im_event_transport_mode_rejects_invalid_values() -> None:
     with pytest.raises(ValidationError, match="HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE"):
         _make_config(HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE="SOCKET")
+
+
+def test_evaluation_config_rejects_heartbeat_interval_not_shorter_than_lease() -> None:
+    with pytest.raises(ValidationError, match="heartbeat interval must be shorter than the lease timeout"):
+        EvaluationConfig(
+            EVALUATION_RUN_HEARTBEAT_INTERVAL=60,
+            EVALUATION_RUN_LEASE_TIMEOUT=60,
+        )
+
+
+def test_evaluation_config_accepts_heartbeat_interval_shorter_than_lease() -> None:
+    config = EvaluationConfig(
+        EVALUATION_RUN_HEARTBEAT_INTERVAL=30,
+        EVALUATION_RUN_LEASE_TIMEOUT=180,
+    )
+
+    assert config.EVALUATION_RUN_MAX_RETRIES == 3
+    assert config.EVALUATION_RUN_RETRY_DELAY == 30
 
 
 class _IsolatedDifyConfig(DifyConfig):
@@ -136,19 +154,30 @@ def test_dify_config() -> None:
     assert Version(config.project.version) >= Version("1.0.0")
 
 
-def test_dify_config_ignores_removed_trace_dispatch_settings() -> None:
-    removed = {
-        "OPS_TRACE_UNIFIED_ENABLED": "true",
-        "OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES": "780",
-        "OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS": "5",
-        # Shorter than the old retry window, which used to fail startup.
-        "OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS": "19",
-    }
+def test_dify_config_accepts_native_trace_dispatch_and_export_settings_together() -> None:
+    config = _make_config(
+        OPS_TRACE_UNIFIED_ENABLED="true",
+        OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES="4",
+        OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS="5",
+        OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS="20",
+        OPS_TRACE_EXPORT_MAX_ATTEMPTS="3",
+    )
 
-    config = _make_config(**removed)
+    assert config.OPS_TRACE_UNIFIED_ENABLED is True
+    assert config.OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES == 4
+    assert config.OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS == 5
+    assert config.OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS == 20
+    assert config.OPS_TRACE_EXPORT_MAX_ATTEMPTS == 3
 
-    assert not any(hasattr(config, name) for name in removed)
-    assert config.OPS_TRACE_EXPORT_MAX_ATTEMPTS == 6
+
+def test_dify_config_requires_native_trace_context_to_outlive_retries() -> None:
+    with pytest.raises(ValidationError, match="OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS must cover the retry window"):
+        _make_config(
+            OPS_TRACE_UNIFIED_ENABLED=True,
+            OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES=4,
+            OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS=5,
+            OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS=19,
+        )
 
 
 @pytest.mark.parametrize(

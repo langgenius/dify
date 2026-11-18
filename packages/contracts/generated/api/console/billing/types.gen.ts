@@ -44,9 +44,19 @@ export type BillingSubscriptionResponse = {
   url: string
 }
 
-export type TokenerEducationCheckoutUnsupportedErrorResponse = {
-  code: 'tokener_education_checkout_unsupported'
+export type AnnualDiscountActiveErrorResponse = {
+  code: 'annual_discount_active'
   message: string
+  status: 409
+}
+
+export type AnnualDiscountActiveError = ErrorResponse & {
+  code: 'annual_discount_active'
+  status: 409
+}
+
+export type TokenerEducationCheckoutUnsupportedError = ErrorResponse & {
+  code: 'tokener_education_checkout_unsupported'
   status: 409
 }
 
@@ -91,7 +101,11 @@ export type GetBillingSubscriptionData = {
 
 export type GetBillingSubscriptionErrors = {
   403: ErrorResponse
-  409: TokenerEducationCheckoutUnsupportedErrorResponse | ErrorResponse
+  409:
+    | AnnualDiscountActiveErrorResponse
+    | AnnualDiscountActiveError
+    | TokenerEducationCheckoutUnsupportedError
+    | ErrorResponse
   422: BillingUnprocessableEntityErrorResponse | ErrorResponse
   502: BillingOperationFailedErrorResponse | BillingOperationFailedError | ErrorResponse
   503: BillingUnavailableErrorResponse | BillingUnavailableError | ErrorResponse

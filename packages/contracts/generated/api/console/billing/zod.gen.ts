@@ -75,13 +75,37 @@ export const zBillingSubscriptionResponse = z.object({
 })
 
 /**
- * TokenerEducationCheckoutUnsupportedErrorResponse
+ * AnnualDiscountActiveErrorResponse
  */
-export const zTokenerEducationCheckoutUnsupportedErrorResponse = z.object({
-  code: z.literal('tokener_education_checkout_unsupported'),
+export const zAnnualDiscountActiveErrorResponse = z.object({
+  code: z.literal('annual_discount_active'),
   message: z.string(),
   status: z.literal(409),
 })
+
+/**
+ * AnnualDiscountActiveError
+ *
+ * You can switch to annual billing after your current discount ends.
+ */
+export const zAnnualDiscountActiveError = zErrorResponse.and(
+  z.object({
+    code: z.literal('annual_discount_active'),
+    status: z.literal(409),
+  }),
+)
+
+/**
+ * TokenerEducationCheckoutUnsupportedError
+ *
+ * Education subscriptions are not supported with Tokener billing.
+ */
+export const zTokenerEducationCheckoutUnsupportedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('tokener_education_checkout_unsupported'),
+    status: z.literal(409),
+  }),
+)
 
 /**
  * BillingUnprocessableEntityErrorResponse

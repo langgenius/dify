@@ -141,8 +141,10 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     # Import other controllers
     from . import (
         apikey,
+        evaluation,
         extension,
         feature,
+        file_scan,
         human_input_form,
         init_validate,
         notification,
@@ -271,7 +273,9 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 
     return (
         apikey,
+        evaluation,
         extension,
+        file_scan,
         feature,
         human_input_form,
         human_input_channel,
@@ -380,7 +384,9 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 
 (
     apikey,
+    evaluation,
     extension,
+    file_scan,
     feature,
     human_input_form,
     human_input_channel,
@@ -526,6 +532,7 @@ __all__ = [
     "datasource_content_preview",
     "email_register",
     "endpoint",
+    "evaluation",
     "extension",
     "external",
     "external_agents",
@@ -533,6 +540,7 @@ __all__ = [
     "external_tests",
     "external_workflow_bindings",
     "feature",
+    "file_scan",
     "forgot_password",
     "generator",
     "hit_testing",
