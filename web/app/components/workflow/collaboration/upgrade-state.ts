@@ -1,19 +1,22 @@
+import { createDialogHandle } from '@langgenius/dify-ui/dialog'
 import { atom } from 'jotai'
 import { atomWithQuery } from 'jotai-tanstack-query'
-import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import { editorCollaborationEnabledAtom, editorResourceKindAtom } from '../editor-resource/state'
 
-const workspacePlanQueryAtom = atomWithQuery(() =>
+const workspaceCollaborationUpgradeQueryAtom = atomWithQuery(() =>
   consoleQuery.features.get.queryOptions({
-    select: (features) => features.billing.subscription.plan,
+    select: (features) => features.workflow_collaboration_upgrade_available,
   }),
 )
 
-export const collaborationUpgradeAvailableAtom = atom(
+const collaborationUpgradeAvailableAtom = atom(
   (get) =>
     get(editorResourceKindAtom) === 'app' &&
     !get(editorCollaborationEnabledAtom) &&
-    get(deploymentEditionAtom) === 'CLOUD' &&
-    get(workspacePlanQueryAtom).data === 'sandbox',
+    get(workspaceCollaborationUpgradeQueryAtom).data === true,
+)
+
+export const collaborationUpgradeDialogAtom = atom((get) =>
+  get(collaborationUpgradeAvailableAtom) ? createDialogHandle() : null,
 )

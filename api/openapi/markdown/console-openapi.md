@@ -27482,6 +27482,7 @@ Effective feature availability and limits for the current workspace.
 | trigger_event | [Quota](#quota) |  | Yes |
 | webapp_copyright_enabled | boolean |  | Yes |
 | workflow_collaboration_enabled | boolean |  | Yes |
+| workflow_collaboration_upgrade_available | boolean |  | Yes |
 | workspace_members | [LicenseLimitationModel](#licenselimitationmodel) |  | Yes |
 
 #### Feedback

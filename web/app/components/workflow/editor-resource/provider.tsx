@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import type { EditorResource } from './resource'
 import { ScopeProvider } from 'jotai-scope'
 import { getEditorResourceId } from './resource'
-import { collaborationUpgradeOpenAtom, editorResourceAtom } from './state'
+import { editorResourceAtom } from './state'
 
 export function EditorResourceScope({
   resource,
@@ -16,7 +16,7 @@ export function EditorResourceScope({
   return (
     <ScopeProvider
       key={`${resource.kind}:${getEditorResourceId(resource)}`}
-      atoms={[[editorResourceAtom, resource], collaborationUpgradeOpenAtom]}
+      atoms={[[editorResourceAtom, resource]]}
       name="WorkflowEditor"
     >
       {children}

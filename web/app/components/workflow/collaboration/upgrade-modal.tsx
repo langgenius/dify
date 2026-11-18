@@ -1,19 +1,16 @@
-import { useAtom, useAtomValue } from 'jotai'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
-import { collaborationUpgradeOpenAtom } from '../editor-resource/state'
-import { collaborationUpgradeAvailableAtom } from './upgrade-state'
+import { collaborationUpgradeDialogAtom } from './upgrade-state'
 
 export function CollaborationUpgradeModal() {
   const { t } = useTranslation(['billing'])
-  const available = useAtomValue(collaborationUpgradeAvailableAtom)
-  const [open, setOpen] = useAtom(collaborationUpgradeOpenAtom)
-  if (!available) return null
+  const dialog = useAtomValue(collaborationUpgradeDialogAtom)
+  if (!dialog) return null
 
   return (
     <PlanUpgradeModal
-      show={open}
-      onClose={() => setOpen(false)}
+      dialogHandle={dialog}
       iconClassName="i-ri-group-line"
       loc="workflow-collaboration-upgrade-modal"
       title={t(($) => $['upgrade.workflowCollaboration.title'], { ns: 'billing' })}
