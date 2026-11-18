@@ -27498,6 +27498,7 @@ Effective feature availability and limits for the current workspace.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| agent_preview_enabled | boolean |  | Yes |
 | annotation_quota_limit | [LimitationModel](#limitationmodel) |  | Yes |
 | api_rate_limit | [Quota](#quota) |  | Yes |
 | apps | [LimitationModel](#limitationmodel) |  | Yes |
@@ -31920,8 +31921,8 @@ Unable to create account because the licensed seats limit was exceeded
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| limit | integer |  | Yes |
-| size | integer |  | Yes |
+| limit | integer | Maximum number of resources allowed; 0 means unlimited | Yes |
+| size | integer | Number of resources already consumed | Yes |
 
 #### ListChannelProvidersResponse
 
@@ -38379,8 +38380,8 @@ in form definition, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| limit | integer |  | Yes |
-| size | integer |  | Yes |
+| limit | integer | Vector storage allowed, in MB; -1 means unlimited | Yes |
+| size | integer | Vector storage already consumed, in MB | Yes |
 | usage_unknown | boolean |  | No |
 
 #### VerificationTokenResponse

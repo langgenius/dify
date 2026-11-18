@@ -144,6 +144,20 @@ def test_education_is_advertised_only_where_its_endpoints_exist(
     assert features.education.enabled is (edition in EDUCATION_EDITIONS)
 
 
+@pytest.mark.parametrize("edition", list(DeploymentEdition))
+def test_agent_preview_feature_matches_the_chat_admission_policy(
+    config_overrides: Callable[..., None], edition: DeploymentEdition
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=edition)
+
+    with patch("services.feature_service.EnterpriseService.get_workspace_info", return_value={}):
+        features = FeatureService.get_features("")
+
+    expected = edition in {DeploymentEdition.CLOUD, DeploymentEdition.ENTERPRISE}
+    assert FeatureService.is_agent_preview_enabled() is expected
+    assert features.agent_preview_enabled is expected
+
+
 def test_education_stays_disabled_on_cloud_without_the_env_flag(
     config_overrides: Callable[..., None],
 ) -> None:
@@ -335,6 +349,34 @@ def test_site_import_entitlement(
 
     assert FeatureService.can_import_premium_site_settings("tenant-1") is expected
     assert get_plan.call_count == (1 if edition == DeploymentEdition.CLOUD else 0)
+
+
+@pytest.mark.parametrize("edition", [DeploymentEdition.COMMUNITY, DeploymentEdition.ENTERPRISE])
+def test_get_features_reports_plan_quotas_as_unlimited_outside_cloud(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], edition: DeploymentEdition
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=edition)
+    monkeypatch.setattr(feature_service_module.EnterpriseService, "get_workspace_info", lambda _tenant_id: {})
+
+    features = FeatureService.get_features("tenant-1")
+
+    for quota in (features.members, features.apps, features.annotation_quota_limit, features.documents_upload_quota):
+        assert (quota.size, quota.limit) == (0, 0)
+    assert features.vector_space is not None
+    assert features.vector_space.limit == -1
+    assert (features.trigger_event.limit, features.trigger_event.reset_date) == (-1, -1)
+    assert (features.api_rate_limit.limit, features.api_rate_limit.reset_date) == (-1, -1)
+
+
+@pytest.mark.parametrize("edition", [DeploymentEdition.COMMUNITY, DeploymentEdition.ENTERPRISE])
+def test_get_vector_space_is_unlimited_outside_cloud(
+    config_overrides: Callable[..., None], edition: DeploymentEdition
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=edition)
+
+    result = FeatureService.get_vector_space("tenant-1")
+
+    assert (result.size, result.limit, result.usage_unknown) == (0, -1, False)
 
 
 def test_skill_feature_is_disabled_by_default() -> None:

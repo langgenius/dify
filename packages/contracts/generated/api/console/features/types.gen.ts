@@ -5,6 +5,7 @@ export type ClientOptions = {
 }
 
 export type FeatureModel = {
+  agent_preview_enabled: boolean
   annotation_quota_limit: LimitationModel
   api_rate_limit: Quota
   apps: LimitationModel

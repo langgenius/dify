@@ -122,7 +122,6 @@ project-excludes = [
   "../e2e_tests/contracts/libs/_human_input/test_form_service.py",
   "../e2e_tests/contracts/libs/_human_input/test_models.py",
   "libs/broadcast_channel/redis/test_pubsub_channel.py",
-  "libs/broadcast_channel/redis/test_streams_channel.py",
   "services/agent/test_dsl_service.py",
   "services/agent/test_roster_service.py",
   "../helpers/unit/services/controller_api.py",
