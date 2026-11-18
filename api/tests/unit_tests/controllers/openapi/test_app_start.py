@@ -12,6 +12,7 @@ import pytest
 from flask import Flask
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
+from werkzeug.test import TestResponse
 
 from controllers.openapi import app_start
 from controllers.openapi._catalog import build_catalog, iter_handlers
@@ -24,8 +25,8 @@ from extensions.ext_application_services import ApplicationServices
 from models import App
 from models.model import AppMode
 from repositories.run_job_store import RedisRunJobStore
-from services.run_job_contracts import JobStatus
-from services.run_job_service import WAIT_DEFAULT_SECONDS, WAIT_MAX_SECONDS, RunJobService, RunResult
+from services.run_job_contracts import JobOwner, JobStatus
+from services.run_job_service import WAIT_DEFAULT_SECONDS, WAIT_MAX_SECONDS, JobView, RunJobService, RunResult
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 from tests.unit_tests.services.run_job_fakes import InMemoryRedis, InMemoryRunResults, RecordingTaskControl
 
@@ -54,7 +55,7 @@ class Generator:
     calls: list[dict[str, object]] = field(default_factory=list)
     stream: Iterable[str] | None = None
 
-    def generate(self, **kwargs: object):
+    def generate(self, **kwargs: object) -> Iterable[str]:
         self.calls.append(kwargs)
         if self.error is not None:
             raise self.error
@@ -85,7 +86,7 @@ class World:
         for thread in self.threads:
             thread.join(timeout=5)
 
-    def start(self, route: str = WORKFLOW_ROUTE, **body: object):
+    def start(self, route: str = WORKFLOW_ROUTE, **body: object) -> TestResponse:
         return self.client.client.post(route.format(app_id=self.client.app_id), json=body, headers=self.client.headers)
 
 
@@ -165,9 +166,9 @@ def test_start_orders_audit_attach_end_of_read_transaction_then_wait(
         order.append("attach")
         return attach(job_id, frames)
 
-    def recording_wait(*args: object, **kwargs: object):
+    def recording_wait(owner: JobOwner, job_id: str, *, wait_seconds: int) -> JobView:
         order.append("wait")
-        return wait(*args, **kwargs)
+        return wait(owner, job_id, wait_seconds=wait_seconds)
 
     monkeypatch.setattr(app_start, "emit_app_run", lambda **_kwargs: order.append("emit"))
     monkeypatch.setattr(app_start, "end_read_transaction", lambda _session: order.append("end"))
@@ -288,6 +289,7 @@ def test_start_does_not_pass_wait_or_key_to_the_run_service(world: World) -> Non
     world.start(wait_seconds=5, idempotency_key="k3", inputs={"a": 1})
 
     args = world.generator.calls[0]["args"]
+    assert isinstance(args, dict)
     assert args["inputs"] == {"a": 1}
     assert "wait_seconds" not in args
     assert "idempotency_key" not in args

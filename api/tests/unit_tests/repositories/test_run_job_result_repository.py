@@ -1,10 +1,12 @@
 import json
 from collections.abc import Iterator, Mapping
+from typing import override
 from uuid import uuid4
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
+from extensions.ext_application_services import ApplicationServices
 from graphon.enums import WorkflowExecutionStatus
 from models.enums import CreatorUserRole
 from models.model import AppMode
@@ -126,7 +128,7 @@ class _RecordedFrames:
 
 _FORM_FRAME = {"event": "human_input_required", "data": {"form_token": "t1"}}
 _PAUSED_FRAME = {"event": "workflow_paused", "data": {"form_token": "t1"}}
-_PING_FRAME = {"event": "node_started", "data": {}}
+_PING_FRAME: dict[str, object] = {"event": "node_started", "data": {}}
 
 
 def _patch_stream(monkeypatch: pytest.MonkeyPatch, frames: _RecordedFrames) -> list[dict[str, object]]:
@@ -178,6 +180,7 @@ def test_pending_form_stops_at_the_pause_and_closes_the_stream(
 
 
 class _RaisingFrames(_RecordedFrames):
+    @override
     def __iter__(self) -> Iterator[Mapping[str, object]]:
         yield self._frames[0]
         raise RuntimeError("stream broke")
@@ -221,7 +224,7 @@ def test_pending_form_is_none_for_an_absent_run_or_a_mode_without_a_snapshot(
     assert calls == []
 
 
-def test_the_built_services_carry_a_run_job_service(account_application_services) -> None:
+def test_the_built_services_carry_a_run_job_service(account_application_services: ApplicationServices) -> None:
     assert isinstance(account_application_services.run_jobs, RunJobService)
 
 

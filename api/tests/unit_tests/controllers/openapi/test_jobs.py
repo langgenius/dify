@@ -80,11 +80,11 @@ class World:
             self.store.patch(opened.record.id, patch)
         return opened.record.id
 
-    def wait(self, job_id: str, query: str = "wait_seconds=0"):
+    def wait(self, job_id: str, query: str = "wait_seconds=0") -> TestResponse:
         url = WAIT_ROUTE.format(app_id=self.client.app_id, job_id=job_id) + f"?{query}"
         return self.client.client.get(url, headers=self.client.headers)
 
-    def stop(self, job_id: str):
+    def stop(self, job_id: str) -> TestResponse:
         url = STOP_ROUTE.format(app_id=self.client.app_id, job_id=job_id)
         return self.client.client.post(url, headers=self.client.headers)
 
@@ -263,8 +263,8 @@ def test_handlers_end_the_read_transaction_before_calling_the_service(
     job_id = world.open_job()
     order: list[str] = []
 
-    def recording(name: str, call):
-        def run(*args: object, **kwargs: object):
+    def recording(name: str, call: Callable[..., object]) -> Callable[..., object]:
+        def run(*args: object, **kwargs: object) -> object:
             order.append(name)
             return call(*args, **kwargs)
 
@@ -326,7 +326,7 @@ def test_wait_seconds_defaults_and_is_bounded() -> None:
     assert JobWaitQuery(wait_seconds=0).wait_seconds == 0
     for bad in (-1, WAIT_MAX_SECONDS + 1):
         with pytest.raises(ValidationError):
-            JobWaitQuery(wait_seconds=bad)
+            JobWaitQuery.model_validate({"wait_seconds": bad})
 
 
 @pytest.mark.parametrize("suffix", ["", ":alive"])
