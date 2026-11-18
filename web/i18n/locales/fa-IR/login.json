@@ -61,6 +61,7 @@
   "invalidInvitationCode": "کد دعوت نامعتبر است",
   "invitationCode": "کد دعوت",
   "invitationCodePlaceholder": "کد دعوت شما",
+  "invitationWorkspaceFull": "این فضای کاری جایگاه خالی ندارد، بنابراین فعلاً نمی‌توانید به آن بپیوندید. از فردی که شما را دعوت کرده بخواهید یک جایگاه آزاد کند یا طرح را ارتقا دهد.",
   "join": "عضویت",
   "joinTipEnd": "تیم در Dify",
   "joinTipStart": "شما را دعوت می‌کنیم به",

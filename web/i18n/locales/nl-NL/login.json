@@ -61,6 +61,7 @@
   "invalidInvitationCode": "Invalid invitation code",
   "invitationCode": "Invitation Code",
   "invitationCodePlaceholder": "Your invitation code",
+  "invitationWorkspaceFull": "Deze werkruimte heeft geen plaatsen meer over, dus je kunt nog niet deelnemen. Vraag degene die je heeft uitgenodigd om een plaats vrij te maken of het abonnement te upgraden.",
   "join": "Join ",
   "joinTipEnd": " team on Dify",
   "joinTipStart": "Invite you join ",

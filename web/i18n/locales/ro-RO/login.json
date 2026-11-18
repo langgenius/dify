@@ -61,6 +61,7 @@
   "invalidInvitationCode": "Cod de invitație invalid",
   "invitationCode": "Cod de invitație",
   "invitationCodePlaceholder": "Codul tău de invitație",
+  "invitationWorkspaceFull": "Acest spațiu de lucru nu mai are locuri disponibile, așa că încă nu te poți alătura. Roagă persoana care te-a invitat să elibereze un loc sau să facă upgrade la plan.",
   "join": "Alătură-te",
   "joinTipEnd": "pe Dify",
   "joinTipStart": "Te invităm să te alături echipei",

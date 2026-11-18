@@ -122,14 +122,17 @@ describe('Invitation activation', () => {
       setup({ data: invitation({ account_status: 'active', requires_setup: true }) })
       await user.type(screen.getByLabelText('login.name'), 'Invitee{Enter}')
       await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/'))
-      expect(mocks.activate).toHaveBeenCalledExactlyOnceWith({
-        body: {
-          token: 'invite-token',
-          name: 'Invitee',
-          interface_language: expected,
-          timezone: 'Asia/Shanghai',
+      expect(mocks.activate).toHaveBeenCalledExactlyOnceWith(
+        {
+          body: {
+            token: 'invite-token',
+            name: 'Invitee',
+            interface_language: expected,
+            timezone: 'Asia/Shanghai',
+          },
         },
-      })
+        { context: { silent: true } },
+      )
       expect(mocks.profile).toHaveBeenCalled()
       expect(setLocaleOnClient).toHaveBeenCalledExactlyOnceWith(expected)
     },
@@ -144,7 +147,10 @@ describe('Invitation activation', () => {
       expect(screen.queryByLabelText('login.name')).not.toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
       await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/'))
-      expect(mocks.activate).toHaveBeenCalledExactlyOnceWith({ body: { token: 'invite-token' } })
+      expect(mocks.activate).toHaveBeenCalledExactlyOnceWith(
+        { body: { token: 'invite-token' } },
+        { context: { silent: true } },
+      )
       expect(setLocaleOnClient).not.toHaveBeenCalled()
     },
   )

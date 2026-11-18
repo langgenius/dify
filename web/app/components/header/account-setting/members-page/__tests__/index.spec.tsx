@@ -179,7 +179,6 @@ const contactOptionsKey = consoleQuery.workspaces.current.humanInput.v2.contactO
 describe('MembersPage removal', () => {
   it.each([
     { status: 'active', enabled: true, contactCopy: true },
-    { status: 'pending', enabled: true, contactCopy: false },
     { status: 'active', enabled: false, contactCopy: false },
   ])(
     'uses the supported member endpoint for status=$status and gate=$enabled',

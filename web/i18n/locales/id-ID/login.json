@@ -61,6 +61,7 @@
   "invalidInvitationCode": "Kode undangan tidak valid",
   "invitationCode": "Kode Undangan",
   "invitationCodePlaceholder": "Kode undangan Anda",
+  "invitationWorkspaceFull": "Ruang kerja ini tidak memiliki slot tersisa, jadi Anda belum bisa bergabung. Minta orang yang mengundang Anda untuk mengosongkan slot atau meningkatkan paket.",
   "join": "Gabung",
   "joinTipEnd": "tim di Dify",
   "joinTipStart": "Mengundang Anda untuk bergabung",

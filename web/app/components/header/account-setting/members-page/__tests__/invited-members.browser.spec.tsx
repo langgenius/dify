@@ -18,7 +18,7 @@ const setup = (inviteResults: MemberInviteResponse['invitation_results']) => {
     systemFeatures: { deployment_edition: 'CLOUD', rbac_enabled: false, is_email_setup: true },
     workspacePermissionKeys: ['workspace.member.manage'],
   })
-  const accounts = [
+  let accounts = [
     {
       id: 'new-member',
       name: 'New Member',
@@ -40,7 +40,7 @@ const setup = (inviteResults: MemberInviteResponse['invitation_results']) => {
   })
   vi.stubGlobal(
     'fetch',
-    vi.fn(async (input: RequestInfo | URL) => {
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const { pathname } = new URL(input instanceof Request ? input.url : String(input))
       if (pathname.endsWith('/workspaces/current/members/invite-email')) {
         invitations = inviteResults
@@ -51,6 +51,16 @@ const setup = (inviteResults: MemberInviteResponse['invitation_results']) => {
           tenant_id: workspaceId,
           invitation_results: inviteResults,
         })
+      }
+      if (pathname.endsWith(`/workspaces/${workspaceId}/members/pending-invitations/revoke`)) {
+        const body = input instanceof Request ? await input.clone().text() : String(init?.body)
+        const { email } = JSON.parse(body)
+        invitations = invitations.filter((invitation) => invitation.email !== email)
+        return Response.json({ result: 'success' })
+      }
+      if (pathname.endsWith('/workspaces/current/members/new-member')) {
+        accounts = accounts.filter(({ id }) => id !== 'new-member')
+        return Response.json({ result: 'success' })
       }
       if (pathname.endsWith(`/workspaces/${workspaceId}/members/pending-invitations`))
         return Response.json({ invitations })
@@ -86,7 +96,7 @@ it('lists everyone who has not joined yet as invited in the members table', asyn
   )
   const members = screen.getByRole('table')
   await expect
-    .element(members.getByRole('row', { name: /New Member/ }).getByText(/members\.invited$/))
+    .element(members.getByRole('row', { name: /new@example\.com/ }).getByText(/members\.invited$/))
     .toBeVisible()
 
   await sendInvite(screen, email)
@@ -124,4 +134,29 @@ it('keeps unsent recipients in the invite dialog with their reasons', async () =
   await expect
     .element(screen.getByRole('table').getByRole('row', { name: /sent@example\.com/ }))
     .toBeVisible()
+})
+
+it('revokes both kinds of invited people through the same row menu', async () => {
+  const email = 'invited@example.com'
+  const queryClient = setup([{ status: 'success', email, url: 'https://example.com/invite' }])
+  const screen = await render(
+    <QueryClientTestProvider queryClient={queryClient}>
+      <MembersPage />
+    </QueryClientTestProvider>,
+  )
+  await sendInvite(screen, email)
+  const members = screen.getByRole('table')
+
+  for (const invitee of [email, 'new@example.com']) {
+    await members
+      .getByRole('button', { name: new RegExp(`members\\.invitationActions.*${invitee}`) })
+      .click()
+    await screen.getByRole('menuitem', { name: /members\.revokeInvitation$/ }).click()
+    const confirm = screen.getByRole('alertdialog', { name: /members\.revokeInvitationTitle/ })
+    await confirm.getByRole('button', { name: /members\.revokeInvitation$/ }).click()
+    await expect.element(confirm).not.toBeInTheDocument()
+    await expect
+      .element(members.getByRole('row', { name: new RegExp(invitee) }))
+      .not.toBeInTheDocument()
+  }
 })
