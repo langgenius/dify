@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Generator, Iterator, Mapping
+from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
+from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
@@ -13,6 +15,9 @@ from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, Us
 from core.workflow.file_reference import resolve_file_record_id
 from core.workflow.node_runtime import DifyToolFileManager, DifyToolNodeRuntime
 from core.workflow.system_variables import build_system_variables
+from extensions.ext_storage import storage
+from extensions.storage.opendal_storage import OpenDALStorage
+from factories.file_factory import ToolFileMapping
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import StreamChunkEvent, StreamCompletedEvent
@@ -82,33 +87,12 @@ class _StubToolRuntime:
         return default_icon, None
 
 
-class _StubToolFileStore:
-    """In-memory :class:`core.workflow.node_runtime.ToolFileStore` for the contract tests."""
+def _build_tool_node(*, runtime: _StubToolRuntime | None = None) -> ToolNode:
+    """Build a node with real file handling and optional non-file runtime behavior.
 
-    def __init__(self, tool_files: Mapping[str, File] | None = None) -> None:
-        self.tool_files: dict[str, File] = dict(tool_files or {})
-        self.requested_ids: list[str] = []
-
-    def create_file_by_raw(
-        self,
-        *,
-        user_id: str,
-        tenant_id: str,
-        conversation_id: str | None,
-        file_binary: bytes,
-        mimetype: str,
-        filename: str | None = None,
-    ) -> ToolFile:
-        raise NotImplementedError
-
-    def get_file_generator_by_tool_file_id(self, tool_file_id: str) -> tuple[Generator[bytes] | None, File | None]:
-        self.requested_ids.append(tool_file_id)
-        return None, self.tool_files.get(tool_file_id)
-
-
-def _build_tool_node(
-    *, tool_file_store: _StubToolFileStore | None = None, runtime: _StubToolRuntime | None = None
-) -> ToolNode:
+    Preconditions: ``runtime`` only supplies non-file tool capabilities. Postconditions:
+    the returned node uses the production Dify file manager and its real default store.
+    """
     graph_config: dict[str, Any] = {
         "nodes": [
             {
@@ -146,10 +130,7 @@ def _build_tool_node(
 
     config = graph_config["nodes"][0]
 
-    tool_file_manager = DifyToolFileManager(
-        init_params.run_context,
-        tool_file_store=tool_file_store if tool_file_store is not None else _StubToolFileStore(),
-    )
+    tool_file_manager = DifyToolFileManager(init_params.run_context)
 
     return ToolNode(
         node_id="node-instance",
@@ -248,61 +229,88 @@ def test_plain_link_messages_remain_links(tool_node: ToolNode) -> None:
     assert files_segment.value == []
 
 
-def test_image_link_messages_use_tool_file_id_metadata(sqlite_session: Session) -> None:
-    stored_tool_file = ToolFile(
-        user_id="user-id",
-        tenant_id=_TENANT_ID,
-        conversation_id=None,
-        file_key="file-key",
-        mimetype="application/pdf",
-        original_url="http://example.com/demo.pdf",
-        name="demo.pdf",
-        size=123,
-    )
-    stored_tool_file.id = "file-id"
-    sqlite_session.add(stored_tool_file)
-    sqlite_session.commit()
+def test_image_link_messages_use_tool_file_id_metadata(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Resolve tool-file metadata from persisted rows and real stored bytes.
 
-    tool_file = File(
-        file_type=FileType.DOCUMENT,
-        transfer_method=FileTransferMethod.TOOL_FILE,
-        related_id="file-id",
-        filename="demo.pdf",
-        extension=".pdf",
-        mime_type="application/pdf",
-        size=123,
-        storage_key="file-key",
+    Preconditions: ``sqlite_session`` binds the production session factory to the
+    same SQLite database and ``tmp_path`` is writable. Postconditions: the produced
+    file references the persisted row and the production manager reads its bytes;
+    the temporary storage key is deleted after the test.
+    """
+    # The shared Flask fixture does not initialize storage; use the real OpenDAL
+    # filesystem backend under a per-test root instead of substituting a store.
+    monkeypatch.setattr(
+        storage,
+        "storage_runner",
+        OpenDALStorage(scheme="fs", root=str(tmp_path)),
+        raising=False,
     )
-    store = _StubToolFileStore(tool_files={"file-id": tool_file})
-    tool_node = _build_tool_node(tool_file_store=store, runtime=_StubToolRuntime(tenant_id=_TENANT_ID))
-    message = ToolRuntimeMessage(
-        type=ToolRuntimeMessage.MessageType.IMAGE_LINK,
-        message=ToolRuntimeMessage.TextMessage(text="/files/tools/file-id.pdf"),
-        meta={"tool_file_id": "file-id"},
-    )
+    file_key = f"test-tool-node/{uuid4().hex}/demo.pdf"
+    file_binary = b"%PDF-1.4\nreal stored tool-file content"
+    try:
+        storage.save(file_key, file_binary)
+        stored_tool_file = ToolFile(
+            user_id="user-id",
+            tenant_id=_TENANT_ID,
+            conversation_id=None,
+            file_key=file_key,
+            mimetype="application/pdf",
+            original_url="http://example.com/demo.pdf",
+            name="demo.pdf",
+            size=len(file_binary),
+        )
+        stored_tool_file.id = "file-id"
+        sqlite_session.add(stored_tool_file)
+        sqlite_session.commit()
 
-    events, _ = _run_transform(tool_node, message)
+        tool_node = _build_tool_node(runtime=_StubToolRuntime(tenant_id=_TENANT_ID))
+        message = ToolRuntimeMessage(
+            type=ToolRuntimeMessage.MessageType.IMAGE_LINK,
+            message=ToolRuntimeMessage.TextMessage(text="/files/tools/file-id.pdf"),
+            meta={"tool_file_id": "file-id"},
+        )
 
-    assert store.requested_ids == ["file-id"]
-    completed_events = [event for event in events if isinstance(event, StreamCompletedEvent)]
-    assert len(completed_events) == 1
-    files_segment = completed_events[0].node_run_result.outputs["files"]
-    assert isinstance(files_segment, ArrayFileSegment)
-    assert len(files_segment.value) == 1
-    built_file = files_segment.value[0]
-    assert isinstance(built_file, File)
-    # Every field comes from the persisted row through the production factory,
-    # so a stub that echoed the mapping back could not satisfy these.
-    assert built_file.filename == stored_tool_file.name
-    assert built_file.extension == ".pdf"
-    assert built_file.mime_type == stored_tool_file.mimetype
-    assert built_file.size == stored_tool_file.size
-    assert built_file.storage_key == stored_tool_file.file_key
-    assert built_file.remote_url == stored_tool_file.original_url
-    assert built_file.transfer_method == FileTransferMethod.TOOL_FILE
-    assert built_file.type == FileType.DOCUMENT
-    assert built_file.reference is not None
-    assert resolve_file_record_id(built_file.reference) == stored_tool_file.id
+        events, _ = _run_transform(tool_node, message)
+
+        completed_events = [event for event in events if isinstance(event, StreamCompletedEvent)]
+        assert len(completed_events) == 1
+        files_segment = completed_events[0].node_run_result.outputs["files"]
+        assert isinstance(files_segment, ArrayFileSegment)
+        assert len(files_segment.value) == 1
+        built_file = files_segment.value[0]
+        assert isinstance(built_file, File)
+        # Every field comes from the persisted row through the production manager
+        # and factory, so a prebuilt file or stub could not satisfy these.
+        assert built_file.filename == stored_tool_file.name
+        assert built_file.extension == ".pdf"
+        assert built_file.mime_type == stored_tool_file.mimetype
+        assert built_file.size == stored_tool_file.size
+        assert built_file.storage_key == stored_tool_file.file_key
+        assert built_file.remote_url == stored_tool_file.original_url
+        assert built_file.transfer_method == FileTransferMethod.TOOL_FILE
+        assert built_file.type == FileType.DOCUMENT
+        assert built_file.reference is not None
+        assert resolve_file_record_id(built_file.reference) == stored_tool_file.id
+
+        file_manager = DifyToolFileManager(
+            DifyRunContext(
+                tenant_id=_TENANT_ID,
+                app_id="app-id",
+                user_id="user-id",
+                user_from=UserFrom.ACCOUNT,
+                invoke_from=InvokeFrom.DEBUGGER,
+            )
+        )
+        file_stream, stored_file = file_manager.get_file_generator_by_tool_file_id(stored_tool_file.id)
+        assert file_stream is not None
+        assert b"".join(file_stream) == file_binary
+        assert stored_file is not None
+        assert stored_file.filename == stored_tool_file.name
+    finally:
+        if storage.exists(file_key):
+            storage.delete(file_key)
 
 
 def test_tool_file_from_another_tenant_is_not_reachable(sqlite_session: Session) -> None:
@@ -327,8 +335,9 @@ def test_tool_file_from_another_tenant_is_not_reachable(sqlite_session: Session)
     sqlite_session.commit()
 
     runtime = _StubToolRuntime(tenant_id=_TENANT_ID)
+    mapping: ToolFileMapping = {"tool_file_id": "file-id", "transfer_method": "tool_file"}
     with pytest.raises(ValueError, match="not found"):
-        runtime.build_file_reference(mapping={"tool_file_id": "file-id", "transfer_method": "tool_file"})
+        runtime.build_file_reference(mapping=mapping)
 
 
 def test_mapping_missing_transfer_method_is_rejected_at_the_boundary() -> None:
