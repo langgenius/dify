@@ -108,6 +108,8 @@ def init_app(app: DifyApp) -> Celery:
     imports = [
         "tasks.async_workflow_tasks",  # trigger workers
         "tasks.trigger_processing_tasks",  # async trigger processing
+        "tasks.trigger_subscription_refresh_tasks",  # trigger subscription refresh
+        "tasks.workflow_schedule_tasks",  # scheduled workflow execution
         "tasks.generate_summary_index_task",  # summary index generation
         "tasks.regenerate_summary_index_task",  # summary index regeneration
     ]
