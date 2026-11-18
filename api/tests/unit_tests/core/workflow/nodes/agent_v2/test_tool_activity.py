@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from datetime import UTC, datetime
 
+import pytest
 from dify_agent.protocol import PydanticAIStreamRunEvent
+from dify_agent.protocol.tool_call_limits import ToolCallLimitSnapshot
 from pydantic_ai.messages import (
     FunctionToolCallEvent,
     FunctionToolResultEvent,
@@ -23,6 +26,145 @@ from core.workflow.nodes.agent_v2.tool_activity import (
 )
 
 _CREATED_AT = datetime(2026, 1, 1, tzinfo=UTC)
+
+
+@pytest.mark.parametrize(
+    ("status", "reason", "used"), [("executed", None, 2), ("not_executed", "call_limit_reached", 3)]
+)
+def test_native_result_metadata_projects_usage_and_denial_without_trusting_model_text(status, reason, used):
+    """Real native event serialization retains the runtime's dispatch annotation."""
+    projector = _projector()
+    projector.handle(_tool_call("limited", tool_name="search"))
+    annotation = {
+        "tool_identity": '["plugin","langgenius/github/github","search"]',
+        "limit": 3,
+        "used": used,
+        "execution_status": status,
+        "reason": reason,
+    }
+    native = PydanticAIStreamRunEvent(
+        run_id="run-1",
+        data=FunctionToolResultEvent(
+            part=ToolReturnPart(
+                "search",
+                "model-visible observation",
+                tool_call_id="limited",
+                metadata={"dify_tool_call_limit": annotation},
+            )
+        ),
+    )
+    internal = AgentBackendRunEventAdapter().adapt(native)[0]
+    activity = projector.handle(internal)[0]
+    assert activity.data.call_limit.model_dump() == annotation
+    assert activity.status == ("not_executed" if status == "not_executed" else "succeeded")
+    assert activity.data.model_dump(mode="json")["call_limit"] == annotation
+    if status == "not_executed":
+        assert activity.error == "Call limit reached (3 per run). This request was not executed."
+    assert projector.finish("succeeded") == []
+
+
+def test_model_claim_that_a_tool_was_not_executed_cannot_create_a_quota_decision():
+    """Only valid application metadata, not arbitrary tool text, changes status."""
+    projector = _projector()
+    event = _tool_result("claim", content={"execution_status": "not_executed", "used": 3, "limit": 3})
+    activity = projector.handle(event)[0]
+    assert activity.status == "succeeded"
+    assert activity.data.call_limit is None
+    assert "call_limit" not in activity.data.model_dump(mode="json")
+
+
+def test_malformed_quota_metadata_cannot_change_an_existing_result():
+    """Reject metadata with inconsistent counts without failing the event stream."""
+    projector = _projector()
+    event = _tool_result("bad-metadata")
+    event.data["part"]["metadata"] = {
+        "dify_tool_call_limit": {
+            "tool_identity": "tool",
+            "limit": 3,
+            "used": 2,
+            "execution_status": "not_executed",
+            "reason": "call_limit_reached",
+        }
+    }
+    activity = projector.handle(event)[0]
+    assert activity.status == "succeeded"
+    assert activity.data.call_limit is None
+
+
+@pytest.mark.parametrize("metadata", ["other metadata", ["unrelated"], 42])
+def test_unrelated_native_metadata_keeps_existing_unlimited_tool_results(metadata):
+    """Adding quota parsing must not narrow the native metadata contract."""
+    event = _tool_result("unlimited")
+    event.data["part"]["metadata"] = metadata
+    activity = _projector().handle(event)[0]
+    assert activity.status == "succeeded"
+    assert activity.data.tool_output == "file.txt"
+    assert activity.data.call_limit is None
+
+
+@pytest.mark.parametrize(("marker", "expected"), [(True, "failed"), (False, "succeeded"), ("true", "succeeded")])
+def test_handled_transport_failure_preserves_quota_and_failed_tool_status(marker, expected):
+    """A handled failure remains charged and failed without failing the Agent run."""
+    event = _tool_result("charged-failure", content="upstream unavailable")
+    event.data["part"]["metadata"] = {
+        "dify_tool_call_limit": {
+            "tool_identity": "tool",
+            "limit": 3,
+            "used": 1,
+            "execution_status": "executed",
+            "reason": None,
+        },
+        "dify_tool_execution_failed": marker,
+    }
+    activity = _projector().handle(event)[0]
+    assert activity.status == expected
+    assert activity.data.call_limit.used == 1
+    assert activity.data.call_limit.execution_status == "executed"
+    assert activity.error == ("upstream unavailable" if marker is True else None)
+
+
+def test_pre_dispatch_validation_failure_is_failed_without_creating_quota_usage():
+    event = _tool_result("invalid", content="tool parameters validation error: missing query")
+    event.data["part"]["metadata"] = {"dify_tool_validation_failed": True}
+    activity = _projector().handle(event)[0]
+    assert activity.status == "failed"
+    assert activity.error == "tool parameters validation error: missing query"
+    assert activity.data.call_limit is None
+
+
+def test_terminal_reservations_fill_cancelled_usage_without_claiming_execution():
+    projector = _projector()
+    projector.handle(_tool_call("completed", tool_name="search"))
+    completed = projector.handle(_tool_result("completed", tool_name="search"))[0]
+    projector.handle(_tool_call("reserved", tool_name="search"))
+    digest = hashlib.sha256(b"reserved").hexdigest()
+    summary = ToolCallLimitSnapshot(
+        tool_identity="operation",
+        limit=3,
+        used=2,
+        call_ids={hashlib.sha256(b"completed").hexdigest(): 1, digest: 2},
+    )
+    activities = projector.finish("cancelled", call_limits={"operation-digest": summary})
+    assert len(activities) == 1
+    cancelled = activities[0]
+    assert cancelled.status == "cancelled"
+    assert cancelled.data.call_limit.execution_status == "unconfirmed"
+    assert cancelled.data.call_limit.used == 2
+    assert cancelled.data.call_limit.limit == 3
+    assert cancelled.data.call_limit.reason is None
+    assert completed.status == "succeeded"
+    assert completed.data.call_limit is None
+    assert projector.finish("cancelled", call_limits={"operation-digest": summary}) == []
+
+
+def test_terminal_reservations_do_not_guess_usage_for_unknown_or_ambiguous_calls():
+    digest = hashlib.sha256(b"ambiguous").hexdigest()
+    summary = ToolCallLimitSnapshot(tool_identity="operation", limit=3, used=1, call_ids={digest: 1})
+    projector = _projector()
+    projector.handle(_tool_call("unknown"))
+    projector.handle(_tool_call("ambiguous"))
+    activities = projector.finish("failed", call_limits={"first": summary, "second": summary})
+    assert all(activity.data.call_limit is None for activity in activities)
 
 
 def _projector() -> WorkflowAgentToolActivityProjector:

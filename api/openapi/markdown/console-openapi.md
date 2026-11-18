@@ -21777,7 +21777,9 @@ run request to Agent backend. ``plugin`` providers keep the direct
 ``dify.plugin.tools`` transport; ``builtin`` / ``api`` / ``workflow`` /
 ``mcp`` providers are prepared for ``dify.core.tools``. ``provider_id``
 keeps compatibility with existing Agent tool config payloads; new callers
-should send ``plugin_id`` + ``provider`` when available.
+should send ``plugin_id`` + ``provider`` when available. A per-run call
+limit is either absent/unlimited or a strict positive integer for one
+concrete operation; provider-wide entries cannot define a call limit.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -21785,6 +21787,7 @@ should send ``plugin_id`` + ``provider`` when available.
 | credential_type | string, <br>**Available values:** "api-key", "oauth2", "unauthorized", <br>**Default:** api-key | *Enum:* `"api-key"`, `"oauth2"`, `"unauthorized"` | No |
 | description | string |  | No |
 | enabled | boolean, <br>**Default:** true |  | No |
+| max_calls_per_run | integer | Maximum dispatches of this operation per logical run; null or omitted means unlimited. | No |
 | name | string |  | No |
 | plugin_id | string |  | No |
 | provider | string |  | No |

@@ -644,8 +644,20 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 terminal_event=terminal_event,
                 transport_failure=transport_failure,
             )
-            for activity in projector.finish(finish_status, error=finish_error):
+            for activity in projector.finish(
+                finish_status,
+                error=finish_error,
+                call_limits=terminal_event.tool_call_limits if terminal_event is not None else None,
+            ):
                 yield self._agent_log_event(activity)
+        if terminal_event is not None and terminal_event.tool_call_limits:
+            metadata["agent_backend"] = {
+                **dict(metadata.get("agent_backend") or {}),
+                "tool_call_limits": {
+                    identity: summary.model_dump(mode="json")
+                    for identity, summary in terminal_event.tool_call_limits.items()
+                },
+            }
         if stream_text and (metadata.get("agent_backend") or {}).get("agent_message_delta_count"):
             yield StreamChunkEvent(selector=[self._node_id, "text"], chunk="", is_final=True)
         return terminal_event, transport_failure  # noqa: B901  # StopIteration.value is the generator completion result.
