@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from types import MappingProxyType
-from typing import Any, Final, Protocol, runtime_checkable
+from typing import Any, Final
 
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -17,7 +17,7 @@ from graphon.enums import WorkflowExecutionStatus
 from models.model import AppMode
 from repositories.factory import DifyAPIRepositoryFactory
 from services.run_job_contracts import JobStatus
-from services.run_job_reader import RUN_STATUS_TO_JOB_STATUS, decode_frame
+from services.run_job_reader import RUN_STATUS_TO_JOB_STATUS, close_frames, decode_frame
 from services.run_job_service import RunResult
 from services.workflow_event_snapshot_service import build_workflow_event_stream
 
@@ -40,11 +40,6 @@ SNAPSHOT_GENERATORS: Final[Mapping[AppMode, type[BaseAppGenerator]]] = MappingPr
 
 _FORM_EVENT: Final = StreamEvent.HUMAN_INPUT_REQUIRED.value
 _STOP_EVENTS: Final = frozenset({StreamEvent.WORKFLOW_PAUSED.value, StreamEvent.WORKFLOW_FINISHED.value})
-
-
-@runtime_checkable
-class _Closable(Protocol):
-    def close(self) -> None: ...
 
 
 def _form_data(payload: Mapping[str, Any]) -> Mapping[str, Any] | None:
@@ -133,6 +128,5 @@ class SQLAlchemyRunResultReader:
         try:
             return _last_form(frames)
         finally:
-            for stream in (frames, source):
-                if isinstance(stream, _Closable):
-                    stream.close()
+            close_frames(frames)
+            close_frames(source)

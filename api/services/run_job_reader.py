@@ -227,8 +227,8 @@ def _refresh_alive(job_id: str, store: RunJobStore) -> None:
         logger.exception("Run job %s alive refresh failed", job_id)
 
 
-def close_frames(frames: Iterable[str]) -> None:
-    """Postcondition: frames is closed when it has a close method; otherwise nothing happens."""
+def close_frames(frames: object) -> None:
+    """Postcondition: frames (a stream of any kind) is closed when it has a close method; otherwise nothing happens."""
     if isinstance(frames, _Closable):
         frames.close()
 
