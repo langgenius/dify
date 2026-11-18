@@ -37,6 +37,7 @@ import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { modelCredentialDialog } from '@/app/components/header/account-setting/model-provider-page/model-modal/handle'
 import { modelProviderDetailsQueryOptions } from '@/app/components/header/account-setting/model-provider-page/utils'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import Description from '@/app/components/plugins/card/base/description'
@@ -46,7 +47,6 @@ import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-m
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
-import { useModalContext } from '@/context/modal-context'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { getPluginLanguage } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
@@ -89,7 +89,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
 
   // built in provider
   const [showSettingAuth, setShowSettingAuth] = useState(false)
-  const { setShowModelModal } = useModalContext()
   const { data: modelProvider } = useQuery(
     consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions({
       select: (response) => response.data.find((provider) => provider.provider === collection?.id),
@@ -108,13 +107,10 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
         })
         const provider = response.data.find((item) => item.provider === modelProvider.provider)
         if (!provider) return
-        setShowModelModal({
-          payload: {
-            currentProvider: provider,
-            currentConfigurationMethod: ConfigurationMethodEnum.predefinedModel,
-            currentCustomConfigurationModelFixedFields: undefined,
-          },
-          onSaveCallback: () => {
+        modelCredentialDialog.openWithPayload({
+          provider,
+          configurateMethod: ConfigurationMethodEnum.predefinedModel,
+          onSave: () => {
             onRefreshData()
           },
         })

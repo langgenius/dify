@@ -1,0 +1,55 @@
+import type { Source } from '../source-models'
+
+export const sourceApiResponse = (source: Source) => ({
+  sync_workflow: source.syncWorkflow
+    ? {
+        canceled_at: source.syncWorkflow.canceledAt ?? null,
+        checkpoint: source.syncWorkflow.checkpoint,
+        completed_at: source.syncWorkflow.completedAt ?? null,
+        created_at: source.syncWorkflow.createdAt,
+        cursor: source.syncWorkflow.cursor ?? null,
+        execution_attempts: source.syncWorkflow.executionAttempts,
+        id: source.syncWorkflow.id,
+        knowledge_space_id: source.syncWorkflow.knowledgeSpaceId,
+        kind: source.syncWorkflow.kind,
+        last_error_code: source.syncWorkflow.lastErrorCode ?? null,
+        max_execution_attempts: source.syncWorkflow.maxExecutionAttempts,
+        progress_completed: source.syncWorkflow.progressCompleted,
+        progress_failed: source.syncWorkflow.progressFailed,
+        progress_skipped: source.syncWorkflow.progressSkipped,
+        progress_total: source.syncWorkflow.progressTotal ?? null,
+        source_id: source.syncWorkflow.sourceId ?? null,
+        state: source.syncWorkflow.state,
+        updated_at: source.syncWorkflow.updatedAt,
+      }
+    : null,
+  connection_id: source.connectionId ?? null,
+  created_at: source.createdAt,
+  credential_configured: source.credentialConfigured ?? null,
+  id: source.id,
+  knowledge_space_id: source.knowledgeSpaceId,
+  last_synced_at: source.lastSyncedAt ?? null,
+  metadata: source.metadata,
+  name: source.name,
+  permission_scope: source.permissionScope ?? [],
+  status: source.status,
+  sync_policy: source.syncPolicy
+    ? {
+        created_at: source.syncPolicy.createdAt,
+        custom_interval_seconds: source.syncPolicy.customIntervalSeconds ?? null,
+        enabled: source.syncPolicy.enabled,
+        expected_source_version: source.syncPolicy.expectedSourceVersion,
+        id: source.syncPolicy.id,
+        knowledge_space_id: source.syncPolicy.knowledgeSpaceId,
+        mode: source.syncPolicy.mode,
+        next_run_at: source.syncPolicy.nextRunAt ?? null,
+        revision: source.syncPolicy.revision,
+        source_id: source.syncPolicy.sourceId,
+        updated_at: source.syncPolicy.updatedAt,
+      }
+    : null,
+  type: source.type,
+  updated_at: source.updatedAt,
+  uri: source.uri,
+  version: source.version ?? null,
+})

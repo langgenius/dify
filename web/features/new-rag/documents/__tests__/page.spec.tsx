@@ -121,6 +121,7 @@ const toastMock = vi.hoisted(() => ({
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }))
 const settingsState = vi.hoisted(() => ({
   configurationState: 'active' as 'active' | 'setup-required',
+  activeProfileAvailable: undefined as boolean | undefined,
   refetch: vi.fn(),
 }))
 const workspacePermissions = vi.hoisted(() => (datasetKeys: string[]) => ({
@@ -364,17 +365,19 @@ vi.mock('@/service/console', async (importOriginal) => {
     }
   const space = 'knowledgeFs.spaces.byControlSpaceId'
   const settingsResponse = () => {
-    const active = settingsState.configurationState === 'active'
+    const active =
+      settingsState.activeProfileAvailable ?? settingsState.configurationState === 'active'
+    const canIngest = active || settingsState.configurationState === 'active'
     return {
       active_profile_available: active,
       active_profile_revisions: active ? { embedding: 1, retrieval: 1 } : {},
       capabilities: {
         deep: active,
         index: active,
-        ingest: active,
+        ingest: canIngest,
         query: active,
         research: active,
-        source_sync: active,
+        source_sync: canIngest,
       },
       configuration_state: settingsState.configurationState,
       embedding: null,
@@ -450,6 +453,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       [`${space}.sources.bySourceId.patch`]: updateSourceMutation,
     }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      [`${space}.documents.byDocumentId.patch`]: renameDocumentMutation,
       'features.get': () =>
         track(() => ({ billing: { subscription: { plan: uploadPlanMock.plan } } })),
       [`${space}.backgroundTasks.get`]: paged('tasks', tasksQuery, taskApiResponse),
@@ -858,27 +862,32 @@ describe('DocumentsPage', () => {
     systemFeaturesStateMock.deploymentEdition = 'ENTERPRISE'
     getUploadQuotaFailure.mockReset().mockResolvedValue(undefined)
     settingsState.configurationState = 'active'
-    settingsState.refetch.mockImplementation(async () => ({
-      data: {
-        active_profile_available: settingsState.configurationState === 'active',
-        active_profile_revisions:
-          settingsState.configurationState === 'active' ? { embedding: 1, retrieval: 1 } : {},
-        capabilities: {
-          deep: settingsState.configurationState === 'active',
-          index: settingsState.configurationState === 'active',
-          ingest: settingsState.configurationState === 'active',
-          query: settingsState.configurationState === 'active',
-          research: settingsState.configurationState === 'active',
-          source_sync: settingsState.configurationState === 'active',
+    settingsState.activeProfileAvailable = undefined
+    settingsState.refetch.mockImplementation(async () => {
+      const active =
+        settingsState.activeProfileAvailable ?? settingsState.configurationState === 'active'
+      const canIngest = active || settingsState.configurationState === 'active'
+      return {
+        data: {
+          active_profile_available: active,
+          active_profile_revisions: active ? { embedding: 1, retrieval: 1 } : {},
+          capabilities: {
+            deep: active,
+            index: active,
+            ingest: canIngest,
+            query: active,
+            research: active,
+            source_sync: canIngest,
+          },
+          configuration_state: settingsState.configurationState,
+          embedding: null,
+          issues: [],
+          retrieval: null,
+          revision: 1,
         },
-        configuration_state: settingsState.configurationState,
-        embedding: null,
-        issues: [],
-        retrieval: null,
-        revision: 1,
-      },
-      isError: false,
-    }))
+        isError: false,
+      }
+    })
     documentsQuery.data = { pages: [{ items: [] }] }
     documentsQuery.error = null
     documentsQuery.hasNextPage = false
@@ -1977,7 +1986,6 @@ describe('DocumentsPage', () => {
       expect.objectContaining({
         params: { control_space_id: 'space-1', document_id: 'document-1' },
       }),
-      { context: { silent: true } },
     )
   })
 
@@ -2007,33 +2015,45 @@ describe('DocumentsPage', () => {
     expect(renameDocumentMutation).not.toHaveBeenCalled()
   })
 
-  it('renames a document through its user-facing display metadata', async () => {
+  it('keeps a pending rename open and retains the draft for retry before returning to the row', async () => {
     const user = userEvent.setup()
+    const first = createDeferred()
+    renameDocumentMutation.mockReturnValueOnce(first.promise)
     documentsQuery.data = { pages: [{ items: [document()] }] }
 
     await render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: /knowledgeDocuments\.documentActions/ }))
+    seedGoldenQuestions()
+    const menuButton = screen.getByRole('button', { name: /knowledgeDocuments\.documentActions/ })
+    await user.click(menuButton)
     await user.click(await screen.findByRole('menuitem', { name: 'common.operation.rename' }))
     const input = screen.getByRole('textbox', { name: 'knowledgeSpace.documentColumn' })
     await user.clear(input)
     await user.type(input, 'Renamed handbook.pdf')
-    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    const save = screen.getByRole('button', { name: 'common.operation.save' })
+    await user.click(save)
+    expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('dialog', { name: 'common.operation.rename' })).toBeVisible()
+    first.reject(new Error('Rename failed'))
+    await waitFor(() => expect(input).toBeEnabled())
+    expect(input).toHaveValue('Renamed handbook.pdf')
+    await user.click(save)
 
-    expect(renameDocumentMutation).toHaveBeenCalledWith(
-      {
-        body: {
-          expectedRowVersion: 1,
-          patch: { displayName: 'Renamed handbook.pdf' },
-        },
-        params: { control_space_id: 'space-1', document_id: 'document-1' },
+    expect(renameDocumentMutation).toHaveBeenCalledWith({
+      body: {
+        expectedRowVersion: 1,
+        patch: { displayName: 'Renamed handbook.pdf' },
       },
-      { context: { silent: true } },
-    )
+      params: { control_space_id: 'space-1', document_id: 'document-1' },
+    })
     await waitFor(() =>
       expect(
         screen.queryByRole('dialog', { name: 'common.operation.rename' }),
       ).not.toBeInTheDocument(),
     )
+    await waitFor(() => expect(menuButton).toHaveFocus())
+    expect(queryClient.getQueryState(goldenQuestionsKey('space-1'))?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(goldenQuestionsKey('space-2'))?.isInvalidated).toBe(false)
   })
 
   it('disables the document from the row action', async () => {
@@ -5041,6 +5061,30 @@ describe('DocumentsPage', () => {
         name: 'knowledgeSpace.overview.attention.modelReadiness.title',
       }),
     ).toBeInTheDocument()
+  })
+
+  it('allows an explicit re-index while a complete model selection awaits first activation', async () => {
+    const user = userEvent.setup()
+    settingsState.activeProfileAvailable = false
+    documentsQuery.data = {
+      pages: [
+        { items: [document({ id: 'failed-document', title: 'Failed.pdf', status: 'failed' })] },
+      ],
+    }
+
+    await render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('checkbox', { name: 'Failed.pdf' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.reindexDocuments' }))
+
+    expect(reindexMutation.mutateAsync).toHaveBeenCalledWith({
+      body: { documentIds: ['failed-document'] },
+      params: { control_space_id: 'space-1' },
+    })
+    expect(
+      screen.queryByRole('dialog', {
+        name: 'knowledgeSpace.overview.attention.modelReadiness.title',
+      }),
+    ).not.toBeInTheDocument()
   })
 
   it('explains why re-indexing becomes unavailable while results refresh', async () => {

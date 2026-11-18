@@ -842,6 +842,18 @@ export class CollaborationManager {
     return this.currentAppId
   }
 
+  async getOnlineUserAvatars(appId: string): Promise<Record<string, string>> {
+    const socket = this.getActiveSocket()
+    if (this.currentAppId !== appId || !socket?.connected) return {}
+
+    const sid = socket.id
+    const avatars = (await socket
+      .timeout(5000)
+      .emitWithAck('get_online_user_avatars')
+      .catch(() => ({}))) as Record<string, string>
+    return this.getActiveSocket() === socket && socket.id === sid ? avatars : {}
+  }
+
   canUseLocalDraftFallback(): boolean {
     // A graph from a previously connected session must recover through collaboration before saving.
     return (

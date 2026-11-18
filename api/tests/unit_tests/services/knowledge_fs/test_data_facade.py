@@ -2880,6 +2880,36 @@ def test_facade_public_methods_preserve_the_registered_operation_and_child_bindi
         assert delegated_kwargs["headers"] == (("Idempotency-Key", "import-source-once"),)
 
 
+def test_list_source_pages_forwards_tree_branch_without_changing_flat_default() -> None:
+    facade = _offline_facade()
+    call = CallRecorder(result={"workspaces": []})
+    with patch.object(facade, "_interactive_child", call):
+        facade.list_source_pages(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="space-1",
+            source_id="source-1",
+        )
+        assert call.last.kwargs["query"] == (("limit", "50"),)
+
+        facade.list_source_pages(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="space-1",
+            source_id="source-1",
+            cursor="next",
+            limit=10,
+            parent_id="repo:FFXN/dify",
+            view="tree",
+        )
+    assert call.last.kwargs["query"] == (
+        ("limit", "10"),
+        ("cursor", "next"),
+        ("parentId", "repo:FFXN/dify"),
+        ("view", "tree"),
+    )
+
+
 def test_service_settings_migration_preserves_service_identity_on_every_operation() -> None:
     profile = KnowledgeFSServiceApiProfile(
         tenant_id="tenant-1",

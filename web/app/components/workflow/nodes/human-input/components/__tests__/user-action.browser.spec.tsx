@@ -2,12 +2,12 @@ import type { UserAction } from '../../types'
 import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { toast } from '@/app/notifications'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { UserActionButtonType } from '../../types'
 import UserActionItem from '../user-action'
 
-const notify = vi.hoisted(() => vi.fn())
-vi.mock('@/app/notifications', () => ({ toast: { error: notify } }))
 const prefix = 'workflowHumanInput.nodes.humanInput.userActions'
 const initial: UserAction = {
   id: 'approve',
@@ -30,11 +30,13 @@ function ActionOwner({ readonly = false }: { readonly?: boolean }) {
         />
       )}
       <output aria-label="Saved action">{JSON.stringify(action)}</output>
+      <AppToaster timeout={0} />
     </>
   )
 }
 
 beforeEach(async () => {
+  toast.dismiss()
   onTestFinished(guardUnexpectedFetch())
   await page.viewport(1000, 600)
 })
@@ -47,10 +49,14 @@ it('sanitizes identifiers, rejects invalid input, and keeps the identifier when 
   await identifier.fill('')
   await identifier.fill('1invalid')
   await expect.element(identifier).toHaveValue('')
-  expect(notify).toHaveBeenLastCalledWith(`${prefix}.actionIdFormatTip`)
+  await expect
+    .element(page.getByRole('dialog', { name: `${prefix}.actionIdFormatTip` }))
+    .toBeVisible()
   await identifier.fill('averyveryveryverylongidentifier')
   await expect.element(identifier).toHaveValue('averyveryveryverylon')
-  expect(notify).toHaveBeenLastCalledWith(`${prefix}.actionIdTooLong:{"maxLength":20}`)
+  await expect
+    .element(page.getByRole('dialog', { name: `${prefix}.actionIdTooLong:{"maxLength":20}` }))
+    .toBeVisible()
   await page
     .getByRole('textbox', { name: `${prefix}.buttonTextPlaceholder` })
     .fill('Approve request')

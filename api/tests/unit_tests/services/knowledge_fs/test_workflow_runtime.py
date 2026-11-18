@@ -69,6 +69,9 @@ class _FakeIdentity:
     def load_user(self, account_id: str) -> None:
         raise AssertionError(f"workflow runtime registration must not load account {account_id}")
 
+    def get_account_by_id(self, account_id: str) -> None:
+        raise AssertionError(f"workflow runtime registration must not load account {account_id}")
+
 
 @dataclass
 class _FakeAccounts:
