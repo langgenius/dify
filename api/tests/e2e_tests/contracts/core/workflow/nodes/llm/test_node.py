@@ -1,7 +1,7 @@
 import base64
 import logging
 import uuid
-from collections.abc import Sequence
+from collections.abc import Generator, Sequence
 from unittest import mock
 
 import pytest
@@ -48,6 +48,7 @@ from graphon.model_runtime.entities.model_entities import (
     ParameterRule,
     ParameterType,
 )
+from graphon.model_runtime.entities.provider_entities import ProviderEntity
 from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from graphon.node_events import (
     ModelInvokeCompletedEvent,
@@ -92,7 +93,7 @@ from tests.workflow_test_utils import build_test_graph_init_params
 
 
 class MockTokenBufferMemory:
-    def __init__(self, history_messages=None):
+    def __init__(self, history_messages: Sequence[PromptMessage] | None = None) -> None:
         self.history_messages = history_messages or []
 
     def get_history_prompt_messages(
@@ -147,7 +148,7 @@ def _build_prepared_llm_mock() -> mock.MagicMock:
     model_instance = mock.MagicMock()
     model_instance.provider = "openai"
     model_instance.model_name = "gpt-3.5-turbo"
-    model_instance.parameters = {}
+    model_instance.parameters = dict[str, object]()
     model_instance.stop = ()
     model_instance.get_llm_num_tokens.return_value = 0
     model_instance.get_model_schema.return_value = AIModelEntity(
@@ -268,10 +269,10 @@ def llm_node(llm_node_data: LLMNodeData, graph_init_params: InitParams, graph_ru
 
 
 @pytest.fixture
-def model_config(monkeypatch: pytest.MonkeyPatch):
+def model_config(monkeypatch: pytest.MonkeyPatch) -> ModelConfigWithCredentialsEntity:
     from tests.e2e_tests.middleware.model_runtime.__mock.plugin_model import MockModelClass
 
-    def mock_model_providers(_self):
+    def mock_model_providers(_self) -> list[ProviderEntity]:
         providers = []
         for provider in MockModelClass().fetch_model_providers("test"):
             provider_schema = provider.declaration.model_copy(deep=True)
@@ -326,7 +327,7 @@ def model_config(monkeypatch: pytest.MonkeyPatch):
 
 def test_fetch_model_config_hydrates_model_instance_runtime_settings(
     model_config: ModelConfigWithCredentialsEntity, mocker: MockerFixture
-):
+) -> None:
     credentials_provider = DifyCredentialsProvider(run_context=_run_context())
     model_factory = DifyModelFactory(run_context=_run_context())
 
@@ -397,7 +398,7 @@ def test_fetch_model_config_hydrates_model_instance_runtime_settings(
         ("openai", ""),
     ],
 )
-def test_fetch_model_config_rejects_unconfigured_model(provider: str, model_name: str, mocker: MockerFixture):
+def test_fetch_model_config_rejects_unconfigured_model(provider: str, model_name: str, mocker: MockerFixture) -> None:
     credentials_provider = DifyCredentialsProvider(run_context=_run_context())
     model_factory = DifyModelFactory(run_context=_run_context())
     fetch_credentials = mocker.spy(credentials_provider, "fetch")
@@ -422,7 +423,7 @@ def test_fetch_model_config_rejects_unconfigured_model(provider: str, model_name
 def test_fetch_model_config_reuses_validated_provider_model_from_dify_credentials_provider(
     model_config: ModelConfigWithCredentialsEntity,
     mocker: MockerFixture,
-):
+) -> None:
     mock_provider_manager = mock.MagicMock()
     mock_configurations = mock.MagicMock()
     mock_provider_configuration = mock.MagicMock()
@@ -475,7 +476,7 @@ def test_fetch_model_config_reuses_validated_provider_model_from_dify_credential
     mock_provider_model.raise_for_status.assert_called_once()
 
 
-def test_dify_model_access_adapters_call_managers():
+def test_dify_model_access_adapters_call_managers() -> None:
     mock_provider_manager = mock.MagicMock()
     mock_model_manager = mock.MagicMock()
     mock_configurations = mock.MagicMock()
@@ -528,7 +529,7 @@ def test_dify_model_access_adapters_call_managers():
     }
 
 
-def test_fetch_files_with_file_segment():
+def test_fetch_files_with_file_segment() -> None:
     file = File(
         file_id="1",
         file_type=FileType.IMAGE,
@@ -544,7 +545,7 @@ def test_fetch_files_with_file_segment():
     assert result == [file]
 
 
-def test_fetch_files_with_array_file_segment():
+def test_fetch_files_with_array_file_segment() -> None:
     files = [
         File(
             file_id="1",
@@ -570,7 +571,7 @@ def test_fetch_files_with_array_file_segment():
     assert result == files
 
 
-def test_fetch_files_with_none_segment():
+def test_fetch_files_with_none_segment() -> None:
     variable_pool = VariablePool.empty()
     variable_pool.add(["sys", "files"], NoneSegment())
 
@@ -578,7 +579,7 @@ def test_fetch_files_with_none_segment():
     assert result == []
 
 
-def test_fetch_files_with_array_any_segment():
+def test_fetch_files_with_array_any_segment() -> None:
     variable_pool = VariablePool.empty()
     variable_pool.add(["sys", "files"], ArrayAnySegment(value=[]))
 
@@ -586,7 +587,7 @@ def test_fetch_files_with_array_any_segment():
     assert result == []
 
 
-def test_fetch_files_with_non_existent_variable():
+def test_fetch_files_with_non_existent_variable() -> None:
     variable_pool = VariablePool.empty()
     result = llm_utils.fetch_files(variable_pool=variable_pool, selector=["sys", "files"])
     assert result == []
@@ -825,7 +826,7 @@ def test_fetch_files_with_non_existent_variable():
 # )
 
 
-def test_handle_list_messages_basic(llm_node):
+def test_handle_list_messages_basic(llm_node: LLMNode) -> None:
     messages = [
         LLMNodeChatModelMessage(
             text="Hello, {{#context#}}",
@@ -851,7 +852,7 @@ def test_handle_list_messages_basic(llm_node):
     assert result[0].content == [TextPromptMessageContent(data="Hello, world")]
 
 
-def test_handle_list_messages_replaces_double_brace_context_placeholder(llm_node):
+def test_handle_list_messages_replaces_double_brace_context_placeholder(llm_node: LLMNode) -> None:
     messages = [
         LLMNodeChatModelMessage(
             text="Answer user's question with the following context:\n\n{{#context#}}",
@@ -878,7 +879,7 @@ def test_handle_list_messages_replaces_double_brace_context_placeholder(llm_node
     ]
 
 
-def test_handle_list_messages_renders_jinja2_messages(llm_node):
+def test_handle_list_messages_renders_jinja2_messages(llm_node: LLMNode) -> None:
     llm_node.runtime_state.variable_pool.add(["input", "name"], "Dify")
     renderer = mock.MagicMock()
     renderer.render_template.return_value = "Hello Dify"
@@ -905,7 +906,7 @@ def test_handle_list_messages_renders_jinja2_messages(llm_node):
     renderer.render_template.assert_called_once_with("Hello {{ name }}", {"name": "Dify"})
 
 
-def test_transform_chat_messages_prefers_jinja2_text(llm_node):
+def test_transform_chat_messages_prefers_jinja2_text(llm_node: LLMNode) -> None:
     completion_template = LLMNodeCompletionModelPromptTemplate(
         text="ignored",
         jinja2_text="completion prompt",
@@ -928,12 +929,14 @@ def test_transform_chat_messages_prefers_jinja2_text(llm_node):
     transformed_completion = llm_node._transform_chat_messages(completion_template)
     transformed_messages = llm_node._transform_chat_messages(chat_messages)
 
+    assert isinstance(transformed_completion, LLMNodeCompletionModelPromptTemplate)
+    assert not isinstance(transformed_messages, LLMNodeCompletionModelPromptTemplate)
     assert transformed_completion.text == "completion prompt"
     assert transformed_messages[0].text == "chat prompt"
     assert transformed_messages[1].text == "keep original"
 
 
-def test_fetch_jinja_inputs_serializes_supported_segment_types(llm_node):
+def test_fetch_jinja_inputs_serializes_supported_segment_types(llm_node: LLMNode) -> None:
     llm_node.runtime_state.variable_pool.add(
         ["input", "items"],
         ["alpha", {"metadata": {"_source": "knowledge"}, "content": "beta"}, 3],
@@ -963,7 +966,7 @@ def test_fetch_jinja_inputs_serializes_supported_segment_types(llm_node):
     }
 
 
-def test_fetch_jinja_inputs_raises_for_missing_variable(llm_node):
+def test_fetch_jinja_inputs_raises_for_missing_variable(llm_node: LLMNode) -> None:
     node_data = llm_node.node_data.model_copy(
         update={
             "prompt_config": PromptConfig(
@@ -976,7 +979,7 @@ def test_fetch_jinja_inputs_raises_for_missing_variable(llm_node):
         llm_node._fetch_jinja_inputs(node_data)
 
 
-def test_fetch_inputs_collects_prompt_and_memory_variables(llm_node):
+def test_fetch_inputs_collects_prompt_and_memory_variables(llm_node: LLMNode) -> None:
     llm_node.runtime_state.variable_pool.add(["input", "name"], "Dify")
     llm_node.runtime_state.variable_pool.add(["input", "payload"], {"active": True})
 
@@ -1003,7 +1006,7 @@ def test_fetch_inputs_collects_prompt_and_memory_variables(llm_node):
     }
 
 
-def test_fetch_context_emits_string_context_event(llm_node):
+def test_fetch_context_emits_string_context_event(llm_node: LLMNode) -> None:
     llm_node.runtime_state.variable_pool.add(["context", "value"], "retrieved context")
     node_data = llm_node.node_data.model_copy(
         update={"context": ContextConfig(enabled=True, variable_selector=["context", "value"])}
@@ -1016,7 +1019,7 @@ def test_fetch_context_emits_string_context_event(llm_node):
     ]
 
 
-def test_fetch_context_collects_retriever_resources_and_attachments(llm_node):
+def test_fetch_context_collects_retriever_resources_and_attachments(llm_node: LLMNode) -> None:
     attachment = _build_image_file(
         file_id="attachment",
         related_id="attachment-related",
@@ -1077,7 +1080,7 @@ def test_fetch_context_collects_retriever_resources_and_attachments(llm_node):
     llm_node._retriever_attachment_loader.load.assert_called_once_with(segment_id="segment-1")
 
 
-def test_fetch_context_rejects_invalid_context_structure(llm_node):
+def test_fetch_context_rejects_invalid_context_structure(llm_node: LLMNode) -> None:
     llm_node.runtime_state.variable_pool.add(["context", "value"], [{"summary": "missing content"}])
     node_data = llm_node.node_data.model_copy(
         update={"context": ContextConfig(enabled=True, variable_selector=["context", "value"])}
@@ -1087,7 +1090,7 @@ def test_fetch_context_rejects_invalid_context_structure(llm_node):
         list(llm_node._fetch_context(node_data))
 
 
-def test_fetch_prompt_messages_chat_mode_appends_memory_query_and_files(mocker: MockerFixture):
+def test_fetch_prompt_messages_chat_mode_appends_memory_query_and_files(mocker: MockerFixture) -> None:
     model_instance = _build_prepared_llm_mock()
     model_instance.get_model_schema.return_value = _build_model_schema(features=[ModelFeature.VISION])
 
@@ -1156,7 +1159,7 @@ def test_fetch_prompt_messages_chat_mode_appends_memory_query_and_files(mocker: 
     history_lookup.assert_called_once_with(max_token_limit=2000, message_limit=None)
 
 
-def test_fetch_prompt_messages_completion_mode_injects_histories_and_query():
+def test_fetch_prompt_messages_completion_mode_injects_histories_and_query() -> None:
     model_instance = _build_prepared_llm_mock()
     model_instance.get_model_schema.return_value = _build_model_schema(features=[])
 
@@ -1196,7 +1199,7 @@ def test_fetch_prompt_messages_completion_mode_injects_histories_and_query():
     ]
 
 
-def test_fetch_prompt_messages_raises_when_only_unsupported_content_remains():
+def test_fetch_prompt_messages_raises_when_only_unsupported_content_remains() -> None:
     model_instance = _build_prepared_llm_mock()
     model_instance.get_model_schema.return_value = _build_model_schema(features=[])
 
@@ -1240,7 +1243,7 @@ def test_fetch_prompt_messages_raises_when_only_unsupported_content_remains():
         )
 
 
-def test_handle_completion_template_replaces_double_brace_context_placeholder(llm_node):
+def test_handle_completion_template_replaces_double_brace_context_placeholder(llm_node: LLMNode) -> None:
     prompt_messages = handle_completion_template(
         template=LLMNodeCompletionModelPromptTemplate(
             text="Summarize the following context:\n{{#context#}}",
@@ -1261,7 +1264,7 @@ def test_handle_completion_template_replaces_double_brace_context_placeholder(ll
     ]
 
 
-def test_handle_memory_completion_mode_uses_prompt_message_interface(mocker: MockerFixture):
+def test_handle_memory_completion_mode_uses_prompt_message_interface(mocker: MockerFixture) -> None:
     memory = MockTokenBufferMemory(
         history_messages=[
             UserPromptMessage(
@@ -1300,7 +1303,7 @@ def test_handle_memory_completion_mode_uses_prompt_message_interface(mocker: Moc
 
 @pytest.fixture
 def llm_node_for_multimodal(
-    llm_node_data, graph_init_params, graph_runtime_state
+    llm_node_data: LLMNodeData, graph_init_params: InitParams, graph_runtime_state: RuntimeState
 ) -> tuple[LLMNode, _RecordingFileSaver]:
     file_saver = _RecordingFileSaver(saved_file=None)
     credentials_provider = DifyCredentialsProvider(run_context=_run_context())
@@ -1323,7 +1326,7 @@ def llm_node_for_multimodal(
 
 
 class TestLLMNodeSaveMultiModalImageOutput:
-    def test_llm_node_save_inline_output(self, llm_node_for_multimodal: tuple[LLMNode, _RecordingFileSaver]):
+    def test_llm_node_save_inline_output(self, llm_node_for_multimodal: tuple[LLMNode, _RecordingFileSaver]) -> None:
         llm_node, file_saver = llm_node_for_multimodal
         content = ImagePromptMessageContent(
             format="png",
@@ -1348,7 +1351,7 @@ class TestLLMNodeSaveMultiModalImageOutput:
         assert file == mock_file
         assert file_saver.binary_calls == [(b"test-data", "image/png", FileType.IMAGE, ".png")]
 
-    def test_llm_node_save_url_output(self, llm_node_for_multimodal: tuple[LLMNode, _RecordingFileSaver]):
+    def test_llm_node_save_url_output(self, llm_node_for_multimodal: tuple[LLMNode, _RecordingFileSaver]) -> None:
         llm_node, file_saver = llm_node_for_multimodal
         content = ImagePromptMessageContent(
             format="png",
@@ -1374,7 +1377,7 @@ class TestLLMNodeSaveMultiModalImageOutput:
         assert file_saver.remote_calls == [(content.url, FileType.IMAGE)]
 
 
-def test_llm_node_image_file_to_markdown(llm_node: LLMNode):
+def test_llm_node_image_file_to_markdown(llm_node: LLMNode) -> None:
     image_file = _build_image_file(
         file_id="image-file", related_id="image-related", remote_url="https://example.com/image.png"
     )
@@ -1387,7 +1390,7 @@ class TestSaveMultimodalOutputAndConvertResultToMarkdown:
         def __str__(self) -> str:
             return "<unknown-item>"
 
-    def test_str_content(self, llm_node_for_multimodal):
+    def test_str_content(self, llm_node_for_multimodal: tuple[LLMNode, _RecordingFileSaver]) -> None:
         llm_node, file_saver = llm_node_for_multimodal
         gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(
             contents="hello world", file_saver=file_saver, file_outputs=[]
@@ -1396,7 +1399,7 @@ class TestSaveMultimodalOutputAndConvertResultToMarkdown:
         assert file_saver.binary_calls == []
         assert file_saver.remote_calls == []
 
-    def test_text_prompt_message_content(self, llm_node_for_multimodal):
+    def test_text_prompt_message_content(self, llm_node_for_multimodal: tuple[LLMNode, _RecordingFileSaver]) -> None:
         llm_node, file_saver = llm_node_for_multimodal
         gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(
             contents=[TextPromptMessageContent(data="hello world")], file_saver=file_saver, file_outputs=[]
@@ -1405,7 +1408,9 @@ class TestSaveMultimodalOutputAndConvertResultToMarkdown:
         assert file_saver.binary_calls == []
         assert file_saver.remote_calls == []
 
-    def test_image_content_with_inline_data(self, llm_node_for_multimodal, monkeypatch: pytest.MonkeyPatch):
+    def test_image_content_with_inline_data(
+        self, llm_node_for_multimodal: tuple[LLMNode, _RecordingFileSaver], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         llm_node, file_saver = llm_node_for_multimodal
 
         image_raw_data = b"PNG_DATA"
@@ -1450,22 +1455,30 @@ class TestSaveMultimodalOutputAndConvertResultToMarkdown:
         assert file_saver.binary_calls == [(image_raw_data, "image/png", FileType.IMAGE, ".png")]
         assert mock_saved_file in file_outputs
 
-    def test_unknown_content_type(self, llm_node_for_multimodal):
+    def test_unknown_content_type(self, llm_node_for_multimodal: tuple[LLMNode, _RecordingFileSaver]) -> None:
         llm_node, file_saver = llm_node_for_multimodal
+        # Deliberately not a supported contents container; the node must fall back to a string.
         gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(
-            contents=frozenset(("hello world",)), file_saver=file_saver, file_outputs=[]
+            contents=frozenset(("hello world",)),  # pyrefly: ignore[bad-argument-type]
+            file_saver=file_saver,
+            file_outputs=[],
         )
         assert list(gen) == ["hello world"]
         assert file_saver.binary_calls == []
         assert file_saver.remote_calls == []
 
-    def test_unknown_item_type(self, llm_node_for_multimodal, caplog: pytest.LogCaptureFixture):
+    def test_unknown_item_type(
+        self, llm_node_for_multimodal: tuple[LLMNode, _RecordingFileSaver], caplog: pytest.LogCaptureFixture
+    ) -> None:
         llm_node, file_saver = llm_node_for_multimodal
         unknown_item = self._UnknownItem()
 
         with caplog.at_level(logging.WARNING, logger="graphon.nodes.llm.node"):
+            # Deliberately an unsupported item; the node must warn, not explode.
             gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(
-                contents=[unknown_item], file_saver=file_saver, file_outputs=[]
+                contents=[unknown_item],  # pyrefly: ignore[bad-argument-type]
+                file_saver=file_saver,
+                file_outputs=[],
             )
             assert list(gen) == [str(unknown_item)]
 
@@ -1473,7 +1486,7 @@ class TestSaveMultimodalOutputAndConvertResultToMarkdown:
         assert file_saver.binary_calls == []
         assert file_saver.remote_calls == []
 
-    def test_none_content(self, llm_node_for_multimodal):
+    def test_none_content(self, llm_node_for_multimodal: tuple[LLMNode, _RecordingFileSaver]) -> None:
         llm_node, file_saver = llm_node_for_multimodal
         gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(
             contents=None, file_saver=file_saver, file_outputs=[]
@@ -1486,7 +1499,7 @@ class TestSaveMultimodalOutputAndConvertResultToMarkdown:
 class TestReasoningFormat:
     """Test cases for reasoning_format functionality"""
 
-    def test_split_reasoning_separated_mode(self):
+    def test_split_reasoning_separated_mode(self) -> None:
         """Test separated mode: tags are removed and content is extracted"""
 
         text_with_think = """
@@ -1499,7 +1512,7 @@ class TestReasoningFormat:
         assert clean_text == "Dify is an open source AI platform."
         assert reasoning_content == "I need to explain what Dify is. It's an open source AI platform."
 
-    def test_split_reasoning_tagged_mode(self):
+    def test_split_reasoning_tagged_mode(self) -> None:
         """Test tagged mode: original text is preserved"""
 
         text_with_think = """
@@ -1514,7 +1527,7 @@ class TestReasoningFormat:
         # Empty reasoning content in tagged mode
         assert reasoning_content == ""
 
-    def test_split_reasoning_no_think_blocks(self):
+    def test_split_reasoning_no_think_blocks(self) -> None:
         """Test behavior when no <think> tags are present"""
 
         text_without_think = "This is a simple answer without any thinking blocks."
@@ -1524,7 +1537,7 @@ class TestReasoningFormat:
         assert clean_text == text_without_think
         assert reasoning_content == ""
 
-    def test_reasoning_format_default_value(self):
+    def test_reasoning_format_default_value(self) -> None:
         """Test that reasoning_format defaults to 'tagged' for backward compatibility"""
 
         node_data = LLMNodeData(
@@ -1553,7 +1566,9 @@ class TestReasoningFormat:
         (True, {"schema": {"type": "object", "properties": {"answer": {"type": "string"}}}}),
     ],
 )
-def test_invoke_llm_dispatches_to_expected_model_method(structured_output_enabled, structured_output):
+def test_invoke_llm_dispatches_to_expected_model_method(
+    structured_output_enabled: bool, structured_output: dict[str, object] | None
+) -> None:
     model_instance = _build_prepared_llm_mock()
     prompt_messages = [UserPromptMessage(content="hello")]
     file_saver = _build_file_saver()
@@ -1602,7 +1617,7 @@ def test_invoke_llm_dispatches_to_expected_model_method(structured_output_enable
     assert mock_handle.call_args.kwargs["request_start_time"] == 10.0
 
 
-def test_handle_invoke_result_streaming_collects_text_metrics_and_structured_output():
+def test_handle_invoke_result_streaming_collects_text_metrics_and_structured_output() -> None:
     usage = LLMUsage.from_metadata({"prompt_tokens": 12, "completion_tokens": 4, "total_tokens": 16})
     first_chunk = LLMResultChunkWithStructuredOutput(
         model="gpt-3.5-turbo",
@@ -1627,7 +1642,7 @@ def test_handle_invoke_result_streaming_collects_text_metrics_and_structured_out
     with mock.patch("graphon.nodes.llm.node.time.perf_counter", side_effect=[2.0, 5.0]):
         events = list(
             LLMNode.handle_invoke_result(
-                invoke_result=iter([first_chunk, final_chunk]),
+                invoke_result=(chunk for chunk in [first_chunk, final_chunk]),
                 file_saver=_build_file_saver(),
                 file_outputs=[],
                 node_id="node-1",
@@ -1657,11 +1672,11 @@ def test_handle_invoke_result_streaming_collects_text_metrics_and_structured_out
     assert completed.usage.time_to_generate == 3.0
 
 
-def test_handle_invoke_result_wraps_structured_output_parse_errors():
+def test_handle_invoke_result_wraps_structured_output_parse_errors() -> None:
     model_instance = _build_prepared_llm_mock()
     model_instance.is_structured_output_parse_error.return_value = True
 
-    def broken_stream():
+    def broken_stream() -> Generator[LLMResultChunk]:
         raise ValueError("bad json")
         yield
 
@@ -1677,7 +1692,7 @@ def test_handle_invoke_result_wraps_structured_output_parse_errors():
         )
 
 
-def test_handle_blocking_result_extracts_reasoning_and_structured_output():
+def test_handle_blocking_result_extracts_reasoning_and_structured_output() -> None:
     invoke_result = LLMResultWithStructuredOutput(
         model="gpt-3.5-turbo",
         prompt_messages=[],
@@ -1700,7 +1715,7 @@ def test_handle_blocking_result_extracts_reasoning_and_structured_output():
     assert event.usage.latency == 1.234
 
 
-def test_fetch_structured_output_schema_validates_payload():
+def test_fetch_structured_output_schema_validates_payload() -> None:
     assert LLMNode.fetch_structured_output_schema(structured_output={"schema": {"type": "object"}}) == {
         "type": "object"
     }
@@ -1712,7 +1727,7 @@ def test_fetch_structured_output_schema_validates_payload():
         LLMNode.fetch_structured_output_schema(structured_output={"schema": ["not", "an", "object"]})
 
 
-def test_extract_variable_selector_to_variable_mapping_includes_runtime_selectors():
+def test_extract_variable_selector_to_variable_mapping_includes_runtime_selectors() -> None:
     node_data = LLMNodeData(
         title="Test LLM",
         model=ModelConfig(provider="openai", name="gpt-3.5-turbo", mode="chat", completion_params={}),
@@ -1755,7 +1770,7 @@ def test_extract_variable_selector_to_variable_mapping_includes_runtime_selector
     }
 
 
-def test_render_jinja2_message_requires_renderer_and_passes_inputs():
+def test_render_jinja2_message_requires_renderer_and_passes_inputs() -> None:
     variable_pool = VariablePool.empty()
     variable_pool.add(["input", "name"], "Dify")
     variables = [VariableSelector(variable="name", value_selector=["input", "name"])]
@@ -1786,7 +1801,7 @@ def test_render_jinja2_message_requires_renderer_and_passes_inputs():
     renderer.render_template.assert_called_once_with("Hello {{ name }}", {"name": "Dify"})
 
 
-def test_calculate_rest_token_uses_context_size_and_max_tokens():
+def test_calculate_rest_token_uses_context_size_and_max_tokens() -> None:
     model_instance = _build_prepared_llm_mock()
     model_instance.parameters = {"max_tokens": 512}
     model_instance.get_model_schema.return_value = _build_model_schema(
@@ -1810,7 +1825,7 @@ def test_calculate_rest_token_uses_context_size_and_max_tokens():
     )
 
 
-def test_handle_memory_chat_mode_uses_calculated_token_budget(mocker: MockerFixture):
+def test_handle_memory_chat_mode_uses_calculated_token_budget(mocker: MockerFixture) -> None:
     history = [UserPromptMessage(content="question")]
     memory = MockTokenBufferMemory(history)
     history_lookup = mocker.spy(memory, "get_history_prompt_messages")
@@ -1827,7 +1842,7 @@ def test_handle_memory_chat_mode_uses_calculated_token_budget(mocker: MockerFixt
     history_lookup.assert_called_once_with(max_token_limit=321, message_limit=2)
 
 
-def test_dify_model_access_adapters_skip_runtime_build_when_managers_are_injected():
+def test_dify_model_access_adapters_skip_runtime_build_when_managers_are_injected() -> None:
     run_context = DifyRunContext(
         tenant_id="tenant",
         app_id="app",
@@ -1843,7 +1858,7 @@ def test_dify_model_access_adapters_skip_runtime_build_when_managers_are_injecte
     mock_provider_manager_factory.assert_not_called()
 
 
-def test_build_dify_model_access_binds_run_context_user_id_once():
+def test_build_dify_model_access_binds_run_context_user_id_once() -> None:
     run_context = DifyRunContext(
         tenant_id="tenant",
         app_id="app",
@@ -1858,9 +1873,9 @@ def test_build_dify_model_access_binds_run_context_user_id_once():
     mock_provider_manager.assert_called_once_with(tenant_id="tenant", user_id="user")
 
 
-def test_dify_model_access_requires_run_context_argument():
+def test_dify_model_access_requires_run_context_argument() -> None:
     with pytest.raises(TypeError):
-        DifyCredentialsProvider()
+        DifyCredentialsProvider()  # pyrefly: ignore[missing-argument]
 
     with pytest.raises(TypeError):
-        DifyModelFactory()
+        DifyModelFactory()  # pyrefly: ignore[missing-argument]
