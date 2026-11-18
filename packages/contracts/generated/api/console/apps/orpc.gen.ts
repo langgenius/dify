@@ -791,10 +791,13 @@ export const conversations = {
  * Preview human input form content and placeholders
  *
  * Get human input form preview for advanced chat workflow
+ * ``session`` and ``workflow_service`` are injectable so callers (including tests) can supply
+ * real objects; when omitted they fall back to the request-scoped session and a fresh service.
  */
 export const post5 = oc
   .route({
-    description: 'Get human input form preview for advanced chat workflow',
+    description:
+      'Get human input form preview for advanced chat workflow\n``session`` and ``workflow_service`` are injectable so callers (including tests) can supply\nreal objects; when omitted they fall back to the request-scoped session and a fresh service.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreview',
@@ -819,10 +822,13 @@ export const preview = {
  * Submit human input form preview
  *
  * Submit human input form preview for advanced chat workflow
+ * ``session`` and ``workflow_service`` are injectable; omitted values fall back to the
+ * request-scoped session and a fresh service.
  */
 export const post6 = oc
   .route({
-    description: 'Submit human input form preview for advanced chat workflow',
+    description:
+      'Submit human input form preview for advanced chat workflow\n``session`` and ``workflow_service`` are injectable; omitted values fall back to the\nrequest-scoped session and a fresh service.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRun',
@@ -4062,10 +4068,13 @@ export const features = {
  * Test human input delivery
  *
  * Test human input delivery for workflow
+ * ``session`` and ``workflow_service`` are injectable; omitted values fall back to the
+ * request-scoped session and a fresh service.
  */
 export const post51 = oc
   .route({
-    description: 'Test human input delivery for workflow',
+    description:
+      'Test human input delivery for workflow\n``session`` and ``workflow_service`` are injectable; omitted values fall back to the\nrequest-scoped session and a fresh service.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTest',
@@ -4090,10 +4099,13 @@ export const deliveryTest = {
  * Preview human input form content and placeholders
  *
  * Get human input form preview for workflow
+ * ``session`` and ``workflow_service`` are injectable; omitted values fall back to the
+ * request-scoped session and a fresh service.
  */
 export const post52 = oc
   .route({
-    description: 'Get human input form preview for workflow',
+    description:
+      'Get human input form preview for workflow\n``session`` and ``workflow_service`` are injectable; omitted values fall back to the\nrequest-scoped session and a fresh service.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreview',
@@ -4118,10 +4130,13 @@ export const preview4 = {
  * Submit human input form preview
  *
  * Submit human input form preview for workflow
+ * ``session`` and ``workflow_service`` are injectable; omitted values fall back to the
+ * request-scoped session and a fresh service.
  */
 export const post53 = oc
   .route({
-    description: 'Submit human input form preview for workflow',
+    description:
+      'Submit human input form preview for workflow\n``session`` and ``workflow_service`` are injectable; omitted values fall back to the\nrequest-scoped session and a fresh service.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRun',

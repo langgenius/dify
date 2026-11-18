@@ -5,7 +5,7 @@ from collections.abc import Generator, Mapping, Sequence
 from dataclasses import field
 from datetime import datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Optional, TypedDict, cast
+from typing import TYPE_CHECKING, Any, NotRequired, Optional, TypedDict, cast
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 from warnings import deprecated
 
@@ -98,6 +98,22 @@ def _resolve_workflow_app_tenant_id(session: Session, app_id: str) -> str:
     if not tenant_id:
         raise ValueError(f"Unable to resolve tenant_id for app {app_id}")
     return tenant_id
+
+
+class EnvironmentVariableMappingDict(TypedDict):
+    """Raw environment-variable mapping as persisted in ``Workflow._environment_variables``.
+
+    This is the boundary shape handed to ``variable_factory.build_environment_variable_from_mapping``
+    before it is parsed into a validated variable object. ``value_type`` is the only required key;
+    the remaining fields are optional because malformed persisted payloads may omit them.
+    """
+
+    value_type: str
+    id: NotRequired[str]
+    name: NotRequired[str]
+    value: NotRequired[object]
+    description: NotRequired[str | None]
+    selector: NotRequired[Sequence[str]]
 
 
 class WorkflowContentDict(TypedDict):

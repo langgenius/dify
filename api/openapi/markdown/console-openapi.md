@@ -2209,6 +2209,8 @@ Retire the Agent workspaces of the caller's ended Chatflow debug conversations
 **Preview human input form content and placeholders**
 
 Get human input form preview for advanced chat workflow
+``session`` and ``workflow_service`` are injectable so callers (including tests) can supply
+real objects; when omitted they fall back to the request-scoped session and a fresh service.
 
 #### Parameters
 
@@ -2235,6 +2237,8 @@ Get human input form preview for advanced chat workflow
 **Submit human input form preview**
 
 Submit human input form preview for advanced chat workflow
+``session`` and ``workflow_service`` are injectable; omitted values fall back to the
+request-scoped session and a fresh service.
 
 #### Parameters
 
@@ -4918,6 +4922,8 @@ Update draft workflow features
 **Test human input delivery**
 
 Test human input delivery for workflow
+``session`` and ``workflow_service`` are injectable; omitted values fall back to the
+request-scoped session and a fresh service.
 
 #### Parameters
 
@@ -4944,6 +4950,8 @@ Test human input delivery for workflow
 **Preview human input form content and placeholders**
 
 Get human input form preview for workflow
+``session`` and ``workflow_service`` are injectable; omitted values fall back to the
+request-scoped session and a fresh service.
 
 #### Parameters
 
@@ -4970,6 +4978,8 @@ Get human input form preview for workflow
 **Submit human input form preview**
 
 Submit human input form preview for workflow
+``session`` and ``workflow_service`` are injectable; omitted values fall back to the
+request-scoped session and a fresh service.
 
 #### Parameters
 
