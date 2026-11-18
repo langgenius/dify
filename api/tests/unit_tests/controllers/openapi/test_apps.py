@@ -315,7 +315,7 @@ def test_max_page_limit_is_accepted_by_the_app_service() -> None:
 
 
 def _list_with(
-    app: Flask, services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch, ctx: Context
+    app: Flask, services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch, ctx: Context, *, named: bool = False
 ) -> tuple[list[AppListLogin], AppListResponse]:
     logins: list[AppListLogin] = []
 
@@ -328,7 +328,8 @@ def _list_with(
 
     monkeypatch.setattr(services.apps.discovery, "list_apps_for", list_apps_for)
     api = AppListApi()
-    with app.test_request_context("/openapi/v1/apps?page=2&limit=3"):
+    workspace = f"&workspace_id={TENANT_ID}" if named else ""
+    with app.test_request_context(f"/openapi/v1/apps?page=2&limit=3{workspace}"):
         response = inspect.unwrap(AppListApi.get)(api, ctx, query=AppListQuery.model_validate({"page": 2, "limit": 3}))
     assert isinstance(response, AppListResponse)
     return logins, response
@@ -348,7 +349,7 @@ def test_an_account_login_is_passed_with_the_workspace_it_named(
     ctx.personal_app_ids = frozenset({"app-id"}) if token_type is TokenType.PERSONAL_ACCESS else None
     if named:
         ctx._workspace = make_tenant()
-    logins, response = _list_with(app, app_query_services, monkeypatch, ctx)
+    logins, response = _list_with(app, app_query_services, monkeypatch, ctx, named=named)
     assert logins == [
         AppListLogin(
             kind=SubjectType.ACCOUNT,

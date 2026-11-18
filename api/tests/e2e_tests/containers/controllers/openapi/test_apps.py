@@ -12,7 +12,7 @@ from werkzeug.exceptions import NotFound
 
 from controllers.openapi._models import AppDescribeQuery, AppDescribeResponse, AppListQuery, AppListResponse
 from controllers.openapi.apps import AppDescribeApi, AppListApi
-from controllers.openapi.auth.requirements import CheckNamedWorkspaceMember
+from controllers.openapi.auth.requirements import CheckWorkspaceMember
 from machinery.context import AppRequestContext
 from models import Account, App, Tenant
 from services.app_service import AppService, CreateAppParams
@@ -71,7 +71,7 @@ class TestAppList:
         with app.test_request_context(f"/openapi/v1/apps?workspace_id={tenant.id}"):
             result = cast(_Endpoint[AppListResponse], api.get).__handler__(
                 api,
-                context_for(account, session=db_session_with_containers, requirements=(CheckNamedWorkspaceMember(),)),
+                context_for(account, session=db_session_with_containers, requirements=(CheckWorkspaceMember(),)),
                 query=AppListQuery(workspace_id=str(tenant.id)),
             )
 
@@ -93,7 +93,7 @@ class TestAppList:
         with app.test_request_context(f"/openapi/v1/apps?workspace_id={tenant.id}&name={target.id}"):
             result = cast(_Endpoint[AppListResponse], api.get).__handler__(
                 api,
-                context_for(account, session=db_session_with_containers, requirements=(CheckNamedWorkspaceMember(),)),
+                context_for(account, session=db_session_with_containers, requirements=(CheckWorkspaceMember(),)),
                 query=AppListQuery(workspace_id=str(tenant.id), name=str(target.id)),
             )
 
@@ -116,7 +116,7 @@ class TestAppList:
         with app.test_request_context(f"/openapi/v1/apps?workspace_id={outsider_tenant.id}&name={foreign_app.id}"):
             result = cast(_Endpoint[AppListResponse], api.get).__handler__(
                 api,
-                context_for(outsider, session=db_session_with_containers, requirements=(CheckNamedWorkspaceMember(),)),
+                context_for(outsider, session=db_session_with_containers, requirements=(CheckWorkspaceMember(),)),
                 query=AppListQuery(workspace_id=str(outsider_tenant.id), name=str(foreign_app.id)),
             )
 
@@ -139,7 +139,7 @@ class TestAppList:
         with app.test_request_context("/openapi/v1/apps"):
             result = inspect.unwrap(AppListApi.get)(
                 api,
-                context_for(account, session=db_session_with_containers, requirements=(CheckNamedWorkspaceMember(),)),
+                context_for(account, session=db_session_with_containers, requirements=(CheckWorkspaceMember(),)),
                 query=AppListQuery(),
             )
         assert isinstance(result, AppListResponse)
