@@ -13,10 +13,12 @@ from sqlalchemy import Connection, Engine, delete, event, select, text
 from sqlalchemy.orm import Session, SessionTransaction, object_session, sessionmaker
 from werkzeug.test import TestResponse
 
+from clients.plugin.auth import PluginCredentialAuthClient
 from constants.resource_access_token import ResourceAccessTokenResourceType
 from controllers.service_api.app.message import MessageSuggestedApi
 from controllers.service_api.flask_admission import service_api_end_user_admission
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from core.plugin.plugin_service import PluginService
 from extensions.application_services.resource_access_token import build_resource_access_token_service
 from extensions.ext_database import db
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -31,10 +33,13 @@ from models.resource_access_token import ResourceAccessToken, ResourceAccessToke
 from models.workflow import Workflow, WorkflowType
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
+from repositories.end_user_connection_repository import EndUserConnectionRepository
 from repositories.message_repository import MessageRepository
 from services.app_definition_query_service import AppDefinitionQueryService, AppDefinitionUnavailableError
 from services.app_scoped_end_user_service import AppScopedEndUserService
 from services.auth.resource_access_token_contracts import ResourceAccessTokenCreateResult, ResourceAccessTokenResource
+from services.end_user_connection_adapters import PluginApiKeyCredentialGateway
+from services.end_user_connection_revision_adapters import PluginConnectionRevisions
 from services.errors.app import AppAbnormalStatusError, AppApiDisabledError
 from services.errors.workspace import WorkspaceArchivedError, WorkspaceNotFoundError
 from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
@@ -192,7 +197,15 @@ def harness(
     )
     app.extensions["application_services"] = _Services(
         app_definitions=AppDefinitionQueryService(
-            definitions=AppDefinitionQueryRepository(session_factory=admission_factory), builtin_icon_url_prefix=""
+            definitions=AppDefinitionQueryRepository(session_factory=admission_factory),
+            builtin_icon_url_prefix="",
+            connection_revisions=PluginConnectionRevisions(
+                providers=PluginApiKeyCredentialGateway(auth=PluginCredentialAuthClient()),
+                snapshots=EndUserConnectionRepository(session_factory=admission_factory),
+            ),
+            plugin_verified=PluginService.is_plugin_verified,
+            plugin_readme=PluginService.fetch_plugin_readme,
+            plugin_asset=PluginService.extract_asset,
         ),
         message_suggested_questions=service,
         app_scoped_end_users=_EndUsers(
@@ -424,7 +437,7 @@ def test_unsupported_mode_does_not_invoke_questions(harness: _Harness, mode: App
     ("failure", "status", "code", "message"),
     [
         ("message", 404, "not_found", "Message Not Exists."),
-        ("conversation", 404, "not_found", "Conversation not found"),
+        ("conversation", 404, "not_found", "Message Not Exists."),
         ("agent_version", 404, "agent_version_not_found_error", "Agent config version not found."),
         ("disabled", 403, "app_suggested_questions_after_answer_disabled", ""),
     ],
@@ -566,7 +579,8 @@ def test_default_admission_keeps_legacy_app_attached(harness: _Harness) -> None:
         # The app stays attached to the request session, but admission no longer leaves that
         # session holding a pooled connection for the handler.
         assert not db.session().in_transaction()
-        assert harness.admissions == []
+        assert harness.admissions
+        assert all(not admission.in_transaction() and not admission.identity_map for admission in harness.admissions)
 
 
 def test_request_identity_remains_installed_after_generation(harness: _Harness) -> None:

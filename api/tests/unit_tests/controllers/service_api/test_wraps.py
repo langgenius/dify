@@ -386,6 +386,7 @@ class TestValidateAppToken:
         app: Flask,
         sqlite_session: Session,
         monkeypatch: pytest.MonkeyPatch,
+        account_application_services: ApplicationServices,
     ) -> None:
         """Admission must not hold a pooled connection while end-user provisioning opens its own session."""
         tenant = Tenant(name="Workspace")
@@ -409,7 +410,11 @@ class TestValidateAppToken:
         )
         commands = _SessionStateRecordingEndUserCommands(end_user, sqlite_session)
         app.login_manager = _RecordingLoginManager()  # type: ignore[attr-defined]
-        monkeypatch.setattr(wraps_module, "application_services", lambda: _ApplicationServicesStub(commands))
+        monkeypatch.setattr(
+            wraps_module,
+            "application_services",
+            lambda: _ApplicationServicesStub(commands, account_application_services.app_definitions),
+        )
         monkeypatch.setattr(wraps_module, "user_logged_in", _RecordingSignal())
         expire_on_commit = sqlite_session.expire_on_commit
 

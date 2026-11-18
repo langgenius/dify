@@ -14,9 +14,11 @@ from sqlalchemy import Connection, Engine, event, select
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 from werkzeug.test import TestResponse
 
+from clients.plugin.auth import PluginCredentialAuthClient
 from constants.resource_access_token import ResourceAccessTokenResourceType
 from controllers.service_api.app.conversation import ConversationRenameApi
 from core.errors.error import ProviderTokenNotInitError
+from core.plugin.plugin_service import PluginService
 from extensions.application_services.resource_access_token import build_resource_access_token_service
 from extensions.ext_database import db
 from libs.external_api import ExternalApi
@@ -28,11 +30,14 @@ from models.resource_access_token import ResourceAccessToken
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.conversation_repository import ConversationRepository
+from repositories.end_user_connection_repository import EndUserConnectionRepository
 from services.app_definition_query_service import AppDefinitionQueryService
 from services.app_scoped_end_user_service import AppScopedEndUserService
 from services.auth.resource_access_token_contracts import ResourceAccessTokenResource
 from services.conversation_name_generator import DefaultModelConversationNameGenerator
 from services.conversation_name_service import ConversationNameService
+from services.end_user_connection_adapters import PluginApiKeyCredentialGateway
+from services.end_user_connection_revision_adapters import PluginConnectionRevisions
 from services.resource_access_token_service import ResourceAccessTokenService
 from tests.helpers.unit.model_factories import make_app, make_conversation, make_end_user, make_message
 from tests.helpers.unit.services.tracing_ports import untraced_scopes
@@ -168,7 +173,15 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
     event.listen(db.session.session_factory, "after_begin", track_scoped)
     app.extensions["application_services"] = _Services(
         app_definitions=AppDefinitionQueryService(
-            definitions=AppDefinitionQueryRepository(session_factory=admission_factory), builtin_icon_url_prefix=""
+            definitions=AppDefinitionQueryRepository(session_factory=admission_factory),
+            builtin_icon_url_prefix="",
+            connection_revisions=PluginConnectionRevisions(
+                providers=PluginApiKeyCredentialGateway(auth=PluginCredentialAuthClient()),
+                snapshots=EndUserConnectionRepository(session_factory=admission_factory),
+            ),
+            plugin_verified=PluginService.is_plugin_verified,
+            plugin_readme=PluginService.fetch_plugin_readme,
+            plugin_asset=PluginService.extract_asset,
         ),
         app_scoped_end_users=_EndUsers(
             AppScopedEndUserService(end_users=AppScopedEndUserRepo(session_factory=provision_factory))
