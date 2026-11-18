@@ -1251,7 +1251,7 @@ class _FakeStreams:
         return entries
 
     def xread(
-        self, streams: dict[str, object], block: int | None = None, count: int | None = None
+        self, streams: dict[str, bytes | str], block: int | None = None, count: int | None = None
     ) -> list[tuple[str, list[tuple[str, dict[object, object]]]]]:
         assert len(streams) == 1
         key, last_id = next(iter(streams.items()))
