@@ -8,6 +8,7 @@ from enums import CloudPlan, DeploymentEdition
 from extensions.ext_redis import RedisClientWrapper
 from machinery.context import RequestContext
 from models.account import Account
+from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.account.adapters import RedisInvitationTokenStore
 from services.credit_pool_service import CreditPoolBalance
 from services.enterprise.base import EnterpriseRequest
@@ -91,10 +92,14 @@ class TestGatewaysCases:
 
         assert invitations.requires_capacity_check
         if allowed:
-            invitations.check_capacity("workspace", current_members=2, new_members=2, new_accounts=1)
+            invitations.check_capacity(
+                "workspace", current_members=2, pending_invitations=0, new_members=2, new_accounts=1
+            )
         else:
             with pytest.raises(WorkspaceInvitationQuotaError) as error:
-                invitations.check_capacity("workspace", current_members=2, new_members=2, new_accounts=1)
+                invitations.check_capacity(
+                    "workspace", current_members=2, pending_invitations=0, new_members=2, new_accounts=1
+                )
             assert error.value.seats is False
         features.assert_called_once_with(tenant_id="workspace", exclude_vector_space=True)
         license_query.assert_not_called()
@@ -161,12 +166,90 @@ class TestGatewaysCases:
 
         assert invitations.requires_capacity_check
         if failure is None:
-            invitations.check_capacity("workspace", current_members=2, new_members=2, new_accounts=new_accounts)
+            invitations.check_capacity(
+                "workspace", current_members=2, pending_invitations=0, new_members=2, new_accounts=new_accounts
+            )
         else:
             with pytest.raises(WorkspaceInvitationQuotaError) as error:
-                invitations.check_capacity("workspace", current_members=2, new_members=2, new_accounts=new_accounts)
+                invitations.check_capacity(
+                    "workspace", current_members=2, pending_invitations=0, new_members=2, new_accounts=new_accounts
+                )
             assert error.value.seats is (failure == "seats")
         assert license_query.call_count == int(new_accounts > 0 and failure != "members")
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("edition", "pending", "allowed"),
+        [
+            (DeploymentEdition.CLOUD, 0, True),
+            (DeploymentEdition.CLOUD, 1, False),
+            (DeploymentEdition.ENTERPRISE, 0, True),
+            (DeploymentEdition.ENTERPRISE, 1, False),
+        ],
+    )
+    def test_live_invitations_reserve_member_seats(
+        invitations: gateways.WorkspaceInvitationGateway,
+        monkeypatch: pytest.MonkeyPatch,
+        config_overrides: Callable[..., None],
+        edition: DeploymentEdition,
+        pending: int,
+        allowed: bool,
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=edition)
+        monkeypatch.setattr(
+            gateways.FeatureService,
+            "get_features",
+            Mock(
+                return_value=FeatureModel(
+                    members=LimitationModel(size=0, limit=4),
+                    workspace_members=LicenseLimitationModel(enabled=True, size=2, limit=4),
+                )
+            ),
+        )
+
+        def check() -> None:
+            invitations.check_capacity(
+                "workspace", current_members=2, pending_invitations=pending, new_members=2, new_accounts=0
+            )
+
+        if allowed:
+            check()
+        else:
+            with pytest.raises(WorkspaceInvitationQuotaError):
+                check()
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("edition", "is_member", "members", "allowed"),
+        [
+            (DeploymentEdition.CLOUD, False, 2, True),
+            (DeploymentEdition.CLOUD, False, 3, False),
+            (DeploymentEdition.CLOUD, True, 3, True),
+            (DeploymentEdition.COMMUNITY, False, 3, True),
+        ],
+    )
+    def test_acceptance_capacity_counts_joined_members(
+        monkeypatch: pytest.MonkeyPatch,
+        config_overrides: Callable[..., None],
+        edition: DeploymentEdition,
+        is_member: bool,
+        members: int,
+        allowed: bool,
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=edition)
+        workspaces = create_autospec(WorkspaceRepository, instance=True)
+        workspaces.member_role.return_value = "normal" if is_member else None
+        workspaces.count_members.return_value = members
+        monkeypatch.setattr(
+            gateways.FeatureService,
+            "get_features",
+            Mock(return_value=FeatureModel(members=LimitationModel(size=0, limit=3))),
+        )
+        capacity = gateways.WorkspaceMemberCapacityGateway(
+            workspaces=workspaces, redis=create_autospec(RedisClientWrapper, instance=True)
+        )
+
+        assert capacity.can_join("workspace", "account") is allowed
 
     @staticmethod
     def test_community_invitation_does_not_query_quotas(
@@ -181,7 +264,7 @@ class TestGatewaysCases:
         monkeypatch.setattr(gateways.SystemFeatureService, "get_license", license_query)
 
         assert not invitations.requires_capacity_check
-        invitations.check_capacity("workspace", current_members=2, new_members=2, new_accounts=1)
+        invitations.check_capacity("workspace", current_members=2, pending_invitations=0, new_members=2, new_accounts=1)
         features.assert_not_called()
         license_query.assert_not_called()
 

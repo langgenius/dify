@@ -73,6 +73,7 @@ def build_account_domain(session_factory: sessionmaker[Session]) -> AccountDomai
     delivery = create_autospec(WorkspaceInvitationDelivery, instance=True)
     delivery.requires_capacity_check = False
     delivery.create.return_value = "invitation-token"
+    delivery.list_pending.return_value = ()
     invitations = WorkspaceInvitationService(
         accounts=accounts, workspaces=workspaces, members=members, invitations=delivery
     )

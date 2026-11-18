@@ -1,5 +1,6 @@
 """Application service for checking and accepting account invitations."""
 
+from contextlib import AbstractContextManager
 from typing import Protocol
 
 from services.account_errors import (
@@ -7,6 +8,7 @@ from services.account_errors import (
     FrozenAccountError,
     InvalidInvitationError,
     InvitationAccountMismatchError,
+    InvitationWorkspaceFullError,
 )
 from services.entities.account_activation_entities import (
     AccountInvitation,
@@ -63,6 +65,12 @@ class WorkspaceMemberAccessSync(Protocol):
     def sync(self, workspace_id: str, account_id: str) -> None: ...
 
 
+class WorkspaceMemberCapacity(Protocol):
+    def acquire(self, workspace_id: str) -> AbstractContextManager[object]: ...
+
+    def can_join(self, workspace_id: str, account_id: str) -> bool: ...
+
+
 class AccountActivationService:
     def __init__(
         self,
@@ -73,6 +81,7 @@ class AccountActivationService:
         eligibility: AccountActivationEligibility,
         membership_cache: WorkspaceMembershipCache,
         member_access_sync: WorkspaceMemberAccessSync,
+        capacity: WorkspaceMemberCapacity,
     ) -> None:
         self._tokens = tokens
         self._accounts = accounts
@@ -80,6 +89,7 @@ class AccountActivationService:
         self._eligibility = eligibility
         self._membership_cache = membership_cache
         self._member_access_sync = member_access_sync
+        self._capacity = capacity
 
     def check(self, invitation: InvitationLookup) -> ActivationCheckResult:
         resolved = self._resolve(invitation)
@@ -99,6 +109,15 @@ class AccountActivationService:
         )
 
     def activate(self, command: ActivationCommand, *, authenticated_account_id: str | None) -> None:
+        """Accept an invitation, creating the membership when the workspace still has room.
+
+        Raises:
+            InvalidInvitationError: The invitation is missing, stale, or lacks setup data.
+            InvitationAccountMismatchError: The session belongs to another account.
+            AccountEmailDomainSuspendedError: The email domain is suspended.
+            FrozenAccountError: The email is frozen after a recent deletion.
+            InvitationWorkspaceFullError: The workspace reached its member limit; the link stays valid.
+        """
         invitation = self._resolve(command.invitation)
         if invitation is None:
             raise InvalidInvitationError
@@ -118,14 +137,19 @@ class AccountActivationService:
         membership_consumed = self._tokens.is_membership_consumed(command.invitation)
 
         normalized_email = command.invitation.email.lower() if command.invitation.email else None
-        self._tokens.revoke(
-            InvitationLookup(
-                workspace_id=command.invitation.workspace_id,
-                email=normalized_email,
-                token=command.invitation.token,
+        with self._capacity.acquire(invitation.workspace_id):
+            if not membership_consumed and not self._capacity.can_join(invitation.workspace_id, invitation.account_id):
+                raise InvitationWorkspaceFullError
+            self._tokens.revoke(
+                InvitationLookup(
+                    workspace_id=command.invitation.workspace_id,
+                    email=normalized_email,
+                    token=command.invitation.token,
+                )
             )
-        )
-        result = self._accounts.activate(invitation, role=role, setup=setup, create_membership=not membership_consumed)
+            result = self._accounts.activate(
+                invitation, role=role, setup=setup, create_membership=not membership_consumed
+            )
         if result is None:
             raise InvalidInvitationError
         if result.membership_created:
@@ -133,14 +157,23 @@ class AccountActivationService:
         self._member_access_sync.sync(invitation.workspace_id, invitation.account_id)
 
     def ensure_membership(self, *, account_id: str, email: str, token: str) -> bool:
+        """Restore the invited membership at sign-in.
+
+        Raises:
+            InvitationWorkspaceFullError: The workspace reached its member limit; the link stays valid.
+        """
         lookup = InvitationLookup(workspace_id=None, email=email, token=token)
         invitation = self._resolve(lookup)
         if invitation is None or invitation.account_id != account_id:
             return False
-        if not self._tokens.consume_membership(lookup):
+        if self._tokens.is_membership_consumed(lookup):
             return False
-
-        result = self._accounts.activate(invitation, role=self._membership_role(invitation.role), setup=None)
+        with self._capacity.acquire(invitation.workspace_id):
+            if not self._capacity.can_join(invitation.workspace_id, invitation.account_id):
+                raise InvitationWorkspaceFullError
+            if not self._tokens.consume_membership(lookup):
+                return False
+            result = self._accounts.activate(invitation, role=self._membership_role(invitation.role), setup=None)
         if result is None:
             return False
         if result.membership_created:

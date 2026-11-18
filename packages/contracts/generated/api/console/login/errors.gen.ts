@@ -66,6 +66,14 @@ const zLimitExceededError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zWorkspaceMemberLimitReachedError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('workspace_member_limit_reached'),
+      status: z.literal(400),
+    }),
+  ))()
+
 const zAuthenticationFailedError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -92,4 +100,5 @@ export const postErrors = {
   invalid_account_password: { status: 400, data: zInvalidAccountPasswordError },
   invalid_email: { status: 400, data: zInvalidEmailError },
   limit_exceeded: { status: 400, data: zLimitExceededError },
+  workspace_member_limit_reached: { status: 400, data: zWorkspaceMemberLimitReachedError },
 }

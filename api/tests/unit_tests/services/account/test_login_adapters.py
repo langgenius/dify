@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable, Generator
-from contextlib import contextmanager
+from contextlib import AbstractContextManager, contextmanager, nullcontext
 from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import override
@@ -47,6 +47,19 @@ from services.turnstile_service import TurnstileChallengeRejectedError, Turnstil
 from services.workspace import gateways
 from tests.helpers.unit.account_domain import AccountDomain
 from tests.unit_tests.services.account.test_login_service import Dependencies
+
+
+class _OpenCapacity:
+    def __init__(self) -> None:
+        self.checked: list[tuple[str, str]] = []
+
+    def acquire(self, workspace_id: str) -> AbstractContextManager[object]:
+        self.checked.append((workspace_id, ""))
+        return nullcontext()
+
+    def can_join(self, workspace_id: str, account_id: str) -> bool:
+        self.checked.append((workspace_id, account_id))
+        return True
 
 
 class FakeRateLimiter(RateLimiter):
@@ -111,6 +124,7 @@ def test_invitation_gateway_restores_editor_membership_without_revoking_token(
         eligibility=BillingAccountActivationEligibility(enabled=False),
         membership_cache=BillingWorkspaceMembershipCache(enabled=False),
         member_access_sync=RBACWorkspaceMemberAccessSync(enabled=False),
+        capacity=_OpenCapacity(),
     )
     gateway = adapters.AccountActivationConsoleAuthInvitationGateway(
         tokens=tokens,
@@ -196,6 +210,7 @@ def test_login_restores_membership_when_invitation_is_stored_under_prefixed_key(
             eligibility=BillingAccountActivationEligibility(enabled=False),
             membership_cache=BillingWorkspaceMembershipCache(enabled=False),
             member_access_sync=RBACWorkspaceMemberAccessSync(enabled=False),
+            capacity=_OpenCapacity(),
         ),
     )
     dependencies = Dependencies()

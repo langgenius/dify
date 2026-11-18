@@ -1523,6 +1523,25 @@ export const zAccountNotLinkTenantError = zErrorResponse.and(
 )
 
 /**
+ * PendingInvitationRevokePayload
+ */
+export const zPendingInvitationRevokePayload = z.object({
+  email: z.string(),
+})
+
+/**
+ * PendingInvitationNotFoundError
+ *
+ * No live invitation exists for this email in the workspace.
+ */
+export const zPendingInvitationNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('pending_invitation_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
  * Meta
  */
 export const zMeta = z.object({
@@ -9372,3 +9391,16 @@ export const zGetWorkspacesByWorkspaceIdMembersPendingInvitationsPath = z.object
  */
 export const zGetWorkspacesByWorkspaceIdMembersPendingInvitationsResponse =
   zPendingWorkspaceInvitationListResponse
+
+export const zPostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeBody =
+  zPendingInvitationRevokePayload
+
+export const zPostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokePath = z.object({
+  workspace_id: z.uuid(),
+})
+
+/**
+ * Success
+ */
+export const zPostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeResponse =
+  zSimpleResultResponse

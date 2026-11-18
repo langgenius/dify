@@ -22,7 +22,7 @@ from services.account_errors import AccountNotFoundError
 from services.enterprise.rbac_service import RBACService
 from services.entities.account_activation_entities import PendingWorkspaceInvitation
 from services.entities.account_entities import AccountSnapshot
-from services.entities.feature_entities import FeatureModel, LicenseLimitationModel, LicenseModel
+from services.entities.feature_entities import FeatureModel, LicenseLimitationModel, LicenseModel, LimitationModel
 from services.errors.base import NoPermissionError
 from services.errors.workspace import (
     AccountAlreadyInTenantError,
@@ -32,6 +32,7 @@ from services.errors.workspace import (
     InvalidOwnerTransferTokenError,
     InvalidWorkspaceMemberRoleError,
     MemberNotInTenantError,
+    PendingInvitationNotFoundError,
     RoleAlreadyAssignedError,
     WorkspaceAlreadyHasOwnerError,
     WorkspaceInvitationQuotaError,
@@ -255,7 +256,7 @@ class TestMemberServiceCases:
                 account_domain.members.remove(workspace_id, member_id, owner_id)
 
     @staticmethod
-    def test_new_invitation_normalizes_email_and_sets_current_workspace(
+    def test_new_email_invitation_does_not_join_until_activation(
         account_domain: AccountDomain, members: tuple[str, str, str]
     ) -> None:
         workspace_id, owner_id, _ = members
@@ -270,14 +271,71 @@ class TestMemberServiceCases:
         assert invitee is not None
         assert result.account_id == invitee.id
         assert invitee.status == "pending"
-        assert account_domain.members.get_role(workspace_id, invitee.id) == _member_service_TenantAccountRole.EDITOR
-        membership = account_domain.workspaces.find_membership(invitee.id, workspace_id)
-        assert membership is not None
-        assert membership.current
+        assert account_domain.members.get_role(workspace_id, invitee.id) is None
+        assert account_domain.workspaces.find_membership(invitee.id, workspace_id) is None
         invitation = account_domain.delivery.create.call_args.args[0]
         assert invitation.requires_setup is True
+        assert invitation.role == "editor"
         assert invitation.email == "new@example.com"
-        account_domain.delivery.track_pending.assert_not_called()
+        account_domain.delivery.track_pending.assert_called_once_with(workspace_id, "invitation-token")
+
+    @staticmethod
+    def test_reinvitation_invalidates_earlier_links_before_issuing_a_new_one(
+        account_domain: AccountDomain, members: tuple[str, str, str]
+    ) -> None:
+        workspace_id, owner_id, _ = members
+        owner = RequestContext("request", None, owner_id, workspace_id)
+        account_domain.invitations.invite(owner, "new@example.com", None, "normal")
+        account_domain.delivery.reset_mock()
+
+        account_domain.invitations.invite(owner, "New@Example.com", None, "editor")
+
+        names = [name for name, *_ in account_domain.delivery.mock_calls]
+        assert names.index("revoke_pending") < names.index("create") < names.index("track_pending")
+        account_domain.delivery.revoke_pending.assert_called_once_with(workspace_id, "new@example.com")
+        assert account_domain.delivery.create.call_args.args[0].role == "editor"
+
+    @staticmethod
+    def test_pending_invitations_include_new_email_invitations(
+        account_domain: AccountDomain, members: tuple[str, str, str]
+    ) -> None:
+        workspace_id, owner_id, _ = members
+        owner = RequestContext("request", None, owner_id, workspace_id)
+        result = account_domain.invitations.invite(owner, "new@example.com", None, "normal")
+        invitation = PendingWorkspaceInvitation(
+            result.account_id, "new@example.com", TenantAccountRole.NORMAL, datetime(2026, 12, 1, tzinfo=UTC)
+        )
+        account_domain.delivery.list_pending.return_value = (invitation,)
+
+        assert account_domain.invitations.list_pending(owner) == (invitation,)
+
+    @staticmethod
+    def test_revoking_a_live_invitation_requires_member_management(
+        account_domain: AccountDomain, members: tuple[str, str, str]
+    ) -> None:
+        workspace_id, owner_id, member_id = members
+        owner = RequestContext("request", None, owner_id, workspace_id)
+        account_domain.delivery.acquire.return_value = nullcontext()
+        result = account_domain.invitations.invite(owner, "new@example.com", None, "normal")
+        account_domain.delivery.list_pending.return_value = (
+            PendingWorkspaceInvitation(
+                result.account_id, "new@example.com", TenantAccountRole.NORMAL, datetime(2026, 12, 1, tzinfo=UTC)
+            ),
+        )
+        account_domain.delivery.revoke_pending.reset_mock()
+
+        with pytest.raises(NoPermissionError):
+            account_domain.invitations.revoke_pending(
+                RequestContext("request", None, member_id, workspace_id), "new@example.com"
+            )
+        account_domain.delivery.revoke_pending.assert_not_called()
+
+        with pytest.raises(PendingInvitationNotFoundError):
+            account_domain.invitations.revoke_pending(owner, "unknown@example.com")
+        account_domain.delivery.revoke_pending.assert_not_called()
+
+        account_domain.invitations.revoke_pending(owner, "New@Example.com")
+        account_domain.delivery.revoke_pending.assert_called_once_with(workspace_id, "new@example.com")
 
     @staticmethod
     def test_active_invitee_must_accept_before_joining(
@@ -442,10 +500,53 @@ class TestMemberServiceCases:
 
         assert error.value.seats is True
         account_domain.delivery.check_capacity.assert_called_once_with(
-            workspace_id, current_members=2, new_members=2, new_accounts=1
+            workspace_id, current_members=2, pending_invitations=0, new_members=2, new_accounts=1
         )
         assert account_domain.repository.find_by_email("new@example.com") is None
         account_domain.delivery.create.assert_not_called()
+
+    @staticmethod
+    def test_bulk_invitation_reserves_seats_for_live_invitations(
+        account_domain: AccountDomain,
+        members: tuple[str, str, str],
+        monkeypatch: pytest.MonkeyPatch,
+        config_overrides: Callable[..., None],
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        monkeypatch.setattr(
+            FeatureService, "get_features", Mock(return_value=FeatureModel(members=LimitationModel(limit=4)))
+        )
+        redis = create_autospec(RedisClientWrapper, instance=True)
+        gateway = WorkspaceInvitationGateway(tokens=RedisInvitationTokenStore(redis=redis), redis=redis)
+        workspace_id, owner_id, _ = members
+        reinvited = account_domain.accounts.create_account("reinvited@example.com", "Reinvited", "en-US")
+        waiting = account_domain.accounts.create_account("waiting@example.com", "Waiting", "en-US")
+        account_domain.delivery.list_pending.return_value = tuple(
+            PendingWorkspaceInvitation(
+                account.id, account.email, TenantAccountRole.NORMAL, datetime(2026, 12, 1, tzinfo=UTC)
+            )
+            for account in (reinvited, waiting)
+        )
+        account_domain.delivery.acquire.return_value = nullcontext()
+        account_domain.delivery.check_capacity.side_effect = gateway.check_capacity
+        account_domain.delivery.requires_capacity_check = True
+        owner = RequestContext("request", None, owner_id, workspace_id)
+
+        # 2 members + 2 live invitations fill the plan; resending one of them takes no new seat.
+        results = account_domain.invitations.invite_many(
+            owner, emails=["Reinvited@example.com"], language=None, role="normal"
+        )
+        assert [result.status for result in results] == ["success"]
+        account_domain.delivery.check_capacity.assert_not_called()
+
+        with pytest.raises(WorkspaceInvitationQuotaError):
+            account_domain.invitations.invite_many(
+                owner, emails=["reinvited@example.com", "new@example.com"], language=None, role="normal"
+            )
+        account_domain.delivery.check_capacity.assert_called_once_with(
+            workspace_id, current_members=2, pending_invitations=2, new_members=1, new_accounts=1
+        )
+        assert account_domain.repository.find_by_email("new@example.com") is None
 
     @staticmethod
     def test_bulk_invitation_retains_partial_results_under_workspace_lock(

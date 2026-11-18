@@ -27,6 +27,7 @@ from controllers.console.auth.error import (
     MemberNotInTenantError as MemberNotInTenantRequestError,
 )
 from controllers.console.error import EmailSendIpLimitError, SeatsLimitExceeded, WorkspaceMembersLimitExceeded
+from controllers.console.workspace.error import PendingInvitationNotFoundError as PendingInvitationNotFoundHTTPError
 from controllers.console.workspace.members import (
     DatasetOperatorMemberListApi,
     MemberCancelInviteApi,
@@ -36,6 +37,7 @@ from controllers.console.workspace.members import (
     OwnerTransfer,
     OwnerTransferCheckApi,
     PendingWorkspaceInvitationListApi,
+    PendingWorkspaceInvitationRevokeApi,
     SendOwnerTransferEmailApi,
 )
 from enums.account import TenantAccountRole
@@ -54,6 +56,7 @@ from services.errors.workspace import (
     OwnerTransferSendIPLimitedError,
     OwnerTransferSendRateLimitError,
     OwnerTransferVerificationLimitError,
+    PendingInvitationNotFoundError,
     RoleAlreadyAssignedError,
     WorkspaceNotFoundError,
     WorkspaceNotLinkedError,
@@ -195,6 +198,40 @@ def test_pending_invitation_endpoint_scopes_to_active_workspace_and_omits_tokens
     assert response == {
         "invitations": [{"email": "invitee@example.com", "role": "editor", "expires_at": "2026-12-01T00:00:00Z"}]
     }
+
+
+@pytest.mark.parametrize(
+    ("service_error", "http_error"),
+    [
+        (None, None),
+        (NoPermissionError("denied"), ForbiddenError),
+        (PendingInvitationNotFoundError(), PendingInvitationNotFoundHTTPError),
+    ],
+)
+def test_pending_invitation_revoke_endpoint(
+    app: Flask,
+    services: Mock,
+    service_error: Exception | None,
+    http_error: type[Exception] | None,
+) -> None:
+    workspace_id = uuid4()
+    context = RequestContext("request", None, "actor", str(workspace_id))
+    api = PendingWorkspaceInvitationRevokeApi()
+    post = unwrap(api.post)
+    services.workspaces.invitations.revoke_pending.side_effect = service_error
+    with app.test_request_context("/", json={"email": "Invitee@Example.com"}):
+        with pytest.raises(ForbiddenError):
+            post(api, context, uuid4())
+        services.workspaces.invitations.revoke_pending.assert_not_called()
+        if http_error is None:
+            assert post(api, context, workspace_id) == ({"result": "success"}, HTTPStatus.OK)
+        else:
+            with pytest.raises(http_error):
+                post(api, context, workspace_id)
+
+    services.workspaces.invitations.revoke_pending.assert_called_once()
+    assert services.workspaces.invitations.revoke_pending.call_args.args[0] is context
+    assert services.workspaces.invitations.revoke_pending.call_args.args[1].lower() == "invitee@example.com"
 
 
 @pytest.mark.parametrize("operation", ["remove", "update_role"])

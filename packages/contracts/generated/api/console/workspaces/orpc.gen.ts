@@ -35,6 +35,7 @@ import {
   zOwnerTransferLimitError,
   zOwnerTransferRateLimitExceededError,
   zPaidPlanRequiredError,
+  zPendingInvitationNotFoundError,
   zPluginError,
   zRoleAlreadyAssignedError,
   zTooManyFilesError,
@@ -389,6 +390,9 @@ import {
   zPatchWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdBody,
   zPatchWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdPath,
   zPatchWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdResponse,
+  zPostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeBody,
+  zPostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokePath,
+  zPostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeResponse,
   zPostWorkspacesCurrentCustomizedSnippetsBody,
   zPostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementPath,
   zPostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementResponse,
@@ -6466,6 +6470,35 @@ export const byTenantId = {
 }
 
 /**
+ * Revoke the live invitation for an email so its link stops working and its seat is released
+ */
+export const post96 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspacesByWorkspaceIdMembersPendingInvitationsRevoke',
+    path: '/workspaces/{workspace_id}/members/pending-invitations/revoke',
+    summary:
+      'Revoke the live invitation for an email so its link stops working and its seat is released',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeBody,
+      params: zPostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokePath,
+    }),
+  )
+  .output(zPostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeResponse)
+  .errors({
+    forbidden: { status: 403, data: zForbiddenError },
+    pending_invitation_not_found: { status: 404, data: zPendingInvitationNotFoundError },
+  })
+
+export const revoke = {
+  post: post96,
+}
+
+/**
  * List pending invitations for the active workspace
  */
 export const get138 = oc
@@ -6483,6 +6516,7 @@ export const get138 = oc
 
 export const pendingInvitations = {
   get: get138,
+  revoke,
 }
 
 export const members4 = {

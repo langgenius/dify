@@ -22,6 +22,7 @@ from services.errors.workspace import (
     MemberNotInTenantError,
     OwnerTransferSendIPLimitedError,
     OwnerTransferVerificationLimitError,
+    PendingInvitationNotFoundError,
     RoleAlreadyAssignedError,
     WorkspaceAlreadyHasOwnerError,
     WorkspaceNotFoundError,
@@ -345,7 +346,13 @@ class WorkspaceInvitationDelivery(Protocol):
     def ensure_role_enabled(self, role: str) -> None: ...
 
     def check_capacity(
-        self, workspace_id: str, *, current_members: int, new_members: int, new_accounts: int
+        self,
+        workspace_id: str,
+        *,
+        current_members: int,
+        pending_invitations: int,
+        new_members: int,
+        new_accounts: int,
     ) -> None: ...
 
     def ensure_allowed(self, workspace_id: str) -> None: ...
@@ -357,6 +364,8 @@ class WorkspaceInvitationDelivery(Protocol):
     def track_pending(self, workspace_id: str, token: str) -> None: ...
 
     def list_pending(self, workspace_id: str) -> tuple[PendingWorkspaceInvitation, ...]: ...
+
+    def revoke_pending(self, workspace_id: str, email: str) -> None: ...
 
     def send(self, *, language: str, email: str, token: str, inviter_name: str, workspace_name: str) -> None: ...
 
@@ -382,6 +391,24 @@ class WorkspaceInvitationService:
         """Return live invitations to non-members of the caller's workspace, subject to member management permission."""
         workspace_id = context.active_workspace_id
         self._members.check_permission(workspace_id, context.account_id, None, "add")
+        return self._live_pending(workspace_id)
+
+    def revoke_pending(self, context: RequestContext, email: str) -> None:
+        """Invalidate the live invitation for an email, releasing the seat it reserved.
+
+        Raises:
+            NoPermissionError: The caller cannot manage workspace members.
+            PendingInvitationNotFoundError: No live invitation exists for the email.
+        """
+        workspace_id = context.active_workspace_id
+        self._members.check_permission(workspace_id, context.account_id, None, "remove")
+        normalized_email = email.lower()
+        with self._invitations.acquire(workspace_id):
+            if not any(item.email.lower() == normalized_email for item in self._live_pending(workspace_id)):
+                raise PendingInvitationNotFoundError()
+            self._invitations.revoke_pending(workspace_id, normalized_email)
+
+    def _live_pending(self, workspace_id: str) -> tuple[PendingWorkspaceInvitation, ...]:
         pending = self._invitations.list_pending(workspace_id)
         if not pending:
             return ()
@@ -399,18 +426,25 @@ class WorkspaceInvitationService:
         results: list[WorkspaceInvitationResult] = []
         with self._invitations.acquire(workspace_id):
             if self._invitations.requires_capacity_check:
+                # Live invitations reserve seats; re-inviting one of them only replaces its link.
+                pending = self._live_pending(workspace_id)
+                pending_emails = {item.email.lower() for item in pending}
                 new_members, new_accounts = 0, 0
                 for email in emails:
                     account = self._accounts.get_account_by_email_with_case_fallback(email)
                     if account is None:
                         new_accounts += 1
                         new_members += 1
-                    elif self._members.get_role(workspace_id, account.id) is None:
+                    elif (
+                        account.email.lower() not in pending_emails
+                        and self._members.get_role(workspace_id, account.id) is None
+                    ):
                         new_members += 1
                 if new_members:
                     self._invitations.check_capacity(
                         workspace_id,
                         current_members=self._workspaces.count_members(workspace_id),
+                        pending_invitations=len(pending),
                         new_members=new_members,
                         new_accounts=new_accounts,
                     )
@@ -445,6 +479,7 @@ class WorkspaceInvitationService:
         normalized_email = email.lower()
         join_role = TenantAccountRole.NORMAL if self._members.rbac_enabled else TenantAccountRole(role)
         account = self._accounts.get_account_by_email_with_case_fallback(email)
+        rbac_enabled = self._members.rbac_enabled
         requires_setup = False
         if account is None:
             self._members.check_permission(workspace_id, inviter_id, None, "add")
@@ -456,20 +491,22 @@ class WorkspaceInvitationService:
                 is_setup=True,
                 check_normalized_email=True,
             )
-            self._members.join_member(
-                workspace_id=workspace_id,
-                account_id=account.id,
-                email=account.email,
-                role=join_role,
-                operator_account_id=inviter_id,
-            )
-            self._workspaces.switch(account_id=account.id, workspace_id=workspace_id)
+            # Without RBAC the invitation is its own record; activation creates the membership.
+            if rbac_enabled:
+                self._members.join_member(
+                    workspace_id=workspace_id,
+                    account_id=account.id,
+                    email=account.email,
+                    role=join_role,
+                    operator_account_id=inviter_id,
+                )
+                self._workspaces.switch(account_id=account.id, workspace_id=workspace_id)
             requires_setup = True
         else:
             self._members.check_permission(workspace_id, inviter_id, account.id, "add")
             previous_role = self._members.get_role(workspace_id, account.id)
             requires_setup = account.status == "pending"
-            if previous_role is None and (requires_setup or self._members.rbac_enabled):
+            if previous_role is None and rbac_enabled:
                 self._members.join_member(
                     workspace_id=workspace_id,
                     account_id=account.id,
@@ -482,8 +519,11 @@ class WorkspaceInvitationService:
                     self._members.assign_role(workspace_id, inviter_id, account.id, role)
                 if previous_role is not None or self._members.rbac_enabled:
                     raise AccountAlreadyInTenantError("Account already in tenant.")
-        if self._members.rbac_enabled:
+        if rbac_enabled:
             self._members.assign_role(workspace_id, inviter_id, account.id, role)
+        else:
+            # Re-inviting resends: earlier links for this email stop working.
+            self._invitations.revoke_pending(workspace_id, account.email)
         token = self._invitations.create(InvitationToken(account.id, account.email, workspace_id, role, requires_setup))
         self._invitations.send(
             language=account.interface_language or "en-US",
@@ -492,7 +532,7 @@ class WorkspaceInvitationService:
             inviter_name=inviter.name,
             workspace_name=workspace.name,
         )
-        if account.status == "active":
+        if not rbac_enabled or account.status == "active":
             self._invitations.track_pending(workspace_id, token)
         return WorkspaceInvitation(workspace_id, account.id, normalized_email, role, token)
 
