@@ -6,6 +6,7 @@ from typing import Any, Literal, TypedDict
 from flask import request, send_file
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field, RootModel
+from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Forbidden
 
@@ -19,6 +20,7 @@ from controllers.common.schema import (
     register_response_schema_models,
     register_schema_models,
 )
+from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.workspace import plugin_permission_required
@@ -1116,12 +1118,18 @@ class PluginChangePermissionApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @model_validate(ParserPermissionChange)
-    def post(self, req_data: ParserPermissionChange, tenant_id: str, user: Account):
+    @with_session
+    def post(self, session: Session, req_data: ParserPermissionChange, tenant_id: str, user: Account):
+        """Update the admitted tenant's plugin permissions for an admin or owner.
+
+        Persist through the request session, which the decorator closes on success
+        and failure. Non-privileged callers are rejected before service invocation.
+        """
         if not user.is_admin_or_owner:
             raise Forbidden()
 
         set_permission_result = PluginPermissionService.change_permission(
-            tenant_id, req_data.install_permission, req_data.debug_permission, session=db.session()
+            tenant_id, req_data.install_permission, req_data.debug_permission, session=session
         )
         if not set_permission_result:
             return jsonable_encoder({"success": False, "message": "Failed to set permission"})
@@ -1136,8 +1144,14 @@ class PluginFetchPermissionApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, tenant_id: str):
-        permission = PluginPermissionService.get_permission(tenant_id, session=db.session())
+    @with_session(write=False)
+    def get(self, session: Session, tenant_id: str):
+        """Read the admitted tenant's plugin permissions with a request session.
+
+        Missing records retain the existing defaults. The session closes after the
+        response values are materialized, including on service failure.
+        """
+        permission = PluginPermissionService.get_permission(tenant_id, session=session)
         if not permission:
             return jsonable_encoder(
                 {

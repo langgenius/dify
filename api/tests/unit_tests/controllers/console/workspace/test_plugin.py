@@ -6,6 +6,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Forbidden
 
@@ -76,6 +78,7 @@ from models.account import (
     TenantPluginAutoUpgradeStrategySetting,
     TenantPluginDebugPermission,
     TenantPluginInstallPermission,
+    TenantPluginPermission,
 )
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.helpers.unit.controllers.error_body import raised_error
@@ -684,7 +687,7 @@ class TestPluginUninstallApi:
 
 
 class TestPluginChangePermissionApi:
-    def test_change_permission_forbidden(self, app: Flask) -> None:
+    def test_change_permission_forbidden(self, app: Flask, sqlite_session: Session) -> None:
         api = PluginChangePermissionApi()
         method = unwrap(api.post)
 
@@ -699,38 +702,65 @@ class TestPluginChangePermissionApi:
             app.test_request_context("/", json=payload),
         ):
             with pytest.raises(Forbidden):
-                method(api, ParserPermissionChange(), "t1", user)
+                method(api, sqlite_session, ParserPermissionChange(), "t1", user)
+        assert sqlite_session.scalar(select(TenantPluginPermission)) is None
 
-    def test_change_permission_success(self, app: Flask) -> None:
+    def test_change_permission_success(self, app: Flask, sqlite_session: Session) -> None:
         api = PluginChangePermissionApi()
         method = unwrap(api.post)
 
         user = _account()
+        other_permission = TenantPluginPermission(
+            tenant_id="other-tenant",
+            install_permission=TenantPluginInstallPermission.ADMINS,
+            debug_permission=TenantPluginDebugPermission.EVERYONE,
+        )
+        sqlite_session.add(other_permission)
+        sqlite_session.commit()
 
         payload = {
             "install_permission": TenantPluginInstallPermission.EVERYONE,
-            "debug_permission": TenantPluginDebugPermission.EVERYONE,
+            "debug_permission": TenantPluginDebugPermission.ADMINS,
         }
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.PluginPermissionService.change_permission", return_value=True),
         ):
-            result = method(api, ParserPermissionChange(), "t1", user)
+            result = method(api, sqlite_session, ParserPermissionChange.model_validate(payload), "t1", user)
 
+        sqlite_session.rollback()
         assert result["success"] is True
+        stored = sqlite_session.scalar(select(TenantPluginPermission).where(TenantPluginPermission.tenant_id == "t1"))
+        assert stored is not None
+        assert stored.install_permission == TenantPluginInstallPermission.EVERYONE
+        assert stored.debug_permission == TenantPluginDebugPermission.ADMINS
+        assert other_permission.install_permission == TenantPluginInstallPermission.ADMINS
+        assert other_permission.debug_permission == TenantPluginDebugPermission.EVERYONE
+        fetch_api = PluginFetchPermissionApi()
+        fetched = unwrap(fetch_api.get)(fetch_api, sqlite_session, "t1")
+        assert fetched == {
+            "install_permission": TenantPluginInstallPermission.EVERYONE,
+            "debug_permission": TenantPluginDebugPermission.ADMINS,
+        }
 
 
 class TestPluginFetchPermissionApi:
-    def test_fetch_permission_default(self, app: Flask) -> None:
+    def test_fetch_permission_default(self, app: Flask, sqlite_session: Session) -> None:
         api = PluginFetchPermissionApi()
         method = unwrap(api.get)
+        sqlite_session.add(
+            TenantPluginPermission(
+                tenant_id="other-tenant",
+                install_permission=TenantPluginInstallPermission.EVERYONE,
+                debug_permission=TenantPluginDebugPermission.ADMINS,
+            )
+        )
+        sqlite_session.commit()
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.plugin.PluginPermissionService.get_permission", return_value=None),
         ):
-            result = method(api, "t1")
+            result = method(api, sqlite_session, "t1")
 
         assert result["install_permission"] == TenantPluginInstallPermission.ADMINS
         assert result["debug_permission"] == TenantPluginDebugPermission.EVERYONE
