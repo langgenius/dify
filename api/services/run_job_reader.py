@@ -12,12 +12,11 @@ from typing import Any, Final, Protocol, runtime_checkable
 
 from core.app.entities.task_entities import StreamEvent
 from graphon.enums import WorkflowExecutionStatus
-from services.run_job_contracts import JobFamily, JobPatch, JobRecord, JobStatus, RunJobStore
+from services.run_job_contracts import JobFailure, JobFamily, JobPatch, JobRecord, JobStatus, RunJobStore
 
 logger = logging.getLogger(__name__)
 
 DATA_PREFIX: Final = "data:"
-NO_RESULT_ERROR: Final = "run ended without a result"
 ID_FIELDS: Final = ("task_id", "workflow_run_id", "message_id", "conversation_id")
 # The alive key means "the reader thread is running". It is refreshed on a timer, not per frame: a graph run that
 # waits in the worker queue sends no frame until it starts (only one ping when the stream opens).
@@ -220,7 +219,7 @@ def _settle(job_id: str, store: RunJobStore) -> None:
     """Apply the end-of-stream rule.
 
     Precondition: the stream ended or raised.
-    Postcondition: a MESSAGE job without a final status is FAILED with NO_RESULT_ERROR; other jobs are unchanged.
+    Postcondition: a MESSAGE job without a final status is FAILED for JobFailure.NO_RESULT; other jobs are unchanged.
     """
     record = store.get(job_id)
     if record is None:
@@ -229,7 +228,7 @@ def _settle(job_id: str, store: RunJobStore) -> None:
         return
     if record.family is not JobFamily.MESSAGE:
         return
-    store.patch(job_id, JobPatch(status=JobStatus.FAILED, error=NO_RESULT_ERROR))
+    store.patch(job_id, JobPatch(status=JobStatus.FAILED, failure=JobFailure.NO_RESULT))
 
 
 def _keep_alive(*, job_id: str, store: RunJobStore, stop: threading.Event, interval: float) -> None:

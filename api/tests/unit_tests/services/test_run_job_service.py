@@ -12,10 +12,9 @@ from models.enums import CreatorUserRole
 from models.model import AppMode
 from repositories.run_job_store import RedisRunJobStore
 from services.app_task_service import WorkflowStopOutcome
-from services.run_job_contracts import JobOwner, JobPatch, JobRecord, JobStatus, OpenedJob
+from services.run_job_contracts import JobFailure, JobOwner, JobPatch, JobRecord, JobStatus, OpenedJob
 from services.run_job_service import (
     POLL_INTERVAL_SECONDS,
-    RUN_NOT_CONFIRMED,
     WAIT_MAX_SECONDS,
     JobCapacityError,
     JobNotFoundError,
@@ -315,10 +314,10 @@ def test_view_of_a_graph_job_without_a_run_id_and_without_a_reader_fails_and_is_
     view = harness.service.view(OWNER, opened.record.id)
 
     assert view.status is JobStatus.FAILED
-    assert view.error == RUN_NOT_CONFIRMED
+    assert view.error == JobFailure.RUN_NOT_CONFIRMED.message
     stored = harness.store.get(opened.record.id)
     assert stored is not None
-    assert (stored.status, stored.error) == (JobStatus.FAILED, RUN_NOT_CONFIRMED)
+    assert (stored.status, stored.failure, stored.error) == (JobStatus.FAILED, JobFailure.RUN_NOT_CONFIRMED, None)
 
 
 def test_view_of_a_graph_job_without_a_run_id_and_with_a_live_reader_keeps_running() -> None:
@@ -367,8 +366,21 @@ def test_a_graph_job_reported_not_confirmed_never_changes_when_its_run_appears_l
 
     later = harness.service.view(OWNER, opened.record.id)
 
-    assert (reported.status, reported.error) == (JobStatus.FAILED, RUN_NOT_CONFIRMED)
-    assert (later.status, later.error, later.outputs) == (JobStatus.FAILED, RUN_NOT_CONFIRMED, None)
+    not_confirmed = JobFailure.RUN_NOT_CONFIRMED.message
+    assert (reported.status, reported.error) == (JobStatus.FAILED, not_confirmed)
+    assert (later.status, later.error, later.outputs) == (JobStatus.FAILED, not_confirmed, None)
+
+
+def test_a_run_error_with_the_not_confirmed_text_is_still_read_from_the_run() -> None:
+    harness = _harness()
+    opened = harness.service.open(_opening())
+    text = JobFailure.RUN_NOT_CONFIRMED.message
+    harness.store.patch(opened.record.id, JobPatch(run_id="run-1", status=JobStatus.FAILED, error=text))
+    harness.results.runs[("t1", "run-1")] = RunResult(status=JobStatus.FAILED, outputs={"x": 1}, error=text)
+
+    view = harness.service.view(OWNER, opened.record.id)
+
+    assert (view.status, view.outputs, view.error) == (JobStatus.FAILED, {"x": 1}, text)
 
 
 def test_view_of_a_message_job_uses_the_record() -> None:
