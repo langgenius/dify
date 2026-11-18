@@ -3639,7 +3639,6 @@ export default interface Resources {
     'dialog.addTitle': 'Add scanner'
     'dialog.apiKey': 'API key'
     'dialog.apiSecret': 'API secret'
-    'dialog.clamavHint': 'ClamAV runs inside this deployment. Its address is set by the deployment administrator.'
     'dialog.dataNotice': 'File contents are sent to this service.'
     'dialog.editTitle': 'Edit scanner'
     'dialog.endpoint': 'Endpoint (optional)'

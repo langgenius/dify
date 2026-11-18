@@ -108,7 +108,7 @@ def _log_safe_error(message: str, *, extra: Mapping[str, JsonValue] | None = Non
 
 
 class _SlackLocatorPayload(_Base64JSONLocatorPayload):
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+    model_config = ConfigDict(extra="ignore", frozen=True, strict=True)
 
     _TIMESTAMP_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r"^[0-9]+\.[0-9]+$")
 
@@ -136,7 +136,7 @@ class _SlackLocatorPayload(_Base64JSONLocatorPayload):
 class _SlackCardCodec(IMCardEventDecoder):
     """Own the complete sender-owned Slack card wire contract without I/O."""
 
-    _MAX_MARKDOWN_TEXT_LENGTH: ClassVar[int] = MarkdownBlock.text_max_length
+    _MAX_TOTAL_MARKDOWN_TEXT_LENGTH: ClassVar[int] = MarkdownBlock.text_max_length
     _MAX_HEADER_TEXT_LENGTH: ClassVar[int] = 150
     _MAX_BLOCK_COUNT: ClassVar[int] = 50
     _MAX_ACTION_COUNT: ClassVar[int] = 25
@@ -197,7 +197,7 @@ class _SlackCardCodec(IMCardEventDecoder):
         id: str = Field(min_length=1)
 
     class _ButtonMetadata(BaseModel):
-        model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+        model_config = ConfigDict(extra="ignore", frozen=True, strict=True)
 
         version: Literal[1]
         action_id: str = Field(min_length=1)
@@ -549,8 +549,8 @@ class _SlackCardCodec(IMCardEventDecoder):
             input_element: dict[str, JsonValue] = {"action_id": input_name}
             if isinstance(block, ParagraphInput):
                 input_element.update({"type": "plain_text_input", "multiline": True})
-                if block.default_value is not None:
-                    input_element["initial_value"] = block.default_value
+                if block.resolved_default_value is not None:
+                    input_element["initial_value"] = block.resolved_default_value
             elif isinstance(block, SelectInput):
                 options: list[JsonValue] = [
                     {"text": {"type": "plain_text", "text": option}, "value": option} for option in block.options
@@ -562,11 +562,11 @@ class _SlackCardCodec(IMCardEventDecoder):
                         "options": options,
                     }
                 )
-                if block.default_value is not None:
+                if block.resolved_default_value is not None:
                     input_element["initial_option"] = next(
                         option
                         for option in options
-                        if isinstance(option, dict) and option["value"] == block.default_value
+                        if isinstance(option, dict) and option["value"] == block.resolved_default_value
                     )
             else:
                 raise DynamicCardMessagingError("Slack cards cannot represent file inputs.")
@@ -607,6 +607,12 @@ class _SlackCardCodec(IMCardEventDecoder):
 
     @classmethod
     def _unrepresentable_reason(cls, intent: ResolvedForm) -> str | None:
+        """Return a reason for an unsupported resolved form, or None, without I/O.
+
+        Slack's Markdown text limit covers all Markdown blocks in one payload;
+        input labels, defaults, the header and action text do not count toward it.
+        Oversized Markdown diagnostics include the complete total and the limit.
+        """
         if not intent.parts and not intent.actions:
             return "Slack cannot preserve an empty card."
         if len(intent.title) > cls._MAX_HEADER_TEXT_LENGTH:
@@ -618,20 +624,31 @@ class _SlackCardCodec(IMCardEventDecoder):
             return "Slack cannot preserve this number of card actions."
 
         input_names: set[str] = set()
+        total_markdown_text_length = sum(
+            len(block.text) for block in intent.parts if isinstance(block, MarkdownFragment)
+        )
         for block in intent.parts:
             match block:
                 case MarkdownFragment(text=text):
-                    if not text or len(text) > cls._MAX_MARKDOWN_TEXT_LENGTH:
-                        return "Slack cannot preserve one Markdown block of this length."
+                    if not text:
+                        return "Slack cannot preserve an empty Markdown block (length: 0 characters)."
+                    if total_markdown_text_length > cls._MAX_TOTAL_MARKDOWN_TEXT_LENGTH:
+                        return (
+                            f"Slack cannot preserve Markdown blocks with a total text length of "
+                            f"{total_markdown_text_length} characters "
+                            f"(maximum: {cls._MAX_TOTAL_MARKDOWN_TEXT_LENGTH} characters per payload)."
+                        )
                     continue
                 case FileInput() | FileListInput():
                     return "Slack cards cannot represent file inputs."
-                case ParagraphInput(output_variable_name=input_name, default_value=default_value):
+                case ParagraphInput(output_variable_name=input_name, resolved_default_value=default_value):
                     if len(input_name) > cls._MAX_ACTION_ID_LENGTH or len(input_name) > cls._MAX_INPUT_LABEL_LENGTH:
                         return "Slack cannot preserve one card input identifier."
                     if default_value is not None and len(default_value) > cls._MAX_INPUT_INITIAL_VALUE_LENGTH:
                         return "Slack cannot preserve one card input default."
-                case SelectInput(output_variable_name=input_name, options=options, default_value=default_value):
+                case SelectInput(
+                    output_variable_name=input_name, options=options, resolved_default_value=default_value
+                ):
                     if len(input_name) > cls._MAX_ACTION_ID_LENGTH or len(input_name) > cls._MAX_INPUT_LABEL_LENGTH:
                         return "Slack cannot preserve one card input identifier."
                     if not 1 <= len(options) <= cls._MAX_STATIC_SELECT_OPTION_COUNT:

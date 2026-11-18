@@ -2186,6 +2186,25 @@ Get advanced chat workflow run list
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /apps/{app_id}/advanced-chat/workflows/draft/conversations/workspaces/retire
+Retire the Agent workspaces of the caller's ended Chatflow debug conversations
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Workspaces retired |  |
+| 401 | Authentication required | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | App not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /apps/{app_id}/advanced-chat/workflows/draft/human-input/nodes/{node_id}/form/preview
 **Preview human input form content and placeholders**
 
@@ -15310,6 +15329,8 @@ Update a plugin endpoint
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/human-input/v2/channel-providers
+**List supported providers for the admitted administrator without accessing disabled owners**
+
 #### Responses
 
 | Code | Description | Schema |
@@ -15318,6 +15339,8 @@ Update a plugin endpoint
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/human-input/v2/channels
+**List supported configured channels for the admitted administrator without reading disabled owners**
+
 #### Responses
 
 | Code | Description | Schema |
@@ -15337,6 +15360,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [EmailChannelMutationResponse](#emailchannelmutationresponse)<br> |
+| 400 | Provider configuration rejected | **application/json**: [ChannelProviderBadRequestResponse](#channelproviderbadrequestresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/human-input/v2/channels/email/test
@@ -15401,6 +15425,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [EmailChannelMutationResponse](#emailchannelmutationresponse)<br> |
+| 400 | Provider configuration rejected | **application/json**: [ChannelProviderBadRequestResponse](#channelproviderbadrequestresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | 409 | Configuration conflict | **application/json**: [ChannelConflictResponse](#channelconflictresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -15437,6 +15462,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [IMChannelMutationResponse](#imchannelmutationresponse)<br> |
+| 400 | Provider configuration rejected | **application/json**: [ChannelProviderBadRequestResponse](#channelproviderbadrequestresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/human-input/v2/channels/im/test
@@ -15501,6 +15527,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [IMChannelMutationResponse](#imchannelmutationresponse)<br> |
+| 400 | Provider configuration rejected | **application/json**: [ChannelProviderBadRequestResponse](#channelproviderbadrequestresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | 409 | Configuration conflict | **application/json**: [ChannelConflictResponse](#channelconflictresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -15522,6 +15549,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [IMChannelMutationResponse](#imchannelmutationresponse)<br> |
+| 400 | Provider configuration rejected | **application/json**: [ChannelProviderBadRequestResponse](#channelproviderbadrequestresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | 409 | Configuration conflict | **application/json**: [ChannelConflictResponse](#channelconflictresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -15543,7 +15571,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ChannelTestResponse](#channeltestresponse)<br> |
-| 400 | The test provider must match the saved IM Channel. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | The test provider must match the saved IM Channel. | **application/json**: [ChannelProviderBadRequestResponse](#channelproviderbadrequestresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | 409 | Configuration conflict | **application/json**: [ChannelConflictResponse](#channelconflictresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -15844,7 +15872,7 @@ Return one required result bucket from the latest IM sync run using page and lim
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/human-input/v2/node-data-migration
-Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1"; any other explicit version is rejected. Every legacy Email recipient becomes onetime_email, while whole_workspace becomes all_workspace_contacts. This side-effect-free endpoint only returns migrated node data; the caller owns applying it to the Draft workflow.
+Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1"; any other explicit version is rejected. Legacy members become Contact recipients; external Email recipients become onetime_email, while whole_workspace becomes all_workspace_contacts. This side-effect-free endpoint only returns migrated node data; the caller owns applying it to the Draft workflow.
 
 #### Request Body
 
@@ -15874,6 +15902,16 @@ Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ListOrganizationCandidatesResponse](#listorganizationcandidatesresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/human-input/v2/test-channels
+**List current Workspace test channels without granting channel management or app execution permissions**
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [HumanInputTestChannelsResponse](#humaninputtestchannelsresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/members
@@ -23221,6 +23259,8 @@ Write transport; app-mode validators own defaults and feature-specific rules.
 
 #### AppModelSelectionResponse
 
+Readable model selection; missing or null identifiers mean it is not fully configured.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | completion_params | object |  | No |
@@ -24137,6 +24177,18 @@ You cannot transfer ownership to yourself.
 | connection_mode | string, <br>**Default:** custom_app |  | No |
 | provider | [EmailProviderType](#emailprovidertype)<br>[IMProvider](#improvider) |  | Yes |
 
+#### ChannelProviderBadRequestResponse
+
+HTTP failure with only provider-supplied diagnostic identifiers.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| message | string |  | Yes |
+| provider_error_code | string | Original provider error code, if supplied. | No |
+| provider_request_id | string | Original provider request ID, if supplied. | No |
+| status | integer |  | Yes |
+
 #### ChannelStatus
 
 | Name | Type | Description | Required |
@@ -24162,6 +24214,8 @@ You cannot transfer ownership to yourself.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| provider_error_code | string | Original provider error code, if supplied. | No |
+| provider_request_id | string | Original provider request ID, if supplied. | No |
 | status | [ChannelStatus](#channelstatus) |  | Yes |
 | status_description | string |  | Yes |
 
@@ -27374,12 +27428,7 @@ Request body for creating or updating one external contact.
 
 #### ExternalDatasetCreatePayload
 
-Validated fields required to create an external dataset binding.
-
-The console controller owns HTTP concerns, but the service also needs this
-contract when creating the tenant-scoped dataset and external knowledge
-binding. Keep it outside controllers so service imports do not depend on
-Flask blueprint initialization.
+Apply the deployment's description limit at the HTTP boundary.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -27576,18 +27625,6 @@ The file extension is blocked for security reasons.
 | mimetype | string |  | Yes |
 | size | integer |  | Yes |
 
-#### FileInput
-
-Resolved single-file input constraints.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| allowed_file_extensions | [ string ] |  | Yes |
-| allowed_file_types | [ [FileType](#filetype) ] |  | Yes |
-| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | Yes |
-| output_variable_name | string |  | Yes |
-| type | string |  | No |
-
 #### FileInputConfig
 
 | Name | Type | Description | Required |
@@ -27595,19 +27632,6 @@ Resolved single-file input constraints.
 | allowed_file_extensions | [ string ] |  | No |
 | allowed_file_types | [ [FileType](#filetype) ] |  | No |
 | allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
-| output_variable_name | string |  | Yes |
-| type | string |  | No |
-
-#### FileListInput
-
-Resolved multi-file input constraints and effective number limit.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| allowed_file_extensions | [ string ] |  | Yes |
-| allowed_file_types | [ [FileType](#filetype) ] |  | Yes |
-| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | Yes |
-| number_limits | integer |  | Yes |
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
 
@@ -27673,7 +27697,7 @@ Resolved multi-file input constraints and effective number limit.
 | config | object | Non-secret settings | No |
 | credentials | object | Secret settings; write-only | No |
 | name | string | Display name | Yes |
-| provider_type | string | clamav, cloudmersive, scanii, metadefender or api | Yes |
+| provider_type | string | cloudmersive, scanii, metadefender or api | Yes |
 
 #### FileScanProviderListResponse
 
@@ -27835,12 +27859,6 @@ Model class for form option.
 | show_on | [ [FormShowOnObject](#formshowonobject) ], <br>**Default:**  |  | No |
 | value | string |  | Yes |
 
-#### FormPart
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| FormPart | [MarkdownFragment](#markdownfragment)<br>[ParagraphInput](#paragraphinput)<br>[SelectInput](#selectinput)<br>[FileInput](#fileinput)<br>[FileListInput](#filelistinput) |  |  |
-
 #### FormShowOnObject
 
 Model class for form show on.
@@ -27983,6 +28001,14 @@ Response body for reading the latest IM sync run summary.
 | stopped_at | integer |  | Yes |
 | tokens | integer |  | Yes |
 | word_count | integer |  | Yes |
+
+#### HumanInputActionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| button_style | [ButtonStyle](#buttonstyle) |  | Yes |
+| id | string |  | Yes |
+| title | string |  | Yes |
 
 #### HumanInputContact
 
@@ -28150,6 +28176,12 @@ Human Input node data.
 | form_id | string |  | Yes |
 | form_version | string, <br>**Available values:** "1", "2", <br>**Default:** 1 | *Enum:* `"1"`, `"2"` | No |
 | type | string |  | Yes |
+
+#### HumanInputTestChannelsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| channels | [ [DebugChannel](#debugchannel) ] |  | Yes |
 
 #### I18nObject
 
@@ -32155,15 +32187,6 @@ Paginated response body for organization candidate search.
 | provider | string |  | Yes |
 | tenant_id | [_UUIDString](#_uuidstring)<br>[UnchangedInput](#unchangedinput) |  | Yes |
 
-#### MarkdownFragment
-
-One source-ordered Markdown fragment in a resolved form.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| text | string |  | Yes |
-| type | string |  | No |
-
 #### MaxKeysExceededError
 
 The API key limit has been reached.
@@ -33467,16 +33490,6 @@ This feature requires a paid plan.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | PaidPlanRequiredError |  | This feature requires a paid plan. |  |
-
-#### ParagraphInput
-
-Resolved multiline text input.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| default_value | string |  | Yes |
-| output_variable_name | string |  | Yes |
-| type | string |  | No |
 
 #### ParagraphInputConfig
 
@@ -35479,16 +35492,67 @@ Response body returned after resetting one contact IM override.
 | ---- | ---- | ----------- | -------- |
 | contact | [HumanInputContact](#humaninputcontact) | Contact snapshot after the override is cleared. | Yes |
 
-#### ResolvedForm
-
-Immutable authoritative presentation snapshot for one v2 form.
+#### ResolvedFileListResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| actions | [ [UserAction](#useraction) ] |  | Yes |
+| allowed_file_extensions | [ string ] |  | Yes |
+| allowed_file_types | [ [FileType](#filetype) ] |  | Yes |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | Yes |
+| number_limits | integer |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | Yes |
+
+#### ResolvedFileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | Yes |
+| allowed_file_types | [ [FileType](#filetype) ] |  | Yes |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | Yes |
+
+#### ResolvedForm
+
+Keep the existing resolved-form wire shape without exposing storage metadata.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| actions | [ [HumanInputActionResponse](#humaninputactionresponse) ] |  | Yes |
 | legacy_form_content | string |  | Yes |
-| parts | [ [FormPart](#formpart) ] |  | Yes |
+| parts | [ [ResolvedPartResponse](#resolvedpartresponse) ] |  | Yes |
 | title | string |  | Yes |
+
+#### ResolvedMarkdownResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| text | string |  | Yes |
+| type | string |  | Yes |
+
+#### ResolvedParagraphResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default_value | string |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | Yes |
+
+#### ResolvedPartResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ResolvedPartResponse | [ResolvedMarkdownResponse](#resolvedmarkdownresponse)<br>[ResolvedParagraphResponse](#resolvedparagraphresponse)<br>[ResolvedSelectResponse](#resolvedselectresponse)<br>[ResolvedFileResponse](#resolvedfileresponse)<br>[ResolvedFileListResponse](#resolvedfilelistresponse) |  |  |
+
+#### ResolvedSelectResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default_value | string |  | Yes |
+| options | [ string ] |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | Yes |
 
 #### ResourceAccessTokenCreatePayload
 
@@ -35998,17 +36062,6 @@ The Roster Agent package exceeds the size limit.
 | max_tokens | integer | Maximum token count per chunk. | Yes |
 | separator | string, <br>**Default:**
  | Custom separator for splitting text. | No |
-
-#### SelectInput
-
-Resolved single-choice input with immutable concrete options.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| default_value | string |  | Yes |
-| options | [ string ] |  | Yes |
-| output_variable_name | string |  | Yes |
-| type | string |  | No |
 
 #### SelectInputConfig
 
@@ -38321,16 +38374,6 @@ Payload for updating a snippet.
 | ---- | ---- | ----------- | -------- |
 | count | integer |  | Yes |
 | is_using | boolean |  | Yes |
-
-#### UserAction
-
-Resolved action values required for presentation and submission validation.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| button_style | [ButtonStyle](#buttonstyle) |  | Yes |
-| id | string |  | Yes |
-| title | string |  | Yes |
 
 #### UserActionConfig
 

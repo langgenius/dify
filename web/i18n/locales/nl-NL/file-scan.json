@@ -2,7 +2,6 @@
   "dialog.addTitle": "Scanner toevoegen",
   "dialog.apiKey": "API-sleutel",
   "dialog.apiSecret": "API-secret",
-  "dialog.clamavHint": "ClamAV draait binnen deze implementatie. Het adres wordt ingesteld door de beheerder van de implementatie.",
   "dialog.dataNotice": "De inhoud van bestanden wordt naar deze dienst verzonden.",
   "dialog.editTitle": "Scanner bewerken",
   "dialog.endpoint": "Eindpunt (optioneel)",
