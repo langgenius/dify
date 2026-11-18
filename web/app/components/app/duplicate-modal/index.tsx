@@ -25,6 +25,7 @@ import {
   IconPickerTrigger,
 } from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
+import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 
@@ -73,12 +74,11 @@ const DuplicateAppModal = ({
     : { icon_type, icon, icon_background, icon_url }
   const { data: appQuota } = useQuery(
     consoleQuery.features.get.queryOptions({
-      select: (data) => data.apps,
+      select: (data) => getCountQuota(data.apps),
     }),
   )
   const isAppQuotaUnavailable = appQuota === undefined
-  // A limit of 0 means unlimited.
-  const isAppsFull = appQuota !== undefined && appQuota.limit > 0 && appQuota.size >= appQuota.limit
+  const isAppsFull = appQuota !== undefined && isQuotaReached(appQuota)
 
   const submit = () => {
     if (isAppQuotaUnavailable || isAppsFull) return

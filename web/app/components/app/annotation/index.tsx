@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ConfigParamModal from '@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal'
 import AnnotationFullContent from '@/app/components/billing/annotation-full/modal'
+import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { toast } from '@/app/notifications'
 import { APP_PAGE_LIMIT } from '@/config'
 import { useDocLink } from '@/context/i18n'
@@ -42,15 +43,11 @@ function Annotation({ appDetail }: AnnotationProps) {
   const [controlRefreshSwitch, setControlRefreshSwitch] = useState(() => Date.now())
   const { data: annotationQuota } = useQuery(
     consoleQuery.features.get.queryOptions({
-      select: (data) => data.annotation_quota_limit,
+      select: (data) => getCountQuota(data.annotation_quota_limit),
     }),
   )
   const isAnnotationQuotaUnavailable = annotationQuota === undefined
-  // A limit of 0 means unlimited.
-  const isAnnotationFull =
-    annotationQuota !== undefined &&
-    annotationQuota.limit > 0 &&
-    annotationQuota.size >= annotationQuota.limit
+  const isAnnotationFull = annotationQuota !== undefined && isQuotaReached(annotationQuota)
   const [isShowAnnotationFullModal, setIsShowAnnotationFullModal] = useState(false)
   const [queryParams, setQueryParams] = useState<QueryParam>({})
   const [currPage, setCurrPage] = useState(0)

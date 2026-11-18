@@ -22,6 +22,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
+import { getCountQuota } from '@/app/components/billing/quota'
 import { consoleQuery } from '@/service/console'
 import { InviteButton } from '../invite-button'
 import { mergeEmailRecipients } from './email-recipients'
@@ -74,14 +75,15 @@ function InviteForm({
     hasError && !fieldErrors
       ? t(($) => $['members.inviteFailed'], { ns: 'workspaceMembers' })
       : null
-  // A limit of 0 means unlimited.
-  const memberLimit = features?.workspace_members.enabled
-    ? features.workspace_members
-    : features && features.members.limit > 0
-      ? features.members
-      : undefined
+  const memberLimit = features
+    ? getCountQuota(
+        features.workspace_members.enabled ? features.workspace_members : features.members,
+      )
+    : undefined
   const remainingSeats =
-    memberLimit && memberLimit.limit > 0 ? Math.max(memberLimit.limit - memberLimit.size, 0) : null
+    memberLimit && memberLimit.limit !== 'unlimited'
+      ? Math.max(memberLimit.limit - memberLimit.usage, 0)
+      : null
   const effectiveRecipients = mergeEmailRecipients(recipients, draft)
   const validRecipientCount = effectiveRecipients.filter(({ isValid }) => isValid).length
   const exceedsRemainingSeats = remainingSeats !== null && validRecipientCount > remainingSeats

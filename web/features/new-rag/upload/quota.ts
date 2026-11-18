@@ -1,5 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query'
 import type { KnowledgeFsTaskFailureMessageKey } from '../knowledge-fs-task-error'
+import { getCountQuota, getVectorSpaceQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { consoleQuery } from '@/service/console'
 
 export async function getKnowledgeFsUploadQuotaFailure(
@@ -21,9 +22,7 @@ export async function getKnowledgeFsUploadQuotaFailure(
       quota.limit < -1
     )
       return 'taskFailure.documentCountQuotaUnavailable'
-    // A limit of 0 means unlimited.
-    if (quota.limit > 0 && quota.size >= quota.limit)
-      return 'taskFailure.documentCountQuotaExceeded'
+    if (isQuotaReached(getCountQuota(quota))) return 'taskFailure.documentCountQuotaExceeded'
   } catch {
     return 'taskFailure.documentCountQuotaUnavailable'
   }
@@ -44,8 +43,7 @@ export async function getKnowledgeFsUploadQuotaFailure(
       quota.usage_unknown
     )
       return 'taskFailure.vectorSpaceQuotaUnavailable'
-    if (quota.limit !== -1 && quota.size >= quota.limit)
-      return 'taskFailure.vectorSpaceQuotaExceeded'
+    if (isQuotaReached(getVectorSpaceQuota(quota))) return 'taskFailure.vectorSpaceQuotaExceeded'
   } catch {
     return 'taskFailure.vectorSpaceQuotaUnavailable'
   }

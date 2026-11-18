@@ -24,6 +24,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AnnotationFull from '@/app/components/billing/annotation-full'
+import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { consoleQuery } from '@/service/console'
 import robotAvatar from '../assets/robot-avatar.svg'
 
@@ -48,13 +49,11 @@ function AddAnnotationDialogPopup({
   const { t } = useTranslation(['appAnnotation', 'common'])
   const quota = useQuery(
     consoleQuery.features.get.queryOptions({
-      select: (data) => data.annotation_quota_limit,
+      select: (data) => getCountQuota(data.annotation_quota_limit),
     }),
   )
   const quotaUnavailable = quota.data === undefined
-  // A limit of 0 means unlimited.
-  const quotaFull =
-    quota.data !== undefined && quota.data.limit > 0 && quota.data.size >= quota.data.limit
+  const quotaFull = quota.data !== undefined && isQuotaReached(quota.data)
   const formId = useId()
   const formRef = useRef<HTMLFormElement>(null)
   const questionRef = useRef<HTMLTextAreaElement>(null)

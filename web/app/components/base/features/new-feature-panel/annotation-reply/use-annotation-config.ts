@@ -6,6 +6,7 @@ import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AnnotationEnableStatus, JobStatus } from '@/app/components/app/annotation/type'
+import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { ANNOTATION_DEFAULT } from '@/config'
 import { updateAnnotationStatus } from '@/service/annotation'
 import { consoleClient, consoleQuery } from '@/service/console'
@@ -21,15 +22,11 @@ const useAnnotationConfig = ({ appId, annotationConfig, setAnnotationConfig }: P
   const { data: annotationQuota } = useQuery(
     consoleQuery.features.get.queryOptions({
       enabled: !annotationConfig.enabled,
-      select: (data) => data.annotation_quota_limit,
+      select: (data) => getCountQuota(data.annotation_quota_limit),
     }),
   )
   const isAnnotationQuotaUnavailable = annotationQuota === undefined
-  // A limit of 0 means unlimited.
-  const isAnnotationFull =
-    annotationQuota !== undefined &&
-    annotationQuota.limit > 0 &&
-    annotationQuota.size >= annotationQuota.limit
+  const isAnnotationFull = annotationQuota !== undefined && isQuotaReached(annotationQuota)
   const [isShowAnnotationFullModal, setIsShowAnnotationFullModal] = useState(false)
   const [isShowAnnotationConfigInit, doSetIsShowAnnotationConfigInit] = React.useState(false)
   const setIsShowAnnotationConfigInit = (isShow: boolean) => {

@@ -23,6 +23,7 @@ import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
+import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -136,7 +137,7 @@ function CreateFromDSLModal({
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: appQuota } = useQuery(
     consoleQuery.features.get.queryOptions({
-      select: (data) => data.apps,
+      select: (data) => getCountQuota(data.apps),
     }),
   )
   const isPackageImport =
@@ -145,12 +146,7 @@ function CreateFromDSLModal({
   // URL imports are classified by the server before applying the appropriate quota.
   const requiresAppQuota = currentTab === CreateFromDSLModalTab.FROM_FILE && !isPackageImport
   const isAppQuotaUnavailable = requiresAppQuota && appQuota === undefined
-  // A limit of 0 means unlimited.
-  const isAppsFull =
-    requiresAppQuota &&
-    appQuota !== undefined &&
-    appQuota.limit > 0 &&
-    appQuota.size >= appQuota.limit
+  const isAppsFull = requiresAppQuota && appQuota !== undefined && isQuotaReached(appQuota)
   const isImporting = importMutation.isPending
   const isConfirming = confirmImportMutation.isPending
 

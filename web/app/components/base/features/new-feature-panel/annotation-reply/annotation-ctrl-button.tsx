@@ -5,6 +5,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import AnnotationFullContent from '@/app/components/billing/annotation-full/modal'
+import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
 
@@ -25,15 +26,11 @@ export default function AnnotationCtrlButton({
   const { t } = useTranslation(['appDebug', 'common'])
   const { data: annotationQuota } = useQuery(
     consoleQuery.features.get.queryOptions({
-      select: (data) => data.annotation_quota_limit,
+      select: (data) => getCountQuota(data.annotation_quota_limit),
     }),
   )
   const isAnnotationQuotaUnavailable = annotationQuota === undefined
-  // A limit of 0 means unlimited.
-  const isAnnotationFull =
-    annotationQuota !== undefined &&
-    annotationQuota.limit > 0 &&
-    annotationQuota.size >= annotationQuota.limit
+  const isAnnotationFull = annotationQuota !== undefined && isQuotaReached(annotationQuota)
   if (!answer) return null
 
   const handleAdd = async () => {

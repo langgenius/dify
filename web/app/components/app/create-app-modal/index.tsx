@@ -25,6 +25,7 @@ import {
   IconPickerTrigger,
 } from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
+import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -71,12 +72,11 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: appQuota } = useQuery(
     consoleQuery.features.get.queryOptions({
-      select: (data) => data.apps,
+      select: (data) => getCountQuota(data.apps),
     }),
   )
   const isAppQuotaUnavailable = appQuota === undefined
-  // A limit of 0 means unlimited.
-  const isAppsFull = appQuota !== undefined && appQuota.limit > 0 && appQuota.size >= appQuota.limit
+  const isAppsFull = appQuota !== undefined && isQuotaReached(appQuota)
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,

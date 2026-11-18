@@ -38,6 +38,7 @@ import {
   IconPickerTrigger,
 } from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
+import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { consoleQuery } from '@/service/console'
 
 const SUBMIT_APP_HOTKEY = 'Mod+Enter' satisfies HotkeyChord
@@ -78,11 +79,11 @@ export function AppMetadataForm({
   const { data: quota } = useQuery(
     consoleQuery.features.get.queryOptions({
       enabled: !isEdit,
-      select: (data) => data.apps,
+      select: (data) => getCountQuota(data.apps),
     }),
   )
   const quotaUnavailable = !isEdit && !quota
-  const isFull = !isEdit && !!quota && quota.limit > 0 && quota.size >= quota.limit
+  const isFull = !isEdit && !!quota && isQuotaReached(quota)
   const icon: IconPickerInputValue | undefined =
     selectedIcon ??
     (source.icon_type === 'image' && source.icon

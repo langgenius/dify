@@ -14,6 +14,7 @@ import { useCallback, useId, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import NotionConnector from '@/app/components/base/notion-connector'
 import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
+import { getVectorSpaceQuota, isQuotaReached } from '@/app/components/billing/quota'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 import VectorSpaceUnavailable from '@/app/components/billing/vector-space-unavailable'
 import { toCreationDataSourceType } from '@/app/components/datasets/dataset-fields'
@@ -157,10 +158,7 @@ const StepOne = ({
   const isVectorSpaceUnavailable =
     shouldCheckVectorSpace && plan === 'sandbox' && !!vectorSpace?.usage_unknown
   const isVectorSpaceFull =
-    !!vectorSpace &&
-    !vectorSpace.usage_unknown &&
-    vectorSpace.limit > 0 &&
-    vectorSpace.size >= vectorSpace.limit
+    !!vectorSpace && !vectorSpace.usage_unknown && isQuotaReached(getVectorSpaceQuota(vectorSpace))
   const isShowVectorSpaceFull = shouldCheckVectorSpace && isVectorSpaceFull
   const isPlanUnavailable = deploymentEdition === 'CLOUD' && plan === undefined
   const supportBatchUpload =

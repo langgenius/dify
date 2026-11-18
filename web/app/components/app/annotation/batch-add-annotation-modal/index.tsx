@@ -15,6 +15,7 @@ import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AnnotationFull from '@/app/components/billing/annotation-full'
+import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { toast } from '@/app/notifications'
 import { annotationBatchImport } from '@/service/annotation'
 import { consoleClient, consoleQuery } from '@/service/console'
@@ -41,15 +42,11 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
   const { t } = useTranslation(['appAnnotation', 'common'])
   const { data: annotationQuota } = useQuery(
     consoleQuery.features.get.queryOptions({
-      select: (data) => data.annotation_quota_limit,
+      select: (data) => getCountQuota(data.annotation_quota_limit),
     }),
   )
   const isAnnotationQuotaUnavailable = annotationQuota === undefined
-  // A limit of 0 means unlimited.
-  const isAnnotationFull =
-    annotationQuota !== undefined &&
-    annotationQuota.limit > 0 &&
-    annotationQuota.size >= annotationQuota.limit
+  const isAnnotationFull = annotationQuota !== undefined && isQuotaReached(annotationQuota)
   const [currentCSV, setCurrentCSV] = useState<File>()
   const handleFile = (file?: File) => setCurrentCSV(file)
 
