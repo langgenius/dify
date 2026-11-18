@@ -86,10 +86,11 @@ The small GC callback adapter adds:
 | `cpython.gc.threshold` | Active GC thresholds |
 | `cpython.gc.enabled` | Whether automatic cyclic GC is enabled |
 | `dify.gc.duration` | Collection histogram in seconds, by generation and startup/runtime phase |
-| `dify.gc.duration_samples_dropped` | Duration samples overwritten before collection |
+| `dify.gc.duration_samples_dropped` | Duration samples overwritten before collection, by generation |
 | `dify.gc.startup_frozen_objects` | Cached startup snapshot; zero if freeze is disabled |
 
-The GC callback only timestamps events and appends to a bounded 4096-sample buffer.
+The GC callback only timestamps events and appends to a bounded 4096-sample buffer per
+generation, so frequent young collections cannot overwrite full-collection durations.
 An OTel observable callback publishes those samples into the histogram during the
 existing SDK collection cycle. This avoids reentering SDK aggregation locks from GC,
 without introducing a publisher thread, exporter or additional collection timer.

@@ -15,7 +15,8 @@ from libs.gc_freeze import startup_gc
 def init_gc_metrics(meter_provider: MeterProvider) -> Callable[[], None]:
     """Install GC telemetry on the existing provider and return its cleanup callback.
 
-    CPython's GIL protects sample appends. SDK collection drains the bounded buffer;
+    CPython's GIL protects sample appends. SDK collection drains one bounded buffer per
+    generation, so frequent young collections cannot evict full-collection samples;
     recording directly inside GC could reenter an aggregation lock held by the SDK.
     No extra publisher thread, exporter, heap walk or manual collection is introduced.
     """
@@ -37,8 +38,11 @@ def init_gc_metrics(meter_provider: MeterProvider) -> Callable[[], None]:
         explicit_bucket_boundaries_advisory=(0.0001, 0.0005, 0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5),
     )
     starts: dict[int, int] = {}
-    samples: deque[tuple[int, int, float, str]] = deque(maxlen=4096)
-    sequence = published = dropped = 0
+    generations = range(len(gc.get_threshold()))
+    samples: tuple[deque[tuple[int, float, str]], ...] = tuple(deque(maxlen=4096) for _ in generations)
+    sequence = [0 for _ in generations]
+    published = [0 for _ in generations]
+    dropped = [0 for _ in generations]
     current_phase = "runtime"
     startup_frozen_objects: int | None = None
     publish_lock = Lock()
@@ -46,26 +50,27 @@ def init_gc_metrics(meter_provider: MeterProvider) -> Callable[[], None]:
 
     def on_gc(event: str, info: dict[str, int]) -> None:
         """Timestamp GC events and append samples without SDK calls, locks, logging or I/O."""
-        nonlocal sequence
         generation = info["generation"]
         if event == "start":
             starts[generation] = perf_counter_ns()
             return
         started = starts.pop(generation, None)
         if started is not None:
-            sequence += 1
-            samples.append((sequence, generation, (perf_counter_ns() - started) / 1_000_000_000, current_phase))
+            sequence[generation] += 1
+            samples[generation].append(
+                (sequence[generation], (perf_counter_ns() - started) / 1_000_000_000, current_phase)
+            )
 
     def publish(_options: CallbackOptions) -> Iterable[Observation]:
         """Publish before the SDK snapshots histograms; bound work even if publication triggers GC."""
-        nonlocal published, dropped
         with publish_lock:
-            for _ in range(len(samples)):
-                current, generation, seconds, stage = samples.popleft()
-                dropped += current - published - 1
-                published = current
-                duration.record(seconds, {"generation": str(generation), "phase": stage})
-            return (Observation(dropped),)
+            for generation, pending in enumerate(samples):
+                for _ in range(len(pending)):
+                    current, seconds, stage = pending.popleft()
+                    dropped[generation] += current - published[generation] - 1
+                    published[generation] = current
+                    duration.record(seconds, {"generation": str(generation), "phase": stage})
+            return tuple(Observation(count, {"generation": str(i)}) for i, count in enumerate(dropped))
 
     def on_startup(_sender: object, *, phase: str, frozen_objects: int) -> None:
         """Cache the startup snapshot so metric collection never traverses frozen objects."""

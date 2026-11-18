@@ -152,3 +152,20 @@ def test_overflow_is_reported_without_losing_native_collection_counts(telemetry:
     assert dropped > 0
     assert histogram.data_points[0].count + dropped == 10_000
     assert telemetry.numbers("cpython.gc.collections")[0].value - before == 10_000
+
+
+def test_young_generation_overflow_keeps_full_collection_durations(telemetry: Metrics) -> None:
+    gc.collect(2)
+    for _ in range(4100):
+        gc.collect(0)
+    histogram = telemetry.collect()["dify.gc.duration"].data
+    assert isinstance(histogram, Histogram)
+    full = [p for p in histogram.data_points if p.attributes == {"generation": "2", "phase": "runtime"}]
+    assert len(full) == 1
+    assert full[0].count == 1
+    dropped = {
+        str((p.attributes or {}).get("generation")): p.value
+        for p in telemetry.numbers("dify.gc.duration_samples_dropped")
+    }
+    assert dropped["2"] == 0
+    assert dropped["0"] > 0
