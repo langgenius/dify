@@ -1,9 +1,9 @@
 """POST /openapi/v1/mcp: the MCP endpoint, one JSON-RPC message per request, JSON replies, no sessions.
 
 The route is not an operation: it has no ``@endpoint`` and is not in the catalog. It holds no login
-code. ``initialize`` and ``tools/list`` run ``describe.account`` in-process, which authenticates
-once; ``tools/call`` runs the named operation, which authenticates once; ``ping`` and notifications
-do not authenticate.
+code. ``initialize`` and ``tools/list`` run the router's ``admit_bearer``, the step every operation
+starts with; ``tools/call`` runs the named operation, which authenticates once; ``ping`` and
+notifications do not authenticate.
 """
 
 from __future__ import annotations
@@ -21,9 +21,10 @@ from werkzeug.exceptions import RequestEntityTooLarge
 
 from configs import dify_config
 from controllers.openapi import openapi_ns
-from controllers.openapi._mcp_call import AUTHORIZATION_HEADER, TRACE_ID_HEADER, OpCall, OpResult, call_op
+from controllers.openapi._mcp_call import AUTHORIZATION_HEADER, TRACE_ID_HEADER
 from controllers.openapi._mcp_protocol import McpRequestError, failure, has_id, parse_message, request_id_of, success
 from controllers.openapi._mcp_tools import MCP_INSTRUCTIONS, Unauthenticated, run_tool, tool_list
+from controllers.openapi.auth.router import admit_bearer
 from core.mcp import types as mcp_types
 from core.mcp.server.streamable_http import handle_initialize, handle_ping, negotiate_protocol_version
 from libs.oauth_bearer import extract_bearer
@@ -33,22 +34,11 @@ PROTOCOL_VERSION_HEADER: Final = "MCP-Protocol-Version"
 ORIGIN_HEADER: Final = "Origin"
 _ORIGIN_NOT_ALLOWED_MESSAGE: Final = "Origin not allowed"
 JSON_MIMETYPE: Final = "application/json"
-ACCOUNT_OP: Final = "describe.account"
 _BODY_ENVELOPE_BYTES: Final = 1024 * 1024
 # The largest JSON op input is a DSL import (DSL_MAX_SIZE) wrapped in a tool call.
 MCP_MAX_BODY_BYTES: Final = DSL_MAX_SIZE + _BODY_ENVELOPE_BYTES
 _BODY_TOO_LARGE_MESSAGE: Final = "Request body too large"
 UNAUTHORIZED_BODY: Final = {"code": "unauthorized", "message": "invalid bearer", "status": HTTPStatus.UNAUTHORIZED}
-_PASSED_UPSTREAM_HEADERS: Final = ("Retry-After",)
-
-
-class _LoginCheckFailed(Exception):  # noqa: N818
-    """The login check hit a server error: the request answers with the operation's own status and body."""
-
-    def __init__(self, result: OpResult) -> None:
-        """Postcondition: keeps the failed login check's ``result`` so the route can answer with it."""
-        super().__init__("login check failed")
-        self.result = result
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -90,36 +80,22 @@ def _accepted() -> Response:
     return Response("", status=HTTPStatus.ACCEPTED)
 
 
-def _check_login(call: _Call) -> None:
-    """Precondition: inside a Flask request. Postcondition: returns when the token was not refused as unauthenticated.
-
-    Runs ``describe.account`` in-process. A 401 raises ``Unauthenticated`` with the headers it
-    carried; a 5xx raises ``_LoginCheckFailed``; any other status passes (a 403 means a token kind
-    that operation does not serve; a 429 or 404 says nothing against the token).
-    """
-    result = call_op(OpCall(op=ACCOUNT_OP, input={}, authorization=call.authorization, trace_id=call.trace_id))
-    if result.status == HTTPStatus.UNAUTHORIZED:
-        raise Unauthenticated.from_result(result)
-    if result.status >= HTTPStatus.INTERNAL_SERVER_ERROR:
-        raise _LoginCheckFailed(result)
-
-
 def _initialize(call: _Call) -> dict[str, Any]:
     """Precondition: ``call`` holds an ``initialize`` request, inside a Flask request.
 
-    Postcondition: the login check passed and the reply carries the negotiated version and the
-    instructions; raises ``Unauthenticated`` or ``_LoginCheckFailed`` from the check.
+    Postcondition: the bearer was admitted and the reply carries the negotiated version and the
+    instructions; the errors of ``admit_bearer`` propagate.
     """
-    _check_login(call)
+    admit_bearer()
     return success(call.request_id, handle_initialize(MCP_INSTRUCTIONS, call.message.params.protocolVersion))
 
 
 def _list_tools(call: _Call) -> dict[str, Any]:
     """Precondition: ``call`` holds a ``tools/list`` request, inside a Flask request.
 
-    Postcondition: the login check passed and the reply lists the four tools; raises as ``_initialize`` does.
+    Postcondition: the bearer was admitted and the reply lists the four tools; raises as ``_initialize`` does.
     """
-    _check_login(call)
+    admit_bearer()
     return success(call.request_id, mcp_types.ListToolsResult(tools=tool_list()))
 
 
@@ -166,16 +142,6 @@ def _unauthorized(error: Unauthenticated) -> Response:
     return _json_response(UNAUTHORIZED_BODY, HTTPStatus.UNAUTHORIZED, error.headers)
 
 
-def _upstream_failure(error: _LoginCheckFailed) -> Response:
-    """Postcondition: the failed login check's status and JSON body (or an empty body when it had none),
-    with the ``Retry-After`` header when it sent one."""
-    result = error.result
-    headers = {name: result.headers[name] for name in _PASSED_UPSTREAM_HEADERS if name in result.headers}
-    if not result.is_json:
-        return Response("", status=result.status, headers=headers)
-    return _json_response(result.body, result.status, headers)
-
-
 @openapi_ns.route("/mcp")
 class OpenApiMcpApi(Resource):
     """The MCP endpoint: one JSON-RPC message per POST; it is not an operation and is not in the catalog."""
@@ -191,8 +157,8 @@ class OpenApiMcpApi(Resource):
         before any login check); a body above the cap sent without a ``Content-Length`` (chunked) is
         cut at the cap and answers 400 with a JSON-RPC parse error; 403 with a JSON-RPC error, before the body is
         read, when an ``Origin`` header is present and is neither this server's own nor in
-        ``OPENAPI_CORS_ALLOW_ORIGINS`` (no ``Origin``: unchanged); 401 when
-        the token is not real; the login check's own status when it answers a server error.
+        ``OPENAPI_CORS_ALLOW_ORIGINS`` (no ``Origin``: unchanged); for ``initialize`` and
+        ``tools/list``, the status of ``admit_bearer``'s error (401, 403, 429 or 503) as any operation answers it.
         """
         # response-contract:ignore MCP route returns a Flask Response built from a JSON-RPC message
         origin = request.headers.get(ORIGIN_HEADER)
@@ -240,5 +206,3 @@ class OpenApiMcpApi(Resource):
             return _json_response(handler(call))
         except Unauthenticated as error:
             return _unauthorized(error)
-        except _LoginCheckFailed as error:
-            return _upstream_failure(error)
