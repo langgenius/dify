@@ -7,7 +7,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
 import { ReactFlowProvider } from 'reactflow'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import {
   ComparisonOperator,
   LogicalOperator,
@@ -344,6 +344,100 @@ describe('shared knowledge binding dialog', () => {
       }
     },
   )
+
+  describe('without crypto.randomUUID', () => {
+    beforeEach(() => {
+      // Plain HTTP exposes getRandomValues, but not the secure-context-only randomUUID.
+      vi.stubGlobal('crypto', { getRandomValues: crypto.getRandomValues.bind(crypto) })
+    })
+
+    afterEach(() => vi.unstubAllGlobals())
+
+    it('creates and saves distinct Classic and KnowledgeFS bindings', async () => {
+      const user = userEvent.setup()
+      setup([])
+      const dialog = await open(user)
+      await user.click(
+        await within(dialog).findByRole('option', { name: optionName('Test Dataset') }),
+      )
+      await user.click(within(dialog).getByRole('option', { name: optionName('Product manual') }))
+      await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+
+      const { sets, spaces } = snapshot().knowledge
+      expect(sets).toHaveLength(1)
+      expect(spaces).toHaveLength(1)
+      expect(sets[0]).toMatchObject({
+        name: 'Test Dataset',
+        datasets: [{ id: 'dataset-1' }],
+        query: { mode: 'generated_query' },
+      })
+      expect(spaces[0]).toMatchObject({ control_space_id: SPACE, name: 'Product manual' })
+      const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      expect(sets[0].id).toMatch(uuid)
+      expect(spaces[0].id).toMatch(uuid)
+      expect(sets[0].id).not.toBe(spaces[0].id)
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+      const reopened = await open(user)
+      expect(
+        within(reopened).getByRole('option', { name: optionName('Test Dataset') }),
+      ).toHaveAttribute('aria-selected', 'true')
+      await user.click(within(reopened).getByRole('button', { name: /operation.confirm/ }))
+      expect(snapshot().knowledge).toEqual({ sets, spaces })
+    })
+
+    it('restores legacy metadata condition ids and adds new conditions', async () => {
+      const user = userEvent.setup()
+      const dataset = createDatasetFixture({
+        doc_metadata: [
+          { id: 'author', name: 'author', type: 'string' },
+          { id: 'topic', name: 'topic', type: 'string' },
+        ],
+      })
+      setupClassic({
+        id: 'classic',
+        name: 'Saved search',
+        selectedDatasets: [dataset],
+        metadataFilterMode: MetadataFilteringModeEnum.manual,
+        metadataFilteringConditions: {
+          logical_operator: LogicalOperator.and,
+          conditions: [
+            { id: '', name: 'author', comparison_operator: ComparisonOperator.is, value: 'Ada' },
+          ],
+        },
+      })
+      const dialog = await open(user)
+      await advanced(user, dialog)
+      const conditions = within(dialog).getByRole('button', { name: /metadata.panel.conditions/ })
+      await user.click(conditions)
+      expect(
+        within(screen.getByRole('group', { name: 'author' })).getByRole('textbox'),
+      ).toHaveValue('Ada')
+      await user.click(
+        screen.getByRole('button', {
+          name: 'workflowModels.nodes.knowledgeRetrieval.metadata.panel.add',
+        }),
+      )
+      await user.click(
+        within(await screen.findByRole('menu')).getByRole('menuitem', { name: /topic/ }),
+      )
+      await user.type(
+        within(screen.getByRole('group', { name: 'topic' })).getByRole('textbox'),
+        'agent',
+      )
+      await user.click(conditions)
+      await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+
+      const saved = snapshot().knowledge.sets[0].metadata_filtering.conditions.conditions
+      expect(saved).toEqual([
+        expect.objectContaining({ id: expect.any(String), name: 'author', value: 'Ada' }),
+        expect.objectContaining({ id: expect.any(String), name: 'topic', value: 'agent' }),
+      ])
+      expect(saved[0].id).not.toBe('')
+      expect(saved[0].id).not.toBe(saved[1].id)
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+  })
 
   it('discards Classic selections and advanced edits on cancel', async () => {
     const user = userEvent.setup()
