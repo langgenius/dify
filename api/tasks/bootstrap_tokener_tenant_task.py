@@ -232,7 +232,10 @@ def _find_managed_credential(tenant_id: str) -> tuple[str | None, bool]:
 
 def _activate_managed_credential(tenant_id: str, credential_id: str) -> None:
     try:
-        ModelProviderService().switch_active_provider_credential(
+        bound_id, _ = _find_managed_credential(tenant_id)
+        if bound_id != credential_id:
+            raise ValueError("Managed credential binding does not match.")
+        ModelProviderService().activate_unselected_provider_credential(
             tenant_id=tenant_id,
             provider=dify_config.TOKENER_PROVIDER_NAME,
             credential_id=credential_id,
@@ -288,8 +291,9 @@ def _consume_data_plane_api_key(tenant_id: str, data_plane_api_key: str) -> _Cre
 def _ensure_managed_credential(snapshot: _IntegrationSnapshot) -> str:
     credential_id, active = _find_managed_credential(snapshot.tenant_id)
     if credential_id is not None:
-        if not active:
-            _activate_managed_credential(snapshot.tenant_id, credential_id)
+        # A previous SQL commit may have succeeded before cache eviction failed.
+        # Unready retries replay idempotent activation/cache cleanup, not Billing.
+        _activate_managed_credential(snapshot.tenant_id, credential_id)
         return credential_id
 
     _update_integration(
@@ -328,11 +332,9 @@ def _ensure_managed_credential(snapshot: _IntegrationSnapshot) -> str:
 
 def _set_default_llm(tenant_id: str) -> None:
     try:
-        ModelProviderService().update_default_model_of_model_type(
+        ModelProviderService().initialize_default_llm(
             tenant_id=tenant_id,
-            model_type="llm",
-            provider=dify_config.TOKENER_PROVIDER_NAME,
-            model=dify_config.TOKENER_DEFAULT_LLM_MODEL,
+            pinned=(dify_config.TOKENER_PROVIDER_NAME, dify_config.TOKENER_DEFAULT_LLM_MODEL),
         )
     except Exception:
         raise _BootstrapStepError(
