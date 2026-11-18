@@ -1,17 +1,12 @@
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { Script } from 'node:vm'
 import { waitFor } from '@testing-library/react'
+// Raw imports keep the artifacts in the module graph, so `--changed` reruns this spec for them.
+import embedSource from '../public/embed.js?raw'
+import embedMinSource from '../public/embed.min.js?raw'
 
 const embedArtifacts = [
-  {
-    name: 'embed.js',
-    source: readFileSync(resolve(process.cwd(), 'public/embed.js'), 'utf8'),
-  },
-  {
-    name: 'embed.min.js',
-    source: readFileSync(resolve(process.cwd(), 'public/embed.min.js'), 'utf8'),
-  },
+  { name: 'embed.js', source: embedSource },
+  { name: 'embed.min.js', source: embedMinSource },
 ]
 
 function executeEmbedScript(source: string) {

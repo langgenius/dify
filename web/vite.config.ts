@@ -19,6 +19,11 @@ const forceRerunTriggers = [
   '**/patches/**',
   // Tests and the Vite plugin load this workspace package from its built `dist`.
   '**/packages/openapi-content-mapper/src/**',
+  // Browser setup loads global styles through CSS imports, which the module graph does not track.
+  '**/web/app/styles/**',
+  '**/web/themes/**',
+  '**/web/app/components/base/{badge,premium-badge}/index.css',
+  '**/packages/dify-ui/src/{styles,themes,plugins}/**',
 ]
 
 export default defineConfig(({ command, mode, isPreview }) => {

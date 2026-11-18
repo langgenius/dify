@@ -1,7 +1,6 @@
 // @vitest-environment node
 
 import type { SelectorParam } from 'i18next'
-import { readFileSync } from 'node:fs'
 import { createInstance } from 'i18next'
 import { describe, expect, it } from 'vite-plus/test'
 import { supportedLocales } from '../locale'
@@ -9,11 +8,18 @@ import deployments from '../locales/en-US/deployments.json'
 import skill from '../locales/en-US/skill.json'
 import { getInitOptions } from '../settings'
 
+// A glob import keeps every locale in the module graph, so `--changed` reruns this spec for them.
+const localeResources = import.meta.glob<Record<string, string>>(
+  '../locales/*/{skill,deployments}.json',
+  { eager: true, import: 'default' },
+)
+
 function readLocaleResources(locale: string) {
-  const read = (namespace: string): Record<string, string> =>
-    JSON.parse(
-      readFileSync(new URL(`../locales/${locale}/${namespace}.json`, import.meta.url), 'utf8'),
-    )
+  const read = (namespace: string) => {
+    const resources = localeResources[`../locales/${locale}/${namespace}.json`]
+    if (!resources) throw new Error(`Missing ${namespace} resources for ${locale}`)
+    return resources
+  }
   return { skill: read('skill'), deployments: read('deployments') }
 }
 const skillSelectors: SelectorParam<'skill'>[] = [
