@@ -17,7 +17,10 @@ export function clearSourceClients() {
 }
 
 export async function settle() {
-  await vi.waitUntil(() => server.inflight === 0)
+  // Responses make a real round trip, so also wait for the client to receive them.
+  await vi.waitUntil(
+    () => server.inflight === 0 && [...clients].every((client) => client.isFetching() === 0),
+  )
 }
 export const lastInput = (resource: string) => server.inputs.get(resource)?.at(-1)
 export async function renderSources(
@@ -63,6 +66,9 @@ export async function measurePollIntervalFor(
   queryClient: ReturnType<typeof createConsoleQueryWrapper>['queryClient'],
   sources: Source[],
 ) {
+  // Let earlier mutations settle first so their refetches do not count as a poll.
+  await vi.waitUntil(() => queryClient.isMutating() === 0)
+  await settle()
   sourceResponses.data = { pages: [{ items: sources }] }
   await queryClient.invalidateQueries({ queryKey: consoleQuery.knowledgeFs.spaces.key() })
   await settle()

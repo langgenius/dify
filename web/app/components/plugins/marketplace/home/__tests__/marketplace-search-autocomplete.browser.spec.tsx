@@ -10,6 +10,7 @@ import appMessages from '@/i18n/locales/en-US/app.json'
 import commonMessages from '@/i18n/locales/en-US/common.json'
 import navigationMessages from '@/i18n/locales/en-US/navigation.json'
 import pluginMessages from '@/i18n/locales/en-US/plugin.json'
+import { installFakeApi } from '@/test/fake-api'
 import { MARKETPLACE_CONTAINER_ID } from '../../constants'
 import HomeCatalogNavigation from '../home-catalog-navigation'
 import HomeSearch from '../home-search'
@@ -20,41 +21,12 @@ import {
   MarketplaceSearchForm,
 } from '../marketplace-search-autocomplete'
 
-const api = vi.hoisted(() => ({
+const api = {
   searchPlugins: vi.fn(),
   searchTemplates: vi.fn(),
-}))
+}
 
 vi.unmock('react-i18next')
-
-// boundary: autocomplete suggestions stop at the external Marketplace HTTP client.
-vi.mock('@/service/marketplace', async (importOriginal) => {
-  const original = await importOriginal<typeof import('@/service/marketplace')>()
-  return {
-    ...original,
-    marketplaceQuery: {
-      ...original.marketplaceQuery,
-      searchAdvanced: {
-        ...original.marketplaceQuery.searchAdvanced,
-        queryOptions: (
-          options: Parameters<typeof original.marketplaceQuery.searchAdvanced.queryOptions>[0],
-        ) => ({
-          ...original.marketplaceQuery.searchAdvanced.queryOptions(options),
-          queryFn: () => api.searchPlugins(options.input),
-        }),
-      },
-      templateSearch: {
-        ...original.marketplaceQuery.templateSearch,
-        queryOptions: (
-          options: Parameters<typeof original.marketplaceQuery.templateSearch.queryOptions>[0],
-        ) => ({
-          ...original.marketplaceQuery.templateSearch.queryOptions(options),
-          queryFn: () => api.searchTemplates(options.input),
-        }),
-      },
-    },
-  }
-})
 
 const plugin = {
   type: 'plugin',
@@ -163,6 +135,14 @@ describe('Marketplace search autocomplete', () => {
       },
     })
     vi.clearAllMocks()
+    onTestFinished(
+      installFakeApi({
+        marketplace: {
+          searchAdvanced: (input) => api.searchPlugins(input),
+          templateSearch: (input) => api.searchTemplates(input),
+        },
+      }),
+    )
     api.searchPlugins.mockResolvedValue({ data: { plugins: [], total: 0 } })
     api.searchTemplates.mockResolvedValue({ data: { templates: [], total: 0 } })
   })

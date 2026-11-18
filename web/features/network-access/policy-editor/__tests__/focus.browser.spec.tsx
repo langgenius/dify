@@ -7,26 +7,25 @@ import { IpPolicyDialog } from '@/features/network-access/policy-editor'
 import common from '@/i18n/locales/en-US/common.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { apiError, installFakeApi } from '@/test/fake-api'
 
-const requests = vi.hoisted(() => ({
+const requests = {
   currentIp: vi.fn<() => Promise<{ client_ip: string }>>(),
-}))
-
-// boundary: the Browser Console transport is the current-IP server edge.
-vi.mock('@/service/console/browser', () => ({
-  consoleBrowserLink: {
-    call: (path: readonly string[]) => {
-      if (path.join('.') === 'workspaces.current.networkAccessGroups.currentIp.get')
-        return requests.currentIp()
-      throw new Error(`Unexpected console request: ${path.join('.')}`)
-    },
-  },
-}))
+}
 
 vi.unmock('react-i18next')
 
 beforeEach(() => {
   requests.currentIp.mockReset()
+  onTestFinished(
+    installFakeApi({
+      console: {
+        workspaces: {
+          current: { networkAccessGroups: { currentIp: { get: () => requests.currentIp() } } },
+        },
+      },
+    }),
+  )
 })
 
 async function renderEditor(props: Partial<ComponentProps<typeof IpPolicyDialog>> = {}) {
@@ -88,7 +87,7 @@ it.each([false, true])(
   async (alreadyAllowed) => {
     const response = createDeferred<{ client_ip: string }>()
     requests.currentIp
-      .mockRejectedValueOnce(new Error('IP unavailable'))
+      .mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'IP unavailable'))
       .mockReturnValueOnce(response.promise)
     const { screen, queryClient } = await renderEditor()
 

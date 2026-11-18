@@ -2,18 +2,17 @@ import type { PostFilesUploadResponse } from '@dify/contracts/api/console/files/
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { installFakeApi } from '@/test/fake-api'
 import { emojiCatalogOptions } from '../emoji-data'
 import { IconPickerDialog } from './harness'
 
-const { uploadImage } = vi.hoisted(() => ({
-  uploadImage: vi.fn<(request: { body: { file: File } }) => Promise<PostFilesUploadResponse>>(),
-}))
-
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    files: { upload: { post: { mutationOptions: () => ({ mutationFn: uploadImage }) } } },
-  },
-}))
+const uploadImage = vi.fn<(request: { body: { file: Blob } }) => Promise<PostFilesUploadResponse>>()
+// The contract requires UUID file ids; derive a stable one from each readable key.
+const fileId = (key: string) =>
+  `00000000-0000-4000-8000-${Array.from(key, (char) => char.charCodeAt(0).toString(16))
+    .join('')
+    .slice(0, 12)
+    .padStart(12, '0')}`
 
 async function createImageFile() {
   const canvas = document.createElement('canvas')
@@ -93,6 +92,11 @@ function deferNextCanvasBlob() {
 beforeEach(() => {
   vi.clearAllMocks()
   vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
+  onTestFinished(
+    installFakeApi({
+      console: { files: { upload: { post: (input) => uploadImage(input) } } },
+    }),
+  )
 })
 afterEach(() => {
   vi.restoreAllMocks()
@@ -156,7 +160,7 @@ it('ignores an old upload when reopened as soon as keyboard focus returns', asyn
   const search = dialog.getByRole('combobox', { name: 'app.iconPicker.search' })
   await expect.element(search).toHaveFocus()
   await dialog.getByRole('radio', { name: 'app.iconPicker.color.green' }).click()
-  finishUpload({ id: 'old-upload', name: 'icon.png', size: file.size })
+  finishUpload({ id: fileId('old-upload'), name: 'icon.png', size: file.size })
   await pendingUpload
   await search.fill('new session')
   expect(onConfirm).not.toHaveBeenCalled()

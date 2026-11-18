@@ -6,31 +6,33 @@ import { render } from 'vitest-browser-react'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { ExternalApiDialogContent } from '../dialog-content'
 import { useSaveExternalApi } from '../use-save-external-api'
-import { data, response } from './fixtures'
+import { data, response as responseFixture } from './fixtures'
 
-const api = vi.hoisted(() => ({
+// The patch route takes a UUID path parameter.
+const response = { ...responseFixture, id: '3b8f2c1d-7e4a-4f5b-9c6d-1e2f3a4b5c6d' }
+const api = {
   edit: vi.fn<typeof consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.patch>(),
   create: vi.fn<typeof consoleClient.datasets.externalKnowledgeApi.post>(),
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'datasets.externalKnowledgeApi.byExternalKnowledgeApiId.patch': api.edit,
-      'datasets.externalKnowledgeApi.post': api.create,
-    }),
-  }
-})
+}
 
 beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
   api.edit.mockReset().mockResolvedValue(response)
   api.create.mockReset().mockResolvedValue(response)
+  onTestFinished(
+    installFakeApi({
+      console: {
+        datasets: {
+          externalKnowledgeApi: {
+            post: (input) => api.create(input),
+            byExternalKnowledgeApiId: { patch: (input) => api.edit(input) },
+          },
+        },
+      },
+    }),
+  )
 })
 
 async function setup(existing?: ExternalKnowledgeApiResponse) {
@@ -95,13 +97,13 @@ it('submits the entered settings and returns the saved API before closing', asyn
   await save(screen).click()
   await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
   await expect.element(screen.getByText('Saved Product API')).toBeVisible()
-  expect(api.create).toHaveBeenCalledExactlyOnceWith({ body: data }, { context: { silent: true } })
+  expect(api.create).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ body: data }))
 })
 
 it('preserves entered settings after a failed creation and lets the user retry', async () => {
   const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
   onTestFinished(() => errors.mockRestore())
-  api.create.mockRejectedValueOnce(new Error('Offline'))
+  api.create.mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'Offline'))
   const screen = await setup()
   await fill(screen)
   await save(screen).click()
@@ -136,11 +138,10 @@ it.each([false, true])(
     }
     await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
     expect(api.edit).toHaveBeenCalledExactlyOnceWith(
-      {
+      expect.objectContaining({
         params: { external_knowledge_api_id: response.id },
         body: { ...data, name: 'Product API updated' },
-      },
-      { context: { silent: true } },
+      }),
     )
     expect(api.create).not.toHaveBeenCalled()
   },

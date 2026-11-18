@@ -1,50 +1,51 @@
 import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { createWavFixture } from '@/test/browser-media'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { installFakeApi } from '@/test/fake-api'
 import { TtsAutoPlay } from '@/types/app'
 import { renderFeature } from '../../__tests__/feature-browser-test-env'
 import VoiceSettings from '../voice-settings'
 
+type Voice = { name: string; value: string }
 const api = vi.hoisted(() => ({
-  app: vi.fn(),
-  agent: vi.fn(),
-  audio: vi.fn(),
+  app: vi.fn<(input: unknown) => Voice[]>(),
+  agent: vi.fn<(input: unknown) => Voice[]>(),
+  audio: vi.fn<(input: unknown) => Response>(),
   params: {} as { appId?: string; agentId?: string },
 }))
+// The contracts require UUID app and agent ids.
+const appId = '5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b'
+const agentId = '6f7a8b9c-0d1e-4f2a-8b3c-4d5e6f7a8b9c'
 vi.unmock('react-i18next')
 // boundary: route identity is supplied without bootstrapping Next routing.
 vi.mock('@/next/navigation', () => ({
   useParams: () => api.params,
   usePathname: () => '/configuration',
 }))
-// boundary: generated Console voice-catalog requests remain below the real query owner.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'apps.byAppId.textToAudio.voices.get': (input) => api.app(input),
-      'agent.byAgentId.textToAudio.voices.get': (input) => api.agent(input),
-    }),
-  }
-})
-// boundary: audio bytes replace the text-to-audio HTTP stream; playback remains native.
-vi.mock('@/service/share', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/share')>()),
-  textToAudioStream: (...args: unknown[]) => api.audio(...args),
-}))
 
 beforeEach(async () => {
   await page.viewport(1100, 800)
-  onTestFinished(guardUnexpectedFetch())
-  api.params = { appId: 'test-app-id' }
-  api.app.mockResolvedValue([
+  onTestFinished(
+    installFakeApi({
+      console: {
+        apps: { byAppId: { textToAudio: { voices: { get: (input) => api.app(input) } } } },
+        agent: {
+          byAgentId: {
+            textToAudio: {
+              voices: { get: (input) => api.agent(input) },
+              post: (input) => api.audio(input).blob(),
+            },
+          },
+        },
+      },
+    }),
+  )
+  api.params = { appId }
+  api.app.mockReset().mockReturnValue([
     { name: 'Alloy', value: 'alloy' },
     { name: 'Echo', value: 'echo' },
   ])
-  api.agent.mockResolvedValue([
+  api.agent.mockReset().mockReturnValue([
     { name: 'Alloy', value: 'alloy' },
     { name: 'Echo', value: 'echo' },
   ])
@@ -65,7 +66,7 @@ function Settings({ disabled = false }: { disabled?: boolean }) {
 it.each(['app', 'agent'] as const)(
   'loads %s voices and keeps native keyboard selections and autoplay across reopening',
   async (route) => {
-    api.params = route === 'app' ? { appId: 'test-app-id' } : { agentId: 'test-agent-id' }
+    api.params = route === 'app' ? { appId } : { agentId }
     const { screen, store } = await renderFeature(<Settings />, {
       text2speech: {
         enabled: true,
@@ -78,10 +79,12 @@ it.each(['app', 'agent'] as const)(
     await trigger.click()
     const voice = screen.getByRole('combobox', { name: 'Voice', exact: true })
     await expect.element(voice).toHaveTextContent('Alloy')
-    expect(api[route]).toHaveBeenCalledWith({
-      params: route === 'app' ? { app_id: 'test-app-id' } : { agent_id: 'test-agent-id' },
-      query: { language: 'en-US' },
-    })
+    await expect
+      .poll(() => api[route])
+      .toHaveBeenCalledWith({
+        params: route === 'app' ? { app_id: appId } : { agent_id: agentId },
+        query: { language: 'en-US' },
+      })
     await voice.click()
     await expect.element(screen.getByRole('option', { name: 'Alloy', exact: true })).toHaveFocus()
     await userEvent.keyboard('{ArrowDown}')
@@ -98,10 +101,12 @@ it.each(['app', 'agent'] as const)(
     await expect
       .element(screen.getByRole('combobox', { name: 'Language', exact: true }))
       .toHaveTextContent('Chinese')
-    expect(api[route]).toHaveBeenCalledWith({
-      params: route === 'app' ? { app_id: 'test-app-id' } : { agent_id: 'test-agent-id' },
-      query: { language: 'zh-Hans' },
-    })
+    await expect
+      .poll(() => api[route])
+      .toHaveBeenCalledWith({
+        params: route === 'app' ? { app_id: appId } : { agent_id: agentId },
+        query: { language: 'zh-Hans' },
+      })
     await screen.getByRole('button', { name: 'Close', exact: true }).click()
     await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
     await expect.element(trigger).toHaveFocus()
@@ -117,11 +122,11 @@ it.each(['app', 'agent'] as const)(
 )
 
 it('auditions the displayed fallback voice with the real language catalog and native audio', async () => {
-  api.params = { agentId: 'agent-1' }
+  api.params = { agentId }
   const wav = createWavFixture({ duration: 10 })
   onTestFinished(wav.revoke)
-  api.audio.mockResolvedValue(
-    new Response(Uint8Array.from(wav.bytes), { headers: { 'content-type': 'audio/wav' } }),
+  api.audio.mockImplementation(
+    () => new Response(Uint8Array.from(wav.bytes), { headers: { 'content-type': 'audio/wav' } }),
   )
   const { screen } = await renderFeature(<Settings />, {
     text2speech: { enabled: true, language: '', voice: 'removed-voice' },
@@ -135,12 +140,12 @@ it('auditions the displayed fallback voice with the real language catalog and na
     .toHaveTextContent('Alloy')
   await screen.getByRole('button', { name: 'Play', exact: true }).click()
   await expect.element(screen.getByRole('button', { name: 'Playing', exact: true })).toBeEnabled()
-  expect(api.audio).toHaveBeenCalledWith('/agent/agent-1/text-to-audio', 'installedApp', {
-    message_id: undefined,
-    streaming: true,
-    voice: 'alloy',
-    text: 'Hello, Dify!',
-  })
+  await expect
+    .poll(() => api.audio)
+    .toHaveBeenCalledExactlyOnceWith({
+      params: { agent_id: agentId },
+      body: { streaming: true, voice: 'alloy', text: 'Hello, Dify!' },
+    })
   await screen.getByRole('button', { name: 'Playing', exact: true }).click()
   await expect.element(screen.getByRole('button', { name: 'Play', exact: true })).toBeEnabled()
 })

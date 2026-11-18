@@ -5,20 +5,12 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import AddKnowledgeSpace from '../add-knowledge-space'
 
 type Space = Awaited<ReturnType<typeof consoleClient.knowledgeFs.spaces.get>>['data'][number]
 
-const api = vi.hoisted(() => ({ list: vi.fn<typeof consoleClient.knowledgeFs.spaces.get>() }))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, { 'knowledgeFs.spaces.get': api.list }),
-  }
-})
+const api = { list: vi.fn<typeof consoleClient.knowledgeFs.spaces.get>() }
 
 const space = (id: string, name: string, overrides: Partial<Space> = {}): Space => ({
   control_space_id: id,
@@ -54,7 +46,9 @@ const response = (data: Space[], page = 1, has_more = false) => ({
 })
 
 beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
+  onTestFinished(
+    installFakeApi({ console: { knowledgeFs: { spaces: { get: (input) => api.list(input) } } } }),
+  )
   api.list.mockReset().mockResolvedValue(
     response([
       space('product', 'Product docs', {
@@ -164,7 +158,7 @@ it.each([
 )
 
 it('recovers the initial catalog through its retry action', async () => {
-  api.list.mockRejectedValueOnce(new Error('spaces unavailable'))
+  api.list.mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'spaces unavailable'))
   const { dialog } = await setup()
   const alert = dialog.getByRole('alert')
   await expect
@@ -184,7 +178,7 @@ it.skip('retains the loaded page and its selection while retrying the failed nex
   api.list.mockImplementation(
     async (input: Parameters<typeof consoleClient.knowledgeFs.spaces.get>[0]) => {
       if (input?.query?.page === 1) return response([space('product', 'Product docs')], 1, true)
-      throw new Error('next page unavailable')
+      throw apiError('SERVICE_UNAVAILABLE', 503, 'next page unavailable')
     },
   )
   const { dialog, saved } = await setup()

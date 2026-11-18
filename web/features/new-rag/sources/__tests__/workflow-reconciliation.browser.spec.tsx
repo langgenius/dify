@@ -1,4 +1,5 @@
 import { page } from 'vite-plus/test/browser'
+import { apiError } from '@/test/fake-api'
 import { SourcesPage } from '../page'
 import {
   clearSourceClients,
@@ -10,22 +11,13 @@ import { clientMock, resetSourceServer, sourceResponses } from './source-server'
 
 // boundary: the component test controls route inputs and observes navigation destinations.
 vi.mock('@/next/navigation', async () => (await import('./source-server')).navigation)
-// boundary: replace operation responses while preserving generated queries, observers and business hooks.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  return (await import('./source-server')).withSourceResponses(actual)
-})
 
-const unexpectedFetch = vi.fn(() => Promise.reject(new Error('Unexpected request')))
 beforeEach(() => {
   resetSourceServer()
-  vi.stubGlobal('fetch', unexpectedFetch)
 })
 afterEach(() => {
   clearSourceClients()
   vi.useRealTimers()
-  vi.unstubAllGlobals()
-  expect(unexpectedFetch).not.toHaveBeenCalled()
 })
 
 describe('Sources: workflow-reconciliation', () => {
@@ -164,7 +156,9 @@ describe('Sources: workflow-reconciliation', () => {
       id: 'workflow-2',
       updated_at: '2026-07-20T11:00:00Z',
     })
-    sourceResponses.refresh.mockRejectedValueOnce(new Error('Source refresh failed'))
+    sourceResponses.refresh.mockRejectedValueOnce(
+      apiError('SERVICE_UNAVAILABLE', 503, 'Source refresh failed'),
+    )
 
     const { queryClient } = await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await page

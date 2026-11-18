@@ -1,6 +1,7 @@
 import type { AccessPolicyResourceType } from '@/models/access-control'
 import type { consoleClient } from '@/service/console'
 import { consoleQuery } from '@/service/console'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { createAccessPolicyFixture } from '@/test/fixtures/access-policy'
 import {
   permissionFor,
@@ -10,24 +11,21 @@ import {
   rulePage,
 } from './access-rule-fixture'
 
-const api = vi.hoisted(() => ({
+const api = {
   list: vi.fn<typeof consoleClient.workspaces.current.rbac.workspace.apps.accessPolicy.get>(),
   create: vi.fn<typeof consoleClient.workspaces.current.rbac.accessPolicies.post>(),
   permissions: vi.fn<typeof consoleClient.workspaces.current.rbac.myPermissions.get>(),
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.rbac.workspace.apps.accessPolicy.get': api.list,
-      'workspaces.current.rbac.workspace.datasets.accessPolicy.get': api.list,
-      'workspaces.current.rbac.workspace.agents.accessPolicy.get': api.list,
-      'workspaces.current.rbac.accessPolicies.post': api.create,
-      'workspaces.current.rbac.myPermissions.get': api.permissions,
-    }),
-  }
+}
+// The journey refetches the catalog the fixture seeds; answer with the same permissions.
+const catalogFor = (type: AccessPolicyResourceType) => ({
+  groups: [
+    {
+      group_key: `${type}_acl`,
+      group_name: type,
+      description: '',
+      permissions: [{ key: permissionFor(type), name: 'Edit configuration', description: '' }],
+    },
+  ],
 })
 let rules: ReturnType<typeof ruleFor>[]
 beforeEach(() => {
@@ -42,6 +40,32 @@ beforeEach(() => {
     app: { default_permission_keys: [], overrides: [] },
     dataset: { default_permission_keys: [], overrides: [] },
   })
+  onTestFinished(
+    installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            rbac: {
+              workspace: {
+                apps: { accessPolicy: { get: (input) => api.list(input) } },
+                datasets: { accessPolicy: { get: (input) => api.list(input) } },
+                agents: { accessPolicy: { get: (input) => api.list(input) } },
+              },
+              accessPolicies: { post: (input) => api.create(input) },
+              myPermissions: { get: (input) => api.permissions(input) },
+              rolePermissions: {
+                catalog: {
+                  app: { get: () => catalogFor('app') },
+                  dataset: { get: () => catalogFor('dataset') },
+                  agent: { get: () => catalogFor('agent') },
+                },
+              },
+            },
+          },
+        },
+      },
+    }),
+  )
 })
 async function setup(type: AccessPolicyResourceType = 'agent', canManage = true) {
   const view = await renderAccessRule(type, canManage)
@@ -76,14 +100,16 @@ it.each(resources)(
     await confirm.click()
     await expect.element(dialog).not.toBeInTheDocument()
     await expect.element(screen.getByText('Custom rule', { exact: true })).toBeVisible()
-    expect(api.create).toHaveBeenCalledExactlyOnceWith({
-      body: {
-        name: 'Custom rule',
-        description: 'Can edit',
-        resource_type: type,
-        permission_keys: [permissionFor(type)],
-      },
-    })
+    expect(api.create).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        body: {
+          name: 'Custom rule',
+          description: 'Can edit',
+          resource_type: type,
+          permission_keys: [permissionFor(type)],
+        },
+      }),
+    )
   },
 )
 
@@ -119,7 +145,7 @@ it('opens built-in Agent rules read-only through their real row action', async (
 
 it('preserves a failed Agent permission-set draft for retry through the real mutation', async () => {
   rules = [ruleFor('agent')]
-  api.create.mockRejectedValueOnce(new Error('Unavailable'))
+  api.create.mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'Unavailable'))
   const { screen } = await setup()
   await screen.getByRole('button', { name: 'permission.accessRule.newPermissionSet' }).click()
   const dialog = screen.getByRole('dialog')

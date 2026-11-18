@@ -16,57 +16,25 @@ import { consoleQuery } from '@/service/console'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { DatasetACLPermission } from '@/utils/permission'
 import Form from '../index'
 
-const api = vi.hoisted(() => ({
+const DATASET_ID = '7d9c1f3e-4a1b-4c2d-8e3f-1a2b3c4d5e6f'
+const api = {
   get: vi.fn<typeof consoleClient.datasets.byDatasetId.get>(),
-  getScanPolicy: vi.fn(),
+  getScanPolicy: vi.fn<typeof consoleClient.datasets.byDatasetId.fileScanPolicy.get>(),
   save: vi.fn<typeof consoleClient.datasets.byDatasetId.patch>(),
-  saveScanPolicy: vi.fn(),
-}))
+  saveScanPolicy: vi.fn<typeof consoleClient.datasets.byDatasetId.fileScanPolicy.put>(),
+}
 vi.unmock('react-i18next')
 // boundary: routing is outside the settings journey; keep the real dataset layout and refetch owner.
 vi.mock('@/next/navigation', () => ({
-  usePathname: () => '/datasets/dataset-1/settings',
+  usePathname: () => '/datasets/7d9c1f3e-4a1b-4c2d-8e3f-1a2b3c4d5e6f/settings',
   useRouter: () => ({ replace: vi.fn() }),
-  useParams: () => ({ datasetId: 'dataset-1' }),
+  useParams: () => ({ datasetId: '7d9c1f3e-4a1b-4c2d-8e3f-1a2b3c4d5e6f' }),
 }))
-// boundary: replace operation responses while keeping the settings service, queries and observers real.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'datasets.byDatasetId.fileScanPolicy.get': api.getScanPolicy,
-      'datasets.byDatasetId.fileScanPolicy.put': api.saveScanPolicy,
-      'datasets.byDatasetId.get': api.get,
-      'fileScan.providers.get': async () => ({
-        data: [
-          {
-            id: 'scanner-1',
-            name: 'Office scanner',
-            provider_type: 'cloudmersive',
-            config: {},
-            credentials_set: { api_key: true },
-            status: 'active',
-            last_error: null,
-            last_tested_at: null,
-            created_at: 1_780_000_000,
-            policy_count: 0,
-          },
-        ],
-      }),
-      'workspaces.current.members.get': async () => ({ accounts: [] }),
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'datasets.byDatasetId.patch': api.save,
-    }),
-  }
-})
 
 const scanPolicyOff = {
   enabled: false,
@@ -80,6 +48,7 @@ async function setup(
   { fileScanEnabled = false }: { fileScanEnabled?: boolean } = {},
 ) {
   let dataset: DatasetDetailWithPartialMembersResponse = createDatasetFixture({
+    id: DATASET_ID,
     permission_keys: [DatasetACLPermission.Edit],
     ...overrides,
   })
@@ -91,7 +60,44 @@ async function setup(
   api.getScanPolicy.mockReset().mockResolvedValue(scanPolicyOff)
   api.saveScanPolicy
     .mockReset()
-    .mockImplementation(async ({ body }: { body: typeof scanPolicyOff }) => body)
+    .mockImplementation(async ({ body }) => ({ ...scanPolicyOff, ...body }))
+  onTestFinished(
+    installFakeApi({
+      console: {
+        datasets: {
+          byDatasetId: {
+            get: (input) => api.get(input),
+            patch: (input) => api.save(input),
+            fileScanPolicy: {
+              get: (input) => api.getScanPolicy(input),
+              put: (input) => api.saveScanPolicy(input),
+            },
+          },
+        },
+        fileScan: {
+          providers: {
+            get: () => ({
+              data: [
+                {
+                  id: 'scanner-1',
+                  name: 'Office scanner',
+                  provider_type: 'cloudmersive',
+                  config: {},
+                  credentials_set: { api_key: true },
+                  status: 'active',
+                  last_error: null,
+                  last_tested_at: null,
+                  created_at: 1_780_000_000,
+                  policy_count: 0,
+                },
+              ],
+            }),
+          },
+        },
+        workspaces: { current: { members: { get: () => ({ accounts: [] }) } } },
+      },
+    }),
+  )
   const { queryClient, wrapper: Wrapper } = createConsoleQueryWrapper({
     accountProfile: { id: 'user-1', name: 'Current User' },
     workspacePermissionKeys: [],
@@ -120,7 +126,7 @@ async function setup(
       <I18nextProvider i18n={i18n}>
         <NuqsTestingAdapter>
           <div className="flex h-screen flex-col">
-            <DatasetDetailLayout datasetId="dataset-1">
+            <DatasetDetailLayout datasetId={DATASET_ID}>
               <div className="h-full overflow-auto">
                 <Form />
               </div>
@@ -154,18 +160,18 @@ it('saves edited basic information once while pending and refreshes the dataset 
   await expect.element(save).toHaveAttribute('aria-disabled', 'true')
   await expect.element(save).toHaveFocus()
   await userEvent.keyboard('{Enter}')
+  await expect.poll(() => api.save).toHaveBeenCalledOnce()
   expect(api.save).toHaveBeenCalledExactlyOnceWith(
-    {
-      params: { dataset_id: 'dataset-1' },
+    expect.objectContaining({
+      params: { dataset_id: DATASET_ID },
       body: expect.objectContaining({
         name: 'Updated Dataset',
         description: 'Updated description',
       }),
-    },
-    { context: { silent: true } },
+    }),
   )
   expect(document.title).toContain('Test Dataset')
-  pending.resolve(createDatasetFixture())
+  pending.resolve(createDatasetFixture({ id: DATASET_ID }))
   await expect.element(screen.getByText('Modified successfully')).toBeVisible()
   await expect.poll(() => document.title).toContain('Updated Dataset')
   await expect.element(save).not.toHaveAttribute('aria-disabled', 'true')
@@ -181,7 +187,7 @@ it('rejects a blank name without submitting', async () => {
 
 it('keeps edits after a failed save and allows retrying', async () => {
   const screen = await setup()
-  api.save.mockRejectedValueOnce(new Error('offline'))
+  api.save.mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'offline'))
   const name = screen.getByRole('textbox', { name: 'Knowledge Name', exact: true })
   await name.fill('Test Dataset updated')
   const save = screen.getByRole('button', { name: 'Save', exact: true })
@@ -248,7 +254,6 @@ it('keeps the permission field label and saves the selected visibility', async (
   await expect.element(screen.getByText('Modified successfully')).toBeVisible()
   expect(api.save).toHaveBeenCalledWith(
     expect.objectContaining({ body: expect.objectContaining({ permission: 'all_team_members' }) }),
-    { context: { silent: true } },
   )
 })
 
@@ -272,16 +277,16 @@ it('saves the file scan policy with the page Save button', async () => {
   await save.click()
 
   await expect.element(screen.getByText('Modified successfully')).toBeVisible()
-  expect(api.saveScanPolicy.mock.calls.at(-1)?.[0]).toEqual({
+  expect(api.saveScanPolicy.mock.calls.at(-1)?.[0]).toMatchObject({
     body: { ...scanPolicyOff, enabled: true, provider_id: 'scanner-1' },
-    params: { dataset_id: 'dataset-1' },
+    params: { dataset_id: DATASET_ID },
   })
   expect(api.save).toHaveBeenCalledTimes(1)
 })
 
 it('does not save the other settings when the file scan policy is rejected', async () => {
   const screen = await setup({}, { fileScanEnabled: true })
-  api.saveScanPolicy.mockRejectedValue(new Error('offline'))
+  api.saveScanPolicy.mockRejectedValue(apiError('SERVICE_UNAVAILABLE', 503, 'offline'))
 
   await screen.getByRole('switch', { name: fileScan['policy.enable'] }).click()
   await screen.getByRole('combobox', { name: fileScan['policy.scanner'] }).click()

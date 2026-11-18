@@ -3,39 +3,32 @@ import type { AppData } from '@/models/share'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { useWebAppStore } from '@/context/web-app-context'
-import {
-  AppSourceType,
-  delConversation,
-  fetchChatList,
-  fetchConversations,
-  pinConversation,
-  renameConversation,
-  unpinConversation,
-} from '@/service/share'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { installFakeApi, route } from '@/test/fake-api'
 import { CONVERSATION_ID_INFO, TAB_CONVERSATION_ID_INFO } from '../../../constants'
 import { createChatHistoryTestEnvironment } from '../../__tests__/chat-history-test-env'
 import Header from '../../header'
 import Sidebar from '../index'
 
-// boundary: share requests are the network boundary; the query and feature owners stay real.
-vi.mock('@/service/share', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/share')>()),
-  fetchChatList: vi.fn(),
-  fetchConversations: vi.fn(),
-  pinConversation: vi.fn(),
-  unpinConversation: vi.fn(),
-  renameConversation: vi.fn(),
-  delConversation: vi.fn(),
-}))
 // boundary: Browser Mode does not provide the application's Next.js router.
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
   usePathname: () => '/chat/app-1',
 }))
 
+type ConversationPage = {
+  data: ReturnType<typeof conversation>[]
+  has_more: boolean
+  limit: number
+}
+const api = {
+  conversations: vi.fn<(pinned: boolean) => ConversationPage>(),
+  pin: vi.fn<(id: string) => unknown>(),
+  unpin: vi.fn<(id: string) => unknown>(),
+  rename: vi.fn<(id: string, name: string) => unknown>(),
+  remove: vi.fn<(id: string) => unknown>(),
+}
 const conversation = (id: string, name: string) => ({ id, name, inputs: {}, introduction: '' })
 const conversations = [
   conversation('1', 'First conversation'),
@@ -53,7 +46,22 @@ const appInfo: AppData = {
 }
 
 beforeEach(async ({ onTestFinished }) => {
-  onTestFinished(guardUnexpectedFetch())
+  onTestFinished(
+    installFakeApi({
+      routes: [
+        route('GET', 'public', '/messages', () => ({ data: [] })),
+        route('GET', 'public', '/conversations', ({ url }) =>
+          api.conversations(url.searchParams.get('pinned') === 'true'),
+        ),
+        route('PATCH', 'public', '/conversations/:id/pin', ({ params }) => api.pin(params.id!)),
+        route('PATCH', 'public', '/conversations/:id/unpin', ({ params }) => api.unpin(params.id!)),
+        route('POST', 'public', '/conversations/:id/name', async ({ params, request }) =>
+          api.rename(params.id!, ((await request.json()) as { name: string }).name),
+        ),
+        route('DELETE', 'public', '/conversations/:id', ({ params }) => api.remove(params.id!)),
+      ],
+    }),
+  )
   const oldUrl = window.location.href
   window.history.replaceState({}, '', '/')
   onTestFinished(() => {
@@ -63,16 +71,13 @@ beforeEach(async ({ onTestFinished }) => {
   localStorage.removeItem(CONVERSATION_ID_INFO)
   sessionStorage.removeItem(TAB_CONVERSATION_ID_INFO)
   localStorage.removeItem('webappSidebarCollapse')
-  vi.mocked(fetchChatList).mockResolvedValue({ data: [] })
-  vi.mocked(fetchConversations).mockImplementation(async (_source, _app, _last, pinned) => ({
+  api.conversations.mockReset().mockImplementation((pinned) => ({
     data: pinned ? pinnedConversations : conversations,
     has_more: false,
     limit: 100,
   }))
-  vi.mocked(pinConversation).mockResolvedValue(undefined)
-  vi.mocked(unpinConversation).mockResolvedValue(undefined)
-  vi.mocked(renameConversation).mockResolvedValue(undefined)
-  vi.mocked(delConversation).mockResolvedValue(undefined)
+  for (const action of [api.pin, api.unpin, api.rename, api.remove])
+    action.mockReset().mockReturnValue({ result: 'success' })
   await page.viewport(900, 700)
 })
 afterEach(() => {
@@ -169,28 +174,35 @@ it('applies pin changes without changing the selected conversation', async () =>
   await expect
     .element(currentConversation().getByRole('button', { name: 'Pinned conversation' }))
     .toBeVisible()
-  vi.mocked(fetchConversations).mockImplementation(async (_source, _app, _last, pinned) => ({
+  api.conversations.mockImplementation((pinned) => ({
     data: pinned ? [...pinnedConversations, conversations[0]!] : [conversations[1]!],
     has_more: false,
     limit: 100,
   }))
   await operate('First conversation', 'pin')
   await expect.element(page.getByRole('menu')).not.toBeInTheDocument()
-  expect(pinConversation).toHaveBeenCalledExactlyOnceWith(AppSourceType.webApp, 'app-1', '1')
+  await expect.poll(() => api.pin).toHaveBeenCalledExactlyOnceWith('1')
+  // Wait for the refreshed lists so the row is not moved while its operations are opened.
+  await expect
+    .poll(() => conversationHistory().element().textContent)
+    .toMatch(/pinnedTitle.*Pinned conversation.*First conversation.*unpinnedTitle.*Second/)
   await openOperations('First conversation')
   await expect
     .element(page.getByRole('menuitem', { name: 'explore.sidebar.action.unpin' }))
     .toBeVisible()
   await userEvent.keyboard('{Escape}')
   await expect.element(page.getByRole('menu')).not.toBeInTheDocument()
-  vi.mocked(fetchConversations).mockImplementation(async (_source, _app, _last, pinned) => ({
+  api.conversations.mockImplementation((pinned) => ({
     data: pinned ? [conversations[0]!] : [conversations[1]!, ...pinnedConversations],
     has_more: false,
     limit: 100,
   }))
   await operate('Pinned conversation', 'unpin')
   await expect.element(page.getByRole('menu')).not.toBeInTheDocument()
-  expect(unpinConversation).toHaveBeenCalledExactlyOnceWith(AppSourceType.webApp, 'app-1', 'p1')
+  await expect.poll(() => api.unpin).toHaveBeenCalledExactlyOnceWith('p1')
+  await expect
+    .poll(() => conversationHistory().element().textContent)
+    .toMatch(/pinnedTitle.*First conversation.*unpinnedTitle.*Second.*Pinned conversation/)
   await openOperations('Pinned conversation')
   await expect
     .element(page.getByRole('menuitem', { name: 'explore.sidebar.action.pin' }))
@@ -251,8 +263,8 @@ it('keeps desktop collapse actions out of the mobile sidebar', async () => {
 })
 
 it('keeps the chosen conversation until deletion succeeds, then removes its dialog and row', async () => {
-  const pending = createDeferred<void>()
-  vi.mocked(delConversation).mockReturnValueOnce(pending.promise)
+  const pending = createDeferred<unknown>()
+  api.remove.mockReturnValueOnce(pending.promise)
   await renderSidebar({ currentConversationId: '2' }, noBranding, true)
   await expect
     .element(currentConversation().getByRole('button', { name: 'Second conversation' }))
@@ -260,17 +272,17 @@ it('keeps the chosen conversation until deletion succeeds, then removes its dial
   await operate('Second conversation', 'delete')
   const dialog = page.getByRole('alertdialog', { name: 'share.chat.deleteConversation.title' })
   await expect.element(dialog).toBeVisible()
-  expect(delConversation).not.toHaveBeenCalled()
+  expect(api.remove).not.toHaveBeenCalled()
   await dialog.getByRole('button', { name: 'common.operation.confirm' }).click()
-  expect(delConversation).toHaveBeenCalledExactlyOnceWith(AppSourceType.webApp, 'app-1', '2')
+  await expect.poll(() => api.remove).toHaveBeenCalledExactlyOnceWith('2')
   await expect.element(dialog).toBeVisible()
   expect(selectedConversation()).toBe('2')
-  vi.mocked(fetchConversations).mockImplementation(async (_source, _app, _last, pinned) => ({
+  api.conversations.mockImplementation((pinned) => ({
     data: pinned ? pinnedConversations : [conversations[0]!],
     has_more: false,
     limit: 100,
   }))
-  pending.resolve()
+  pending.resolve({ result: 'success' })
   await expect.element(dialog).not.toBeInTheDocument()
   await expect
     .element(conversationHistory().getByRole('button', { name: 'Second conversation' }))
@@ -288,7 +300,7 @@ it('cancels deletion without changing the conversation', async () => {
   const dialog = page.getByRole('alertdialog', { name: 'share.chat.deleteConversation.title' })
   await dialog.getByRole('button', { name: 'common.operation.cancel' }).click()
   await expect.element(dialog).not.toBeInTheDocument()
-  expect(delConversation).not.toHaveBeenCalled()
+  expect(api.remove).not.toHaveBeenCalled()
   await expect
     .element(currentConversation().getByRole('button', { name: 'First conversation' }))
     .toBeVisible()
@@ -299,8 +311,8 @@ it('cancels deletion without changing the conversation', async () => {
 })
 
 it('submits the chosen conversation name and blocks native Enter and click resubmission until saved', async () => {
-  const pending = createDeferred<void>()
-  vi.mocked(renameConversation).mockReturnValueOnce(pending.promise)
+  const pending = createDeferred<unknown>()
+  api.rename.mockReturnValueOnce(pending.promise)
   await renderSidebar({}, noBranding, true)
   await operate('Second conversation', 'rename')
   const input = page.getByRole('textbox', { name: 'common.chat.conversationName' })
@@ -308,12 +320,7 @@ it('submits the chosen conversation name and blocks native Enter and click resub
   await expect.element(input).toHaveFocus()
   await input.fill('New name')
   await userEvent.keyboard('{Enter}')
-  expect(renameConversation).toHaveBeenCalledExactlyOnceWith(
-    AppSourceType.webApp,
-    'app-1',
-    '2',
-    'New name',
-  )
+  await expect.poll(() => api.rename).toHaveBeenCalledExactlyOnceWith('2', 'New name')
   const save = page.getByRole('button', { name: 'common.operation.save' })
   await expect.element(save).toHaveAttribute('aria-disabled', 'true')
   await userEvent.tab()
@@ -322,8 +329,8 @@ it('submits the chosen conversation name and blocks native Enter and click resub
   await userEvent.keyboard(' ')
   await input.click()
   await userEvent.keyboard('{Enter}')
-  expect(renameConversation).toHaveBeenCalledTimes(1)
-  pending.resolve()
+  expect(api.rename).toHaveBeenCalledTimes(1)
+  pending.resolve({ result: 'success' })
   await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
   await expect.element(page.getByRole('button', { name: 'New name' })).toBeVisible()
   await expect
@@ -348,7 +355,7 @@ it('discards a cancelled rename before opening another conversation', async () =
   await operate('Second conversation', 'rename')
   await expect.element(input).toHaveValue('Second conversation')
   await expect.element(input).toHaveFocus()
-  expect(renameConversation).not.toHaveBeenCalled()
+  expect(api.rename).not.toHaveBeenCalled()
 })
 
 it.each([

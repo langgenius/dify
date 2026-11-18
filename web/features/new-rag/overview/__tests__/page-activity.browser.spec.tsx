@@ -3,10 +3,10 @@ import dayjs from 'dayjs'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { installFakeApi } from '@/test/fake-api'
 import { createKnowledgeSpaceFixture, KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
 import { createOverviewData } from '@/test/new-rag-overview'
 import { QueryTestingAdapter } from '@/test/query-state-testing-adapter'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { KnowledgeOverviewPage } from '../page'
 
 vi.mock('@/next/link', () => ({
@@ -31,74 +31,82 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
   useRouter: () => ({ push: vi.fn() }),
 }))
 
-type OverviewResource =
-  | 'activity'
-  | 'attention'
-  | 'inventory'
-  | 'members'
-  | 'outcomes'
-  | 'source'
-  | 'stats'
-  | 'tasks'
 let queryData = createOverviewData()
 
-const server = vi.hoisted(() => ({
-  calls: {
-    activity: vi.fn(),
-    attention: vi.fn(),
-    inventory: vi.fn(),
-    members: vi.fn(),
-    outcomes: vi.fn(),
-    source: vi.fn(),
-    stats: vi.fn(),
-    tasks: vi.fn(),
-  },
-  failing: new Set<string>(),
-  held: new Map<string, Promise<void>>(),
-}))
+const server = {
+  calls: { activity: vi.fn() },
+}
 
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
+function installOverviewApi() {
   const respond =
-    (resource: OverviewResource, data: () => unknown) =>
-    async (input: unknown): Promise<unknown> => {
-      server.calls[resource](input)
-      await server.held.get(resource)
-      if (server.failing.has(resource)) throw new Error(`${resource} unavailable`)
-      return structuredClone(data())
-    }
-  const overview = 'knowledgeFs.spaces.byControlSpaceId.overview'
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get': respond('tasks', () => ({
-        data: queryData.tasks,
-        next_cursor: null,
-      })),
-      'knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.get': respond(
-        'source',
-        () => queryData.source,
-      ),
-      [`${overview}.activity.get`]: respond('activity', () => queryData.activity),
-      [`${overview}.attention.get`]: respond('attention', () => queryData.attention),
-      [`${overview}.inventory.get`]: respond('inventory', () => queryData.inventory),
-      [`${overview}.queryOutcomes.get`]: respond('outcomes', () => queryData.outcomes),
-      [`${overview}.stats.get`]: respond('stats', () => queryData.stats),
-      'knowledgeFs.spaces.byControlSpaceId.settings.get': () => ({ configuration_state: 'active' }),
-      'workspaces.current.members.get': respond('members', () => ({
-        accounts: [
-          {
-            avatar_url: null,
-            email: 'ada@example.com',
-            id: 'member-1',
-            name: 'Ada',
+    <T,>(data: () => T) =>
+    () =>
+      structuredClone(data())
+  onTestFinished(
+    installFakeApi({
+      console: {
+        knowledgeFs: {
+          spaces: {
+            byControlSpaceId: {
+              backgroundTasks: {
+                get: respond(() => ({ data: queryData.tasks, next_cursor: null })),
+              },
+              overview: {
+                activity: {
+                  get: (input) => {
+                    server.calls.activity(input)
+                    return structuredClone(queryData.activity)
+                  },
+                },
+                attention: { get: respond(() => queryData.attention) },
+                inventory: { get: respond(() => queryData.inventory) },
+                queryOutcomes: { get: respond(() => queryData.outcomes) },
+                stats: { get: respond(() => queryData.stats) },
+              },
+              settings: {
+                get: () => ({
+                  active_profile_available: true,
+                  active_profile_revisions: { embedding: 1, retrieval: 1 },
+                  capabilities: {
+                    deep: true,
+                    index: true,
+                    ingest: true,
+                    query: true,
+                    research: true,
+                    source_sync: true,
+                  },
+                  configuration_state: 'active',
+                  embedding: null,
+                  issues: [],
+                  retrieval: null,
+                  revision: 1,
+                }),
+              },
+            },
           },
-        ],
-      })),
+        },
+        workspaces: {
+          current: {
+            members: {
+              get: () => ({
+                accounts: [
+                  {
+                    avatar_url: null,
+                    email: 'ada@example.com',
+                    id: 'member-1',
+                    name: 'Ada',
+                    role: 'normal',
+                    status: 'active',
+                  },
+                ],
+              }),
+            },
+          },
+        },
+      },
     }),
-  }
-})
+  )
+}
 type ActivityQuery = Record<string, unknown>
 const lastActivityQuery = () =>
   (
@@ -156,10 +164,8 @@ async function renderOverview({
 describe('KnowledgeOverviewPage activity', () => {
   beforeEach(async () => {
     await page.viewport(1280, 900)
-    onTestFinished(guardUnexpectedFetch())
-    server.failing.clear()
-    server.held.clear()
     queryData = createOverviewData()
+    installOverviewApi()
   })
 
   afterEach(() => {

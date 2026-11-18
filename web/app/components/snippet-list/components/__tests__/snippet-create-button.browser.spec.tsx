@@ -4,25 +4,16 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { installFakeApi } from '@/test/fake-api'
 import { createSnippetFixture } from '@/test/fixtures/snippet'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import SnippetCreateButton from '../snippet-create-button'
 
 const api = vi.hoisted(() => ({ create: vi.fn(), sync: vi.fn(), push: vi.fn() }))
 
 // boundary: routing out of this component is supplied by Next.js.
 vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: api.push }) }))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.customizedSnippets.post': api.create,
-      'snippets.bySnippetId.workflows.draft.post': api.sync,
-    }),
-  }
-})
+// Snippet routes take UUID ids.
+const snippetId = '00000000-0000-4000-8000-000000000123'
 
 async function setup(permissions = ['snippets.create_and_modify']) {
   const { wrapper: Providers } = createConsoleQueryWrapper({
@@ -46,8 +37,15 @@ async function openCreate() {
 
 beforeEach(() => {
   vi.resetAllMocks()
-  onTestFinished(guardUnexpectedFetch())
-  api.create.mockResolvedValue(createSnippetFixture({ id: 'snippet-123' }))
+  onTestFinished(
+    installFakeApi({
+      console: {
+        workspaces: { current: { customizedSnippets: { post: (input) => api.create(input) } } },
+        snippets: { bySnippetId: { workflows: { draft: { post: (input) => api.sync(input) } } } },
+      },
+    }),
+  )
+  api.create.mockResolvedValue(createSnippetFixture({ id: snippetId, icon_info: null }))
   api.sync.mockResolvedValue({ result: 'success', hash: 'draft-hash', updated_at: 1704067200 })
 })
 
@@ -78,24 +76,21 @@ it('creates trimmed values and saves the draft before navigating, blocking dupli
     .toBeDisabled()
   await expect.poll(() => api.sync.mock.calls.length).toBe(1)
   const graph = { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } }
-  expect(api.create).toHaveBeenCalledExactlyOnceWith({
-    body: {
-      name: 'My Snippet',
-      description: 'Useful snippet description',
-      graph,
-      input_fields: undefined,
-    },
-  })
-  expect(api.sync).toHaveBeenCalledExactlyOnceWith({
-    params: { snippet_id: 'snippet-123' },
-    body: { graph, input_fields: undefined },
-  })
+  expect(api.create).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({
+      // The contract fills the default snippet type.
+      body: { name: 'My Snippet', description: 'Useful snippet description', graph, type: 'node' },
+    }),
+  )
+  expect(api.sync).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({ params: { snippet_id: snippetId }, body: { graph } }),
+  )
   await userEvent.keyboard(`{${modifier}>}{Enter}{/${modifier}}`)
   expect(api.create).toHaveBeenCalledOnce()
   expect(api.push).not.toHaveBeenCalled()
   sync.resolve({ result: 'success', hash: 'draft-hash', updated_at: 1704067200 })
   await expect.element(dialog).not.toBeInTheDocument()
-  expect(api.push).toHaveBeenCalledExactlyOnceWith('/snippets/snippet-123/orchestrate')
+  expect(api.push).toHaveBeenCalledExactlyOnceWith(`/snippets/${snippetId}/orchestrate`)
 })
 
 it('discards a cancelled draft and accepts the first shortcut after reopening', async () => {
@@ -118,5 +113,5 @@ it('discards a cancelled draft and accepts the first shortcut after reopening', 
   const modifier = detectPlatform() === 'mac' ? 'Meta' : 'Control'
   await userEvent.keyboard(`{${modifier}>}{Enter}{/${modifier}}`)
   await expect.element(dialog).not.toBeInTheDocument()
-  expect(api.push).toHaveBeenCalledExactlyOnceWith('/snippets/snippet-123/orchestrate')
+  expect(api.push).toHaveBeenCalledExactlyOnceWith(`/snippets/${snippetId}/orchestrate`)
 })

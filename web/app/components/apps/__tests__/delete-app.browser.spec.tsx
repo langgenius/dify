@@ -14,15 +14,16 @@ import time from '@/i18n/locales/en-US/time.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createDeferred } from '@/test/deferred'
+import { installFakeApi } from '@/test/fake-api'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppACLPermission } from '@/utils/permission'
 import { List } from '../list'
 
-const api = vi.hoisted(() => ({
+const api = {
   apps: vi.fn<typeof consoleClient.apps.get>(),
   starred: vi.fn<typeof consoleClient.apps.starred.get>(),
-  delete: vi.fn<typeof consoleClient.apps.byAppId.delete>(),
-}))
+  delete: vi.fn<(input: { params: { app_id: string } }) => Promise<void>>(),
+}
 vi.unmock('react-i18next')
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
@@ -30,24 +31,14 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
   usePathname: () => '/apps',
   useSearchParams: () => new URLSearchParams(),
 }))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'apps.get': api.apps,
-      'apps.starred.get': api.starred,
-      'apps.byAppId.delete': api.delete,
-      'features.get': async () => zGetFeaturesResponse.parse({}),
-      'tags.get': async () => [],
-      'workspaces.current.members.get': async () => ({ accounts: [] }),
-    }),
-  }
-})
-
-const app = (id: string, name: string): AppPartial => ({
-  ...createAppDetailFixture({ id, name, maintainer: 'user-1' }),
+// The contract requires UUID app ids; derive a stable one from each readable key.
+const uuidFor = (key: string) =>
+  `00000000-0000-4000-8000-${Array.from(key, (char) => char.charCodeAt(0).toString(16))
+    .join('')
+    .slice(0, 12)
+    .padStart(12, '0')}`
+const app = (key: string, name: string): AppPartial => ({
+  ...createAppDetailFixture({ id: uuidFor(key), name, maintainer: 'user-1' }),
   permission_keys: [AppACLPermission.Delete],
 })
 const appPage = (data: AppPartial[]) =>
@@ -72,6 +63,20 @@ async function setup(initialApps: AppPartial[], initialStarredApps: AppPartial[]
     apps = apps.filter(({ id }) => id !== params.app_id)
     starredApps = starredApps.filter(({ id }) => id !== params.app_id)
   })
+  onTestFinished(
+    installFakeApi({
+      console: {
+        apps: {
+          get: (input) => api.apps(input),
+          starred: { get: (input) => api.starred(input) },
+          byAppId: { delete: (input) => api.delete(input) },
+        },
+        features: { get: () => zGetFeaturesResponse.parse({}) },
+        tags: { get: () => [] },
+        workspaces: { current: { members: { get: () => ({ accounts: [] }) } } },
+      },
+    }),
+  )
   const i18n = createInstance()
   await i18n.init({
     lng: 'en-US',

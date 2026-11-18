@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vite-plus/test'
 import { consoleClient } from '@/service/console'
 import { marketplaceClient } from '@/service/marketplace'
 import { createNetworkAccessGroupFixture } from '../console/network-access'
-import { apiError, installFakeApi, route, sseResponse } from '../fake-api'
+import { apiError, installFakeApi, networkError, route, sseResponse } from '../fake-api'
 
 const groupList = {
   tenant_id: 'workspace-1',
@@ -123,6 +123,92 @@ describe('installFakeApi', () => {
     expect(result).toEqual({ id: 'file-1', name: 'report.pdf' })
     expect(received).toHaveBeenCalledWith('report.pdf')
     expect(onprogress).toHaveBeenCalled()
+    teardown()
+  })
+
+  it('sends handler errors in the backend shape, including their details', async () => {
+    const teardown = installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            networkAccessGroups: {
+              post: () => {
+                throw apiError('invalid_param', 422, 'Invalid CIDR', {
+                  details: { issues: ['allowed_cidrs'] },
+                })
+              },
+            },
+          },
+        },
+      },
+    })
+
+    await expect(
+      consoleClient.workspaces.current.networkAccessGroups.post({
+        body: { name: 'Office', allowed_cidrs: ['nope'] },
+      }),
+    ).rejects.toMatchObject({
+      status: 422,
+      message: 'Invalid CIDR',
+      data: expect.objectContaining({ details: { issues: ['allowed_cidrs'] } }),
+    })
+    teardown()
+  })
+
+  it('serves contracts from the enterprise segment', async () => {
+    const search = vi.fn(() => ({ subjects: [], currPage: 1, totalPages: 1, hasMore: false }))
+    const teardown = installFakeApi({
+      console: { enterprise: { webAppAuth: { searchForWhilteListCandidates: search } } },
+    })
+
+    await consoleClient.enterprise.webAppAuth
+      .searchForWhilteListCandidates({
+        query: { pageNumber: 1, resultsPerPage: 10 },
+      })
+      .catch(() => undefined)
+
+    expect(search).toHaveBeenCalledOnce()
+    teardown()
+  })
+
+  it('routes relative requests on the page origin', async () => {
+    const lookup = vi.fn(() => ({ status: 'pending' }))
+    const teardown = installFakeApi({
+      routes: [route('GET', 'origin', '/openapi/v1/oauth/device/lookup', lookup)],
+    })
+
+    const response = await fetch('/openapi/v1/oauth/device/lookup?user_code=ABCD')
+
+    expect(await response.json()).toEqual({ status: 'pending' })
+    teardown()
+  })
+
+  it('fails requests at the network level when a handler throws networkError()', async () => {
+    const teardown = installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            networkAccessGroups: {
+              get: () => {
+                throw networkError()
+              },
+            },
+          },
+        },
+      },
+      routes: [
+        route('GET', 'console', '/legacy', () => {
+          throw networkError()
+        }),
+      ],
+    })
+
+    await expect(consoleClient.workspaces.current.networkAccessGroups.get({})).rejects.toThrow(
+      /network error/,
+    )
+    await expect(fetch('http://localhost:5001/console/api/legacy')).rejects.toThrow(
+      'Failed to fetch',
+    )
     teardown()
   })
 

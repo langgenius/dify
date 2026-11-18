@@ -1,8 +1,9 @@
+import type { consoleClient } from '@/service/console'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/storage'
-import { consoleClient } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { installFakeApi } from '@/test/fake-api'
 import ResetPasswordPage from '../page'
 
 const navigation = vi.hoisted(() => ({
@@ -15,18 +16,7 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(navigation.search),
 }))
 
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'forgotPassword.post': vi.fn(),
-    }),
-  }
-})
-
-const sendResetCode = vi.mocked(consoleClient.forgotPassword.post)
+const sendResetCode = vi.fn<typeof consoleClient.forgotPassword.post>()
 
 async function renderPage() {
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper()
@@ -38,6 +28,9 @@ async function renderPage() {
 }
 
 beforeEach(() => {
+  onTestFinished(
+    installFakeApi({ console: { forgotPassword: { post: (input) => sendResetCode(input) } } }),
+  )
   navigation.push.mockReset()
   navigation.search = ''
   sendResetCode.mockReset().mockResolvedValue({ result: 'success', data: 'reset-token' })
@@ -57,10 +50,11 @@ it('submits the labelled email form with Enter and preserves the reset session',
   await userEvent.keyboard('{Enter}')
 
   await vi.waitFor(() =>
-    expect(sendResetCode).toHaveBeenCalledWith({
-      body: { email: 'user@example.com', language: 'en-US' },
-    }),
+    expect(sendResetCode).toHaveBeenCalledWith(
+      expect.objectContaining({ body: { email: 'user@example.com', language: 'en-US' } }),
+    ),
   )
+  await vi.waitFor(() => expect(navigation.push).toHaveBeenCalled())
   expect(localStorage.getItem(COUNT_DOWN_KEY)).toBe(String(COUNT_DOWN_TIME_MS))
   expect(navigation.push).toHaveBeenCalledWith(
     '/reset-password/check-code?token=reset-token&email=user%2540example.com',

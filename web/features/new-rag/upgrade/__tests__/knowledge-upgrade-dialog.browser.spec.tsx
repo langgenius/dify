@@ -1,40 +1,53 @@
 import type { KnowledgeFsUpgradePreparationResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import { ORPCError } from '@orpc/client'
 import { useRef } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import {
-  upgradeDataset as dataset,
   expectedUpgradeModels as expectedPayload,
-  upgradeJob as job,
   upgradeModelCatalogs as modelCatalogs,
   recommendedUpgradeModels as recommendedModels,
   seedUpgradeModels,
+  upgradeDataset,
+  upgradeJob,
 } from '@/test/new-rag-upgrade'
 import { QueryTestingAdapter } from '@/test/query-state-testing-adapter'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { KnowledgeUpgradeCard } from '../knowledge-upgrade-card'
 import { KnowledgeUpgradeProvider } from '../knowledge-upgrade-context'
 import { useKnowledgeUpgrade } from '../knowledge-upgrade-context-value'
 
-const startUpgradeMock = vi.hoisted(() => vi.fn())
-const discoverUpgradeMock = vi.hoisted(() => vi.fn())
-const getModelsMock = vi.hoisted(() => vi.fn())
+const startUpgradeMock = vi.fn()
+const discoverUpgradeMock = vi.fn()
+const getModelsMock = vi.fn()
 
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'datasets.byDatasetId.knowledgeFsUpgrades.get': discoverUpgradeMock,
-      'datasets.byDatasetId.knowledgeFsUpgrades.post': startUpgradeMock,
-      'workspaces.current.models.modelTypes.byModelType.get': getModelsMock,
-      'datasets.byDatasetId.knowledgeFsUpgrades.byJobId.get': () => new Promise(() => {}),
+// The upgrade contracts address datasets by UUID.
+const datasetId = '3f0b6c8e-2a4d-4e8f-9b1a-7c5d2e6f8a90'
+const dataset = { ...upgradeDataset, id: datasetId }
+const job = { ...upgradeJob, old_dataset_id: datasetId }
+
+function installUpgradeApi() {
+  onTestFinished(
+    installFakeApi({
+      console: {
+        datasets: {
+          byDatasetId: {
+            knowledgeFsUpgrades: {
+              get: (input) => discoverUpgradeMock(input),
+              post: (input) => startUpgradeMock(input),
+              byJobId: { get: () => new Promise(() => {}) },
+            },
+          },
+        },
+        workspaces: {
+          current: {
+            models: { modelTypes: { byModelType: { get: (input) => getModelsMock(input) } } },
+          },
+        },
+      },
     }),
-  }
-})
+  )
+}
 
 // Exercise dialog callbacks through their production owner: cancel removes it and start adds a card.
 function UpgradeOwner() {
@@ -89,8 +102,8 @@ async function expectStarted() {
     .toBeVisible()
 }
 describe('KnowledgeUpgradeDialog', () => {
-  beforeEach(async ({ onTestFinished }) => {
-    onTestFinished(guardUnexpectedFetch())
+  beforeEach(async () => {
+    installUpgradeApi()
     await page.viewport(640, 600)
     startUpgradeMock.mockReset().mockResolvedValue(job)
     vi.clearAllMocks()
@@ -173,7 +186,7 @@ describe('KnowledgeUpgradeDialog', () => {
     expect(startUpgradeMock).toHaveBeenCalledWith({
       body: { models: expectedPayload },
       headers: { 'Idempotency-Key': expect.any(String) },
-      params: { dataset_id: 'dataset-1' },
+      params: { dataset_id: datasetId },
     })
   })
 
@@ -223,8 +236,8 @@ describe('KnowledgeUpgradeDialog', () => {
 
   it('reuses the idempotency key for retries and rotates it when the model choice changes', async () => {
     startUpgradeMock
-      .mockRejectedValueOnce(new Error('response lost'))
-      .mockRejectedValueOnce(new Error('response lost'))
+      .mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'response lost'))
+      .mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'response lost'))
       .mockResolvedValueOnce(job)
     await renderDialog()
 
@@ -244,28 +257,21 @@ describe('KnowledgeUpgradeDialog', () => {
     const keys = startUpgradeMock.mock.calls.map(([input]) => input.headers['Idempotency-Key'])
     expect(keys[1]).toBe(keys[0])
     expect(keys[2]).not.toBe(keys[0])
-    expect(discoverUpgradeMock).toHaveBeenCalledWith({ params: { dataset_id: 'dataset-1' } })
+    expect(discoverUpgradeMock).toHaveBeenCalledWith({ params: { dataset_id: datasetId } })
   })
 
   it('keeps the dialog open and marks rejected models when the backend reports them unavailable', async () => {
     startUpgradeMock.mockRejectedValueOnce(
-      new ORPCError('knowledge_fs_upgrade_models_unavailable', {
-        defined: true,
-        status: 422,
-        data: {
-          code: 'knowledge_fs_upgrade_models_unavailable',
-          message: 'Models unavailable',
-          status: 422,
-          details: {
-            issues: [
-              {
-                field: 'reasoning',
-                model: 'gpt-4o',
-                provider: 'langgenius/openai/openai',
-                reason: 'quota-exceeded',
-              },
-            ],
-          },
+      apiError('knowledge_fs_upgrade_models_unavailable', 422, 'Models unavailable', {
+        details: {
+          issues: [
+            {
+              field: 'reasoning',
+              model: 'gpt-4o',
+              provider: 'langgenius/openai/openai',
+              reason: 'quota-exceeded',
+            },
+          ],
         },
       }),
     )

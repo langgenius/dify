@@ -1,4 +1,5 @@
-import type { AppDetail } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
@@ -8,6 +9,7 @@ import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import CreateAppModal from '../index'
 
@@ -32,7 +34,12 @@ const emojiMessages = {
 }
 
 let appQuota = { size: 0, limit: 1 }
-const mocks = vi.hoisted(() => ({ create: vi.fn(), push: vi.fn(), track: vi.fn(), flush: vi.fn() }))
+const mocks = vi.hoisted(() => ({
+  create: vi.fn<(body: Record<string, unknown>) => Promise<AppDetailWithSite>>(),
+  push: vi.fn(),
+  track: vi.fn(),
+  flush: vi.fn(),
+}))
 // boundary: observe navigation without a running application router.
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mocks.push }),
@@ -42,19 +49,6 @@ vi.mock('@/next/navigation', () => ({
 vi.mock('@/app/components/base/amplitude/init', () => ({
   getAmplitudeClient: () => ({ track: mocks.track, flush: mocks.flush }),
 }))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  const { zGetFeaturesResponse } = await import('@dify/contracts/api/console/features/zod.gen')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'features.get': async () => zGetFeaturesResponse.parse({ apps: appQuota }),
-      'apps.post': ({ body }: { body: Record<string, unknown> }) => mocks.create(body),
-    }),
-  }
-})
-
 async function renderModal({ quota = { size: 0, limit: 1 }, show = true } = {}) {
   appQuota = quota
   const { wrapper: Wrapper } = createConsoleQueryWrapper({
@@ -110,11 +104,21 @@ beforeEach(async () => {
   mocks.flush.mockReset().mockReturnValue({ promise: Promise.resolve() })
   setAnalyticsConsent('granted')
   sessionStorage.clear()
-  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+  onTestFinished(
+    installFakeApi({
+      console: {
+        features: { get: () => zGetFeaturesResponse.parse({ apps: appQuota }) },
+        apps: { post: ({ body }) => mocks.create(body) },
+      },
+    }),
+  )
+  // boundary: the emoji picker loads static emojibase data from the app origin, outside the API.
+  const apiFetch = globalThis.fetch
+  vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = input instanceof Request ? input.url : String(input)
-    if (!/^\/.*emoji\/emojibase-17\.0\.0\/en\/(?:data|messages)\.json$/.test(url))
-      throw new Error(`Unexpected URL: ${url}`)
-    return Response.json(url.endsWith('/messages.json') ? emojiMessages : emojiData)
+    if (/^\/.*emoji\/emojibase-17\.0\.0\/en\/(?:data|messages)\.json$/.test(url))
+      return Response.json(url.endsWith('/messages.json') ? emojiMessages : emojiData)
+    return apiFetch(input, init)
   })
 })
 afterEach(() => {
@@ -176,7 +180,7 @@ it('waits for analytics completion before navigating without submitting twice', 
 })
 
 it('shows the creation error while keeping the dialog available for correction', async () => {
-  mocks.create.mockRejectedValueOnce(new Error('Creation failed'))
+  mocks.create.mockRejectedValueOnce(apiError('CREATE_FAILED', 503, 'Creation failed'))
   await renderModal()
   await nameInput().fill('My App')
   await createButton().click()
@@ -278,7 +282,7 @@ it('submits the final selected app type after switching between advanced and beg
 })
 
 it('keeps an in-flight create request single-submission until it succeeds', async () => {
-  const pending = createDeferred<AppDetail>()
+  const pending = createDeferred<AppDetailWithSite>()
   mocks.create.mockReturnValueOnce(pending.promise)
   await renderModal()
   await nameInput().fill('Slow App')

@@ -1,37 +1,25 @@
-import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
+import type { consoleClient } from '@/service/console'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { createDeferred } from '@/test/deferred'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { createTestQueryClient } from '@/test/query-client'
 import { ChangePasswordDialog } from '../change-password-dialog'
 
-const mocks = vi.hoisted(() => ({ request: vi.fn() }))
-
-vi.mock('@/service/base', () => ({
-  del: vi.fn(),
-  get: vi.fn(),
-  patch: vi.fn(),
-  post: vi.fn(),
-  request: mocks.request,
-  sseGeneratorPost: vi.fn(),
-}))
-
-function pendingResponse() {
-  let resolve!: (response: Response) => void
-  let reject!: (error: Error) => void
-  const promise = new Promise<Response>((resolveResponse, rejectResponse) => {
-    resolve = resolveResponse
-    reject = rejectResponse
-  })
-  return { promise, resolve, reject }
-}
+const changePassword = vi.fn<typeof consoleClient.account.password.post>()
 
 it('keeps native submit focus during password saving and supports retry without leaving the dialog', async () => {
   // Chromium proves native Enter submission and focus preservation when pending controls change.
-  const firstSave = pendingResponse()
-  const retry = pendingResponse()
-  mocks.request.mockReset()
-  mocks.request.mockReturnValueOnce(firstSave.promise).mockReturnValueOnce(retry.promise)
+  type Profile = Awaited<ReturnType<typeof consoleClient.account.password.post>>
+  const firstSave = createDeferred<Profile>()
+  const retry = createDeferred<Profile>()
+  changePassword.mockReturnValueOnce(firstSave.promise).mockReturnValueOnce(retry.promise)
+  onTestFinished(
+    installFakeApi({
+      console: { account: { password: { post: (input) => changePassword(input) } } },
+    }),
+  )
   const screen = await render(
     <QueryClientProvider client={createTestQueryClient()}>
       <ChangePasswordDialog isPasswordSet />
@@ -53,9 +41,9 @@ it('keeps native submit focus during password saving and supports retry without 
   await userEvent.keyboard('{Escape}')
   await expect.element(dialog).toBeVisible()
   await expect.element(confirmPassword).toHaveFocus()
-  await vi.waitFor(() => expect(mocks.request).toHaveBeenCalledOnce())
+  await vi.waitFor(() => expect(changePassword).toHaveBeenCalledOnce())
 
-  firstSave.reject(new Error('Password update failed'))
+  firstSave.reject(apiError('SERVICE_UNAVAILABLE', 503, 'Password update failed'))
   await expect.element(save).not.toHaveAttribute('aria-disabled', 'true')
   await expect.element(confirmPassword).not.toHaveAttribute('readonly')
   await expect.element(confirmPassword).toHaveFocus()
@@ -66,21 +54,16 @@ it('keeps native submit focus during password saving and supports retry without 
   await userEvent.keyboard('{Escape}')
   await expect.element(dialog).toBeVisible()
   await expect.element(save).toHaveFocus()
-  await vi.waitFor(() => expect(mocks.request).toHaveBeenCalledTimes(2))
+  await vi.waitFor(() => expect(changePassword).toHaveBeenCalledTimes(2))
 
-  retry.resolve(
-    new Response(
-      JSON.stringify({
-        id: 'user-id',
-        name: 'Alice',
-        email: 'alice@example.com',
-        avatar: '',
-        avatar_url: null,
-        is_password_set: true,
-        timezone: 'UTC',
-      } satisfies GetAccountProfileResponse),
-      { headers: { 'content-type': 'application/json' } },
-    ),
-  )
+  retry.resolve({
+    id: 'user-id',
+    name: 'Alice',
+    email: 'alice@example.com',
+    avatar: '',
+    avatar_url: null,
+    is_password_set: true,
+    timezone: 'UTC',
+  })
   await expect.element(dialog).not.toBeInTheDocument()
 })

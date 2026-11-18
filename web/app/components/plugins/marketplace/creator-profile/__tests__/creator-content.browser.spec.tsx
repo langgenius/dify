@@ -2,26 +2,14 @@ import type { CreatorCreation } from '../model'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createDeferred } from '@/test/deferred'
+import { installFakeApi } from '@/test/fake-api'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import CreatorContent from '../creator-content'
 
-const marketplace = vi.hoisted(() => ({
+const marketplace = {
   fetchPluginPage: vi.fn(),
   fetchTemplatePage: vi.fn(),
-}))
-
-// boundary: publisher pagination stops at the external Marketplace HTTP client.
-vi.mock('@/service/marketplace', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/marketplace')>()
-  return {
-    ...actual,
-    marketplaceClient: {
-      ...actual.marketplaceClient,
-      publisherPlugins: marketplace.fetchPluginPage,
-      publisherTemplates: marketplace.fetchTemplatePage,
-    },
-  }
-})
+}
 
 const createCreation = (
   id: string,
@@ -50,6 +38,14 @@ const creations = [
 ]
 
 async function renderContent({ withMore = false } = {}) {
+  onTestFinished(
+    installFakeApi({
+      marketplace: {
+        publisherPlugins: (input) => marketplace.fetchPluginPage(input),
+        publisherTemplates: (input) => marketplace.fetchTemplatePage(input),
+      },
+    }),
+  )
   const { wrapper: UrlState, onUrlUpdate } = createNuqsTestWrapper({ hasMemory: true })
   const screen = await render(
     <UrlState>
@@ -143,10 +139,14 @@ it('keeps one load-more request active and appends its real card before removing
   await loadMore.click()
   await expect.element(loadMore).toBeDisabled()
   await expect.element(loadMore).toHaveAttribute('aria-busy', 'true')
-  expect(marketplace.fetchPluginPage).toHaveBeenCalledExactlyOnceWith({
-    params: { uniqueHandle: 'scarlettmao' },
-    query: { page: 2, page_size: 40, sort_by: 'version_updated_at', sort_order: 'DESC' },
-  })
+  await expect.poll(() => marketplace.fetchPluginPage.mock.calls.length).toBe(1)
+  // The marketplace contract has no runtime schemas, so query values arrive as sent over HTTP.
+  expect(marketplace.fetchPluginPage).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({
+      params: { uniqueHandle: 'scarlettmao' },
+      query: { page: '2', page_size: '40', sort_by: 'version_updated_at', sort_order: 'DESC' },
+    }),
+  )
   nextPage.resolve({
     data: {
       plugins: [

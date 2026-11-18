@@ -1,51 +1,56 @@
 import type { consoleClient } from '@/service/console'
 import { page } from 'vite-plus/test/browser'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { installFakeApi } from '@/test/fake-api'
 import { datasetsPage, members, setup, spacesPage } from './new-knowledge-list-test-env'
 
-const api = vi.hoisted(() => ({
+const api = {
   spaces: vi.fn<typeof consoleClient.knowledgeFs.spaces.get>(),
   deleteSpace: vi.fn<typeof consoleClient.knowledgeFs.spaces.byControlSpaceId.delete>(),
   members: vi.fn<typeof consoleClient.workspaces.current.members.get>(),
   upgradeJobs: vi.fn<typeof consoleClient.datasets.knowledgeFsUpgradeJobs.get>(),
   upgradeJob: vi.fn<typeof consoleClient.datasets.byDatasetId.knowledgeFsUpgrades.byJobId.get>(),
   datasets: vi.fn<typeof consoleClient.datasets.get>(),
-}))
-
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'knowledgeFs.spaces.get': api.spaces,
-      'knowledgeFs.spaces.byControlSpaceId.delete': api.deleteSpace,
-      'workspaces.current.members.get': api.members,
-      'datasets.knowledgeFsUpgradeJobs.get': api.upgradeJobs,
-      'datasets.get': api.datasets,
-      'datasets.byDatasetId.knowledgeFsUpgrades.byJobId.get': api.upgradeJob,
-      'datasets.apiBaseInfo.get': async () => ({ api_base_url: 'https://api.example.com' }),
-      'datasets.externalKnowledgeApi.get': async () => ({
-        data: [],
-        has_more: false,
-        limit: 100,
-        page: 1,
-        total: 0,
-      }),
-      'tags.get': async () => [
-        { binding_count: '1', id: 'tag-1', name: 'Customer support', type: 'knowledge' },
-        { binding_count: '1', id: 'tag-2', name: 'Public docs', type: 'knowledge' },
-      ],
-    }),
-  }
-})
+}
 
 describe('NewKnowledgeList empty workspace', () => {
   beforeEach(async () => {
     await page.viewport(1000, 760)
-    onTestFinished(guardUnexpectedFetch())
+    onTestFinished(
+      installFakeApi({
+        console: {
+          knowledgeFs: {
+            spaces: {
+              get: (input) => api.spaces(input),
+              byControlSpaceId: {
+                delete: async (input) => {
+                  await api.deleteSpace(input)
+                },
+              },
+            },
+          },
+          workspaces: { current: { members: { get: (input) => api.members(input) } } },
+          datasets: {
+            get: (input) => api.datasets(input),
+            knowledgeFsUpgradeJobs: { get: (input) => api.upgradeJobs(input) },
+            byDatasetId: {
+              knowledgeFsUpgrades: { byJobId: { get: (input) => api.upgradeJob(input) } },
+            },
+            apiBaseInfo: { get: () => ({ api_base_url: 'https://api.example.com' }) },
+            externalKnowledgeApi: {
+              get: () => ({ data: [], has_more: false, limit: 100, page: 1, total: 0 }),
+            },
+          },
+          tags: {
+            get: () => [
+              { binding_count: '1', id: 'tag-1', name: 'Customer support', type: 'knowledge' },
+              { binding_count: '1', id: 'tag-2', name: 'Public docs', type: 'knowledge' },
+            ],
+          },
+        },
+      }),
+    )
     api.spaces.mockResolvedValue(spacesPage())
-    api.deleteSpace.mockResolvedValue({ result: 'success' })
+    api.deleteSpace.mockResolvedValue(undefined)
     api.members.mockResolvedValue({ accounts: members })
     api.upgradeJobs.mockResolvedValue({ data: [] })
     api.upgradeJob.mockImplementation(() => new Promise(() => {}))

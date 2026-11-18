@@ -5,25 +5,17 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import SnippetCreateButton from '@/app/components/snippet-list/components/snippet-create-button'
 import { manager, toast } from '@/app/notifications'
-import { httpErrorFromResponse } from '@/service/http-error'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { createSnippetImportResponseFixture as response } from '@/test/fixtures/snippet'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { apiError, installFakeApi } from '@/test/fake-api'
+import { createSnippetImportResponseFixture } from '@/test/fixtures/snippet'
 import ImportSnippetDSLDialog from '../import-snippet-dsl-dialog'
 
 const api = vi.hoisted(() => ({ import: vi.fn(), confirm: vi.fn(), push: vi.fn() }))
 // boundary: Next.js owns navigation after importing a snippet.
 vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: api.push }) }))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.customizedSnippets.imports.post': api.import,
-      'workspaces.current.customizedSnippets.imports.byImportId.confirm.post': api.confirm,
-    }),
-  }
+const response = (overrides: Parameters<typeof createSnippetImportResponseFixture>[0] = {}) => ({
+  ...createSnippetImportResponseFixture(overrides),
+  warnings: [],
 })
 
 function DirectDialog() {
@@ -59,7 +51,22 @@ async function upload(dialog: ReturnType<typeof page.getByRole>) {
 
 beforeEach(() => {
   vi.resetAllMocks()
-  onTestFinished(guardUnexpectedFetch())
+  onTestFinished(
+    installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            customizedSnippets: {
+              imports: {
+                post: (input) => api.import(input),
+                byImportId: { confirm: { post: (input) => api.confirm(input) } },
+              },
+            },
+          },
+        },
+      },
+    }),
+  )
 })
 afterEach(() => toast.dismiss())
 
@@ -71,14 +78,9 @@ it('imports a DSL URL from the creation menu and navigates after the dialog clos
   await dialog.getByRole('button', { name: 'common.operation.create' }).click()
   await expect.element(dialog).not.toBeInTheDocument()
   expect(api.import).toHaveBeenCalledExactlyOnceWith(
-    {
-      body: {
-        mode: 'yaml-url',
-        yaml_content: undefined,
-        yaml_url: 'https://example.com/snippet.yml',
-      },
-    },
-    { context: { silent: true } },
+    expect.objectContaining({
+      body: { mode: 'yaml-url', yaml_url: 'https://example.com/snippet.yml' },
+    }),
   )
   expect(api.push).toHaveBeenCalledExactlyOnceWith('/snippets/snippet-1/orchestrate')
 })
@@ -98,16 +100,14 @@ it('reads the uploaded YAML and waits for version confirmation before navigating
   await expect.element(confirmation.getByText('0.9.0', { exact: true })).toBeVisible()
   await expect.element(confirmation.getByText('1.0.0', { exact: true })).toBeVisible()
   expect(api.import).toHaveBeenCalledExactlyOnceWith(
-    { body: { mode: 'yaml-content', yaml_content: 'name: snippet', yaml_url: undefined } },
-    { context: { silent: true } },
+    expect.objectContaining({ body: { mode: 'yaml-content', yaml_content: 'name: snippet' } }),
   )
   expect(api.push).not.toHaveBeenCalled()
   await confirmation.getByRole('button', { name: 'common.operation.confirm' }).click()
   await expect.element(dialog).not.toBeInTheDocument()
   await expect.element(confirmation).not.toBeInTheDocument()
   expect(api.confirm).toHaveBeenCalledExactlyOnceWith(
-    { params: { import_id: 'import-1' } },
-    { context: { silent: true } },
+    expect.objectContaining({ params: { import_id: 'import-1' } }),
   )
   expect(api.push).toHaveBeenCalledExactlyOnceWith('/snippets/snippet-2/orchestrate')
 })
@@ -115,9 +115,7 @@ it('reads the uploaded YAML and waits for version confirmation before navigating
 it.each(['import', 'confirm'])(
   'shows the HTTP %s error while preserving the import for retry',
   async (step) => {
-    const error = await httpErrorFromResponse(
-      Response.json({ message: 'Invalid DSL' }, { status: 400 }),
-    )
+    const error = apiError('INVALID_DSL', 400, 'Invalid DSL')
     api.import.mockResolvedValue(response({ status: 'pending', snippet_id: null }))
     if (step === 'import') api.import.mockRejectedValueOnce(error)
     else api.confirm.mockRejectedValueOnce(error)

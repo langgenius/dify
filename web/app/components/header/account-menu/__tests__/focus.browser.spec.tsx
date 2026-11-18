@@ -9,10 +9,12 @@ import {
 } from '@/app/components/header/account-setting/query-params'
 import AccountSection from '@/app/components/main-nav/components/account-section'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { installFakeApi } from '@/test/fake-api'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import AccountMenu from '../index'
 
-vi.mock('@/service/use-common', () => ({ useLogout: () => ({ mutate: vi.fn() }) }))
+// The menu journeys never sign out; any request they make fails the test.
+beforeEach(() => onTestFinished(installFakeApi({})))
 
 // The settings contents are outside the menu's focus contract; retain a real destination dialog.
 function PreferencesDestination() {

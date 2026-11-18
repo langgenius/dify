@@ -2,18 +2,14 @@ import type { ImageFile } from '@/types/app'
 import { useState } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { installFakeApi, route } from '@/test/fake-api'
 import { TransferMethod } from '@/types/app'
 import Uploader from '../uploader'
 import { imageFile, imageUrl } from './image-fixtures'
 
 vi.mock('@/next/navigation', () => ({ useParams: () => ({ token: 'shared-app' }) }))
-const api = vi.hoisted(() => ({
-  upload:
-    vi.fn<
-      (options: { data: FormData }, isPublic?: boolean, url?: string) => Promise<{ id: string }>
-    >(),
-}))
-vi.mock('@/service/base', () => ({ upload: api.upload }))
+// Public web-app uploads go through XMLHttpRequest to the public API, answered by the fake API.
+const api = { upload: vi.fn<(file: File) => Promise<{ id: string }>>() }
 
 function UploaderExample({ disabled = false }: { disabled?: boolean }) {
   const [file, setFile] = useState<ImageFile>()
@@ -40,7 +36,18 @@ function UploaderExample({ disabled = false }: { disabled?: boolean }) {
   )
 }
 
-beforeEach(() => api.upload.mockResolvedValue({ id: 'uploaded-image' }))
+beforeEach(() => {
+  api.upload.mockReset().mockResolvedValue({ id: 'uploaded-image' })
+  onTestFinished(
+    installFakeApi({
+      routes: [
+        route('POST', 'public', '/files/upload', async ({ request }) =>
+          api.upload((await request.formData()).get('file') as File),
+        ),
+      ],
+    }),
+  )
+})
 
 it('reads native file bytes, uploads them to the public endpoint and accepts the same file again', async () => {
   await page.viewport(800, 600)
@@ -60,12 +67,8 @@ it('reads native file bytes, uploads them to the public endpoint and accepts the
   })
   await expect.element(screen.getByLabelText('Image picker')).not.toBeVisible()
   await expect.element(screen.getByRole('button', { name: 'Choose another image' })).toBeVisible()
-  expect(api.upload).toHaveBeenCalledWith(
-    expect.objectContaining({ data: expect.any(FormData) }),
-    true,
-    undefined,
-  )
-  const uploaded = api.upload.mock.calls[0]![0].data.get('file')
+  expect(api.upload).toHaveBeenCalledOnce()
+  const uploaded = api.upload.mock.calls[0]![0]
   expect(uploaded).toBeInstanceOf(File)
   expect(await (uploaded as File).bytes()).toEqual(await file.bytes())
   expect((uploaded as File).name).toBe('sample.png')

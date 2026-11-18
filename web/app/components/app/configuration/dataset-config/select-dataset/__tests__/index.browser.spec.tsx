@@ -5,19 +5,11 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { installFakeApi } from '@/test/fake-api'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import SelectDataSet from '../index'
 
-const list = vi.hoisted(() => vi.fn<typeof consoleClient.datasets.get>())
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, { 'datasets.get': list }),
-  }
-})
+const list = vi.fn<typeof consoleClient.datasets.get>()
 const dataset = (id: string, overrides: Partial<DatasetDetailWithPartialMembersResponse> = {}) =>
   createDatasetFixture({ id, name: id, embedding_available: true, ...overrides })
 const response = (data: ReturnType<typeof dataset>[], page = 1, has_more = false) => ({
@@ -67,7 +59,7 @@ async function setup({
   )
 }
 beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
+  onTestFinished(installFakeApi({ console: { datasets: { get: (input) => list(input) } } }))
   list.mockReset().mockResolvedValue(response([]))
 })
 

@@ -6,10 +6,11 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
 import { createDeferred } from '@/test/deferred'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { DocumentPicker } from '../index'
 import PreviewDocumentPicker from '../preview-document-picker'
 
-const { getDocuments } = vi.hoisted(() => ({ getDocuments: vi.fn() }))
+const getDocuments = vi.fn()
 
 const createDocument = (
   overrides: Partial<DocumentWithSegmentsResponse> = {},
@@ -56,6 +57,9 @@ const createDocument = (
   ...overrides,
 })
 
+const DATASET_ID = '7d9c1f3e-4a1b-4c2d-8e3f-1a2b3c4d5e6f'
+const CUSTOM_DATASET_ID = '8e0d2a4f-5b2c-4d3e-9f4a-2b3c4d5e6f70'
+
 const initialDocuments = [
   createDocument({ id: 'doc-1', name: 'Document 1' }),
   createDocument({ id: 'doc-2', name: 'Document 2' }),
@@ -74,7 +78,7 @@ async function renderDocumentPicker(
   return render(
     <QueryClientProvider client={queryClient}>
       <DocumentPicker
-        datasetId="dataset-1"
+        datasetId={DATASET_ID}
         currentDocument={createDocument({ id: 'doc-1', name: 'Document 1' })}
         {...props}
       />
@@ -100,6 +104,13 @@ function PreviewOwner({ files = previewDocuments }: { files?: DocumentItem[] }) 
 beforeEach(() => {
   getDocuments.mockReset()
   getDocuments.mockResolvedValue(response())
+  onTestFinished(
+    installFakeApi({
+      console: {
+        datasets: { byDatasetId: { documents: { get: (input) => getDocuments(input) } } },
+      },
+    }),
+  )
 })
 
 it('shows the current document contract and links every available document', async () => {
@@ -118,20 +129,21 @@ it('shows the current document contract and links every available document', asy
   await trigger.click()
 
   const current = screen.getByRole('menuitem', { name: 'Document 1' })
-  await expect.element(current).toHaveAttribute('href', '/datasets/dataset-1/documents/doc-1')
+  await expect.element(current).toHaveAttribute('href', `/datasets/${DATASET_ID}/documents/doc-1`)
   await expect.element(current).toHaveAttribute('aria-current', 'page')
   await expect
     .element(screen.getByRole('menuitem', { name: 'Document 2' }))
-    .toHaveAttribute('href', '/datasets/dataset-1/documents/doc-2')
+    .toHaveAttribute('href', `/datasets/${DATASET_ID}/documents/doc-2`)
 })
 
 it('shows only settled search results while keeping native keyboard focus in the menu', async () => {
   const pending = createDeferred<ReturnType<typeof response>>()
   getDocuments.mockImplementation(({ params, query }) => {
-    if (params.dataset_id === 'dataset-custom' && query.keyword === 'report') return pending.promise
+    if (params.dataset_id === CUSTOM_DATASET_ID && query?.keyword === 'report')
+      return pending.promise
     return Promise.resolve(response())
   })
-  const screen = await renderDocumentPicker({ datasetId: 'dataset-custom' })
+  const screen = await renderDocumentPicker({ datasetId: CUSTOM_DATASET_ID })
 
   await screen.getByRole('button', { name: 'Document 1' }).click()
   await expect.element(screen.getByRole('menuitem', { name: 'Document 2' })).toBeVisible()
@@ -147,12 +159,12 @@ it('shows only settled search results while keeping native keyboard focus in the
   const result = screen.getByRole('menuitem', { name: 'Quarterly report' })
   await expect
     .element(result)
-    .toHaveAttribute('href', '/datasets/dataset-custom/documents/report-id')
+    .toHaveAttribute('href', `/datasets/${CUSTOM_DATASET_ID}/documents/report-id`)
   await expect.element(search).toHaveFocus()
 })
 
 it('announces a failed search and retries without closing the menu', async () => {
-  getDocuments.mockRejectedValueOnce(new Error('Search unavailable'))
+  getDocuments.mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'Search unavailable'))
   const screen = await renderDocumentPicker()
 
   const trigger = screen.getByRole('button', { name: 'Document 1' })
@@ -193,15 +205,4 @@ it('replaces a preview picker loading state with the selected document and resto
     .element(screen.getByRole('status', { name: 'Selected document' }))
     .toHaveTextContent('Second document')
   await expect.element(screen.getByRole('button', { name: /Second document/ })).toHaveFocus()
-})
-
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'datasets.byDatasetId.documents.get': getDocuments,
-    }),
-  }
 })

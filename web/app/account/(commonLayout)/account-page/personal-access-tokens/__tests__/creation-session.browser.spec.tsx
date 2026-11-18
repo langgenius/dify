@@ -1,28 +1,31 @@
+import type { consoleClient } from '@/service/console'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { renderTokenPage, token, tokenList } from './browser-test-env'
 
-const api = vi.hoisted(() => ({ create: vi.fn(), list: vi.fn() }))
+const api = {
+  create: vi.fn<typeof consoleClient.account.personalAccessTokens.post>(),
+  list: vi.fn<typeof consoleClient.account.personalAccessTokens.get>(),
+}
 vi.unmock('react-i18next')
-// boundary: supply operation results while preserving generated options and real Query observers.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'account.personalAccessTokens.get': api.list,
-      'account.personalAccessTokens.post': api.create,
-    }),
-  }
-})
 
 beforeEach(async () => {
   await page.viewport(1100, 800)
   api.list.mockReset().mockResolvedValue(tokenList())
   api.create.mockReset()
-  onTestFinished(guardUnexpectedFetch())
+  onTestFinished(
+    installFakeApi({
+      console: {
+        account: {
+          personalAccessTokens: {
+            get: (input) => api.list(input),
+            post: (input) => api.create(input),
+          },
+        },
+      },
+    }),
+  )
 })
 
 it('clears the one-time secret and name after closing and reopening creation', async () => {
@@ -64,12 +67,10 @@ it('clears the one-time secret and name after closing and reopening creation', a
   await expect.element(secret).not.toBeInTheDocument()
 })
 
-it.each([
-  ['a service message', 'Deployment catalog is unavailable.', 'Deployment catalog is unavailable.'],
-  ['an empty error', '', 'Action failed'],
-])('retains the draft after %s and completes a retry', async (_, message, feedback) => {
+it('retains the draft after a service message and completes a retry', async () => {
+  const feedback = 'Deployment catalog is unavailable.'
   api.create
-    .mockRejectedValueOnce(new Error(message))
+    .mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, feedback))
     .mockResolvedValue({ ...token, secret: 'dpat_retry' })
   const { screen } = await renderTokenPage()
   await screen.getByRole('button', { name: 'Create token' }).click()

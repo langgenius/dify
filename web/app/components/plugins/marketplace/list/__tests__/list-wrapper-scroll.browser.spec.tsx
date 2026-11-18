@@ -5,32 +5,18 @@ import { render } from 'vitest-browser-react'
 import common from '@/i18n/locales/en-US/common.json'
 import plugin from '@/i18n/locales/en-US/plugin.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { installFakeApi } from '@/test/fake-api'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { useSearchPluginText } from '../../atoms'
 import ListWrapper from '../list-wrapper'
 
-const marketplace = vi.hoisted(() => ({
+const marketplace = {
   collectionPlugins: vi.fn(),
   collections: vi.fn(),
   search: vi.fn(),
-}))
+}
 
 vi.unmock('react-i18next')
-
-// boundary: catalog collection/search reads stop at the external Marketplace HTTP client.
-vi.mock('@/service/marketplace', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/marketplace')>()
-  return {
-    ...actual,
-    marketplaceClient: {
-      ...actual.marketplaceClient,
-      collectionPlugins: marketplace.collectionPlugins,
-      collections: marketplace.collections,
-      searchAdvanced: marketplace.search,
-    },
-  }
-})
 
 function SearchResultsHarness() {
   const [, setSearch] = useSearchPluginText()
@@ -109,7 +95,15 @@ describe('Marketplace result scroll anchoring', () => {
   // represented faithfully by the happy-dom unit project.
   it('does not move the page when the first search result header appears', async () => {
     await page.viewport(1280, 720)
-    onTestFinished(guardUnexpectedFetch())
+    onTestFinished(
+      installFakeApi({
+        marketplace: {
+          collections: (input) => marketplace.collections(input),
+          collectionPlugins: (input) => marketplace.collectionPlugins(input),
+          searchAdvanced: (input) => marketplace.search(input),
+        },
+      }),
+    )
     const i18n = createInstance()
     await i18n.init({
       lng: 'en-US',

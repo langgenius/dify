@@ -10,24 +10,12 @@ import { apiError, installFakeApi } from '@/test/fake-api'
 import { createPluginEntity } from '@/test/fixtures/plugin'
 import { SwitchPluginVersion } from '../switch-plugin-version'
 
-const api = vi.hoisted(() => ({
+const api = {
   detail: vi.fn<typeof consoleClient.workspaces.current.plugin.list.installations.ids.post>(),
   task: vi.fn<typeof consoleClient.workspaces.current.plugin.tasks.byTaskId.get>(),
   upgrade: vi.fn<typeof consoleClient.workspaces.current.plugin.upgrade.marketplace.post>(),
   versions: vi.fn<() => Promise<PluginVersionsResponse>>(),
-}))
-// boundary: Supply available versions from the marketplace API.
-vi.mock('@/service/marketplace', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/marketplace')>()
-  const { createTanstackQueryUtils } = await import('@orpc/tanstack-query')
-  return {
-    ...actual,
-    marketplaceQuery: createTanstackQueryUtils(
-      { ...actual.marketplaceClient, pluginVersions: api.versions },
-      { path: ['marketplace'] },
-    ),
-  }
-})
+}
 const installed = createPluginEntity()
 const identifier = (version: string) => `langgenius/plugin-entity:${version}@test`
 beforeEach(() => {
@@ -62,6 +50,7 @@ async function setup({ enableMarketplace = true } = {}) {
           },
         },
       },
+      marketplace: { pluginVersions: () => api.versions() },
     }),
   )
   const { queryClient, wrapper } = createConsoleQueryWrapper({

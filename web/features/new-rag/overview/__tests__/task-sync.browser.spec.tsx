@@ -9,60 +9,53 @@ import {
   createConsoleQueryWrapper,
   seedFeatures,
 } from '@/test/console/query-data'
-import { createOverviewTask as task } from '@/test/new-rag-overview'
+import { installFakeApi, route } from '@/test/fake-api'
+import { createOverviewData, createOverviewTask as task } from '@/test/new-rag-overview'
 import { QueryTestingAdapter } from '@/test/query-state-testing-adapter'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { OverviewActivity } from '../overview-activity'
 import { AttentionPanel } from '../overview-attention'
 import { OverviewTaskSync } from '../overview-task-sync'
 import { OverviewStateBoundary } from '../state-boundary'
 
-type SpaceInput = {
-  params: {
-    control_space_id: string
-  }
-}
-
-const service = vi.hoisted(() => ({
+const service = {
   attention: vi.fn(),
   activity: vi.fn(),
   tasks: vi.fn(),
-}))
+}
 
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleQueryOverrides } =
-    await import('@/test/console/service-responses')
-  const { createOverviewData } = await import('@/test/new-rag-overview')
+function installOverviewApi() {
   const data = createOverviewData()
-  const spaceQuery = (handler: (spaceId: string, signal: AbortSignal) => unknown) => ({
-    queryOptions: ({ input }: { input: SpaceInput }) => ({
-      queryFn: ({ signal }: { signal: AbortSignal }) =>
-        handler(input.params.control_space_id, signal),
-    }),
-  })
-  return {
-    ...actual,
-    consoleQuery: withConsoleQueryOverrides(
-      withConsoleResponses(actual.consoleQuery, {
-        'knowledgeFs.spaces.byControlSpaceId.overview.stats.get': () => data.stats,
-        'knowledgeFs.spaces.byControlSpaceId.overview.inventory.get': () => data.inventory,
-        'knowledgeFs.spaces.byControlSpaceId.overview.queryOutcomes.get': async () => data.outcomes,
-        'workspaces.current.members.get': () => ({ accounts: [] }),
-      }),
-      {
-        'knowledgeFs.spaces.byControlSpaceId.overview.attention.get': spaceQuery(service.attention),
-        'knowledgeFs.spaces.byControlSpaceId.overview.activity.get': spaceQuery(service.activity),
-        'knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get': {
-          infiniteOptions: ({ input }: { input: (page: null) => SpaceInput }) => ({
-            queryFn: ({ signal }: { signal: AbortSignal }) =>
-              service.tasks(input(null).params.control_space_id, signal),
-          }),
+  onTestFinished(
+    installFakeApi({
+      console: {
+        knowledgeFs: {
+          spaces: {
+            byControlSpaceId: {
+              overview: {
+                stats: { get: () => data.stats },
+                inventory: { get: () => data.inventory },
+                queryOutcomes: { get: () => data.outcomes },
+                activity: { get: ({ params }) => service.activity(params.control_space_id) },
+              },
+              backgroundTasks: { get: ({ params }) => service.tasks(params.control_space_id) },
+            },
+          },
         },
+        workspaces: { current: { members: { get: () => ({ accounts: [] }) } } },
       },
-    ),
-  }
-})
+      routes: [
+        // A REST route rather than a contract handler: the scenario observes whether the
+        // client aborted the pending snapshot request, which only the raw request exposes.
+        route(
+          'GET',
+          'console',
+          '/knowledge-fs/spaces/:spaceId/overview/attention',
+          ({ params, request }) => service.attention(params.spaceId, request.signal),
+        ),
+      ],
+    }),
+  )
+}
 
 const billingKeys = {
   features: () => consoleQuery.features.get.queryKey(),
@@ -88,7 +81,7 @@ describe('overview task completion synchronization', () => {
   let client: ReturnType<typeof createConsoleQueryClient>
   beforeEach(async () => {
     await page.viewport(1280, 900)
-    onTestFinished(guardUnexpectedFetch())
+    installOverviewApi()
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
     onTestFinished(() => {
       client.clear()

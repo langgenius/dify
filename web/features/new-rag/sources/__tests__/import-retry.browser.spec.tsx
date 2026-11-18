@@ -11,22 +11,13 @@ import { clientMock, resetSourceServer, sourceResponses } from './source-server'
 
 // boundary: the component test controls route inputs and observes navigation destinations.
 vi.mock('@/next/navigation', async () => (await import('./source-server')).navigation)
-// boundary: replace operation responses while preserving generated queries, observers and business hooks.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  return (await import('./source-server')).withSourceResponses(actual)
-})
 
-const unexpectedFetch = vi.fn(() => Promise.reject(new Error('Unexpected request')))
 beforeEach(() => {
   resetSourceServer()
-  vi.stubGlobal('fetch', unexpectedFetch)
 })
 afterEach(() => {
   clearSourceClients()
   vi.useRealTimers()
-  vi.unstubAllGlobals()
-  expect(unexpectedFetch).not.toHaveBeenCalled()
 })
 
 describe('Sources: import-retry', () => {
@@ -69,10 +60,9 @@ describe('Sources: import-retry', () => {
     await expect
       .element(sourceRow.getByRole('button', { name: 'common.operation.retry' }))
       .not.toBeInTheDocument()
-    expect(clientMock.retrySourceWorkflow).toHaveBeenCalledWith(
-      { params: { control_space_id: 'space-1', run_id: 'initial-workflow' } },
-      { context: { silent: true } },
-    )
+    expect(clientMock.retrySourceWorkflow).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', run_id: 'initial-workflow' },
+    })
     expect(clientMock.syncSource).not.toHaveBeenCalled()
 
     await sourceRow
@@ -126,10 +116,9 @@ describe('Sources: import-retry', () => {
     await page.getByRole('menuitem', { name: 'common.operation.retry' }).click()
 
     await vi.waitFor(async () => expect(clientMock.retrySourceWorkflow).toHaveBeenCalledOnce())
-    expect(clientMock.retrySourceWorkflow).toHaveBeenCalledWith(
-      { params: { control_space_id: 'space-1', run_id: 'import-workflow' } },
-      { context: { silent: true } },
-    )
+    expect(clientMock.retrySourceWorkflow).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', run_id: 'import-workflow' },
+    })
     expect(clientMock.syncSource).not.toHaveBeenCalled()
     await expect
       .element(sourceRow.getByRole('status'))

@@ -3,25 +3,19 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import DebugInfo from '../debug-info'
 
-const debugKey = vi.hoisted(() =>
-  vi.fn<typeof consoleClient.workspaces.current.plugin.debuggingKey.get>(),
-)
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.plugin.debuggingKey.get': debugKey,
-    }),
-  }
-})
+const debugKey = vi.fn<typeof consoleClient.workspaces.current.plugin.debuggingKey.get>()
 
 beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
+  onTestFinished(
+    installFakeApi({
+      console: {
+        workspaces: { current: { plugin: { debuggingKey: { get: (input) => debugKey(input) } } } },
+      },
+    }),
+  )
   debugKey.mockReset()
 })
 
@@ -42,7 +36,8 @@ it('disables debugging when credentials cannot be loaded', async () => {
   const trigger = screen.getByRole('button', { name: 'plugin.debugInfo.title' })
   await expect.element(screen.getByRole('button', { name: 'After debug info' })).toBeVisible()
   await expect.element(trigger).not.toBeInTheDocument()
-  pending.reject(new Error('Debug credentials unavailable'))
+  await expect.poll(() => debugKey).toHaveBeenCalledOnce()
+  pending.reject(apiError('DEBUG_KEY_UNAVAILABLE', 503, 'Debug credentials unavailable'))
   await expect.element(trigger).toBeDisabled()
 })
 

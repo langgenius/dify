@@ -7,10 +7,11 @@ import { render } from 'vitest-browser-react'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { installFakeApi } from '@/test/fake-api'
 import { AuthCategory, CredentialTypeEnum } from '../../types'
 import Authorized from '../index'
 
-const api = vi.hoisted(() => ({
+const api = {
   remove:
     vi.fn<typeof consoleClient.workspaces.current.toolProvider.builtin.byProvider.delete.post>(),
   update:
@@ -20,30 +21,7 @@ const api = vi.hoisted(() => ({
     vi.fn<
       typeof consoleClient.workspaces.current.toolProvider.builtin.byProvider.defaultCredential.post
     >(),
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.toolProvider.builtin.byProvider.delete.post': api.remove,
-      'workspaces.current.toolProvider.builtin.byProvider.update.post': api.update,
-      'workspaces.current.toolProvider.builtin.byProvider.add.post': api.add,
-      'workspaces.current.toolProvider.builtin.byProvider.defaultCredential.post': api.setDefault,
-      'workspaces.current.toolProvider.builtin.byProvider.credential.schema.byCredentialType.get':
-        async () => [
-          { name: 'api_key', label: { en_US: 'API Key' }, type: 'secret-input', required: true },
-        ],
-      'workspaces.current.toolProvider.builtin.byProvider.oauth.clientSchema.get': async () => ({
-        schema: [],
-        is_oauth_custom_client_enabled: false,
-        is_system_oauth_params_exists: true,
-      }),
-    }),
-  }
-})
-
+}
 const payload = { category: AuthCategory.tool, provider: 'test-provider' }
 const params = { provider: 'test-provider' }
 const credential = (overrides: Partial<Credential> = {}): Credential => ({
@@ -83,6 +61,50 @@ async function setup(
 }
 
 beforeEach(() => {
+  onTestFinished(
+    installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            toolProvider: {
+              builtin: {
+                byProvider: {
+                  delete: { post: (input) => api.remove(input) },
+                  update: { post: (input) => api.update(input) },
+                  add: { post: (input) => api.add(input) },
+                  defaultCredential: { post: (input) => api.setDefault(input) },
+                  credential: {
+                    schema: {
+                      byCredentialType: {
+                        get: () => [
+                          {
+                            name: 'api_key',
+                            label: { en_US: 'API Key' },
+                            type: 'secret-input',
+                            required: true,
+                          },
+                        ],
+                      },
+                    },
+                  },
+                  oauth: {
+                    clientSchema: {
+                      get: () => ({
+                        schema: [],
+                        is_oauth_custom_client_enabled: false,
+                        is_system_oauth_params_exists: true,
+                        redirect_uri: 'https://example.com/oauth/callback',
+                      }),
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    }),
+  )
   api.remove.mockReset().mockResolvedValue({ result: 'success' })
   api.update.mockReset().mockResolvedValue({ result: 'success' })
   api.add.mockReset().mockResolvedValue({ result: 'success' })
@@ -200,10 +222,14 @@ it('cancels one deletion and confirms the new credential once after the owner ch
   const confirm = confirmation().getByRole('button', { name: 'common.operation.confirm' })
   await confirm.click()
   await expect.element(confirm).toBeDisabled()
-  expect(api.remove).toHaveBeenCalledExactlyOnceWith({
-    params,
-    body: { credential_id: 'credential-b' },
-  })
+  await expect
+    .poll(() => api.remove)
+    .toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        params,
+        body: { credential_id: 'credential-b' },
+      }),
+    )
   pending.resolve({ result: 'success' })
   await expect.element(confirmation()).not.toBeInTheDocument()
   await expect.element(page.getByText('common.api.actionSuccess', { exact: true })).toBeVisible()
@@ -224,7 +250,11 @@ it('serializes default-credential requests and accepts another action after comp
   const setDefault = page.getByRole('button', { name: 'plugin.auth.setDefault' })
   await setDefault.click()
   await setDefault.click()
-  expect(api.setDefault).toHaveBeenCalledExactlyOnceWith({ params, body: { id: 'credential-a' } })
+  await expect
+    .poll(() => api.setDefault)
+    .toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ params, body: { id: 'credential-a' } }),
+    )
   pending.resolve({ result: 'success' })
   await expect.element(page.getByText('common.api.actionSuccess', { exact: true })).toBeVisible()
   await setDefault.click()
@@ -248,10 +278,14 @@ it('submits an OAuth credential rename once until its update completes', async (
   await page.getByRole('button', { name: 'common.operation.save' }).click()
   await page.getByRole('button', { name: 'common.operation.rename' }).click()
   await page.getByRole('button', { name: 'common.operation.save' }).click()
-  expect(api.update).toHaveBeenCalledExactlyOnceWith({
-    params,
-    body: { credential_id: 'credential-a', name: 'Renamed account' },
-  })
+  await expect
+    .poll(() => api.update)
+    .toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        params,
+        body: { credential_id: 'credential-a', name: 'Renamed account' },
+      }),
+    )
   pending.resolve({ result: 'success' })
   await expect.element(page.getByText('common.api.actionSuccess', { exact: true })).toBeVisible()
 })
@@ -284,10 +318,14 @@ it('discards an old edit draft and removes the credential opened in the new sess
   await editor().getByRole('button', { name: 'common.operation.remove' }).click()
   await confirmation().getByRole('button', { name: 'common.operation.confirm' }).click()
   await expect.element(confirmation()).not.toBeInTheDocument()
-  expect(api.remove).toHaveBeenCalledExactlyOnceWith({
-    params,
-    body: { credential_id: 'credential-b' },
-  })
+  await expect
+    .poll(() => api.remove)
+    .toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        params,
+        body: { credential_id: 'credential-b' },
+      }),
+    )
 })
 
 it('saves edited key values with the credential identity after its popover closes', async () => {
@@ -299,14 +337,18 @@ it('saves edited key values with the credential identity after its popover close
     .fill('replacement-secret')
   await editor().getByRole('button', { name: 'common.operation.save' }).click()
   await expect.element(editor()).not.toBeInTheDocument()
-  expect(api.update).toHaveBeenCalledExactlyOnceWith({
-    params,
-    body: {
-      credential_id: 'credential-a',
-      name: 'Primary key',
-      credentials: { api_key: 'replacement-secret' },
-    },
-  })
+  await expect
+    .poll(() => api.update)
+    .toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        params,
+        body: {
+          credential_id: 'credential-a',
+          name: 'Primary key',
+          credentials: { api_key: 'replacement-secret' },
+        },
+      }),
+    )
 })
 
 it('creates a key through the dialog that outlives its credential popover', async () => {
@@ -318,15 +360,19 @@ it('creates a key through the dialog that outlives its credential popover', asyn
     .fill('new-secret')
   await editor().getByRole('button', { name: 'common.operation.save' }).click()
   await expect.element(editor()).not.toBeInTheDocument()
-  expect(api.add).toHaveBeenCalledExactlyOnceWith({
-    params,
-    body: {
-      credentials: { api_key: 'new-secret' },
-      type: CredentialTypeEnum.API_KEY,
-      name: '',
-      visibility: 'all_team_members',
-    },
-  })
+  await expect
+    .poll(() => api.add)
+    .toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        params,
+        body: {
+          credentials: { api_key: 'new-secret' },
+          type: CredentialTypeEnum.API_KEY,
+          name: '',
+          visibility: 'all_team_members',
+        },
+      }),
+    )
 })
 
 it.each([
@@ -351,10 +397,14 @@ it.each([
     }
     if (canUse) {
       await setDefault.click()
-      expect(api.setDefault).toHaveBeenCalledExactlyOnceWith({
-        params,
-        body: { id: 'credential-a' },
-      })
+      await expect
+        .poll(() => api.setDefault)
+        .toHaveBeenCalledExactlyOnceWith(
+          expect.objectContaining({
+            params,
+            body: { id: 'credential-a' },
+          }),
+        )
     } else expect(api.setDefault).not.toHaveBeenCalled()
   },
 )

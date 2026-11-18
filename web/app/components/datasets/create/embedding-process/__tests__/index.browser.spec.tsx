@@ -8,7 +8,7 @@ import { render } from 'vitest-browser-react'
 import { ProcessMode } from '@/models/datasets'
 import { consoleQuery } from '@/service/console'
 import { createConfigurationModalTestWrapper } from '@/test/configuration-modals-browser'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { installFakeApi } from '@/test/fake-api'
 import { RETRIEVE_METHOD } from '@/types/app'
 import EmbeddingProcess from '../index'
 
@@ -27,26 +27,12 @@ vi.mock('@/next/link', () => ({
     </a>
   ),
 }))
-const api = vi.hoisted(() => ({
+const DATASET_ID = '7d9c1f3e-4a1b-4c2d-8e3f-1a2b3c4d5e6f'
+const api = {
   status: vi.fn<typeof consoleClient.datasets.byDatasetId.batch.byBatch.indexingStatus.get>(),
   rule: vi.fn<typeof consoleClient.datasets.processRule.get>(),
   documents: vi.fn<typeof consoleClient.datasets.byDatasetId.documents.get>(),
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'datasets.byDatasetId.batch.byBatch.indexingStatus.get': api.status,
-    }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'datasets.processRule.get': api.rule,
-      'datasets.byDatasetId.documents.get': api.documents,
-    }),
-  }
-})
+}
 const document = zDocumentResponse.parse({
   id: 'document-1',
   name: 'report.pdf',
@@ -88,12 +74,24 @@ const rule = {
 } satisfies Awaited<ReturnType<typeof consoleClient.datasets.processRule.get>>
 
 beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
   api.status.mockReset().mockResolvedValue({ data: [status()] })
   api.rule.mockReset().mockResolvedValue(rule)
   api.documents
     .mockReset()
     .mockResolvedValue({ data: [], total: 2, has_more: false, page: 1, limit: 20 })
+  onTestFinished(
+    installFakeApi({
+      console: {
+        datasets: {
+          processRule: { get: (input) => api.rule(input) },
+          byDatasetId: {
+            documents: { get: (input) => api.documents(input) },
+            batch: { byBatch: { indexingStatus: { get: (input) => api.status(input) } } },
+          },
+        },
+      },
+    }),
+  )
 })
 afterEach(() => vi.useRealTimers())
 
@@ -113,7 +111,7 @@ async function setup({
     features: { billing: { subscription: { plan } } },
   })
   const documentOptions = consoleQuery.datasets.byDatasetId.documents.get.queryOptions({
-    input: { params: { dataset_id: 'dataset-1' } },
+    input: { params: { dataset_id: DATASET_ID } },
   })
   if (showDocumentSummary)
     queryClient.setQueryData(documentOptions.queryKey, {
@@ -130,7 +128,7 @@ async function setup({
   return render(
     <Providers>
       <EmbeddingProcess
-        datasetId="dataset-1"
+        datasetId={DATASET_ID}
         batchId="batch-1"
         documents={[document]}
         indexingType={indexingType}
@@ -251,7 +249,7 @@ it('links to the real API reference and refreshes subscribed documents on naviga
   const summary = screen.getByRole('status', { name: 'Documents in knowledge' })
   await expect.element(summary).toHaveTextContent('1')
   const link = screen.getByRole('link', { name: 'datasetCreation.stepThree.navTo' })
-  await expect.element(link).toHaveAttribute('href', '/datasets/dataset-1/documents')
+  await expect.element(link).toHaveAttribute('href', `/datasets/${DATASET_ID}/documents`)
   await link.click()
   await expect.element(summary).toHaveTextContent('2')
 })

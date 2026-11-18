@@ -3,42 +3,37 @@ import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { dropFixtureFile } from '@/test/browser-file-drag'
+import { installFakeApi } from '@/test/fake-api'
 import { createGifFile, createImageFile, readImagePixels } from '@/test/fixtures/image-files'
-import { guardPreviewFetch } from '@/test/fixtures/preview-files'
 import { createIconPickerEnvironment } from '@/test/icon-picker'
 import { ImageIconInput } from '../image-input'
 import { IconPickerCaller } from './icon-picker-caller'
 
-const { uploadImage } = vi.hoisted(() => ({
-  uploadImage:
-    vi.fn<
-      (
-        input: Pick<PostFilesUploadData, 'body'>,
-      ) => Promise<{ id: string; name: string; size: number }>
-    >(),
-}))
-// boundary: console file upload is the external persistence service for the rendered picker.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, { 'files.upload.post': uploadImage }),
-  }
-})
-
-let restoreFetch: () => void
+const uploadImage =
+  vi.fn<
+    (
+      input: Pick<PostFilesUploadData, 'body'>,
+    ) => Promise<{ id: string; name: string; size: number }>
+  >()
+// The contract requires UUID file ids; derive a stable one from each readable key.
+const fileId = (key: string) =>
+  `00000000-0000-4000-8000-${Array.from(key, (char) => char.charCodeAt(0).toString(16))
+    .join('')
+    .slice(0, 12)
+    .padStart(12, '0')}`
 beforeEach(() => {
-  // boundary: preview transport rejects backend requests while native local URLs stay real.
-  restoreFetch = guardPreviewFetch()
+  onTestFinished(
+    installFakeApi({
+      console: { files: { upload: { post: (input) => uploadImage(input) } } },
+    }),
+  )
   uploadImage.mockImplementation(async ({ body: { file } }) => ({
-    id: 'saved-image',
+    id: fileId('saved-image'),
     name: 'uploaded-image',
     size: file.size,
   }))
 })
 afterEach(() => {
-  restoreFetch()
   vi.restoreAllMocks()
 })
 
@@ -65,7 +60,7 @@ it('crops a decoded static image into the square bytes saved by the picker', asy
   await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
   await expect
     .element(page.getByRole('status', { name: 'Saved icon' }))
-    .toMatchTextContent('saved-image')
+    .toMatchTextContent(fileId('saved-image'))
   const file = uploadImage.mock.calls[0]![0].body.file
   expect(file).toMatchObject({ name: 'photo.png' })
   expect(await readImagePixels(file)).toEqual({
@@ -136,7 +131,7 @@ it('invalidates an unreadable image and lets a replacement be saved', async () =
   await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
   await expect
     .element(page.getByRole('status', { name: 'Saved icon' }))
-    .toMatchTextContent('saved-image')
+    .toMatchTextContent(fileId('saved-image'))
 })
 
 it('accepts an external file drop on nested content without consuming text drags', async () => {

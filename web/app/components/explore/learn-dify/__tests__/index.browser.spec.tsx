@@ -10,22 +10,12 @@ import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/ta
 import explore from '@/i18n/locales/en-US/explore.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { installFakeApi } from '@/test/fake-api'
 import LearnDify from '../index'
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '../storage'
 
-const getLessons = vi.hoisted(() => vi.fn<typeof consoleClient.explore.apps.learnDify.get>())
+const getLessons = vi.fn<typeof consoleClient.explore.apps.learnDify.get>()
 vi.unmock('react-i18next')
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'explore.apps.learnDify.get': getLessons,
-    }),
-  }
-})
 
 async function renderLessons(ui: React.ReactElement, enabled = true) {
   const i18n = createInstance()
@@ -56,6 +46,11 @@ const createApp = (name: string, position: number | null = 1): RecommendedAppRes
 beforeEach(() => {
   localStorage.clear()
   getLessons.mockReset().mockResolvedValue({ recommended_apps: [createApp('Learn Dify App')] })
+  onTestFinished(
+    installFakeApi({
+      console: { explore: { apps: { learnDify: { get: (input) => getLessons(input) } } } },
+    }),
+  )
 })
 
 it('defers a hidden catalog until the tour forces it visible', async () => {
@@ -126,8 +121,4 @@ it('removes its loading message without leaving an empty catalog', async () => {
   response.resolve({ recommended_apps: [] })
   await expect.element(screen.getByRole('status')).not.toBeInTheDocument()
   await expect.element(screen.getByRole('region', { name: 'Learn Dify' })).not.toBeInTheDocument()
-})
-
-beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
 })

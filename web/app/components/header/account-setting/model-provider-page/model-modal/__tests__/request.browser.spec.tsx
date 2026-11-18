@@ -1,4 +1,3 @@
-import { ORPCError } from '@orpc/client'
 import { onlineManager } from '@tanstack/react-query'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
@@ -6,7 +5,7 @@ import { AppToaster } from '@/app/notifications/app-toaster'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { apiError, installFakeApi, networkError } from '@/test/fake-api'
 import {
   createCredentialProvider,
   credential,
@@ -16,35 +15,42 @@ import { ConfigurationMethodEnum, ModelModalModeEnum } from '../../declarations'
 import { ModelCredentialDialog } from '../dialog'
 import { modelCredentialDialog } from '../handle'
 
-const api = vi.hoisted(() => ({ save: vi.fn(), activate: vi.fn(), remove: vi.fn() }))
-// boundary: control completion of the generated credential operations while retaining the real form and query observers.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses, withConsoleResponses } =
-    await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.modelProviders.byProvider.credentials.post': api.save,
-      'workspaces.current.modelProviders.byProvider.models.credentials.post': api.save,
-      'workspaces.current.modelProviders.byProvider.models.credentials.switch.post': api.activate,
-      'workspaces.current.modelProviders.byProvider.credentials.delete': api.remove,
-    }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.modelProviders.byProvider.credentials.get': () => ({
-        credentials: { api_key: 'masked' },
-      }),
-      'workspaces.current.modelProviders.byProvider.models.credentials.get': () => ({
-        credentials: {},
-        available_credentials: [credential],
-      }),
-    }),
-  }
-})
+const api = { save: vi.fn(), activate: vi.fn(), remove: vi.fn() }
 
 beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
   vi.resetAllMocks()
+  onTestFinished(
+    installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            modelProviders: {
+              byProvider: {
+                credentials: {
+                  get: () => ({ credentials: { api_key: 'masked' } }),
+                  post: (input) => api.save(input),
+                  delete: async (input) => {
+                    await api.remove(input)
+                  },
+                },
+                models: {
+                  credentials: {
+                    get: () => ({
+                      credentials: {},
+                      available_credentials: [credential],
+                      load_balancing: { enabled: false, configs: [] },
+                    }),
+                    post: (input) => api.save(input),
+                    switch: { post: (input) => api.activate(input) },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    }),
+  )
 })
 
 type Payload = Parameters<typeof modelCredentialDialog.openWithPayload>[0]
@@ -71,38 +77,45 @@ async function setup(options: Partial<Payload> = {}) {
   return screen
 }
 
-it.each([new TypeError('Failed to fetch'), new ORPCError('HTTP_ERROR', { status: 502 })])(
-  'retains the draft and allows retry after %s',
-  async (error) => {
-    const failed = createDeferred()
-    api.save.mockReturnValueOnce(failed.promise).mockResolvedValueOnce({ result: 'success' })
-    const onSave = vi.fn()
-    const screen = await setup({ onSave })
-    const key = screen.getByLabelText(/API key/)
-    const save = screen.getByRole('button', { name: 'common.operation.save' })
-    onlineManager.setOnline(false)
-    onTestFinished(() => onlineManager.setOnline(true))
-    await key.fill('draft-key')
-    await userEvent.keyboard('{Enter}')
-    await expect.element(save).toBeDisabled()
-    await expect
-      .element(screen.getByRole('button', { name: 'common.operation.cancel' }))
-      .toBeDisabled()
-    await userEvent.keyboard('{Escape}')
-    await expect.element(screen.getByRole('dialog', { name: /modelProvider/ })).toBeVisible()
-    failed.reject(error)
-    await expect.element(screen.getByText('common.api.actionFailed')).toBeVisible()
-    await expect.element(key).toBeEnabled()
-    await expect.element(key).toHaveValue('draft-key')
-    expect(onSave).not.toHaveBeenCalled()
-    onlineManager.setOnline(true)
-    await save.click()
-    await expect
-      .element(screen.getByRole('dialog', { name: /modelProvider/ }))
-      .not.toBeInTheDocument()
-    expect(onSave).toHaveBeenCalledTimes(1)
+it.each([
+  // An offline request has no response, so only the dialog reports the failure.
+  { failure: 'a network failure', error: networkError, toast: 'common.api.actionFailed' },
+  // An HTTP error with a backend message is reported by the shared error toast instead.
+  {
+    failure: 'a 502 response',
+    error: () => apiError('BAD_GATEWAY', 502, 'Bad gateway'),
+    toast: 'Bad gateway',
   },
-)
+])('retains the draft and allows retry after $failure', async ({ error, toast }) => {
+  const failed = createDeferred()
+  api.save.mockReturnValueOnce(failed.promise).mockResolvedValueOnce({ result: 'success' })
+  const onSave = vi.fn()
+  const screen = await setup({ onSave })
+  const key = screen.getByLabelText(/API key/)
+  const save = screen.getByRole('button', { name: 'common.operation.save' })
+  onlineManager.setOnline(false)
+  onTestFinished(() => onlineManager.setOnline(true))
+  await key.fill('draft-key')
+  await userEvent.keyboard('{Enter}')
+  await expect.element(save).toBeDisabled()
+  await expect
+    .element(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    .toBeDisabled()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(screen.getByRole('dialog', { name: /modelProvider/ })).toBeVisible()
+  await expect.poll(() => api.save).toHaveBeenCalledOnce()
+  failed.reject(error())
+  await expect.element(screen.getByText(toast, { exact: true })).toBeVisible()
+  await expect.element(key).toBeEnabled()
+  await expect.element(key).toHaveValue('draft-key')
+  expect(onSave).not.toHaveBeenCalled()
+  onlineManager.setOnline(true)
+  await save.click()
+  await expect
+    .element(screen.getByRole('dialog', { name: /modelProvider/ }))
+    .not.toBeInTheDocument()
+  expect(onSave).toHaveBeenCalledTimes(1)
+})
 
 it('submits the custom model and key together with Enter and focuses the first missing field', async () => {
   api.save.mockResolvedValue({ result: 'success' })
@@ -125,14 +138,16 @@ it('submits the custom model and key together with Enter and focuses the first m
   await expect
     .element(screen.getByRole('dialog', { name: /modelProvider/ }))
     .not.toBeInTheDocument()
-  expect(api.save).toHaveBeenCalledExactlyOnceWith({
-    params: { provider: 'openai' },
-    body: expect.objectContaining({
-      model: 'custom-model',
-      model_type: 'llm',
-      credentials: expect.objectContaining({ api_key: 'secret' }),
+  expect(api.save).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({
+      params: { provider: 'openai' },
+      body: expect.objectContaining({
+        model: 'custom-model',
+        model_type: 'llm',
+        credentials: expect.objectContaining({ api_key: 'secret' }),
+      }),
     }),
-  })
+  )
 })
 
 it('keeps the replacement credential draft when an earlier request succeeds', async () => {
@@ -177,7 +192,9 @@ it('leaves the new dialog host open when a save from the previous host completes
 })
 
 it('keeps an existing credential selected when activation fails and closes after a successful retry', async () => {
-  api.activate.mockRejectedValueOnce(new Error('Activation failed')).mockResolvedValueOnce({})
+  api.activate
+    .mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'Activation failed'))
+    .mockResolvedValueOnce({ result: 'success' })
   const screen = await setup({
     isModelCredential: true,
     model: customModel,
@@ -198,7 +215,7 @@ it('keeps an existing credential selected when activation fails and closes after
 
 it('keeps deletion confirmation pending, then allows retry after a failure', async () => {
   const failed = createDeferred()
-  api.remove.mockReturnValueOnce(failed.promise).mockResolvedValueOnce({})
+  api.remove.mockReturnValueOnce(failed.promise).mockResolvedValueOnce(undefined)
   const screen = await setup({ credential })
   await screen.getByRole('button', { name: 'common.operation.remove' }).click()
   const confirm = screen.getByRole('button', { name: 'common.operation.confirm' })
@@ -206,7 +223,8 @@ it('keeps deletion confirmation pending, then allows retry after a failure', asy
   await expect.element(confirm).toBeDisabled()
   await userEvent.keyboard('{Escape}')
   await expect.element(screen.getByRole('alertdialog')).toBeVisible()
-  failed.reject(new Error('Delete failed'))
+  await expect.poll(() => api.remove).toHaveBeenCalledOnce()
+  failed.reject(apiError('SERVICE_UNAVAILABLE', 503, 'Delete failed'))
   await expect.element(confirm).toBeEnabled()
   await confirm.click()
   await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()

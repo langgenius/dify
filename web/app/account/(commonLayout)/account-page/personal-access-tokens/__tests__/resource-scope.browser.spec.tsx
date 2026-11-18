@@ -2,36 +2,21 @@ import type {
   PersonalAccessTokenResourceResponse,
   PersonalAccessTokenWorkspaceResponse,
 } from '@dify/contracts/api/console/account/types.gen'
+import type { consoleClient } from '@/service/console'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { renderTokenPage, token, tokenList } from './browser-test-env'
 
-const api = vi.hoisted(() => ({
-  list: vi.fn(),
-  detail: vi.fn(),
-  create: vi.fn(),
-  update: vi.fn(),
-  resources: vi.fn(),
-  workspaces: vi.fn(),
-}))
+const api = {
+  list: vi.fn<typeof consoleClient.account.personalAccessTokens.get>(),
+  detail: vi.fn<typeof consoleClient.account.personalAccessTokens.byTokenId.get>(),
+  create: vi.fn<typeof consoleClient.account.personalAccessTokens.post>(),
+  update: vi.fn<typeof consoleClient.account.personalAccessTokens.byTokenId.patch>(),
+  resources: vi.fn<typeof consoleClient.account.personalAccessTokenResources.get>(),
+  workspaces: vi.fn<typeof consoleClient.account.personalAccessTokenWorkspaces.get>(),
+}
 vi.unmock('react-i18next')
-// boundary: supply operation results while preserving generated options and real Query observers.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'account.personalAccessTokens.get': api.list,
-      'account.personalAccessTokens.byTokenId.get': api.detail,
-      'account.personalAccessTokens.post': api.create,
-      'account.personalAccessTokens.byTokenId.patch': api.update,
-      'account.personalAccessTokenResources.get': api.resources,
-      'account.personalAccessTokenWorkspaces.get': api.workspaces,
-    }),
-  }
-})
 const workspace: PersonalAccessTokenWorkspaceResponse = {
   workspace_id: '019a0000-0000-7000-8000-000000000003',
   display_name: 'Production',
@@ -53,12 +38,29 @@ beforeEach(async () => {
   api.list.mockReset().mockResolvedValue(tokenList())
   api.detail.mockReset()
   api.create.mockReset().mockResolvedValue({ ...token, secret: 'dpat_scoped' })
-  api.update.mockReset().mockResolvedValue(token)
+  api.update.mockReset().mockResolvedValue({ token, resources: [], workspaces: [] })
   api.resources.mockReset().mockResolvedValue({ data: [app], next_cursor: null, has_more: false })
   api.workspaces
     .mockReset()
     .mockResolvedValue({ data: [workspace], next_cursor: null, has_more: false })
-  onTestFinished(guardUnexpectedFetch())
+  onTestFinished(
+    installFakeApi({
+      console: {
+        account: {
+          personalAccessTokens: {
+            get: (input) => api.list(input),
+            post: (input) => api.create(input),
+            byTokenId: {
+              get: (input) => api.detail(input),
+              patch: (input) => api.update(input),
+            },
+          },
+          personalAccessTokenResources: { get: (input) => api.resources(input) },
+          personalAccessTokenWorkspaces: { get: (input) => api.workspaces(input) },
+        },
+      },
+    }),
+  )
 })
 
 it('requires each selected scope and preserves selections while switching the expanded picker', async () => {
@@ -173,7 +175,7 @@ it('keeps a selected resource through loading, failure, and retry with no remain
   const selected = dialog.getByRole('checkbox', { name: 'Built-in' })
   await expect.element(selected).toBeChecked()
   await expect.element(dialog.getByText('Your existing selection is preserved.')).toBeVisible()
-  request.reject(new Error('Resource catalog unavailable'))
+  request.reject(apiError('SERVICE_UNAVAILABLE', 503, 'Resource catalog unavailable'))
   await expect.element(dialog.getByRole('alert')).toMatchTextContent(/Couldn.t load resources/)
   await expect.element(selected).toBeChecked()
   await dialog.getByRole('button', { name: 'Retry', exact: true }).click()

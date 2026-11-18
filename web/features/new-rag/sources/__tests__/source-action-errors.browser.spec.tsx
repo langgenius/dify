@@ -1,4 +1,5 @@
 import { page } from 'vite-plus/test/browser'
+import { apiError } from '@/test/fake-api'
 import { SourcesPage } from '../page'
 import { clearSourceClients, renderSources as render } from './source-browser-env'
 import { source, sourceWorkflow } from './source-fixtures'
@@ -6,22 +7,13 @@ import { clientMock, resetSourceServer, sourceResponses } from './source-server'
 
 // boundary: the component test controls route inputs and observes navigation destinations.
 vi.mock('@/next/navigation', async () => (await import('./source-server')).navigation)
-// boundary: replace operation responses while preserving generated queries, observers and business hooks.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  return (await import('./source-server')).withSourceResponses(actual)
-})
 
-const unexpectedFetch = vi.fn(() => Promise.reject(new Error('Unexpected request')))
 beforeEach(() => {
   resetSourceServer()
-  vi.stubGlobal('fetch', unexpectedFetch)
 })
 afterEach(() => {
   clearSourceClients()
   vi.useRealTimers()
-  vi.unstubAllGlobals()
-  expect(unexpectedFetch).not.toHaveBeenCalled()
 })
 
 describe('Source sync quota failures', () => {
@@ -51,18 +43,15 @@ describe('Source sync quota failures', () => {
       }
       const mutation = action === 'retry' ? clientMock.retrySourceWorkflow : clientMock.syncSource
       mutation.mockRejectedValueOnce(
-        Response.json(
-          {
-            failure: {
-              action: 'retry',
-              category,
-              code,
-              message: 'Upstream quota details',
-              retryPolicy: 'manual',
-            },
+        apiError(code, status, 'Upstream quota details', {
+          failure: {
+            action: 'retry',
+            category,
+            code,
+            message: 'Upstream quota details',
+            retryPolicy: 'manual',
           },
-          { status },
-        ),
+        }),
       )
 
       await render(<SourcesPage knowledgeSpaceId="space-1" />)
@@ -83,7 +72,7 @@ describe('Source sync quota failures', () => {
       await expect
         .element(page.getByRole('status'))
         .not.toMatchTextContent('knowledgeSpace.sourceStatus.syncing')
-      expect(mutation).toHaveBeenCalledWith(expect.anything(), { context: { silent: true } })
+      expect(mutation).toHaveBeenCalled()
     },
   )
 })

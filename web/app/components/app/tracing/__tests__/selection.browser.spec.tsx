@@ -1,60 +1,67 @@
+import type {
+  AppTraceResponse,
+  TraceAppConfigResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { createDeferred } from '@/test/deferred'
+import { installFakeApi } from '@/test/fake-api'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { createTestQueryClient } from '@/test/query-client'
 import { TracingConfiguration } from '../configuration'
-
-const { request } = vi.hoisted(() => ({
-  request:
-    vi.fn<(url: string, init: RequestInit, options: { request: Request }) => Promise<Response>>(),
-}))
-vi.mock('@/service/base', () => ({ request }))
 
 // Chromium drops native-button focus when pending saves disable the selected radio;
 // the unit DOM environment does not reproduce that loss.
 it('preserves provider focus during an async save and allows keyboard selection after saving', async () => {
   const save = createDeferred<void>()
-  let status = { enabled: true, tracing_provider: 'langfuse' }
+  let status: AppTraceResponse = { enabled: true, tracing_provider: 'langfuse' }
   const writes: unknown[] = []
-  request.mockImplementation(async (_url, _init, { request: sent }) => {
-    const url = new URL(sent.url)
-    if (url.pathname.endsWith('/system-features'))
-      return Response.json(createSystemFeaturesFixture())
-    if (url.pathname.endsWith('/trace')) {
-      if (sent.method === 'POST') {
-        const body = await sent.json()
-        writes.push(body)
-        if (writes.length === 1) await save.promise
-        status = body
-        return Response.json({ result: 'success' })
-      }
-      return Response.json(status)
-    }
-    const provider = url.searchParams.get('tracing_provider')
-    const config =
-      provider === 'langfuse'
-        ? {
-            tracing_config: { host: 'https://cloud.langfuse.com' },
-            configured_secrets: ['public_key', 'secret_key'],
-          }
-        : provider === 'langsmith'
-          ? {
-              tracing_config: { project: 'project', endpoint: 'https://api.smith.langchain.com' },
-              configured_secrets: ['api_key'],
-            }
-          : { has_not_configured: true }
-    return Response.json(config)
-  })
+  onTestFinished(
+    installFakeApi({
+      console: {
+        systemFeatures: { get: () => createSystemFeaturesFixture() },
+        apps: {
+          byAppId: {
+            trace: {
+              get: () => status,
+              post: async ({ body }) => {
+                writes.push(body)
+                if (writes.length === 1) await save.promise
+                status = body
+                return { result: 'success' }
+              },
+            },
+            traceConfig: {
+              get: ({ query }): TraceAppConfigResponse =>
+                query.tracing_provider === 'langfuse'
+                  ? {
+                      tracing_config: { host: 'https://cloud.langfuse.com' },
+                      configured_secrets: ['public_key', 'secret_key'],
+                    }
+                  : query.tracing_provider === 'langsmith'
+                    ? {
+                        tracing_config: {
+                          project: 'project',
+                          endpoint: 'https://api.smith.langchain.com',
+                        },
+                        configured_secrets: ['api_key'],
+                      }
+                    : { has_not_configured: true },
+            },
+          },
+        },
+      },
+    }),
+  )
   const QueryProvider = createQueryClientWrapper(createTestQueryClient())
   const { wrapper: NuqsProvider } = createNuqsTestWrapper({ hasMemory: true })
   const screen = await render(
     <QueryProvider>
       <NuqsProvider>
         <TracingConfiguration
-          resource={{ kind: 'app', appId: 'app-1', mode: 'chat' }}
+          resource={{ kind: 'app', appId: '6f1d0c5e-3a0b-4c4e-9f5a-1b2c3d4e5f60', mode: 'chat' }}
           readOnly={false}
         />
       </NuqsProvider>

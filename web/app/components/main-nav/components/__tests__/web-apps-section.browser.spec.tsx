@@ -1,33 +1,19 @@
-import type {
-  InstalledAppListResponse,
-  InstalledAppResponse,
-} from '@dify/contracts/api/console/installed-apps/types.gen'
+import type { InstalledAppResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
+import type { consoleClient } from '@/service/console'
 import { Suspense } from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { installFakeApi } from '@/test/fake-api'
 import WebAppsSection from '../web-apps-section'
 
-const service = vi.hoisted(() => ({
-  list: vi.fn<() => Promise<InstalledAppListResponse>>(),
-  pin: vi.fn<() => Promise<void>>(),
-}))
+const service = {
+  list: vi.fn<typeof consoleClient.installedApps.get>(),
+}
 
 // boundary: Browser Mode has no Next App Router; the list consumes the current pathname.
 vi.mock('@/next/navigation', () => ({ usePathname: () => '/' }))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'installedApps.get': () => service.list(),
-      'installedApps.byInstalledAppId.patch': () => service.pin(),
-    }),
-  }
-})
 
 function createApp(index: number): InstalledAppResponse {
   return {
@@ -51,7 +37,13 @@ function createApp(index: number): InstalledAppResponse {
 }
 
 async function renderSection(count = 40) {
-  onTestFinished(guardUnexpectedFetch())
+  onTestFinished(
+    installFakeApi({
+      console: {
+        installedApps: { get: (input) => service.list(input) },
+      },
+    }),
+  )
   const { queryClient } = createConsoleQueryWrapper({
     systemFeatures: { rbac_enabled: true },
     workspacePermissionKeys: ['app_library.access'],
@@ -84,7 +76,6 @@ async function renderSection(count = 40) {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  service.pin.mockResolvedValue(undefined)
 })
 
 it('keeps a focused app mounted when the list scrolls away', async () => {

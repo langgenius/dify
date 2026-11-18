@@ -1,4 +1,5 @@
 import type { GetWorkflowRunArchivesResponse } from '@dify/contracts/api/console/workflow-run-archives/types.gen'
+import type { consoleClient } from '@/service/console'
 import { createInstance } from 'i18next'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { I18nextProvider } from 'react-i18next'
@@ -10,22 +11,13 @@ import navigation from '@/i18n/locales/en-US/navigation.json'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { ACCOUNT_SETTING_TAB } from '../../constants'
 import AccountSetting from '../../index'
 
 vi.unmock('react-i18next')
 
-const archiveListRequest = vi.hoisted(() => vi.fn())
-
-// boundary: workflow-archive reads stop at the generated console transport.
-vi.mock('@/service/console/browser', () => ({
-  consoleBrowserLink: {
-    call: (path: readonly string[], input: unknown) => {
-      if (path.join('.') === 'workflowRunArchives.get') return archiveListRequest(input)
-      throw new Error(`Unexpected console request: ${path.join('.')}`)
-    },
-  },
-}))
+const archiveListRequest = vi.fn<typeof consoleClient.workflowRunArchives.get>()
 
 async function renderSettings(archives: GetWorkflowRunArchivesResponse) {
   await page.viewport(320, 800)
@@ -40,7 +32,12 @@ async function renderSettings(archives: GetWorkflowRunArchivesResponse) {
     features: { billing: { subscription: { plan: 'team' } } },
     systemFeatures: { deployment_edition: 'CLOUD', rbac_enabled: false },
   })
-  queryClient.setQueryData(consoleQuery.workflowRunArchives.get.queryKey(), archives)
+  archiveListRequest.mockReset().mockResolvedValue(archives)
+  onTestFinished(
+    installFakeApi({
+      console: { workflowRunArchives: { get: (input) => archiveListRequest(input) } },
+    }),
+  )
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
       <I18nextProvider i18n={i18n}>
@@ -112,7 +109,10 @@ it('keeps a refresh error above retained rows and readable while scrolling a nar
   })
 
   try {
-    archiveListRequest.mockRejectedValue(new Error('Archives unavailable'))
+    await expect.element(dialog.getByRole('row', { name: /2025-03/ })).toBeVisible()
+    archiveListRequest.mockRejectedValue(
+      apiError('SERVICE_UNAVAILABLE', 503, 'Archives unavailable'),
+    )
     await queryClient.refetchQueries({ queryKey: consoleQuery.workflowRunArchives.get.queryKey() })
     const title = dialog.getByText('Could not load archived logs')
     const description = dialog.getByText('Refresh the page or try again later.')

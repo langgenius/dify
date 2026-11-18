@@ -5,9 +5,9 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { installFakeApi } from '@/test/fake-api'
 import { createPluginEntity } from '@/test/fixtures/plugin'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import DifyCreatorProfile from '../dify-profile'
 
 const api = vi.hoisted(() => ({
@@ -36,47 +36,6 @@ vi.mock('@/features/marketplace/links', async (importOriginal) => {
       template: (...args: Parameters<typeof actual.marketplaceLinks.template>) =>
         toBlank(actual.marketplaceLinks.template(...args)),
     },
-  }
-})
-
-// boundary: creator search stops at the external Marketplace HTTP client.
-vi.mock('@/service/marketplace', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/marketplace')>()
-  return {
-    ...actual,
-    marketplaceQuery: {
-      ...actual.marketplaceQuery,
-      searchAdvanced: {
-        ...actual.marketplaceQuery.searchAdvanced,
-        queryOptions: (
-          options: Parameters<typeof actual.marketplaceQuery.searchAdvanced.queryOptions>[0],
-        ) => ({
-          ...actual.marketplaceQuery.searchAdvanced.queryOptions(options),
-          queryFn: () => api.searchPlugins(),
-        }),
-      },
-      templateSearch: {
-        ...actual.marketplaceQuery.templateSearch,
-        queryOptions: (
-          options: Parameters<typeof actual.marketplaceQuery.templateSearch.queryOptions>[0],
-        ) => ({
-          ...actual.marketplaceQuery.templateSearch.queryOptions(options),
-          queryFn: () => api.searchTemplates(),
-        }),
-      },
-    },
-  }
-})
-
-// boundary: installed-plugin reads and silent-install mutations stop at the console transport.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.plugin.list.installations.ids.post': api.installed,
-    }),
   }
 })
 
@@ -206,8 +165,22 @@ async function chooseSearchResult(
 
 beforeEach(async () => {
   await page.viewport(1280, 900)
-  onTestFinished(guardUnexpectedFetch())
   vi.clearAllMocks()
+  onTestFinished(
+    installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            plugin: { list: { installations: { ids: { post: (input) => api.installed(input) } } } },
+          },
+        },
+      },
+      marketplace: {
+        searchAdvanced: (input) => api.searchPlugins(input),
+        templateSearch: (input) => api.searchTemplates(input),
+      },
+    }),
+  )
   const installed = createPluginEntity({
     id: 'installed-deep-research',
     plugin_id: 'dify/deep_research',

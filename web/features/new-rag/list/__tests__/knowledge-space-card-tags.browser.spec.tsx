@@ -6,7 +6,7 @@ import { render } from 'vitest-browser-react'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { installFakeApi } from '@/test/fake-api'
 import { KnowledgeSpaceCardTags } from '../knowledge-space-card-tags'
 
 type KnowledgeFsSpaceListItemResponse = Awaited<
@@ -14,30 +14,17 @@ type KnowledgeFsSpaceListItemResponse = Awaited<
 >['data'][number]
 type KnowledgeTag = Tag & { type: 'knowledge' }
 
-const api = vi.hoisted(() => ({
+const api = {
   putTags: vi.fn<typeof consoleClient.knowledgeFs.spaces.byControlSpaceId.tags.put>(),
   spaces: vi.fn<typeof consoleClient.knowledgeFs.spaces.get>(),
   tags: vi.fn<typeof consoleClient.tags.get>(),
-}))
+}
 
 const knowledgeTags: KnowledgeTag[] = [
   { binding_count: '1', id: 'tag-1', name: 'Frontend', type: 'knowledge' },
   { binding_count: '1', id: 'tag-2', name: 'Backend', type: 'knowledge' },
   { binding_count: '0', id: 'tag-3', name: 'Public docs', type: 'knowledge' },
 ]
-
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'knowledgeFs.spaces.byControlSpaceId.tags.put': api.putTags,
-      'tags.get': api.tags,
-      'knowledgeFs.spaces.get': api.spaces,
-    }),
-  }
-})
 
 function createKnowledgeSpace(
   permissionKeys: KnowledgeFsSpaceListItemResponse['permission_keys'],
@@ -111,7 +98,19 @@ async function setup(permissionKeys = editable) {
   return queryClient
 }
 beforeEach(async ({ onTestFinished }) => {
-  onTestFinished(guardUnexpectedFetch())
+  onTestFinished(
+    installFakeApi({
+      console: {
+        knowledgeFs: {
+          spaces: {
+            get: (input) => api.spaces(input),
+            byControlSpaceId: { tags: { put: (input) => api.putTags(input) } },
+          },
+        },
+        tags: { get: (input) => api.tags(input) },
+      },
+    }),
+  )
   await page.viewport(640, 600)
   serverTags = knowledgeTags.map((tag) => ({ ...tag }))
   api.tags.mockImplementation(async () => serverTags)

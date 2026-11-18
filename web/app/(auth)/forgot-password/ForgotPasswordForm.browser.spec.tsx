@@ -1,8 +1,9 @@
+import type { consoleClient } from '@/service/console'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { consoleClient } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { installFakeApi } from '@/test/fake-api'
 import ForgotPasswordForm from './ForgotPasswordForm'
 
 const navigation = vi.hoisted(() => ({
@@ -13,20 +14,8 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ replace: navigation.replace }),
 }))
 
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses, withConsoleResponses } =
-    await import('@/test/console/service-responses')
-  const responses = { 'forgotPassword.post': vi.fn(), 'init.get': vi.fn() }
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, responses),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, responses),
-  }
-})
-
-const sendResetLink = vi.mocked(consoleClient.forgotPassword.post)
-const fetchInitStatus = vi.mocked(consoleClient.init.get)
+const sendResetLink = vi.fn<typeof consoleClient.forgotPassword.post>()
+const fetchInitStatus = vi.fn<typeof consoleClient.init.get>()
 
 async function renderForm() {
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper()
@@ -38,6 +27,14 @@ async function renderForm() {
 }
 
 beforeEach(() => {
+  onTestFinished(
+    installFakeApi({
+      console: {
+        forgotPassword: { post: (input) => sendResetLink(input) },
+        init: { get: (input) => fetchInitStatus(input) },
+      },
+    }),
+  )
   navigation.replace.mockReset()
   sendResetLink.mockReset()
   fetchInitStatus.mockReset().mockResolvedValue({ status: 'finished' })
@@ -91,7 +88,9 @@ it('submits with Enter and replaces the form with the sign-in destination', asyn
   await userEvent.keyboard('{Enter}')
 
   await vi.waitFor(() =>
-    expect(sendResetLink).toHaveBeenCalledWith({ body: { email: 'test@example.com' } }),
+    expect(sendResetLink).toHaveBeenCalledWith(
+      expect.objectContaining({ body: { email: 'test@example.com' } }),
+    ),
   )
   await expect
     .element(screen.getByRole('link', { name: /login\.backToSignIn/ }))
@@ -111,7 +110,7 @@ it('prevents a second submission while the reset request is pending', async () =
   await expect.element(submit).toHaveAttribute('aria-disabled', 'true')
   await userEvent.click(screen.getByLabelText('login.email'))
   await userEvent.keyboard('{Enter}')
-  expect(sendResetLink).toHaveBeenCalledTimes(1)
+  await vi.waitFor(() => expect(sendResetLink).toHaveBeenCalledTimes(1))
 
   request.resolve({ result: 'success', data: 'ok' })
   await expect.element(screen.getByRole('link', { name: /login\.backToSignIn/ })).toBeVisible()

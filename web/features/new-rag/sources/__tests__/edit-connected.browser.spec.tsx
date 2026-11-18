@@ -18,22 +18,13 @@ import {
 
 // boundary: the component test controls route inputs and observes navigation destinations.
 vi.mock('@/next/navigation', async () => (await import('./source-server')).navigation)
-// boundary: replace operation responses while preserving generated queries, observers and business hooks.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  return (await import('./source-server')).withSourceResponses(actual)
-})
 
-const unexpectedFetch = vi.fn(() => Promise.reject(new Error('Unexpected request')))
 beforeEach(() => {
   resetSourceServer()
-  vi.stubGlobal('fetch', unexpectedFetch)
 })
 afterEach(() => {
   clearSourceClients()
   vi.useRealTimers()
-  vi.unstubAllGlobals()
-  expect(unexpectedFetch).not.toHaveBeenCalled()
 })
 
 describe('Sources: edit-connected', () => {
@@ -41,6 +32,7 @@ describe('Sources: edit-connected', () => {
     pluginResponses.data = [notionDatasourcePlugin]
     serveNotionConnection()
     clientMock.previewConnectedSource.mockResolvedValue({
+      kind: 'online_document',
       documents: [
         {
           last_edited_time: '2026-08-30T10:00:00Z',
@@ -126,6 +118,7 @@ describe('Sources: edit-connected', () => {
     pluginResponses.data = [googleDriveDatasourcePlugin]
     serveDriveConnection()
     clientMock.previewConnectedSource.mockResolvedValue({
+      kind: 'online_drive',
       files: [
         {
           bucket: 'project-files',
@@ -206,6 +199,7 @@ describe('Sources: edit-connected', () => {
     let resolveStalePage: (value: unknown) => void = () => {}
     clientMock.previewConnectedSource
       .mockResolvedValueOnce({
+        kind: 'online_document',
         documents: [notionDocument('old-1', 'Old plan', 'workspace-old')],
         next_page_parameters: { cursor: 'page-2' },
       })
@@ -216,6 +210,7 @@ describe('Sources: edit-connected', () => {
           }),
       )
       .mockResolvedValueOnce({
+        kind: 'online_document',
         documents: [notionDocument('new-1', 'New plan', 'workspace-new')],
         next_page_parameters: null,
       })
@@ -251,6 +246,7 @@ describe('Sources: edit-connected', () => {
     const workspace = page.getByRole('textbox', { name: /Workspace/ })
     await workspace.fill('new')
     resolveStalePage({
+      kind: 'online_document',
       documents: [notionDocument('old-2', 'Stale plan', 'workspace-old')],
       next_page_parameters: null,
     })
@@ -266,6 +262,7 @@ describe('Sources: edit-connected', () => {
     pluginResponses.data = [notionDatasourcePlugin]
     serveNotionConnection()
     clientMock.previewConnectedSource.mockResolvedValue({
+      kind: 'online_document',
       documents: [
         {
           last_edited_time: '2026-08-30T10:00:00Z',

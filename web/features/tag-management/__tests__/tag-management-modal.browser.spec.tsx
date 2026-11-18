@@ -3,19 +3,11 @@ import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { toast } from '@/app/notifications'
 import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { TagManagementModal } from '../components/tag-management-modal'
 import { renderWithTags } from './render-browser'
 
-const { createTag } = vi.hoisted(() => ({ createTag: vi.fn() }))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, { 'tags.post': createTag }),
-  }
-})
+const createTag = vi.fn()
 const tags = [
   { id: 'tag-1', name: 'Frontend', type: 'app' as const, binding_count: '' },
   { id: 'tag-2', name: 'Backend', type: 'app' as const, binding_count: '' },
@@ -78,7 +70,7 @@ it('submits on blur and locks the pending draft against edits and duplicate subm
 })
 
 it('keeps a failed draft available for correction and retry', async () => {
-  createTag.mockRejectedValueOnce(new Error('Creation failed'))
+  createTag.mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'Creation failed'))
   await renderModal()
   await input().fill('FailTag')
   await userEvent.keyboard('{Enter}')
@@ -116,5 +108,9 @@ it('hides management controls without workspace permission', async () => {
 })
 
 beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
+  onTestFinished(
+    installFakeApi({
+      console: { tags: { get: () => tags, post: (input) => createTag(input) } },
+    }),
+  )
 })

@@ -7,17 +7,35 @@ import type {
 import { page, userEvent } from 'vite-plus/test/browser'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { createTestQueryClient } from '@/test/query-client'
 import PersonalAccessTokens from '../index'
 import { renderWithTokenMessages as render } from './browser-test-env'
 
-const responses = vi.hoisted(() => ({ call: vi.fn() }))
-// boundary: supply operation results while preserving generated options and real Query observers.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withTokenResponses } = await import('./operation-responses')
-  return { ...actual, consoleQuery: withTokenResponses(actual.consoleQuery, responses.call) }
+const responses = { call: vi.fn() }
+beforeEach(() => {
+  const answer = (operation: string) => (input: unknown) => responses.call(operation, input)
+  onTestFinished(
+    installFakeApi({
+      console: {
+        account: {
+          personalAccessTokens: {
+            get: answer('account.personalAccessTokens.get'),
+            post: answer('account.personalAccessTokens.post'),
+            byTokenId: {
+              get: answer('account.personalAccessTokens.byTokenId.get'),
+              delete: answer('account.personalAccessTokens.byTokenId.delete'),
+            },
+          },
+          personalAccessTokenResources: { get: answer('account.personalAccessTokenResources.get') },
+          personalAccessTokenWorkspaces: {
+            get: answer('account.personalAccessTokenWorkspaces.get'),
+          },
+        },
+      },
+    }),
+  )
 })
 vi.unmock('react-i18next')
 
@@ -203,7 +221,7 @@ it('keeps a checked workspace through search loading, retry, and an empty result
       searchCursors.push(cursor)
       if (searchCursors.length === 1) {
         await firstSearch.promise
-        throw new Error('Workspace search unavailable')
+        throw apiError('SERVICE_UNAVAILABLE', 503, 'Workspace search unavailable')
       }
       return { ...lastPage, data: [workspace, sandbox] }
     },
@@ -289,7 +307,8 @@ it.each(['Resources', 'Workspaces'] as const)(
         if (scope === 'Resources' && input.query.resource_type !== 'app')
           return { data: [], next_cursor: null, has_more: false }
         cursors.push(input.query.cursor ?? 0)
-        if (cursors.length === 2) throw new Error('Later page unavailable')
+        if (cursors.length === 2)
+          throw apiError('SERVICE_UNAVAILABLE', 503, 'Later page unavailable')
         if (input.query.cursor === 20) return next.promise
         return candidates
       },

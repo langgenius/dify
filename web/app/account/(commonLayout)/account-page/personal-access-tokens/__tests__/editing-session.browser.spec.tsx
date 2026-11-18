@@ -1,27 +1,19 @@
-import { ORPCError } from '@orpc/client'
+import type { PersonalAccessTokenDetailResponse } from '@dify/contracts/api/console/account/types.gen'
+import type { consoleClient } from '@/service/console'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { consoleQuery } from '@/service/console'
 import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { renderTokenPage, token, tokenList } from './browser-test-env'
 
-const api = vi.hoisted(() => ({ list: vi.fn(), detail: vi.fn(), update: vi.fn(), remove: vi.fn() }))
+const api = {
+  list: vi.fn<typeof consoleClient.account.personalAccessTokens.get>(),
+  detail: vi.fn<typeof consoleClient.account.personalAccessTokens.byTokenId.get>(),
+  update: vi.fn<typeof consoleClient.account.personalAccessTokens.byTokenId.patch>(),
+  remove: vi.fn<(input: unknown) => Promise<void>>(),
+}
 vi.unmock('react-i18next')
-// boundary: supply operation results while preserving generated options and real Query observers.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'account.personalAccessTokens.get': api.list,
-      'account.personalAccessTokens.byTokenId.get': api.detail,
-      'account.personalAccessTokens.byTokenId.patch': api.update,
-      'account.personalAccessTokens.byTokenId.delete': api.remove,
-    }),
-  }
-})
-const saved = {
+const saved: PersonalAccessTokenDetailResponse = {
   token: { ...token, resource_scope_mode: 'all', workspace_scope_mode: 'all' },
   resources: [],
   workspaces: [],
@@ -32,13 +24,28 @@ beforeEach(async () => {
   api.detail.mockReset().mockResolvedValue(saved)
   api.update.mockReset()
   api.remove.mockReset()
-  onTestFinished(guardUnexpectedFetch())
+  onTestFinished(
+    installFakeApi({
+      console: {
+        account: {
+          personalAccessTokens: {
+            get: (input) => api.list(input),
+            byTokenId: {
+              get: (input) => api.detail(input),
+              patch: (input) => api.update(input),
+              delete: (input) => api.remove(input),
+            },
+          },
+        },
+      },
+    }),
+  )
 })
 
 it('retains the edited name after validation failure and saves the loaded version without expiry', async () => {
   api.update
-    .mockRejectedValueOnce(new Error('Select at least one resource.'))
-    .mockResolvedValue(token)
+    .mockRejectedValueOnce(apiError('BAD_REQUEST', 400, 'Select at least one resource.'))
+    .mockResolvedValue(saved)
   const { screen } = await renderTokenPage()
   await screen.getByRole('button', { name: 'Edit', exact: true }).click()
   const dialog = screen.getByRole('dialog')
@@ -50,15 +57,17 @@ it('retains the edited name after validation failure and saves the loaded versio
   await expect.element(name).toHaveValue('renamed')
   await dialog.getByRole('button', { name: 'Save', exact: true }).click()
   await expect.element(dialog).not.toBeInTheDocument()
-  expect(api.update).toHaveBeenLastCalledWith({
-    params: { token_id: token.id },
-    body: {
-      name: 'renamed',
-      version: 1,
-      resource_scope: { mode: 'all', resources: [] },
-      workspace_scope: { mode: 'all', workspace_ids: [] },
-    },
-  })
+  expect(api.update).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      params: { token_id: token.id },
+      body: {
+        name: 'renamed',
+        version: 1,
+        resource_scope: { mode: 'all', resources: [] },
+        workspace_scope: { mode: 'all', workspace_ids: [] },
+      },
+    }),
+  )
   await expect.element(screen.getByRole('button', { name: 'Edit', exact: true })).toHaveFocus()
 })
 
@@ -83,8 +92,8 @@ it('returns to the edit trigger when cancelling during a background list refresh
 it('preserves a draft through a background refresh and reloads the new version only after a conflict', async () => {
   const latest = { ...saved, token: { ...saved.token, name: 'changed elsewhere', version: 2 } }
   api.update.mockImplementation(async ({ body }) => {
-    if (body.version === 1) throw new ORPCError('CONFLICT', { status: 409 })
-    return latest.token
+    if (body.version === 1) throw apiError('CONFLICT', 409, 'Token changed')
+    return latest
   })
   const { screen, queryClient } = await renderTokenPage()
   await screen.getByRole('button', { name: 'Edit', exact: true }).click()
@@ -112,7 +121,7 @@ it('preserves a draft through a background refresh and reloads the new version o
 it('keeps an expired editing draft readable and blocks further saving after the server confirms expiry', async () => {
   api.update.mockImplementation(async () => {
     api.detail.mockResolvedValue({ ...saved, token: { ...saved.token, status: 'expired' } })
-    throw new ORPCError('FORBIDDEN', { status: 403 })
+    throw apiError('FORBIDDEN', 403, 'Token expired')
   })
   const { screen } = await renderTokenPage()
   await screen.getByRole('button', { name: 'Edit', exact: true }).click()
@@ -140,7 +149,7 @@ it('keeps deletion open after failure and removes the row after retry', async ()
   await expect.element(dialog.getByRole('button', { name: 'Cancel' })).toBeDisabled()
   await userEvent.keyboard('{Escape}')
   await expect.element(dialog).toBeVisible()
-  pending.reject(new ORPCError('INTERNAL_SERVER_ERROR'))
+  pending.reject(apiError('INTERNAL_SERVER_ERROR', 500, 'Internal server error'))
   await expect.element(dialog.getByRole('alert')).toHaveTextContent('Action failed')
   await expect.element(dialog.getByRole('button', { name: 'Delete', exact: true })).toBeEnabled()
   await dialog.getByRole('button', { name: 'Delete', exact: true }).click()
@@ -154,7 +163,7 @@ it('keeps deletion open after failure and removes the row after retry', async ()
 it('clears the previous deletion error and returns focus to the current row on cancel', async () => {
   const other = { ...token, id: '019a0000-0000-7000-8000-000000000002', name: 'other-token' }
   api.list.mockResolvedValue(tokenList([token, other]))
-  api.remove.mockRejectedValueOnce(new ORPCError('INTERNAL_SERVER_ERROR'))
+  api.remove.mockRejectedValueOnce(apiError('INTERNAL_SERVER_ERROR', 500, 'Internal server error'))
   const { screen } = await renderTokenPage()
   const first = screen
     .getByRole('row', { name: /release-pipeline/ })

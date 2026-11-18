@@ -1,28 +1,29 @@
+import type { consoleClient } from '@/service/console'
 import { useState } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { AppToaster } from '@/app/notifications/app-toaster'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { installFakeApi } from '@/test/fake-api'
 import { renderFeature } from '../../__tests__/feature-browser-test-env'
 import AnnotationCtrlButton from '../annotation-ctrl-button'
 
-const api = vi.hoisted(() => ({ addAnnotation: vi.fn() }))
+const api = {
+  addAnnotation: vi.fn<typeof consoleClient.apps.byAppId.annotations.post>(),
+}
+// The contract requires a UUID app id.
+const appId = '4d5e6f7a-8b9c-4d0e-8f1a-2b3c4d5e6f7a'
+const annotationId = '7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d'
 vi.unmock('react-i18next')
-// boundary: annotation creation is a generated Console HTTP request.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'apps.byAppId.annotations.post': api.addAnnotation,
-    }),
-  }
-})
 
 beforeEach(async () => {
   await page.viewport(1100, 800)
-  onTestFinished(guardUnexpectedFetch())
-  api.addAnnotation.mockResolvedValue({ id: 'annotation-1' })
+  onTestFinished(
+    installFakeApi({
+      console: {
+        apps: { byAppId: { annotations: { post: (input) => api.addAnnotation(input) } } },
+      },
+    }),
+  )
+  api.addAnnotation.mockReset().mockResolvedValue({ id: annotationId })
 })
 
 function Answer({ answer = 'test answer' }: { answer?: string }) {
@@ -31,7 +32,7 @@ function Answer({ answer = 'test answer' }: { answer?: string }) {
     <>
       <output aria-label="Added annotation">{added}</output>
       <AnnotationCtrlButton
-        appId="test-app"
+        appId={appId}
         messageId="msg-1"
         query="test query"
         answer={answer}
@@ -58,10 +59,10 @@ it('creates an annotation from the answer and displays the returned identity and
   await screen.getByRole('button', { name: 'Add annotation' }).click()
   await expect
     .element(screen.getByRole('status', { name: 'Added annotation' }))
-    .toHaveTextContent('annotation-1:')
+    .toHaveTextContent(`${annotationId}:`)
   await expect.element(screen.getByRole('dialog', { name: 'Action succeeded' })).toBeVisible()
   expect(api.addAnnotation).toHaveBeenCalledExactlyOnceWith({
-    params: { app_id: 'test-app' },
+    params: { app_id: appId },
     body: { message_id: 'msg-1', question: 'test query', answer: 'test answer' },
   })
 })

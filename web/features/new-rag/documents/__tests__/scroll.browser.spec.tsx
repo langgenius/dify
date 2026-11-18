@@ -4,6 +4,7 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { installFakeApi } from '@/test/fake-api'
 import { createKnowledgeSpaceFixture } from '@/test/knowledge-space'
 import { QueryTestingAdapter } from '@/test/query-state-testing-adapter'
 import { KnowledgeSpaceShell } from '../../space/shell'
@@ -14,39 +15,9 @@ vi.mock('@/next/navigation', () => ({
   usePathname: () => '/datasets/new/space-1/documents',
   useSearchParams: () => new URLSearchParams(),
 }))
-const api = vi.hoisted(() => ({
+const api = {
   list: vi.fn<typeof consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get>(),
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'knowledgeFs.spaces.byControlSpaceId.get': async () => createKnowledgeSpaceFixture(),
-      'knowledgeFs.spaces.byControlSpaceId.externalAccess.get': async () => ({
-        revision: 1,
-        agent_enabled: true,
-        mcp_enabled: false,
-        service_api_enabled: false,
-        workflow_enabled: false,
-      }),
-      'knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get': api.list,
-      'knowledgeFs.spaces.byControlSpaceId.sources.get': async () => ({
-        data: [],
-        next_cursor: null,
-      }),
-      'knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get': async () => ({
-        data: [],
-        next_cursor: null,
-      }),
-      'knowledgeFs.spaces.byControlSpaceId.settings.get': async () => ({
-        active_profile_available: false,
-        configuration_state: 'validation-failed',
-      }),
-    }),
-  }
-})
+}
 
 // The unit renderer omits the shell's overflow boundary. This exercises the actual composed
 // shell and results surfaces, including native keyboard scrolling and pagination hit testing.
@@ -72,6 +43,50 @@ it.each([
           user_metadata: {},
         })),
         next_cursor: query?.cursor ? null : 'next-matches',
+      }),
+    )
+    onTestFinished(
+      installFakeApi({
+        console: {
+          knowledgeFs: {
+            spaces: {
+              byControlSpaceId: {
+                get: () => createKnowledgeSpaceFixture(),
+                externalAccess: {
+                  get: () => ({
+                    revision: 1,
+                    agent_enabled: true,
+                    mcp_enabled: false,
+                    service_api_enabled: false,
+                    workflow_enabled: false,
+                  }),
+                },
+                logicalDocuments: { get: (input) => api.list(input) },
+                sources: { get: () => ({ data: [], next_cursor: null }) },
+                backgroundTasks: { get: () => ({ data: [], next_cursor: null }) },
+                settings: {
+                  get: () => ({
+                    active_profile_available: false,
+                    active_profile_revisions: { embedding: null, retrieval: null },
+                    capabilities: {
+                      deep: false,
+                      index: false,
+                      ingest: false,
+                      query: false,
+                      research: false,
+                      source_sync: false,
+                    },
+                    configuration_state: 'validation-failed',
+                    embedding: null,
+                    issues: [{ code: 'validation_failed', field: 'embedding', retryable: true }],
+                    retrieval: null,
+                    revision: 1,
+                  }),
+                },
+              },
+            },
+          },
+        },
       }),
     )
     const { queryClient } = createConsoleQueryWrapper({
@@ -113,7 +128,7 @@ it.each([
       .element(screen.getByRole('link', { name: 'Last document.pdf' }))
       .toBeInTheDocument()
     expect(api.list).toHaveBeenLastCalledWith(
-      expect.objectContaining({ query: { cursor: 'next-matches' } }),
+      expect.objectContaining({ query: expect.objectContaining({ cursor: 'next-matches' }) }),
     )
     expect(document.documentElement.scrollHeight).toBeLessThanOrEqual(height)
   },

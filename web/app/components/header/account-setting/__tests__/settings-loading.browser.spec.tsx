@@ -10,7 +10,7 @@ import {
   seedNetworkAccessGroups,
 } from '@/test/console/network-access'
 import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { installFakeApi } from '@/test/fake-api'
 import { ACCOUNT_SETTING_TAB } from '../constants'
 import AccountSetting from '../index'
 
@@ -19,36 +19,6 @@ const mocks = vi.hoisted(() => ({ loadResource: vi.fn() }))
 // boundary: defer the external translation load while keeping i18next and its consumers real.
 vi.mock('@/i18n/load-resource', () => ({ loadI18nResource: mocks.loadResource }))
 
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.members.get': async () => ({
-        accounts: [
-          {
-            id: 'member-1',
-            name: 'Ada',
-            email: 'ada@example.com',
-            role: 'admin',
-            status: 'active',
-            created_at: 1731000000,
-            last_active_at: 1731000000,
-            roles: [{ id: 'admin', name: 'Admin' }],
-          },
-        ],
-      }),
-      'workspaces.current.rbac.members.byMemberId.rbacRoles.get': async () => ({
-        roles: [{ id: 'admin', name: 'Admin', is_builtin: true, permission_keys: ['app.create'] }],
-      }),
-      'workspaces.current.rbac.roles.get': async () => ({
-        data: [],
-        pagination: { current_page: 1, total_pages: 1, total_count: 0, per_page: 20 },
-      }),
-    }),
-  }
-})
 const resources: Resource = {
   'en-US': {
     appLog: {},
@@ -193,5 +163,57 @@ describe('Settings content loading', () => {
 })
 
 beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
+  onTestFinished(
+    installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            members: {
+              get: () => ({
+                accounts: [
+                  {
+                    id: '6c7d8e9f-0a1b-4c2d-9e3f-4a5b6c7d8e9f',
+                    name: 'Ada',
+                    email: 'ada@example.com',
+                    avatar_url: null,
+                    role: 'admin',
+                    status: 'active',
+                    created_at: 1731000000,
+                    last_active_at: 1731000000,
+                    roles: [{ id: 'admin', name: 'Admin' }],
+                  },
+                ],
+              }),
+            },
+            rbac: {
+              members: {
+                byMemberId: {
+                  rbacRoles: {
+                    get: ({ params }) => ({
+                      account_id: params.member_id,
+                      roles: [
+                        {
+                          id: 'admin',
+                          name: 'Admin',
+                          type: 'workspace',
+                          is_builtin: true,
+                          permission_keys: ['app.create'],
+                        },
+                      ],
+                    }),
+                  },
+                },
+              },
+              roles: {
+                get: () => ({
+                  data: [],
+                  pagination: { current_page: 1, total_pages: 1, total_count: 0, per_page: 20 },
+                }),
+              },
+            },
+          },
+        },
+      },
+    }),
+  )
 })

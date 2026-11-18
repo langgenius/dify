@@ -7,46 +7,34 @@ import { manager, toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { captureDownloads } from '@/test/download'
-import {
-  createSnippetListItemFixture as createSnippet,
-  createSnippetFixture,
-} from '@/test/fixtures/snippet'
+import { apiError, installFakeApi } from '@/test/fake-api'
+import { createSnippetFixture, createSnippetListItemFixture } from '@/test/fixtures/snippet'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import SnippetList from '../../index'
 import SnippetCard from '../snippet-card'
 
+// Snippet routes take UUID ids, and list items carry the author and icon fields.
+const snippetId = '00000000-0000-4000-8000-000000000001'
+const createSnippet = (overrides: Partial<SnippetListItem> = {}) =>
+  createSnippetListItemFixture({
+    id: snippetId,
+    author_name: 'Creator',
+    icon_info: null,
+    ...overrides,
+  })
+
 const sales = { id: 'tag-1', name: 'Sales', type: 'snippet' as const, binding_count: '0' }
 
-const api = vi.hoisted(() => ({
+const api = {
   list: vi.fn(),
   update: vi.fn(),
   remove: vi.fn(),
   export: vi.fn(),
   bindTags: vi.fn(),
   members: vi.fn(),
-}))
+}
 // boundary: the application router is outside these list operations.
 vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.customizedSnippets.get': api.list,
-      'workspaces.current.customizedSnippets.bySnippetId.patch': api.update,
-      'workspaces.current.customizedSnippets.bySnippetId.delete': api.remove,
-      'workspaces.current.customizedSnippets.bySnippetId.export.get': api.export,
-      'tagBindings.post': api.bindTags,
-    }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'tags.get': async () => [sales],
-      'workspaces.current.members.get': api.members,
-    }),
-  }
-})
 
 let snippets: SnippetListItem[]
 
@@ -110,7 +98,27 @@ async function remove() {
 
 beforeEach(() => {
   vi.resetAllMocks()
-  onTestFinished(guardUnexpectedFetch())
+  onTestFinished(
+    installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            customizedSnippets: {
+              get: (input) => api.list(input),
+              bySnippetId: {
+                patch: (input) => api.update(input),
+                delete: (input) => api.remove(input),
+                export: { get: (input) => api.export(input) },
+              },
+            },
+            members: { get: () => api.members() },
+          },
+        },
+        tagBindings: { post: (input) => api.bindTags(input) },
+        tags: { get: () => [sales] },
+      },
+    }),
+  )
   snippets = [createSnippet()]
   api.list.mockImplementation(async () => ({
     data: snippets,
@@ -121,11 +129,10 @@ beforeEach(() => {
   }))
   api.update.mockImplementation(async ({ body }) => {
     snippets = snippets.map((item) => ({ ...item, ...body }))
-    return createSnippetFixture(body)
+    return createSnippetFixture({ id: snippetId, icon_info: null, ...body })
   })
   api.remove.mockImplementation(async () => {
     snippets = []
-    return { result: 'success' }
   })
   api.bindTags.mockImplementation(async () => {
     snippets = snippets.map((item) => ({ ...item, tags: [sales] }))
@@ -224,17 +231,16 @@ it('exports the YAML content and filename through the real download owner', asyn
   expect(download.blob.type).toBe('application/yaml')
   expect(await download.blob.text()).toBe('kind: snippet\nname: Tone Rewriter\n')
   expect(api.export).toHaveBeenCalledExactlyOnceWith(
-    {
-      params: { snippet_id: 'snippet-1' },
-      query: { include_secret: 'false', workflow_id: undefined },
-    },
-    { context: { silent: true } },
+    expect.objectContaining({
+      params: { snippet_id: snippetId },
+      query: { include_secret: 'false' },
+    }),
   )
 })
 
 it('shows an export failure without starting a download', async () => {
   const downloads = captureDownloads()
-  api.export.mockRejectedValueOnce(new Error('export failed'))
+  api.export.mockRejectedValueOnce(apiError('EXPORT_FAILED', 503, 'export failed'))
   await setup({ permissions: ['snippets.create_and_modify'] })
   await openMenu()
   await page.getByRole('menuitem', { name: 'snippet.menu.exportSnippet' }).click()
@@ -253,7 +259,7 @@ it('refreshes the real list with edited info after saving', async () => {
 })
 
 it('keeps an edit failure visible with the entered values and the unchanged list', async () => {
-  api.update.mockRejectedValueOnce(new Error('Update failed'))
+  api.update.mockRejectedValueOnce(apiError('UPDATE_FAILED', 503, 'Update failed'))
   await setup({ list: true })
   const dialog = await edit()
   const name = dialog.getByRole('textbox', { name: 'workflow.snippet.nameLabel' })
@@ -277,7 +283,7 @@ it('removes a confirmed snippet from the real list', async () => {
 })
 
 it('keeps a failed deletion open and the snippet in the list', async () => {
-  api.remove.mockRejectedValueOnce(new Error('Delete failed'))
+  api.remove.mockRejectedValueOnce(apiError('DELETE_FAILED', 503, 'Delete failed'))
   await setup({ list: true })
   const dialog = await remove()
   await dialog.getByRole('button', { name: 'snippet.menu.deleteSnippet' }).click()
@@ -297,7 +303,8 @@ it('shows the bound tag after the real list refreshes', async () => {
   await userEvent.keyboard('{Escape}')
   await expect.element(page.getByRole('combobox', { name: 'Sales: Tone Rewriter' })).toBeVisible()
   expect(api.bindTags).toHaveBeenCalledExactlyOnceWith(
-    { body: { tag_ids: ['tag-1'], target_id: 'snippet-1', type: 'snippet' } },
-    { context: { silent: true } },
+    expect.objectContaining({
+      body: { tag_ids: ['tag-1'], target_id: snippetId, type: 'snippet' },
+    }),
   )
 })

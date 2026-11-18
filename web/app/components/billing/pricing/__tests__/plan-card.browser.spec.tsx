@@ -3,23 +3,21 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { installFakeApi } from '@/test/fake-api'
 import { CloudPlanCard } from '../plan-card'
 import { PlanFeatureInfotip } from '../plan-card/features'
 
-const api = vi.hoisted(() => ({
+const api = {
   subscription: vi.fn<typeof consoleClient.billing.subscription.get>(),
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'billing.subscription.get': api.subscription,
+}
+beforeEach(() => {
+  api.subscription.mockReset()
+  onTestFinished(
+    installFakeApi({
+      console: { billing: { subscription: { get: (input) => api.subscription(input) } } },
     }),
-  }
+  )
 })
-beforeEach(() => api.subscription.mockReset())
 
 it('keeps both education checkout actions inside the dialog on a narrow phone', async () => {
   await page.viewport(320, 700)
@@ -96,7 +94,7 @@ it.each(['professional', 'sandbox'] as const)(
       await expect.element(action).toHaveFocus()
       expect(colors()).toEqual(ready)
       await userEvent.keyboard('{Enter}')
-      expect(api.subscription).toHaveBeenCalledTimes(1)
+      await expect.poll(() => api.subscription).toHaveBeenCalledTimes(1)
     } finally {
       request.resolve({ url: '' })
     }

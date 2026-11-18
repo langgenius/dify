@@ -2,42 +2,19 @@ import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.
 import { page, userEvent } from 'vite-plus/test/browser'
 import { toast } from '@/app/notifications'
 import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { TagManagementModal } from '../components/tag-management-modal'
 import { renderWithTags } from './render-browser'
 
-const mocks = vi.hoisted(() => ({ update: vi.fn(), remove: vi.fn(), tags: [] as Tag[] }))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'tags.get': async () => mocks.tags,
-      'tags.byTagId.patch': async (input: {
-        params: { tag_id: string }
-        body: { name: string }
-      }) => {
-        await mocks.update(input)
-        const updated = {
-          ...mocks.tags.find((tag) => tag.id === input.params.tag_id)!,
-          name: input.body.name,
-        }
-        mocks.tags = mocks.tags.map((tag) => (tag.id === input.params.tag_id ? updated : tag))
-        return updated
-      },
-      'tags.byTagId.delete': async (input: { params: { tag_id: string } }) => {
-        await mocks.remove(input)
-        mocks.tags = mocks.tags.filter((tag) => tag.id !== input.params.tag_id)
-      },
-    }),
-  }
-})
-const baseTag: Tag = { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: '3' }
+const mocks = { update: vi.fn(), remove: vi.fn(), tags: [] as Tag[] }
+// Tag routes address tags by UUID.
+const frontendId = '6c1f5d0a-8e2b-4c3d-9f7a-1b2c3d4e5f60'
+const backendId = '7d2e6f1b-9f3c-4d4e-8a8b-2c3d4e5f6071'
+const baseTag: Tag = { id: frontendId, name: 'Frontend', type: 'app', binding_count: '3' }
 function renderEditor(bindingCount = '3') {
   mocks.tags = [
     { ...baseTag, binding_count: bindingCount },
-    { ...baseTag, id: 'tag-2', name: 'Backend', binding_count: '' },
+    { ...baseTag, id: backendId, name: 'Backend', binding_count: '' },
   ]
   return renderWithTags(<TagManagementModal type="app" show onClose={() => {}} />, mocks.tags)
 }
@@ -68,7 +45,7 @@ it('renames a tag through the real management list and exits editing', async () 
   await expect.element(page.getByText('Frontend V2', { exact: true })).toBeVisible()
   await expect.element(input()).not.toBeInTheDocument()
   expect(mocks.update).toHaveBeenCalledExactlyOnceWith({
-    params: { tag_id: 'tag-1' },
+    params: { tag_id: frontendId },
     body: { name: 'Frontend V2' },
   })
 })
@@ -90,7 +67,7 @@ it('leaves unchanged names alone and rejects an empty rename without losing the 
 })
 
 it('shows a rename failure and restores the original name for editing again', async () => {
-  mocks.update.mockRejectedValueOnce(new Error('Update failed'))
+  mocks.update.mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'Update failed'))
   await renderEditor()
   await edit().click()
   await input().fill('Broken Name')
@@ -106,7 +83,7 @@ it('removes an unbound tag from the real list without a success notification', a
   await remove().click()
   await expect.element(page.getByText('Frontend', { exact: true })).not.toBeInTheDocument()
   await expect.element(page.getByText('Backend', { exact: true })).toBeVisible()
-  expect(mocks.remove).toHaveBeenCalledExactlyOnceWith({ params: { tag_id: 'tag-1' } })
+  expect(mocks.remove).toHaveBeenCalledExactlyOnceWith({ params: { tag_id: frontendId } })
   await expect
     .element(page.getByRole('region', { name: 'Notifications' }).getByRole('dialog'))
     .not.toBeInTheDocument()
@@ -120,7 +97,7 @@ it('keeps a pending deletion single-submission and removes the tag only after co
     await renderEditor('0')
     await remove().click()
     await vi.advanceTimersByTimeAsync(200)
-    expect(mocks.remove).toHaveBeenCalledOnce()
+    await expect.poll(() => mocks.remove).toHaveBeenCalledOnce()
     await expect.element(page.getByText('Frontend', { exact: true })).toBeVisible()
     await remove().click()
     await vi.advanceTimersByTimeAsync(200)
@@ -149,7 +126,7 @@ it('cancels a bound-tag deletion without changing the list and deletes after con
 })
 
 it('shows a deletion error and keeps both tags available', async () => {
-  mocks.remove.mockRejectedValueOnce(new Error('Delete failed'))
+  mocks.remove.mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'Delete failed'))
   await renderEditor('0')
   await remove().click()
   await expect.element(page.getByText('Delete failed', { exact: true })).toBeVisible()
@@ -158,5 +135,28 @@ it('shows a deletion error and keeps both tags available', async () => {
 })
 
 beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
+  onTestFinished(
+    installFakeApi({
+      console: {
+        tags: {
+          get: () => mocks.tags,
+          byTagId: {
+            patch: async (input) => {
+              await mocks.update(input)
+              const updated = {
+                ...mocks.tags.find((tag) => tag.id === input.params.tag_id)!,
+                name: input.body.name,
+              }
+              mocks.tags = mocks.tags.map((tag) => (tag.id === input.params.tag_id ? updated : tag))
+              return updated
+            },
+            delete: async (input) => {
+              await mocks.remove(input)
+              mocks.tags = mocks.tags.filter((tag) => tag.id !== input.params.tag_id)
+            },
+          },
+        },
+      },
+    }),
+  )
 })

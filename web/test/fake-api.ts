@@ -1,11 +1,5 @@
 import type { consoleRouterContract } from '@dify/contracts/console'
-import type {
-  AnyContractProcedure,
-  AnyContractRouter,
-  InferSchemaInput,
-  InferSchemaOutput,
-} from '@orpc/contract'
-import { contractLoaders } from '@dify/contracts/api/console/orpc.gen'
+import type { AnyContractProcedure, InferSchemaInput, InferSchemaOutput } from '@orpc/contract'
 import { marketplaceRouterContract } from '@dify/contracts/marketplace'
 import { ValidationError } from '@orpc/contract'
 import { SmartCoercionPlugin } from '@orpc/json-schema'
@@ -15,6 +9,7 @@ import { ZodToJsonSchemaConverter } from '@orpc/zod/zod4'
 import { vi } from 'vite-plus/test'
 import { API_PREFIX, PUBLIC_API_PREFIX } from '@/config'
 import { MARKETPLACE_API_PREFIX } from '@/features/marketplace/api'
+import { loadConsoleContractForSegment } from '@/service/console/contract-loader'
 import { repeatedQueryArrayRules } from '@/service/console/openapi-url'
 
 type HandlerResult<T> = T | Promise<T>
@@ -33,7 +28,7 @@ export type ContractHandlers<T> = T extends AnyContractProcedure
 export type FakeConsoleHandlers = ContractHandlers<typeof consoleRouterContract>
 export type FakeMarketplaceHandlers = ContractHandlers<typeof marketplaceRouterContract>
 
-type ApiBase = 'console' | 'public' | 'marketplace'
+type ApiBase = 'console' | 'public' | 'marketplace' | 'origin'
 type RouteMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 
 export type RouteContext = {
@@ -69,9 +64,36 @@ export function route(
   return { method, base, path, handler }
 }
 
-/** Build an error for a handler to throw, or for a deferred response to reject with. */
-export function apiError(code: string, status: number, message: string) {
-  return new ORPCError(code, { status, message })
+/**
+ * Build an error for a handler to throw, or for a deferred response to reject with. It is sent in
+ * the Python API's shape, `{ code, message, status, ...details }`, which the Web transport parses.
+ */
+export function apiError(
+  code: string,
+  status: number,
+  message: string,
+  details?: Record<string, unknown>,
+) {
+  return new ORPCError(code, { status, message, data: details })
+}
+
+class FakeNetworkFailure extends TypeError {
+  constructor() {
+    super('Failed to fetch')
+  }
+}
+
+/**
+ * Build a network failure for a handler to throw, or for a deferred response to reject with:
+ * the request then fails the way an offline `fetch` or `XMLHttpRequest` does, with no response.
+ */
+export function networkError() {
+  return new FakeNetworkFailure()
+}
+
+function backendErrorBody(error: ORPCError<string, unknown>) {
+  const details = error.data && typeof error.data === 'object' ? error.data : {}
+  return { code: error.code, message: error.message, status: error.status, ...details }
 }
 
 /** Stream server-sent events in the `data: <json>` framing the chat clients parse. */
@@ -91,6 +113,8 @@ const prefixes: Record<ApiBase, URL> = {
   console: new URL(API_PREFIX),
   public: new URL(PUBLIC_API_PREFIX),
   marketplace: new URL(MARKETPLACE_API_PREFIX),
+  // Relative endpoints on the page's own origin, such as the device-flow `/openapi/v1/...` calls.
+  origin: new URL('/', window.location.origin),
 }
 
 function baseOf(url: URL): ApiBase | undefined {
@@ -194,17 +218,11 @@ function implementLeaves(
 
 async function buildConsoleRouter(tree: HandlerTree) {
   const leaves = collectLeaves(tree)
-  const loaders = contractLoaders as unknown as Record<string, () => Promise<AnyContractRouter>>
   const segments = [...new Set(leaves.map(([path]) => path[0]!))]
+  // Load segments exactly as the app's client does, including the merged enterprise contract.
   const contracts = Object.assign(
     {},
-    ...(await Promise.all(
-      segments.map((segment) => {
-        const load = loaders[segment]
-        if (!load) throw new Error(`Fake API: unknown console contract segment "${segment}"`)
-        return load()
-      }),
-    )),
+    ...(await Promise.all(segments.map((segment) => loadConsoleContractForSegment(segment)))),
   ) as Record<string, unknown>
   return implementLeaves(contracts, leaves)
 }
@@ -214,20 +232,42 @@ function createContractHandler(router: Record<string, unknown>, problems: string
     // Query strings and path params arrive as text; the Python API coerces them by schema.
     plugins: [new SmartCoercionPlugin({ schemaConverters: [new ZodToJsonSchemaConverter()] })],
     clientInterceptors: [
-      ({ next, input, procedure, ...options }) =>
-        next({ ...options, input: restoreHeaderCase(procedure, input), procedure }),
+      async ({ next, input, procedure, context, ...options }) => {
+        try {
+          return await next({
+            ...options,
+            context,
+            input: restoreHeaderCase(procedure, input),
+            procedure,
+          })
+        } catch (error) {
+          // oRPC would turn this into a 500; flag it so the dispatcher rejects like an offline fetch.
+          if (error instanceof FakeNetworkFailure) (context as RequestContext).networkFailed = true
+          throw error
+        }
+      },
     ],
     interceptors: [
       async ({ next, request }) => {
         try {
           return await next()
         } catch (error) {
-          if (error instanceof ORPCError && error.cause instanceof ValidationError) {
+          if (!(error instanceof ORPCError)) throw error
+          if (error.cause instanceof ValidationError) {
             problems.push(
               `${request.method} ${request.url.pathname}: ${error.message} ${JSON.stringify(error.cause.issues)}`,
             )
+            throw error
           }
-          throw error
+          // Answer handler errors the way the Python API does, not in oRPC's error envelope.
+          return {
+            matched: true,
+            response: {
+              status: error.status,
+              headers: { 'content-type': 'application/json' },
+              body: backendErrorBody(error),
+            },
+          }
         }
       },
     ],
@@ -236,14 +276,12 @@ function createContractHandler(router: Record<string, unknown>, problems: string
 
 function errorResponse(error: unknown) {
   if (error instanceof ORPCError)
-    return Response.json(
-      { code: error.code, message: error.message, status: error.status },
-      { status: error.status },
-    )
+    return Response.json(backendErrorBody(error), { status: error.status })
   throw error
 }
 
 type Dispatch = (request: Request) => Promise<Response>
+type RequestContext = { networkFailed?: boolean }
 
 function createFakeXMLHttpRequest(dispatch: Dispatch) {
   type Listener = (event: Event) => void
@@ -365,27 +403,31 @@ export function installFakeApi(api: FakeApi) {
       problems,
     ))
 
+  const nativeFetch = globalThis.fetch
   const dispatch: Dispatch = async (request) => {
     const url = new URL(request.url)
+    // `data:` and `blob:` URLs are local resources (image previews, downloads), never the network.
+    if (url.protocol === 'data:' || url.protocol === 'blob:') return nativeFetch(request)
     const base = baseOf(url)
     if (!base) {
       problems.push(`unexpected network request: ${request.method} ${url.href}`)
       throw new TypeError('Failed to fetch')
     }
     if (base === 'console' && api.console) {
+      const context: RequestContext = {}
       const { matched, response } = await (
         await getConsoleHandler()
-      ).handle(restoreIndexedArrays(request.clone()), {
-        prefix: prefixPath('console'),
-        context: {},
-      })
+      ).handle(restoreIndexedArrays(request.clone()), { prefix: prefixPath('console'), context })
+      if (context.networkFailed) throw networkError()
       if (matched) return response!
     }
     if (base === 'marketplace' && api.marketplace) {
+      const context: RequestContext = {}
       const { matched, response } = await getMarketplaceHandler().handle(request.clone(), {
         prefix: prefixPath('marketplace'),
-        context: {},
+        context,
       })
+      if (context.networkFailed) throw networkError()
       if (matched) return response!
     }
     const path = url.pathname.slice(prefixPath(base).length) || '/'

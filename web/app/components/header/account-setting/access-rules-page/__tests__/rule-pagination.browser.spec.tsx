@@ -1,20 +1,11 @@
 import type { consoleClient } from '@/service/console'
 import { createDeferred } from '@/test/deferred'
+import { installFakeApi } from '@/test/fake-api'
 import { renderAccessRule, ruleFor, rulePage } from './access-rule-fixture'
 
-const api = vi.hoisted(() => ({
+const api = {
   list: vi.fn<typeof consoleClient.workspaces.current.rbac.workspace.datasets.accessPolicy.get>(),
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.rbac.workspace.datasets.accessPolicy.get': api.list,
-    }),
-  }
-})
+}
 
 it('loads the next rules at the expanded list boundary and preserves the first page while it is pending', async () => {
   const first = Array.from({ length: 20 }, (_, index) => {
@@ -31,6 +22,19 @@ it('loads the next rules at the expanded list boundary and preserves the first p
     .mockImplementation(async (input) =>
       input?.query?.page === 2 ? pending.promise : rulePage(first, 1, 2, 21),
     )
+  onTestFinished(
+    installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            rbac: {
+              workspace: { datasets: { accessPolicy: { get: (input) => api.list(input) } } },
+            },
+          },
+        },
+      },
+    }),
+  )
   const { screen, queryClient } = await renderAccessRule('dataset', false)
   onTestFinished(() => queryClient.clear())
   const trigger = screen.getByRole('button', { name: /^permission.accessRule.datasetTitle/ })

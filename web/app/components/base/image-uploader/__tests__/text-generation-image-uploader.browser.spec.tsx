@@ -4,18 +4,14 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
+import { installFakeApi, route } from '@/test/fake-api'
 import { Resolution, TransferMethod } from '@/types/app'
 import TextGenerationImageUploader from '../text-generation-image-uploader'
 import { brokenImageUrl, imageFile, imageUrl } from './image-fixtures'
 
 vi.mock('@/next/navigation', () => ({ useParams: () => ({ token: 'shared-app' }) }))
-const api = vi.hoisted(() => ({
-  upload:
-    vi.fn<
-      (options: { data: FormData }, isPublic?: boolean, url?: string) => Promise<{ id: string }>
-    >(),
-}))
-vi.mock('@/service/base', () => ({ upload: api.upload }))
+// Public web-app uploads go through XMLHttpRequest to the public API, answered by the fake API.
+const api = { upload: vi.fn<(file: File) => Promise<{ id: string }>>() }
 
 const createSettings = (overrides: Partial<VisionSettings> = {}): VisionSettings => ({
   enabled: true,
@@ -51,7 +47,18 @@ function UploadExample({
   )
 }
 
-beforeEach(() => api.upload.mockResolvedValue({ id: 'uploaded-image' }))
+beforeEach(() => {
+  api.upload.mockReset().mockResolvedValue({ id: 'uploaded-image' })
+  onTestFinished(
+    installFakeApi({
+      routes: [
+        route('POST', 'public', '/files/upload', async ({ request }) =>
+          api.upload((await request.formData()).get('file') as File),
+        ),
+      ],
+    }),
+  )
+})
 afterEach(() => toast.dismiss())
 
 it.each([

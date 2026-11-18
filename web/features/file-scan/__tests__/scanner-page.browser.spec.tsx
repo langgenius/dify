@@ -2,33 +2,21 @@ import type {
   FileScanProviderResponse,
   FileScanProviderTypeResponse,
 } from '@dify/contracts/api/console/file-scan/types.gen'
-import { ORPCError } from '@orpc/client'
+import type { consoleClient } from '@/service/console'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { FileScanProvidersPage } from '../scanner-page'
 
-const api = vi.hoisted(() => ({
-  deleteProvider: vi.fn(),
-  listProviders: vi.fn(),
-  listProviderTypes: vi.fn(),
-  testProvider: vi.fn(),
-}))
-
-// boundary: the console API transport; generated keys, policies and Query observers stay real.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'fileScan.providerTypes.get': api.listProviderTypes,
-      'fileScan.providers.byProviderId.delete': api.deleteProvider,
-      'fileScan.providers.byProviderId.test.post': api.testProvider,
-      'fileScan.providers.get': api.listProviders,
-    }),
-  }
-})
+const api = {
+  deleteProvider: vi.fn<typeof consoleClient.fileScan.providers.byProviderId.delete>(),
+  listProviders: vi.fn<typeof consoleClient.fileScan.providers.get>(),
+  listProviderTypes: vi.fn<typeof consoleClient.fileScan.providerTypes.get>(),
+  testProvider: vi.fn<typeof consoleClient.fileScan.providers.byProviderId.test.post>(),
+}
+// Provider ids are UUIDs in the contract.
+const scannerId = '00000000-0000-4000-8000-000000000001'
 
 const providerTypes: FileScanProviderTypeResponse[] = [
   { provider_type: 'cloudmersive', available: true, credential_fields: ['api_key'] },
@@ -37,7 +25,7 @@ const providerTypes: FileScanProviderTypeResponse[] = [
 
 function scanner(overrides: Partial<FileScanProviderResponse> = {}): FileScanProviderResponse {
   return {
-    id: 'scanner-1',
+    id: scannerId,
     name: 'Office scanner',
     provider_type: 'cloudmersive',
     config: {},
@@ -79,6 +67,24 @@ const addButton = () => page.getByRole('button', { name: 'fileScan.scanner.add' 
 
 beforeEach(() => {
   vi.clearAllMocks()
+  onTestFinished(
+    installFakeApi({
+      console: {
+        fileScan: {
+          providerTypes: { get: () => api.listProviderTypes() },
+          providers: {
+            get: () => api.listProviders(),
+            byProviderId: {
+              delete: async (input) => {
+                await api.deleteProvider(input)
+              },
+              test: { post: (input) => api.testProvider(input) },
+            },
+          },
+        },
+      },
+    }),
+  )
 })
 
 it('lists scanners with their state and shows why a failing one failed', async () => {
@@ -86,7 +92,7 @@ it('lists scanners with their state and shows why a failing one failed', async (
     providers: [
       scanner(),
       scanner({
-        id: 'scanner-2',
+        id: '00000000-0000-4000-8000-000000000002',
         name: 'Backup scanner',
         provider_type: 'scanii',
         status: 'error',
@@ -125,7 +131,9 @@ it('is read-only for members who cannot manage the workspace', async () => {
 })
 
 it('offers a retry when the list cannot be loaded', async () => {
-  api.listProviders.mockRejectedValue(new ORPCError('INTERNAL_SERVER_ERROR', { status: 500 }))
+  api.listProviders.mockRejectedValue(
+    apiError('INTERNAL_SERVER_ERROR', 500, 'Internal server error'),
+  )
   api.listProviderTypes.mockResolvedValue({ data: providerTypes })
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
     currentWorkspace: { role: 'owner' },
@@ -143,9 +151,7 @@ it('offers a retry when the list cannot be loaded', async () => {
 })
 
 it('tests a scanner and reports a failed check next to it', async () => {
-  api.testProvider.mockRejectedValue(
-    new ORPCError('BAD_REQUEST', { status: 400, message: 'Quota exhausted.' }),
-  )
+  api.testProvider.mockRejectedValue(apiError('BAD_REQUEST', 400, 'Quota exhausted.'))
   await renderPage()
 
   await page.getByRole('button', { name: /fileScan\.scanner\.test/ }).click()
@@ -153,12 +159,12 @@ it('tests a scanner and reports a failed check next to it', async () => {
   await expect.element(page.getByRole('alert')).toBeVisible()
   expect(api.testProvider).toHaveBeenCalledTimes(1)
   expect(api.testProvider.mock.calls[0]?.[0]).toMatchObject({
-    params: { provider_id: 'scanner-1' },
+    params: { provider_id: scannerId },
   })
 })
 
 it('deletes a scanner only after confirmation', async () => {
-  api.deleteProvider.mockResolvedValue({ result: 'success' })
+  api.deleteProvider.mockResolvedValue(undefined)
   await renderPage()
 
   await page.getByRole('button', { name: /common\.operation\.delete/ }).click()
@@ -172,7 +178,7 @@ it('deletes a scanner only after confirmation', async () => {
 
   await expect.poll(() => api.deleteProvider.mock.calls.length).toBe(1)
   expect(api.deleteProvider.mock.calls[0]?.[0]).toMatchObject({
-    params: { provider_id: 'scanner-1' },
+    params: { provider_id: scannerId },
   })
 })
 

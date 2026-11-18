@@ -4,10 +4,9 @@ import type { consoleClient } from '@/service/console'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { consoleQuery } from '@/service/console'
 import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import {
   datasetsPage,
-  job,
   legacyDataset,
   members,
   recoveryKeys,
@@ -15,7 +14,13 @@ import {
   space,
   spacesPage,
   upgradeCards,
+  job as upgradeJob,
 } from './new-knowledge-list-test-env'
+
+// Dataset ids are UUIDs in the contract.
+const datasetId = '00000000-0000-4000-8000-000000000001'
+const job = (overrides: Parameters<typeof upgradeJob>[0] = {}) =>
+  upgradeJob({ old_dataset_id: datasetId, ...overrides })
 
 // The upgrade card reads job detail on this production polling interval.
 const UPGRADE_POLL_INTERVAL = 2_000
@@ -27,49 +32,54 @@ function fakeUpgradePolling() {
   })
 }
 
-const api = vi.hoisted(() => ({
+const api = {
   spaces: vi.fn<typeof consoleClient.knowledgeFs.spaces.get>(),
   deleteSpace: vi.fn<typeof consoleClient.knowledgeFs.spaces.byControlSpaceId.delete>(),
   members: vi.fn<typeof consoleClient.workspaces.current.members.get>(),
   upgradeJobs: vi.fn<typeof consoleClient.datasets.knowledgeFsUpgradeJobs.get>(),
   upgradeJob: vi.fn<typeof consoleClient.datasets.byDatasetId.knowledgeFsUpgrades.byJobId.get>(),
   datasets: vi.fn<typeof consoleClient.datasets.get>(),
-}))
-
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'knowledgeFs.spaces.get': api.spaces,
-      'knowledgeFs.spaces.byControlSpaceId.delete': api.deleteSpace,
-      'workspaces.current.members.get': api.members,
-      'datasets.knowledgeFsUpgradeJobs.get': api.upgradeJobs,
-      'datasets.get': api.datasets,
-      'datasets.byDatasetId.knowledgeFsUpgrades.byJobId.get': api.upgradeJob,
-      'datasets.apiBaseInfo.get': async () => ({ api_base_url: 'https://api.example.com' }),
-      'datasets.externalKnowledgeApi.get': async () => ({
-        data: [],
-        has_more: false,
-        limit: 100,
-        page: 1,
-        total: 0,
-      }),
-      'tags.get': async () => [
-        { binding_count: '1', id: 'tag-1', name: 'Customer support', type: 'knowledge' },
-        { binding_count: '1', id: 'tag-2', name: 'Public docs', type: 'knowledge' },
-      ],
-    }),
-  }
-})
+}
 
 describe('NewKnowledgeList upgrade recovery', () => {
   beforeEach(async () => {
     await page.viewport(1000, 760)
-    onTestFinished(guardUnexpectedFetch())
+    onTestFinished(
+      installFakeApi({
+        console: {
+          knowledgeFs: {
+            spaces: {
+              get: (input) => api.spaces(input),
+              byControlSpaceId: {
+                delete: async (input) => {
+                  await api.deleteSpace(input)
+                },
+              },
+            },
+          },
+          workspaces: { current: { members: { get: (input) => api.members(input) } } },
+          datasets: {
+            get: (input) => api.datasets(input),
+            knowledgeFsUpgradeJobs: { get: (input) => api.upgradeJobs(input) },
+            byDatasetId: {
+              knowledgeFsUpgrades: { byJobId: { get: (input) => api.upgradeJob(input) } },
+            },
+            apiBaseInfo: { get: () => ({ api_base_url: 'https://api.example.com' }) },
+            externalKnowledgeApi: {
+              get: () => ({ data: [], has_more: false, limit: 100, page: 1, total: 0 }),
+            },
+          },
+          tags: {
+            get: () => [
+              { binding_count: '1', id: 'tag-1', name: 'Customer support', type: 'knowledge' },
+              { binding_count: '1', id: 'tag-2', name: 'Public docs', type: 'knowledge' },
+            ],
+          },
+        },
+      }),
+    )
     api.spaces.mockResolvedValue(spacesPage())
-    api.deleteSpace.mockResolvedValue({ result: 'success' })
+    api.deleteSpace.mockResolvedValue(undefined)
     api.members.mockResolvedValue({ accounts: members })
     api.upgradeJobs.mockResolvedValue({ data: [] })
     api.upgradeJob.mockImplementation(() => new Promise(() => {}))
@@ -88,7 +98,9 @@ describe('NewKnowledgeList upgrade recovery', () => {
       await expect
         .element(card.getByRole('button', { name: 'common.operation.retry' }))
         .toBeInTheDocument()
-      expect(api.datasets).toHaveBeenCalledWith({ query: { ids: ['dataset-1'] } })
+      expect(api.datasets).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.objectContaining({ ids: [datasetId] }) }),
+      )
     })
 
     it('batches legacy dataset lookups and bounds failed-job recovery', async () => {
@@ -129,7 +141,7 @@ describe('NewKnowledgeList upgrade recovery', () => {
       const running = job()
       api.upgradeJobs.mockResolvedValue({ data: [running] })
       api.datasets
-        .mockRejectedValueOnce(new Error('request failed'))
+        .mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'request failed'))
         .mockResolvedValue(datasetsPage([legacyDataset(running)]))
       await setup()
 
@@ -149,7 +161,9 @@ describe('NewKnowledgeList upgrade recovery', () => {
       await setup()
 
       await expect.poll(() => upgradeCards('Support knowledge').elements().length).toBe(2)
-      expect(api.datasets).toHaveBeenCalledWith({ query: { ids: ['dataset-1'] } })
+      expect(api.datasets).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.objectContaining({ ids: [datasetId] }) }),
+      )
     })
 
     it('offers retry for an older failure after a newer migration succeeds', async () => {

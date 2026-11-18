@@ -1,31 +1,21 @@
 import type { FileScanProviderResponse } from '@dify/contracts/api/console/file-scan/types.gen'
-import { ORPCError } from '@orpc/client'
+import type { consoleClient } from '@/service/console'
 import { useState } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { FileScanSetting } from '../file-scan-setting'
 import { useFileScanPolicyController } from '../use-file-scan-policy'
 
-const api = vi.hoisted(() => ({
-  getPolicy: vi.fn(),
-  listProviders: vi.fn(),
-  putPolicy: vi.fn(),
-}))
+const api = {
+  getPolicy: vi.fn<typeof consoleClient.datasets.byDatasetId.fileScanPolicy.get>(),
+  listProviders: vi.fn<typeof consoleClient.fileScan.providers.get>(),
+  putPolicy: vi.fn<typeof consoleClient.datasets.byDatasetId.fileScanPolicy.put>(),
+}
 
-// boundary: the console API transport; generated keys, policies and Query observers stay real.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'datasets.byDatasetId.fileScanPolicy.get': api.getPolicy,
-      'datasets.byDatasetId.fileScanPolicy.put': api.putPolicy,
-      'fileScan.providers.get': api.listProviders,
-    }),
-  }
-})
+// Dataset ids are UUIDs in the contract.
+const datasetId = '00000000-0000-4000-8000-000000000001'
 
 function scanner(overrides: Partial<FileScanProviderResponse> = {}): FileScanProviderResponse {
   return {
@@ -48,14 +38,14 @@ const disabledPolicy = {
   provider_id: null,
   on_unavailable: 'block',
   on_unscannable: 'block',
-}
+} as const
 
 /** Stands in for a settings page: it owns the only Save and Cancel buttons. */
 function SettingsPage({ readonly }: { readonly: boolean }) {
   const fileScan = useFileScanPolicyController({
     product: 'dataset',
     readonly,
-    resourceId: 'dataset-1',
+    resourceId: datasetId,
   })
   const [result, setResult] = useState('')
 
@@ -87,7 +77,22 @@ async function renderSetting({
 } = {}) {
   api.getPolicy.mockResolvedValue(disabledPolicy)
   api.listProviders.mockResolvedValue({ data: providers })
-  api.putPolicy.mockImplementation(async ({ body }: { body: typeof disabledPolicy }) => body)
+  api.putPolicy.mockImplementation(async ({ body }) => ({ ...disabledPolicy, ...body }))
+  onTestFinished(
+    installFakeApi({
+      console: {
+        datasets: {
+          byDatasetId: {
+            fileScanPolicy: {
+              get: (input) => api.getPolicy(input),
+              put: (input) => api.putPolicy(input),
+            },
+          },
+        },
+        fileScan: { providers: { get: () => api.listProviders() } },
+      },
+    }),
+  )
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
     currentWorkspace: { role },
     features: { enable_file_scan: enabled },
@@ -176,7 +181,7 @@ it('starts off, reveals the options when turned on and saves the chosen policy',
         on_unavailable: 'block',
         on_unscannable: 'allow',
       },
-      params: { dataset_id: 'dataset-1' },
+      params: { dataset_id: datasetId },
     })
   await expect.element(draftState()).toHaveTextContent('clean')
   await expect.element(saveResult()).toHaveTextContent('saved')
@@ -197,9 +202,7 @@ it('drops the unsaved changes when the page cancels', async () => {
 
 it('shows the reason the backend gives when the policy is rejected', async () => {
   await renderSetting()
-  api.putPolicy.mockRejectedValue(
-    new ORPCError('bad_request', { status: 400, message: 'Scanner "Office scanner" is gone.' }),
-  )
+  api.putPolicy.mockRejectedValue(apiError('bad_request', 400, 'Scanner "Office scanner" is gone.'))
 
   await enableSwitch().click()
   await page.getByRole('combobox', { name: 'fileScan.policy.scanner' }).click()

@@ -1,26 +1,14 @@
-import { ORPCError } from '@orpc/client'
+import type { consoleClient } from '@/service/console'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import InitPasswordPopup from '../InitPasswordPopup'
 
-const { validatePassword, getInitStatus, replace } = vi.hoisted(() => ({
-  validatePassword: vi.fn(),
-  getInitStatus: vi.fn(),
-  replace: vi.fn(),
-}))
+const replace = vi.hoisted(() => vi.fn())
+const validatePassword = vi.fn<typeof consoleClient.init.post>()
+const getInitStatus = vi.fn<typeof consoleClient.init.get>()
 
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'init.get': getInitStatus,
-      'init.post': validatePassword,
-    }),
-  }
-})
 // boundary: Next.js navigation context is not mounted in a focused Browser Mode component render.
 vi.mock('@/next/navigation', () => ({ useRouter: () => ({ replace }) }))
 
@@ -34,6 +22,16 @@ const renderPopup = () => {
 }
 
 beforeEach(() => {
+  onTestFinished(
+    installFakeApi({
+      console: {
+        init: {
+          get: (input) => getInitStatus(input),
+          post: (input) => validatePassword(input),
+        },
+      },
+    }),
+  )
   validatePassword.mockReset()
   replace.mockReset()
   getInitStatus.mockReset().mockResolvedValue({ status: 'not_started' })
@@ -58,7 +56,7 @@ it('asks for the password before submitting', async () => {
 })
 
 it('reports an incorrect password on the field until it is edited', async () => {
-  validatePassword.mockRejectedValue(new ORPCError('init_validate_failed', { status: 401 }))
+  validatePassword.mockRejectedValue(apiError('init_validate_failed', 401, 'Invalid password'))
   const screen = await renderPopup()
   const password = screen.getByLabelText('login.adminInitPassword')
 
@@ -75,7 +73,7 @@ it('reports an incorrect password on the field until it is edited', async () => 
 })
 
 it('reports other failures inside the form until the password is edited', async () => {
-  validatePassword.mockRejectedValue(new ORPCError('internal_error', { status: 500 }))
+  validatePassword.mockRejectedValue(apiError('internal_error', 500, 'Internal error'))
   const screen = await renderPopup()
   const password = screen.getByLabelText('login.adminInitPassword')
 

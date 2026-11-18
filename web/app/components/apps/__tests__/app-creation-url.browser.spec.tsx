@@ -12,11 +12,12 @@ import navigation from '@/i18n/locales/en-US/navigation.json'
 import time from '@/i18n/locales/en-US/time.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { installFakeApi } from '@/test/fake-api'
 import { List } from '../list'
 
-const api = vi.hoisted(() => ({
+const api = {
   apps: vi.fn<typeof consoleClient.apps.get>(),
-}))
+}
 vi.unmock('react-i18next')
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
@@ -24,22 +25,6 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
   usePathname: () => '/apps',
   useSearchParams: () => new URLSearchParams(),
 }))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'apps.get': api.apps,
-      'apps.starred.get': api.apps,
-      'explore.apps.get': async () => ({ recommended_apps: [], categories: [] }),
-      'features.get': async () => zGetFeaturesResponse.parse({}),
-      'tags.get': async () => [],
-      'workspaces.current.members.get': async () => ({ accounts: [] }),
-    }),
-  }
-})
-
 const testPageUrl = window.location.href
 const currentUrl = () => `${window.location.pathname}${window.location.search}`
 afterEach(() => window.history.replaceState(null, '', testPageUrl))
@@ -54,6 +39,17 @@ async function setup(listUrl: string) {
     .mockResolvedValue(
       zAppPagination.parse({ data: [], page: 1, limit: 30, has_more: false, total: 0 }),
     )
+  onTestFinished(
+    installFakeApi({
+      console: {
+        apps: { get: (input) => api.apps(input), starred: { get: (input) => api.apps(input) } },
+        explore: { apps: { get: () => ({ recommended_apps: [], categories: [] }) } },
+        features: { get: () => zGetFeaturesResponse.parse({}) },
+        tags: { get: () => [] },
+        workspaces: { current: { members: { get: () => ({ accounts: [] }) } } },
+      },
+    }),
+  )
   const i18n = createInstance()
   await i18n.init({
     lng: 'en-US',

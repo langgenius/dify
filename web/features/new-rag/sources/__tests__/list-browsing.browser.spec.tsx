@@ -6,22 +6,13 @@ import { resetSourceServer, sourceResponses } from './source-server'
 
 // boundary: the component test controls route inputs and observes navigation destinations.
 vi.mock('@/next/navigation', async () => (await import('./source-server')).navigation)
-// boundary: replace operation responses while preserving generated queries, observers and business hooks.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  return (await import('./source-server')).withSourceResponses(actual)
-})
 
-const unexpectedFetch = vi.fn(() => Promise.reject(new Error('Unexpected request')))
 beforeEach(() => {
   resetSourceServer()
-  vi.stubGlobal('fetch', unexpectedFetch)
 })
 afterEach(() => {
   clearSourceClients()
   vi.useRealTimers()
-  vi.unstubAllGlobals()
-  expect(unexpectedFetch).not.toHaveBeenCalled()
 })
 
 describe('Sources: list-browsing', () => {
@@ -31,10 +22,12 @@ describe('Sources: list-browsing', () => {
     await render(<SourcesPage knowledgeSpaceId="space-1" />, { settle: false })
 
     await expect.element(page.getByRole('progressbar')).toBeInTheDocument()
-    expect(lastInput('sources')).toEqual({
-      params: { control_space_id: 'space-1' },
-      query: { limit: 200 },
-    })
+    await expect
+      .poll(() => lastInput('sources'))
+      .toEqual({
+        params: { control_space_id: 'space-1' },
+        query: { limit: 200 },
+      })
   })
 
   it('renders the designed empty state and exposes source-type shortcuts', async () => {

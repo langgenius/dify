@@ -5,34 +5,31 @@ import { render } from 'vitest-browser-react'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { installFakeApi } from '@/test/fake-api'
 import { PricingContent } from '../content'
 
-const api = vi.hoisted(() => ({
+const api = {
   subscription: vi.fn<typeof consoleClient.billing.subscription.get>(),
   invoices: vi.fn<typeof consoleClient.billing.invoices.get>(),
   education: vi.fn<typeof consoleClient.account.education.get>(),
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses, withConsoleResponses } =
-    await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'billing.subscription.get': api.subscription,
-      'billing.invoices.get': api.invoices,
-    }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'account.education.get': api.education,
-    }),
-  }
-})
+}
 
 const initialUrl = window.location.href
 beforeEach(() => {
   api.subscription.mockReset()
   api.invoices.mockReset()
   api.education.mockReset()
+  onTestFinished(
+    installFakeApi({
+      console: {
+        billing: {
+          subscription: { get: (input) => api.subscription(input) },
+          invoices: { get: (input) => api.invoices(input) },
+        },
+        account: { education: { get: (input) => api.education(input) } },
+      },
+    }),
+  )
 })
 afterEach(() => window.history.replaceState(null, '', initialUrl))
 
@@ -75,10 +72,9 @@ it.each([
       await page.getByRole('radio', { name: 'billing.pricing.monthly' }).click()
     await page.getByRole('button', { name: 'billing.plansCommon.upgradeToTeam' }).click()
     await expect.poll(() => window.location.href).toBe(url)
-    expect(api.subscription).toHaveBeenCalledExactlyOnceWith(
-      { query: { plan: 'team', interval } },
-      { context: { silent: true } },
-    )
+    await expect
+      .poll(() => api.subscription)
+      .toHaveBeenCalledExactlyOnceWith({ query: { plan: 'team', interval } })
     expect(api.education).not.toHaveBeenCalled()
     await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
   },
@@ -100,10 +96,9 @@ it('offers education pricing before Team checkout and serializes the selected pu
   await expect
     .element(dialog.getByRole('button', { name: 'education.educationPricingConfirm.continue' }))
     .toBeDisabled()
-  expect(api.subscription).toHaveBeenCalledExactlyOnceWith(
-    { query: { plan: 'team', interval: 'year' } },
-    { context: { silent: true } },
-  )
+  await expect
+    .poll(() => api.subscription)
+    .toHaveBeenCalledExactlyOnceWith({ query: { plan: 'team', interval: 'year' } })
   const url = destination('team-education-notice')
   request.resolve({ url })
   await expect.poll(() => window.location.href).toBe(url)
@@ -139,10 +134,9 @@ it.each([
     await manage.click()
     await dialog.getByRole('button', { name: 'billing.plansCommon.manageSubscription' }).click()
     await expect.poll(() => window.location.href).toBe(url)
-    expect(api.subscription).toHaveBeenCalledExactlyOnceWith(
-      { query: { plan, interval: selectedInterval } },
-      { context: { silent: true } },
-    )
+    await expect
+      .poll(() => api.subscription)
+      .toHaveBeenCalledExactlyOnceWith({ query: { plan, interval: selectedInterval } })
     expect(api.invoices).not.toHaveBeenCalled()
   },
 )
@@ -158,7 +152,7 @@ it.each(['month', 'year'] as const)(
     await expect.element(manage).toHaveAttribute('aria-disabled', 'true')
     await expect.element(manage).toHaveFocus()
     await userEvent.keyboard('{Enter}')
-    expect(api.invoices).toHaveBeenCalledTimes(1)
+    await expect.poll(() => api.invoices).toHaveBeenCalledTimes(1)
     expect(api.subscription).not.toHaveBeenCalled()
     expect(window.location.href).toBe(initialUrl)
     const url = destination('billing-portal')

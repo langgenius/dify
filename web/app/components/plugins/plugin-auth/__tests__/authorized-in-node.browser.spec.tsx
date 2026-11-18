@@ -4,18 +4,11 @@ import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createDeferred } from '@/test/deferred'
+import { installFakeApi, route } from '@/test/fake-api'
 import AuthorizedInNode from '../authorized-in-node'
 import { createCredential, credentialInfo, pluginPayload } from './credential-fixtures'
 
-const api = vi.hoisted(() => ({ info: vi.fn<() => Promise<ReturnType<typeof credentialInfo>>>() }))
-// boundary: legacy credential-info GET has no generated operation; replace its response only.
-vi.mock('@/service/base', () => ({
-  get: (url: string) => {
-    if (url.startsWith('/workspaces/current/tool-provider/builtin/test-provider/credential/info'))
-      return api.info()
-    throw new Error(`Unexpected GET: ${url}`)
-  },
-}))
+const api = { info: vi.fn<() => Promise<ReturnType<typeof credentialInfo>>>() }
 
 function NodeCredential({ initialId }: { initialId?: string }) {
   const [credentialId, setCredentialId] = useState(initialId)
@@ -31,6 +24,18 @@ function NodeCredential({ initialId }: { initialId?: string }) {
 async function setup(initialId?: string) {
   const { queryClient } = createConsoleQueryWrapper({ workspacePermissionKeys: ['credential.use'] })
   onTestFinished(() => queryClient.clear())
+  onTestFinished(
+    installFakeApi({
+      routes: [
+        route(
+          'GET',
+          'console',
+          '/workspaces/current/tool-provider/builtin/test-provider/credential/info',
+          () => api.info(),
+        ),
+      ],
+    }),
+  )
   return render(
     <QueryClientTestProvider queryClient={queryClient}>
       <NodeCredential initialId={initialId} />

@@ -1,4 +1,7 @@
-import type { KnowledgeFsSettingsResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type {
+  KnowledgeFsSettingsResponse,
+  KnowledgeFsSourceWorkflowResponse,
+} from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { SyncPolicyValue } from '../../setup/sync-policy-field'
 import type { Source, SourceWorkflowRun } from '../../source-models'
 import { useState } from 'react'
@@ -6,16 +9,16 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { CrawlSelectionForm } from '../crawl-selection-form'
 
-const clientMock = vi.hoisted(() => ({ asyncImport: vi.fn() }))
+const clientMock = { asyncImport: vi.fn() }
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }))
-const settingsState = vi.hoisted(() => ({
+const settingsState = {
   configurationState: 'active' as 'active' | 'setup-required',
-}))
+}
 
-const workflowApiResponse = vi.hoisted(() => (workflow: SourceWorkflowRun) => ({
+const workflowApiResponse = (workflow: SourceWorkflowRun) => ({
   canceled_at: workflow.canceledAt ?? null,
   checkpoint: workflow.checkpoint,
   completed_at: workflow.completedAt ?? null,
@@ -25,7 +28,8 @@ const workflowApiResponse = vi.hoisted(() => (workflow: SourceWorkflowRun) => ({
   id: workflow.id,
   knowledge_space_id: workflow.knowledgeSpaceId,
   kind: workflow.kind,
-  last_error_code: workflow.lastErrorCode ?? null,
+  last_error_code: (workflow.lastErrorCode ??
+    null) as KnowledgeFsSourceWorkflowResponse['last_error_code'],
   max_execution_attempts: workflow.maxExecutionAttempts,
   progress_completed: workflow.progressCompleted,
   progress_failed: workflow.progressFailed,
@@ -34,9 +38,9 @@ const workflowApiResponse = vi.hoisted(() => (workflow: SourceWorkflowRun) => ({
   source_id: workflow.sourceId ?? null,
   state: workflow.state,
   updated_at: workflow.updatedAt,
-}))
+})
 
-const settingsResponse = vi.hoisted(() => (): KnowledgeFsSettingsResponse => {
+const settingsResponse = (): KnowledgeFsSettingsResponse => {
   const active = settingsState.configurationState === 'active'
   return {
     active_profile_available: active,
@@ -55,29 +59,35 @@ const settingsResponse = vi.hoisted(() => (): KnowledgeFsSettingsResponse => {
     retrieval: null,
     revision: 1,
   }
-})
+}
 
 vi.mock('@/next/navigation', () => ({
   usePathname: () => '/datasets/new/space-1/sources/new/website',
   useRouter: () => routerMock,
 }))
 
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses, withConsoleResponses } =
-    await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post': async (
-        input: never,
-      ) => workflowApiResponse(await clientMock.asyncImport(input)),
+function installSourceApi() {
+  onTestFinished(
+    installFakeApi({
+      console: {
+        knowledgeFs: {
+          spaces: {
+            byControlSpaceId: {
+              settings: { get: () => settingsResponse() },
+              sources: {
+                bySourceId: {
+                  asyncImport: {
+                    post: async (input) => workflowApiResponse(await clientMock.asyncImport(input)),
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'knowledgeFs.spaces.byControlSpaceId.settings.get': async () => settingsResponse(),
-    }),
-  }
-})
+  )
+}
 
 const source: Source = {
   connectionId: 'connection-1',
@@ -205,7 +215,7 @@ async function selectSyncPolicy(user: typeof userEvent, mode: 'custom' | 'interv
 describe('CrawlSelectionForm', () => {
   beforeEach(async () => {
     await page.viewport(1000, 760)
-    onTestFinished(guardUnexpectedFetch())
+    installSourceApi()
     clientMock.asyncImport.mockResolvedValue({ ...run, checkpoint: 'import', state: 'queued' })
     settingsState.configurationState = 'active'
   })
@@ -374,7 +384,7 @@ describe('CrawlSelectionForm', () => {
 
   it('reuses the idempotency key when an async import response is lost', async () => {
     clientMock.asyncImport
-      .mockRejectedValueOnce(new Error('response lost'))
+      .mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'response lost'))
       .mockResolvedValueOnce({ ...run, checkpoint: 'import', state: 'queued' })
     const user = userEvent
     await renderSelectionForm()

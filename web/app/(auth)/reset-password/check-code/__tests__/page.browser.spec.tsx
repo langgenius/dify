@@ -1,8 +1,9 @@
+import type { consoleClient } from '@/service/console'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/storage'
-import { consoleClient } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { installFakeApi } from '@/test/fake-api'
 import CheckCodePage from '../page'
 
 const navigation = vi.hoisted(() => ({
@@ -21,19 +22,7 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(navigation.search),
 }))
 
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'forgotPassword.post': vi.fn(),
-      'forgotPassword.validity.post': vi.fn(),
-    }),
-  }
-})
-
-const verifyCode = vi.mocked(consoleClient.forgotPassword.validity.post)
+const verifyCode = vi.fn<typeof consoleClient.forgotPassword.validity.post>()
 
 async function renderPage() {
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper()
@@ -45,6 +34,11 @@ async function renderPage() {
 }
 
 beforeEach(() => {
+  onTestFinished(
+    installFakeApi({
+      console: { forgotPassword: { validity: { post: (input) => verifyCode(input) } } },
+    }),
+  )
   navigation.back.mockReset()
   navigation.push.mockReset()
   navigation.replace.mockReset()
@@ -74,14 +68,17 @@ it('focuses the one-time code field and submits the native form with Enter', asy
   await userEvent.keyboard('{Enter}')
 
   await vi.waitFor(() =>
-    expect(verifyCode).toHaveBeenCalledWith({
-      body: {
-        code: '123456',
-        email: 'user@example.com',
-        token: 'email-token',
-      },
-    }),
+    expect(verifyCode).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: {
+          code: '123456',
+          email: 'user@example.com',
+          token: 'email-token',
+        },
+      }),
+    ),
   )
+  await vi.waitFor(() => expect(navigation.push).toHaveBeenCalled())
   expect(navigation.push).toHaveBeenCalledWith(
     '/reset-password/set-password?email=user%40example.com&token=verified-token',
   )

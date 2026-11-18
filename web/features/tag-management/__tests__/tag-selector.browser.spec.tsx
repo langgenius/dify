@@ -1,35 +1,16 @@
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { toast } from '@/app/notifications'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { TagSelector } from '../components/tag-selector'
 import { renderWithTags } from './render-browser'
 
-const mocks = vi.hoisted(() => ({
+const mocks = {
   tags: [] as Tag[],
   bind: vi.fn(),
   unbind: vi.fn(),
   create: vi.fn(),
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses, withConsoleResponses } =
-    await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'tagBindings.post': (input: Parameters<typeof actual.consoleClient.tagBindings.post>[0]) =>
-        mocks.bind(input),
-      'tagBindings.remove.post': (
-        input: Parameters<typeof actual.consoleClient.tagBindings.remove.post>[0],
-      ) => mocks.unbind(input),
-    }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'tags.get': async () => mocks.tags,
-      'tags.post': mocks.create,
-    }),
-  }
-})
+}
 const tags: Tag[] = [
   { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: '' },
   { id: 'tag-2', name: 'Backend', type: 'app', binding_count: '' },
@@ -134,7 +115,7 @@ it('applies removal on close and leaves unchanged selections alone', async () =>
 })
 
 it('shows the binding failure after closing the popup', async () => {
-  mocks.unbind.mockRejectedValueOnce(new Error('Unbind failed'))
+  mocks.unbind.mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'Unbind failed'))
   await renderSelector()
   await trigger().click()
   await page.getByRole('option', { name: 'Frontend' }).click()
@@ -215,5 +196,23 @@ it.each([false, true])(
 )
 
 beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
+  onTestFinished(
+    installFakeApi({
+      console: {
+        tags: { get: () => mocks.tags, post: (input) => mocks.create(input) },
+        tagBindings: {
+          post: async (input) => {
+            await mocks.bind(input)
+            return { result: 'success' }
+          },
+          remove: {
+            post: async (input) => {
+              await mocks.unbind(input)
+              return { result: 'success' }
+            },
+          },
+        },
+      },
+    }),
+  )
 })

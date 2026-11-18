@@ -1,10 +1,10 @@
+import { apiError, installFakeApi, route } from '@/test/fake-api'
 import { renderDevicePage } from '../../__tests__/device-page-fixture'
 
-const api = vi.hoisted(() => ({
-  context: vi.fn(),
-  approve: vi.fn(),
-  search: new URLSearchParams(),
-}))
+const api = vi.hoisted(() => ({ search: new URLSearchParams() }))
+const fetchContext = vi.fn<() => unknown>()
+const approveExternal =
+  vi.fn<(request: { userCode: string; csrfToken: string | null }) => unknown>()
 // boundary: Next routing supplies and scrubs the external SSO return URL.
 vi.mock('@/next/navigation', () => ({
   useSearchParams: () => api.search,
@@ -15,23 +15,6 @@ vi.mock('@/next/navigation', () => ({
   }),
   usePathname: () => '/device',
 }))
-vi.mock('@/service/device-flow', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/device-flow')>()),
-  fetchApprovalContext: api.context,
-  approveExternal: api.approve,
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'account.profile.get': async () => {
-        throw new Error('No console session')
-      },
-    }),
-  }
-})
 const context = {
   subject_email: 'gareth@company.com',
   subject_issuer: 'Okta (okta.company.com)',
@@ -40,27 +23,54 @@ const context = {
   expires_at: '2099-01-01T00:00:00Z',
 }
 beforeEach(() => {
+  onTestFinished(
+    installFakeApi({
+      console: {
+        account: {
+          profile: {
+            // The signed-out state is a failed profile probe; a 401 would start the app's
+            // token refresh and sign-in redirect, which belong to the running application.
+            get: () => {
+              throw apiError('forbidden', 403, 'No console session')
+            },
+          },
+        },
+      },
+      routes: [
+        route('GET', 'origin', '/openapi/v1/oauth/device/approval-context', () => fetchContext()),
+        route('POST', 'origin', '/openapi/v1/oauth/device/approve-external', async ({ request }) =>
+          approveExternal({
+            userCode: ((await request.json()) as { user_code: string }).user_code,
+            csrfToken: request.headers.get('X-CSRF-Token'),
+          }),
+        ),
+      ],
+    }),
+  )
   api.search = new URLSearchParams({ sso_verified: '1' })
-  api.context.mockReset().mockResolvedValue(context)
-  api.approve.mockReset().mockResolvedValue(undefined)
+  fetchContext.mockReset().mockResolvedValue(context)
+  approveExternal.mockReset().mockResolvedValue({})
 })
 
 it('authorizes the displayed SSO identity with its server context and reaches success', async () => {
-  const { screen, queryClient } = await renderDevicePage()
-  onTestFinished(() => queryClient.clear())
+  const { screen } = await renderDevicePage()
   await expect.element(screen.getByText(context.subject_email)).toBeVisible()
   await expect.element(screen.getByText(context.subject_issuer)).toBeVisible()
   await screen.getByRole('button', { name: 'deviceFlow.authorize.approve' }).click()
   await expect
     .element(screen.getByRole('heading', { name: 'deviceFlow.success.title' }))
     .toBeVisible()
-  expect(api.approve).toHaveBeenCalledWith(context, context.user_code)
+  expect(approveExternal).toHaveBeenCalledWith({
+    userCode: context.user_code,
+    csrfToken: context.csrf_token,
+  })
 })
 
 it('shows an invalid session when the server cannot supply an approval identity', async () => {
-  api.context.mockRejectedValueOnce(new Error('network'))
-  const { screen, queryClient } = await renderDevicePage()
-  onTestFinished(() => queryClient.clear())
+  fetchContext.mockRejectedValueOnce(
+    apiError('server_error', 500, 'Server error', { error: 'server_error' }),
+  )
+  const { screen } = await renderDevicePage()
   await expect
     .element(screen.getByRole('heading', { name: 'deviceFlow.authorize.sessionInvalidTitle' }))
     .toBeVisible()
@@ -70,9 +80,10 @@ it('shows an invalid session when the server cannot supply an approval identity'
 })
 
 it('retains the SSO identity on approval failure and succeeds after retry', async () => {
-  api.approve.mockRejectedValueOnce(new Error('unexpected'))
-  const { screen, queryClient } = await renderDevicePage()
-  onTestFinished(() => queryClient.clear())
+  approveExternal.mockRejectedValueOnce(
+    apiError('unexpected', 400, 'Unexpected', { error: 'unexpected' }),
+  )
+  const { screen } = await renderDevicePage()
   const approve = screen.getByRole('button', { name: 'deviceFlow.authorize.approve' })
   await approve.click()
   await expect.element(screen.getByText('deviceFlow.approveError.default')).toBeVisible()

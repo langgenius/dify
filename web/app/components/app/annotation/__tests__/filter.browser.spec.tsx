@@ -5,28 +5,18 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { installFakeApi } from '@/test/fake-api'
 import Filter from '../filter'
 
-const countAnnotations = vi.hoisted(() =>
-  vi.fn<typeof consoleClient.apps.byAppId.annotations.count.get>(),
-)
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'apps.byAppId.annotations.count.get': countAnnotations,
-    }),
-  }
-})
+const countAnnotations = vi.fn<typeof consoleClient.apps.byAppId.annotations.count.get>()
+
+const appId = '019a0000-0000-7000-8000-000000000001'
 
 // Filter exposes a controlled search value; the fixture supplies only that public prop contract.
 function ControlledFilter() {
   const [query, setQuery] = useState<QueryParam>({ keyword: 'initial' })
   return (
-    <Filter appId="app-1" queryParams={query} setQueryParams={setQuery}>
+    <Filter appId={appId} queryParams={query} setQueryParams={setQuery}>
       <button type="button">Add annotation</button>
     </Filter>
   )
@@ -43,7 +33,13 @@ async function renderFilter() {
 
 beforeEach(() => {
   countAnnotations.mockReset()
-  onTestFinished(guardUnexpectedFetch())
+  onTestFinished(
+    installFakeApi({
+      console: {
+        apps: { byAppId: { annotations: { count: { get: (input) => countAnnotations(input) } } } },
+      },
+    }),
+  )
 })
 
 it('withholds filters until the annotation count arrives', async () => {

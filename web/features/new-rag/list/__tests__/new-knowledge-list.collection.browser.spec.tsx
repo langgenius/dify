@@ -1,7 +1,6 @@
 import type { consoleClient } from '@/service/console'
 import { page, userEvent } from 'vite-plus/test/browser'
-import { createHttpError } from '@/service/http-error'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import {
   datasetsPage,
   knowledgeList,
@@ -12,51 +11,56 @@ import {
   spacesPage,
 } from './new-knowledge-list-test-env'
 
-const api = vi.hoisted(() => ({
+const api = {
   spaces: vi.fn<typeof consoleClient.knowledgeFs.spaces.get>(),
   deleteSpace: vi.fn<typeof consoleClient.knowledgeFs.spaces.byControlSpaceId.delete>(),
   members: vi.fn<typeof consoleClient.workspaces.current.members.get>(),
   upgradeJobs: vi.fn<typeof consoleClient.datasets.knowledgeFsUpgradeJobs.get>(),
   upgradeJob: vi.fn<typeof consoleClient.datasets.byDatasetId.knowledgeFsUpgrades.byJobId.get>(),
   datasets: vi.fn<typeof consoleClient.datasets.get>(),
-}))
-
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'knowledgeFs.spaces.get': api.spaces,
-      'knowledgeFs.spaces.byControlSpaceId.delete': api.deleteSpace,
-      'workspaces.current.members.get': api.members,
-      'datasets.knowledgeFsUpgradeJobs.get': api.upgradeJobs,
-      'datasets.get': api.datasets,
-      'datasets.byDatasetId.knowledgeFsUpgrades.byJobId.get': api.upgradeJob,
-      'datasets.apiBaseInfo.get': async () => ({ api_base_url: 'https://api.example.com' }),
-      'datasets.externalKnowledgeApi.get': async () => ({
-        data: [],
-        has_more: false,
-        limit: 100,
-        page: 1,
-        total: 0,
-      }),
-      'tags.get': async () => [
-        { binding_count: '1', id: 'tag-1', name: 'Customer support', type: 'knowledge' },
-        { binding_count: '1', id: 'tag-2', name: 'Public docs', type: 'knowledge' },
-      ],
-    }),
-  }
-})
+}
 
 const lastSpacesQuery = () => api.spaces.mock.calls.at(-1)?.[0]?.query
 
 describe('NewKnowledgeList collection', () => {
   beforeEach(async () => {
     await page.viewport(1000, 760)
-    onTestFinished(guardUnexpectedFetch())
+    onTestFinished(
+      installFakeApi({
+        console: {
+          knowledgeFs: {
+            spaces: {
+              get: (input) => api.spaces(input),
+              byControlSpaceId: {
+                delete: async (input) => {
+                  await api.deleteSpace(input)
+                },
+              },
+            },
+          },
+          workspaces: { current: { members: { get: (input) => api.members(input) } } },
+          datasets: {
+            get: (input) => api.datasets(input),
+            knowledgeFsUpgradeJobs: { get: (input) => api.upgradeJobs(input) },
+            byDatasetId: {
+              knowledgeFsUpgrades: { byJobId: { get: (input) => api.upgradeJob(input) } },
+            },
+            apiBaseInfo: { get: () => ({ api_base_url: 'https://api.example.com' }) },
+            externalKnowledgeApi: {
+              get: () => ({ data: [], has_more: false, limit: 100, page: 1, total: 0 }),
+            },
+          },
+          tags: {
+            get: () => [
+              { binding_count: '1', id: 'tag-1', name: 'Customer support', type: 'knowledge' },
+              { binding_count: '1', id: 'tag-2', name: 'Public docs', type: 'knowledge' },
+            ],
+          },
+        },
+      }),
+    )
     api.spaces.mockResolvedValue(spacesPage())
-    api.deleteSpace.mockResolvedValue({ result: 'success' })
+    api.deleteSpace.mockResolvedValue(undefined)
     api.members.mockResolvedValue({ accounts: members })
     api.upgradeJobs.mockResolvedValue({ data: [] })
     api.upgradeJob.mockImplementation(() => new Promise(() => {}))
@@ -152,7 +156,7 @@ describe('NewKnowledgeList collection', () => {
         .mockResolvedValueOnce(
           spacesPage([space('space-1', 'Support knowledge')], { hasMore: true }),
         )
-        .mockRejectedValueOnce(new Error('request failed'))
+        .mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'request failed'))
         .mockResolvedValueOnce(spacesPage([space('space-2', 'Engineering handbook')], { page: 2 }))
       await setup()
 
@@ -168,7 +172,7 @@ describe('NewKnowledgeList collection', () => {
     it.each([404, 503])(
       'shows an unavailable state without retry for a %s response',
       async (status) => {
-        api.spaces.mockRejectedValue(createHttpError(new Response(null, { status })))
+        api.spaces.mockRejectedValue(apiError('UNAVAILABLE', status, 'Unavailable'))
         await setup()
 
         await expect.element(page.getByText('knowledgeSpace.unavailableTitle')).toBeInTheDocument()
@@ -181,7 +185,7 @@ describe('NewKnowledgeList collection', () => {
     it('retries other collection failures', async () => {
       const user = userEvent
       api.spaces
-        .mockRejectedValueOnce(new Error('request failed'))
+        .mockRejectedValueOnce(apiError('INTERNAL_SERVER_ERROR', 500, 'request failed'))
         .mockResolvedValueOnce(spacesPage([space('space-1', 'Support knowledge')]))
       await setup()
 

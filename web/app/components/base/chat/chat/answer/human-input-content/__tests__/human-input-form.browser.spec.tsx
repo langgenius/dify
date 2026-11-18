@@ -6,15 +6,13 @@ import { UserActionButtonType } from '@/app/components/workflow/nodes/human-inpu
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { installFakeApi, route } from '@/test/fake-api'
 import { TransferMethod } from '@/types/app'
 import HumanInputForm from '../human-input-form'
 import { UnsubmittedHumanInputContent } from '../unsubmitted'
 
-// oxlint-disable-next-line typescript/no-deprecated -- The production file picker still uses the XHR upload transport.
-const upload = vi.hoisted(() => vi.fn<typeof import('@/service/base').upload>())
-
-vi.mock('@/service/base', () => ({ upload }))
+// The production file picker still uploads through XMLHttpRequest; the fake API answers it.
+const upload = vi.fn<(file: File) => { id: string } | Promise<{ id: string }>>()
 vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/chat' }))
 
 const currentTimestamp = Math.floor(Date.now() / 1000)
@@ -50,10 +48,16 @@ async function renderWithQueries(ui: React.ReactElement) {
 }
 
 beforeEach(() => {
-  upload.mockReset().mockImplementation(async ({ data }) => ({
-    id: `uploaded-${(data.get('file') as File).name}`,
-  }))
-  onTestFinished(guardUnexpectedFetch())
+  upload.mockReset().mockImplementation((file) => ({ id: `uploaded-${file.name}` }))
+  onTestFinished(
+    installFakeApi({
+      routes: [
+        route('POST', 'console', '/files/upload', async ({ request }) =>
+          upload((await request.formData()).get('file') as File),
+        ),
+      ],
+    }),
+  )
 })
 
 it('submits the visible form values and keeps them available after a failed attempt', async () => {
@@ -98,8 +102,7 @@ it('submits the visible form values and keeps them available after a failed atte
 it('waits for every rendered select and file upload before enabling submission', async () => {
   const singleUpload = createDeferred<{ id: string }>()
   const listUpload = createDeferred<{ id: string }>()
-  upload.mockImplementation(({ data }) => {
-    const file = data.get('file') as File
+  upload.mockImplementation((file) => {
     return file.name === 'main.png' ? singleUpload.promise : listUpload.promise
   })
   const onSubmit = vi.fn().mockResolvedValue(undefined)

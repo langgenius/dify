@@ -5,26 +5,22 @@ import { render } from 'vitest-browser-react'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { installFakeApi } from '@/test/fake-api'
 import examples from '../examples'
 import GetSchema from '../get-schema'
 
-const importSchema = vi.hoisted(() =>
-  vi.fn<typeof consoleClient.workspaces.current.toolProvider.api.remote.get>(),
-)
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.toolProvider.api.remote.get': importSchema,
-    }),
-  }
-})
+const importSchema = vi.fn<typeof consoleClient.workspaces.current.toolProvider.api.remote.get>()
 
 beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
+  onTestFinished(
+    installFakeApi({
+      console: {
+        workspaces: {
+          current: { toolProvider: { api: { remote: { get: (input) => importSchema(input) } } } },
+        },
+      },
+    }),
+  )
   importSchema.mockReset()
 })
 
@@ -78,9 +74,11 @@ it('validates the URL, prevents duplicate imports, then replaces the editable sc
   await userEvent.keyboard('{Enter}')
   await expect.element(submit).toHaveAttribute('aria-disabled', 'true')
   await userEvent.keyboard('{Enter}')
-  expect(importSchema).toHaveBeenCalledExactlyOnceWith({
-    query: { url: 'https://example.com/schema.json' },
-  })
+  await expect
+    .poll(() => importSchema)
+    .toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ query: { url: 'https://example.com/schema.json' } }),
+    )
   await expect.element(schema).toHaveValue('Original schema')
   pending.resolve({ schema: 'fetched-schema' })
   await expect.element(popup).not.toBeInTheDocument()

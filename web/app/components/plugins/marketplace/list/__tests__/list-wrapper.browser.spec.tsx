@@ -7,31 +7,18 @@ import { I18nextProvider } from 'react-i18next'
 import { render } from 'vitest-browser-react'
 import common from '@/i18n/locales/en-US/common.json'
 import pluginMessages from '@/i18n/locales/en-US/plugin.json'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { createTestQueryClient } from '@/test/query-client'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { useSearchPluginText } from '../../atoms'
 import ListWrapper from '../list-wrapper'
 
-const transport = vi.hoisted(() => ({
+const transport = {
   collections: vi.fn<typeof marketplaceClient.collections>(),
   collectionPlugins: vi.fn<typeof marketplaceClient.collectionPlugins>(),
   searchAdvanced: vi.fn<typeof marketplaceClient.searchAdvanced>(),
-}))
-
-vi.mock('@/service/marketplace', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/marketplace')>()
-  return {
-    ...actual,
-    marketplaceClient: {
-      ...actual.marketplaceClient,
-      collections: transport.collections,
-      collectionPlugins: transport.collectionPlugins,
-      searchAdvanced: transport.searchAdvanced,
-    },
-  }
-})
+}
 
 vi.unmock('react-i18next')
 
@@ -105,7 +92,15 @@ const renderListWrapper = async ({
 
 describe('ListWrapper', () => {
   beforeEach(() => {
-    onTestFinished(guardUnexpectedFetch())
+    onTestFinished(
+      installFakeApi({
+        marketplace: {
+          collections: (input) => transport.collections(input),
+          collectionPlugins: (input) => transport.collectionPlugins(input),
+          searchAdvanced: (input) => transport.searchAdvanced(input),
+        },
+      }),
+    )
     transport.collections.mockReset().mockResolvedValue({ data: { collections: [] } })
     transport.collectionPlugins.mockReset().mockResolvedValue({ data: { plugins: [] } })
     transport.searchAdvanced.mockReset()
@@ -201,7 +196,7 @@ describe('ListWrapper', () => {
 
   it('offers a retry and renders the recovered result after a failed search', async () => {
     transport.searchAdvanced
-      .mockRejectedValueOnce(new Error('Marketplace unavailable'))
+      .mockRejectedValueOnce(apiError('MARKETPLACE_UNAVAILABLE', 503, 'Marketplace unavailable'))
       .mockResolvedValueOnce(searchResponse([plugin('recovered-plugin', 'Recovered Plugin')]))
     const screen = await renderListWrapper()
     await expect

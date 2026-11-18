@@ -3,23 +3,13 @@ import { Dialog } from '@langgenius/dify-ui/dialog'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { PricingContent } from '../content'
 
-const api = vi.hoisted(() => ({
+const api = {
   features: vi.fn<typeof consoleClient.features.get>(),
   education: vi.fn<typeof consoleClient.account.education.get>(),
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'features.get': api.features,
-      'account.education.get': api.education,
-    }),
-  }
-})
+}
 
 async function setup(options: Parameters<typeof createConsoleQueryWrapper>[0] = {}) {
   const { queryClient, wrapper: Providers } = createConsoleQueryWrapper({
@@ -40,6 +30,14 @@ async function setup(options: Parameters<typeof createConsoleQueryWrapper>[0] = 
 beforeEach(() => {
   api.features.mockReset()
   api.education.mockReset()
+  onTestFinished(
+    installFakeApi({
+      console: {
+        features: { get: (input) => api.features(input) },
+        account: { education: { get: (input) => api.education(input) } },
+      },
+    }),
+  )
 })
 
 it('keeps prices and interval selection available while purchases wait for features', async () => {
@@ -138,7 +136,7 @@ it('starts cached eligible education accounts on annual pricing with the discoun
 it('keeps prices readable after features fail and restores purchases through Retry', async () => {
   const { zGetFeaturesResponse } = await import('@dify/contracts/api/console/features/zod.gen')
   api.features
-    .mockRejectedValueOnce(new Error('Unavailable'))
+    .mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'Unavailable'))
     .mockResolvedValue(zGetFeaturesResponse.parse({}))
   const screen = await setup()
   await expect.element(screen.getByRole('alert')).toMatchTextContent('common.error')

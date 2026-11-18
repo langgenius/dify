@@ -9,28 +9,22 @@ import { AppToaster } from '@/app/notifications/app-toaster'
 import common from '@/i18n/locales/en-US/common.json'
 import dataset from '@/i18n/locales/en-US/dataset.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { installFakeApi } from '@/test/fake-api'
 import { ExternalApiDialogContent } from '../dialog-content'
 import { useSaveExternalApi } from '../use-save-external-api'
 import { response } from './fixtures'
 
 vi.unmock('react-i18next')
-const api = vi.hoisted(() => ({
+const api = {
   create: vi.fn<typeof consoleClient.datasets.externalKnowledgeApi.post>(),
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'datasets.externalKnowledgeApi.post': api.create,
-    }),
-  }
-})
+}
 beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
   api.create.mockReset()
+  onTestFinished(
+    installFakeApi({
+      console: { datasets: { externalKnowledgeApi: { post: (input) => api.create(input) } } },
+    }),
+  )
 })
 
 async function setup(endpoint: string, key = 'secret-key') {

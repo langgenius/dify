@@ -10,34 +10,19 @@ import { AppToaster } from '@/app/notifications/app-toaster'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { installFakeApi, networkError } from '@/test/fake-api'
 import ExternalAPIPanel from '../index'
 
-const api = vi.hoisted(() => ({
+const api = {
   get: vi.fn<typeof consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.get>(),
   list: vi.fn<typeof consoleClient.datasets.externalKnowledgeApi.get>(),
   create: vi.fn<typeof consoleClient.datasets.externalKnowledgeApi.post>(),
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'datasets.externalKnowledgeApi.get': api.list,
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'datasets.externalKnowledgeApi.post': api.create,
-      'datasets.externalKnowledgeApi.byExternalKnowledgeApiId.get': api.get,
-    }),
-  }
-})
+}
 
 const response: ExternalKnowledgeApiListResponse = {
   data: [
     {
-      id: 'api-1',
+      id: '3b8f2c1d-7e4a-4f5b-9c6d-1e2f3a4b5c6d',
       tenant_id: 'tenant-1',
       name: 'Product knowledge',
       description: '',
@@ -54,10 +39,22 @@ const response: ExternalKnowledgeApiListResponse = {
 }
 
 beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
   api.get.mockReset().mockResolvedValue(response.data[0]!)
   api.list.mockReset().mockResolvedValue(response)
   api.create.mockReset().mockResolvedValue(response.data[0]!)
+  onTestFinished(
+    installFakeApi({
+      console: {
+        datasets: {
+          externalKnowledgeApi: {
+            get: (input) => api.list(input),
+            post: (input) => api.create(input),
+            byExternalKnowledgeApiId: { get: (input) => api.get(input) },
+          },
+        },
+      },
+    }),
+  )
 })
 
 async function setup(canManage = true) {
@@ -144,13 +141,12 @@ it('opens a blank creation form and refreshes the list from the saved API', asyn
   await expect.element(screen.getByText('Product knowledge')).toBeVisible()
   await expect.element(screen.getByText('https://knowledge.example.com')).toBeVisible()
   expect(api.create).toHaveBeenCalledExactlyOnceWith(
-    {
+    expect.objectContaining({
       body: {
         name: 'Product knowledge',
         settings: { endpoint: 'https://knowledge.example.com', api_key: 'secret-key' },
       },
-    },
-    { context: { silent: true } },
+    }),
   )
   await expect
     .element(screen.getByRole('button', { name: /common.operation.edit Product knowledge/ }))
@@ -172,7 +168,7 @@ it('opens the card editor as the only top-level dialog', async () => {
 })
 
 it('retains the external API draft and allows cancel after an offline save fails', async () => {
-  api.create.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+  api.create.mockRejectedValueOnce(networkError())
   const screen = await setup()
   await screen.getByRole('button', { name: 'dataset.createExternalAPI' }).click()
   const dialog = screen.getByRole('dialog', { name: /dataset\./ })
@@ -190,7 +186,7 @@ it('retains the external API draft and allows cancel after an offline save fails
 })
 
 it('attempts an offline edit immediately without opening an editor on reconnect', async () => {
-  api.get.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+  api.get.mockRejectedValueOnce(networkError())
   const screen = await setup()
   const edit = screen.getByRole('button', { name: /common.operation.edit Product knowledge/ })
   await expect.element(edit).toBeVisible()

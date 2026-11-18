@@ -5,31 +5,17 @@ import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createDeferred } from '@/test/deferred'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { NewKnowledgeList } from '../new-knowledge-list'
 
 type KnowledgeFsSpaceListItemResponse = Awaited<
   ReturnType<typeof consoleClient.knowledgeFs.spaces.get>
 >['data'][number]
 
-const api = vi.hoisted(() => ({
+const api = {
   list: vi.fn<typeof consoleClient.knowledgeFs.spaces.get>(),
   remove: vi.fn<typeof consoleClient.knowledgeFs.spaces.byControlSpaceId.delete>(),
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'knowledgeFs.spaces.get': api.list,
-      'knowledgeFs.spaces.byControlSpaceId.delete': api.remove,
-      'datasets.knowledgeFsUpgradeJobs.get': async () => ({ data: [] }),
-      'datasets.apiBaseInfo.get': async () => ({ api_base_url: '' }),
-      'workspaces.current.members.get': async () => ({ accounts: [] }),
-      'tags.get': async () => [],
-    }),
-  }
-})
+}
 const space = (
   id: string,
   name: string,
@@ -73,8 +59,29 @@ async function setup(ids: string[]) {
   }))
   api.remove.mockReset().mockImplementation(async ({ params }) => {
     datasets = datasets.filter((item) => item.control_space_id !== params.control_space_id)
-    return { result: 'success' }
   })
+  onTestFinished(
+    installFakeApi({
+      console: {
+        knowledgeFs: {
+          spaces: {
+            get: (input) => api.list(input),
+            byControlSpaceId: {
+              delete: async (input) => {
+                await api.remove(input)
+              },
+            },
+          },
+        },
+        datasets: {
+          knowledgeFsUpgradeJobs: { get: () => ({ data: [] }) },
+          apiBaseInfo: { get: () => ({ api_base_url: '' }) },
+        },
+        workspaces: { current: { members: { get: () => ({ accounts: [] }) } } },
+        tags: { get: () => [] },
+      },
+    }),
+  )
   const { queryClient } = createConsoleQueryWrapper({ systemFeatures: { rbac_enabled: true } })
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
@@ -131,7 +138,7 @@ describe('Knowledge space deletion', () => {
   })
   it('retains focus while pending and leaves a failed deletion retryable', async () => {
     const { screen, open } = await setup(['Alpha'])
-    const request = createDeferred<{ result: 'success' }>()
+    const request = createDeferred<void>()
     api.remove.mockReturnValueOnce(request.promise)
     await open('Alpha')
     const confirm = screen.getByRole('button', { name: 'common.operation.confirm' })
@@ -142,7 +149,7 @@ describe('Knowledge space deletion', () => {
       .element(screen.getByRole('button', { name: 'common.operation.cancel' }))
       .toBeDisabled()
     await expect.element(screen.getByRole('alertdialog')).toBeVisible()
-    request.reject(new Error('Failed'))
+    request.reject(apiError('SERVICE_UNAVAILABLE', 503, 'Failed'))
     await expect.element(screen.getByRole('alert')).toBeVisible()
     await confirm.click()
     await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()

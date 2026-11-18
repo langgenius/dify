@@ -6,26 +6,14 @@ import { render } from 'vitest-browser-react'
 import commonEn from '@/i18n/locales/en-US/common.json'
 import commonZh from '@/i18n/locales/zh-Hans/common.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { installFakeApi } from '@/test/fake-api'
 import InSiteMessageNotification from '../notification'
 
 vi.unmock('react-i18next')
-const api = vi.hoisted(() => ({
+const api = {
   list: vi.fn<typeof consoleClient.notification.get>(),
   dismiss: vi.fn<typeof consoleClient.notification.dismiss.post>(),
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'notification.get': api.list,
-      'notification.dismiss.post': api.dismiss,
-    }),
-  }
-})
-
+}
 const notice = (
   body: string,
 ): Awaited<ReturnType<typeof consoleClient.notification.get>>['notifications'][number] => ({
@@ -59,7 +47,16 @@ async function setup(edition: 'CLOUD' | 'COMMUNITY' = 'CLOUD') {
   return { screen, i18n }
 }
 beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
+  onTestFinished(
+    installFakeApi({
+      console: {
+        notification: {
+          get: (input) => api.list(input),
+          dismiss: { post: (input) => api.dismiss(input) },
+        },
+      },
+    }),
+  )
   api.list.mockReset().mockResolvedValue({ should_show: false, notifications: [] })
   api.dismiss.mockReset().mockResolvedValue({ result: 'success' })
 })
@@ -86,7 +83,9 @@ it('replaces the displayed notice when the real interface language changes', asy
   await expect.element(screen.getByText('English update')).not.toBeInTheDocument()
   await screen.getByRole('button', { name: commonZh['operation.close'], exact: true }).click()
   await expect.element(screen.getByText('中文更新')).not.toBeInTheDocument()
-  expect(api.dismiss).toHaveBeenCalledExactlyOnceWith({ body: { notification_id: 'notice-1' } })
+  await expect
+    .poll(() => api.dismiss)
+    .toHaveBeenCalledExactlyOnceWith({ body: { notification_id: 'notice-1' } })
 })
 
 it('renders parsed copy and safe links, then dismisses through the real keyboard action', async () => {
@@ -149,7 +148,9 @@ it('renders parsed copy and safe links, then dismisses through the real keyboard
   await expect.element(screen.getByRole('button', { name: 'Dismiss now' })).toHaveFocus()
   await userEvent.keyboard('{Enter}')
   await expect.element(screen.getByText('Parsed body main')).not.toBeInTheDocument()
-  expect(api.dismiss).toHaveBeenCalledExactlyOnceWith({ body: { notification_id: 'notice-1' } })
+  await expect
+    .poll(() => api.dismiss)
+    .toHaveBeenCalledExactlyOnceWith({ body: { notification_id: 'notice-1' } })
 })
 
 it.each([
@@ -169,6 +170,8 @@ it.each([
     await expect.element(screen.getByText(content)).toBeVisible()
     await screen.getByRole('button', { name: 'Close', exact: true }).click()
     await expect.element(screen.getByText(content)).not.toBeInTheDocument()
-    expect(api.dismiss).toHaveBeenCalledExactlyOnceWith({ body: { notification_id: 'notice-1' } })
+    await expect
+      .poll(() => api.dismiss)
+      .toHaveBeenCalledExactlyOnceWith({ body: { notification_id: 'notice-1' } })
   },
 )

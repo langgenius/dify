@@ -1,21 +1,19 @@
 import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
+import type { consoleClient } from '@/service/console'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { installFakeApi, route } from '@/test/fake-api'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { TransferMethod } from '@/types/app'
 import ConfigModal from '../index'
 
-// oxlint-disable-next-line typescript/no-deprecated -- The native file picker still uses the XHR upload transport.
-const upload = vi.hoisted(() => vi.fn<typeof import('@/service/base').upload>())
-// oxlint-disable-next-line typescript/no-deprecated -- Replace the Console HTTP transport for remote uploads.
-const request = vi.hoisted(() => vi.fn<typeof import('@/service/base').request>())
-vi.mock('@/service/base', () => ({ request, upload, post: vi.fn() }))
+const upload = vi.fn<(file: File) => { id: string }>()
+const uploadRemote = vi.fn<typeof consoleClient.remoteFiles.upload.post>()
 vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/apps' }))
 
 const MIB = 1024 * 1024
@@ -25,6 +23,7 @@ const pixel = Uint8Array.from(
 )
 const createImage = (name: string, sizeInMib: number) =>
   new File([pixel, new Uint8Array(sizeInMib * MIB - pixel.length)], name, { type: 'image/gif' })
+const remoteFile = { created_at: 1_704_067_200, created_by: 'user-1', extension: 'txt' }
 const createDocument = (name: string, size: number) =>
   new File(['a'.repeat(size)], name, { type: 'text/plain' })
 
@@ -53,9 +52,18 @@ async function getFilePicker() {
 }
 
 beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
   upload.mockReset()
-  request.mockReset()
+  uploadRemote.mockReset()
+  onTestFinished(
+    installFakeApi({
+      console: { remoteFiles: { upload: { post: (input) => uploadRemote(input) } } },
+      routes: [
+        route('POST', 'console', '/files/upload', async ({ request }) =>
+          upload((await request.formData()).get('file') as File),
+        ),
+      ],
+    }),
+  )
 })
 
 it('uses the server size limit when uploading a default image', async () => {
@@ -92,9 +100,7 @@ it('uses the server size limit when uploading a default image', async () => {
 })
 
 it('checks each document in a default file list against the configured size limit', async () => {
-  upload.mockImplementation(async ({ data }) => ({
-    id: `uploaded-${(data.get('file') as File).name}`,
-  }))
+  upload.mockImplementation((file) => ({ id: `uploaded-${file.name}` }))
   const onConfirm = await openFileDefaults(
     {
       type: InputVarType.multiFiles,
@@ -140,25 +146,23 @@ it('checks each document in a default file list against the configured size limi
 it('rejects an oversized file link and saves one within the configured size limit', async () => {
   const oversized = 'https://example.com/oversized.txt'
   const allowed = 'https://example.com/default.txt'
-  request
-    .mockResolvedValueOnce(
-      Response.json({
-        id: 'oversized',
-        name: 'oversized.txt',
-        mime_type: 'text/plain',
-        size: 21 * MIB,
-        url: oversized,
-      }),
-    )
-    .mockResolvedValueOnce(
-      Response.json({
-        id: 'uploaded-link',
-        name: 'default.txt',
-        mime_type: 'text/plain',
-        size: 16 * MIB,
-        url: allowed,
-      }),
-    )
+  uploadRemote
+    .mockResolvedValueOnce({
+      ...remoteFile,
+      id: 'oversized',
+      name: 'oversized.txt',
+      mime_type: 'text/plain',
+      size: 21 * MIB,
+      url: oversized,
+    })
+    .mockResolvedValueOnce({
+      ...remoteFile,
+      id: 'uploaded-link',
+      name: 'default.txt',
+      mime_type: 'text/plain',
+      size: 16 * MIB,
+      url: allowed,
+    })
   const onConfirm = await openFileDefaults(
     {
       type: InputVarType.singleFile,
@@ -188,9 +192,9 @@ it('rejects an oversized file link and saves one within the configured size limi
   await expect.element(dialog.getByRole('progressbar')).not.toBeInTheDocument()
   await dialog.getByRole('button', { name: 'common.operation.save' }).click()
 
-  expect(request).toHaveBeenCalledTimes(2)
-  expect(await request.mock.calls[0]?.[2]?.request?.json()).toEqual({ url: oversized })
-  expect(await request.mock.calls[1]?.[2]?.request?.json()).toEqual({ url: allowed })
+  expect(uploadRemote).toHaveBeenCalledTimes(2)
+  expect(uploadRemote.mock.calls[0]?.[0].body).toEqual({ url: oversized })
+  expect(uploadRemote.mock.calls[1]?.[0].body).toEqual({ url: allowed })
   expect(onConfirm).toHaveBeenCalledExactlyOnceWith(
     expect.objectContaining({
       default: expect.objectContaining({

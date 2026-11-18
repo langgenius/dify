@@ -6,30 +6,21 @@ import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createDeferred } from '@/test/deferred'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { DatasetACLPermission } from '@/utils/permission'
 import Datasets from '../datasets'
 
 vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 
-const api = vi.hoisted(() => ({
+const api = {
   list: vi.fn<typeof consoleClient.datasets.get>(),
   remove: vi.fn<typeof consoleClient.datasets.byDatasetId.delete>(),
   usage: vi.fn<typeof consoleClient.datasets.byDatasetId.useCheck.get>(),
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'datasets.get': api.list,
-      'datasets.byDatasetId.delete': api.remove,
-      'datasets.byDatasetId.useCheck.get': api.usage,
-      'tags.get': async () => [],
-    }),
-  }
-})
+}
+// Dataset routes take UUID path parameters; names stay readable for the accessible queries.
+const datasetId = (name: string) =>
+  `00000000-0000-4000-8000-${String(['Alpha', 'Beta', 'Gamma'].indexOf(name) + 1).padStart(12, '0')}`
 function Catalog() {
   const query = useInfiniteQuery(
     consoleQuery.datasets.get.infiniteOptions({
@@ -55,7 +46,7 @@ afterEach(() => vi.unstubAllGlobals())
 async function setup(ids: string[]) {
   let datasets = ids.map((id) =>
     createDatasetFixture({
-      id,
+      id: datasetId(id),
       name: id,
       permission_keys: [DatasetACLPermission.Delete],
       runtime_mode: 'general',
@@ -72,6 +63,22 @@ async function setup(ids: string[]) {
     datasets = datasets.filter((item) => item.id !== params.dataset_id)
   })
   api.usage.mockReset().mockResolvedValue({ is_using: false })
+  onTestFinished(
+    installFakeApi({
+      console: {
+        datasets: {
+          get: (input) => api.list(input),
+          byDatasetId: {
+            delete: async (input) => {
+              await api.remove(input)
+            },
+            useCheck: { get: (input) => api.usage(input) },
+          },
+        },
+        tags: { get: () => [] },
+      },
+    }),
+  )
   const { queryClient } = createConsoleQueryWrapper({ systemFeatures: { rbac_enabled: true } })
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
@@ -108,7 +115,7 @@ describe('Classic dataset deletion', () => {
 
   it('reports a failed usage check without changing the confirmation action', async () => {
     const { screen, open } = await setup(['Alpha'])
-    api.usage.mockRejectedValueOnce(new Error('Usage check failed'))
+    api.usage.mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'Usage check failed'))
     await open('Alpha')
     await expect.element(screen.getByRole('alert')).toBeVisible()
     expect(api.remove).not.toHaveBeenCalled()
@@ -134,7 +141,7 @@ describe('Classic dataset deletion', () => {
     await screen.getByRole('button', { name: 'common.operation.confirm' }).click()
     await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
     expect(api.remove).toHaveBeenCalledWith(
-      expect.objectContaining({ params: { dataset_id: 'Beta' } }),
+      expect.objectContaining({ params: { dataset_id: datasetId('Beta') } }),
     )
     await expect.element(screen.getByRole('link', { name: 'Alpha', exact: true })).toBeVisible()
   })
@@ -170,7 +177,7 @@ describe('Classic dataset deletion', () => {
       .element(screen.getByRole('button', { name: 'common.operation.cancel' }))
       .toBeDisabled()
     await expect.element(screen.getByRole('alertdialog')).toBeVisible()
-    request.reject(new Error('Failed'))
+    request.reject(apiError('SERVICE_UNAVAILABLE', 503, 'Failed'))
     await expect.element(screen.getByRole('alert')).toBeVisible()
     await confirm.click()
     await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()

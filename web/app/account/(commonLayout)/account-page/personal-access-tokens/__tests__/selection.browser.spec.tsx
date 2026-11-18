@@ -8,16 +8,34 @@ import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { createTestQueryClient } from '@/test/query-client'
 import PersonalAccessTokens from '../index'
 import { renderWithTokenMessages as render } from './browser-test-env'
 
-const responses = vi.hoisted(() => ({ call: vi.fn() }))
-// boundary: supply operation results while preserving generated options and real Query observers.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withTokenResponses } = await import('./operation-responses')
-  return { ...actual, consoleQuery: withTokenResponses(actual.consoleQuery, responses.call) }
+const responses = { call: vi.fn() }
+beforeEach(() => {
+  const answer = (operation: string) => (input: unknown) => responses.call(operation, input)
+  onTestFinished(
+    installFakeApi({
+      console: {
+        account: {
+          personalAccessTokens: {
+            get: answer('account.personalAccessTokens.get'),
+            post: answer('account.personalAccessTokens.post'),
+            byTokenId: {
+              get: answer('account.personalAccessTokens.byTokenId.get'),
+              delete: answer('account.personalAccessTokens.byTokenId.delete'),
+            },
+          },
+          personalAccessTokenResources: { get: answer('account.personalAccessTokenResources.get') },
+          personalAccessTokenWorkspaces: {
+            get: answer('account.personalAccessTokenWorkspaces.get'),
+          },
+        },
+      },
+    }),
+  )
 })
 vi.unmock('react-i18next')
 it('lets users submit a long selected scope on a short narrow viewport', async () => {
@@ -39,7 +57,8 @@ it('lets users submit a long selected scope on a short narrow viewport', async (
         next_cursor: null,
         has_more: false,
       }
-    if (operation.endsWith('.post')) throw new Error('Service temporarily unavailable')
+    if (operation.endsWith('.post'))
+      throw apiError('SERVICE_UNAVAILABLE', 503, 'Service temporarily unavailable')
     return { data: [], page: 1, limit: 20, total: 0, has_more: false }
   })
   const queryClient = createTestQueryClient()
@@ -247,7 +266,9 @@ it('pages app resources and preserves selections across search and load more', a
   expect(resourceCalls.every(([, input]) => input.query.resource_type === 'app')).toBe(true)
   expect(resourceCalls).toContainEqual([
     'account.personalAccessTokenResources.get',
-    { query: { cursor: 20, limit: 20, keyword: '', resource_type: 'app' } },
+    expect.objectContaining({
+      query: { cursor: 20, limit: 20, keyword: '', resource_type: 'app' },
+    }),
   ])
   await expect.element(builtIn).toBeChecked()
   await expect.element(dialog.getByRole('checkbox', { name: 'Staging' })).toBeChecked()

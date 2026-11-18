@@ -1,5 +1,6 @@
 import type { SourceSyncPolicy } from '../source-models'
 import { page } from 'vite-plus/test/browser'
+import { apiError } from '@/test/fake-api'
 import { SourcesPage } from '../page'
 import { clearSourceClients, renderSources as render } from './source-browser-env'
 import { source, sourceWorkflow } from './source-fixtures'
@@ -7,22 +8,13 @@ import { clientMock, resetSourceServer, sourceResponses } from './source-server'
 
 // boundary: the component test controls route inputs and observes navigation destinations.
 vi.mock('@/next/navigation', async () => (await import('./source-server')).navigation)
-// boundary: replace operation responses while preserving generated queries, observers and business hooks.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  return (await import('./source-server')).withSourceResponses(actual)
-})
 
-const unexpectedFetch = vi.fn(() => Promise.reject(new Error('Unexpected request')))
 beforeEach(() => {
   resetSourceServer()
-  vi.stubGlobal('fetch', unexpectedFetch)
 })
 afterEach(() => {
   clearSourceClients()
   vi.useRealTimers()
-  vi.unstubAllGlobals()
-  expect(unexpectedFetch).not.toHaveBeenCalled()
 })
 
 describe('Sources: source-updates', () => {
@@ -95,7 +87,9 @@ describe('Sources: source-updates', () => {
     sourceResponses.data = {
       pages: [{ items: [source({ syncPolicy, syncWorkflow: sourceWorkflow('failed') })] }],
     }
-    sourceResponses.refresh.mockRejectedValue(new Error('Source refresh failed'))
+    sourceResponses.refresh.mockRejectedValue(
+      apiError('SERVICE_UNAVAILABLE', 503, 'Source refresh failed'),
+    )
     clientMock.patchSource
       .mockResolvedValueOnce(
         source({

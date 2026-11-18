@@ -7,40 +7,23 @@ import DatasetDetailContext from '@/context/dataset-detail'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createDeferred } from '@/test/deferred'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { DatasetACLPermission } from '@/utils/permission'
 import Documents from '../index'
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
-  usePathname: () => '/datasets/dataset-1/documents',
-  useParams: () => ({ datasetId: 'dataset-1' }),
+  usePathname: () => '/datasets/7d9c1f3e-4a1b-4c2d-8e3f-1a2b3c4d5e6f/documents',
+  useParams: () => ({ datasetId: '7d9c1f3e-4a1b-4c2d-8e3f-1a2b3c4d5e6f' }),
   useSearchParams: () => new URLSearchParams(),
 }))
 
-const api = vi.hoisted(() => ({
+const DATASET_ID = '7d9c1f3e-4a1b-4c2d-8e3f-1a2b3c4d5e6f'
+const api = {
   list: vi.fn<typeof consoleClient.datasets.byDatasetId.documents.get>(),
   remove: vi.fn<typeof consoleClient.datasets.byDatasetId.documents.delete>(),
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'datasets.byDatasetId.documents.get': api.list,
-      'datasets.byDatasetId.documents.delete': api.remove,
-      'datasets.byDatasetId.metadata.get': async () => ({
-        doc_metadata: [],
-        built_in_field_enabled: false,
-      }),
-      'datasets.metadata.builtIn.get': async () => ({ fields: [] }),
-      'datasets.byDatasetId.autoDisableLogs.get': async () => ({ document_ids: [] }),
-      'datasets.byDatasetId.errorDocs.get': async () => ({ data: [], total: 0 }),
-      'tags.get': async () => [],
-    }),
-  }
-})
+}
 beforeEach(() => vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false))
 afterEach(() => vi.unstubAllGlobals())
 async function setup(ids: string[]) {
@@ -72,8 +55,28 @@ async function setup(ids: string[]) {
   }))
   api.remove.mockReset().mockImplementation(async ({ query }) => {
     datasets = datasets.filter((item) => !query?.document_id?.includes(item.id))
-    return { result: 'success' }
   })
+  onTestFinished(
+    installFakeApi({
+      console: {
+        datasets: {
+          byDatasetId: {
+            documents: {
+              get: (input) => api.list(input),
+              delete: async (input) => {
+                await api.remove(input)
+              },
+            },
+            metadata: { get: () => ({ doc_metadata: [], built_in_field_enabled: false }) },
+            autoDisableLogs: { get: () => ({ document_ids: [], count: 0 }) },
+            errorDocs: { get: () => ({ data: [], total: 0 }) },
+          },
+          metadata: { builtIn: { get: () => ({ fields: [] }) } },
+        },
+        tags: { get: () => [] },
+      },
+    }),
+  )
   const { queryClient } = createConsoleQueryWrapper({ systemFeatures: { rbac_enabled: true } })
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
@@ -92,7 +95,7 @@ async function setup(ids: string[]) {
           }}
         >
           <div className="isolate h-screen">
-            <Documents datasetId="dataset-1" />
+            <Documents datasetId={DATASET_ID} />
           </div>
         </DatasetDetailContext.Provider>
       </NuqsTestingAdapter>
@@ -124,7 +127,7 @@ describe('Classic document deletion', () => {
       .element(screen.getByRole('link', { name: 'Alpha', exact: true }))
       .not.toBeInTheDocument()
     await expect.element(screen.getByRole('link', { name: 'Beta', exact: true })).toHaveFocus()
-    refresh.resolve(await list({ params: { dataset_id: 'dataset-1' } }))
+    refresh.resolve(await list({ params: { dataset_id: DATASET_ID } }))
   })
 
   it.each([
@@ -147,7 +150,7 @@ describe('Classic document deletion', () => {
   })
   it('retains focus while pending and leaves a failed deletion retryable', async () => {
     const { screen, open } = await setup(['Alpha'])
-    const request = createDeferred<{ result: string }>()
+    const request = createDeferred<void>()
     api.remove.mockReturnValueOnce(request.promise)
     await open('Alpha')
     const confirm = screen.getByRole('button', { name: 'common.operation.sure' })
@@ -158,7 +161,7 @@ describe('Classic document deletion', () => {
       .element(screen.getByRole('button', { name: 'common.operation.cancel' }))
       .toBeDisabled()
     await expect.element(screen.getByRole('alertdialog')).toBeVisible()
-    request.reject(new Error('Failed'))
+    request.reject(apiError('SERVICE_UNAVAILABLE', 503, 'Failed'))
     await expect.element(screen.getByRole('alert')).toBeVisible()
     await confirm.click()
     await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()

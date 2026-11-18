@@ -13,30 +13,26 @@ import common from '@/i18n/locales/en-US/common.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createDeferred } from '@/test/deferred'
+import { installFakeApi } from '@/test/fake-api'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import RosterPage from '../roster/page'
 
-const api = vi.hoisted(() => ({
+const api = {
   agents: vi.fn<typeof consoleClient.agent.get>(),
   delete: vi.fn<typeof consoleClient.agent.byAgentId.delete>(),
-}))
+}
 vi.unmock('react-i18next')
-// boundary: generated Console transport is the server edge below the real roster owners.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'agent.get': api.agents,
-      'agent.byAgentId.delete': api.delete,
-    }),
-  }
-})
 
-const agent = (id: string, name: string): AgentAppPartial => ({
+// Agent ids are UUIDs in the contract; derive a stable one from each readable key.
+const agentIds = new Map<string, string>()
+const agentId = (key: string) => {
+  if (!agentIds.has(key))
+    agentIds.set(key, `00000000-0000-4000-8000-${String(agentIds.size + 1).padStart(12, '0')}`)
+  return agentIds.get(key)!
+}
+const agent = (key: string, name: string): AgentAppPartial => ({
   ...createAgentFixture({
-    id,
+    id: agentId(key),
     name,
     permission_keys: [AgentPermission.Delete, AgentPermission.Edit],
   }),
@@ -70,6 +66,20 @@ async function setup(initialAgents: AgentAppPartial[]) {
   api.delete.mockReset().mockImplementation(async ({ params }) => {
     agents = agents.filter(({ id }) => id !== params.agent_id)
   })
+  onTestFinished(
+    installFakeApi({
+      console: {
+        agent: {
+          get: (input) => api.agents(input),
+          byAgentId: {
+            delete: async (input) => {
+              await api.delete(input)
+            },
+          },
+        },
+      },
+    }),
+  )
   const i18n = createInstance()
   await i18n.init({
     lng: 'en-US',

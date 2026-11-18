@@ -1,7 +1,5 @@
-import type {
-  GetAccountProfileResponse,
-  PatchAccountProfileData,
-} from '@dify/contracts/api/console/account/types.gen'
+import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
+import type { consoleClient } from '@/service/console'
 import { createInstance } from 'i18next'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { I18nextProvider } from 'react-i18next'
@@ -13,28 +11,18 @@ import navigation from '@/i18n/locales/en-US/navigation.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createDeferred } from '@/test/deferred'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { timezones } from '@/utils/timezone'
 import { ACCOUNT_SETTING_TAB } from '../../constants'
 import AccountSetting from '../../index'
 
 vi.unmock('react-i18next')
 
-const profileRequests = vi.hoisted(() => ({
-  update:
-    vi.fn<(input: Pick<PatchAccountProfileData, 'body'>) => Promise<GetAccountProfileResponse>>(),
-  get: vi.fn<() => Promise<GetAccountProfileResponse>>(),
-}))
+const profileRequests = {
+  update: vi.fn<typeof consoleClient.account.profile.patch>(),
+  get: vi.fn<typeof consoleClient.account.profile.get>(),
+}
 
-// boundary: profile reads and writes stop at the generated console transport.
-vi.mock('@/service/console/browser', () => ({
-  consoleBrowserLink: {
-    call: (path: readonly string[], input: Pick<PatchAccountProfileData, 'body'>) => {
-      if (path.join('.') === 'account.profile.patch') return profileRequests.update(input)
-      if (path.join('.') === 'account.profile.get') return profileRequests.get()
-      throw new Error(`Unexpected console request: ${path.join('.')}`)
-    },
-  },
-}))
 // boundary: Next's app router is unavailable in the standalone Vitest browser page.
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ refresh: vi.fn() }),
@@ -46,6 +34,18 @@ vi.mock('@/next/navigation', () => ({
 beforeEach(() => {
   profileRequests.update.mockReset()
   profileRequests.get.mockReset()
+  onTestFinished(
+    installFakeApi({
+      console: {
+        account: {
+          profile: {
+            get: (input) => profileRequests.get(input),
+            patch: (input) => profileRequests.update(input),
+          },
+        },
+      },
+    }),
+  )
 })
 
 async function renderPreferencesSettings({ width = 1280, timezone = 'Asia/Shanghai' } = {}) {
@@ -180,7 +180,7 @@ it.each(['Time Zone', 'Display Language'])(
           .element(timezone)
           .toHaveTextContent(timezones.find((item) => item.value === 'Pacific/Niue')!.name)
       } else {
-        save.reject(new Error('Unable to save language'))
+        save.reject(apiError('SERVICE_UNAVAILABLE', 503, 'Unable to save language'))
       }
       await expect.element(language).not.toHaveAttribute('aria-readonly')
       await expect.element(timezone).not.toHaveAttribute('aria-readonly')

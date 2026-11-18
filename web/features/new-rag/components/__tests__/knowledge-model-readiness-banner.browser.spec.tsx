@@ -2,26 +2,15 @@ import type { KnowledgeFsSettingsResponse } from '@dify/contracts/api/console/kn
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { KnowledgeModelReadinessBanner } from '../knowledge-model-readiness-banner'
 
-const getSettings = vi.hoisted(() => vi.fn<() => Promise<KnowledgeFsSettingsResponse>>())
+const getSettings = vi.fn<() => Promise<KnowledgeFsSettingsResponse>>()
 
 vi.mock('@/next/navigation', () => ({
   usePathname: () => '/datasets/new/space-1/documents',
   useSearchParams: () => new URLSearchParams('status=failed'),
 }))
-
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'knowledgeFs.spaces.byControlSpaceId.settings.get': getSettings,
-    }),
-  }
-})
 
 const allCapabilities = {
   deep: true,
@@ -59,7 +48,16 @@ async function renderBanner(capability?: 'index') {
 describe('KnowledgeModelReadinessBanner', () => {
   beforeEach(async () => {
     await page.viewport(800, 600)
-    onTestFinished(guardUnexpectedFetch())
+    getSettings.mockReset()
+    onTestFinished(
+      installFakeApi({
+        console: {
+          knowledgeFs: {
+            spaces: { byControlSpaceId: { settings: { get: () => getSettings() } } },
+          },
+        },
+      }),
+    )
   })
 
   it.each([
@@ -128,7 +126,9 @@ describe('KnowledgeModelReadinessBanner', () => {
   })
 
   it('removes a transient error after the user retries successfully', async () => {
-    getSettings.mockRejectedValueOnce(new Error('unavailable')).mockResolvedValue(readiness())
+    getSettings
+      .mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'unavailable'))
+      .mockResolvedValue(readiness())
     const screen = await renderBanner()
 
     const retry = screen.getByRole('button', { name: 'common.operation.retry' })

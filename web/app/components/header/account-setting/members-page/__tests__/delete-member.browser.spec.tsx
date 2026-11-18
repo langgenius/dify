@@ -6,34 +6,26 @@ import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createDeferred } from '@/test/deferred'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import MembersPage from '../index'
 
-const api = vi.hoisted(() => ({
+const api = {
   features: vi.fn<typeof consoleClient.features.get>(),
   members: vi.fn<typeof consoleClient.workspaces.current.members.get>(),
   remove: vi.fn<typeof consoleClient.workspaces.current.members.byMemberId.delete>(),
-  contactsEnabled: vi.fn(() => false),
-}))
+}
+const flags = vi.hoisted(() => ({ contactsEnabled: vi.fn(() => false) }))
 // boundary: switch the deployment feature flag per scenario.
 vi.mock('@/features/contacts/management/feature-flag', () => ({
-  isContactsManagementEnabled: api.contactsEnabled,
+  isContactsManagementEnabled: flags.contactsEnabled,
 }))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.members.get': api.members,
-      'features.get': api.features,
-      'workspaces.current.members.byMemberId.delete': api.remove,
-    }),
-  }
-})
-const member = (id: string): AccountWithRoleResponse => ({
-  id,
-  name: id,
-  email: `${id}@example.com`,
+// Member routes take UUID path parameters; names stay readable for the accessible queries.
+const memberId = (name: string) =>
+  `00000000-0000-4000-8000-${String(['Alpha', 'Beta', 'Gamma'].indexOf(name) + 1).padStart(12, '0')}`
+const member = (name: string): AccountWithRoleResponse => ({
+  id: memberId(name),
+  name,
+  email: `${name}@example.com`,
   avatar: '',
   avatar_url: '',
   role: 'normal',
@@ -44,23 +36,10 @@ const member = (id: string): AccountWithRoleResponse => ({
   status: 'active',
 })
 beforeEach(() => {
-  api.contactsEnabled.mockReturnValue(false)
+  flags.contactsEnabled.mockReturnValue(false)
   vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async (input) => {
-      throw new Error(`Unexpected request: ${String(input)}`)
-    }),
-  )
 })
-afterEach(() => {
-  expect(
-    vi
-      .mocked(fetch)
-      .mock.calls.map(([input]) => (input instanceof Request ? input.url : String(input))),
-  ).toEqual([])
-  vi.unstubAllGlobals()
-})
+afterEach(() => vi.unstubAllGlobals())
 
 async function setup(ids: string[]) {
   let accounts = ids.map(member)
@@ -74,6 +53,21 @@ async function setup(ids: string[]) {
     workspacePermissionKeys: ['workspace.member.manage'],
   })
   api.features.mockResolvedValue(queryClient.getQueryData(consoleQuery.features.get.queryKey())!)
+  onTestFinished(
+    installFakeApi({
+      console: {
+        features: { get: (input) => api.features(input) },
+        workspaces: {
+          current: {
+            members: {
+              get: (input) => api.members(input),
+              byMemberId: { delete: (input) => api.remove(input) },
+            },
+          },
+        },
+      },
+    }),
+  )
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
       <MembersPage />
@@ -91,14 +85,16 @@ async function setup(ids: string[]) {
 }
 
 it('returns focus after deleting a member with Contacts enabled, using the supported member API', async () => {
-  api.contactsEnabled.mockReturnValue(true)
+  flags.contactsEnabled.mockReturnValue(true)
   const { screen, open } = await setup(['Alpha', 'Beta'])
   await open('Alpha')
   await expect.element(screen.getByRole('checkbox')).not.toBeInTheDocument()
   await screen.getByRole('button', { name: 'contacts.memberRemoval.remove', exact: true }).click()
   await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
   await expect.element(screen.getByRole('button', { name: 'Beta', exact: true })).toHaveFocus()
-  expect(api.remove).toHaveBeenCalledExactlyOnceWith({ params: { member_id: 'Alpha' } })
+  expect(api.remove).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({ params: { member_id: memberId('Alpha') } }),
+  )
 })
 
 it('removes the member before a slow list refresh completes', async () => {
@@ -149,8 +145,8 @@ it('keeps focus and blocks Escape/cancel during removal, then reports a retryabl
   await userEvent.keyboard('{Escape}')
   await expect.element(screen.getByRole('button', { name: /operation\.cancel$/ })).toBeDisabled()
   await expect.element(screen.getByRole('alertdialog')).toBeVisible()
-  expect(api.remove).toHaveBeenCalledTimes(1)
-  request.reject(new Error('Failed'))
+  await expect.poll(() => api.remove).toHaveBeenCalledTimes(1)
+  request.reject(apiError('SERVICE_UNAVAILABLE', 503, 'Failed'))
   await expect.element(screen.getByRole('alert')).toHaveTextContent('common.api.actionFailed')
   await confirm.click()
   await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()

@@ -2,23 +2,11 @@ import type { consoleClient } from '@/service/console'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { FormItemValidateStatusEnum, FormTypeEnum } from '@/app/components/base/form/types'
 import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { renderBaseField } from './base-field-test-env'
 
-const dynamicOptions = vi.hoisted(() =>
-  vi.fn<typeof consoleClient.workspaces.current.plugin.parameters.dynamicOptions.get>(),
-)
-
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.plugin.parameters.dynamicOptions.get': dynamicOptions,
-    }),
-  }
-})
+const dynamicOptions =
+  vi.fn<typeof consoleClient.workspaces.current.plugin.parameters.dynamicOptions.get>()
 
 const dynamicSelectParams = {
   plugin_id: 'plugin-1',
@@ -145,7 +133,7 @@ describe('BaseField dynamic options', () => {
   })
 
   it('shows a service error without presenting options', async () => {
-    dynamicOptions.mockRejectedValue(new Error('Failed'))
+    dynamicOptions.mockRejectedValue(apiError('SERVICE_UNAVAILABLE', 503, 'Failed'))
     await renderBaseField({
       formSchema: {
         type: FormTypeEnum.dynamicSelect,
@@ -182,5 +170,15 @@ describe('BaseField dynamic options', () => {
 beforeEach(async () => {
   dynamicOptions.mockReset().mockResolvedValue({ options: [] })
   await page.viewport(1280, 900)
-  onTestFinished(guardUnexpectedFetch())
+  onTestFinished(
+    installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            plugin: { parameters: { dynamicOptions: { get: (input) => dynamicOptions(input) } } },
+          },
+        },
+      },
+    }),
+  )
 })

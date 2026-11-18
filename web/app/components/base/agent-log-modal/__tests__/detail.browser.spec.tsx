@@ -1,32 +1,22 @@
 import type { AgentLogResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { ComponentProps } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
+import type { consoleClient } from '@/service/console'
 import { userEvent } from 'vite-plus/test/browser'
 import { toast } from '@/app/notifications'
-import { createHttpError } from '@/service/http-error'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import AgentLogDetail from '../detail'
 import { renderAgentLog } from './browser-test-env'
 
-const fetchAgentLogDetail = vi.hoisted(() => vi.fn())
+const fetchAgentLogDetail = vi.fn<typeof consoleClient.apps.byAppId.agent.logs.get>()
+// The contract requires UUID app ids.
+const appId = '0f8e2c1a-7b3d-4e5f-8a9b-0c1d2e3f4a5b'
 
 vi.unmock('react-i18next')
 // boundary: Monaco workers do not run in the Browser test bundle; readonly editor values stay real.
 vi.mock('@monaco-editor/react', async () => {
   const { createMonacoEditorModuleMock } = await import('@/test/monaco-editor-mock')
   return createMonacoEditorModuleMock()
-})
-
-// boundary: agent log records come from Console HTTP; the modal, timestamp and notification stay real.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'apps.byAppId.agent.logs.get': fetchAgentLogDetail,
-    }),
-  }
 })
 
 const log: IChatItem = {
@@ -75,7 +65,7 @@ const createResponse = (overrides: Partial<AgentLogResponse> = {}): AgentLogResp
 async function renderDetail(props: Partial<ComponentProps<typeof AgentLogDetail>> = {}) {
   return renderAgentLog(
     <AgentLogDetail
-      appId="app-id"
+      appId={appId}
       conversationID="conv-id"
       messageID="msg-id"
       log={log}
@@ -85,7 +75,13 @@ async function renderDetail(props: Partial<ComponentProps<typeof AgentLogDetail>
 }
 
 beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
+  onTestFinished(
+    installFakeApi({
+      console: {
+        apps: { byAppId: { agent: { logs: { get: (input) => fetchAgentLogDetail(input) } } } },
+      },
+    }),
+  )
   toast.dismiss()
   fetchAgentLogDetail.mockReset()
 })
@@ -139,9 +135,7 @@ it('shows a failed execution consistently in its summary and metadata', async ()
 })
 
 it('removes loading and reports the service error', async () => {
-  fetchAgentLogDetail.mockRejectedValue(
-    createHttpError(new Response(null, { status: 500 }), { message: 'API Error' }),
-  )
+  fetchAgentLogDetail.mockRejectedValue(apiError('INTERNAL_SERVER_ERROR', 500, 'API Error'))
   const { screen } = await renderDetail()
   await expect.element(screen.getByRole('dialog', { name: 'API Error' })).toBeVisible()
   await expect.element(screen.getByRole('progressbar')).not.toBeInTheDocument()
@@ -167,7 +161,7 @@ it('summarizes empty and repeated trace data from the service response', async (
   fetchAgentLogDetail.mockResolvedValueOnce(repeated)
   await rerender(
     <AgentLogDetail
-      appId="app-id"
+      appId={appId}
       conversationID="conv-id"
       messageID="next-message"
       log={{ ...log, id: 'next-message' }}
