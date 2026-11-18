@@ -11,7 +11,7 @@ from services.trigger.subscription_refresh_service import TriggerSubscriptionRef
 def trigger_subscription_refresh(self: Task[[str, str], None], tenant_id: str, subscription_id: str) -> None:
     """Read reservation ownership from headers; old publishers used the fixed token '1'."""
     reservation_token = (self.request.headers or {}).get("reservation_token", "1")
-    application_services().workspaces.trigger_subscription_refresh.execute(
+    application_services().triggers.subscription_refresh.execute(
         job=TriggerSubscriptionRefreshJob(
             subscription=TriggerSubscriptionRefreshRef(tenant_id=tenant_id, subscription_id=subscription_id),
             token=reservation_token,

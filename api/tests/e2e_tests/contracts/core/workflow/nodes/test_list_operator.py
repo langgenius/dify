@@ -1,5 +1,3 @@
-from unittest.mock import MagicMock
-
 import pytest
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
@@ -16,22 +14,30 @@ from graphon.nodes.list_operator.entities import (
 )
 from graphon.nodes.list_operator.exc import InvalidKeyError
 from graphon.nodes.list_operator.node import ListOperatorNode, _get_file_extract_string_func
+from graphon.runtime import InitParams, RuntimeState, VariablePool
 from graphon.variables import ArrayFileSegment
 
+SOURCE_NODE_ID = "test_source_node"
+SOURCE_VARIABLE_NAME = "test_variable"
 
-def _build_list_operator_node(node_data: ListOperatorNodeData, graph_init_params) -> ListOperatorNode:
+
+def _build_list_operator_node(
+    node_data: ListOperatorNodeData,
+    graph_init_params: InitParams,
+    runtime_state: RuntimeState,
+) -> ListOperatorNode:
     return ListOperatorNode(
         node_id="test_node_id",
         data=node_data,
         init_params=graph_init_params,
-        runtime_state=MagicMock(),
+        runtime_state=runtime_state,
     )
 
 
 @pytest.fixture
-def list_operator_node():
+def list_operator_node() -> ListOperatorNode:
     config = {
-        "variable": ["test_variable"],
+        "variable": [SOURCE_NODE_ID, SOURCE_VARIABLE_NAME],
         "filter_by": FilterBy(
             enabled=True,
             conditions=[
@@ -44,12 +50,7 @@ def list_operator_node():
         "title": "Test Title",
     }
     node_data = ListOperatorNodeData.model_validate(config)
-    # Create properly configured mock for graph_init_params
-    graph_init_params = MagicMock()
-    graph_init_params.workflow_id = "test_workflow"
-    graph_init_params.graph_config = {}
-    graph_init_params.call_depth = 0
-    graph_init_params.run_context = {
+    run_context: dict[str, dict[str, str | UserFrom | InvokeFrom]] = {
         DIFY_RUN_CONTEXT_KEY: {
             "tenant_id": "test_tenant",
             "app_id": "test_app",
@@ -58,14 +59,22 @@ def list_operator_node():
             "invoke_from": InvokeFrom.SERVICE_API,
         }
     }
+    graph_init_params = InitParams(
+        workflow_id="test_workflow",
+        graph_config={},
+        call_depth=0,
+        run_context=run_context,
+    )
+    runtime_state = RuntimeState(
+        workflow_id="test_workflow",
+        variable_pool=VariablePool(),
+        start_at=0.0,
+    )
 
-    node = _build_list_operator_node(node_data, graph_init_params)
-    node.runtime_state = MagicMock()
-    node.runtime_state.variable_pool = MagicMock()
-    return node
+    return _build_list_operator_node(node_data, graph_init_params, runtime_state)
 
 
-def test_filter_files_by_type(list_operator_node):
+def test_filter_files_by_type(list_operator_node: ListOperatorNode) -> None:
     # Setup test data
     files = [
         File(
@@ -97,8 +106,10 @@ def test_filter_files_by_type(list_operator_node):
             storage_key="",
         ),
     ]
-    variable = ArrayFileSegment(value=files)
-    list_operator_node.runtime_state.variable_pool.get.return_value = variable
+    list_operator_node.runtime_state.variable_pool.add(
+        [SOURCE_NODE_ID, SOURCE_VARIABLE_NAME],
+        ArrayFileSegment(value=files),
+    )
 
     # Run the node
     result = list_operator_node._run()
@@ -133,7 +144,7 @@ def test_filter_files_by_type(list_operator_node):
         assert expected_file["related_id"] == result_file.related_id
 
 
-def test_get_file_extract_string_func():
+def test_get_file_extract_string_func() -> None:
     # Create a File object
     file = File(
         file_type=FileType.DOCUMENT,

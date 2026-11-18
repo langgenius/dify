@@ -18,7 +18,6 @@ import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
-import { useDocLink } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import {
   currentWorkspaceAtom,
@@ -29,6 +28,7 @@ import {
 import { env } from '@/env'
 import { selectIMCentrallyManaged } from '@/features/contacts/im-capability'
 import { isContactsImPlatformEnabled } from '@/features/contacts/im-platform/feature-flag'
+import { useChannelDocLink } from '@/features/contacts/im-platform/use-channel-doc-link'
 import { canReadNetworkAccessAtom } from '@/features/network-access/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
@@ -83,7 +83,7 @@ export default function AccountSetting({
   ])
   const featuresQuery = useQuery(consoleQuery.features.get.queryOptions())
   const enableReplaceWebAppLogo = featuresQuery.data?.can_replace_logo
-  const docLink = useDocLink()
+  const docLink = useChannelDocLink()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
@@ -136,7 +136,7 @@ export default function AccountSetting({
       name: t(($) => $['imPlatform.title'], { ns: 'contacts' }),
       description: t(($) => $['imPlatform.description'], { ns: 'contacts' }),
       docLink: {
-        href: docLink('/use-dify/nodes/human-input'),
+        href: docLink('/use-dify/workspace/channels/overview'),
         label: t(($) => $['imPlatform.learnMore'], { ns: 'contacts' }),
       },
       icon: <span className={cn('i-ri-chat-ai-line', iconClassName)} />,

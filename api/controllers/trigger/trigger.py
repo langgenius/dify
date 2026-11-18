@@ -28,9 +28,9 @@ def trigger_endpoint(endpoint_id: str) -> Response | tuple[Response, int]:
     if not UUID_MATCHER.match(endpoint_id):
         return plugin_endpoint_not_found_response()
     try:
-        response = application_services().workspaces.trigger_endpoints.process(endpoint_id, request)
+        response = application_services().triggers.endpoints.process(endpoint_id, request)
         if response is None:
-            response = application_services().workspaces.trigger_builders.process_builder_validation_endpoint(
+            response = application_services().triggers.builders.process_builder_validation_endpoint(
                 endpoint_id, request
             )
         if response is None:

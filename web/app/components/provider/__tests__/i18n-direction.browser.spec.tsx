@@ -14,7 +14,8 @@ import { setLocaleOnClient } from '@/i18n/client'
 import arTime from '@/i18n/locales/ar-TN/time.json'
 import enTime from '@/i18n/locales/en-US/time.json'
 
-vi.mock('react-i18next', async (importOriginal) => await importOriginal())
+vi.unmock('react-i18next')
+// boundary: server-inserted HTML is provided only by the Next App Router runtime.
 vi.mock('@/next/navigation', () => ({ useServerInsertedHTML: () => {} }))
 
 function LanguageControls() {

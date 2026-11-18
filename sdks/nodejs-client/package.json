@@ -52,7 +52,6 @@
   "devDependencies": {
     "@dify/tsconfig": "workspace:*",
     "@types/node": "catalog:",
-    "@typescript/native": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "tsrs": "catalog:",
     "typescript": "catalog:",
