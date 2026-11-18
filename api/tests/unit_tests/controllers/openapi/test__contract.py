@@ -6,6 +6,7 @@ view function decorated with @accepts/@returns, driven inside a request context.
 
 from collections.abc import Callable, Iterator
 from functools import wraps
+from inspect import signature
 from io import BytesIO
 from typing import Any, cast
 
@@ -137,11 +138,28 @@ def test_accepts_injects_validated_query_with_defaults_for_absent_fields(app: Fl
         return query
 
     with app.test_request_context("/?page=3"):
-        result = view()
+        result = view(query=ContractQuery(page=1, limit=20))
 
     assert isinstance(result, ContractQuery)
     assert result.page == 3
     assert result.limit == 20
+
+
+def test_accepts_preserves_signature_and_forwards_non_injected_arguments() -> None:
+    app = Flask(__name__)
+
+    def view(workspace_id: str, *, query: ContractQuery) -> tuple[str, ContractQuery]:
+        return workspace_id, query
+
+    decorated = accepts(query=ContractQuery)(view)
+    assert signature(decorated) == signature(view)
+
+    with app.test_request_context("/?page=3"):
+        workspace_id, query = decorated("ws-1", query=ContractQuery(page=99, limit=99))
+
+    assert workspace_id == "ws-1"
+    assert query.page == 3
+    assert query.limit == 20
 
 
 class ContractListQuery(BaseModel):
@@ -155,7 +173,7 @@ def test_accepts_fills_list_typed_query_fields_from_repeated_parameters(app: Fla
         return query
 
     with app.test_request_context("/?tag=a&tag=b&word=x&word=y"):
-        result = view()
+        result = view(query=ContractListQuery())
 
     assert result.tag == ["a", "b"]
     assert result.word == "x"
@@ -169,7 +187,7 @@ def test_accepts_rejects_invalid_query_with_422(app: Flask, query_string: str) -
 
     with app.test_request_context(f"/?{query_string}"):
         with pytest.raises(UnprocessableEntity):
-            view()
+            view(query=ContractQuery())
 
 
 def test_accepts_validation_error_is_sanitized_and_structured(app: Flask) -> None:
@@ -181,7 +199,7 @@ def test_accepts_validation_error_is_sanitized_and_structured(app: Flask) -> Non
 
     with app.test_request_context("/", method="POST", json={"secret": "leak-me"}):
         with pytest.raises(UnprocessableEntity) as exc_info:
-            view()
+            view(body=ContractBody(name="placeholder"))
 
     data = cast(dict[str, Any], cast(Any, exc_info.value).data)
     assert data["message"] == "Request validation failed"
@@ -200,7 +218,7 @@ def test_accepts_injects_validated_body(app: Flask) -> None:
         return body
 
     with app.test_request_context("/", method="POST", json={"name": "x"}):
-        result = view()
+        result = view(body=ContractBody(name="placeholder"))
 
     assert isinstance(result, ContractBody)
     assert result.name == "x"
@@ -271,7 +289,8 @@ def _post(app: Flask, size: int, **extra: str) -> RequestContext:
 @pytest.fixture
 def view() -> Callable[[], str]:
     @accepts(body=ContractUploadBody)
-    def handler(*, body: ContractUploadBody) -> str:
+    def handler(*, body: ContractUploadBody | None = None) -> str:
+        assert body is not None
         return "ok"
 
     return handler

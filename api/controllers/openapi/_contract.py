@@ -132,15 +132,21 @@ def _list_fields(model: type[BaseModel]) -> tuple[str, ...]:
 
 def accepts(
     *, query: type[BaseModel] | None = None, body: type[BaseModel] | None = None
-) -> Callable[[Callable[..., _R]], Callable[..., _R]]:
-    """Validate ``query``/``body`` against the models and inject them as keyword-only kwargs."""
+) -> Callable[[Callable[_P, _R]], Callable[_P, _R]]:
+    """Validate request models and inject their values into the wrapped view.
 
-    def decorator(view: Callable[..., _R]) -> Callable[..., _R]:
+    Precondition: a Flask request context is active when invoking the wrapper if either
+    model is configured. Postcondition: the view's ParamSpec and return type are preserved;
+    validated ``query``/``body`` values replace those kwargs, and validation errors abort
+    with a sanitized 422 response.
+    """
+
+    def decorator(view: Callable[_P, _R]) -> Callable[_P, _R]:
         body_file_fields = file_fields(body) if body is not None else frozenset()
         query_list_fields = _list_fields(query) if query is not None else ()
 
         @wraps(view)
-        def wrapper(*args: Any, **kwargs: Any) -> _R:
+        def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
             try:
                 if query is not None:
                     kwargs["query"] = query_params_from_request(query, list_fields=query_list_fields)
