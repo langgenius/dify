@@ -1325,7 +1325,7 @@ class TestPluginUpgradeFromGithubApi:
 
 
 class TestPluginChangeAutoUpgradeApi:
-    def test_success(self, app: Flask) -> None:
+    def test_success(self, app: Flask, sqlite_session: Session) -> None:
         api = PluginChangeAutoUpgradeApi()
         method = unwrap(api.post)
 
@@ -1348,12 +1348,13 @@ class TestPluginChangeAutoUpgradeApi:
                 "controllers.console.workspace.plugin.PluginAutoUpgradeService.change_strategy", return_value=True
             ) as change,
         ):
-            result = method(api, ParserAutoUpgradeChange.model_validate(payload), "t1", user)
+            result = method(api, sqlite_session, ParserAutoUpgradeChange.model_validate(payload), "t1", user)
 
         assert result["success"] is True
         change.assert_called_once()
+        assert change.call_args.kwargs["session"] is sqlite_session
 
-    def test_success_with_model_category_auto_upgrade(self, app: Flask) -> None:
+    def test_success_with_model_category_auto_upgrade(self, app: Flask, sqlite_session: Session) -> None:
         api = PluginChangeAutoUpgradeApi()
         method = unwrap(api.post)
 
@@ -1376,13 +1377,14 @@ class TestPluginChangeAutoUpgradeApi:
                 "controllers.console.workspace.plugin.PluginAutoUpgradeService.change_strategy", return_value=True
             ) as change,
         ):
-            result = method(api, ParserAutoUpgradeChange.model_validate(payload), "t1", user)
+            result = method(api, sqlite_session, ParserAutoUpgradeChange.model_validate(payload), "t1", user)
 
         assert result["success"] is True
         change.assert_called_once()
+        assert change.call_args.kwargs["session"] is sqlite_session
         assert change.call_args.kwargs["category"] == TenantPluginAutoUpgradeCategory.MODEL
 
-    def test_auto_upgrade_fail(self, app: Flask) -> None:
+    def test_auto_upgrade_fail(self, app: Flask, sqlite_session: Session) -> None:
         api = PluginChangeAutoUpgradeApi()
         method = unwrap(api.post)
 
@@ -1403,13 +1405,13 @@ class TestPluginChangeAutoUpgradeApi:
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.plugin.PluginAutoUpgradeService.change_strategy", return_value=False),
         ):
-            result = method(api, ParserAutoUpgradeChange.model_validate(payload), "t1", user)
+            result = method(api, sqlite_session, ParserAutoUpgradeChange.model_validate(payload), "t1", user)
 
         assert result["success"] is False
 
 
 class TestPluginFetchAutoUpgradeApi:
-    def test_success(self, app: Flask) -> None:
+    def test_success(self, app: Flask, sqlite_session: Session) -> None:
         api = PluginFetchAutoUpgradeApi()
         method = unwrap(api.get)
 
@@ -1428,18 +1430,20 @@ class TestPluginFetchAutoUpgradeApi:
             patch(
                 "controllers.console.workspace.plugin.PluginAutoUpgradeService.get_strategy",
                 return_value=auto_upgrade,
-            ),
+            ) as get_strategy,
         ):
             result = method(
                 api,
+                sqlite_session,
                 ParserAutoUpgradeFetch.model_validate({"category": TenantPluginAutoUpgradeCategory.TOOL.value}),
                 "t1",
             )
 
+        get_strategy.assert_called_once_with("t1", TenantPluginAutoUpgradeCategory.TOOL, session=sqlite_session)
         assert result["category"] == TenantPluginAutoUpgradeCategory.TOOL
         assert result["auto_upgrade"]["upgrade_time_of_day"] == 1
 
-    def test_returns_disabled_settings_when_strategy_is_missing(self, app: Flask) -> None:
+    def test_returns_disabled_settings_when_strategy_is_missing(self, app: Flask, sqlite_session: Session) -> None:
         api = PluginFetchAutoUpgradeApi()
         method = unwrap(api.get)
 
@@ -1448,7 +1452,7 @@ class TestPluginFetchAutoUpgradeApi:
             patch(
                 "controllers.console.workspace.plugin.PluginAutoUpgradeService.get_strategy",
                 return_value=None,
-            ),
+            ) as get_strategy,
             patch(
                 "controllers.console.workspace.plugin.PluginAutoUpgradeService.default_upgrade_time_of_day",
                 return_value=78300,
@@ -1456,10 +1460,12 @@ class TestPluginFetchAutoUpgradeApi:
         ):
             result = method(
                 api,
+                sqlite_session,
                 ParserAutoUpgradeFetch.model_validate({"category": TenantPluginAutoUpgradeCategory.MODEL.value}),
                 "t1",
             )
 
+        get_strategy.assert_called_once_with("t1", TenantPluginAutoUpgradeCategory.MODEL, session=sqlite_session)
         assert result == {
             "category": TenantPluginAutoUpgradeCategory.MODEL,
             "auto_upgrade": {
@@ -1473,7 +1479,7 @@ class TestPluginFetchAutoUpgradeApi:
 
 
 class TestPluginAutoUpgradeExcludePluginApi:
-    def test_success(self, app: Flask) -> None:
+    def test_success(self, app: Flask, sqlite_session: Session) -> None:
         api = PluginAutoUpgradeExcludePluginApi()
         method = unwrap(api.post)
 
@@ -1481,13 +1487,16 @@ class TestPluginAutoUpgradeExcludePluginApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.PluginAutoUpgradeService.exclude_plugin", return_value=True),
+            patch(
+                "controllers.console.workspace.plugin.PluginAutoUpgradeService.exclude_plugin", return_value=True
+            ) as exclude,
         ):
-            result = method(api, ParserExcludePlugin.model_validate(payload), "t1")
+            result = method(api, sqlite_session, ParserExcludePlugin.model_validate(payload), "t1")
 
+        exclude.assert_called_once_with("t1", "p", TenantPluginAutoUpgradeCategory.TOOL, session=sqlite_session)
         assert result["success"] is True
 
-    def test_fail(self, app: Flask) -> None:
+    def test_fail(self, app: Flask, sqlite_session: Session) -> None:
         api = PluginAutoUpgradeExcludePluginApi()
         method = unwrap(api.post)
 
@@ -1495,8 +1504,11 @@ class TestPluginAutoUpgradeExcludePluginApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.PluginAutoUpgradeService.exclude_plugin", return_value=False),
+            patch(
+                "controllers.console.workspace.plugin.PluginAutoUpgradeService.exclude_plugin", return_value=False
+            ) as exclude,
         ):
-            result = method(api, ParserExcludePlugin.model_validate(payload), "t1")
+            result = method(api, sqlite_session, ParserExcludePlugin.model_validate(payload), "t1")
 
+        exclude.assert_called_once_with("t1", "p", TenantPluginAutoUpgradeCategory.TOOL, session=sqlite_session)
         assert result["success"] is False

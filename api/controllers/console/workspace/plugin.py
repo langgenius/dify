@@ -53,7 +53,6 @@ from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
 from extensions.ext_application_services import application_services
-from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.external_api import error_responses
@@ -1237,7 +1236,9 @@ class PluginChangeAutoUpgradeApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @model_validate(ParserAutoUpgradeChange)
-    def post(self, req_data: ParserAutoUpgradeChange, tenant_id: str, user: Account):
+    @with_session
+    def post(self, session: Session, req_data: ParserAutoUpgradeChange, tenant_id: str, user: Account):
+        """Update the tenant's auto-upgrade strategy for a category."""
         if not dify_config.RBAC_ENABLED and not user.is_admin_or_owner:
             raise Forbidden()
 
@@ -1250,7 +1251,7 @@ class PluginChangeAutoUpgradeApi(Resource):
             auto_upgrade.exclude_plugins,
             auto_upgrade.include_plugins,
             category=req_data.category,
-            session=db.session(),
+            session=session,
         )
         if not set_auto_upgrade_strategy_result:
             return jsonable_encoder({"success": False, "message": "Failed to set auto upgrade strategy"})
@@ -1267,8 +1268,10 @@ class PluginFetchAutoUpgradeApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     @model_validate(ParserAutoUpgradeFetch)
-    def get(self, req_data: ParserAutoUpgradeFetch, tenant_id: str):
-        auto_upgrade = PluginAutoUpgradeService.get_strategy(tenant_id, req_data.category, session=db.session())
+    @with_session(write=False)
+    def get(self, session: Session, req_data: ParserAutoUpgradeFetch, tenant_id: str):
+        """Read stored or default auto-upgrade settings for a tenant and category."""
+        auto_upgrade = PluginAutoUpgradeService.get_strategy(tenant_id, req_data.category, session=session)
         auto_upgrade_dict = (
             _auto_upgrade_settings_to_dict(auto_upgrade) if auto_upgrade else _missing_auto_upgrade_settings(tenant_id)
         )
@@ -1291,13 +1294,13 @@ class PluginAutoUpgradeExcludePluginApi(Resource):
     @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
     @with_current_tenant_id
     @model_validate(ParserExcludePlugin)
-    def post(self, req_data: ParserExcludePlugin, tenant_id: str):
-        # exclude one single plugin
-
+    @with_session
+    def post(self, session: Session, req_data: ParserExcludePlugin, tenant_id: str):
+        """Exclude a plugin from auto-upgrades for the tenant and category."""
         return jsonable_encoder(
             {
                 "success": PluginAutoUpgradeService.exclude_plugin(
-                    tenant_id, req_data.plugin_id, req_data.category, session=db.session()
+                    tenant_id, req_data.plugin_id, req_data.category, session=session
                 )
             }
         )
