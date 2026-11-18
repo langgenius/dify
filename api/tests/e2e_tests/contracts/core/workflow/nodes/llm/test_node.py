@@ -1559,6 +1559,9 @@ class TestReasoningFormat:
         assert reasoning_content == ""
 
 
+type JsonValue = str | int | float | bool | None | list[JsonValue] | dict[str, JsonValue]
+
+
 @pytest.mark.parametrize(
     ("structured_output_enabled", "structured_output"),
     [
@@ -1567,7 +1570,7 @@ class TestReasoningFormat:
     ],
 )
 def test_invoke_llm_dispatches_to_expected_model_method(
-    structured_output_enabled: bool, structured_output: dict[str, object] | None
+    structured_output_enabled: bool, structured_output: dict[str, JsonValue] | None
 ) -> None:
     model_instance = _build_prepared_llm_mock()
     prompt_messages = [UserPromptMessage(content="hello")]
