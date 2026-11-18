@@ -4,7 +4,7 @@ import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import SnippetAndEvaluationPlanGuard from '@/app/components/billing/snippet-and-evaluation-plan-guard'
+import EvaluationPlanGuard from '@/app/components/billing/evaluation-plan-guard'
 import Evaluation from '@/app/components/evaluation'
 import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
@@ -65,11 +65,11 @@ const SnippetEvaluationPage = ({ snippetId }: SnippetEvaluationPageProps) => {
   }
 
   return (
-    <SnippetAndEvaluationPlanGuard fallbackHref={`/snippets/${snippetId}/orchestrate`}>
+    <EvaluationPlanGuard fallbackHref={`/snippets/${snippetId}/orchestrate`}>
       <SnippetLayout snippetId={snippetId} snippet={snippet} section="evaluation">
         <Evaluation resourceType="snippets" resourceId={snippetId} />
       </SnippetLayout>
-    </SnippetAndEvaluationPlanGuard>
+    </EvaluationPlanGuard>
   )
 }
 
