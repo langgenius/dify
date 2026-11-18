@@ -20,7 +20,7 @@ from docx.oxml.ns import qn
 from docx.table import Table
 from docx.text.paragraph import Paragraph
 from docx.text.run import Run
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.db.session_factory import session_factory
@@ -45,12 +45,23 @@ class WordExtractor(BaseExtractor):
         session: Optional caller-owned session used to persist extracted images.
             The caller commits it. Without one, image records are written in a
             short-lived session that commits on its own.
+        session_maker: Factory for that short-lived session. Defaults to the
+            application session factory.
     """
 
     _closed: bool
     _session: Session | None
+    _session_maker: sessionmaker[Session] | None
 
-    def __init__(self, file_path: str, tenant_id: str, user_id: str, *, session: Session | None = None):
+    def __init__(
+        self,
+        file_path: str,
+        tenant_id: str,
+        user_id: str,
+        *,
+        session: Session | None = None,
+        session_maker: sessionmaker[Session] | None = None,
+    ):
         """Initialize from a local file or a downloadable URL.
 
         Downloaded files are closed before extraction can reopen them. If setup
@@ -62,6 +73,7 @@ class WordExtractor(BaseExtractor):
         self.tenant_id = tenant_id
         self.user_id = user_id
         self._session = session
+        self._session_maker = session_maker
 
         if "~" in self.file_path:
             self.file_path = os.path.expanduser(self.file_path)
@@ -216,7 +228,8 @@ class WordExtractor(BaseExtractor):
         if self._session is not None:
             yield self._session
             return
-        with session_factory.create_session() as session, session.begin():
+        maker = self._session_maker or session_factory.get_session_maker()
+        with maker() as session, session.begin():
             yield session
 
     def _table_to_markdown(self, table, image_map):

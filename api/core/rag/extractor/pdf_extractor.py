@@ -12,7 +12,7 @@ from typing import TypedDict, override
 import pypdfium2
 import pypdfium2.raw as pdfium_c
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.db.session_factory import session_factory
@@ -51,6 +51,8 @@ class PdfExtractor(BaseExtractor):
         session: Optional caller-owned session used to persist extracted images.
             The caller commits it. Without one, image records are written in a
             short-lived session that commits on its own.
+        session_maker: Factory for that short-lived session. Defaults to the
+            application session factory.
     """
 
     # Magic bytes for image format detection: (magic_bytes, extension, mime_type)
@@ -67,6 +69,7 @@ class PdfExtractor(BaseExtractor):
     )
     MAX_MAGIC_LEN = max(len(m) for m, _, _ in IMAGE_FORMATS)
     _session: Session | None
+    _session_maker: sessionmaker[Session] | None
     _source_file_id: str | None
 
     def __init__(
@@ -78,6 +81,7 @@ class PdfExtractor(BaseExtractor):
         source_file_id: str | None = None,
         *,
         session: Session | None = None,
+        session_maker: sessionmaker[Session] | None = None,
     ):
         """Initialize PdfExtractor."""
         self._file_path = file_path
@@ -86,6 +90,7 @@ class PdfExtractor(BaseExtractor):
         self._file_cache_key = file_cache_key
         self._source_file_id = source_file_id
         self._session = session
+        self._session_maker = session_maker
 
     @override
     def extract(self) -> list[Document]:
@@ -275,5 +280,6 @@ class PdfExtractor(BaseExtractor):
         if self._session is not None:
             yield self._session
             return
-        with session_factory.create_session() as session, session.begin():
+        maker = self._session_maker or session_factory.get_session_maker()
+        with maker() as session, session.begin():
             yield session

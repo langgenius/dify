@@ -5,7 +5,6 @@ import logging
 import os
 import tempfile
 from contextlib import contextmanager
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol, cast
 
@@ -18,7 +17,7 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from httpx import Response
 from PIL import Image
-from sqlalchemy import event, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 import core.rag.extractor.word_extractor as we
@@ -34,31 +33,6 @@ class _TextOxmlElement(Protocol):
 
 def _set_oxml_text(element: object, text: str) -> None:
     cast(_TextOxmlElement, element).text = text
-
-
-@dataclass
-class _OwnedSessions:
-    """Counts the short-lived sessions the extractor opens from the session factory."""
-
-    opened: int = 0
-    commits: int = 0
-
-
-@pytest.fixture
-def owned_sessions(monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]) -> _OwnedSessions:
-    tracker = _OwnedSessions()
-
-    def _record_commit(_session: Session) -> None:
-        tracker.commits += 1
-
-    def create_session() -> Session:
-        tracker.opened += 1
-        session = sqlite_session_factory()
-        event.listen(session, "after_commit", _record_commit)
-        return session
-
-    monkeypatch.setattr(we.session_factory, "create_session", create_session)
-    return tracker
 
 
 def _image_part(name: str, blob: bytes = b"image-bytes") -> Part:
@@ -197,7 +171,10 @@ def test_init_closes_response_when_temp_creation_fails(monkeypatch: pytest.Monke
 
 @pytest.mark.parametrize("inject_session", [False, True])
 def test_extract_images_from_docx(
-    monkeypatch: pytest.MonkeyPatch, inject_session: bool, sqlite_session: Session, owned_sessions: _OwnedSessions
+    monkeypatch: pytest.MonkeyPatch,
+    inject_session: bool,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
 ):
     external_bytes = b"ext-bytes"
     internal_bytes = b"int-bytes"
@@ -230,8 +207,7 @@ def test_extract_images_from_docx(
     extractor.tenant_id = "00000000-0000-0000-0000-000000000001"
     extractor.user_id = "00000000-0000-0000-0000-000000000002"
     extractor._session = sqlite_session if inject_session else None
-    transaction_events: list[str] = []
-    event.listen(sqlite_session, "after_commit", lambda _session: transaction_events.append("commit"))
+    extractor._session_maker = sqlite_session_factory
 
     image_map = extractor._extract_images_from_docx(doc)
 
@@ -245,10 +221,9 @@ def test_extract_images_from_docx(
     assert internal_bytes in payloads
 
     assert len(sqlite_session.scalars(select(UploadFile)).all()) == 2
-    # The caller commits an injected session; otherwise one owned session commits the rows.
-    assert transaction_events == []
-    assert owned_sessions.opened == (0 if inject_session else 1)
-    assert owned_sessions.commits == (0 if inject_session else 1)
+    # The caller commits an injected session; otherwise a short-lived session already committed the rows.
+    sqlite_session.rollback()
+    assert len(sqlite_session.scalars(select(UploadFile)).all()) == (0 if inject_session else 2)
 
 
 def test_extract_images_does_not_stage_partial_files_on_storage_failure(
@@ -497,7 +472,7 @@ def test_close_logs_cleanup_failure(monkeypatch: pytest.MonkeyPatch, caplog: pyt
         path.unlink(missing_ok=True)
 
 
-def test_extract_images_handles_invalid_external_cases(monkeypatch: pytest.MonkeyPatch, owned_sessions: _OwnedSessions):
+def test_extract_images_handles_invalid_external_cases(monkeypatch: pytest.MonkeyPatch):
     doc = Document()
     doc.part.rels.add_relationship(RT.IMAGE, "image-no-url", "r1", is_external=True)
     doc.part.rels.add_relationship(RT.IMAGE, "https://example.com/image-error", "r2", is_external=True)
@@ -516,12 +491,12 @@ def test_extract_images_handles_invalid_external_cases(monkeypatch: pytest.Monke
     extractor.tenant_id = "tenant"
     extractor.user_id = "user"
     extractor._session = None
+    # An unbound factory fails on any query or flush, so this also checks that nothing touches the database.
+    extractor._session_maker = sessionmaker()
 
     result = extractor._extract_images_from_docx(doc)
 
     assert result == {}
-    # No image was persisted, so no session is opened at all.
-    assert owned_sessions.opened == 0
 
 
 def test_extract_images_accepts_content_type_with_parameters(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
