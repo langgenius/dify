@@ -141,7 +141,10 @@ it.each(['IM configuration', 'Email configuration', 'replacement', 'deletion', '
       if (surface === 'Email configuration') {
         await expect
           .element(popup.getByRole('link', { name: 'Learn more' }))
-          .toHaveAttribute('href', 'https://docs.dify.ai/en/cloud/use-dify/nodes/human-input')
+          .toHaveAttribute(
+            'href',
+            'https://docs.dify.ai/en/cloud/use-dify/workspace/channels/email',
+          )
       }
       if (surface === 'IM configuration') {
         await popup.getByRole('button', { name: 'Back' }).click()

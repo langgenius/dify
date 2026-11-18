@@ -122,7 +122,7 @@ class ServerSettings(BaseSettings):
     stub_upload_file_size_limit: int = Field(
         default=50,
         ge=0,
-        description="Maximum Agent Stub upload size in MiB",
+        description="Maximum Agent Stub upload and plugin tool BLOB persistence size in MiB",
         validation_alias="DIFY_AGENT_STUB_UPLOAD_FILE_SIZE_LIMIT",
     )
     binding_file_download_command_timeout_seconds: float = Field(default=210.0, gt=0)

@@ -15,9 +15,9 @@ from controllers.common.schema import register_response_schema_models, register_
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, setup_required, with_current_user
 from core.db.session_factory import session_factory
-from core.human_input_v2.resolved_form import ResolvedForm
 from core.human_input_v2.shared.values import AccountId
 from fields.base import ResponseModel
+from fields.human_input_v2 import ResolvedForm, build_resolved_form_response
 from libs.datetime_utils import to_utc_timestamp
 from libs.external_api import error_responses
 from libs.helper import dump_response, extract_remote_ip
@@ -79,7 +79,7 @@ class ConsoleHumanInputV2FormApi(Resource):
         return dump_response(
             ConsoleHumanInputV2FormDefinitionResponse,
             {
-                "resolved_form": form.resolved_form,
+                "resolved_form": build_resolved_form_response(form.resolved_form),
                 "expiration_time": to_utc_timestamp(min(form.expiration_time, form.global_timeout_deadline)),
             },
         )
