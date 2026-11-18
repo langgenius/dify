@@ -32,6 +32,7 @@ from controllers.openapi.auth.subjects import AccountSubject, ResourceAccessSubj
 from libs.helper import UUIDStr
 from libs.pagination import PaginatedResult
 from machinery.context import AppRequestContext, RequestContext
+from machinery.scope import UNRESTRICTED
 from models.model import AppMode
 from services.app.console_service import ConsoleAppNotFoundError
 from services.app.query_service import AppDescription, AppDiscoveryEntry, AppDiscoveryQuery, AppListLogin
@@ -346,7 +347,7 @@ def test_an_account_login_is_passed_with_the_workspace_it_named(
     named: bool,
 ) -> None:
     ctx = Context(AccountSubject(make_auth(token_type)), sqlite_session, {})
-    ctx.personal_app_ids = frozenset({"app-id"}) if token_type is TokenType.PERSONAL_ACCESS else None
+    ctx.personal_app_ids = frozenset({"app-id"}) if token_type is TokenType.PERSONAL_ACCESS else UNRESTRICTED
     if named:
         ctx._workspace = make_tenant()
     logins, response = _list_with(app, app_query_services, monkeypatch, ctx, named=named)

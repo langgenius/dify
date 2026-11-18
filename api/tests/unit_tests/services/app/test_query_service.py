@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from constants.oauth_bearer import SubjectType
 from machinery.context import AppRequestContext, CallerIdentity, RequestContext
+from machinery.scope import UNRESTRICTED, IdScope
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.model import App, AppMode, AppModelConfig
 from models.workflow import Workflow, WorkflowType
@@ -367,7 +368,7 @@ def login(
     workspace_id: str | None = None,
     *,
     resource_app_ids: frozenset[str] | None = None,
-    personal_app_ids: frozenset[str] | None = None,
+    personal_app_ids: IdScope = UNRESTRICTED,
 ) -> AppListLogin:
     caller = CallerIdentity(
         request_id="req",
