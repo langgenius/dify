@@ -22,12 +22,18 @@ the service-level tests in
 
 from __future__ import annotations
 
+import contextvars
 import json
 from collections.abc import Callable, Iterator, Sequence
-from unittest.mock import ANY, MagicMock
+from inspect import unwrap
+from typing import override
+from unittest.mock import MagicMock
 from uuid import UUID
 
 import pytest
+from flask import has_app_context
+from sqlalchemy import inspect as sa_inspect
+from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.console.app import workflow_node_output_inspector as ctrl
 from graphon.enums import WorkflowExecutionStatus
@@ -36,11 +42,15 @@ from models.model import IconType
 from services.workflow.inspector_events import InspectorMessage
 from services.workflow.node_output_inspector_service import (
     NodeOutputInspectorError,
+    NodeOutputInspectorService,
     NodeOutputStatus,
     NodeOutputsView,
     NodeStatus,
     WorkflowRunSnapshotView,
 )
+
+type _OpenStream = Callable[[App, UUID], Iterator[str]]
+type _Subscribe = Callable[[Sequence[InspectorMessage | None]], None]
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Fixtures
@@ -134,9 +144,22 @@ def _drain(stream: Iterator[str]) -> list[str]:
     return list(stream)
 
 
-def _stream(app_model: App, run_id: UUID) -> Iterator[str]:
-    """Open the stream the way the handlers do: resolve the run first, then generate."""
-    return ctrl._stream_inspector_events(app_model, run_id, ctrl._initial_snapshot(app_model, run_id))
+@pytest.fixture
+def open_stream(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> Callable[[App, UUID], Iterator[str]]:
+    """Open the stream the way the handlers do.
+
+    The snapshot is read through ``sqlite_session``, the session a handler would be given.
+    Node refreshes open their own sessions from ``sqlite_session_factory``, passed in
+    directly rather than installed as the global factory.
+    """
+
+    def _open(app_model: App, run_id: UUID) -> Iterator[str]:
+        snapshot = ctrl._initial_snapshot(sqlite_session, app_model, run_id)
+        return ctrl._stream_inspector_events(app_model, run_id, snapshot, session_factory=sqlite_session_factory)
+
+    return _open
 
 
 def _parse(record: str) -> tuple[str, dict[str, object] | None]:
@@ -165,9 +188,7 @@ def patch_service(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
 
 
 @pytest.fixture
-def patch_subscribe(
-    monkeypatch: pytest.MonkeyPatch,
-) -> Callable[[Sequence[InspectorMessage | None]], None]:
+def patch_subscribe(monkeypatch: pytest.MonkeyPatch) -> _Subscribe:
     """Patch the pub/sub subscribe iterator."""
 
     def _make(messages: Sequence[InspectorMessage | None]) -> None:
@@ -189,11 +210,13 @@ def patch_subscribe(
     return _make
 
 
-def test_stream_fast_path_when_run_already_terminal(patch_service: MagicMock, app_model: App, run_id: UUID) -> None:
+def test_stream_fast_path_when_run_already_terminal(
+    patch_service: MagicMock, open_stream: _OpenStream, app_model: App, run_id: UUID
+) -> None:
     """A run that's already ``succeeded`` should produce ``snapshot`` →
     ``workflow_run_completed`` and close without subscribing to pub/sub."""
     patch_service.snapshot_workflow_run.return_value = _snapshot_view(status="succeeded")
-    records = _drain(_stream(app_model, run_id))
+    records = _drain(open_stream(app_model, run_id))
     assert len(records) == 2
     e0, d0 = _parse(records[0])
     e1, d1 = _parse(records[1])
@@ -205,18 +228,20 @@ def test_stream_fast_path_when_run_already_terminal(patch_service: MagicMock, ap
     assert d1["workflow_run_status"] == "succeeded"
 
 
-def test_stream_fast_path_each_terminal_status(patch_service: MagicMock, app_model: App, run_id: UUID) -> None:
+def test_stream_fast_path_each_terminal_status(
+    patch_service: MagicMock, open_stream: _OpenStream, app_model: App, run_id: UUID
+) -> None:
     """All four terminal statuses take the fast-path. Note the enum value for
     partial success is the hyphenated ``partial-succeeded``."""
     for terminal in ("succeeded", "failed", "stopped", "partial-succeeded"):
         patch_service.snapshot_workflow_run.return_value = _snapshot_view(status=terminal)
-        records = _drain(_stream(app_model, run_id))
+        records = _drain(open_stream(app_model, run_id))
         events = [_parse(r)[0] for r in records]
         assert events == ["snapshot", "workflow_run_completed"], terminal
 
 
 def test_initial_snapshot_raises_the_404_before_the_response_exists(
-    patch_service: MagicMock, app_model: App, run_id: UUID
+    patch_service: MagicMock, sqlite_session: Session, app_model: App, run_id: UUID
 ) -> None:
     """A missing run must be an HTTP 404. The handlers resolve the snapshot before building the
     streaming ``Response``; raising inside the generator would arrive after the 200 went out."""
@@ -224,7 +249,7 @@ def test_initial_snapshot_raises_the_404_before_the_response_exists(
         "workflow_run_not_found", "Workflow run not found."
     )
     with pytest.raises(ctrl._InspectorNotFound) as exc:
-        ctrl._initial_snapshot(app_model, run_id)
+        ctrl._initial_snapshot(sqlite_session, app_model, run_id)
     assert exc.value.error_code == "workflow_run_not_found"
     assert not patch_service.node_detail.called
 
@@ -236,7 +261,8 @@ def test_initial_snapshot_raises_the_404_before_the_response_exists(
 
 def test_stream_live_emits_snapshot_then_node_changed_then_completion(
     patch_service: MagicMock,
-    patch_subscribe: Callable[[Sequence[InspectorMessage | None]], None],
+    patch_subscribe: _Subscribe,
+    open_stream: _OpenStream,
     app_model: App,
     run_id: UUID,
 ) -> None:
@@ -251,7 +277,7 @@ def test_stream_live_emits_snapshot_then_node_changed_then_completion(
     ]
     patch_subscribe(msgs)
 
-    events = [_parse(r)[0] for r in _drain(_stream(app_model, run_id))]
+    events = [_parse(r)[0] for r in _drain(open_stream(app_model, run_id))]
     assert events == ["snapshot", "node_changed", "node_changed", "workflow_run_completed"]
     # node_detail should be called once per delta (not once per heartbeat)
     assert patch_service.node_detail.call_count == 2
@@ -259,7 +285,8 @@ def test_stream_live_emits_snapshot_then_node_changed_then_completion(
 
 def test_stream_emits_heartbeat_after_n_idle_ticks(
     patch_service: MagicMock,
-    patch_subscribe: Callable[[Sequence[InspectorMessage | None]], None],
+    patch_subscribe: _Subscribe,
+    open_stream: _OpenStream,
     monkeypatch: pytest.MonkeyPatch,
     app_model: App,
     run_id: UUID,
@@ -278,7 +305,7 @@ def test_stream_emits_heartbeat_after_n_idle_ticks(
             InspectorMessage(kind="workflow_completed", workflow_run_id=str(run_id), node_id=None, status="failed"),
         ]
     )
-    records = _drain(_stream(app_model, run_id))
+    records = _drain(open_stream(app_model, run_id))
     raw = "".join(records)
     assert ":keepalive\n\n" in raw
     assert "workflow_run_completed" in raw
@@ -286,7 +313,8 @@ def test_stream_emits_heartbeat_after_n_idle_ticks(
 
 def test_stream_hard_timeout_force_closes_without_terminal(
     patch_service: MagicMock,
-    patch_subscribe: Callable[[Sequence[InspectorMessage | None]], None],
+    patch_subscribe: _Subscribe,
+    open_stream: _OpenStream,
     monkeypatch: pytest.MonkeyPatch,
     app_model: App,
     run_id: UUID,
@@ -299,14 +327,15 @@ def test_stream_hard_timeout_force_closes_without_terminal(
 
     # 5 heartbeats, no terminal → generator should bail after 3 ticks.
     patch_subscribe([None] * 10)
-    records = _drain(_stream(app_model, run_id))
+    records = _drain(open_stream(app_model, run_id))
     events = [_parse(r)[0] for r in records]
     assert events == ["snapshot"]  # only snapshot, then forced close
 
 
 def test_stream_skips_messages_with_missing_node_id(
     patch_service: MagicMock,
-    patch_subscribe: Callable[[Sequence[InspectorMessage | None]], None],
+    patch_subscribe: _Subscribe,
+    open_stream: _OpenStream,
     app_model: App,
     run_id: UUID,
 ) -> None:
@@ -318,14 +347,15 @@ def test_stream_skips_messages_with_missing_node_id(
             InspectorMessage(kind="workflow_completed", workflow_run_id=str(run_id), node_id=None, status="succeeded"),
         ]
     )
-    events = [_parse(r)[0] for r in _drain(_stream(app_model, run_id))]
+    events = [_parse(r)[0] for r in _drain(open_stream(app_model, run_id))]
     assert events == ["snapshot", "workflow_run_completed"]
     assert patch_service.node_detail.call_count == 0
 
 
 def test_stream_skips_node_detail_404_without_breaking_stream(
     patch_service: MagicMock,
-    patch_subscribe: Callable[[Sequence[InspectorMessage | None]], None],
+    patch_subscribe: _Subscribe,
+    open_stream: _OpenStream,
     app_model: App,
     run_id: UUID,
 ) -> None:
@@ -339,13 +369,14 @@ def test_stream_skips_node_detail_404_without_breaking_stream(
             InspectorMessage(kind="workflow_completed", workflow_run_id=str(run_id), node_id=None, status="succeeded"),
         ]
     )
-    events = [_parse(r)[0] for r in _drain(_stream(app_model, run_id))]
+    events = [_parse(r)[0] for r in _drain(open_stream(app_model, run_id))]
     assert events == ["snapshot", "workflow_run_completed"]
 
 
 def test_stream_emits_error_event_on_node_detail_unexpected_exception(
     patch_service: MagicMock,
-    patch_subscribe: Callable[[Sequence[InspectorMessage | None]], None],
+    patch_subscribe: _Subscribe,
+    open_stream: _OpenStream,
     app_model: App,
     run_id: UUID,
 ) -> None:
@@ -359,7 +390,7 @@ def test_stream_emits_error_event_on_node_detail_unexpected_exception(
             InspectorMessage(kind="workflow_completed", workflow_run_id=str(run_id), node_id=None, status="succeeded"),
         ]
     )
-    records = _drain(_stream(app_model, run_id))
+    records = _drain(open_stream(app_model, run_id))
     events = [_parse(r) for r in records]
     kinds = [e for e, _ in events]
     assert kinds == ["snapshot", "error", "workflow_run_completed"]
@@ -371,9 +402,100 @@ def test_stream_emits_error_event_on_node_detail_unexpected_exception(
     assert "failed" in message
 
 
+def test_stream_refreshes_nodes_after_the_app_context_is_gone(
+    patch_service: MagicMock,
+    patch_subscribe: _Subscribe,
+    open_stream: _OpenStream,
+    app_model: App,
+    run_id: UUID,
+) -> None:
+    """Flask pops the app context before it iterates a streamed body, so the refresh must
+    not depend on ``db.session``. Draining in an empty ``contextvars.Context`` reproduces
+    what the WSGI server does after the handler returns."""
+    patch_service.snapshot_workflow_run.return_value = _snapshot_view(status="running")
+    patch_service.node_detail.return_value = _node_view(node_id="agent-1")
+    patch_subscribe(
+        [
+            InspectorMessage(kind="node_changed", workflow_run_id=str(run_id), node_id="agent-1", status="running"),
+            InspectorMessage(kind="workflow_completed", workflow_run_id=str(run_id), node_id=None, status="succeeded"),
+        ]
+    )
+    stream = open_stream(app_model, run_id)
+
+    def drain_outside_app_context() -> list[str]:
+        assert not has_app_context()
+        return _drain(stream)
+
+    records = contextvars.Context().run(drain_outside_app_context)
+
+    assert [_parse(r)[0] for r in records] == ["snapshot", "node_changed", "workflow_run_completed"]
+    assert isinstance(patch_service.node_detail.call_args.kwargs["session"], Session)
+
+
+def test_session_factory_for_follows_the_injected_session(sqlite_session: Session) -> None:
+    """The stream's maker comes from the handler's session, not the global factory."""
+    factory = ctrl._session_factory_for(sqlite_session)
+
+    with factory() as opened:
+        assert opened.get_bind() is sqlite_session.get_bind()
+        assert opened.expire_on_commit is sqlite_session.expire_on_commit
+
+
+@pytest.mark.parametrize("fails", [False, True])
+def test_read_node_detail_closes_its_session(
+    sqlite_session_factory: sessionmaker[Session], app_model: App, fails: bool
+) -> None:
+    """Each stream refresh uses the given factory, then closes that session without committing.
+
+    ``node_detail`` flushes a probe row into the session it receives. ``Session.close`` expunges
+    that row, and a second session from the same factory cannot see it: the short read does not
+    commit. This holds whether ``node_detail`` returns or raises.
+    """
+    probe = App(
+        id="00000000-0000-0000-0000-0000000000bb",
+        tenant_id="00000000-0000-0000-0000-0000000000cc",
+        name="probe",
+        description="",
+        mode=AppMode.WORKFLOW,
+        enable_site=True,
+        enable_api=True,
+    )
+    received: list[tuple[App, str, str, Session]] = []
+
+    class ProbingService(NodeOutputInspectorService):
+        @override
+        def node_detail(
+            self, *, app_model: App, workflow_run_id: str, node_id: str, session: Session
+        ) -> NodeOutputsView:
+            received.append((app_model, workflow_run_id, node_id, session))
+            session.add(probe)
+            session.flush()
+            assert sa_inspect(probe).session is session
+            if fails:
+                raise NodeOutputInspectorError("node_not_in_workflow_run", "missing")
+            return _node_view(node_id=node_id)
+
+    service = ProbingService()
+
+    if fails:
+        with pytest.raises(NodeOutputInspectorError):
+            ctrl._read_node_detail(service, app_model, "run-1", "agent-1", session_factory=sqlite_session_factory)
+    else:
+        assert (
+            ctrl._read_node_detail(service, app_model, "run-1", "agent-1", session_factory=sqlite_session_factory)
+            == _node_view()
+        )
+
+    assert [call[:3] for call in received] == [(app_model, "run-1", "agent-1")]
+    assert sa_inspect(probe).session is None
+    with sqlite_session_factory() as observer:
+        assert observer.get(App, probe.id) is None
+
+
 def test_stream_workflow_completed_status_falls_back_to_unknown(
     patch_service: MagicMock,
-    patch_subscribe: Callable[[Sequence[InspectorMessage | None]], None],
+    patch_subscribe: _Subscribe,
+    open_stream: _OpenStream,
     app_model: App,
     run_id: UUID,
 ) -> None:
@@ -384,7 +506,7 @@ def test_stream_workflow_completed_status_falls_back_to_unknown(
     patch_subscribe(
         [InspectorMessage(kind="workflow_completed", workflow_run_id=str(run_id), node_id=None, status=None)]
     )
-    records = _drain(_stream(app_model, run_id))
+    records = _drain(open_stream(app_model, run_id))
     e, d = _parse(records[-1])
     assert e == "workflow_run_completed"
     assert d is not None
@@ -435,45 +557,53 @@ def test_inspector_not_found_relays_codes_the_contract_does_not_know() -> None:
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def test_serve_snapshot_happy_path(patch_service: MagicMock, app_model: App, run_id: UUID) -> None:
+def test_serve_snapshot_happy_path(
+    patch_service: MagicMock, sqlite_session: Session, app_model: App, run_id: UUID
+) -> None:
     """Returns the snapshot view as JSON-serialisable dict."""
     patch_service.snapshot_workflow_run.return_value = _snapshot_view(status="running")
-    result = ctrl._serve_snapshot(app_model, run_id)
+    result = ctrl._serve_snapshot(sqlite_session, app_model, run_id)
     assert isinstance(result, dict)
     assert result["workflow_run_id"] == "00000000-0000-0000-0000-0000000000aa"
     patch_service.snapshot_workflow_run.assert_called_once_with(
-        app_model=app_model, workflow_run_id=str(run_id), session=ANY
+        app_model=app_model, workflow_run_id=str(run_id), session=sqlite_session
     )
 
 
 def test_serve_snapshot_translates_inspector_error_to_404(
-    patch_service: MagicMock, app_model: App, run_id: UUID
+    patch_service: MagicMock, sqlite_session: Session, app_model: App, run_id: UUID
 ) -> None:
     """``NodeOutputInspectorError`` becomes the controller's 404 wrapper with
     the specific ``error_code`` preserved."""
     patch_service.snapshot_workflow_run.side_effect = NodeOutputInspectorError("workflow_run_not_found", "no such run")
     with pytest.raises(ctrl._InspectorNotFound) as exc:
-        ctrl._serve_snapshot(app_model, run_id)
+        ctrl._serve_snapshot(sqlite_session, app_model, run_id)
     assert exc.value.error_code == "workflow_run_not_found"
 
 
-def test_serve_node_detail_happy_path(patch_service: MagicMock, app_model: App, run_id: UUID) -> None:
+def test_serve_node_detail_happy_path(
+    patch_service: MagicMock, sqlite_session: Session, app_model: App, run_id: UUID
+) -> None:
     patch_service.node_detail.return_value = _node_view(node_id="agent-1")
-    result = ctrl._serve_node_detail(app_model, run_id, "agent-1")
+    result = ctrl._serve_node_detail(sqlite_session, app_model, run_id, "agent-1")
     assert result["node_id"] == "agent-1"
     patch_service.node_detail.assert_called_once_with(
-        app_model=app_model, workflow_run_id=str(run_id), node_id="agent-1", session=ANY
+        app_model=app_model, workflow_run_id=str(run_id), node_id="agent-1", session=sqlite_session
     )
 
 
-def test_serve_node_detail_translates_inspector_error(patch_service: MagicMock, app_model: App, run_id: UUID) -> None:
+def test_serve_node_detail_translates_inspector_error(
+    patch_service: MagicMock, sqlite_session: Session, app_model: App, run_id: UUID
+) -> None:
     patch_service.node_detail.side_effect = NodeOutputInspectorError("node_not_in_workflow_run", "missing")
     with pytest.raises(ctrl._InspectorNotFound) as exc:
-        ctrl._serve_node_detail(app_model, run_id, "ghost")
+        ctrl._serve_node_detail(sqlite_session, app_model, run_id, "ghost")
     assert exc.value.error_code == "node_not_in_workflow_run"
 
 
-def test_serve_output_preview_happy_path(patch_service: MagicMock, app_model: App, run_id: UUID) -> None:
+def test_serve_output_preview_happy_path(
+    patch_service: MagicMock, sqlite_session: Session, app_model: App, run_id: UUID
+) -> None:
     from services.workflow.node_output_inspector_service import (
         DeclaredOutputType,
         OutputPreviewView,
@@ -486,7 +616,7 @@ def test_serve_output_preview_happy_path(patch_service: MagicMock, app_model: Ap
         status=NodeOutputStatus.READY,
         value="Hello",
     )
-    result = ctrl._serve_output_preview(app_model, run_id, "agent-1", "text")
+    result = ctrl._serve_output_preview(sqlite_session, app_model, run_id, "agent-1", "text")
     assert result["value"] == "Hello"
     assert result["status"] == "ready"
     patch_service.output_preview.assert_called_once_with(
@@ -494,27 +624,111 @@ def test_serve_output_preview_happy_path(patch_service: MagicMock, app_model: Ap
         workflow_run_id=str(run_id),
         node_id="agent-1",
         output_name="text",
-        session=ANY,
+        session=sqlite_session,
     )
 
 
 def test_serve_output_preview_translates_inspector_error(
-    patch_service: MagicMock, app_model: App, run_id: UUID
+    patch_service: MagicMock, sqlite_session: Session, app_model: App, run_id: UUID
 ) -> None:
     patch_service.output_preview.side_effect = NodeOutputInspectorError("node_output_not_declared", "no such output")
     with pytest.raises(ctrl._InspectorNotFound) as exc:
-        ctrl._serve_output_preview(app_model, run_id, "agent-1", "phantom")
+        ctrl._serve_output_preview(sqlite_session, app_model, run_id, "agent-1", "phantom")
     assert exc.value.error_code == "node_output_not_declared"
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Note: the Resource ``.get`` methods themselves (6 REST + 2 SSE) are
-# 1-line delegators to the helpers above. They can't be called directly in a
-# unit test because their decorator stack (``@setup_required`` /
-# ``@login_required`` / ``@account_initialization_required`` /
-# ``@get_app_model``) needs a real Flask request context + DB-backed account.
-# The integration test in
-# ``tests/e2e_tests/middleware/services/test_node_output_inspector_service.py``
-# (and the E2E driver in /tmp/e2e_inspector_sse_published.py) exercise them
-# through the HTTP stack.
+# Resource handlers — called past their decorator stack
 # ──────────────────────────────────────────────────────────────────────────────
+#
+# ``@setup_required`` / ``@login_required`` / ``@get_app_model`` need a real request
+# and account, so these tests unwrap the handlers and pass the session that
+# ``with_session`` would inject. The HTTP stack is covered by
+# ``tests/e2e_tests/middleware/services/test_node_output_inspector_service.py``.
+
+
+@pytest.mark.parametrize(
+    "resource_cls",
+    [ctrl.WorkflowDraftRunNodeOutputsApi, ctrl.WorkflowPublishedRunNodeOutputsApi],
+)
+def test_snapshot_handlers_pass_the_injected_session(
+    patch_service: MagicMock, sqlite_session: Session, app_model: App, run_id: UUID, resource_cls: type
+) -> None:
+    patch_service.snapshot_workflow_run.return_value = _snapshot_view(status="running")
+
+    result = unwrap(resource_cls.get)(resource_cls(), sqlite_session, app_model=app_model, run_id=run_id)
+
+    assert result["workflow_run_id"] == str(run_id)
+    patch_service.snapshot_workflow_run.assert_called_once_with(
+        app_model=app_model, workflow_run_id=str(run_id), session=sqlite_session
+    )
+
+
+@pytest.mark.parametrize(
+    "resource_cls",
+    [ctrl.WorkflowDraftRunNodeOutputDetailApi, ctrl.WorkflowPublishedRunNodeOutputDetailApi],
+)
+def test_node_detail_handlers_pass_the_injected_session(
+    patch_service: MagicMock, sqlite_session: Session, app_model: App, run_id: UUID, resource_cls: type
+) -> None:
+    patch_service.node_detail.return_value = _node_view(node_id="agent-1")
+
+    result = unwrap(resource_cls.get)(
+        resource_cls(), sqlite_session, app_model=app_model, run_id=run_id, node_id="agent-1"
+    )
+
+    assert result["node_id"] == "agent-1"
+    patch_service.node_detail.assert_called_once_with(
+        app_model=app_model, workflow_run_id=str(run_id), node_id="agent-1", session=sqlite_session
+    )
+
+
+@pytest.mark.parametrize(
+    "resource_cls",
+    [ctrl.WorkflowDraftRunNodeOutputPreviewApi, ctrl.WorkflowPublishedRunNodeOutputPreviewApi],
+)
+def test_output_preview_handlers_pass_the_injected_session(
+    patch_service: MagicMock, sqlite_session: Session, app_model: App, run_id: UUID, resource_cls: type
+) -> None:
+    from services.workflow.node_output_inspector_service import DeclaredOutputType, OutputPreviewView
+
+    patch_service.output_preview.return_value = OutputPreviewView(
+        node_id="agent-1",
+        output_name="text",
+        type=DeclaredOutputType.STRING,
+        status=NodeOutputStatus.READY,
+        value="Hello",
+    )
+
+    result = unwrap(resource_cls.get)(
+        resource_cls(), sqlite_session, app_model=app_model, run_id=run_id, node_id="agent-1", output_name="text"
+    )
+
+    assert result["value"] == "Hello"
+    patch_service.output_preview.assert_called_once_with(
+        app_model=app_model,
+        workflow_run_id=str(run_id),
+        node_id="agent-1",
+        output_name="text",
+        session=sqlite_session,
+    )
+
+
+@pytest.mark.parametrize(
+    "resource_cls",
+    [ctrl.WorkflowDraftRunNodeOutputEventsApi, ctrl.WorkflowPublishedRunNodeOutputEventsApi],
+)
+def test_event_handlers_resolve_the_snapshot_with_the_injected_session(
+    patch_service: MagicMock, sqlite_session: Session, app_model: App, run_id: UUID, resource_cls: type
+) -> None:
+    """The snapshot is read through the handler's session before the stream starts."""
+    patch_service.snapshot_workflow_run.return_value = _snapshot_view(status="succeeded")
+
+    response = unwrap(resource_cls.get)(resource_cls(), sqlite_session, app_model=app_model, run_id=run_id)
+
+    patch_service.snapshot_workflow_run.assert_called_once_with(
+        app_model=app_model, workflow_run_id=str(run_id), session=sqlite_session
+    )
+    assert response.mimetype == "text/event-stream"
+    events = [_parse(r)[0] for r in response.response]
+    assert events == ["snapshot", "workflow_run_completed"]
