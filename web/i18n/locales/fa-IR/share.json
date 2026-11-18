@@ -5,6 +5,7 @@
   "appNotAccessible.ipAddress": "نشانی IP شما: <ip>{{ip}}</ip>",
   "appNotAccessible.title": "این برنامه وجود ندارد یا از شبکه شما قابل دسترسی نیست.",
   "auth.signIn": "ورود",
+  "auth.unofficialAppWarning": "این برنامه توسط یک توسعه‌دهندهٔ شخص ثالث منتشر شده است. اطلاعات حساس را تنها در صورتی به اشتراک بگذارید که به توسعه‌دهنده اعتماد دارید.",
   "chat.chatFormTip": "تنظیمات چت پس از شروع چت قابل تغییر نیستند.",
   "chat.chatSettingsTitle": "راه‌اندازی چت جدید",
   "chat.collapse": "بستن",

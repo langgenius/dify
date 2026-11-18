@@ -5,6 +5,7 @@
   "appNotAccessible.ipAddress": "Tu dirección IP: <ip>{{ip}}</ip>",
   "appNotAccessible.title": "Esta aplicación no existe o no es accesible desde tu red.",
   "auth.signIn": "Iniciar sesión",
+  "auth.unofficialAppWarning": "Esta aplicación fue publicada por un desarrollador externo. Comparte información confidencial solo si confías en el desarrollador.",
   "chat.chatFormTip": "No se pueden modificar los ajustes del chat después de que el chat ha comenzado.",
   "chat.chatSettingsTitle": "Nueva configuración de chat",
   "chat.collapse": "Contraer",

@@ -5,6 +5,7 @@
   "appNotAccessible.ipAddress": "お使いの IP アドレス： <ip>{{ip}}</ip>",
   "appNotAccessible.title": "このアプリは存在しないか、お使いのネットワークからはアクセスできません。",
   "auth.signIn": "ログイン",
+  "auth.unofficialAppWarning": "このアプリはサードパーティの開発者によって公開されています。開発者を信頼できる場合にのみ、機密情報を共有してください。",
   "chat.chatFormTip": "チャット開始後は設定を変更できません",
   "chat.chatSettingsTitle": "チャット設定",
   "chat.collapse": "縮小",

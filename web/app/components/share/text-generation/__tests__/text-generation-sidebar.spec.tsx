@@ -125,7 +125,7 @@ const renderSidebar = (overrides: Partial<typeof baseProps> = {}) => {
   return render(<Caller />)
 }
 
-const entryParameters = {
+const entryParameters: NonNullable<Parameters<typeof getWebAppEntryState>[0]['parameters']> = {
   account_login_enabled: true,
   account_login_url: 'https://accounts.example/signin',
   console_web_url: 'https://accounts.example',
@@ -147,6 +147,32 @@ const createAnonymousEntry = (parameters: Partial<typeof entryParameters> = {}) 
   getWebAppEntryState({
     parameters: { ...entryParameters, ...parameters },
     loginStatus: { logged_in: false, app_logged_in: true },
+    canAccess: true,
+    appDataReady: true,
+    hasError: false,
+  })
+
+const createEntryWithConnections = (authenticated: boolean) =>
+  getWebAppEntryState({
+    parameters: {
+      ...entryParameters,
+      requires_end_user_connections: true,
+      connection_requirements: [
+        {
+          node_id: 'github-node',
+          node_ids: ['github-node'],
+          provider: 'langgenius/github/github',
+          provider_label: 'GitHub',
+          plugin_unique_identifier: 'langgenius/github:1.0.0',
+          title: 'Get repositories',
+          purpose: 'Read repositories',
+          allowed_credential_types: ['oauth2'],
+          icon: '',
+          icon_dark: null,
+        },
+      ],
+    },
+    loginStatus: { logged_in: authenticated, app_logged_in: true },
     canAccess: true,
     appDataReady: true,
     hasError: false,
@@ -181,6 +207,7 @@ describe('TextGenerationSidebar', () => {
         myApps.compareDocumentPosition(screen.getByText('Text Generation')) &
           Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy()
+      expect(screen.queryByText('share.auth.unofficialAppWarning')).not.toBeInTheDocument()
     },
   )
 
@@ -196,9 +223,27 @@ describe('TextGenerationSidebar', () => {
   it.each([false, true])(
     'does not offer Webapp My apps navigation for an installed app, workflow=%s',
     (isWorkflow) => {
-      renderWorkflow({ isWorkflow, isInstalledApp: true })
+      renderWorkflow({ isWorkflow, isInstalledApp: true }, createEntryWithConnections(true))
 
       expect(screen.queryByRole('link', { name: 'app.endUser.myApps' })).not.toBeInTheDocument()
+      expect(screen.queryByText('share.auth.unofficialAppWarning')).not.toBeInTheDocument()
+    },
+  )
+
+  it.each([false, true])(
+    'shows the unofficial-app warning before the account footer when connections exist, authenticated=%s',
+    (authenticated) => {
+      renderWorkflow({}, createEntryWithConnections(authenticated))
+
+      const warning = screen.getByRole('note')
+      const footerAction = screen.getByRole('button', {
+        name: authenticated ? 'Account menu' : 'share.auth.signIn',
+      })
+      expect(warning).toBeVisible()
+      expect(warning).toHaveTextContent('share.auth.unofficialAppWarning')
+      expect(
+        warning.compareDocumentPosition(footerAction) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
     },
   )
 

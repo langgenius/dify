@@ -12,6 +12,7 @@ import { render } from 'vitest-browser-react'
 import { ConnectionsContext } from '@/app/components/share/connections/use-connections'
 import { WebAppEntryContext } from '@/app/components/share/webapp-entry'
 import { useWebAppStore } from '@/context/web-app-context'
+import share from '@/i18n/locales/en-US/share.json'
 import {
   AppSourceType,
   delConversation,
@@ -48,6 +49,14 @@ vi.mock('@/next/navigation', () => ({
   usePathname: () => '/chat/app-1',
   useSearchParams: () => new URLSearchParams(),
 }))
+// boundary: use the actual warning copy to verify readable wrapping in the narrow sidebar.
+vi.mock('react-i18next', async () => {
+  const { createReactI18nextMock } = await import('@/test/i18n-mock')
+  const { default: messages } = await import('@/i18n/locales/en-US/share.json')
+  return createReactI18nextMock({
+    'share.auth.unofficialAppWarning': messages['auth.unofficialAppWarning'],
+  })
+})
 
 const conversation = (id: string, name: string) => ({ id, name, inputs: {}, introduction: '' })
 const conversations = [
@@ -66,6 +75,7 @@ const appInfo: AppData = {
 }
 
 const buildAppLabel = 'app.endUser.buildYourOwnApp'
+const unofficialAppWarning = share['auth.unofficialAppWarning']
 const profile: WebAccountProfileResponse = {
   email: 'joel@example.com',
   is_password_set: false,
@@ -245,12 +255,46 @@ it.each([
   await expect.element(link).toHaveAttribute('target', '_blank')
   await expect.element(link).toHaveAttribute('rel', 'noopener noreferrer')
   await expect.element(avatar).toBeVisible()
+  await expect.element(conversationHistory().getByText(unofficialAppWarning)).toBeVisible()
   expect(link.element().getBoundingClientRect().bottom).toBeLessThanOrEqual(
     avatar.element().getBoundingClientRect().top,
   )
 })
 
-it('keeps the build link and public Console discovery out of installed apps', async () => {
+it('keeps the connection warning readable below history and above the account footer', async () => {
+  await renderSidebar({}, noBranding, false, chatConnectionEntry)
+  const warning = conversationHistory().getByRole('note')
+  const text = warning.getByText(unofficialAppWarning)
+  await expect.element(text).toBeVisible()
+  const footer = conversationHistory().getByRole('button', { name: 'Test Account' })
+  await expect.element(footer).toBeVisible()
+  const textElement = text.element()
+  expect(textElement.scrollWidth).toBeLessThanOrEqual(textElement.clientWidth)
+  expect(textElement.scrollHeight).toBeLessThanOrEqual(textElement.clientHeight)
+  const warningRect = warning.element().getBoundingClientRect()
+  const sidebarRect = conversationHistory().element().getBoundingClientRect()
+  expect(warningRect.left).toBeGreaterThanOrEqual(sidebarRect.left)
+  expect(warningRect.right).toBeLessThanOrEqual(sidebarRect.right)
+  expect(warningRect.bottom).toBeLessThanOrEqual(footer.element().getBoundingClientRect().top)
+})
+
+it('hides the connection warning when the Webapp has no connection requirements', async () => {
+  if (!('parameters' in chatConnectionEntry)) throw new Error('Connection entry required')
+  await renderSidebar({}, noBranding, false, {
+    ...chatConnectionEntry,
+    status: 'ready',
+    canRun: true,
+    parameters: {
+      ...chatConnectionEntry.parameters,
+      requires_end_user_connections: false,
+      connection_requirements: [],
+    },
+  })
+  await expect.element(page.getByRole('button', { name: 'Test Account' })).toBeVisible()
+  await expect.element(page.getByText(unofficialAppWarning)).not.toBeInTheDocument()
+})
+
+it('keeps the build link, connection warning and public Console discovery out of installed apps', async () => {
   await renderSidebar({}, noBranding, false, chatConnectionEntry, createChatConnections(), {
     id: 'app-1',
     app_owner_tenant_id: 'tenant-1',
@@ -271,6 +315,7 @@ it('keeps the build link and public Console discovery out of installed apps', as
   })
   await expect.element(page.getByRole('button', { name: 'Test Account' })).toBeVisible()
   await expect.element(page.getByRole('link', { name: buildAppLabel })).not.toBeInTheDocument()
+  await expect.element(page.getByText(unofficialAppWarning)).not.toBeInTheDocument()
   expect(
     webRequests.some((request) => new URL(request.url).pathname === '/api/system-features'),
   ).toBe(false)
@@ -299,15 +344,28 @@ it.each([false, true])(
 )
 
 it('offers sign-in instead of the footer menu and blocks new chat while personal connections require login', async () => {
+  const connections = createChatConnections()
   await renderSidebar(
     { currentConversationId: '1', conversations: [], pinnedConversations: [] },
     noBranding,
     false,
     anonymousEntry(),
-    createChatConnections({ status: 'sign-in-required', canRun: false }),
+    createChatConnections({
+      status: 'sign-in-required',
+      canRun: false,
+      selections: {},
+      services: connections.services.map((service) => ({
+        ...service,
+        selectedConnectionId: undefined,
+        availableConnections: [],
+      })),
+      runConfiguration: null,
+      preflight: { ...connections.preflight, status: 'pending', response: null },
+    }),
   )
   await expect.element(page.getByRole('button', { name: 'share.chat.newChat' })).toBeDisabled()
   await expect.element(page.getByRole('button', { name: 'share.auth.signIn' })).toBeVisible()
+  await expect.element(conversationHistory().getByText(unofficialAppWarning)).toBeVisible()
   await expect
     .element(page.getByRole('link', { name: 'app.endUser.myApps' }))
     .not.toBeInTheDocument()
