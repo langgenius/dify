@@ -20,7 +20,6 @@ import type {
 import type { ReactElement, ReactNode } from 'react'
 import type { UserProfileWithMeta } from '@/features/account-profile/client'
 import type { DeepPartial } from '@/test/console/system-features'
-import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { noop } from '@tanstack/react-query'
 import { render, renderHook } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
@@ -30,6 +29,7 @@ import {
   ensureCurrentWorkspaceQuery,
   seedCurrentWorkspaceQuery,
 } from '@/test/console/current-workspace'
+import { createFeaturesFixture } from '@/test/console/features'
 import { consoleQueryKey } from '@/test/console/operation-hooks'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import {
@@ -149,7 +149,7 @@ export const seedFeatures = (
   queryClient: QueryClient,
   overrides: DeepPartial<GetFeaturesResponse> = {},
 ): GetFeaturesResponse => {
-  const data = zGetFeaturesResponse.parse({ tokener_bootstrap_status: null, ...overrides })
+  const data = createFeaturesFixture(overrides)
   queryClient.setQueryData(consoleQuery.features.get.queryKey(), data)
   return data
 }
