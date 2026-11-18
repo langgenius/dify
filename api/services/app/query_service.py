@@ -2,7 +2,7 @@
 
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Final, Protocol
+from typing import Protocol
 from uuid import UUID
 
 from constants.oauth_bearer import SubjectType
@@ -13,7 +13,6 @@ from models.enums import AppStatus
 from services.app.access import AppAccessFilter
 from services.app_definition_query_service import AppParameterConfig
 from services.entities.app_entities import SUPPORTED_APP_TYPES, AppListParams, AppRecord, AppSummary, PermittedAppsPage
-from services.errors.app import PermittedAppsTooManyError
 
 
 @dataclass(frozen=True)
@@ -29,7 +28,7 @@ class AppListLogin:
     """Who asks for the app list, as admission resolved it.
 
     ``workspace_id`` is the workspace the request named, after the membership check; for a workspace token it is the
-    token's own workspace. None means the request named none.
+    token's own workspace. None means the request named none; it is always None for an external SSO login.
     """
 
     kind: SubjectType
@@ -52,10 +51,6 @@ class AppListLogin:
 
 
 type _AppListRule = Callable[[AppListLogin, AppDiscoveryQuery], PaginatedResult[AppDiscoveryEntry]]
-
-# The permitted-app list is read in full only to cut it down to one workspace, a page at a time and at most this far.
-PERMITTED_WALK_PAGE_SIZE: Final = 100
-PERMITTED_WALK_MAX_APPS: Final = 2000
 
 
 @dataclass(frozen=True)
@@ -163,33 +158,8 @@ class AppDiscoveryService:
         return self.list_apps(login.in_workspace(login.workspace_id), query)
 
     def _external_apps(self, login: AppListLogin, query: AppDiscoveryQuery) -> PaginatedResult[AppDiscoveryEntry]:
-        if login.workspace_id is None:
-            return self.list_permitted_apps(query)
-        permitted = self._all_permitted(query)
-        apps = {app.id: app for app in self._apps.find_visible_apps(permitted)} if permitted else {}
-        kept = [
-            apps[app_id]
-            for app_id in permitted
-            if app_id in apps
-            and apps[app_id].status == AppStatus.NORMAL
-            and apps[app_id].tenant_id == login.workspace_id
-        ]
-        start = (query.page - 1) * query.limit
-        return self._page(kept[start : start + query.limit], total=len(kept), page=query.page, limit=query.limit)
-
-    def _all_permitted(self, query: AppDiscoveryQuery) -> list[str]:
-        """Every permitted app id, read up to PERMITTED_WALK_MAX_APPS; beyond that the walk refuses."""
-        permitted: list[str] = []
-        for page in range(1, PERMITTED_WALK_MAX_APPS // PERMITTED_WALK_PAGE_SIZE + 1):
-            batch = self._access.permitted_apps(
-                AppDiscoveryQuery(page, PERMITTED_WALK_PAGE_SIZE, query.mode, query.name)
-            )
-            permitted += batch.app_ids
-            if not batch.has_more:
-                return permitted
-        raise PermittedAppsTooManyError(
-            f"This login may use more than {PERMITTED_WALK_MAX_APPS} apps; list them without workspace_id."
-        )
+        """An external SSO login belongs to no workspace: admission refuses one that names a workspace."""
+        return self.list_permitted_apps(query)
 
     def _visibility(self, context: RequestContext) -> AppAccessFilter:
         if context.resource_app_ids is not None:
