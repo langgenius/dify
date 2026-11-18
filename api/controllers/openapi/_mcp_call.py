@@ -18,7 +18,6 @@ call is refused before anything runs.
 from __future__ import annotations
 
 import contextvars
-import json
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -27,14 +26,21 @@ from typing import Any, Final
 from urllib.parse import quote
 
 from flask import Flask, current_app, request
+from flask.globals import app_ctx
 from werkzeug.datastructures import Headers
 from werkzeug.exceptions import HTTPException
-from werkzeug.routing import Rule
 from werkzeug.test import EnvironBuilder
 from werkzeug.wrappers import Response
 
-from controllers.openapi._catalog import _QUERY_METHODS, CATALOG_HEADER, Bind, current_catalog, iter_handlers
-from controllers.openapi.auth.spec import spec_of
+from controllers.openapi._catalog import (
+    _QUERY_METHODS,
+    CATALOG_HEADER,
+    Bind,
+    CatalogOp,
+    RegisteredOp,
+    current_catalog,
+    op_registry,
+)
 
 AUTHORIZATION_HEADER: Final = "Authorization"
 TRACE_ID_HEADER: Final = "X-Trace-Id"
@@ -46,22 +52,6 @@ _URL_ENCODING: Final = "utf-8"
 _PLACEHOLDER_RE: Final = re.compile(r"\{(\w+)\}")
 # Kept unescaped when the proved path is encoded: the separators the template itself holds.
 _PATH_SAFE: Final = "/"
-_RULES_EXT_KEY: Final = "openapi_mcp_op_rules"
-
-# Keys of a catalog entry (``current_catalog()`` JSON) and of the ``input`` schema inside it.
-OPS_KEY: Final = "ops"
-PATH_KEY: Final = "path"
-METHOD_KEY: Final = "method"
-BIND_KEY: Final = "bind"
-KIND_KEY: Final = "kind"
-INTERNAL_KEY: Final = "internal"
-DEPRECATED_KEY: Final = "deprecated"
-INPUT_KEY: Final = "input"
-EXAMPLES_KEY: Final = "examples"
-SUMMARY_KEY: Final = "summary"
-EFFECT_KEY: Final = "effect"
-PROPERTIES_KEY: Final = "properties"
-REQUIRED_KEY: Final = "required"
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -110,18 +100,16 @@ class _Request:
     body: dict[str, Any] | None
 
 
-def op_entry(op: str) -> Mapping[str, Any]:
-    """The catalog entry for ``op``.
+def registered_op(op: str) -> RegisteredOp:
+    """The registered op ``op``.
 
-    Precondition: an app context is pushed. Postcondition: returns a fresh dict
-    parsed from ``current_catalog()`` (about 0.5 ms for the full catalog), so the
-    caller may keep or change it; raises ``UnknownOp`` when the catalog has no such op.
+    Precondition: an app context is pushed. Postcondition: the shared entry, spec and rule; raises ``UnknownOp``
+    when the catalog has no such op.
     """
-    raw, _ = current_catalog()
-    entry = json.loads(raw)[OPS_KEY].get(op)
-    if entry is None:
+    registered = op_registry().get(op)
+    if registered is None:
         raise UnknownOp(op)
-    return entry
+    return registered
 
 
 def call_op(call: OpCall) -> OpResult:
@@ -133,16 +121,16 @@ def call_op(call: OpCall) -> OpResult:
     and nothing ran. The outer request's context variables and ``flask.g`` are
     untouched either way.
     """
-    entry = op_entry(call.op)
-    method = HTTPMethod(entry[METHOD_KEY])
-    built = _split_input(entry, method, call.input)
-    _prove_route(call.op, method, built.path)
+    registered = registered_op(call.op)
+    method = HTTPMethod(registered.entry["method"])
+    built = _split_input(registered.entry, method, call.input)
+    _prove_route(registered, method, built.path)
     environ = _environ(call, method, built)
-    response = contextvars.copy_context().run(_run, current_app._get_current_object(), environ)  # type: ignore[attr-defined]
+    response = contextvars.copy_context().run(_run, app_ctx.app, environ)
     return _result(response)
 
 
-def _split_input(entry: Mapping[str, Any], method: HTTPMethod, input: Mapping[str, Any]) -> _Request:
+def _split_input(entry: CatalogOp, method: HTTPMethod, input: Mapping[str, Any]) -> _Request:
     """Place each input key where the op's bind table says.
 
     Precondition: ``entry`` is a catalog entry. Postcondition: returns the filled
@@ -153,14 +141,14 @@ def _split_input(entry: Mapping[str, Any], method: HTTPMethod, input: Mapping[st
     """
     body_bound = method not in _QUERY_METHODS
     default = Bind.BODY if body_bound else Bind.QUERY
-    bind: Mapping[str, str] = entry[BIND_KEY]
+    bind = entry["bind"]
     parts: dict[Bind, dict[str, Any]] = {kind: {} for kind in Bind}
     for name, value in input.items():
         parts[Bind(bind.get(name, default))][name] = value
     if parts[Bind.FILE]:
         raise FileInputUnsupported(sorted(parts[Bind.FILE]))
     path_values = parts[Bind.PATH]
-    path = _PLACEHOLDER_RE.sub(lambda match: _safe_path_value(match.group(1), path_values), entry[PATH_KEY])
+    path = _PLACEHOLDER_RE.sub(lambda match: _safe_path_value(match.group(1), path_values), entry["path"])
     _check_query_text(parts[Bind.QUERY])
     body = parts[Bind.BODY] if body_bound else None
     return _Request(path=path, query=parts[Bind.QUERY], body=body)
@@ -209,34 +197,19 @@ def _is_utf8_text(text: str) -> bool:
     return True
 
 
-def _prove_route(op: str, method: HTTPMethod, path: str) -> None:
-    """Check that ``method path`` resolves to ``op``'s own rule.
+def _prove_route(registered: RegisteredOp, method: HTTPMethod, path: str) -> None:
+    """Check that ``method path`` resolves to the op's own rule.
 
     Precondition: an app context is pushed and ``path`` is the decoded path the
     inner request will carry. Postcondition: returns when the url map picks the
     op's rule; raises ``RouteMismatch`` for another rule, a redirect or no match.
     """
-    own = _op_rules(current_app._get_current_object()).get(op)  # type: ignore[attr-defined]
     try:
         matched, _ = current_app.url_map.bind("").match(path, method=method, return_rule=True)
     except HTTPException as exc:
         raise RouteMismatch(f"{method} {path} resolves to no rule") from exc
-    if matched is not own:
-        raise RouteMismatch(f"{method} {path} resolves to {matched.rule}, not to {op}")
-
-
-def _op_rules(app: Flask) -> Mapping[str, Rule]:
-    """Each op id mapped to its url rule.
-
-    Postcondition: built once per app from ``iter_handlers`` and kept in
-    ``app.extensions``, like the catalog it mirrors.
-    """
-    rules = app.extensions.get(_RULES_EXT_KEY)
-    if rules is None:
-        rules = app.extensions[_RULES_EXT_KEY] = {
-            spec.catalog.op: rule for rule, _, handler in iter_handlers(app) if (spec := spec_of(handler)) is not None
-        }
-    return rules
+    if matched is not registered.rule:
+        raise RouteMismatch(f"{method} {path} resolves to {matched.rule}, not to {registered.spec.catalog.op}")
 
 
 def _environ(call: OpCall, method: HTTPMethod, built: _Request) -> dict[str, Any]:
