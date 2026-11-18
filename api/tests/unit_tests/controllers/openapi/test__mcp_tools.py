@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import re
 import time
 import uuid
 from collections.abc import Callable, Iterator, Mapping
@@ -19,7 +20,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from controllers.openapi import _mcp_tools, jobs
-from controllers.openapi._catalog import Bind, CatalogOp
+from controllers.openapi._catalog import Bind, CatalogOp, build_catalog
+from controllers.openapi._contract import op_of
 from controllers.openapi._mcp_call import OpCall, OpResult, UnknownOp, registered_op
 from controllers.openapi._mcp_tools import (
     FIND_LIMIT,
@@ -35,7 +37,9 @@ from controllers.openapi._mcp_tools import (
     run_tool,
     tool_list,
 )
+from controllers.openapi.app_start import START_MODES
 from controllers.openapi.auth.spec import Effect
+from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormSubmitApi
 from core.app.entities.task_entities import HumanInputRequiredResponse
 from core.mcp import types as mcp_types
 from extensions.ext_application_services import ApplicationServices
@@ -269,6 +273,20 @@ def test_the_tool_list_has_four_tools_with_the_right_annotations() -> None:
 def test_every_effect_has_exactly_one_call_tool() -> None:
     for effect in Effect:
         assert [tool for tool in CallTool if tool.effect is effect] == [CallTool.for_effect(effect)]
+
+
+# An op id as the instructions write one: dotted lower-case words.
+_NAMED_OP = re.compile(r"\b[a-z_]+(?:\.[a-z_]+)+\b")
+
+
+def test_every_op_the_instructions_and_job_hints_name_is_in_the_catalog(openapi_app: Flask) -> None:
+    ops = set(build_catalog(openapi_app)["ops"])
+    named = set(_NAMED_OP.findall(MCP_INSTRUCTIONS))
+    hinted = {jobs.WAIT_JOB_OP, jobs.STOP_JOB_OP, op_of(OpenApiWorkflowHumanInputFormSubmitApi.post)}
+
+    assert named - ops == set()
+    assert hinted - ops == set()
+    assert set(START_MODES) <= named
 
 
 def test_the_call_tool_enum_carries_its_effect() -> None:
