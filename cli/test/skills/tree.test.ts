@@ -225,7 +225,9 @@ describe('skill MCP page', () => {
     const reach = page.split('\n').find((line) => line.startsWith('- **Reach.**')) ?? ''
     expect(reach).toMatch(/`get\.console_app`[^.]*needs no workspace/)
     expect(reach).toMatch(/may be empty/)
-    expect(reach).toMatch(/workspace access is needed only for plugins, model providers and tool credentials/i)
+    expect(reach).toMatch(
+      /workspace access is needed only for plugins, model providers and tool credentials/i,
+    )
     expect(page).not.toMatch(/give it access to the workspace/)
   })
 })
