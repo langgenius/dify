@@ -107,15 +107,16 @@ def test_no_workspace_named_loads_and_checks_nothing(app: Flask, sqlite_session:
     assert ctx.loaded_workspace_id is None
 
 
-def test_an_sso_login_naming_a_workspace_gets_it_loaded_without_a_membership_check(
-    app: Flask, sqlite_session: Session
+@pytest.mark.parametrize("query", [f"workspace_id={TENANT_ID}", "workspace_id="])
+def test_an_sso_login_naming_a_workspace_is_refused_as_a_non_member(
+    app: Flask, sqlite_session: Session, query: str
 ) -> None:
     persist(sqlite_session, make_tenant())
     subject = sso_subject()
     ctx = make_ctx(sqlite_session, subject)
-    with app.test_request_context(f"{APPS}?workspace_id={TENANT_ID}"):
-        CheckNamedWorkspaceMember().run(subject, ctx, sqlite_session)
-    assert ctx.loaded_workspace_id == TENANT_ID
+    with app.test_request_context(f"{APPS}?{query}"):
+        with pytest.raises(NotFound, match="workspace not found"):
+            CheckNamedWorkspaceMember().run(subject, ctx, sqlite_session)
 
 
 def test_the_loaded_workspace_is_read_without_raising(sqlite_session: Session) -> None:
