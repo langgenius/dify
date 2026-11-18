@@ -10,7 +10,7 @@ from sqlalchemy import Engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from constants.oauth_bearer import SubjectType
-from machinery.context import AppRequestContext, RequestContext
+from machinery.context import AppRequestContext, CallerIdentity, RequestContext
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.model import App, AppMode, AppModelConfig
 from models.workflow import Workflow, WorkflowType
@@ -369,15 +369,14 @@ def login(
     resource_app_ids: frozenset[str] | None = None,
     personal_app_ids: frozenset[str] | None = None,
 ) -> AppListLogin:
-    return AppListLogin(
-        kind=kind,
+    caller = CallerIdentity(
         request_id="req",
         trace_id=None,
         account_id=account_id,
-        workspace_id=workspace_id,
         resource_app_ids=resource_app_ids,
         personal_app_ids=personal_app_ids,
     )
+    return AppListLogin(kind=kind, caller=caller, workspace_id=workspace_id)
 
 
 def every_page(

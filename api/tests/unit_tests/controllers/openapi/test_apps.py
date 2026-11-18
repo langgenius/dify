@@ -304,16 +304,9 @@ def test_an_account_login_is_passed_with_the_workspace_it_named(
         ctx._workspace = make_tenant()
     logins, response = _list_with(app, app_query_services, monkeypatch, ctx, named=named)
     assert logins == [
-        AppListLogin(
-            kind=SubjectType.ACCOUNT,
-            request_id=ctx.request_id,
-            trace_id=ctx.trace_id,
-            account_id=ACCOUNT_ID,
-            workspace_id=TENANT_ID if named else None,
-            resource_app_ids=None,
-            personal_app_ids=ctx.personal_app_ids,
-        )
+        AppListLogin(kind=SubjectType.ACCOUNT, caller=ctx.caller_identity, workspace_id=TENANT_ID if named else None)
     ]
+    assert (logins[0].caller.account_id, logins[0].caller.personal_app_ids) == (ACCOUNT_ID, ctx.personal_app_ids)
     assert (response.page, response.limit, response.total) == (2, 3, 7)
     assert [(row.id, row.workspace_name) for row in response.data] == [("app-id", "Workspace")]
 
@@ -325,9 +318,9 @@ def test_a_workspace_token_is_passed_with_its_workspace(
     ctx._workspace = make_tenant()
     ctx.resource_app_ids = frozenset({"app-id"})
     logins, _ = _list_with(app, app_query_services, monkeypatch, ctx)
-    assert [(login.kind, login.account_id, login.workspace_id, login.resource_app_ids) for login in logins] == [
-        (SubjectType.RESOURCE_ACCESS, TOKEN_ID, TENANT_ID, frozenset({"app-id"}))
-    ]
+    assert [
+        (login.kind, login.caller.account_id, login.workspace_id, login.caller.resource_app_ids) for login in logins
+    ] == [(SubjectType.RESOURCE_ACCESS, TOKEN_ID, TENANT_ID, frozenset({"app-id"}))]
 
 
 def test_an_external_sso_login_is_passed_without_a_workspace(
@@ -335,7 +328,7 @@ def test_an_external_sso_login_is_passed_without_a_workspace(
 ) -> None:
     ctx = Context(sso_subject(), sqlite_session, {})
     logins, _ = _list_with(app, app_query_services, monkeypatch, ctx)
-    assert [(login.kind, login.account_id, login.workspace_id) for login in logins] == [
+    assert [(login.kind, login.caller.account_id, login.workspace_id) for login in logins] == [
         (SubjectType.EXTERNAL_SSO, TOKEN_ID, None)
     ]
 

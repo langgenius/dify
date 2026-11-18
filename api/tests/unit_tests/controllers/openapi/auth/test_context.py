@@ -71,6 +71,19 @@ def test_application_context_keeps_identity_after_request_and_session_end(sqlite
     assert snapshot == RequestContext(snapshot.request_id, snapshot.trace_id, ACCOUNT_ID, TENANT_ID)
 
 
+def test_the_request_context_is_the_caller_identity_in_the_loaded_workspace(sqlite_session: Session) -> None:
+    ctx = make_ctx(sqlite_session)
+    ctx._workspace = make_tenant()
+    ctx.personal_app_ids = frozenset({"app-1"})
+
+    identity = ctx.caller_identity
+
+    assert identity.account_id == ACCOUNT_ID
+    assert ctx.request_context == identity.in_workspace(TENANT_ID)
+    assert identity.in_workspace("other").active_workspace_id == "other"
+    assert identity.in_workspace("other").personal_app_ids == frozenset({"app-1"})
+
+
 """Keep the integration handler context aligned with request-scoped identity loading."""
 
 
