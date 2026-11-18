@@ -1811,6 +1811,13 @@
           },
           "native_enabled": {
             "type": "boolean"
+          },
+          "title": {
+            "type": "string",
+            "description": "The node's title and provider_name in the serving revision, as Dify lists its own triggers."
+          },
+          "provider_name": {
+            "type": "string"
           }
         }
       },

@@ -1,7 +1,6 @@
 import type {
   EnvironmentMcpServer,
   EnvironmentTrigger,
-  TriggerLogEntry,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { ReactElement } from 'react'
 import { screen, waitFor, within } from '@testing-library/react'
@@ -11,6 +10,14 @@ import { render } from '@/test/console/render'
 import { createTestQueryClient } from '@/test/query-client'
 import { EnvironmentMcpCard } from '../deployed-environment-access-points/environment-mcp-card'
 import { EnvironmentTriggerCard } from '../deployed-environment-access-points/environment-trigger-card'
+
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path: string) => `https://docs.example.test/en${path}`,
+}))
+
+vi.mock('@/service/use-triggers', () => ({
+  useAllTriggerPlugins: () => ({ data: [] }),
+}))
 
 vi.mock('@/app/notifications', () => {
   const toast = vi.fn()
@@ -23,7 +30,6 @@ let server: EnvironmentMcpServer | null
 let serving: Pick<EnvironmentMcpServer, 'inputs' | 'trigger_workflow'>
 let triggerEnabled: boolean
 let triggers: EnvironmentTrigger[]
-let logs: TriggerLogEntry[]
 let requests: string[]
 
 function renderCard(ui: ReactElement) {
@@ -39,7 +45,6 @@ beforeEach(() => {
   serving = { inputs: [], trigger_workflow: false }
   triggerEnabled = false
   triggers = []
-  logs = []
   requests = []
   vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
     const request = new Request(input, init)
@@ -73,27 +78,12 @@ beforeEach(() => {
         return Response.json({ enabled: triggerEnabled })
       case 'GET triggers':
         return Response.json({ data: triggers })
-      case 'GET trigger-logs': {
-        // Two logs per page: the cursor is the index of the next one.
-        const start = Number(url.searchParams.get('cursor') || 0)
-        const end = start + 2
-        return Response.json({
-          data: logs.slice(start, end),
-          has_more: end < logs.length,
-          next_cursor: String(end),
-        })
-      }
     }
     const nodeId = /^triggers\/(.+)$/.exec(route)?.[1]
     if (nodeId && request.method === 'PATCH') {
       triggers = triggers.map((trigger) =>
         trigger.node_id === nodeId ? { ...trigger, status: body.status } : trigger,
       )
-      return Response.json({})
-    }
-    const rerun = /^trigger-logs\/(.+)\/rerun$/.exec(route)?.[1]
-    if (rerun && request.method === 'POST') {
-      logs = [{ id: 'rerun', node_id: 'hook', status: 'pending', rerun_of: rerun }, ...logs]
       return Response.json({})
     }
     throw new Error(`Unexpected request: ${request.method} ${url.pathname}`)
@@ -169,92 +159,48 @@ describe('EnvironmentMcpCard', () => {
 })
 
 describe('EnvironmentTriggerCard', () => {
-  it('switches the environment and each node independently', async () => {
+  it('lists triggers like Built-in and switches the environment and each node', async () => {
     triggers = [
       {
         node_id: 'hook',
+        title: 'Order webhook',
         trigger_type: 'trigger-webhook',
         status: 'enabled',
-        webhook_url: 'https://api.test/v2/triggers/webhook/w1',
+        native_enabled: true,
       },
-      { node_id: 'cron', trigger_type: 'trigger-schedule', status: 'disabled' },
+      {
+        node_id: '1794983262004',
+        title: 'Nightly',
+        trigger_type: 'trigger-schedule',
+        status: 'disabled',
+      },
+      {
+        node_id: 'issue',
+        title: 'New issue',
+        trigger_type: 'trigger-plugin',
+        provider_name: 'github',
+        status: 'enabled',
+      },
     ]
     renderCard(
       <EnvironmentTriggerCard appId="app-1" environmentId="staging" canManageAccessPoint />,
     )
     const environment = await screen.findByRole('switch', { name: 'navigation.settings.trigger' })
-    await waitFor(() => expect(screen.getByRole('switch', { name: 'cron' })).toBeInTheDocument())
+    const nightly = await screen.findByRole('switch', { name: 'Nightly' })
+    // Rows carry the node title and provider, never the node ID.
+    expect(screen.getByText('github')).toBeInTheDocument()
+    expect(screen.queryByText('1794983262004')).not.toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: 'Order webhook' })).toBeChecked()
     expect(environment).not.toBeChecked()
-    expect(screen.getByRole('switch', { name: 'hook' })).toBeChecked()
 
     await userEvent.click(environment)
     await waitFor(() => expect(environment).toBeChecked())
-    await userEvent.click(screen.getByRole('switch', { name: 'cron' }))
-    await waitFor(() => expect(screen.getByRole('switch', { name: 'cron' })).toBeChecked())
+    await userEvent.click(nightly)
+    await waitFor(() => expect(screen.getByRole('switch', { name: 'Nightly' })).toBeChecked())
 
     expect(writes()).toEqual([
       'PATCH trigger {"enabled":true}',
-      'PATCH triggers/cron {"status":"enabled"}',
+      'PATCH triggers/1794983262004 {"status":"enabled"}',
     ])
-    expect(screen.getByRole('switch', { name: 'hook' })).toBeChecked()
-  })
-
-  it('locks platform-set statuses and warns when the Built-in trigger also runs', async () => {
-    triggers = [
-      { node_id: 'plugin', trigger_type: 'trigger-plugin', status: 'unauthorized' },
-      { node_id: 'hook', trigger_type: 'trigger-webhook', status: 'enabled', native_enabled: true },
-      {
-        node_id: 'quiet',
-        trigger_type: 'trigger-webhook',
-        status: 'disabled',
-        native_enabled: true,
-      },
-    ]
-    renderCard(
-      <EnvironmentTriggerCard appId="app-1" environmentId="staging" canManageAccessPoint />,
-    )
-
-    const plugin = await screen.findByRole('switch', { name: 'plugin' })
-    expect(plugin).toHaveAttribute('aria-disabled', 'true')
-    expect(screen.getByText('unauthorized')).toBeInTheDocument()
-    // Only the enabled node duplicates events; a disabled one runs nowhere here.
-    expect(screen.getAllByText('deployments.studio.accessPoint.triggerNativeEnabled')).toHaveLength(
-      1,
-    )
-  })
-
-  it('pages through trigger logs and reruns a finished one', async () => {
-    logs = [
-      { id: 'l1', node_id: 'hook', status: 'started', run: { status: 'succeeded', duration: 0.5 } },
-      { id: 'l2', node_id: 'hook', status: 'failed', failure_reason: 'BUSY' },
-      { id: 'l3', node_id: 'hook', status: 'pending' },
-    ]
-    renderCard(
-      <EnvironmentTriggerCard appId="app-1" environmentId="staging" canManageAccessPoint />,
-    )
-
-    await userEvent.click(await screen.findByRole('button', { name: /appLog\.title/ }))
-    const dialog = await screen.findByRole('dialog')
-    expect(await within(dialog).findByText('BUSY')).toBeInTheDocument()
-    expect(within(dialog).getAllByRole('row')).toHaveLength(3)
-
-    await userEvent.click(within(dialog).getByRole('button', { name: 'workflow.common.loadMore' }))
-    await waitFor(() => expect(within(dialog).getAllByRole('row')).toHaveLength(4))
-    // A queued event has not run, so there is nothing to rerun yet.
-    expect(
-      within(dialog).getAllByRole('button', {
-        name: 'deployments.studio.accessPoint.triggerLogRerun',
-      }),
-    ).toHaveLength(2)
-
-    const failed = within(dialog).getByText('BUSY').closest('tr')!
-    await userEvent.click(
-      within(failed).getByRole('button', {
-        name: 'deployments.studio.accessPoint.triggerLogRerun',
-      }),
-    )
-    // The rerun is a new event at the top of the refreshed list.
-    await waitFor(() => expect(within(dialog).getAllByRole('row')).toHaveLength(5))
-    expect(writes()).toContain('POST trigger-logs/l2/rerun {}')
   })
 })

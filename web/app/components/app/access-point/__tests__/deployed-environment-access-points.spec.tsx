@@ -34,7 +34,7 @@ describe('DeployedEnvironmentAccessPoints', () => {
       within(mcpCard).getByText('https://staging.api.example.com/mcp/environment/mcp-code/mcp'),
     ).toBeInTheDocument()
     expect(
-      within(triggerCard).getByText('deployments.studio.accessPoint.environmentTriggerEmpty'),
+      within(triggerCard).getByText('appOverview.overview.triggerInfo.triggerStatusDescription'),
     ).toBeInTheDocument()
     for (const card of [mcpCard, triggerCard]) {
       expect(

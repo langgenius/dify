@@ -429,6 +429,8 @@ export const zEnvironmentTrigger = z.object({
   webhook_url: z.string().optional(),
   next_run_at: z.string().optional(),
   native_enabled: z.boolean().optional(),
+  title: z.string().optional(),
+  provider_name: z.string().optional(),
 })
 
 export const zEnvironmentTriggerNodeUpdate = z.object({

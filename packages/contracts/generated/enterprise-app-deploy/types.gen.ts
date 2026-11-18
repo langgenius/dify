@@ -645,6 +645,8 @@ export type EnvironmentTrigger = {
   webhook_url?: string
   next_run_at?: string
   native_enabled?: boolean
+  title?: string
+  provider_name?: string
 }
 
 export type EnvironmentTriggerNodeUpdate = {

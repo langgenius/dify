@@ -90,7 +90,7 @@ it('moves focus and activates the focused environment only with Enter', async ()
     )
     .toBeVisible()
   await expect
-    .element(screen.getByText('deployments.studio.accessPoint.environmentTriggerEmpty'))
+    .element(screen.getByText('appOverview.overview.triggerInfo.triggerStatusDescription'))
     .toBeVisible()
   expect(onUrlUpdate).toHaveBeenCalledWith(
     expect.objectContaining({ queryString: '?environment=environment-0' }),
