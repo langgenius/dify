@@ -12,7 +12,7 @@ from typing import Any, Final, Protocol, runtime_checkable
 
 from core.app.entities.task_entities import StreamEvent
 from graphon.enums import WorkflowExecutionStatus
-from services.run_job_contracts import JobFailure, JobFamily, JobPatch, JobRecord, JobStatus, RunJobStore
+from services.run_job_contracts import JobEnding, JobFailure, JobFamily, JobIds, JobRecord, JobStatus, RunJobStore
 
 logger = logging.getLogger(__name__)
 
@@ -49,14 +49,14 @@ class _FrameContext:
     payload: Mapping[str, Any]
 
 
-_Handler = Callable[[_FrameContext], JobPatch | None]
+_Handler = Callable[[_FrameContext], JobEnding | None]
 
 
-def _run_finished(context: _FrameContext) -> JobPatch | None:
+def _run_finished(context: _FrameContext) -> JobEnding | None:
     """Map a workflow_finished frame to a final job status.
 
     Precondition: context.payload is a decoded workflow_finished frame.
-    Postcondition: a patch for succeeded, partial-succeeded, failed or stopped runs; None for any other status.
+    Postcondition: an ending for succeeded, partial-succeeded, failed or stopped runs; None for any other status.
     """
     data = context.payload.get("data")
     if not isinstance(data, Mapping):
@@ -69,13 +69,13 @@ def _run_finished(context: _FrameContext) -> JobPatch | None:
         return None
     error = data.get("error")
     if status is not JobStatus.FAILED:
-        return JobPatch(status=status)
+        return JobEnding(status=status)
     if not isinstance(error, str):
-        return JobPatch(status=status)
-    return JobPatch(status=status, error=error)
+        return JobEnding(status=status)
+    return JobEnding(status=status, error=error)
 
 
-def _message_ended(context: _FrameContext) -> JobPatch | None:
+def _message_ended(context: _FrameContext) -> JobEnding | None:
     """Finish a message job at the end of its answer.
 
     Precondition: none.
@@ -84,20 +84,20 @@ def _message_ended(context: _FrameContext) -> JobPatch | None:
     if context.record.family is not JobFamily.MESSAGE:
         return None
     if context.record.stop_requested:
-        return JobPatch(status=JobStatus.STOPPED)
-    return JobPatch(status=JobStatus.SUCCEEDED)
+        return JobEnding(status=JobStatus.STOPPED)
+    return JobEnding(status=JobStatus.SUCCEEDED)
 
 
-def _run_errored(context: _FrameContext) -> JobPatch | None:
+def _run_errored(context: _FrameContext) -> JobEnding | None:
     """Fail the job with the error frame's message.
 
     Precondition: none.
-    Postcondition: a patch setting FAILED with the frame's message; the error stays unset when the frame has none.
+    Postcondition: an ending of FAILED with the frame's message; the error stays unset when the frame has none.
     """
     message = context.payload.get("message")
     if not isinstance(message, str):
-        return JobPatch(status=JobStatus.FAILED)
-    return JobPatch(status=JobStatus.FAILED, error=message)
+        return JobEnding(status=JobStatus.FAILED)
+    return JobEnding(status=JobStatus.FAILED, error=message)
 
 
 EVENT_HANDLERS: Final[Mapping[str, _Handler]] = {
@@ -134,13 +134,13 @@ def _unstored_ids(payload: Mapping[str, Any], stored: set[str]) -> Mapping[str, 
     return {name: payload[name] for name in ID_FIELDS if name not in stored and isinstance(payload.get(name), str)}
 
 
-def _ids_patch(found: Mapping[str, str]) -> JobPatch:
-    """Build the patch that stores the given id fields.
+def _ids_of(found: Mapping[str, str]) -> JobIds:
+    """Name the given id fields as job ids.
 
     Precondition: found is not empty and its keys are in ID_FIELDS.
-    Postcondition: a patch setting exactly those ids.
+    Postcondition: exactly those ids are set.
     """
-    return JobPatch(
+    return JobIds(
         task_id=found.get("task_id"),
         run_id=found.get("workflow_run_id"),
         message_id=found.get("message_id"),
@@ -162,7 +162,7 @@ def _consume(frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper
     task_id_known = "task_id" in stored_ids
     found = _unstored_ids(payload, stored_ids)
     if found:
-        store.patch(job_id, _ids_patch(found))
+        store.record_ids(job_id, _ids_of(found))
         stored_ids.update(found)
     record = store.get(job_id)
     if record is None:
@@ -170,14 +170,12 @@ def _consume(frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper
     if not task_id_known and record.task_id is not None:
         if record.stop_requested:
             stopper.stop(record)
-    if record.status.is_final:
-        return
     handler = EVENT_HANDLERS.get(str(payload.get("event")))
     if handler is None:
         return
-    patch = handler(_FrameContext(record=record, payload=payload))
-    if patch is not None:
-        store.patch(job_id, patch)
+    ending = handler(_FrameContext(record=record, payload=payload))
+    if ending is not None:
+        store.settle(job_id, ending)
 
 
 def _consume_safely(frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper, stored_ids: set[str]) -> None:
@@ -192,7 +190,7 @@ def _consume_safely(frame: str, *, job_id: str, store: RunJobStore, stopper: Job
         logger.exception("Run job %s frame handling failed", job_id)
 
 
-def _settle(job_id: str, store: RunJobStore) -> None:
+def _end_of_stream(job_id: str, store: RunJobStore) -> None:
     """Apply the end-of-stream rule.
 
     Precondition: the stream ended or raised.
@@ -201,11 +199,9 @@ def _settle(job_id: str, store: RunJobStore) -> None:
     record = store.get(job_id)
     if record is None:
         return
-    if record.status.is_final:
-        return
     if record.family is not JobFamily.MESSAGE:
         return
-    store.patch(job_id, JobPatch(status=JobStatus.FAILED, failure=JobFailure.NO_RESULT))
+    store.settle(job_id, JobEnding(status=JobStatus.FAILED, failure=JobFailure.NO_RESULT))
 
 
 def _keep_alive(*, job_id: str, store: RunJobStore, stop: threading.Event, interval: float) -> None:
@@ -262,4 +258,4 @@ def read_to_end(
         alive.join()
         if isinstance(frames, _Closable):
             frames.close()
-    _settle(job_id, store)
+    _end_of_stream(job_id, store)

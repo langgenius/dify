@@ -8,16 +8,17 @@ import json
 from collections.abc import Mapping
 from dataclasses import asdict
 from dataclasses import fields as dataclass_fields
-from typing import Any, Protocol
+from typing import Any, Final, Protocol
 
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from services.run_job_contracts import (
     ALIVE_TTL_SECONDS,
     JOB_TTL_SECONDS,
+    JobEnding,
     JobFailure,
+    JobIds,
     JobOwner,
-    JobPatch,
     JobRecord,
     JobStatus,
     OpenedJob,
@@ -28,6 +29,23 @@ _ALIVE_KEY = "openapi:job:{job_id}:alive"
 _IDEMPOTENCY_KEY = "openapi:job:idem:{tenant_id}:{app_id}:{caller_role}:{caller_id}:{key}"
 _ALIVE_VALUE = "1"
 _RECORD_FIELDS = frozenset(field.name for field in dataclass_fields(JobRecord))
+# Write the ending only while the job exists and its status is not final. ARGV: status, error, failure, TTL, then
+# every final status; all values JSON-encoded as the record fields are. One key, so it also runs on Redis Cluster.
+SETTLE_SCRIPT: Final = """
+local current = redis.call('HGET', KEYS[1], 'status')
+if not current then
+    return 0
+end
+for index = 5, #ARGV do
+    if current == ARGV[index] then
+        return 0
+    end
+end
+redis.call('HSET', KEYS[1], 'status', ARGV[1], 'error', ARGV[2], 'failure', ARGV[3])
+redis.call('EXPIRE', KEYS[1], ARGV[4])
+return 1
+"""
+_FINAL_STATUSES: Final = tuple(json.dumps(status) for status in JobStatus if status.is_final)
 _DELETE_IF_EQUAL = """
 if redis.call('GET', KEYS[1]) == ARGV[1] then
     return redis.call('DEL', KEYS[1])
@@ -65,12 +83,6 @@ def _encode_record(record: JobRecord) -> dict[str, str]:
     """Encode every record field. Precondition: JSON-serialisable fields. Postcondition: one JSON string per field."""
     fields = asdict(record)
     return {name: json.dumps(value) for name, value in fields.items()}
-
-
-def _encode_patch(patch: JobPatch) -> dict[str, str]:
-    """Encode the set fields of a patch. Precondition: none. Postcondition: omits fields that are None."""
-    fields = asdict(patch)
-    return {name: json.dumps(value) for name, value in fields.items() if value is not None}
 
 
 def _decode_record(raw: Mapping[bytes | str, bytes | str]) -> JobRecord | None:
@@ -135,15 +147,39 @@ class RedisRunJobStore:
             return None
         return _decode_record(raw)
 
-    def patch(self, job_id: str, patch: JobPatch) -> None:
-        """Change the fields of an existing job that the patch sets.
+    def record_ids(self, job_id: str, ids: JobIds) -> None:
+        """Store the run ids that are set.
 
         Precondition: none.
-        Postcondition: fields that are None in the patch are untouched; the job's TTL is renewed;
-        a job that no longer exists is not recreated.
+        Postcondition: ids that are None are untouched; the job's TTL is renewed when anything was written; a job
+        that no longer exists is not recreated.
         """
+        fields = {name: json.dumps(value) for name, value in asdict(ids).items() if value is not None}
+        self._write(job_id, fields)
+
+    def settle(self, job_id: str, ending: JobEnding) -> bool:
+        """Give the job its final status, unless it already has one.
+
+        Precondition: none.
+        Postcondition: true when the job existed and was not final: status, error and failure now hold ending and
+        the TTL is renewed. False with nothing written otherwise. The check and the write are one script.
+        """
+        settle = self._redis.register_script(SETTLE_SCRIPT)
+        args = [json.dumps(ending.status), json.dumps(ending.error), json.dumps(ending.failure), JOB_TTL_SECONDS]
+        return bool(settle(keys=[self._job_name(job_id)], args=[*args, *_FINAL_STATUSES]))
+
+    def request_stop(self, job_id: str) -> None:
+        """Record that the owner asked the job to stop.
+
+        Precondition: none.
+        Postcondition: stop_requested is true and the TTL renewed; a job that no longer exists is not recreated.
+        """
+        self._write(job_id, {"stop_requested": json.dumps(True)})
+
+    def _write(self, job_id: str, fields: Mapping[str, str]) -> None:
+        """Set encoded fields of an existing job. Precondition: none. Postcondition: nothing is written when fields
+        is empty or the job is gone; otherwise the fields are set and the TTL renewed."""
         name = self._job_name(job_id)
-        fields = _encode_patch(patch)
         if not fields:
             return
         if not self._redis.exists(name):
