@@ -1,8 +1,8 @@
 """add tenant tokener integrations
 
-Revision ID: c3f1a2b4d5e6
-Revises: c3f1a9b2e6d4
-Create Date: 2026-09-02 17:30:00.000000
+Revision ID: 7a871183bf84
+Revises: f8b6e2c4a901
+Create Date: 2026-11-18 13:00:00.000000
 
 """
 
@@ -12,8 +12,8 @@ from alembic import op
 import models
 
 # revision identifiers, used by Alembic.
-revision = "c3f1a2b4d5e6"
-down_revision = "c3f1a9b2e6d4"
+revision = "7a871183bf84"
+down_revision = "f8b6e2c4a901"
 branch_labels = None
 depends_on = None
 

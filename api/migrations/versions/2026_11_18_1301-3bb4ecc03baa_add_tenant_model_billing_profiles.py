@@ -1,8 +1,8 @@
 """add tenant model billing profiles
 
-Revision ID: d4e5f6a7b8c9
-Revises: c3f1a2b4d5e6
-Create Date: 2026-09-03 10:00:00.000000
+Revision ID: 3bb4ecc03baa
+Revises: 7a871183bf84
+Create Date: 2026-11-18 13:01:00.000000
 
 """
 
@@ -12,8 +12,8 @@ from alembic import op
 import models
 
 # revision identifiers, used by Alembic.
-revision = "d4e5f6a7b8c9"
-down_revision = "c3f1a2b4d5e6"
+revision = "3bb4ecc03baa"
+down_revision = "7a871183bf84"
 branch_labels = None
 depends_on = None
 

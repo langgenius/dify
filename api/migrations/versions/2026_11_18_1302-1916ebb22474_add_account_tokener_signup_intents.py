@@ -1,7 +1,7 @@
 """add durable account Tokener signup intents
 
-Revision ID: a6d8e0f2b413
-Revises: d4e5f6a7b8c9
+Revision ID: 1916ebb22474
+Revises: 3bb4ecc03baa
 """
 
 import sqlalchemy as sa
@@ -9,8 +9,8 @@ from alembic import op
 
 import models
 
-revision = "a6d8e0f2b413"
-down_revision = "d4e5f6a7b8c9"
+revision = "1916ebb22474"
+down_revision = "3bb4ecc03baa"
 branch_labels = None
 depends_on = None
 
