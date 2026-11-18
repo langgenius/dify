@@ -7,10 +7,8 @@ import accountSettings from '@/i18n/locales/en-US/account-settings.json'
 import common from '@/i18n/locales/en-US/common.json'
 import deployments from '@/i18n/locales/en-US/deployments.json'
 import navigation from '@/i18n/locales/en-US/navigation.json'
-import {
-  createNetworkAccessGroupFixture,
-  seedNetworkAccessGroups,
-} from '@/test/console/network-access'
+import { installFakeConsole } from '@/test/console/fake-console'
+import { createNetworkAccessGroupFixture } from '@/test/console/network-access'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { ACCOUNT_SETTING_TAB } from '../../constants'
@@ -18,14 +16,6 @@ import AccountSetting from '../../index'
 
 vi.unmock('react-i18next')
 
-const request = vi.hoisted(() => vi.fn<(path: string) => unknown>())
-
-// boundary: IP-policy reads and writes stop at the generated console transport.
-vi.mock('@/service/console/browser', () => ({
-  consoleBrowserLink: {
-    call: (path: readonly string[]) => request(path.join('.')),
-  },
-}))
 // boundary: analytics must not emit product telemetry from a browser test.
 vi.mock('@/app/components/base/amplitude', () => ({ trackEvent: vi.fn() }))
 // boundary: Next's app router is unavailable in the standalone Vitest browser page.
@@ -62,14 +52,18 @@ async function renderPoliciesSettings(width = 320) {
       allowed_cidrs: ['192.0.2.0/24'],
     }),
   ]
-  seedNetworkAccessGroups(queryClient, { groups })
-  request.mockImplementation((path) => {
-    if (path === 'workspaces.current.networkAccessGroups.get')
-      return { tenant_id: 'workspace-1', entitled: true, groups }
-    if (path === 'workspaces.current.networkAccessGroups.currentIp.get')
-      return { client_ip: '203.0.113.42' }
-    throw new Error(`Unexpected console request: ${path}`)
-  })
+  onTestFinished(
+    installFakeConsole({
+      workspaces: {
+        current: {
+          networkAccessGroups: {
+            get: () => ({ tenant_id: 'workspace-1', entitled: true, groups }),
+            currentIp: { get: () => ({ client_ip: '203.0.113.42' }) },
+          },
+        },
+      },
+    }),
+  )
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
       <I18nextProvider i18n={i18n}>

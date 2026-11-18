@@ -7,6 +7,7 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { consoleQuery } from '@/service/console'
+import { consoleError, installFakeConsole } from '@/test/console/fake-console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createDeferred } from '@/test/deferred'
@@ -18,35 +19,13 @@ import { DocumentsStateBoundary } from '../state/boundary'
 vi.mock('../../components/knowledge-model-readiness-banner', () => ({
   KnowledgeModelReadinessBanner: () => null,
 }))
-const api = vi.hoisted(() => ({
+const api = {
   list: vi.fn<typeof consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get>(),
   remove:
     vi.fn<
       typeof consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.delete
     >(),
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get': api.list,
-      'knowledgeFs.spaces.byControlSpaceId.sources.get': async () => ({
-        data: [],
-        next_cursor: null,
-      }),
-      'knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get': async () => ({
-        data: [],
-        next_cursor: null,
-      }),
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.delete': api.remove,
-    }),
-  }
-})
+}
 beforeEach(() => vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false))
 afterEach(() => vi.unstubAllGlobals())
 async function setup(ids: string[]) {
@@ -82,6 +61,22 @@ async function setup(ids: string[]) {
       },
     })
   })
+  onTestFinished(
+    installFakeConsole({
+      knowledgeFs: {
+        spaces: {
+          byControlSpaceId: {
+            logicalDocuments: {
+              get: (input) => api.list(input),
+              byDocumentId: { delete: (input) => api.remove(input) },
+            },
+            sources: { get: () => ({ data: [], next_cursor: null }) },
+            backgroundTasks: { get: () => ({ data: [], next_cursor: null }) },
+          },
+        },
+      },
+    }),
+  )
   const { queryClient } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: 'ENTERPRISE' },
     features: { enable_knowledge_fs: true },
@@ -146,7 +141,6 @@ describe('Knowledge document deletion', () => {
     await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
     expect(api.remove).toHaveBeenCalledWith(
       expect.objectContaining({ body: { expectedRevision: 2 } }),
-      { context: { silent: true } },
     )
   })
 
@@ -185,7 +179,7 @@ describe('Knowledge document deletion', () => {
     await expect.element(confirm).toHaveFocus()
     await userEvent.keyboard('{Escape}')
     await expect.element(screen.getByRole('alertdialog')).toBeVisible()
-    request.reject(new Error('Deletion service unavailable'))
+    request.reject(consoleError('SERVICE_UNAVAILABLE', 503, 'Deletion service unavailable'))
     await expect
       .element(screen.getByText('Deletion service unavailable', { exact: true }))
       .toBeVisible()
