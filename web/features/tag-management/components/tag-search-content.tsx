@@ -25,6 +25,7 @@ type TagSearchContentProps = {
   canBindOrUnbindTags?: boolean
   requiresTargetEditPermission?: boolean
   showTagManagement?: boolean
+  allowCreate?: boolean
 }
 
 type TagSearchContentViewProps = TagSearchContentProps & {
@@ -38,13 +39,17 @@ export const TagSearchContentView = ({
   canBindOrUnbindTags = false,
   requiresTargetEditPermission = false,
   showTagManagement = true,
+  allowCreate = true,
   canManageTags,
 }: TagSearchContentViewProps) => {
   const { t } = useTranslation(['common'])
   const canChangeBindings = requiresTargetEditPermission
     ? canBindOrUnbindTags
     : canBindOrUnbindTags || canManageTags
-  const placeholder = t(($) => $['tag.selectorPlaceholder'], { ns: 'common' })
+  const canCreate = allowCreate && canManageTags
+  const placeholder = canCreate
+    ? t(($) => $['tag.selectorPlaceholder'], { ns: 'common' })
+    : t(($) => $['placeholder.search'], { ns: 'common' })
 
   return (
     <>
@@ -58,7 +63,8 @@ export const TagSearchContentView = ({
       </ComboboxInputGroup>
       <ComboboxList<TagComboboxItem> className="max-h-58">
         {(tag) => {
-          if (isCreateTagOption(tag) && canManageTags) {
+          if (isCreateTagOption(tag)) {
+            if (!canCreate) return null
             return (
               <ComboboxItem<string> key={tag.id} value={tag.id}>
                 <ComboboxItemText className="flex items-center gap-x-1">
@@ -101,7 +107,7 @@ export const TagSearchContentView = ({
             <Button
               variant="ghost"
               size="medium"
-              className="w-full justify-start gap-x-1 px-2 py-1.5 text-left"
+              className="w-full justify-start gap-x-1 px-2 py-1.5 text-start"
               onClick={() => {
                 onOpenTagManagement?.()
                 onClose?.()

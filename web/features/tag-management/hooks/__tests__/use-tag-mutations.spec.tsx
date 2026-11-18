@@ -1,9 +1,12 @@
-import { act, renderHook } from '@testing-library/react'
+import type { TagType } from '@dify/contracts/api/console/tags/types.gen'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { useApplyTagBindingsMutation } from '../use-tag-mutations'
 
 const { bindTag, unbindTag } = vi.hoisted(() => ({ bindTag: vi.fn(), unbindTag: vi.fn() }))
+// boundary: control the two independent tag-binding requests and their completion order.
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   return {
@@ -23,7 +26,7 @@ const appKeys = () => [
   consoleQuery.apps.starred.get.key(),
   consoleQuery.apps.recent.get.key(),
 ]
-const tagKey = (type: 'app' | 'knowledge') =>
+const tagKey = (type: TagType) =>
   consoleQuery.tags.get.key({ type: 'query', input: { query: { type } } })
 function renderMutation() {
   const { queryClient, wrapper } = createConsoleQueryWrapper()
@@ -78,4 +81,38 @@ it('skips unchanged bindings and invalidates only the selected tag category', as
   expect(queryClient.getQueryState(tagKey('knowledge'))?.isInvalidated).toBe(true)
   for (const key of [...appKeys(), tagKey('app')])
     expect(queryClient.getQueryState(key)?.isInvalidated).toBe(false)
+})
+
+it('refreshes Agent tags, lists and the edited detail after both writes settle on partial failure', async () => {
+  const { queryClient, result } = renderMutation()
+  const detailKey = (agentId: string) =>
+    consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } })
+  const affected = [
+    tagKey('agent'),
+    consoleQuery.agent.get.key({ type: 'infinite' }),
+    consoleQuery.agent.inviteOptions.get.key({ type: 'infinite' }),
+    detailKey('agent-1'),
+  ]
+  const unaffected = [...appKeys(), tagKey('app'), tagKey('knowledge'), detailKey('agent-2')]
+  for (const key of [...affected, ...unaffected]) queryClient.setQueryData(key, [])
+
+  const removal = createDeferred()
+  bindTag.mockRejectedValueOnce(new Error('Binding failed'))
+  unbindTag.mockReturnValueOnce(removal.promise)
+  await act(async () => {
+    const rejected = expect(
+      result.current.mutateAsync({
+        currentTagIds: ['old'],
+        nextTagIds: ['new'],
+        targetId: 'agent-1',
+        type: 'agent',
+      }),
+    ).rejects.toThrow('Binding failed')
+    await waitFor(() => expect(unbindTag).toHaveBeenCalledOnce())
+    expect(queryClient.getQueryState(tagKey('agent'))?.isInvalidated).toBe(false)
+    removal.resolve()
+    await rejected
+  })
+  for (const key of affected) expect(queryClient.getQueryState(key)?.isInvalidated).toBe(true)
+  for (const key of unaffected) expect(queryClient.getQueryState(key)?.isInvalidated).toBe(false)
 })

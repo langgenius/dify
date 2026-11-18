@@ -17,15 +17,16 @@ import {
   MenuSeparator,
   MenuTrigger,
 } from '@langgenius/dify-ui/menu'
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
-import { createContext, use, useState } from 'react'
+import { createContext, use, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
 import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
+import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import BlockIcon from '../block-icon'
@@ -71,7 +72,7 @@ export function AgentSelectorMenuContent({
       side={side}
       align={align}
       aria-label={t(($) => $['roster.nodeSelector.dialogLabel'], { ns: 'agentRoster' })}
-      className="w-60"
+      className="w-60 not-[[role=menu]]:overflow-visible"
     >
       <AgentSelectorList onSelect={onSelect} onStartFromScratch={onStartFromScratch} />
     </MenuContent>
@@ -87,29 +88,34 @@ function AgentSelectorList({
   const appId = useAtomValue(editorAppIdAtom)
   const searchText = use(SearchTextContext)
   const keyword = useDebounce(searchText.trim(), { wait: 300 })
-  const agentsQuery = useQuery({
-    ...consoleQuery.agent.inviteOptions.get.queryOptions({
-      input: {
+  const [tagIds, setTagIds] = useState<string[]>([])
+  const tagFilterContainerRef = useRef<HTMLDivElement>(null)
+  const agentsQuery = useInfiniteQuery(
+    consoleQuery.agent.inviteOptions.get.infiniteOptions({
+      input: (page: number) => ({
         query: {
           limit: AGENT_SELECTOR_PAGE_SIZE,
-          page: 1,
+          page,
           ...(appId ? { app_id: appId } : {}),
           ...(keyword ? { keyword } : {}),
+          ...(tagIds.length ? { tag_ids: tagIds } : {}),
         },
-      },
+      }),
+      initialPageParam: 1,
+      getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
+      // Returning to a filter starts on page one, even if more pages were loaded before.
+      gcTime: 0,
+      staleTime: 0,
     }),
-    staleTime: 0,
-    // A new keyword keeps the previous results on screen instead of flashing the skeleton.
-    placeholderData: keepPreviousData,
-  })
-  const agents = agentsQuery.data?.data ?? []
+  )
+  const agents = agentsQuery.data?.pages.flatMap((page) => page.data) ?? []
   const isLoading = agentsQuery.isPending
   const statusText = isLoading
     ? t(($) => $.loading, { ns: 'common' })
     : agentsQuery.isError
       ? t(($) => $['roster.loadingError'], { ns: 'agentRoster' })
       : agents.length === 0
-        ? keyword
+        ? keyword || tagIds.length
           ? t(($) => $['roster.emptySearch'], { ns: 'agentRoster' })
           : t(($) => $['roster.empty'], { ns: 'agentRoster' })
         : null
@@ -134,6 +140,16 @@ function AgentSelectorList({
           placeholder={t(($) => $['roster.nodeSelector.searchPlaceholder'], { ns: 'agentRoster' })}
         />
       </MenuInputGroup>
+      {/* The hover-open menu keeps pointer interaction inside its popup, including the tags. */}
+      <div ref={tagFilterContainerRef} className="mx-1 mb-1">
+        <TagFilter
+          type="agent"
+          value={tagIds}
+          onChange={setTagIds}
+          portalProps={{ container: tagFilterContainerRef }}
+          showTagManagement={false}
+        />
+      </div>
       {/* A persistent live region announces reliably. The skeleton already shows loading, so that
           status is announced but not displayed. */}
       <div
@@ -145,25 +161,20 @@ function AgentSelectorList({
       >
         {statusText}
       </div>
-      {/* The agents scroll inside the list so the footer actions stay in view. The scroller is kept
-          out of the tab order: the menu owns focus and Tab closes it. */}
+      {/* Only candidates scroll; the search, filters, and footer actions stay in view. */}
       <MenuList className="flex max-h-none flex-col overflow-visible">
         <div
           tabIndex={-1}
-          className={cn(
-            'max-h-54 min-h-0 overflow-y-auto overscroll-contain outline-hidden',
-            agentsQuery.isPlaceholderData && 'opacity-60',
-          )}
+          className="max-h-54 min-h-0 overflow-y-auto overscroll-contain outline-hidden"
         >
           {isLoading ? (
             <AgentSelectorLoadingSkeleton />
           ) : (
-            !agentsQuery.isError &&
             agents.map((agent) => (
               <MenuItem
                 key={agent.id}
                 closeOnClick={Boolean(agent.active_config_snapshot_id)}
-                className="h-auto gap-2 py-1.5 pr-3 pl-2"
+                className="h-auto gap-2 py-1.5 ps-2 pe-3"
                 onClick={() => handleSelect(agent)}
               >
                 <span aria-hidden className="shrink-0">
@@ -179,6 +190,17 @@ function AgentSelectorList({
                 </span>
               </MenuItem>
             ))
+          )}
+          {agentsQuery.hasNextPage && (
+            <MenuItem
+              closeOnClick={false}
+              disabled={agentsQuery.isFetching}
+              onClick={() => void agentsQuery.fetchNextPage()}
+            >
+              {agentsQuery.isFetchingNextPage
+                ? t(($) => $.loading, { ns: 'common' })
+                : t(($) => $['roster.loadMore'], { ns: 'agentRoster' })}
+            </MenuItem>
           )}
         </div>
         <MenuSeparator className="shrink-0" />
@@ -215,7 +237,7 @@ function AgentSelectorLoadingSkeleton() {
           <div
             key={key}
             className={cn(
-              'flex items-center gap-2 py-1.5 pr-3 pl-2 opacity-20',
+              'flex items-center gap-2 py-1.5 ps-2 pe-3 opacity-20',
               index === 3 && 'opacity-10',
             )}
           >
@@ -263,11 +285,11 @@ export function AgentBlockItem({
           <Button
             variant="ghost"
             size="medium"
-            className="w-full justify-start gap-0 px-3 text-left data-popup-open:bg-state-base-hover"
+            className="w-full justify-start gap-0 px-3 text-start data-popup-open:bg-state-base-hover"
           />
         }
       >
-        <BlockIcon className="mr-2 shrink-0" type={block.metaData.type} />
+        <BlockIcon className="me-2 shrink-0" type={block.metaData.type} />
         <span className="min-w-0 grow truncate system-sm-medium text-text-secondary">
           {block.metaData.title}
         </span>
@@ -275,7 +297,7 @@ export function AgentBlockItem({
           size="xs"
           variant="dimm"
           text={t(($) => $['menus.status'], { ns: 'navigation' })}
-          className="ml-2 shrink-0"
+          className="ms-2 shrink-0"
         />
         <span
           aria-hidden

@@ -7,6 +7,7 @@ import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segm
 import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
+import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import {
   rosterCreatedByMeQueryParser,
   rosterFilterQueryParser,
@@ -18,6 +19,9 @@ import { RosterSortSelect } from './roster-sort-select'
 
 type RosterToolbarProps = {
   publicationCounts: AgentPublicationCountsResponse
+  tagIds: string[]
+  onTagIdsChange: (tagIds: string[]) => void
+  onOpenTagManagement: () => void
 }
 
 type RosterFilterItemProps = {
@@ -39,7 +43,7 @@ function RosterFilterItem({ count, label, value }: RosterFilterItemProps) {
   )
 }
 
-function RosterStatusFilter({ publicationCounts }: RosterToolbarProps) {
+function RosterStatusFilter({ publicationCounts }: Pick<RosterToolbarProps, 'publicationCounts'>) {
   const { t } = useTranslation(['agentRoster'])
   const [filter, setFilter] = useQueryState(rosterQueryParamNames.filter, rosterFilterQueryParser)
 
@@ -110,10 +114,21 @@ function RosterCreatedByMeFilter() {
   )
 }
 
-export function RosterToolbar({ publicationCounts }: RosterToolbarProps) {
+export function RosterToolbar({
+  publicationCounts,
+  tagIds,
+  onTagIdsChange,
+  onOpenTagManagement,
+}: RosterToolbarProps) {
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-2">
       <RosterStatusFilter publicationCounts={publicationCounts} />
+      <TagFilter
+        type="agent"
+        value={tagIds}
+        onChange={onTagIdsChange}
+        onOpenTagManagement={onOpenTagManagement}
+      />
       <RosterSearchFilter />
       <div className="hidden h-4 shrink-0 px-1 sm:flex" aria-hidden="true">
         <div className="h-full w-px bg-divider-regular" />

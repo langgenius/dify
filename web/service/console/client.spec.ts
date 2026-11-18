@@ -445,6 +445,26 @@ describe('consoleQuery transport context', () => {
     expect(requestURL.searchParams.has('ids[1]')).toBe(false)
   })
 
+  it('sends all selected Agent tags as repeated keys when searching workflow invite options', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(Response.json({ data: [], has_more: false, limit: 20, page: 1, total: 0 }))
+    const consoleQuery = await loadConsoleQueryWithFetch()
+    const queryOptions = consoleQuery.agent.inviteOptions.get.queryOptions({
+      input: { query: { app_id: 'workflow-1', keyword: 'Research', tag_ids: ['tag-1', 'tag-2'] } },
+    })
+
+    await queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext)
+
+    const resource = fetchSpy.mock.calls[0]![0]
+    const url = new URL(resource instanceof Request ? resource.url : resource.toString())
+    expect(url.searchParams.getAll('tag_ids')).toEqual(['tag-1', 'tag-2'])
+    expect(url.searchParams.has('tag_ids[0]')).toBe(false)
+    expect(url.searchParams.has('tag_ids[1]')).toBe(false)
+    expect(url.searchParams.get('app_id')).toBe('workflow-1')
+    expect(url.searchParams.get('keyword')).toBe('Research')
+  })
+
   it('should serialize KnowledgeFS creator ids as repeated query params', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ data: [], has_more: false, limit: 30, page: 1 }), {

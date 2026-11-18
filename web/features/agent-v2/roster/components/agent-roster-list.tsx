@@ -29,6 +29,7 @@ import { toast } from '@/app/notifications'
 import { getAgentACLCapabilities, getAgentDefaultSection } from '@/features/agent-v2/acl'
 import { DeleteAgentForm } from '@/features/agent-v2/delete-agent-form'
 import { useCanCreateAgents } from '@/features/agent-v2/permissions'
+import { TagSelector } from '@/features/tag-management/components/tag-selector'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
@@ -36,6 +37,7 @@ import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { AgentWorkflowReferencesMenu } from './agent-workflow-references-menu'
 import { DuplicateAgentDialog } from './duplicate-agent-dialog'
 import { EditAgentDialog } from './edit-agent-dialog'
+import { ReadOnlyAgentTags } from './read-only-agent-tags'
 
 type AgentRosterListFooterState =
   | { status: 'none' }
@@ -55,6 +57,7 @@ export type AgentRosterListState =
 
 type AgentRosterListProps = {
   state: AgentRosterListState
+  onOpenTagManagement: () => void
 } & Pick<ComponentProps<'div'>, 'aria-labelledby'>
 
 type DeleteAgentDialogPayload = Pick<AgentAppPartial, 'id' | 'name'> & {
@@ -83,7 +86,7 @@ function AgentRosterSkeleton() {
       {skeletonCardIds.map((id) => (
         <div
           key={id}
-          className="relative h-36.5 rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3"
+          className="relative h-43 rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3"
         >
           <div className="flex items-center gap-3 ps-3.5 pe-4 pt-3.5 pb-2">
             <SkeletonRectangle className="my-0 size-12 shrink-0 rounded-full opacity-20" />
@@ -97,6 +100,10 @@ function AgentRosterSkeleton() {
               <SkeletonRectangle className="my-0 h-2 w-full rounded-md opacity-12" />
               <SkeletonRectangle className="my-0 h-2 w-3/4 rounded-md opacity-10" />
             </div>
+          </div>
+          <div className="flex h-6.5 items-center gap-1 px-4">
+            <SkeletonRectangle className="my-0 h-4 w-14 rounded-md opacity-12" />
+            <SkeletonRectangle className="my-0 h-4 w-20 rounded-md opacity-12" />
           </div>
           <div className="flex items-center ps-4 pe-3 pt-2 pb-3">
             <SkeletonRectangle className="my-0 h-3 w-6 rounded-md opacity-12" />
@@ -217,9 +224,11 @@ function AgentCardActionMenuItems({
 function AgentRosterItem({
   agent,
   onDelete,
+  onOpenTagManagement,
 }: {
   agent: AgentAppPartial
   onDelete: (item: HTMLLIElement | null) => void
+  onOpenTagManagement: () => void
 }) {
   const { t } = useTranslation(['agentRoster'])
   const { t: tApp } = useTranslation(['app'])
@@ -326,7 +335,7 @@ function AgentRosterItem({
       aria-labelledby={nameId}
       aria-describedby={defaultSection ? undefined : accessibleDescriptionIds || undefined}
       className={cn(
-        "group relative isolate col-span-1 h-36.5 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:z-1 after:rounded-xl after:content-[''] focus-within:bg-components-card-bg-alt has-[>a:focus-visible]:after:inset-ring-2 has-[>a:focus-visible]:after:inset-ring-state-accent-solid has-[>button:focus-visible]:after:inset-ring-2 has-[>button:focus-visible]:after:inset-ring-state-accent-solid motion-reduce:transition-none",
+        "group relative isolate col-span-1 h-43 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:z-1 after:rounded-xl after:content-[''] focus-within:bg-components-card-bg-alt has-[>a:focus-visible]:after:inset-ring-2 has-[>a:focus-visible]:after:inset-ring-state-accent-solid has-[>button:focus-visible]:after:inset-ring-2 has-[>button:focus-visible]:after:inset-ring-state-accent-solid motion-reduce:transition-none",
         isPreviewOnly
           ? 'opacity-60'
           : 'hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5 has-data-popup-open:bg-components-card-bg-alt has-data-popup-open:shadow-md has-data-popup-open:shadow-shadow-shadow-5 [@media(hover:none)]:bg-components-card-bg-alt',
@@ -404,6 +413,25 @@ function AgentRosterItem({
           </div>
         </div>
       )}
+      <div
+        className={cn(
+          'absolute inset-x-3 bottom-9',
+          !capabilities.canEdit && 'pointer-events-none',
+        )}
+      >
+        {capabilities.canEdit ? (
+          <TagSelector
+            type="agent"
+            targetId={agent.id}
+            contextLabel={agent.name}
+            value={agent.tags ?? []}
+            canBindOrUnbindTags
+            onOpenTagManagement={onOpenTagManagement}
+          />
+        ) : (
+          <ReadOnlyAgentTags agent={agent} />
+        )}
+      </div>
       <div className="pointer-events-none absolute inset-x-0 bottom-0 flex min-w-0 items-center ps-4 pe-3 pt-2 pb-3 system-xs-regular text-text-tertiary">
         <div className="flex min-w-0 flex-1 items-center gap-1.5">
           {hasPublishedReferences ? (
@@ -455,6 +483,7 @@ function AgentRosterItem({
 
 export function AgentRosterList({
   state,
+  onOpenTagManagement,
   'aria-labelledby': ariaLabelledBy,
 }: AgentRosterListProps) {
   const { t } = useTranslation(['agentRoster'])
@@ -510,6 +539,7 @@ export function AgentRosterList({
               <AgentRosterItem
                 key={agent.id}
                 agent={agent}
+                onOpenTagManagement={onOpenTagManagement}
                 onDelete={(item) => {
                   deleteDialog.openWithPayload({
                     id: agent.id,

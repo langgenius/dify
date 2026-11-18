@@ -34,7 +34,7 @@ function renderFilter(
   }
   return renderWithTags(<Owner />, data, permissions)
 }
-const search = () => page.getByRole('combobox', { name: 'common.tag.selectorPlaceholder' })
+const search = () => page.getByRole('combobox', { name: 'common.placeholder.search' })
 const trigger = (name = 'common.tag.placeholder') => page.getByRole('combobox', { name })
 
 it('filters by resource type and reflects pointer selection, deselection and clearing in its trigger', async () => {

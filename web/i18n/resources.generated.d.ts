@@ -4989,6 +4989,7 @@ export default interface Resources {
     'agent.acl.release_and_version': 'Publish and manage agent versions'
     'agent.acl.test_and_run': 'Test and run agent'
     'agent.create': 'Create agents'
+    'agent.tag.manage': 'Manage Agent tags'
     'api_extension.manage': 'Manage API extension configuration'
     'app.access_config': 'Configure app access permissions'
     'app.acl.access_config': 'View and manage access permissions'

@@ -12,13 +12,20 @@ const queryValues = vi.hoisted(() => ({
   filter: 'all',
   keyword: '',
   sort_by: 'last_modified',
+  tag_ids: '',
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, { 'agent.get': listAgents }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'agent.get': listAgents,
+      'tags.get': () => [
+        { id: 'research', name: 'Research', type: 'agent' },
+        { id: 'finance', name: 'Finance', type: 'agent' },
+      ],
+    }),
   }
 })
 
@@ -50,6 +57,7 @@ describe('RosterPage', () => {
     queryValues.filter = 'all'
     queryValues.keyword = ''
     queryValues.sort_by = 'last_modified'
+    queryValues.tag_ids = ''
     listAgents.mockReset().mockResolvedValue({
       data: [],
       has_more: false,
@@ -72,8 +80,11 @@ describe('RosterPage', () => {
     expect(screen.getByRole('heading', { name: 'agentRoster.roster.title' })).toBeInTheDocument()
   })
 
-  it('requests the publication filter and displays server-owned counts', async () => {
+  it('combines tags with the keyword, publication and creator filters and displays server-owned counts', async () => {
     queryValues.filter = 'drafts'
+    queryValues.keyword = 'Analyst'
+    queryValues.created_by_me = true
+    queryValues.tag_ids = 'research;finance'
     render(<RosterPage />)
     expect(
       await screen.findByRole('radio', { name: 'agentRoster.roster.filters.published 1' }),
@@ -86,6 +97,9 @@ describe('RosterPage', () => {
         limit: 30,
         page: 1,
         publication_status: 'drafts',
+        name: 'Analyst',
+        is_created_by_me: true,
+        tag_ids: ['research', 'finance'],
         sort_by: 'last_modified',
       },
     })

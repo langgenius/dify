@@ -3500,11 +3500,6 @@
       "count": 2
     }
   },
-  "web/app/components/workflow/block-selector/agent-selector.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 7
-    }
-  },
   "web/app/components/workflow/block-selector/all-start-blocks.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
@@ -6095,23 +6090,8 @@
       "count": 9
     }
   },
-  "web/features/tag-management/components/tag-filter.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    }
-  },
   "web/features/tag-management/components/tag-item-editor.tsx": {
     "jsx-a11y/no-autofocus": {
-      "count": 1
-    }
-  },
-  "web/features/tag-management/components/tag-search-content.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/features/tag-management/components/tag-selector.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
       "count": 1
     }
   },

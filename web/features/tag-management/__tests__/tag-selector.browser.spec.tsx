@@ -1,6 +1,7 @@
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { toast } from '@/app/notifications'
+import { createDeferred } from '@/test/deferred'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { TagSelector } from '../components/tag-selector'
 import { renderWithTags } from './render-browser'
@@ -11,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   unbind: vi.fn(),
   create: vi.fn(),
 }))
+// boundary: supply tag API responses and observe which bindings the selector submits.
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleClientResponses, withConsoleResponses } =
@@ -155,6 +157,69 @@ it('creates a knowledge tag without binding it implicitly', async () => {
   expect(mocks.bind).not.toHaveBeenCalled()
 })
 
+it.each(['before', 'after'] as const)(
+  'saves a new Agent tag alongside the draft when closing %s creation completes',
+  async (close) => {
+    const agentTag = { id: 'existing', name: 'Existing', type: 'agent' }
+    const newTag = { id: 'created', name: 'Research', type: 'agent' }
+    mocks.tags = [agentTag]
+    const creation = createDeferred<Tag>()
+    const binding = createDeferred()
+    mocks.create.mockReturnValueOnce(creation.promise)
+    mocks.bind.mockReturnValueOnce(binding.promise)
+    await renderWithTags(
+      <TagSelector
+        type="agent"
+        targetId="agent-1"
+        value={[]}
+        requiresTargetEditPermission
+        canBindOrUnbindTags
+      />,
+      mocks.tags,
+      ['agent.tag.manage'],
+    )
+    const addTags = page.getByRole('combobox', { name: 'common.tag.addTag' })
+    await addTags.click()
+    await page.getByRole('option', { name: 'Existing' }).click()
+    await search().fill('Research')
+    await page.getByRole('option', { name: /common\.tag\.create/ }).click()
+    expect(mocks.create).toHaveBeenCalledExactlyOnceWith({
+      body: { name: 'Research', type: 'agent' },
+    })
+    if (close === 'before') {
+      await userEvent.keyboard('{Escape}')
+      await expect.element(search()).not.toBeInTheDocument()
+      await expect.element(addTags).toHaveFocus()
+      await expect.element(addTags).toHaveAttribute('aria-disabled', 'true')
+      await userEvent.keyboard('{Enter}')
+      await expect.element(search()).not.toBeInTheDocument()
+    }
+    mocks.tags = [newTag, agentTag]
+    creation.resolve(newTag)
+    if (close === 'after') {
+      await expect
+        .element(page.getByRole('option', { name: 'Research' }))
+        .toHaveAttribute('aria-selected', 'true')
+      expect(mocks.bind).not.toHaveBeenCalled()
+      await userEvent.keyboard('{Escape}')
+    }
+    await expect
+      .poll(() => mocks.bind.mock.calls)
+      .toEqual([
+        [{ body: { tag_ids: ['existing', 'created'], target_id: 'agent-1', type: 'agent' } }],
+      ])
+    await expect.element(addTags).toHaveFocus()
+    await expect.element(addTags).toHaveAttribute('aria-disabled', 'true')
+    await userEvent.keyboard('{Enter}')
+    await expect.element(search()).not.toBeInTheDocument()
+    binding.resolve()
+    await expect.element(addTags).not.toHaveAttribute('aria-disabled')
+    await expect.element(addTags).toHaveFocus()
+    await userEvent.keyboard('{Enter}')
+    await expect.element(search()).toBeVisible()
+  },
+)
+
 it('blocks opening without management permission or binding capability', async () => {
   await renderSelector([])
   await expect.element(trigger()).toBeDisabled()
@@ -167,9 +232,10 @@ it('allows existing tag bindings without management permission but never offers 
   await expect
     .element(page.getByRole('button', { name: 'common.tag.manageTags' }))
     .not.toBeInTheDocument()
-  await search().fill('BrandNewTag')
+  const searchExistingTags = page.getByRole('combobox', { name: 'common.placeholder.search' })
+  await searchExistingTags.fill('BrandNewTag')
   await expect.element(page.getByRole('option', { name: /BrandNewTag/ })).not.toBeInTheDocument()
-  await search().fill('Back')
+  await searchExistingTags.fill('Back')
   await page.getByRole('option', { name: 'Backend' }).click()
   await trigger().click()
   await expect
