@@ -6,10 +6,6 @@ class PermittedAppsUnavailableError(Exception):
     pass
 
 
-class PermittedAppsTooManyError(Exception):
-    """An external SSO login may use more apps than a workspace filter reads."""
-
-
 class AppQuotaCheckError(Exception):
     """The app quota could not be determined because its lookup failed."""
 

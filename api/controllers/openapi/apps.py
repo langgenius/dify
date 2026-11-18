@@ -8,7 +8,7 @@ from typing import Any, Final
 from uuid import UUID
 
 from flask_restx import Resource
-from werkzeug.exceptions import NotFound, ServiceUnavailable, UnprocessableEntity
+from werkzeug.exceptions import NotFound, ServiceUnavailable
 
 from constants.oauth_bearer import Scope
 from constants.personal_access_token import PersonalAccessTokenPolicy
@@ -57,7 +57,7 @@ from machinery.context import AppRequestContext, RequestContext
 from models.model import AppMode
 from services.app.console_service import ConsoleAppNotFoundError
 from services.app.query_service import AppDiscoveryQuery, AppListLogin
-from services.errors.app import AppDiscoveryNotFoundError, PermittedAppsTooManyError, PermittedAppsUnavailableError
+from services.errors.app import AppDiscoveryNotFoundError, PermittedAppsUnavailableError
 from services.errors.base import NoPermissionError
 
 _SETTINGS_VIEWS: Final[dict[AppMode, tuple[Callable[..., object], ...]]] = {
@@ -199,8 +199,6 @@ class AppListApi(Resource):
             )
         except PermittedAppsUnavailableError as exc:
             raise ServiceUnavailable(str(exc)) from exc
-        except PermittedAppsTooManyError as exc:
-            raise UnprocessableEntity(str(exc)) from exc
         return AppListResponse.build(
             page=result.page,
             limit=result.per_page,

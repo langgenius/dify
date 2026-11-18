@@ -15,7 +15,7 @@ from typing import ClassVar, Final, override
 
 from flask import request
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, ServiceUnavailable
+from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable
 
 from configs import dify_config
 from constants.oauth_bearer import Scope, TokenType
@@ -41,7 +41,7 @@ from controllers.openapi._models import Hint
 from controllers.openapi._transfer import require_file_transfers
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import PathParam, load_app, load_caller, load_workspace, load_workspace_role
-from controllers.openapi.auth.subjects import AccountSubject, ResourceAccessSubject, Subject
+from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, ResourceAccessSubject, Subject
 from enums import CloudPlan, DeploymentEdition
 from extensions.ext_application_services import application_services
 from models import AppMode
@@ -150,13 +150,16 @@ class CheckNamedWorkspaceMember(CheckWorkspaceMember):
     """For a route whose workspace is optional, taken from the query string. With no `workspace_id`
     nothing is loaded or checked. With one, even an empty one, the workspace is loaded and an account's
     membership checked exactly as `CheckWorkspaceMember` does, so every call that names a workspace
-    answers as it did when the workspace was required.
+    answers as it did when the workspace was required. An external SSO login belongs to no workspace, so a
+    workspace it names is refused as a non-member's is.
     """
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
         if PathParam.WORKSPACE_ID not in request.args:
             return
+        if isinstance(subject, ExternalSsoSubject):
+            raise NotFound("workspace not found")
         load_workspace(ctx)
         super().run(subject, ctx, session)
 
