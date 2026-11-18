@@ -684,13 +684,11 @@ it('uses only the active peer history when offline and blocks canvas history whi
   const { result, store } = setup({ collaboration: true, nodes: [codeNode('remote')] })
   const identity = { epoch: 'loaded', accountId: 'editor', format: 2 as const }
   act(() => {
-    store
-      .getState()
-      .setWorkflowHistory({
-        nodes: [codeNode('outdated')],
-        edges: [],
-        workflowHistoryEvent: 'NodeChange',
-      })
+    store.getState().setWorkflowHistory({
+      nodes: [codeNode('outdated')],
+      edges: [],
+      workflowHistoryEvent: 'NodeChange',
+    })
     store.setState({ loroDraft: identity })
   })
   vi.spyOn(collaborationManager, 'isConnected').mockReturnValue(false)
