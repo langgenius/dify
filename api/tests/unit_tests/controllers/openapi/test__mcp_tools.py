@@ -245,12 +245,13 @@ def test_the_tool_list_has_four_tools_with_the_right_annotations() -> None:
     tools = {tool.name: tool for tool in tool_list()}
 
     assert set(tools) == {FIND_TOOL, *CallTool}
-    assert tools[FIND_TOOL].annotations.readOnlyHint is True
-    assert tools[CallTool.READ].annotations.readOnlyHint is True
-    assert tools[CallTool.WRITE].annotations.readOnlyHint is False
-    assert tools[CallTool.WRITE].annotations.destructiveHint is False
-    assert tools[CallTool.DESTRUCTIVE].annotations.readOnlyHint is False
-    assert tools[CallTool.DESTRUCTIVE].annotations.destructiveHint is True
+    hints = {name: tool.annotations for name, tool in tools.items()}
+    assert None not in hints.values()
+    assert [
+        (annotations.readOnlyHint, annotations.destructiveHint)
+        for name in (FIND_TOOL, CallTool.READ, CallTool.WRITE, CallTool.DESTRUCTIVE)
+        if (annotations := hints[name]) is not None
+    ] == [(True, None), (True, False), (False, False), (False, True)]
     for tool in (tools[CallTool.READ], tools[CallTool.WRITE], tools[CallTool.DESTRUCTIVE]):
         assert tool.inputSchema["required"] == ["op", "input"]
     assert set(tools[FIND_TOOL].inputSchema["properties"]) == {"query", "op"}
@@ -539,7 +540,9 @@ def test_a_429_with_retry_after_adds_the_wait_as_a_second_block(
         result = _run(CallTool.READ, {"op": "get.workspace", "input": {}})
 
     assert result.isError is True
-    assert [block.text for block in result.content][1:] == ["Retry after 30 seconds."]
+    assert [block.text for block in result.content if isinstance(block, mcp_types.TextContent)][1:] == [
+        "Retry after 30 seconds."
+    ]
     first = result.content[0]
     assert isinstance(first, mcp_types.TextContent)
     assert json.loads(first.text) == {**_RATE_LIMITED, "hints": []}
