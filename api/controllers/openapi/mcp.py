@@ -17,7 +17,7 @@ from urllib.parse import urlsplit
 
 from flask import Response, request
 from flask_restx import Resource
-from werkzeug.exceptions import RequestEntityTooLarge
+from werkzeug.exceptions import RequestEntityTooLarge, Unauthorized
 
 from configs import dify_config
 from controllers.openapi import openapi_ns
@@ -77,22 +77,33 @@ def _accepted() -> Response:
     return Response("", status=HTTPStatus.ACCEPTED)
 
 
+def _admit() -> None:
+    """Run ``admit_bearer``; its other errors propagate as for any operation.
+
+    Postcondition: a missing or invalid bearer answers 401 with ``UNAUTHORIZED_BODY``, as a tool call's 401 does.
+    """
+    try:
+        admit_bearer()
+    except Unauthorized as error:
+        raise Unauthorized(UNAUTHORIZED_BODY["message"]) from error
+
+
 def _initialize(call: _Call) -> dict[str, Any]:
     """Precondition: ``call`` holds an ``initialize`` request, inside a Flask request.
 
     Postcondition: the bearer was admitted and the reply carries the negotiated version and the
-    instructions; the errors of ``admit_bearer`` propagate.
+    instructions; raises as ``_admit`` does.
     """
-    admit_bearer()
+    _admit()
     return success(call.request_id, handle_initialize(MCP_INSTRUCTIONS, call.message.params.protocolVersion))
 
 
 def _list_tools(call: _Call) -> dict[str, Any]:
     """Precondition: ``call`` holds a ``tools/list`` request, inside a Flask request.
 
-    Postcondition: the bearer was admitted and the reply lists the four tools; raises as ``_initialize`` does.
+    Postcondition: the bearer was admitted and the reply lists the four tools; raises as ``_admit`` does.
     """
-    admit_bearer()
+    _admit()
     return success(call.request_id, mcp_types.ListToolsResult(tools=tool_list()))
 
 
