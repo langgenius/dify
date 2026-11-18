@@ -9,7 +9,7 @@ import pytest
 from flask import Flask
 from pydantic import BaseModel, ValidationError
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound, ServiceUnavailable
+from werkzeug.exceptions import NotFound, ServiceUnavailable, UnprocessableEntity
 
 from constants.oauth_bearer import SubjectType, TokenType
 from controllers.common.fields import SimpleResultResponse
@@ -36,7 +36,7 @@ from models.model import AppMode
 from services.app.console_service import ConsoleAppNotFoundError
 from services.app.query_service import AppDescription, AppDiscoveryEntry, AppDiscoveryQuery, AppListLogin
 from services.entities.app_entities import AppListParams, AppSummary
-from services.errors.app import AppDiscoveryNotFoundError, PermittedAppsUnavailableError
+from services.errors.app import AppDiscoveryNotFoundError, PermittedAppsTooManyError, PermittedAppsUnavailableError
 from tests.helpers.unit.controllers.openapi._mode_constants import LISTABLE_MODES, NON_LISTABLE_MODES
 from tests.helpers.unit.controllers.openapi.auth._world import (
     ACCOUNT_ID,
@@ -392,3 +392,27 @@ def test_the_catalog_lists_apps_without_a_workspace() -> None:
     assert spec.catalog.summary == "List the apps this login may use, in one workspace or in all of them"
     assert {"page": 1, "limit": 20} in [example.input for example in spec.catalog.examples]
     assert "workspace_id" not in AppListQuery.model_json_schema().get("required", [])
+
+
+@pytest.mark.parametrize(
+    ("error", "expected"),
+    [
+        (PermittedAppsUnavailableError("permitted_apps_unavailable"), ServiceUnavailable),
+        (PermittedAppsTooManyError("too many"), UnprocessableEntity),
+    ],
+)
+def test_permitted_app_errors_are_translated_at_the_http_boundary(
+    app: Flask,
+    app_query_services: ControllerTestServices,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    error: Exception,
+    expected: type[Exception],
+) -> None:
+    def failing(_login: AppListLogin, _query: AppDiscoveryQuery) -> PaginatedResult[AppDiscoveryEntry]:
+        raise error
+
+    monkeypatch.setattr(app_query_services.apps.discovery, "list_apps_for", failing)
+    api = AppListApi()
+    with app.test_request_context("/openapi/v1/apps"), pytest.raises(expected, match=str(error)):
+        inspect.unwrap(AppListApi.get)(api, Context(sso_subject(), sqlite_session, {}), query=AppListQuery())
