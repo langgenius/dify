@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 from collections.abc import Callable
 from typing import Protocol, cast
 from uuid import uuid4
@@ -136,11 +137,12 @@ class TestAppList:
 
         api = AppListApi()
         with app.test_request_context("/openapi/v1/apps"):
-            result = cast(_Endpoint[AppListResponse], api.get).__handler__(
+            result = inspect.unwrap(AppListApi.get)(
                 api,
                 context_for(account, session=db_session_with_containers, requirements=(CheckNamedWorkspaceMember(),)),
                 query=AppListQuery(),
             )
+        assert isinstance(result, AppListResponse)
 
         assert result.total == 2
         assert sorted((row.id, row.workspace_id) for row in result.data) == sorted(
