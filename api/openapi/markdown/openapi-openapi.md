@@ -39,6 +39,13 @@ Machine-readable catalog of every op on this surface
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /account
+**Return account details with workspace visibility bounded by PAT scope**
+
+The account snapshot supplies current memberships and the default workspace.
+A PAT's admitted workspace IDs narrow that snapshot; the returned default is
+present only when its workspace remains visible. Non-PAT requests have no
+workspace filter. This handler is read-only and does not change membership.
+
 #### Responses
 
 | Code | Description | Schema |
@@ -600,6 +607,8 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Form definition | **application/json**: [HumanInputFormDefinitionResponse](#humaninputformdefinitionresponse)<br> |
+| 409 | Conflict | **application/json**: [AlreadySubmittedError](#alreadysubmittederror)<br>[ErrorBody](#errorbody)<br> |
+| 410 | Gone | **application/json**: [ExpiredError](#expirederror)<br>[ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /apps/{app_id}/human-input-forms/{form_token}:submit
@@ -621,6 +630,9 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Form submitted | **application/json**: [FormSubmitResponse](#formsubmitresponse)<br> |
+| 400 | Bad Request | **application/json**: [InvalidInputError](#invalidinputerror)<br>[ErrorBody](#errorbody)<br> |
+| 409 | Conflict | **application/json**: [AlreadySubmittedError](#alreadysubmittederror)<br>[WorkflowNotActiveError](#workflownotactiveerror)<br>[ErrorBody](#errorbody)<br> |
+| 410 | Gone | **application/json**: [ExpiredError](#expirederror)<br>[ErrorBody](#errorbody)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -1185,6 +1197,7 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published | **application/json**: [PublishResponse](#publishresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ServiceApiDisabledError](#serviceapidisablederror)<br>[ErrorBody](#errorbody)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -2181,6 +2194,20 @@ so an edit made in the same second as the export is not detected.
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [POST] /workspaces/{workspace_id}:switch
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workspace detail | **application/json**: [WorkspaceDetailResponse](#workspacedetailresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ---
 ### Schemas
 
@@ -2327,6 +2354,12 @@ A chat run against an advanced-chat (chatflow) app, which can also pin a workflo
 | title | string |  | No |
 | url | string |  | No |
 | use_icon_as_answer_icon | boolean |  | No |
+
+#### AlreadySubmittedError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AlreadySubmittedError |  |  |  |
 
 #### AppDescribeInfo
 
@@ -2488,6 +2521,14 @@ mode is a closed enum of listable app types.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | BinaryFileResponse | string |  |  |
+
+#### ButtonStyle
+
+Button styles for user actions.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ButtonStyle | string | Button styles for user actions. |  |
 
 #### ChatAppInfo
 
@@ -2835,6 +2876,33 @@ future server adds a code. Formatter tests pin emitted values to the enum.
 | ---- | ---- | ----------- | -------- |
 | EventStreamResponse | string |  |  |
 
+#### ExpiredError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ExpiredError |  |  |  |
+
+#### FileInputConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | No |
+| allowed_file_types | [ [FileType](#filetype) ] |  | No |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
+#### FileListInputConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | No |
+| allowed_file_types | [ [FileType](#filetype) ] |  | No |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
+| number_limits | integer |  | No |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
 #### FileResponse
 
 | Name | Type | Description | Required |
@@ -2855,11 +2923,29 @@ future server adds a code. Formatter tests pin emitted values to the enum.
 | tenant_id | string |  | No |
 | user_id | string |  | No |
 
+#### FileTransferMethod
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FileTransferMethod | string |  |  |
+
+#### FileType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FileType | string |  |  |
+
 #### FileUploadPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | file | binary | The file to upload; its id can then be used in an app run's file variables | Yes |
+
+#### FormInputConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FormInputConfig | [ParagraphInputConfig](#paragraphinputconfig)<br>[SelectInputConfig](#selectinputconfig)<br>[FileInputConfig](#fileinputconfig)<br>[FileListInputConfig](#filelistinputconfig) |  |  |
 
 #### FormSubmitResponse
 
@@ -2896,9 +2982,9 @@ A next step: the op id to call and its ready input.
 | ---- | ---- | ----------- | -------- |
 | expiration_time | integer |  | No |
 | form_content | string |  | Yes |
-| inputs | [ object ] |  | No |
+| inputs | [ [FormInputConfig](#forminputconfig) ] |  | No |
 | resolved_default_values | object |  | Yes |
-| user_actions | [ object ] |  | No |
+| user_actions | [ [UserActionConfig](#useractionconfig) ] |  | No |
 
 #### Import
 
@@ -2919,6 +3005,12 @@ A next step: the op id to call and its ready input.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ImportStatus | string |  |  |
+
+#### InvalidInputError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| InvalidInputError |  |  |  |
 
 #### JsonValue
 
@@ -3460,6 +3552,24 @@ The console payload plus local file parts; `_files.merge_files` sets them on `in
 | files | object | Local file paths keyed by the form's file input name, same convention as the run ops' `files` | No |
 | inputs | object | Submitted human input values keyed by output variable name. Use a string for paragraph or select input values, a file mapping for file inputs, and a list of file mappings for file-list inputs. Local file mappings use `transfer_method=local_file` with `upload_file_id`; remote file mappings use `transfer_method=remote_url` with `url` or `remote_url`. | Yes |
 
+#### PaidPlanRequiredError
+
+This feature requires a paid plan.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PaidPlanRequiredError |  | This feature requires a paid plan. |  |
+
+#### ParagraphInputConfig
+
+Form input definition.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default | [StringSource](#stringsource) | Raw default-value configuration for the paragraph input. Runtime-resolved values are exposed in the surrounding `resolved_default_values` mapping. | No |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
 #### PermittedExternalAppsListQuery
 
 Strict (extra='forbid').
@@ -3697,6 +3807,14 @@ Cursor page of runs; `hints` carries the next page.
 | hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
 | limit | integer |  | Yes |
 
+#### SelectInputConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| option_source | [StringListSource](#stringlistsource) | Source of options for `select` inputs. Present only when `type` is `select`. | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
 #### ServerVersionResponse
 
 Meta endpoint payload for `GET /openapi/v1/_version` — no auth required.
@@ -3712,6 +3830,14 @@ Meta endpoint payload for `GET /openapi/v1/_version` — no auth required.
 | ---- | ---- | ----------- | -------- |
 | base_url | string |  | Yes |
 | enabled | boolean |  | Yes |
+
+#### ServiceApiDisabledError
+
+This app's Service API is turned off.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ServiceApiDisabledError |  | This app's Service API is turned off. |  |
 
 #### ServiceApiPatch
 
@@ -3895,6 +4021,24 @@ Pagination for GET /account/sessions. Strict (extra='forbid').
 | version_name | string |  | Yes |
 | version_number | integer |  | Yes |
 
+#### StringListSource
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| selector | [ string ] | Variable reference path when `type` is `variable`. | No |
+| type | [ValueSourceType](#valuesourcetype) | Origin of the options. `constant` means `value` lists the options literally; `variable` means `selector` points to an `array[string]` workflow variable that provides them. | Yes |
+| value | [ string ] | Literal option list when `type` is `constant`. | No |
+
+#### StringSource
+
+Default configuration for form inputs.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| selector | [ string ] |  | No |
+| type | [ValueSourceType](#valuesourcetype) |  | Yes |
+| value | string |  | No |
+
 #### SubjectType
 
 | Name | Type | Description | Required |
@@ -4065,6 +4209,25 @@ Tool provider types a workflow tool node can call; values match the node's provi
 | prompt_tokens | integer |  | No |
 | total_tokens | integer |  | No |
 
+#### UserActionConfig
+
+User action configuration.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| button_style | [ButtonStyle](#buttonstyle) |  | No |
+| id | string |  | Yes |
+| title | string |  | Yes |
+
+#### ValueSourceType
+
+ValueSourceType records whether the value comes from a static setting
+in form definition, or a variable while the workflow is running.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ValueSourceType | string | ValueSourceType records whether the value comes from a static setting in form definition, or a variable while the workflow is running. |  |
+
 #### VersionListQuery
 
 | Name | Type | Description | Required |
@@ -4168,6 +4331,12 @@ Page of published versions, newest first; there is no total, `hints` carries the
 | nodes_changed | [ [NodeChange](#nodechange) ] |  | Yes |
 | nodes_removed | [ [NodeChange](#nodechange) ] |  | Yes |
 | published | boolean | false when the app was never published; then everything counts as added | Yes |
+
+#### WorkflowNotActiveError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WorkflowNotActiveError |  |  |  |
 
 #### WorkflowRunData
 

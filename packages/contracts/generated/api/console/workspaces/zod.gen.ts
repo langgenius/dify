@@ -38,6 +38,18 @@ export const zInvalidRequestError = zErrorResponse.and(
 )
 
 /**
+ * PaidPlanRequiredError
+ *
+ * This feature requires a paid plan.
+ */
+export const zPaidPlanRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('paid_plan_required'),
+    status: z.literal(403),
+  }),
+)
+
+/**
  * SnippetImportPayload
  *
  * Payload for importing snippet from DSL.
@@ -109,6 +121,19 @@ export const zLegacyEndpointUpdatePayload = z.object({
 export const zEndpointUpdatePayload = z.object({
   name: z.string().min(1),
   settings: z.record(z.string(), z.unknown()),
+})
+
+/**
+ * ChannelProviderBadRequestResponse
+ *
+ * HTTP failure with only provider-supplied diagnostic identifiers.
+ */
+export const zChannelProviderBadRequestResponse = z.object({
+  code: z.string(),
+  message: z.string(),
+  provider_error_code: z.string().nullish(),
+  provider_request_id: z.string().nullish(),
+  status: z.int(),
 })
 
 /**
@@ -622,18 +647,6 @@ export const zNetworkAccessInvalidInputError = zErrorResponse.and(
   z.object({
     code: z.literal('network_access_invalid_input'),
     status: z.literal(400),
-  }),
-)
-
-/**
- * PaidPlanRequiredError
- *
- * This feature requires a paid plan.
- */
-export const zPaidPlanRequiredError = zErrorResponse.and(
-  z.object({
-    code: z.literal('paid_plan_required'),
-    status: z.literal(403),
   }),
 )
 
@@ -1607,6 +1620,35 @@ export const zSimpleAccountResponse = z.object({
 })
 
 /**
+ * AvailableEvaluationWorkflowResponse
+ */
+export const zAvailableEvaluationWorkflowResponse = z.object({
+  app_id: z.string(),
+  app_name: z.string(),
+  created_at: z.int(),
+  created_by: zSimpleAccountResponse.nullish(),
+  hash: z.string(),
+  id: z.string(),
+  kind: z.string(),
+  marked_comment: z.string(),
+  marked_name: z.string(),
+  type: z.string(),
+  updated_at: z.int(),
+  updated_by: zSimpleAccountResponse.nullish(),
+  version: z.string(),
+})
+
+/**
+ * AvailableEvaluationWorkflowPaginationResponse
+ */
+export const zAvailableEvaluationWorkflowPaginationResponse = z.object({
+  has_more: z.boolean(),
+  items: z.array(zAvailableEvaluationWorkflowResponse),
+  limit: z.int(),
+  page: z.int(),
+})
+
+/**
  * SnippetTagResponse
  */
 export const zSnippetTagResponse = z.object({
@@ -1704,6 +1746,22 @@ export const zSnippetImportResponse = z.object({
   warnings: z.array(zDslImportWarning),
 })
 
+/**
+ * EvaluationAssociatedTargetResponse
+ */
+export const zEvaluationAssociatedTargetResponse = z.object({
+  target_id: z.string(),
+  target_name: z.string(),
+  target_type: z.string(),
+})
+
+/**
+ * EvaluationAssociatedTargetListResponse
+ */
+export const zEvaluationAssociatedTargetListResponse = z.object({
+  items: z.array(zEvaluationAssociatedTargetResponse),
+})
+
 export const zSenderName = z.string().min(1).max(255)
 
 /**
@@ -1720,6 +1778,8 @@ export const zChannelStatus = z.enum([
  * ChannelTestResponse
  */
 export const zChannelTestResponse = z.object({
+  provider_error_code: z.string().nullish(),
+  provider_request_id: z.string().nullish(),
   status: zChannelStatus,
   status_description: z.string(),
 })
@@ -1752,6 +1812,7 @@ export const zUnchangedInput = z.object({
 export const zHumanInputContactSummary = z.object({
   avatar_url: z.string().optional().default(''),
   created_at: z.int(),
+  email: z.string().nullish(),
   id: z.string(),
   name: z.string(),
 })
@@ -1823,6 +1884,28 @@ export const zListOrganizationCandidatesResponse = z.object({
   limit: z.int(),
   page: z.int(),
   total: z.int(),
+})
+
+/**
+ * DebugChannel
+ *
+ * Delivery selection for editor debugging, resolved to current channel configuration.
+ */
+export const zDebugChannel = z.enum([
+  'ding_talk',
+  'email',
+  'feishu',
+  'lark',
+  'ms_teams',
+  'slack',
+  'we_com',
+])
+
+/**
+ * HumanInputTestChannelsResponse
+ */
+export const zHumanInputTestChannelsResponse = z.object({
+  channels: z.array(zDebugChannel),
 })
 
 /**
@@ -3393,8 +3476,8 @@ export const zImSyncRunStatus = z.enum(['failed', 'queued', 'running', 'succeede
  *
  * One IM sync run snapshot.
  *
- * The latest-only UI displays ``finished_at`` as the explicit sync time. The
- * transport contract intentionally does not expose a ``started_by`` actor.
+ * The latest-only UI displays ``finished_at`` as the explicit sync time.
+ * The initiator display name is resolved from the initiating Dify Account.
  */
 export const zImSyncRun = z.object({
   channel_config_version: z.int().gte(1),
@@ -3402,6 +3485,7 @@ export const zImSyncRun = z.object({
   error_message: z.string().nullish(),
   finished_at: z.int().nullish(),
   id: z.string(),
+  initiator_display_name: z.string(),
   provider: zImProvider,
   result_counts: zImSyncRunResultCounts,
   started_at: z.int().nullish(),
@@ -4541,6 +4625,14 @@ export const zTimeoutUnit = z.enum(['day', 'hour'])
 export const zNodeType = z.string()
 
 /**
+ * DebugModeConfig
+ */
+export const zDebugModeConfig = z.object({
+  channels: z.array(zDebugChannel),
+  enabled: z.boolean().optional().default(false),
+})
+
+/**
  * MessageTemplateConfig
  */
 export const zMessageTemplateConfig = z.object({
@@ -5050,29 +5142,6 @@ export const zUserActionConfig = z.object({
     .max(20)
     .regex(/^[A-Za-z_][A-Za-z0-9_]*$/),
   title: z.string().max(100),
-})
-
-/**
- * DebugChannel
- *
- * Delivery selection for editor debugging, resolved to current channel configuration.
- */
-export const zDebugChannel = z.enum([
-  'ding_talk',
-  'email',
-  'feishu',
-  'lark',
-  'ms_teams',
-  'slack',
-  'we_com',
-])
-
-/**
- * DebugModeConfig
- */
-export const zDebugModeConfig = z.object({
-  channels: z.array(zDebugChannel),
-  enabled: z.boolean().optional().default(false),
 })
 
 /**
@@ -6429,6 +6498,20 @@ export const zPutWorkspacesCurrentAgentsByAgentIdSkillsPath = z.object({
  */
 export const zPutWorkspacesCurrentAgentsByAgentIdSkillsResponse = zAgentSkillBindingsResponse
 
+export const zGetWorkspacesCurrentAvailableEvaluationWorkflowsQuery = z.object({
+  keyword: z.string().max(255).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(10),
+  named_only: z.boolean().optional().default(false),
+  page: z.int().gte(1).lte(99999).optional().default(1),
+  user_id: z.string().optional(),
+})
+
+/**
+ * Available evaluation workflows
+ */
+export const zGetWorkspacesCurrentAvailableEvaluationWorkflowsResponse =
+  zAvailableEvaluationWorkflowPaginationResponse
+
 export const zGetWorkspacesCurrentCustomizedSnippetsQuery = z.object({
   creators: z.array(z.string()).optional(),
   is_published: z.boolean().optional(),
@@ -6633,6 +6716,16 @@ export const zPatchWorkspacesCurrentEndpointsByIdPath = z.object({
  * Endpoint updated successfully
  */
 export const zPatchWorkspacesCurrentEndpointsByIdResponse = zEndpointMutationResponse
+
+export const zGetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsPath = z.object({
+  workflow_id: z.uuid(),
+})
+
+/**
+ * Associated evaluation targets
+ */
+export const zGetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsResponse =
+  zEvaluationAssociatedTargetListResponse
 
 /**
  * Success
@@ -6973,6 +7066,11 @@ export const zGetWorkspacesCurrentHumanInputV2OrganizationCandidatesQuery = z.ob
  */
 export const zGetWorkspacesCurrentHumanInputV2OrganizationCandidatesResponse =
   zListOrganizationCandidatesResponse
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentHumanInputV2TestChannelsResponse = zHumanInputTestChannelsResponse
 
 export const zGetWorkspacesCurrentMembersQuery = z.object({
   language: z.enum(['en', 'ja', 'zh']).optional(),

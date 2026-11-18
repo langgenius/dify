@@ -1,5 +1,6 @@
 """Detached records and persistence contract for Console app trigger management."""
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
@@ -45,3 +46,21 @@ class AppTriggerStore(Protocol):
     def set_enabled(
         self, context: RequestContext, app_id: str, trigger_id: str, *, enabled: bool
     ) -> AppTriggerRecord: ...
+
+
+@dataclass(frozen=True, slots=True)
+class PublishedAppTrigger:
+    """Trigger identity and display metadata extracted from a published graph."""
+
+    node_id: str
+    trigger_type: str
+    title: str
+    provider_name: str | None
+
+
+class AppTriggerPublicationWriter(Protocol):
+    def __call__(self, *, tenant_id: str, app_id: str, triggers: Sequence[PublishedAppTrigger]) -> None: ...
+
+
+class AppTriggerStatusWriter(Protocol):
+    def mark_tenant_triggers_rate_limited(self, tenant_id: str) -> None: ...

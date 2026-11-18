@@ -151,7 +151,9 @@ class FeatureModel(FeatureResponseModel):
     education: EducationModel = EducationModel()
     enable_skill: bool = True
     enable_knowledge_fs: bool = False
+    enable_file_scan: bool = False
     workflow_collaboration_enabled: bool = False
+    workflow_collaboration_upgrade_available: bool = False
     members: LimitationModel = LimitationModel(size=0, limit=1)
     apps: LimitationModel = LimitationModel(size=0, limit=10)
     # Indexing tasks still consume this internally; Console queries vector usage separately.

@@ -70,8 +70,12 @@ class FeatureService:
             features=features,
             tenant_id=tenant_id,
         )
-        features.workflow_collaboration_enabled = cls.can_use_workflow_collaboration(
-            tenant_id, plan=features.billing.subscription.plan
+        plan = features.billing.subscription.plan
+        features.workflow_collaboration_enabled = cls.can_use_workflow_collaboration(tenant_id, plan=plan)
+        features.workflow_collaboration_upgrade_available = (
+            dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
+            and plan == CloudPlan.SANDBOX
+            and cls.can_use_workflow_collaboration(tenant_id, plan=CloudPlan.PROFESSIONAL)
         )
 
         return features
@@ -152,6 +156,7 @@ class FeatureService:
         )
         features.enable_skill = dify_config.ENABLE_SKILL
         features.enable_knowledge_fs = get_knowledge_fs_features().enabled
+        features.enable_file_scan = dify_config.FILE_SCAN_ENABLED
 
     @classmethod
     def _fulfill_params_from_workspace_info(cls, features: feature_entities.FeatureModel, tenant_id: str):

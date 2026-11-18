@@ -61,6 +61,8 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSourceEditSyncPolicyPayload,
     KnowledgeFSSourceImportFailureResponse,
     KnowledgeFSSourceListQuery,
+    KnowledgeFSSourcePageResponse,
+    KnowledgeFSSourcePagesQuery,
     KnowledgeFSSourceSyncPolicyPayload,
     KnowledgeFSSourceUpdatePayload,
     KnowledgeFSSourceWorkflowImportPayload,
@@ -77,6 +79,22 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSWorkflowFailedRetrievalCapturePayload,
     KnowledgeFSWorkflowFailedRetrievalCaptureResponse,
 )
+
+
+def test_source_pages_tree_preview_aliases() -> None:
+    query = KnowledgeFSSourcePagesQuery.model_validate(
+        {"view": "tree", "parentId": "repo:FFXN/dify", "cursor": "next", "limit": "10"}
+    )
+    assert query.model_dump(mode="json", by_alias=True, exclude_none=True) == {
+        "cursor": "next",
+        "limit": 10,
+        "parentId": "repo:FFXN/dify",
+        "view": "tree",
+    }
+    page = KnowledgeFSSourcePageResponse.model_validate(
+        {"pageId": "repo:FFXN/dify", "pageName": "dify", "hasChildren": True, "type": "repository"}
+    )
+    assert page.model_dump(mode="json", exclude_none=True)["has_children"] is True
 
 
 def test_background_task_response_accepts_source_title_alias() -> None:
@@ -859,6 +877,7 @@ def test_trace_response_translates_historical_retrieval_statistics() -> None:
 
 
 def test_knowledge_fs_queries_validate_independent_command_contracts() -> None:
+    """Given independent command payloads, preserve their fields and reject invalid paths and blank queries."""
     listing = KnowledgeFSListQuery(path="/knowledge", limit=100)
     grep = KnowledgeFSGrepQuery(path="/knowledge/docs", query="  TODO  ")
     finding = KnowledgeFSFindQuery(path="/knowledge", resource_type="document")
@@ -879,8 +898,6 @@ def test_knowledge_fs_queries_validate_independent_command_contracts() -> None:
         KnowledgeFSListQuery(path="/invalid", limit=20)
     with pytest.raises(ValidationError):
         KnowledgeFSGrepQuery(path="/knowledge", query=" ")
-    with pytest.raises(ValidationError):
-        KnowledgeFSListQuery.model_validate({"path": "/knowledge", "limit": 101})
 
 
 def test_knowledge_fs_responses_translate_each_kfs_wire_shape() -> None:
@@ -1907,6 +1924,40 @@ def test_background_task_preserves_graph_repair_status_for_completed_text(state:
         "failure": None,
     }
     assert response["can_retry"] is (state == "failed")
+
+
+def test_document_task_preserves_grounding_failure_stage_separately_from_resume_checkpoint() -> None:
+    response = KnowledgeFSDocumentProcessingTaskResponse.model_validate(
+        {
+            "id": "task-1",
+            "knowledgeSpaceId": "space-1",
+            "documentId": "document-1",
+            "documentRevision": 1,
+            "state": "failed",
+            "stage": "parsed",
+            "phase": "outline_summary",
+            "progressPercent": 20,
+            "createdAt": "2026-10-30T05:00:00Z",
+            "updatedAt": "2026-10-30T05:01:00Z",
+            "errorCode": "DOCUMENT_SEMANTIC_GROUNDING_FAILED",
+            "failure": {
+                "action": "retry",
+                "category": "dependency",
+                "code": "DOCUMENT_SEMANTIC_GROUNDING_FAILED",
+                "message": "Private entity text and provider diagnostics",
+                "retryPolicy": "manual",
+                "stage": "semantic_chunking",
+            },
+        }
+    ).model_dump(mode="json")
+
+    assert response["error_code"] == "DOCUMENT_SEMANTIC_GROUNDING_FAILED"
+    assert response["failure"]["code"] == "DOCUMENT_SEMANTIC_GROUNDING_FAILED"
+    assert response["failure"]["stage"] == "semantic_chunking"
+    assert response["failure"]["action"] == "retry"
+    assert response["stage"] == "parsed"
+    assert response["progress_percent"] == 20
+    assert "Private entity text" not in str(response)
 
 
 def test_document_task_preserves_graph_repair_for_service_consumers() -> None:

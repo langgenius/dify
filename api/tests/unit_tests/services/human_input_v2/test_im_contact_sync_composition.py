@@ -27,6 +27,7 @@ from core.human_input_v2.im_integration.adapters import (
     SlackCredentials,
 )
 from core.human_input_v2.im_integration.adapters.credentials import FeishuCredentials, IMProviderCredentials
+from core.human_input_v2.im_integration.sync_records import SysUserId, SysUserIMSyncInitiator
 from core.human_input_v2.shared import AccountId, ContactId, DeploymentScope, IMSyncRunId, TenantId, WorkspaceScope
 from libs.uuid_utils import uuidv7
 from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials
@@ -225,7 +226,7 @@ def _seed_run(
             DeploymentIMChannelWriter(session).create(channel)
         decision = SQLAlchemyIMControlPlaneRepository(session, channel).create_or_get_active_run(
             sync_run_id=_RUN_ID,
-            started_by_account_id=None,
+            started_by=SysUserIMSyncInitiator(SysUserId("00000000-0000-0000-0000-000000000999")),
             now=_NOW,
         )
         assert decision.run is not None

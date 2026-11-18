@@ -23,7 +23,7 @@ const api = vi.hoisted(() => ({
   starred: vi.fn<typeof consoleClient.apps.starred.get>(),
   delete: vi.fn<typeof consoleClient.apps.byAppId.delete>(),
 }))
-vi.mock('react-i18next', async (importOriginal) => importOriginal())
+vi.unmock('react-i18next')
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),

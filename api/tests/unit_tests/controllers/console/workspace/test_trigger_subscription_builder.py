@@ -6,7 +6,7 @@ from contextvars import Context
 from dataclasses import dataclass, field
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from threading import Thread
+from threading import Event, Thread
 from typing import override
 
 import pytest
@@ -59,6 +59,10 @@ class _Daemon:
     status: HTTPStatus = HTTPStatus.OK
     post_status: HTTPStatus = HTTPStatus.OK
     requests: list[_DaemonRequest] = field(default_factory=list)
+    # A selected response can wait while another transaction edits its inputs.
+    pause_path: str | None = None
+    request_started: Event = field(default_factory=Event)
+    resume_response: Event = field(default_factory=Event)
 
 
 @pytest.fixture
@@ -89,6 +93,11 @@ def daemon(harness: _Harness) -> Iterator[_Daemon]:
                     else None,
                 )
             )
+            if self.path == daemon.pause_path:
+                daemon.request_started.set()
+                if not daemon.resume_response.wait(timeout=10):
+                    self.send_error(HTTPStatus.GATEWAY_TIMEOUT, "Timed out waiting to resume test response")
+                    return
             body = json.dumps(
                 {
                     "code": daemon.response_codes_by_path.get(self.path, daemon.response_code)
@@ -117,6 +126,7 @@ def daemon(harness: _Harness) -> Iterator[_Daemon]:
     try:
         yield daemon
     finally:
+        daemon.resume_response.set()
         plugin_transport.plugin_daemon_inner_api_baseurl = previous_url
         server.shutdown()
         server.server_close()

@@ -16,7 +16,6 @@
   "devDependencies": {
     "@dify/tsconfig": "workspace:*",
     "@tanstack/form-core": "catalog:",
-    "@typescript/native": "catalog:",
     "jotai": "catalog:",
     "tsrs": "catalog:",
     "typescript": "catalog:",
