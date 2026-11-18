@@ -7,10 +7,10 @@ import accountSettings from '@/i18n/locales/en-US/account-settings.json'
 import common from '@/i18n/locales/en-US/common.json'
 import deployments from '@/i18n/locales/en-US/deployments.json'
 import navigation from '@/i18n/locales/en-US/navigation.json'
-import { installFakeConsole } from '@/test/console/fake-console'
 import { createNetworkAccessGroupFixture } from '@/test/console/network-access'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { installFakeApi } from '@/test/fake-api'
 import { ACCOUNT_SETTING_TAB } from '../../constants'
 import AccountSetting from '../../index'
 
@@ -44,12 +44,14 @@ async function renderPoliciesSettings(width = 320) {
     }),
   ]
   onTestFinished(
-    installFakeConsole({
-      workspaces: {
-        current: {
-          networkAccessGroups: {
-            get: () => ({ tenant_id: 'workspace-1', entitled: true, groups }),
-            currentIp: { get: () => ({ client_ip: '203.0.113.42' }) },
+    installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            networkAccessGroups: {
+              get: () => ({ tenant_id: 'workspace-1', entitled: true, groups }),
+              currentIp: { get: () => ({ client_ip: '203.0.113.42' }) },
+            },
           },
         },
       },

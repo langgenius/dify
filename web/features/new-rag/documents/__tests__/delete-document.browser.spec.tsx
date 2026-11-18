@@ -7,10 +7,10 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { consoleQuery } from '@/service/console'
-import { consoleError, installFakeConsole } from '@/test/console/fake-console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createDeferred } from '@/test/deferred'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
 import { QueryTestingAdapter } from '@/test/query-state-testing-adapter'
 import { DocumentResultsSurface } from '../results/surface'
@@ -63,16 +63,18 @@ async function setup(ids: string[]) {
     })
   })
   onTestFinished(
-    installFakeConsole({
-      knowledgeFs: {
-        spaces: {
-          byControlSpaceId: {
-            logicalDocuments: {
-              get: (input) => api.list(input),
-              byDocumentId: { delete: (input) => api.remove(input) },
+    installFakeApi({
+      console: {
+        knowledgeFs: {
+          spaces: {
+            byControlSpaceId: {
+              logicalDocuments: {
+                get: (input) => api.list(input),
+                byDocumentId: { delete: (input) => api.remove(input) },
+              },
+              sources: { get: () => ({ data: [], next_cursor: null }) },
+              backgroundTasks: { get: () => ({ data: [], next_cursor: null }) },
             },
-            sources: { get: () => ({ data: [], next_cursor: null }) },
-            backgroundTasks: { get: () => ({ data: [], next_cursor: null }) },
           },
         },
       },
@@ -180,7 +182,7 @@ describe('Knowledge document deletion', () => {
     await expect.element(confirm).toHaveFocus()
     await userEvent.keyboard('{Escape}')
     await expect.element(screen.getByRole('alertdialog')).toBeVisible()
-    request.reject(consoleError('SERVICE_UNAVAILABLE', 503, 'Deletion service unavailable'))
+    request.reject(apiError('SERVICE_UNAVAILABLE', 503, 'Deletion service unavailable'))
     await expect
       .element(screen.getByText('Deletion service unavailable', { exact: true }))
       .toBeVisible()

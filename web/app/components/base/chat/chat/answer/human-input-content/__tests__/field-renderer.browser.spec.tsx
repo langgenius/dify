@@ -6,13 +6,10 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { installFakeApi, route } from '@/test/fake-api'
 import { TransferMethod } from '@/types/app'
 import HumanInputFieldRenderer from '../field-renderer'
 
-// oxlint-disable-next-line typescript/no-deprecated -- The production file picker still uses the XHR upload transport.
-const upload = vi.hoisted(() => vi.fn<typeof import('@/service/base').upload>())
-vi.mock('@/service/base', () => ({ upload }))
 vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/chat' }))
 
 const fileField = {
@@ -64,11 +61,21 @@ async function renderField(field: FormInputItem, initialValue?: HumanInputFieldV
   )
 }
 
+let uploadedNames: string[] = []
+
 beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
-  upload.mockReset().mockImplementation(async ({ data }) => ({
-    id: `uploaded-${(data.get('file') as File).name}`,
-  }))
+  uploadedNames = []
+  onTestFinished(
+    installFakeApi({
+      routes: [
+        route('POST', 'console', '/files/upload', async ({ request }) => {
+          const name = ((await request.formData()).get('file') as File).name
+          uploadedNames.push(name)
+          return { id: `uploaded-${name}` }
+        }),
+      ],
+    }),
+  )
 })
 
 it('retains the complete paragraph value in its controlled owner', async () => {
@@ -119,7 +126,7 @@ it('publishes one uploaded file as a scalar, enforces its limit, and clears it t
     .element(page.getByRole('status', { name: 'attachments saved value' }))
     .toHaveTextContent('report.pdf:uploaded-report.pdf:100')
   await expect.element(uploadButton).toBeDisabled()
-  expect((upload.mock.calls[0]![0].data.get('file') as File).name).toBe('report.pdf')
+  expect(uploadedNames).toEqual(['report.pdf'])
 
   await page.getByRole('button', { name: 'common.operation.remove report.pdf' }).click()
   await expect.element(page.getByText('report.pdf')).not.toBeInTheDocument()

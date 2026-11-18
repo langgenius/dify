@@ -4,9 +4,9 @@ import { act } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { consoleQuery } from '@/service/console'
-import { consoleError, installFakeConsole } from '@/test/console/fake-console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { createPluginEntity } from '@/test/fixtures/plugin'
 import { SwitchPluginVersion } from '../switch-plugin-version'
 
@@ -50,13 +50,15 @@ beforeEach(() => {
 })
 async function setup({ enableMarketplace = true } = {}) {
   onTestFinished(
-    installFakeConsole({
-      workspaces: {
-        current: {
-          plugin: {
-            list: { installations: { ids: { post: (input) => api.detail(input) } } },
-            upgrade: { marketplace: { post: (input) => api.upgrade(input) } },
-            tasks: { byTaskId: { get: (input) => api.task(input) } },
+    installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            plugin: {
+              list: { installations: { ids: { post: (input) => api.detail(input) } } },
+              upgrade: { marketplace: { post: (input) => api.upgrade(input) } },
+              tasks: { byTaskId: { get: (input) => api.task(input) } },
+            },
           },
         },
       },
@@ -230,8 +232,8 @@ it.each(['failed task', 'missing task ID'] as const)(
 it('retries the status of the accepted upgrade inside the same dialog', async () => {
   api.upgrade.mockResolvedValueOnce({ all_installed: false, task_id: 'accepted' })
   api.task
-    .mockRejectedValueOnce(consoleError('SERVICE_UNAVAILABLE', 503, 'Connection lost'))
-    .mockRejectedValueOnce(consoleError('SERVICE_UNAVAILABLE', 503, 'Still offline'))
+    .mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'Connection lost'))
+    .mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'Still offline'))
   const { trigger } = await setup()
   await trigger.click()
   await page.getByRole('menuitem', { name: /^2\.0\.0/ }).click()
