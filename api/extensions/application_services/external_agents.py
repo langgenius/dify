@@ -13,6 +13,7 @@ from extensions.application_services.tracing import TracingServices
 from extensions.ext_storage import storage
 from libs.uuid_utils import uuidv7
 from machinery.context import RequestContext
+from providers.a2a.call_usage import MetadataCallUsageProof
 from providers.a2a.control_adapters import (
     DifyExternalIconURLs,
     WorkspaceExternalAssetAccess,
@@ -225,6 +226,7 @@ def build_external_agent_services(
     normalizer = ExternalOutputNormalizer(
         files=file_adapter,
         observations=observation_service,
+        usage_proof=MetadataCallUsageProof(),
         limits=file_limits,
         trace_delivery=trace_delivery,
         now=clock.now,
