@@ -22,11 +22,5 @@ type IdScope = frozenset[str] | Literal[Unrestricted.UNRESTRICTED]
 
 
 def scope_admits(scope: IdScope, object_id: str) -> bool:
-    """Return whether ``scope`` permits ``object_id``.
-
-    Precondition: ``scope`` is ``UNRESTRICTED`` or a set of permitted IDs.
-    Postcondition: ``True`` for ``UNRESTRICTED``; otherwise set membership, so an
-    empty set admits nothing. Pure; it narrows the grant only and never widens
-    other permission checks.
-    """
+    """Return whether ``scope`` permits ``object_id`` (narrowing the grant only, never widening permissions)."""
     return scope is UNRESTRICTED or object_id in scope

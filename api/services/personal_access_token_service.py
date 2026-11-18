@@ -81,12 +81,6 @@ class PersonalAccessTokenScopes:
 
 
 def workspace_scope_ids(scopes: PersonalAccessTokenScopes) -> IdScope:
-    """Project the workspace scope alone to grant IDs.
-
-    Precondition: ``scopes`` is a validated scope value. Postcondition: ``all``
-    returns ``UNRESTRICTED``, ``selected`` returns exactly the selected
-    IDs and ``none`` returns an empty set. Pure; no state is read or mutated.
-    """
     if scopes.workspace_mode == "all":
         return UNRESTRICTED
     if scopes.workspace_mode == "selected":
@@ -95,17 +89,7 @@ def workspace_scope_ids(scopes: PersonalAccessTokenScopes) -> IdScope:
 
 
 def workspace_discovery_ids(scopes: PersonalAccessTokenScopes, resource_workspace_ids: frozenset[str]) -> IdScope:
-    """Return the workspaces a PAT may discover through workspace listing.
-
-    Preconditions: ``scopes`` is a validated scope value and
-    ``resource_workspace_ids`` holds the trusted owner workspaces of the
-    token's persisted resource rows. Postconditions: ``UNRESTRICTED`` when
-    either the resource scope or the workspace scope is ``all``; otherwise
-    the workspace-scope IDs unioned with the resource owner workspaces when the
-    resource scope is ``selected``, so a resource-only PAT can still find the
-    workspace its resources live in. Account membership still filters the
-    result downstream. Pure; no state is read or mutated.
-    """
+    """Include owner workspaces of selected resources so a resource-only PAT can still discover a usable workspace."""
     scoped = workspace_scope_ids(scopes)
     if scopes.resource_mode == "all" or scoped is UNRESTRICTED:
         return UNRESTRICTED
@@ -197,8 +181,7 @@ class PersonalAccessTokenRecord:
     creation_fingerprint: str | None = None
     scopes: PersonalAccessTokenScopes = PersonalAccessTokenScopes()
     validated_resources: tuple[PersonalAccessTokenResourceView, ...] = field(default=(), repr=False)
-    # Owner workspace of every persisted resource row; populated by store reads
-    # (`get`/`authenticate`) and empty on create inputs, which never authorize.
+    # Populated by store reads (`get`/`authenticate`); empty on create inputs.
     resource_workspace_ids: frozenset[str] = frozenset()
 
 
@@ -411,25 +394,6 @@ class PersonalAccessTokenService:
         workspace_id: str | None,
         app_id: str | None,
     ) -> PersonalAccessTokenGrant:
-        """Return the live PAT's discovery grants for one admission policy.
-
-        Preconditions: ``account_id``/``token_id`` identify a live, unexpired PAT
-        owned by that account; the store raises ``PersonalAccessTokenNotFoundError``
-        otherwise and this method raises ``PersonalAccessTokenInvalidError`` for an
-        expired token. ``workspace_id``/``app_id`` are the route-resolved resource
-        context and are only consulted by resource and workspace operation policies.
-
-        Postconditions: the returned ``PersonalAccessTokenGrant`` carries
-        ``workspace_ids``/``app_ids`` where ``UNRESTRICTED`` leaves that domain
-        unrestricted, an empty set denies every object, and a nonempty set permits
-        only those IDs; current account permissions still apply downstream. No
-        state is mutated. ``WORKSPACE_DISCOVERY`` admits every workspace when the
-        resource scope is ``all``; otherwise it unions the workspace-scope IDs with
-        the owner workspaces of the selected resources so a resource-only PAT can
-        still discover a usable workspace. ``IDENTITY_DISCOVERY`` reports only the
-        workspace scope. ``WORKSPACE_OPERATIONS`` and the resource policies deny
-        out-of-scope requests with ``PersonalAccessTokenAccessDeniedError``.
-        """
         record = self._tokens.get(account_id, token_id)
         if record.summary.expires_at is not None and record.summary.expires_at <= naive_utc_now():
             raise PersonalAccessTokenInvalidError()
