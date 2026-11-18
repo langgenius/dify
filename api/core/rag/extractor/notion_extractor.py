@@ -10,7 +10,6 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy import update
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.db.session_factory import session_factory
 from core.rag.extractor.entity.extract_setting import StoredDocumentExtractionInput
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
@@ -59,7 +58,7 @@ class NotionExtractor(BaseExtractor):
         credential_id: str | None = None,
         *,
         notion_token_loader: Callable[[], str],
-        session_maker: sessionmaker[Session] | None = None,
+        session_maker: sessionmaker[Session],
     ):
         self._notion_access_token = None
         self._document_model = document_model
@@ -359,8 +358,7 @@ class NotionExtractor(BaseExtractor):
 
         # Opened only after the Notion API call above, and committed right away so the
         # document row is not locked while the page content is fetched afterwards.
-        maker = self._session_maker or session_factory.get_session_maker()
-        with maker() as session, session.begin():
+        with self._session_maker() as session, session.begin():
             session.execute(
                 update(DocumentModel)
                 .where(
