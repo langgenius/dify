@@ -76,6 +76,9 @@ class FeatureService:
 
         cls._fulfill_params_from_env(features)
 
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            cls._lift_plan_quotas(features)
+
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and tenant_id:
             cls._fulfill_params_from_billing_api(
                 features,
@@ -110,6 +113,9 @@ class FeatureService:
 
     @classmethod
     def get_vector_space(cls, tenant_id: str) -> feature_entities.VectorSpaceLimitationModel:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return feature_entities.VectorSpaceLimitationModel(size=0, limit=-1)
+
         vector_space = feature_entities.VectorSpaceLimitationModel(size=0, limit=5)
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and tenant_id:
             billing_vector_space = BillingService.get_vector_space(tenant_id)
@@ -185,6 +191,18 @@ class FeatureService:
         features.enable_skill = dify_config.ENABLE_SKILL
         features.enable_knowledge_fs = get_knowledge_fs_features().enabled
         features.enable_file_scan = dify_config.FILE_SCAN_ENABLED
+
+    @classmethod
+    def _lift_plan_quotas(cls, features: feature_entities.FeatureModel):
+        """Subscription quotas only exist on Cloud; other editions report them as unlimited."""
+        features.members = feature_entities.LimitationModel(size=0, limit=0)
+        features.apps = feature_entities.LimitationModel(size=0, limit=0)
+        features.annotation_quota_limit = feature_entities.LimitationModel(size=0, limit=0)
+        features.documents_upload_quota = feature_entities.LimitationModel(size=0, limit=0)
+        if features.vector_space is not None:
+            features.vector_space = feature_entities.LimitationModel(size=0, limit=-1)
+        features.trigger_event = feature_entities.Quota(usage=0, limit=-1, reset_date=-1)
+        features.api_rate_limit = feature_entities.Quota(usage=0, limit=-1, reset_date=-1)
 
     @classmethod
     def _fulfill_params_from_workspace_info(cls, features: feature_entities.FeatureModel, tenant_id: str):

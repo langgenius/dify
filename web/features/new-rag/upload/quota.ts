@@ -21,7 +21,8 @@ export async function getKnowledgeFsUploadQuotaFailure(
       quota.limit < -1
     )
       return 'taskFailure.documentCountQuotaUnavailable'
-    if (quota.limit !== -1 && quota.size >= quota.limit)
+    // A limit of 0 means unlimited.
+    if (quota.limit > 0 && quota.size >= quota.limit)
       return 'taskFailure.documentCountQuotaExceeded'
   } catch {
     return 'taskFailure.documentCountQuotaUnavailable'

@@ -69,20 +69,14 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
   )
 
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const deploymentEdition = systemFeatures.deployment_edition
   const { data: appQuota } = useQuery(
     consoleQuery.features.get.queryOptions({
-      enabled: deploymentEdition === 'CLOUD',
       select: (data) => data.apps,
     }),
   )
-  const isAppQuotaUnavailable = deploymentEdition === 'CLOUD' && appQuota === undefined
+  const isAppQuotaUnavailable = appQuota === undefined
   // A limit of 0 means unlimited.
-  const isAppsFull =
-    deploymentEdition === 'CLOUD' &&
-    appQuota !== undefined &&
-    appQuota.limit > 0 &&
-    appQuota.size >= appQuota.limit
+  const isAppsFull = appQuota !== undefined && appQuota.limit > 0 && appQuota.size >= appQuota.limit
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,

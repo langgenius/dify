@@ -125,11 +125,10 @@ const CreateFormPipeline = () => {
 
   // Computed values
   const shouldCheckVectorSpace =
-    deploymentEdition === 'CLOUD' &&
-    (allFileLoaded ||
-      onlineDocuments.length > 0 ||
-      websitePages.length > 0 ||
-      selectedFileIds.length > 0)
+    allFileLoaded ||
+    onlineDocuments.length > 0 ||
+    websitePages.length > 0 ||
+    selectedFileIds.length > 0
   const {
     data: vectorSpace,
     isFetching: isFetchingVectorSpacePlan,
@@ -141,7 +140,6 @@ const CreateFormPipeline = () => {
   const isVectorSpaceUnavailable =
     shouldCheckVectorSpace && plan === 'sandbox' && !!vectorSpace?.usage_unknown
   const isVectorSpaceFull =
-    deploymentEdition === 'CLOUD' &&
     !!vectorSpace &&
     !vectorSpace.usage_unknown &&
     vectorSpace.limit > 0 &&

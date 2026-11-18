@@ -134,10 +134,8 @@ function CreateFromDSLModal({
     select: (data) => data.profile.id,
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const deploymentEdition = systemFeatures.deployment_edition
   const { data: appQuota } = useQuery(
     consoleQuery.features.get.queryOptions({
-      enabled: deploymentEdition === 'CLOUD',
       select: (data) => data.apps,
     }),
   )
@@ -146,12 +144,10 @@ function CreateFromDSLModal({
     currentFile?.name.toLowerCase().endsWith('.ifpkg') === true
   // URL imports are classified by the server before applying the appropriate quota.
   const requiresAppQuota = currentTab === CreateFromDSLModalTab.FROM_FILE && !isPackageImport
-  const isAppQuotaUnavailable =
-    requiresAppQuota && deploymentEdition === 'CLOUD' && appQuota === undefined
+  const isAppQuotaUnavailable = requiresAppQuota && appQuota === undefined
   // A limit of 0 means unlimited.
   const isAppsFull =
     requiresAppQuota &&
-    deploymentEdition === 'CLOUD' &&
     appQuota !== undefined &&
     appQuota.limit > 0 &&
     appQuota.size >= appQuota.limit

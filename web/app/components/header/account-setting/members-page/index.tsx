@@ -104,7 +104,8 @@ const MembersPageContent = () => {
     deploymentEdition === 'CLOUD' && features !== undefined && features.plan !== 'team'
   // A limit of 0 means unlimited.
   const isMemberFull =
-    isNotUnlimitedMemberPlan &&
+    features !== undefined &&
+    features.plan !== 'team' &&
     features.members.limit > 0 &&
     accounts.length >= features.members.limit
   const detailsActionsRef = useRef<DialogActions>(null)

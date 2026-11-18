@@ -19,11 +19,9 @@ import {
 import { Form } from '@langgenius/dify-ui/form'
 import { isDefinedError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
-import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import { InviteButton } from '../invite-button'
 import { mergeEmailRecipients } from './email-recipients'
@@ -62,7 +60,6 @@ function InviteForm({
   onDismissError,
 }: InviteFormProps) {
   const { t } = useTranslation(['workspaceMembers'])
-  const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: features } = useQuery(consoleQuery.features.get.queryOptions())
   const submitButtonRef = useRef<HTMLButtonElement>(null)
   const [recipients, setRecipients] = useState<EmailRecipient[]>([])
@@ -80,7 +77,7 @@ function InviteForm({
   // A limit of 0 means unlimited.
   const memberLimit = features?.workspace_members.enabled
     ? features.workspace_members
-    : deploymentEdition === 'CLOUD' && features && features.members.limit > 0
+    : features && features.members.limit > 0
       ? features.members
       : undefined
   const remainingSeats =

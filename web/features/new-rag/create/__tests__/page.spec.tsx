@@ -1898,7 +1898,7 @@ describe('CreateKnowledgePage', () => {
       body: { upload_id: 'staged-handbook.md' },
       params: { control_space_id: createdKnowledge.control_space_id },
     })
-    expect(uploadQuotaMock).not.toHaveBeenCalled()
+    expect(uploadQuotaMock).toHaveBeenCalled()
   })
 
   it('shows the model cost notice beside the upload action without starting processing', async () => {
@@ -3336,7 +3336,7 @@ describe('CreateKnowledgePage', () => {
         },
       },
     )
-    const queue = screen.getByRole('list', { name: 'knowledgeSpace.uploadFiles' })
+    const queue = await screen.findByRole('list', { name: 'knowledgeSpace.uploadFiles' })
     const handbookRow = within(queue).getByText('handbook.md').closest('li')
     const policyRow = within(queue).getByText('policy.pdf').closest('li')
     expect(handbookRow).not.toBeNull()

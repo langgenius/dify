@@ -15,7 +15,6 @@ import { Field } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Input } from '@langgenius/dify-ui/input'
 import { useQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -27,7 +26,6 @@ import {
 } from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { toast } from '@/app/notifications'
-import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 
 export type DuplicateAppModalProps = {
@@ -73,21 +71,14 @@ const DuplicateAppModal = ({
         icon_url: selectedIcon.type === 'image' ? selectedIcon.url : undefined,
       }
     : { icon_type, icon, icon_background, icon_url }
-
-  const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: appQuota } = useQuery(
     consoleQuery.features.get.queryOptions({
-      enabled: deploymentEdition === 'CLOUD',
       select: (data) => data.apps,
     }),
   )
-  const isAppQuotaUnavailable = deploymentEdition === 'CLOUD' && appQuota === undefined
+  const isAppQuotaUnavailable = appQuota === undefined
   // A limit of 0 means unlimited.
-  const isAppsFull =
-    deploymentEdition === 'CLOUD' &&
-    appQuota !== undefined &&
-    appQuota.limit > 0 &&
-    appQuota.size >= appQuota.limit
+  const isAppsFull = appQuota !== undefined && appQuota.limit > 0 && appQuota.size >= appQuota.limit
 
   const submit = () => {
     if (isAppQuotaUnavailable || isAppsFull) return

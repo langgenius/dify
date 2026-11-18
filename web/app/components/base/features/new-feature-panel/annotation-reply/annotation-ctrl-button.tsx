@@ -3,11 +3,9 @@ import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import AnnotationFullContent from '@/app/components/billing/annotation-full/modal'
 import { toast } from '@/app/notifications'
-import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleClient, consoleQuery } from '@/service/console'
 
 type AnnotationCtrlButtonProps = {
@@ -25,18 +23,14 @@ export default function AnnotationCtrlButton({
   onAdded,
 }: AnnotationCtrlButtonProps) {
   const { t } = useTranslation(['appDebug', 'common'])
-  const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: annotationQuota } = useQuery(
     consoleQuery.features.get.queryOptions({
-      enabled: deploymentEdition === 'CLOUD',
       select: (data) => data.annotation_quota_limit,
     }),
   )
-  const isAnnotationQuotaUnavailable =
-    deploymentEdition === 'CLOUD' && annotationQuota === undefined
+  const isAnnotationQuotaUnavailable = annotationQuota === undefined
   // A limit of 0 means unlimited.
   const isAnnotationFull =
-    deploymentEdition === 'CLOUD' &&
     annotationQuota !== undefined &&
     annotationQuota.limit > 0 &&
     annotationQuota.size >= annotationQuota.limit

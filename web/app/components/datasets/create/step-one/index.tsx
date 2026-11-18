@@ -145,7 +145,7 @@ const StepOne = ({
 
   const allFileLoaded = files.length > 0 && files.every((file) => file.file.id)
   const hasNotion = notionPages.length > 0
-  const shouldCheckVectorSpace = deploymentEdition === 'CLOUD' && (allFileLoaded || hasNotion)
+  const shouldCheckVectorSpace = allFileLoaded || hasNotion
   const {
     data: vectorSpace,
     isFetching: isFetchingVectorSpacePlan,
@@ -161,8 +161,7 @@ const StepOne = ({
     !vectorSpace.usage_unknown &&
     vectorSpace.limit > 0 &&
     vectorSpace.size >= vectorSpace.limit
-  const isShowVectorSpaceFull =
-    (allFileLoaded || hasNotion) && isVectorSpaceFull && deploymentEdition === 'CLOUD'
+  const isShowVectorSpaceFull = shouldCheckVectorSpace && isVectorSpaceFull
   const isPlanUnavailable = deploymentEdition === 'CLOUD' && plan === undefined
   const supportBatchUpload =
     deploymentEdition !== 'CLOUD' || plan === 'professional' || plan === 'team'

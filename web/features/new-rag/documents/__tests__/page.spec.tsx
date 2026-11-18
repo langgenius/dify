@@ -2571,7 +2571,7 @@ describe('DocumentsPage', () => {
     await waitForDocumentFilesStaged()
     await user.click(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' }))
     expect(uploadMutation.mutateAsync).toHaveBeenCalledTimes(3)
-    expect(getUploadQuotaFailure).not.toHaveBeenCalled()
+    expect(getUploadQuotaFailure).toHaveBeenCalled()
     expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith(
       { queryKey: consoleQuery.features.get.key() },
       { cancelRefetch: false },
@@ -2929,7 +2929,7 @@ describe('DocumentsPage', () => {
         target: { files: [maxSizeFile] },
       })
 
-      expect(stageUploadMutation).toHaveBeenCalledOnce()
+      await vi.waitFor(() => expect(stageUploadMutation).toHaveBeenCalledOnce())
 
       await act(async () => {
         vi.advanceTimersByTime(5 * 60_000)
@@ -2972,7 +2972,7 @@ describe('DocumentsPage', () => {
       target: { files: [maxSizeFile] },
     })
 
-    expect(stageUploadMutation).toHaveBeenCalledOnce()
+    await waitFor(() => expect(stageUploadMutation).toHaveBeenCalledOnce())
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
     expect(stagingSignal?.aborted).toBe(true)
@@ -3008,7 +3008,7 @@ describe('DocumentsPage', () => {
       target: { files: [canceledFile, failedFile] },
     })
 
-    expect(stageUploadMutation).toHaveBeenCalledTimes(2)
+    await waitFor(() => expect(stageUploadMutation).toHaveBeenCalledTimes(2))
     await user.click(screen.getByRole('button', { name: 'common.operation.remove · cancel.txt' }))
     expect(canceledSignal?.aborted).toBe(true)
 

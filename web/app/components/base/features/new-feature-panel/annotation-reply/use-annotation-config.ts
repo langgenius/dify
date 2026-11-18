@@ -2,13 +2,11 @@ import type { EmbeddingModelConfig } from '@/app/components/app/annotation/type'
 import type { AnnotationReplyConfig } from '@/models/debug'
 import { useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
-import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AnnotationEnableStatus, JobStatus } from '@/app/components/app/annotation/type'
 import { ANNOTATION_DEFAULT } from '@/config'
-import { deploymentEditionAtom } from '@/features/system-features/state'
 import { updateAnnotationStatus } from '@/service/annotation'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { sleep } from '@/utils'
@@ -20,18 +18,15 @@ type Params = {
 }
 const useAnnotationConfig = ({ appId, annotationConfig, setAnnotationConfig }: Params) => {
   const { t } = useTranslation(['common'])
-  const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: annotationQuota } = useQuery(
     consoleQuery.features.get.queryOptions({
-      enabled: deploymentEdition === 'CLOUD' && !annotationConfig.enabled,
+      enabled: !annotationConfig.enabled,
       select: (data) => data.annotation_quota_limit,
     }),
   )
-  const isAnnotationQuotaUnavailable =
-    deploymentEdition === 'CLOUD' && annotationQuota === undefined
+  const isAnnotationQuotaUnavailable = annotationQuota === undefined
   // A limit of 0 means unlimited.
   const isAnnotationFull =
-    deploymentEdition === 'CLOUD' &&
     annotationQuota !== undefined &&
     annotationQuota.limit > 0 &&
     annotationQuota.size >= annotationQuota.limit

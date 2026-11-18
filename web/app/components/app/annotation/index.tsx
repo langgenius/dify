@@ -11,7 +11,6 @@ import { Switch } from '@langgenius/dify-ui/switch'
 import { RiEqualizer2Line } from '@remixicon/react'
 import { noop, useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
-import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -20,7 +19,6 @@ import AnnotationFullContent from '@/app/components/billing/annotation-full/moda
 import { toast } from '@/app/notifications'
 import { APP_PAGE_LIMIT } from '@/config'
 import { useDocLink } from '@/context/i18n'
-import { deploymentEditionAtom } from '@/features/system-features/state'
 import { updateAnnotationStatus } from '@/service/annotation'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { sleep } from '@/utils'
@@ -42,18 +40,14 @@ function Annotation({ appDetail }: AnnotationProps) {
   const [annotationConfig, setAnnotationConfig] = useState<AnnotationReplyConfig | null>(null)
   const [isChatApp] = useState(appDetail.mode !== 'completion')
   const [controlRefreshSwitch, setControlRefreshSwitch] = useState(() => Date.now())
-  const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: annotationQuota } = useQuery(
     consoleQuery.features.get.queryOptions({
-      enabled: deploymentEdition === 'CLOUD',
       select: (data) => data.annotation_quota_limit,
     }),
   )
-  const isAnnotationQuotaUnavailable =
-    deploymentEdition === 'CLOUD' && annotationQuota === undefined
+  const isAnnotationQuotaUnavailable = annotationQuota === undefined
   // A limit of 0 means unlimited.
   const isAnnotationFull =
-    deploymentEdition === 'CLOUD' &&
     annotationQuota !== undefined &&
     annotationQuota.limit > 0 &&
     annotationQuota.size >= annotationQuota.limit
