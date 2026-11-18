@@ -233,3 +233,11 @@ def test_a_flagged_verdict_stays_flagged_when_its_replacement_matches_the_source
         tenant_id="tenant-1", app_id="app-1", rule=ModerationRule(type="api", config={}), output_evaluator=evaluate
     )
     assert handler.moderation_completion("blocked") == ("blocked", True)
+
+
+def test_keyword_non_stream_preserves_safe_output(config_overrides: Callable[..., None]) -> None:
+    config_overrides(MODERATION_NON_STREAM_SEGMENT_SIZE=5)
+    handler = make_keyword_handler()
+    output = "several safe chunks without a configured match"
+
+    assert handler.moderation_completion(output) == (output, False)
