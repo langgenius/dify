@@ -3,10 +3,12 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import UTC, datetime
+from typing import Literal
 
 import pytest
 from dify_agent.protocol import PydanticAIStreamRunEvent
 from dify_agent.protocol.tool_call_limits import ToolCallLimitSnapshot
+from pydantic import JsonValue
 from pydantic_ai.messages import (
     FunctionToolCallEvent,
     FunctionToolResultEvent,
@@ -31,7 +33,9 @@ _CREATED_AT = datetime(2026, 1, 1, tzinfo=UTC)
 @pytest.mark.parametrize(
     ("status", "reason", "used"), [("executed", None, 2), ("not_executed", "call_limit_reached", 3)]
 )
-def test_native_result_metadata_projects_usage_and_denial_without_trusting_model_text(status, reason, used):
+def test_native_result_metadata_projects_usage_and_denial_without_trusting_model_text(
+    status: Literal["executed", "not_executed"], reason: Literal["call_limit_reached"] | None, used: int
+) -> None:
     """Real native event serialization retains the runtime's dispatch annotation."""
     projector = _projector()
     projector.handle(_tool_call("limited", tool_name="search"))
@@ -54,7 +58,9 @@ def test_native_result_metadata_projects_usage_and_denial_without_trusting_model
         ),
     )
     internal = AgentBackendRunEventAdapter().adapt(native)[0]
+    assert isinstance(internal, AgentBackendStreamInternalEvent)
     activity = projector.handle(internal)[0]
+    assert activity.data.call_limit is not None
     assert activity.data.call_limit.model_dump() == annotation
     assert activity.status == ("not_executed" if status == "not_executed" else "succeeded")
     assert activity.data.model_dump(mode="json")["call_limit"] == annotation
@@ -63,7 +69,7 @@ def test_native_result_metadata_projects_usage_and_denial_without_trusting_model
     assert projector.finish("succeeded") == []
 
 
-def test_model_claim_that_a_tool_was_not_executed_cannot_create_a_quota_decision():
+def test_model_claim_that_a_tool_was_not_executed_cannot_create_a_quota_decision() -> None:
     """Only valid application metadata, not arbitrary tool text, changes status."""
     projector = _projector()
     event = _tool_result("claim", content={"execution_status": "not_executed", "used": 3, "limit": 3})
@@ -73,29 +79,30 @@ def test_model_claim_that_a_tool_was_not_executed_cannot_create_a_quota_decision
     assert "call_limit" not in activity.data.model_dump(mode="json")
 
 
-def test_malformed_quota_metadata_cannot_change_an_existing_result():
+def test_malformed_quota_metadata_cannot_change_an_existing_result() -> None:
     """Reject metadata with inconsistent counts without failing the event stream."""
     projector = _projector()
-    event = _tool_result("bad-metadata")
-    event.data["part"]["metadata"] = {
-        "dify_tool_call_limit": {
-            "tool_identity": "tool",
-            "limit": 3,
-            "used": 2,
-            "execution_status": "not_executed",
-            "reason": "call_limit_reached",
-        }
-    }
+    event = _tool_result(
+        "bad-metadata",
+        metadata={
+            "dify_tool_call_limit": {
+                "tool_identity": "tool",
+                "limit": 3,
+                "used": 2,
+                "execution_status": "not_executed",
+                "reason": "call_limit_reached",
+            }
+        },
+    )
     activity = projector.handle(event)[0]
     assert activity.status == "succeeded"
     assert activity.data.call_limit is None
 
 
 @pytest.mark.parametrize("metadata", ["other metadata", ["unrelated"], 42])
-def test_unrelated_native_metadata_keeps_existing_unlimited_tool_results(metadata):
+def test_unrelated_native_metadata_keeps_existing_unlimited_tool_results(metadata: JsonValue) -> None:
     """Adding quota parsing must not narrow the native metadata contract."""
-    event = _tool_result("unlimited")
-    event.data["part"]["metadata"] = metadata
+    event = _tool_result("unlimited", metadata=metadata)
     activity = _projector().handle(event)[0]
     assert activity.status == "succeeded"
     assert activity.data.tool_output == "file.txt"
@@ -103,36 +110,45 @@ def test_unrelated_native_metadata_keeps_existing_unlimited_tool_results(metadat
 
 
 @pytest.mark.parametrize(("marker", "expected"), [(True, "failed"), (False, "succeeded"), ("true", "succeeded")])
-def test_handled_transport_failure_preserves_quota_and_failed_tool_status(marker, expected):
+def test_handled_transport_failure_preserves_quota_and_failed_tool_status(
+    marker: bool | str, expected: Literal["failed", "succeeded"]
+) -> None:
     """A handled failure remains charged and failed without failing the Agent run."""
-    event = _tool_result("charged-failure", content="upstream unavailable")
-    event.data["part"]["metadata"] = {
-        "dify_tool_call_limit": {
-            "tool_identity": "tool",
-            "limit": 3,
-            "used": 1,
-            "execution_status": "executed",
-            "reason": None,
+    event = _tool_result(
+        "charged-failure",
+        content="upstream unavailable",
+        metadata={
+            "dify_tool_call_limit": {
+                "tool_identity": "tool",
+                "limit": 3,
+                "used": 1,
+                "execution_status": "executed",
+                "reason": None,
+            },
+            "dify_tool_execution_failed": marker,
         },
-        "dify_tool_execution_failed": marker,
-    }
+    )
     activity = _projector().handle(event)[0]
     assert activity.status == expected
+    assert activity.data.call_limit is not None
     assert activity.data.call_limit.used == 1
     assert activity.data.call_limit.execution_status == "executed"
     assert activity.error == ("upstream unavailable" if marker is True else None)
 
 
-def test_pre_dispatch_validation_failure_is_failed_without_creating_quota_usage():
-    event = _tool_result("invalid", content="tool parameters validation error: missing query")
-    event.data["part"]["metadata"] = {"dify_tool_validation_failed": True}
+def test_pre_dispatch_validation_failure_is_failed_without_creating_quota_usage() -> None:
+    event = _tool_result(
+        "invalid",
+        content="tool parameters validation error: missing query",
+        metadata={"dify_tool_validation_failed": True},
+    )
     activity = _projector().handle(event)[0]
     assert activity.status == "failed"
     assert activity.error == "tool parameters validation error: missing query"
     assert activity.data.call_limit is None
 
 
-def test_terminal_reservations_fill_cancelled_usage_without_claiming_execution():
+def test_terminal_reservations_fill_cancelled_usage_without_claiming_execution() -> None:
     projector = _projector()
     projector.handle(_tool_call("completed", tool_name="search"))
     completed = projector.handle(_tool_result("completed", tool_name="search"))[0]
@@ -148,6 +164,7 @@ def test_terminal_reservations_fill_cancelled_usage_without_claiming_execution()
     assert len(activities) == 1
     cancelled = activities[0]
     assert cancelled.status == "cancelled"
+    assert cancelled.data.call_limit is not None
     assert cancelled.data.call_limit.execution_status == "unconfirmed"
     assert cancelled.data.call_limit.used == 2
     assert cancelled.data.call_limit.limit == 3
@@ -157,7 +174,7 @@ def test_terminal_reservations_fill_cancelled_usage_without_claiming_execution()
     assert projector.finish("cancelled", call_limits={"operation-digest": summary}) == []
 
 
-def test_terminal_reservations_do_not_guess_usage_for_unknown_or_ambiguous_calls():
+def test_terminal_reservations_do_not_guess_usage_for_unknown_or_ambiguous_calls() -> None:
     digest = hashlib.sha256(b"ambiguous").hexdigest()
     summary = ToolCallLimitSnapshot(tool_identity="operation", limit=3, used=1, call_ids={digest: 1})
     projector = _projector()
@@ -228,6 +245,7 @@ def _tool_result(
     tool_name: str = "shell_run",
     content: object = "file.txt",
     outcome: str = "success",
+    metadata: JsonValue = None,
     run_id: str = "run-1",
 ) -> AgentBackendStreamInternalEvent:
     return _internal(
@@ -239,6 +257,7 @@ def _tool_result(
                 "tool_name": tool_name,
                 "content": content,
                 "outcome": outcome,
+                "metadata": metadata,
             }
         },
         run_id=run_id,

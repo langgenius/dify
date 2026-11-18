@@ -31,7 +31,7 @@ from clients.agent_backend import (
 
 
 @pytest.mark.parametrize("kind", ["succeeded", "failed", "cancelled"])
-def test_terminal_adapter_preserves_authoritative_tool_reservations(kind: str):
+def test_terminal_adapter_preserves_authoritative_tool_reservations(kind: str) -> None:
     summary = ToolCallLimitSnapshot(
         tool_identity="operation",
         limit=3,
@@ -50,6 +50,12 @@ def test_terminal_adapter_preserves_authoritative_tool_reservations(kind: str):
     else:
         terminal = RunCancelledEvent(run_id="run", tool_call_limits=limits)
     adapted = AgentBackendRunEventAdapter().adapt(terminal)[0]
+    assert isinstance(
+        adapted,
+        AgentBackendRunSucceededInternalEvent
+        | AgentBackendRunFailedInternalEvent
+        | AgentBackendRunCancelledInternalEvent,
+    )
     assert adapted.tool_call_limits == limits
 
 
