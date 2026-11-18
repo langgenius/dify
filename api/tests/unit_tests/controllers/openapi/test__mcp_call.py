@@ -76,7 +76,7 @@ def _call(op: str, input: dict[str, object], *, authorization: str | None = _BEA
 
 def test_a_get_op_is_called_with_query_params_and_returns_its_json(
     admitted_bearer: AdmittedWorld, openapi_app: Flask, inner_requests: list[_SeenRequest]
-):
+) -> None:
     with openapi_app.test_request_context():
         result = _call("get.workspace", {"page": 1, "limit": 20})
 
@@ -89,7 +89,7 @@ def test_a_get_op_is_called_with_query_params_and_returns_its_json(
 
 def test_path_values_fill_the_template(
     admitted_bearer: AdmittedWorld, openapi_app: Flask, inner_requests: list[_SeenRequest]
-):
+) -> None:
     with openapi_app.test_request_context():
         result = _call("get.workspace.member", {"workspace_id": admitted_bearer.workspace_id, "limit": 2})
 
@@ -100,7 +100,9 @@ def test_path_values_fill_the_template(
 
 
 @pytest.mark.usefixtures("admitted_bearer")
-def test_a_list_value_is_sent_as_a_repeated_query_parameter(openapi_app: Flask, inner_requests: list[_SeenRequest]):
+def test_a_list_value_is_sent_as_a_repeated_query_parameter(
+    openapi_app: Flask, inner_requests: list[_SeenRequest]
+) -> None:
     with openapi_app.test_request_context():
         _call("get.workspace", {"page": [1, 2]})
 
@@ -110,7 +112,7 @@ def test_a_list_value_is_sent_as_a_repeated_query_parameter(openapi_app: Flask, 
 @pytest.mark.usefixtures("admitted_bearer")
 def test_a_key_outside_the_bind_table_reaches_the_op_and_is_rejected_by_it(
     openapi_app: Flask, inner_requests: list[_SeenRequest]
-):
+) -> None:
     with openapi_app.test_request_context():
         result = _call("get.workspace", {"pg": 2})
 
@@ -121,7 +123,7 @@ def test_a_key_outside_the_bind_table_reaches_the_op_and_is_rejected_by_it(
 @pytest.mark.usefixtures("admitted_bearer")
 def test_the_inner_request_carries_the_callers_authorization_and_the_catalog_fingerprint(
     openapi_app: Flask, inner_requests: list[_SeenRequest]
-):
+) -> None:
     with openapi_app.test_request_context():
         result = _call("get.workspace", {})
 
@@ -133,7 +135,7 @@ def test_the_inner_request_carries_the_callers_authorization_and_the_catalog_fin
     assert headers["Accept"] == "application/json"
 
 
-def test_without_authorization_the_op_answers_401(openapi_app: Flask, inner_requests: list[_SeenRequest]):
+def test_without_authorization_the_op_answers_401(openapi_app: Flask, inner_requests: list[_SeenRequest]) -> None:
     with openapi_app.test_request_context():
         result = _call("get.workspace", {}, authorization=None)
 
@@ -142,7 +144,7 @@ def test_without_authorization_the_op_answers_401(openapi_app: Flask, inner_requ
     assert "Authorization" not in inner_requests[0].headers
 
 
-def test_an_unknown_op_raises(openapi_app: Flask, inner_requests: list[_SeenRequest]):
+def test_an_unknown_op_raises(openapi_app: Flask, inner_requests: list[_SeenRequest]) -> None:
     with openapi_app.test_request_context():
         with pytest.raises(UnknownOp):
             op_entry("no.such.op")
@@ -156,7 +158,7 @@ def test_an_unknown_op_raises(openapi_app: Flask, inner_requests: list[_SeenRequ
 @pytest.mark.usefixtures("admitted_bearer")
 def test_a_path_value_with_a_slash_is_refused_before_anything_runs(
     openapi_app: Flask, inner_requests: list[_SeenRequest], bad: object
-):
+) -> None:
     with openapi_app.test_request_context():
         with pytest.raises(UnsafePathValue):
             _call("describe.workspace", {"workspace_id": bad})
@@ -177,7 +179,7 @@ def test_a_path_value_with_a_slash_is_refused_before_anything_runs(
 @pytest.mark.usefixtures("admitted_bearer")
 def test_a_url_value_that_is_not_utf8_text_is_refused_before_anything_runs(
     openapi_app: Flask, inner_requests: list[_SeenRequest], op: str, input: dict[str, object]
-):
+) -> None:
     """A lone surrogate is legal in JSON but cannot be encoded into the URL."""
     with openapi_app.test_request_context():
         with pytest.raises(UnsafePathValue):
@@ -187,7 +189,9 @@ def test_a_url_value_that_is_not_utf8_text_is_refused_before_anything_runs(
 
 
 @pytest.mark.usefixtures("admitted_bearer")
-def test_a_missing_path_value_is_refused_before_anything_runs(openapi_app: Flask, inner_requests: list[_SeenRequest]):
+def test_a_missing_path_value_is_refused_before_anything_runs(
+    openapi_app: Flask, inner_requests: list[_SeenRequest]
+) -> None:
     with openapi_app.test_request_context():
         with pytest.raises(UnsafePathValue):
             _call("describe.workspace", {})
@@ -196,7 +200,7 @@ def test_a_missing_path_value_is_refused_before_anything_runs(openapi_app: Flask
 
 
 @pytest.mark.usefixtures("admitted_bearer")
-def test_a_percent_encoded_slash_reaches_the_op_as_text(openapi_app: Flask, inner_requests: list[_SeenRequest]):
+def test_a_percent_encoded_slash_reaches_the_op_as_text(openapi_app: Flask, inner_requests: list[_SeenRequest]) -> None:
     with openapi_app.test_request_context():
         result = _call("describe.workspace", {"workspace_id": "x%2Fmembers"})
 
@@ -206,7 +210,7 @@ def test_a_percent_encoded_slash_reaches_the_op_as_text(openapi_app: Flask, inne
 
 def test_a_built_path_that_matches_another_rule_is_refused(
     openapi_app: Flask, monkeypatch: pytest.MonkeyPatch, inner_requests: list[_SeenRequest]
-):
+) -> None:
     with openapi_app.test_request_context():
         members = op_entry("get.workspace.member")
         # describe.workspace now carries the members path: the built path resolves to another rule
@@ -219,7 +223,7 @@ def test_a_built_path_that_matches_another_rule_is_refused(
 
 def test_an_op_error_body_comes_back_unchanged(
     admitted_bearer: AdmittedWorld, openapi_app: Flask, inner_requests: list[_SeenRequest]
-):
+) -> None:
     with openapi_app.test_request_context():
         result = _call("describe.workspace", {"workspace_id": str(uuid.uuid4())})
     direct = admitted_bearer.client.get(
@@ -235,7 +239,7 @@ def test_an_op_error_body_comes_back_unchanged(
 
 def test_a_file_bound_input_is_refused(
     admitted_bearer: AdmittedWorld, openapi_app: Flask, inner_requests: list[_SeenRequest]
-):
+) -> None:
     with openapi_app.test_request_context():
         with pytest.raises(FileInputUnsupported):
             _call("upload.console_app.file", {"app_id": admitted_bearer.app_id, "file": "upload-id"})
@@ -244,7 +248,7 @@ def test_a_file_bound_input_is_refused(
 
 
 @pytest.mark.usefixtures("admitted_bearer")
-def test_the_outer_request_context_survives_the_call(openapi_app: Flask, inner_requests: list[_SeenRequest]):
+def test_the_outer_request_context_survives_the_call(openapi_app: Flask, inner_requests: list[_SeenRequest]) -> None:
     with openapi_app.test_request_context("/openapi/v1/mcp", method="POST"):
         g.mcp_call_marker = _OUTER
         token = _marker.set(_OUTER)
@@ -262,7 +266,7 @@ def test_the_outer_request_context_survives_the_call(openapi_app: Flask, inner_r
 
 
 @pytest.mark.usefixtures("admitted_bearer")
-def test_the_inner_request_keeps_the_callers_address(openapi_app: Flask, inner_requests: list[_SeenRequest]):
+def test_the_inner_request_keeps_the_callers_address(openapi_app: Flask, inner_requests: list[_SeenRequest]) -> None:
     with openapi_app.test_request_context(environ_base={"REMOTE_ADDR": _CALLER_ADDR}):
         result = _call("get.workspace", {})
 
@@ -272,7 +276,9 @@ def test_the_inner_request_keeps_the_callers_address(openapi_app: Flask, inner_r
 
 
 @pytest.mark.usefixtures("admitted_bearer")
-def test_the_inner_request_keeps_the_callers_scheme_and_host(openapi_app: Flask, inner_requests: list[_SeenRequest]):
+def test_the_inner_request_keeps_the_callers_scheme_and_host(
+    openapi_app: Flask, inner_requests: list[_SeenRequest]
+) -> None:
     with openapi_app.test_request_context(base_url=_OUTER_HOST_URL):
         outer_host_url = request.host_url
         result = _call("get.workspace", {})
