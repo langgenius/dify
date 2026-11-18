@@ -23,9 +23,9 @@ import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
+import { getCountQuota } from '@/app/components/billing/quota'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import { InvitationResultsContent } from '../invitation-results-content'
 import { InviteButton } from '../invite-button'
@@ -72,7 +72,6 @@ function InviteForm({
   onDismissError,
 }: InviteFormProps) {
   const { t } = useTranslation(['workspaceMembers'])
-  const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: features } = useQuery(consoleQuery.features.get.queryOptions())
   const workspaceId = useAtomValue(currentWorkspaceAtom).id
   // Live invitations reserve seats that the member count does not include yet.
@@ -96,15 +95,14 @@ function InviteForm({
     hasError && !fieldErrors
       ? t(($) => $['members.inviteFailed'], { ns: 'workspaceMembers' })
       : null
-  // A limit of 0 means unlimited.
-  const memberLimit = features?.workspace_members.enabled
-    ? features.workspace_members
-    : deploymentEdition === 'CLOUD' && features && features.members.limit > 0
-      ? features.members
-      : undefined
+  const memberLimit = features
+    ? getCountQuota(
+        features.workspace_members.enabled ? features.workspace_members : features.members,
+      )
+    : undefined
   const remainingSeats =
-    memberLimit && memberLimit.limit > 0
-      ? Math.max(memberLimit.limit - memberLimit.size - reservedSeats, 0)
+    memberLimit && memberLimit.limit !== 'unlimited'
+      ? Math.max(memberLimit.limit - memberLimit.usage - reservedSeats, 0)
       : null
   const effectiveRecipients = mergeEmailRecipients(recipients, draft)
   const validRecipientCount = effectiveRecipients.filter(({ isValid }) => isValid).length

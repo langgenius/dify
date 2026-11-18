@@ -14,6 +14,7 @@ const api = vi.hoisted(() => ({
   remove: vi.fn<typeof consoleClient.workspaces.current.members.byMemberId.delete>(),
   contactsEnabled: vi.fn(() => false),
 }))
+// boundary: switch the deployment feature flag per scenario.
 vi.mock('@/features/contacts/management/feature-flag', () => ({
   isContactsManagementEnabled: api.contactsEnabled,
 }))

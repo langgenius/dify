@@ -246,6 +246,7 @@ describe('AccountSetting', () => {
       </NuqsTestingAdapter>,
       {
         queryClient,
+        features: null,
         accountProfile: (mockConsoleState.current as ConsoleStateFixture).userProfile,
         systemFeatures: {
           deployment_edition: deploymentEdition,

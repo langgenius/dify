@@ -25,6 +25,7 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
+import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -95,7 +96,7 @@ const MembersPageContent = () => {
     consoleQuery.features.get.queryOptions({
       select: (data) => ({
         plan: data.billing.subscription.plan,
-        members: data.members,
+        members: getCountQuota(data.members),
         is_allow_transfer_workspace: data.is_allow_transfer_workspace,
       }),
     }),
@@ -130,9 +131,10 @@ const MembersPageContent = () => {
     })),
   ]
   const usedSeats = joinedAccounts.length + invitees.length
-  // A limit of 0 means unlimited.
   const isMemberFull =
-    isNotUnlimitedMemberPlan && features.members.limit > 0 && usedSeats >= features.members.limit
+    features !== undefined &&
+    features.plan !== 'team' &&
+    isQuotaReached({ usage: usedSeats, limit: features.members.limit })
   const [revokeDialog] = useState(() => createAlertDialogHandle<Invitee>())
   const queryClient = useQueryClient()
   // Resolve documented outcomes instead of throwing so each one keeps its contract type.
@@ -251,7 +253,7 @@ const MembersPageContent = () => {
                           <span>{usedSeats}</span>
                           <span>/</span>
                           <span>
-                            {features.members.limit === 0
+                            {features.members.limit === 'unlimited'
                               ? t(($) => $['plansCommon.unlimited'], { ns: 'billing' })
                               : features.members.limit}
                           </span>

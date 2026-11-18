@@ -27,15 +27,15 @@ class EducationModel(FeatureResponseModel):
 
 
 class LimitationModel(FeatureResponseModel):
-    size: int = 0
-    limit: int = 0
+    size: int = Field(default=0, description="Number of resources already consumed")
+    limit: int = Field(default=0, description="Maximum number of resources allowed; 0 means unlimited")
 
 
 class VectorSpaceLimitationModel(LimitationModel):
     model_config = ConfigDict(json_schema_serialization_defaults_required=False, protected_namespaces=())
 
-    size: int
-    limit: int
+    size: int = Field(description="Vector storage already consumed, in MB")
+    limit: int = Field(description="Vector storage allowed, in MB; -1 means unlimited")
     usage_unknown: bool = Field(default=False, exclude_if=lambda value: not value)
 
 
