@@ -8,6 +8,7 @@ from typing import Any, cast, override
 import httpx
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import update
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.db.session_factory import session_factory
 from core.rag.extractor.entity.extract_setting import StoredDocumentExtractionInput
@@ -58,9 +59,11 @@ class NotionExtractor(BaseExtractor):
         credential_id: str | None = None,
         *,
         notion_token_loader: Callable[[], str],
+        session_maker: sessionmaker[Session] | None = None,
     ):
         self._notion_access_token = None
         self._document_model = document_model
+        self._session_maker = session_maker
         self._notion_workspace_id = notion_workspace_id
         self._notion_obj_id = notion_obj_id
         self._notion_page_type = notion_page_type
@@ -356,7 +359,8 @@ class NotionExtractor(BaseExtractor):
 
         # Opened only after the Notion API call above, and committed right away so the
         # document row is not locked while the page content is fetched afterwards.
-        with session_factory.create_session() as session, session.begin():
+        maker = self._session_maker or session_factory.get_session_maker()
+        with maker() as session, session.begin():
             session.execute(
                 update(DocumentModel)
                 .where(

@@ -1,7 +1,6 @@
 import json
 import uuid
-from collections.abc import Iterator
-from dataclasses import dataclass
+from collections.abc import Callable, Iterator
 from types import SimpleNamespace
 from unittest import mock
 
@@ -22,29 +21,23 @@ from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 """Unit tests for Notion extraction, HTTP parsing, and persisted metadata updates."""
 
 
-@dataclass
-class _OwnedSessions:
-    """Counts the short-lived sessions the extractor opens from the session factory."""
+def _stub_last_edited_time(
+    monkeypatch: pytest.MonkeyPatch, last_edited_time: str, on_request: Callable[[], None] | None = None
+) -> None:
+    """Answer the Notion page lookup at the HTTP boundary with ``last_edited_time``."""
 
-    opened: int = 0
-    commits: int = 0
+    def respond(_request: httpx.Request) -> httpx.Response:
+        if on_request is not None:
+            on_request()
+        return httpx.Response(200, json={"last_edited_time": last_edited_time})
 
+    transport = httpx.MockTransport(respond)
 
-@pytest.fixture
-def owned_sessions(monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]) -> _OwnedSessions:
-    tracker = _OwnedSessions()
+    def send(method: str, url: str, *, headers: dict[str, str], timeout: httpx.Timeout) -> httpx.Response:
+        with httpx.Client(transport=transport) as client:
+            return client.request(method, url, headers=headers, timeout=timeout)
 
-    def _record_commit(_session: Session) -> None:
-        tracker.commits += 1
-
-    def create_session() -> Session:
-        tracker.opened += 1
-        session = sqlite_session_factory()
-        event.listen(session, "after_commit", _record_commit)
-        return session
-
-    monkeypatch.setattr(notion_extractor.session_factory, "create_session", create_session)
-    return tracker
+    monkeypatch.setattr(notion_extractor.httpx, "request", send)
 
 
 def _notion_extractor_mock_response(data: object, status_code: int = 200, text: str = "") -> mock.Mock:
@@ -689,8 +682,8 @@ class TestNotionExtractorCases:
             self,
             monkeypatch: pytest.MonkeyPatch,
             persisted_document: tuple[sessionmaker[Session], DocumentModel],
-            owned_sessions: _OwnedSessions,
         ) -> None:
+            session_maker, document = persisted_document
             extractor = notion_extractor.NotionExtractor(
                 notion_workspace_id="ws",
                 notion_obj_id="obj",
@@ -698,21 +691,17 @@ class TestNotionExtractorCases:
                 tenant_id="tenant",
                 notion_access_token="token",
                 notion_token_loader=lambda: "token",
+                session_maker=session_maker,
             )
-            session_maker, document = persisted_document
-
-            def last_edited_time() -> str:
-                # The Notion API call happens before any database session is opened.
-                assert owned_sessions.opened == 0
-                return "2026-01-01T00:00:00.000Z"
-
-            monkeypatch.setattr(extractor, "get_notion_last_edited_time", last_edited_time)
+            steps: list[str] = []
+            event.listen(session_maker, "after_begin", lambda *_args: steps.append("database"))
+            _stub_last_edited_time(monkeypatch, "2026-01-01T00:00:00.000Z", on_request=lambda: steps.append("notion"))
 
             snapshot = StoredDocumentExtractionInput.model_validate(document)
             extractor.update_last_edited_time(snapshot)
 
-            assert owned_sessions.opened == 1
-            assert owned_sessions.commits == 1
+            # The Notion API call finishes before the database transaction begins.
+            assert steps == ["notion", "database"]
             with session_maker() as verification_session:
                 stored_document = verification_session.get(DocumentModel, document.id)
                 assert stored_document is not None
@@ -734,8 +723,9 @@ class TestNotionExtractorCases:
                 tenant_id=document.tenant_id,
                 notion_access_token="token",
                 notion_token_loader=lambda: "token",
+                session_maker=session_maker,
             )
-            monkeypatch.setattr(extractor, "get_notion_last_edited_time", lambda: "2026-01-01T00:00:00.000Z")
+            _stub_last_edited_time(monkeypatch, "2026-01-01T00:00:00.000Z")
             snapshot = StoredDocumentExtractionInput.model_validate(document).model_copy(
                 update={"tenant_id": "foreign"}
             )
