@@ -25,6 +25,7 @@ from services.external_agents.protocol import (
     CredentialDecoderPort,
     GatewayError,
     GatewayReceipt,
+    GatewayUsageCarrier,
     SealedBearerAuth,
     SendRequest,
     VerificationResult,
@@ -473,7 +474,11 @@ class A2AGateway:
                 submission_unknown=True,
             )
         try:
-            return replace(receipt, payload=self._scrub_object(receipt.payload, secret))
+            return replace(
+                receipt,
+                payload=self._scrub_object(receipt.payload, secret),
+                usage_carrier=self._scrub_usage_carrier(receipt.usage_carrier, secret),
+            )
         except GatewayError as error:
             known = None
             if receipt.kind == "task":
@@ -484,8 +489,24 @@ class A2AGateway:
                         "contextId": receipt.context_id,
                         "status": {"state": receipt.state},
                     },
+                    usage_carrier=None,
                 )
             raise GatewayError(error.code, str(error), known_receipt=known) from None
+
+    @staticmethod
+    def _scrub_usage_carrier(carrier: GatewayUsageCarrier | None, secret: str | None) -> GatewayUsageCarrier | None:
+        """Sanitize optional usage without making a rejected observation fail business I/O.
+
+        Preconditions: the gateway correlated the carrier with this receipt.
+        Postconditions: return sanitized transient data or no usage; a reflected
+        credential in this optional carrier cannot change the business payload.
+        """
+        if carrier is None:
+            return None
+        try:
+            return replace(carrier, value=A2AGateway._scrub(carrier.value, secret))
+        except GatewayError:
+            return None
 
     @staticmethod
     def _receipt(response: ResponseV1) -> GatewayReceipt:
@@ -497,6 +518,9 @@ class A2AGateway:
                 task_id=task.id,
                 context_id=task.contextId,
                 state=task.status.state,
+                usage_carrier=GatewayUsageCarrier(source="task", value=task.metadata["usage"])
+                if "usage" in task.metadata
+                else None,
             )
         if response.message is not None:
             message = response.message
@@ -508,6 +532,9 @@ class A2AGateway:
                 kind="message",
                 payload=message.model_dump(mode="json", exclude_unset=True),
                 context_id=message.contextId,
+                usage_carrier=GatewayUsageCarrier(source="message", value=message.metadata["usage"])
+                if "usage" in message.metadata
+                else None,
             )
         raise GatewayError("invalid_response", "An initial Task or Message is required.", submission_unknown=True)
 
@@ -598,7 +625,15 @@ class A2AGateway:
                 if update.append:
                     replacement.parts = existing.parts + replacement.parts
                 task.artifacts = [replacement if a.artifactId == replacement.artifactId else a for a in task.artifacts]
-        return A2AGateway._receipt(ResponseV1(task=task))
+        # Assembled Task metadata still belongs to the initial Task. Only the
+        # current correlated status event can establish a final usage carrier.
+        # Missing event usage clears any partial initial/intermediate counter.
+        usage_carrier = (
+            GatewayUsageCarrier(source="statusUpdate", value=response.statusUpdate.metadata["usage"])
+            if response.statusUpdate is not None and "usage" in response.statusUpdate.metadata
+            else None
+        )
+        return replace(A2AGateway._receipt(ResponseV1(task=task)), usage_carrier=usage_carrier)
 
 
 type LiteralAuthCheck = Literal["passed_for_read_endpoint", "not_exercised"]

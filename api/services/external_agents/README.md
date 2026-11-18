@@ -138,6 +138,21 @@ Traceability recognizes the exact declared A2A Traceability carrier. The v1 spec
 are normalized explicitly, including their different timestamp representations; neither is accepted as the private
 AgentTraceBatch or native OTLP. Parseable incomplete steps remain visible. Raw data is bounded and redacted before
 persistence. Call-level usage requires a trusted profile proof and is never inferred by summing arbitrary steps.
+The composed Dify profile `dify.metadata-usage-total-tokens.v1` accepts a remote-reported, final call total from
+`Task.metadata.usage.totalTokens`, a correlated terminal `StatusUpdate.metadata.usage.totalTokens`, or a direct
+`ROLE_AGENT` Message's same root path. This is a supported reporting convention, not an A2A standard or a Dify
+billing measurement. Only strict integers from zero through signed 64-bit maximum are accepted; absent, invalid
+or ambiguous totals remain null. Optional `usage.scope` must be `call`, `invocation`, or match `task`/`message`;
+explicit context, session, step and other scopes are unsupported. `total_tokens` aliases are unsupported and
+cannot coexist with `totalTokens`. Input/output components are not summed or used to infer a missing total.
+Working Task counters are ignored. For SSE, only the current correlated terminal status event supplies final
+usage; its missing usage clears the carrier, so an initial Task's partial counter cannot become a final total.
+Artifact, history, status-message, Trace and HTTP-wrapper metadata are not searched. Carrier provenance is
+transient and does not change the assembled business payload or Trace metadata. Each Invocation records one
+final cumulative total at revision 1, with canonical carrier-relative source path `metadata.usage.totalTokens`:
+repeated observations (including SSE followed by the same final GetTask total) are idempotent, while changed final totals retain
+the existing revision-conflict fence. Retry attempts have separate usage rows; test totals stay null unless
+every dispatched attempt has reported usage, and then sum those attempts once each. Usage works with Trace off.
 Monitoring uses SQL additive daily aggregates and the same permission range for all four metrics. A known zero
 contributes to coverage; all-unreported tokens stay null. Failed, canceled and unknown dispatched attempts count as
 Calls, including each confirmed cancel-and-retry dispatch. Polls and blocked pre-dispatch work do not.

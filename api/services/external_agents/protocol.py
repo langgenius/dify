@@ -7,7 +7,7 @@ calling send; an unknown acceptance must never be converted to a fresh send.
 from dataclasses import dataclass, field
 from typing import Literal, Protocol
 
-from .io_contracts import JsonObject
+from .io_contracts import JsonObject, JsonValue
 
 PROFILE_VERSION = "a2a-1.0-http-json.v1"
 TRACEABILITY_URI = "https://github.com/a2aproject/a2a-samples/extensions/traceability/v1"
@@ -85,6 +85,19 @@ class SendRequest:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class GatewayUsageCarrier:
+    """Transient, gateway-correlated source for one reported usage object.
+
+    The fixed source names identify actual wire carriers, never an inferred
+    location in an assembled Task. The value remains untrusted until a supported
+    usage profile validates it; it is not part of durable response payloads.
+    """
+
+    source: Literal["task", "message", "statusUpdate"]
+    value: JsonValue = field(repr=False)
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class GatewayReceipt:
     """Validated wire response; payload is one assembled v1.0 Task or Message.
 
@@ -98,6 +111,8 @@ class GatewayReceipt:
     task_id: str | None = None
     context_id: str | None = None
     state: str | None = None
+    # None means the current wire carrier did not supply usage, not zero tokens.
+    usage_carrier: GatewayUsageCarrier | None = None
 
 
 class GatewayError(ValueError):
