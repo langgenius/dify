@@ -199,8 +199,8 @@ class HostingConfiguration:
 
         if dify_config.HOSTED_ANTHROPIC_TRIAL_ENABLED:
             hosted_quota_limit = 0
-            trail_models = self.parse_restrict_models_from_env("HOSTED_ANTHROPIC_TRIAL_MODELS")
-            trial_quota = TrialHostingQuota(quota_limit=hosted_quota_limit, restrict_models=trail_models)
+            trial_models = self.parse_restrict_models_from_env("HOSTED_ANTHROPIC_TRIAL_MODELS")
+            trial_quota = TrialHostingQuota(quota_limit=hosted_quota_limit, restrict_models=trial_models)
             quotas.append(trial_quota)
 
         if dify_config.HOSTED_ANTHROPIC_PAID_ENABLED:
@@ -229,8 +229,8 @@ class HostingConfiguration:
 
         if dify_config.HOSTED_TONGYI_TRIAL_ENABLED:
             hosted_quota_limit = 0
-            trail_models = self.parse_restrict_models_from_env("HOSTED_TONGYI_TRIAL_MODELS")
-            trial_quota = TrialHostingQuota(quota_limit=hosted_quota_limit, restrict_models=trail_models)
+            trial_models = self.parse_restrict_models_from_env("HOSTED_TONGYI_TRIAL_MODELS")
+            trial_quota = TrialHostingQuota(quota_limit=hosted_quota_limit, restrict_models=trial_models)
             quotas.append(trial_quota)
 
         if dify_config.HOSTED_TONGYI_PAID_ENABLED:
@@ -258,8 +258,8 @@ class HostingConfiguration:
 
         if dify_config.HOSTED_XAI_TRIAL_ENABLED:
             hosted_quota_limit = 0
-            trail_models = self.parse_restrict_models_from_env("HOSTED_XAI_TRIAL_MODELS")
-            trial_quota = TrialHostingQuota(quota_limit=hosted_quota_limit, restrict_models=trail_models)
+            trial_models = self.parse_restrict_models_from_env("HOSTED_XAI_TRIAL_MODELS")
+            trial_quota = TrialHostingQuota(quota_limit=hosted_quota_limit, restrict_models=trial_models)
             quotas.append(trial_quota)
 
         if dify_config.HOSTED_XAI_PAID_ENABLED:
@@ -288,8 +288,8 @@ class HostingConfiguration:
 
         if dify_config.HOSTED_DEEPSEEK_TRIAL_ENABLED:
             hosted_quota_limit = 0
-            trail_models = self.parse_restrict_models_from_env("HOSTED_DEEPSEEK_TRIAL_MODELS")
-            trial_quota = TrialHostingQuota(quota_limit=hosted_quota_limit, restrict_models=trail_models)
+            trial_models = self.parse_restrict_models_from_env("HOSTED_DEEPSEEK_TRIAL_MODELS")
+            trial_quota = TrialHostingQuota(quota_limit=hosted_quota_limit, restrict_models=trial_models)
             quotas.append(trial_quota)
 
         if dify_config.HOSTED_DEEPSEEK_PAID_ENABLED:
