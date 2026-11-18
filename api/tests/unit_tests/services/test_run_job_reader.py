@@ -77,7 +77,6 @@ def _open(store: RedisRunJobStore, mode: AppMode) -> None:
             owner=JobOwner(tenant_id="t1", app_id="app-1", caller_role=CreatorUserRole.ACCOUNT, caller_id="acct-1"),
             mode=mode,
             op="start.console_app.test",
-            status=JobStatus.RUNNING,
         ),
         idempotency_key=None,
     )
@@ -229,7 +228,7 @@ def test_a_stream_that_ends_without_a_result_fails_a_message_job(
     record = _read(store, stopper, [PING])
 
     assert record.status is JobStatus.FAILED
-    assert (record.failure, record.error) == (JobFailure.NO_RESULT, None)
+    assert (record.failure, record.error) == (JobFailure.NO_RESULT, JobFailure.NO_RESULT.message)
 
 
 def test_a_stream_that_ends_without_a_result_leaves_a_graph_job_running(

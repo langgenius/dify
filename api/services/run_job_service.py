@@ -249,7 +249,6 @@ class RunJobService:
             owner=opening.owner,
             mode=opening.mode,
             op=opening.op,
-            status=JobStatus.RUNNING,
         )
         # Store first so a repeated key at the cap still returns its earlier job.
         opened = self._store.open(record, idempotency_key=opening.idempotency_key)
@@ -372,7 +371,7 @@ class RunJobService:
         Precondition: record is stored.
         Postcondition: see view.
         """
-        fallback = JobView(record=record, status=record.status, error=record.reported_error)
+        fallback = JobView(record=record, status=record.status, error=record.error)
         if record.family is not JobFamily.GRAPH:
             return fallback
         if record.failure is not None:
@@ -380,7 +379,7 @@ class RunJobService:
             return fallback
         if record.run_id is None:
             unconfirmed = fail_if_reader_dead(self._store, record, JobFailure.RUN_NOT_CONFIRMED)
-            return JobView(record=unconfirmed, status=unconfirmed.status, error=unconfirmed.reported_error)
+            return JobView(record=unconfirmed, status=unconfirmed.status, error=unconfirmed.error)
         run = self._results.run(tenant_id=record.owner.tenant_id, run_id=record.run_id)
         if run is None:
             return fallback

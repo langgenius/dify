@@ -206,6 +206,9 @@ class RedisClientWrapper:
     def hexists(self, name: str | bytes, key: str | bytes) -> Any:
         return self._require_client().hexists(_serialize_redis_name_arg(name, self._get_prefix()), key)
 
+    def hsetnx(self, name: str | bytes, key: str | bytes, value: str | bytes) -> Any:
+        return self._require_client().hsetnx(_serialize_redis_name_arg(name, self._get_prefix()), key, value)
+
     def hdel(self, name: str | bytes, *keys: str | bytes) -> Any:
         return self._require_client().hdel(_serialize_redis_name_arg(name, self._get_prefix()), *keys)
 

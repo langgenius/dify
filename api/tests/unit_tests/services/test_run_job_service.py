@@ -306,7 +306,7 @@ def test_view_of_a_graph_job_without_a_run_id_and_without_a_reader_fails_and_is_
     assert view.error == JobFailure.RUN_NOT_CONFIRMED.message
     stored = harness.store.get(opened.record.id)
     assert stored is not None
-    assert (stored.status, stored.failure, stored.error) == (JobStatus.FAILED, JobFailure.RUN_NOT_CONFIRMED, None)
+    assert (stored.status, stored.failure) == (JobStatus.FAILED, JobFailure.RUN_NOT_CONFIRMED)
 
 
 def test_view_of_a_graph_job_without_a_run_id_and_with_a_live_reader_keeps_running() -> None:
