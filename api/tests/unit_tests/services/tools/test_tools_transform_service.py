@@ -368,7 +368,7 @@ class TestMcpToolsTransformCases:
                 ),
                 "icon": "icon.png",
                 "label": I18nObject(en_US="Test MCP Provider", zh_Hans="Test MCP Provider"),
-                "masked_credentials": dict[str, object](),
+                "masked_credentials": dict[str, str](),
             }
             mocker.patch.object(mock_provider_full, "to_entity", return_value=mock_entity)
 
@@ -410,7 +410,7 @@ class TestMcpToolsTransformCases:
                 ),
                 "icon": "icon.png",
                 "label": I18nObject(en_US="Test MCP Provider", zh_Hans="Test MCP Provider"),
-                "masked_credentials": dict[str, object](),
+                "masked_credentials": dict[str, str](),
             }
             mocker.patch.object(mock_provider_full, "to_entity", return_value=mock_entity)
 
