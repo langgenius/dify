@@ -520,7 +520,7 @@ class _AgentProcessRecorder:
         content = data.get("content")
         if content is not None:
             self._record_tool_observation(
-                tool_call_id=_string_or_none(data.get("tool_call_id")),
+                tool_call_id=_native_call_id(data.get("tool_call_id")),
                 tool_name=_string_or_none(data.get("tool_name")),
                 observation=content,
             )
@@ -537,7 +537,7 @@ class _AgentProcessRecorder:
     def _record_tool_call_delta(self, index: int, delta: dict[str, JsonValue]) -> None:
         """Persist partial tool input, retaining one row for each native identity."""
         self._close_thinking_segments()
-        tool_call_id = _string_or_none(delta.get("tool_call_id"))
+        tool_call_id = _native_call_id(delta.get("tool_call_id"))
         tool_name = _string_or_none(delta.get("tool_name_delta"))
         args_delta = delta.get("args_delta")
         thought_id = self._lookup_tool_thought(index=index, tool_call_id=tool_call_id)
@@ -566,7 +566,7 @@ class _AgentProcessRecorder:
     def _record_tool_call_part(self, index: int, part: dict[str, JsonValue]) -> None:
         """Start a native invocation without letting replay or index reuse regress it."""
         self._close_thinking_segments()
-        tool_call_id = _string_or_none(part.get("tool_call_id"))
+        tool_call_id = _native_call_id(part.get("tool_call_id"))
         tool_name = _string_or_none(part.get("tool_name"))
         thought_id = self._lookup_tool_thought(index=index, tool_call_id=tool_call_id)
         if thought_id in self._finished_tools:
@@ -604,7 +604,7 @@ class _AgentProcessRecorder:
             self._queue_manager.publish(
                 QueueRetrieverResourcesEvent(retriever_resources=sources), PublishFrom.APPLICATION_MANAGER
             )
-        tool_call_id = _string_or_none(part.get("tool_call_id"))
+        tool_call_id = _native_call_id(part.get("tool_call_id"))
         tool_name = _string_or_none(part.get("tool_name"))
         content = part.get("content")
         if content is None:
@@ -804,6 +804,18 @@ def _string_or_none(value: Any) -> str | None:
     if not normalized or normalized.lower() in {"none", "null"}:
         return None
     return normalized
+
+
+def _native_call_id(value: JsonValue) -> str | None:
+    """Keep opaque native identities verbatim so their reservation hashes match.
+
+    Keep the existing missing-ID behavior for blank values and legacy
+    ``None``/``null`` placeholders. Other native ids retain whitespace padding
+    rather than being normalized into another call's identity.
+    """
+    if not isinstance(value, str) or not value.strip() or value.strip().lower() in {"none", "null"}:
+        return None
+    return value
 
 
 def _json_or_text(value: Any) -> str | None:
