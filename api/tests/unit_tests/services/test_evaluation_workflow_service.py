@@ -7,6 +7,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
+from blinker import Signal
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -413,11 +414,15 @@ def test_convert_published_workflow_kind_updates_only_active_version(
     )
     sqlite_session.add_all([app, active, historical])
     sqlite_session.commit()
-    published_updates: list[str] = []
-    monkeypatch.setattr(
-        "services.workflow_service.app_published_workflow_was_updated.send",
-        lambda _app, *, published_workflow: published_updates.append(published_workflow.id),
-    )
+    published_updates: list[tuple[str, Session]] = []
+
+    def record_published_update(sender: App, *, published_workflow: Workflow, session: Session) -> None:
+        assert sender is app
+        published_updates.append((published_workflow.id, session))
+
+    published_signal = Signal()
+    published_signal.connect(record_published_update)
+    monkeypatch.setattr("services.workflow_service.app_published_workflow_was_updated", published_signal)
     service = WorkflowService(sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False))
     account = make_account(account_id=account_id)
     converted = service.convert_published_workflow_kind(
@@ -429,14 +434,14 @@ def test_convert_published_workflow_kind_updates_only_active_version(
     assert converted.resolved_kind == WorkflowKind.EVALUATION
     assert converted.updated_by == account_id
     assert historical.resolved_kind == WorkflowKind.STANDARD
-    assert published_updates == [active_id]
+    assert published_updates == [(active_id, sqlite_session)]
     assert (
         service.convert_published_workflow_kind(
             session=sqlite_session, app_model=app, target_kind=WorkflowKind.EVALUATION, account=account
         )
         is active
     )
-    assert published_updates == [active_id]
+    assert published_updates == [(active_id, sqlite_session)]
 
 
 @pytest.mark.parametrize("target_kind", [WorkflowKind.EVALUATION, WorkflowKind.STANDARD])
