@@ -4,6 +4,7 @@ import queue
 import time
 from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import timedelta
+from typing import Never, override
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -22,6 +23,7 @@ from core.mcp.types import (
     JSONRPCNotification,
     JSONRPCResponse,
     Notification,
+    NotificationParams,
     RequestParams,
     SessionMessage,
 )
@@ -44,7 +46,7 @@ class MockResult(BaseModel):
     result: str
 
 
-class MockNotificationParams(BaseModel):
+class MockNotificationParams(NotificationParams):
     message: str
 
 
@@ -61,36 +63,44 @@ class ReceiveNotification(RootModel[CancelledNotification | MockNotification | J
     pass
 
 
-class MockSession(BaseSession[MockRequest, MockNotification, MockResult, ReceiveRequest, ReceiveNotification]):
-    def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
-        super().__init__(*args, **kwargs)
-        self.received_requests = []
-        self.received_notifications = []
-        self.handled_incoming = []
+class MockSession(BaseSession[MockRequest, MockNotification, MockResult, ReceiveRequest, ReceiveNotification]):  # pyrefly: ignore[bad-specialization]
+    def __init__[**P](self, *args: P.args, **kwargs: P.kwargs) -> None:
+        super().__init__(*args, **kwargs)  # pyrefly: ignore[bad-argument-type]
+        self.received_requests: list[object] = []
+        self.received_notifications: list[object] = []
+        self.handled_incoming: list[object] = []
 
-    def _received_request(self, responder):
+    @override
+    def _received_request(self, responder: object) -> None:
         self.received_requests.append(responder)
 
-    def _received_notification(self, notification):
+    @override
+    def _received_notification(self, notification: object) -> None:
         self.received_notifications.append(notification)
 
-    def _handle_incoming(self, item):
-        self.handled_incoming.append(item)
+    @override
+    def _handle_incoming(self, req: object) -> None:
+        self.handled_incoming.append(req)
+
+
+ReadStream = queue.Queue[SessionMessage | Exception]
+WriteStream = queue.Queue[SessionMessage]
+Streams = tuple[ReadStream, WriteStream]
 
 
 @pytest.fixture
-def streams():
+def streams() -> Streams:
     return queue.Queue(), queue.Queue()
 
 
 @pytest.mark.timeout(5)
-def test_request_responder_respond(streams):
+def test_request_responder_respond(streams: Streams) -> None:
     read_stream, write_stream = streams
     session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
     on_complete = MagicMock()
     request = ReceiveRequest(MockRequest(method="test", params=MockRequestParams(name="test")))
 
-    responder = RequestResponder(
+    responder = RequestResponder(  # pyrefly: ignore[bad-specialization]
         request_id=1, request_meta=None, request=request, session=session, on_complete=on_complete
     )
 
@@ -111,13 +121,13 @@ def test_request_responder_respond(streams):
 
 
 @pytest.mark.timeout(5)
-def test_request_responder_cancel(streams):
+def test_request_responder_cancel(streams: Streams) -> None:
     read_stream, write_stream = streams
     session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
     on_complete = MagicMock()
     request = ReceiveRequest(MockRequest(method="test", params=MockRequestParams(name="test")))
 
-    responder = RequestResponder(
+    responder = RequestResponder(  # pyrefly: ignore[bad-specialization]
         request_id=1, request_meta=None, request=request, session=session, on_complete=on_complete
     )
 
@@ -136,7 +146,7 @@ def test_request_responder_cancel(streams):
 
 
 @pytest.mark.timeout(10)
-def test_base_session_lifecycle(streams):
+def test_base_session_lifecycle(streams: Streams) -> None:
     read_stream, write_stream = streams
     session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
 
@@ -150,13 +160,13 @@ def test_base_session_lifecycle(streams):
 
 
 @pytest.mark.timeout(5)
-def test_send_request_success(streams):
+def test_send_request_success(streams: Streams) -> None:
     read_stream, write_stream = streams
     session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
 
     request = MockRequest(method="test", params=MockRequestParams(name="world"))
 
-    def mock_response():
+    def mock_response() -> None:
         try:
             msg = write_stream.get(timeout=2)
             req_id = msg.message.root.id
@@ -177,12 +187,12 @@ def test_send_request_success(streams):
 
 
 @pytest.mark.timeout(5)
-def test_send_request_retry_loop_coverage(streams):
+def test_send_request_retry_loop_coverage(streams: Streams) -> None:
     read_stream, write_stream = streams
     session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
     request = MockRequest(method="test", params=MockRequestParams(name="world"))
 
-    def mock_delayed_response():
+    def mock_delayed_response() -> None:
         try:
             msg = write_stream.get(timeout=2)
             req_id = msg.message.root.id
@@ -204,12 +214,12 @@ def test_send_request_retry_loop_coverage(streams):
 
 
 @pytest.mark.timeout(5)
-def test_send_request_jsonrpc_error(streams):
+def test_send_request_jsonrpc_error(streams: Streams) -> None:
     read_stream, write_stream = streams
     session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
     request = MockRequest(method="test", params=MockRequestParams(name="world"))
 
-    def mock_error():
+    def mock_error() -> None:
         try:
             msg = write_stream.get(timeout=2)
             req_id = msg.message.root.id
@@ -231,12 +241,12 @@ def test_send_request_jsonrpc_error(streams):
 
 
 @pytest.mark.timeout(5)
-def test_send_request_auth_error(streams):
+def test_send_request_auth_error(streams: Streams) -> None:
     read_stream, write_stream = streams
     session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
     request = MockRequest(method="test", params=MockRequestParams(name="world"))
 
-    def mock_error():
+    def mock_error() -> None:
         try:
             msg = write_stream.get(timeout=2)
             req_id = msg.message.root.id
@@ -257,12 +267,12 @@ def test_send_request_auth_error(streams):
 
 
 @pytest.mark.timeout(5)
-def test_send_request_http_status_error_coverage(streams):
+def test_send_request_http_status_error_coverage(streams: Streams) -> None:
     read_stream, write_stream = streams
     session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
     request = MockRequest(method="test", params=MockRequestParams(name="world"))
 
-    def mock_direct_http_error():
+    def mock_direct_http_error() -> None:
         try:
             msg = write_stream.get(timeout=2)
             req_id = msg.message.root.id
@@ -288,12 +298,12 @@ def test_send_request_http_status_error_coverage(streams):
 
 
 @pytest.mark.timeout(5)
-def test_send_request_http_status_auth_error(streams):
+def test_send_request_http_status_auth_error(streams: Streams) -> None:
     read_stream, write_stream = streams
     session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
     request = MockRequest(method="test", params=MockRequestParams(name="world"))
 
-    def mock_error():
+    def mock_error() -> None:
         try:
             write_stream.get(timeout=2)
             response = Response(status_code=401, request=Request("GET", "http://test"))
@@ -314,7 +324,7 @@ def test_send_request_http_status_auth_error(streams):
 
 
 @pytest.mark.timeout(5)
-def test_send_notification(streams):
+def test_send_notification(streams: Streams) -> None:
     read_stream, write_stream = streams
     session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
     notification = MockNotification(method="notify", params=MockNotificationParams(message="hi"))
@@ -329,7 +339,7 @@ def test_send_notification(streams):
 
 
 @pytest.mark.timeout(10)
-def test_receive_loop_request(streams):
+def test_receive_loop_request(streams: Streams) -> None:
     read_stream, write_stream = streams
     session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
 
@@ -349,7 +359,7 @@ def test_receive_loop_request(streams):
 
 
 @pytest.mark.timeout(10)
-def test_receive_loop_notification(streams):
+def test_receive_loop_notification(streams: Streams) -> None:
     read_stream, write_stream = streams
     session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
 
@@ -368,7 +378,7 @@ def test_receive_loop_notification(streams):
 
 
 @pytest.mark.timeout(15)
-def test_receive_loop_cancel_notification(streams):
+def test_receive_loop_cancel_notification(streams: Streams) -> None:
     read_stream, write_stream = streams
     session = MockSession(read_stream, write_stream, ReceiveRequest, ClientNotification)
 
@@ -400,7 +410,7 @@ def test_receive_loop_cancel_notification(streams):
 
 
 @pytest.mark.timeout(10)
-def test_receive_loop_exception(streams):
+def test_receive_loop_exception(streams: Streams) -> None:
     read_stream, write_stream = streams
     session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
 
@@ -415,7 +425,7 @@ def test_receive_loop_exception(streams):
 
 
 @pytest.mark.timeout(10)
-def test_receive_loop_http_status_error(streams):
+def test_receive_loop_http_status_error(streams: Streams) -> None:
     read_stream, write_stream = streams
     session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
 
@@ -434,7 +444,7 @@ def test_receive_loop_http_status_error(streams):
 
 
 @pytest.mark.timeout(10)
-def test_receive_loop_http_status_error_non_401(streams):
+def test_receive_loop_http_status_error_non_401(streams: Streams) -> None:
     read_stream, write_stream = streams
     session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
 
@@ -453,13 +463,13 @@ def test_receive_loop_http_status_error_non_401(streams):
 
 
 @pytest.mark.timeout(5)
-def test_check_receiver_status_fail(streams):
+def test_check_receiver_status_fail(streams: Streams) -> None:
     read_stream, write_stream = streams
     session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
 
     executor = ThreadPoolExecutor(max_workers=1)
 
-    def raise_err():
+    def raise_err() -> Never:
         raise RuntimeError("Receiver failed")
 
     future = executor.submit(raise_err)
@@ -474,7 +484,7 @@ def test_check_receiver_status_fail(streams):
 
 
 @pytest.mark.timeout(10)
-def test_receive_loop_unknown_request_id(streams):
+def test_receive_loop_unknown_request_id(streams: Streams) -> None:
     read_stream, write_stream = streams
     session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
 
@@ -491,7 +501,7 @@ def test_receive_loop_unknown_request_id(streams):
 
 
 @pytest.mark.timeout(10)
-def test_receive_loop_http_error_unknown_id(streams):
+def test_receive_loop_http_error_unknown_id(streams: Streams) -> None:
     read_stream, write_stream = streams
     session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
 
@@ -509,7 +519,7 @@ def test_receive_loop_http_error_unknown_id(streams):
 
 
 @pytest.mark.timeout(10)
-def test_receive_loop_validation_error_notification(streams, caplog: pytest.LogCaptureFixture):
+def test_receive_loop_validation_error_notification(streams: Streams, caplog: pytest.LogCaptureFixture) -> None:
     with caplog.at_level(logging.WARNING, logger="core.mcp.session.base_session"):
         read_stream, write_stream = streams
         session = MockSession(read_stream, write_stream, ReceiveRequest, RootModel[MockNotification])
@@ -523,12 +533,12 @@ def test_receive_loop_validation_error_notification(streams, caplog: pytest.LogC
 
 
 @pytest.mark.timeout(5)
-def test_send_request_none_response(streams):
+def test_send_request_none_response(streams: Streams) -> None:
     read_stream, write_stream = streams
     session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
     request = MockRequest(method="test", params=MockRequestParams(name="world"))
 
-    def mock_none():
+    def mock_none() -> None:
         try:
             msg = write_stream.get(timeout=2)
             req_id = msg.message.root.id
@@ -549,7 +559,7 @@ def test_send_request_none_response(streams):
 
 
 @pytest.mark.timeout(15)
-def test_session_exit_timeout(streams):
+def test_session_exit_timeout(streams: Streams) -> None:
     read_stream, write_stream = streams
     session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
 
@@ -567,7 +577,7 @@ def test_session_exit_timeout(streams):
 
 
 @pytest.mark.timeout(10)
-def test_receive_loop_fatal_exception(streams, caplog: pytest.LogCaptureFixture):
+def test_receive_loop_fatal_exception(streams: Streams, caplog: pytest.LogCaptureFixture) -> None:
     read_stream, write_stream = streams
     session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
 
@@ -580,7 +590,7 @@ def test_receive_loop_fatal_exception(streams, caplog: pytest.LogCaptureFixture)
 
 
 @pytest.mark.timeout(5)
-def test_receive_loop_empty_coverage(streams):
+def test_receive_loop_empty_coverage(streams: Streams) -> None:
     with patch("core.mcp.session.base_session.DEFAULT_RESPONSE_READ_TIMEOUT", 0.1):
         read_stream, write_stream = streams
         session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
@@ -589,9 +599,11 @@ def test_receive_loop_empty_coverage(streams):
 
 
 @pytest.mark.timeout(2)
-def test_base_methods_noop(streams):
+def test_base_methods_noop(streams: Streams) -> None:
     read_stream, write_stream = streams
-    session = BaseSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
+    session = BaseSession(  # pyrefly: ignore[bad-specialization]
+        read_stream, write_stream, ReceiveRequest, ReceiveNotification
+    )
 
     session._received_request(MagicMock())
     session._received_notification(MagicMock())
@@ -600,7 +612,7 @@ def test_base_methods_noop(streams):
 
 
 @pytest.mark.timeout(5)
-def test_send_request_session_timeout_retry_6(streams):
+def test_send_request_session_timeout_retry_6(streams: Streams) -> None:
     read_stream, write_stream = streams
     session = MockSession(
         read_stream, write_stream, ReceiveRequest, ReceiveNotification, read_timeout_seconds=timedelta(seconds=0.1)
