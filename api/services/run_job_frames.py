@@ -10,6 +10,7 @@ the framing or for the flattened ids, so only the contract test guards them.
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any, Final, Literal
@@ -24,6 +25,8 @@ from core.app.entities.task_entities import (
 )
 from graphon.enums import WorkflowExecutionStatus
 from services.run_job_contracts import JobIds
+
+logger = logging.getLogger(__name__)
 
 DATA_PREFIX: Final = "data: "
 _EVENT_KEY: Final = "event"
@@ -42,9 +45,13 @@ class RunFrame:
 
 @dataclass(frozen=True, slots=True)
 class Misfit:
-    """A data frame that does not fit core's model; event is its event name as sent, if it has one."""
+    """A data frame that does not fit core's model: its event name, if it has one, and the fields that did not fit.
 
-    event: object
+    It holds no values, so it can be logged without copying run content into the logs.
+    """
+
+    event: str | None
+    fields: tuple[str, ...] = ()
 
 
 class _StreamIds(BaseModel):
@@ -98,8 +105,18 @@ def read_frame(frame: str) -> RunFrame | Misfit | None:
         return None
     try:
         return _typed(payload)
-    except ValidationError:
-        return Misfit(event=payload.get(_EVENT_KEY))
+    except ValidationError as error:
+        return Misfit(event=_event_name(payload), fields=_failed_fields(error))
+
+
+def _event_name(payload: Mapping[str, Any]) -> str | None:
+    name = payload.get(_EVENT_KEY)
+    return name if isinstance(name, str) else None
+
+
+def _failed_fields(error: ValidationError) -> tuple[str, ...]:
+    """Postcondition: the dotted location of each field that failed, without its value."""
+    return tuple(".".join(str(part) for part in detail["loc"]) for detail in error.errors())
 
 
 def _typed(payload: Mapping[str, Any]) -> RunFrame:
@@ -143,8 +160,11 @@ def pending_form(events: Iterable[Mapping[str, Any] | str]) -> HumanInputRequire
 
 
 def _human_input(event: Mapping[str, Any]) -> HumanInputRequiredResponse | None:
-    """Postcondition: the event as core's HumanInputRequiredResponse, or None when it does not fit."""
+    """Postcondition: the event as core's HumanInputRequiredResponse; None, logged as an error, when it does not fit."""
     try:
         return HumanInputRequiredResponse.model_validate(event)
-    except ValidationError:
-        return None
+    except ValidationError as error:
+        misfit = Misfit(event=StreamEvent.HUMAN_INPUT_REQUIRED, fields=_failed_fields(error))
+    # Logged outside the handler: a traceback would carry pydantic's message, which quotes the form's values.
+    logger.error("A %s event does not fit core's model at %s", misfit.event, misfit.fields)
+    return None

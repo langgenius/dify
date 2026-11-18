@@ -1,4 +1,5 @@
 import json
+import logging
 from collections.abc import Iterator, Mapping
 from typing import override
 from uuid import uuid4
@@ -183,12 +184,19 @@ def test_pending_form_stops_at_the_pause_and_closes_the_stream(
 
 
 def test_pending_form_is_none_when_the_last_form_does_not_fit_cores_model(
-    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     unreadable = {"event": "human_input_required", "data": {"form_token": "t2"}}
     _patch_stream(monkeypatch, _RecordedFrames([_FORM_FRAME, unreadable, _PAUSED_FRAME]))
 
-    assert _read_form(sqlite_session, sqlite_session_factory) is None
+    with caplog.at_level(logging.ERROR, logger="services.run_job_frames"):
+        assert _read_form(sqlite_session, sqlite_session_factory) is None
+
+    assert "human_input_required" in caplog.text
+    assert "t2" not in caplog.text
 
 
 class _RaisingFrames(_RecordedFrames):

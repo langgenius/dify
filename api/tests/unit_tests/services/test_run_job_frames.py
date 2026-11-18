@@ -99,4 +99,14 @@ def test_an_error_frame_carries_its_message_and_ids() -> None:
     ids=["not json", "not an object", "no event", "unknown event", "no task id", "finish without data", "error text"],
 )
 def test_a_data_frame_that_does_not_fit_cores_model_is_a_misfit(frame: str, event: str | None) -> None:
-    assert read_frame(frame) == Misfit(event=event)
+    misfit = read_frame(frame)
+
+    assert isinstance(misfit, Misfit)
+    assert misfit.event == event
+
+
+def test_a_misfit_names_the_fields_that_did_not_fit() -> None:
+    assert read_frame(_sse({"event": "workflow_started", "workflow_run_id": "run-1"})) == Misfit(
+        event="workflow_started", fields=("task_id",)
+    )
+    assert read_frame(_sse({"event": ["not", "a", "name"], "task_id": "t"})) == Misfit(event=None, fields=("event",))
