@@ -37,7 +37,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 [Accessible names and descriptions]: ../packages/dify-ui/docs/accessible-names-and-descriptions.md
 [Button contract]: ../packages/dify-ui/src/button/README.md
-[Deployment edition policies]: ../packages/tooling/README.md#deployment-edition-policies
+[Deployment edition policies]: ../docs/FEATURE_FLAGS.md
 [Dify UI overlay contract]: ../packages/dify-ui/docs/overlays.md
 [Dify UI package index]: ../packages/dify-ui/README.md
 [IconButton contract]: ../packages/dify-ui/src/icon-button/README.md

@@ -229,35 +229,8 @@ does not enforce Query ownership.
 
 ### Deployment Edition Policies
 
-`dify/no-new-deployment-edition` rejects new `DeploymentEdition` type imports,
-raw `deploymentEditionAtom` imports, and raw edition comparisons, membership calls
-or `switch` cases in Web, including tests. Consume a named capability policy or atom.
-When no existing policy fits, add a capability-specific policy in the matching owner
-and consume its result; keep the edition decision inside that policy.
-
-Only these exact feature-policy modules may add raw edition dependencies and decisions:
-
-- `web/features/system-features/state.ts` for derived capability atoms.
-- `web/features/agent-v2/feature-flag.ts`.
-- `web/features/agent-v2/agent-detail/configure/feature-flags.ts`.
-- `web/features/contacts/management/feature-flag.ts`.
-- `web/features/contacts/im-platform/feature-flag.ts`.
-
-The rule compares normalized syntax and occurrence counts against Git, preserving
-existing code, formatting, import aliases and file renames. Copies, changed decisions
-and moves out of the allowlist fail. Editing a `switch` branch body preserves its
-baseline; adding another edition case does not. Reading edition metadata without a
-new raw import or decision remains allowed. The rule recognizes conventional edition
-names, raw imports and direct aliases; it does not perform interprocedural analysis
-or resolve shadowed names. Generated contracts and declaration files retain the
-repository's existing lint exclusions.
-
-Local checks use the merge base with `upstream/main`, `origin/main` or `main`, falling
-back to `HEAD` when none exists. Set `DIFY_EDITION_GUARD_BASE_REV` to choose another
-available target commit. CI checks the tested target revision and fetches its history.
-The resolved commit participates in the static-check task cache key. Missing or invalid
-baselines report a lint error with recovery instructions instead of skipping the rule.
-Do not add bulk suppressions for new edition-dependent code.
+See the shared [feature flag guidelines] for policy design, the backend and Web
+allowlists, lint scope, and Git baseline behavior.
 
 ### Translation Function Types
 
@@ -285,3 +258,5 @@ the translation calls.
 ### Introducing New Plugins or Rules
 
 Prefer a native Oxlint rule. If none exists, verify that the rule works through an Oxlint JS plugin on representative files. Record unsupported code rules as migration gaps instead of adding them to ESLint; reserve the ESLint configuration for non-code languages that Oxlint cannot parse. Do not add the Antfu ESLint config as a dependency or enable rules already covered by Oxlint.
+
+[feature flag guidelines]: ../../docs/FEATURE_FLAGS.md

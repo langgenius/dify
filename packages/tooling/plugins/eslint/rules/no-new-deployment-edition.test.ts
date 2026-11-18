@@ -202,7 +202,8 @@ it('resolves relative imports against the original filename when a module moves'
 
 it('provides actionable guidance and reports invalid baselines', () => {
   const diagnostic = lintFixture(check)[0]!
-  expect(diagnostic.message).toContain('named feature')
-  expect(diagnostic.message).toContain('feature-flag.ts')
-  expect(lintFixture(check, { base: 'missing-revision' })[0]!.message).toContain('baseline')
+  expect(diagnostic.message).toContain('Read docs/FEATURE_FLAGS.md#fixing-a-lint-error')
+  expect(lintFixture(check, { base: 'missing-revision' })[0]!.message).toContain(
+    'docs/FEATURE_FLAGS.md#git-baselines',
+  )
 })

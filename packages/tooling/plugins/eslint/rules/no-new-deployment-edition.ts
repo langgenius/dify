@@ -220,9 +220,9 @@ const rule: Rule.RuleModule = {
     },
     messages: {
       edition:
-        'New deployment-edition dependency or decision. Consume a named feature policy or capability atom. Add a missing capability in the matching allowlisted policy (such as web/features/agent-v2/feature-flag.ts), or web/features/system-features/state.ts for derived capability atoms. See packages/tooling/README.md (Deployment Edition Policies) for the exact allowlist.',
+        'New raw deployment-edition dependency or decision. Read docs/FEATURE_FLAGS.md#fixing-a-lint-error.',
       baseline:
-        'Cannot check the deployment-edition baseline: {{reason}}. Fetch the target branch or set DIFY_EDITION_GUARD_BASE_REV to an available target commit, then rerun lint.',
+        'Cannot check the deployment-edition baseline: {{reason}}. Read docs/FEATURE_FLAGS.md#git-baselines.',
     },
   },
   create(context) {
