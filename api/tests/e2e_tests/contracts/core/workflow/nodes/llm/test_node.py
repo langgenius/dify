@@ -148,7 +148,7 @@ def _build_prepared_llm_mock() -> mock.MagicMock:
     model_instance = mock.MagicMock()
     model_instance.provider = "openai"
     model_instance.model_name = "gpt-3.5-turbo"
-    model_instance.parameters = dict[str, object]()
+    model_instance.parameters = dict[str, str | int | float | bool | None]()
     model_instance.stop = ()
     model_instance.get_llm_num_tokens.return_value = 0
     model_instance.get_model_schema.return_value = AIModelEntity(
