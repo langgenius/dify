@@ -12,7 +12,8 @@ from models.enums import CreatorUserRole
 from models.model import AppMode
 from repositories.run_job_store import RedisRunJobStore
 from services.run_job_contracts import JobEnding, JobFailure, JobIds, JobOwner, JobRecord, JobStatus
-from services.run_job_reader import RUN_STATUS_TO_JOB_STATUS, read_to_end
+from services.run_job_reader import RUN_STATUS_TO_JOB_STATUS, StreamEndings, read_to_end
+from services.run_job_service import family_of
 from tests.unit_tests.services.run_job_fakes import InMemoryRedis, RecordingJobStopper
 
 JOB_ID = "job-1"
@@ -92,8 +93,14 @@ def _open(store: RedisRunJobStore, mode: AppMode) -> None:
     )
 
 
+def _endings(store: RedisRunJobStore) -> StreamEndings:
+    record = store.get(JOB_ID)
+    assert record is not None
+    return family_of(record.mode)
+
+
 def _read(store: RedisRunJobStore, stopper: RecordingJobStopper, frames: Iterable[str]) -> JobRecord:
-    read_to_end(job_id=JOB_ID, frames=frames, store=store, stopper=stopper)
+    read_to_end(job_id=JOB_ID, frames=frames, store=store, stopper=stopper, endings=_endings(store))
     record = store.get(JOB_ID)
     assert record is not None
     return record
@@ -462,7 +469,14 @@ def test_the_alive_key_is_refreshed_while_no_frame_arrives(redis: InMemoryRedis,
     _open(store, AppMode.WORKFLOW)
     store.touches = 0
 
-    read_to_end(job_id=JOB_ID, frames=_silent_for(0.2), store=store, stopper=stopper, alive_refresh_seconds=0.02)
+    read_to_end(
+        job_id=JOB_ID,
+        frames=_silent_for(0.2),
+        store=store,
+        stopper=stopper,
+        endings=_endings(store),
+        alive_refresh_seconds=0.02,
+    )
 
     assert store.touches >= 5
 
@@ -471,7 +485,14 @@ def test_the_alive_refresh_stops_when_the_reader_ends(redis: InMemoryRedis, stop
     store = CountingTouchStore(redis)
     _open(store, AppMode.WORKFLOW)
 
-    read_to_end(job_id=JOB_ID, frames=_silent_for(0.05), store=store, stopper=stopper, alive_refresh_seconds=0.01)
+    read_to_end(
+        job_id=JOB_ID,
+        frames=_silent_for(0.05),
+        store=store,
+        stopper=stopper,
+        endings=_endings(store),
+        alive_refresh_seconds=0.01,
+    )
     after_end = store.touches
     time.sleep(0.1)
 
@@ -619,7 +640,7 @@ def test_token_frames_with_known_ids_make_no_store_call(redis: InMemoryRedis, st
         yield from tokens
         counts_at_end.append((store.gets, store.writes))
 
-    read_to_end(job_id=JOB_ID, frames=frames(), store=store, stopper=stopper)
+    read_to_end(job_id=JOB_ID, frames=frames(), store=store, stopper=stopper, endings=_endings(store))
 
     assert counts_at_end == [(0, 0)]
 
@@ -634,6 +655,7 @@ def test_a_frame_with_a_handler_reads_the_job_record(redis: InMemoryRedis, stopp
         frames=[_frame(StreamEvent.MESSAGE_END, task_id="task-1", id="msg-1", metadata={})],
         store=store,
         stopper=stopper,
+        endings=_endings(store),
     )
 
     assert store.gets >= 1

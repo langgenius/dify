@@ -10,7 +10,6 @@ from services.run_job_contracts import (
     JOB_TTL_SECONDS,
     JobEnding,
     JobFailure,
-    JobFamily,
     JobIds,
     JobOwner,
     JobRecord,
@@ -178,22 +177,6 @@ def test_touch_refreshes_the_alive_key(store: RedisRunJobStore, redis: InMemoryR
 
     assert store.is_alive("job-1")
     assert redis.ttls["openapi:job:job-1:alive"] == ALIVE_TTL_SECONDS
-
-
-def test_family_follows_the_app_mode() -> None:
-    for mode in (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT):
-        assert JobFamily.for_mode(mode) is JobFamily.GRAPH
-    for mode in (AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION):
-        assert JobFamily.for_mode(mode) is JobFamily.MESSAGE
-
-
-def test_family_of_an_unsupported_mode_is_rejected() -> None:
-    with pytest.raises(ValueError, match="does not support run jobs"):
-        JobFamily.for_mode(AppMode.RAG_PIPELINE)
-
-
-def test_record_family_uses_its_mode() -> None:
-    assert _record().family is JobFamily.GRAPH
 
 
 def test_each_failure_reason_carries_its_message() -> None:

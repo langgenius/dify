@@ -45,6 +45,7 @@ from repositories.run_job_store import RedisRunJobStore
 from services.run_job_contracts import JobIds, JobOwner, JobRecord, JobStatus
 from services.run_job_frames import pending_form
 from services.run_job_reader import read_to_end
+from services.run_job_service import family_of
 from tasks.app_generate import workflow_execute_task
 from tests.unit_tests.services.run_job_fakes import InMemoryRedis, RecordingJobStopper
 
@@ -129,7 +130,7 @@ def _read(mode: AppMode, frames: list[str], caplog: pytest.LogCaptureFixture) ->
     store = RedisRunJobStore(redis_client=InMemoryRedis())
     store.create(JobRecord(id=JOB_ID, owner=OWNER, mode=mode, op="start.test"))
     with caplog.at_level(logging.ERROR, logger="services.run_job_reader"):
-        read_to_end(job_id=JOB_ID, frames=frames, store=store, stopper=RecordingJobStopper())
+        read_to_end(job_id=JOB_ID, frames=frames, store=store, stopper=RecordingJobStopper(), endings=family_of(mode))
     assert "does not fit" not in caplog.text
     record = store.get(JOB_ID)
     assert record is not None

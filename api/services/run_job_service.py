@@ -14,20 +14,21 @@ from typing import TYPE_CHECKING, Any, Final, Protocol
 from flask import copy_current_request_context
 from flask.globals import app_ctx
 
-from core.app.entities.task_entities import HumanInputRequiredResponse
+from core.app.entities.task_entities import HumanInputRequiredResponse, StreamEvent
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from services.run_job_contracts import (
     JobEnding,
     JobFailure,
-    JobFamily,
     JobOwner,
     JobRecord,
     JobStatus,
     RunJobStore,
 )
-from services.run_job_reader import JobStopper, close_frames, read_to_end
+from services.run_job_frames import RunFrame
+from services.run_job_reader import JobStopper, StreamEndings, close_frames, read_to_end, run_finished_ending
+from services.workflow.graph_check import GRAPH_MODES, MESSAGE_MODES
 
 if TYPE_CHECKING:
     from services.app_task_service import WorkflowStopOutcome
@@ -136,43 +137,190 @@ def _job_id(opening: JobOpening) -> str:
     return str(uuid.uuid5(JOB_ID_NAMESPACE, name))
 
 
-def _stop_graph_job(tasks: RunTaskControl, record: JobRecord) -> None:
-    """Stop the workflow run of a graph job when its run id is known.
+class GraphJobs:
+    """Workflow and chatflow jobs: once the run id is known, the run row is the job's state."""
 
-    Precondition: record is a GRAPH job.
-    Postcondition: the run is asked to stop; nothing happens while run_id is unset.
+    modes: Final = GRAPH_MODES
+    # A graph stream ends with workflow_finished or workflow_paused: core's worker follows an error with a failed
+    # workflow_finished that carries the same message, and that frame is the only outcome of a run that failed
+    # before it was stored. For a chatflow it also comes after the answer is saved. A chatflow answered without a
+    # run (annotation reply, input moderation) ends with message_end, as core's worker completes that stream.
+    ending_events: Final = frozenset({StreamEvent.WORKFLOW_FINISHED, StreamEvent.MESSAGE_END})
+
+    def at_frame(self, record: JobRecord, frame: RunFrame) -> JobEnding | None:
+        """Postcondition: the finished run's ending for workflow_finished; SUCCEEDED for message_end while the job
+        has no run id, as the message is then its result; None for any other frame."""
+        if frame.event is StreamEvent.MESSAGE_END:
+            return None if record.run_id is not None else JobEnding(status=JobStatus.SUCCEEDED)
+        return run_finished_ending(frame)
+
+    def at_stream_end(self, record: JobRecord) -> JobEnding | None:
+        """Postcondition: RUN_NOT_CONFIRMED when the stream ended before naming a run; None otherwise."""
+        if record.run_id is not None:
+            return None
+        return JobEnding(status=JobStatus.FAILED, failure=JobFailure.RUN_NOT_CONFIRMED)
+
+    def stop(self, tasks: RunTaskControl, record: JobRecord) -> None:
+        """Postcondition: the workflow run is asked to stop; nothing happens while run_id is unset."""
+        if record.run_id is None:
+            return
+        tasks.stop_workflow_run(
+            tenant_id=record.owner.tenant_id,
+            app_id=record.owner.app_id,
+            run_id=record.run_id,
+            app_mode=record.mode,
+            caller_role=record.owner.caller_role,
+            caller_id=record.owner.caller_id,
+        )
+
+    def view(
+        self,
+        record: JobRecord,
+        reader_alive: bool,
+        store: RunJobStore,
+        results: RunResultReader,
+        *,
+        stalled_before: datetime,
+    ) -> JobView:
+        """Precondition: reader_alive was read before record; a run running since before stalled_before is past
+        core's time limit and the margin. Postcondition: see RunJobService.view."""
+        if record.failure is not None:
+            # Already reported final: a run that starts late is not linked to the job.
+            return _record_view(record)
+        if record.run_id is None:
+            unconfirmed = fail_if_reader_dead(store, record, JobFailure.RUN_NOT_CONFIRMED, reader_alive=reader_alive)
+            return _record_view(unconfirmed)
+        run = results.run(tenant_id=record.owner.tenant_id, run_id=record.run_id)
+        if run is None:
+            return _record_view(record)
+        if _stalled(run, stalled_before):
+            store.settle(record.id, JobEnding(status=JobStatus.FAILED, failure=JobFailure.RUN_STALLED))
+            return _record_view(store.get(record.id) or record)
+        form = None
+        if run.status is JobStatus.PAUSED:
+            form = results.pending_form(
+                tenant_id=record.owner.tenant_id,
+                app_id=record.owner.app_id,
+                run_id=record.run_id,
+                mode=record.mode,
+            )
+        view = JobView(record=record, status=run.status, outputs=run.outputs, error=run.error, form=form)
+        if not run.status.is_final:
+            return view
+        if record.message_id is None:
+            return view
+        if not record.status.is_final:
+            # The run row turns final before the reader saves the answer and records the ending.
+            if reader_alive:
+                return JobView(record=record, status=JobStatus.RUNNING)
+        message = _saved_message(results, record)
+        if message is None:
+            return view
+        return replace(view, answer=message.answer)
+
+
+class MessageJobs:
+    """Chat, agent-chat and completion jobs: the record and the message row are the job's state."""
+
+    modes: Final = MESSAGE_MODES
+    ending_events: Final = frozenset({StreamEvent.MESSAGE_END, StreamEvent.ERROR})
+
+    def at_frame(self, record: JobRecord, frame: RunFrame) -> JobEnding | None:
+        """Postcondition: FAILED with the message for an error; at message_end, STOPPED when a stop was requested,
+        else SUCCEEDED; None for any other frame."""
+        if frame.event is StreamEvent.ERROR:
+            return JobEnding(status=JobStatus.FAILED, error=frame.error)
+        if frame.event is not StreamEvent.MESSAGE_END:
+            return None
+        if record.stop_requested:
+            return JobEnding(status=JobStatus.STOPPED)
+        return JobEnding(status=JobStatus.SUCCEEDED)
+
+    def at_stream_end(self, record: JobRecord) -> JobEnding | None:
+        """Postcondition: NO_RESULT; a job the stream finished keeps its ending, as settle writes only once."""
+        return JobEnding(status=JobStatus.FAILED, failure=JobFailure.NO_RESULT)
+
+    def stop(self, tasks: RunTaskControl, record: JobRecord) -> None:
+        """Postcondition: the task is asked to stop; nothing happens while task_id is unset."""
+        if record.task_id is None:
+            return
+        tasks.stop_message_task(
+            task_id=record.task_id,
+            caller_role=record.owner.caller_role,
+            caller_id=record.owner.caller_id,
+        )
+
+    def view(
+        self,
+        record: JobRecord,
+        reader_alive: bool,
+        store: RunJobStore,
+        results: RunResultReader,
+        *,
+        stalled_before: datetime,
+    ) -> JobView:
+        """Precondition: reader_alive was read before record; stalled_before does not apply, as a message job has no
+        run row. Postcondition: see RunJobService.view."""
+        checked = fail_if_reader_dead(store, record, JobFailure.RUN_INTERRUPTED, reader_alive=reader_alive)
+        view = _record_view(checked)
+        if not checked.status.is_final:
+            return view
+        if checked.failure is not None:
+            return view
+        message = _saved_message(results, checked)
+        if message is None:
+            return view
+        error = message.error if message.error is not None else checked.error
+        return replace(view, answer=message.answer, error=error)
+
+
+GRAPH_JOBS: Final = GraphJobs()
+MESSAGE_JOBS: Final = MessageJobs()
+
+
+def family_of(mode: AppMode) -> GraphJobs | MessageJobs:
+    """Precondition: none. Postcondition: the family whose modes hold mode; raises ValueError for any other mode."""
+    if mode in GRAPH_JOBS.modes:
+        return GRAPH_JOBS
+    if mode in MESSAGE_JOBS.modes:
+        return MESSAGE_JOBS
+    raise ValueError(f"App mode {mode!r} does not support run jobs")
+
+
+def _stalled(run: RunResult, stalled_before: datetime) -> bool:
+    """Report whether a run stays running past core's time limit and the margin, as when its worker died.
+
+    Precondition: stalled_before is now minus core's time limit and RUN_TIME_LIMIT_MARGIN.
+    Postcondition: true only for a running run whose start or last resume is known and before stalled_before.
+    Paused time never counts: a paused run is not running, and a resumed run counts from its resume, as core's
+    limit does.
     """
-    if record.run_id is None:
-        return
-    tasks.stop_workflow_run(
-        tenant_id=record.owner.tenant_id,
-        app_id=record.owner.app_id,
-        run_id=record.run_id,
-        app_mode=record.mode,
-        caller_role=record.owner.caller_role,
-        caller_id=record.owner.caller_id,
-    )
+    if run.status is not JobStatus.RUNNING:
+        return False
+    if run.running_since is None:
+        return False
+    return run.running_since < stalled_before
 
 
-def _stop_message_job(tasks: RunTaskControl, record: JobRecord) -> None:
-    """Stop the task of a message job when its task id is known.
+def _record_view(record: JobRecord) -> JobView:
+    """Build a view from the record's own fields.
 
-    Precondition: record is a MESSAGE job.
-    Postcondition: the task is asked to stop; nothing happens while task_id is unset.
+    Precondition: none.
+    Postcondition: status and error are the record's; answer, outputs and form are None.
     """
-    if record.task_id is None:
-        return
-    tasks.stop_message_task(
-        task_id=record.task_id,
-        caller_role=record.owner.caller_role,
-        caller_id=record.owner.caller_id,
-    )
+    return JobView(record=record, status=record.status, error=record.error)
 
 
-_STOPS_BY_FAMILY: Final[Mapping[JobFamily, Callable[[RunTaskControl, JobRecord], None]]] = {
-    JobFamily.GRAPH: _stop_graph_job,
-    JobFamily.MESSAGE: _stop_message_job,
-}
+def _saved_message(results: RunResultReader, record: JobRecord) -> MessageResult | None:
+    """Read the saved message of a finished job.
+
+    Precondition: the job's status is final.
+    Postcondition: the message row's answer and error; None when the record has no message id or the row is not
+    visible.
+    """
+    if record.message_id is None:
+        return None
+    return results.message(app_id=record.owner.app_id, message_id=record.message_id)
 
 
 class TaskControlStopper:
@@ -193,7 +341,7 @@ class TaskControlStopper:
         Postcondition: the stop for the record's family was sent when the id it needs is known; otherwise nothing
         happened.
         """
-        _STOPS_BY_FAMILY[record.family](self._tasks, record)
+        family_of(record.mode).stop(self._tasks, record)
 
 
 class RunJobService:
@@ -255,7 +403,7 @@ class RunJobService:
         frames: Iterable[str] = ()
         try:
             frames = launch()
-            self._read_in_background(job_id, frames)
+            self._read_in_background(job_id, frames, family_of(opening.mode))
         except BaseException:
             self._slots.release()
             close_frames(frames)
@@ -263,7 +411,7 @@ class RunJobService:
             raise
         return job_id
 
-    def _read_in_background(self, job_id: str, frames: Iterable[str]) -> None:
+    def _read_in_background(self, job_id: str, frames: Iterable[str], endings: StreamEndings) -> None:
         """Read the run's frames on a daemon thread that releases the job's slot when the stream ends.
 
         Precondition: called inside a request context while the job holds a slot.
@@ -279,7 +427,7 @@ class RunJobService:
             Postcondition: the stream was read to its end; its session and g belong to this context, not the request's.
             """
             with flask_app.app_context():
-                read_to_end(job_id=job_id, frames=frames, store=self._store, stopper=self._stopper)
+                read_to_end(job_id=job_id, frames=frames, store=self._store, stopper=self._stopper, endings=endings)
 
         def reader_with_context() -> None:
             """Read the stream under the copied contexts.
@@ -340,92 +488,10 @@ class RunJobService:
         Precondition: record is stored; reader_alive was read before it.
         Postcondition: see view.
         """
-        return _VIEWS_BY_FAMILY[record.family](self, record, reader_alive)
-
-    def _graph_view(self, record: JobRecord, reader_alive: bool) -> JobView:
-        """Build the view of a GRAPH job.
-
-        Precondition: record is a GRAPH job.
-        Postcondition: see view.
-        """
-        if record.failure is not None:
-            # Already reported final: a run that starts late is not linked to the job.
-            return _record_view(record)
-        if record.run_id is None:
-            unconfirmed = fail_if_reader_dead(
-                self._store, record, JobFailure.RUN_NOT_CONFIRMED, reader_alive=reader_alive
-            )
-            return _record_view(unconfirmed)
-        run = self._results.run(tenant_id=record.owner.tenant_id, run_id=record.run_id)
-        if run is None:
-            return _record_view(record)
-        if self._stalled(run):
-            self._store.settle(record.id, JobEnding(status=JobStatus.FAILED, failure=JobFailure.RUN_STALLED))
-            return _record_view(self._store.get(record.id) or record)
-        form = None
-        if run.status is JobStatus.PAUSED:
-            form = self._results.pending_form(
-                tenant_id=record.owner.tenant_id,
-                app_id=record.owner.app_id,
-                run_id=record.run_id,
-                mode=record.mode,
-            )
-        view = JobView(record=record, status=run.status, outputs=run.outputs, error=run.error, form=form)
-        if not run.status.is_final:
-            return view
-        if record.message_id is None:
-            return view
-        if not record.status.is_final:
-            # The run row turns final before the reader saves the answer and records the ending.
-            if reader_alive:
-                return JobView(record=record, status=JobStatus.RUNNING)
-        message = self._saved_message(record)
-        if message is None:
-            return view
-        return replace(view, answer=message.answer)
-
-    def _message_view(self, record: JobRecord, reader_alive: bool) -> JobView:
-        """Build the view of a MESSAGE job.
-
-        Precondition: record is a MESSAGE job.
-        Postcondition: see view.
-        """
-        checked = fail_if_reader_dead(self._store, record, JobFailure.RUN_INTERRUPTED, reader_alive=reader_alive)
-        view = _record_view(checked)
-        if not checked.status.is_final:
-            return view
-        if checked.failure is not None:
-            return view
-        message = self._saved_message(checked)
-        if message is None:
-            return view
-        error = message.error if message.error is not None else checked.error
-        return replace(view, answer=message.answer, error=error)
-
-    def _saved_message(self, record: JobRecord) -> MessageResult | None:
-        """Read the saved message of a finished job.
-
-        Precondition: the job's status is final.
-        Postcondition: the message row's answer and error; None when the record has no message id or the row is
-        not visible.
-        """
-        if record.message_id is None:
-            return None
-        return self._results.message(app_id=record.owner.app_id, message_id=record.message_id)
-
-    def _stalled(self, run: RunResult) -> bool:
-        """Report whether a run stays running past core's time limit and the margin, as when its worker died.
-
-        Precondition: none.
-        Postcondition: true only for a running run whose time since it started or last resumed is known and longer
-        than the limit plus RUN_TIME_LIMIT_MARGIN. Paused time never counts: a paused run is not running, and a
-        resumed run counts from its resume, as core's limit does.
-        """
-        if run.status is not JobStatus.RUNNING:
-            return False
-        if run.running_since is None:
-            return False
-        return self._now() - run.running_since > self._stalled_after
+        stalled_before = self._now() - self._stalled_after
+        return family_of(record.mode).view(
+            record, reader_alive, self._store, self._results, stalled_before=stalled_before
+        )
 
     def wait(self, owner: JobOwner, job_id: str, *, wait_seconds: int) -> JobView:
         """Wait for a job to finish or pause.
@@ -470,21 +536,6 @@ class RunJobService:
         stopping = replace(self._store.get(job_id) or record, stop_requested=True)
         self._stopper.stop(stopping)
         return self._view_of(stopping, reader_alive=reader_alive)
-
-
-def _record_view(record: JobRecord) -> JobView:
-    """Build a view from the record's own fields.
-
-    Precondition: none.
-    Postcondition: status and error are the record's; answer, outputs and form are None.
-    """
-    return JobView(record=record, status=record.status, error=record.error)
-
-
-_VIEWS_BY_FAMILY: Final[Mapping[JobFamily, Callable[[RunJobService, JobRecord, bool], JobView]]] = {
-    JobFamily.GRAPH: RunJobService._graph_view,
-    JobFamily.MESSAGE: RunJobService._message_view,
-}
 
 
 def _settled(view: JobView) -> bool:
