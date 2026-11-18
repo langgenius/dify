@@ -61,6 +61,7 @@ const parameters: InstalledAppParametersResponse = {
       node_ids: ['tool'],
       provider: credential.provider,
       provider_label: 'GitHub',
+      verified: false,
       title: 'Search',
       purpose: '',
       icon: '',

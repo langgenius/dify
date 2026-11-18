@@ -27,7 +27,6 @@ const anonymousStatus: LoginStatusResponse = { logged_in: false, app_logged_in: 
 const signedInStatus: LoginStatusResponse = { logged_in: true, app_logged_in: true }
 const parameters: WebAppParametersResponse = {
   account_login_enabled: true,
-  account_login_url: '/signin',
   console_web_url: '',
   allow_anonymous_end_user_auth: true,
   annotation_reply: {},

@@ -54,6 +54,7 @@ const requirements: WebAppConnectionRequirement[] = [
     provider,
     allowed_credential_types: ['api-key'],
     provider_label: 'GitHub',
+    verified: false,
   },
   {
     node_id: 'source-b',
@@ -66,6 +67,7 @@ const requirements: WebAppConnectionRequirement[] = [
     provider,
     allowed_credential_types: ['api-key'],
     provider_label: 'GitHub',
+    verified: false,
   },
 ]
 
@@ -100,7 +102,6 @@ function entry(): ReadyEntry {
     account: 'authenticated',
     parameters: {
       account_login_enabled: true,
-      account_login_url: 'https://account.example/signin',
       console_web_url: 'https://account.example',
       allow_anonymous_end_user_auth: false,
       connection_revision: connectionRevision,

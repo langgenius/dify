@@ -31,7 +31,6 @@ export function selectWebAppParameters(parameters: WebAppParametersResponse): We
     ...config,
     user_input_form: userInputForm,
     account_login_enabled: parameters.account_login_enabled,
-    account_login_url: parameters.account_login_url,
     console_web_url: parameters.console_web_url,
     allow_anonymous_end_user_auth: parameters.allow_anonymous_end_user_auth,
     connection_revision: parameters.connection_revision,

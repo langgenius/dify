@@ -504,4 +504,5 @@ class TestChatAppRunner:
             message_id="m1",
             user_id="user-1",
             tenant_id="tenant-1",
+            app_id="app-1",
         )

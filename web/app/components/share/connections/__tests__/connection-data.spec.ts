@@ -17,6 +17,7 @@ function requirement(
     node_ids: ['source-one'],
     provider: 'langgenius/github/github',
     provider_label: 'GitHub',
+    verified: false,
     title: 'Repository connection',
     purpose: 'Read repository documentation.',
     allowed_credential_types: ['oauth2', 'api-key'],

@@ -59,6 +59,7 @@ def client(harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch) -> Iterator[F
 
     definitions = AppDefinitionQueryService(
         definitions=AppDefinitionQueryRepository(session_factory=harness.base.sessions),
+        plugin_verified=lambda *_args: True,
         plugin_readme=plugin_readme,
         plugin_asset=lambda *_args: b"",
         builtin_icon_url_prefix="",
@@ -94,6 +95,7 @@ def test_explicit_version_and_selection_response(client: FlaskClient, harness: O
             "provider": "vendor/calendar/calendar",
             "provider_label": "Calendario",
             "plugin_unique_identifier": harness.providers.controller.plugin_unique_identifier,
+            "verified": True,
             "icon": PluginService.get_plugin_icon_url(tenant_id=harness.base.context.tenant_id, filename="icon.svg"),
             "icon_dark": None,
             "allowed_credential_types": ["api-key", "oauth2"],

@@ -1625,8 +1625,8 @@ except it is intended for use by the web app, instead of the console dashboard.
 
 Authentication configuration must be available before the authentication flow can be selected.
 No Account, App Passport, or app code is required. Return the configured
-Account sign-in page, null when disabled, and the Web console endpoint URL,
-independent of login enablement. Preserve deployment base paths.
+Web console endpoint URL, independent of login enablement, so clients can
+compose the Account sign-in route. Preserve deployment base paths.
 Read deployment settings without issuing credentials or changing state;
 feature-query failures propagate unchanged.
 
@@ -3746,6 +3746,7 @@ Personal settings only; credentials, login IPs and Builder lifecycle stay privat
 | provider_label | string | Tool provider display name in the WebApp's configured language, falling back to English. | Yes |
 | purpose | string |  | Yes |
 | title | string |  | Yes |
+| verified | boolean | Whether Dify verified this exact plugin artifact. | Yes |
 
 #### WebAppCustomConfigResponse
 
@@ -3778,7 +3779,6 @@ Personal settings only; credentials, login IPs and Builder lifecycle stay privat
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | account_login_enabled | boolean | Whether explicit Account login and Passport exchange are enabled. | Yes |
-| account_login_url | string | Account-origin sign-in page for the existing Web App login flow | Yes |
 | allow_anonymous_end_user_auth | boolean | Whether Guest identities may manage and use personal Connections; does not control App entry. | Yes |
 | annotation_reply | { **"enabled"**: boolean } |  | Yes |
 | connection_requirements | [ [WebAppConnectionRequirement](#webappconnectionrequirement) ] | Authorization requirements and exact plugin artifacts in connection_revision, without personal state. | Yes |
@@ -3897,11 +3897,10 @@ Web App login is temporarily unavailable. Please retry.
 
 #### WebSystemFeatureResponse
 
-Extend public bootstrap with the Web-only Account login entry points.
+Extend public bootstrap with the Web-only Account login entry point.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| account_login_url | string | Account-origin sign-in page for the existing Web App login flow; null when Account login is disabled. | Yes |
 | agent_tracing_api_collection_enabled | boolean | Deployment-level API gate for Agent trace collection, independent of workspace and provider configuration. Does not indicate Agent runtime, worker, or provider health or confirm trace delivery. | Yes |
 | branding | [BrandingModel](#brandingmodel) |  | Yes |
 | console_web_url | string | Web console base URL, preserving its deployment base path; independent of whether Account login is enabled. An empty string means the same-origin root. | Yes |

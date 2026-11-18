@@ -94,6 +94,7 @@ const requirement = {
   node_ids: ['tool-node'],
   provider: 'langgenius/github/github',
   provider_label: 'GitHub',
+  verified: false,
   title: 'Search repositories',
   purpose: 'Find repositories',
   icon: '',

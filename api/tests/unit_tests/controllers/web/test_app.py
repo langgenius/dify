@@ -141,10 +141,10 @@ class TestAppParameterApi:
         assert result["connection_requirements"] == []
         assert result["allow_anonymous_end_user_auth"] is allow_anonymous
         assert result["account_login_enabled"] is login_enabled
-        assert result["account_login_url"] == ("https://console.example.com/base/signin" if login_enabled else None)
+        assert "account_login_url" not in result
         assert result["console_web_url"] == "https://console.example.com/base"
         schema = WebAppParametersResponse.model_json_schema(mode="serialization")
-        assert "account_login_url" in schema["required"]
+        assert "account_login_url" not in schema["properties"]
         assert "console_web_url" in schema["required"]
 
     @pytest.mark.parametrize(
@@ -215,7 +215,7 @@ class TestAppParameterApi:
 
         assert response.status_code == 200
         payload = response.get_json()
-        assert payload["account_login_url"] == "https://console.example.com/base/signin"
+        assert "account_login_url" not in payload
         assert payload["console_web_url"] == "https://console.example.com/base"
         assert payload["account_login_enabled"] is True
         assert payload["allow_anonymous_end_user_auth"] is False
@@ -642,6 +642,7 @@ def asset_client(
 
     definitions = AppDefinitionQueryService(
         definitions=AppDefinitionQueryRepository(session_factory=asset_harness.base.sessions),
+        plugin_verified=lambda *_args: False,
         plugin_readme=lambda *_args: "",
         plugin_asset=asset_reader,
         builtin_icon_url_prefix="",

@@ -127,7 +127,6 @@ const renderSidebar = (overrides: Partial<typeof baseProps> = {}) => {
 
 const entryParameters: NonNullable<Parameters<typeof getWebAppEntryState>[0]['parameters']> = {
   account_login_enabled: true,
-  account_login_url: 'https://accounts.example/signin',
   console_web_url: 'https://accounts.example',
   allow_anonymous_end_user_auth: true,
   connection_revision: null,
@@ -163,6 +162,7 @@ const createEntryWithConnections = (authenticated: boolean) =>
           node_ids: ['github-node'],
           provider: 'langgenius/github/github',
           provider_label: 'GitHub',
+          verified: false,
           plugin_unique_identifier: 'langgenius/github:1.0.0',
           title: 'Get repositories',
           purpose: 'Read repositories',

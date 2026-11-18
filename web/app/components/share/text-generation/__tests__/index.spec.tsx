@@ -226,7 +226,6 @@ describe('Workflow connections entry', () => {
         showSignIn: false,
         parameters: {
           account_login_enabled: true,
-          account_login_url: 'https://account.example/signin',
           console_web_url: 'https://account.example',
           allow_anonymous_end_user_auth: false,
           connection_revision: revision,
@@ -237,6 +236,7 @@ describe('Workflow connections entry', () => {
               node_ids: ['source'],
               provider: connection.provider,
               provider_label: 'GitHub',
+              verified: false,
               allowed_credential_types: ['api-key'],
               plugin_unique_identifier: 'langgenius/github:1.0.0@digest',
               title: 'Research',

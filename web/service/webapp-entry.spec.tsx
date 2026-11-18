@@ -10,7 +10,6 @@ vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 
 const parameters: WebAppParametersResponse = {
   account_login_enabled: true,
-  account_login_url: '/signin',
   console_web_url: '',
   allow_anonymous_end_user_auth: false,
   connection_revision: 'published-workflow',
@@ -26,6 +25,7 @@ const parameters: WebAppParametersResponse = {
       purpose: 'Find messages for this conversation',
       provider: 'langgenius/gmail/gmail',
       provider_label: 'Gmail',
+      verified: false,
       allowed_credential_types: ['oauth2'],
     },
   ],
@@ -95,7 +95,6 @@ describe('Web App entry queries', () => {
     })
     expect(result.current.parameters.data).toMatchObject({
       account_login_enabled: true,
-      account_login_url: '/signin',
       console_web_url: '',
       allow_anonymous_end_user_auth: false,
       connection_revision: 'published-workflow',

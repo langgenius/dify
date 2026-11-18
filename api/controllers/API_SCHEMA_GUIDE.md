@@ -64,21 +64,19 @@ Route excluded values to their actual owner:
 ### Web Account login discovery
 
 The Web `/api/system-features` endpoint extends the shared snapshot with a Web-only
-`WebSystemFeatureResponse`. Its required nullable `account_login_url` lets anonymous
-WebApp clients discover the Account-origin sign-in page even when `/account/profile`
-returns 401; it is null when Account login is disabled. Its required `console_web_url`
-also exposes the Web console base endpoint that hosts that login flow. It comes from
-`CONSOLE_WEB_URL` regardless of `WEBAPP_ACCOUNT_PASSPORT_ENABLED`, preserves deployment
-base paths, removes trailing slashes, and uses an empty string for the same-origin root.
-Existing WebApp clients can keep using the ready-to-use `account_login_url`, while
-clients that own the login route consume the console base directly. The Console endpoint
-and shared `SystemFeatureModel` remain unchanged.
+`WebSystemFeatureResponse`. Its required `console_web_url` lets anonymous WebApp
+clients discover the Web console base endpoint that hosts the Account login flow even
+when `/account/profile` returns 401. It comes from `CONSOLE_WEB_URL` regardless of
+`WEBAPP_ACCOUNT_PASSPORT_ENABLED`, preserves deployment base paths, removes trailing
+slashes, and uses an empty string for the same-origin root. The `/signin` route belongs
+to the Console; WebApp clients compose it from the base URL and keep owning their return
+targets and PKCE proofs. The Console endpoint and shared `SystemFeatureModel` remain
+unchanged.
 
-This extension adds two scalars to the existing Web bootstrap request, no extra I/O,
+This extension adds one scalar to the existing Web bootstrap request, no extra I/O,
 and no credentials. Existing SSR timing, caching ownership, and query failure behavior
 are unchanged. Clients must not interpret a failed bootstrap request or a missing
-field as confirmed disabled login. App-specific return targets and PKCE proofs remain
-owned by the existing login handoff, not the public bootstrap response.
+field as confirmed disabled login.
 
 ### Console WebApp discovery
 

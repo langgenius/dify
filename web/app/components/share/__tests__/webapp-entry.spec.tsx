@@ -46,6 +46,7 @@ const requirement: WebAppConnectionRequirement = {
   plugin_unique_identifier: 'langgenius/google:1.0.0@digest',
   provider: 'langgenius/google/google',
   provider_label: 'Google',
+  verified: false,
   title: 'Google Search',
   purpose: 'Search documents',
   node_id: 'search-node',
@@ -55,7 +56,6 @@ const requirement: WebAppConnectionRequirement = {
 
 const makeParameters = (overrides: Partial<EntryParameters> = {}): EntryParameters => ({
   account_login_enabled: true,
-  account_login_url: '/signin',
   console_web_url: '',
   allow_anonymous_end_user_auth: true,
   connection_revision: null,
@@ -234,13 +234,11 @@ describe('Web App entry policy', () => {
 })
 
 describe('SignIn entry integration', () => {
-  it('uses the API Console origin and deployment prefix instead of the previous login URL', async () => {
+  it('uses the API Console origin and deployment prefix and updates them when the entry changes', async () => {
     const user = userEvent.setup()
     const assign = vi.spyOn(window.location, 'assign').mockImplementation(() => {})
     const input = makeEntryInput({
       parameters: makeParameters({
-        account_login_url:
-          'https://previous-accounts.example/old-prefix/signin?source=webapp&redirect_url=old&is_end_user=0',
         console_web_url: 'https://accounts.example/console',
       }),
     })
@@ -264,7 +262,6 @@ describe('SignIn entry integration', () => {
         value={getWebAppEntryState({
           ...input,
           parameters: makeParameters({
-            account_login_url: 'https://previous-accounts.example/old-prefix/signin',
             console_web_url: 'https://other-accounts.example/base',
           }),
         })}

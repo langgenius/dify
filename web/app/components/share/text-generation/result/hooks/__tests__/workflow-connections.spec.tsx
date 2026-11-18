@@ -56,7 +56,6 @@ const entry: Extract<WebAppEntryState, { parameters: unknown }> = {
   account: 'authenticated',
   parameters: {
     account_login_enabled: true,
-    account_login_url: 'https://account.example/signin',
     console_web_url: 'https://account.example',
     allow_anonymous_end_user_auth: false,
     connection_revision: revision,
@@ -67,6 +66,7 @@ const entry: Extract<WebAppEntryState, { parameters: unknown }> = {
         node_ids: ['source', 'reuse'],
         provider: connection.provider,
         provider_label: 'GitHub',
+        verified: false,
         allowed_credential_types: ['api-key'],
         plugin_unique_identifier: 'langgenius/github:1.0.0@digest',
         title: 'Find repositories',

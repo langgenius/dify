@@ -171,6 +171,7 @@ def _harness(
         ),
         app_definitions=AppDefinitionQueryService(
             definitions=definitions,
+            plugin_verified=base_services.app_definitions._plugin_verified,
             plugin_readme=base_services.app_definitions._plugin_readme,
             plugin_asset=base_services.app_definitions._plugin_asset,
             builtin_icon_url_prefix="",
