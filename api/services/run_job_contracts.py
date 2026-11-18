@@ -165,5 +165,8 @@ class RunJobStore(Protocol):
     def touch(self, job_id: str) -> None:
         """Precondition: none. Postcondition: the alive key is refreshed."""
 
+    def drop_alive(self, job_id: str) -> None:
+        """Precondition: none. Postcondition: the alive key is gone."""
+
     def is_alive(self, job_id: str) -> bool:
         """Precondition: none. Postcondition: true while the alive key is live."""

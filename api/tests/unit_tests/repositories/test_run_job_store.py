@@ -162,6 +162,16 @@ def test_discard_removes_the_job_and_its_alive_key(store: RedisRunJobStore, redi
     assert store.create(_record()) is True
 
 
+def test_drop_alive_removes_only_the_alive_key(store: RedisRunJobStore) -> None:
+    job = _record()
+    store.create(job)
+
+    store.drop_alive(job.id)
+
+    assert not store.is_alive(job.id)
+    assert store.get(job.id) == job
+
+
 def test_touch_refreshes_the_alive_key(store: RedisRunJobStore, redis: InMemoryRedis) -> None:
     redis.delete("openapi:job:job-1:alive")
     store.touch("job-1")

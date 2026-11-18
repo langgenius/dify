@@ -102,17 +102,12 @@ def test_ids_are_taken_from_the_first_data_frame(store: RedisRunJobStore, stoppe
     assert record.status is JobStatus.RUNNING
 
 
-def test_a_ping_only_refreshes_the_alive_key(
-    store: RedisRunJobStore, stopper: RecordingJobStopper, redis: InMemoryRedis
-) -> None:
+def test_a_ping_records_no_ids(store: RedisRunJobStore, stopper: RecordingJobStopper) -> None:
     _open(store, AppMode.WORKFLOW)
-    redis.ttls.pop(f"openapi:job:{JOB_ID}:alive")
 
     record = _read(store, stopper, [PING])
 
-    assert store.is_alive(JOB_ID)
-    assert record.status is JobStatus.RUNNING
-    assert record.task_id is None
+    assert (record.task_id, record.run_id) == (None, None)
 
 
 @pytest.mark.parametrize(
@@ -165,7 +160,9 @@ def test_message_end_finishes_a_message_job_but_not_a_graph_job(
     store.discard(JOB_ID)
     _open(store, AppMode.WORKFLOW)
 
-    assert _read(store, stopper, [end]).status is JobStatus.RUNNING
+    assert (
+        _read(store, stopper, [_frame(StreamEvent.WORKFLOW_STARTED, **IDS, data={}), end]).status is JobStatus.RUNNING
+    )
 
 
 def test_message_end_after_a_stop_request_marks_the_job_stopped(
@@ -230,15 +227,39 @@ def test_a_stream_that_ends_without_a_result_fails_a_message_job(
     assert (record.failure, record.error) == (JobFailure.NO_RESULT, JobFailure.NO_RESULT.message)
 
 
-def test_a_stream_that_ends_without_a_result_leaves_a_graph_job_running(
+def test_a_graph_stream_that_ends_without_a_run_id_is_not_confirmed_by_the_reader(
     store: RedisRunJobStore, stopper: RecordingJobStopper
 ) -> None:
     _open(store, AppMode.WORKFLOW)
 
-    assert _read(store, stopper, [PING]).status is JobStatus.RUNNING
+    record = _read(store, stopper, [PING])
+
+    assert (record.status, record.failure) == (JobStatus.FAILED, JobFailure.RUN_NOT_CONFIRMED)
 
 
-def test_a_stream_that_raises_fails_a_message_job_and_leaves_a_graph_job_running(
+def test_a_graph_stream_that_ends_with_a_run_id_leaves_the_job_to_its_run(
+    store: RedisRunJobStore, stopper: RecordingJobStopper
+) -> None:
+    _open(store, AppMode.WORKFLOW)
+
+    record = _read(store, stopper, [_frame(StreamEvent.WORKFLOW_STARTED, **IDS, data={})])
+
+    assert (record.status, record.run_id) == (JobStatus.RUNNING, "run-1")
+
+
+@pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.CHAT])
+def test_the_alive_key_is_gone_once_the_reader_has_recorded_its_ending(
+    store: RedisRunJobStore, stopper: RecordingJobStopper, mode: AppMode
+) -> None:
+    _open(store, mode)
+
+    record = _read(store, stopper, [PING])
+
+    assert record.status is JobStatus.FAILED
+    assert not store.is_alive(JOB_ID)
+
+
+def test_a_stream_that_raises_fails_a_message_job_and_a_graph_job_without_a_run_id(
     store: RedisRunJobStore, stopper: RecordingJobStopper
 ) -> None:
     _open(store, AppMode.CHAT)
@@ -250,7 +271,7 @@ def test_a_stream_that_raises_fails_a_message_job_and_leaves_a_graph_job_running
 
     assert message_job.status is JobStatus.FAILED
     assert message_job.failure is JobFailure.NO_RESULT
-    assert graph_job.status is JobStatus.RUNNING
+    assert graph_job.failure is JobFailure.RUN_NOT_CONFIRMED
 
 
 def test_a_final_status_is_not_overwritten_when_the_stream_ends(
@@ -320,7 +341,10 @@ def test_the_stream_is_closed_at_the_end(store: RedisRunJobStore, stopper: Recor
 def test_frames_that_are_not_json_objects_are_ignored(store: RedisRunJobStore, stopper: RecordingJobStopper) -> None:
     _open(store, AppMode.WORKFLOW)
 
-    record = _read(store, stopper, ["data: not json\n\n", "data: [1, 2]\n\n", _frame(StreamEvent.TEXT_CHUNK, data={})])
+    started = _frame(StreamEvent.WORKFLOW_STARTED, **IDS, data={})
+    frames = [started, "data: not json\n\n", "data: [1, 2]\n\n", _frame(StreamEvent.TEXT_CHUNK, data={})]
+
+    record = _read(store, stopper, frames)
 
     assert record.status is JobStatus.RUNNING
 
@@ -328,10 +352,12 @@ def test_frames_that_are_not_json_objects_are_ignored(store: RedisRunJobStore, s
 def test_an_unknown_event_name_changes_nothing(store: RedisRunJobStore, stopper: RecordingJobStopper) -> None:
     _open(store, AppMode.WORKFLOW)
 
-    record = _read(store, stopper, ['data: {"event": "from_the_future", "task_id": "task-1"}\n\n'])
+    unknown = 'data: {"event": "from_the_future", "task_id": "task-1", "workflow_run_id": "run-1"}\n\n'
+
+    record = _read(store, stopper, [unknown])
 
     assert record.status is JobStatus.RUNNING
-    assert record.task_id == "task-1"
+    assert (record.task_id, record.run_id) == ("task-1", "run-1")
 
 
 class TouchFailsOnceStore(RedisRunJobStore):
