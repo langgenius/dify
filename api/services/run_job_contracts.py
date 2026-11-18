@@ -32,6 +32,21 @@ class JobStatus(StrEnum):
         return self in (JobStatus.SUCCEEDED, JobStatus.FAILED, JobStatus.STOPPED)
 
 
+class JobFailure(StrEnum):
+    """Why the job service, not the run, failed a job; message is the error text reported for it."""
+
+    message: str
+
+    RUN_NOT_CONFIRMED = ("run_not_confirmed", "run start was not confirmed; it may still execute")
+    NO_RESULT = ("no_result", "run ended without a result")
+
+    def __new__(cls, value: str, message: str) -> JobFailure:
+        member = str.__new__(cls, value)
+        member._value_ = value
+        member.message = message
+        return member
+
+
 class JobFamily(StrEnum):
     GRAPH = "graph"
     MESSAGE = "message"
@@ -72,7 +87,15 @@ class JobRecord:
     conversation_id: str | None = None
     form: Mapping[str, Any] | None = None
     error: str | None = None
+    failure: JobFailure | None = None
     stop_requested: bool = False
+
+    @property
+    def reported_error(self) -> str | None:
+        """Postcondition: the failure reason's message when the service failed the job, else the run's error."""
+        if self.failure is not None:
+            return self.failure.message
+        return self.error
 
     @property
     def family(self) -> JobFamily:
@@ -93,6 +116,7 @@ class JobPatch:
     conversation_id: str | None = None
     form: Mapping[str, Any] | None = None
     error: str | None = None
+    failure: JobFailure | None = None
     stop_requested: bool | None = None
 
 

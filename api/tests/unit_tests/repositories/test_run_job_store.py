@@ -10,6 +10,7 @@ from repositories.run_job_store import RedisRunJobStore
 from services.run_job_contracts import (
     ALIVE_TTL_SECONDS,
     JOB_TTL_SECONDS,
+    JobFailure,
     JobFamily,
     JobOwner,
     JobPatch,
@@ -159,6 +160,21 @@ def test_family_of_an_unsupported_mode_is_rejected() -> None:
 
 def test_record_family_uses_its_mode() -> None:
     assert _record().family is JobFamily.GRAPH
+
+
+def test_each_failure_reason_carries_its_message() -> None:
+    assert JobFailure.RUN_NOT_CONFIRMED.message == "run start was not confirmed; it may still execute"
+    assert JobFailure.NO_RESULT.message == "run ended without a result"
+
+
+def test_a_failure_reason_round_trips_through_the_store(store: RedisRunJobStore) -> None:
+    store.open(_record(), idempotency_key=None)
+
+    store.patch("job-1", JobPatch(status=JobStatus.FAILED, failure=JobFailure.NO_RESULT))
+
+    stored = store.get("job-1")
+    assert stored is not None
+    assert (stored.failure, stored.error) == (JobFailure.NO_RESULT, None)
 
 
 def test_only_three_statuses_are_final() -> None:
