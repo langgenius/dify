@@ -43,7 +43,7 @@ const createdOAuth: Credential = {
 }
 let serverCredentials: Credential[]
 let creationIncludesId: boolean
-let refreshRequest: ReturnType<typeof createDeferred> | undefined
+let refreshRequest: ReturnType<typeof createDeferred<void>> | undefined
 const refreshStarted = vi.fn()
 
 async function showSelector(onSelect: (id: string) => void) {

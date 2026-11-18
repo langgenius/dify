@@ -3457,6 +3457,7 @@ function invalidateHumanInputChannelQueries(
     invalidateHumanInputContactQueries(query, client),
     invalidateQueryKeys(client, [
       query.workspaces.current.humanInput.v2.channels.key(),
+      query.workspaces.current.humanInput.v2.testChannels.key(),
       query.workspaces.current.humanInput.v2.imIdentities.key(),
       query.workspaces.current.humanInput.v2.imSyncRuns.key(),
     ]),

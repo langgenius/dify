@@ -2621,18 +2621,6 @@ The file extension is blocked for security reasons.
 | ---- | ---- | ----------- | -------- |
 | FileExtensionBlockedError |  | The file extension is blocked for security reasons. |  |
 
-#### FileInput
-
-Resolved single-file input constraints.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| allowed_file_extensions | [ string ] |  | Yes |
-| allowed_file_types | [ [FileType](#filetype) ] |  | Yes |
-| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | Yes |
-| output_variable_name | string |  | Yes |
-| type | string |  | No |
-
 #### FileInputConfig
 
 | Name | Type | Description | Required |
@@ -2640,19 +2628,6 @@ Resolved single-file input constraints.
 | allowed_file_extensions | [ string ] |  | No |
 | allowed_file_types | [ [FileType](#filetype) ] |  | No |
 | allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
-| output_variable_name | string |  | Yes |
-| type | string |  | No |
-
-#### FileListInput
-
-Resolved multi-file input constraints and effective number limit.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| allowed_file_extensions | [ string ] |  | Yes |
-| allowed_file_types | [ [FileType](#filetype) ] |  | Yes |
-| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | Yes |
-| number_limits | integer |  | Yes |
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
 
@@ -2779,12 +2754,6 @@ Response body containing a resolved human-input form definition.
 | ---- | ---- | ----------- | -------- |
 | FormInputConfig | [ParagraphInputConfig](#paragraphinputconfig)<br>[SelectInputConfig](#selectinputconfig)<br>[FileInputConfig](#fileinputconfig)<br>[FileListInputConfig](#filelistinputconfig) |  |  |
 
-#### FormPart
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| FormPart | [MarkdownFragment](#markdownfragment)<br>[ParagraphInput](#paragraphinput)<br>[SelectInput](#selectinput)<br>[FileInput](#fileinput)<br>[FileListInput](#filelistinput) |  |  |
-
 #### FormSubmitResponse
 
 Empty response body returned after a Human Input v2 form submission.
@@ -2818,6 +2787,14 @@ Response body returned when issuing a Human Input v2 upload token.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | HumanInputAccessRateLimitExceededError |  |  |  |
+
+#### HumanInputActionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| button_style | [ButtonStyle](#buttonstyle) |  | Yes |
+| id | string |  | Yes |
+| title | string |  | Yes |
 
 #### HumanInputChallengeExpiredError
 
@@ -3096,15 +3073,6 @@ The upload token is malformed.
 | ---- | ---- | ----------- | -------- |
 | MalformedUploadTokenError |  | The upload token is malformed. |  |
 
-#### MarkdownFragment
-
-One source-ordered Markdown fragment in a resolved form.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| text | string |  | Yes |
-| type | string |  | No |
-
 #### MessageFeedbackPayload
 
 | Name | Type | Description | Required |
@@ -3216,16 +3184,6 @@ Please check if your Workflow app mode matches the right API route.
 | ---- | ---- | ----------- | -------- |
 | label | [I18nObject](#i18nobject) | The label of the option | Yes |
 | value | string | The value of the option | Yes |
-
-#### ParagraphInput
-
-Resolved multiline text input.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| default_value | string |  | Yes |
-| output_variable_name | string |  | Yes |
-| type | string |  | No |
 
 #### ParagraphInputConfig
 
@@ -3411,16 +3369,67 @@ New password and repeat password does not match.
 | ---- | ---- | ----------- | -------- |
 | RepeatPasswordNotMatchError |  | New password and repeat password does not match. |  |
 
-#### ResolvedForm
-
-Immutable authoritative presentation snapshot for one v2 form.
+#### ResolvedFileListResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| actions | [ [UserAction](#useraction) ] |  | Yes |
+| allowed_file_extensions | [ string ] |  | Yes |
+| allowed_file_types | [ [FileType](#filetype) ] |  | Yes |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | Yes |
+| number_limits | integer |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | Yes |
+
+#### ResolvedFileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | Yes |
+| allowed_file_types | [ [FileType](#filetype) ] |  | Yes |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | Yes |
+
+#### ResolvedForm
+
+Keep the existing resolved-form wire shape without exposing storage metadata.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| actions | [ [HumanInputActionResponse](#humaninputactionresponse) ] |  | Yes |
 | legacy_form_content | string |  | Yes |
-| parts | [ [FormPart](#formpart) ] |  | Yes |
+| parts | [ [ResolvedPartResponse](#resolvedpartresponse) ] |  | Yes |
 | title | string |  | Yes |
+
+#### ResolvedMarkdownResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| text | string |  | Yes |
+| type | string |  | Yes |
+
+#### ResolvedParagraphResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default_value | string |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | Yes |
+
+#### ResolvedPartResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ResolvedPartResponse | [ResolvedMarkdownResponse](#resolvedmarkdownresponse)<br>[ResolvedParagraphResponse](#resolvedparagraphresponse)<br>[ResolvedSelectResponse](#resolvedselectresponse)<br>[ResolvedFileResponse](#resolvedfileresponse)<br>[ResolvedFileListResponse](#resolvedfilelistresponse) |  |  |
+
+#### ResolvedSelectResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default_value | string |  | Yes |
+| options | [ string ] |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | Yes |
 
 #### ResultResponse
 
@@ -3497,17 +3506,6 @@ Immutable authoritative presentation snapshot for one v2 form.
 | ---- | ---- | ----------- | -------- |
 | last_id | string |  | No |
 | limit | integer, <br>**Default:** 20 |  | No |
-
-#### SelectInput
-
-Resolved single-choice input with immutable concrete options.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| default_value | string |  | Yes |
-| options | [ string ] |  | Yes |
-| output_variable_name | string |  | Yes |
-| type | string |  | No |
 
 #### SelectInputConfig
 
@@ -3650,16 +3648,6 @@ Upload token is required.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | UploadTokenRequiredError |  | Upload token is required. |  |
-
-#### UserAction
-
-Resolved action values required for presentation and submission validation.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| button_style | [ButtonStyle](#buttonstyle) |  | Yes |
-| id | string |  | Yes |
-| title | string |  | Yes |
 
 #### UserActionConfig
 

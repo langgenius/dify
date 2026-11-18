@@ -5,6 +5,7 @@ import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/a
 import type { ChatItem, OnSend } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { noop } from 'es-toolkit/function'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useEffect, useImperativeHandle, useMemo } from 'react'
 import { useNodes } from 'reactflow'
@@ -14,7 +15,7 @@ import { useFeatures } from '@/app/components/base/features/hooks'
 import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { useStore, useWorkflowStore } from '../../store'
 import { BlockEnum, WorkflowRunningStatus } from '../../types'
 import { TestConnectionSetup } from '../test-connections'
@@ -111,6 +112,12 @@ const ChatWrapper = ({
     [appId, queryClient],
   )
 
+  const retireDebugWorkspaces = useCallback(() => {
+    void consoleClient.apps.byAppId.advancedChat.workflows.draft.conversations.workspaces.retire
+      .post({ params: { app_id: appId } })
+      .catch(noop)
+  }, [appId])
+
   const {
     conversationId,
     chatList,
@@ -133,6 +140,7 @@ const ChatWrapper = ({
       stopChat({
         params: { app_id: appId, task_id: taskId },
       }),
+    retireDebugWorkspaces,
   )
 
   const hasConversation = isResponding || chatList.some((item) => !item.isOpeningStatement)

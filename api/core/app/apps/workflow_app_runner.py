@@ -600,7 +600,7 @@ class WorkflowBasedAppRunner:
         human_input_v2_forms: Mapping[str, PreparedForm] | None = None,
     ) -> None:
         """
-        Handle event
+        Project ordered engine events without reinterpreting Graphon's failure strategy or terminal cause.
         :param workflow_entry: workflow entry
         :param event: event
         """
@@ -657,7 +657,10 @@ class WorkflowBasedAppRunner:
                 )
             case GraphRunFailedEvent():
                 self._publish_event(
-                    QueueWorkflowFailedEvent(error=event.error, exceptions_count=event.exceptions_count)
+                    QueueWorkflowFailedEvent(
+                        error=event.error,
+                        exceptions_count=event.exceptions_count,
+                    )
                 )
             case GraphRunAbortedEvent():
                 self._publish_event(
