@@ -11,6 +11,13 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Literal
 
+from dify_agent.protocol.tool_call_limits import (
+    ToolCallLimitMetadata,
+    ToolCallLimitSnapshot,
+    runtime_tool_failed,
+    unconfirmed_reservation,
+    validated_call_limit,
+)
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError
 
 from clients.agent_backend import AgentBackendStreamInternalEvent
@@ -19,7 +26,7 @@ _TOOL_FIELD_LIMIT = 16 * 1024
 
 _UNFINISHED_TOOL_ERROR = "Tool call did not return a result."
 
-ActivityStatus = Literal["started", "running", "succeeded", "failed", "cancelled"]
+ActivityStatus = Literal["started", "running", "succeeded", "failed", "cancelled", "not_executed"]
 FinishStatus = Literal["succeeded", "failed", "cancelled"]
 
 _EARLY_TOOL_NAMES = frozenset({"shell_run", "shell_wait", "shell_input", "shell_interrupt"})
@@ -35,6 +42,8 @@ class WorkflowAgentToolActivityData(BaseModel):
     tool_input: str
     tool_output: str
     node_title: str
+    # Absent for unlimited tools and records produced by older runtimes.
+    call_limit: ToolCallLimitMetadata | None = Field(default=None, exclude_if=lambda value: value is None)
 
 
 class WorkflowAgentToolActivity(BaseModel):
@@ -69,6 +78,7 @@ class _ToolStreamPart(BaseModel):
     args: JsonValue = None
     content: JsonValue = None
     outcome: str | None = None
+    metadata: JsonValue = None
 
 
 @dataclass
@@ -81,6 +91,7 @@ class _ToolCallState:
     tool_output: str = ""
     status: ActivityStatus = "started"
     error: str | None = None
+    call_limit: ToolCallLimitMetadata | None = None
 
 
 def _bounded_text(value: JsonValue | None) -> str:
@@ -156,17 +167,23 @@ class WorkflowAgentToolActivityProjector:
         self,
         status: FinishStatus,
         error: str | None = None,
+        *,
+        call_limits: Mapping[str, ToolCallLimitSnapshot] | None = None,
     ) -> list[WorkflowAgentToolActivity]:
         """Close every still-active call when the backend run terminates.
 
         ``cancelled`` closes calls as ``cancelled``; any other status closes
         them as ``failed`` so an unfinished tool is never shown as successful.
-        Snapshots preserve start order.
+        Snapshots preserve start order. Authoritative terminal reservations can
+        fill usage for a call without a return; they are marked ``unconfirmed``
+        and never imply that its external execution succeeded or even began.
         """
         bounded_error = _bounded_text(error) or None
         activities: list[WorkflowAgentToolActivity] = []
         for (run_id, _tool_call_id), state in self._calls.items():
             if state.status in {"started", "running"}:
+                if state.call_limit is None and call_limits:
+                    state.call_limit = unconfirmed_reservation(state.tool_call_id, call_limits)
                 if status == "cancelled":
                     state.status = "cancelled"
                     state.error = bounded_error
@@ -260,10 +277,12 @@ class WorkflowAgentToolActivityProjector:
     ) -> list[WorkflowAgentToolActivity]:
         """Complete an active call, or emit one completed snapshot when unmatched.
 
-        ``retry-prompt`` -> ``failed``; ``tool-return`` -> ``failed`` when
-        ``outcome == "failure"``, else ``succeeded``. An unmatched result with
-        a ``tool_name`` still yields one terminal snapshot; duplicates are
-        ignored.
+        ``retry-prompt`` becomes ``failed``. Valid runtime quota metadata marks
+        rejected calls ``not_executed`` and retains their unchanged usage.
+        Other returns fail on native failure outcomes or an explicit handled
+        transport-failure annotation; remaining returns succeed. An unmatched
+        result with a tool name yields one terminal snapshot. Duplicate terminal
+        results are ignored, and malformed metadata cannot change the outcome.
         """
         if not part.tool_call_id:
             return []
@@ -294,7 +313,17 @@ class WorkflowAgentToolActivityProjector:
         else:
             output = _bounded_text(part.content)
             state.tool_output = output
-            if part.outcome == "failure":
+            state.call_limit = validated_call_limit(part.metadata)
+            if state.call_limit is not None and state.call_limit.execution_status == "not_executed":
+                state.status = "not_executed"
+                state.error = (
+                    f"Call limit reached ({state.call_limit.limit} per run). This request was not executed."
+                    if state.call_limit.reason == "call_limit_reached"
+                    else "Duplicate tool call. This request was not executed."
+                )
+            elif part.outcome == "failure" or runtime_tool_failed(
+                part.metadata, has_quota=state.call_limit is not None
+            ):
                 state.status = "failed"
                 state.error = output or None
             else:
@@ -302,6 +331,7 @@ class WorkflowAgentToolActivityProjector:
         return [self._snapshot(run_id, state)]
 
     def _snapshot(self, run_id: str, state: _ToolCallState) -> WorkflowAgentToolActivity:
+        """Copy bounded call state into a JSON-safe log record without mutating it."""
         return WorkflowAgentToolActivity(
             id=f"{run_id}:{state.tool_call_id}",
             node_id=self._node_id,
@@ -315,5 +345,6 @@ class WorkflowAgentToolActivityProjector:
                 tool_input=state.tool_input,
                 tool_output=state.tool_output,
                 node_title=self._node_title,
+                call_limit=state.call_limit,
             ),
         )
