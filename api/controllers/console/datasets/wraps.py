@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from functools import wraps
-from typing import Any, Concatenate, Protocol, cast, overload
+from typing import Any, Concatenate, overload
 
 from flask import current_app
 from flask_restx import Resource
@@ -81,7 +81,15 @@ def _pipeline_for_call(
     return load_rag_pipeline(session, pipeline_id, tenant_id=resolve_tenant_id())
 
 
-class _PipelineDecorator(Protocol):
+class _PipelineDecorator:
+    def __init__(
+        self,
+        session_factory: Callable[[], Session],
+        resolve_tenant_id: Callable[[], str],
+    ) -> None:
+        self._session_factory = session_factory
+        self._resolve_tenant_id = resolve_tenant_id
+
     @overload
     def __call__[**P, R](self, view: Callable[P, R]) -> Callable[P, R]: ...
 
@@ -90,6 +98,26 @@ class _PipelineDecorator(Protocol):
         self,
         view: Callable[Concatenate[T, P], R],
     ) -> Callable[Concatenate[T, P], R]: ...
+
+    def __call__[R](self, view: Callable[..., R]) -> Callable[..., R]:
+        @wraps(view)
+        def decorated_view(*args: Any, **kwargs: Any) -> R:
+            # The overloads keep Resource methods method-aware for pyrefly while
+            # preserving support for plain functions used in tests and utilities.
+            if not kwargs.get("pipeline_id"):
+                raise ValueError("missing pipeline_id in path parameters")
+
+            pipeline_id = str(kwargs.get("pipeline_id"))
+            del kwargs["pipeline_id"]
+            kwargs["pipeline"] = _pipeline_for_call(
+                args,
+                pipeline_id,
+                session_factory=self._session_factory,
+                resolve_tenant_id=self._resolve_tenant_id,
+            )
+            return view(*args, **kwargs)
+
+        return document_errors(decorated_view, PipelineNotFoundError)
 
 
 def get_rag_pipeline_with(
@@ -109,28 +137,7 @@ def get_rag_pipeline_with(
     ``pipeline``. A missing ``pipeline_id`` raises ``ValueError``. A pipeline
     outside the tenant raises ``PipelineNotFoundError``. Nothing is written.
     """
-
-    def decorator[R](view: Callable[..., R]) -> Callable[..., R]:
-        @wraps(view)
-        def decorated_view(*args: Any, **kwargs: Any) -> R:
-            # The overloads keep Resource methods method-aware for pyrefly while
-            # preserving support for plain functions used in tests and utilities.
-            if not kwargs.get("pipeline_id"):
-                raise ValueError("missing pipeline_id in path parameters")
-
-            pipeline_id = str(kwargs.get("pipeline_id"))
-            del kwargs["pipeline_id"]
-            kwargs["pipeline"] = _pipeline_for_call(
-                args,
-                pipeline_id,
-                session_factory=session_factory,
-                resolve_tenant_id=resolve_tenant_id,
-            )
-            return view(*args, **kwargs)
-
-        return document_errors(decorated_view, PipelineNotFoundError)
-
-    return cast(_PipelineDecorator, decorator)
+    return _PipelineDecorator(session_factory, resolve_tenant_id)
 
 
 @overload
