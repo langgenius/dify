@@ -212,6 +212,8 @@ class MessageCycleManager:
                     merged_resources.append(resource)
                     if resource.knowledge_fs_citation:
                         receipt_ids.add(resource.knowledge_fs_citation.id)
+                    elif resource.dataset_id and resource.document_id:
+                        existing_ids.add((resource.dataset_id, resource.document_id))
 
             for i, resource in enumerate(merged_resources, 1):
                 resource.position = i
