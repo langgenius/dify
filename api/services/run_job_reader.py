@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import threading
 from collections.abc import Callable, Iterable, Mapping
-from dataclasses import dataclass, field, fields, replace
+from dataclasses import asdict, dataclass, field, replace
 from types import MappingProxyType
 from typing import Final, Protocol, runtime_checkable
 
@@ -99,11 +99,8 @@ def _unstored_ids(ids: JobIds, stored: JobIds) -> dict[str, str]:
     Precondition: none.
     Postcondition: the JobIds fields to store, by name; neither argument is changed.
     """
-    return {
-        id_field.name: value
-        for id_field in fields(JobIds)
-        if getattr(stored, id_field.name) is None and (value := getattr(ids, id_field.name)) is not None
-    }
+    known = asdict(stored)
+    return {name: value for name, value in asdict(ids).items() if value is not None and known[name] is None}
 
 
 @dataclass(slots=True)
