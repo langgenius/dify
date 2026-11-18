@@ -5,7 +5,6 @@ from dataclasses import dataclass, field
 
 from models.enums import CreatorUserRole
 from models.model import AppMode
-from repositories.run_job_store import SETTLE_SCRIPT
 from services.app_task_service import WorkflowStopOutcome
 from services.run_job_contracts import JobRecord
 from services.run_job_service import RunResult
@@ -47,28 +46,22 @@ class InMemoryRedis:
             self.ttls[name] = time
         return exists
 
-    def register_script(self, script: str) -> Callable[..., int]:
-        """Return a Python stand-in for one of the store's scripts; the real scripts run in the container tests."""
-        self.scripts.append(script)
-        if script == SETTLE_SCRIPT:
-            return self._settle
-        return self._delete_if_equal
-
-    def _settle(self, *, keys: list[str], args: list[object]) -> int:
-        job = self.hashes.get(keys[0])
-        if job is None:
+    def hsetnx(self, name: str, key: str, value: str) -> int:
+        fields = self.hashes.setdefault(name, {})
+        if key in fields:
             return 0
-        if job.get("status") in args[4:]:
-            return 0
-        status, error, failure, ttl = args[:4]
-        job.update({"status": str(status), "error": str(error), "failure": str(failure)})
-        self.ttls[keys[0]] = int(str(ttl))
+        fields[key] = value
         return 1
 
-    def _delete_if_equal(self, *, keys: list[str], args: list[str]) -> int:
-        if self.values.get(keys[0]) != args[0]:
-            return 0
-        return self.delete(keys[0])
+    def register_script(self, script: str) -> Callable[..., int]:
+        self.scripts.append(script)
+
+        def delete_if_equal(*, keys: list[str], args: list[str]) -> int:
+            if self.values.get(keys[0]) != args[0]:
+                return 0
+            return self.delete(keys[0])
+
+        return delete_if_equal
 
     def exists(self, *names: str) -> int:
         return sum(name in self.hashes or name in self.values for name in names)
