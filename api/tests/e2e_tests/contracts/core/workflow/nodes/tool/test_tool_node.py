@@ -3,12 +3,10 @@ from __future__ import annotations
 from collections.abc import Generator, Iterator, Mapping
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
-from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
@@ -24,7 +22,7 @@ from graphon.node_events import StreamChunkEvent, StreamCompletedEvent
 from graphon.nodes.tool.entities import ToolNodeData
 from graphon.nodes.tool.tool_node import ToolNode
 from graphon.nodes.tool_runtime_entities import ToolRuntimeHandle, ToolRuntimeMessage
-from graphon.runtime import RuntimeState
+from graphon.runtime import RuntimeState, VariablePool
 from graphon.variables.segments import ArrayFileSegment
 from models.tools import ToolFile
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_variable_pool
@@ -38,6 +36,8 @@ class _StubToolRuntime:
     """Stub non-file tool capabilities while retaining the production file boundary."""
 
     def __init__(self, *, tenant_id: str) -> None:
+        self.runtime_handle = ToolRuntimeHandle(raw=object())
+        self.node_execution_ids: list[str | None] = []
         self._file_runtime = DifyToolNodeRuntime(
             DifyRunContext(
                 tenant_id=tenant_id,
@@ -52,11 +52,13 @@ class _StubToolRuntime:
         self,
         *,
         node_id: str,
-        node_data: Any,
-        variable_pool: Any,
+        node_data: ToolNodeData,
+        variable_pool: VariablePool | None,
         node_execution_id: str | None = None,
     ) -> ToolRuntimeHandle:
-        raise NotImplementedError
+        """Capture the node execution id and return a stable runtime handle."""
+        self.node_execution_ids.append(node_execution_id)
+        return self.runtime_handle
 
     def get_runtime_parameters(self, *, tool_runtime: ToolRuntimeHandle) -> list[Any]:
         return []
@@ -353,20 +355,14 @@ def test_mapping_missing_transfer_method_is_rejected_at_the_boundary() -> None:
         runtime.build_file_reference(mapping={"tool_file_id": "file-id"})
 
 
-def test_tool_node_passes_node_execution_id_when_runtime_accepts_it(tool_node: ToolNode, mocker: MockerFixture) -> None:
-    runtime_handle = ToolRuntimeHandle(raw=object())
-    get_runtime_mock = MagicMock(return_value=runtime_handle)
-    mocker.patch.object(tool_node._runtime, "get_runtime", get_runtime_mock)
+def test_tool_node_passes_node_execution_id_when_runtime_accepts_it() -> None:
+    runtime = _StubToolRuntime(tenant_id=_TENANT_ID)
+    tool_node = _build_tool_node(runtime=runtime)
 
     result = tool_node._get_tool_runtime(
         variable_pool=tool_node.runtime_state.variable_pool,
         node_execution_id="node-execution-id",
     )
 
-    assert result is runtime_handle
-    get_runtime_mock.assert_called_once_with(
-        node_id="node-instance",
-        node_data=tool_node.node_data,
-        variable_pool=tool_node.runtime_state.variable_pool,
-        node_execution_id="node-execution-id",
-    )
+    assert result is runtime.runtime_handle
+    assert runtime.node_execution_ids == ["node-execution-id"]
