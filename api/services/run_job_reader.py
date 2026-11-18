@@ -71,11 +71,9 @@ def _run_finished(context: _FrameContext) -> JobEnding | None:
 def _message_ended(context: _FrameContext) -> JobEnding | None:
     """Finish a message job at the end of its answer.
 
-    Precondition: none.
-    Postcondition: None for graph jobs; STOPPED when a stop was requested, else SUCCEEDED.
+    Precondition: context.record is a MESSAGE job.
+    Postcondition: STOPPED when a stop was requested, else SUCCEEDED.
     """
-    if context.record.family is not JobFamily.MESSAGE:
-        return None
     if context.record.stop_requested:
         return JobEnding(status=JobStatus.STOPPED)
     return JobEnding(status=JobStatus.SUCCEEDED)
@@ -86,10 +84,12 @@ def _run_errored(context: _FrameContext) -> JobEnding | None:
     return JobEnding(status=JobStatus.FAILED, error=context.frame.error)
 
 
-EVENT_HANDLERS: Final[Mapping[StreamEvent, _Handler]] = {
-    StreamEvent.WORKFLOW_FINISHED: _run_finished,
-    StreamEvent.MESSAGE_END: _message_ended,
-    StreamEvent.ERROR: _run_errored,
+# A graph job's stream always ends with workflow_finished or workflow_paused: core's worker follows an error with a
+# failed workflow_finished that carries the same message, and it is the only outcome of a run that failed before
+# it was stored. Chat streams have no workflow_finished.
+ENDINGS_BY_FAMILY: Final[Mapping[JobFamily, Mapping[StreamEvent, _Handler]]] = {
+    JobFamily.GRAPH: {StreamEvent.WORKFLOW_FINISHED: _run_finished},
+    JobFamily.MESSAGE: {StreamEvent.MESSAGE_END: _message_ended, StreamEvent.ERROR: _run_errored},
 }
 
 
@@ -128,7 +128,7 @@ def _consume(frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper
     if not task_id_known and record.task_id is not None:
         if record.stop_requested:
             stopper.stop(record)
-    handler = EVENT_HANDLERS.get(read.event)
+    handler = ENDINGS_BY_FAMILY[record.family].get(read.event)
     if handler is None:
         return stored
     ending = handler(_FrameContext(record=record, frame=read))
