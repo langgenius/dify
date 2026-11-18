@@ -13,9 +13,6 @@ import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import AccountMenu from '../index'
 
 vi.mock('@/service/use-common', () => ({ useLogout: () => ({ mutate: vi.fn() }) }))
-vi.mock('next-themes', () => ({
-  useTheme: () => ({ theme: 'system', setTheme: vi.fn() }),
-}))
 
 // The settings contents are outside the menu's focus contract; retain a real destination dialog.
 function PreferencesDestination() {
