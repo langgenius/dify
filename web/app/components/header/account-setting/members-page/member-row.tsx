@@ -1,16 +1,19 @@
 'use client'
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { MouseEvent } from 'react'
+import type { MouseEvent, Ref } from 'react'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
+import { useMergedRefs } from '@langgenius/dify-ui/use-merged-refs'
 import { memo, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { getAvatarInitial } from '@/utils/avatar'
+import { InvitedStatus } from './invited-row'
 import { MemberMenu } from './member-menu'
 import { RoleBadges } from './role-badges'
 
 type MemberRowProps = {
+  ref?: Ref<HTMLTableRowElement>
   member: AccountWithRoleResponse
   onRemove: (row: HTMLTableRowElement | null) => void
   roles: Array<{
@@ -25,6 +28,7 @@ type MemberRowProps = {
 
 export const MemberRow = memo(
   ({
+    ref,
     member,
     onRemove,
     roles,
@@ -35,6 +39,7 @@ export const MemberRow = memo(
   }: MemberRowProps) => {
     const { t } = useTranslation(['workspaceMembers'])
     const rowRef = useRef<HTMLTableRowElement>(null)
+    const mergedRowRef = useMergedRefs(rowRef, ref)
     const detailsTriggerRef = useRef<HTMLButtonElement>(null)
     const { formatTimeFromNow } = useFormatTimeFromNow()
 
@@ -56,7 +61,7 @@ export const MemberRow = memo(
 
     return (
       <tr
-        ref={rowRef}
+        ref={mergedRowRef}
         data-testid={`member-row-${member.id}`}
         className="cursor-pointer border-b border-divider-subtle hover:bg-state-base-hover has-[[aria-haspopup=dialog]:focus-visible]:bg-state-base-hover has-[[aria-haspopup=dialog]:focus-visible]:inset-ring-2 has-[[aria-haspopup=dialog]:focus-visible]:inset-ring-state-accent-solid has-[[aria-haspopup=dialog]:focus-visible]:outline-hidden has-[[aria-haspopup=menu]:hover]:bg-transparent"
         onClick={handleRowClick}
@@ -76,11 +81,6 @@ export const MemberRow = memo(
                 >
                   {member.name}
                 </DialogTrigger>
-                {member.status === 'pending' && (
-                  <span className="ms-1 system-xs-medium text-text-warning">
-                    {t(($) => $['members.awaitingAccountActivation'], { ns: 'workspaceMembers' })}
-                  </span>
-                )}
                 {isCurrentUser && (
                   <span className="system-xs-regular text-text-tertiary">
                     {t(($) => $['members.you'], { ns: 'workspaceMembers' })}
@@ -94,7 +94,11 @@ export const MemberRow = memo(
           </div>
         </td>
         <td className="py-2 system-sm-regular text-text-secondary">
-          {formatTimeFromNow(Number(member.last_active_at || member.created_at) * 1000)}
+          {member.status === 'pending' ? (
+            <InvitedStatus />
+          ) : (
+            formatTimeFromNow(Number(member.last_active_at || member.created_at) * 1000)
+          )}
         </td>
         <td className="px-3 py-2">
           <RoleBadges roleNames={roleNames} />

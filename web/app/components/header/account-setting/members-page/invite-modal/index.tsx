@@ -18,21 +18,24 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { Form } from '@langgenius/dify-ui/form'
 import { isDefinedError } from '@orpc/client'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
+import { InvitationResultsContent } from '../invitation-results-content'
 import { InviteButton } from '../invite-button'
 import { mergeEmailRecipients } from './email-recipients'
 import { EmailRecipientsField } from './email-recipients-field'
 import { RoleSelector } from './role-selector'
 
+type InvitationResults = MemberInviteResponse['invitation_results']
 type InviteModalProps = {
   isEmailSetup: boolean
-  onSend: (invitationResults: MemberInviteResponse['invitation_results']) => void
+  onSend: (emails: string[]) => void
 }
 
 type InviteFieldName = 'emails' | 'role'
@@ -48,7 +51,12 @@ type InviteFormProps = {
   isPending: boolean
   errorCode: InviteFieldErrorCode | null
   hasError: boolean
-  onSubmit: (emails: string[], role: string) => void
+  results: InvitationResults | undefined
+  onSubmit: (
+    emails: string[],
+    role: string,
+    onResults: (results: InvitationResults) => void,
+  ) => void
   onDismissError: () => void
 }
 
@@ -58,6 +66,7 @@ function InviteForm({
   isPending,
   errorCode,
   hasError,
+  results,
   onSubmit,
   onDismissError,
 }: InviteFormProps) {
@@ -103,8 +112,18 @@ function InviteForm({
     onSubmit(
       effectiveRecipients.map(({ value }) => value),
       role,
+      (nextResults) => {
+        const failedEmails = new Set(
+          nextResults.filter(({ status }) => status === 'failed').map(({ email }) => email),
+        )
+        setRecipients(effectiveRecipients.filter(({ value }) => failedEmails.has(value)))
+      },
     )
   }
+  const failedResults = results?.filter((item) => item.status === 'failed') ?? []
+  const alreadyMemberEmails =
+    results?.filter((item) => item.status === 'already_member').map(({ email }) => email) ?? []
+  const sentCount = results?.filter((item) => item.status === 'success').length ?? 0
 
   return (
     <Form<InviteFormValues>
@@ -144,6 +163,46 @@ function InviteForm({
             </AlertDescription>
           </Alert>
         )}
+        {failedResults.length > 0 && (
+          <Alert type={sentCount > 0 ? 'warning' : 'error'}>
+            <AlertTitle>
+              {sentCount > 0
+                ? t(($) => $['members.invitePartiallyFailed'], {
+                    ns: 'workspaceMembers',
+                    count: failedResults.length,
+                  })
+                : t(($) => $['members.inviteNoneSent'], { ns: 'workspaceMembers' })}
+            </AlertTitle>
+            <AlertDescription render={<div />}>
+              <ul className="my-1 flex flex-col gap-1">
+                {failedResults.map((item) => (
+                  <li key={item.email} className="wrap-anywhere">
+                    <div dir="ltr" className="system-xs-medium text-text-secondary">
+                      {item.email}
+                    </div>
+                    {item.message && <div>{item.message}</div>}
+                  </li>
+                ))}
+              </ul>
+              {t(($) => $['members.failedRecipientsKept'], { ns: 'workspaceMembers' })}
+            </AlertDescription>
+          </Alert>
+        )}
+        {alreadyMemberEmails.length > 0 && (
+          <Alert type="info">
+            <AlertTitle>
+              {t(($) => $['members.alreadyInWorkspace'], {
+                ns: 'workspaceMembers',
+                count: alreadyMemberEmails.length,
+              })}
+            </AlertTitle>
+            <AlertDescription>
+              <span dir="ltr" className="wrap-anywhere">
+                {alreadyMemberEmails.join(', ')}
+              </span>
+            </AlertDescription>
+          </Alert>
+        )}
         {formError && (
           <div role="alert" className="body-xs-regular text-text-destructive">
             {formError}
@@ -176,7 +235,13 @@ export function InviteModal({ isEmailSetup, onSend }: InviteModalProps) {
   const queryClient = useQueryClient()
   const actionsRef = useRef<DialogActions>(null)
   const formRef = useRef<HTMLFormElement>(null)
-  const { mutate, reset, isPending, error } = useMutation(
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const showsInvitationLinks = (results: InvitationResults) =>
+    deploymentEdition !== 'CLOUD' && results.some(({ status }) => status === 'success')
+  const { mutate, reset, isPending, error, data } = useMutation(
     consoleQuery.workspaces.current.members.inviteEmail.post.mutationOptions({
       context: { silent: true },
       onSuccess: (response) => {
@@ -189,18 +254,29 @@ export function InviteModal({ isEmailSetup, onSend }: InviteModalProps) {
             input: { params: { workspace_id: response.tenant_id } },
           }),
         })
-        onSend(response.invitation_results)
-        actionsRef.current?.close()
+        const results = response.invitation_results
+        onSend(results.map(({ email }) => email.toLowerCase()))
+        if (results.every(({ status }) => status === 'success') && !showsInvitationLinks(results))
+          actionsRef.current?.close()
       },
     }),
   )
 
   const isBusy = isPending
-  const handleSubmit = (emails: string[], role: string) => {
+  const handleSubmit = (
+    emails: string[],
+    role: string,
+    onResults: (results: InvitationResults) => void,
+  ) => {
     if (isPending) return
     reset()
-    mutate({ body: { emails, role, language: locale } })
+    mutate(
+      { body: { emails, role, language: locale } },
+      { onSuccess: (response) => onResults(response.invitation_results) },
+    )
   }
+  const linkResults =
+    data && showsInvitationLinks(data.invitation_results) ? data.invitation_results : undefined
 
   return (
     <>
@@ -224,32 +300,37 @@ export function InviteModal({ isEmailSetup, onSend }: InviteModalProps) {
             return emailInput instanceof HTMLInputElement ? emailInput : true
           }}
         >
-          <DialogHeader>
-            <DialogTitle>
-              {t(($) => $['members.inviteTeamMember'], { ns: 'workspaceMembers' })}
-            </DialogTitle>
-            <DialogDescription>
-              {t(($) => $['members.inviteTeamMemberTip'], { ns: 'workspaceMembers' })}
-            </DialogDescription>
-            <DialogHeaderCloseButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              disabled={isBusy}
-            />
-          </DialogHeader>
-          <InviteForm
-            ref={formRef}
-            isEmailSetup={isEmailSetup}
-            isPending={isBusy}
-            // The link marks a documented code as defined, so `error.code` narrows to the invite contract.
-            errorCode={isDefinedError(error) ? error.code : null}
-            hasError={!!error}
-            onSubmit={(emails, role) => {
-              void handleSubmit(emails, role)
-            }}
-            onDismissError={() => {
-              reset()
-            }}
-          />
+          {linkResults ? (
+            <InvitationResultsContent invitationResults={linkResults} />
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>
+                  {t(($) => $['members.inviteTeamMember'], { ns: 'workspaceMembers' })}
+                </DialogTitle>
+                <DialogDescription>
+                  {t(($) => $['members.inviteTeamMemberTip'], { ns: 'workspaceMembers' })}
+                </DialogDescription>
+                <DialogHeaderCloseButton
+                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                  disabled={isBusy}
+                />
+              </DialogHeader>
+              <InviteForm
+                ref={formRef}
+                isEmailSetup={isEmailSetup}
+                isPending={isBusy}
+                // The link marks a documented code as defined, so `error.code` narrows to the invite contract.
+                errorCode={isDefinedError(error) ? error.code : null}
+                hasError={!!error}
+                results={data?.invitation_results}
+                onSubmit={handleSubmit}
+                onDismissError={() => {
+                  reset()
+                }}
+              />
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </>
