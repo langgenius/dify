@@ -139,6 +139,11 @@ def accepts(
     model is configured. Postcondition: the view's ParamSpec and return type are preserved;
     validated ``query``/``body`` values replace those kwargs, and validation errors abort
     with a sanitized 422 response.
+
+    Because a ParamSpec cannot subtract named keywords, callers can omit injected parameters
+    only when the view declares them optional with a default (for example, ``Model | None = None``).
+    The wrapper replaces that default with validated request data before invoking the view;
+    other required route parameters remain required.
     """
 
     def decorator(view: Callable[_P, _R]) -> Callable[_P, _R]:

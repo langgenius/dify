@@ -134,11 +134,12 @@ def test_paginated_keeps_the_view_hints_and_adds_the_next_page() -> None:
 
 def test_accepts_injects_validated_query_with_defaults_for_absent_fields(app: Flask) -> None:
     @accepts(query=ContractQuery)
-    def view(*, query: ContractQuery) -> ContractQuery:
+    def view(*, query: ContractQuery | None = None) -> ContractQuery:
+        assert query is not None
         return query
 
     with app.test_request_context("/?page=3"):
-        result = view(query=ContractQuery(page=1, limit=20))
+        result = view()
 
     assert isinstance(result, ContractQuery)
     assert result.page == 3
@@ -148,14 +149,15 @@ def test_accepts_injects_validated_query_with_defaults_for_absent_fields(app: Fl
 def test_accepts_preserves_signature_and_forwards_non_injected_arguments() -> None:
     app = Flask(__name__)
 
-    def view(workspace_id: str, *, query: ContractQuery) -> tuple[str, ContractQuery]:
+    def view(workspace_id: str, *, query: ContractQuery | None = None) -> tuple[str, ContractQuery]:
+        assert query is not None
         return workspace_id, query
 
     decorated = accepts(query=ContractQuery)(view)
     assert signature(decorated) == signature(view)
 
     with app.test_request_context("/?page=3"):
-        workspace_id, query = decorated("ws-1", query=ContractQuery(page=99, limit=99))
+        workspace_id, query = decorated("ws-1")
 
     assert workspace_id == "ws-1"
     assert query.page == 3
@@ -169,11 +171,12 @@ class ContractListQuery(BaseModel):
 
 def test_accepts_fills_list_typed_query_fields_from_repeated_parameters(app: Flask) -> None:
     @accepts(query=ContractListQuery)
-    def view(*, query: ContractListQuery) -> ContractListQuery:
+    def view(*, query: ContractListQuery | None = None) -> ContractListQuery:
+        assert query is not None
         return query
 
     with app.test_request_context("/?tag=a&tag=b&word=x&word=y"):
-        result = view(query=ContractListQuery())
+        result = view()
 
     assert result.tag == ["a", "b"]
     assert result.word == "x"
@@ -182,24 +185,26 @@ def test_accepts_fills_list_typed_query_fields_from_repeated_parameters(app: Fla
 @pytest.mark.parametrize("query_string", ["page=abc", "unknown=1"])
 def test_accepts_rejects_invalid_query_with_422(app: Flask, query_string: str) -> None:
     @accepts(query=ContractQuery)
-    def view(*, query: ContractQuery) -> ContractQuery:
+    def view(*, query: ContractQuery | None = None) -> ContractQuery:
+        assert query is not None
         return query
 
     with app.test_request_context(f"/?{query_string}"):
         with pytest.raises(UnprocessableEntity):
-            view(query=ContractQuery())
+            view()
 
 
 def test_accepts_validation_error_is_sanitized_and_structured(app: Flask) -> None:
     """422 body is structured and leaks neither the pydantic docs url nor the user input."""
 
     @accepts(body=ContractBody)
-    def view(*, body: ContractBody) -> ContractBody:
+    def view(*, body: ContractBody | None = None) -> ContractBody:
+        assert body is not None
         return body
 
     with app.test_request_context("/", method="POST", json={"secret": "leak-me"}):
         with pytest.raises(UnprocessableEntity) as exc_info:
-            view(body=ContractBody(name="placeholder"))
+            view()
 
     data = cast(dict[str, Any], cast(Any, exc_info.value).data)
     assert data["message"] == "Request validation failed"
@@ -214,11 +219,12 @@ def test_accepts_validation_error_is_sanitized_and_structured(app: Flask) -> Non
 
 def test_accepts_injects_validated_body(app: Flask) -> None:
     @accepts(body=ContractBody)
-    def view(*, body: ContractBody) -> ContractBody:
+    def view(*, body: ContractBody | None = None) -> ContractBody:
+        assert body is not None
         return body
 
     with app.test_request_context("/", method="POST", json={"name": "x"}):
-        result = view(body=ContractBody(name="placeholder"))
+        result = view()
 
     assert isinstance(result, ContractBody)
     assert result.name == "x"
@@ -269,7 +275,7 @@ def test_accepts_returns_emit_apidoc_through_guard_stack() -> None:
     @_guard_like
     @returns(200, ContractResp)
     @accepts(query=ContractQuery, body=ContractBody)
-    def view(*, query: ContractQuery, body: ContractBody) -> ContractResp:
+    def view(*, query: ContractQuery | None = None, body: ContractBody | None = None) -> ContractResp:
         return ContractResp(value=1)
 
     apidoc = getattr(view, "__apidoc__", {})
