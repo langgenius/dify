@@ -137,7 +137,7 @@ def test_every_route_is_hidden_while_the_deployment_switch_is_off(
 
 def test_provider_types_report_availability(request_context: RequestContext, providers: MagicMock) -> None:
     providers.provider_types.return_value = [
-        FileScanProviderTypeView(provider_type="clamav", available=False, credential_fields=()),
+        FileScanProviderTypeView(provider_type="api", available=True, credential_fields=("api_key",)),
         FileScanProviderTypeView(provider_type="scanii", available=True, credential_fields=("api_key", "api_secret")),
     ]
 
@@ -145,7 +145,7 @@ def test_provider_types_report_availability(request_context: RequestContext, pro
 
     assert response == {
         "data": [
-            {"provider_type": "clamav", "available": False, "credential_fields": []},
+            {"provider_type": "api", "available": True, "credential_fields": ["api_key"]},
             {"provider_type": "scanii", "available": True, "credential_fields": ["api_key", "api_secret"]},
         ]
     }

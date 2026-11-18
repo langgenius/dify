@@ -56,11 +56,16 @@ class OpenAIModeration(Moderation):
         )
 
     @with_credit_usage_created_by(CreditUsageCreatedBy.MODERATION)
-    def _is_violated(self, inputs: dict[str, Any]):
-        text = "\n".join(str(inputs.values()))
+    def _is_violated(self, inputs: dict[str, Any]) -> bool:
+        """Check text through the workspace's OpenAI plugin and credentials, never through hosting."""
+        text = "\n".join(str(value) for value in inputs.values())
         model_manager = ModelManager.for_tenant(tenant_id=self.tenant_id)
         model_instance = model_manager.get_model_instance(
-            tenant_id=self.tenant_id, provider="openai", model_type=ModelType.MODERATION, model="omni-moderation-latest"
+            tenant_id=self.tenant_id,
+            provider="openai",
+            model_type=ModelType.MODERATION,
+            model="omni-moderation-latest",
+            require_custom_credentials=True,
         )
 
         openai_moderation = model_instance.invoke_moderation(text=text)

@@ -13,6 +13,7 @@ class FileChunk:
 
     total_length: int
     bytes_written: int = field(default=0, init=False)
+    next_sequence: int = field(default=0, init=False)
     data: bytearray = field(init=False)
 
     def __post_init__(self):
@@ -23,6 +24,8 @@ def merge_blob_chunks[T: ToolInvokeMessage | AgentInvokeMessage](
     response: Generator[T],
     max_file_size: int = 30 * 1024 * 1024,
     max_chunk_size: int = 8192,
+    *,
+    require_complete: bool = False,
 ) -> Generator[T]:
     """
     Merge streaming blob chunks into complete blob messages.
@@ -35,12 +38,13 @@ def merge_blob_chunks[T: ToolInvokeMessage | AgentInvokeMessage](
         response: Generator yielding messages that may include blob chunks
         max_file_size: Maximum allowed file size in bytes (default: 30MB)
         max_chunk_size: Maximum allowed chunk size in bytes (default: 8KB)
+        require_complete: Require ordered chunks with a consistent declared size and a complete final chunk.
 
     Yields:
         Messages from the response stream, with blob chunks merged into complete blobs
 
     Raises:
-        ValueError: If file size exceeds max_file_size or chunk size exceeds max_chunk_size
+        ValueError: If size limits are exceeded or a chunk stream requiring completeness is invalid.
     """
     files: dict[str, FileChunk] = {}
 
@@ -65,7 +69,9 @@ def merge_blob_chunks[T: ToolInvokeMessage | AgentInvokeMessage](
                 files[chunk_id] = FileChunk(total_length)
 
             # Check if file is too large (before appending)
-            if files[chunk_id].bytes_written + len(blob_data) > max_file_size:
+            current_file = files[chunk_id]
+            next_offset = current_file.bytes_written + len(blob_data)
+            if next_offset > max_file_size:
                 # Delete the file if it's too large
                 del files[chunk_id]
                 raise ValueError(f"File is too large which reached the limit of {max_file_size / 1024 / 1024}MB")
@@ -74,11 +80,18 @@ def merge_blob_chunks[T: ToolInvokeMessage | AgentInvokeMessage](
             if len(blob_data) > max_chunk_size:
                 raise ValueError(f"File chunk is too large which reached the limit of {max_chunk_size / 1024}KB")
 
+            if require_complete and (
+                resp.message.sequence != current_file.next_sequence
+                or total_length != current_file.total_length
+                or next_offset > current_file.total_length
+                or (is_end and next_offset != current_file.total_length)
+            ):
+                raise ValueError("Plugin file chunks have an invalid sequence or length")
+
             # Append the blob data to the buffer
-            files[chunk_id].data[files[chunk_id].bytes_written : files[chunk_id].bytes_written + len(blob_data)] = (
-                blob_data
-            )
-            files[chunk_id].bytes_written += len(blob_data)
+            current_file.data[current_file.bytes_written : next_offset] = blob_data
+            current_file.bytes_written = next_offset
+            current_file.next_sequence += 1
 
             # If this is the final chunk, yield a complete blob message
             if is_end:
@@ -86,9 +99,7 @@ def merge_blob_chunks[T: ToolInvokeMessage | AgentInvokeMessage](
                 message_class = type(resp)
                 merged_message = message_class(
                     type=ToolInvokeMessage.MessageType.BLOB,
-                    message=ToolInvokeMessage.BlobMessage(
-                        blob=bytes(files[chunk_id].data[: files[chunk_id].bytes_written])
-                    ),
+                    message=ToolInvokeMessage.BlobMessage(blob=bytes(current_file.data[: current_file.bytes_written])),
                     meta=resp.meta,
                 )
                 assert isinstance(merged_message, (ToolInvokeMessage, AgentInvokeMessage))
@@ -97,3 +108,6 @@ def merge_blob_chunks[T: ToolInvokeMessage | AgentInvokeMessage](
                 del files[chunk_id]
         else:
             yield resp
+
+    if require_complete and files:
+        raise ValueError("Plugin file stream ended before the final chunk")

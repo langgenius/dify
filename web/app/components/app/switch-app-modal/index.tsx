@@ -4,7 +4,6 @@ import type {
   AppPartial,
   ConvertToWorkflowPayload,
 } from '@dify/contracts/api/console/apps/types.gen'
-import type { DialogActions, DialogProps } from '@langgenius/dify-ui/dialog'
 import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import {
   AlertDialog,
@@ -43,6 +42,7 @@ import {
   IconPickerTrigger,
 } from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
+import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
@@ -50,16 +50,17 @@ import { consoleQuery } from '@/service/console'
 import { getRedirection } from '@/utils/app-redirection'
 import { getErrorMessage } from '@/utils/error-message'
 
-type SwitchAppModalProps = Pick<DialogProps, 'open' | 'onOpenChange'> & {
+type SwitchAppModalProps = {
+  open: boolean
+  onClose: () => void
   sourceApp: Pick<
     AppPartial,
     'icon' | 'icon_background' | 'icon_type' | 'icon_url' | 'id' | 'mode' | 'name'
   >
 }
 
-const SwitchAppModal = ({ open, sourceApp, onOpenChange }: SwitchAppModalProps) => {
+const SwitchAppModal = ({ open, sourceApp, onClose }: SwitchAppModalProps) => {
   const nameInputRef = useRef<HTMLInputElement>(null)
-  const actionsRef = useRef<DialogActions>(null)
   const { t } = useTranslation(['app'])
   const { push, replace } = useRouter()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -81,7 +82,7 @@ const SwitchAppModal = ({ open, sourceApp, onOpenChange }: SwitchAppModalProps) 
           ),
         onSuccess: ({ new_app_id, permission_keys }) => {
           const finish = (removed: boolean) => {
-            actionsRef.current?.close()
+            onClose()
             getRedirection(
               {
                 id: new_app_id,
@@ -110,12 +111,11 @@ const SwitchAppModal = ({ open, sourceApp, onOpenChange }: SwitchAppModalProps) 
   }
   return (
     <Dialog
-      actionsRef={actionsRef}
       open={open}
       disablePointerDismissal
       onOpenChange={(nextOpen, details) => {
-        if (!nextOpen && isPending && details.reason !== 'imperative-action') details.cancel()
-        else onOpenChange?.(nextOpen, details)
+        if (!nextOpen && isPending) details.cancel()
+        else if (!nextOpen) onClose()
       }}
     >
       <DialogContent initialFocus={nameInputRef} className="w-150">
@@ -142,22 +142,13 @@ function SwitchAppSession({
 }) {
   const formRef = useRef<HTMLFormElement>(null)
   const { t } = useTranslation(['app', 'common', 'explore'])
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-
-  const deploymentEdition = systemFeatures.deployment_edition
   const { data: appQuota } = useQuery(
     consoleQuery.features.get.queryOptions({
-      enabled: deploymentEdition === 'CLOUD',
-      select: (data) => data.apps,
+      select: (data) => getCountQuota(data.apps),
     }),
   )
-  const isAppQuotaUnavailable = deploymentEdition === 'CLOUD' && appQuota === undefined
-  // A limit of 0 means unlimited.
-  const isAppsFull =
-    deploymentEdition === 'CLOUD' &&
-    appQuota !== undefined &&
-    appQuota.limit > 0 &&
-    appQuota.size >= appQuota.limit
+  const isAppQuotaUnavailable = appQuota === undefined
+  const isAppsFull = appQuota !== undefined && isQuotaReached(appQuota)
 
   const appIconType = zIconType.safeParse(sourceApp.icon_type).data
   const [appIcon, setAppIcon] = useState(

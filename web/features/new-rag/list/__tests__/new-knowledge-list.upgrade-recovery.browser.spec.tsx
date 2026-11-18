@@ -17,6 +17,16 @@ import {
   upgradeCards,
 } from './new-knowledge-list-test-env'
 
+// The upgrade card reads job detail on this production polling interval.
+const UPGRADE_POLL_INTERVAL = 2_000
+
+function fakeUpgradePolling() {
+  vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+  onTestFinished(() => {
+    vi.useRealTimers()
+  })
+}
+
 const api = vi.hoisted(() => ({
   spaces: vi.fn<typeof consoleClient.knowledgeFs.spaces.get>(),
   deleteSpace: vi.fn<typeof consoleClient.knowledgeFs.spaces.byControlSpaceId.delete>(),
@@ -24,13 +34,8 @@ const api = vi.hoisted(() => ({
   upgradeJobs: vi.fn<typeof consoleClient.datasets.knowledgeFsUpgradeJobs.get>(),
   upgradeJob: vi.fn<typeof consoleClient.datasets.byDatasetId.knowledgeFsUpgrades.byJobId.get>(),
   datasets: vi.fn<typeof consoleClient.datasets.get>(),
-  push: vi.fn(),
 }))
 
-vi.mock('@/next/navigation', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/next/navigation')>()),
-  useRouter: () => ({ push: api.push }),
-}))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -177,11 +182,13 @@ describe('NewKnowledgeList upgrade recovery', () => {
       api.datasets.mockResolvedValue(datasetsPage([legacyDataset(running)]))
       const detail = createDeferred<KnowledgeFsUpgradeJobResponse>()
       api.upgradeJob.mockReturnValue(detail.promise)
+      fakeUpgradePolling()
       const { refresh } = await setup()
       await expect.element(upgradeCards('Support knowledge')).toBeVisible()
       api.upgradeJobs.mockResolvedValue({ data: [failed] })
       api.datasets.mockResolvedValue(datasetsPage([legacyDataset(failed)]))
       detail.resolve(failed)
+      await vi.advanceTimersByTimeAsync(UPGRADE_POLL_INTERVAL)
       await expect.element(page.getByText('The import failed')).toBeVisible()
       await refresh(...recoveryKeys())
       await expect.poll(() => upgradeCards('Support knowledge').elements().length).toBe(1)
@@ -212,7 +219,10 @@ describe('NewKnowledgeList upgrade recovery', () => {
       api.upgradeJobs.mockResolvedValue({ data: [running] })
       api.datasets.mockResolvedValue(datasetsPage([legacyDataset(running)]))
       api.upgradeJob.mockResolvedValue(succeeded)
+      fakeUpgradePolling()
       const { refresh } = await setup()
+      await expect.element(upgradeCards('Support knowledge')).toBeVisible()
+      await vi.advanceTimersByTimeAsync(UPGRADE_POLL_INTERVAL)
       await expect
         .element(page.getByRole('link', { name: 'Support knowledge' }))
         .toHaveAttribute('href', '/datasets/new/space-1')

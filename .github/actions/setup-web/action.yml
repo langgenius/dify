@@ -25,7 +25,7 @@ runs:
       with:
         install: false
     - name: Setup Vite+
-      uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
+      uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
       with:
         node-manager: false
         package-manager: |
