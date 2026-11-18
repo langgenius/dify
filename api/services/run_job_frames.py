@@ -1,0 +1,118 @@
+"""Core's run stream as typed values: the only code that knows its wire format.
+
+A frame is one chunk of `BaseAppGenerator.convert_to_event_stream`: `data: <json>` for an event, `event: ping` for a
+ping. The JSON is the event's `StreamResponse`, flattened together with the ids that the app's stream wrapper adds
+(`ChatbotAppStreamResponse`, `CompletionAppStreamResponse`, `WorkflowAppStreamResponse`); the app's response
+converter writes those ids by hand, as it builds the error event by hand from the exception. Core exports no name for
+the framing or for the flattened ids, so only the contract test guards them.
+"""
+
+from __future__ import annotations
+
+import json
+from collections.abc import Mapping
+from dataclasses import dataclass
+from typing import Any, Final, Literal
+
+from pydantic import BaseModel, ValidationError
+
+from core.app.entities.task_entities import StreamEvent, StreamResponse, WorkflowFinishStreamResponse
+from graphon.enums import WorkflowExecutionStatus
+from services.run_job_contracts import JobIds
+
+DATA_PREFIX: Final = "data: "
+_EVENT_KEY: Final = "event"
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class RunFrame:
+    """What one frame says: the ids it carries, a finished run's status and error, or an error event's message."""
+
+    event: StreamEvent
+    ids: JobIds
+    run_status: WorkflowExecutionStatus | None = None
+    error: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class Misfit:
+    """A data frame that does not fit core's model; event is its event name as sent, if it has one."""
+
+    event: object
+
+
+class _StreamIds(BaseModel):
+    """The ids the app's stream wrapper adds to every event."""
+
+    workflow_run_id: str | None = None
+    message_id: str | None = None
+    conversation_id: str | None = None
+
+
+class _Frame(StreamResponse, _StreamIds):
+    """Any event but an error: core's StreamResponse with the wrapper's ids."""
+
+
+class _ErrorFrame(_StreamIds):
+    """The error event; core has no model for it, so these names are guarded only by the contract test."""
+
+    event: Literal[StreamEvent.ERROR]
+    message: str
+
+
+def decode_data_frame(frame: str) -> dict[str, Any] | None:
+    """Postcondition: the JSON object of a `data:` frame; None for any other frame or a payload that is not one."""
+    if not frame.startswith(DATA_PREFIX):
+        return None
+    try:
+        payload = json.loads(frame[len(DATA_PREFIX) :])
+    except ValueError:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    return payload
+
+
+def encode_data_frame(payload: Mapping[str, Any]) -> str:
+    """Postcondition: a `data:` frame that decode_data_frame reads back as payload."""
+    return f"{DATA_PREFIX}{json.dumps(payload, ensure_ascii=False)}\n\n"
+
+
+def read_frame(frame: str) -> RunFrame | Misfit | None:
+    """Read one frame of a run's stream.
+
+    Precondition: none.
+    Postcondition: None for a frame without data (a ping); the frame's values when it fits core's model; otherwise
+    a Misfit naming its event. Nothing is guessed from a frame that does not fit.
+    """
+    payload = decode_data_frame(frame)
+    if payload is None:
+        if frame.startswith(DATA_PREFIX):
+            return Misfit(event=None)
+        return None
+    try:
+        return _typed(payload)
+    except ValidationError:
+        return Misfit(event=payload.get(_EVENT_KEY))
+
+
+def _typed(payload: Mapping[str, Any]) -> RunFrame:
+    """Precondition: payload is a decoded data frame. Postcondition: its values; ValidationError when it misfits."""
+    if payload.get(_EVENT_KEY) == StreamEvent.ERROR:
+        error = _ErrorFrame.model_validate(payload)
+        return RunFrame(event=error.event, ids=_ids(error, task_id=None), error=error.message)
+    frame = _Frame.model_validate(payload)
+    ids = _ids(frame, task_id=frame.task_id)
+    if frame.event is not StreamEvent.WORKFLOW_FINISHED:
+        return RunFrame(event=frame.event, ids=ids)
+    finished = WorkflowFinishStreamResponse.model_validate(payload).data
+    return RunFrame(event=frame.event, ids=ids, run_status=finished.status, error=finished.error)
+
+
+def _ids(frame: _StreamIds, *, task_id: str | None) -> JobIds:
+    return JobIds(
+        task_id=task_id,
+        run_id=frame.workflow_run_id,
+        message_id=frame.message_id,
+        conversation_id=frame.conversation_id,
+    )
