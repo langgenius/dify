@@ -20,13 +20,13 @@ from core.plugin.impl.datasource import (
 class PluginDatasourceListRequestKwargs(TypedDict):
     """Keyword arguments the manager passes when listing providers."""
 
-    transformer: Callable[[PluginDatasourceListPayload], PluginDatasourceListPayload]
+    transformer: Callable[[dict[str, object]], PluginDatasourceListPayload]
 
 
 class PluginDatasourceSingleRequestKwargs(TypedDict):
     """Keyword arguments the manager passes when resolving one provider."""
 
-    transformer: Callable[[PluginDatasourceSinglePayload], PluginDatasourceSinglePayload]
+    transformer: Callable[[dict[str, object]], PluginDatasourceSinglePayload]
 
 
 def _datasource_provider(name: str = "provider") -> SimpleNamespace:
@@ -50,7 +50,7 @@ class TestPluginDatasourceManager:
             method: str, path: str, type_: object, **kwargs: Unpack[PluginDatasourceListRequestKwargs]
         ) -> list[SimpleNamespace]:
             transformer = kwargs["transformer"]
-            payload = PluginDatasourceListPayload.model_validate(
+            transformed = transformer(
                 {
                     "data": [
                         {
@@ -62,7 +62,6 @@ class TestPluginDatasourceManager:
                     ]
                 }
             )
-            transformed = transformer(payload)
             assert transformed.data is not None
             declaration = transformed.data[0].declaration
             assert declaration is not None
@@ -92,7 +91,7 @@ class TestPluginDatasourceManager:
             method: str, path: str, type_: object, **kwargs: Unpack[PluginDatasourceListRequestKwargs]
         ) -> list[SimpleNamespace]:
             transformer = kwargs["transformer"]
-            payload = PluginDatasourceListPayload.model_validate(
+            transformer(
                 {
                     "data": [
                         {
@@ -104,7 +103,6 @@ class TestPluginDatasourceManager:
                     ]
                 }
             )
-            transformer(payload)
             return [provider]
 
         request_mock = mocker.patch.object(manager, "_request_with_plugin_daemon_response", side_effect=fake_request)
@@ -130,7 +128,7 @@ class TestPluginDatasourceManager:
             method: str, path: str, type_: object, **kwargs: Unpack[PluginDatasourceSingleRequestKwargs]
         ) -> SimpleNamespace:
             transformer = kwargs["transformer"]
-            payload = PluginDatasourceSinglePayload.model_validate(
+            transformed = transformer(
                 {
                     "data": {
                         "declaration": {
@@ -139,7 +137,6 @@ class TestPluginDatasourceManager:
                     }
                 }
             )
-            transformed = transformer(payload)
             assert transformed.data is not None
             declaration = transformed.data.declaration
             assert declaration is not None
@@ -166,7 +163,7 @@ class TestPluginDatasourceManager:
             method: str, path: str, type_: object, **kwargs: Unpack[PluginDatasourceListRequestKwargs]
         ) -> list[SimpleNamespace]:
             transformer = kwargs["transformer"]
-            payload = PluginDatasourceListPayload.model_validate(
+            transformed = transformer(
                 {
                     "data": [
                         {},
@@ -181,7 +178,6 @@ class TestPluginDatasourceManager:
                     ]
                 }
             )
-            transformed = transformer(payload)
             data = transformed.data
             assert data is not None
             assert data[0].declaration is None
@@ -196,7 +192,7 @@ class TestPluginDatasourceManager:
             assert named is not None
             assert named.datasources is not None
             assert named.datasources[0].identity.provider == "remote"
-            assert "output_schema" not in named.datasources[0].model_fields_set
+            assert "output_schema" not in named.datasources[0].model_dump(exclude_unset=True)
             return [provider]
 
         mocker.patch.object(manager, "_request_with_plugin_daemon_response", side_effect=fake_request)
@@ -217,14 +213,9 @@ class TestPluginDatasourceManager:
             method: str, path: str, type_: object, **kwargs: Unpack[PluginDatasourceSingleRequestKwargs]
         ) -> SimpleNamespace:
             transformer = kwargs["transformer"]
-            empty = PluginDatasourceSinglePayload.model_validate({})
-            seen.append(transformer(empty))
-            no_declaration = PluginDatasourceSinglePayload.model_validate({"data": {}})
-            seen.append(transformer(no_declaration))
-            no_schema = PluginDatasourceSinglePayload.model_validate(
-                {"data": {"declaration": {"datasources": [{"identity": {"provider": "old"}}]}}}
-            )
-            seen.append(transformer(no_schema))
+            seen.append(transformer({}))
+            seen.append(transformer({"data": {}}))
+            seen.append(transformer({"data": {"declaration": {"datasources": [{"identity": {"provider": "old"}}]}}}))
             return remote
 
         mocker.patch.object(manager, "_request_with_plugin_daemon_response", side_effect=fake_request)
