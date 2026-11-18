@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
+from types import MappingProxyType
 from typing import Final
 
 from flask_restx import Resource
@@ -22,8 +23,16 @@ from extensions.ext_application_services import application_services
 from models.model import AppMode
 from services.run_job_service import JobCapacityError, JobNotFoundError, JobOpening
 
-WORKFLOW_START_OP: Final = "start.console_app.workflow"
-ADVANCED_CHAT_START_OP: Final = "start.console_app.advanced_chat"
+START_OP_PREFIX: Final = "start.console_app."
+WORKFLOW_START_OP: Final = f"{START_OP_PREFIX}workflow"
+ADVANCED_CHAT_START_OP: Final = f"{START_OP_PREFIX}advanced_chat"
+# The app modes each start op runs: every mode a job can run has exactly one.
+START_MODES: Final[Mapping[str, tuple[AppMode, ...]]] = MappingProxyType(
+    {
+        WORKFLOW_START_OP: (AppMode.WORKFLOW,),
+        ADVANCED_CHAT_START_OP: (AppMode.ADVANCED_CHAT,),
+    }
+)
 _START_FIELDS: Final = frozenset({"wait_seconds", "idempotency_key"})
 _JOB_STATE: Final = (200, JobState, "Job state")
 APPS_SURFACE: Final = "apps"
@@ -49,14 +58,15 @@ def _launch(ctx: Context, body: StartPayload) -> Iterable[str]:
     return stream
 
 
-def start_job(ctx: Context, body: StartPayload, *, op: str, modes: tuple[AppMode, ...]) -> JobState:
+def start_job(ctx: Context, body: StartPayload, *, op: str) -> JobState:
     """Start a run as a background job and wait for its first result.
 
-    Precondition: the guards admitted the caller and body is a start payload (wait_seconds, idempotency_key).
+    Precondition: the guards admitted the caller, body is a start payload (wait_seconds, idempotency_key) and op is
+    a key of START_MODES.
     Postcondition: a job exists and its run was accepted by the service, or the service's error was raised and no
     job remains. A repeated idempotency key returns the first job and starts nothing.
     """
-    require_mode(ctx.app, *modes)
+    require_mode(ctx.app, *START_MODES[op])
     owner = job_owner(ctx)
     opening = JobOpening(owner=owner, mode=AppMode.value_of(ctx.app.mode), op=op, idempotency_key=body.idempotency_key)
     run_jobs = application_services().run_jobs
@@ -86,7 +96,7 @@ class WorkflowStartApi(Resource):
         returns=_JOB_STATE,
     )
     def post(self, ctx: Context, app_id: str, *, body: WorkflowStartPayload):
-        return start_job(ctx, body, op=WORKFLOW_START_OP, modes=(AppMode.WORKFLOW,))
+        return start_job(ctx, body, op=WORKFLOW_START_OP)
 
 
 @openapi_ns.route("/apps/<string:app_id>/advanced-chat:start")
@@ -103,4 +113,4 @@ class AdvancedChatStartApi(Resource):
         returns=_JOB_STATE,
     )
     def post(self, ctx: Context, app_id: str, *, body: AdvancedChatStartPayload):
-        return start_job(ctx, body, op=ADVANCED_CHAT_START_OP, modes=(AppMode.ADVANCED_CHAT,))
+        return start_job(ctx, body, op=ADVANCED_CHAT_START_OP)
