@@ -1,3 +1,5 @@
+import { userEvent } from 'vite-plus/test/browser'
+import { createDeferred } from '@/test/deferred'
 import { apiError, installFakeApi, route } from '@/test/fake-api'
 import { renderDevicePage } from '../../__tests__/device-page-fixture'
 
@@ -99,4 +101,33 @@ it('retains the SSO identity on approval failure and succeeds after retry', asyn
   await expect
     .element(screen.getByRole('heading', { name: 'deviceFlow.success.title' }))
     .toBeVisible()
+})
+
+it('keeps focus on the pending approval so a keyboard retry works after failure', async () => {
+  const pending = createDeferred<unknown>()
+  const request = fake.route('POST', 'origin', approveExternalPath)
+  request.mockReturnValueOnce(pending.promise)
+  const { screen } = await renderDevicePage()
+  await expect.element(screen.getByText(context.subject_email)).toBeVisible()
+  const approve = screen.getByRole('button', { name: 'deviceFlow.authorize.approve' })
+  await approve.click()
+  await expect.element(approve).toHaveAttribute('aria-disabled', 'true')
+  const button = await approve.element()
+  expect(document.activeElement).toBe(button)
+  pending.reject(
+    apiError({
+      status: 400,
+      code: 'unexpected',
+      message: 'Unexpected',
+      details: { error: 'unexpected' },
+    }),
+  )
+  await expect.element(screen.getByText('deviceFlow.approveError.default')).toBeVisible()
+  await expect.element(approve).toBeEnabled()
+  expect(document.activeElement).toBe(button)
+  await userEvent.keyboard('{Enter}')
+  await expect
+    .element(screen.getByRole('heading', { name: 'deviceFlow.success.title' }))
+    .toBeVisible()
+  expect(request).toHaveBeenCalledTimes(2)
 })

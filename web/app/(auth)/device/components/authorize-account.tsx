@@ -90,10 +90,10 @@ const AuthorizeAccount: FC<Props> = ({
         </div>
       )}
       <div className="flex gap-3">
-        <Button variant="primary" size="large" className="flex-1" onClick={approve} disabled={busy}>
+        <Button variant="primary" size="large" className="flex-1" onClick={approve} loading={busy}>
           {t(($) => $['authorize.approve'])}
         </Button>
-        <Button variant="secondary" size="large" className="flex-1" onClick={deny} disabled={busy}>
+        <Button variant="secondary" size="large" className="flex-1" onClick={deny} loading={busy}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>
       </div>

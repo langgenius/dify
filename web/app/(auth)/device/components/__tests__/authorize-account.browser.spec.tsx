@@ -67,8 +67,7 @@ it.each(['approve', 'deny'] as const)(
   },
 )
 
-// TODO(https://github.com/langgenius/dify/issues/46700): pending Approve drops keyboard focus to <body>.
-it.fails('keeps the account and code available after failure and completes a native keyboard retry', async () => {
+it('keeps the account and code available after failure and completes a native keyboard retry', async () => {
   deviceAction('approve').mockRejectedValueOnce(
     apiError({
       status: 400,
@@ -85,7 +84,34 @@ it.fails('keeps the account and code available after failure and completes a nat
   await expect.element(screen.getByText('gareth@example.com')).toBeVisible()
   await userEvent.keyboard('{Enter}')
   await expect
-    .element(screen.getByRole('heading', { name: 'deviceFlow.success.title' }), { timeout: 1000 })
+    .element(screen.getByRole('heading', { name: 'deviceFlow.success.title' }))
     .toBeVisible()
   expect(deviceAction('approve')).toHaveBeenLastCalledWith(withCode)
+})
+
+it('keeps focus on a pending action so a keyboard retry works after failure', async () => {
+  const pending = createDeferred<unknown>()
+  deviceAction('approve').mockReturnValueOnce(pending.promise)
+  const { screen } = await renderDevicePage({ signedIn: true })
+  const approve = screen.getByRole('button', { name: 'deviceFlow.authorize.approve' })
+  await approve.click()
+  await expect.element(approve).toHaveAttribute('aria-disabled', 'true')
+  const button = await approve.element()
+  expect(document.activeElement).toBe(button)
+  pending.reject(
+    apiError({
+      status: 400,
+      code: 'unexpected',
+      message: 'Unexpected',
+      details: { error: 'unexpected' },
+    }),
+  )
+  await expect.element(screen.getByText('deviceFlow.approveError.default')).toBeVisible()
+  await expect.element(approve).toBeEnabled()
+  expect(document.activeElement).toBe(button)
+  await userEvent.keyboard('{Enter}')
+  await expect
+    .element(screen.getByRole('heading', { name: 'deviceFlow.success.title' }))
+    .toBeVisible()
+  expect(deviceAction('approve')).toHaveBeenCalledTimes(2)
 })
