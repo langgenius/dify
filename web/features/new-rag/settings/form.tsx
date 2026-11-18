@@ -6,6 +6,8 @@ import { Form } from '@langgenius/dify-ui/form'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { FileScanSetting } from '@/features/file-scan/file-scan-setting'
+import { useFileScanPolicyController } from '@/features/file-scan/use-file-scan-policy'
 import { BasicInformationSection } from './basic-information'
 import { DeleteKnowledgeAction } from './delete-knowledge'
 import { ExternalAccessSection } from './external-access'
@@ -22,6 +24,7 @@ import {
 
 export function KnowledgeSettingsForm() {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeSettings', 'knowledgeErrors'])
+  const { t: tFileScan } = useTranslation(['fileScan'])
   const { t: tCommon } = useTranslation(['common'])
   const space = useAtomValue(knowledgeSettingsSpaceAtom)
   const canSave = useAtomValue(knowledgeSettingsCanSubmitAtom)
@@ -31,6 +34,12 @@ export function KnowledgeSettingsForm() {
   const saveError = useAtomValue(knowledgeSettingsSaveErrorAtom)
   const save = useSetAtom(saveKnowledgeSettingsAtom)
   const reset = useSetAtom(resetKnowledgeSettingsDraftAtom)
+  const fileScan = useFileScanPolicyController({
+    active: Boolean(space),
+    product: 'knowledge-fs',
+    readonly: !space?.permission_keys.includes('knowledge_space_edit'),
+    resourceId: space?.control_space_id ?? '',
+  })
 
   if (!space) return null
   const canModify = space.permission_keys.some((permission) =>
@@ -43,6 +52,20 @@ export function KnowledgeSettingsForm() {
   )
 
   const submit = async () => {
+    // The scan policy has its own endpoint; it goes first so a rejected policy stops the save.
+    const fileScanResult = await fileScan.save()
+    if (fileScanResult === 'invalid') {
+      toast.error(tFileScan(($) => $['policy.scannerRequired']))
+      return
+    }
+    if (fileScanResult === 'failed') {
+      toast.error(tFileScan(($) => $['policy.saveFailed']))
+      return
+    }
+    if (!canSave) {
+      if (fileScanResult === 'saved') toast.success(tCommon(($) => $['api.actionSuccess']))
+      return
+    }
     const result = await save()
     if (result.status === 'saved') toast.success(tCommon(($) => $['api.actionSuccess']))
     const errorKey = result.errorKey
@@ -54,6 +77,7 @@ export function KnowledgeSettingsForm() {
       )
   }
   const cancel = async () => {
+    fileScan.reset()
     const result = await reset()
     const errorKey = result.errorKey
     if (errorKey)
@@ -97,6 +121,12 @@ export function KnowledgeSettingsForm() {
         )}
         <BasicInformationSection />
         <ExternalAccessSection />
+        {fileScan.active && (
+          <>
+            <div className="h-px bg-divider-subtle" />
+            <FileScanSetting controller={fileScan} />
+          </>
+        )}
         <RetrievalSettingsSection />
         <DeleteKnowledgeAction />
         {saveError && !isSaving && (
@@ -110,7 +140,9 @@ export function KnowledgeSettingsForm() {
           <div className="flex justify-end gap-2 border-t border-divider-subtle pt-4">
             <Button
               type="button"
-              disabled={(!hasDraft && !saveError) || isSaving}
+              disabled={
+                (!hasDraft && !saveError && !fileScan.dirty) || isSaving || fileScan.isSaving
+              }
               onClick={() => void cancel()}
             >
               {tCommon(($) => $['operation.cancel'])}
@@ -118,8 +150,8 @@ export function KnowledgeSettingsForm() {
             <Button
               type="submit"
               variant="primary"
-              disabled={!canSave && !isSaving}
-              loading={isSaving}
+              disabled={!canSave && !fileScan.dirty && !isSaving && !fileScan.isSaving}
+              loading={isSaving || fileScan.isSaving}
             >
               {t(($) => $['settings.saveChanges'], { ns: 'knowledgeSettings' })}
             </Button>

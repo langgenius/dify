@@ -24,7 +24,6 @@ import {
 } from '@/app/components/billing/pricing/query-params'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useModalContext } from '@/context/modal-context'
 
 type Props = Readonly<{
   show: boolean
@@ -67,11 +66,10 @@ const NewFeaturePanel = ({
   const { t } = useTranslation(['common', 'workflow'])
   const { data: speech2textDefaultModel } = useDefaultModel(ModelTypeEnum.speech2text)
   const { data: text2speechDefaultModel } = useDefaultModel(ModelTypeEnum.tts)
-  const { hasBlockingModalOpen } = useModalContext()
 
   return (
     <FeaturePanelDrawer
-      show={show && !hasBlockingModalOpen && pricing !== 'open'}
+      show={show && pricing !== 'open'}
       onClose={onClose}
       inWorkflow={inWorkflow}
       className={drawerClassName}

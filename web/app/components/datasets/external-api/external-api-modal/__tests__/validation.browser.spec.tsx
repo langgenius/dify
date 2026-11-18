@@ -1,4 +1,5 @@
 import type { consoleClient } from '@/service/console'
+import { Dialog } from '@langgenius/dify-ui/dialog'
 import { createInstance } from 'i18next'
 import { useState } from 'react'
 import { I18nextProvider } from 'react-i18next'
@@ -9,7 +10,8 @@ import common from '@/i18n/locales/en-US/common.json'
 import dataset from '@/i18n/locales/en-US/dataset.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
-import AddExternalAPIModal from '../index'
+import { ExternalApiDialogContent } from '../dialog-content'
+import { useSaveExternalApi } from '../use-save-external-api'
 import { response } from './fixtures'
 
 vi.unmock('react-i18next')
@@ -40,16 +42,16 @@ async function setup(endpoint: string, key = 'secret-key') {
   })
   const { wrapper: Providers } = createConsoleQueryWrapper()
   function Caller() {
+    const save = useSaveExternalApi()
     const [open, setOpen] = useState(true)
     return (
       <>
-        {open && (
-          <AddExternalAPIModal
-            isEditMode={false}
-            onSave={() => {}}
-            onCancel={() => setOpen(false)}
+        <Dialog open={open} onOpenChange={setOpen}>
+          <ExternalApiDialogContent
+            pending={save.isPending}
+            onSubmit={(body) => save.mutate({ body }, { onSuccess: () => setOpen(false) })}
           />
-        )}
+        </Dialog>
         <AppToaster />
       </>
     )
@@ -73,7 +75,10 @@ it('reports a short key without discarding the draft or sending a request', asyn
   await expect
     .element(screen.getByText('API-key length cannot be less than 5 characters'))
     .toBeVisible()
-  await expect.element(screen.getByRole('dialog')).toBeVisible()
+  // The error toast is also a dialog; name the form so the query does not wait for it to close.
+  await expect
+    .element(screen.getByRole('dialog', { name: 'Add an External Knowledge API' }))
+    .toBeVisible()
   await expect.element(screen.getByLabelText(/Name/)).toHaveValue('Product API')
   expect(api.create).not.toHaveBeenCalled()
 })

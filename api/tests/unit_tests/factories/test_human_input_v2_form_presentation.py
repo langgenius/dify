@@ -55,7 +55,7 @@ def test_file_refresh_keeps_markdown_and_both_snapshot_representations_consisten
     external = "https://example.com/report.pdf?download=true"
     before = f"Review {markup.format(url=url)} / {markup.format(url=url)} / [External]({external}) "
     after = "\nFrozen text."
-    note = ParagraphInput(output_variable_name="note", default_value=url)
+    note = ParagraphInput(output_variable_name="note", resolved_default_value=url)
     snapshot = form.model_copy(
         update={
             "parts": (MarkdownFragment(text=before), note, MarkdownFragment(text=after)),
@@ -93,7 +93,7 @@ def test_paragraph_presentation_supplies_a_concrete_default_for_shared_form_cont
     expected_resolved_defaults: dict[str, str],
 ) -> None:
     form = form.model_copy(
-        update={"parts": (ParagraphInput(output_variable_name="answer", default_value=default_value),)}
+        update={"parts": (ParagraphInput(output_variable_name="answer", resolved_default_value=default_value),)}
     )
 
     presentation = build_form_presentation(form)
@@ -107,17 +107,17 @@ def test_paragraph_presentation_supplies_a_concrete_default_for_shared_form_cont
 
 
 def test_render_follows_source_order_without_reinterpreting_submitted_markers(form: ResolvedForm) -> None:
-    note = ParagraphInput(output_variable_name="note", default_value=None)
+    note = ParagraphInput(output_variable_name="note", resolved_default_value=None)
     form = form.model_copy(
         update={
             "parts": (
                 MarkdownFragment(text="Literal {{#$output.choice#}}: "),
                 note,
                 MarkdownFragment(text=" / "),
-                SelectInput(output_variable_name="choice", options=("Yes", "No"), default_value=None),
+                SelectInput(output_variable_name="choice", options=("Yes", "No"), resolved_default_value=None),
                 MarkdownFragment(text=" / "),
                 note,
-                ParagraphInput(output_variable_name="empty", default_value="unused"),
+                ParagraphInput(output_variable_name="empty", resolved_default_value="unused"),
             )
         }
     )
@@ -137,8 +137,8 @@ def test_render_follows_source_order_without_reinterpreting_submitted_markers(fo
 @pytest.mark.parametrize(
     "part",
     [
-        ParagraphInput(output_variable_name="answer", default_value="unused"),
-        SelectInput(output_variable_name="answer", options=("Yes", "No"), default_value="Yes"),
+        ParagraphInput(output_variable_name="answer", resolved_default_value="unused"),
+        SelectInput(output_variable_name="answer", options=("Yes", "No"), resolved_default_value="Yes"),
         FileInput(
             output_variable_name="answer",
             allowed_file_types=(),
