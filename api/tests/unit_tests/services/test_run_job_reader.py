@@ -5,7 +5,7 @@ from typing import override
 
 import pytest
 
-from core.app.entities.task_entities import StreamEvent
+from core.app.entities.task_entities import StreamEvent, WorkflowFinishStreamResponse
 from graphon.enums import WorkflowExecutionStatus
 from models.enums import CreatorUserRole
 from models.model import AppMode
@@ -26,12 +26,22 @@ PING = f"event: {StreamEvent.PING.value}\n\n"
 
 
 def _finished(status: WorkflowExecutionStatus, error: str | None = None) -> str:
-    return _frame(
-        StreamEvent.WORKFLOW_FINISHED,
+    finished = WorkflowFinishStreamResponse(
         task_id="task-1",
         workflow_run_id="run-1",
-        data={"id": "run-1", "status": status.value, "error": error},
+        data=WorkflowFinishStreamResponse.Data(
+            id="run-1",
+            workflow_id="wf-1",
+            status=status,
+            error=error,
+            elapsed_time=0.1,
+            total_tokens=0,
+            total_steps=1,
+            created_at=1,
+            finished_at=2,
+        ),
     )
+    return f"data: {finished.model_dump_json()}\n\n"
 
 
 class ClosableFrames:
@@ -185,15 +195,14 @@ def test_an_error_event_fails_the_job_with_its_message(store: RedisRunJobStore, 
     assert record.error == "bad input"
 
 
-def test_an_error_event_without_a_message_fails_the_job_with_no_error_text(
+def test_an_error_event_without_a_message_is_not_read_as_an_ending(
     store: RedisRunJobStore, stopper: RecordingJobStopper
 ) -> None:
-    _open(store, AppMode.WORKFLOW)
+    _open(store, AppMode.CHAT)
 
     record = _read(store, stopper, [_frame(StreamEvent.ERROR, code="invalid_param", status=400)])
 
-    assert record.status is JobStatus.FAILED
-    assert record.error is None
+    assert (record.status, record.failure) == (JobStatus.FAILED, JobFailure.NO_RESULT)
 
 
 def test_the_first_final_status_wins(store: RedisRunJobStore, stopper: RecordingJobStopper) -> None:
@@ -349,15 +358,14 @@ def test_frames_that_are_not_json_objects_are_ignored(store: RedisRunJobStore, s
     assert record.status is JobStatus.RUNNING
 
 
-def test_an_unknown_event_name_changes_nothing(store: RedisRunJobStore, stopper: RecordingJobStopper) -> None:
+def test_an_event_core_does_not_name_records_nothing(store: RedisRunJobStore, stopper: RecordingJobStopper) -> None:
     _open(store, AppMode.WORKFLOW)
 
     unknown = 'data: {"event": "from_the_future", "task_id": "task-1", "workflow_run_id": "run-1"}\n\n'
 
     record = _read(store, stopper, [unknown])
 
-    assert record.status is JobStatus.RUNNING
-    assert (record.task_id, record.run_id) == ("task-1", "run-1")
+    assert (record.task_id, record.run_id) == (None, None)
 
 
 class TouchFailsOnceStore(RedisRunJobStore):

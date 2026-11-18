@@ -17,7 +17,8 @@ from graphon.enums import WorkflowExecutionStatus
 from models.model import AppMode
 from repositories.factory import DifyAPIRepositoryFactory
 from services.run_job_contracts import JobStatus
-from services.run_job_reader import RUN_STATUS_TO_JOB_STATUS, close_frames, decode_frame
+from services.run_job_frames import decode_data_frame
+from services.run_job_reader import RUN_STATUS_TO_JOB_STATUS, close_frames
 from services.run_job_service import RunResult
 from services.workflow_event_snapshot_service import build_workflow_event_stream
 
@@ -65,7 +66,7 @@ def _last_form(frames: Iterable[str]) -> Mapping[str, Any] | None:
     """
     form: Mapping[str, Any] | None = None
     for frame in frames:
-        payload = decode_frame(frame) or {}
+        payload = decode_data_frame(frame) or {}
         if payload.get("event") in _STOP_EVENTS:
             return form
         found = _form_data(payload)
