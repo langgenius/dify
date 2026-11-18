@@ -1,6 +1,7 @@
 import json
 from collections.abc import Generator
 from contextlib import contextmanager
+from unittest.mock import patch
 
 from sqlalchemy import event
 from sqlalchemy.orm import Session
@@ -22,6 +23,7 @@ from models.dataset import (
 from models.enums import DatasetMetadataType, DataSourceType, DocumentCreatedFrom, IndexingStatus, TagType
 from models.model import App, AppMode, IconType, Tag, TagBinding
 from services.knowledge.dataset_read_service import load_dataset_detail, load_dataset_details
+from tests.helpers.unit.model_factories import make_upload_file
 
 
 def _dataset_detail_payload(**overrides: object) -> dict[str, object]:
@@ -447,6 +449,50 @@ def test_dataset_detail_prefetch_matches_per_dataset_lookups(sqlite_session: Ses
     assert prefetched[3]["doc_form"] == IndexStructureType.QA_INDEX
     assert prefetched[4]["document_count"] == 0
     assert prefetched[4]["doc_form"] is None
+
+
+def test_dataset_detail_replaces_owned_image_icon_data_url_with_signed_preview(sqlite_session: Session) -> None:
+    dataset = _dataset(
+        1,
+        "account-1",
+        icon_info={
+            "icon_type": "image",
+            "icon": "icon-file",
+            "icon_url": "data:image/png;base64,very-large-payload",
+        },
+    )
+    upload = make_upload_file(file_id="icon-file", name="icon.png", extension="png")
+    sqlite_session.add_all([dataset, upload])
+    sqlite_session.flush()
+
+    with patch("services.knowledge.dataset_read_service.sign_upload_file_preview_url", return_value="signed-preview"):
+        detail = load_dataset_detail(dataset, session=sqlite_session)
+
+    assert detail["icon_info"] == {
+        "icon_type": "image",
+        "icon": "icon-file",
+        "icon_url": "signed-preview",
+    }
+    assert dataset.icon_info["icon_url"] == "data:image/png;base64,very-large-payload"
+
+
+def test_dataset_detail_preserves_legacy_image_icon_when_file_is_not_owned(sqlite_session: Session) -> None:
+    dataset = _dataset(
+        1,
+        "account-1",
+        icon_info={
+            "icon_type": "image",
+            "icon": "other-tenant-file",
+            "icon_url": "data:image/png;base64,legacy-payload",
+        },
+    )
+    other_tenant_upload = make_upload_file(file_id="other-tenant-file", tenant_id="tenant-2", extension="png")
+    sqlite_session.add_all([dataset, other_tenant_upload])
+    sqlite_session.flush()
+
+    detail = load_dataset_detail(dataset, session=sqlite_session)
+
+    assert detail["icon_info"]["icon_url"] == "data:image/png;base64,legacy-payload"
 
 
 def test_dataset_detail_prefetch_keeps_query_count_independent_of_page_size(sqlite_session: Session) -> None:

@@ -81,7 +81,7 @@ def _dataset_detail_values(dataset: Dataset, prefetch: DatasetDetailPrefetch) ->
         "pipeline_id": dataset.pipeline_id,
         "runtime_mode": dataset.runtime_mode,
         "chunk_structure": dataset.chunk_structure,
-        "icon_info": dataset.icon_info,
+        "icon_info": _dataset_icon_info(dataset, prefetch),
         "is_published": prefetch.pipeline_published.get(dataset.pipeline_id, False) if dataset.pipeline_id else False,
         "total_documents": prefetch.document_counts.get(dataset.id, 0),
         "total_available_documents": prefetch.available_document_counts.get(dataset.id, 0),
@@ -90,6 +90,30 @@ def _dataset_detail_values(dataset: Dataset, prefetch: DatasetDetailPrefetch) ->
         "permission_keys": vars(dataset).get("permission_keys", []),
         "maintainer": dataset.maintainer,
     }
+
+
+def _dataset_icon_info(dataset: Dataset, prefetch: DatasetDetailPrefetch) -> Any:
+    """Return response-only icon metadata without mutating the stored configuration.
+
+    Preconditions: ``prefetch`` was built for ``dataset`` and only contains files
+    matched by both file ID and tenant. Postconditions: an owned image upload is
+    represented by a short-lived preview URL; all other icon metadata, including
+    legacy values whose upload is unavailable, remains unchanged.
+    """
+    icon_info = dataset.icon_info
+    if not isinstance(icon_info, dict):
+        return icon_info
+
+    icon = icon_info.get("icon")
+    icon_file = (
+        prefetch.icon_files.get((dataset.tenant_id, icon))
+        if icon_info.get("icon_type") == "image" and isinstance(icon, str)
+        else None
+    )
+    if icon_file is None:
+        return icon_info
+
+    return {**icon_info, "icon_url": sign_upload_file_preview_url(icon_file.id, icon_file.extension)}
 
 
 def load_document_detail(document: Document, *, session: Session) -> dict[str, Any]:
