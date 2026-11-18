@@ -1,4 +1,4 @@
-"""Contracts for non-streaming app run jobs: records, patches and the store protocol."""
+"""Contracts for non-streaming app run jobs: records, their writes and the store protocol."""
 
 from __future__ import annotations
 
@@ -106,15 +106,23 @@ class JobRecord:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
-class JobPatch:
-    status: JobStatus | None = None
+class JobIds:
     task_id: str | None = None
     run_id: str | None = None
     message_id: str | None = None
     conversation_id: str | None = None
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class JobEnding:
+    status: JobStatus
     error: str | None = None
     failure: JobFailure | None = None
-    stop_requested: bool | None = None
+
+    def __post_init__(self) -> None:
+        """Precondition: none. Postcondition: raises ValueError unless status is final."""
+        if not self.status.is_final:
+            raise ValueError(f"A job ending needs a final status, not {self.status}")
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -130,8 +138,15 @@ class RunJobStore(Protocol):
     def get(self, job_id: str) -> JobRecord | None:
         """Precondition: none. Postcondition: the stored record, or None."""
 
-    def patch(self, job_id: str, patch: JobPatch) -> None:
-        """Precondition: none. Postcondition: set fields change; None fields and missing jobs are untouched."""
+    def record_ids(self, job_id: str, ids: JobIds) -> None:
+        """Precondition: none. Postcondition: the ids that are set are stored; a missing job is not recreated."""
+
+    def settle(self, job_id: str, ending: JobEnding) -> bool:
+        """Precondition: none. Postcondition: true when the job existed and was not final, and now holds ending;
+        false, with nothing written, otherwise. Atomic on the job's key."""
+
+    def request_stop(self, job_id: str) -> None:
+        """Precondition: none. Postcondition: stop_requested is set; a missing job is not recreated."""
 
     def discard(self, job_id: str, *, idempotency_key: str | None) -> None:
         """Precondition: none. Postcondition: the job and its alive key are gone."""
