@@ -81,10 +81,10 @@ class TestMcpToolsTransformCases:
             sse_read_timeout=300,
         )
         provider.id = "provider-id-123"
-        provider.provider_icon = "icon.png"
-        provider.masked_server_url = "https://*****.com/mcp"
-        provider.masked_headers = {"Authorization": "Bearer *****"}
-        provider.decrypted_headers = {"Authorization": "Bearer secret-token"}
+        provider.provider_icon = "icon.png"  # pyrefly: ignore[missing-attribute]
+        provider.masked_server_url = "https://*****.com/mcp"  # pyrefly: ignore[missing-attribute]
+        provider.masked_headers = {"Authorization": "Bearer *****"}  # pyrefly: ignore[missing-attribute]
+        provider.decrypted_headers = {"Authorization": "Bearer secret-token"}  # pyrefly: ignore[missing-attribute]
 
         # Mock timestamp
         mock_updated_at = Mock()
@@ -824,6 +824,7 @@ class TestToolsTransformServiceCases:
         def test_builtin_provider_returns_console_url(self, config_overrides: Callable[..., None]) -> None:
             config_overrides(CONSOLE_API_URL="https://app.dify.ai")
             url = ToolTransformService.get_tool_provider_icon_url("builtin", "google", "icon.png")
+            assert isinstance(url, str)
 
             assert "/builtin/google/icon" in url
             assert url.startswith("https://app.dify.ai/console/api/workspaces/current/tool-provider")
