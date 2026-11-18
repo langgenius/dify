@@ -187,7 +187,7 @@ def test_message_end_after_a_stop_request_marks_the_job_stopped(
 
 
 def test_an_error_event_fails_the_job_with_its_message(store: RedisRunJobStore, stopper: RecordingJobStopper) -> None:
-    _open(store, AppMode.WORKFLOW)
+    _open(store, AppMode.CHAT)
 
     record = _read(store, stopper, [_frame(StreamEvent.ERROR, code="invalid_param", status=400, message="bad input")])
 
@@ -203,6 +203,32 @@ def test_an_error_event_without_a_message_is_not_read_as_an_ending(
     record = _read(store, stopper, [_frame(StreamEvent.ERROR, code="invalid_param", status=400)])
 
     assert (record.status, record.failure) == (JobStatus.FAILED, JobFailure.NO_RESULT)
+
+
+def test_a_graph_job_ends_with_workflow_finished_not_the_error_before_it(
+    store: RedisRunJobStore, stopper: RecordingJobStopper
+) -> None:
+    """Core's worker follows an error with a failed workflow_finished that carries the same message."""
+    _open(store, AppMode.WORKFLOW)
+    error = _frame(StreamEvent.ERROR, code="internal_server_error", status=500, message="boom")
+
+    assert _read(store, stopper, [error]).failure is JobFailure.RUN_NOT_CONFIRMED
+
+    store.discard(JOB_ID)
+    _open(store, AppMode.WORKFLOW)
+    record = _read(store, stopper, [error, _finished(WorkflowExecutionStatus.FAILED, "boom")])
+
+    assert (record.status, record.error, record.failure) == (JobStatus.FAILED, "boom", None)
+
+
+def test_a_message_job_takes_no_ending_from_workflow_finished(
+    store: RedisRunJobStore, stopper: RecordingJobStopper
+) -> None:
+    _open(store, AppMode.CHAT)
+
+    record = _read(store, stopper, [_finished(WorkflowExecutionStatus.SUCCEEDED)])
+
+    assert record.failure is JobFailure.NO_RESULT
 
 
 def test_the_first_final_status_wins(store: RedisRunJobStore, stopper: RecordingJobStopper) -> None:
