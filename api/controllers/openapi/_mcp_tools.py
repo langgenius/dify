@@ -87,6 +87,16 @@ class CallTool(StrEnum):
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class McpCaller:
+    """Who sent the MCP request, read once from its headers."""
+
+    authorization: str | None  # the raw Authorization header, forwarded to the op as is
+    token: str | None  # the bearer token in ``authorization`` (``extract_bearer``), which decides the visible ops
+    trace_id: str | None
+    protocol_version: str  # the negotiated MCP version, which decides whether results carry structuredContent
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class FoundOps:
     """The result of ``find_ops``: ``total`` matches before the cut, and the listed ``ops`` after it."""
 
@@ -340,7 +350,7 @@ def _string_argument(arguments: Mapping[str, Any], name: str) -> str | None:
     return value or None
 
 
-def _run_find(arguments: Mapping[str, Any], *, token: str | None, protocol_version: str) -> mcp_types.CallToolResult:
+def _run_find(arguments: Mapping[str, Any], caller: McpCaller) -> mcp_types.CallToolResult:
     """Precondition: inside a Flask request.
 
     Postcondition: ``describe_op`` when ``op`` is a non-empty string, else a search.
@@ -353,14 +363,14 @@ def _run_find(arguments: Mapping[str, Any], *, token: str | None, protocol_versi
         if op is None:
             return _error("`op` must be a string.")
         try:
-            return _json_result(describe_op(op, token=token), protocol_version=protocol_version)
+            return _json_result(describe_op(op, token=caller.token), protocol_version=caller.protocol_version)
         except UnknownOp:
             return _unknown_op(op)
     query = arguments.get(_QUERY_KEY, "")
     if not isinstance(query, str):
         return _error("`query` must be a string.")
-    found = find_ops(query, token=token)
-    return _json_result({_TOTAL_KEY: found.total, _OPS_KEY: found.ops}, protocol_version=protocol_version)
+    found = find_ops(query, token=caller.token)
+    return _json_result({_TOTAL_KEY: found.total, _OPS_KEY: found.ops}, protocol_version=caller.protocol_version)
 
 
 _REFUSAL_MESSAGES: Final[Mapping[type[Exception], Callable[[Exception], str]]] = {
@@ -426,16 +436,8 @@ def _map_result(
     return _json_result(body, protocol_version=protocol_version)
 
 
-def _run_call(
-    tool: CallTool,
-    arguments: Mapping[str, Any],
-    *,
-    authorization: str | None,
-    token: str | None,
-    trace_id: str | None,
-    protocol_version: str,
-) -> mcp_types.CallToolResult:
-    """Precondition: inside a Flask request; ``token`` is the bearer token of ``authorization``, if any.
+def _run_call(tool: CallTool, arguments: Mapping[str, Any], caller: McpCaller) -> mcp_types.CallToolResult:
+    """Precondition: inside a Flask request.
 
     Postcondition: the op ran, or a tool error says why it did not.
     """
@@ -445,7 +447,7 @@ def _run_call(
     op_input = arguments.get(_INPUT_KEY)
     if not isinstance(op_input, dict):
         return _error("`input` must be a JSON object.")
-    allowed = callable_ops(token)
+    allowed = callable_ops(caller.token)
     entry = allowed.get(op)
     if entry is None:
         return _unknown_op(op)
@@ -453,36 +455,20 @@ def _run_call(
     if effect != tool.effect:
         return _error(f"`{op}` is a {effect.value} operation. Call it with {CallTool.for_effect(effect).value}.")
     try:
-        result = call_op(OpCall(op=op, input=op_input, authorization=authorization, trace_id=trace_id))
+        result = call_op(OpCall(op=op, input=op_input, authorization=caller.authorization, trace_id=caller.trace_id))
     except tuple(_REFUSAL_MESSAGES) as refusal:
         return _error(_REFUSAL_MESSAGES[type(refusal)](refusal))
-    return _map_result(result, allowed=allowed, protocol_version=protocol_version)
+    return _map_result(result, allowed=allowed, protocol_version=caller.protocol_version)
 
 
-def run_tool(
-    name: str,
-    arguments: Mapping[str, Any],
-    *,
-    authorization: str | None,
-    token: str | None,
-    trace_id: str | None,
-    protocol_version: str,
-) -> mcp_types.CallToolResult:
+def run_tool(name: str, arguments: Mapping[str, Any], caller: McpCaller) -> mcp_types.CallToolResult:
     """Run one tool call.
 
     Precondition: inside a Flask request; ``name`` is one of the four tool names (the route
-    answers any other name with INVALID_PARAMS); ``authorization`` is the raw Authorization
-    header, forwarded to the op; ``token`` is the bearer token taken from it (``extract_bearer``).
+    answers any other name with INVALID_PARAMS).
     Postcondition: a result for the call, with ``isError`` set for every failure except a 401
     from the op, which raises ``Unauthenticated``.
     """
     if name == FIND_TOOL:
-        return _run_find(arguments, token=token, protocol_version=protocol_version)
-    return _run_call(
-        CallTool(name),
-        arguments,
-        authorization=authorization,
-        token=token,
-        trace_id=trace_id,
-        protocol_version=protocol_version,
-    )
+        return _run_find(arguments, caller)
+    return _run_call(CallTool(name), arguments, caller)

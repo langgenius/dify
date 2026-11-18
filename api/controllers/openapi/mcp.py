@@ -23,7 +23,7 @@ from configs import dify_config
 from controllers.openapi import openapi_ns
 from controllers.openapi._mcp_call import AUTHORIZATION_HEADER, TRACE_ID_HEADER
 from controllers.openapi._mcp_protocol import McpRequestError, failure, has_id, parse_message, request_id_of, success
-from controllers.openapi._mcp_tools import MCP_INSTRUCTIONS, Unauthenticated, run_tool, tool_list
+from controllers.openapi._mcp_tools import MCP_INSTRUCTIONS, McpCaller, Unauthenticated, run_tool, tool_list
 from controllers.openapi.auth.router import admit_bearer
 from core.mcp import types as mcp_types
 from core.mcp.server.streamable_http import handle_initialize, handle_ping, negotiate_protocol_version
@@ -43,14 +43,11 @@ UNAUTHORIZED_BODY: Final = {"code": "unauthorized", "message": "invalid bearer",
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class _Call:
-    """One parsed MCP request: its id, the request model, the caller's headers, and the negotiated protocol version."""
+    """One parsed MCP request: its id, the request model and who sent it."""
 
     request_id: int | str
     message: Any  # the concrete request model, e.g. ``mcp_types.ListToolsRequest``
-    authorization: str | None
-    token: str | None
-    trace_id: str | None
-    protocol_version: str
+    caller: McpCaller
 
 
 type _Handler = Callable[[_Call], dict[str, Any]]
@@ -108,14 +105,7 @@ def _call_tool(call: _Call) -> dict[str, Any]:
     params = call.message.params
     if params.name not in {tool.name for tool in tool_list()}:
         return failure(call.request_id, mcp_types.INVALID_PARAMS, f"Unknown tool: {params.name}")
-    result = run_tool(
-        params.name,
-        params.arguments or {},
-        authorization=call.authorization,
-        token=call.token,
-        trace_id=call.trace_id,
-        protocol_version=call.protocol_version,
-    )
+    result = run_tool(params.name, params.arguments or {}, call.caller)
     return success(call.request_id, result)
 
 
@@ -193,14 +183,13 @@ class OpenApiMcpApi(Resource):
             return _json_response(
                 failure(request_id, mcp_types.INVALID_REQUEST, f"Unsupported MCP-Protocol-Version: {header_value}")
             )
-        call = _Call(
-            request_id=request_id,
-            message=message.root,
+        caller = McpCaller(
             authorization=request.headers.get(AUTHORIZATION_HEADER),
             token=extract_bearer(request),
             trace_id=request.headers.get(TRACE_ID_HEADER),
             protocol_version=protocol_version,
         )
+        call = _Call(request_id=request_id, message=message.root, caller=caller)
         handler = _HANDLERS.get(type(message.root), _method_not_found)
         try:
             return _json_response(handler(call))
