@@ -319,3 +319,48 @@ it('aborts an incomparable checkpoint without deleting pending edits', async () 
     storage.close()
   }
 })
+
+it('negotiates the new format before sending recovered edits to a reconnected server', async () => {
+  const server = createProviderServer()
+  const identity = { ...server.identity, format: 2 as const }
+  const editor = await server.open(identity)
+  editor.provider.leave()
+  editor.socket.connected = false
+  editor.doc.getMap('nodes').set('offline', { id: 'offline' })
+  editor.doc.commit()
+  await vi.waitFor(async () => expect((await server.read()).edits).toHaveLength(1))
+  editor.provider.destroy()
+
+  const reopened = await server.open(identity, false)
+  expect(reopened.onPendingChange).toHaveBeenLastCalledWith(true)
+  server.exchange.mockImplementationOnce((request, acknowledge) => {
+    expect(request.update).toBeUndefined()
+    acknowledge(null, { ...server.response(request), format: undefined }, 200)
+  })
+  reopened.socket.connected = true
+  reopened.provider.join()
+  await expect(reopened.provider.flush()).rejects.toThrow('sync was rejected')
+  expect(reopened.onUnavailable).toHaveBeenCalledOnce()
+  expect((await server.read()).edits).toHaveLength(1)
+  expect(server.document().getMap('nodes').get('offline')).toBeUndefined()
+  reopened.provider.destroy()
+
+  const compatible = await server.open(identity)
+  await compatible.provider.flush()
+  expect(server.document().getMap('nodes').get('offline')).toEqual({ id: 'offline' })
+  expect((await server.read()).edits).toHaveLength(0)
+})
+
+it('retains incompatible offline edits and stops writing when the server reports an upgrade conflict', async () => {
+  const server = createProviderServer()
+  const editor = await server.open()
+  editor.doc.getMap('nodes').set('node-1', { id: 'node-1', title: 'Offline edit' })
+  editor.doc.commit()
+  server.exchange.mockImplementationOnce((_request, acknowledge) => {
+    acknowledge(null, { msg: 'legacy_edit_conflict' }, 409)
+  })
+  await expect(editor.provider.flush()).rejects.toThrow('sync was rejected')
+  expect(editor.onUnavailable).toHaveBeenCalledWith('legacy_edit_conflict')
+  expect((await server.read()).edits).toHaveLength(1)
+  expect(server.document().getMap('nodes').get('node-1')).toMatchObject({ title: 'Before' })
+})

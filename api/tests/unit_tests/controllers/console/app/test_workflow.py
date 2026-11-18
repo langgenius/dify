@@ -818,8 +818,9 @@ class TestWorkflowCases:
         assert response["has_more"] is False
 
     @staticmethod
+    @pytest.mark.parametrize("collaboration_enabled", [False, True])
     def test_draft_workflow_get_serializes_response_model(
-        monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+        monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, collaboration_enabled: bool
     ) -> None:
         workflow = _make_workflow()
         sqlite_session.add_all([_account(), workflow])
@@ -827,12 +828,21 @@ class TestWorkflowCases:
         monkeypatch.setattr(
             workflow_module, "WorkflowService", lambda: SimpleNamespace(get_draft_workflow=lambda **_kwargs: workflow)
         )
+        monkeypatch.setattr(
+            workflow_module.FeatureService, "can_use_workflow_collaboration", lambda _tenant_id: collaboration_enabled
+        )
 
         api = workflow_module.DraftWorkflowApi()
         handler = inspect.unwrap(api.get)
 
         response = handler(api, sqlite_session, app_model=_workflow_app())
 
+        if collaboration_enabled:
+            assert response["loro_draft_epoch"] == workflow.id
+            assert response["loro_draft_format"] == 2
+        else:
+            assert "loro_draft_epoch" not in response
+            assert "loro_draft_format" not in response
         assert response["id"] == "workflow-1"
         assert response["graph"] == {"nodes": [], "edges": []}
         assert response["features"] == {"file_upload": {"enabled": False}}

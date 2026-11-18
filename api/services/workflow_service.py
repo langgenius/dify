@@ -131,6 +131,7 @@ from services.workflow_loro_document import (
     export_loro_delta,
     load_loro_draft,
     merge_loro_update,
+    negotiate_loro_format,
     project_loro_graph,
 )
 from services.workflow_node_variables import get_human_input_form_variable_mapping
@@ -660,6 +661,8 @@ class WorkflowService:
         update: bytes | None,
         allow_empty: bool,
         session: Session,
+        client_format: Literal[1, 2] = 1,
+        legacy_update: bool = False,
     ) -> LoroDraftSyncResult:
         """Merge updates for an admitted editor, committing history and projection before confirming.
 
@@ -684,8 +687,9 @@ class WorkflowService:
         )
         doc = load_loro_draft(snapshot, seed)
         before = doc.state_vv
+        negotiate_loro_format(doc, client_format)
         if update is not None:
-            merge_loro_update(doc, update)
+            merge_loro_update(doc, update, legacy_update=legacy_update)
         changed = not before.includes_vv(doc.state_vv)
         needs_commit = changed or snapshot is None
         if needs_commit:
@@ -694,7 +698,7 @@ class WorkflowService:
         graph_changed = False
         retirement_candidates: set[str] = set()
         if changed:
-            projected = project_loro_graph(doc)
+            projected = project_loro_graph(doc, client_format=client_format)
             if not projected["nodes"] and not projected["edges"] and (graph.get("nodes") or graph.get("edges")):
                 if not allow_empty:
                     raise LoroDraftEmptyGraphError("Clearing the draft requires confirmation.")
@@ -718,6 +722,7 @@ class WorkflowService:
         delta = export_loro_delta(doc, version)
         result = LoroDraftSyncResult(
             epoch=current_epoch,
+            format=client_format,
             version=doc.state_vv.encode(),
             update=delta,
             hash=workflow.unique_hash,

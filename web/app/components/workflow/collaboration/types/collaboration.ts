@@ -1,4 +1,4 @@
-export type JoinFailure = 'denied' | 'unavailable' | 'session_unavailable'
+export type JoinFailure = 'denied' | 'unavailable' | 'session_unavailable' | 'legacy_edit_conflict'
 
 export type OnlineUser = {
   user_id: string

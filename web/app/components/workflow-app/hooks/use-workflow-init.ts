@@ -110,7 +110,11 @@ export const useWorkflowInit = () => {
       workflowStore.setState({
         loroDraft:
           collaborationEnabled && appACLCapabilities.canEdit && res.loro_draft_epoch
-            ? { epoch: res.loro_draft_epoch, accountId: currentUserId }
+            ? {
+                epoch: res.loro_draft_epoch,
+                accountId: currentUserId,
+                format: res.loro_draft_format ?? undefined,
+              }
             : undefined,
         envSecrets: (initialData.environment_variables || [])
           .filter((env) => env.value_type === 'secret')

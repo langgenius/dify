@@ -114,6 +114,7 @@
   "collaboration.historyAction.generic": "Un colaborator a efectuat anulare/refacere",
   "collaboration.joinDenied": "Nu te poți alătura colaborării. Verifică accesul și abonamentul spațiului de lucru, apoi redeschide editorul.",
   "collaboration.joinUnavailable": "Nu s-a putut conecta la colaborare. Modificările de pe acest spațiu de lucru ar putea să nu fie salvate.",
+  "collaboration.localEditConflict": "Modificările offline intră în conflict cu schița partajată. Acestea sunt în continuare salvate în acest browser.",
   "collaboration.reloadPage": "Reîncarcă pagina",
   "collaboration.replacedWithPendingEdits": "Schița a fost restaurată sau înlocuită prin import. A fost încărcată cea mai recentă schiță, iar modificările locale neconfirmate din schița veche au fost șterse.",
   "common.accessAPIReference": "Accesează referința API",

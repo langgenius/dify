@@ -165,3 +165,86 @@ def test_rejects_uncommitted_and_invalid_requester_versions() -> None:
         export_loro_delta(source, other.state_vv.encode())
     with pytest.raises(LoroDraftUpdateError, match="Invalid version vector"):
         export_loro_delta(source, b"invalid")
+
+
+def _record(doc: LoroDoc, key: str, patches: list[LoroValue]) -> None:
+    doc.get_map("editLog").insert(key, {"step": key, "patches": patches})
+    doc.get_map("editState").insert(key, True)
+
+
+def test_selective_undo_preserves_later_fields_and_row_edits() -> None:
+    """Undo and redo retain the later writer's value and an edit on the same prompt row."""
+    doc = load_loro_draft(None, {"nodes": [{"id": "llm", "data": {"title": "before", "prompt": []}}], "edges": []})
+    doc.get_map("draftFormat").insert("version", 2)
+    target: dict[str, LoroValue] = {"kind": "nodes", "id": "llm"}
+    prompt: list[LoroValue] = ["data", "prompt", {"row": "n:row"}]
+    _record(
+        doc,
+        "01:a",
+        [
+            {**target, "op": "set", "path": ["data", "title"], "value": "Alice"},
+            {**target, "op": "insert", "path": prompt, "value": {"role": "system", "text": "Alice"}, "after": None},
+            {**target, "op": "set", "path": ["data", "model"], "value": "Alice"},
+        ],
+    )
+    _record(
+        doc,
+        "02:b",
+        [
+            {**target, "op": "set", "path": ["data", "title"], "value": "Bob"},
+            {**target, "op": "set", "path": [*prompt, "text"], "value": "Bob"},
+        ],
+    )
+    doc.get_map("editState").delete("01:a")
+    expected: dict[str, LoroValue] = {"title": "Bob", "prompt": [{"role": "system", "text": "Bob"}]}
+    assert project_loro_graph(doc)["nodes"] == [{"id": "llm", "data": expected}]
+    doc.get_map("editState").insert("01:a", True)
+    assert project_loro_graph(doc)["nodes"] == [{"id": "llm", "data": {**expected, "model": "Alice"}}]
+
+
+def test_undone_node_and_case_survive_for_other_users_edges() -> None:
+    """Retain endpoint and handle seeds while the edge exists, including their parent container."""
+    doc = load_loro_draft(None, {"nodes": [{"id": "end"}], "edges": []})
+    doc.get_map("draftFormat").insert("version", 2)
+    parent: dict[str, LoroValue] = {"kind": "nodes", "id": "loop", "path": []}
+    branch: dict[str, LoroValue] = {"kind": "nodes", "id": "branch", "path": []}
+    _record(
+        doc,
+        "01:a",
+        [
+            {**parent, "op": "set", "value": {"id": "loop"}},
+            {**branch, "op": "set", "value": {"id": "branch", "parentId": "loop", "data": {"cases": []}}},
+            {
+                **branch,
+                "op": "insert",
+                "path": ["data", "cases", {"row": "n:row"}],
+                "after": None,
+                "value": {"case_id": "c"},
+            },
+        ],
+    )
+    edge: dict[str, LoroValue] = {"id": "edge", "source": "branch", "sourceHandle": "c", "target": "end"}
+    _record(doc, "02:b", [{"kind": "edges", "id": "edge", "op": "set", "path": [], "value": edge}])
+    doc.get_map("editState").delete("01:a")
+    assert project_loro_graph(doc) == {
+        "nodes": [
+            {"id": "end"},
+            {"id": "loop"},
+            {"id": "branch", "parentId": "loop", "data": {"cases": [{"case_id": "c"}]}},
+        ],
+        "edges": [edge],
+    }
+    _record(doc, "03:b", [{**branch, "op": "remove"}])
+    assert project_loro_graph(doc) == {"nodes": [{"id": "end"}], "edges": []}
+
+
+def test_row_move_remove_and_undo_preserve_other_users_structural_changes() -> None:
+    """Moves address persistent row identities even if another writer removed a preceding row."""
+    doc = load_loro_draft(None, {"nodes": [{"id": "a", "data": {"vars": [{"k": "a"}, {"k": "b"}, {"k": "c"}]}}]})
+    doc.get_map("draftFormat").insert("version", 2)
+    target: dict[str, LoroValue] = {"kind": "nodes", "id": "a"}
+    _record(doc, "01:a", [{**target, "op": "move", "path": ["data", "vars", {"row": "i:2"}], "after": None}])
+    _record(doc, "02:b", [{**target, "op": "remove", "path": ["data", "vars", {"row": "i:0"}]}])
+    assert project_loro_graph(doc)["nodes"] == [{"id": "a", "data": {"vars": [{"k": "c"}, {"k": "b"}]}}]
+    doc.get_map("editState").delete("01:a")
+    assert project_loro_graph(doc)["nodes"] == [{"id": "a", "data": {"vars": [{"k": "b"}, {"k": "c"}]}}]

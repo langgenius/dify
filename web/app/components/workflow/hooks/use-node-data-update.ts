@@ -1,12 +1,14 @@
 import type { SyncDraftCallback } from '@/app/components/workflow/hooks-store'
 import { produce } from 'immer'
 import { useCallback } from 'react'
+import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import { useCollaborativeWorkflow } from './use-collaborative-workflow'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useNodesReadOnly } from './use-workflow'
 
 type NodeDataUpdatePayload = {
   id: string
+  previousData?: Record<string, unknown>
   data: Record<string, unknown>
 }
 
@@ -16,7 +18,8 @@ export const useNodeDataUpdate = () => {
   const collaborativeWorkflow = useCollaborativeWorkflow()
 
   const handleNodeDataUpdate = useCallback(
-    ({ id, data }: NodeDataUpdatePayload) => {
+    ({ id, data, previousData }: NodeDataUpdatePayload) => {
+      if (previousData && collaborationManager.updateDraftNodeData(id, previousData, data)) return
       const { nodes, setNodes } = collaborativeWorkflow.getState()
       const newNodes = produce(nodes, (draft) => {
         const currentNode = draft.find((node) => node.id === id)!

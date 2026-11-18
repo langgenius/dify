@@ -7,6 +7,7 @@ type Request = {
   epoch: string
   version: Uint8Array
   update?: Uint8Array
+  format?: 2
   allow_empty: boolean
 }
 type Acknowledge = (error: Error | null, response?: unknown, status?: number) => void
@@ -21,9 +22,14 @@ export function createDraftServer(seed: (title: string) => LoroDoc) {
   const response = (request: Request) => {
     const before = doc.version()
     if (request.update) doc.import(request.update)
+    if (request.format === 2) {
+      doc.getMap('draftFormat').set('version', 2)
+      doc.commit()
+    }
     if (doc.version().compare(before) !== 0) revision += 1
     return {
       epoch,
+      format: request.format ?? 1,
       version: doc.version().encode(),
       update: doc.export({ mode: 'update', from: VersionVector.decode(request.version) }),
       hash: `hash-${revision}`,

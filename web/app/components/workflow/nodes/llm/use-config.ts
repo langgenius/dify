@@ -213,7 +213,13 @@ const useConfig = (id: string, payload: LLMNodeType) => {
       if (
         appId &&
         loroDraft &&
-        collaborationManager.queueInitialLlmPrompt(appId, loroDraft, id, prompt)
+        collaborationManager.queueInitialLlmPrompt(
+          appId,
+          loroDraft,
+          id,
+          prompt,
+          inputs.prompt_template,
+        )
       ) {
         const { getNodes, setNodes } = flowStore.getState()
         setNodes(
@@ -225,7 +231,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
       }
       savePrompt(prompt)
     },
-    [appId, loroDraft, id, getNodesReadOnly, flowStore, savePrompt],
+    [appId, loroDraft, id, inputs.prompt_template, getNodesReadOnly, flowStore, savePrompt],
   )
 
   const structuredOutputConfig = useLLMStructuredOutputConfig({

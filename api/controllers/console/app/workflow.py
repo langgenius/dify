@@ -373,6 +373,7 @@ class DraftWorkflowResponse(WorkflowResponse):
     """The epoch is present only when the existing collaboration policy enables Loro."""
 
     loro_draft_epoch: str | None = Field(default=None, exclude_if=lambda value: value is None)
+    loro_draft_format: Literal[2] | None = Field(default=None, exclude_if=lambda value: value is None)
 
 
 class WorkflowResponseSource:
@@ -653,6 +654,7 @@ class DraftWorkflowApi(Resource):
         )
         if FeatureService.can_use_workflow_collaboration(app_model.tenant_id):
             response.loro_draft_epoch = workflow.loro_draft_epoch or workflow.id
+            response.loro_draft_format = 2
         return response.model_dump(mode="json")
 
     @error_responses(DraftWorkflowNotSync)

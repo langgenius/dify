@@ -114,6 +114,7 @@
   "collaboration.historyAction.generic": "Ein Mitbearbeiter hat Rückgängig/Wiederholen ausgeführt",
   "collaboration.joinDenied": "Die Verbindung zur Zusammenarbeit konnte nicht hergestellt werden. Prüfe deine Zugriffsrechte und den Tarif des Arbeitsbereichs und öffne den Editor erneut.",
   "collaboration.joinUnavailable": "Verbindung zur Zusammenarbeit fehlgeschlagen. Änderungen auf dieser Arbeitsfläche sind möglicherweise nicht gespeichert.",
+  "collaboration.localEditConflict": "Deine Offline-Änderungen stehen im Konflikt mit dem gemeinsamen Entwurf. Sie sind weiterhin in diesem Browser gespeichert.",
   "collaboration.reloadPage": "Seite neu laden",
   "collaboration.replacedWithPendingEdits": "Der Entwurf wurde wiederhergestellt oder durch einen Import ersetzt. Der aktuelle Entwurf ist geladen. Nicht bestätigte lokale Änderungen des alten Entwurfs wurden gelöscht.",
   "common.accessAPIReference": "API-Referenz aufrufen",

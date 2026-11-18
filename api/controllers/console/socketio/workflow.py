@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Callable
-from typing import cast
+from typing import Literal, cast
 
 from flask import Request as FlaskRequest
 from pydantic import BaseModel, Field
@@ -17,7 +17,12 @@ from repositories.workflow_collaboration_repository import WorkflowCollaboration
 from services.errors.app import WorkflowNotFoundError
 from services.errors.billing import BillingUpstreamError
 from services.workflow_collaboration_service import WorkflowCollaborationNotEntitledError, WorkflowCollaborationService
-from services.workflow_loro_document import LoroDraftEmptyGraphError, LoroDraftEpochChangedError
+from services.workflow_loro_document import (
+    LoroDraftClientUpgradeRequiredError,
+    LoroDraftEmptyGraphError,
+    LoroDraftEpochChangedError,
+)
+from services.workflow_loro_edits import LoroDraftLegacyEditConflictError
 from services.workflow_service import WorkflowService
 
 repository = WorkflowCollaborationRepository()
@@ -26,6 +31,8 @@ collaboration_service = WorkflowCollaborationService(repository, sio)
 
 class LoroDraftSyncPayload(BaseModel):
     epoch: str = Field(min_length=36, max_length=36)
+    format: Literal[1, 2] = 1
+    legacy_update: bool = Field(default=False, strict=True)
     version: bytes | None = Field(default=None, strict=True, max_length=1024 * 1024)
     update: bytes | None = Field(default=None, strict=True, max_length=dify_config.WEBSOCKET_MAX_HTTP_BUFFER_SIZE)
     allow_empty: bool = Field(default=False, strict=True)
@@ -169,10 +176,16 @@ def handle_loro_draft_sync(sid: str, data: object) -> tuple[dict[str, object], i
                 version=payload.version,
                 update=payload.update,
                 allow_empty=payload.allow_empty,
+                client_format=payload.format,
+                legacy_update=payload.legacy_update,
                 session=session,
             )
     except LoroDraftEpochChangedError:
         return {"msg": "epoch_changed"}, 409
+    except LoroDraftClientUpgradeRequiredError:
+        return {"msg": "client_upgrade_required"}, 409
+    except LoroDraftLegacyEditConflictError:
+        return {"msg": "legacy_edit_conflict"}, 409
     except WorkflowNotFoundError:
         return {"msg": "draft_workflow_not_exist"}, 404
     except LoroDraftEmptyGraphError:
@@ -191,6 +204,7 @@ def handle_loro_draft_sync(sid: str, data: object) -> tuple[dict[str, object], i
             logging.exception("Failed to notify collaborators about committed Loro draft %s", app_id)
     return {
         "epoch": result.epoch,
+        "format": result.format,
         "version": result.version,
         "update": result.update,
         "hash": result.hash,

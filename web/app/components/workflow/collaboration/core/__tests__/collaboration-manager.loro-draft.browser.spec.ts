@@ -3,6 +3,7 @@ import { deleteDB } from 'idb'
 import { LoroDoc, LoroMap } from 'loro-crdt'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { CollaborationManager } from '../collaboration-manager'
+import { appendDraftEdit, projectDraftGraph } from '../loro-draft-edits'
 import { webSocketClient } from '../websocket-manager'
 import { createLLMNode } from './test-graph-fixtures'
 import { createDraftServer } from './test-loro-draft-server'
@@ -35,7 +36,11 @@ function graphDocument(title: string, promptTemplate?: PromptItem[] | PromptItem
   return doc
 }
 
-function connectManager(server: ReturnType<typeof createDraftServer>, nodes: Node[] = []) {
+function connectManager(
+  server: ReturnType<typeof createDraftServer>,
+  nodes: Node[] = [],
+  format?: 2,
+) {
   const transport = server.transport()
   vi.spyOn(webSocketClient, 'connect').mockReturnValue(transport.socket)
   vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(transport.socket)
@@ -57,7 +62,11 @@ function connectManager(server: ReturnType<typeof createDraftServer>, nodes: Nod
   }
   const manager = new CollaborationManager()
   managers.push(manager)
-  const connected = manager.connect('app-1', { getState: () => state }, server.identity)
+  const connected = manager.connect(
+    'app-1',
+    { getState: () => state },
+    { ...server.identity, ...(format ? { format } : {}) },
+  )
   const join = async () => {
     await connected
     transport.receive('status', { isLeader: false })
@@ -266,4 +275,45 @@ it('gates old mutations during epoch replacement and keeps the existing room sub
   editor.manager.emitWorkflowUpdate('app-1')
   await editor.manager.syncLoroDraft('app-1')
   expect((await server.read(nextIdentity)).edits).toEqual([])
+})
+
+it('keeps only local actions in draft history, including input before the first sync', async () => {
+  const server = createDraftServer((title) =>
+    graphDocument(title, [{ role: 'system', text: title }]),
+  )
+  const identity = { ...server.identity, format: 2 as const }
+  const editor = connectManager(server, [], 2)
+  const original: PromptItem[] = [{ role: 'system', text: 'Before' }]
+  expect(
+    editor.manager.queueInitialLlmPrompt(
+      'app-1',
+      identity,
+      'node-1',
+      [{ ...original[0]!, text: 'Local' }],
+      original,
+    ),
+  ).toBe(true)
+  await editor.join()
+  await editor.manager.syncLoroDraft('app-1')
+  expect(editor.manager.isDraftHistoryReady('app-1', identity)).toBe(true)
+  expect(editor.manager.getDraftHistory()).toEqual({ undo: ['NodeChange'], redo: [] })
+  editor.manager.setLoroDraftViewport({ x: 10, y: 20, zoom: 2 })
+  appendDraftEdit(server.document(), [
+    { kind: 'nodes', id: 'node-1', path: ['data', 'title'], op: 'set', value: 'Remote title' },
+  ])
+  editor.receive('loro_draft_changed', { epoch: identity.epoch })
+  await vi.waitFor(() => expect(editor.manager.getNodes()[0]?.data.title).toBe('Remote title'))
+  expect(editor.manager.undo()).toBe(true)
+  expect(editor.manager.getNodes()[0]?.data).toMatchObject({
+    title: 'Remote title',
+    prompt_template: original,
+  })
+  expect(editor.manager.getDraftHistory()).toEqual({ undo: [], redo: ['NodeChange'] })
+  expect(editor.manager.redo()).toBe(true)
+  await editor.manager.syncLoroDraft('app-1')
+  expect(projectDraftGraph(server.document()).nodes[0]?.data).toMatchObject({
+    title: 'Remote title',
+    prompt_template: [{ role: 'system', text: 'Local' }],
+  })
+  expect(server.document().getMap('graph').get('viewport')).toEqual({ x: 10, y: 20, zoom: 2 })
 })

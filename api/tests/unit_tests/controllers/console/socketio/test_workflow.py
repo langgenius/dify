@@ -8,7 +8,7 @@ import pytest
 import socketio
 from engineio.socket import Socket
 from flask import Flask
-from loro import ExportMode, LoroDoc, VersionVector
+from loro import ExportMode, LoroDoc, LoroMap, ValueOrContainer, VersionVector
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import Gauge, Histogram, InMemoryMetricReader, Metric, Sum
 from socketio.packet import ACK, CONNECT_ERROR, EVENT, Packet
@@ -252,7 +252,7 @@ def loro_client(
         app_id=app.id,
         tenant_id=tenant.id,
         created_by=account.id,
-        graph={"nodes": [{"id": "llm", "data": {"title": "Before"}}], "edges": []},
+        graph={"nodes": [{"id": "llm", "data": {"title": "Before", "prompt": [{"text": "Before"}]}}], "edges": []},
     )
     membership = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole.EDITOR)
     sqlite_session.add_all([tenant, account, app, draft, membership])
@@ -276,11 +276,118 @@ def _seed_loro_client(client: LoroClient) -> tuple[LoroDoc, bytes]:
     server, _, draft, sid = client
     body, status = server.handlers["/"]["loro_draft_sync"](sid, {"epoch": draft.id})
     assert status == 200
+    assert body["format"] == 1
     assert isinstance(body["update"], bytes)
     assert isinstance(body["version"], bytes)
     doc = LoroDoc()
     doc.import_(body["update"])
     return doc, body["version"]
+
+
+def test_loro_upgrade_keeps_legacy_pending_edits_and_blocks_stale_writers(
+    loro_client: LoroClient, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    """An upgraded browser can send its old outbox even after another browser enabled selective undo."""
+    server, _, draft, sid = loro_client
+    exchange = server.handlers["/"]["loro_draft_sync"]
+    doc, baseline = _seed_loro_client(loro_client)
+    doc.get_map("graph").insert("viewport", {"x": 99})
+    pending = doc.export(ExportMode.Updates(VersionVector.decode(baseline)))
+
+    upgraded, status = exchange(sid, {"epoch": draft.id, "format": 2, "version": baseline})
+    assert status == 200
+    assert upgraded["format"] == 2
+    payload = {"epoch": draft.id, "version": baseline, "update": pending}
+    assert exchange(sid, payload) == ({"msg": "client_upgrade_required"}, 409)
+    with sqlite_session_factory() as session:
+        durable = session.get_one(Workflow, draft.id)
+        assert durable.graph_dict.get("viewport") != {"x": 99}
+
+    recovered, status = exchange(sid, {**payload, "format": 2, "legacy_update": True})
+    assert status == 200
+    assert recovered["format"] == 2
+    doc.import_(recovered["update"])
+    assert doc.get_map("draftFormat").get_deep_value() == {"version": 2}
+    with sqlite_session_factory() as session:
+        durable = session.get_one(Workflow, draft.id)
+        assert durable.graph_dict["viewport"] == {"x": 99}
+        assert durable.loro_draft_epoch == draft.id
+
+
+@pytest.mark.parametrize("legacy_edit", ["same-field", "shift-row", "other-field"])
+def test_loro_legacy_outbox_conflict_is_atomic(
+    loro_client: LoroClient, sqlite_session_factory: sessionmaker[Session], legacy_edit: str
+) -> None:
+    """An upgraded outbox cannot displace a v2 row or receive a false acknowledgement for a hidden edit."""
+    server, _, draft, sid = loro_client
+    exchange = server.handlers["/"]["loro_draft_sync"]
+    old, baseline = _seed_loro_client(loro_client)
+    current, status = exchange(sid, {"epoch": draft.id, "format": 2})
+    assert status == 200
+    other = LoroDoc()
+    other.import_(current["update"])
+    other.get_map("editLog").insert(
+        "01",
+        {
+            "step": "01",
+            "patches": [
+                {
+                    "kind": "nodes",
+                    "id": "llm",
+                    "op": "set",
+                    "path": ["data", "prompt", {"row": "i:0"}, "text"],
+                    "value": "Bob",
+                }
+            ],
+        },
+    )
+    other.get_map("editState").insert("01", True)
+    committed, status = exchange(
+        sid,
+        {
+            "epoch": draft.id,
+            "format": 2,
+            "version": current["version"],
+            "update": other.export(ExportMode.Updates(VersionVector.decode(current["version"]))),
+        },
+    )
+    assert status == 200
+
+    node = old.get_map("nodes").get("llm")
+    assert isinstance(node, ValueOrContainer.Container)
+    assert isinstance(node.container, LoroMap)
+    data = node.container.get("data")
+    assert isinstance(data, ValueOrContainer.Container)
+    assert isinstance(data.container, LoroMap)
+    if legacy_edit == "same-field":
+        data.container.insert("prompt", [{"text": "Alice"}])
+    elif legacy_edit == "shift-row":
+        data.container.insert("prompt", [{"text": "Inserted"}, {"text": "Before"}])
+    else:
+        data.container.insert("title", "Alice")
+    payload = {
+        "epoch": draft.id,
+        "format": 2,
+        "legacy_update": True,
+        "version": baseline,
+        "update": old.export(ExportMode.Updates(VersionVector.decode(baseline))),
+    }
+    result, status = exchange(sid, payload)
+    if legacy_edit == "other-field":
+        assert status == 200
+    else:
+        assert status == 409
+        assert result == {"msg": "legacy_edit_conflict"}
+        latest, status = exchange(sid, {"epoch": draft.id, "format": 2, "version": committed["version"]})
+        assert status == 200
+        assert latest["update"] is None
+        assert latest["hash"] == committed["hash"]
+    with sqlite_session_factory() as session:
+        durable = session.get_one(Workflow, draft.id)
+        assert durable.graph_dict["nodes"][0]["data"] == {
+            "title": "Alice" if legacy_edit == "other-field" else "Before",
+            "prompt": [{"text": "Bob"}],
+        }
 
 
 def test_loro_confirmation_matches_durable_history_and_duplicate_revision(

@@ -8,9 +8,11 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from loro import EncodedBlobMode, ExportMode, LoroDoc, LoroList, LoroMap, ValueOrContainer, VersionVector
+
+from services.workflow_loro_edits import LoroDraftUpdateError, project_edit_log, validate_legacy_edit
 
 if TYPE_CHECKING:
     from loro import LoroValue
@@ -19,12 +21,12 @@ _LIST_FIELDS = frozenset({"variables", "parameters"})
 _ORDER_KEYS = {"nodes": "node_order", "edges": "edge_order"}
 
 
-class LoroDraftUpdateError(ValueError):
-    """The bytes cannot be applied to this draft's confirmed history."""
-
-
 class LoroDraftEpochChangedError(ValueError):
     """The requested epoch no longer owns the draft."""
+
+
+class LoroDraftClientUpgradeRequiredError(ValueError):
+    """The client cannot project the collaborative history stored in this draft."""
 
 
 class LoroDraftEmptyGraphError(ValueError):
@@ -34,6 +36,7 @@ class LoroDraftEmptyGraphError(ValueError):
 @dataclass(frozen=True, slots=True)
 class LoroDraftSyncResult:
     epoch: str
+    format: Literal[1, 2]
     version: bytes
     update: bytes | None
     hash: str
@@ -122,14 +125,32 @@ def load_loro_draft(snapshot: bytes | None, graph: Mapping[str, LoroValue]) -> L
     return doc
 
 
-def project_loro_graph(doc: LoroDoc) -> dict[str, LoroValue]:
+def negotiate_loro_format(doc: LoroDoc, client_format: Literal[1, 2]) -> None:
+    """Upgrade in place so outstanding deltas still refer to the same causal history."""
+    if doc.get_by_str_path("draftFormat/version") is not None:
+        if client_format == 1:
+            raise LoroDraftClientUpgradeRequiredError("This draft requires collaborative undo support.")
+    elif client_format == 2:
+        doc.get_map("draftFormat").insert("version", 2)
+        doc.commit()
+
+
+def project_loro_graph(doc: LoroDoc, *, client_format: Literal[1, 2] | None = None) -> dict[str, LoroValue]:
     """Project applied node and edge state for Dify, keeping the original relative order."""
     roots = _mapping(doc.get_deep_value())
-    if roots.keys() - {"graph", "nodes", "edges"}:
+    if roots.keys() - {"graph", "nodes", "edges", "draftFormat", "editLog", "editState"}:
         raise LoroDraftUpdateError("Unexpected workflow document root.")
-    graph = _mapping(doc.get_map("graph").get_deep_value())
+    header = _mapping(roots.get("draftFormat", {}))
+    if header not in ({}, {"version": 2}):
+        raise LoroDraftUpdateError("Invalid workflow document format.")
+    if client_format is not None and bool(header) != (client_format == 2):
+        raise LoroDraftUpdateError("A graph edit cannot change the negotiated format.")
+    log, state = _mapping(roots.get("editLog", {})), _mapping(roots.get("editState", {}))
+    if (log or state) and not header:
+        raise LoroDraftUpdateError("Graph edits require format 2.")
+    graph = _mapping(roots.get("graph", {}))
     for kind, order_key in _ORDER_KEYS.items():
-        items = _mapping(doc.get_map(kind).get_deep_value())
+        items = _mapping(roots.get(kind, {}))
         order = graph.pop(order_key, [])
         if not isinstance(order, list):
             raise LoroDraftUpdateError("Invalid graph order.")
@@ -145,14 +166,21 @@ def project_loro_graph(doc: LoroDoc) -> dict[str, LoroValue]:
                 item = _mapping(items[key])
                 if item.get("id") != key:
                     raise LoroDraftUpdateError("Graph item ID does not match its map key.")
-                if "data" in item:
-                    item["data"] = {k: v for k, v in _mapping(item["data"]).items() if not k.startswith("_")}
                 projected.append(item)
         graph[kind] = projected
+    if header:
+        project_edit_log(graph, log, state)
+    for kind in _ORDER_KEYS:
+        items = graph[kind]
+        assert isinstance(items, list)
+        for item in items:
+            assert isinstance(item, dict)
+            if "data" in item:
+                item["data"] = {k: v for k, v in _mapping(item["data"]).items() if not k.startswith("_")}
     return graph
 
 
-def merge_loro_update(doc: LoroDoc, update: bytes) -> None:
+def merge_loro_update(doc: LoroDoc, update: bytes, *, legacy_update: bool = False) -> None:
     """Apply a delta, rejecting malformed bytes and missing causal dependencies.
 
     Native Loro decoding can raise a bare BaseException. Normalize that error
@@ -161,6 +189,7 @@ def merge_loro_update(doc: LoroDoc, update: bytes) -> None:
     try:
         if LoroDoc.decode_import_blob_meta(update, True).mode != EncodedBlobMode.Updates:
             raise LoroDraftUpdateError("Expected a Loro delta.")
+        before = _mapping(doc.get_deep_value()) if legacy_update else {}
         status = doc.import_(update)
         if status.pending is not None:
             raise LoroDraftUpdateError("Loro update is missing causal dependencies.")
@@ -168,6 +197,8 @@ def merge_loro_update(doc: LoroDoc, update: bytes) -> None:
         if type(error) is not BaseException and not isinstance(error, (ValueError, RuntimeError, TypeError)):
             raise
         raise LoroDraftUpdateError(str(error)) from error
+    if before.get("editLog"):
+        validate_legacy_edit(before, _mapping(doc.get_deep_value()), _mapping(before["editLog"]))
 
 
 def export_loro_delta(doc: LoroDoc, from_version: bytes | None) -> bytes | None:

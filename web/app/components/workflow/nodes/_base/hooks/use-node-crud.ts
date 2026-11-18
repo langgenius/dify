@@ -14,10 +14,11 @@ const useNodeCrud = <T>(id: string, data: CommonNodeType<T>) => {
     (newInputs: CommonNodeType<T>) => {
       updateRef.current({
         id,
+        previousData: data,
         data: newInputs,
       })
     },
-    [id],
+    [id, data],
   )
 
   return {

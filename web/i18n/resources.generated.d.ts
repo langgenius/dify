@@ -6181,6 +6181,7 @@ export default interface Resources {
     'collaboration.historyAction.generic': 'A collaborator performed an undo/redo action'
     'collaboration.joinDenied': 'Unable to join collaboration. Check your access and workspace plan, then reopen the editor.'
     'collaboration.joinUnavailable': 'Unable to connect to collaboration. Changes on this canvas may not be saved.'
+    'collaboration.localEditConflict': 'Your offline edits conflict with the shared draft. They are still saved in this browser.'
     'collaboration.reloadPage': 'Reload Page'
     'collaboration.replacedWithPendingEdits': 'The draft was restored or replaced by an import. The latest draft is loaded, and unconfirmed local edits from the old draft have been cleared.'
     'common.accessAPIReference': 'Access API Reference'

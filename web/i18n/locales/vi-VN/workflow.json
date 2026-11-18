@@ -114,6 +114,7 @@
   "collaboration.historyAction.generic": "Một cộng tác viên đã thực hiện hoàn tác/làm lại",
   "collaboration.joinDenied": "Không thể tham gia chỉnh sửa cộng tác. Hãy kiểm tra quyền truy cập và gói của không gian làm việc, sau đó mở lại trình chỉnh sửa.",
   "collaboration.joinUnavailable": "Không thể kết nối cộng tác. Các thay đổi trên bảng này có thể chưa được lưu.",
+  "collaboration.localEditConflict": "Các thay đổi ngoại tuyến của bạn xung đột với bản nháp dùng chung. Chúng vẫn được lưu trong trình duyệt này.",
   "collaboration.reloadPage": "Tải lại trang",
   "collaboration.replacedWithPendingEdits": "Bản nháp đã được khôi phục hoặc ghi đè bằng dữ liệu nhập. Đã tải bản nháp mới nhất và xóa các chỉnh sửa cục bộ chưa được xác nhận lưu của bản nháp cũ.",
   "common.accessAPIReference": "Truy cập tài liệu API",
