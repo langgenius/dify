@@ -28,24 +28,9 @@ _JOB_KEY = "openapi:job:{job_id}"
 _ALIVE_KEY = "openapi:job:{job_id}:alive"
 _IDEMPOTENCY_KEY = "openapi:job:idem:{tenant_id}:{app_id}:{caller_role}:{caller_id}:{key}"
 _ALIVE_VALUE = "1"
+_ENDING_FIELD: Final = "ending"
 _RECORD_FIELDS = frozenset(field.name for field in dataclass_fields(JobRecord))
-# Write the ending only while the job exists and its status is not final. ARGV: status, error, failure, TTL, then
-# every final status; all values JSON-encoded as the record fields are. One key, so it also runs on Redis Cluster.
-SETTLE_SCRIPT: Final = """
-local current = redis.call('HGET', KEYS[1], 'status')
-if not current then
-    return 0
-end
-for index = 5, #ARGV do
-    if current == ARGV[index] then
-        return 0
-    end
-end
-redis.call('HSET', KEYS[1], 'status', ARGV[1], 'error', ARGV[2], 'failure', ARGV[3])
-redis.call('EXPIRE', KEYS[1], ARGV[4])
-return 1
-"""
-_FINAL_STATUSES: Final = tuple(json.dumps(status) for status in JobStatus if status.is_final)
+_REQUIRED_FIELDS = _RECORD_FIELDS - {_ENDING_FIELD}
 _DELETE_IF_EQUAL = """
 if redis.call('GET', KEYS[1]) == ARGV[1] then
     return redis.call('DEL', KEYS[1])
@@ -62,6 +47,8 @@ class RunJobRedis(Protocol):
     def get(self, name: str) -> Any: ...
 
     def hset(self, name: str, *, mapping: Mapping[str, str]) -> Any: ...
+
+    def hsetnx(self, name: str, key: str, value: str) -> Any: ...
 
     def hgetall(self, name: str) -> Any: ...
 
@@ -80,15 +67,30 @@ def _text(value: bytes | str) -> str:
 
 
 def _encode_record(record: JobRecord) -> dict[str, str]:
-    """Encode every record field. Precondition: JSON-serialisable fields. Postcondition: one JSON string per field."""
-    fields = asdict(record)
-    return {name: json.dumps(value) for name, value in fields.items()}
+    """Encode the record. Precondition: JSON-serialisable fields. Postcondition: one JSON string per field; no
+    ending field while the record has no ending, so settle can add it once."""
+    fields = {name: json.dumps(value) for name, value in asdict(record).items()}
+    if record.ending is None:
+        fields.pop(_ENDING_FIELD)
+    return fields
+
+
+def _decode_ending(raw: Mapping[str, Any] | None) -> JobEnding | None:
+    """Rebuild an ending. Precondition: raw is a decoded ending field or None. Postcondition: the ending or None."""
+    if raw is None:
+        return None
+    failure = raw["failure"]
+    return JobEnding(
+        status=JobStatus(raw["status"]),
+        failure=None if failure is None else JobFailure(failure),
+        error=raw["error"],
+    )
 
 
 def _decode_record(raw: Mapping[bytes | str, bytes | str]) -> JobRecord | None:
-    """Rebuild a record from a hash. Precondition: none. Postcondition: None unless every record field is present;
-    fields that are not record fields (written by a newer version) are ignored."""
-    if not _RECORD_FIELDS.issubset(_text(name) for name in raw):
+    """Rebuild a record from a hash. Precondition: none. Postcondition: None unless every record field but the ending
+    is present; fields that are not record fields (written by a newer version) are ignored."""
+    if not _REQUIRED_FIELDS.issubset(_text(name) for name in raw):
         return None
     fields = {_text(name): json.loads(_text(value)) for name, value in raw.items() if _text(name) in _RECORD_FIELDS}
     fields["owner"] = JobOwner(
@@ -98,9 +100,7 @@ def _decode_record(raw: Mapping[bytes | str, bytes | str]) -> JobRecord | None:
         caller_id=fields["owner"]["caller_id"],
     )
     fields["mode"] = AppMode(fields["mode"])
-    fields["status"] = JobStatus(fields["status"])
-    if fields["failure"] is not None:
-        fields["failure"] = JobFailure(fields["failure"])
+    fields[_ENDING_FIELD] = _decode_ending(fields.get(_ENDING_FIELD))
     return JobRecord(**fields)
 
 
@@ -158,15 +158,19 @@ class RedisRunJobStore:
         self._write(job_id, fields)
 
     def settle(self, job_id: str, ending: JobEnding) -> bool:
-        """Give the job its final status, unless it already has one.
+        """Give the job its ending, unless it already has one.
 
         Precondition: none.
-        Postcondition: true when the job existed and was not final: status, error and failure now hold ending and
-        the TTL is renewed. False with nothing written otherwise. The check and the write are one script.
+        Postcondition: true when the job existed without an ending: the ending field now holds this one (HSETNX, so
+        exactly one of several racing calls writes) and the TTL is renewed. False with nothing written otherwise.
         """
-        settle = self._redis.register_script(SETTLE_SCRIPT)
-        args = [json.dumps(ending.status), json.dumps(ending.error), json.dumps(ending.failure), JOB_TTL_SECONDS]
-        return bool(settle(keys=[self._job_name(job_id)], args=[*args, *_FINAL_STATUSES]))
+        name = self._job_name(job_id)
+        if not self._redis.exists(name):
+            return False
+        written = bool(self._redis.hsetnx(name, _ENDING_FIELD, json.dumps(asdict(ending))))
+        if written:
+            self._redis.expire(name, JOB_TTL_SECONDS)
+        return written
 
     def request_stop(self, job_id: str) -> None:
         """Record that the owner asked the job to stop.

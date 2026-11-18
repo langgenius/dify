@@ -74,26 +74,54 @@ class JobOwner:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class JobEnding:
+    """A job's final state. error is the run's own text; a failure reason carries its message instead."""
+
+    status: JobStatus
+    failure: JobFailure | None = None
+    error: str | None = None
+
+    def __post_init__(self) -> None:
+        """Precondition: none. Postcondition: raises ValueError unless status is final."""
+        if not self.status.is_final:
+            raise ValueError(f"A job ending needs a final status, not {self.status}")
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class JobRecord:
     id: str
     owner: JobOwner
     mode: AppMode
     op: str
-    status: JobStatus
     task_id: str | None = None
     run_id: str | None = None
     message_id: str | None = None
     conversation_id: str | None = None
-    error: str | None = None
-    failure: JobFailure | None = None
     stop_requested: bool = False
+    ending: JobEnding | None = None
 
     @property
-    def reported_error(self) -> str | None:
+    def status(self) -> JobStatus:
+        """Postcondition: RUNNING until the job has an ending, then the ending's status."""
+        if self.ending is None:
+            return JobStatus.RUNNING
+        return self.ending.status
+
+    @property
+    def failure(self) -> JobFailure | None:
+        """Postcondition: why the service failed the job, or None."""
+        if self.ending is None:
+            return None
+        return self.ending.failure
+
+    @property
+    def error(self) -> str | None:
         """Postcondition: the failure reason's message when the service failed the job, else the run's error."""
         if self.failure is not None:
             return self.failure.message
-        return self.error
+        if self.ending is None:
+            return None
+        return self.ending.error
 
     @property
     def family(self) -> JobFamily:
@@ -114,18 +142,6 @@ class JobIds:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
-class JobEnding:
-    status: JobStatus
-    error: str | None = None
-    failure: JobFailure | None = None
-
-    def __post_init__(self) -> None:
-        """Precondition: none. Postcondition: raises ValueError unless status is final."""
-        if not self.status.is_final:
-            raise ValueError(f"A job ending needs a final status, not {self.status}")
-
-
-@dataclass(frozen=True, slots=True, kw_only=True)
 class OpenedJob:
     record: JobRecord
     created: bool
@@ -142,8 +158,8 @@ class RunJobStore(Protocol):
         """Precondition: none. Postcondition: the ids that are set are stored; a missing job is not recreated."""
 
     def settle(self, job_id: str, ending: JobEnding) -> bool:
-        """Precondition: none. Postcondition: true when the job existed and was not final, and now holds ending;
-        false, with nothing written, otherwise. Atomic on the job's key."""
+        """Precondition: none. Postcondition: true when the job existed without an ending and now holds this one;
+        false, with nothing written, otherwise. The ending is written once, atomically on the job's key."""
 
     def request_stop(self, job_id: str) -> None:
         """Precondition: none. Postcondition: stop_requested is set; a missing job is not recreated."""

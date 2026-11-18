@@ -1,4 +1,4 @@
-"""Run the run job store's scripts against the container's real Redis."""
+"""Run the run job store's single-key writes against the container's real Redis."""
 
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
@@ -38,7 +38,7 @@ def store(request: pytest.FixtureRequest, flask_app_with_containers: Flask) -> I
 
 def _record() -> JobRecord:
     owner = JobOwner(tenant_id=str(uuid4()), app_id=str(uuid4()), caller_role=CreatorUserRole.ACCOUNT, caller_id="u1")
-    return JobRecord(id=str(uuid4()), owner=owner, mode=AppMode.WORKFLOW, op="start.x", status=JobStatus.RUNNING)
+    return JobRecord(id=str(uuid4()), owner=owner, mode=AppMode.WORKFLOW, op="start.x")
 
 
 def test_settle_writes_the_first_ending_only(store: RedisRunJobStore) -> None:
@@ -49,7 +49,7 @@ def test_settle_writes_the_first_ending_only(store: RedisRunJobStore) -> None:
     second = store.settle(job.id, JobEnding(status=JobStatus.SUCCEEDED, error="late"))
 
     assert (first, second) == (True, False)
-    assert store.get(job.id) == replace(job, status=JobStatus.FAILED, failure=JobFailure.NO_RESULT)
+    assert store.get(job.id) == replace(job, ending=JobEnding(status=JobStatus.FAILED, failure=JobFailure.NO_RESULT))
 
 
 def test_settle_of_a_missing_job_writes_nothing(store: RedisRunJobStore) -> None:

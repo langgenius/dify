@@ -39,7 +39,6 @@ def _record(job_id: str = "job-1", *, caller_id: str = "acct-1") -> JobRecord:
         owner=JobOwner(tenant_id="t1", app_id="app-1", caller_role=CreatorUserRole.ACCOUNT, caller_id=caller_id),
         mode=AppMode.WORKFLOW,
         op="start.console_app.workflow",
-        status=JobStatus.RUNNING,
     )
 
 
@@ -132,17 +131,36 @@ def test_settle_writes_the_first_final_status_only(store: RedisRunJobStore, redi
     second = store.settle(job.id, JobEnding(status=JobStatus.SUCCEEDED))
 
     assert (first, second) == (True, False)
-    assert store.get(job.id) == replace(job, status=JobStatus.FAILED, error="boom")
+    assert store.get(job.id) == replace(job, ending=JobEnding(status=JobStatus.FAILED, error="boom"))
+    assert redis.hashes[f"openapi:job:{job.id}"]["ending"] == '{"status": "failed", "failure": null, "error": "boom"}'
     assert redis.ttls[f"openapi:job:{job.id}"] == JOB_TTL_SECONDS
 
 
-def test_settle_clears_an_error_it_does_not_set(store: RedisRunJobStore) -> None:
+def test_a_record_without_an_ending_is_running(store: RedisRunJobStore, redis: InMemoryRedis) -> None:
     job = _record()
     store.open(job, idempotency_key=None)
 
-    store.settle(job.id, JobEnding(status=JobStatus.STOPPED))
+    stored = store.get(job.id)
 
-    assert store.get(job.id) == replace(job, status=JobStatus.STOPPED)
+    assert stored is not None
+    assert (stored.status, stored.error, stored.failure) == (JobStatus.RUNNING, None, None)
+    assert "ending" not in redis.hashes[f"openapi:job:{job.id}"]
+
+
+def test_a_failure_reports_its_own_message_and_stores_no_text(store: RedisRunJobStore, redis: InMemoryRedis) -> None:
+    job = _record()
+    store.open(job, idempotency_key=None)
+
+    store.settle(job.id, JobEnding(status=JobStatus.FAILED, failure=JobFailure.NO_RESULT))
+
+    stored = store.get(job.id)
+    assert stored is not None
+    assert (stored.status, stored.failure, stored.error) == (
+        JobStatus.FAILED,
+        JobFailure.NO_RESULT,
+        JobFailure.NO_RESULT.message,
+    )
+    assert '"error": null' in redis.hashes[f"openapi:job:{job.id}"]["ending"]
 
 
 def test_an_ending_must_be_final() -> None:
@@ -197,16 +215,6 @@ def test_record_family_uses_its_mode() -> None:
 def test_each_failure_reason_carries_its_message() -> None:
     assert JobFailure.RUN_NOT_CONFIRMED.message == "run start was not confirmed; it may still execute"
     assert JobFailure.NO_RESULT.message == "run ended without a result"
-
-
-def test_a_failure_reason_round_trips_through_the_store(store: RedisRunJobStore) -> None:
-    store.open(_record(), idempotency_key=None)
-
-    store.settle("job-1", JobEnding(status=JobStatus.FAILED, failure=JobFailure.NO_RESULT))
-
-    stored = store.get("job-1")
-    assert stored is not None
-    assert (stored.failure, stored.error) == (JobFailure.NO_RESULT, None)
 
 
 def test_only_three_statuses_are_final() -> None:
