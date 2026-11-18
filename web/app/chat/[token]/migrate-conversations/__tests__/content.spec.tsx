@@ -477,7 +477,7 @@ it('requests Console account switching only after WebApp logout succeeds, preser
   expect(localStorage.getItem(PASSPORT_LOCAL_STORAGE_NAME('current-app'))).toBe('anonymous-current')
 })
 
-it.each(['parameters', 'logout'] as const)(
+it.each(['parameters', 'logout', 'login-disabled'] as const)(
   'retains the migration screen and stops account switching when %s fails',
   async (failure) => {
     const user = userEvent.setup()
@@ -485,6 +485,11 @@ it.each(['parameters', 'logout'] as const)(
     const error = new Error('Unable to switch account')
     if (failure === 'parameters')
       vi.mocked(webAppClient.parameters.get).mockRejectedValueOnce(error)
+    else if (failure === 'login-disabled')
+      vi.mocked(webAppClient.parameters.get).mockResolvedValueOnce({
+        ...parameters,
+        account_login_enabled: false,
+      })
     else vi.mocked(webAppLogout).mockRejectedValueOnce(error)
     render(
       <QueryClientProvider client={createTestQueryClient()}>
@@ -495,11 +500,13 @@ it.each(['parameters', 'logout'] as const)(
     await user.click(
       await screen.findByRole('button', { name: 'login.history.useDifferentAccount' }),
     )
-    expect(await screen.findByRole('alert')).toHaveTextContent('Unable to switch account')
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      failure === 'login-disabled' ? 'common.api.actionFailed' : 'Unable to switch account',
+    )
     expect(screen.getByRole('button', { name: 'login.history.useDifferentAccount' })).toBeEnabled()
     expect(screen.getByRole('link', { name: 'login.history.notNow' })).toBeInTheDocument()
     expect(beginWebAppAccountLogin).not.toHaveBeenCalled()
     expect(webAppClient.migration.claim.post).not.toHaveBeenCalled()
-    if (failure === 'parameters') expect(webAppLogout).not.toHaveBeenCalled()
+    if (failure !== 'logout') expect(webAppLogout).not.toHaveBeenCalled()
   },
 )

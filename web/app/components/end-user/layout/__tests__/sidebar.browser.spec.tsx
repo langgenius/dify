@@ -130,10 +130,16 @@ describe('sidebar workspace entry', () => {
       .toHaveAttribute('href', '/my-account')
   })
 
-  it('keeps the workspace entry available without a separate login URL in WebApp bootstrap', async () => {
+  it('keeps the workspace entry available with email and social sign-in disabled', async () => {
     mockRequests({
       account: () => Response.json({ ...profile, has_tenant: true }),
-      systemFeatures: () => Response.json(features),
+      systemFeatures: () =>
+        Response.json({
+          ...features,
+          enable_email_code_login: false,
+          enable_email_password_login: false,
+          enable_social_oauth_login: false,
+        }),
     })
     const screen = await renderSidebar()
 

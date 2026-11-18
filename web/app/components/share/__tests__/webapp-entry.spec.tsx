@@ -234,7 +234,7 @@ describe('Web App entry policy', () => {
 })
 
 describe('SignIn entry integration', () => {
-  it('uses the API Console origin and deployment prefix for sign-in', async () => {
+  it('uses the API Console origin and deployment prefix and updates them when the entry changes', async () => {
     const user = userEvent.setup()
     const assign = vi.spyOn(window.location, 'assign').mockImplementation(() => {})
     const input = makeEntryInput({

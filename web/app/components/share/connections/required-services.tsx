@@ -25,6 +25,7 @@ export type RequiredConnectionService = RequiredConnection & {
   description: string
   iconDark?: RequiredConnection['icon']
   pluginUniqueIdentifier?: WebAppConnectionRequirement['plugin_unique_identifier']
+  verified?: WebAppConnectionRequirement['verified']
   apiKeySchema?: ProviderConfig[]
   availableConnections: readonly {
     id: string
@@ -106,6 +107,7 @@ function ServiceItem({
         iconDark={service.iconDark}
         iconClassName={service.iconClassName}
         name={service.name}
+        verified={service.verified}
         description={service.description}
         warning={
           hasWarning ? (

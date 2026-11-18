@@ -14,7 +14,7 @@ export default function UnofficialAppWarning({ className }: { className?: string
 
   return (
     <div className={cn('shrink-0 px-1.5', className)}>
-      <Alert type="warning" role="note">
+      <Alert type="warning" role="note" className="items-center">
         <AlertDescription>
           {t(($) => $['auth.unofficialAppWarning'], { ns: 'share' })}
         </AlertDescription>

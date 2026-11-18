@@ -10,7 +10,7 @@ import WorkspaceConnectionSelector from './workspace-connection-selector'
 type Props = Omit<ComponentProps<typeof WorkspaceConnectionSelector>, 'providerName'> &
   Pick<
     ComponentProps<typeof ConnectionServiceItem>,
-    'name' | 'description' | 'icon' | 'iconDark'
+    'name' | 'description' | 'icon' | 'iconDark' | 'verified'
   > & {
     status?: TestCredentialState['status'] | null
     showMissingConnectionWarning?: boolean
@@ -21,6 +21,7 @@ export default function WorkspaceConnectionItem({
   description,
   icon,
   iconDark,
+  verified,
   status,
   showMissingConnectionWarning = false,
   ...selectorProps
@@ -55,6 +56,7 @@ export default function WorkspaceConnectionItem({
       description={description}
       icon={icon}
       iconDark={iconDark}
+      verified={verified}
       warning={hasWarning ? <span role="status">{getWarningMessage()}</span> : undefined}
       renderControls={() => (
         <WorkspaceConnectionSelector

@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => ({
   oauthEnabled: false,
 }))
 
+// boundary: replace generated API responses while keeping connection state and controls real.
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -54,6 +55,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
+// boundary: workspace credential permissions are outside the installed-app connection workflow.
 vi.mock('@/hooks/use-credential-permissions', () => ({
   useCredentialPermissions: () => ({
     canUseCredential: true,
@@ -62,6 +64,7 @@ vi.mock('@/hooks/use-credential-permissions', () => ({
   }),
 }))
 
+// boundary: supply provider authorization data without starting an external authentication flow.
 vi.mock('@/app/components/plugins/plugin-auth/hooks/use-plugin-auth', () => ({
   usePluginAuth: () => ({
     isAuthorized: true,
@@ -94,12 +97,12 @@ const requirement = {
   node_ids: ['tool-node'],
   provider: 'langgenius/github/github',
   provider_label: 'GitHub',
+  verified: false,
   title: 'Search repositories',
   purpose: 'Find repositories',
   icon: '',
   icon_dark: null,
   plugin_unique_identifier: 'langgenius/github',
-  verified: false,
   allowed_credential_types: ['api-key' as const],
 }
 const credential = {
@@ -212,6 +215,25 @@ it('does not block an installed app that needs no connections', async () => {
   expect(mocks.list).not.toHaveBeenCalled()
   expect(mocks.preflight).not.toHaveBeenCalled()
 })
+
+it.each([true, false])(
+  'shows plugin verification from installed-app requirements when verified=%s',
+  async (verified) => {
+    mocks.parameters.mockResolvedValue({
+      ...parameters,
+      connection_requirements: [{ ...requirement, verified }],
+    })
+    const screen = await render(<App />)
+    const row = screen.getByRole('listitem', { name: 'GitHub', exact: true })
+    await expect.element(row).toBeVisible()
+    const badge = row.getByText('plugin.marketplace.verifiedTip', { exact: true })
+    if (verified) await expect.element(badge).toBeInTheDocument()
+    else await expect.element(badge).not.toBeInTheDocument()
+    await expect
+      .element(row.getByRole('button', { name: /share.connections.setup.selectConnection/ }))
+      .toBeEnabled()
+  },
+)
 
 it('saves a workspace selection for the current conversation and waits for fresh preflight before running', async () => {
   const check = createDeferred<{
