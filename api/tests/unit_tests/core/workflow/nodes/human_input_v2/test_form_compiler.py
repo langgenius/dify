@@ -8,6 +8,7 @@ from core.human_input_v2.resolved_form import (
     FileInput,
     FileListInput,
     MarkdownFragment,
+    ParagraphDefaultConfig,
     ParagraphInput,
     SelectInput,
     UserAction,
@@ -64,9 +65,9 @@ def test_compiler_preserves_markdown_and_input_source_order() -> None:
 
     assert resolved.parts == (
         MarkdownFragment(text="Before "),
-        ParagraphInput(output_variable_name="reason", default_value=None),
+        ParagraphInput(output_variable_name="reason", resolved_default_value=None),
         MarkdownFragment(text=" between "),
-        SelectInput(output_variable_name="decision", options=("approve", "reject"), default_value=None),
+        SelectInput(output_variable_name="decision", options=("approve", "reject"), resolved_default_value=None),
         MarkdownFragment(text=" after"),
     )
     assert resolved.title == "Review"
@@ -87,10 +88,10 @@ def test_compiler_keeps_adjacent_inputs_adjacent_and_preserves_whitespace_fragme
     resolved = compile_resolved_form(node_data, VariablePool.empty())
 
     assert resolved.parts == (
-        ParagraphInput(output_variable_name="first", default_value=None),
-        ParagraphInput(output_variable_name="second", default_value=None),
+        ParagraphInput(output_variable_name="first", resolved_default_value=None),
+        ParagraphInput(output_variable_name="second", resolved_default_value=None),
         MarkdownFragment(text=" \n "),
-        ParagraphInput(output_variable_name="third", default_value=None),
+        ParagraphInput(output_variable_name="third", resolved_default_value=None),
     )
 
 
@@ -116,7 +117,7 @@ def test_compiler_rejects_missing_referenced_input_and_omits_unreferenced_input(
         ),
         VariablePool.empty(),
     )
-    assert resolved.parts == (ParagraphInput(output_variable_name="referenced", default_value=None),)
+    assert resolved.parts == (ParagraphInput(output_variable_name="referenced", resolved_default_value=None),)
 
 
 def test_compiler_resolves_legacy_content_paragraph_defaults_and_select_values() -> None:
@@ -156,9 +157,19 @@ def test_compiler_resolves_legacy_content_paragraph_defaults_and_select_values()
         "{{#$output.constant_reason#}} {{#$output.variable_reason#}} {{#$output.decision#}}"
     )
     assert tuple(block for block in resolved.parts if not isinstance(block, MarkdownFragment)) == (
-        ParagraphInput(output_variable_name="constant_reason", default_value="No concerns"),
-        ParagraphInput(output_variable_name="variable_reason", default_value="Looks good"),
-        SelectInput(output_variable_name="decision", options=("approve", "reject"), default_value="approve"),
+        ParagraphInput(
+            output_variable_name="constant_reason",
+            resolved_default_value="No concerns",
+            default_config=ParagraphDefaultConfig(type=ValueSourceType.CONSTANT, selector=(), value="No concerns"),
+        ),
+        ParagraphInput(
+            output_variable_name="variable_reason",
+            resolved_default_value="Looks good",
+            default_config=ParagraphDefaultConfig(
+                type=ValueSourceType.VARIABLE, selector=("start", "paragraph_default"), value=""
+            ),
+        ),
+        SelectInput(output_variable_name="decision", options=("approve", "reject"), resolved_default_value="approve"),
     )
 
 
@@ -205,9 +216,9 @@ def test_node_data_and_compiler_preserve_repeated_output_slots_in_source_order()
 
     assert node_data.output_variable_names() == ("reason", "reason")
     assert resolved.parts == (
-        ParagraphInput(output_variable_name="reason", default_value=None),
+        ParagraphInput(output_variable_name="reason", resolved_default_value=None),
         MarkdownFragment(text=" then "),
-        ParagraphInput(output_variable_name="reason", default_value=None),
+        ParagraphInput(output_variable_name="reason", resolved_default_value=None),
     )
 
 

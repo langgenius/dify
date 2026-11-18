@@ -1,9 +1,7 @@
 """Delivery and Binding write contracts on MySQL and PostgreSQL."""
 
-import os
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import ExitStack
 from threading import Barrier, Event
 from uuid import uuid4
 
@@ -41,18 +39,14 @@ from repositories.human_input_v2.sqlalchemy_im_binding_repository import SQLAlch
 
 @pytest.fixture(scope="module", params=["mysql", "postgresql"])
 def write_engine(request: pytest.FixtureRequest) -> Iterator[Engine]:
-    """Allow an isolated external database, otherwise start a disposable container."""
-    dialect = request.param
-    external_url = os.environ.get(f"HITL_WRITE_TEST_{dialect.upper()}_URL")
-    with ExitStack() as stack:
-        if external_url is None:
-            container = stack.enter_context(
-                MySqlContainer("mysql:8.0", dialect="pymysql")
-                if dialect == "mysql"
-                else PostgresContainer("postgres:15-alpine")
-            )
-            external_url = container.get_connection_url()
-        engine = sa.create_engine(external_url)
+    """Yield a container engine with the required schema; dispose it before container shutdown."""
+    container = (
+        MySqlContainer("mysql:8.0", dialect="pymysql")
+        if request.param == "mysql"
+        else PostgresContainer("postgres:15-alpine")
+    )
+    with container:
+        engine = sa.create_engine(container.get_connection_url())
         tables = [
             HumanInputDelivery.metadata.tables[model.__tablename__]
             for model in (

@@ -6,9 +6,9 @@ import { ContactImBindingContent } from '../binding-dialog'
 import { providerMetadata } from '../credentials'
 import { ContactEmailConfigContent } from '../email-config-dialog'
 
-vi.mock('@/context/i18n', async (original) => ({
-  ...(await original<typeof import('@/context/i18n')>()),
-  useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
+// boundary: documentation routing is covered separately from credential session lifetime.
+vi.mock('../use-channel-doc-link', () => ({
+  useChannelDocLink: () => () => 'https://docs.dify.ai',
 }))
 
 it.each(['feishu', 'resend'] as const)(
