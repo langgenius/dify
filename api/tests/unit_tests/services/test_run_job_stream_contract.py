@@ -16,8 +16,11 @@ from typing import override
 import pytest
 
 from core.app.apps.advanced_chat.generate_response_converter import AdvancedChatAppGenerateResponseConverter
+from core.app.apps.agent_chat.generate_response_converter import AgentChatAppGenerateResponseConverter
 from core.app.apps.base_app_generate_response_converter import AppGenerateResponseConverter
 from core.app.apps.base_app_generator import BaseAppGenerator
+from core.app.apps.chat.generate_response_converter import ChatAppGenerateResponseConverter
+from core.app.apps.completion.generate_response_converter import CompletionAppGenerateResponseConverter
 from core.app.apps.streaming_utils import stream_topic_events
 from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -25,6 +28,7 @@ from core.app.entities.task_entities import (
     AppBlockingResponse,
     AppStreamResponse,
     ChatbotAppStreamResponse,
+    CompletionAppStreamResponse,
     ErrorStreamResponse,
     HumanInputRequiredResponse,
     MessageEndStreamResponse,
@@ -334,3 +338,78 @@ def test_a_chatflow_answered_without_a_workflow_run_succeeds(
 
     assert _ids(record) == JobIds(task_id=TASK_ID, message_id=MESSAGE_ID, conversation_id=CONVERSATION_ID)
     assert (record.status, record.failure) == (JobStatus.SUCCEEDED, None)
+
+
+def _message_frames[R: AppBlockingResponse](
+    converter: type[AppGenerateResponseConverter[R]], responses: list[AppStreamResponse]
+) -> list[str]:
+    """The frames a message job's reader gets: the app's converter, then convert_to_event_stream."""
+    return list(BaseAppGenerator.convert_to_event_stream(_converted(converter, responses)))
+
+
+def _chat_frames(responses: list[StreamResponse]) -> list[str]:
+    return _message_frames(ChatAppGenerateResponseConverter, _chat_stream(*responses))
+
+
+def _agent_chat_frames(responses: list[StreamResponse]) -> list[str]:
+    return _message_frames(AgentChatAppGenerateResponseConverter, _chat_stream(*responses))
+
+
+def _completion_frames(responses: list[StreamResponse]) -> list[str]:
+    stream: list[AppStreamResponse] = [
+        CompletionAppStreamResponse(message_id=MESSAGE_ID, created_at=1, stream_response=response)
+        for response in responses
+    ]
+    return _message_frames(CompletionAppGenerateResponseConverter, stream)
+
+
+MESSAGE_CASES = [
+    (AppMode.CHAT, _chat_frames, CONVERSATION_ID),
+    (AppMode.AGENT_CHAT, _agent_chat_frames, CONVERSATION_ID),
+    (AppMode.COMPLETION, _completion_frames, None),
+]
+
+
+@pytest.mark.parametrize(
+    ("mode", "frames_of", "conversation_id"), MESSAGE_CASES, ids=["chat", "agent-chat", "completion"]
+)
+def test_a_message_job_takes_its_ids_and_ending_from_cores_stream(
+    caplog: pytest.LogCaptureFixture,
+    mode: AppMode,
+    frames_of: Callable[[list[StreamResponse]], list[str]],
+    conversation_id: str | None,
+) -> None:
+    frames = frames_of(
+        [
+            MessageStreamResponse(task_id=TASK_ID, id=MESSAGE_ID, answer="hi"),
+            MessageEndStreamResponse(task_id=TASK_ID, id=MESSAGE_ID),
+        ]
+    )
+
+    record = _read(mode, frames, caplog)
+
+    assert _ids(record) == JobIds(task_id=TASK_ID, message_id=MESSAGE_ID, conversation_id=conversation_id)
+    assert record.status is JobStatus.SUCCEEDED
+
+
+@pytest.mark.parametrize(
+    ("mode", "frames_of", "conversation_id"), MESSAGE_CASES, ids=["chat", "agent-chat", "completion"]
+)
+def test_a_message_job_fails_with_the_error_cores_stream_reports(
+    caplog: pytest.LogCaptureFixture,
+    mode: AppMode,
+    frames_of: Callable[[list[StreamResponse]], list[str]],
+    conversation_id: str | None,
+) -> None:
+    """Core builds the error frame by hand from the exception: only this test guards its message key."""
+    frames = frames_of(
+        [
+            MessageStreamResponse(task_id=TASK_ID, id=MESSAGE_ID, answer="hi"),
+            ErrorStreamResponse(task_id=TASK_ID, err=ValueError("bad input")),
+        ]
+    )
+
+    record = _read(mode, frames, caplog)
+
+    assert _ids(record) == JobIds(task_id=TASK_ID, message_id=MESSAGE_ID, conversation_id=conversation_id)
+    assert (record.status, record.error) == (JobStatus.FAILED, "bad input")
