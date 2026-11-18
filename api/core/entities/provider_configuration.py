@@ -245,6 +245,23 @@ class ProviderConfiguration(BaseModel):
                         self._check_credential_policy_once(credential_configuration.credential_id)
             return credentials
 
+    def get_current_provider_credential_id(self, model_type: ModelType, model: str) -> str | None:
+        """Read provider-scope identity from the normal custom selection/fallback.
+
+        This sidecar contains no key and is sampled together with credentials;
+        a model-scope credential is never a provider credential, even if its UUID
+        happens to match one from the separate provider-credential table.
+        """
+        if self.using_provider_type != ProviderType.CUSTOM:
+            return None
+        for configuration in self.custom_configuration.models:
+            if configuration.model_type == model_type and configuration.model == model:
+                if configuration.credentials:
+                    return None
+                break
+        provider = self.custom_configuration.provider
+        return provider.current_credential_id if provider is not None else None
+
     def _check_credential_policy_once(self, credential_id: str) -> None:
         """Check the credential policy the first time this configuration hands a credential out.
 

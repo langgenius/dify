@@ -16,6 +16,7 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from machinery.context import AppRequestContext
 from models.provider import ProviderType
 from repositories.api_based_extension_repository import APIBasedExtensionRepository
+from repositories.tokener_bootstrap_repository import TokenerBootstrapRepository
 from services.api_based_extension_adapters import WorkspaceTokenCipher
 from services.moderation_adapters import (
     ChainedLLMModerationPolicy,
@@ -30,14 +31,27 @@ if TYPE_CHECKING:
     from core.model_manager import LLMModerationPolicy
 
 
-def platform_moderation_enabled(bundle: ProviderModelBundle) -> bool:
-    """Select Cloud AI-credit LLMs only when enabled; other models are excluded without provider I/O."""
+def platform_moderation_enabled(bundle: ProviderModelBundle, *, credential_id: str | None = None) -> bool:
+    """Select hosted credits or this signup's bound credential, never a BYOK label or token."""
     if (
         dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD
         or not dify_config.HOSTED_MODERATION_ENABLED
         or bundle.model_type_instance.model_type != ModelType.LLM
-        or bundle.configuration.using_provider_type != ProviderType.SYSTEM
     ):
+        return False
+    if bundle.configuration.using_provider_type == ProviderType.CUSTOM:
+        if credential_id is None or bundle.configuration.provider.provider != dify_config.TOKENER_PROVIDER_NAME:
+            return False
+        from core.db.session_factory import session_factory
+        from extensions.application_services.model_billing import build_model_billing_profiles
+
+        if not build_model_billing_profiles().resolve(bundle.configuration.tenant_id).uses_tokener:
+            return False
+        bound_id, _active = TokenerBootstrapRepository(sessions=session_factory.create_session).bound_credential(
+            bundle.configuration.tenant_id, bundle.configuration.provider.provider
+        )
+        return bound_id is not None and credential_id == bound_id
+    if bundle.configuration.using_provider_type != ProviderType.SYSTEM:
         return False
     configuration = bundle.configuration.system_configuration
     return configuration.current_quota_type in {ProviderQuotaType.TRIAL, ProviderQuotaType.PAID} and any(
@@ -73,10 +87,10 @@ def platform_moderation_credentials() -> dict[str, str] | None:
 
 
 def bind_hosted_llm_moderation(
-    bundle: ProviderModelBundle, *, policy: LLMModerationPolicy | None
+    bundle: ProviderModelBundle, *, policy: LLMModerationPolicy | None, credential_id: str | None = None
 ) -> LLMModerationPolicy | None:
-    """Bind both phases when enabled without I/O; explicit policies supplement rather than replace them."""
-    if not platform_moderation_enabled(bundle):
+    """Bind both phases; a native selected credential requires durable ownership reads that fail closed."""
+    if not platform_moderation_enabled(bundle, credential_id=credential_id):
         return policy
     guard = build_llm_moderation_guard(
         AppRequestContext(tenant_id=bundle.configuration.tenant_id, app_id=""),
