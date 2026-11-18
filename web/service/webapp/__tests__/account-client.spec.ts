@@ -94,7 +94,8 @@ const accountProfile: WebAccountProfileResponse = {
 
 const systemFeatures = {
   ...createSystemFeaturesFixture(),
-  account_login_url: 'https://accounts.example/console/signin?source=portal',
+  account_login_url: 'https://unused.example/legacy/signin?source=portal',
+  console_web_url: 'https://accounts.example/console',
 } satisfies WebSystemFeatureResponse
 
 function expectAccountRequest(
@@ -227,7 +228,7 @@ describe('generated account Web App client', () => {
     const signin = new URL(replace.mock.calls[0]![0])
     expect(signin.origin).toBe('https://accounts.example')
     expect(signin.pathname).toBe('/console/signin')
-    expect(signin.searchParams.get('source')).toBe('portal')
+    expect(signin.searchParams.has('source')).toBe(false)
     expect(signin.searchParams.get('is_end_user')).toBe('1')
     expect(signin.searchParams.get('redirect_url')).toBe(
       '/console/my-apps?view=starred&q=hello%20world#apps',
@@ -253,7 +254,7 @@ describe('generated account Web App client', () => {
       .mockResolvedValueOnce(
         Response.json({
           ...systemFeatures,
-          account_login_url: 'https://accounts.example/portal/signin',
+          console_web_url: 'https://accounts.example/portal',
         }),
       )
     await expect(webAppClient.me.apps.get()).rejects.toMatchObject({ status: 401 })
@@ -304,26 +305,12 @@ describe('generated account Web App client', () => {
     expectAccountRequest(...fetch.mock.calls[0]!, '/system-features', 'GET')
   })
 
-  it.each([null, 'javascript:alert(1)', 'https://[invalid/signin'])(
-    'does not redirect when the configured login URL is %s',
-    async (account_login_url) => {
-      const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
-      vi.spyOn(globalThis, 'fetch')
-        .mockResolvedValueOnce(new Response(null, { status: 401 }))
-        .mockResolvedValueOnce(Response.json({ ...systemFeatures, account_login_url }))
-
-      await expect(webAppClient.me.apps.get()).rejects.toMatchObject({ status: 401 })
-
-      expect(replace).not.toHaveBeenCalled()
-    },
-  )
-
-  it('accepts the relative sign-in URL returned when no Console URL is configured', async () => {
+  it('uses the same-origin root when the Console prefix is empty', async () => {
     window.history.replaceState({}, '', '/my-apps?view=starred#apps')
     const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
     vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(new Response(null, { status: 401 }))
-      .mockResolvedValueOnce(Response.json({ ...systemFeatures, account_login_url: '/signin' }))
+      .mockResolvedValueOnce(Response.json({ ...systemFeatures, console_web_url: '' }))
 
     await expect(webAppClient.me.apps.get()).rejects.toMatchObject({ status: 401 })
 

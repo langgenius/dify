@@ -80,7 +80,8 @@ const profile: WebAccountProfileResponse = {
 }
 const webSystemFeatures = {
   ...createSystemFeaturesFixture(),
-  account_login_url: 'https://console.example.com/dify/signin',
+  account_login_url: null,
+  console_web_url: 'https://console.example.com/dify',
 } satisfies WebSystemFeatureResponse
 const webRequests: Request[] = []
 let hasTenant = false

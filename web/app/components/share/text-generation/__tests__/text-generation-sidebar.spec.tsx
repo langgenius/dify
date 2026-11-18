@@ -128,6 +128,7 @@ const renderSidebar = (overrides: Partial<typeof baseProps> = {}) => {
 const entryParameters = {
   account_login_enabled: true,
   account_login_url: 'https://accounts.example/signin',
+  console_web_url: 'https://accounts.example',
   allow_anonymous_end_user_auth: true,
   connection_revision: null,
   requires_end_user_connections: false,

@@ -7,7 +7,6 @@ import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import { webAppQuery } from '@/service/webapp'
 import { getWebAppAuthSessionSnapshot, subscribeWebAppAuthSession } from '@/service/webapp-auth'
-import { getConsoleBaseUrl } from './console-base-url'
 
 export default function BuildAppLink() {
   const { t } = useTranslation(['app'])
@@ -43,14 +42,9 @@ export default function BuildAppLink() {
     </>
   )
 
-  if (profile.isPending || features.isPending) return null
+  if (profile.isPending || !features.data) return null
 
-  // The Account sign-in URL carries the Console deployment origin and path prefix. Without it the
-  // Console location is unknown, so the entry stays hidden rather than linking to this deployment.
-  const consoleBaseUrl = getConsoleBaseUrl(features.data?.account_login_url)
-  if (consoleBaseUrl === null) return null
-
-  const href = `${consoleBaseUrl}${profile.data?.has_tenant ? '/' : '/create-workspace'}`
+  const href = `${features.data.console_web_url}${profile.data?.has_tenant ? '/' : '/create-workspace'}`
 
   return (
     <Link

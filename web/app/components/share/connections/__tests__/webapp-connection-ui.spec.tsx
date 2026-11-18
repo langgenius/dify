@@ -28,6 +28,7 @@ function entry(showSignIn = false): WebAppEntryState {
     parameters: {
       account_login_enabled: showSignIn,
       account_login_url: 'https://account.example/signin',
+      console_web_url: 'https://account.example',
       allow_anonymous_end_user_auth: false,
       requires_end_user_connections: true,
       connection_revision: revision,

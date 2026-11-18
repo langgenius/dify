@@ -30,6 +30,7 @@ type EntryParameters = Pick<
   | 'user_input_form'
   | 'account_login_enabled'
   | 'account_login_url'
+  | 'console_web_url'
   | 'allow_anonymous_end_user_auth'
   | 'connection_revision'
   | 'requires_end_user_connections'
@@ -40,6 +41,7 @@ const makeParameters = (): EntryParameters => ({
   user_input_form: [],
   account_login_enabled: true,
   account_login_url: '/signin',
+  console_web_url: '',
   allow_anonymous_end_user_auth: true,
   connection_revision: 'workflow-id',
   requires_end_user_connections: false,

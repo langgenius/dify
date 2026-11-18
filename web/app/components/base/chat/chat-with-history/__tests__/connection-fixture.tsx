@@ -15,6 +15,7 @@ export const chatConnectionEntry: WebAppEntryState = {
   parameters: {
     account_login_enabled: true,
     account_login_url: 'https://accounts.example.com/signin',
+    console_web_url: 'https://accounts.example.com',
     allow_anonymous_end_user_auth: false,
     requires_end_user_connections: true,
     connection_revision: '44444444-4444-4444-8444-444444444444',

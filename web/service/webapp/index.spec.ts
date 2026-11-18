@@ -28,6 +28,7 @@ const signedInStatus: LoginStatusResponse = { logged_in: true, app_logged_in: tr
 const parameters: WebAppParametersResponse = {
   account_login_enabled: true,
   account_login_url: '/signin',
+  console_web_url: '',
   allow_anonymous_end_user_auth: true,
   annotation_reply: {},
   connection_requirements: [],

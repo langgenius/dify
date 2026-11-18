@@ -87,7 +87,10 @@ export default function MigrateConversationsContent() {
       if (!parameters.account_login_url)
         throw new Error(t(($) => $['api.actionFailed'], { ns: 'common' }))
       await webAppLogout(address)
-      const target = await beginWebAppAccountLogin(parameters.account_login_url, continueHref)
+      const target = await beginWebAppAccountLogin(
+        `${parameters.console_web_url}/signin`,
+        continueHref,
+      )
       const signInUrl = new URL(target)
       signInUrl.searchParams.set('switch_account', '1')
       window.location.assign(signInUrl.href)

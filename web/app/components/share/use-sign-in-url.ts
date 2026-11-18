@@ -34,14 +34,11 @@ export default function useSignInUrl() {
       signInParams.set('redirect_url', currentUrl.href)
     }
     signInParams.set('is_end_user', '1')
-    const accountLoginUrl =
-      entry && 'parameters' in entry ? entry.parameters.account_login_url : null
-    // The API value already includes /signin and any Console deployment prefix.
-    const loginBase = accountLoginUrl || `${prefix}/signin`
+    const consoleWebUrl = entry && 'parameters' in entry ? entry.parameters.console_web_url : prefix
+    const loginBase = `${consoleWebUrl}/signin`
     const loginUrl = new URL(loginBase, location || 'https://signin.invalid')
     signInParams.forEach((value, key) => loginUrl.searchParams.set(key, value))
-    return !accountLoginUrl ||
-      (!location && loginBase.startsWith('/') && !loginBase.startsWith('//'))
+    return !location && loginBase.startsWith('/') && !loginBase.startsWith('//')
       ? `${loginUrl.pathname}${loginUrl.search}${loginUrl.hash}`
       : loginUrl.href
   }
