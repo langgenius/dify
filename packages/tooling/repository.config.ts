@@ -1,10 +1,14 @@
 import { defineConfig } from 'vite-plus'
+import { resolveEditionGuardBase } from './git-baseline.ts'
 import { lintConfig } from './lint.config.ts'
+import { repositoryRoot } from './paths.ts'
 
 // Type-aware lint runs on tsrs-lint, which rejects tsconfig files that declare
 // `contentMappers` unless external code may run. Match `dify-web#type-check`,
 // which passes `--runExternalCode` for the workspace OpenAPI content mapper.
 process.env.TSRS_LINT_RUN_EXTERNAL_CODE ??= '1'
+// Git-dependent checks must include the resolved commit in the Vite task cache key.
+process.env.DIFY_EDITION_GUARD_BASE_REV = resolveEditionGuardBase(repositoryRoot)
 
 const lintFiles = '*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}'
 const eslintFiles = '*.{json,jsonc,json5,md,yml,yaml}'
@@ -61,7 +65,7 @@ export default defineConfig({
         // Report formatting, lint, and type errors from one run instead of stopping at the first.
         command: ['vp check --continue-on-error', 'eslint --concurrency=auto'],
         cache: {
-          env: ['CI', 'NODE_ENV', 'TAILWIND_CANONICAL_CLASSES'],
+          env: ['CI', 'NODE_ENV', 'TAILWIND_CANONICAL_CLASSES', 'DIFY_EDITION_GUARD_BASE_REV'],
           // Static checks have no artifacts to restore into the working tree.
           output: [],
         },

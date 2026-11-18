@@ -41,8 +41,17 @@ _FEATURE_POLICY_MODULES = frozenset(
     }
 )
 _ENUM_MODULES = frozenset({"enums", "api.enums"})
-_DEPENDENCY_MESSAGE = "no-new-deployment-edition: do not import DeploymentEdition outside feature policy modules."
-_DECISION_MESSAGE = "no-new-deployment-edition: use a feature policy instead of checking deployment edition."
+_POLICY_GUIDANCE = (
+    " Use a named capability policy from FeatureService (services/feature_service.py), "
+    "SystemFeatureService (services/system_feature_service.py), or get_knowledge_fs_features() "
+    "(services/knowledge_fs/feature_service.py). If none fits, add a capability-specific policy in the matching owner."
+)
+_DEPENDENCY_MESSAGE = (
+    "no-new-deployment-edition: do not import DeploymentEdition outside feature policy modules." + _POLICY_GUIDANCE
+)
+_DECISION_MESSAGE = (
+    "no-new-deployment-edition: use a feature policy instead of checking deployment edition." + _POLICY_GUIDANCE
+)
 
 
 @dataclass(frozen=True)

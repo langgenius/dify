@@ -1884,5 +1884,11 @@ export const lintConfig = {
         'dify/no-module-scope-clock': 'error',
       },
     },
+    {
+      files: ['web/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}'],
+      rules: {
+        'dify/no-new-deployment-edition': 'error',
+      },
+    },
   ],
 } satisfies OxlintConfig

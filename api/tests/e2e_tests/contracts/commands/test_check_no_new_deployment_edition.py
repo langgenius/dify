@@ -83,6 +83,8 @@ def test_rejects_new_dependencies_and_decisions(repo: Path, source: str) -> None
     assert result.returncode == 1, result.stderr
     assert f"{SOURCE_PATH}:" in result.stderr
     assert "no-new-deployment-edition" in result.stderr
+    assert "services/feature_service.py" in result.stderr
+    assert "add a capability-specific policy" in result.stderr
 
 
 @pytest.mark.parametrize(
