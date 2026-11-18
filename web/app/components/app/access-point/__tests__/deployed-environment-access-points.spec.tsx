@@ -18,7 +18,7 @@ function render(ui: React.ReactElement) {
 }
 
 describe('DeployedEnvironmentAccessPoints', () => {
-  it('renders MCP and Trigger as unsupported without a permanent loading state', () => {
+  it('serves MCP and Trigger from the environment settings', () => {
     render(
       <DeployedEnvironmentAccessPoints
         appId="app-1"
@@ -30,17 +30,16 @@ describe('DeployedEnvironmentAccessPoints', () => {
     const mcpCard = screen.getByRole('region', { name: /mcp\.server\.title/ })
     const triggerCard = screen.getByRole('region', { name: /settings\.trigger/ })
 
+    expect(
+      within(mcpCard).getByText('https://staging.api.example.com/mcp/environment/mcp-code/mcp'),
+    ).toBeInTheDocument()
+    expect(
+      within(triggerCard).getByText('deployments.studio.accessPoint.environmentTriggerEmpty'),
+    ).toBeInTheDocument()
     for (const card of [mcpCard, triggerCard]) {
       expect(
-        within(card).getByText('deployments.studio.accessPoint.notSupported'),
-      ).toBeInTheDocument()
-      expect(
-        within(card).getByText('deployments.studio.accessPoint.unsupportedInDeployedEnvironment'),
-      ).toBeInTheDocument()
-      expect(
-        within(card).queryByText('deployments.health.ENVIRONMENT_STATUS_FAILED'),
+        within(card).queryByText('deployments.studio.accessPoint.notSupported'),
       ).not.toBeInTheDocument()
-      expect(card).not.toHaveAttribute('aria-busy')
       expect(card.querySelector('[aria-busy="true"]')).not.toBeInTheDocument()
     }
   })

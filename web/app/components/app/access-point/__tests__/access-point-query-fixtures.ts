@@ -48,6 +48,22 @@ export function seedAccessPointQueries(
       { subjects: [] },
     )
     queryClient.setQueryData(
+      consoleQuery.enterprise.appDeploy.accessService.getEnvironmentMcpServer.queryKey({ input }),
+      {
+        enabled: true,
+        server_code: 'mcp-code',
+        url: `https://${environmentId}.api.example.com/mcp/environment/mcp-code/mcp`,
+      },
+    )
+    queryClient.setQueryData(
+      consoleQuery.enterprise.appDeploy.accessService.getEnvironmentTrigger.queryKey({ input }),
+      { enabled: true },
+    )
+    queryClient.setQueryData(
+      consoleQuery.enterprise.appDeploy.accessService.listEnvironmentTriggers.queryKey({ input }),
+      { data: [] },
+    )
+    queryClient.setQueryData(
       consoleQuery.enterprise.appDeploy.accessService.getEnvironmentSite.queryKey({ input }),
       {
         access_mode: 'private',

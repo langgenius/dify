@@ -53,6 +53,7 @@ export const PluginCategory = {
   PLUGIN_CATEGORY_UNSPECIFIED: 'PLUGIN_CATEGORY_UNSPECIFIED',
   PLUGIN_CATEGORY_MODEL: 'PLUGIN_CATEGORY_MODEL',
   PLUGIN_CATEGORY_TOOL: 'PLUGIN_CATEGORY_TOOL',
+  PLUGIN_CATEGORY_MCP: 'PLUGIN_CATEGORY_MCP',
 } as const
 
 export type PluginCategory = (typeof PluginCategory)[keyof typeof PluginCategory]
@@ -472,6 +473,14 @@ export type DeploymentOperationReceipt = {
   status: DeploymentOperationStatus
 }
 
+export type DispatchPluginTriggerRequest = {
+  tenantId?: string
+  subscriptionId?: string
+  providerId?: string
+  events?: Array<string>
+  requestId?: string
+}
+
 export type Environment = {
   id: string
   displayName: string
@@ -575,7 +584,21 @@ export type EnvironmentDeploymentState = {
 }
 
 export type EnvironmentMcpServer = {
-  [key: string]: unknown
+  server_code?: string
+  url?: string
+  enabled?: boolean
+  description?: string
+  parameters?: {
+    [key: string]: string
+  }
+}
+
+export type EnvironmentMcpServerUpdate = {
+  enabled?: boolean
+  description?: string
+  parameters?: {
+    [key: string]: string
+  }
 }
 
 export type EnvironmentPoolComposition = {
@@ -606,7 +629,20 @@ export type EnvironmentSiteUpdate = {
 }
 
 export type EnvironmentTrigger = {
-  [key: string]: unknown
+  node_id?: string
+  trigger_type?: string
+  status?: string
+  webhook_url?: string
+  next_run_at?: string
+  native_enabled?: boolean
+}
+
+export type EnvironmentTriggerNodeUpdate = {
+  status?: string
+}
+
+export type EnvironmentTriggerSetting = {
+  enabled: boolean
 }
 
 export type EnvironmentVariableGroup = {
@@ -819,6 +855,14 @@ export type GetEnvironmentWebAppSubjectsResponse = {
   subjects: Array<EnvironmentWebAppSubject>
 }
 
+export type GetMcpServerRouteResponse = {
+  route?: ResolveApiTokenRouteResponse
+  appMode?: string
+  endUserId?: string
+  routeGeneration?: string
+  toolName?: string
+}
+
 export type GetWebAppAccessModeResponse = {
   accessMode?: string
 }
@@ -891,6 +935,12 @@ export type ListOperationAppsResponse = {
   pagination: Pagination
 }
 
+export type ListTriggerLogsResponse = {
+  data?: Array<TriggerLogEntry>
+  next_cursor?: string
+  has_more?: boolean
+}
+
 export type MintServiceApiFileGrantRequest = {
   tenantId?: string
   appId?: string
@@ -920,6 +970,31 @@ export type Operator = {
   display_name: string
 }
 
+export type PluginTriggerResultsRequest = {
+  tenantId?: string
+  triggerId?: string
+  revisionId?: string
+  eventKey?: string
+  variables?: {
+    [key: string]: unknown
+  }
+  error?: string
+  cancelled?: boolean
+}
+
+export type PluginTriggerTarget = {
+  trigger_id?: string
+  revision_id?: string
+  event_key?: string
+  node?: {
+    [key: string]: unknown
+  }
+}
+
+export type PluginTriggerTargetsResponse = {
+  data?: Array<PluginTriggerTarget>
+}
+
 export type PrecheckWorkflowDeploymentResponse = {
   unsupported_nodes: Array<UnsupportedNode>
 }
@@ -941,6 +1016,12 @@ export type RenameWebAppConversationRequest = {
   conversationId: string
   name?: string
   autoGenerate?: boolean
+}
+
+export type RerunTriggerLogRequest = {
+  app_id?: string
+  environment_id?: string
+  log_id?: string
 }
 
 export type ResolveApiTokenRouteRequest = {
@@ -1057,6 +1138,26 @@ export type TestConnectionResponse = {
   message?: string
 }
 
+export type TriggerLogEntry = {
+  id?: string
+  node_id?: string
+  trigger_type?: string
+  status?: string
+  failure_reason?: string
+  workflow_run_id?: string
+  created_at?: string
+  run?: TriggerRunResult
+  rerun_of?: string
+  created_by?: string
+}
+
+export type TriggerRunResult = {
+  status?: string
+  duration?: number
+  tokens?: string
+  error?: string
+}
+
 export type UndeployEnvironmentAppResponse = {
   operationId: string
 }
@@ -1105,6 +1206,10 @@ export type UpdateEnvironmentRequest = {
 
 export type UpdateEnvironmentResponse = {
   environment: Environment
+}
+
+export type UpdateEnvironmentTriggerNodeResponse = {
+  [key: string]: unknown
 }
 
 export type UpdateServiceApiConversationVariableRequest = {
@@ -1215,14 +1320,6 @@ export type EnvironmentDeployedAppWritable = {
   suspendedBy?: Operator
 }
 
-export type EnvironmentMcpServerWritable = {
-  [key: string]: unknown
-}
-
-export type EnvironmentTriggerWritable = {
-  [key: string]: unknown
-}
-
 export type GetEnvironmentResponseWritable = {
   environment: EnvironmentWritable
   pool?: EnvironmentPoolComposition
@@ -1262,6 +1359,10 @@ export type UpdateEnvironmentDeployedAppResourcesResponseWritable = {
 
 export type UpdateEnvironmentResponseWritable = {
   environment: EnvironmentWritable
+}
+
+export type UpdateEnvironmentTriggerNodeResponseWritable = {
+  [key: string]: unknown
 }
 
 export type ConsoleDeploymentServiceListAppEnvironmentsData = {
@@ -1383,6 +1484,57 @@ export type ConsoleAccessServiceGetEnvironmentMcpServerResponses = {
 export type ConsoleAccessServiceGetEnvironmentMcpServerResponse =
   ConsoleAccessServiceGetEnvironmentMcpServerResponses[keyof ConsoleAccessServiceGetEnvironmentMcpServerResponses]
 
+export type ConsoleAccessServiceCreateEnvironmentMcpServerData = {
+  body?: never
+  path: {
+    app_id: string
+    environment_id: string
+  }
+  query?: never
+  url: '/enterprise/app-deploy/apps/{app_id}/environments/{environment_id}/server'
+}
+
+export type ConsoleAccessServiceCreateEnvironmentMcpServerResponses = {
+  200: EnvironmentMcpServer
+}
+
+export type ConsoleAccessServiceCreateEnvironmentMcpServerResponse =
+  ConsoleAccessServiceCreateEnvironmentMcpServerResponses[keyof ConsoleAccessServiceCreateEnvironmentMcpServerResponses]
+
+export type ConsoleAccessServiceUpdateEnvironmentMcpServerData = {
+  body: EnvironmentMcpServerUpdate
+  path: {
+    app_id: string
+    environment_id: string
+  }
+  query?: never
+  url: '/enterprise/app-deploy/apps/{app_id}/environments/{environment_id}/server'
+}
+
+export type ConsoleAccessServiceUpdateEnvironmentMcpServerResponses = {
+  200: EnvironmentMcpServer
+}
+
+export type ConsoleAccessServiceUpdateEnvironmentMcpServerResponse =
+  ConsoleAccessServiceUpdateEnvironmentMcpServerResponses[keyof ConsoleAccessServiceUpdateEnvironmentMcpServerResponses]
+
+export type ConsoleAccessServiceRefreshEnvironmentMcpServerData = {
+  body?: never
+  path: {
+    app_id: string
+    environment_id: string
+  }
+  query?: never
+  url: '/enterprise/app-deploy/apps/{app_id}/environments/{environment_id}/server/refresh'
+}
+
+export type ConsoleAccessServiceRefreshEnvironmentMcpServerResponses = {
+  200: EnvironmentMcpServer
+}
+
+export type ConsoleAccessServiceRefreshEnvironmentMcpServerResponse =
+  ConsoleAccessServiceRefreshEnvironmentMcpServerResponses[keyof ConsoleAccessServiceRefreshEnvironmentMcpServerResponses]
+
 export type ConsoleAccessServiceGetEnvironmentSiteData = {
   body?: never
   path: {
@@ -1434,6 +1586,83 @@ export type ConsoleAccessServiceResetEnvironmentSiteAccessTokenResponses = {
 export type ConsoleAccessServiceResetEnvironmentSiteAccessTokenResponse =
   ConsoleAccessServiceResetEnvironmentSiteAccessTokenResponses[keyof ConsoleAccessServiceResetEnvironmentSiteAccessTokenResponses]
 
+export type ConsoleAccessServiceGetEnvironmentTriggerData = {
+  body?: never
+  path: {
+    app_id: string
+    environment_id: string
+  }
+  query?: never
+  url: '/enterprise/app-deploy/apps/{app_id}/environments/{environment_id}/trigger'
+}
+
+export type ConsoleAccessServiceGetEnvironmentTriggerResponses = {
+  200: EnvironmentTriggerSetting
+}
+
+export type ConsoleAccessServiceGetEnvironmentTriggerResponse =
+  ConsoleAccessServiceGetEnvironmentTriggerResponses[keyof ConsoleAccessServiceGetEnvironmentTriggerResponses]
+
+export type ConsoleAccessServiceUpdateEnvironmentTriggerData = {
+  body: EnvironmentTriggerSetting
+  path: {
+    app_id: string
+    environment_id: string
+  }
+  query?: never
+  url: '/enterprise/app-deploy/apps/{app_id}/environments/{environment_id}/trigger'
+}
+
+export type ConsoleAccessServiceUpdateEnvironmentTriggerResponses = {
+  200: EnvironmentTriggerSetting
+}
+
+export type ConsoleAccessServiceUpdateEnvironmentTriggerResponse =
+  ConsoleAccessServiceUpdateEnvironmentTriggerResponses[keyof ConsoleAccessServiceUpdateEnvironmentTriggerResponses]
+
+export type ConsoleAccessServiceListTriggerLogsData = {
+  body?: never
+  path: {
+    app_id: string
+    environment_id: string
+  }
+  query?: {
+    limit?: number
+    cursor?: string
+    node_id?: string
+    trigger_type?: string
+    status?: string
+    from?: string
+    until?: string
+  }
+  url: '/enterprise/app-deploy/apps/{app_id}/environments/{environment_id}/trigger-logs'
+}
+
+export type ConsoleAccessServiceListTriggerLogsResponses = {
+  200: ListTriggerLogsResponse
+}
+
+export type ConsoleAccessServiceListTriggerLogsResponse =
+  ConsoleAccessServiceListTriggerLogsResponses[keyof ConsoleAccessServiceListTriggerLogsResponses]
+
+export type ConsoleAccessServiceRerunTriggerLogData = {
+  body: RerunTriggerLogRequest
+  path: {
+    app_id: string
+    environment_id: string
+    log_id: string
+  }
+  query?: never
+  url: '/enterprise/app-deploy/apps/{app_id}/environments/{environment_id}/trigger-logs/{log_id}/rerun'
+}
+
+export type ConsoleAccessServiceRerunTriggerLogResponses = {
+  200: DeleteEnvironmentApiKeyResponse
+}
+
+export type ConsoleAccessServiceRerunTriggerLogResponse =
+  ConsoleAccessServiceRerunTriggerLogResponses[keyof ConsoleAccessServiceRerunTriggerLogResponses]
+
 export type ConsoleAccessServiceListEnvironmentTriggersData = {
   body?: never
   path: {
@@ -1450,6 +1679,24 @@ export type ConsoleAccessServiceListEnvironmentTriggersResponses = {
 
 export type ConsoleAccessServiceListEnvironmentTriggersResponse =
   ConsoleAccessServiceListEnvironmentTriggersResponses[keyof ConsoleAccessServiceListEnvironmentTriggersResponses]
+
+export type ConsoleAccessServiceUpdateEnvironmentTriggerNodeData = {
+  body: EnvironmentTriggerNodeUpdate
+  path: {
+    app_id: string
+    environment_id: string
+    node_id: string
+  }
+  query?: never
+  url: '/enterprise/app-deploy/apps/{app_id}/environments/{environment_id}/triggers/{node_id}'
+}
+
+export type ConsoleAccessServiceUpdateEnvironmentTriggerNodeResponses = {
+  200: UpdateEnvironmentTriggerNodeResponse
+}
+
+export type ConsoleAccessServiceUpdateEnvironmentTriggerNodeResponse =
+  ConsoleAccessServiceUpdateEnvironmentTriggerNodeResponses[keyof ConsoleAccessServiceUpdateEnvironmentTriggerNodeResponses]
 
 export type ConsoleAccessServiceUpdateEnvironmentWebAppAccessModeData = {
   body: EnvironmentWebAppAccessModeUpdate

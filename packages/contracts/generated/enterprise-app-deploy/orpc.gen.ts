@@ -5,6 +5,8 @@ import * as z from 'zod'
 import {
   zConsoleAccessServiceCreateEnvironmentApiKeyPath,
   zConsoleAccessServiceCreateEnvironmentApiKeyResponse,
+  zConsoleAccessServiceCreateEnvironmentMcpServerPath,
+  zConsoleAccessServiceCreateEnvironmentMcpServerResponse,
   zConsoleAccessServiceDeleteEnvironmentApiKeyPath,
   zConsoleAccessServiceDeleteEnvironmentApiKeyResponse,
   zConsoleAccessServiceGetEnvironmentApiPath,
@@ -13,20 +15,39 @@ import {
   zConsoleAccessServiceGetEnvironmentMcpServerResponse,
   zConsoleAccessServiceGetEnvironmentSitePath,
   zConsoleAccessServiceGetEnvironmentSiteResponse,
+  zConsoleAccessServiceGetEnvironmentTriggerPath,
+  zConsoleAccessServiceGetEnvironmentTriggerResponse,
   zConsoleAccessServiceGetEnvironmentWebAppSubjectsPath,
   zConsoleAccessServiceGetEnvironmentWebAppSubjectsResponse,
   zConsoleAccessServiceListEnvironmentApiKeysPath,
   zConsoleAccessServiceListEnvironmentApiKeysResponse,
   zConsoleAccessServiceListEnvironmentTriggersPath,
   zConsoleAccessServiceListEnvironmentTriggersResponse,
+  zConsoleAccessServiceListTriggerLogsPath,
+  zConsoleAccessServiceListTriggerLogsQuery,
+  zConsoleAccessServiceListTriggerLogsResponse,
+  zConsoleAccessServiceRefreshEnvironmentMcpServerPath,
+  zConsoleAccessServiceRefreshEnvironmentMcpServerResponse,
+  zConsoleAccessServiceRerunTriggerLogBody,
+  zConsoleAccessServiceRerunTriggerLogPath,
+  zConsoleAccessServiceRerunTriggerLogResponse,
   zConsoleAccessServiceResetEnvironmentSiteAccessTokenPath,
   zConsoleAccessServiceResetEnvironmentSiteAccessTokenResponse,
   zConsoleAccessServiceUpdateEnvironmentApiBody,
   zConsoleAccessServiceUpdateEnvironmentApiPath,
   zConsoleAccessServiceUpdateEnvironmentApiResponse,
+  zConsoleAccessServiceUpdateEnvironmentMcpServerBody,
+  zConsoleAccessServiceUpdateEnvironmentMcpServerPath,
+  zConsoleAccessServiceUpdateEnvironmentMcpServerResponse,
   zConsoleAccessServiceUpdateEnvironmentSiteBody,
   zConsoleAccessServiceUpdateEnvironmentSitePath,
   zConsoleAccessServiceUpdateEnvironmentSiteResponse,
+  zConsoleAccessServiceUpdateEnvironmentTriggerBody,
+  zConsoleAccessServiceUpdateEnvironmentTriggerNodeBody,
+  zConsoleAccessServiceUpdateEnvironmentTriggerNodePath,
+  zConsoleAccessServiceUpdateEnvironmentTriggerNodeResponse,
+  zConsoleAccessServiceUpdateEnvironmentTriggerPath,
+  zConsoleAccessServiceUpdateEnvironmentTriggerResponse,
   zConsoleAccessServiceUpdateEnvironmentWebAppAccessModeBody,
   zConsoleAccessServiceUpdateEnvironmentWebAppAccessModePath,
   zConsoleAccessServiceUpdateEnvironmentWebAppAccessModeResponse,
@@ -238,6 +259,44 @@ export const getEnvironmentMcpServer = oc
   .input(z.object({ params: zConsoleAccessServiceGetEnvironmentMcpServerPath }))
   .output(zConsoleAccessServiceGetEnvironmentMcpServerResponse)
 
+export const createEnvironmentMcpServer = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'ConsoleAccessService_CreateEnvironmentMCPServer',
+    path: '/enterprise/app-deploy/apps/{app_id}/environments/{environment_id}/server',
+    tags: ['ConsoleAccessService'],
+  })
+  .input(z.object({ params: zConsoleAccessServiceCreateEnvironmentMcpServerPath }))
+  .output(zConsoleAccessServiceCreateEnvironmentMcpServerResponse)
+
+export const updateEnvironmentMcpServer = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'ConsoleAccessService_UpdateEnvironmentMCPServer',
+    path: '/enterprise/app-deploy/apps/{app_id}/environments/{environment_id}/server',
+    tags: ['ConsoleAccessService'],
+  })
+  .input(
+    z.object({
+      body: zConsoleAccessServiceUpdateEnvironmentMcpServerBody,
+      params: zConsoleAccessServiceUpdateEnvironmentMcpServerPath,
+    }),
+  )
+  .output(zConsoleAccessServiceUpdateEnvironmentMcpServerResponse)
+
+export const refreshEnvironmentMcpServer = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'ConsoleAccessService_RefreshEnvironmentMCPServer',
+    path: '/enterprise/app-deploy/apps/{app_id}/environments/{environment_id}/server/refresh',
+    tags: ['ConsoleAccessService'],
+  })
+  .input(z.object({ params: zConsoleAccessServiceRefreshEnvironmentMcpServerPath }))
+  .output(zConsoleAccessServiceRefreshEnvironmentMcpServerResponse)
+
 export const getEnvironmentSite = oc
   .route({
     inputStructure: 'detailed',
@@ -276,6 +335,65 @@ export const resetEnvironmentSiteAccessToken = oc
   .input(z.object({ params: zConsoleAccessServiceResetEnvironmentSiteAccessTokenPath }))
   .output(zConsoleAccessServiceResetEnvironmentSiteAccessTokenResponse)
 
+export const getEnvironmentTrigger = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'ConsoleAccessService_GetEnvironmentTrigger',
+    path: '/enterprise/app-deploy/apps/{app_id}/environments/{environment_id}/trigger',
+    tags: ['ConsoleAccessService'],
+  })
+  .input(z.object({ params: zConsoleAccessServiceGetEnvironmentTriggerPath }))
+  .output(zConsoleAccessServiceGetEnvironmentTriggerResponse)
+
+export const updateEnvironmentTrigger = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'ConsoleAccessService_UpdateEnvironmentTrigger',
+    path: '/enterprise/app-deploy/apps/{app_id}/environments/{environment_id}/trigger',
+    tags: ['ConsoleAccessService'],
+  })
+  .input(
+    z.object({
+      body: zConsoleAccessServiceUpdateEnvironmentTriggerBody,
+      params: zConsoleAccessServiceUpdateEnvironmentTriggerPath,
+    }),
+  )
+  .output(zConsoleAccessServiceUpdateEnvironmentTriggerResponse)
+
+export const listTriggerLogs = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'ConsoleAccessService_ListTriggerLogs',
+    path: '/enterprise/app-deploy/apps/{app_id}/environments/{environment_id}/trigger-logs',
+    tags: ['ConsoleAccessService'],
+  })
+  .input(
+    z.object({
+      params: zConsoleAccessServiceListTriggerLogsPath,
+      query: zConsoleAccessServiceListTriggerLogsQuery.optional(),
+    }),
+  )
+  .output(zConsoleAccessServiceListTriggerLogsResponse)
+
+export const rerunTriggerLog = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'ConsoleAccessService_RerunTriggerLog',
+    path: '/enterprise/app-deploy/apps/{app_id}/environments/{environment_id}/trigger-logs/{log_id}/rerun',
+    tags: ['ConsoleAccessService'],
+  })
+  .input(
+    z.object({
+      body: zConsoleAccessServiceRerunTriggerLogBody,
+      params: zConsoleAccessServiceRerunTriggerLogPath,
+    }),
+  )
+  .output(zConsoleAccessServiceRerunTriggerLogResponse)
+
 export const listEnvironmentTriggers = oc
   .route({
     inputStructure: 'detailed',
@@ -286,6 +404,22 @@ export const listEnvironmentTriggers = oc
   })
   .input(z.object({ params: zConsoleAccessServiceListEnvironmentTriggersPath }))
   .output(zConsoleAccessServiceListEnvironmentTriggersResponse)
+
+export const updateEnvironmentTriggerNode = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'ConsoleAccessService_UpdateEnvironmentTriggerNode',
+    path: '/enterprise/app-deploy/apps/{app_id}/environments/{environment_id}/triggers/{node_id}',
+    tags: ['ConsoleAccessService'],
+  })
+  .input(
+    z.object({
+      body: zConsoleAccessServiceUpdateEnvironmentTriggerNodeBody,
+      params: zConsoleAccessServiceUpdateEnvironmentTriggerNodePath,
+    }),
+  )
+  .output(zConsoleAccessServiceUpdateEnvironmentTriggerNodeResponse)
 
 export const updateEnvironmentWebAppAccessMode = oc
   .route({
@@ -321,10 +455,18 @@ export const accessService = {
   createEnvironmentApiKey,
   deleteEnvironmentApiKey,
   getEnvironmentMcpServer,
+  createEnvironmentMcpServer,
+  updateEnvironmentMcpServer,
+  refreshEnvironmentMcpServer,
   getEnvironmentSite,
   updateEnvironmentSite,
   resetEnvironmentSiteAccessToken,
+  getEnvironmentTrigger,
+  updateEnvironmentTrigger,
+  listTriggerLogs,
+  rerunTriggerLog,
   listEnvironmentTriggers,
+  updateEnvironmentTriggerNode,
   updateEnvironmentWebAppAccessMode,
   getEnvironmentWebAppSubjects,
 }

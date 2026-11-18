@@ -317,6 +317,144 @@
           "accessService",
           "getEnvironmentMcpServer"
         ]
+      },
+      "put": {
+        "tags": [
+          "ConsoleAccessService"
+        ],
+        "operationId": "ConsoleAccessService_UpdateEnvironmentMCPServer",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentMCPServerUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentMCPServer"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appDeploy",
+          "accessService",
+          "updateEnvironmentMcpServer"
+        ]
+      },
+      "post": {
+        "tags": [
+          "ConsoleAccessService"
+        ],
+        "operationId": "ConsoleAccessService_CreateEnvironmentMCPServer",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentMCPServer"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appDeploy",
+          "accessService",
+          "createEnvironmentMcpServer"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/apps/{app_id}/environments/{environment_id}/server/refresh": {
+      "post": {
+        "tags": [
+          "ConsoleAccessService"
+        ],
+        "operationId": "ConsoleAccessService_RefreshEnvironmentMCPServer",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentMCPServer"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appDeploy",
+          "accessService",
+          "refreshEnvironmentMcpServer"
+        ]
       }
     },
     "/enterprise/app-deploy/apps/{app_id}/environments/{environment_id}/site": {
@@ -459,6 +597,258 @@
         ]
       }
     },
+    "/enterprise/app-deploy/apps/{app_id}/environments/{environment_id}/trigger": {
+      "get": {
+        "tags": [
+          "ConsoleAccessService"
+        ],
+        "operationId": "ConsoleAccessService_GetEnvironmentTrigger",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentTriggerSetting"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appDeploy",
+          "accessService",
+          "getEnvironmentTrigger"
+        ]
+      },
+      "patch": {
+        "tags": [
+          "ConsoleAccessService"
+        ],
+        "operationId": "ConsoleAccessService_UpdateEnvironmentTrigger",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentTriggerSetting"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentTriggerSetting"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appDeploy",
+          "accessService",
+          "updateEnvironmentTrigger"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/apps/{app_id}/environments/{environment_id}/trigger-logs": {
+      "get": {
+        "tags": [
+          "ConsoleAccessService"
+        ],
+        "operationId": "ConsoleAccessService_ListTriggerLogs",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "node_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "trigger_type",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "until",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.ListTriggerLogsResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appDeploy",
+          "accessService",
+          "listTriggerLogs"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/apps/{app_id}/environments/{environment_id}/trigger-logs/{log_id}/rerun": {
+      "post": {
+        "tags": [
+          "ConsoleAccessService"
+        ],
+        "operationId": "ConsoleAccessService_RerunTriggerLog",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "log_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.RerunTriggerLogRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.DeleteEnvironmentApiKeyResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appDeploy",
+          "accessService",
+          "rerunTriggerLog"
+        ]
+      }
+    },
     "/enterprise/app-deploy/apps/{app_id}/environments/{environment_id}/triggers": {
       "get": {
         "tags": [
@@ -500,6 +890,68 @@
           "appDeploy",
           "accessService",
           "listEnvironmentTriggers"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/apps/{app_id}/environments/{environment_id}/triggers/{node_id}": {
+      "patch": {
+        "tags": [
+          "ConsoleAccessService"
+        ],
+        "operationId": "ConsoleAccessService_UpdateEnvironmentTriggerNode",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "node_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentTriggerNodeUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.UpdateEnvironmentTriggerNodeResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appDeploy",
+          "accessService",
+          "updateEnvironmentTriggerNode"
         ]
       }
     },
@@ -1133,7 +1585,43 @@
       },
       "dify.enterprise.api.appdeploy.v1.EnvironmentMCPServer": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "server_code": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string"
+          },
+          "parameters": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.EnvironmentMCPServerUpdate": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string"
+          },
+          "parameters": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
       },
       "dify.enterprise.api.appdeploy.v1.EnvironmentSite": {
         "required": [
@@ -1169,6 +1657,101 @@
           }
         }
       },
+      "dify.enterprise.api.appdeploy.v1.EnvironmentTriggerSetting": {
+        "required": [
+          "enabled"
+        ],
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.ListTriggerLogsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.TriggerLogEntry"
+            }
+          },
+          "next_cursor": {
+            "type": "string"
+          },
+          "has_more": {
+            "type": "boolean"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.TriggerLogEntry": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "node_id": {
+            "type": "string"
+          },
+          "trigger_type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "failure_reason": {
+            "type": "string"
+          },
+          "workflow_run_id": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "run": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.TriggerRunResult"
+          },
+          "rerun_of": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.TriggerRunResult": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "number",
+            "format": "double"
+          },
+          "tokens": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.RerunTriggerLogRequest": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          },
+          "environment_id": {
+            "type": "string"
+          },
+          "log_id": {
+            "type": "string"
+          }
+        }
+      },
       "dify.enterprise.api.appdeploy.v1.ListEnvironmentTriggersResponse": {
         "required": [
           "data"
@@ -1184,6 +1767,37 @@
         }
       },
       "dify.enterprise.api.appdeploy.v1.EnvironmentTrigger": {
+        "type": "object",
+        "properties": {
+          "node_id": {
+            "type": "string"
+          },
+          "trigger_type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "webhook_url": {
+            "type": "string"
+          },
+          "next_run_at": {
+            "type": "string"
+          },
+          "native_enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.EnvironmentTriggerNodeUpdate": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.UpdateEnvironmentTriggerNodeResponse": {
         "type": "object",
         "properties": {}
       },
@@ -1730,7 +2344,8 @@
         "enum": [
           "PLUGIN_CATEGORY_UNSPECIFIED",
           "PLUGIN_CATEGORY_MODEL",
-          "PLUGIN_CATEGORY_TOOL"
+          "PLUGIN_CATEGORY_TOOL",
+          "PLUGIN_CATEGORY_MCP"
         ],
         "type": "string"
       },

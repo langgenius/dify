@@ -46,6 +46,7 @@ export const zPluginCategory = z.enum([
   'PLUGIN_CATEGORY_UNSPECIFIED',
   'PLUGIN_CATEGORY_MODEL',
   'PLUGIN_CATEGORY_TOOL',
+  'PLUGIN_CATEGORY_MCP',
 ])
 
 export const zAppType = z.enum([
@@ -319,6 +320,14 @@ export const zDeployWorkflowResponse = z.object({
   operation: zDeploymentOperationReceipt,
 })
 
+export const zDispatchPluginTriggerRequest = z.object({
+  tenantId: z.string().optional(),
+  subscriptionId: z.string().optional(),
+  providerId: z.string().optional(),
+  events: z.array(z.string()).optional(),
+  requestId: z.string().optional(),
+})
+
 export const zEnvironmentApi = z.object({
   enabled: z.boolean(),
   base_url: z.string(),
@@ -367,7 +376,19 @@ export const zEnvironmentDeployedAppAttempt = z.object({
   finalizedAt: z.iso.datetime().optional(),
 })
 
-export const zEnvironmentMcpServer = z.record(z.string(), z.unknown())
+export const zEnvironmentMcpServer = z.object({
+  server_code: z.string().optional(),
+  url: z.string().optional(),
+  enabled: z.boolean().optional(),
+  description: z.string().optional(),
+  parameters: z.record(z.string(), z.string()).optional(),
+})
+
+export const zEnvironmentMcpServerUpdate = z.object({
+  enabled: z.boolean().optional(),
+  description: z.string().optional(),
+  parameters: z.record(z.string(), z.string()).optional(),
+})
 
 export const zEnvironmentPoolUsage = z.object({
   occupiedCpuMillicores: z
@@ -391,7 +412,22 @@ export const zEnvironmentSiteUpdate = z.object({
   enabled: z.boolean(),
 })
 
-export const zEnvironmentTrigger = z.record(z.string(), z.unknown())
+export const zEnvironmentTrigger = z.object({
+  node_id: z.string().optional(),
+  trigger_type: z.string().optional(),
+  status: z.string().optional(),
+  webhook_url: z.string().optional(),
+  next_run_at: z.string().optional(),
+  native_enabled: z.boolean().optional(),
+})
+
+export const zEnvironmentTriggerNodeUpdate = z.object({
+  status: z.string().optional(),
+})
+
+export const zEnvironmentTriggerSetting = z.object({
+  enabled: z.boolean(),
+})
 
 export const zEnvironmentVariableInput = z.object({
   key: z.string(),
@@ -692,6 +728,27 @@ export const zOperator = z.object({
   display_name: z.string(),
 })
 
+export const zPluginTriggerResultsRequest = z.object({
+  tenantId: z.string().optional(),
+  triggerId: z.string().optional(),
+  revisionId: z.string().optional(),
+  eventKey: z.string().optional(),
+  variables: z.record(z.string(), z.unknown()).optional(),
+  error: z.string().optional(),
+  cancelled: z.boolean().optional(),
+})
+
+export const zPluginTriggerTarget = z.object({
+  trigger_id: z.string().optional(),
+  revision_id: z.string().optional(),
+  event_key: z.string().optional(),
+  node: z.record(z.string(), z.unknown()).optional(),
+})
+
+export const zPluginTriggerTargetsResponse = z.object({
+  data: z.array(zPluginTriggerTarget).optional(),
+})
+
 export const zPrepareAppDeletionRequest = z.object({
   tenantId: z.string().optional(),
   appId: z.string().optional(),
@@ -709,6 +766,12 @@ export const zRenameWebAppConversationRequest = z.object({
   conversationId: z.string(),
   name: z.string().optional(),
   autoGenerate: z.boolean().optional(),
+})
+
+export const zRerunTriggerLogRequest = z.object({
+  app_id: z.string().optional(),
+  environment_id: z.string().optional(),
+  log_id: z.string().optional(),
 })
 
 export const zResolveApiTokenRouteRequest = z.object({
@@ -732,6 +795,14 @@ export const zResolveApiTokenRouteResponse = z.object({
   directUpstream: z.string().optional(),
   decision: z.string().optional(),
   suspended: z.boolean().optional(),
+})
+
+export const zGetMcpServerRouteResponse = z.object({
+  route: zResolveApiTokenRouteResponse.optional(),
+  appMode: z.string().optional(),
+  endUserId: z.string().optional(),
+  routeGeneration: z.string().optional(),
+  toolName: z.string().optional(),
 })
 
 export const zResolveWebAppRouteRequest = z.object({
@@ -895,6 +966,32 @@ export const zTestConnectionResponse = z.object({
   message: z.string().optional(),
 })
 
+export const zTriggerRunResult = z.object({
+  status: z.string().optional(),
+  duration: z.number().optional(),
+  tokens: z.string().optional(),
+  error: z.string().optional(),
+})
+
+export const zTriggerLogEntry = z.object({
+  id: z.string().optional(),
+  node_id: z.string().optional(),
+  trigger_type: z.string().optional(),
+  status: z.string().optional(),
+  failure_reason: z.string().optional(),
+  workflow_run_id: z.string().optional(),
+  created_at: z.string().optional(),
+  run: zTriggerRunResult.optional(),
+  rerun_of: z.string().optional(),
+  created_by: z.string().optional(),
+})
+
+export const zListTriggerLogsResponse = z.object({
+  data: z.array(zTriggerLogEntry).optional(),
+  next_cursor: z.string().optional(),
+  has_more: z.boolean().optional(),
+})
+
 export const zUndeployEnvironmentAppResponse = z.object({
   operationId: z.string(),
 })
@@ -952,6 +1049,8 @@ export const zUpdateEnvironmentRequest = z.object({
 export const zUpdateEnvironmentResponse = z.object({
   environment: zEnvironment,
 })
+
+export const zUpdateEnvironmentTriggerNodeResponse = z.record(z.string(), z.unknown())
 
 export const zUpdateServiceApiConversationVariableRequest = z.object({
   conversationId: z.string(),
@@ -1222,10 +1321,6 @@ export const zDeleteEnvironmentResponseWritable = z.record(z.string(), z.unknown
 
 export const zDeleteServiceApiConversationResponseWritable = z.record(z.string(), z.unknown())
 
-export const zEnvironmentMcpServerWritable = z.record(z.string(), z.unknown())
-
-export const zEnvironmentTriggerWritable = z.record(z.string(), z.unknown())
-
 /**
  * RunnerMemory sizes one app-runner. max_mib is absent when the operator chose
  * nothing, in which case the runner gets effective_max_mib.
@@ -1332,6 +1427,8 @@ export const zUpdateEnvironmentResponseWritable = z.object({
   environment: zEnvironmentWritable,
 })
 
+export const zUpdateEnvironmentTriggerNodeResponseWritable = z.record(z.string(), z.unknown())
+
 export const zConsoleDeploymentServiceListAppEnvironmentsPath = z.object({
   app_id: z.string(),
 })
@@ -1404,6 +1501,38 @@ export const zConsoleAccessServiceGetEnvironmentMcpServerPath = z.object({
  */
 export const zConsoleAccessServiceGetEnvironmentMcpServerResponse = zEnvironmentMcpServer
 
+export const zConsoleAccessServiceCreateEnvironmentMcpServerPath = z.object({
+  app_id: z.string(),
+  environment_id: z.string(),
+})
+
+/**
+ * OK
+ */
+export const zConsoleAccessServiceCreateEnvironmentMcpServerResponse = zEnvironmentMcpServer
+
+export const zConsoleAccessServiceUpdateEnvironmentMcpServerBody = zEnvironmentMcpServerUpdate
+
+export const zConsoleAccessServiceUpdateEnvironmentMcpServerPath = z.object({
+  app_id: z.string(),
+  environment_id: z.string(),
+})
+
+/**
+ * OK
+ */
+export const zConsoleAccessServiceUpdateEnvironmentMcpServerResponse = zEnvironmentMcpServer
+
+export const zConsoleAccessServiceRefreshEnvironmentMcpServerPath = z.object({
+  app_id: z.string(),
+  environment_id: z.string(),
+})
+
+/**
+ * OK
+ */
+export const zConsoleAccessServiceRefreshEnvironmentMcpServerResponse = zEnvironmentMcpServer
+
 export const zConsoleAccessServiceGetEnvironmentSitePath = z.object({
   app_id: z.string(),
   environment_id: z.string(),
@@ -1436,6 +1565,65 @@ export const zConsoleAccessServiceResetEnvironmentSiteAccessTokenPath = z.object
  */
 export const zConsoleAccessServiceResetEnvironmentSiteAccessTokenResponse = zEnvironmentSite
 
+export const zConsoleAccessServiceGetEnvironmentTriggerPath = z.object({
+  app_id: z.string(),
+  environment_id: z.string(),
+})
+
+/**
+ * OK
+ */
+export const zConsoleAccessServiceGetEnvironmentTriggerResponse = zEnvironmentTriggerSetting
+
+export const zConsoleAccessServiceUpdateEnvironmentTriggerBody = zEnvironmentTriggerSetting
+
+export const zConsoleAccessServiceUpdateEnvironmentTriggerPath = z.object({
+  app_id: z.string(),
+  environment_id: z.string(),
+})
+
+/**
+ * OK
+ */
+export const zConsoleAccessServiceUpdateEnvironmentTriggerResponse = zEnvironmentTriggerSetting
+
+export const zConsoleAccessServiceListTriggerLogsPath = z.object({
+  app_id: z.string(),
+  environment_id: z.string(),
+})
+
+export const zConsoleAccessServiceListTriggerLogsQuery = z.object({
+  limit: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  cursor: z.string().optional(),
+  node_id: z.string().optional(),
+  trigger_type: z.string().optional(),
+  status: z.string().optional(),
+  from: z.string().optional(),
+  until: z.string().optional(),
+})
+
+/**
+ * OK
+ */
+export const zConsoleAccessServiceListTriggerLogsResponse = zListTriggerLogsResponse
+
+export const zConsoleAccessServiceRerunTriggerLogBody = zRerunTriggerLogRequest
+
+export const zConsoleAccessServiceRerunTriggerLogPath = z.object({
+  app_id: z.string(),
+  environment_id: z.string(),
+  log_id: z.string(),
+})
+
+/**
+ * OK
+ */
+export const zConsoleAccessServiceRerunTriggerLogResponse = zDeleteEnvironmentApiKeyResponse
+
 export const zConsoleAccessServiceListEnvironmentTriggersPath = z.object({
   app_id: z.string(),
   environment_id: z.string(),
@@ -1445,6 +1633,20 @@ export const zConsoleAccessServiceListEnvironmentTriggersPath = z.object({
  * OK
  */
 export const zConsoleAccessServiceListEnvironmentTriggersResponse = zListEnvironmentTriggersResponse
+
+export const zConsoleAccessServiceUpdateEnvironmentTriggerNodeBody = zEnvironmentTriggerNodeUpdate
+
+export const zConsoleAccessServiceUpdateEnvironmentTriggerNodePath = z.object({
+  app_id: z.string(),
+  environment_id: z.string(),
+  node_id: z.string(),
+})
+
+/**
+ * OK
+ */
+export const zConsoleAccessServiceUpdateEnvironmentTriggerNodeResponse =
+  zUpdateEnvironmentTriggerNodeResponse
 
 export const zConsoleAccessServiceUpdateEnvironmentWebAppAccessModeBody =
   zEnvironmentWebAppAccessModeUpdate
