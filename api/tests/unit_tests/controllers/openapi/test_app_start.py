@@ -18,7 +18,7 @@ from controllers.openapi import app_start
 from controllers.openapi._catalog import build_catalog, iter_handlers
 from controllers.openapi._errors import OpenApiErrorCode
 from controllers.openapi._models import IDEMPOTENCY_KEY_MAX_LENGTH, AdvancedChatStartPayload, WorkflowStartPayload
-from controllers.openapi.app_run import _RUN_GUARDS
+from controllers.openapi.app_run import RUN_GUARDS
 from controllers.openapi.app_start import ADVANCED_CHAT_START_OP, WORKFLOW_START_OP
 from controllers.openapi.auth.spec import Effect, Kind, spec_of
 from extensions.ext_application_services import ApplicationServices
@@ -323,4 +323,4 @@ def test_start_ops_are_in_the_catalog_with_the_run_guards_and_pat_policy(openapi
         assert ops[op]["kind"] == Kind.OBJECT.value
         assert ops[op]["effect"] == Effect.WRITE.value
         assert specs[op].pat_policy is PersonalAccessTokenPolicy.RESOURCE_CALLS
-        assert specs[op].requirements == _RUN_GUARDS
+        assert specs[op].requirements == RUN_GUARDS

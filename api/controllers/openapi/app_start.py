@@ -14,7 +14,7 @@ from controllers.openapi._contract import Effect, Example, Kind, endpoint
 from controllers.openapi._errors import JobCapacityReached, JobNotFound
 from controllers.openapi._files import end_read_transaction
 from controllers.openapi._models import AdvancedChatStartPayload, JobState, WorkflowStartPayload
-from controllers.openapi.app_run import _RUN_GUARDS, _generate_args, _require_mode, _stream
+from controllers.openapi.app_run import RUN_GUARDS, generate_args, require_mode, run_stream
 from controllers.openapi.auth.context import Context
 from controllers.openapi.jobs import job_owner, job_state
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -38,7 +38,7 @@ def _launch(ctx: Context, body: StartPayload) -> Iterable[str]:
     Precondition: the guards admitted the caller and the app's mode was checked.
     Postcondition: the run's SSE frames; errors of the run service propagate.
     """
-    stream = _stream(ctx, _generate_args(ctx, body, exclude=_START_FIELDS), InvokeFrom.OPENAPI)
+    stream = run_stream(ctx, generate_args(ctx, body, exclude=_START_FIELDS), InvokeFrom.OPENAPI)
     emit_app_run(
         app_id=ctx.app.id,
         tenant_id=ctx.app.tenant_id,
@@ -56,7 +56,7 @@ def start_job(ctx: Context, body: StartPayload, *, op: str, modes: tuple[AppMode
     Postcondition: a job exists and its run was accepted by the service, or the service's error was raised and no
     job remains. A repeated idempotency key returns the first job and starts nothing.
     """
-    _require_mode(ctx.app, *modes)
+    require_mode(ctx.app, *modes)
     owner = job_owner(ctx)
     opening = JobOpening(owner=owner, mode=AppMode.value_of(ctx.app.mode), op=op, idempotency_key=body.idempotency_key)
     run_jobs = application_services().run_jobs
@@ -80,7 +80,7 @@ class WorkflowStartApi(Resource):
         kind=Kind.OBJECT,
         effect=Effect.WRITE,
         summary="Start a workflow app as a background job and wait for its result",
-        requirements=_RUN_GUARDS,
+        requirements=RUN_GUARDS,
         body=WorkflowStartPayload,
         examples=(Example(title="Start a workflow", input={"app_id": "<app_id>", "inputs": {"topic": "report"}}),),
         returns=_JOB_STATE,
@@ -97,7 +97,7 @@ class AdvancedChatStartApi(Resource):
         kind=Kind.OBJECT,
         effect=Effect.WRITE,
         summary="Start an advanced-chat (chatflow) app as a background job and wait for its result",
-        requirements=_RUN_GUARDS,
+        requirements=RUN_GUARDS,
         body=AdvancedChatStartPayload,
         examples=(Example(title="Start a chatflow reply", input={"app_id": "<app_id>", "query": "Summarise it"}),),
         returns=_JOB_STATE,

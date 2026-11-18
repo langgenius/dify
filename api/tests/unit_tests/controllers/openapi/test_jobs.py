@@ -19,7 +19,7 @@ from controllers.openapi._catalog import build_catalog, iter_handlers
 from controllers.openapi._contract import op_of
 from controllers.openapi._errors import OpenApiErrorCode
 from controllers.openapi._models import JobWaitQuery
-from controllers.openapi.app_run import _RUN_GUARDS
+from controllers.openapi.app_run import RUN_GUARDS
 from controllers.openapi.auth.spec import Effect, Kind, spec_of
 from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormSubmitApi
 from controllers.openapi.jobs import STOP_JOB_OP, WAIT_JOB_OP
@@ -324,7 +324,7 @@ def test_wait_and_stop_are_in_the_catalog_as_read_and_destructive(openapi_app: F
     assert ops[STOP_JOB_OP]["effect"] == Effect.DESTRUCTIVE.value
     for op in (WAIT_JOB_OP, STOP_JOB_OP):
         assert specs[op].pat_policy is PersonalAccessTokenPolicy.RESOURCE_CALLS
-        assert specs[op].requirements == _RUN_GUARDS
+        assert specs[op].requirements == RUN_GUARDS
 
 
 def test_wait_seconds_above_the_cap_is_a_422(world: World) -> None:
