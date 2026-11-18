@@ -7,6 +7,7 @@ import type { consoleQuery as ConsoleQuery } from '@/service/console'
 import { MutationObserver, QueryClient, QueryObserver } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createExternalAgentCapabilities } from '@/test/console/external-agents'
+import { createDeferred } from '@/test/deferred'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
 import { normalizeConsoleOpenAPIURL } from './openapi-url'
@@ -1055,6 +1056,34 @@ describe('consoleQuery app mutation defaults', () => {
 
     expect(synchronized).toBe(true)
   })
+
+  it.each(['success', 'failure'] as const)(
+    'settles the workflow deletion guard after the initiating observer leaves on %s',
+    async (outcome) => {
+      const query = await loadConsoleQuery()
+      const { isAppDeletingOrDeleted } = await import('@/service/app-deletion')
+      const client = createQueryClient()
+      const result = createDeferred<void>()
+      const mutation = new MutationObserver(client, {
+        ...query.apps.byAppId.delete.mutationOptions(),
+        mutationFn: () => result.promise,
+      })
+      const unsubscribe = mutation.subscribe(() => {})
+      const appId = 'deleted-from-another-surface'
+      const completion = mutation.mutate({ params: { app_id: appId } })
+      await vi.waitFor(() => expect(isAppDeletingOrDeleted(appId)).toBe(true))
+      unsubscribe()
+      if (outcome === 'success') {
+        result.resolve()
+        await completion
+        expect(isAppDeletingOrDeleted(appId)).toBe(true)
+      } else {
+        result.reject(new Error('Delete failed'))
+        await expect(completion).rejects.toThrow('Delete failed')
+        expect(isAppDeletingOrDeleted(appId)).toBe(false)
+      }
+    },
+  )
 
   it('should wait for deleted app lists to synchronize without waiting for quota', async () => {
     const consoleQuery = await loadConsoleQuery()

@@ -38,7 +38,8 @@ async function openAndRun() {
 }
 function usePollClock() {
   vi.useFakeTimers({
-    toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date'],
+    // Control polling without also delaying Query's observer notifications.
+    toFake: ['setInterval', 'clearInterval', 'Date'],
   })
   onTestFinished(() => {
     vi.useRealTimers()

@@ -68,7 +68,7 @@ export type RosterReferenceBlockType = {
 export type ExternalToolBlockType = {
   show?: boolean
   externalTools?: ExternalToolOption[]
-  onAddExternalTool?: () => void
+  onAddExternalTool?: (insertVariable: (name: string) => void) => void
 }
 
 export type GetVarType = (payload: { nodeId: string; valueSelector: ValueSelector }) => Type

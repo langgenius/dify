@@ -1,5 +1,6 @@
 import ssl
 import sys
+import threading
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from importlib import import_module
@@ -129,6 +130,42 @@ def test_worker_factory_same_selection_remains_idempotent_after_initialization(
         first.close()
         if second is not None:
             second.close()
+
+
+@pytest.mark.parametrize(
+    ("backend", "shared"),
+    [
+        pytest.param("redis", True, id="redis-backend-is-shared"),
+        pytest.param("disabled", False, id="other-backends-stay-per-thread"),
+    ],
+)
+def test_result_backend_is_built_once_per_process_only_for_redis(backend: str, shared: bool) -> None:
+    """The gevent pool runs each task in a new greenlet; a per-thread backend is rebuilt for every task."""
+    with (
+        setup_default_app(TestApp()),
+        config_overrides_context(
+            CELERY_BROKER_URL="redis://localhost:6379/1" if backend == "redis" else "memory://",
+            CELERY_BACKEND=backend,
+            DISABLE_TELEMETRY=True,
+        ),
+    ):
+        celery_app = init_app(DifyApp(__name__))
+        # A worker builds its backend once while it starts, before any task runs.
+        backend_at_startup = celery_app.backend
+        backends_seen_in_other_threads: list[object] = []
+
+        def read_backend() -> None:
+            backends_seen_in_other_threads.append(celery_app.backend)
+
+        threads = [threading.Thread(target=read_backend) for _ in range(3)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        assert len(backends_seen_in_other_threads) == 3
+        reused = [seen is backend_at_startup for seen in backends_seen_in_other_threads]
+        assert reused == [shared, shared, shared]
 
 
 @pytest.mark.parametrize(
@@ -474,6 +511,7 @@ class TestCelerySslCases:
             mock_config.EXTERNAL_AGENTS_QUEUE = "external_agents"
             mock_config.EXTERNAL_AGENTS_SWEEP_SECONDS = 30
             mock_config.AGENT_SANDBOX_METERING_ENABLED = False
+            mock_config.ENABLE_EVALUATION_RUN_RECONCILER = True
             mock_config.ENABLE_CONVERSATION_CLEANUP_TASK = True
             mock_config.CONVERSATION_CLEANUP_TASK_INTERVAL = 5
             mock_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK = False
@@ -525,6 +563,9 @@ class TestCelerySslCases:
             assert archive_deletion.retry_kwargs["max_retries"] == 5
             assert celery_app.conf["beat_schedule"]["conversation_cleanup_sweeper"]["task"] == (
                 "tasks.delete_conversation_task.sweep_deleted_conversations"
+            )
+            assert celery_app.conf["beat_schedule"]["evaluation-run-reconciler"]["task"] == (
+                "tasks.evaluation_task.reconcile_stale_evaluation_runs"
             )
 
 

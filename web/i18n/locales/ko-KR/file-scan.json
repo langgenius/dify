@@ -2,7 +2,6 @@
   "dialog.addTitle": "스캐너 추가",
   "dialog.apiKey": "API 키",
   "dialog.apiSecret": "API 시크릿",
-  "dialog.clamavHint": "ClamAV는 이 배포 환경 내에서 실행됩니다. 주소는 배포 관리자가 설정합니다.",
   "dialog.dataNotice": "파일 내용이 이 서비스로 전송됩니다.",
   "dialog.editTitle": "스캐너 편집",
   "dialog.endpoint": "엔드포인트 (선택 사항)",

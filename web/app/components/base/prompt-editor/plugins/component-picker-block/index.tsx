@@ -16,7 +16,6 @@ import type {
 } from '../../types'
 import type { PickerBlockMenuOption } from './menu'
 import type { Var } from '@/app/components/workflow/types'
-import type { EventEmitterValue } from '@/context/event-emitter'
 import { flip, offset, shift, useFloating } from '@floating-ui/react'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { LexicalTypeaheadMenuPlugin } from '@lexical/react/LexicalTypeaheadMenuPlugin'
@@ -30,14 +29,12 @@ import VarReferenceVars, {
   VAR_REFERENCE_CHILD_POPUP_CLASS_NAME,
 } from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import { normalizeSpecialVariableSelector } from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars.helpers'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useBasicTypeaheadTriggerMatch } from '../../hooks'
 import { $splitNodeContainingQuery } from '../../utils'
 import { INSERT_AGENT_OUTPUT_BLOCK_COMMAND } from '../agent-output-block/commands'
 import { INSERT_CURRENT_BLOCK_COMMAND } from '../current-block'
 import { INSERT_ERROR_MESSAGE_BLOCK_COMMAND } from '../error-message-block'
 import { INSERT_LAST_RUN_BLOCK_COMMAND } from '../last-run-block'
-import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '../variable-block'
 import { INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND } from '../workflow-variable-block'
 import { useOptions } from './hooks'
 
@@ -72,7 +69,6 @@ const ComponentPicker = ({
   isSupportFileVar,
 }: ComponentPickerProps) => {
   const { t } = useTranslation(['workflow', 'workflowAgent'])
-  const { eventEmitter } = useEventEmitterContextContext()
   const { refs, floatingStyles, isPositioned } = useFloating({
     placement: 'bottom-start',
     middleware: [
@@ -145,15 +141,6 @@ const ComponentPicker = ({
       unregister()
     }
   }, [editor, clearBlurTimer])
-
-  eventEmitter?.useSubscription((v: EventEmitterValue) => {
-    if (
-      typeof v !== 'string' &&
-      v.type === INSERT_VARIABLE_VALUE_BLOCK_COMMAND &&
-      typeof v.payload === 'string'
-    )
-      editor.dispatchCommand(INSERT_VARIABLE_VALUE_BLOCK_COMMAND, `{{${v.payload}}}`)
-  })
 
   const { allFlattenOptions, workflowVariableOptions } = useOptions(
     contextBlock,
@@ -265,9 +252,8 @@ const ComponentPicker = ({
                 {workflowVariableBlock?.show && (
                   <div className="p-1">
                     <VarReferenceVars
-                      {...(triggerString === '/'
-                        ? { hideSearch: true, keyboardTarget }
-                        : { hideSearch: false })}
+                      hideSearch={triggerString === '/'}
+                      keyboardTarget={keyboardTarget}
                       searchText={triggerString === '/' ? effectiveQueryString || '' : undefined}
                       searchBoxClassName="mt-1"
                       vars={workflowVariableOptions}

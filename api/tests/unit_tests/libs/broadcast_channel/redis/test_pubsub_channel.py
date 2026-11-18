@@ -13,7 +13,7 @@ import dataclasses
 import threading
 import time
 from collections.abc import Generator
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -434,24 +434,15 @@ class TestRedisSubscription:
 
     # ==================== Listener Thread Tests ====================
 
-    @patch("time.sleep", side_effect=lambda x: None, autospec=True)  # Speed up test
-    def test_listener_thread_normal_operation(
-        self, mock_sleep, subscription: _RedisSubscription, mock_pubsub: MagicMock
-    ):
-        """Test listener thread normal operation."""
+    def test_listener_thread_normal_operation(self, subscription: _RedisSubscription, mock_pubsub: MagicMock) -> None:
+        """Given a Redis message, receive waits for the listener and returns its payload."""
         # Mock message from Redis
         mock_message = {"type": "message", "channel": "test-topic", "data": b"test payload"}
         mock_pubsub.get_message.return_value = mock_message
 
-        # Start listener
-        subscription._start_if_needed()
-
-        # Wait a bit for processing
-        time.sleep(0.1)
-
-        # Verify message was processed
-        assert not subscription._queue.empty()
-        assert subscription._queue.get_nowait() == b"test payload"
+        # receive() waits for the listener to deliver the Redis payload instead of
+        # assuming the background thread has run as soon as it starts.
+        assert subscription.receive(timeout=1) == b"test payload"
 
     def test_listener_thread_ignores_subscribe_messages(self, subscription: _RedisSubscription, mock_pubsub: MagicMock):
         """Test that listener thread ignores subscribe/unsubscribe messages."""
@@ -863,24 +854,17 @@ class TestRedisShardedSubscription:
 
     # ==================== Listener Thread Tests ====================
 
-    @patch("time.sleep", side_effect=lambda x: None, autospec=True)  # Speed up test
     def test_listener_thread_normal_operation(
-        self, mock_sleep, sharded_subscription: _RedisShardedSubscription, mock_pubsub: MagicMock
-    ):
-        """Test sharded listener thread normal operation."""
+        self, sharded_subscription: _RedisShardedSubscription, mock_pubsub: MagicMock
+    ) -> None:
+        """Given a sharded Redis message, receive waits for the listener and returns its payload."""
         # Mock sharded message from Redis
         mock_message = {"type": "smessage", "channel": "test-sharded-topic", "data": b"test sharded payload"}
         mock_pubsub.get_sharded_message.return_value = mock_message
 
-        # Start listener
-        sharded_subscription._start_if_needed()
-
-        # Wait a bit for processing
-        time.sleep(0.1)
-
-        # Verify message was processed
-        assert not sharded_subscription._queue.empty()
-        assert sharded_subscription._queue.get_nowait() == b"test sharded payload"
+        # receive() waits for the listener to deliver the Redis payload instead of
+        # assuming the background thread has run as soon as it starts.
+        assert sharded_subscription.receive(timeout=1) == b"test sharded payload"
 
     def test_get_message_uses_target_node_for_cluster_client(
         self, mock_pubsub: MagicMock, monkeypatch: pytest.MonkeyPatch

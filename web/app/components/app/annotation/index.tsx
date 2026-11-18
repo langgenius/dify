@@ -4,6 +4,7 @@ import type { Annotation, AppDetailWithSite } from '@dify/contracts/api/console/
 import type { QueryParam } from './filter'
 import type { AnnotationReplyConfig } from '@/models/debug'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { Switch } from '@langgenius/dify-ui/switch'
@@ -15,7 +16,7 @@ import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ConfigParamModal from '@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal'
-import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
+import AnnotationFullContent from '@/app/components/billing/annotation-full/modal'
 import { toast } from '@/app/notifications'
 import { APP_PAGE_LIMIT } from '@/config'
 import { useDocLink } from '@/context/i18n'
@@ -303,12 +304,9 @@ function Annotation({ appDetail }: AnnotationProps) {
             annotationConfig={annotationConfig!}
           />
         )}
-        {isShowAnnotationFullModal && (
-          <AnnotationFullModal
-            show={isShowAnnotationFullModal}
-            onHide={() => setIsShowAnnotationFullModal(false)}
-          />
-        )}
+        <Dialog open={isShowAnnotationFullModal} onOpenChange={setIsShowAnnotationFullModal}>
+          <AnnotationFullContent />
+        </Dialog>
       </div>
     </div>
   )

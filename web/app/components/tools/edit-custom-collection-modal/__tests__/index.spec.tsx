@@ -1,4 +1,3 @@
-import type { ModalContextState } from '@/context/modal-context'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
   act,
@@ -22,19 +21,6 @@ vi.mock('@/service/tools', () => ({
   parseParamsSchema: vi.fn(),
 }))
 const parseParamsSchemaMock = vi.mocked(parseParamsSchema)
-
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: (): ModalContextState => ({
-    hasBlockingModalOpen: false,
-    setShowModerationSettingModal: vi.fn(),
-    setShowExternalDataToolModal: vi.fn(),
-    setShowAnnotationFullModal: vi.fn(),
-    setShowModelModal: vi.fn(),
-    setShowExternalKnowledgeAPIModal: vi.fn(),
-    setShowOpeningModal: vi.fn(),
-    setShowUpdatePluginModal: vi.fn(),
-  }),
-}))
 
 vi.mock('@/context/i18n', async () => {
   const actual = await vi.importActual<typeof import('@/context/i18n')>('@/context/i18n')

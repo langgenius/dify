@@ -5,10 +5,10 @@ import type { consoleClient } from '@/service/console'
 import { zPostWorkspacesCurrentPluginListInstallationsIdsResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { ModelCredentialDialog } from '@/app/components/header/account-setting/model-provider-page/model-modal/dialog'
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
-import { ModalContextProvider } from '@/context/modal-context-provider'
 import { consoleQuery } from '@/service/console'
 import { normalizeInstalledPluginDetail } from '@/service/use-plugins'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
@@ -115,10 +115,11 @@ function setup(
   },
 ) {
   const result = render(
-    <ModalContextProvider>
+    <>
       <ProviderCardActions {...props} />
       <AppToaster timeout={0} />
-    </ModalContextProvider>,
+      <ModelCredentialDialog />
+    </>,
   )
   return { ...result, user: userEvent.setup() }
 }
@@ -278,14 +279,15 @@ it.each(['2.0.0', '0.5.0'])(
       },
     })
     rerender(
-      <ModalContextProvider>
+      <>
         <ProviderCardActions
           summary={summary({ version: next, plugin_unique_identifier: identifier(next) })}
           providerLabel="Provider Plugin"
           onUpdate={onUpdate}
         />
         <AppToaster timeout={0} />
-      </ModalContextProvider>,
+        <ModelCredentialDialog />
+      </>,
     )
     expect(within(dialog).getByText(`1.0.0 -> ${next}`)).toBeInTheDocument()
     expect(dialog).toBeInTheDocument()

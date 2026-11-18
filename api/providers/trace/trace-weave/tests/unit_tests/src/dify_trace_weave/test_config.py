@@ -14,7 +14,7 @@ def test_config_fields_and_defaults() -> None:
     private = WeaveConfig(
         api_key="k", project="demo", endpoint="https://wandb.internal/traces/", host="http://wandb.internal/wandb"
     )
-    assert (private.endpoint, private.host) == ("https://wandb.internal/traces/", "http://wandb.internal/wandb")
+    assert (private.endpoint, private.host) == ("https://wandb.internal/traces", "http://wandb.internal/wandb")
     for incomplete in ({"api_key": "k"}, {"project": "demo"}):
         with pytest.raises(ValidationError):
             WeaveConfig.model_validate(incomplete)

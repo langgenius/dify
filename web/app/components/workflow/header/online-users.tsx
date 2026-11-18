@@ -4,6 +4,7 @@ import type { OnlineUser } from '../collaboration/types/collaboration'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
+import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -16,6 +17,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { getAvatar } from '@/service/common'
 import { getAvatarInitial } from '@/utils/avatar'
 import { useCollaboration } from '../collaboration/hooks/use-collaboration'
+import { collaborationUpgradeDialogAtom } from '../collaboration/upgrade-state'
 import { getUserColor } from '../collaboration/utils/user-color'
 import { useHooksStore } from '../hooks-store'
 
@@ -50,18 +52,20 @@ const useAvatarUrls = (users: OnlineUser[]) => {
 }
 
 const OnlineUsers = () => {
-  const { t } = useTranslation(['workspaceMembers', 'workflowComments'])
+  const { t } = useTranslation(['billing', 'workspaceMembers', 'workflowComments'])
   const appId = useAtomValue(editorAppIdAtom)
+  const upgradeDialog = useAtomValue(collaborationUpgradeDialogAtom)
   const canEdit = useHooksStore((s) => s.accessControl.canEdit)
   const {
     onlineUsers,
     cursors,
     isEnabled: isCollaborationEnabled,
   } = useCollaboration(appId, canEdit)
-  const { data: currentUserId } = useSuspenseQuery({
+  const { data: currentUser } = useSuspenseQuery({
     ...userProfileQueryOptions(),
-    select: (data) => data.profile.id,
+    select: ({ profile: { id, name, avatar_url } }) => ({ id, name, avatarUrl: avatar_url }),
   })
+  const currentUserId = currentUser.id
   const reactFlow = useReactFlow()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const avatarUrls = useAvatarUrls(onlineUsers || [])
@@ -92,6 +96,34 @@ const OnlineUsers = () => {
     reactFlow.setCenter(cursor.x, cursor.y, { zoom: 1, duration: 800 })
   }
 
+  if (upgradeDialog) {
+    const collaborationLabel = t(($) => $['upgrade.workflowCollaboration.label'], { ns: 'billing' })
+
+    return (
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <DialogTrigger
+              handle={upgradeDialog}
+              aria-label={collaborationLabel}
+              className="flex h-8 cursor-pointer items-center rounded-full border-[0.5px] border-components-panel-border bg-components-panel-bg px-1.5 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[10px] hover:bg-state-base-hover"
+            >
+              <Avatar size="sm" aria-hidden="true" className="ring-1 ring-components-panel-bg">
+                <AvatarFallback>
+                  {getAvatarInitial(currentUser.name || fallbackUsername)}
+                </AvatarFallback>
+                <AvatarImage src={currentUser.avatarUrl || undefined} alt="" />
+              </Avatar>
+            </DialogTrigger>
+          }
+        />
+        <TooltipContent side="bottom" sideOffset={4}>
+          {collaborationLabel}
+        </TooltipContent>
+      </Tooltip>
+    )
+  }
+
   if (!isCollaborationEnabled || !onlineUsers || onlineUsers.length === 0) return null
 
   // Display logic:
@@ -113,7 +145,7 @@ const OnlineUsers = () => {
       className={cn(
         'flex h-8 items-center rounded-full border-[0.5px] border-components-panel-border',
         'bg-components-panel-bg py-1 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[10px]',
-        hasCounter ? 'min-w-21.75 gap-px pr-1.5 pl-1' : 'gap-1 px-1.5',
+        hasCounter ? 'min-w-21.75 gap-px ps-1 pe-1.5' : 'gap-1 px-1.5',
       )}
     >
       <div className="flex h-6 items-center">
@@ -133,7 +165,7 @@ const OnlineUsers = () => {
             )
             const triggerClassName = cn(
               'relative flex size-6 items-center justify-center',
-              index > 0 && '-ml-1.5',
+              index > 0 && '-ms-1.5',
               !isCurrentUser && 'cursor-pointer transition-transform hover:scale-110',
             )
             const triggerStyle = { zIndex: visibleUsers.length - index }
@@ -166,7 +198,7 @@ const OnlineUsers = () => {
                 <TooltipContent side="bottom" sideOffset={4} className="max-w-55">
                   {displayName}
                   {isCurrentUser && (
-                    <span className="ml-1 text-text-quaternary">{currentUserSuffix}</span>
+                    <span className="ms-1 text-text-quaternary">{currentUserSuffix}</span>
                   )}
                 </TooltipContent>
               </Tooltip>
@@ -180,7 +212,7 @@ const OnlineUsers = () => {
                     <div
                       className={cn(
                         'flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-components-icon-bg-midnight-solid text-2xs leading-3 font-semibold text-white uppercase ring-1 ring-components-panel-bg select-none',
-                        visibleUsers.length > 0 && '-ml-1',
+                        visibleUsers.length > 0 && '-ms-1',
                       )}
                     >
                       +{remainingCount}
@@ -209,7 +241,7 @@ const OnlineUsers = () => {
                       key={user.sid}
                       disabled={isCurrentUser}
                       className={cn(
-                        'flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left',
+                        'flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-start',
                         !isCurrentUser &&
                           'cursor-pointer hover:bg-components-panel-on-panel-item-bg-hover',
                       )}

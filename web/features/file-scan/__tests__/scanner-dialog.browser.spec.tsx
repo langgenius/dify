@@ -28,7 +28,6 @@ vi.mock('@/service/console', async (importOriginal) => {
 })
 
 const providerTypes: FileScanProviderTypeResponse[] = [
-  { provider_type: 'clamav', available: false, credential_fields: [] },
   { provider_type: 'cloudmersive', available: true, credential_fields: ['api_key'] },
   { provider_type: 'scanii', available: true, credential_fields: ['api_key', 'api_secret'] },
   { provider_type: 'metadefender', available: true, credential_fields: ['api_key'] },
@@ -82,8 +81,6 @@ beforeEach(() => {
 it('offers only the available services and swaps the fields with the selected one', async () => {
   await renderDialog()
 
-  // ClamAV is hidden because this deployment did not configure it.
-  await expect.element(typeCard('ClamAV')).not.toBeInTheDocument()
   await expect.element(typeCard('Cloudmersive')).toHaveAttribute('aria-pressed', 'true')
   await expect.element(apiKeyField()).toBeVisible()
   await expect.element(page.getByLabelText('fileScan.dialog.endpoint')).toBeVisible()
@@ -140,7 +137,7 @@ it('links to the page where the selected cloud vendor issues API keys', async ()
 })
 
 it.each([
-  ['clamav', false],
+  ['api', false],
   ['scanii', true],
 ])('shows the key link when editing a %s scanner: %s', async (type, shown) => {
   await renderDialog(scanner({ provider_type: type }))
