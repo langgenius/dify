@@ -22,6 +22,8 @@ from models.tools import ApiToolProvider, MCPToolProvider
 from services.tools.tools_transform_service import ToolTransformService
 from tests.tool_fixtures import make_runtime_tool
 
+type JsonValue = str | int | float | bool | None | list[JsonValue] | dict[str, JsonValue]
+
 """Test cases for MCP tool transformation functionality."""
 
 
@@ -939,7 +941,7 @@ class TestToolsTransformServiceCases:
                 ({"type": ["string", "array", "null"]}, "string"),
             ],
         )
-        def test_mixed_type_union_attaches_input_schema(self, prop: dict[str, object], expected_type: str) -> None:
+        def test_mixed_type_union_attaches_input_schema(self, prop: dict[str, JsonValue], expected_type: str) -> None:
             schema = {"type": "object", "properties": {"domain": prop}, "required": list[str]()}
             param = ToolTransformService.convert_mcp_schema_to_parameter(schema)[0]
             assert param.type.value == expected_type
