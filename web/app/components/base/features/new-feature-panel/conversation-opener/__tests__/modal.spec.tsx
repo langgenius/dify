@@ -1,10 +1,30 @@
+import type { ComponentProps } from 'react'
 import type { OpeningStatement } from '@/app/components/base/features/types'
-import { screen, waitFor, within } from '@testing-library/react'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { replacePromptEditorText } from '@/app/components/base/prompt-editor/plugins/__tests__/test-helpers'
 import { InputVarType } from '@/app/components/workflow/types'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
-import OpeningSettingModal from '../modal'
+import FormContent from '../modal'
+
+function OpeningSettingModal({
+  onCancel,
+  ...props
+}: ComponentProps<typeof FormContent> & { onCancel: () => void }) {
+  return (
+    <Dialog
+      defaultOpen
+      onOpenChange={(open) => {
+        if (!open) onCancel()
+      }}
+    >
+      <DialogContent>
+        <FormContent {...props} />
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 const defaultData: OpeningStatement = {
   enabled: true,
@@ -189,12 +209,13 @@ describe('OpeningSettingModal', () => {
     },
   )
 
-  it('updates the editor and saved opener when its data changes', async () => {
+  it('preserves the edited draft when the feature store refreshes', async () => {
     const user = userEvent.setup()
     const onSave = vi.fn()
     const view = render(
       <OpeningSettingModal data={defaultData} onSave={onSave} onCancel={vi.fn()} />,
     )
+    await replacePromptEditorText(getPromptEditor(), 'My draft')
     view.rerender(
       <OpeningSettingModal
         data={{ ...defaultData, opening_statement: 'New greeting!' }}
@@ -202,15 +223,15 @@ describe('OpeningSettingModal', () => {
         onCancel={vi.fn()}
       />,
     )
-    await waitFor(() => expect(getPromptEditor()).toHaveTextContent('New greeting!'))
+    expect(getPromptEditor()).toHaveTextContent('My draft')
     await save(user)
     expect(onSave).toHaveBeenCalledExactlyOnceWith({
       ...defaultData,
-      opening_statement: 'New greeting!',
+      opening_statement: 'My draft',
     })
   })
 
-  it('does not save if the opener becomes empty while variable confirmation is open', async () => {
+  it('keeps the confirmed draft if external props change during variable confirmation', async () => {
     const user = userEvent.setup()
     const onSave = vi.fn()
     const view = render(
@@ -230,7 +251,10 @@ describe('OpeningSettingModal', () => {
       />,
     )
     await dismissVariableCheck(user)
-    expect(onSave).not.toHaveBeenCalled()
+    expect(onSave).toHaveBeenCalledExactlyOnceWith({
+      ...defaultData,
+      opening_statement: 'Hello {{name}}',
+    })
   })
 
   it('cancels keyboard sorting without dismissing the dialog, then saves a confirmed reorder', async () => {

@@ -1,4 +1,4 @@
-"""Determine and send initial notifications for one committed recipient.
+"""Determine and send initial notifications for committed recipients.
 
 The runtime invokes this after the form service commits first initialization,
 and waits for the recorded result before deciding whether delivery succeeded.
@@ -9,7 +9,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import secrets
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from smtplib import SMTPException
 from typing import assert_never
@@ -33,12 +33,13 @@ from core.human_input_v2.im_integration.adapters.entities import (
 )
 from core.human_input_v2.im_integration.adapters.message_locator import MessageLocator
 from core.human_input_v2.im_integration.adapters.protocols import IMProviderAdapter
-from core.human_input_v2.shared.values import IMBindingId
+from core.human_input_v2.shared.values import ContactId, IMBindingId
 from core.workflow.human_input_adapter import EmailDeliveryConfig
 from core.workflow.nodes.human_input_v2.entities import Initiator
+from core.workflow.nodes.human_input_v2.runtime import HumanInputDeliveryError
 from extensions.ext_key_provider import key_provider_manager
 from models.model import EndUser
-from repositories.human_input_v2.contact import ContactType
+from repositories.human_input_v2.contact import Contact, ContactType
 from repositories.human_input_v2.delivery_attempt_repository import (
     DeliveryAttempt,
     DeliveryAttemptCreateParams,
@@ -138,7 +139,7 @@ class _RecipientContext:
 
 
 class HumanInputDeliveryService:
-    """Determine and send deliveries for one persisted recipient.
+    """Determine and send deliveries for a committed initialization round.
 
     Accept only detached, committed inputs. Provider I/O runs without an open
     database transaction; creating deliveries and recording attempts use this
@@ -180,9 +181,54 @@ class HumanInputDeliveryService:
         Form and workflow state do not cancel delivery. Submission eligibility
         and card state synchronization belong to their respective owners.
         """
-        context = self._load_context(form, recipient)
+        return self.deliver_many(
+            form=form,
+            recipients=(recipient,),
+            message_template=message_template,
+            debug_channels=debug_channels,
+        )[0]
+
+    def deliver_many(
+        self,
+        *,
+        form: Form,
+        recipients: Sequence[Recipient],
+        message_template: ResolvedMessageTemplate,
+        debug_channels: tuple[DebugChannel, ...] | None = None,
+    ) -> tuple[RecipientDeliveryResult, ...]:
+        """Send a committed form's recipients using one round-scoped current view.
+
+        Require every recipient to belong to the supplied tenant and form.
+        Reload membership, visible Contacts, Channel, effective Bindings and
+        Identities before any send; unavailable subjects yield empty results.
+        Return one result per input in input order, preserving independent
+        deliveries and attempts even for shared addresses or provider users.
+        Empty input performs no I/O. Invalid membership raises
+        HumanInputDeliveryError before sending.
+
+        The prepared view is local to this call, never cached between rounds.
+        It selects notification endpoints, not submission authority: submission
+        owners still recheck current authorization. No read transaction or lock
+        spans credential/provider I/O; each delivery and attempt keeps its own
+        short write transaction, including when other sends fail.
+        """
+        contexts = self._load_contexts(form, recipients)
+        return tuple(self._deliver_context(context, message_template, debug_channels) for context in contexts)
+
+    def _deliver_context(
+        self,
+        context: _RecipientContext | None,
+        message_template: ResolvedMessageTemplate,
+        debug_channels: tuple[DebugChannel, ...] | None,
+    ) -> RecipientDeliveryResult:
+        """Send a detached context outside its read transaction and persist outcomes.
+
+        An unavailable subject returns no attempts or initiator token. Provider
+        failures retain recorded attempts without cancelling other targets.
+        """
         if context is None:
             return RecipientDeliveryResult((), None)
+        form = context.form
         initiator_form_token = None
         if debug_channels is None and any(isinstance(target, _InitiatorTarget) for target in context.targets):
             token = SecretStr(secrets.token_urlsafe(32))
@@ -215,73 +261,136 @@ class HumanInputDeliveryService:
             self._warn(context, "recipient_no_available_channel")
         return RecipientDeliveryResult(tuple(attempts), initiator_form_token)
 
-    def _load_context(self, form: Form, recipient: Recipient) -> _RecipientContext | None:
+    def _load_contexts(self, form: Form, recipients: Sequence[Recipient]) -> tuple[_RecipientContext | None, ...]:
+        """Reload owner-scoped facts and detach contexts before any external I/O.
+
+        Inputs are committed form/recipient snapshots. Reject missing recipient
+        membership, preserve input order and omit unavailable subject targets.
+        Reads use one service-owned transaction with session-bound repositories;
+        they do not lock state across sends or confer submission authority.
+        """
+        if not recipients:
+            return ()
         with self._session_factory() as session, session.begin():
-            recipient_record = SQLAlchemyRecipientRepository(session, form.tenant_id, form.id).get_recipient(
-                recipient.id
+            current_recipients = {
+                recipient.id: recipient
+                for recipient in SQLAlchemyRecipientRepository(session, form.tenant_id, form.id).list_recipients()
+            }
+            if any(recipient.id not in current_recipients for recipient in recipients):
+                raise HumanInputDeliveryError("Recipient does not belong to this form")
+            recipients = tuple(current_recipients[recipient.id] for recipient in recipients)
+            contact_ids = tuple(
+                recipient.subject.contact_id
+                for recipient in recipients
+                if isinstance(recipient.subject, ContactRecipientSubject)
             )
-            if recipient_record is None:
-                raise ValueError("Recipient does not belong to this form")
-            recipient = recipient_record
-            email = None
-            targets: list[_DeliveryTarget] = []
-            auth_type = SubmissionAuthType.EMAIL_OTP
-            match recipient.subject:
-                case ContactRecipientSubject(contact_id):
-                    contact = SQLAlchemyContactRepository(session).get_contacts_by_id(form.tenant_id, contact_id)
-                    if contact is None:
-                        logger.warning(
-                            "Human Input contact unavailable: form_id=%s recipient_id=%s", form.id, recipient.id
-                        )
-                        return None
-                    email = contact.email
-                    if contact.type != ContactType.EXTERNAL:
-                        auth_type = SubmissionAuthType.CONSOLE
-                        if any(isinstance(source, Initiator) for source in recipient.sources):
-                            targets.append(_InitiatorTarget())
-                        # TODO(QuantumGhost): maybe the channel creation logic below should be unified?
-                        channel = (
-                            DeploymentIMChannelReader(session).get()
-                            if FeatureService.is_im_centrally_managed()
-                            else WorkspaceIMChannelReader(session, form.tenant_id).get()
-                        )
-                        if channel is not None and channel.status == IMChannelStatus.CONNECTED:
-                            binding = SQLAlchemyIMBindingRepository(session, channel.id).get_effective(
-                                form.tenant_id, contact.id
-                            )
-                            identity = (
-                                SQLAlchemyIMIdentityRepository(session, channel.id).get(binding.identity_id)
-                                if binding is not None
-                                else None
-                            )
-                            if binding is not None and identity is not None:
-                                targets.append(
-                                    _IMTarget(
-                                        channel=channel,
-                                        binding_id=binding.id,
-                                        user_id=ProviderUserId(identity.provider_user_id),
-                                    )
-                                )
-                case EmailRecipientSubject(address):
-                    email = address.value
-                case EndUserRecipientSubject(end_user_id):
-                    end_user = session.scalar(
-                        sa.select(EndUser).where(
-                            EndUser.id == end_user_id,
+            contacts = {
+                contact.id: contact
+                for contact in SQLAlchemyContactRepository(session).get_contacts_by_ids(form.tenant_id, contact_ids)
+            }
+            im_targets = self._load_im_targets(
+                session,
+                form,
+                tuple(contact.id for contact in contacts.values() if contact.type != ContactType.EXTERNAL),
+            )
+            end_user_ids = tuple(
+                recipient.subject.end_user_id
+                for recipient in recipients
+                if isinstance(recipient.subject, EndUserRecipientSubject)
+            )
+            available_end_users = (
+                set(
+                    session.scalars(
+                        sa.select(EndUser.id).where(
+                            EndUser.id.in_(end_user_ids),
                             EndUser.tenant_id == form.tenant_id,
                             EndUser.app_id == form.app_id,
                         )
                     )
-                    if end_user is None:
-                        return None
+                )
+                if end_user_ids
+                else set()
+            )
+            return tuple(
+                self._resolve_context(form, recipient, contacts, im_targets, available_end_users)
+                for recipient in recipients
+            )
+
+    @staticmethod
+    def _load_im_targets(session: Session, form: Form, contact_ids: Sequence[ContactId]) -> dict[ContactId, _IMTarget]:
+        """Read one owner Channel and batch its effective targets in the caller's transaction.
+
+        Require visible internal Contacts. Disconnected/missing Channels and
+        missing Bindings or Identities yield no IM target; no external I/O occurs.
+        """
+        if not contact_ids:
+            return {}
+        # TODO(QuantumGhost): maybe the channel creation logic below should be unified?
+        channel = (
+            DeploymentIMChannelReader(session).get()
+            if FeatureService.is_im_centrally_managed()
+            else WorkspaceIMChannelReader(session, form.tenant_id).get()
+        )
+        if channel is None or channel.status != IMChannelStatus.CONNECTED:
+            return {}
+        bindings = SQLAlchemyIMBindingRepository(session, channel.id).get_effective_many(form.tenant_id, contact_ids)
+        identities = {
+            identity.id: identity
+            for identity in SQLAlchemyIMIdentityRepository(session, channel.id).get_many(
+                tuple(binding.identity_id for binding in bindings)
+            )
+        }
+        return {
+            binding.contact_id: _IMTarget(
+                channel, binding.id, ProviderUserId(identities[binding.identity_id].provider_user_id)
+            )
+            for binding in bindings
+            if binding.identity_id in identities
+        }
+
+    @staticmethod
+    def _resolve_context(
+        form: Form,
+        recipient: Recipient,
+        contacts: Mapping[ContactId, Contact],
+        im_targets: Mapping[ContactId, _IMTarget],
+        available_end_users: set[str],
+    ) -> _RecipientContext | None:
+        """Choose notification targets and authentication from already scoped facts.
+
+        Return None for unavailable subjects. This performs no I/O and does not
+        re-resolve frozen recipient sources or grant submission authority.
+        """
+        email = None
+        targets: list[_DeliveryTarget] = []
+        auth_type = SubmissionAuthType.EMAIL_OTP
+        match recipient.subject:
+            case ContactRecipientSubject(contact_id):
+                contact = contacts.get(contact_id)
+                if contact is None:
+                    logger.warning("Human Input contact unavailable: form_id=%s recipient_id=%s", form.id, recipient.id)
+                    return None
+                email = contact.email
+                if contact.type != ContactType.EXTERNAL:
+                    auth_type = SubmissionAuthType.CONSOLE
                     if any(isinstance(source, Initiator) for source in recipient.sources):
                         targets.append(_InitiatorTarget())
-                    auth_type = SubmissionAuthType.WEB_APP
-                case _:
-                    assert_never(recipient.subject)
-            if email:
-                targets.append(_EmailTarget(email))
-            return _RecipientContext(form, recipient, auth_type, tuple(targets))
+                    im_target = im_targets.get(contact_id)
+                    if im_target is not None:
+                        targets.append(im_target)
+            case EmailRecipientSubject(address):
+                email = address.value
+            case EndUserRecipientSubject(end_user_id):
+                if end_user_id not in available_end_users:
+                    return None
+                if any(isinstance(source, Initiator) for source in recipient.sources):
+                    targets.append(_InitiatorTarget())
+                auth_type = SubmissionAuthType.WEB_APP
+            case _:
+                assert_never(recipient.subject)
+        if email:
+            targets.append(_EmailTarget(email))
+        return _RecipientContext(form, recipient, auth_type, tuple(targets))
 
     def _prepare_delivery(
         self,

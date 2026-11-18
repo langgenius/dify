@@ -269,6 +269,15 @@ class WorkflowAgentWorkspaceStore:
             session.commit()
         return retired
 
+    def retire_standalone_node_execution(self, *, tenant_id: str, app_id: str, node_execution_id: str) -> list[str]:
+        """Retire a run-less node execution's Workspaces, commit, and return IDs for collection.
+
+        Standalone single-step previews have no Workflow Run, so
+        ``resolve_workflow_agent_workspace_owner_scope`` owns their Workspaces by
+        ``node_execution_id`` under the ``WORKFLOW_RUN`` owner type.
+        """
+        return self.retire_workflow_run(tenant_id=tenant_id, app_id=app_id, workflow_run_id=node_execution_id)
+
     @staticmethod
     def _load_execution(*, session: Session, scope: WorkflowAgentSessionScope) -> WorkflowNodeExecutionModel:
         return WorkflowAgentWorkspaceStore._load_execution_by_identity(

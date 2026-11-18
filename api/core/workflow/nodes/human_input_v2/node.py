@@ -23,7 +23,7 @@ from graphon.runtime.init_params import InitParams
 from graphon.runtime.runtime_state import RuntimeState
 from graphon.variables.segments import Segment, StringSegment
 
-from .entities import HUMAN_INPUT_V2_VERSION, DynamicEmail, HumanInputNodeData
+from .entities import HUMAN_INPUT_V2_VERSION, DebugModeConfig, DynamicEmail, HumanInputNodeData, MessageTemplateConfig
 from .events import (
     NodeRunHumanInputV2FormFilledEvent,
     NodeRunHumanInputV2FormRequiredEvent,
@@ -57,6 +57,17 @@ class HumanInputNode(Node[HumanInputNodeData]):
     @override
     def version(cls) -> str:
         return HUMAN_INPUT_V2_VERSION
+
+    @classmethod
+    @override
+    def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
+        """Return a v2 draft with the standard message template and no recipient choice."""
+        node_data = HumanInputNodeData(
+            recipients_spec=[],
+            message_template=MessageTemplateConfig.default_template(),
+            debug_mode=DebugModeConfig(channels=()),
+        )
+        return {"type": cls.node_type, "config": node_data.model_dump(mode="json")}
 
     @override
     def _run(self) -> Generator[NodeEventPayload | NodeEvent]:

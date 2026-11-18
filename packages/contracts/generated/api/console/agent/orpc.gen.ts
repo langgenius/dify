@@ -237,12 +237,16 @@ import {
   zPutAgentByAgentIdResponse,
 } from './zod.gen.ts'
 
+/**
+ * Return visible Workflow-callable Agents and their current workflow usage
+ */
 export const get = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentInviteOptions',
     path: '/agent/invite-options',
+    summary: 'Return visible Workflow-callable Agents and their current workflow usage',
     tags: ['console'],
   })
   .input(z.object({ query: zGetAgentInviteOptionsQuery.optional() }).optional())
@@ -1120,12 +1124,16 @@ export const feedbacks = {
   post: post15,
 }
 
+/**
+ * Return the admitted Agent's available log sources
+ */
 export const get19 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentByAgentIdLogSources',
     path: '/agent/{agent_id}/log-sources',
+    summary: "Return the admitted Agent's available log sources",
     tags: ['console'],
   })
   .input(z.object({ params: zGetAgentByAgentIdLogSourcesPath }))
@@ -1136,12 +1144,16 @@ export const logSources = {
   get: get19,
 }
 
+/**
+ * Return the admitted Agent's messages for a conversation
+ */
 export const get20 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentByAgentIdLogsByConversationIdMessages',
     path: '/agent/{agent_id}/logs/{conversation_id}/messages',
+    summary: "Return the admitted Agent's messages for a conversation",
     tags: ['console'],
   })
   .input(
@@ -1161,12 +1173,16 @@ export const byConversationId = {
   messages,
 }
 
+/**
+ * Return the admitted Agent's conversation logs
+ */
 export const get21 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentByAgentIdLogs',
     path: '/agent/{agent_id}/logs',
+    summary: "Return the admitted Agent's conversation logs",
     tags: ['console'],
   })
   .input(
@@ -1366,12 +1382,16 @@ export const sandbox = {
   files: files3,
 }
 
+/**
+ * Return Agent monitoring data using the admitted account's timezone
+ */
 export const get27 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentByAgentIdStatisticsSummary',
     path: '/agent/{agent_id}/statistics/summary',
+    summary: "Return Agent monitoring data using the admitted account's timezone",
     tags: ['console'],
   })
   .input(
