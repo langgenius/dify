@@ -404,6 +404,11 @@ class PluginConfig(BaseSettings):
         default="",
     )
 
+    TOKENER_SIGNUP_VALIDATION_BILLING_API_URL: Literal["", "http://tokener-signup-billing-candidate:8081"] = Field(
+        default="",
+        description="Agent dev only: private Billing candidate for workspaces created by the signup intent flow",
+    )
+
     TOKENER_PLUGIN_UNIQUE_IDENTIFIER: str = Field(
         description="Pinned package identifier used for the managed Tokener plugin",
         default="",

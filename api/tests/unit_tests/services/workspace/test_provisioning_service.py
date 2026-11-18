@@ -16,7 +16,7 @@ from enums import DeploymentEdition
 from models import TenantCreditPool
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantPluginAutoUpgradeStrategy
 from models.model_billing import TenantModelBillingProfile
-from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
+from models.tokener import AccountTokenerSignupIntent, TenantTokenerIntegration, TenantTokenerIntegrationStatus
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.account_errors import AccountNotFoundError
@@ -218,26 +218,25 @@ def test_missing_owner_cannot_create_or_emit(
     assert emitted == []
 
 
-@pytest.mark.parametrize("with_owner", [False, True])
 @pytest.mark.parametrize("plugin_pin", ["langgenius/tokener:0.1.2@digest", "   "])
-def test_tokener_creation_commits_billing_identity_before_event_without_legacy_pool(
+def test_tokener_registration_commits_billing_identity_before_event_without_legacy_pool(
     gateway: tuple[WorkspaceProvisioningService, Signal],
     sqlite_session_factory: sessionmaker[Session],
     config_overrides: Callable[..., None],
-    with_owner: bool,
     plugin_pin: str,
 ) -> None:
     adapter, signal = gateway
-    config_overrides(TOKENER_NEW_TENANT_COHORT_ENABLED=True, TOKENER_PLUGIN_UNIQUE_IDENTIFIER=plugin_pin)
-    with sqlite_session_factory.begin() as session:
-        owner = Account(name="Owner", email="owner@example.com")
-        session.add(owner)
+    config_overrides(
+        TOKENER_NEW_TENANT_COHORT_ENABLED=True,
+        TOKENER_PLUGIN_UNIQUE_IDENTIFIER=plugin_pin,
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+    )
 
     emitted = []
 
     def record(workspace: CreatedWorkspace) -> None:
-        # These rows must be durable before asynchronous bootstrap can observe
-        # the creation event. A missing pin must not put the cohort on legacy.
+        # Only the actual registration producer may select this cohort. Its
+        # identity must already be durable before the bootstrap event.
         with sqlite_session_factory() as session:
             profile = session.scalar(
                 select(TenantModelBillingProfile).where(TenantModelBillingProfile.tenant_id == workspace.id)
@@ -254,8 +253,19 @@ def test_tokener_creation_commits_billing_identity_before_event_without_legacy_p
         emitted.append(workspace.id)
 
     signal.connect(record)
-    created = adapter.create(name="Tokener", owner_email="owner@example.com" if with_owner else None)
-    assert emitted == [created.id]
+    account_id = adapter.create_with_owner_workspace(
+        email="native-registration@example.com",
+        name="Tokener",
+        interface_language="en-US",
+        timezone="UTC",
+        ip_address="127.0.0.1",
+    )
+    assert len(emitted) == 1
+    with sqlite_session_factory() as session:
+        assert (
+            session.scalar(select(TenantAccountJoin.tenant_id).where(TenantAccountJoin.account_id == account_id))
+            == emitted[0]
+        )
 
 
 def test_tokener_billing_initialization_failure_rolls_back_workspace_and_does_not_emit(
@@ -264,7 +274,7 @@ def test_tokener_billing_initialization_failure_rolls_back_workspace_and_does_no
     config_overrides: Callable[..., None],
 ) -> None:
     adapter, signal = gateway
-    config_overrides(TOKENER_NEW_TENANT_COHORT_ENABLED=True)
+    config_overrides(TOKENER_NEW_TENANT_COHORT_ENABLED=True, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     emitted = Mock()
     signal.connect(emitted, weak=False)
 
@@ -274,7 +284,13 @@ def test_tokener_billing_initialization_failure_rolls_back_workspace_and_does_no
     event.listen(TenantModelBillingProfile, "before_insert", fail_insert)
     try:
         with pytest.raises(RuntimeError, match="billing row rejected"):
-            adapter.create(name="Rolled back")
+            adapter.create_with_owner_workspace(
+                email="new-registration@example.com",
+                name="Rolled back",
+                interface_language="en-US",
+                timezone="UTC",
+                ip_address="127.0.0.1",
+            )
     finally:
         event.remove(TenantModelBillingProfile, "before_insert", fail_insert)
     with sqlite_session_factory() as session:
@@ -446,7 +462,13 @@ def test_initial_workspace_locks_before_preparation_and_publishes_after_commit(
         # PostgreSQL to verify the row-lock clause that SQLite cannot execute.
         statement = execution.statement
         if isinstance(statement, Select) and "FOR UPDATE" in str(statement.compile(dialect=postgresql.dialect())):
-            phases.append("lock")
+            entities = [description["entity"] for description in statement.column_descriptions]
+            if entities == [Account]:
+                phases.append("account_lock")
+            elif entities == [AccountTokenerSignupIntent]:
+                phases.append("intent_lock")
+            else:
+                raise AssertionError("unexpected initial-workspace lock owner")
 
     def prepare(_name: str) -> WorkspaceCreation:
         phases.append("prepare")
@@ -474,7 +496,7 @@ def test_initial_workspace_locks_before_preparation_and_publishes_after_commit(
         event.remove(sqlite_session_factory, "do_orm_execute", record_lock)
         event.remove(sqlite_session_factory, "after_commit", committed)
 
-    assert phases == ["lock", "prepare", "bind", "commit", "publish"]
+    assert phases == ["account_lock", "intent_lock", "prepare", "bind", "commit", "publish"]
 
 
 def _service(

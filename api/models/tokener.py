@@ -82,3 +82,36 @@ class TenantTokenerIntegration(TypeBase):
         onupdate=func.current_timestamp(),
         init=False,
     )
+
+
+class AccountTokenerSignupIntent(TypeBase):
+    """Account-creation proof; consumed_at permanently fences deletion/retry replay."""
+
+    __tablename__ = "account_tokener_signup_intents"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("account_id", name="account_tokener_signup_intent_pkey"),
+        sa.UniqueConstraint("consumed_tenant_id", name="account_tokener_signup_intent_tenant_key"),
+        sa.CheckConstraint(
+            "consumed_tenant_id IS NULL OR consumed_at IS NOT NULL",
+            name="account_tokener_signup_intent_consumed_check",
+        ),
+    )
+    account_id: Mapped[str] = mapped_column(
+        StringUUID,
+        sa.ForeignKey("accounts.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    plugin_unique_identifier: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    consumed_tenant_id: Mapped[str | None] = mapped_column(
+        StringUUID,
+        sa.ForeignKey("tenants.id", ondelete="SET NULL"),
+        nullable=True,
+        default=None,
+    )
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        init=False,
+    )

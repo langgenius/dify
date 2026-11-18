@@ -691,8 +691,9 @@ def test_consume_data_plane_api_key_sanitizes_credential_lookup_or_activation_fa
 
 def test_activate_managed_credential_wraps_provider_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     provider_service = MagicMock()
-    provider_service.switch_active_provider_credential.side_effect = RuntimeError("provider secret")
+    provider_service.activate_unselected_provider_credential.side_effect = RuntimeError("provider secret")
     monkeypatch.setattr(task_module, "ModelProviderService", MagicMock(return_value=provider_service))
+    monkeypatch.setattr(task_module, "_find_managed_credential", lambda _tenant: ("credential-1", False))
 
     with pytest.raises(task_module._BootstrapStepError) as exc_info:
         task_module._activate_managed_credential("tenant-1", "credential-1")
@@ -703,7 +704,7 @@ def test_activate_managed_credential_wraps_provider_failure(monkeypatch: pytest.
 
 def test_set_default_llm_wraps_provider_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     provider_service = MagicMock()
-    provider_service.update_default_model_of_model_type.side_effect = RuntimeError("provider secret")
+    provider_service.initialize_default_llm.side_effect = RuntimeError("provider secret")
     monkeypatch.setattr(task_module, "ModelProviderService", MagicMock(return_value=provider_service))
 
     with pytest.raises(task_module._BootstrapStepError) as exc_info:

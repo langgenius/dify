@@ -2,10 +2,10 @@
 
 from collections.abc import Callable
 from datetime import datetime
-from typing import Protocol
+from typing import Literal, Protocol
 
 from constants.languages import get_valid_language, language_timezone_mapping
-from services.account.contracts import AccountCreation, SetupInput
+from services.account.contracts import AccountCreation, SetupInput, TokenerSignupEnrollment
 from services.account.login_service import AccountSessionGateway, ConsoleAuthSecurityGateway
 from services.account_errors import (
     AccountEmailDomainSuspendedError,
@@ -46,6 +46,7 @@ class AccountLifecycleStore(Protocol):
 
 
 class AccountLifecyclePolicy(Protocol):
+    def signup_enrollment(self) -> TokenerSignupEnrollment | None: ...
     def is_registration_allowed(self) -> bool: ...
 
     def has_account_capacity(self) -> bool: ...
@@ -65,6 +66,8 @@ class AccountWorkspaceProvisioner(Protocol):
     def create_owner_workspace(
         self, account_id: str, *, name: str | None = None, is_setup: bool = False, if_missing: bool = False
     ) -> None: ...
+
+    def create_registration_owner_workspace(self, account_id: str) -> None: ...
 
 
 class AccountService:
@@ -136,6 +139,7 @@ class AccountService:
         *,
         status: str = "active",
         initialized: bool = False,
+        registration: Literal["self_signup"] | None = None,
     ) -> AccountSnapshot:
         if not self._policies.is_registration_allowed() and not is_setup:
             raise AccountNotFoundError("Account registration is disabled.")
@@ -168,6 +172,7 @@ class AccountService:
                 check_normalized_email=check_normalized_email,
                 status=status,
                 initialized_at=self._now() if initialized else None,
+                tokener_signup=self._policies.signup_enrollment() if registration == "self_signup" else None,
             )
         )
 
@@ -189,9 +194,10 @@ class AccountService:
             timezone=timezone,
             ip_address=ip_address,
             check_normalized_email=check_normalized_email,
+            registration="self_signup",
         )
         try:
-            self._workspaces.create_owner_workspace(account.id, if_missing=True)
+            self._workspaces.create_registration_owner_workspace(account.id)
         finally:
             self._policies.try_join_default_workspace(account.id)
         return account
@@ -208,6 +214,7 @@ class AccountService:
         timezone: str | None = None,
         ip_address: str | None = None,
         check_normalized_email: bool = True,
+        registration: Literal["self_signup"] | None = None,
     ) -> AccountSnapshot:
         try:
             account = self.create_account(
@@ -221,6 +228,7 @@ class AccountService:
                 check_normalized_email=check_normalized_email,
                 status=status or "active",
                 initialized=True,
+                registration=registration if create_workspace_required and not is_setup else None,
             )
             try:
                 if (
@@ -228,7 +236,10 @@ class AccountService:
                     and self._policies.is_workspace_creation_allowed()
                     and self._policies.has_workspace_capacity()
                 ):
-                    self._workspaces.create_owner_workspace(account.id)
+                    if is_setup:
+                        self._workspaces.create_owner_workspace(account.id)
+                    else:
+                        self._workspaces.create_registration_owner_workspace(account.id)
             finally:
                 self._policies.try_join_default_workspace(account.id)
             return account

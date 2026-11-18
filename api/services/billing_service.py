@@ -8,12 +8,13 @@ from warnings import deprecated
 
 import httpx
 from pydantic import TypeAdapter, ValidationError
+from sqlalchemy import exists, select
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
 from werkzeug.exceptions import InternalServerError
 
 from configs import dify_config
 from core.helper.http_client_pooling import get_pooled_http_client
-from enums import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from extensions.ext_redis import redis_client
 from services.billing_portal_service import BillingPortalLink
 from services.compliance_download_service import ComplianceDownloadLink
@@ -310,10 +311,37 @@ class BillingService:
     # Cache TTL: 10 minutes
     _PLAN_CACHE_TTL = 600
 
+    @staticmethod
+    def _tokener_signup_validation_base(tenant_id: str) -> tuple[str, bool]:
+        """Route only our newly enrolled agent-dev workspaces to the candidate.
+
+        No existing migration receipt, provider or billing route is an enrollment
+        proof. Database failures fail closed rather than fund against another target.
+        """
+        configured = dify_config.TOKENER_SIGNUP_VALIDATION_BILLING_API_URL
+        default_base = dify_config.TOKENER_BILLING_API_URL.strip().rstrip("/")
+        if not configured or dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return default_base, False
+
+        from core.db.session_factory import session_factory
+        from models.tokener import AccountTokenerSignupIntent
+
+        try:
+            with session_factory.create_session() as session:
+                enrolled = session.scalar(
+                    select(exists().where(AccountTokenerSignupIntent.consumed_tenant_id == tenant_id))
+                )
+        except Exception:
+            raise BillingUpstreamUnavailableError from None
+        return (configured, True) if enrolled else (default_base, False)
+
     @classmethod
     def bootstrap_tokener_tenant(cls, tenant_id: str, display_name: str) -> TokenerTenantBootstrapResponse:
         """Ensure the remote Tokener org and trial allowance without logging its one-time key."""
-        base_url = dify_config.TOKENER_BILLING_API_URL.strip().rstrip("/")
+        try:
+            base_url, candidate = cls._tokener_signup_validation_base(tenant_id)
+        except BillingUpstreamUnavailableError:
+            raise TokenerBootstrapUpstreamError("tokener_bootstrap_unavailable", retryable=True) from None
         if not base_url:
             raise TokenerBootstrapUpstreamError("tokener_billing_api_not_configured", retryable=False)
         try:
@@ -322,6 +350,7 @@ class BillingService:
                 f"/internal/v1/tokener/tenants/{tenant_id}/bootstrap",
                 json={"tenant_id": tenant_id, "display_name": display_name},
                 base_url=base_url,
+                **({"follow_redirects": False} if candidate else {}),
             )
         except _BillingHTTPStatusError as error:
             retryable = error.status_code in {httpx.codes.REQUEST_TIMEOUT, httpx.codes.TOO_MANY_REQUESTS} or (
@@ -372,7 +401,7 @@ class BillingService:
     @classmethod
     def get_tokener_metering(cls, tenant_id: str) -> TokenerTenantMeteringResponse:
         """Read secret-free Tokener balance and current-month usage from the internal billing API."""
-        base_url = dify_config.TOKENER_BILLING_API_URL.strip().rstrip("/")
+        base_url, candidate = cls._tokener_signup_validation_base(tenant_id)
         if not base_url:
             raise BillingUpstreamUnavailableError
 
@@ -381,6 +410,7 @@ class BillingService:
                 "GET",
                 f"/internal/v1/tokener/tenants/{tenant_id}/metering",
                 base_url=base_url,
+                **({"follow_redirects": False} if candidate else {}),
             )
         except _BillingHTTPStatusError as error:
             if error.status_code in {
@@ -676,10 +706,14 @@ class BillingService:
         json=None,
         params=None,
         base_url: str | None = None,
+        *,
+        follow_redirects: bool = True,
     ) -> Any:
         headers = {"Content-Type": "application/json", "Billing-Api-Secret-Key": cls.secret_key}
         url = f"{base_url or cls.base_url}{endpoint}"
-        response = _http_client.request(method, url, json=json, params=params, headers=headers, follow_redirects=True)
+        response = _http_client.request(
+            method, url, json=json, params=params, headers=headers, follow_redirects=follow_redirects
+        )
         if method == "GET" and response.status_code != httpx.codes.OK:
             raise _BillingHTTPStatusError(
                 "Unable to retrieve billing information. Please try again later or contact support.",

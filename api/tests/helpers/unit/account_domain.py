@@ -45,6 +45,7 @@ def build_account_domain(session_factory: sessionmaker[Session]) -> AccountDomai
     policy.is_workspace_creation_allowed.return_value = True
     policy.has_workspace_capacity.return_value = True
     policy.get_email_freeze_type.return_value = None
+    policy.signup_enrollment.return_value = None
     policy.validate_timezone.side_effect = lambda timezone: timezone
     access = create_autospec(WorkspaceMemberAccessGateway, instance=True)
     access.rbac_enabled = False

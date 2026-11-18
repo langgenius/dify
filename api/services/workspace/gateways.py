@@ -30,6 +30,8 @@ from models.account import (
 from models.tokener import TenantTokenerIntegrationStatus
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.account.adapters import RedisInvitationTokenStore
+from services.account.contracts import TokenerSignupEnrollment
+from services.account.signup_adapter import configured_signup_enrollment
 from services.account_security_gateway import RedisAccountEmailSecurityGateway
 from services.billing_service import BillingService
 from services.credit_pool_service import CreditPoolBalance, CreditPoolService
@@ -555,11 +557,12 @@ class WorkspaceProvisioningEffectsGateway:
                 category.value: PluginAutoUpgradeService.default_strategy_setting_for_category(category).value
                 for category in TenantPluginAutoUpgradeCategory
             },
-            model_billing_source=ModelBillingSource.TOKENER
-            if dify_config.TOKENER_NEW_TENANT_COHORT_ENABLED
-            else ModelBillingSource.LEGACY_MESSAGE_CREDITS,
+            model_billing_source=ModelBillingSource.LEGACY_MESSAGE_CREDITS,
             tokener_plugin_unique_identifier=dify_config.TOKENER_PLUGIN_UNIQUE_IDENTIFIER.strip() or None,
         )
+
+    def signup_enrollment(self) -> TokenerSignupEnrollment | None:
+        return configured_signup_enrollment()
 
     def bind_owner(self, workspace_id: str, account_id: str) -> None:
         if not dify_config.RBAC_ENABLED:

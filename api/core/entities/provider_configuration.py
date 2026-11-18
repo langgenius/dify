@@ -13,6 +13,7 @@ from sqlalchemy import String, func, literal, select
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import BindParameter
 
+from configs import dify_config
 from constants import HIDDEN_VALUE
 from core.entities import PluginCredentialType
 from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, SimpleModelProviderEntity
@@ -39,6 +40,7 @@ from graphon.model_runtime.model_providers.base.ai_model import AIModel
 from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from graphon.model_runtime.protocols.runtime import ModelRuntime
 from libs.datetime_utils import naive_utc_now
+from models.account import Tenant
 from models.engine import db
 from models.enums import CredentialSourceType
 from models.provider import (
@@ -583,6 +585,10 @@ class ProviderConfiguration(BaseModel):
 
         preferred_model_providers_changed = False
         with Session(db.engine) as session:
+            # Serialize the absent-provider case with internal recovery using
+            # the same normal owner; no external validation runs under this lock.
+            if str(ModelProviderID(self.provider.provider)) == str(ModelProviderID(dify_config.TOKENER_PROVIDER_NAME)):
+                session.get(Tenant, self.tenant_id, with_for_update=True)
             provider_record = self._get_provider_record(session)
             try:
                 new_record = ProviderCredential(
@@ -883,6 +889,80 @@ class ProviderConfiguration(BaseModel):
                 raise
         if preferred_model_providers_changed:
             self._invalidate_provider_configuration_cache(preferred_model_providers=True)
+
+    def activate_unselected_provider_credential(self, credential_id: str) -> None:
+        """Recover an owned prevalidated credential without replacing a BYOK selection.
+
+        The internal caller separately proves its durable integration binding.
+        Tenant/provider locks serialize missing-row creation, using the same
+        owner as ordinary credential creation. Preference commits with Provider;
+        cache errors may be retried with this same ID and never need a new key.
+        """
+        with Session(db.engine) as session:
+            if session.get(Tenant, self.tenant_id, with_for_update=True) is None:
+                raise ValueError("Tenant record not found.")
+            credential = session.execute(
+                select(ProviderCredential).where(
+                    ProviderCredential.id == credential_id,
+                    ProviderCredential.tenant_id == self.tenant_id,
+                    ProviderCredential.provider_name.in_(self._get_provider_names()),
+                )
+            ).scalar_one_or_none()
+            if credential is None:
+                raise ValueError("Credential record not found.")
+            provider = session.execute(
+                select(Provider)
+                .where(
+                    Provider.tenant_id == self.tenant_id,
+                    Provider.provider_type == ProviderType.CUSTOM,
+                    Provider.provider_name.in_(self._get_provider_names()),
+                )
+                .with_for_update()
+            ).scalar_one_or_none()
+            if provider is None:
+                provider = Provider(
+                    tenant_id=self.tenant_id,
+                    provider_name=self.provider.provider,
+                    provider_type=ProviderType.CUSTOM,
+                    is_valid=True,
+                    credential_id=credential.id,
+                )
+                session.add(provider)
+            elif provider.credential_id not in (None, credential.id):
+                raise ValueError("A different provider credential is already selected.")
+            provider.credential_id = credential.id
+            provider.is_valid = True
+            provider.updated_at = naive_utc_now()
+            preference = session.execute(
+                select(TenantPreferredModelProvider)
+                .where(
+                    TenantPreferredModelProvider.tenant_id == self.tenant_id,
+                    TenantPreferredModelProvider.provider_name.in_(self._get_provider_names()),
+                )
+                .with_for_update()
+            ).scalar_one_or_none()
+            if preference is None:
+                session.add(
+                    TenantPreferredModelProvider(
+                        tenant_id=self.tenant_id,
+                        provider_name=self.provider.provider,
+                        preferred_provider_type=ProviderType.CUSTOM,
+                    )
+                )
+            else:
+                preference.preferred_provider_type = ProviderType.CUSTOM
+            session.flush()
+            provider_id = provider.id
+            session.commit()
+        ProviderCredentialsCache(
+            tenant_id=self.tenant_id,
+            identity_id=provider_id,
+            cache_type=ProviderCredentialsCacheType.PROVIDER,
+        ).delete()
+        self._invalidate_provider_configuration_cache(
+            provider_credentials=True,
+            preferred_model_providers=True,
+        )
 
     def _get_custom_model_record(
         self,
