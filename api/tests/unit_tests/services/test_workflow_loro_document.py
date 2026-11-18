@@ -292,3 +292,35 @@ def test_undo_retains_new_route_configuration_while_a_peer_uses_its_handle() -> 
     }
     doc.get_map("editState").delete("02:b")
     assert project_loro_graph(doc) == {"nodes": nodes, "edges": []}
+
+
+@pytest.mark.parametrize("config", [{}, {"rows": None}])
+def test_concurrent_first_rows_keep_their_identity_after_independent_undos(config: dict[str, LoroValue]) -> None:
+    """Two writers can add the first optional row before either receives the other's changes."""
+    graph: dict[str, LoroValue] = {"nodes": [{"id": "a", "data": config}], "edges": []}
+    alice = load_loro_draft(None, graph)
+    alice.get_map("draftFormat").insert("version", 2)
+    snapshot = alice.export(ExportMode.Snapshot())
+    base = alice.state_vv
+    bob = load_loro_draft(snapshot, {})
+    for client, name in [(alice, "alice"), (bob, "bob")]:
+        _record(
+            client,
+            name,
+            [
+                {
+                    "kind": "nodes",
+                    "id": "a",
+                    "op": "insert",
+                    "path": ["data", "rows", {"row": "n:" + name}],
+                    "after": None,
+                    "value": {"name": name},
+                }
+            ],
+        )
+    merge_loro_update(alice, bob.export(ExportMode.Updates(base)))
+    assert project_loro_graph(alice)["nodes"] == [{"id": "a", "data": {"rows": [{"name": "bob"}, {"name": "alice"}]}}]
+    alice.get_map("editState").delete("alice")
+    assert project_loro_graph(alice)["nodes"] == [{"id": "a", "data": {"rows": [{"name": "bob"}]}}]
+    alice.get_map("editState").delete("bob")
+    assert project_loro_graph(alice) == graph

@@ -139,7 +139,13 @@ def _apply_path(entry: _Entry, path: list[LoroValue], patch: dict[str, LoroValue
                         if active:
                             value[token] = child
                             del value.seeds[token]
-                if child is None and token not in value:
+                if child is None and expected is _Rows and op == "insert":
+                    child = _Rows({}, [])
+                    if active:
+                        value[token] = child
+                    else:
+                        value.seed(token, child)
+                elif child is None and token not in value:
                     child = _Fields() if expected is _Fields else _Rows({}, [])
                     value[token] = child
                 value = child

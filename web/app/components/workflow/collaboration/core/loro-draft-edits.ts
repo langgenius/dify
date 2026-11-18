@@ -140,6 +140,13 @@ function replay(entities: Map<string, Slot>, patch: DraftPatch, active: boolean)
             current.set(token, child)
             hidden?.delete(token)
           }
+        } else if (child == null && typeof nextToken !== 'string' && patch.op === 'insert') {
+          child = []
+          if (active) current.set(token, child)
+          else {
+            if (!hidden) hiddenFields.set(current, (hidden = new Map()))
+            hidden.set(token, child)
+          }
         } else {
           if (child === undefined)
             child = typeof nextToken === 'string' ? new Map<string, Tree>() : []
@@ -411,7 +418,7 @@ export function diffDraftValue(
     }
     if (
       Array.isArray(next) &&
-      Array.isArray(old) &&
+      (Array.isArray(old) || old == null) &&
       [...(old ?? []), ...next].length &&
       [...(old ?? []), ...next].every(record)
     ) {

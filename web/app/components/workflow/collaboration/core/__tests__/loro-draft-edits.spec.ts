@@ -258,3 +258,25 @@ it('retains a route handle when another user connects a newly enabled agent rout
   copy(b, a)
   expect(projectDraftGraph(a).nodes[0]?.data).toHaveProperty('agent_output_routes', routes)
 })
+
+it.each([undefined, null])(
+  'merges independent first insertions into an optional list (baseline %s)',
+  (empty) => {
+    const { a, b, ua, ub } = replicas(empty === undefined ? {} : { variables: empty })
+    set(a, 'variables', empty, [{ name: 'Alice' }])
+    set(b, 'variables', empty, [{ name: 'Bob' }])
+    copy(a, b)
+    copy(b, a)
+    expect(projectDraftGraph(a).nodes[0]?.data).toHaveProperty(
+      'variables',
+      expect.arrayContaining([{ name: 'Alice' }, { name: 'Bob' }]),
+    )
+    expect(ua.undo()).toBe(true)
+    expect(projectDraftGraph(a).nodes[0]?.data).toHaveProperty('variables', [{ name: 'Bob' }])
+    expect(ub.undo()).toBe(true)
+    copy(b, a)
+    expect(projectDraftGraph(a).nodes[0]?.data).toEqual(
+      empty === undefined ? {} : { variables: empty },
+    )
+  },
+)
