@@ -1,7 +1,8 @@
 from collections.abc import Callable
-from unittest.mock import Mock, create_autospec
+from unittest.mock import MagicMock, Mock, create_autospec
 
 import pytest
+from redis import RedisError
 
 from enums import CloudPlan, DeploymentEdition
 from extensions.ext_redis import RedisClientWrapper
@@ -36,6 +37,18 @@ class TestGatewaysCases:
     def invitations() -> gateways.WorkspaceInvitationGateway:
         redis = create_autospec(RedisClientWrapper, instance=True)
         return gateways.WorkspaceInvitationGateway(tokens=RedisInvitationTokenStore(redis=redis), redis=redis)
+
+    @staticmethod
+    def test_invitation_index_failure_preserves_issued_link(
+        redis_transport: tuple[RedisClientWrapper, MagicMock], caplog: pytest.LogCaptureFixture
+    ) -> None:
+        redis, commands = redis_transport
+        commands.side_effect = RedisError("index unavailable")
+        invitations = gateways.WorkspaceInvitationGateway(tokens=RedisInvitationTokenStore(redis=redis), redis=redis)
+
+        invitations.track_pending("workspace", "token")
+
+        assert "Could not index an issued workspace invitation for workspace" in caplog.messages
 
     @staticmethod
     @pytest.mark.parametrize("allowed", [True, False])

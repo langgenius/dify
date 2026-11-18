@@ -450,6 +450,17 @@ class WorkspaceRepository(
                 ) in session.execute(stmt).all()
             )
 
+    def nonmember_emails(self, workspace_id: str, account_ids: Sequence[str]) -> dict[str, str]:
+        """Read current email addresses for candidate accounts without a membership in this workspace."""
+        membership = (
+            select(TenantAccountJoin.account_id)
+            .where(TenantAccountJoin.tenant_id == workspace_id, TenantAccountJoin.account_id == Account.id)
+            .exists()
+        )
+        with self._session_factory() as session:
+            rows = session.execute(select(Account.id, Account.email).where(Account.id.in_(account_ids), ~membership))
+            return dict(rows.tuples().all())
+
     def owner_id(self, workspace_id: str) -> str | None:
         with self._session_factory() as session:
             return session.scalar(

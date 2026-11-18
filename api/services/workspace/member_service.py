@@ -333,9 +333,7 @@ class InvitationWorkspaceStore(Protocol):
 
     def count_members(self, workspace_id: str) -> int: ...
 
-    def list_for_workspace(
-        self, workspace_id: str, *, account_ids: Sequence[str]
-    ) -> Sequence[WorkspaceMemberRecord]: ...
+    def nonmember_emails(self, workspace_id: str, account_ids: Sequence[str]) -> Mapping[str, str]: ...
 
 
 class WorkspaceInvitationDelivery(Protocol):
@@ -387,9 +385,8 @@ class WorkspaceInvitationService:
         pending = self._invitations.list_pending(workspace_id)
         if not pending:
             return ()
-        members = self._workspaces.list_for_workspace(workspace_id, account_ids=[item.account_id for item in pending])
-        member_ids = {member.id for member in members}
-        return tuple(item for item in pending if item.account_id not in member_ids)
+        current_emails = self._workspaces.nonmember_emails(workspace_id, [item.account_id for item in pending])
+        return tuple(item for item in pending if current_emails.get(item.account_id) == item.email)
 
     def invite_many(
         self, context: RequestContext, *, emails: Sequence[str], language: str | None, role: str

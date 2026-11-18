@@ -313,6 +313,23 @@ class TestMemberServiceCases:
         assert account_domain.invitations.list_pending(owner) == ()
 
     @staticmethod
+    def test_pending_invitation_disappears_when_recipient_email_changes(
+        account_domain: AccountDomain, members: tuple[str, str, str]
+    ) -> None:
+        workspace_id, owner_id, _ = members
+        owner = RequestContext("request", None, owner_id, workspace_id)
+        account = account_domain.accounts.create_account("previous@example.com", "Invitee", "en-US")
+        invitation = PendingWorkspaceInvitation(
+            account.id, account.email, TenantAccountRole.EDITOR, datetime(2026, 12, 1, tzinfo=UTC)
+        )
+        account_domain.delivery.list_pending.return_value = (invitation,)
+        assert account_domain.invitations.list_pending(owner) == (invitation,)
+
+        account_domain.accounts.set_email(account.id, "updated@example.com")
+
+        assert account_domain.invitations.list_pending(owner) == ()
+
+    @staticmethod
     def test_pending_member_can_be_reinvited(
         account_domain: AccountDomain, members: tuple[str, str, str], sqlite_session: Session
     ) -> None:

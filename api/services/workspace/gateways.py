@@ -7,6 +7,7 @@ from contextlib import AbstractContextManager
 from typing import Literal, override
 from uuid import uuid4
 
+from redis import RedisError
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -190,8 +191,11 @@ class WorkspaceInvitationGateway:
         return self._tokens.create(invitation)
 
     def track_pending(self, workspace_id: str, token: str) -> None:
-        """Record a sent invitation for the lifetime of the issued link."""
-        self._tokens.track_pending(workspace_id, token)
+        """Index an issued invitation for display without misreporting a successful mail enqueue."""
+        try:
+            self._tokens.track_pending(workspace_id, token)
+        except RedisError:
+            logger.warning("Could not index an issued workspace invitation for %s", workspace_id, exc_info=True)
 
     def list_pending(self, workspace_id: str) -> tuple[PendingWorkspaceInvitation, ...]:
         """List the outstanding invitation links indexed for this workspace."""
