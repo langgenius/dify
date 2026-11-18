@@ -3,6 +3,14 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zAlreadySubmittedError,
+  zExpiredError,
+  zInvalidInputError,
+  zPaidPlanRequiredError,
+  zServiceApiDisabledError,
+  zWorkflowNotActiveError,
+} from './zod.gen.ts'
+import {
   zDeleteAccountSessionsBySessionIdPath,
   zDeleteAccountSessionsBySessionIdResponse,
   zDeleteAccountSessionsSelfResponse,
@@ -286,6 +294,8 @@ import {
   zPostWorkspacesByWorkspaceIdSkillsImportsBody,
   zPostWorkspacesByWorkspaceIdSkillsImportsPath,
   zPostWorkspacesByWorkspaceIdSkillsImportsResponse,
+  zPostWorkspacesByWorkspaceIdSwitchPath,
+  zPostWorkspacesByWorkspaceIdSwitchResponse,
   zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsBody,
   zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsPath,
   zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsResponse,
@@ -392,12 +402,23 @@ export const sessions = {
   bySessionId,
 }
 
+/**
+ * Return account details with workspace visibility bounded by PAT scope
+ *
+ * The account snapshot supplies current memberships and the default workspace.
+ * A PAT's admitted workspace IDs narrow that snapshot; the returned default is
+ * present only when its workspace remains visible. Non-PAT requests have no
+ * workspace filter. This handler is read-only and does not change membership.
+ */
 export const get5 = oc
   .route({
+    description:
+      "The account snapshot supplies current memberships and the default workspace.\nA PAT's admitted workspace IDs narrow that snapshot; the returned default is\npresent only when its workspace remains visible. Non-PAT requests have no\nworkspace filter. This handler is read-only and does not change membership.",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAccount',
     path: '/account',
+    summary: 'Return account details with workspace visibility bounded by PAT scope',
     tags: ['openapi'],
   })
   .output(zGetAccountResponse)
@@ -895,6 +916,12 @@ export const post9 = oc
     }),
   )
   .output(zPostAppsByAppIdHumanInputFormsByFormTokenSubmitResponse)
+  .errors({
+    already_submitted: { status: 409, data: zAlreadySubmittedError },
+    expired: { status: 410, data: zExpiredError },
+    invalid_input: { status: 400, data: zInvalidInputError },
+    workflow_not_active: { status: 409, data: zWorkflowNotActiveError },
+  })
 
 export const submit = {
   post: post9,
@@ -910,6 +937,10 @@ export const get15 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdHumanInputFormsByFormTokenPath }))
   .output(zGetAppsByAppIdHumanInputFormsByFormTokenResponse)
+  .errors({
+    already_submitted: { status: 409, data: zAlreadySubmittedError },
+    expired: { status: 410, data: zExpiredError },
+  })
 
 export const byFormToken = {
   get: get15,
@@ -1468,6 +1499,10 @@ export const post16 = oc
   })
   .input(z.object({ body: zPostAppsByAppIdPublishBody, params: zPostAppsByAppIdPublishPath }))
   .output(zPostAppsByAppIdPublishResponse)
+  .errors({
+    paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+    service_api_disabled: { status: 403, data: zServiceApiDisabledError },
+  })
 
 export const publish = {
   post: post16,
@@ -2328,20 +2363,21 @@ export const plugins2 = {
 }
 
 /**
- * Import never publishes
+ * Import an admitted editor's validated folder, returning a count of file entries only
  *
- * ``draft_hash`` is the draft's ``updated_at`` in whole seconds,
+ * Creates a draft (201) or overwrites it (200), relaying archive and service errors.
+ * Import never publishes. ``draft_hash`` is the draft's ``updated_at`` in whole seconds,
  * so an edit made in the same second as the export is not detected.
  */
 export const post31 = oc
   .route({
     description:
-      "``draft_hash`` is the draft's ``updated_at`` in whole seconds,\nso an edit made in the same second as the export is not detected.",
+      "Creates a draft (201) or overwrites it (200), relaying archive and service errors.\nImport never publishes. ``draft_hash`` is the draft's ``updated_at`` in whole seconds,\nso an edit made in the same second as the export is not detected.",
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postWorkspacesByWorkspaceIdSkillsImports',
     path: '/workspaces/{workspace_id}/skills/imports',
-    summary: 'Import never publishes',
+    summary: "Import an admitted editor's validated folder, returning a count of file entries only",
     tags: ['openapi'],
   })
   .input(
@@ -2538,6 +2574,21 @@ export const tools = {
   get: get57,
 }
 
+export const post34 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspacesByWorkspaceIdSwitch',
+    path: '/workspaces/{workspace_id}:switch',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zPostWorkspacesByWorkspaceIdSwitchPath }))
+  .output(zPostWorkspacesByWorkspaceIdSwitchResponse)
+
+export const switch_ = {
+  post: post34,
+}
+
 export const get58 = oc
   .route({
     inputStructure: 'detailed',
@@ -2563,6 +2614,7 @@ export const byWorkspaceId = {
   skills,
   toolProviders,
   tools,
+  switch: switch_,
 }
 
 export const get59 = oc

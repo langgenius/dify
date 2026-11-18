@@ -651,7 +651,10 @@ class Client:
         The initial cursor is ``after`` or ``"0-0"``. After every yielded event
         with an id, reconnects resume from that id using the ``after`` query
         parameter. HTTP 5xx stream responses are retried, but HTTP 4xx responses,
-        DTO validation failures, and malformed SSE frames are not retried. By
+        DTO validation failures, and malformed SSE frames are not retried.
+        ``max_reconnects`` limits consecutive reconnects that deliver no event; the
+        count resets whenever an event arrives, so a run that keeps progressing is
+        not failed by periodic disconnects (for example proxy connection limits). By
         default, ``until_terminal=True`` returns immediately after yielding a
         succeeded, failed, or cancelled terminal event. With
         ``until_terminal=False``, iteration may consume the remainder of the current
@@ -674,6 +677,9 @@ class Client:
                 ):
                     if event.id is not None:
                         cursor = event.id
+                    # The budget bounds consecutive failed connections; a delivered event proves the
+                    # stream is resuming from its cursor, so a long run may outlive many disconnects.
+                    reconnect_attempts = 0
                     if event.type in _TERMINAL_EVENT_TYPES:
                         terminal_event_seen = True
                     yield event
@@ -733,6 +739,9 @@ class Client:
                 ):
                     if event.id is not None:
                         cursor = event.id
+                    # The budget bounds consecutive failed connections; a delivered event proves the
+                    # stream is resuming from its cursor, so a long run may outlive many disconnects.
+                    reconnect_attempts = 0
                     if event.type in _TERMINAL_EVENT_TYPES:
                         terminal_event_seen = True
                     yield event
@@ -770,7 +779,7 @@ class Client:
         poll_interval_seconds: float = 1.0,
         timeout_seconds: float | None = None,
     ) -> RunStatusResponse:
-        """Poll run status until it becomes terminal and return the final status."""
+        """Check the current status, then poll for a terminal status until the deadline."""
         _validate_wait_options(poll_interval_seconds, timeout_seconds)
         deadline = time.monotonic() + timeout_seconds if timeout_seconds is not None else None
         while True:
@@ -779,8 +788,11 @@ class Client:
                 return status
             sleep_for = _next_sleep_seconds(poll_interval_seconds, deadline)
             if sleep_for is None:
-                raise DifyAgentTimeoutError(f"run {run_id!r} did not finish before timeout")
+                break
             await _sleep_async(sleep_for)
+            if deadline is not None and time.monotonic() >= deadline:
+                break
+        raise DifyAgentTimeoutError(f"run {run_id!r} did not finish before timeout")
 
     def wait_run_sync(
         self,
@@ -798,8 +810,11 @@ class Client:
                 return status
             sleep_for = _next_sleep_seconds(poll_interval_seconds, deadline)
             if sleep_for is None:
-                raise DifyAgentTimeoutError(f"run {run_id!r} did not finish before timeout")
+                break
             _sleep_sync(sleep_for)
+            if deadline is not None and time.monotonic() >= deadline:
+                break
+        raise DifyAgentTimeoutError(f"run {run_id!r} did not finish before timeout")
 
     async def _stream_events_once(
         self,

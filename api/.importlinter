@@ -38,6 +38,36 @@ forbidden_modules =
     tasks
     werkzeug
 
+[importlinter:contract:moderation-service-boundary]
+name = Strict moderation use cases depend only on plain contracts and injected gateways
+type = forbidden
+source_modules =
+    services.moderation_service
+forbidden_modules =
+    celery
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
+[importlinter:contract:model-moderation-runtime-boundary]
+name = Model assembly and invocation receive moderation through injection rather than application or persistence imports
+type = forbidden
+source_modules =
+    core.model_manager
+    core.workflow.node_runtime
+forbidden_modules =
+    services.moderation_service
+    services.moderation_adapters
+    repositories.api_based_extension_repository
+allow_indirect_imports = True
+
 [importlinter:contract:backend-layers]
 name = Backend modules follow the transport, application, execution-kernel, and shared-library layers
 type = layers
@@ -1233,6 +1263,7 @@ allow_indirect_imports = True
 name = Workflow comment application service is framework and persistence neutral
 type = forbidden
 source_modules =
+    services.app.workflow_comment_errors
     services.app.workflow_comment_service
 forbidden_modules =
     configs
@@ -1275,6 +1306,7 @@ name = App trigger management contracts are framework and persistence neutral
 type = forbidden
 source_modules =
     services.trigger.app_trigger_store
+    services.trigger.app_trigger_service
 forbidden_modules =
     configs
     controllers
@@ -1284,6 +1316,35 @@ forbidden_modules =
     repositories
     sqlalchemy
     werkzeug
+
+[importlinter:contract:agent-app-access-service-boundary]
+name = Agent App access services and contracts are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.app.agent_app_service
+    services.app.agent_app_contracts
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+allow_indirect_imports = True
+
+[importlinter:contract:console-agent-api-access-boundary]
+name = Agent API access controller reaches persistence through the composition root
+type = forbidden
+source_modules =
+    controllers.console.agent.api_access
+forbidden_modules =
+    extensions.ext_database
+    models.model
+    repositories
+    sqlalchemy
+allow_indirect_imports = True
 
 [importlinter:contract:console-app-trigger-controller-boundary]
 name = Console app trigger controller reaches persistence only through the composition root
@@ -1426,4 +1487,239 @@ forbidden_modules =
     services.tracing.registry
     services.tracing.runtime_bridge
     services.tracing.service
+allow_indirect_imports = True
+
+[importlinter:contract:trigger-oauth-client-service-boundary]
+name = Trigger OAuth client orchestration does not directly depend on persistence or HTTP
+type = forbidden
+source_modules =
+    services.trigger.oauth_client_service
+    services.trigger.oauth_service
+    services.trigger.provider_query
+    services.trigger.subscription_query_service
+    services.trigger.subscription_service
+    services.trigger.subscription_renewal_service
+    services.trigger.subscription_refresh_service
+    services.trigger.subscription_binding_service
+    services.async_workflow_service
+    services.trigger.workflow_dispatch_service
+    services.trigger.webhook_service
+    services.trigger.schedule_service
+    services.trigger.schedule_store
+    services.trigger.execution_service
+    services.trigger.execution_layer
+forbidden_modules =
+    controllers
+    extensions
+    flask
+    repositories
+    sqlalchemy
+    werkzeug
+allow_indirect_imports = True
+
+[importlinter:contract:services-composition-root-boundary]
+name = Trigger services do not locate their dependencies through the application container
+type = forbidden
+source_modules =
+    services.trigger
+forbidden_modules =
+    extensions.ext_application_services
+allow_indirect_imports = True
+
+[importlinter:contract:trigger-plugin-runtime-boundary]
+name = Trigger provider loading and dispatch do not access persistence or the application container
+type = forbidden
+source_modules =
+    services.trigger.provider_loader
+    services.trigger.plugin_provider
+    services.trigger.provider_gateway
+    services.trigger.event_gateway
+    services.trigger.endpoint_gateway
+    services.trigger.oauth_gateway
+    services.trigger.subscription_gateway
+forbidden_modules =
+    controllers
+    repositories
+    sqlalchemy
+    extensions.ext_database
+    extensions.ext_application_services
+allow_indirect_imports = True
+
+[importlinter:contract:trigger-subscription-builder-persistence-boundary]
+name = Trigger builder, endpoint and event orchestration use injected persistence
+type = forbidden
+source_modules =
+    services.trigger.trigger_subscription_builder_service
+    services.trigger.endpoint_service
+    services.trigger.event_service
+    services.trigger.debug_service
+    services.trigger.trigger_request_service
+forbidden_modules =
+    controllers
+    extensions
+    repositories
+    sqlalchemy
+allow_indirect_imports = True
+
+[importlinter:contract:trigger-subscription-encryption-boundary]
+name = Trigger subscription commands depend on the encryption port
+type = forbidden
+source_modules =
+    services.trigger.subscription_service
+    services.trigger.subscription_renewal_service
+forbidden_modules =
+    core.helper.provider_cache
+    core.helper.provider_encryption
+    core.helper.encrypter
+    services.trigger.subscription_codec
+allow_indirect_imports = True
+
+[importlinter:contract:trigger-event-framework-boundary]
+name = Trigger event orchestration is independent of the web framework
+type = forbidden
+source_modules =
+    services.trigger.event_service
+forbidden_modules =
+    flask
+    werkzeug
+allow_indirect_imports = True
+
+[importlinter:contract:trigger-renewal-configuration-boundary]
+name = Trigger renewal receives configuration from the composition root
+type = forbidden
+source_modules =
+    services.trigger.subscription_renewal_service
+forbidden_modules =
+    configs
+allow_indirect_imports = True
+
+[importlinter:contract:trigger-subscription-controller-persistence-boundary]
+name = Trigger subscription controllers reach persistence through application services
+type = forbidden
+source_modules =
+    controllers.console.workspace.trigger_providers
+forbidden_modules =
+    repositories
+    sqlalchemy
+    core.db
+    models.engine
+allow_indirect_imports = True
+
+[importlinter:contract:trigger-debug-repository-boundary]
+name = Trigger debug persistence depends on contracts rather than service implementations
+type = forbidden
+source_modules =
+    repositories.trigger.debug_repository
+forbidden_modules =
+    services.trigger.debug_service
+    services.trigger.schedule_service
+    services.trigger.webhook_service
+allow_indirect_imports = True
+
+[importlinter:contract:trigger-execution-repository-boundary]
+name = Trigger execution persistence depends on contracts rather than its service
+type = forbidden
+source_modules =
+    repositories.sqlalchemy_workflow_trigger_log_repository
+forbidden_modules =
+    services.trigger.execution_service
+    services.trigger.execution_gateway
+    services.trigger.execution_layer
+allow_indirect_imports = True
+
+[importlinter:contract:trigger-builder-repository-boundary]
+name = Trigger builder persistence depends on contracts rather than its service
+type = forbidden
+source_modules =
+    repositories.trigger.subscription_builder_repository
+forbidden_modules =
+    services.trigger.trigger_subscription_builder_service
+allow_indirect_imports = True
+
+[importlinter:contract:agent-version-service-boundary]
+name = Agent version use cases and contracts are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.agent.version_service
+    services.agent.version_store
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+allow_indirect_imports = True
+
+[importlinter:contract:agent-version-repository-boundary]
+name = Agent version persistence depends on its contract rather than the service
+type = forbidden
+source_modules =
+    repositories.agent_version_repository
+forbidden_modules =
+    services.agent.version_service
+allow_indirect_imports = True
+
+[importlinter:contract:agent-roster-repository-boundary]
+name = Agent roster persistence depends on contracts rather than application services
+type = forbidden
+source_modules =
+    repositories.agent_roster_repository
+forbidden_modules =
+    services.agent.roster_service
+    services.agent.invite_options
+allow_indirect_imports = True
+
+[importlinter:contract:agent-invite-options-service-boundary]
+name = Agent invite options use case and contracts are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.agent.invite_options
+    services.agent.invite_options_store
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+allow_indirect_imports = True
+
+[importlinter:contract:agent-legacy-roster-service-boundary]
+name = Legacy Agent roster service does not depend on the new roster repository
+type = forbidden
+source_modules =
+    services.agent.roster_service
+forbidden_modules =
+    repositories.agent_roster_repository
+allow_indirect_imports = True
+
+[importlinter:contract:agent-observability-query-boundary]
+name = Agent observability query contracts are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.agent.observability_contracts
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+allow_indirect_imports = True
+
+[importlinter:contract:agent-observability-repository-boundary]
+name = Agent observability queries do not depend on legacy Agent service implementations
+type = forbidden
+source_modules =
+    repositories.agent_observability_repository
+    repositories.app.agent_runtime_app
+forbidden_modules =
+    services.agent.roster_service
 allow_indirect_imports = True

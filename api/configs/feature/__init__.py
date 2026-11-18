@@ -1,7 +1,9 @@
 import logging
 from datetime import datetime, timedelta
 from enum import StrEnum
+from functools import cache
 from typing import Final, Literal
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones
 
 from pydantic import (
     AliasChoices,
@@ -13,6 +15,7 @@ from pydantic import (
     PositiveInt,
     computed_field,
     field_validator,
+    model_validator,
 )
 from pydantic_settings import BaseSettings
 
@@ -25,13 +28,24 @@ MIN_OAUTH_TTL_DAYS: Final = 1
 MAX_OAUTH_TTL_DAYS: Final = 365
 
 
+@cache
+def _timezone_names_by_casefold() -> dict[str, str]:
+    """Return a cached case-insensitive index of available IANA timezone names.
+
+    The index is built only after a direct ``ZoneInfo`` lookup fails. Every
+    returned value remains a key accepted by the current runtime's timezone
+    database.
+    """
+    return {timezone_name.casefold(): timezone_name for timezone_name in available_timezones()}
+
+
 class SecurityConfig(BaseSettings):
     """
     Security-related configurations for the application
     """
 
     SECRET_KEY: str = Field(
-        description="Secret key for secure session cookie signing. "
+        description="Secret key for session cookie signing and account-bound personal access token verification. "
         "Leave empty to let Dify generate a persistent key in the storage directory, "
         "or set a strong value via the `SECRET_KEY` environment variable.",
         default="",
@@ -622,7 +636,7 @@ class FileUploadConfig(BaseSettings):
         default=2,
     )
 
-    inner_UPLOAD_FILE_EXTENSION_BLACKLIST: str = Field(
+    inner_upload_file_extension_blacklist: str = Field(
         description=(
             "Comma-separated list of file extensions that are blocked from upload. "
             "Extensions should be lowercase without dots (e.g., 'exe,bat,sh,dll'). "
@@ -639,11 +653,11 @@ class FileUploadConfig(BaseSettings):
         Parse and return the blacklist as a set of lowercase extensions.
         Returns an empty set if no blacklist is configured.
         """
-        if not self.inner_UPLOAD_FILE_EXTENSION_BLACKLIST:
+        if not self.inner_upload_file_extension_blacklist:
             return set()
         return {
             ext.strip().lower().strip(".")
-            for ext in self.inner_UPLOAD_FILE_EXTENSION_BLACKLIST.split(",")
+            for ext in self.inner_upload_file_extension_blacklist.split(",")
             if ext.strip()
         }
 
@@ -663,7 +677,7 @@ class HttpConfig(BaseSettings):
         default=False,
     )
 
-    inner_CONSOLE_CORS_ALLOW_ORIGINS: str = Field(
+    inner_console_cors_allow_origins: str = Field(
         description="Comma-separated list of allowed origins for CORS in the console",
         validation_alias=AliasChoices("CONSOLE_CORS_ALLOW_ORIGINS", "CONSOLE_WEB_URL"),
         default="",
@@ -671,7 +685,7 @@ class HttpConfig(BaseSettings):
 
     @computed_field
     def CONSOLE_CORS_ALLOW_ORIGINS(self) -> list[str]:
-        return self.inner_CONSOLE_CORS_ALLOW_ORIGINS.split(",")
+        return self.inner_console_cors_allow_origins.split(",")
 
     WEBSOCKET_MAX_HTTP_BUFFER_SIZE: PositiveInt = Field(
         description=(
@@ -683,7 +697,7 @@ class HttpConfig(BaseSettings):
         default=10 * 1024 * 1024,
     )
 
-    inner_WEB_API_CORS_ALLOW_ORIGINS: str = Field(
+    inner_web_api_cors_allow_origins: str = Field(
         description="",
         validation_alias=AliasChoices("WEB_API_CORS_ALLOW_ORIGINS"),
         default="*",
@@ -691,18 +705,18 @@ class HttpConfig(BaseSettings):
 
     @computed_field
     def WEB_API_CORS_ALLOW_ORIGINS(self) -> list[str]:
-        return self.inner_WEB_API_CORS_ALLOW_ORIGINS.split(",")
+        return self.inner_web_api_cors_allow_origins.split(",")
 
     OPENAPI_ENABLED: bool = Field(
         description=(
             "Enable the /openapi/v1/* endpoint group used by difyctl and other "
-            "programmatic clients. Set to true to activate; disabled by default."
+            "programmatic clients. Enabled by default; set to false to disable."
         ),
         validation_alias=AliasChoices("OPENAPI_ENABLED"),
-        default=False,
+        default=True,
     )
 
-    inner_OPENAPI_CORS_ALLOW_ORIGINS: str = Field(
+    inner_openapi_cors_allow_origins: str = Field(
         description=(
             "Comma-separated allowlist for /openapi/v1/* CORS. "
             "Default empty = same-origin only. Browser-cookie routes within "
@@ -714,9 +728,9 @@ class HttpConfig(BaseSettings):
 
     @computed_field
     def OPENAPI_CORS_ALLOW_ORIGINS(self) -> list[str]:
-        return [o for o in self.inner_OPENAPI_CORS_ALLOW_ORIGINS.split(",") if o]
+        return [o for o in self.inner_openapi_cors_allow_origins.split(",") if o]
 
-    inner_OPENAPI_KNOWN_CLIENT_IDS: str = Field(
+    inner_openapi_known_client_ids: str = Field(
         description=(
             "Comma-separated client_id values accepted at "
             "POST /openapi/v1/oauth/device/code. New CLIs / SDKs added here "
@@ -729,7 +743,7 @@ class HttpConfig(BaseSettings):
     @computed_field  # type: ignore[misc]
     @property
     def OPENAPI_KNOWN_CLIENT_IDS(self) -> frozenset[str]:
-        return frozenset(c for c in self.inner_OPENAPI_KNOWN_CLIENT_IDS.split(",") if c)
+        return frozenset(c for c in self.inner_openapi_known_client_ids.split(",") if c)
 
     HTTP_REQUEST_MAX_CONNECT_TIMEOUT: int = Field(
         ge=1, description="Maximum connection timeout in seconds for HTTP requests", default=10
@@ -884,6 +898,29 @@ class LoggingConfig(BaseSettings):
         description="Timezone for log timestamps (e.g., 'America/New_York')",
         default="UTC",
     )
+
+    @field_validator("LOG_TZ")
+    @classmethod
+    def validate_log_timezone(cls, timezone_name: str | None) -> str | None:
+        """Validate and normalize the logging timezone at the configuration boundary.
+
+        ``None`` and the legacy empty string remain unchanged. A name accepted
+        directly by ``ZoneInfo`` is returned verbatim, including valid aliases.
+        A case-only mismatch is normalized to an available IANA key. Any other
+        non-empty value raises a validation error and is never replaced by UTC.
+        """
+        if not timezone_name:
+            return timezone_name
+
+        try:
+            ZoneInfo(timezone_name)
+        except (OSError, ValueError, ZoneInfoNotFoundError):
+            canonical_name = _timezone_names_by_casefold().get(timezone_name.casefold())
+            if canonical_name is None:
+                raise ValueError(f"LOG_TZ must be a valid IANA timezone name, got {timezone_name!r}") from None
+            return canonical_name
+
+        return timezone_name
 
 
 class ModelLoadBalanceConfig(BaseSettings):
@@ -1173,8 +1210,13 @@ class ModerationConfig(BaseSettings):
     """
 
     MODERATION_BUFFER_SIZE: PositiveInt = Field(
-        description="Size of the buffer for content moderation processing",
+        description="Characters buffered before streaming moderation checks",
         default=300,
+    )
+
+    MODERATION_NON_STREAM_SEGMENT_SIZE: PositiveInt = Field(
+        description="Maximum characters checked per moderation request for input or non-streaming output",
+        default=2000,
     )
 
 
@@ -1354,6 +1396,11 @@ class DataSetConfig(BaseSettings):
     Configuration for dataset management
     """
 
+    DATASET_DESCRIPTION_MAX_LENGTH: PositiveInt = Field(
+        description="Maximum number of characters in a knowledge base description",
+        default=400,
+    )
+
     PLAN_SANDBOX_CLEAN_DAY_SETTING: PositiveInt = Field(
         description="Interval in days for dataset cleanup operations - plan: sandbox",
         default=30,
@@ -1487,6 +1534,10 @@ class CeleryScheduleTasksConfig(BaseSettings):
     )
     ENABLE_APPLICATION_TRACE_RECONCILE_TASK: bool = Field(
         description="Enable periodic application trace recovery and retention cleanup when Agent tracing is enabled",
+        default=True,
+    )
+    ENABLE_EVALUATION_RUN_RECONCILER: bool = Field(
+        description="Enable periodic recovery of running evaluations whose heartbeat lease has expired",
         default=True,
     )
     ENABLE_CONVERSATION_CLEANUP_TASK: bool = Field(
@@ -1767,6 +1818,45 @@ class SandboxExpiredRecordsCleanConfig(BaseSettings):
     )
 
 
+class EvaluationConfig(BaseSettings):
+    """Configuration for the evaluation runtime."""
+
+    EVALUATION_MAX_CONCURRENT_RUNS: PositiveInt = Field(
+        description="Maximum active evaluation runs per tenant.",
+        default=3,
+    )
+    EVALUATION_MAX_DATASET_ROWS: PositiveInt = Field(
+        description="Maximum number of rows in an evaluation dataset.",
+        default=500,
+    )
+    EVALUATION_RUN_HEARTBEAT_INTERVAL: PositiveInt = Field(
+        description="Interval in seconds between evaluation run heartbeat renewals.",
+        default=30,
+    )
+    EVALUATION_RUN_LEASE_TIMEOUT: PositiveInt = Field(
+        description="Maximum seconds without an evaluation run heartbeat before recovery.",
+        default=180,
+    )
+    EVALUATION_RUN_MAX_RETRIES: NonNegativeInt = Field(
+        description="Maximum retries after an evaluation task fails with a retryable error.",
+        default=3,
+    )
+    EVALUATION_RUN_RETRY_DELAY: PositiveInt = Field(
+        description="Base delay in seconds for exponential evaluation task retries.",
+        default=30,
+    )
+    EVALUATION_MAX_PARALLEL_TARGETS: PositiveInt = Field(
+        description="Maximum target executions performed in parallel by one evaluation task.",
+        default=5,
+    )
+
+    @model_validator(mode="after")
+    def validate_heartbeat_lease(self) -> "EvaluationConfig":
+        if self.EVALUATION_RUN_HEARTBEAT_INTERVAL >= self.EVALUATION_RUN_LEASE_TIMEOUT:
+            raise ValueError("Evaluation heartbeat interval must be shorter than the lease timeout")
+        return self
+
+
 class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
@@ -1779,6 +1869,7 @@ class FeatureConfig(
     MarketplaceConfig,
     DataSetConfig,
     EndpointConfig,
+    EvaluationConfig,
     FileAccessConfig,
     FileUploadConfig,
     HomepageConfig,

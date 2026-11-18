@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { Features } from '@/app/components/base/features/types'
-import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
+import type { TestEditorResource } from '@/app/components/workflow/editor-resource/__tests__/fixture-resource'
 import type { Shape } from '@/app/components/workflow/store'
 import type { Node } from '@/app/components/workflow/types'
 import { act } from '@testing-library/react'
@@ -39,7 +39,7 @@ let workflowStore: ReturnType<typeof renderWorkflowCanvasHook>['store']
 const toNodes = (nodes: { id: string; data: Record<string, unknown> }[]) =>
   nodes.map(({ id, data }) => createNode({ id, data }))
 
-const renderHook = <R,>(callback: () => R, { resource }: { resource: EditorResource }) => {
+const renderHook = <R,>(callback: () => R, { resource }: { resource: TestEditorResource }) => {
   const featuresStore = createFeaturesStore({ features })
   const rendered = renderWorkflowCanvasHook(callback, {
     resource,

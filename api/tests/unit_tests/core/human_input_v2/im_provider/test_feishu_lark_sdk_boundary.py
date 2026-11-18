@@ -421,7 +421,7 @@ def _intent() -> ResolvedForm:
         title="Approval",
         parts=(
             MarkdownFragment(text="Rendered **content**"),
-            ParagraphInput(output_variable_name="comment", default_value="Initial"),
+            ParagraphInput(output_variable_name="comment", resolved_default_value="Initial"),
         ),
         actions=(UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),),
         legacy_form_content="This value must not be rendered",
@@ -588,7 +588,7 @@ def sdk_server(monkeypatch: pytest.MonkeyPatch) -> Generator[_RunningServer]:
     state = _ServerState()
     server = _SDKHTTPServer(("127.0.0.1", 0), _SDKRequestHandler)
     server.state = state
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     try:
         host, port = server.server_address[:2]

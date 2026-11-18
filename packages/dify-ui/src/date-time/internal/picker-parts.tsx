@@ -142,9 +142,8 @@ function PickerRoot({
       ? (props.validationMessage ?? 'Choose a value.')
       : undefined
   const invalid = Boolean(errorMessage || field.state.valid === false)
-  const canEdit = useStableCallback(
-    () => !disabled && !props.readOnly && !inputRef.current?.matches(':disabled'),
-  )
+  const canOpen = useStableCallback(() => !disabled && !inputRef.current?.matches(':disabled'))
+  const canEdit = useStableCallback(() => canOpen() && !props.readOnly)
   const formValue = useStableCallback(() => serializedValue)
   useRegisterFieldControl(triggerRef, triggerId, value, formValue, eligible, props.name)
 
@@ -366,7 +365,7 @@ function PickerRoot({
         open={props.open}
         defaultOpen={props.defaultOpen}
         onOpenChange={(open, details) => {
-          if (open && !canEdit()) details.cancel()
+          if (open && !canOpen()) details.cancel()
           props.onOpenChange?.(open, details)
           if (
             !details.isCanceled &&
@@ -513,7 +512,6 @@ function PickerTrigger({
       data-readonly={field.readOnly || undefined}
       data-required={field.required || undefined}
       aria-invalid={field.invalid || undefined}
-      aria-disabled={field.readOnly || undefined}
       {...mergeProps(
         baseField.validation.getValidationProps(Boolean(field.disabled), {
           'aria-describedby':
@@ -532,7 +530,8 @@ function PickerTrigger({
           'flex h-8 w-63 max-w-full items-center justify-between gap-0.5 rounded-lg bg-components-input-bg-normal ps-3 pe-2 text-start system-sm-regular text-components-input-text-filled',
           'hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
           'aria-invalid:not-data-disabled:bg-components-input-bg-destructive aria-invalid:not-data-disabled:inset-ring-1 aria-invalid:not-data-disabled:inset-ring-components-input-border-destructive',
-          'aria-disabled:not-data-disabled:cursor-default data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled',
+          'data-readonly:not-data-disabled:cursor-default data-readonly:not-data-disabled:not-aria-invalid:bg-components-input-bg-normal data-readonly:not-data-disabled:not-aria-invalid:hover:bg-components-input-bg-normal',
+          'data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled',
           !field.serializedValue && 'text-text-tertiary in-data-[theme=dark]:text-text-secondary',
           resolveClassName(className, state),
         )

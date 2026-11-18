@@ -1,9 +1,9 @@
 import * as React from 'react'
-import useTheme from '@/hooks/use-theme'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { basePath } from '@/utils/var'
 
 const PipelineScreenShot = () => {
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
 
   return (
     <picture>

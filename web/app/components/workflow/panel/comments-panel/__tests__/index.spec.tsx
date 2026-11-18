@@ -8,10 +8,10 @@ import CommentsPanel from '../index'
 function setup() {
   const { queryClient } = createConsoleQueryWrapper({
     accountProfile: { id: 'user-1' },
-    systemFeatures: { enable_collaboration_mode: true },
   })
   return renderWorkflowFlowComponent(<CommentsPanel />, {
     queryClient,
+    resource: { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled: true },
     initialStoreState: { showResolvedComments: true },
   })
 }

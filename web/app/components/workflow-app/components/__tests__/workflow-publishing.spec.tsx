@@ -200,7 +200,6 @@ function renderEditor({
   const { queryClient } = createConsoleQueryWrapper({
     systemFeatures: {
       deployment_edition: edition,
-      enable_collaboration_mode: false,
       enable_marketplace: false,
       webapp_auth: { enabled: false },
     },

@@ -6,7 +6,6 @@ import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { ModalContextProvider } from '@/context/modal-context-provider'
 import { consoleQuery } from '@/service/console'
 import { useInstalledPluginList } from '@/service/use-plugins'
 import { createCatalogModelFixture, createModelCatalogFixture } from '@/test/console/model-provider'
@@ -19,8 +18,8 @@ import PluginItem from '../index'
 const mockEnableMarketplace = vi.fn(() => true)
 
 const mockTheme = vi.fn(() => 'light')
-vi.mock('@/hooks/use-theme', () => ({
-  default: () => ({ theme: mockTheme() }),
+vi.mock('@/features/theme/hooks', () => ({
+  useResolvedTheme: () => mockTheme(),
 }))
 const PluginPageContextProvider = PluginPageContext.Provider
 
@@ -66,11 +65,7 @@ function PluginPageBoundary({ children }: { children: ReactNode }) {
 }
 
 const render = (ui: ReactElement) => {
-  const wrap = (element: ReactElement) => (
-    <PluginPageBoundary>
-      <ModalContextProvider>{element}</ModalContextProvider>
-    </PluginPageBoundary>
-  )
+  const wrap = (element: ReactElement) => <PluginPageBoundary>{element}</PluginPageBoundary>
   const rendered = renderWithConsoleQuery(wrap(ui), {
     accountProfileMeta: {
       currentVersion: mockLangGeniusVersionInfo().current_version,

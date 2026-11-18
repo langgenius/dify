@@ -207,7 +207,7 @@ def _advanced_chat_resumption_case() -> tuple[WorkflowResumptionContext, type]:
         pytest.param(ResumptionContextCase("advanced_chat", _advanced_chat_resumption_case), id="advanced_chat"),
     ],
 )
-def test_workflow_resumption_context_roundtrip(case: ResumptionContextCase):
+def test_workflow_resumption_context_roundtrip(case: ResumptionContextCase) -> None:
     context, expected_type = case.context_factory()
 
     serialized = context.dumps()
@@ -220,15 +220,15 @@ def test_workflow_resumption_context_roundtrip(case: ResumptionContextCase):
     assert entity.trace_scope is None
 
 
-def test_openapi_variant_present():
+def test_openapi_variant_present() -> None:
     assert InvokeFrom.OPENAPI.value == "openapi"
 
 
-def test_openapi_distinct_from_service_api():
+def test_openapi_distinct_from_service_api() -> None:
     assert InvokeFrom.OPENAPI != InvokeFrom.SERVICE_API
 
 
-def test_runs_as_account_only_for_console_contexts():
+def test_runs_as_account_only_for_console_contexts() -> None:
     # Console contexts (studio debugger / explore) run as the signed-in Account.
     assert InvokeFrom.DEBUGGER.runs_as_account() is True
     assert InvokeFrom.EXPLORE.runs_as_account() is True

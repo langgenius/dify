@@ -70,6 +70,16 @@ export const Default: Story = {
   },
 }
 
+export const ReadOnly: Story = {
+  render: () => (
+    <DateTimePicker timeZone="UTC" defaultValue={new Date('2025-01-15T13:30:00Z')} readOnly>
+      <DateTimePickerLabel>Meeting time</DateTimePickerLabel>
+      <DateTimePickerTrigger />
+      <DateTimePickerContent />
+    </DateTimePicker>
+  ),
+}
+
 export const RTL: Story = {
   parameters: {
     docs: {

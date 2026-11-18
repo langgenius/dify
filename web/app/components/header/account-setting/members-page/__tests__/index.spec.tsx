@@ -337,6 +337,30 @@ describe('MembersPage', () => {
     expect(updateRoles).toHaveBeenCalledTimes(2)
   })
 
+  it('closes member details once a pending role save succeeds', async () => {
+    const user = userEvent.setup()
+    const save = updateRoles.getMockImplementation()!
+    let resolveSave!: () => void
+    updateRoles.mockImplementationOnce(async (input) => {
+      await new Promise<void>((resolve) => {
+        resolveSave = resolve
+      })
+      return save(input)
+    })
+    await renderMembersPage()
+    const dialog = await chooseRoles(user, false)
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+    await user.keyboard('{Escape}')
+    expect(dialog).toBeInTheDocument()
+    await act(async () => {
+      resolveSave()
+    })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(
+      await within(screen.getByRole('row', { name: /admin@example.com/ })).findByText('Next role'),
+    ).toBeInTheDocument()
+  })
+
   it('opens ownership transfer from the owner action without opening member details', async () => {
     const user = userEvent.setup()
     await renderMembersPage()

@@ -1,21 +1,39 @@
+from collections.abc import Iterator
 from unittest.mock import Mock, patch
 
 from core.app.apps.message_generator import MessageGenerator
 from core.app.entities.task_entities import StreamEvent
-from libs.broadcast_channel.channel import SupportsPreparedSubscription
+from libs.broadcast_channel.channel import Subscription, SupportsPreparedSubscription
 from models.model import AppMode
+
+
+class _StubSubscription(Subscription):
+    """A subscription that never yields messages; the generator only forwards it."""
+
+    def __iter__(self) -> Iterator[bytes]:
+        return iter(())
+
+    def receive(self, timeout: float | None = 0.1) -> bytes | None:
+        # No message is ever buffered, so any timeout expires immediately.
+        del timeout
+        return None
+
+    def close(self) -> None:
+        return None
 
 
 class _PreparedSubscriber(SupportsPreparedSubscription):
     def __init__(self) -> None:
         self.prepare_calls = 0
+        self.prepared_subscription = _StubSubscription()
+        self.ordinary_subscription = _StubSubscription()
 
-    def prepare_subscription(self):
+    def prepare_subscription(self) -> Subscription:
         self.prepare_calls += 1
-        return "prepared-subscription"
+        return self.prepared_subscription
 
-    def subscribe(self):
-        return "ordinary-subscription"
+    def subscribe(self) -> Subscription:
+        return self.ordinary_subscription
 
 
 class _TopicWithSeparateSubscriberView:
@@ -25,12 +43,12 @@ class _TopicWithSeparateSubscriberView:
     def as_subscriber(self) -> _PreparedSubscriber:
         return self.subscriber
 
-    def subscribe(self):
+    def subscribe(self) -> Subscription:
         raise AssertionError("event retrieval must use the topic's subscriber view")
 
 
 class TestMessageGenerator:
-    def test_get_response_topic(self):
+    def test_get_response_topic(self) -> None:
         channel = Mock()
         channel.topic.return_value = "topic"
 
@@ -41,7 +59,7 @@ class TestMessageGenerator:
         expected_key = MessageGenerator._make_channel_key(AppMode.WORKFLOW, "run-1")
         channel.topic.assert_called_once_with(expected_key)
 
-    def test_retrieve_events_passes_arguments(self):
+    def test_retrieve_events_passes_arguments(self) -> None:
         topic = Mock()
         topic.as_subscriber.return_value = topic
         topic.subscribe.return_value = "subscription"
@@ -72,7 +90,7 @@ class TestMessageGenerator:
             terminal_events=[StreamEvent.WORKFLOW_FINISHED.value],
         )
 
-    def test_retrieve_events_uses_prepared_subscription_capability(self):
+    def test_retrieve_events_uses_prepared_subscription_capability(self) -> None:
         topic = _TopicWithSeparateSubscriberView()
         with (
             patch("core.app.apps.message_generator.MessageGenerator.get_response_topic", return_value=topic),
@@ -82,7 +100,7 @@ class TestMessageGenerator:
 
         assert topic.subscriber.prepare_calls == 1
         mock_stream.assert_called_once_with(
-            subscription="prepared-subscription",
+            subscription=topic.subscriber.prepared_subscription,
             idle_timeout=300,
             ping_interval=10.0,
             on_subscribe=None,

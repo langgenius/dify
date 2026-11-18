@@ -6,8 +6,10 @@ import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { SnippetDetailTop } from '@/app/components/snippets/components/snippet-detail-top'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { runDebouncedUserInteraction } from '@/test/debounce'
 import { createDeferred } from '@/test/deferred'
 import SnippetList from '..'
+import { SNIPPET_LIST_SEARCH_DEBOUNCE_MS } from '../constants'
 
 type SnippetListResponse = Awaited<
   ReturnType<typeof consoleClient.workspaces.current.customizedSnippets.get>
@@ -278,9 +280,6 @@ it.each([
 })
 
 it('searches and clears the filter through actual query state', async () => {
-  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
-  vi.stubGlobal('jest', { advanceTimersByTime: vi.advanceTimersByTime })
-  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
   listSnippets.mockImplementation(
     async ({ query }: NonNullable<Parameters<typeof listSnippets>[0]> = {}) =>
       page([snippet({ name: query?.keyword ? 'Summary snippet' : 'Sales Snippet' })]),
@@ -288,16 +287,14 @@ it('searches and clears the filter through actual query state', async () => {
   const { onUrlUpdate } = renderList()
   await salesCard()
   const search = screen.getByRole('searchbox', { name: 'workflow.tabs.searchSnippets' })
-  await user.type(search, 'summary')
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(500)
+  await runDebouncedUserInteraction(SNIPPET_LIST_SEARCH_DEBOUNCE_MS, async (user) => {
+    await user.type(search, 'summary')
   })
   expect(await screen.findByRole('link', { name: /Summary snippet/ })).toBeInTheDocument()
   expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('keywords')).toBe('summary')
   expect(listSnippets).toHaveBeenLastCalledWith(searchParams({ keyword: 'summary' }))
-  await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(500)
+  await runDebouncedUserInteraction(SNIPPET_LIST_SEARCH_DEBOUNCE_MS, async (user) => {
+    await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
   })
   expect(await salesCard()).toBeInTheDocument()
   expect(search).toHaveValue('')

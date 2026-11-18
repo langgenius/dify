@@ -2,11 +2,14 @@ import type { CloudSandboxPlanState } from '../cloud-sandbox-retention'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import dayjs from 'dayjs'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { APP_PAGE_LIMIT } from '@/config'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createReactI18nextMock } from '@/test/i18n-mock'
 import Logs from '../index'
+const render = (ui: React.ReactElement) =>
+  renderWithConsoleQuery(<NuqsTestingAdapter>{ui}</NuqsTestingAdapter>)
 
 vi.mock('react-i18next', () => {
   const mock = createReactI18nextMock()
@@ -51,30 +54,12 @@ vi.mock('../cloud-sandbox-retention', async (importOriginal) => {
   }
 })
 
-vi.mock('../list', () => ({
-  default: ({ logs }: { logs: { total?: number } }) => (
-    <div>
-      list-total-
-      {logs?.total}
-    </div>
-  ),
-}))
-
-vi.mock('../empty-element', () => ({
-  default: () => <div>empty-logs</div>,
-}))
-
 vi.mock('../retention-upgrade-notice', () => ({
   RetentionUpgradeNotice: () => <div>retention-upgrade-notice</div>,
 }))
 
-vi.mock('@/app/components/base/loading-placeholder', () => ({
-  LoadingPlaceholder: () => <div>loading-logs</div>,
-}))
-
 describe('Logs', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     mockSearchParams = new URLSearchParams()
     mockPlanState.value = 'unrestricted'
     getChatConversations.mockReturnValue(new Promise(() => {}))
@@ -95,7 +80,7 @@ describe('Logs', () => {
       screen.getByRole('link', { name: /(?:^|\.)operation\.learnMore(?=$|:)/ }),
     ).toHaveAttribute('href', 'https://docs.example.com/use-dify/monitor/logs')
     expect(screen.getByText('retention-upgrade-notice')).toBeInTheDocument()
-    expect(screen.getByText('list-total-')).toBeInTheDocument()
+    expect(screen.getByRole('row', { busy: true })).toBeInTheDocument()
   })
 
   it('should render the empty state for completion apps without logs', async () => {
@@ -114,7 +99,8 @@ describe('Logs', () => {
         params: { app_id: 'app-2' },
       }),
     )
-    expect(await screen.findByText('list-total-0')).toBeInTheDocument()
+    expect(await screen.findByText('appLog.table.empty.element.title')).toBeInTheDocument()
+    expect(screen.queryByRole('row', { busy: true })).not.toBeInTheDocument()
   })
 
   it('should update the page query parameter when pagination changes', async () => {

@@ -13,7 +13,6 @@ import {
   PreviewCardContent,
 } from '@langgenius/dify-ui/preview-card'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
-import { useTheme } from 'next-themes'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
@@ -84,7 +83,6 @@ function Popup({
   onHide,
 }: PopupProps) {
   const { t } = useTranslation(['common', 'modelProvider'])
-  const { theme } = useTheme()
   const language = useLanguage()
   const [previewCardHandle] = useState(() => createPreviewCardHandle<ModelSelectorPreviewPayload>())
   const [marketplaceCollapsed, setMarketplaceCollapsed] = useState(false)
@@ -313,7 +311,6 @@ function Popup({
                 marketplaceCollapsed={marketplaceCollapsed}
                 installingProvider={installingProvider}
                 canInstallPlugin={canInstallPlugin}
-                theme={theme}
                 onMarketplaceCollapsedChange={setMarketplaceCollapsed}
                 onInstallPlugin={handleInstallPlugin}
                 onOpenMarketplace={onOpenMarketplace}

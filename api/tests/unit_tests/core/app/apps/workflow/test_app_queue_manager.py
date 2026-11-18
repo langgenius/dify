@@ -16,7 +16,7 @@ from core.app.entities.queue_entities import (
 
 
 class TestWorkflowAppQueueManager:
-    def test_publish_stop_events_trigger_stop(self):
+    def test_publish_stop_events_trigger_stop(self) -> None:
         manager = WorkflowAppQueueManager(
             task_id="task",
             user_id="user",
@@ -33,7 +33,7 @@ class TestWorkflowAppQueueManager:
         stop_listen.assert_called_once()
         is_stopped.assert_not_called()
 
-    def test_listener_close_does_not_abort_unfinished_execution(self):
+    def test_listener_close_does_not_abort_unfinished_execution(self) -> None:
         with (
             patch("core.app.apps.base_app_queue_manager.redis_client") as queue_redis,
             patch("core.app.apps.execution_coordinator.redis_client") as execution_redis,
@@ -57,7 +57,7 @@ class TestWorkflowAppQueueManager:
             send_abort_command.assert_not_called()
             manager._execution_coordinator.mark_terminal()
 
-    def test_execution_timeout_aborts_graph_before_stop_event(self, config_overrides: Callable[..., None]):
+    def test_execution_timeout_aborts_graph_before_stop_event(self, config_overrides: Callable[..., None]) -> None:
         config_overrides(APP_MAX_EXECUTION_TIME=0)
         with (
             patch("core.app.apps.base_app_queue_manager.redis_client") as queue_redis,
@@ -82,7 +82,7 @@ class TestWorkflowAppQueueManager:
                 reason="App execution exceeded 0 seconds",
             )
 
-    def test_terminal_event_does_not_abort_completed_execution(self):
+    def test_terminal_event_does_not_abort_completed_execution(self) -> None:
         with (
             patch("core.app.apps.base_app_queue_manager.redis_client") as queue_redis,
             patch("core.app.apps.execution_coordinator.redis_client") as execution_redis,
@@ -102,7 +102,7 @@ class TestWorkflowAppQueueManager:
             execution_redis.setex.assert_not_called()
             send_abort_command.assert_not_called()
 
-    def test_pause_completes_listener_without_aborting_resumable_execution(self):
+    def test_pause_completes_listener_without_aborting_resumable_execution(self) -> None:
         with (
             patch("core.app.apps.base_app_queue_manager.redis_client") as queue_redis,
             patch("core.app.apps.execution_coordinator.redis_client") as execution_redis,
@@ -128,7 +128,7 @@ class TestWorkflowAppQueueManager:
             execution_redis.setex.assert_not_called()
             send_abort_command.assert_not_called()
 
-    def test_workflow_pause_does_not_abort_execution(self):
+    def test_workflow_pause_does_not_abort_execution(self) -> None:
         with (
             patch("core.app.apps.base_app_queue_manager.redis_client") as queue_redis,
             patch("core.app.apps.execution_coordinator.redis_client") as execution_redis,

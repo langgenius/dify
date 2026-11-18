@@ -6,6 +6,7 @@ import type { ExternalDataTool } from '@/models/common'
 import type { PromptVariable } from '@/models/debug'
 import type { GenRes } from '@/service/debug'
 import { cn } from '@langgenius/dify-ui/cn'
+import { createDialogHandle, Dialog } from '@langgenius/dify-ui/dialog'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
@@ -17,16 +18,13 @@ import { useContext } from 'use-context-selector'
 import { ADD_EXTERNAL_DATA_TOOL } from '@/app/components/app/configuration/config-var'
 import AutomaticBtn from '@/app/components/app/configuration/config/automatic/automatic-btn'
 import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
-import { toast } from '@/app/components/app/configuration/toast'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER } from '@/app/components/base/prompt-editor/plugins/update-block'
-import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
 import ConfigContext from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { useModalContext } from '@/context/modal-context'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { getNewVar, getVars } from '@/utils/var'
+import { ExternalDataToolDialogContent } from '../tools/external-data-tool-dialog-content'
 import ConfirmAddVar from './confirm-add-var'
 import PromptEditorHeightResizeWrap from './prompt-editor-height-resize-wrap'
 
@@ -58,8 +56,6 @@ const Prompt: FC<ISimplePromptInput> = ({
     mode !== 'completion'
       ? t(($) => $.chatSubTitle, { ns: 'appDebug' })
       : t(($) => $.completionSubTitle, { ns: 'appDebug' })
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
   const featuresStore = useFeaturesStore()
   const { features, setFeatures } = featuresStore!.getState()
 
@@ -76,38 +72,7 @@ const Prompt: FC<ISimplePromptInput> = ({
     showSelectDataSet,
     externalDataToolsConfig,
   } = useContext(ConfigContext)
-  const { setShowExternalDataToolModal } = useModalContext()
-  const handleOpenExternalDataToolModal = () => {
-    setShowExternalDataToolModal({
-      payload: {},
-      onSaveCallback: (newExternalDataTool?: ExternalDataTool) => {
-        if (!newExternalDataTool) return
-        eventEmitter?.emit({
-          type: ADD_EXTERNAL_DATA_TOOL,
-          payload: newExternalDataTool,
-        } as any)
-        eventEmitter?.emit({
-          type: INSERT_VARIABLE_VALUE_BLOCK_COMMAND,
-          payload: newExternalDataTool.variable,
-        } as any)
-      },
-      onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {
-        for (let i = 0; i < promptVariables.length; i++) {
-          if (promptVariables[i]!.key === newExternalDataTool.variable) {
-            toast.error(
-              t(($) => $['varKeyError.keyAlreadyExists'], {
-                ns: 'appDebug',
-                key: promptVariables[i]!.key,
-              }),
-            )
-            return false
-          }
-        }
-
-        return true
-      },
-    })
-  }
+  const [toolDialog] = useState(() => createDialogHandle<(name: string) => void>())
 
   const [newPromptVariables, setNewPromptVariables] =
     React.useState<PromptVariable[]>(promptVariables)
@@ -195,136 +160,150 @@ const Prompt: FC<ISimplePromptInput> = ({
   const [editorHeight, setEditorHeight] = useState(minHeight)
 
   return (
-    <div
-      className={cn(
-        'relative rounded-xl bg-linear-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-0.5 shadow-xs',
-      )}
-    >
-      <div className="rounded-xl bg-background-section-burn">
-        {!noTitle && (
-          <div className="flex h-11 items-center justify-between pr-2.5 pl-3">
-            <div className="flex items-center space-x-1">
-              <h2 id={titleId} className="system-sm-semibold-uppercase text-text-secondary">
-                {title}
-              </h2>
-              {!readonly && (
-                <Infotip>
-                  <InfotipTrigger aria-labelledby={titleId} className="ml-1" />
-                  <InfotipContent aria-labelledby={titleId} className="w-45">
-                    {t(($) => $.promptTip, { ns: 'appDebug', input: '{{input}}' })}
-                  </InfotipContent>
-                </Infotip>
-              )}
-            </div>
-            <div className="flex items-center">
-              {!readonly && !isMobile && <AutomaticBtn onClick={showAutomaticTrue} />}
-            </div>
-          </div>
+    <>
+      <div
+        className={cn(
+          'relative rounded-xl bg-linear-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-0.5 shadow-xs',
         )}
-
-        <PromptEditorHeightResizeWrap
-          className="min-h-57 rounded-t-xl bg-background-default px-4 pt-2 text-sm text-text-secondary"
-          height={editorHeight}
-          minHeight={minHeight}
-          onHeightChange={setEditorHeight}
-          hideResize={noResize}
-          footer={
-            <div className="flex rounded-b-xl bg-background-default pb-2 pl-4">
-              <div className="h-4.5 rounded-md bg-components-badge-bg-gray-soft px-1 text-xs leading-4.5 text-text-tertiary">
-                {promptTemplate.length}
+      >
+        <div className="rounded-xl bg-background-section-burn">
+          {!noTitle && (
+            <div className="flex h-11 items-center justify-between ps-3 pe-2.5">
+              <div className="flex items-center space-x-1">
+                <h2 id={titleId} className="system-sm-semibold-uppercase text-text-secondary">
+                  {title}
+                </h2>
+                {!readonly && (
+                  <Infotip>
+                    <InfotipTrigger aria-labelledby={titleId} className="ms-1" />
+                    <InfotipContent aria-labelledby={titleId} className="w-45">
+                      {t(($) => $.promptTip, { ns: 'appDebug', input: '{{input}}' })}
+                    </InfotipContent>
+                  </Infotip>
+                )}
+              </div>
+              <div className="flex items-center max-sm:hidden">
+                {!readonly && <AutomaticBtn onClick={showAutomaticTrue} />}
               </div>
             </div>
-          }
-        >
-          <PromptEditor
-            aria-labelledby={noTitle ? undefined : titleId}
-            aria-label={noTitle ? title : undefined}
-            className="min-h-52.5"
-            compact
-            value={promptTemplate}
-            contextBlock={{
-              show: false,
-              selectable: !hasSetBlockStatus.context,
-              datasets: dataSets.map((item) => ({
-                id: item.id,
-                name: item.name,
-                type: item.data_source_type,
-              })),
-              onAddContext: showSelectDataSet,
-            }}
-            variableBlock={{
-              show: true,
-              variables: modelConfig.configs.prompt_variables
-                .filter(
-                  (item: PromptVariable) =>
-                    item.type !== 'api' &&
-                    item.key &&
-                    item.key.trim() &&
-                    item.name &&
-                    item.name.trim(),
-                )
-                .map((item: PromptVariable) => ({
+          )}
+
+          <PromptEditorHeightResizeWrap
+            className="min-h-57 rounded-t-xl bg-background-default px-4 pt-2 text-sm text-text-secondary"
+            height={editorHeight}
+            minHeight={minHeight}
+            onHeightChange={setEditorHeight}
+            hideResize={noResize}
+            footer={
+              <div className="flex rounded-b-xl bg-background-default ps-4 pb-2">
+                <div className="h-4.5 rounded-md bg-components-badge-bg-gray-soft px-1 text-xs leading-4.5 text-text-tertiary">
+                  {promptTemplate.length}
+                </div>
+              </div>
+            }
+          >
+            <PromptEditor
+              aria-labelledby={noTitle ? undefined : titleId}
+              aria-label={noTitle ? title : undefined}
+              className="min-h-52.5"
+              compact
+              value={promptTemplate}
+              contextBlock={{
+                show: false,
+                selectable: !hasSetBlockStatus.context,
+                datasets: dataSets.map((item) => ({
+                  id: item.id,
                   name: item.name,
-                  value: item.key,
+                  type: item.data_source_type,
                 })),
-            }}
-            externalToolBlock={{
-              show: true,
-              externalTools: modelConfig.configs.prompt_variables
-                .filter((item: PromptVariable) => item.type === 'api')
-                .map((item: PromptVariable) => ({
-                  name: item.name,
-                  variableName: item.key,
-                  icon: item.icon,
-                  icon_background: item.icon_background,
-                })),
-              onAddExternalTool: handleOpenExternalDataToolModal,
-            }}
-            historyBlock={{
-              show: false,
-              selectable: false,
-              history: {
-                user: '',
-                assistant: '',
-              },
-              onEditRole: noop,
-            }}
-            queryBlock={{
-              show: false,
-              selectable: !hasSetBlockStatus.query,
-            }}
-            onChange={(value) => {
-              if (handleChange) handleChange(value, [])
-            }}
-            onBlur={() => {
-              handleChange(promptTemplate, getVars(promptTemplate))
-            }}
-            editable={!readonly}
+                onAddContext: showSelectDataSet,
+              }}
+              variableBlock={{
+                show: true,
+                variables: modelConfig.configs.prompt_variables
+                  .filter(
+                    (item: PromptVariable) =>
+                      item.type !== 'api' &&
+                      item.key &&
+                      item.key.trim() &&
+                      item.name &&
+                      item.name.trim(),
+                  )
+                  .map((item: PromptVariable) => ({
+                    name: item.name,
+                    value: item.key,
+                  })),
+              }}
+              externalToolBlock={{
+                show: true,
+                externalTools: modelConfig.configs.prompt_variables
+                  .filter((item: PromptVariable) => item.type === 'api')
+                  .map((item: PromptVariable) => ({
+                    name: item.name,
+                    variableName: item.key,
+                    icon: item.icon,
+                    icon_background: item.icon_background,
+                  })),
+                onAddExternalTool: (insertVariable) => toolDialog.openWithPayload(insertVariable),
+              }}
+              historyBlock={{
+                show: false,
+                selectable: false,
+                history: {
+                  user: '',
+                  assistant: '',
+                },
+                onEditRole: noop,
+              }}
+              queryBlock={{
+                show: false,
+                selectable: !hasSetBlockStatus.query,
+              }}
+              onChange={(value) => {
+                if (handleChange) handleChange(value, [])
+              }}
+              onBlur={() => {
+                handleChange(promptTemplate, getVars(promptTemplate))
+              }}
+              editable={!readonly}
+            />
+          </PromptEditorHeightResizeWrap>
+        </div>
+
+        {isShowConfirmAddVar && (
+          <ConfirmAddVar
+            varNameArr={newPromptVariables.map((v) => v.name)}
+            onConfirm={handleAutoAdd(true)}
+            onCancel={handleAutoAdd(false)}
+            onHide={hideConfirmAddVar}
           />
-        </PromptEditorHeightResizeWrap>
+        )}
+
+        {showAutomatic && (
+          <GetAutomaticResModal
+            flowId={appId}
+            modelMode={modelModeType}
+            isShow={showAutomatic}
+            onClose={showAutomaticFalse}
+            onFinished={handleAutomaticRes}
+            currentPrompt={promptTemplate}
+            isBasicMode
+          />
+        )}
       </div>
-
-      {isShowConfirmAddVar && (
-        <ConfirmAddVar
-          varNameArr={newPromptVariables.map((v) => v.name)}
-          onConfirm={handleAutoAdd(true)}
-          onCancel={handleAutoAdd(false)}
-          onHide={hideConfirmAddVar}
-        />
-      )}
-
-      {showAutomatic && (
-        <GetAutomaticResModal
-          flowId={appId}
-          modelMode={modelModeType}
-          isShow={showAutomatic}
-          onClose={showAutomaticFalse}
-          onFinished={handleAutomaticRes}
-          currentPrompt={promptTemplate}
-          isBasicMode
-        />
-      )}
-    </div>
+      <Dialog handle={toolDialog} disablePointerDismissal>
+        {({ payload: insertVariable }) => (
+          <ExternalDataToolDialogContent
+            isVariableUsed={(name) => promptVariables.some((variable) => variable.key === name)}
+            onSave={(tool) => {
+              eventEmitter?.emit({ type: ADD_EXTERNAL_DATA_TOOL, payload: tool })
+              insertVariable?.(tool.variable)
+              toolDialog.close()
+            }}
+          />
+        )}
+      </Dialog>
+    </>
   )
 }
 

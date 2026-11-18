@@ -269,7 +269,6 @@ class TestFeatureService:
             mock_config.ENABLE_EMAIL_CODE_LOGIN = True
             mock_config.ENABLE_EMAIL_PASSWORD_LOGIN = True
             mock_config.ENABLE_SOCIAL_OAUTH_LOGIN = False
-            mock_config.ENABLE_COLLABORATION_MODE = True
             mock_config.ALLOW_REGISTER = False
             mock_config.ALLOW_CREATE_WORKSPACE = False
             mock_config.MAIL_TYPE = "smtp"
@@ -294,7 +293,6 @@ class TestFeatureService:
         # Verify authentication settings
         assert result.enable_email_code_login is True
         assert result.enable_email_password_login is False
-        assert result.enable_collaboration_mode is True
         assert result.is_allow_register is False
 
         # Verify branding configuration
@@ -438,7 +436,6 @@ class TestFeatureService:
             mock_config.ENABLE_EMAIL_CODE_LOGIN = True
             mock_config.ENABLE_EMAIL_PASSWORD_LOGIN = True
             mock_config.ENABLE_SOCIAL_OAUTH_LOGIN = False
-            mock_config.ENABLE_COLLABORATION_MODE = False
             mock_config.ENABLE_CHANGE_EMAIL = True
             mock_config.ALLOW_REGISTER = True
             mock_config.ALLOW_CREATE_WORKSPACE = True
@@ -462,7 +459,6 @@ class TestFeatureService:
             assert result.enable_email_code_login is True
             assert result.enable_email_password_login is True
             assert result.enable_social_oauth_login is False
-            assert result.enable_collaboration_mode is False
             assert result.is_allow_register is True
             assert result.is_email_setup is True
 
@@ -503,17 +499,17 @@ class TestFeatureService:
             # CLOUD-only: the Console education endpoints 404 on every other edition.
             assert result.education.enabled is False
 
-            # Verify default limitations
+            # Plan quotas are unlimited outside Cloud
             assert result.members.size == 0
-            assert result.members.limit == 1
+            assert result.members.limit == 0
             assert result.apps.size == 0
-            assert result.apps.limit == 10
+            assert result.apps.limit == 0
             assert result.vector_space.size == 0
-            assert result.vector_space.limit == 5
+            assert result.vector_space.limit == -1
             assert result.documents_upload_quota.size == 0
-            assert result.documents_upload_quota.limit == 50
+            assert result.documents_upload_quota.limit == 0
             assert result.annotation_quota_limit.size == 0
-            assert result.annotation_quota_limit.limit == 10
+            assert result.annotation_quota_limit.limit == 0
 
             # Verify no enterprise features
             assert result.workspace_members.enabled is False
@@ -592,13 +588,13 @@ class TestFeatureService:
             assert result.model_load_balancing_enabled is False
             assert result.education.enabled is False
 
-            # Verify default limitations
+            # Plan quotas are unlimited outside Cloud
             assert result.members.size == 0
-            assert result.members.limit == 1
+            assert result.members.limit == 0
             assert result.apps.size == 0
-            assert result.apps.limit == 10
+            assert result.apps.limit == 0
             assert result.vector_space.size == 0
-            assert result.vector_space.limit == 5
+            assert result.vector_space.limit == -1
 
             # Verify mock interactions
             mock_external_service_dependencies["enterprise_service"].get_workspace_info.assert_called_once_with(

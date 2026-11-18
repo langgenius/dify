@@ -5,6 +5,7 @@ import type { StepByStepTourSessionState } from '@/app/components/step-by-step-t
 import type { consoleClient } from '@/service/console'
 import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
 import { zAppPagination } from '@dify/contracts/api/console/apps/zod.gen'
+import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
@@ -42,6 +43,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'features.get': async () => zGetFeaturesResponse.parse({}),
       'apps.get': api.apps,
       'apps.byAppId.delete': api.delete,
       'apps.starred.get': api.starred,
@@ -146,7 +148,6 @@ async function setup(
       systemFeatures: {
         rbac_enabled: true,
         enable_learn_app: false,
-        enable_collaboration_mode: false,
       },
       ...options,
     })
@@ -172,6 +173,8 @@ async function setup(
 }
 
 beforeEach(() => {
+  // Creation dialogs mark their history entry; start each test from a clean one.
+  window.history.replaceState(null, '', '/')
   api.apps.mockReset().mockResolvedValue(page())
   api.delete.mockReset().mockResolvedValue(undefined)
   api.starred.mockReset().mockResolvedValue(page([]))
@@ -247,7 +250,7 @@ it('waits for both initial requests before announcing results', async () => {
 })
 
 it('queries collaborators only for workflow apps when collaboration is enabled', async () => {
-  await setup('', { systemFeatures: { enable_collaboration_mode: true } })
+  await setup('', { features: { workflow_collaboration_enabled: true } })
   await waitFor(() => expect(api.online).toHaveBeenCalledWith({ body: { app_ids: ['app-2'] } }))
 })
 
@@ -471,20 +474,46 @@ it('changes sorting without losing filters and resets catalog scroll', async () 
   )
 })
 
-it.each([
-  ['app.newApp.startFromBlank', 'app.newApp.startFromBlank'],
-  ['app.newApp.startFromTemplate', 'app.newApp.startFromTemplate'],
-  ['app.importApp', 'app.importApp'],
-])('opens the real %s creation dialog from the menu', async (label, title) => {
-  const { user } = await setup()
+// URL and history behavior of these dialogs is covered in Browser Mode by
+// app-creation-url.browser.spec.tsx.
+it('opens the real template creation dialog from the menu', async () => {
+  const { user, onUrlUpdate } = await setup()
   await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
-  await user.click(await screen.findByRole('menuitem', { name: new RegExp(label) }))
-  const dialog = await screen.findByRole('dialog', { name: title })
-  await user.click(within(dialog).getByRole('button', { name: /^(Close|common.operation.close)$/ }))
-  await waitFor(() => expect(dialog).not.toBeInTheDocument())
+  await user.click(await screen.findByRole('menuitem', { name: /app.newApp.startFromTemplate/ }))
+  expect(
+    await screen.findByRole('dialog', { name: 'app.newApp.startFromTemplate' }),
+  ).toBeInTheDocument()
+  expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('create')).toBe('template')
 })
 
-it('opens a real blank-app form from the first empty state', async () => {
+it('opens and closes the real import dialog from the menu without a URL', async () => {
+  const { user, onUrlUpdate } = await setup()
+  await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+  await user.click(await screen.findByRole('menuitem', { name: /app.importApp/ }))
+  const dialog = await screen.findByRole('dialog', { name: 'app.importApp' })
+  await user.click(within(dialog).getByRole('button', { name: /^(Close|common.operation.close)$/ }))
+  await waitFor(() => expect(dialog).not.toBeInTheDocument())
+  expect(onUrlUpdate).not.toHaveBeenCalled()
+})
+
+it.each([
+  ['', 'app.types.advanced'],
+  ['?category=workflow', 'app.types.workflow'],
+])(
+  'opens blank creation over the list with the default type for %s',
+  async (searchParams, appType) => {
+    const { user, onUrlUpdate } = await setup(searchParams)
+    await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+    await user.click(await screen.findByRole('menuitem', { name: /app.newApp.startFromBlank/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'app.newApp.startFromBlank' })
+    expect(within(dialog).getByRole('heading', { name: appType, level: 4 })).toBeInTheDocument()
+    expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('create')).toBe('blank')
+    expect(api.push).not.toHaveBeenCalled()
+    expect(screen.getByRole('link', { name: 'Chat app', hidden: true })).toBeInTheDocument()
+  },
+)
+
+it('opens blank creation from the first empty state', async () => {
   api.apps.mockResolvedValue(page([]))
   const { user } = await setup()
   await user.click(screen.getByRole('button', { name: /app.newApp.startFromBlank/ }))

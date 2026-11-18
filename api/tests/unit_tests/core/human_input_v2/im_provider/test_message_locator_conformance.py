@@ -177,7 +177,6 @@ def test_private_locator_payload_models_are_strict_frozen_scalar_only_and_provid
     assert issubclass(payload_cls, _Base64JSONLocatorPayload)
     assert payload_cls.model_config.get("strict") is True
     assert payload_cls.model_config.get("frozen") is True
-    assert payload_cls.model_config.get("extra") == "forbid"
     assert payload_cls.model_fields["v"].is_required()
     assert payload_cls.model_fields["p"].is_required()
     assert get_type_hints(payload_cls.encode)["return"] is MessageLocator
@@ -185,8 +184,6 @@ def test_private_locator_payload_models_are_strict_frozen_scalar_only_and_provid
 
     mutable_field = next(field_name for field_name in case.example if field_name not in {"v", "p"})
     pytest.raises(ValidationError, setattr, payload, mutable_field, "mutated")
-    with pytest.raises(ValidationError):
-        payload_cls.model_validate({**case.example, "unexpected": "value"})
     with pytest.raises(ValidationError):
         payload_cls.model_validate({**case.example, "v": "1"})
     blank_field = next(field_name for field_name in case.example if field_name not in {"v", "p"})
@@ -236,6 +233,18 @@ def test_locator_json_shape_is_exact_and_round_trips_through_public_scalar_bound
     expected_provider = case.example["p"]
     assert isinstance(expected_provider, IMProvider)
     assert decoded_json["p"] == expected_provider.value
+
+
+@pytest.mark.parametrize("case", _payload_cases(), ids=lambda case: case.payload_cls.__name__)
+def test_locator_reads_additive_fields_without_rewriting_the_opaque_value(case: _PayloadCase) -> None:
+    serialized = json.dumps(
+        {**case.example, "future_optional": None, "future_extension": {"nested": {"optional": None}}}
+    ).encode()
+    locator = MessageLocator(base64.urlsafe_b64encode(serialized).decode().rstrip("="))
+    stored = _json_text_round_trip(locator)
+
+    assert case.payload_cls.decode(stored) == case.payload_cls.model_validate(case.example)
+    assert stored == locator
 
 
 @pytest.mark.parametrize(

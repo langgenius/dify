@@ -19,8 +19,7 @@ import { useResultSender } from './hooks/use-result-sender'
 type IResultProps = {
   isWorkflow: boolean
   isCallBatchAPI: boolean
-  isPC: boolean
-  isMobile: boolean
+  isBelowMd: boolean
   appSourceType: AppSourceType
   appId?: string
   isError: boolean
@@ -50,8 +49,7 @@ type IResultProps = {
 const Result: FC<IResultProps> = ({
   isWorkflow,
   isCallBatchAPI,
-  isPC,
-  isMobile,
+  isBelowMd,
   appSourceType,
   appId,
   isError,
@@ -93,7 +91,7 @@ const Result: FC<IResultProps> = ({
     controlSend,
     inputs,
     isCallBatchAPI,
-    isPC,
+    isBelowMd,
     isWorkflow,
     notify,
     onCompleted,
@@ -109,7 +107,7 @@ const Result: FC<IResultProps> = ({
   const renderTextGenerationRes = () => (
     <>
       {!hideInlineStopButton && runState.isResponding && runState.currentTaskId && (
-        <div className={`mb-3 flex ${isPC ? 'justify-end' : 'justify-center'}`}>
+        <div className={`mb-3 flex ${isBelowMd ? 'justify-center' : 'justify-end'}`}>
           <Button variant="secondary" disabled={runState.isStopping} onClick={runState.handleStop}>
             {runState.isStopping ? (
               <span aria-hidden className="i-ri-loader-2-line h-3.5 w-3.5 animate-spin" />
@@ -135,7 +133,7 @@ const Result: FC<IResultProps> = ({
         onFeedback={runState.handleFeedback}
         feedback={runState.feedback}
         onSave={handleSaveMessage}
-        isMobile={isMobile}
+        isBelowMd={isBelowMd}
         appSourceType={appSourceType}
         installedAppId={appId}
         // isLoading={isCallBatchAPI ? (!completionRes && isResponding) : false}

@@ -847,6 +847,9 @@ class TestAppPackageServiceCases:
         service = AppPackageService()
         with service.export(dsl=dsl, name="Example App", workflow_tools=[]) as package:
             assert package.filename == "example-app.ifpkg"
+            _, manifest = _read_export(package.archive.read())
+            assert manifest["format_version"] == 2
+            package.archive.seek(0)
             prepared = service.read_package(package.archive)
             assert prepared is not None
             with prepared:
@@ -855,7 +858,16 @@ class TestAppPackageServiceCases:
         assert package.archive.closed
 
     @staticmethod
-    @pytest.mark.parametrize("overrides", [{"format": "unknown"}, {"format_version": 2}, {"apps": []}])
+    @pytest.mark.parametrize("format_version", [1, 2])
+    def test_reads_packages_without_workflow_tools(format_version: int) -> None:
+        prepared = AppPackageService().read_package(_archive(_FOLDER_DSL, format_version=format_version))
+        assert prepared is not None
+        with prepared:
+            assert prepared.dsl == _FOLDER_DSL
+            assert prepared.workflow_tools == []
+
+    @staticmethod
+    @pytest.mark.parametrize("overrides", [{"format": "unknown"}, {"format_version": 3}, {"apps": []}])
     def test_rejects_unsupported_manifests(overrides: dict[str, object]) -> None:
         with pytest.raises(InvalidRosterAgentPackageError, match="manifest"):
             AppPackageService().read_package(_archive("kind: app\napp: {mode: workflow}\n", **overrides))

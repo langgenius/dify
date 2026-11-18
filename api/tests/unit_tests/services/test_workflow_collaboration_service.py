@@ -2,21 +2,29 @@ import logging
 from collections.abc import Generator, Iterator
 from contextlib import contextmanager
 from unittest.mock import MagicMock, Mock, patch
+from uuid import uuid4
 
 import pytest
 from socketio.exceptions import TimeoutError as SocketIOTimeoutError
 from sqlalchemy import Engine
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.rbac import RBACPermission, RBACResourceScope
+from enums import CloudPlan, DeploymentEdition
 from extensions.ext_redis import RedisClientWrapper
 from models.account import Account, Tenant
 from models.base import TypeBase
 from models.model import App, AppMode
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
-from services.workflow_collaboration_service import SYNC_REQUEST_TIMEOUT_SECONDS, WorkflowCollaborationService
+from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
+from services.account_avatar_service import AccountAvatarService
+from services.workflow_collaboration_service import (
+    SYNC_REQUEST_TIMEOUT_SECONDS,
+    WorkflowCollaborationNotEntitledError,
+    WorkflowCollaborationService,
+)
 from tests.helpers.unit.config_override import config_overrides_context
-from tests.helpers.unit.model_factories import make_app
+from tests.helpers.unit.model_factories import make_app, make_upload_file
 from tests.helpers.unit.services.workflow_collaboration_fixtures import RedisState, seed_session, seed_sessions
 
 ServiceFixture = tuple[WorkflowCollaborationService, WorkflowCollaborationRepository, Mock]
@@ -63,6 +71,82 @@ def _app(*, app_id: str, tenant_id: str, maintainer: str | None = None) -> App:
 
 
 class TestWorkflowCollaborationService:
+    @pytest.mark.parametrize(
+        ("edition", "plan", "enabled", "allowed"),
+        [
+            (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, True, False),
+            (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL, True, True),
+            (DeploymentEdition.CLOUD, CloudPlan.TEAM, True, True),
+            (DeploymentEdition.COMMUNITY, CloudPlan.SANDBOX, True, True),
+            (DeploymentEdition.ENTERPRISE, CloudPlan.SANDBOX, True, True),
+            (DeploymentEdition.CLOUD, CloudPlan.TEAM, False, False),
+            (DeploymentEdition.COMMUNITY, CloudPlan.SANDBOX, False, False),
+        ],
+    )
+    def test_join_respects_workspace_entitlement(
+        self,
+        real_service: ServiceFixture,
+        db_session: Session,
+        edition: DeploymentEdition,
+        plan: CloudPlan,
+        enabled: bool,
+        allowed: bool,
+    ) -> None:
+        service, repository, socketio = real_service
+        socketio.get_session.return_value = {"user_id": "u-1", "tenant_id": "t-1"}
+        db_session.add(_app(app_id="wf-1", tenant_id="t-1"))
+        db_session.commit()
+
+        with (
+            config_overrides_context(DEPLOYMENT_EDITION=edition, ENABLE_COLLABORATION_MODE=enabled, RBAC_ENABLED=False),
+            patch(
+                "services.workflow_collaboration_service.FeatureService.get_workspace_plan", return_value=plan
+            ) as get_plan,
+        ):
+            if allowed:
+                result = service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
+                assert result is not None
+            else:
+                with pytest.raises(WorkflowCollaborationNotEntitledError):
+                    service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
+
+        if edition == DeploymentEdition.CLOUD and enabled:
+            get_plan.assert_called_once_with("t-1")
+        else:
+            get_plan.assert_not_called()
+        assert bool(repository.list_sessions("wf-1")) is allowed
+        assert socketio.enter_room.called is allowed
+        assert socketio.start_background_task.called is allowed
+        assert repository.server_heartbeat_exists("server-1") is allowed
+        if not allowed:
+            socketio.emit.assert_not_called()
+
+    def test_join_does_not_create_session_when_billing_fails(
+        self, real_service: ServiceFixture, db_session: Session
+    ) -> None:
+        service, repository, socketio = real_service
+        socketio.get_session.return_value = {"user_id": "u-1", "tenant_id": "t-1"}
+        db_session.add(_app(app_id="wf-1", tenant_id="t-1"))
+        db_session.commit()
+
+        with (
+            config_overrides_context(
+                DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, ENABLE_COLLABORATION_MODE=True, RBAC_ENABLED=False
+            ),
+            patch(
+                "services.workflow_collaboration_service.FeatureService.get_workspace_plan",
+                side_effect=ValueError("invalid billing response"),
+            ),
+            pytest.raises(ValueError, match="invalid billing response"),
+        ):
+            service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
+
+        assert repository.list_sessions("wf-1") == []
+        assert not repository.server_heartbeat_exists("server-1")
+        socketio.start_background_task.assert_not_called()
+        socketio.enter_room.assert_not_called()
+        socketio.emit.assert_not_called()
+
     def test_authorize_and_join_workflow_room_returns_leader_status(
         self, real_service: ServiceFixture, db_session: Session
     ) -> None:
@@ -147,16 +231,18 @@ class TestWorkflowCollaborationService:
         db_session.commit()
 
         with (
-            config_overrides_context(RBAC_ENABLED=True),
+            config_overrides_context(RBAC_ENABLED=True, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
             patch(
                 "services.workflow_collaboration_service.RBACService.CheckAccess.check", return_value=False
             ) as check_access,
+            patch("services.workflow_collaboration_service.FeatureService.get_workspace_plan") as get_plan,
             patch.object(collaboration_service, "get_or_set_leader") as get_leader,
             patch.object(collaboration_service, "broadcast_online_users") as broadcast_online_users,
         ):
             result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
 
         assert result is None
+        get_plan.assert_not_called()
         check_access.assert_called_once_with(
             "t-1",
             "u-1",
@@ -1178,6 +1264,57 @@ class TestWorkflowCollaborationService:
             },
             room="wf-1",
         )
+
+    def test_online_user_avatars_are_scoped_to_active_room_and_upload_owner(
+        self, real_service: ServiceFixture, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
+        service, repository, socketio = real_service
+        avatar_id = str(uuid4())
+        with sqlite_session_factory.begin() as session:
+            session.add(make_upload_file(file_id=avatar_id, created_by="owner", extension="png", mime_type="image/png"))
+        avatar_service = AccountAvatarService(
+            files=SQLAlchemyAccountAvatarFileGateway(session_factory=sqlite_session_factory)
+        )
+        seed_session(repository, "viewer")
+        seed_sessions(
+            repository,
+            [
+                {"sid": "owner", "user_id": "owner", "username": "Owner", "avatar": avatar_id, "connected_at": 1},
+                {"sid": "unowned", "user_id": "other", "username": "Other", "avatar": avatar_id, "connected_at": 1},
+                {"sid": "invalid", "user_id": "invalid", "username": "Invalid", "avatar": "invalid", "connected_at": 1},
+                {
+                    "sid": "offline",
+                    "user_id": "owner",
+                    "username": "Owner",
+                    "avatar": avatar_id,
+                    "connected_at": 1,
+                },
+            ],
+        )
+        repository.set_session_info(
+            "other-room",
+            {
+                "sid": "outside",
+                "user_id": "outside",
+                "username": "Outside",
+                "avatar": "https://example.com/other-avatar.png",
+                "connected_at": 1,
+            },
+        )
+        socketio.manager.is_connected.side_effect = lambda sid, _namespace: sid != "offline"
+
+        with patch(
+            "services.account_avatar_file_gateway.file_helpers.get_signed_file_url",
+            return_value="https://example.com/signed-avatar.png",
+        ) as sign_avatar:
+            assert service.get_online_user_avatars("unjoined", avatar_service=avatar_service) == {}
+            assert service.get_online_user_avatars("outside", avatar_service=avatar_service) == {
+                "outside": "https://example.com/other-avatar.png"
+            }
+            assert service.get_online_user_avatars("viewer", avatar_service=avatar_service) == {
+                "owner": "https://example.com/signed-avatar.png"
+            }
+            sign_avatar.assert_called_once_with(upload_file_id=avatar_id)
 
     def test_broadcast_online_users_reassigns_missing_leader(self, real_service: ServiceFixture) -> None:
         collaboration_service, repository, socketio = real_service

@@ -31,6 +31,7 @@ const defaultFeatureState: Features = {
   text2speech: { enabled: false },
   speech2text: { enabled: false },
   citation: { enabled: false },
+  showThoughts: { enabled: false },
   moderation: { enabled: false },
   file: {
     enabled: false,
@@ -101,6 +102,7 @@ function toPanelFeatures(appFeatures?: AgentSoulAppFeaturesConfig): Features {
       defaultFeatureState.text2speech,
     speech2text: appFeatures?.speech_to_text ?? defaultFeatureState.speech2text,
     citation: appFeatures?.retriever_resource ?? defaultFeatureState.citation,
+    showThoughts: appFeatures?.show_thoughts ?? defaultFeatureState.showThoughts,
     moderation:
       (appFeatures?.sensitive_word_avoidance as Features['moderation'] | undefined) ??
       defaultFeatureState.moderation,
@@ -126,6 +128,7 @@ function toAppFeatures(
     text_to_speech: features.text2speech as AgentSoulAppFeaturesConfig['text_to_speech'],
     speech_to_text: features.speech2text,
     retriever_resource: features.citation,
+    show_thoughts: features.showThoughts,
     file_upload: toAgentFileUploadFeatureConfig(features.file),
   }
 }
@@ -156,6 +159,7 @@ function AgentChatFeaturesPanelContent({
       isChatMode
       disabled={!!disabled}
       inWorkflow={false}
+      showThoughtsToggle
       showModeration={false}
       showAnnotationReply={false}
       drawerClassName="bg-components-panel-bg! data-[swipe-direction=right]:top-1! data-[swipe-direction=right]:right-0! data-[swipe-direction=right]:bottom-1! data-[swipe-direction=right]:rounded-r-none!"

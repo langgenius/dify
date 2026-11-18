@@ -180,7 +180,7 @@ export function AgentOrchestratePanel({
                             <AgentTools />
                           </>
                         )}
-                        <AgentKnowledgeRetrieval />
+                        <AgentKnowledgeRetrieval workflowNodeId={nodeId} />
                         {!isTemplatePreview && <AgentAdvancedSettings />}
                       </AgentBuildDraftChangedKeysProvider>
                     </AgentOrchestrateAddActionsProvider>

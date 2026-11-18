@@ -154,7 +154,7 @@ export function CreateModelSettings({
         <span className="flex-1">{t(($) => $.modelSettings)}</span>
         <span
           aria-hidden
-          className="i-ri-arrow-down-s-line size-4 text-text-tertiary transition-transform group-data-panel-open:rotate-180"
+          className="i-ri-arrow-right-s-line size-4 text-text-tertiary transition-transform group-data-panel-open:rotate-90 motion-reduce:transition-none"
         />
       </CollapsibleTrigger>
       <p id={descriptionId} className="body-xs-regular text-text-tertiary">

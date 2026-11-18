@@ -44,7 +44,7 @@ const ChatWrapper = () => {
     newConversationInputs,
     newConversationInputsRef,
     handleNewConversationCompleted,
-    isMobile,
+    isBelowSm,
     isInstalledApp,
     appId,
     appMeta,
@@ -314,9 +314,9 @@ const ChatWrapper = () => {
   const descriptionNode = useMemo(() => {
     if (!description || currentConversationId || hasSent) return null
     return (
-      <div className={cn('flex flex-col items-center px-4 pt-6', isMobile && 'pt-4')}>
+      <div className={cn('flex flex-col items-center px-4 pt-6', isBelowSm && 'pt-4')}>
         <div className="w-full max-w-2xl rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-md">
-          <div className={cn('p-6', isMobile && 'p-4')}>
+          <div className={cn('p-6', isBelowSm && 'p-4')}>
             <div
               ref={descRef}
               className={cn(
@@ -353,18 +353,18 @@ const ChatWrapper = () => {
         </div>
       </div>
     )
-  }, [description, isMobile, currentConversationId, hasSent, descExpanded, showDescToggle, t])
+  }, [description, isBelowSm, currentConversationId, hasSent, descExpanded, showDescToggle, t])
 
   const chatNode = useMemo(() => {
     if (allInputsHidden || !inputsForms.length) return null
-    if (isMobile) {
+    if (isBelowSm) {
       if (!currentConversationId)
         return <InputsForm collapsed={collapsed} setCollapsed={setCollapsed} />
       return <div className="mb-4"></div>
     } else {
       return <InputsForm collapsed={collapsed} setCollapsed={setCollapsed} />
     }
-  }, [inputsForms.length, isMobile, currentConversationId, collapsed, allInputsHidden])
+  }, [inputsForms.length, isBelowSm, currentConversationId, collapsed, allInputsHidden])
 
   const handleSubmitHumanInputForm = useCallback(
     async (formToken: string, formData: HumanInputFormSubmitData) => {
@@ -388,7 +388,7 @@ const ChatWrapper = () => {
         <div
           className={cn(
             'flex items-center justify-center px-4 py-12',
-            isMobile ? 'min-h-[30vh] py-0' : 'h-[50vh]',
+            isBelowSm ? 'min-h-[30vh] py-0' : 'h-[50vh]',
           )}
         >
           <div className="flex max-w-180 grow gap-4">
@@ -405,7 +405,7 @@ const ChatWrapper = () => {
       <div
         className={cn(
           'flex min-h-[50vh] flex-col items-center justify-center gap-3 py-12',
-          isMobile ? 'min-h-[30vh] py-0' : 'h-[50vh]',
+          isBelowSm ? 'min-h-[30vh] py-0' : 'h-[50vh]',
         )}
       >
         <AppIcon size="xl" icon={appData?.site} />
@@ -425,7 +425,7 @@ const ChatWrapper = () => {
     inputsForms.length,
     allInputsHidden,
     appData?.site,
-    isMobile,
+    isBelowSm,
   ])
 
   const answerIcon = isDify() ? (
@@ -457,8 +457,8 @@ const ChatWrapper = () => {
         'mx-auto w-full max-w-full px-4',
         messageList.length && 'pt-4',
       )}
-      chatFooterClassName={cn('pb-4', !isMobile && 'rounded-b-2xl')}
-      chatFooterInnerClassName={cn('mx-auto w-full max-w-full px-4', isMobile && 'px-2')}
+      chatFooterClassName={cn('pb-4', !isBelowSm && 'rounded-b-2xl')}
+      chatFooterInnerClassName={cn('mx-auto w-full max-w-full px-4', isBelowSm && 'px-2')}
       onSend={doSend}
       inputs={currentConversationId ? (currentConversationInputs as any) : newConversationInputs}
       inputsForm={inputsForms}

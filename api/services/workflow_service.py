@@ -4,12 +4,14 @@ import time
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, cast
 
-from sqlalchemy import exists, inspect, select
+from sqlalchemy import and_, exists, inspect, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from constants.trigger import is_trigger_node_type
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.file_access import DatabaseFileAccessController
@@ -17,7 +19,6 @@ from core.entities import PluginCredentialType
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
-from core.trigger.constants import is_trigger_node_type
 from core.workflow.human_input_adapter import (
     DeliveryChannelConfig,
     adapt_human_input_node_data_for_graph,
@@ -38,6 +39,7 @@ from core.workflow.node_factory import (
 from core.workflow.node_runtime import (
     apply_dify_debug_email_recipient,
 )
+from core.workflow.nodes.agent_v2.workspace_retirement_layer import retire_standalone_node_execution_workspaces
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
     render_form_content_before_submission,
@@ -86,14 +88,23 @@ from graphon.variables import VariableBase
 from graphon.variables.input_entities import VariableEntityType
 from graphon.variables.variables import Variable
 from libs.datetime_utils import naive_utc_now, to_utc_timestamp
+from libs.helper import escape_like_pattern
 from models import Account
 from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.human_input import HumanInputFormRecipient, RecipientType
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
-from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
+from models.workflow import (
+    Workflow,
+    WorkflowKind,
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionTriggeredFrom,
+    WorkflowType,
+    resolve_workflow_kind,
+)
 from repositories.factory import DifyAPIRepositoryFactory
 from services.agent.retirement_service import WorkflowAgentRetirementService
+from services.app.access import AppRunAccessFilter
 from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.errors.app import (
@@ -102,6 +113,8 @@ from services.errors.app import (
     WorkflowHashNotEqualError,
     WorkflowNotFoundError,
 )
+from services.errors.billing import BillingError
+from services.errors.evaluation import EvaluationEntitlementUnavailableError, EvaluationPlanRequiredError
 from services.human_input_service import HumanInputService
 from services.system_feature_service import SystemFeatureService
 from services.workflow.workflow_converter import WorkflowConverter
@@ -410,6 +423,72 @@ class WorkflowService:
 
         return workflows, has_more
 
+    def list_published_evaluation_workflows(
+        self,
+        *,
+        session: Session,
+        tenant_id: str,
+        page: int,
+        limit: int,
+        user_id: str | None = None,
+        named_only: bool = False,
+        keyword: str | None = None,
+        run_access: AppRunAccessFilter | None = None,
+    ) -> tuple[Sequence[Workflow], bool]:
+        """List tenant evaluators, filtering run access before offset and has-more calculation.
+
+        ``run_access=None`` preserves unrestricted internal callers. When a
+        caller supplies a scope, neither an inaccessible App nor its workflow
+        consumes a page slot or appears in the result.
+        """
+        stmt = (
+            select(Workflow)
+            .join(
+                App,
+                and_(
+                    Workflow.app_id == App.id,
+                    App.tenant_id == tenant_id,
+                    App.workflow_id == Workflow.id,
+                ),
+            )
+            .where(
+                Workflow.tenant_id == tenant_id,
+                Workflow.type == WorkflowType.WORKFLOW,
+                Workflow.kind == WorkflowKind.EVALUATION,
+                Workflow.version != Workflow.VERSION_DRAFT,
+                App.status == "normal",
+            )
+        )
+        if user_id:
+            stmt = stmt.where(Workflow.created_by == user_id)
+        if named_only:
+            stmt = stmt.where(Workflow.marked_name != "")
+        if keyword and (normalized_keyword := keyword.strip()):
+            escaped_keyword = escape_like_pattern(normalized_keyword)
+            pattern = f"%{escaped_keyword}%"
+            stmt = stmt.where(
+                or_(
+                    Workflow.marked_name.ilike(pattern, escape="\\"),
+                    App.name.ilike(pattern, escape="\\"),
+                )
+            )
+
+        if run_access is not None:
+            if run_access.allowed_app_ids is None:
+                if run_access.denied_app_ids:
+                    stmt = stmt.where(
+                        or_(App.maintainer == run_access.account_id, App.id.not_in(run_access.denied_app_ids))
+                    )
+            else:
+                allowed_app_ids = run_access.allowed_app_ids - run_access.denied_app_ids
+                stmt = stmt.where(or_(App.maintainer == run_access.account_id, App.id.in_(allowed_app_ids)))
+
+        workflows = session.scalars(
+            stmt.order_by(Workflow.created_at.desc()).offset((page - 1) * limit).limit(limit + 1)
+        ).all()
+        has_more = len(workflows) > limit
+        return workflows[:limit], has_more
+
     def sync_draft_workflow(
         self,
         *,
@@ -696,7 +775,14 @@ class WorkflowService:
         account: Account,
         marked_name: str = "",
         marked_comment: str = "",
+        workflow_kind: WorkflowKind | None = None,
     ) -> Workflow:
+        """Publish an existing draft, preserving the active kind unless one is requested.
+
+        The caller supplies the app, account and session. A successful call adds
+        a version with the resolved kind; Cloud evaluator publication requires a
+        paid plan. Entitlement failures add no published version.
+        """
         draft_workflow_stmt = select(Workflow).where(
             Workflow.tenant_id == app_model.tenant_id,
             Workflow.app_id == app_model.id,
@@ -705,6 +791,14 @@ class WorkflowService:
         draft_workflow = session.scalar(draft_workflow_stmt)
         if not draft_workflow:
             raise ValueError("No valid workflow found.")
+
+        workflow_kind = self._resolve_publish_workflow_kind(
+            session=session,
+            app_model=app_model,
+            requested_kind=workflow_kind,
+        )
+        if workflow_kind == WorkflowKind.EVALUATION:
+            self._require_evaluation_paid_plan(app_model.tenant_id)
 
         validate_llm_environment_model_references(
             graph=draft_workflow.graph_dict,
@@ -726,6 +820,8 @@ class WorkflowService:
             tenant_id=app_model.tenant_id,
             graph=draft_workflow.graph_dict,
         )
+        if workflow_kind == WorkflowKind.EVALUATION:
+            self._validate_evaluation_workflow_nodes(draft_workflow)
 
         from services.agent.workflow_publish_service import WorkflowAgentPublishService
 
@@ -734,8 +830,9 @@ class WorkflowService:
             draft_workflow=draft_workflow,
         )
 
-        # billing check
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+        # Evaluators already passed the Cloud paid-plan check above; only standard
+        # workflows need the Sandbox trigger limit lookup.
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and workflow_kind != WorkflowKind.EVALUATION:
             limit_info = BillingService.get_info(app_model.tenant_id)
             if limit_info.subscription.plan == CloudPlan.SANDBOX:
                 # Check trigger node count limit for SANDBOX plan
@@ -764,6 +861,7 @@ class WorkflowService:
             marked_comment=marked_comment,
             rag_pipeline_variables=draft_workflow.rag_pipeline_variables,
             features=draft_workflow.features,
+            kind=workflow_kind.value,
         )
 
         # commit db session changes
@@ -783,6 +881,181 @@ class WorkflowService:
 
         # return new workflow
         return workflow
+
+    @staticmethod
+    def _resolve_publish_workflow_kind(
+        *,
+        session: Session,
+        app_model: App,
+        requested_kind: WorkflowKind | None,
+    ) -> WorkflowKind:
+        """Keep evaluator apps as evaluators across ordinary draft publishes."""
+        if requested_kind is not None:
+            return requested_kind
+        if not app_model.workflow_id:
+            return WorkflowKind.STANDARD
+
+        active_kind = session.scalar(
+            select(Workflow.kind).where(
+                Workflow.tenant_id == app_model.tenant_id,
+                Workflow.app_id == app_model.id,
+                Workflow.id == app_model.workflow_id,
+                Workflow.version != Workflow.VERSION_DRAFT,
+            )
+        )
+        return (
+            WorkflowKind.EVALUATION
+            if resolve_workflow_kind(active_kind) == WorkflowKind.EVALUATION
+            else WorkflowKind.STANDARD
+        )
+
+    @staticmethod
+    def _require_evaluation_paid_plan(tenant_id: str) -> None:
+        """Allow a trusted tenant's Evaluation operation only with Cloud paid billing.
+
+        Non-Cloud editions make no billing call. Cloud Sandbox raises a plan
+        error and billing failures raise an unavailable error. Neither changes
+        workflow state; controllers translate these failures to HTTP responses.
+        """
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return
+        try:
+            paid = BillingService.is_cloud_paid_plan(tenant_id)
+        except BillingError as exc:
+            raise EvaluationEntitlementUnavailableError() from exc
+        if not paid:
+            raise EvaluationPlanRequiredError()
+
+    def publish_evaluation_workflow(
+        self,
+        *,
+        session: Session,
+        app_model: App,
+        account: Account,
+        marked_name: str = "",
+        marked_comment: str = "",
+    ) -> Workflow:
+        """Publish through the standard pipeline while marking the version as an evaluator."""
+        return self.publish_workflow(
+            session=session,
+            app_model=app_model,
+            account=account,
+            marked_name=marked_name,
+            marked_comment=marked_comment,
+            workflow_kind=WorkflowKind.EVALUATION,
+        )
+
+    def publish_evaluation_workflow_for_app(
+        self,
+        *,
+        app_model: App,
+        account: Account,
+        marked_name: str = "",
+        marked_comment: str = "",
+    ) -> datetime:
+        """Publish and activate an evaluator in one transaction."""
+        with sessionmaker(db.engine).begin() as session:
+            workflow = self.publish_evaluation_workflow(
+                session=session,
+                app_model=app_model,
+                account=account,
+                marked_name=marked_name,
+                marked_comment=marked_comment,
+            )
+            app_in_session = session.get(App, app_model.id)
+            if app_in_session is not None:
+                app_in_session.workflow_id = workflow.id
+                app_in_session.updated_by = account.id
+                app_in_session.updated_at = naive_utc_now()
+            return workflow.created_at
+
+    def convert_published_workflow_kind(
+        self,
+        *,
+        session: Session,
+        app_model: App,
+        target_kind: WorkflowKind,
+        account: Account,
+    ) -> Workflow:
+        """Convert a published version between standard and evaluation kinds.
+
+        The caller supplies a valid target kind, app, account and session. Both
+        conversion directions require Cloud paid billing; denied requests leave
+        the published workflow unchanged. Publication receivers receive the same
+        session; receiver failures propagate without committing the conversion.
+        """
+        if target_kind not in {WorkflowKind.STANDARD, WorkflowKind.EVALUATION}:
+            raise ValueError("target_kind must be either 'standard' or 'evaluation'")
+        self._require_evaluation_paid_plan(app_model.tenant_id)
+        if not app_model.workflow_id:
+            raise WorkflowNotFoundError("Published workflow not found")
+
+        workflow = session.scalar(
+            select(Workflow).where(
+                Workflow.tenant_id == app_model.tenant_id,
+                Workflow.app_id == app_model.id,
+                Workflow.id == app_model.workflow_id,
+                Workflow.version != Workflow.VERSION_DRAFT,
+            )
+        )
+        if workflow is None:
+            raise WorkflowNotFoundError("Published workflow not found")
+        if workflow.resolved_kind == target_kind:
+            return workflow
+        if target_kind == WorkflowKind.EVALUATION:
+            self._validate_evaluation_workflow_nodes(workflow)
+
+        workflow.kind = target_kind
+        workflow.updated_by = account.id
+        workflow.updated_at = naive_utc_now()
+        app_published_workflow_was_updated.send(app_model, published_workflow=workflow, session=session)
+        return workflow
+
+    def convert_published_workflow_kind_for_app(
+        self, *, app_model: App, target_kind: WorkflowKind, account: Account
+    ) -> tuple[str, str, str, datetime]:
+        """Convert a published workflow kind and return its response fields."""
+        with sessionmaker(db.engine).begin() as session:
+            workflow = self.convert_published_workflow_kind(
+                session=session, app_model=app_model, target_kind=target_kind, account=account
+            )
+            return (
+                workflow.id,
+                workflow.type.value,
+                workflow.resolved_kind.value,
+                workflow.updated_at or workflow.created_at,
+            )
+
+    @staticmethod
+    def _validate_evaluation_workflow_nodes(workflow: Workflow) -> None:
+        """Validate that an evaluator has synchronous workflow inputs and declared outputs."""
+        if workflow.type != WorkflowType.WORKFLOW:
+            raise ValueError("Evaluation workflows must use the workflow app type.")
+
+        disallowed_nodes: list[tuple[str, str]] = []
+        has_declared_output = False
+        for node_id, node_data in workflow.walk_nodes():
+            node_type = node_data.get("type")
+            if not isinstance(node_type, str):
+                continue
+            if node_type == BuiltinNodeTypes.HUMAN_INPUT or is_trigger_node_type(node_type):
+                disallowed_nodes.append((node_id, node_type))
+            if node_type == BuiltinNodeTypes.END:
+                outputs = node_data.get("outputs")
+                if isinstance(outputs, list) and any(
+                    isinstance(output, Mapping) and isinstance(output.get("variable"), str) and output["variable"]
+                    for output in outputs
+                ):
+                    has_declared_output = True
+
+        if disallowed_nodes:
+            formatted_nodes = ", ".join(f"{node_id}:{node_type}" for node_id, node_type in disallowed_nodes)
+            raise ValueError(
+                "Evaluation workflow cannot contain trigger or human-input nodes. "
+                f"Found disallowed nodes: {formatted_nodes}"
+            )
+        if not has_declared_output:
+            raise ValueError("Evaluation workflows must declare at least one End node output.")
 
     def _validate_workflow_credentials(self, workflow: Workflow, *, session: Session) -> None:
         """
@@ -1312,6 +1585,15 @@ class WorkflowService:
                         "Agent preview terminal persistence failed (%s)", type(persistence_error).__name__
                     )
             raise
+        finally:
+            if is_agent_preview and started_event is not None:
+                # Single-step previews bypass the Workflow Run retirement layer and
+                # cannot pause, so the sandbox is retired as soon as the node ends.
+                retire_standalone_node_execution_workspaces(
+                    tenant_id=app_model.tenant_id,
+                    app_id=app_model.id,
+                    node_execution_id=started_event.id,
+                )
 
         node_execution.workflow_id = draft_workflow.id
         if started_event is not None:
