@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import httpx
 import pytest
-from flask import Flask
+from flask import Flask, request
 from flask_restx import Resource
 
 from controllers.common.rbac import Workspace
@@ -326,16 +326,11 @@ class TestEndpointItemApi:
         )
 
     def test_update_validation_error(self, app: Flask) -> None:
-        api = EndpointItemApi()
-        method = inspect.unwrap(api.patch)
-
-        payload: dict[str, object] = {"settings": {}}
-
         with (
-            app.test_request_context("/", method="PATCH", json=payload),
+            app.test_request_context("/", method="PATCH", json={"settings": {"x": 1}}),
         ):
             with pytest.raises(ValueError, match="1 validation error for EndpointUpdatePayload\\\nname"):
-                method(api, EndpointUpdatePayload.model_validate(payload), "t1", "u1", "e1")
+                EndpointUpdatePayload.model_validate(request.get_json(silent=True) or {})
 
     def test_update_service_failure(self, app: Flask) -> None:
         api = EndpointItemApi()
