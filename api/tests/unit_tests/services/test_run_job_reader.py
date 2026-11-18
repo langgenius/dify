@@ -1,6 +1,7 @@
 import json
 import time
 from collections.abc import Iterable, Iterator, Mapping
+from typing import override
 
 import pytest
 
@@ -341,6 +342,7 @@ class TouchFailsOnceStore(RedisRunJobStore):
         super().__init__(redis_client=redis)
         self.failures_left = 0
 
+    @override
     def touch(self, job_id: str) -> None:
         if self.failures_left > 0:
             self.failures_left -= 1
@@ -353,6 +355,7 @@ class CountingTouchStore(RedisRunJobStore):
         super().__init__(redis_client=redis)
         self.touches = 0
 
+    @override
     def touch(self, job_id: str) -> None:
         self.touches += 1
         super().touch(job_id)
@@ -404,6 +407,7 @@ class PatchFailsOnceStore(RedisRunJobStore):
         super().__init__(redis_client=redis)
         self.failures_left = 0
 
+    @override
     def patch(self, job_id: str, patch: JobPatch) -> None:
         if self.failures_left > 0:
             self.failures_left -= 1
