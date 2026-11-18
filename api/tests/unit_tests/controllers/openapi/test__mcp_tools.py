@@ -27,6 +27,7 @@ from controllers.openapi._mcp_tools import (
     MCP_INSTRUCTIONS,
     CallTool,
     FoundOps,
+    McpCaller,
     Unauthenticated,
     callable_ops,
     describe_op,
@@ -224,14 +225,13 @@ def _run(
     authorization: str | None = _BEARER,
     protocol_version: str = _LATEST,
 ) -> mcp_types.CallToolResult:
-    return run_tool(
-        name,
-        arguments,
+    caller = McpCaller(
         authorization=authorization,
         token=extract_bearer(_Carrier(headers=_authorization_headers(authorization))),
         trace_id="t1",
         protocol_version=protocol_version,
     )
+    return run_tool(name, arguments, caller)
 
 
 def _text(result: mcp_types.CallToolResult) -> str:
