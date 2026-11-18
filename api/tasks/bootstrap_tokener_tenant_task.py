@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 
 from celery import shared_task
+from pydantic import JsonValue, TypeAdapter
 from sqlalchemy import select
 
 from configs import dify_config
@@ -23,8 +24,8 @@ from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models.account import Tenant
 from models.model_billing import TenantModelBillingProfile
-from models.provider import Provider, ProviderCredential, ProviderType
 from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
+from repositories.tokener_bootstrap_repository import TokenerBootstrapRepository
 from services.billing_service import BillingService, TokenerBootstrapUpstreamError
 from services.model_provider.service import ModelProviderService
 from services.plugin.installation_service import AdmittedPluginInstallationCaller
@@ -39,6 +40,7 @@ _RETRY_DELAY_SECONDS = 5
 _MAX_RETRY_DELAY_SECONDS = 60
 _LOCK_TIMEOUT_SECONDS = 15 * 60
 _UNSET = object()
+_encrypted_credential_adapter = TypeAdapter(dict[str, JsonValue])
 
 
 @dataclass(frozen=True, slots=True)
@@ -223,34 +225,9 @@ def _ensure_plugin_installed(snapshot: _IntegrationSnapshot) -> None:
 
 
 def _find_managed_credential(tenant_id: str) -> tuple[str | None, bool]:
-    provider_name = dify_config.TOKENER_PROVIDER_NAME
-    with session_factory.create_session() as session:
-        provider = session.scalar(
-            select(Provider).where(
-                Provider.tenant_id == tenant_id,
-                Provider.provider_name == provider_name,
-                Provider.provider_type == ProviderType.CUSTOM,
-            )
-        )
-        credentials = list(
-            session.scalars(
-                select(ProviderCredential)
-                .where(
-                    ProviderCredential.tenant_id == tenant_id,
-                    ProviderCredential.provider_name == provider_name,
-                    ProviderCredential.credential_name == MANAGED_TOKENER_CREDENTIAL_NAME,
-                )
-                .order_by(ProviderCredential.created_at, ProviderCredential.id)
-            )
-        )
-
-    if not credentials:
-        return None, False
-    if provider is not None:
-        active = next((credential for credential in credentials if credential.id == provider.credential_id), None)
-        if active is not None and provider.is_valid:
-            return active.id, True
-    return credentials[0].id, False
+    return TokenerBootstrapRepository(sessions=session_factory.create_session).bound_credential(
+        tenant_id, dify_config.TOKENER_PROVIDER_NAME
+    )
 
 
 def _activate_managed_credential(tenant_id: str, credential_id: str) -> None:
@@ -269,33 +246,35 @@ def _activate_managed_credential(tenant_id: str, credential_id: str) -> None:
 
 
 def _consume_data_plane_api_key(tenant_id: str, data_plane_api_key: str) -> _CredentialWriteResult:
-    """Consume a one-time key without allowing an exception to escape this frame.
+    """Validate/encrypt in the normal plugin owner, atomically bind, then activate.
 
-    Any exception raised while validating or persisting the credential is converted
-    to a secret-free value before this frame returns. The caller clears its own
-    reference before raising the corresponding task error, keeping plaintext out
-    of traceback locals and Sentry events.
+    Keys and upstream exception details stay in this frame and are cleared before
+    a secret-free result returns. A retry trusts only the durable integration ID,
+    not an editable credential label; activation is outside the SQL transaction.
     """
     credentials = {"api_key": data_plane_api_key}
     endpoint_url = dify_config.TOKENER_ENDPOINT_URL.strip()
     if endpoint_url:
         credentials["endpoint_url"] = endpoint_url
+    encrypted: dict[str, JsonValue] = {}
+    credential_id: str | None = None
     try:
-        ModelProviderService().create_provider_credential(
-            tenant_id=tenant_id,
-            provider=dify_config.TOKENER_PROVIDER_NAME,
-            credentials=credentials,
-            credential_name=MANAGED_TOKENER_CREDENTIAL_NAME,
+        configuration = ModelProviderService()._get_provider_configuration(tenant_id, dify_config.TOKENER_PROVIDER_NAME)
+        validated = configuration.validate_provider_credentials(credentials)
+        encrypted = _encrypted_credential_adapter.validate_python(validated, strict=True)
+        credential_id = TokenerBootstrapRepository(sessions=session_factory.create_session).bind_encrypted_credential(
+            tenant_id, dify_config.TOKENER_PROVIDER_NAME, MANAGED_TOKENER_CREDENTIAL_NAME, encrypted
         )
     except Exception:
         return _CredentialWriteResult(error_code="tokener_provider_credential_rejected")
     finally:
         credentials.clear()
+        encrypted.clear()
         data_plane_api_key = ""
 
     try:
-        credential_id, active = _find_managed_credential(tenant_id)
-        if credential_id is None:
+        bound_id, active = _find_managed_credential(tenant_id)
+        if credential_id is None or bound_id != credential_id:
             return _CredentialWriteResult(error_code="tokener_provider_credential_not_persisted")
         if not active:
             _activate_managed_credential(tenant_id, credential_id)
@@ -469,12 +448,12 @@ def bootstrap_tokener_tenant_task(self, tenant_id: str) -> None:
         sanitized_error = _BootstrapStepError(
             "tokener_bootstrap_internal_error",
             retryable=True,
-            stage=TenantTokenerIntegrationStatus.FAILED,
+            stage=TenantTokenerIntegrationStatus.PENDING,
         )
         exhausted = self.request.retries >= _MAX_RETRIES
         _update_integration(
             tenant_id,
-            status=TenantTokenerIntegrationStatus.FAILED,
+            status=TenantTokenerIntegrationStatus.FAILED if exhausted else TenantTokenerIntegrationStatus.PENDING,
             error_code=sanitized_error.error_code,
         )
         if not exhausted:

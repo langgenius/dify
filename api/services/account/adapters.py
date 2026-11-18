@@ -23,6 +23,7 @@ from libs.helper import timezone as validate_timezone
 from libs.workspace_permission import check_workspace_member_invite_permission
 from models.account import Account, AccountStatus
 from repositories.account.repository import SQLAlchemyAccountRepository
+from services.account.contracts import TokenerSignupEnrollment
 from services.account.login_adapters import DeploymentConsoleAuthPolicyGateway
 from services.account_activation_service import (
     AccountActivationEligibility,
@@ -143,6 +144,11 @@ class AccountIdentityGateway:
 
 
 class DeploymentAccountLifecyclePolicy(DeploymentConsoleAuthPolicyGateway):
+    def signup_enrollment(self) -> "TokenerSignupEnrollment | None":
+        from services.account.signup_adapter import configured_signup_enrollment
+
+        return configured_signup_enrollment()
+
     def __init__(self) -> None:
         super().__init__(billing_enabled=dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD)
 

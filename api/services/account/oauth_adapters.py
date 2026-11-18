@@ -258,6 +258,7 @@ class AccountLifecycleOAuthRegistrationGateway(OAuthAccountRegistrationGateway):
                 check_normalized_email=True,
                 status="active",
                 initialized=True,
+                registration="self_signup",
             )
         except AccountEmailDomainSuspendedError:
             raise
@@ -275,8 +276,14 @@ class WorkspaceProvisioningOAuthGateway(OAuthWorkspaceGateway):
         self._workspaces = workspaces
 
     def create_owner_workspace(self, account_id: str) -> None:
+        # Existing-account repair may honor a committed signup intent, but this
+        # method/name alone never creates one or turns an old orphan native.
+        self.create_registration_owner_workspace(account_id)
+
+    def create_registration_owner_workspace(self, account_id: str) -> None:
+        """Forward only the OAuth service's actual newly-created-account branch."""
         try:
-            self._workspaces.create_owner_workspace(account_id)
+            self._workspaces.create_registration_owner_workspace(account_id)
         except AccountNotFoundError as exc:
             raise OAuthAccountNotFoundError from exc
         except (WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError) as exc:

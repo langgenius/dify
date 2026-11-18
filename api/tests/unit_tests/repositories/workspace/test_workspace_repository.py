@@ -3,12 +3,14 @@ from datetime import datetime, timedelta
 from functools import partial
 from hashlib import sha256
 from unittest.mock import Mock, create_autospec
+from uuid import uuid4
 
 import pytest
-from sqlalchemy import Engine, event, select
+from sqlalchemy import Engine, delete, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from machinery.context import RequestContext
+from models import TenantCreditPool
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.human_input_v2 import ContactSubjectType, HumanInputContactIdentity
 from models.knowledge_fs import (
@@ -18,7 +20,11 @@ from models.knowledge_fs import (
     KnowledgeFSControlSpaceState,
     KnowledgeFSLifecycleOutbox,
 )
+from models.model_billing import TenantModelBillingProfile
+from models.tokener import AccountTokenerSignupIntent, TenantTokenerIntegration
+from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
+from services.account.contracts import AccountCreation, TokenerSignupEnrollment
 from services.errors.workspace import WorkspaceNotFoundError, WorkspaceNotLinkedError
 from services.workspace.contracts import (
     EffectiveCreditPool,
@@ -614,3 +620,164 @@ class TestWorkspaceRepositoryCases:
         finally:
             event.remove(sqlite_engine, "checkout", checkout)
             event.remove(sqlite_engine, "checkin", checkin)
+
+
+def _signup_account(sessions: sessionmaker[Session], *, enrolled: bool) -> str:
+    account = SQLAlchemyAccountRepository(sessions).create(
+        AccountCreation(
+            email=f"{uuid4()}@example.test",
+            name="Signup owner",
+            interface_language="en-US",
+            interface_theme="light",
+            timezone="UTC",
+            tokener_signup=TokenerSignupEnrollment("langgenius/tokener:0.4.4@test-archive") if enrolled else None,
+        )
+    )
+    return account.id
+
+
+def _signup_workspace() -> WorkspaceCreation:
+    return WorkspaceCreation(str(uuid4()), "Initial workspace", "unit-public-key", 321, 0, {})
+
+
+def test_signup_intent_survives_workspace_failure_and_flag_off_retry(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from tests.helpers.unit.config_override import apply_config_overrides
+
+    owner = _signup_account(sqlite_session_factory, enrolled=True)
+    repository = WorkspaceRepository(sqlite_session_factory)
+    original_flush = Session.flush
+    failed = False
+
+    def fail_once(session: Session, objects: Sequence[object] | None = None) -> None:
+        nonlocal failed
+        must_fail = not failed and any(isinstance(row, TenantModelBillingProfile) for row in session.new)
+        original_flush(session, objects)
+        if must_fail:
+            failed = True
+            raise RuntimeError("unit interruption after first workspace flush")
+
+    monkeypatch.setattr(Session, "flush", fail_once)
+    with pytest.raises(RuntimeError, match="unit interruption"):
+        repository.provision(_signup_workspace, owner_id=owner, only_if_no_active_workspace=True)
+    with sqlite_session_factory() as session:
+        intent = session.get(AccountTokenerSignupIntent, owner)
+        assert intent is not None
+        assert intent.consumed_at is None
+        assert session.scalar(select(func.count()).select_from(Tenant)) == 0
+        assert session.scalar(select(func.count()).select_from(TenantModelBillingProfile)) == 0
+        assert session.scalar(select(func.count()).select_from(TenantTokenerIntegration)) == 0
+    apply_config_overrides(monkeypatch, TOKENER_NEW_TENANT_COHORT_ENABLED=False)
+    workspace = repository.provision(_signup_workspace, owner_id=owner, only_if_no_active_workspace=True)
+    assert workspace is not None
+    with sqlite_session_factory() as session:
+        intent = session.get(AccountTokenerSignupIntent, owner)
+        profile = session.get(TenantModelBillingProfile, workspace.id)
+        integration = session.scalar(
+            select(TenantTokenerIntegration).where(TenantTokenerIntegration.tenant_id == workspace.id)
+        )
+        assert intent is not None
+        assert intent.consumed_at is not None
+        assert intent.consumed_tenant_id == workspace.id
+        assert profile is not None
+        assert profile.model_billing_source == "tokener"
+        assert integration is not None
+        assert integration.plugin_unique_identifier == "langgenius/tokener:0.4.4@test-archive"
+        assert session.scalar(select(func.count()).select_from(TenantCreditPool)) == 0
+
+
+def test_old_orphan_without_signup_intent_stays_legacy_when_flag_enabled(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from tests.helpers.unit.config_override import apply_config_overrides
+
+    owner = _signup_account(sqlite_session_factory, enrolled=False)
+    apply_config_overrides(monkeypatch, TOKENER_NEW_TENANT_COHORT_ENABLED=True)
+    workspace = WorkspaceRepository(sqlite_session_factory).provision(
+        _signup_workspace,
+        owner_id=owner,
+        only_if_no_active_workspace=True,
+    )
+    assert workspace is not None
+    with sqlite_session_factory() as session:
+        assert session.get(AccountTokenerSignupIntent, owner) is None
+        assert session.get(TenantModelBillingProfile, workspace.id) is None
+        assert session.scalar(select(func.count()).select_from(TenantTokenerIntegration)) == 0
+        pool = session.scalar(select(TenantCreditPool).where(TenantCreditPool.tenant_id == workspace.id))
+        assert pool is not None
+        assert pool.quota_limit == 321
+
+
+def test_ordinary_workspace_race_retires_intent_without_converting_workspace(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    owner = _signup_account(sqlite_session_factory, enrolled=True)
+    repository = WorkspaceRepository(sqlite_session_factory)
+    ordinary = repository.provision(_signup_workspace, owner_id=owner)
+    assert ordinary is not None
+    assert repository.provision(_signup_workspace, owner_id=owner, only_if_no_active_workspace=True) is None
+    with sqlite_session_factory() as session:
+        intent = session.get(AccountTokenerSignupIntent, owner)
+        assert intent is not None
+        assert intent.consumed_at is not None
+        assert intent.consumed_tenant_id is None
+        assert session.get(TenantModelBillingProfile, ordinary.id) is None
+        assert session.scalar(select(func.count()).select_from(TenantTokenerIntegration)) == 0
+        assert session.scalar(select(func.count()).select_from(TenantCreditPool)) == 1
+
+
+def test_duplicate_initial_workspace_consumes_one_signup_intent(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    owner = _signup_account(sqlite_session_factory, enrolled=True)
+    repository = WorkspaceRepository(sqlite_session_factory)
+    calls: list[str] = []
+
+    def prepare() -> WorkspaceCreation:
+        creation = _signup_workspace()
+        calls.append(creation.id)
+        return creation
+
+    first = repository.provision(prepare, owner_id=owner, only_if_no_active_workspace=True)
+    assert first is not None
+    assert repository.provision(prepare, owner_id=owner, only_if_no_active_workspace=True) is None
+    assert calls == [first.id]
+    with sqlite_session_factory() as session:
+        assert session.scalar(select(func.count()).select_from(AccountTokenerSignupIntent)) == 1
+        assert session.scalar(select(func.count()).select_from(TenantModelBillingProfile)) == 1
+        assert session.scalar(select(func.count()).select_from(TenantTokenerIntegration)) == 1
+        assert session.scalar(select(func.count()).select_from(TenantCreditPool)) == 0
+
+
+def test_deleted_consumed_workspace_cannot_reopen_signup_intent(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory() as session:
+        session.connection().exec_driver_sql("PRAGMA foreign_keys=ON")
+        assert session.connection().exec_driver_sql("PRAGMA foreign_keys").scalar() == 1
+        session.commit()
+    owner = _signup_account(sqlite_session_factory, enrolled=True)
+    repository = WorkspaceRepository(sqlite_session_factory)
+    first = repository.provision(_signup_workspace, owner_id=owner, only_if_no_active_workspace=True)
+    assert first is not None
+    with sqlite_session_factory() as session:
+        intent = session.get(AccountTokenerSignupIntent, owner)
+        assert intent is not None
+        assert intent.consumed_at is not None
+        consumed_at = intent.consumed_at
+        session.execute(delete(Tenant).where(Tenant.id == first.id))
+        session.commit()
+    with sqlite_session_factory() as session:
+        intent = session.get(AccountTokenerSignupIntent, owner)
+        assert intent is not None
+        assert intent.consumed_tenant_id is None
+        assert intent.consumed_at == consumed_at
+    later = repository.provision(_signup_workspace, owner_id=owner, only_if_no_active_workspace=True)
+    assert later is not None
+    with sqlite_session_factory() as session:
+        assert session.get(TenantModelBillingProfile, later.id) is None
+        assert session.scalar(select(func.count()).select_from(TenantTokenerIntegration)) == 0
+        assert session.scalar(select(func.count()).select_from(TenantCreditPool)) == 1
