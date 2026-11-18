@@ -501,8 +501,16 @@ def test_per_tool_call_limits_survive_both_run_request_contracts(mode: str, limi
         1 if limit is not None else None
     )
     if limit is None:
-        assert "max_calls_per_run" not in plugin_layer["tools"][0]
-        assert "max_calls_per_run" not in core_layer["tools"][0]
+        plugin_tools = plugin_layer["tools"]
+        core_tools = core_layer["tools"]
+        assert isinstance(plugin_tools, list)
+        assert isinstance(core_tools, list)
+        plugin_tool = plugin_tools[0]
+        core_tool = core_tools[0]
+        assert isinstance(plugin_tool, dict)
+        assert isinstance(core_tool, dict)
+        assert "max_calls_per_run" not in plugin_tool
+        assert "max_calls_per_run" not in core_tool
 
 
 def test_workflow_request_builder_omits_shell_layer_by_default() -> None:
