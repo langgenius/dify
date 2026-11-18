@@ -8,11 +8,30 @@ from dify_trace_sdk.events import ModerationChecked, json_safe
 from core.app.app_config.entities import AppConfig
 from core.app.entities.app_invoke_entities import get_credit_usage_app_type
 from core.model_context import use_credit_usage_metadata
-from core.moderation.base import ModerationAction, ModerationError
-from core.moderation.factory import ModerationFactory
+from core.moderation.base import ModerationAction, ModerationError, ModerationInputsResult
+from core.moderation.factory import ModerationFactory, get_app_moderation
 from libs.datetime_utils import measure_time
 
 logger = logging.getLogger(__name__)
+
+
+def evaluate_app_input(
+    app_config: AppConfig, inputs: Mapping[str, object], query: str
+) -> ModerationInputsResult | None:
+    """Delegate to the injected app port; standalone keyword/API callers retain their legacy backend."""
+    moderation = get_app_moderation()
+    if moderation is not None:
+        return moderation.evaluate_input(app_config, inputs, query)
+    rule = app_config.sensitive_word_avoidance
+    if rule is None:
+        return None
+    if rule.type == "openai_moderation":
+        return ModerationInputsResult(
+            flagged=False, action=ModerationAction.DIRECT_OUTPUT, inputs=dict(inputs), query=query
+        )
+    return ModerationFactory(rule.type, app_config.app_id, app_config.tenant_id, rule.config).moderation_for_inputs(
+        dict(inputs), query
+    )
 
 
 class InputModeration:
@@ -41,16 +60,11 @@ class InputModeration:
         if not app_config.sensitive_word_avoidance:
             return False, inputs, query
 
-        sensitive_word_avoidance_config = app_config.sensitive_word_avoidance
-        moderation_type = sensitive_word_avoidance_config.type
-
         with use_credit_usage_metadata({"app_type": get_credit_usage_app_type(app_config.app_mode)}):
-            moderation_factory = ModerationFactory(
-                name=moderation_type, app_id=app_id, tenant_id=tenant_id, config=sensitive_word_avoidance_config.config
-            )
-
             with measure_time() as timer:
-                moderation_result = moderation_factory.moderation_for_inputs(inputs, query)
+                moderation_result = evaluate_app_input(app_config, inputs, query)
+        if moderation_result is None:
+            return False, inputs, query
 
         if trace_scope is not None:
             trace_scope.emit(

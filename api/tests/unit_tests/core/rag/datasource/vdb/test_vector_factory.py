@@ -1,27 +1,24 @@
 import base64
 import json
 import logging
-import sys
 import types
-from dataclasses import dataclass, field
+from collections.abc import Iterator
 from datetime import UTC, datetime
+from importlib.metadata import EntryPoint, EntryPoints
 from types import SimpleNamespace
-from typing import override
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
 from sqlalchemy.orm import Session
 
-from core.rag.datasource.vdb.vector_base import BaseVector, VectorIndexStructDict
-from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
-from core.rag.embedding.embedding_base import Embeddings
+from core.rag.datasource.vdb.vector_base import VectorIndexStructDict
+from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.models.document import Document
 from extensions.storage.storage_type import StorageType
 from models.dataset import Dataset, Whitelist
 from models.enums import CreatorUserRole
 from models.model import UploadFile
-from tests.helpers.unit.config_override import apply_config_overrides
 
 
 class _Unset:
@@ -29,73 +26,6 @@ class _Unset:
 
 
 _UNSET = _Unset()
-
-
-class _StubVector(BaseVector):
-    """Minimal real backend, so the factory contract is exercised without a mock."""
-
-    def __init__(self) -> None:
-        super().__init__("collection_1")
-
-    @override
-    def get_type(self) -> str:
-        return "stub"
-
-    @override
-    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs: object) -> list[str] | None:
-        return None
-
-    @override
-    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs: object) -> list[str] | None:
-        return None
-
-    @override
-    def text_exists(self, id: str) -> bool:
-        return False
-
-    @override
-    def delete_by_ids(self, ids: list[str]) -> None:
-        return None
-
-    @override
-    def get_ids_by_metadata_field(self, key: str, value: str) -> list[str]:
-        return []
-
-    @override
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
-        return None
-
-    @override
-    def search_by_vector(self, query_vector: list[float], **kwargs: object) -> list[Document]:
-        return []
-
-    @override
-    def search_by_full_text(self, query: str, **kwargs: object) -> list[Document]:
-        return []
-
-    @override
-    def delete(self) -> None:
-        return None
-
-
-class _StubEmbeddings(Embeddings):
-    """Embedding backend that returns nothing; these tests only pass it through."""
-
-    @override
-    def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        return []
-
-    @override
-    def embed_multimodal_documents(self, multimodel_documents: list[dict[str, object]]) -> list[list[float]]:
-        return []
-
-    @override
-    def embed_query(self, text: str) -> list[float]:
-        return []
-
-    @override
-    def embed_multimodal_query(self, multimodel_document: dict[str, object]) -> list[float]:
-        return []
 
 
 def _dataset(
@@ -117,16 +47,9 @@ def _dataset(
     return dataset
 
 
-def _register_fake_factory_module(monkeypatch: pytest.MonkeyPatch, module_path: str, class_name: str) -> type:
-    fake_module = types.ModuleType(module_path)
-    fake_cls = type(class_name, (), {})
-    setattr(fake_module, class_name, fake_cls)
-    monkeypatch.setitem(sys.modules, module_path, fake_module)
-    return fake_cls
-
-
 @pytest.fixture
-def vector_factory_module() -> types.ModuleType:
+def vector_factory_module() -> Iterator[types.ModuleType]:
+    """Reload the factory module and leave no cached test factories after the case."""
     import importlib
 
     from core.rag.datasource.vdb import vector_backend_registry as reg
@@ -134,7 +57,11 @@ def vector_factory_module() -> types.ModuleType:
     reg.clear_vector_factory_cache()
     import core.rag.datasource.vdb.vector_factory as module
 
-    return importlib.reload(module)
+    try:
+        yield importlib.reload(module)
+    finally:
+        # The registry cache outlives each test and must be cleared explicitly.
+        reg.clear_vector_factory_cache()
 
 
 def test_gen_index_struct_dict(vector_factory_module: types.ModuleType) -> None:
@@ -212,16 +139,15 @@ def test_gen_index_struct_dict(vector_factory_module: types.ModuleType) -> None:
 )
 def test_get_vector_factory_supported(
     vector_factory_module: types.ModuleType,
-    monkeypatch: pytest.MonkeyPatch,
     vector_type: str,
     module_path: str,
     class_name: str,
 ) -> None:
-    expected_cls = _register_fake_factory_module(monkeypatch, module_path, class_name)
-
+    pytest.importorskip(module_path)
     result_cls = vector_factory_module.Vector.get_vector_factory(getattr(vector_factory_module.VectorType, vector_type))
 
-    assert result_cls is expected_cls
+    assert result_cls.__module__ == module_path
+    assert result_cls.__name__ == class_name
 
 
 def test_get_vector_factory_unsupported(vector_factory_module: types.ModuleType) -> None:
@@ -229,34 +155,24 @@ def test_get_vector_factory_unsupported(vector_factory_module: types.ModuleType)
         vector_factory_module.Vector.get_vector_factory("unknown")
 
 
-class _PluginChromaFactory:
-    """Stub used only for entry-point override test."""
-
-
-def test_get_vector_factory_entry_point_overrides_builtin(
+def test_get_vector_factory_entry_point_loads_real_factory(
     vector_factory_module: types.ModuleType, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from importlib.metadata import EntryPoint
+    pytest.importorskip("dify_vdb_qdrant.qdrant_vector")
 
     from core.rag.datasource.vdb import vector_backend_registry as reg
 
     reg.clear_vector_factory_cache()
-    ep = EntryPoint(
-        name="chroma",
-        value=f"{__name__}:_PluginChromaFactory",
+    entry_point = EntryPoint(
+        name="qdrant",
+        value="dify_vdb_qdrant.qdrant_vector:QdrantVectorFactory",
         group="dify.vector_backends",
     )
+    monkeypatch.setattr(reg, "entry_points", lambda: EntryPoints((entry_point,)))
 
-    class _FakeGroups:
-        def select(self, *, group: str) -> object:
-            if group == "dify.vector_backends":
-                return (ep,)
-            return ()
-
-    monkeypatch.setattr(reg, "entry_points", lambda: _FakeGroups())
-
-    result_cls = vector_factory_module.Vector.get_vector_factory(vector_factory_module.VectorType.CHROMA)
-    assert result_cls is _PluginChromaFactory
+    result_cls = vector_factory_module.Vector.get_vector_factory(vector_factory_module.VectorType.QDRANT)
+    assert result_cls.__module__ == "dify_vdb_qdrant.qdrant_vector"
+    assert result_cls.__name__ == "QdrantVectorFactory"
 
 
 def test_vector_init_uses_default_and_custom_attributes(
@@ -372,111 +288,53 @@ def test_lazy_embeddings_query_cache_hit_skips_model_resolution(
     assert proxy._real is None
 
 
-@dataclass
-class _InitVectorCall:
-    """What ``Vector._init_vector`` handed to the resolved backend factory."""
-
-    vector_type: str | None = None
-    args: tuple[Dataset, list[str], Embeddings, Session | None] | None = field(default=None)
-
-
-def test_init_vector_prefers_dataset_index_struct(
-    vector_factory_module: types.ModuleType, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+def test_resolve_vector_type_prefers_dataset_index_struct(
+    vector_factory_module: types.ModuleType, unbound_session: Session
 ) -> None:
-    call = _InitVectorCall()
-    stub_vector = _StubVector()
-
-    class _Factory(AbstractVectorFactory):
-        def init_vector(
-            self,
-            dataset: Dataset,
-            attributes: list[str],
-            embeddings: Embeddings,
-            *,
-            session: Session | None,
-        ) -> BaseVector:
-            call.args = (dataset, attributes, embeddings, session)
-            return stub_vector
-
-    def _resolve_factory(vector_type: str) -> type[AbstractVectorFactory]:
-        call.vector_type = vector_type
-        return _Factory
-
-    monkeypatch.setattr(vector_factory_module.Vector, "get_vector_factory", staticmethod(_resolve_factory))
-
-    embeddings = _StubEmbeddings()
-    vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
-    vector._dataset = _dataset(
+    dataset = _dataset(
         index_struct_dict={
-            "type": vector_factory_module.VectorType.UPSTASH,
+            "type": VectorType.UPSTASH,
             "vector_store": {"class_prefix": "collection_1"},
         }
     )
-    vector._attributes = ["doc_id"]
-    vector._embeddings = embeddings
 
-    result = vector._init_vector(session=unbound_session)
+    result = vector_factory_module.Vector.resolve_vector_type(
+        dataset,
+        session=unbound_session,
+        vector_store=None,
+        whitelist_enabled=False,
+    )
 
-    assert result is stub_vector
-    assert call.vector_type == vector_factory_module.VectorType.UPSTASH
-    assert call.args == (vector._dataset, ["doc_id"], embeddings, unbound_session)
+    assert result == VectorType.UPSTASH
 
 
-def test_init_vector_uses_whitelist_override(
-    vector_factory_module: types.ModuleType, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+def test_resolve_vector_type_uses_whitelist_override(
+    vector_factory_module: types.ModuleType, sqlite_session: Session
 ) -> None:
-    call = _InitVectorCall()
-
-    class _Factory(AbstractVectorFactory):
-        def init_vector(
-            self,
-            dataset: Dataset,
-            attributes: list[str],
-            embeddings: Embeddings,
-            *,
-            session: Session | None,
-        ) -> BaseVector:
-            call.args = (dataset, attributes, embeddings, session)
-            return _StubVector()
-
     tenant_id = str(uuid4())
     sqlite_session.add(Whitelist(tenant_id=tenant_id, category="vector_db"))
     sqlite_session.commit()
-    apply_config_overrides(
-        monkeypatch,
-        VECTOR_STORE=vector_factory_module.VectorType.CHROMA,
-        VECTOR_STORE_WHITELIST_ENABLE=True,
+
+    result = vector_factory_module.Vector.resolve_vector_type(
+        _dataset(tenant_id=tenant_id, index_struct_dict=None),
+        session=sqlite_session,
+        vector_store=VectorType.CHROMA,
+        whitelist_enabled=True,
     )
 
-    def _resolve_factory(vector_type: str) -> type[AbstractVectorFactory]:
-        call.vector_type = vector_type
-        return _Factory
-
-    monkeypatch.setattr(vector_factory_module.Vector, "get_vector_factory", staticmethod(_resolve_factory))
-
-    vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
-    vector._dataset = _dataset(tenant_id=tenant_id, index_struct_dict=None)
-    vector._attributes = ["doc_id"]
-    vector._embeddings = _StubEmbeddings()
-
-    result = vector._init_vector(session=sqlite_session)
-
-    assert isinstance(result, BaseVector)
-    assert call.vector_type == vector_factory_module.VectorType.TIDB_ON_QDRANT
+    assert result == VectorType.TIDB_ON_QDRANT
 
 
-def test_init_vector_raises_when_vector_store_missing(
-    vector_factory_module: types.ModuleType, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+def test_resolve_vector_type_raises_when_vector_store_missing(
+    vector_factory_module: types.ModuleType, unbound_session: Session
 ) -> None:
-    apply_config_overrides(monkeypatch, VECTOR_STORE=None, VECTOR_STORE_WHITELIST_ENABLE=False)
-
-    vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
-    vector._dataset = _dataset(index_struct_dict=None)
-    vector._attributes = list[str]()
-    vector._embeddings = "embeddings"
-
     with pytest.raises(ValueError, match="Vector store must be specified"):
-        vector._init_vector(session=unbound_session)
+        vector_factory_module.Vector.resolve_vector_type(
+            _dataset(index_struct_dict=None),
+            session=unbound_session,
+            vector_store=None,
+            whitelist_enabled=False,
+        )
 
 
 def test_create_batches_texts_and_skips_empty_input(vector_factory_module: types.ModuleType) -> None:

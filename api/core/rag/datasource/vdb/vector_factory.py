@@ -156,16 +156,26 @@ class Vector:
         else:
             if session is None:
                 raise ValueError("A resolved vector type is required without a database session")
-            self._vector_processor = self._init_vector(session=session)
+            self._vector_processor = self._init_vector(
+                session=session,
+                vector_store=dify_config.VECTOR_STORE,
+                whitelist_enabled=dify_config.VECTOR_STORE_WHITELIST_ENABLE is True,
+            )
 
     @staticmethod
-    def resolve_vector_type(dataset: Dataset, *, session: Session) -> str:
-        vector_type = dify_config.VECTOR_STORE
+    def resolve_vector_type(
+        dataset: Dataset,
+        *,
+        session: Session,
+        vector_store: str | None,
+        whitelist_enabled: bool,
+    ) -> str:
+        vector_type = vector_store
 
         if dataset.index_struct_dict:
             vector_type = dataset.index_struct_dict["type"]
         else:
-            if dify_config.VECTOR_STORE_WHITELIST_ENABLE:
+            if whitelist_enabled:
                 stmt = select(Whitelist).where(
                     Whitelist.tenant_id == dataset.tenant_id, Whitelist.category == "vector_db"
                 )
@@ -178,8 +188,19 @@ class Vector:
 
         return vector_type
 
-    def _init_vector(self, *, session: Session) -> BaseVector:
-        vector_type = self.resolve_vector_type(self._dataset, session=session)
+    def _init_vector(
+        self,
+        *,
+        session: Session,
+        vector_store: str | None,
+        whitelist_enabled: bool,
+    ) -> BaseVector:
+        vector_type = self.resolve_vector_type(
+            self._dataset,
+            session=session,
+            vector_store=vector_store,
+            whitelist_enabled=whitelist_enabled,
+        )
         vector_factory_cls = self.get_vector_factory(vector_type)
         return vector_factory_cls().init_vector(self._dataset, self._attributes, self._embeddings, session=session)
 

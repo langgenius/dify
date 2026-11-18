@@ -22,6 +22,7 @@ import { BadYamlFormatError, ConcurrentAccessError } from './errors'
 const LOCK_STALE_MS = 30_000
 // Parallel difyctl runs (an agent's usual case) wait their turn instead of failing.
 const LOCK_WAIT_MS = 5_000
+const LOCK_POLL_MS = 100
 const YAML_LOAD_SCHEMA = CORE_SCHEMA.withTags(
   binaryTag,
   mergeTag,
@@ -92,15 +93,32 @@ export class YamlStore {
 
   private async lock(): Promise<void> {
     await fsp.mkdir(dirname(this.filePath), { recursive: true, mode: DIR_PERM })
-    try {
-      await lockAsync(`${this.filePath}.lock`, {
-        stale: LOCK_STALE_MS,
-        wait: LOCK_WAIT_MS,
-      })
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException).code === 'EEXIST')
-        throw new ConcurrentAccessError(this.filePath)
-      throw err
+    const lockPath = `${this.filePath}.lock`
+    const deadline = Date.now() + LOCK_WAIT_MS
+    for (;;) {
+      try {
+        await lockAsync(lockPath, {
+          stale: LOCK_STALE_MS,
+          wait: Math.max(0, deadline - Date.now()),
+        })
+        return
+      } catch (err) {
+        const error = err as NodeJS.ErrnoException
+        if (error.code === 'EEXIST') throw new ConcurrentAccessError(this.filePath)
+        const remaining = deadline - Date.now()
+        // Windows can deny open while a deleted lock still has open handles.
+        // lockfile only waits on EEXIST; poll this specific case within the
+        // same acquisition budget, preserving permanent permission errors.
+        if (
+          this.platform.id() !== 'win32' ||
+          error.code !== 'EPERM' ||
+          error.syscall !== 'open' ||
+          error.path !== lockPath ||
+          remaining <= 0
+        )
+          throw err
+        await new Promise((resolve) => setTimeout(resolve, Math.min(LOCK_POLL_MS, remaining)))
+      }
     }
   }
 

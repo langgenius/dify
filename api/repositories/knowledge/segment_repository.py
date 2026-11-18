@@ -469,7 +469,12 @@ class SQLAlchemySegmentRepository:
                 else None
             )
             vector_type = (
-                Vector.resolve_vector_type(dataset, session=session)
+                Vector.resolve_vector_type(
+                    dataset,
+                    session=session,
+                    vector_store=dify_config.VECTOR_STORE,
+                    whitelist_enabled=dify_config.VECTOR_STORE_WHITELIST_ENABLE is True,
+                )
                 if dataset.indexing_technique == "high_quality"
                 else None
             )

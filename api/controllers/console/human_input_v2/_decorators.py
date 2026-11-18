@@ -29,6 +29,22 @@ def workspace_channel_api_admission[**P, R](view: Callable[P, R]) -> Callable[P,
     return admitted
 
 
+def workspace_email_channel_api_admission[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Preserve enabled handlers; reject unavailable tenant Email management with HTTP 501.
+
+    Rejection precedes authentication, validation, persistence and provider I/O.
+    Global mail availability does not grant access to tenant Email configuration.
+    """
+
+    @wraps(view)
+    def admitted(*args: P.args, **kwargs: P.kwargs) -> R:
+        if not FeatureService.use_tenant_scoped_email_config():
+            abort(HTTPStatus.NOT_IMPLEMENTED)
+        return view(*args, **kwargs)
+
+    return admitted
+
+
 def require_admin_or_owner[**P, R](view: Callable[P, R]) -> Callable[P, R | Response]:
     """Apply the complete Console workspace owner/administrator guard stack."""
 
@@ -69,4 +85,9 @@ def require_editor[**P, R](view: Callable[P, R]) -> Callable[P, R | Response]:
     return setup_required(login_required(account_initialization_required(editor_required)))
 
 
-__all__ = ["require_admin_or_owner", "require_editor", "workspace_channel_api_admission"]
+__all__ = [
+    "require_admin_or_owner",
+    "require_editor",
+    "workspace_channel_api_admission",
+    "workspace_email_channel_api_admission",
+]

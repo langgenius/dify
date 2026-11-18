@@ -338,7 +338,8 @@ def test_agent_evaluation_merges_native_judge_and_reference_metrics(monkeypatch:
 
     assert [metric.name for metric in results[0].metrics] == ["task_completion", "tool_call_accuracy"]
     assert [metric.value for metric in results[0].metrics] == [0.8, 1.0]
-    assert "unsupported_metric" in (results[0].error or "")
+    assert "EVAL_UNSUPPORTED_METRIC:" in (results[0].error or "")
+    assert "unsupported_metric" not in (results[0].error or "")
 
 
 def test_ragas_agent_metric_rejects_non_finite_reference_score(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -366,7 +367,9 @@ def test_ragas_agent_metric_rejects_non_finite_reference_score(monkeypatch: pyte
     )[0]
 
     assert result.metrics == []
-    assert "non-finite score" in (result.error or "")
+    assert result.error is not None
+    assert result.error.startswith("EVAL_METRIC_FAILED:")
+    assert "non-finite score" not in result.error
 
 
 def test_ragas_rejects_agent_metric_with_no_supported_evaluator() -> None:

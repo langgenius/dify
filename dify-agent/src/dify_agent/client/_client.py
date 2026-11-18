@@ -779,7 +779,7 @@ class Client:
         poll_interval_seconds: float = 1.0,
         timeout_seconds: float | None = None,
     ) -> RunStatusResponse:
-        """Poll run status until it becomes terminal and return the final status."""
+        """Check the current status, then poll for a terminal status until the deadline."""
         _validate_wait_options(poll_interval_seconds, timeout_seconds)
         deadline = time.monotonic() + timeout_seconds if timeout_seconds is not None else None
         while True:
@@ -788,8 +788,11 @@ class Client:
                 return status
             sleep_for = _next_sleep_seconds(poll_interval_seconds, deadline)
             if sleep_for is None:
-                raise DifyAgentTimeoutError(f"run {run_id!r} did not finish before timeout")
+                break
             await _sleep_async(sleep_for)
+            if deadline is not None and time.monotonic() >= deadline:
+                break
+        raise DifyAgentTimeoutError(f"run {run_id!r} did not finish before timeout")
 
     def wait_run_sync(
         self,
@@ -807,8 +810,11 @@ class Client:
                 return status
             sleep_for = _next_sleep_seconds(poll_interval_seconds, deadline)
             if sleep_for is None:
-                raise DifyAgentTimeoutError(f"run {run_id!r} did not finish before timeout")
+                break
             _sleep_sync(sleep_for)
+            if deadline is not None and time.monotonic() >= deadline:
+                break
+        raise DifyAgentTimeoutError(f"run {run_id!r} did not finish before timeout")
 
     async def _stream_events_once(
         self,

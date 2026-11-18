@@ -17,6 +17,7 @@ from docx import Document
 from docx.opc.constants import RELATIONSHIP_TYPE as RT
 from docx.opc.packuri import PackURI
 from docx.opc.part import Part
+from docx.opc.rel import _Relationship
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.table import Table
@@ -641,7 +642,7 @@ def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(
 
     relationship_get = rels.get
 
-    def get_relationship(key: str, default: object = None) -> object:
+    def get_relationship(key: str, default: _Relationship | None = None) -> _Relationship | None:
         if key == "link-bad":
             raise RuntimeError("cannot resolve relation")
         return relationship_get(key, default)

@@ -428,7 +428,7 @@ def test_test_form_resolves_form_only_draft_values_and_message_test_overrides(co
         "Review Alice: Saved context\n{{#$output.note#}}\n{{#$output.choice#}}"
     )
     paragraph = next(part for part in form.resolved_form.parts if isinstance(part, ParagraphInput))
-    assert paragraph.default_value == "Saved context"
+    assert paragraph.resolved_default_value == "Saved context"
     select = next(part for part in form.resolved_form.parts if isinstance(part, SelectInput))
     assert select.options == ("Yes", "No")
 

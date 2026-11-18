@@ -2,7 +2,6 @@
   "dialog.addTitle": "新增掃描服務",
   "dialog.apiKey": "API 金鑰",
   "dialog.apiSecret": "API Secret",
-  "dialog.clamavHint": "ClamAV 執行於目前的部署環境內，其位址由部署管理員設定。",
   "dialog.dataNotice": "檔案內容會傳送給此服務。",
   "dialog.editTitle": "編輯掃描服務",
   "dialog.endpoint": "服務位址（選填）",

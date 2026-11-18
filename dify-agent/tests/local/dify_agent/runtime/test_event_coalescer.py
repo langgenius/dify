@@ -210,6 +210,28 @@ def test_flushes_buffer_before_consumer_cancellation() -> None:
     assert _delta_content(emitted[0]) == "partial"
 
 
+def test_closing_stream_retrieves_a_failed_prefetch() -> None:
+    async def scenario() -> list[str]:
+        source_failed = asyncio.Event()
+        unhandled_errors: list[str] = []
+        asyncio.get_running_loop().set_exception_handler(
+            lambda _loop, context: unhandled_errors.append(context["message"])
+        )
+
+        async def failing_events() -> AsyncIterator[AgentStreamEvent]:
+            yield _part_end()
+            source_failed.set()
+            raise RuntimeError("stream failed during prefetch")
+
+        events = coalesce_agent_stream_events(failing_events())
+        assert isinstance(await anext(events), PartEndEvent)
+        await asyncio.wait_for(source_failed.wait(), timeout=1)
+        await events.aclose()
+        return unhandled_errors
+
+    assert asyncio.run(scenario()) == []
+
+
 @pytest.mark.parametrize(
     ("flush_interval_seconds", "max_chars", "message"),
     [(-0.1, 100, "positive"), (0, 100, "positive"), (0.1, 0, "positive")],
