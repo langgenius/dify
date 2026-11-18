@@ -9,13 +9,21 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask
+from psycopg2.errors import QueryCanceled
 from sqlalchemy import Connection, Engine, event, select
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 from werkzeug.test import TestResponse
 
 from constants import COOKIE_NAME_CSRF_TOKEN, HEADER_NAME_CSRF_TOKEN
 from controllers.common.rbac import RBAC_CHECKS_ATTR, PlainApp, RBACCheck, RBACPermission
-from controllers.console.app.conversation import ChatConversationApi, CompletionConversationApi
+from controllers.console import wraps as console_wraps
+from controllers.console.app import conversation as conversation_module
+from controllers.console.app.conversation import (
+    ChatConversationApi,
+    CompletionConversationApi,
+    ConversationLogExportPreviewApi,
+)
 from enums import DeploymentEdition
 from enums.account import TenantAccountRole
 from extensions.ext_database import db
@@ -37,7 +45,7 @@ from services.conversation_query_service import ConversationQueryService
 from services.message_query_adapters import MessageFileResolver
 from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_message
 
-type _Kind = Literal["chat", "completion"]
+type _Kind = Literal["chat", "completion", "export-preview"]
 _CREATED_AT = datetime(2024, 1, 15, 6, 30, 0)
 
 
@@ -75,9 +83,8 @@ class _Harness:
                 token = generate_csrf_token(self.account.id)
                 client.set_cookie(COOKIE_NAME_CSRF_TOKEN, token)
                 headers[HEADER_NAME_CSRF_TOKEN] = token
-        response = client.get(
-            f"/apps/{app_id or self.target.id}/{kind}-conversations", query_string=query, headers=headers
-        )
+        resource = "conversation-log-exports/preview" if kind == "export-preview" else f"{kind}-conversations"
+        response = client.get(f"/apps/{app_id or self.target.id}/{resource}", query_string=query, headers=headers)
         assert all(not session.in_transaction() and not session.identity_map for session in self.sessions)
         assert response.content_type == "application/json"
         assert int(response.headers["Content-Length"]) == len(response.data)
@@ -156,6 +163,7 @@ def harness(
     api = ExternalApi(app)
     api.add_resource(ChatConversationApi, "/apps/<uuid:app_id>/chat-conversations")
     api.add_resource(CompletionConversationApi, "/apps/<uuid:app_id>/completion-conversations")
+    api.add_resource(ConversationLogExportPreviewApi, "/apps/<uuid:app_id>/conversation-log-exports/preview")
     yield state
     with app.app_context():
         db.session.remove()
@@ -217,6 +225,153 @@ def _conversation(
 def _ids(response: TestResponse) -> list[str]:
     assert response.status_code == 200, response.get_json()
     return [row["id"] for row in response.get_json()["data"]]
+
+
+@pytest.mark.parametrize(
+    ("mode", "expected_conversations", "expected_messages"),
+    [(AppMode.CHAT, 3, 4), (AppMode.ADVANCED_CHAT, 2, 3), (AppMode.AGENT_CHAT, 3, 4), (AppMode.AGENT, 3, 4)],
+)
+def test_conversation_export_preview_counts_all_messages_in_matched_conversations(
+    harness: _Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    mode: AppMode,
+    expected_conversations: int,
+    expected_messages: int,
+) -> None:
+    harness.mode(mode)
+    monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", lambda _: True)
+    matched = _conversation(harness, query="Needle", created_at=_CREATED_AT - timedelta(days=1))
+    second = _conversation(harness, query="Needle", updated_at=_CREATED_AT.replace(second=59))
+    debug = _conversation(harness, query="Needle", invoke_from="debugger")
+    deleted = _conversation(harness, query="Needle", deleted=True)
+    late = _conversation(harness, query="Needle", updated_at=_CREATED_AT + timedelta(minutes=1))
+    _conversation(harness, query="Needle")  # No annotation.
+    with harness.factory.begin() as session:
+        session.add(
+            make_message(
+                app_id=harness.target.id,
+                conversation_id=matched.id,
+                query="Follow-up",
+                answer="Other answer",
+                message=[],
+                from_source=ConversationFromSource.API,
+                currency="USD",
+            )
+        )
+        session.add_all(
+            [
+                MessageAnnotation(
+                    app_id=harness.target.id,
+                    conversation_id=row.id,
+                    account_id=harness.account.id,
+                    question="Reviewed",
+                    content="Answer",
+                )
+                for row in (matched, matched, second, debug, deleted, late)
+            ]
+        )
+    filters = {
+        "keyword": "needle",
+        "annotation_status": "annotated",
+        "start": "2024-01-15 14:30",
+        "end": "2024-01-15 14:30",
+        "sort_by": "-updated_at",
+    }
+    page = harness.get("chat", query={**filters, "limit": 1})
+    preview = harness.get("export-preview", query=filters)
+
+    assert len(_ids(page)) == 1
+    assert page.get_json()["total"] == expected_conversations
+    assert preview.status_code == 200
+    assert preview.get_json() == {
+        "counts": {"conversation_count": expected_conversations, "message_count": expected_messages}
+    }
+    assert harness.get("export-preview", query={"keyword": "unmatched"}).get_json() == {
+        "counts": {"conversation_count": 0, "message_count": 0}
+    }
+
+
+@pytest.mark.parametrize(
+    ("mode", "role", "status", "code"),
+    [
+        (AppMode.ADVANCED_CHAT, TenantAccountRole.EDITOR, 403, "forbidden"),
+        (AppMode.COMPLETION, TenantAccountRole.OWNER, 404, "app_not_found"),
+        (AppMode.WORKFLOW, TenantAccountRole.OWNER, 404, "app_not_found"),
+    ],
+)
+def test_conversation_export_preview_checks_role_and_mode_before_billing(
+    harness: _Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    mode: AppMode,
+    role: TenantAccountRole,
+    status: int,
+    code: str,
+) -> None:
+    harness.mode(mode)
+    config_overrides(RBAC_ENABLED=True)
+    with harness.factory.begin() as session:
+        membership = session.scalars(
+            select(TenantAccountJoin).where(TenantAccountJoin.tenant_id == harness.tenant.id)
+        ).one()
+        membership.role = role
+
+    def allow_logs(*, checks: tuple[RBACCheck, ...], **_: object) -> None:
+        (check,) = checks
+        assert check.scene == RBACPermission.APP_LOG_AND_ANNOTATION
+        assert isinstance(check.locator, PlainApp)
+
+    def unexpected_billing(_: str) -> bool:
+        pytest.fail("Role and app mode must be checked before billing.")
+
+    monkeypatch.setattr("controllers.console.flask_admission.enforce_rbac_checks", allow_logs)
+    monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", unexpected_billing)
+
+    response = harness.get("export-preview")
+    assert response.status_code == status
+    assert response.get_json()["code"] == code
+
+
+@pytest.mark.parametrize("edition", list(DeploymentEdition))
+def test_conversation_export_preview_checks_paid_plan_only_in_cloud(
+    harness: _Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    edition: DeploymentEdition,
+) -> None:
+    harness.mode(AppMode.ADVANCED_CHAT)
+    config_overrides(DEPLOYMENT_EDITION=edition)
+    monkeypatch.setattr(console_wraps, "_is_setup_completed", lambda: True)
+
+    def unpaid(tenant_id: str) -> bool:
+        assert edition == DeploymentEdition.CLOUD
+        assert tenant_id == harness.tenant.id
+        return False
+
+    monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", unpaid)
+    response = harness.get("export-preview")
+    if edition == DeploymentEdition.CLOUD:
+        assert response.status_code == 403
+        assert response.get_json()["code"] == "paid_plan_required"
+    else:
+        assert response.status_code == 200
+        assert response.get_json() == {"counts": {"conversation_count": 0, "message_count": 0}}
+
+
+def test_conversation_export_preview_reports_count_query_timeout(
+    harness: _Harness, sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    harness.mode(AppMode.ADVANCED_CHAT)
+    monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", lambda _: True)
+
+    @event.listens_for(sqlite_engine, "before_cursor_execute")
+    def cancel_count(_conn: Connection, _cursor: object, statement: str, *_: object) -> None:
+        if statement.startswith("SELECT count(*)"):
+            raise DBAPIError(statement, None, QueryCanceled("statement timeout"))
+
+    response = harness.get("export-preview")
+    assert response.status_code == 200
+    assert response.get_json() == {"counts": None}
 
 
 @pytest.mark.parametrize("kind", ["chat", "completion"])

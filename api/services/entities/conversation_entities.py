@@ -100,14 +100,26 @@ class ConsoleConversationScope:
 
 
 @dataclass(frozen=True, slots=True)
-class ConsoleConversationFilters:
+class ConsoleConversationLogFilters:
+    """Console log selection before pagination, with optional keyword and time bounds."""
+
     keyword: str | None
     start: datetime | None
     end: datetime | None
     annotation_status: ConversationAnnotationStatus
     sort_by: ConversationSort
+
+
+@dataclass(frozen=True, slots=True)
+class ConsoleConversationFilters(ConsoleConversationLogFilters):
     page: int
     limit: int
+
+
+@dataclass(frozen=True, slots=True)
+class ConversationLogExportCounts:
+    conversation_count: int
+    message_count: int
 
 
 @dataclass(frozen=True, slots=True)

@@ -3265,6 +3265,31 @@ Stop a running completion message generation
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /apps/{app_id}/conversation-log-exports/preview
+**Preview a conversation log export for a workspace Owner or Admin with application Logs access**
+
+Count the conversations and rows that match the application's chat Logs filters
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| annotation_status | query | Annotation status filter | No | string, <br>**Available values:** "all", "annotated", "not_annotated", <br>**Default:** all |
+| end | query | End date (YYYY-MM-DD HH:MM) | No | string |
+| keyword | query | Search keyword | No | string |
+| sort_by | query | Which Logs timestamp to filter by | No | string, <br>**Available values:** "-created_at", "-updated_at", "created_at", "updated_at", <br>**Default:** -updated_at |
+| start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Export preview | **application/json**: [ConversationLogExportPreviewResponse](#conversationlogexportpreviewresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /apps/{app_id}/conversation-variables
 Get conversation variables for an application
 
@@ -24811,6 +24836,19 @@ The conversation has no message from which to generate a name.
 | last_id | string |  | No |
 | limit | integer, <br>**Default:** 20 |  | No |
 | pinned | boolean |  | No |
+
+#### ConversationLogExportCountsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conversation_count | integer |  | Yes |
+| message_count | integer | CSV data rows across all matched conversations | Yes |
+
+#### ConversationLogExportPreviewResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| counts | [ConversationLogExportCountsResponse](#conversationlogexportcountsresponse) | Null if the count query timed out | Yes |
 
 #### ConversationMessageDetail
 

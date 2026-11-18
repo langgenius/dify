@@ -614,6 +614,20 @@ export type CompletionMessagePayload = {
   retriever_from?: string
 }
 
+export type ConversationLogExportPreviewResponse = {
+  counts: ConversationLogExportCountsResponse | null
+}
+
+export type ForbiddenError = ErrorResponse & {
+  code: 'forbidden'
+  status: 403
+}
+
+export type PaidPlanRequiredError = ErrorResponse & {
+  code: 'paid_plan_required'
+  status: 403
+}
+
 export type PaginatedConversationVariableResponse = {
   data: Array<ConversationVariableResponse>
   has_more: boolean
@@ -795,11 +809,6 @@ export type NetworkAccessInvalidInputError = ErrorResponse & {
 export type NetworkAccessUnsupportedAccessPointsError = ErrorResponse & {
   code: 'network_access_unsupported_access_points'
   status: 400
-}
-
-export type PaidPlanRequiredError = ErrorResponse & {
-  code: 'paid_plan_required'
-  status: 403
 }
 
 export type NetworkAccessGroupNotFoundError = ErrorResponse & {
@@ -1209,11 +1218,6 @@ export type SandboxReadResponse = {
 
 export type WorkflowCommentBasicList = {
   data: Array<WorkflowCommentBasic>
-}
-
-export type ForbiddenError = ErrorResponse & {
-  code: 'forbidden'
-  status: 403
 }
 
 export type WorkflowCommentCreatePayload = {
@@ -2074,6 +2078,11 @@ export type MessageDetail = {
   retriever_resources?: Array<RetrievalSourceMetadata>
   status: string
   workflow_run_id?: string | null
+}
+
+export type ConversationLogExportCountsResponse = {
+  conversation_count: number
+  message_count: number
 }
 
 export type ConversationVariableResponse = {
@@ -6596,6 +6605,37 @@ export type PostAppsByAppIdCompletionMessagesByTaskIdStopResponses = {
 
 export type PostAppsByAppIdCompletionMessagesByTaskIdStopResponse =
   PostAppsByAppIdCompletionMessagesByTaskIdStopResponses[keyof PostAppsByAppIdCompletionMessagesByTaskIdStopResponses]
+
+export type GetAppsByAppIdConversationLogExportsPreviewData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    annotation_status?: 'all' | 'annotated' | 'not_annotated'
+    end?: string
+    keyword?: string
+    sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
+    start?: string
+  }
+  url: '/apps/{app_id}/conversation-log-exports/preview'
+}
+
+export type GetAppsByAppIdConversationLogExportsPreviewErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdConversationLogExportsPreviewError =
+  GetAppsByAppIdConversationLogExportsPreviewErrors[keyof GetAppsByAppIdConversationLogExportsPreviewErrors]
+
+export type GetAppsByAppIdConversationLogExportsPreviewResponses = {
+  200: ConversationLogExportPreviewResponse
+}
+
+export type GetAppsByAppIdConversationLogExportsPreviewResponse =
+  GetAppsByAppIdConversationLogExportsPreviewResponses[keyof GetAppsByAppIdConversationLogExportsPreviewResponses]
 
 export type GetAppsByAppIdConversationVariablesData = {
   body?: never

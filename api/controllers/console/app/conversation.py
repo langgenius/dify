@@ -1,19 +1,29 @@
+from datetime import datetime
 from http import HTTPStatus
 from typing import Literal
 from uuid import UUID
 
 from flask_restx import Resource
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from controllers.common.errors import ConversationNotFoundHTTPError, InvalidArgumentError, UnauthorizedError
+from configs import dify_config
+from controllers.common.errors import (
+    ConversationNotFoundHTTPError,
+    ForbiddenError,
+    InvalidArgumentError,
+    PaidPlanRequiredError,
+    UnauthorizedError,
+)
 from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import AppNotFoundError
 from controllers.console.flask_admission import console_account_admission
-from controllers.console.wraps import RBACPermission, validate_request
+from controllers.console.wraps import RBACPermission, is_cloud_edition_billing_paid_plan, validate_request
+from enums import DeploymentEdition
 from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
+from fields.base import ResponseModel
 from fields.conversation_fields import (
     Conversation as ConversationResponse,
 )
@@ -32,22 +42,25 @@ from fields.conversation_fields import (
 from libs.datetime_utils import parse_time_range
 from libs.external_api import error_responses
 from libs.helper import dump_response
+from libs.login import current_account_with_tenant
 from machinery.context import RequestContext
 from services.app.console_service import ConsoleAppNotFoundError
-from services.entities.conversation_entities import ConsoleConversationFilters
+from services.entities.conversation_entities import (
+    ConsoleConversationFilters,
+    ConsoleConversationLogFilters,
+    ConversationSort,
+)
 from services.errors.base import NoPermissionError
 from services.errors.conversation import ConversationNotExistsError
 
 
-class BaseConversationQuery(BaseModel):
+class ConversationLogFilterQuery(BaseModel):
     keyword: str | None = Field(default=None, description="Search keyword")
     start: str | None = Field(default=None, description="Start date (YYYY-MM-DD HH:MM)")
     end: str | None = Field(default=None, description="End date (YYYY-MM-DD HH:MM)")
     annotation_status: Literal["annotated", "not_annotated", "all"] = Field(
         default="all", description="Annotation status filter"
     )
-    page: int = Field(default=1, ge=1, le=99999, description="Page number")
-    limit: int = Field(default=20, ge=1, le=100, description="Page size (1-100)")
 
     @field_validator("start", "end", mode="before")
     @classmethod
@@ -55,6 +68,11 @@ class BaseConversationQuery(BaseModel):
         if value == "":
             return None
         return value
+
+
+class BaseConversationQuery(ConversationLogFilterQuery):
+    page: int = Field(default=1, ge=1, le=99999, description="Page number")
+    limit: int = Field(default=20, ge=1, le=100, description="Page size (1-100)")
 
 
 class CompletionConversationQuery(BaseConversationQuery):
@@ -65,6 +83,30 @@ class ChatConversationQuery(BaseConversationQuery):
     sort_by: Literal["created_at", "-created_at", "updated_at", "-updated_at"] = Field(
         default="-updated_at", description="Sort field and direction"
     )
+
+
+class ConversationLogExportPreviewQuery(ConversationLogFilterQuery):
+    model_config = ConfigDict(extra="forbid")
+
+    sort_by: ConversationSort = Field(default="-updated_at", description="Which Logs timestamp to filter by")
+
+
+class ConversationLogExportCountsResponse(ResponseModel):
+    conversation_count: int = Field(ge=0)
+    message_count: int = Field(ge=0, description="CSV data rows across all matched conversations")
+
+
+class ConversationLogExportPreviewResponse(ResponseModel):
+    counts: ConversationLogExportCountsResponse | None = Field(description="Null if the count query timed out")
+
+
+def _parse_log_time_range(query: ConversationLogFilterQuery, timezone: str) -> tuple[datetime | None, datetime | None]:
+    """Normalize account-local Logs bounds, including the last second of the end minute."""
+    try:
+        start, end = parse_time_range(query.start, query.end, timezone)
+    except ValueError as exc:
+        raise InvalidArgumentError(str(exc)) from exc
+    return start, end.replace(second=59) if end else None
 
 
 register_schema_models(
@@ -79,6 +121,7 @@ register_response_schema_models(
     ConversationMessageDetailResponse,
     ConversationWithSummaryPaginationResponse,
     ConversationDetailResponse,
+    ConversationLogExportPreviewResponse,
 )
 
 
@@ -211,17 +254,14 @@ class ChatConversationApi(Resource):
         except NoPermissionError as exc:
             raise UnauthorizedError(str(exc)) from exc
         req_data = validate_request(ChatConversationQuery)
-        try:
-            start, end = parse_time_range(req_data.start, req_data.end, scope.timezone)
-        except ValueError as exc:
-            raise InvalidArgumentError(str(exc)) from exc
+        start, end = _parse_log_time_range(req_data, scope.timezone)
         try:
             page = queries.get_console_page(
                 scope=scope,
                 filters=ConsoleConversationFilters(
                     keyword=req_data.keyword,
                     start=start,
-                    end=end.replace(second=59) if end else None,
+                    end=end,
                     annotation_status=req_data.annotation_status,
                     sort_by=req_data.sort_by,
                     page=req_data.page,
@@ -231,6 +271,52 @@ class ChatConversationApi(Resource):
         except ConsoleAppNotFoundError as exc:
             raise AppNotFoundError(str(exc)) from exc
         return dump_response(ConversationWithSummaryPaginationResponse, page)
+
+
+@console_ns.route("/apps/<uuid:app_id>/conversation-log-exports/preview")
+class ConversationLogExportPreviewApi(Resource):
+    @error_responses(AppNotFoundError, ForbiddenError, PaidPlanRequiredError)
+    @console_ns.doc("preview_conversation_log_export")
+    @console_ns.doc(description="Count the conversations and rows that match the application's chat Logs filters")
+    @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(ConversationLogExportPreviewQuery)})
+    @console_ns.response(
+        HTTPStatus.OK, "Export preview", console_ns.models[ConversationLogExportPreviewResponse.__name__]
+    )
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.APP_LOG_AND_ANNOTATION, PlainApp()),))
+    def get(self, request_context: RequestContext, app_id: UUID) -> dict[str, object]:
+        """Preview a conversation log export for a workspace Owner or Admin with application Logs access."""
+        # Export requires a privileged workspace role even when RBAC is enabled.
+        if not TenantAccountRole.is_privileged_role(current_account_with_tenant().account.role):
+            raise ForbiddenError()
+
+        queries = application_services().conversation_queries
+        try:
+            scope = queries.get_console_scope(request_context, str(app_id), kind="chat")
+        except ConsoleAppNotFoundError as exc:
+            raise AppNotFoundError(str(exc)) from exc
+        except NoPermissionError as exc:
+            raise UnauthorizedError(str(exc)) from exc
+
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and not is_cloud_edition_billing_paid_plan(
+            scope.tenant_id
+        ):
+            raise PaidPlanRequiredError()
+        query = validate_request(ConversationLogExportPreviewQuery)
+        start, end = _parse_log_time_range(query, scope.timezone)
+        try:
+            counts = queries.get_console_log_export_counts(
+                scope=scope,
+                filters=ConsoleConversationLogFilters(
+                    keyword=query.keyword,
+                    start=start,
+                    end=end,
+                    annotation_status=query.annotation_status,
+                    sort_by=query.sort_by,
+                ),
+            )
+        except ConsoleAppNotFoundError as exc:
+            raise AppNotFoundError(str(exc)) from exc
+        return dump_response(ConversationLogExportPreviewResponse, {"counts": counts})
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-conversations/<uuid:conversation_id>")

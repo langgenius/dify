@@ -12,10 +12,12 @@ from services.entities.conversation_entities import (
     ConsoleConversationDetailSource,
     ConsoleConversationFilters,
     ConsoleConversationKind,
+    ConsoleConversationLogFilters,
     ConsoleConversationPage,
     ConsoleConversationScope,
     ConversationInputValue,
     ConversationListSource,
+    ConversationLogExportCounts,
     ConversationPage,
     ConversationScope,
     ConversationSort,
@@ -35,6 +37,15 @@ class ConversationQueryStore(Protocol):
     def get_console_page(
         self, *, scope: ConsoleConversationScope, filters: ConsoleConversationFilters
     ) -> ConsoleConversationPage: ...
+
+    def get_console_log_export_counts(
+        self, *, scope: ConsoleConversationScope, filters: ConsoleConversationLogFilters
+    ) -> ConversationLogExportCounts | None:
+        """Count visible conversations and their messages for the admitted Console chat log scope.
+
+        Recheck application ownership and mode. Return None if the count query times out.
+        """
+        ...
 
     def get_page(
         self,
@@ -106,6 +117,12 @@ class ConversationQueryService:
                 for record in page.items
             ),
         )
+
+    def get_console_log_export_counts(
+        self, *, scope: ConsoleConversationScope, filters: ConsoleConversationLogFilters
+    ) -> ConversationLogExportCounts | None:
+        """Return unpaginated counts for admitted Console chat logs, or None on a query timeout."""
+        return self._conversations.get_console_log_export_counts(scope=scope, filters=filters)
 
     def get_page(
         self,

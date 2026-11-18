@@ -612,6 +612,30 @@ export const zCompletionMessagePayload = z.object({
 })
 
 /**
+ * ForbiddenError
+ *
+ * You don't have the permission to access the requested resource.
+ */
+export const zForbiddenError = zErrorResponse.and(
+  z.object({
+    code: z.literal('forbidden'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * PaidPlanRequiredError
+ *
+ * This feature requires a paid plan.
+ */
+export const zPaidPlanRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('paid_plan_required'),
+    status: z.literal(403),
+  }),
+)
+
+/**
  * ConvertToWorkflowPayload
  */
 export const zConvertToWorkflowPayload = z.object({
@@ -779,18 +803,6 @@ export const zNetworkAccessUnsupportedAccessPointsError = zErrorResponse.and(
   z.object({
     code: z.literal('network_access_unsupported_access_points'),
     status: z.literal(400),
-  }),
-)
-
-/**
- * PaidPlanRequiredError
- *
- * This feature requires a paid plan.
- */
-export const zPaidPlanRequiredError = zErrorResponse.and(
-  z.object({
-    code: z.literal('paid_plan_required'),
-    status: z.literal(403),
   }),
 )
 
@@ -1269,18 +1281,6 @@ export const zSandboxReadResponse = z.object({
   text: z.string().nullish(),
   truncated: z.boolean(),
 })
-
-/**
- * ForbiddenError
- *
- * You don't have the permission to access the requested resource.
- */
-export const zForbiddenError = zErrorResponse.and(
-  z.object({
-    code: z.literal('forbidden'),
-    status: z.literal(403),
-  }),
-)
 
 /**
  * WorkflowCommentCreatePayload
@@ -2080,6 +2080,21 @@ export const zAnnotationHitHistoryList = z.object({
 export const zFeedbackStat = z.object({
   dislike: z.int(),
   like: z.int(),
+})
+
+/**
+ * ConversationLogExportCountsResponse
+ */
+export const zConversationLogExportCountsResponse = z.object({
+  conversation_count: z.int().gte(0),
+  message_count: z.int().gte(0),
+})
+
+/**
+ * ConversationLogExportPreviewResponse
+ */
+export const zConversationLogExportPreviewResponse = z.object({
+  counts: zConversationLogExportCountsResponse.nullable(),
 })
 
 /**
@@ -7495,6 +7510,27 @@ export const zPostAppsByAppIdCompletionMessagesByTaskIdStopPath = z.object({
  * Task stopped successfully
  */
 export const zPostAppsByAppIdCompletionMessagesByTaskIdStopResponse = zSimpleResultResponse
+
+export const zGetAppsByAppIdConversationLogExportsPreviewPath = z.object({
+  app_id: z.uuid(),
+})
+
+export const zGetAppsByAppIdConversationLogExportsPreviewQuery = z.object({
+  annotation_status: z.enum(['all', 'annotated', 'not_annotated']).optional().default('all'),
+  end: z.string().optional(),
+  keyword: z.string().optional(),
+  sort_by: z
+    .enum(['-created_at', '-updated_at', 'created_at', 'updated_at'])
+    .optional()
+    .default('-updated_at'),
+  start: z.string().optional(),
+})
+
+/**
+ * Export preview
+ */
+export const zGetAppsByAppIdConversationLogExportsPreviewResponse =
+  zConversationLogExportPreviewResponse
 
 export const zGetAppsByAppIdConversationVariablesPath = z.object({
   app_id: z.uuid(),

@@ -5,9 +5,11 @@ from dataclasses import replace
 from datetime import datetime
 from typing import cast
 
+from psycopg2.errors import QueryCanceled
 from pydantic import JsonValue
-from sqlalchemy import Select, exists, func, or_, select, update
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import Select, exists, func, or_, select, text, update
+from sqlalchemy.exc import DBAPIError
+from sqlalchemy.orm import InstrumentedAttribute, Session, sessionmaker
 
 from libs.datetime_utils import naive_utc_now
 from libs.helper import escape_like_pattern
@@ -32,6 +34,7 @@ from services.entities.conversation_entities import (
     ConsoleConversationDetailSource,
     ConsoleConversationFilters,
     ConsoleConversationKind,
+    ConsoleConversationLogFilters,
     ConsoleConversationMessage,
     ConsoleConversationPage,
     ConsoleConversationRecord,
@@ -40,6 +43,7 @@ from services.entities.conversation_entities import (
     ConversationDeletion,
     ConversationInputValue,
     ConversationListSource,
+    ConversationLogExportCounts,
     ConversationNameSource,
     ConversationPage,
     ConversationRecord,
@@ -53,6 +57,8 @@ from services.errors.base import NoPermissionError
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
 from services.errors.message import MessageNotExistsError
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
+
+_LOG_EXPORT_COUNT_TIMEOUT_MS = 1500
 
 
 class ConversationRepository:
@@ -174,6 +180,7 @@ class ConversationRepository:
     def get_console_page(
         self, *, scope: ConsoleConversationScope, filters: ConsoleConversationFilters
     ) -> ConsoleConversationPage:
+        """Return a page and total for the admitted app, with all response fields detached."""
         with self._session_factory() as session:
             app = find_console_app(session, workspace_id=scope.tenant_id, app_id=scope.app_id)
             if app is None:
@@ -183,51 +190,9 @@ class ConversationRepository:
                     f"App mode changed from '{scope.app_mode}' to '{app.mode}' after admission."
                 )
             completion = app.mode == AppMode.COMPLETION
-            statement = select(Conversation).where(Conversation.app_id == app.id, Conversation.is_deleted.is_(False))
-            if completion:
-                statement = statement.where(Conversation.mode == AppMode.COMPLETION)
-            if filters.keyword:
-                pattern = f"%{escape_like_pattern(filters.keyword)}%"
-                statement = statement.join(Message, Message.conversation_id == Conversation.id)
-                matches = [
-                    Message.query.ilike(pattern, escape="\\"),
-                    Message.answer.ilike(pattern, escape="\\"),
-                ]
-                if not completion:
-                    statement = statement.outerjoin(EndUser, Conversation.from_end_user_id == EndUser.id)
-                    matches.extend(
-                        [
-                            Conversation.name.ilike(pattern, escape="\\"),
-                            Conversation.introduction.ilike(pattern, escape="\\"),
-                            EndUser.session_id.ilike(pattern, escape="\\"),
-                        ]
-                    )
-                    statement = statement.group_by(Conversation.id)
-                # Completion historically counts each matching message join row.
-                statement = statement.where(or_(*matches))
-
-            column = (
-                Conversation.created_at
-                if completion or filters.sort_by in {"created_at", "-created_at"}
-                else Conversation.updated_at
+            statement, column = self._filter_console_conversations(
+                select(Conversation), app_id=app.id, mode=app.mode, filters=filters
             )
-            if filters.start is not None:
-                statement = statement.where(column >= filters.start)
-            if filters.end is not None:
-                statement = statement.where(column <= filters.end)
-            if filters.annotation_status == "annotated":
-                statement = statement.join(
-                    MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
-                ).group_by(Conversation.id)
-            elif filters.annotation_status == "not_annotated":
-                statement = (
-                    statement.outerjoin(MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id)
-                    .group_by(Conversation.id)
-                    .having(func.count(MessageAnnotation.id) == 0)
-                )
-            if app.mode == AppMode.ADVANCED_CHAT:
-                # SQL != also excludes NULL, matching the existing Console query.
-                statement = statement.where(Conversation.invoke_from != InvokeFrom.DEBUGGER)
             statement = statement.order_by(
                 column.desc() if completion or filters.sort_by.startswith("-") else column.asc()
             )
@@ -242,6 +207,101 @@ class ConversationRepository:
                     self._console_record(conversation=item, session=session, completion=completion)
                     for item in page.items
                 ),
+            )
+
+    @staticmethod
+    def _filter_console_conversations[T: tuple[object, ...]](
+        statement: Select[T], *, app_id: str, mode: AppMode, filters: ConsoleConversationLogFilters
+    ) -> tuple[Select[T], InstrumentedAttribute[datetime]]:
+        """Apply Logs visibility and filters to a Conversation select, returning its time column."""
+        completion = mode == AppMode.COMPLETION
+        statement = statement.where(Conversation.app_id == app_id, Conversation.is_deleted.is_(False))
+        if completion:
+            statement = statement.where(Conversation.mode == AppMode.COMPLETION)
+        if filters.keyword:
+            pattern = f"%{escape_like_pattern(filters.keyword)}%"
+            statement = statement.join(Message, Message.conversation_id == Conversation.id)
+            matches = [
+                Message.query.ilike(pattern, escape="\\"),
+                Message.answer.ilike(pattern, escape="\\"),
+            ]
+            if not completion:
+                statement = statement.outerjoin(EndUser, Conversation.from_end_user_id == EndUser.id)
+                matches.extend(
+                    [
+                        Conversation.name.ilike(pattern, escape="\\"),
+                        Conversation.introduction.ilike(pattern, escape="\\"),
+                        EndUser.session_id.ilike(pattern, escape="\\"),
+                    ]
+                )
+                statement = statement.group_by(Conversation.id)
+            # Completion historically counts each matching message join row.
+            statement = statement.where(or_(*matches))
+
+        column = (
+            Conversation.created_at
+            if completion or filters.sort_by in {"created_at", "-created_at"}
+            else Conversation.updated_at
+        )
+        if filters.start is not None:
+            statement = statement.where(column >= filters.start)
+        if filters.end is not None:
+            statement = statement.where(column <= filters.end)
+        if filters.annotation_status == "annotated":
+            statement = statement.join(
+                MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
+            ).group_by(Conversation.id)
+        elif filters.annotation_status == "not_annotated":
+            statement = (
+                statement.outerjoin(MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id)
+                .group_by(Conversation.id)
+                .having(func.count(MessageAnnotation.id) == 0)
+            )
+        if mode == AppMode.ADVANCED_CHAT:
+            # SQL != also excludes NULL, matching the existing Console query.
+            statement = statement.where(Conversation.invoke_from != InvokeFrom.DEBUGGER)
+        return statement, column
+
+    def get_console_log_export_counts(
+        self, *, scope: ConsoleConversationScope, filters: ConsoleConversationLogFilters
+    ) -> ConversationLogExportCounts | None:
+        """Count all matched chat conversations and their messages in one read statement.
+
+        Require a Console chat log scope. Recheck application ownership and mode before counting.
+        Use a statement timeout on PostgreSQL and MySQL. Return None on timeout and release
+        the read transaction on all paths.
+        """
+        with self._session_factory() as session:
+            app = find_console_app(session, workspace_id=scope.tenant_id, app_id=scope.app_id)
+            if app is None or app.mode != scope.app_mode:
+                raise ConsoleAppNotFoundError("App not found.")
+            matching, _ = self._filter_console_conversations(
+                select(Conversation.id), app_id=app.id, mode=app.mode, filters=filters
+            )
+            conversations = matching.subquery()
+            # Count via the conversation_id index. A keyword selects the conversation,
+            # and every message in that conversation contributes one export row.
+            messages_per_conversation = (
+                select(func.count()).where(Message.conversation_id == conversations.c.id).scalar_subquery()
+            )
+            counts = (
+                select(func.count(), func.coalesce(func.sum(messages_per_conversation), 0))
+                .select_from(conversations)
+                .prefix_with(f"/*+ MAX_EXECUTION_TIME({_LOG_EXPORT_COUNT_TIMEOUT_MS}) */", dialect="mysql")
+            )
+            dialect = session.get_bind().dialect.name
+            try:
+                if dialect == "postgresql":
+                    session.execute(text(f"SET LOCAL statement_timeout = {_LOG_EXPORT_COUNT_TIMEOUT_MS}"))
+                conversation_count, message_count = session.execute(counts).one()
+            except DBAPIError as exc:
+                if isinstance(exc.orig, QueryCanceled) or (
+                    dialect == "mysql" and exc.orig is not None and exc.orig.args and exc.orig.args[0] == 3024
+                ):
+                    return None
+                raise
+            return ConversationLogExportCounts(
+                conversation_count=int(conversation_count), message_count=int(message_count)
             )
 
     def get_console_detail(
