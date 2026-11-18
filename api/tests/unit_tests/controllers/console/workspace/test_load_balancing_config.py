@@ -5,13 +5,16 @@ from __future__ import annotations
 import builtins
 import importlib
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Generator, Iterator
+from contextlib import contextmanager
 from types import ModuleType
-from unittest.mock import ANY, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
 from flask.views import MethodView
+from sqlalchemy import create_engine, event
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -75,12 +78,42 @@ def _prepare_context(
     return mock_service
 
 
+@pytest.fixture(autouse=True)
+def request_session(monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple[Session, list[bool]]]:
+    from controllers.common.session import session_factory
+
+    engine = create_engine("sqlite://")
+    session = Session(engine)
+    exits: list[bool] = []
+
+    @event.listens_for(session, "before_commit")
+    def reject_commit(_session: Session) -> None:
+        pytest.fail("Credential validation must not commit the request session")
+
+    @contextmanager
+    def create_session() -> Generator[Session]:
+        try:
+            with session:
+                yield session
+        finally:
+            exits.append(True)
+
+    monkeypatch.setattr(session_factory, "create_session", create_session)
+    try:
+        yield session, exits
+    finally:
+        engine.dispose()
+
+
 def _request_payload() -> dict[str, object]:
     return {"model": "gpt-4o", "model_type": ModelType.LLM, "credentials": {"api_key": "sk-***"}}
 
 
 def test_validate_credentials_success(
-    app: Flask, load_balancing_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+    app: Flask,
+    load_balancing_module: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+    request_session: tuple[Session, list[bool]],
 ) -> None:
     service = _prepare_context(load_balancing_module, monkeypatch)
 
@@ -91,6 +124,7 @@ def test_validate_credentials_success(
     ):
         response = load_balancing_module.LoadBalancingCredentialsValidateApi().post(provider="openai")
 
+    assert request_session[1] == [True]
     assert response == {"result": "success"}
     service.validate_load_balancing_credentials.assert_called_once_with(
         tenant_id="tenant-123",
@@ -98,12 +132,15 @@ def test_validate_credentials_success(
         model="gpt-4o",
         model_type=ModelType.LLM,
         credentials={"api_key": "sk-***"},
-        session=ANY,
+        session=request_session[0],
     )
 
 
 def test_validate_credentials_returns_error_message(
-    app: Flask, load_balancing_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+    app: Flask,
+    load_balancing_module: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+    request_session: tuple[Session, list[bool]],
 ) -> None:
     service = _prepare_context(load_balancing_module, monkeypatch)
     service.validate_load_balancing_credentials.side_effect = CredentialsValidateFailedError("invalid credentials")
@@ -115,11 +152,15 @@ def test_validate_credentials_returns_error_message(
     ):
         response = load_balancing_module.LoadBalancingCredentialsValidateApi().post(provider="openai")
 
+    assert request_session[1] == [True]
     assert response == {"result": "error", "error": "invalid credentials"}
 
 
 def test_validate_credentials_requires_privileged_role(
-    app: Flask, load_balancing_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+    app: Flask,
+    load_balancing_module: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+    request_session: tuple[Session, list[bool]],
 ) -> None:
     _prepare_context(load_balancing_module, monkeypatch, role=TenantAccountRole.NORMAL)
 
@@ -131,10 +172,14 @@ def test_validate_credentials_requires_privileged_role(
         api = load_balancing_module.LoadBalancingCredentialsValidateApi()
         with pytest.raises(Forbidden):
             api.post(provider="openai")
+    assert request_session[1] == [True]
 
 
 def test_validate_credentials_with_config_id(
-    app: Flask, load_balancing_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+    app: Flask,
+    load_balancing_module: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+    request_session: tuple[Session, list[bool]],
 ) -> None:
     service = _prepare_context(load_balancing_module, monkeypatch)
 
@@ -147,6 +192,7 @@ def test_validate_credentials_with_config_id(
             provider="openai", config_id="cfg-1"
         )
 
+    assert request_session[1] == [True]
     assert response == {"result": "success"}
     service.validate_load_balancing_credentials.assert_called_once_with(
         tenant_id="tenant-123",
@@ -154,6 +200,6 @@ def test_validate_credentials_with_config_id(
         model="gpt-4o",
         model_type=ModelType.LLM,
         credentials={"api_key": "sk-***"},
-        session=ANY,
+        session=request_session[0],
         config_id="cfg-1",
     )

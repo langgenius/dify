@@ -1,8 +1,10 @@
 from flask_restx import Resource
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
@@ -11,7 +13,6 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
-from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -51,9 +52,21 @@ class LoadBalancingCredentialsValidateApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @model_validate(LoadBalancingCredentialPayload)
+    @with_session(write=False)
     def post(
-        self, req_data: LoadBalancingCredentialPayload, current_tenant_id: str, current_user: Account, provider: str
+        self,
+        session: Session,
+        req_data: LoadBalancingCredentialPayload,
+        current_tenant_id: str,
+        current_user: Account,
+        provider: str,
     ):
+        """Validate a parsed payload for the current tenant using the request session.
+
+        Only privileged accounts may validate credentials. Report provider validation
+        failures in the existing response shape; the decorator closes the read-only
+        session on success or error.
+        """
         if not TenantAccountRole.is_privileged_role(current_user.current_role):
             raise Forbidden()
 
@@ -72,7 +85,7 @@ class LoadBalancingCredentialsValidateApi(Resource):
                 model=req_data.model,
                 model_type=req_data.model_type,
                 credentials=req_data.credentials,
-                session=db.session(),
+                session=session,
             )
         except CredentialsValidateFailedError as ex:
             result = False
@@ -102,14 +115,22 @@ class LoadBalancingConfigCredentialsValidateApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @model_validate(LoadBalancingCredentialPayload)
+    @with_session(write=False)
     def post(
         self,
+        session: Session,
         req_data: LoadBalancingCredentialPayload,
         current_tenant_id: str,
         current_user: Account,
         provider: str,
         config_id: str,
     ):
+        """Validate a parsed payload for the current tenant using the request session.
+
+        Only privileged accounts may validate credentials. Report provider validation
+        failures in the existing response shape; the decorator closes the read-only
+        session on success or error.
+        """
         if not TenantAccountRole.is_privileged_role(current_user.current_role):
             raise Forbidden()
 
@@ -128,7 +149,7 @@ class LoadBalancingConfigCredentialsValidateApi(Resource):
                 model=req_data.model,
                 model_type=req_data.model_type,
                 credentials=req_data.credentials,
-                session=db.session(),
+                session=session,
                 config_id=config_id,
             )
         except CredentialsValidateFailedError as ex:
