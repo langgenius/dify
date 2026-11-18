@@ -141,7 +141,7 @@ def test_workflow_finished_maps_each_run_status(
     assert record.error == error
 
 
-def test_a_pause_stores_the_form_and_marks_the_job_paused(
+def test_a_pause_stores_only_the_ids_and_leaves_the_record_running(
     store: RedisRunJobStore, stopper: RecordingJobStopper
 ) -> None:
     _open(store, AppMode.WORKFLOW)
@@ -153,8 +153,7 @@ def test_a_pause_stores_the_form_and_marks_the_job_paused(
 
     record = _read(store, stopper, frames)
 
-    assert record.status is JobStatus.PAUSED
-    assert record.form == form
+    assert (record.status, record.task_id, record.run_id) == (JobStatus.RUNNING, "task-1", "run-1")
 
 
 def test_message_end_finishes_a_message_job_but_not_a_graph_job(

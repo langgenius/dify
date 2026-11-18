@@ -148,26 +148,14 @@ def test_attach_refuses_a_job_it_holds_no_slot_for() -> None:
     assert harness.service.open(_opening()).created is True
 
 
-def test_view_of_a_finished_graph_run_drops_the_stale_record_form() -> None:
-    harness = _harness()
-    opened = harness.service.open(_opening())
-    harness.store.patch(opened.record.id, JobPatch(run_id="run-1", form={"form_id": "old"}))
-    harness.results.runs[("t1", "run-1")] = RunResult(status=JobStatus.SUCCEEDED)
-
-    view = harness.service.view(OWNER, opened.record.id)
-
-    assert view.form is None
-
-
 def test_view_of_a_graph_job_with_an_invisible_run_uses_the_record() -> None:
     harness = _harness()
     opened = harness.service.open(_opening())
-    harness.store.patch(opened.record.id, JobPatch(run_id="run-1", status=JobStatus.PAUSED, form={"form_id": "f"}))
+    harness.store.patch(opened.record.id, JobPatch(run_id="run-1", status=JobStatus.STOPPED))
 
     view = harness.service.view(OWNER, opened.record.id)
 
-    assert view.status is JobStatus.PAUSED
-    assert view.form == {"form_id": "f"}
+    assert (view.status, view.form) == (JobStatus.STOPPED, None)
 
 
 def test_stop_of_a_final_job_sends_nothing() -> None:
