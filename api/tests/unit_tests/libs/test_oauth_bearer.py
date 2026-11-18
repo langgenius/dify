@@ -137,12 +137,13 @@ def test_token_cache_treats_malformed_payload_as_miss(
     ],
 )
 def test_token_cache_treats_invalid_fields_as_miss(
-    redis_transport: tuple[RedisClientWrapper, MagicMock], field: str, value: object
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    field: str,
+    value: str | int | list[None] | dict[str, None] | None,
 ) -> None:
-    payload: dict[str, object] = dict(_row(None).to_cache())
-    payload[field] = value
+    """An invalid field in serialized cache data is treated as a cache miss."""
     redis, commands = redis_transport
-    commands.return_value = json.dumps(payload)
+    commands.return_value = json.dumps({**_row(None).to_cache(), field: value})
     resolver = OAuthAccessTokenResolver(sessionmaker(), redis)
 
     assert resolver.cache_get("token-hash") is None
