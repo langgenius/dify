@@ -166,7 +166,7 @@ vp test run --project unit --changed=origin/main
 
 Always pass `--project unit` or `--project browser`. Bare `vp test` runs both registered projects and is not the standard Web test command.
 
-[`--changed`][Vitest changed] diffs from the merge base with the given ref, includes staged, unstaged, and untracked files, and selects tests that import the changed files. Bare `--changed` checks only uncommitted changes. Changes to setup files, Vite config, `package.json`, the lockfile, `pnpm-workspace.yaml`, `patches/`, or `packages/openapi-content-mapper/src/` run the whole project. Fetch `origin/main` first so the merge base is current. Pull request CI runs the unit and browser projects the same way against the base branch without coverage; the merge queue runs both full projects with coverage.
+[`--changed`][Vitest changed] diffs from the merge base with the given ref, includes staged, unstaged, and untracked files, and selects tests that import the changed files. Bare `--changed` checks only uncommitted changes. Changes to setup files, Vite config, `package.json`, or the files in `forceRerunTriggers` in `web/vite.config.ts` run the whole project. When a spec reads a file from disk instead of importing it, add that file to `forceRerunTriggers`; avoid `?raw` imports of source files, which drop them from coverage. Fetch `origin/main` first so the merge base is current. Pull request CI runs the unit and browser projects the same way against the base branch without coverage; the merge queue runs both full projects with coverage.
 
 ## References
 
