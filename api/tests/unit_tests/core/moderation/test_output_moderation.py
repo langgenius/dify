@@ -199,6 +199,24 @@ def test_keyword_spanning_output_segment_boundary_is_rejected(
     assert (final, flagged) == ("Refused", True)
 
 
+@pytest.mark.parametrize("injected_evaluator", [False, True])
+def test_keyword_spanning_multiple_stream_buffers_is_rejected(
+    config_overrides: Callable[..., None], injected_evaluator: bool
+) -> None:
+    config_overrides(MODERATION_BUFFER_SIZE=2)
+    handler = make_keyword_handler(injected_evaluator=injected_evaluator)
+    released: list[str] = []
+
+    for token in ("xx", "bl", "oc", "ke", "d-safe"):
+        text, replacement = handler.append_new_token(token)
+        released.append(text)
+        if replacement is not None:
+            released.append(replacement)
+        assert "blocked" not in "".join(released)
+
+    assert handler.moderation_completion("xxblocked-safe") == ("Refused", True)
+
+
 def test_keyword_boundary_context_includes_existing_stream_prefix(config_overrides: Callable[..., None]) -> None:
     config_overrides(MODERATION_BUFFER_SIZE=5)
     handler = make_keyword_handler()
