@@ -163,6 +163,39 @@ export const zAgentWebApp = z.object({
 })
 
 /**
+ * ApiProviderSchemaType
+ *
+ * Enum class for api provider schema type.
+ */
+export const zApiProviderSchemaType = z.enum([
+  'openai_actions',
+  'openai_plugin',
+  'openapi',
+  'swagger',
+])
+
+/**
+ * ApiToolProviderListQuery
+ */
+export const zApiToolProviderListQuery = z.object({
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
+})
+
+/**
+ * ApiToolProviderRow
+ *
+ * One API tool provider summary, as a workspace list shows it.
+ */
+export const zApiToolProviderRow = z.object({
+  description: z.string().nullable(),
+  icon: z.union([z.record(z.string(), z.string()), z.string()]),
+  labels: z.array(z.string()),
+  name: z.string(),
+  tools: z.array(z.string()),
+})
+
+/**
  * AppApiKeyRow
  *
  * One app API key; `token` is the full secret, as the console returns it.
@@ -484,6 +517,23 @@ export const zCustomModelRow = z.object({
 })
 
 /**
+ * DefaultModelPayload
+ */
+export const zDefaultModelPayload = z.object({
+  model: z.string(),
+  provider: z.string(),
+})
+
+/**
+ * DefaultModelResponse
+ */
+export const zDefaultModelResponse = z.object({
+  model: z.string().nullable(),
+  model_type: z.string(),
+  provider: z.string().nullable(),
+})
+
+/**
  * DeploymentEdition
  *
  * Enum representing the deployment edition of the platform.
@@ -763,6 +813,18 @@ export const zHint = z.object({
 })
 
 /**
+ * ApiToolProviderListResponse
+ */
+export const zApiToolProviderListResponse = z.object({
+  data: z.array(zApiToolProviderRow),
+  has_more: z.boolean(),
+  hints: z.array(zHint).optional(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
+/**
  * AppDescribeResponse
  */
 export const zAppDescribeResponse = z.object({
@@ -848,6 +910,18 @@ export const zExpiredError = zErrorBody.and(
  */
 export const zFormSubmitResponse = z.object({
   hints: z.array(zHint).optional(),
+})
+
+/**
+ * I18nObject
+ *
+ * Model class for i18n object.
+ */
+export const zI18nObject = z.object({
+  en_US: z.string(),
+  ja_JP: z.string().nullish(),
+  pt_BR: z.string().nullish(),
+  zh_Hans: z.string().nullish(),
 })
 
 /**
@@ -1205,6 +1279,57 @@ export const zLlmModelBlock = z.object({
 })
 
 /**
+ * LoadBalancingEntry
+ */
+export const zLoadBalancingEntry = z.object({
+  credential_id: z.string().nullable(),
+  enabled: z.boolean(),
+  id: z.string(),
+  inherit: z.boolean(),
+  name: z.string(),
+})
+
+/**
+ * LoadBalancingEntryPayload
+ */
+export const zLoadBalancingEntryPayload = z.object({
+  credential_id: z.string().nullish(),
+  enabled: z.boolean(),
+})
+
+/**
+ * LoadBalancingPayload
+ */
+export const zLoadBalancingPayload = z.object({
+  enabled: z.boolean(),
+  entries: z.array(zLoadBalancingEntryPayload),
+})
+
+/**
+ * LoadBalancingSettings
+ */
+export const zLoadBalancingSettings = z.object({
+  enabled: z.boolean(),
+  entries: z.array(zLoadBalancingEntry),
+})
+
+/**
+ * MCPAuthentication
+ */
+export const zMcpAuthentication = z.object({
+  client_id: z.string(),
+  client_secret: z.string().nullish(),
+})
+
+/**
+ * MCPConfiguration
+ */
+export const zMcpConfiguration = z.object({
+  sse_read_timeout: z.number().optional().default(300),
+  timeout: z.number().optional().default(30),
+})
+
+/**
  * MarketplacePluginRow
  */
 export const zMarketplacePluginRow = z.object({
@@ -1230,6 +1355,42 @@ export const zMarketplacePluginListResponse = z.object({
   limit: z.int(),
   page: z.int(),
   total: z.int(),
+})
+
+/**
+ * McpProviderPayload
+ */
+export const zMcpProviderPayload = z.object({
+  authentication: zMcpAuthentication.nullish(),
+  configuration: zMcpConfiguration.nullish(),
+  headers: z.record(z.string(), z.string()).nullish(),
+  icon: z.string(),
+  icon_background: z.string().optional().default(''),
+  icon_type: z.string(),
+  name: z.string(),
+  server_identifier: z.string(),
+  server_url: z.string(),
+})
+
+/**
+ * McpProviderResponse
+ *
+ * An MCP provider with every secret field already masked by the service.
+ */
+export const zMcpProviderResponse = z.object({
+  authentication: zMcpAuthentication.nullable(),
+  configuration: zMcpConfiguration.nullable(),
+  icon: z.union([z.string(), z.record(z.string(), z.string())]),
+  id: z.string(),
+  identity_mode: z.string(),
+  is_dynamic_registration: z.boolean(),
+  is_team_authorization: z.boolean(),
+  masked_headers: z.record(z.string(), z.string()).nullable(),
+  name: z.string(),
+  server_identifier: z.string().nullable(),
+  server_url: z.string().nullable(),
+  tools: z.array(z.string()),
+  updated_at: z.int(),
 })
 
 /**
@@ -1407,6 +1568,47 @@ export const zModelRef = z.object({
 })
 
 /**
+ * ModelRefQuery
+ *
+ * The model a credential or settings op addresses, as query parameters.
+ */
+export const zModelRefQuery = z.object({
+  model: z.string(),
+  model_type: zModelType,
+})
+
+/**
+ * ModelSettingsPutPayload
+ */
+export const zModelSettingsPutPayload = z.object({
+  config_from: z.enum(['custom-model', 'predefined-model']),
+  enabled: z.boolean(),
+  load_balancing: zLoadBalancingPayload,
+  model: z.string(),
+  model_type: zModelType,
+})
+
+/**
+ * ModelSettingsQuery
+ */
+export const zModelSettingsQuery = z.object({
+  config_from: z.enum(['custom-model', 'predefined-model']),
+  model: z.string(),
+  model_type: zModelType,
+})
+
+/**
+ * ModelSettingsResponse
+ */
+export const zModelSettingsResponse = z.object({
+  config_from: z.enum(['custom-model', 'predefined-model']),
+  enabled: z.boolean(),
+  load_balancing: zLoadBalancingSettings,
+  model: z.string(),
+  model_type: zModelType,
+})
+
+/**
  * MultipleRetrievalFragment
  */
 export const zMultipleRetrievalFragment = z.object({
@@ -1541,6 +1743,7 @@ export const zOpenApiErrorCode = z.enum([
   'member_limit_exceeded',
   'method_not_allowed',
   'model_currently_not_support',
+  'model_not_found',
   'no_file_uploaded',
   'node_not_found',
   'node_type_not_found',
@@ -1727,6 +1930,34 @@ export const zPluginInstallTaskStatus = z.enum(['failed', 'pending', 'running', 
  */
 export const zPluginListQuery = z.object({
   category: zPluginCategory.nullish(),
+})
+
+/**
+ * PluginParameterAutoGenerateType
+ */
+export const zPluginParameterAutoGenerateType = z.enum(['prompt_instruction'])
+
+/**
+ * PluginParameterAutoGenerate
+ */
+export const zPluginParameterAutoGenerate = z.object({
+  type: zPluginParameterAutoGenerateType,
+})
+
+/**
+ * PluginParameterOption
+ */
+export const zPluginParameterOption = z.object({
+  icon: z.string().nullish(),
+  label: zI18nObject,
+  value: z.string(),
+})
+
+/**
+ * PluginParameterTemplate
+ */
+export const zPluginParameterTemplate = z.object({
+  enabled: z.boolean().optional().default(false),
 })
 
 /**
@@ -2189,6 +2420,44 @@ export const zToolCredentialUpdatePayload = z.object({
 })
 
 /**
+ * ToolEmojiIcon
+ */
+export const zToolEmojiIcon = z.object({
+  background: z.string(),
+  content: z.string(),
+})
+
+/**
+ * ApiToolProviderPayload
+ */
+export const zApiToolProviderPayload = z.object({
+  credentials: z.record(z.string(), z.unknown()),
+  custom_disclaimer: z.string().nullish(),
+  icon: zToolEmojiIcon,
+  labels: z.array(z.string()).nullish(),
+  name: z.string(),
+  privacy_policy: z.string().nullish(),
+  schema: z.string(),
+  schema_type: zApiProviderSchemaType,
+})
+
+/**
+ * ApiToolProviderResponse
+ */
+export const zApiToolProviderResponse = z.object({
+  credentials: z.record(z.string(), z.unknown()),
+  custom_disclaimer: z.string().nullable(),
+  description: z.string().nullish(),
+  icon: zToolEmojiIcon,
+  labels: z.array(z.string()),
+  name: z.string(),
+  privacy_policy: z.string().nullable(),
+  schema: z.string(),
+  schema_type: zApiProviderSchemaType,
+  tools: z.array(z.string()),
+})
+
+/**
  * ToolInputType
  *
  * Binding modes for persisted tool input values.
@@ -2224,6 +2493,11 @@ export const zToolNodeTemplate = z.object({
 })
 
 /**
+ * ToolParameterForm
+ */
+export const zToolParameterForm = z.enum(['form', 'llm', 'schema'])
+
+/**
  * ToolParameterRow
  */
 export const zToolParameterRow = z.object({
@@ -2237,6 +2511,79 @@ export const zToolParameterRow = z.object({
   options: z.array(z.string()),
   required: z.boolean(),
   type: z.string(),
+})
+
+/**
+ * ToolParameterType
+ *
+ * removes TOOLS_SELECTOR from PluginParameterType
+ */
+export const zToolParameterType = z.enum([
+  'any',
+  'app-selector',
+  'array',
+  'boolean',
+  'checkbox',
+  'date',
+  'date-range',
+  'dynamic-select',
+  'file',
+  'files',
+  'model-selector',
+  'number',
+  'object',
+  'secret-input',
+  'select',
+  'string',
+  'system-files',
+])
+
+/**
+ * ToolParameter
+ *
+ * Tool-specific parameter declaration and invocation-value normalization.
+ */
+export const zToolParameter = z.object({
+  auto_generate: zPluginParameterAutoGenerate.nullish(),
+  default: z
+    .union([
+      z.number(),
+      z.int(),
+      z.string(),
+      z.boolean(),
+      z.array(z.unknown()),
+      z.record(z.string(), z.unknown()),
+    ])
+    .nullish(),
+  form: zToolParameterForm,
+  human_description: zI18nObject.nullish(),
+  input_schema: z.record(z.string(), z.unknown()).nullish(),
+  label: zI18nObject,
+  llm_description: z.string().nullish(),
+  max: z.union([z.number(), z.int()]).nullish(),
+  min: z.union([z.number(), z.int()]).nullish(),
+  multiple: z.boolean().optional().default(false),
+  name: z.string(),
+  options: z.array(zPluginParameterOption).optional(),
+  placeholder: zI18nObject.nullish(),
+  precision: z.int().nullish(),
+  required: z.boolean().optional().default(false),
+  scope: z.string().nullish(),
+  template: zPluginParameterTemplate.nullish(),
+  type: zToolParameterType,
+})
+
+/**
+ * ToolApiEntity
+ */
+export const zToolApiEntity = z.object({
+  author: z.string(),
+  description: zI18nObject,
+  label: zI18nObject,
+  labels: z.array(z.string()).optional(),
+  name: z.string(),
+  output_schema: z.record(z.string(), z.unknown()).optional(),
+  parameters: z.array(zToolParameter).nullish(),
 })
 
 /**
@@ -2661,6 +3008,61 @@ export const zWorkflowRunPayload = z.object({
   inputs: z.record(z.string(), z.unknown()).optional(),
   workflow_id: z.string().nullish(),
   workspace_id: z.string().nullish(),
+})
+
+/**
+ * WorkflowToolParameterConfiguration
+ *
+ * Workflow tool configuration
+ */
+export const zWorkflowToolParameterConfiguration = z.object({
+  description: z.string(),
+  form: zToolParameterForm,
+  name: z.string(),
+})
+
+/**
+ * WorkflowToolCreatePayload
+ */
+export const zWorkflowToolCreatePayload = z.object({
+  description: z.string(),
+  icon: zToolEmojiIcon,
+  label: z.string(),
+  labels: z.array(z.string()).nullish(),
+  name: z.string(),
+  parameters: z.array(zWorkflowToolParameterConfiguration).optional(),
+  privacy_policy: z.string().nullish(),
+  workflow_app_id: z.string(),
+})
+
+/**
+ * WorkflowToolResponse
+ */
+export const zWorkflowToolResponse = z.object({
+  description: z.string(),
+  icon: zToolEmojiIcon,
+  label: z.string(),
+  name: z.string(),
+  output_schema: z.record(z.string(), z.unknown()),
+  parameters: z.array(zWorkflowToolParameterConfiguration),
+  privacy_policy: z.string().nullable(),
+  synced: z.boolean(),
+  tool: zToolApiEntity,
+  workflow_app_id: z.string(),
+  workflow_tool_id: z.string(),
+})
+
+/**
+ * WorkflowToolSetPayload
+ */
+export const zWorkflowToolSetPayload = z.object({
+  description: z.string(),
+  icon: zToolEmojiIcon,
+  label: z.string(),
+  labels: z.array(z.string()).nullish(),
+  name: z.string(),
+  parameters: z.array(zWorkflowToolParameterConfiguration).optional(),
+  privacy_policy: z.string().nullish(),
 })
 
 /**
@@ -3614,6 +4016,66 @@ export const zGetWorkspacesByWorkspaceIdPath = z.object({
  */
 export const zGetWorkspacesByWorkspaceIdResponse = zWorkspaceDetailResponse
 
+export const zGetWorkspacesByWorkspaceIdApiToolProvidersPath = z.object({
+  workspace_id: z.string(),
+})
+
+export const zGetWorkspacesByWorkspaceIdApiToolProvidersQuery = z.object({
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
+})
+
+/**
+ * API tool providers
+ */
+export const zGetWorkspacesByWorkspaceIdApiToolProvidersResponse = zApiToolProviderListResponse
+
+export const zPostWorkspacesByWorkspaceIdApiToolProvidersBody = zApiToolProviderPayload
+
+export const zPostWorkspacesByWorkspaceIdApiToolProvidersPath = z.object({
+  workspace_id: z.string(),
+})
+
+/**
+ * Provider created
+ */
+export const zPostWorkspacesByWorkspaceIdApiToolProvidersResponse = zApiToolProviderResponse
+
+export const zDeleteWorkspacesByWorkspaceIdApiToolProvidersByProviderNamePath = z.object({
+  provider_name: z.string(),
+  workspace_id: z.string(),
+})
+
+/**
+ * Provider deleted
+ */
+export const zDeleteWorkspacesByWorkspaceIdApiToolProvidersByProviderNameResponse =
+  zSimpleResultResponse
+
+export const zGetWorkspacesByWorkspaceIdApiToolProvidersByProviderNamePath = z.object({
+  provider_name: z.string(),
+  workspace_id: z.string(),
+})
+
+/**
+ * API tool provider
+ */
+export const zGetWorkspacesByWorkspaceIdApiToolProvidersByProviderNameResponse =
+  zApiToolProviderResponse
+
+export const zPutWorkspacesByWorkspaceIdApiToolProvidersByProviderNameBody = zApiToolProviderPayload
+
+export const zPutWorkspacesByWorkspaceIdApiToolProvidersByProviderNamePath = z.object({
+  provider_name: z.string(),
+  workspace_id: z.string(),
+})
+
+/**
+ * Provider replaced
+ */
+export const zPutWorkspacesByWorkspaceIdApiToolProvidersByProviderNameResponse =
+  zApiToolProviderResponse
+
 export const zPostWorkspacesByWorkspaceIdAppsAdvancedChatBody = zCreateAppPayload
 
 export const zPostWorkspacesByWorkspaceIdAppsAdvancedChatPath = z.object({
@@ -3667,6 +4129,28 @@ export const zPostWorkspacesByWorkspaceIdAppsWorkflowPath = z.object({
  * Created
  */
 export const zPostWorkspacesByWorkspaceIdAppsWorkflowResponse = zCreatedAppResponse
+
+export const zGetWorkspacesByWorkspaceIdDefaultModelsByModelTypePath = z.object({
+  model_type: z.string(),
+  workspace_id: z.string(),
+})
+
+/**
+ * Default model
+ */
+export const zGetWorkspacesByWorkspaceIdDefaultModelsByModelTypeResponse = zDefaultModelResponse
+
+export const zPutWorkspacesByWorkspaceIdDefaultModelsByModelTypeBody = zDefaultModelPayload
+
+export const zPutWorkspacesByWorkspaceIdDefaultModelsByModelTypePath = z.object({
+  model_type: z.string(),
+  workspace_id: z.string(),
+})
+
+/**
+ * Default model set
+ */
+export const zPutWorkspacesByWorkspaceIdDefaultModelsByModelTypeResponse = zDefaultModelResponse
 
 export const zGetWorkspacesByWorkspaceIdKnowledgeBasesPath = z.object({
   workspace_id: z.string(),
@@ -3879,6 +4363,60 @@ export const zGetWorkspacesByWorkspaceIdMarketplacePluginsQuery = z.object({
  */
 export const zGetWorkspacesByWorkspaceIdMarketplacePluginsResponse = zMarketplacePluginListResponse
 
+export const zPostWorkspacesByWorkspaceIdMcpProvidersBody = zMcpProviderPayload
+
+export const zPostWorkspacesByWorkspaceIdMcpProvidersPath = z.object({
+  workspace_id: z.string(),
+})
+
+/**
+ * Provider created
+ */
+export const zPostWorkspacesByWorkspaceIdMcpProvidersResponse = zMcpProviderResponse
+
+export const zDeleteWorkspacesByWorkspaceIdMcpProvidersByProviderIdPath = z.object({
+  provider_id: z.string(),
+  workspace_id: z.string(),
+})
+
+/**
+ * Provider deleted
+ */
+export const zDeleteWorkspacesByWorkspaceIdMcpProvidersByProviderIdResponse = zSimpleResultResponse
+
+export const zGetWorkspacesByWorkspaceIdMcpProvidersByProviderIdPath = z.object({
+  provider_id: z.string(),
+  workspace_id: z.string(),
+})
+
+/**
+ * MCP provider
+ */
+export const zGetWorkspacesByWorkspaceIdMcpProvidersByProviderIdResponse = zMcpProviderResponse
+
+export const zPutWorkspacesByWorkspaceIdMcpProvidersByProviderIdBody = zMcpProviderPayload
+
+export const zPutWorkspacesByWorkspaceIdMcpProvidersByProviderIdPath = z.object({
+  provider_id: z.string(),
+  workspace_id: z.string(),
+})
+
+/**
+ * Provider updated
+ */
+export const zPutWorkspacesByWorkspaceIdMcpProvidersByProviderIdResponse = zMcpProviderResponse
+
+export const zPostWorkspacesByWorkspaceIdMcpProvidersByProviderIdRefreshPath = z.object({
+  provider_id: z.string(),
+  workspace_id: z.string(),
+})
+
+/**
+ * Provider refreshed
+ */
+export const zPostWorkspacesByWorkspaceIdMcpProvidersByProviderIdRefreshResponse =
+  zMcpProviderResponse
+
 export const zGetWorkspacesByWorkspaceIdMembersPath = z.object({
   workspace_id: z.string(),
 })
@@ -3980,6 +4518,35 @@ export const zPatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByC
 export const zPatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponse =
   zCredentialWriteResponse
 
+export const zPostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdActivatePath =
+  z.object({
+    credential_id: z.string(),
+    provider: z.string(),
+    workspace_id: z.string(),
+  })
+
+/**
+ * Credential activated
+ */
+export const zPostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdActivateResponse =
+  zCredentialWriteResponse
+
+export const zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsPath = z.object({
+  provider: z.string(),
+  workspace_id: z.string(),
+})
+
+export const zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsQuery = z.object({
+  model: z.string(),
+  model_type: z.enum(['llm', 'moderation', 'rerank', 'speech2text', 'text-embedding', 'tts']),
+})
+
+/**
+ * Model deleted
+ */
+export const zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsResponse =
+  zSimpleResultResponse
+
 export const zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsBody =
   zModelCredentialCreatePayload
 
@@ -3993,6 +4560,25 @@ export const zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentia
  */
 export const zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsResponse =
   zCredentialWriteResponse
+
+export const zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdPath =
+  z.object({
+    credential_id: z.string(),
+    provider: z.string(),
+    workspace_id: z.string(),
+  })
+
+export const zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdQuery =
+  z.object({
+    model: z.string(),
+    model_type: z.enum(['llm', 'moderation', 'rerank', 'speech2text', 'text-embedding', 'tts']),
+  })
+
+/**
+ * Credential deleted
+ */
+export const zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponse =
+  zSimpleResultResponse
 
 export const zPatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdBody =
   zModelCredentialUpdatePayload
@@ -4009,6 +4595,53 @@ export const zPatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredenti
  */
 export const zPatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponse =
   zCredentialWriteResponse
+
+export const zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdActivateBody =
+  zModelRef
+
+export const zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdActivatePath =
+  z.object({
+    credential_id: z.string(),
+    provider: z.string(),
+    workspace_id: z.string(),
+  })
+
+/**
+ * Credential activated
+ */
+export const zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdActivateResponse =
+  zCredentialWriteResponse
+
+export const zGetWorkspacesByWorkspaceIdModelProvidersByProviderModelsSettingsPath = z.object({
+  provider: z.string(),
+  workspace_id: z.string(),
+})
+
+export const zGetWorkspacesByWorkspaceIdModelProvidersByProviderModelsSettingsQuery = z.object({
+  config_from: z.enum(['custom-model', 'predefined-model']),
+  model: z.string(),
+  model_type: z.enum(['llm', 'moderation', 'rerank', 'speech2text', 'text-embedding', 'tts']),
+})
+
+/**
+ * Model settings
+ */
+export const zGetWorkspacesByWorkspaceIdModelProvidersByProviderModelsSettingsResponse =
+  zModelSettingsResponse
+
+export const zPutWorkspacesByWorkspaceIdModelProvidersByProviderModelsSettingsBody =
+  zModelSettingsPutPayload
+
+export const zPutWorkspacesByWorkspaceIdModelProvidersByProviderModelsSettingsPath = z.object({
+  provider: z.string(),
+  workspace_id: z.string(),
+})
+
+/**
+ * Model settings
+ */
+export const zPutWorkspacesByWorkspaceIdModelProvidersByProviderModelsSettingsResponse =
+  zModelSettingsResponse
 
 export const zGetWorkspacesByWorkspaceIdModelsPath = z.object({
   workspace_id: z.string(),
@@ -4223,6 +4856,52 @@ export const zGetWorkspacesByWorkspaceIdToolsQuery = z.object({
  * Tools
  */
 export const zGetWorkspacesByWorkspaceIdToolsResponse = zToolListResponse
+
+export const zPostWorkspacesByWorkspaceIdWorkflowToolsBody = zWorkflowToolCreatePayload
+
+export const zPostWorkspacesByWorkspaceIdWorkflowToolsPath = z.object({
+  workspace_id: z.string(),
+})
+
+/**
+ * Workflow tool created
+ */
+export const zPostWorkspacesByWorkspaceIdWorkflowToolsResponse = zWorkflowToolResponse
+
+export const zDeleteWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdPath = z.object({
+  workflow_tool_id: z.string(),
+  workspace_id: z.string(),
+})
+
+/**
+ * Workflow tool deleted
+ */
+export const zDeleteWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdResponse =
+  zSimpleResultResponse
+
+export const zGetWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdPath = z.object({
+  workflow_tool_id: z.string(),
+  workspace_id: z.string(),
+})
+
+/**
+ * Workflow tool
+ */
+export const zGetWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdResponse =
+  zWorkflowToolResponse
+
+export const zPutWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdBody = zWorkflowToolSetPayload
+
+export const zPutWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdPath = z.object({
+  workflow_tool_id: z.string(),
+  workspace_id: z.string(),
+})
+
+/**
+ * Workflow tool replaced
+ */
+export const zPutWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdResponse =
+  zWorkflowToolResponse
 
 export const zPostWorkspacesByWorkspaceIdSwitchPath = z.object({
   workspace_id: z.string(),

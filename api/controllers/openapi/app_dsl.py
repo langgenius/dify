@@ -177,6 +177,7 @@ class AppDslCheckApi(Resource):
     @endpoint(
         context="workspace",
         op="check.console_app.dsl",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         effect=Effect.READ,
         summary="Check a DSL without importing it: every problem with its node and field",
@@ -295,6 +296,7 @@ class AppDslCheckDependenciesApi(Resource):
     @endpoint(
         context="workspace",
         op="check.console_app.dependency",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Check plugin dependencies of an app",
         examples=(Example(title="Check which plugins an app needs", input={"app_id": "<app_id>"}),),

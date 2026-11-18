@@ -103,6 +103,7 @@ class OpenApiErrorCode(StrEnum):
     CREDENTIAL_INVALID = "credential_invalid"
     CREDENTIAL_OAUTH_ONLY = "credential_oauth_only"
     CREDENTIAL_NOT_FOUND = "credential_not_found"
+    MODEL_NOT_FOUND = "model_not_found"
     PLUGIN_SERVICE_UNAVAILABLE = "plugin_service_unavailable"
     DSL_INVALID = "dsl_invalid"
     DRAFT_CHANGED = "draft_changed"
@@ -518,6 +519,13 @@ class CredentialNotFound(OpenApiError):  # noqa: N818
     error_code = OpenApiErrorCode.CREDENTIAL_NOT_FOUND
     description = "No credential with this id for this provider that you can see."
     hint = "List them with the describe op of the provider."
+
+
+class ModelNotFound(OpenApiError):  # noqa: N818
+    code = 404
+    error_code = OpenApiErrorCode.MODEL_NOT_FOUND
+    description = "No custom model with this name and type for this provider."
+    hint = "Custom models are listed under custom_models of describe.model_provider."
 
 
 class PluginServiceUnavailable(OpenApiError):  # noqa: N818
