@@ -4,6 +4,7 @@ from collections.abc import Callable, Generator, Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from types import SimpleNamespace
+from typing import Never
 from unittest import mock
 from unittest.mock import MagicMock, create_autospec
 
@@ -28,6 +29,7 @@ from graphon.engine_events import NodeRunFailedEvent, NodeRunStartedEvent
 from graphon.enums import (
     BuiltinNodeTypes,
     ErrorStrategy,
+    WorkflowExecutionStatus,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
@@ -44,8 +46,14 @@ from models.dataset import (
     PipelineCustomizedTemplate,
     PipelineRecommendedPlugin,
 )
-from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
-from models.workflow import Workflow, WorkflowRun
+from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
+from models.workflow import (
+    Workflow,
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionTriggeredFrom,
+    WorkflowRun,
+    WorkflowRunTriggeredFrom,
+)
 from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.knowledge.dataset_read_repository import get_pipeline_dataset
 from services.credentials.query import CredentialQuery
@@ -1591,35 +1599,74 @@ class TestRagPipelineServiceCases:
         assert result == []
 
     @staticmethod
-    def test_get_rag_pipeline_workflow_run_node_executions_assembles_configured_repository_results(
-        mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
+    def test_get_rag_pipeline_workflow_run_node_executions_returns_persisted_traces(
+        sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
     ) -> None:
+        """Read the persisted run and return only its public node execution traces."""
         pipeline = _make_pipeline()
-        mocker.patch.object(
-            rag_pipeline_service.service, "get_rag_pipeline_workflow_run", return_value=WorkflowRun(id="run-1")
-        )
-        node_repo = rag_pipeline_service.service._node_execution_service_repo
-        expected_executions = ["n1", "n2"]
-        expected_traces = ["retry-n1", "n1", "n2"]
-        mock_get_executions = mocker.patch.object(
-            node_repo, "get_executions_by_workflow_run", return_value=expected_executions
-        )
-        mock_assemble = mocker.patch(
-            "services.rag_pipeline.rag_pipeline.assemble_workflow_node_execution_traces",
-            return_value=expected_traces,
-        )
-
-        result = rag_pipeline_service.service.get_rag_pipeline_workflow_run_node_executions(
-            pipeline=pipeline, run_id="run-1", user=_make_account()
-        )
-
-        assert result == expected_traces
-        mock_get_executions.assert_called_once_with(
+        workflow_run = WorkflowRun(
+            id="run-1",
             tenant_id=pipeline.tenant_id,
             app_id=pipeline.id,
-            workflow_run_id="run-1",
+            workflow_id="wf-1",
+            type=ModelWorkflowType.WORKFLOW,
+            triggered_from=WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN,
+            version=Workflow.VERSION_DRAFT,
+            graph="{}",
+            inputs="{}",
+            status=WorkflowExecutionStatus.SUCCEEDED,
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="u1",
         )
-        mock_assemble.assert_called_once_with(expected_executions, node_repo, session=mock.ANY)
+        node_execution = WorkflowNodeExecutionModel(
+            id="execution-1",
+            tenant_id=pipeline.tenant_id,
+            app_id=pipeline.id,
+            workflow_id="wf-1",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            workflow_run_id=workflow_run.id,
+            index=1,
+            node_execution_id="node-execution-1",
+            node_id="node-1",
+            node_type="start",
+            title="Start",
+            inputs=json.dumps({"query": "question"}),
+            process_data=json.dumps({"step": "complete"}),
+            outputs=json.dumps({"answer": "42"}),
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="u1",
+        )
+        node_execution_from_another_run = WorkflowNodeExecutionModel(
+            id="unrelated-execution",
+            tenant_id=pipeline.tenant_id,
+            app_id=pipeline.id,
+            workflow_id="wf-1",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            workflow_run_id="another-run",
+            index=2,
+            node_execution_id="unrelated-node-execution",
+            node_id="unrelated-node",
+            node_type="start",
+            title="Unrelated Start",
+            inputs="{}",
+            process_data="{}",
+            outputs="{}",
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="u1",
+        )
+        sqlite_session.add_all([workflow_run, node_execution, node_execution_from_another_run])
+        sqlite_session.commit()
+
+        service = RagPipelineService(session=sqlite_session, session_maker=sqlite_session_factory)
+        result = service.get_rag_pipeline_workflow_run_node_executions(
+            pipeline=pipeline, run_id=workflow_run.id, user=_make_account()
+        )
+
+        assert [(trace.id, trace.node_id, trace.status, trace.process_data, trace.outputs) for trace in result] == [
+            ("execution-1", "node-1", "succeeded", {"step": "complete"}, {"answer": "42"})
+        ]
 
     @staticmethod
     def test_get_recommended_plugins_returns_empty_when_no_active_plugins(
@@ -1755,7 +1802,7 @@ class TestRagPipelineServiceCases:
             def __iter__(self) -> Iterator[object]:
                 return self
 
-            def __next__(self) -> object:
+            def __next__(self) -> Never:
                 raise RuntimeError("doc failed")
 
         runtime.get_online_document_pages.return_value = _FailingIterator()

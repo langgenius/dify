@@ -351,7 +351,7 @@ def test_asr_valid_file_invocation(monkeypatch: pytest.MonkeyPatch, sqlite_sessi
     model_instance = type("M", (), {"invoke_speech2text": lambda self, file: "transcript"})()
     model_manager = type("Mgr", (), {"get_model_instance": lambda *a, **k: model_instance})()
     monkeypatch.setattr("core.tools.builtin_tool.providers.audio.tools.asr.download", lambda file: b"audio-bytes")
-    captured_manager_kwargs: dict[str, object] = {}
+    captured_manager_kwargs: dict[str, str] = {}
 
     monkeypatch.setattr(
         "core.tools.builtin_tool.providers.audio.tools.asr.ModelManager.for_tenant",
@@ -382,7 +382,7 @@ def test_asr_available_models_and_runtime_parameters(monkeypatch: pytest.MonkeyP
 
 def test_tts_invoke_returns_messages(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
     tts = _build_builtin_tool(TTSTool)
-    captured_manager_kwargs: dict[str, object] = {}
+    captured_manager_kwargs: dict[str, str] = {}
     voices_model_instance = type(
         "TTSM",
         (),
