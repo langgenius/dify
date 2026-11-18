@@ -191,17 +191,21 @@ def _consume_safely(frame: str, *, job_id: str, store: RunJobStore, stopper: Job
 
 
 def _end_of_stream(job_id: str, store: RunJobStore) -> None:
-    """Apply the end-of-stream rule.
+    """Record how the reader ended, then let go of the alive key.
 
     Precondition: the stream ended or raised.
-    Postcondition: a MESSAGE job without a final status is FAILED for JobFailure.NO_RESULT; other jobs are unchanged.
+    Postcondition: a MESSAGE job without an ending is FAILED for NO_RESULT; a GRAPH job without a run id is FAILED
+    for RUN_NOT_CONFIRMED; a GRAPH job with a run id is left to its run. The alive key is deleted last, so a viewer
+    that finds it gone reads this reader's final writes.
     """
     record = store.get(job_id)
     if record is None:
         return
-    if record.family is not JobFamily.MESSAGE:
-        return
-    store.settle(job_id, JobEnding(status=JobStatus.FAILED, failure=JobFailure.NO_RESULT))
+    if record.family is JobFamily.MESSAGE:
+        store.settle(job_id, JobEnding(status=JobStatus.FAILED, failure=JobFailure.NO_RESULT))
+    elif record.run_id is None:
+        store.settle(job_id, JobEnding(status=JobStatus.FAILED, failure=JobFailure.RUN_NOT_CONFIRMED))
+    store.drop_alive(job_id)
 
 
 def _keep_alive(*, job_id: str, store: RunJobStore, stop: threading.Event, interval: float) -> None:
@@ -240,10 +244,10 @@ def read_to_end(
     """Consume a run's SSE frames and record them as job state.
 
     Precondition: the job exists.
-    Postcondition: every frame was consumed, ids are stored, a MESSAGE job has a final status, and
-    frames is closed when it has a close method. For as long as this call runs, whether or not frames arrive, the
-    alive key is refreshed every alive_refresh_seconds; the refresh stops before it returns. A frame whose handling
-    raises is logged and skipped; a stream that raises is logged and treated as ended.
+    Postcondition: every frame was consumed, ids are stored, the ending rule of _end_of_stream was applied, and
+    frames is closed when it has a close method. While frames are read, whether or not they arrive, the alive key
+    is refreshed every alive_refresh_seconds; the refresh stops and the key is deleted before it returns. A frame
+    whose handling raises is logged and skipped; a stream that raises is logged and treated as ended.
     """
     stop = threading.Event()
     alive = threading.Thread(

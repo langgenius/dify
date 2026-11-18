@@ -171,6 +171,10 @@ class RedisRunJobStore:
         """
         self._redis.set(self._alive_name(job_id), _ALIVE_VALUE, ex=ALIVE_TTL_SECONDS)
 
+    def drop_alive(self, job_id: str) -> None:
+        """Delete the alive key. Precondition: none. Postcondition: is_alive is false until the next touch."""
+        self._redis.delete(self._alive_name(job_id))
+
     def is_alive(self, job_id: str) -> bool:
         """Report whether the alive key is present.
 

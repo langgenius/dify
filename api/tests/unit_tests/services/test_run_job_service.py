@@ -2,7 +2,7 @@ import json
 import threading
 import uuid
 from collections.abc import Iterator
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import override
 
 import pytest
@@ -368,6 +368,38 @@ def test_view_of_a_graph_job_without_a_run_id_and_without_a_reader_fails_and_is_
     stored = harness.store.get(job.id)
     assert stored is not None
     assert (stored.status, stored.failure) == (JobStatus.FAILED, JobFailure.RUN_NOT_CONFIRMED)
+
+
+class ReaderEndsDuringGetStore(RedisRunJobStore):
+    """The reader stores the run id and ends right after the view has read the record."""
+
+    @override
+    def get(self, job_id: str) -> JobRecord | None:
+        record = super().get(job_id)
+        self.record_ids(job_id, JobIds(run_id="run-1"))
+        self.drop_alive(job_id)
+        return record
+
+
+def test_a_view_reads_the_alive_key_before_the_record_so_a_reader_that_just_ended_is_not_failed() -> None:
+    harness = _harness()
+    racing = ReaderEndsDuringGetStore(redis_client=InMemoryRedis())
+    service = RunJobService(
+        store=racing,
+        results=harness.results,
+        tasks=harness.tasks,
+        max_background_runs=1,
+        max_waiters=1,
+        sleep=harness.clock.sleep,
+        monotonic=harness.clock.monotonic,
+    )
+    job = _record()
+    racing.create(job)
+
+    view = service.view(OWNER, job.id)
+
+    assert view.status is JobStatus.RUNNING
+    assert racing.get(job.id) == replace(job, run_id="run-1")
 
 
 def test_view_of_a_graph_job_without_a_run_id_and_with_a_live_reader_keeps_running() -> None:
