@@ -10,12 +10,16 @@ import pytest
 from flask import Flask, g
 
 from core.app.entities.task_entities import StreamEvent
+from graphon.enums import WorkflowExecutionStatus
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from repositories.run_job_store import RedisRunJobStore
 from services.app_task_service import WorkflowStopOutcome
 from services.run_job_contracts import JobEnding, JobFailure, JobIds, JobOwner, JobRecord, JobStatus
+from services.run_job_frames import RunFrame
 from services.run_job_service import (
+    GRAPH_JOBS,
+    MESSAGE_JOBS,
     POLL_INTERVAL_SECONDS,
     READER_THREAD_NAME,
     RUN_TIME_LIMIT_MARGIN,
@@ -27,6 +31,7 @@ from services.run_job_service import (
     RunJobService,
     RunResult,
     TaskControlStopper,
+    family_of,
 )
 from tests.unit_tests.services.run_job_fakes import (
     RUN_TIME_LIMIT,
@@ -1015,3 +1020,38 @@ def test_stop_of_a_message_job_whose_reader_died_reports_interrupted_and_sends_n
 
     assert (view.status, view.error) == (JobStatus.FAILED, JobFailure.RUN_INTERRUPTED.message)
     assert harness.tasks.message_stops == []
+
+
+def test_each_mode_that_runs_jobs_has_exactly_one_family() -> None:
+    for mode in (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT):
+        assert family_of(mode) is GRAPH_JOBS
+    for mode in (AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION):
+        assert family_of(mode) is MESSAGE_JOBS
+    with pytest.raises(ValueError, match="does not support run jobs"):
+        family_of(AppMode.RAG_PIPELINE)
+
+
+def test_each_family_ends_a_job_its_own_way() -> None:
+    graph, message = _record(AppMode.WORKFLOW), _record(AppMode.CHAT)
+    not_confirmed = JobEnding(status=JobStatus.FAILED, failure=JobFailure.RUN_NOT_CONFIRMED)
+    no_result = JobEnding(status=JobStatus.FAILED, failure=JobFailure.NO_RESULT)
+
+    assert GRAPH_JOBS.at_stream_end(graph) == not_confirmed
+    assert GRAPH_JOBS.at_stream_end(replace(graph, run_id="run-1")) is None
+    assert MESSAGE_JOBS.at_stream_end(message) == no_result
+    end = RunFrame(event=StreamEvent.MESSAGE_END, ids=JobIds())
+    error = RunFrame(event=StreamEvent.ERROR, ids=JobIds(), error="boom")
+    finished = RunFrame(event=StreamEvent.WORKFLOW_FINISHED, ids=JobIds(), run_status=WorkflowExecutionStatus.STOPPED)
+    assert GRAPH_JOBS.at_frame(graph, error) is None
+    assert GRAPH_JOBS.at_frame(graph, end) == JobEnding(status=JobStatus.SUCCEEDED)
+    assert GRAPH_JOBS.at_frame(replace(graph, run_id="run-1"), end) is None
+    assert GRAPH_JOBS.at_frame(graph, finished) == JobEnding(status=JobStatus.STOPPED)
+    assert MESSAGE_JOBS.at_frame(message, finished) is None
+    assert MESSAGE_JOBS.at_frame(message, error) == JobEnding(status=JobStatus.FAILED, error="boom")
+    assert MESSAGE_JOBS.at_frame(message, end) == JobEnding(status=JobStatus.SUCCEEDED)
+    assert MESSAGE_JOBS.at_frame(replace(message, stop_requested=True), end) == JobEnding(status=JobStatus.STOPPED)
+    assert {event for family in (GRAPH_JOBS, MESSAGE_JOBS) for event in family.ending_events} == {
+        StreamEvent.WORKFLOW_FINISHED,
+        StreamEvent.MESSAGE_END,
+        StreamEvent.ERROR,
+    }
