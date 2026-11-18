@@ -34,6 +34,7 @@ from core.tools.errors import ToolInvokeError
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.common_entities import I18nObject as ModelI18nObject
 from graphon.model_runtime.entities.model_entities import FetchFrom, ModelPropertyKey, ModelType
+from graphon.model_runtime.protocols.tts_runtime import TTSModelVoice
 from services.entities.model_provider_entities import CustomConfigurationStatus, ProviderWithModelsResponse
 
 
@@ -387,7 +388,7 @@ def test_tts_invoke_returns_messages(monkeypatch: pytest.MonkeyPatch, sqlite_ses
         "TTSM",
         (),
         {
-            "get_tts_voices": lambda self: [{"value": "voice-1"}],
+            "get_tts_voices": lambda self: [{"name": "Voice 1", "value": "voice-1"}],
             "invoke_tts": lambda self, **kwargs: [b"a", b"b"],
         },
     )()
@@ -420,10 +421,10 @@ def test_tts_tool_raises_when_runtime_missing(monkeypatch: pytest.MonkeyPatch, s
 
 @pytest.mark.parametrize(
     "voices",
-    [[{"value": None}], []],
+    [[], [{"name": "Voice", "value": ""}]],
 )
 def test_tts_tool_raises_when_voice_unavailable(
-    monkeypatch: pytest.MonkeyPatch, voices: list[dict[str, object]], sqlite_session: Session
+    monkeypatch: pytest.MonkeyPatch, voices: list[TTSModelVoice], sqlite_session: Session
 ) -> None:
     tts = _build_builtin_tool(TTSTool)
     tts.runtime = ToolRuntime(tenant_id="tenant-1", invoke_from=InvokeFrom.DEBUGGER)

@@ -8,6 +8,7 @@ from typing import Never
 
 import httpx
 import pytest
+from pydantic import ValidationError
 from pytest_mock import MockerFixture
 
 from core.plugin.entities.plugin import PluginInstallationSource
@@ -15,6 +16,7 @@ from core.plugin.entities.plugin_daemon import (
     PluginDaemonInnerError,
     PluginModelProviderDeclaration,
     PluginStringResultResponse,
+    PluginVoicesResponse,
 )
 from core.plugin.impl import base as client_module
 from core.plugin.impl.exc import PluginInvokeError, PluginLLMPollingUnsupportedError
@@ -740,6 +742,14 @@ class TestModelClientCases:
                 )
                 == []
             )
+
+        def test_plugin_voices_response_rejects_null_voice_value(self) -> None:
+            with pytest.raises(ValidationError) as exc_info:
+                PluginVoicesResponse.model_validate({"voices": [{"name": "Alloy", "value": None}]})
+
+            error = exc_info.value.errors()[0]
+            assert error["loc"] == ("voices", 0, "value")
+            assert error["type"] == "string_type"
 
         def test_invoke_speech_to_text(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
