@@ -1731,13 +1731,13 @@ export const apps = {
  * before any login check); a body above the cap sent without a ``Content-Length`` (chunked) is
  * cut at the cap and answers 400 with a JSON-RPC parse error; 403 with a JSON-RPC error, before the body is
  * read, when an ``Origin`` header is present and is neither this server's own nor in
- * ``OPENAPI_CORS_ALLOW_ORIGINS`` (no ``Origin``: unchanged); 401 when
- * the token is not real; the login check's own status when it answers a server error.
+ * ``OPENAPI_CORS_ALLOW_ORIGINS`` (no ``Origin``: unchanged); for ``initialize`` and
+ * ``tools/list``, the status of ``admit_bearer``'s error (401, 403, 429 or 503) as any operation answers it.
  */
 export const post22 = oc
   .route({
     description:
-      "Precondition: a POST to the openapi blueprint. Postcondition: 200 with a JSON-RPC reply\n(result, or error for an unsupported protocol version or tool name); 202 with no body for\na notification or an unparsable message that has no ``id``; 400 with a JSON-RPC error for\nany other unparsable message; 413 with a JSON-RPC error when the body is above\n``MCP_MAX_BODY_BYTES`` and sent with a ``Content-Length`` (checked before the body is read and\nbefore any login check); a body above the cap sent without a ``Content-Length`` (chunked) is\ncut at the cap and answers 400 with a JSON-RPC parse error; 403 with a JSON-RPC error, before the body is\nread, when an ``Origin`` header is present and is neither this server's own nor in\n``OPENAPI_CORS_ALLOW_ORIGINS`` (no ``Origin``: unchanged); 401 when\nthe token is not real; the login check's own status when it answers a server error.",
+      "Precondition: a POST to the openapi blueprint. Postcondition: 200 with a JSON-RPC reply\n(result, or error for an unsupported protocol version or tool name); 202 with no body for\na notification or an unparsable message that has no ``id``; 400 with a JSON-RPC error for\nany other unparsable message; 413 with a JSON-RPC error when the body is above\n``MCP_MAX_BODY_BYTES`` and sent with a ``Content-Length`` (checked before the body is read and\nbefore any login check); a body above the cap sent without a ``Content-Length`` (chunked) is\ncut at the cap and answers 400 with a JSON-RPC parse error; 403 with a JSON-RPC error, before the body is\nread, when an ``Origin`` header is present and is neither this server's own nor in\n``OPENAPI_CORS_ALLOW_ORIGINS`` (no ``Origin``: unchanged); for ``initialize`` and\n``tools/list``, the status of ``admit_bearer``'s error (401, 403, 429 or 503) as any operation answers it.",
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postMcp',
