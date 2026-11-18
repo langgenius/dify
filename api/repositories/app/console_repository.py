@@ -30,6 +30,7 @@ from models.agent import (
     APP_BACKED_AGENT_SOURCES,
     Agent,
     AgentIconType,
+    AgentKind,
     AgentScope,
     AgentStatus,
     AgentWorkspaceBinding,
@@ -37,8 +38,18 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.dataset import DatasetCollectionBinding
-from models.enums import AppStatus
-from models.model import App, AppAnnotationSetting, AppMode, AppModelConfig, AppStar, Conversation, IconType
+from models.enums import AppStatus, TagType
+from models.model import (
+    App,
+    AppAnnotationSetting,
+    AppMode,
+    AppModelConfig,
+    AppStar,
+    Conversation,
+    IconType,
+    Tag,
+    TagBinding,
+)
 from models.skill import AgentSkillBinding
 from models.workflow import Workflow
 from repositories.app.response import app_record, app_summary
@@ -527,6 +538,12 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
     def _build_app_list_filters(
         user_id: str, tenant_id: str, params: AppListBaseParams, session: Session
     ) -> list[sa.ColumnElement[bool]]:
+        """Build tenant-owned filters before App counting and pagination.
+
+        Preconditions: params is caller-validated and session is caller-owned.
+        Postconditions: Agent mode matches all tags against canonical Dify roster
+        IDs, while other modes keep the existing Studio App tag behavior.
+        """
         filters = [App.tenant_id == tenant_id, App.is_universal.is_(False)]
 
         if params.mode == "workflow":
@@ -582,10 +599,23 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
             )
         if params.tag_ids and len(params.tag_ids) > 0:
             target_ids = TagRepository.get_target_ids_by_tag_ids(
-                "app", tenant_id, params.tag_ids, session, match_all=True
+                "agent" if params.mode == "agent" else "app", tenant_id, params.tag_ids, session, match_all=True
             )
             if target_ids and len(target_ids) > 0:
-                filters.append(App.id.in_(target_ids))
+                if params.mode == "agent":
+                    filters.append(
+                        App.id.in_(
+                            select(Agent.app_id).where(
+                                Agent.tenant_id == tenant_id,
+                                Agent.scope == AgentScope.ROSTER,
+                                Agent.status == AgentStatus.ACTIVE,
+                                Agent.agent_kind == AgentKind.DIFY_AGENT,
+                                Agent.id.in_(target_ids),
+                            )
+                        )
+                    )
+                else:
+                    filters.append(App.id.in_(target_ids))
             else:
                 return []
 
@@ -1140,9 +1170,22 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
 
     @classmethod
     def delete_app_record(cls, app: App, *, account_id: str | None, session: Session) -> AppDeletion:
-        """Stage App deletion; the lifecycle adapter retires Agent resources in the same transaction."""
+        """Stage App deletion and Agent cleanup within the caller's transaction.
+
+        Preconditions: app belongs to the admitted tenant. Postconditions: the
+        backing roster Agent is locked before cleanup, archived without Agent
+        tag bindings, and all unrelated tags and assets are preserved. Never
+        commits; the lifecycle adapter retires resources in this transaction.
+        """
         app_event = AppEvent(app.id, app.tenant_id, str(app.mode))
         backing_agent = cls._get_backing_agent(app, session=session)
+        if backing_agent is not None:
+            backing_agent = session.scalar(
+                select(Agent)
+                .where(Agent.tenant_id == app.tenant_id, Agent.id == backing_agent.id)
+                .with_for_update()
+                .execution_options(populate_existing=True)
+            )
         workflow_agent_ids = set(
             session.scalars(
                 select(Agent.id).where(
@@ -1183,6 +1226,15 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
                 )
             )
         if backing_agent is not None:
+            session.execute(
+                delete(TagBinding).where(
+                    TagBinding.tenant_id == app.tenant_id,
+                    TagBinding.target_id == backing_agent.id,
+                    TagBinding.tag_id.in_(
+                        select(Tag.id).where(Tag.tenant_id == app.tenant_id, Tag.type == TagType.AGENT)
+                    ),
+                )
+            )
             now = naive_utc_now()
             backing_agent.status = AgentStatus.ARCHIVED
             backing_agent.archived_by = account_id

@@ -38,8 +38,8 @@ from models.agent_config_entities import (
     DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
-from models.enums import ConversationFromSource, ConversationStatus
-from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message
+from models.enums import ConversationFromSource, ConversationStatus, TagType
+from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message, Tag, TagBinding
 from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion, SkillVersionManifest
 from models.tools import ToolFile
 from models.workflow import Workflow
@@ -4096,6 +4096,30 @@ def test_invite_options_uses_db_filtered_pagination(monkeypatch: pytest.MonkeyPa
     assert result["total"] == 1
     assert result["has_more"] is False
     assert [item["id"] for item in result["data"]] == ["agent-2"]
+
+    research = Tag(tenant_id="tenant-1", type=TagType.AGENT, name="Research", created_by="account-1")
+    finance = Tag(tenant_id="tenant-1", type=TagType.AGENT, name="Finance", created_by="account-1")
+    studio = Tag(tenant_id="tenant-1", type=TagType.APP, name="Research", created_by="account-1")
+    session.add_all([research, finance, studio])
+    session.flush()
+    session.add_all(
+        TagBinding(tenant_id="tenant-1", tag_id=tag.id, target_id=configured_agent.id, created_by="account-1")
+        for tag in (research, finance)
+    )
+    session.commit()
+    tagged = service.list_invite_options(
+        tenant_id="tenant-1", page=1, limit=1, tag_ids=(research.id, finance.id, research.id)
+    )
+    assert tagged["total"] == 1
+    assert tagged["has_more"] is False
+    assert [item["id"] for item in tagged["data"]] == [configured_agent.id]
+    assert {tag["id"] for tag in tagged["data"][0]["tags"]} == {research.id, finance.id}
+    assert {tag["type"] for tag in tagged["data"][0]["tags"]} == {"agent"}
+    assert service.list_invite_options(tenant_id="tenant-1", tag_ids=(research.id, studio.id))["total"] == 0
+    assert (
+        service.list_invite_options(tenant_id="tenant-1", tag_ids=(research.id,), accessible_agent_ids=[])["total"] == 0
+    )
+    assert service.list_invite_options(tenant_id="tenant-1", tag_ids=(research.id,), keyword="missing")["total"] == 0
 
 
 def test_active_config_is_published_flags_use_stored_agent_state(sqlite_session: Session):

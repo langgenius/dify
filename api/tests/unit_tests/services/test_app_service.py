@@ -30,7 +30,8 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig
-from models.model import App, AppMode, AppModelConfig, IconType
+from models.enums import TagType
+from models.model import App, AppMode, AppModelConfig, IconType, Tag, TagBinding
 from models.provider import TenantDefaultModel
 from models.workflow import Workflow, WorkflowType
 from repositories.app.console_repository import ConsoleAppRepository
@@ -1137,3 +1138,87 @@ class TestSharedAppTemplateIsolation:
         assert settings.model_config is not None
         assert json.loads(settings.model_config["model"])["provider"] == "langgenius/anthropic/anthropic"
         assert default_app_templates[AppMode.COMPLETION]["model_config"]["model"] == baseline
+
+
+@pytest.mark.parametrize("adapter", ["legacy", "repository"])
+def test_agent_tag_queries_keep_and_pagination_and_publication_counts(sqlite_session: Session, adapter: str) -> None:
+    """Both live query owners match Agent IDs before counting and retain Studio isolation."""
+    tenant_id, creator_id = str(uuid4()), str(uuid4())
+    published_app, published = _persist_agent_app(
+        sqlite_session,
+        app_name="Tagged published",
+        agent_name="Tagged published",
+        tenant_id=tenant_id,
+        creator_id=creator_id,
+        active_config_snapshot_id=str(uuid4()),
+        active_config_is_published=True,
+    )
+    draft_app, draft = _persist_agent_app(
+        sqlite_session,
+        app_name="Tagged draft",
+        agent_name="Tagged draft",
+        tenant_id=tenant_id,
+        creator_id=creator_id,
+    )
+    _persist_agent_app(
+        sqlite_session,
+        app_name="Unmarked draft",
+        agent_name="Unmarked draft",
+        tenant_id=tenant_id,
+        creator_id=creator_id,
+    )
+    research = Tag(tenant_id=tenant_id, type=TagType.AGENT, name="Research", created_by=creator_id)
+    finance = Tag(tenant_id=tenant_id, type=TagType.AGENT, name="Finance", created_by=creator_id)
+    studio = Tag(tenant_id=tenant_id, type=TagType.APP, name="Research", created_by=creator_id)
+    foreign = Tag(tenant_id=str(uuid4()), type=TagType.AGENT, name="Research", created_by=creator_id)
+    sqlite_session.add_all([research, finance, studio, foreign])
+    sqlite_session.flush()
+    sqlite_session.add_all(
+        TagBinding(tenant_id=tenant_id, tag_id=tag_id, target_id=target_id, created_by=creator_id)
+        for tag_id, target_id in (
+            (research.id, published.id),
+            (research.id, draft.id),
+            (finance.id, published.id),
+            (studio.id, published_app.id),
+        )
+    )
+    sqlite_session.commit()
+    query_owner = AppService() if adapter == "legacy" else ConsoleAppRepository
+    params = AppListParams(mode="agent", status="normal", tag_ids=[research.id], limit=1)
+    first_page = query_owner.get_paginate_apps(creator_id, tenant_id, params, sqlite_session)
+    second_page = query_owner.get_paginate_apps(
+        creator_id, tenant_id, params.model_copy(update={"page": 2}), sqlite_session
+    )
+    assert first_page is not None
+    assert second_page is not None
+    assert first_page.total == second_page.total == 2
+    assert first_page.has_next is True
+    assert second_page.has_next is False
+    assert {first_page.items[0].id, second_page.items[0].id} == {published_app.id, draft_app.id}
+    counts = query_owner.get_agent_publication_counts(creator_id, tenant_id, params, sqlite_session)
+    assert (counts.published, counts.drafts) == (1, 1)
+
+    both = query_owner.get_paginate_apps(
+        creator_id,
+        tenant_id,
+        params.model_copy(update={"tag_ids": [research.id, finance.id, research.id]}),
+        sqlite_session,
+    )
+    assert both is not None
+    assert both.total == 1
+    assert [app.id for app in both.items] == [published_app.id]
+    filtered = query_owner.get_paginate_apps(
+        creator_id, tenant_id, params.model_copy(update={"name": "draft", "limit": 20}), sqlite_session
+    )
+    cleared = query_owner.get_paginate_apps(
+        creator_id, tenant_id, params.model_copy(update={"name": "draft", "tag_ids": [], "limit": 20}), sqlite_session
+    )
+    assert filtered is not None
+    assert filtered.total == 1
+    assert cleared is not None
+    assert cleared.total == 2
+    for invalid_tag_id in (studio.id, foreign.id, str(uuid4())):
+        invalid_params = params.model_copy(update={"tag_ids": [research.id, invalid_tag_id]})
+        assert query_owner.get_paginate_apps(creator_id, tenant_id, invalid_params, sqlite_session) is None
+        empty_counts = query_owner.get_agent_publication_counts(creator_id, tenant_id, invalid_params, sqlite_session)
+        assert (empty_counts.published, empty_counts.drafts) == (0, 0)

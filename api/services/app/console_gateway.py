@@ -32,6 +32,7 @@ from repositories.app.agent_app_queries import get_roster_agent_app
 from repositories.app.console_repository import ConsoleAppRepository, console_app_actor, require_console_app
 from repositories.app.response import app_record
 from repositories.resource_access_token_repository import ResourceAccessTokenCleanupRepository
+from repositories.tag_repository import TagRepository
 from services.agent.errors import AgentNameConflictError, AgentNotFoundError
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.roster_package_entities import RosterAgentPackageExport
@@ -616,7 +617,12 @@ class AppLifecycleGateway(AppLifecycle):
             return self._delete_in_session(context, app, session=session)
 
     def get_agent_detail(self, context: RequestContext, agent_id: str) -> AgentAppDetail:
-        """Materialize the runtime App and Agent while the legacy session is open."""
+        """Materialize the admitted Agent's runtime App and independent Agent tags.
+
+        Preconditions: the caller has passed Agent admission in its active workspace.
+        Postconditions: detached details use Agent metadata rather than Studio tags;
+        missing or foreign Agents raise AgentAppNotFoundError.
+        """
         with self._session_factory() as session:
             roster = AgentRosterService(session)
             try:
@@ -633,7 +639,12 @@ class AppLifecycleGateway(AppLifecycle):
             )
             if agent is None:
                 raise AgentAppNotFoundError
-            record = app_record(app, session=session, projection="detail-with-site")
+            tags = TagRepository.load_tags_for_targets(
+                session, tenant_id=context.active_workspace_id, tag_type="agent", target_ids=[agent.id]
+            )
+            record = replace(
+                app_record(app, session=session, projection="detail-with-site"), tags=tags.get(agent.id, [])
+            )
             # The legacy response view detects old Agent configurations here,
             # including its existing mode update and commit.
             should_mask_agent_mode = bool(
