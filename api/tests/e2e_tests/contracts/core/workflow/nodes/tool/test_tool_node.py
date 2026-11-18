@@ -10,10 +10,10 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
+from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.file_reference import resolve_file_record_id
-from core.workflow.node_runtime import DifyToolFileManager, DifyToolNodeRuntime
+from core.workflow.node_runtime import DifyToolFileManager, DifyToolNodeRuntime, ToolFileStore
 from core.workflow.system_variables import build_system_variables
-from extensions.ext_storage import storage
 from extensions.storage.opendal_storage import OpenDALStorage
 from factories.file_factory import ToolFileMapping
 from graphon.file import File, FileTransferMethod, FileType
@@ -89,11 +89,18 @@ class _StubToolRuntime:
         return default_icon, None
 
 
-def _build_tool_node(*, runtime: _StubToolRuntime | None = None) -> ToolNode:
-    """Build a node with real file handling and optional non-file runtime behavior.
+def _build_tool_node(
+    *,
+    runtime: _StubToolRuntime | None = None,
+    tool_file_store: ToolFileStore | None = None,
+) -> ToolNode:
+    """Build a node with production file handling and optional dependencies.
 
-    Preconditions: ``runtime`` only supplies non-file tool capabilities. Postconditions:
-    the returned node uses the production Dify file manager and its real default store.
+    Preconditions: ``runtime`` supplies only non-file tool capabilities, and an
+    optional ``tool_file_store`` implements the production store protocol.
+    Postconditions: the node delegates file handling through the real Dify adapter
+    to the injected store, or the production default when none is supplied. Graph
+    construction and store errors propagate unchanged.
     """
     graph_config: dict[str, Any] = {
         "nodes": [
@@ -132,7 +139,7 @@ def _build_tool_node(*, runtime: _StubToolRuntime | None = None) -> ToolNode:
 
     config = graph_config["nodes"][0]
 
-    tool_file_manager = DifyToolFileManager(init_params.run_context)
+    tool_file_manager = DifyToolFileManager(init_params.run_context, tool_file_store=tool_file_store)
 
     return ToolNode(
         node_id="node-instance",
@@ -231,28 +238,21 @@ def test_plain_link_messages_remain_links(tool_node: ToolNode) -> None:
     assert files_segment.value == []
 
 
-def test_image_link_messages_use_tool_file_id_metadata(
-    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """Resolve tool-file metadata from persisted rows and real stored bytes.
+def test_image_link_messages_use_tool_file_id_metadata(sqlite_session: Session, tmp_path: Path) -> None:
+    """Resolve tool-file metadata and bytes through an injected real file store.
 
     Preconditions: ``sqlite_session`` binds the production session factory to the
-    same SQLite database and ``tmp_path`` is writable. Postconditions: the produced
-    file references the persisted row and the production manager reads its bytes;
-    the temporary storage key is deleted after the test.
+    same SQLite database and ``tmp_path`` is writable. Postconditions: the Dify
+    adapter resolves metadata from the persisted row, the injected manager reads
+    the stored bytes, and the temporary storage key is deleted after the test.
+    Failures propagate after cleanup is attempted.
     """
-    # The shared Flask fixture does not initialize storage; use the real OpenDAL
-    # filesystem backend under a per-test root instead of substituting a store.
-    monkeypatch.setattr(
-        storage,
-        "storage_runner",
-        OpenDALStorage(scheme="fs", root=str(tmp_path)),
-        raising=False,
-    )
+    backend = OpenDALStorage(scheme="fs", root=str(tmp_path))
+    tool_file_store = ToolFileManager(storage_service=backend)
     file_key = f"test-tool-node/{uuid4().hex}/demo.pdf"
     file_binary = b"%PDF-1.4\nreal stored tool-file content"
     try:
-        storage.save(file_key, file_binary)
+        backend.save(file_key, file_binary)
         stored_tool_file = ToolFile(
             user_id="user-id",
             tenant_id=_TENANT_ID,
@@ -267,7 +267,10 @@ def test_image_link_messages_use_tool_file_id_metadata(
         sqlite_session.add(stored_tool_file)
         sqlite_session.commit()
 
-        tool_node = _build_tool_node(runtime=_StubToolRuntime(tenant_id=_TENANT_ID))
+        tool_node = _build_tool_node(
+            runtime=_StubToolRuntime(tenant_id=_TENANT_ID),
+            tool_file_store=tool_file_store,
+        )
         message = ToolRuntimeMessage(
             type=ToolRuntimeMessage.MessageType.IMAGE_LINK,
             message=ToolRuntimeMessage.TextMessage(text="/files/tools/file-id.pdf"),
@@ -296,23 +299,13 @@ def test_image_link_messages_use_tool_file_id_metadata(
         assert built_file.reference is not None
         assert resolve_file_record_id(built_file.reference) == stored_tool_file.id
 
-        file_manager = DifyToolFileManager(
-            DifyRunContext(
-                tenant_id=_TENANT_ID,
-                app_id="app-id",
-                user_id="user-id",
-                user_from=UserFrom.ACCOUNT,
-                invoke_from=InvokeFrom.DEBUGGER,
-            )
-        )
-        file_stream, stored_file = file_manager.get_file_generator_by_tool_file_id(stored_tool_file.id)
+        file_stream, stored_file = tool_file_store.get_file_generator_by_tool_file_id(stored_tool_file.id)
         assert file_stream is not None
         assert b"".join(file_stream) == file_binary
         assert stored_file is not None
         assert stored_file.filename == stored_tool_file.name
     finally:
-        if storage.exists(file_key):
-            storage.delete(file_key)
+        backend.delete(file_key)
 
 
 def test_tool_file_from_another_tenant_is_not_reachable(sqlite_session: Session) -> None:
