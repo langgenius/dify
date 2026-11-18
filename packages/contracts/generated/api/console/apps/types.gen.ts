@@ -614,8 +614,19 @@ export type CompletionMessagePayload = {
   retriever_from?: string
 }
 
-export type ConversationLogExportPreviewResponse = {
-  counts: ConversationLogExportCountsResponse | null
+export type ConversationLogExportCreatePayload = {
+  account_ids?: Array<string>
+  annotation_status?: 'all' | 'annotated' | 'not_annotated'
+  end?: string | null
+  end_user_ids?: Array<string>
+  keyword?: string | null
+  sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
+  start?: string | null
+}
+
+export type ConversationLogExportTaskResponse = {
+  status: 'pending'
+  task_id: string
 }
 
 export type ForbiddenError = ErrorResponse & {
@@ -626,6 +637,15 @@ export type ForbiddenError = ErrorResponse & {
 export type PaidPlanRequiredError = ErrorResponse & {
   code: 'paid_plan_required'
   status: 403
+}
+
+export type UnprocessableEntityError = ErrorResponse & {
+  code: 'unprocessable_entity'
+  status: 422
+}
+
+export type ConversationLogExportPreviewResponse = {
+  counts: ConversationLogExportCountsResponse | null
 }
 
 export type PaginatedConversationVariableResponse = {
@@ -6607,6 +6627,32 @@ export type PostAppsByAppIdCompletionMessagesByTaskIdStopResponses = {
 
 export type PostAppsByAppIdCompletionMessagesByTaskIdStopResponse =
   PostAppsByAppIdCompletionMessagesByTaskIdStopResponses[keyof PostAppsByAppIdCompletionMessagesByTaskIdStopResponses]
+
+export type PostAppsByAppIdConversationLogExportsData = {
+  body: ConversationLogExportCreatePayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/conversation-log-exports'
+}
+
+export type PostAppsByAppIdConversationLogExportsErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  422: UnprocessableEntityError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdConversationLogExportsError =
+  PostAppsByAppIdConversationLogExportsErrors[keyof PostAppsByAppIdConversationLogExportsErrors]
+
+export type PostAppsByAppIdConversationLogExportsResponses = {
+  202: ConversationLogExportTaskResponse
+}
+
+export type PostAppsByAppIdConversationLogExportsResponse =
+  PostAppsByAppIdConversationLogExportsResponses[keyof PostAppsByAppIdConversationLogExportsResponses]
 
 export type GetAppsByAppIdConversationLogExportsPreviewData = {
   body?: never

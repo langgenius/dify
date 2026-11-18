@@ -4,7 +4,7 @@ from collections.abc import Iterator
 from copy import deepcopy
 from dataclasses import replace
 from datetime import datetime
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from psycopg2.errors import QueryCanceled
 from pydantic import JsonValue
@@ -13,7 +13,7 @@ from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import InstrumentedAttribute, Session, sessionmaker
 
 from graphon.enums import WorkflowExecutionStatus
-from libs.datetime_utils import naive_utc_now
+from libs.datetime_utils import naive_utc_now, utc_now
 from libs.helper import escape_like_pattern
 from libs.pagination import paginate_query
 from machinery.context import RequestContext
@@ -62,8 +62,19 @@ from services.errors.conversation import ConversationNotExistsError, LastConvers
 from services.errors.message import MessageNotExistsError
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
 
+if TYPE_CHECKING:
+    from extensions.ext_redis import RedisClientWrapper
+    from services.retention.conversation.log_export_service import ConversationLogExportTask
+
 _LOG_EXPORT_COUNT_TIMEOUT_MS = 1500
 _LOG_EXPORT_BATCH_SIZE = 500
+
+
+def save_conversation_log_export_task(task: "ConversationLogExportTask", *, redis: "RedisClientWrapper") -> None:
+    """Write an admitted task and its TTL together in Redis, propagating any write failure."""
+    key = f"conversation_log_export:{task.tenant_id}:{task.app_id}:{task.task_id}"
+    ttl_seconds = max(1, int((task.expires_at - utc_now()).total_seconds()))
+    redis.setex(key, ttl_seconds, task.model_dump_json())
 
 
 class ConversationRepository:

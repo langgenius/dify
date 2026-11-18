@@ -3267,6 +3267,33 @@ Stop a running completion message generation
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /apps/{app_id}/conversation-log-exports
+**Validate an admitted app's export filters and return the task after it has been saved**
+
+Create a pending CSV export task for one chat app
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ConversationLogExportCreatePayload](#conversationlogexportcreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | Export task accepted | **application/json**: [ConversationLogExportTaskResponse](#conversationlogexporttaskresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Unprocessable Entity | **application/json**: [UnprocessableEntityError](#unprocessableentityerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /apps/{app_id}/conversation-log-exports/preview
 **Preview a conversation log export for a workspace Owner or Admin with application Logs access**
 
@@ -24850,11 +24877,30 @@ The conversation has no message from which to generate a name.
 | conversation_count | integer |  | Yes |
 | message_count | integer | CSV data rows across all matched conversations | Yes |
 
+#### ConversationLogExportCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_ids | [ string (uuid) ] | Account IDs to include | No |
+| annotation_status | string, <br>**Available values:** "all", "annotated", "not_annotated", <br>**Default:** all | Annotation status filter<br>*Enum:* `"all"`, `"annotated"`, `"not_annotated"` | No |
+| end | string | End date (YYYY-MM-DD HH:MM) | No |
+| end_user_ids | [ string (uuid) ] | End user IDs to include | No |
+| keyword | string | Search keyword | No |
+| sort_by | string, <br>**Available values:** "-created_at", "-updated_at", "created_at", "updated_at", <br>**Default:** -updated_at | Sort field and direction<br>*Enum:* `"-created_at"`, `"-updated_at"`, `"created_at"`, `"updated_at"` | No |
+| start | string | Start date (YYYY-MM-DD HH:MM) | No |
+
 #### ConversationLogExportPreviewResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | counts | [ConversationLogExportCountsResponse](#conversationlogexportcountsresponse) | Null if the count query timed out | Yes |
+
+#### ConversationLogExportTaskResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| status | string |  | Yes |
+| task_id | string |  | Yes |
 
 #### ConversationMessageDetail
 
@@ -38271,6 +38317,12 @@ Retain the addressed saved field; valid only for updates and saved tests.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | type | string |  | Yes |
+
+#### UnprocessableEntityError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| UnprocessableEntityError |  |  |  |
 
 #### UnsupportedAudioTypeError
 

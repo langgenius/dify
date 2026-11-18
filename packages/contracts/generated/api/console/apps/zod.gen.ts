@@ -612,6 +612,30 @@ export const zCompletionMessagePayload = z.object({
 })
 
 /**
+ * ConversationLogExportCreatePayload
+ */
+export const zConversationLogExportCreatePayload = z.object({
+  account_ids: z.array(z.uuid()).optional(),
+  annotation_status: z.enum(['all', 'annotated', 'not_annotated']).optional().default('all'),
+  end: z.string().nullish(),
+  end_user_ids: z.array(z.uuid()).optional(),
+  keyword: z.string().nullish(),
+  sort_by: z
+    .enum(['-created_at', '-updated_at', 'created_at', 'updated_at'])
+    .optional()
+    .default('-updated_at'),
+  start: z.string().nullish(),
+})
+
+/**
+ * ConversationLogExportTaskResponse
+ */
+export const zConversationLogExportTaskResponse = z.object({
+  status: z.literal('pending'),
+  task_id: z.string(),
+})
+
+/**
  * ForbiddenError
  *
  * You don't have the permission to access the requested resource.
@@ -632,6 +656,16 @@ export const zPaidPlanRequiredError = zErrorResponse.and(
   z.object({
     code: z.literal('paid_plan_required'),
     status: z.literal(403),
+  }),
+)
+
+/**
+ * UnprocessableEntityError
+ */
+export const zUnprocessableEntityError = zErrorResponse.and(
+  z.object({
+    code: z.literal('unprocessable_entity'),
+    status: z.literal(422),
   }),
 )
 
@@ -7512,6 +7546,17 @@ export const zPostAppsByAppIdCompletionMessagesByTaskIdStopPath = z.object({
  * Task stopped successfully
  */
 export const zPostAppsByAppIdCompletionMessagesByTaskIdStopResponse = zSimpleResultResponse
+
+export const zPostAppsByAppIdConversationLogExportsBody = zConversationLogExportCreatePayload
+
+export const zPostAppsByAppIdConversationLogExportsPath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * Export task accepted
+ */
+export const zPostAppsByAppIdConversationLogExportsResponse = zConversationLogExportTaskResponse
 
 export const zGetAppsByAppIdConversationLogExportsPreviewPath = z.object({
   app_id: z.uuid(),

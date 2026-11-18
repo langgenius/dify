@@ -3,6 +3,7 @@
 import csv
 from datetime import datetime
 from io import StringIO
+from unittest.mock import Mock
 
 import pytest
 from sqlalchemy import Engine
@@ -137,7 +138,7 @@ def test_console_log_csv_exports_all_turns_of_matching_conversations_in_batches(
         account_ids=(account.id,),
     )
     repository = ConversationRepository(session_factory=sqlite_session_factory)
-    service = ConversationLogExportService(conversations=repository)
+    service = ConversationLogExportService(conversations=repository, save_task=Mock())
     pool = sqlite_engine.pool
     assert isinstance(pool, QueuePool)
 

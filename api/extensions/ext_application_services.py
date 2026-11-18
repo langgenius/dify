@@ -79,7 +79,7 @@ from repositories.app_definition_query_repository import AppDefinitionQueryRepos
 from repositories.app_preview_query_repository import AppPreviewQueryRepository
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
-from repositories.conversation_repository import ConversationRepository
+from repositories.conversation_repository import ConversationRepository, save_conversation_log_export_task
 from repositories.conversation_variable_repository import ConversationVariableRepository
 from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
@@ -691,7 +691,10 @@ def build_application_services(
         conversation_names=conversation_names,
         conversation_commands=conversation_commands,
         conversation_queries=conversation_queries,
-        conversation_log_exports=ConversationLogExportService(conversations=conversations),
+        conversation_log_exports=ConversationLogExportService(
+            conversations=conversations,
+            save_task=lambda task: save_conversation_log_export_task(task, redis=redis),
+        ),
         accounts=account_services,
         apps=apps,
         credential_queries=credential_queries,

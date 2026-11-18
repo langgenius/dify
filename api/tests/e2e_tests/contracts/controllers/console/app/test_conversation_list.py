@@ -2,13 +2,15 @@
 
 from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Literal
-from uuid import uuid4
+from unittest.mock import Mock
+from uuid import UUID, uuid4
 
 import pytest
 from flask import Flask
+from flask.testing import FlaskClient
 from psycopg2.errors import QueryCanceled
 from sqlalchemy import Connection, Engine, event, select
 from sqlalchemy.exc import DBAPIError
@@ -22,12 +24,14 @@ from controllers.console.app import conversation as conversation_module
 from controllers.console.app.conversation import (
     ChatConversationApi,
     CompletionConversationApi,
+    ConversationLogExportApi,
     ConversationLogExportPreviewApi,
 )
 from enums import DeploymentEdition
 from enums.account import TenantAccountRole
 from extensions.ext_database import db
 from extensions.ext_login import DifyLoginManager, unauthorized_handler
+from extensions.ext_redis import RedisClientWrapper
 from fields.conversation_fields import (
     ConversationPagination,
     ConversationResponseSource,
@@ -40,9 +44,10 @@ from models import Account, Tenant, TenantAccountJoin
 from models.enums import ConversationFromSource, FeedbackFromSource, FeedbackRating
 from models.model import App, AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
 from models.utils.file_input_compat import restore_input_files
-from repositories.conversation_repository import ConversationRepository
+from repositories.conversation_repository import ConversationRepository, save_conversation_log_export_task
 from services.conversation_query_service import ConversationQueryService
 from services.message_query_adapters import MessageFileResolver
+from services.retention.conversation.log_export_service import ConversationLogExportService, ConversationLogExportTask
 from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_message
 
 type _Kind = Literal["chat", "completion", "export-preview"]
@@ -52,6 +57,7 @@ _CREATED_AT = datetime(2024, 1, 15, 6, 30, 0)
 @dataclass(frozen=True)
 class _Services:
     conversation_queries: ConversationQueryService
+    conversation_log_exports: ConversationLogExportService
 
 
 @dataclass
@@ -61,6 +67,7 @@ class _Harness:
     account: Account
     tenant: Tenant
     target: App
+    redis: Mock = field(default_factory=lambda: Mock(spec=RedisClientWrapper))
     sessions: list[Session] = field(default_factory=list)
     after_account_load: Callable[[], None] | None = None
 
@@ -73,6 +80,21 @@ class _Harness:
         authenticated: bool = True,
         csrf: bool = True,
     ) -> TestResponse:
+        client, headers = self._client(authenticated=authenticated, csrf=csrf)
+        resource = "conversation-log-exports/preview" if kind == "export-preview" else f"{kind}-conversations"
+        response = client.get(f"/apps/{app_id or self.target.id}/{resource}", query_string=query, headers=headers)
+        assert all(not session.in_transaction() and not session.identity_map for session in self.sessions)
+        assert response.content_type == "application/json"
+        assert int(response.headers["Content-Length"]) == len(response.data)
+        return response
+
+    def post_export(self, payload: object) -> TestResponse:
+        """Create an export through the authenticated Console route."""
+        client, headers = self._client(authenticated=True, csrf=True)
+        return client.post(f"/apps/{self.target.id}/conversation-log-exports", json=payload, headers=headers)
+
+    def _client(self, *, authenticated: bool, csrf: bool) -> tuple[FlaskClient, dict[str, str]]:
+        """Return a test client and any headers for the requested admission state."""
         client = self.app.test_client()
         headers: dict[str, str] = {}
         if authenticated:
@@ -83,12 +105,7 @@ class _Harness:
                 token = generate_csrf_token(self.account.id)
                 client.set_cookie(COOKIE_NAME_CSRF_TOKEN, token)
                 headers[HEADER_NAME_CSRF_TOKEN] = token
-        resource = "conversation-log-exports/preview" if kind == "export-preview" else f"{kind}-conversations"
-        response = client.get(f"/apps/{app_id or self.target.id}/{resource}", query_string=query, headers=headers)
-        assert all(not session.in_transaction() and not session.identity_map for session in self.sessions)
-        assert response.content_type == "application/json"
-        assert int(response.headers["Content-Length"]) == len(response.data)
-        return response
+        return client, headers
 
     def mode(self, mode: AppMode) -> None:
         with self.factory.begin() as session:
@@ -153,17 +170,23 @@ def harness(
         assert all(not previous.in_transaction() and not previous.identity_map for previous in state.sessions)
         state.sessions.append(session)
 
+    conversations = ConversationRepository(session_factory=factory)
     app.extensions["application_services"] = _Services(
-        ConversationQueryService(
+        conversation_queries=ConversationQueryService(
             files=MessageFileResolver(),
-            conversations=ConversationRepository(session_factory=factory),
+            conversations=conversations,
             restore_inputs=restore_input_files,
-        )
+        ),
+        conversation_log_exports=ConversationLogExportService(
+            conversations=conversations,
+            save_task=lambda task: save_conversation_log_export_task(task, redis=state.redis),
+        ),
     )
     api = ExternalApi(app)
     api.add_resource(ChatConversationApi, "/apps/<uuid:app_id>/chat-conversations")
     api.add_resource(CompletionConversationApi, "/apps/<uuid:app_id>/completion-conversations")
     api.add_resource(ConversationLogExportPreviewApi, "/apps/<uuid:app_id>/conversation-log-exports/preview")
+    api.add_resource(ConversationLogExportApi, "/apps/<uuid:app_id>/conversation-log-exports")
     yield state
     with app.app_context():
         db.session.remove()
@@ -336,6 +359,7 @@ def test_log_identity_filters_require_uuids(harness: _Harness, monkeypatch: pyte
     assert "invalid-user-id" not in response.get_json()["message"]
 
 
+@pytest.mark.parametrize("create", [False, True], ids=["preview", "create"])
 @pytest.mark.parametrize(
     ("mode", "role", "status", "code"),
     [
@@ -344,7 +368,7 @@ def test_log_identity_filters_require_uuids(harness: _Harness, monkeypatch: pyte
         (AppMode.WORKFLOW, TenantAccountRole.OWNER, 404, "app_not_found"),
     ],
 )
-def test_conversation_export_preview_checks_role_and_mode_before_billing(
+def test_conversation_export_checks_role_and_mode_before_billing(
     harness: _Harness,
     monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
@@ -352,6 +376,7 @@ def test_conversation_export_preview_checks_role_and_mode_before_billing(
     role: TenantAccountRole,
     status: int,
     code: str,
+    create: bool,
 ) -> None:
     harness.mode(mode)
     config_overrides(RBAC_ENABLED=True)
@@ -372,17 +397,20 @@ def test_conversation_export_preview_checks_role_and_mode_before_billing(
     monkeypatch.setattr("controllers.console.flask_admission.enforce_rbac_checks", allow_logs)
     monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", unexpected_billing)
 
-    response = harness.get("export-preview")
+    response = harness.post_export({}) if create else harness.get("export-preview")
     assert response.status_code == status
     assert response.get_json()["code"] == code
+    harness.redis.setex.assert_not_called()
 
 
 @pytest.mark.parametrize("edition", list(DeploymentEdition))
-def test_conversation_export_preview_checks_paid_plan_only_in_cloud(
+@pytest.mark.parametrize("create", [False, True], ids=["preview", "create"])
+def test_conversation_export_checks_paid_plan_only_in_cloud(
     harness: _Harness,
     monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
     edition: DeploymentEdition,
+    create: bool,
 ) -> None:
     harness.mode(AppMode.ADVANCED_CHAT)
     config_overrides(DEPLOYMENT_EDITION=edition)
@@ -394,13 +422,76 @@ def test_conversation_export_preview_checks_paid_plan_only_in_cloud(
         return False
 
     monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", unpaid)
-    response = harness.get("export-preview")
+    response = harness.post_export({}) if create else harness.get("export-preview")
     if edition == DeploymentEdition.CLOUD:
         assert response.status_code == 403
         assert response.get_json()["code"] == "paid_plan_required"
+        harness.redis.setex.assert_not_called()
+    elif create:
+        assert response.status_code == 202
+        harness.redis.setex.assert_called_once()
     else:
         assert response.status_code == 200
         assert response.get_json() == {"counts": {"conversation_count": 0, "message_count": 0}}
+
+
+def test_create_conversation_log_export_persists_normalized_filters(
+    harness: _Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Store the caller, owned app and UTC filter bounds before acknowledging an export."""
+    harness.mode(AppMode.ADVANCED_CHAT)
+    monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", lambda _: True)
+    end_user_id = str(uuid4())
+    response = harness.post_export(
+        {
+            "keyword": "invoice",
+            "start": "2024-01-15 14:30",
+            "end": "2024-01-15 15:00",
+            "annotation_status": "annotated",
+            "sort_by": "-created_at",
+            "end_user_ids": [end_user_id],
+            "account_ids": [harness.account.id],
+        }
+    )
+
+    assert response.status_code == 202
+    harness.redis.setex.assert_called_once()
+    key, ttl, raw = harness.redis.setex.call_args.args
+    task = ConversationLogExportTask.model_validate_json(raw)
+    assert response.get_json() == {"task_id": str(UUID(task.task_id)), "status": "pending"}
+    assert key == f"conversation_log_export:{harness.tenant.id}:{harness.target.id}:{task.task_id}"
+    assert task.requested_by == harness.account.id
+    assert task.status == "pending"
+    assert task.expires_at - task.created_at == timedelta(days=1)
+    assert 0 < ttl <= 24 * 60 * 60
+    assert task.filters.keyword == "invoice"
+    assert task.filters.start == datetime(2024, 1, 15, 6, 30, tzinfo=UTC)
+    assert task.filters.end == datetime(2024, 1, 15, 7, 0, 59, tzinfo=UTC)
+    assert task.filters.annotation_status == "annotated"
+    assert task.filters.sort_by == "-created_at"
+    assert task.filters.end_user_ids == (end_user_id,)
+    assert task.filters.account_ids == (harness.account.id,)
+
+
+@pytest.mark.parametrize(
+    ("mode", "payload", "status", "code"),
+    [
+        (AppMode.CHAT, [], 422, "unprocessable_entity"),
+        (AppMode.CHAT, {"end_user_ids": ["invalid-user-id"]}, 422, "unprocessable_entity"),
+        (AppMode.AGENT, {}, 404, "app_not_found"),
+    ],
+)
+def test_create_conversation_log_export_rejects_unsupported_requests(
+    harness: _Harness, monkeypatch: pytest.MonkeyPatch, mode: AppMode, payload: object, status: int, code: str
+) -> None:
+    """Reject malformed filters and app modes without an exporter before writing Redis."""
+    harness.mode(mode)
+    monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", lambda _: True)
+    response = harness.post_export(payload)
+    assert response.status_code == status
+    assert response.get_json()["code"] == code
+    assert "invalid-user-id" not in response.get_json()["message"]
+    harness.redis.setex.assert_not_called()
 
 
 def test_conversation_export_preview_reports_count_query_timeout(
