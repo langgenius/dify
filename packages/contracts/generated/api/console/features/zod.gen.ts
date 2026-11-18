@@ -131,6 +131,7 @@ export const zFeatureModel = z.object({
   }),
   webapp_copyright_enabled: z.boolean().default(false),
   workflow_collaboration_enabled: z.boolean().default(false),
+  workflow_collaboration_upgrade_available: z.boolean().default(false),
   workspace_members: zLicenseLimitationModel.default({
     enabled: false,
     limit: 0,

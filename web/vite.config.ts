@@ -97,7 +97,7 @@ export default defineConfig(({ command, mode, isPreview }) => {
 
     // Vitest config
     test: {
-      // Vitest 5 stores Browser Mode failure screenshots as attachments; keep them beside the traces.
+      // Vitest 5 stores Browser Mode failure screenshots as attachments; CI uploads this directory on failure.
       attachmentsDir: './.vitest-browser/attachments',
       coverage: {
         provider: 'v8',
@@ -178,8 +178,9 @@ export default defineConfig(({ command, mode, isPreview }) => {
               dependencySourcemaps: false,
               screenshotFailures: true,
               trace: {
-                mode: isCI ? 'retain-on-failure' : 'off',
-                // DOM snapshots and failure screenshots remain available without a filmstrip.
+                // Recording zips every test on the Vitest main thread, even with
+                // retain-on-failure, and roughly doubles CI time. Failure screenshots remain.
+                mode: 'off',
                 screenshots: false,
                 tracesDir: './.vitest-browser/traces',
               },

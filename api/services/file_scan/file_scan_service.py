@@ -207,8 +207,8 @@ class FileScanService:
                 config_error = str(error)
 
         if scanner is None:
-            # The provider can no longer be built (for example ClamAV was removed from the
-            # deployment). An administrator has to act, exactly as for invalid credentials.
+            # The provider can no longer be built from its stored settings. An administrator has
+            # to act, exactly as for invalid credentials.
             verdict = ScanVerdict.unavailable(ScanProblem.AUTH, message=config_error)
         else:
             verdict = self._scan_with_retries(scanner, target, external_id, wait_for_result=wait_for_result)

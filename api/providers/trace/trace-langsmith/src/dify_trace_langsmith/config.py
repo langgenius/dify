@@ -31,4 +31,4 @@ class LangSmithConfig(ProviderConfig):
     @classmethod
     def _endpoint(cls, value: str) -> str:
         # LangSmith is HTTPS-only; self-hosted deployments may serve the API under a path prefix.
-        return http_url(value, allowed_schemes=("https",)) if value.strip() else DEFAULT_ENDPOINT
+        return http_url(value, allowed_schemes=("https",)).rstrip("/") if value.strip() else DEFAULT_ENDPOINT

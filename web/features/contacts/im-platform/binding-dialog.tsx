@@ -40,6 +40,7 @@ import {
   ContactImRepositoryError,
   ContactImRepositoryErrorCode,
 } from './types'
+import { useChannelDocLink } from './use-channel-doc-link'
 
 type CredentialValues = Partial<Record<Exclude<ContactImProviderField, 'secret'>, string>>
 
@@ -60,7 +61,9 @@ export function ContactImBindingContent({
 }: ContactImBindingDialogProps) {
   const { t } = useTranslation(['contacts'])
   const { t: tCommon } = useTranslation(['common'])
+  const docLink = useChannelDocLink()
   const adapter = resolveContactImProviderFormAdapter(provider)
+  const setupGuideUrl = docLink(adapter.setupGuidePath)
   const saveCredentials = useSaveContactImCredentials()
   const testConnection = useTestContactImConnection()
   const formRef = useRef<HTMLFormElement>(null)
@@ -312,7 +315,7 @@ export function ContactImBindingContent({
           callbackUrl={callbackUrl}
           providerName={provider.displayName}
           setup={callbackSetup}
-          setupGuideUrl={adapter.setupGuideUrl}
+          setupGuideUrl={setupGuideUrl}
           onBack={() => setStep('credentials')}
           onFinish={closeDialog}
         />
@@ -437,13 +440,11 @@ export function ContactImBindingContent({
             <div className="flex w-full flex-wrap items-center justify-between gap-3">
               <a
                 className="inline-flex items-center gap-1 rounded-sm system-xs-regular text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                href={adapter.setupGuideUrl}
+                href={setupGuideUrl}
                 rel="noreferrer"
                 target="_blank"
               >
-                {hasCallbackSetup
-                  ? t(($) => $['imPlatform.bindingDialog.openSetupGuide'])
-                  : t(($) => $['imPlatform.action.setupGuide'])}
+                {t(($) => $['imPlatform.bindingDialog.openSetupGuide'])}
                 <span aria-hidden className="i-ri-external-link-line size-3" />
               </a>
               <div className="ms-auto flex gap-2">

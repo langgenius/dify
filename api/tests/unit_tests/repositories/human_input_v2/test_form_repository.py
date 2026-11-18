@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from datetime import datetime, timedelta
@@ -11,7 +12,7 @@ from uuid import uuid4
 
 import pytest
 import sqlalchemy as sa
-from pydantic import ValidationError
+from pydantic import JsonValue, ValidationError
 from sqlalchemy import event
 from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.exc import NoResultFound
@@ -25,7 +26,7 @@ from graphon.file.enums import FileTransferMethod, FileType
 from graphon.file.models import File
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from libs.datetime_utils import naive_utc_now
-from models.human_input_v2 import HumanInputForm
+from models.human_input_v2 import FormViewEvent, HumanInputAuditEvent, HumanInputForm
 from repositories.human_input_v2.form_repository import Form, FormCreateParams, FormExpirationRun, FormSubmissionFailure
 from repositories.human_input_v2.sqlalchemy_form_repository import (
     SQLAlchemyFormExpirationRepository,
@@ -103,6 +104,58 @@ def test_create_and_read_frozen_waiting_form(form_engine: Engine) -> None:
         assert params.workflow_run_id is not None
         assert params.node_execution_id is not None
         assert repo.get_form(params.workflow_run_id, params.node_execution_id) == form
+
+
+@pytest.mark.parametrize("transition", ["submit", "timeout", "expire"])
+def test_state_transitions_preserve_original_snapshot_and_audit_json(form_engine: Engine, transition: str) -> None:
+    now = naive_utc_now()
+    form = _create(
+        form_engine,
+        _params(
+            expiration_time=now - timedelta(hours=1) if transition == "timeout" else now + timedelta(hours=1),
+            global_timeout_deadline=now - timedelta(hours=1) if transition == "expire" else now + timedelta(hours=2),
+        ),
+    )
+    snapshot: dict[str, JsonValue] = {
+        **form.resolved_form.model_dump(mode="json"),
+        "future_optional": None,
+        "parts": [{"type": "markdown_fragment", "text": "Review", "future_part": {"nested": None}}],
+    }
+    audit: dict[str, JsonValue] = {"type": "form_view", "viewer_ip_address": None, "future_audit": {"nested": None}}
+    with Session(form_engine) as session, session.begin():
+        event = HumanInputAuditEvent(tenant_id=_TENANT, form_id=form.id, payload=FormViewEvent(viewer_ip_address=None))
+        session.add(event)
+        session.flush()
+        session.execute(
+            sa.text("UPDATE hitlv2_forms SET resolved_form = :payload WHERE id = :id"),
+            {"payload": json.dumps(snapshot), "id": form.id},
+        )
+        session.execute(
+            sa.text("UPDATE hitlv2_audit_events SET payload = :payload WHERE id = :id"),
+            {"payload": json.dumps(audit), "id": event.id},
+        )
+        session.expire_all()
+        assert session.get_one(HumanInputAuditEvent, event.id).payload == FormViewEvent(viewer_ip_address=None)
+        repository = SQLAlchemyFormRepository(session, _TENANT, _APP)
+        if transition == "submit":
+            updated = _submit(repository, form.id)
+            expected = HumanInputFormStatus.SUBMITTED
+        elif transition == "timeout":
+            updated = repository.timeout_form(form.id)
+            expected = HumanInputFormStatus.TIMEOUT
+        else:
+            updated = repository.expire_form(form.id)
+            expected = HumanInputFormStatus.EXPIRED
+        assert isinstance(updated, Form)
+        assert updated.status == expected
+        stored = session.scalars(
+            sa.select(sa.cast(HumanInputForm.resolved_form, sa.Text)).where(HumanInputForm.id == form.id)
+        ).one()
+        assert json.loads(stored) == snapshot
+        stored_audit = session.scalars(
+            sa.select(sa.cast(HumanInputAuditEvent.payload, sa.Text)).where(HumanInputAuditEvent.id == event.id)
+        ).one()
+        assert json.loads(stored_audit) == audit
 
 
 def test_runtime_creation_reuses_frozen_form_and_delivery_tests_are_distinct(form_engine: Engine) -> None:

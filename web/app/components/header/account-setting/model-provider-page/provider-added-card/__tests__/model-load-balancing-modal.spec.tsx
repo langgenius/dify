@@ -3,9 +3,9 @@ import { zModelCredentialResponse } from '@dify/contracts/api/console/workspaces
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { ModelCredentialDialog } from '@/app/components/header/account-setting/model-provider-page/model-modal/dialog'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
-import { ModalContextProvider } from '@/context/modal-context-provider'
 import { consoleQuery } from '@/service/console'
 import { createProviderResponseFixture } from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
@@ -101,7 +101,7 @@ const renderModal = (
   })
   const rendered = renderWithConsoleQuery(
     <NuqsTestingAdapter>
-      <ModalContextProvider>
+      <>
         <ModelLoadBalancingModal
           provider={mockProvider}
           model={{ ...mockModel, fetch_from: configurateMethod }}
@@ -115,7 +115,8 @@ const renderModal = (
           onClose={onClose}
         />
         <AppToaster timeout={0} />
-      </ModalContextProvider>
+        <ModelCredentialDialog />
+      </>
     </NuqsTestingAdapter>,
     {
       queryClient,

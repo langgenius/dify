@@ -95,8 +95,11 @@ def test_agent_stub_file_mapping_validates_reference_and_url_by_transfer_method(
     with pytest.raises(ValueError, match="url"):
         _ = AgentStubFileMapping(transfer_method="remote_url")
 
-    with pytest.raises(ValueError, match="canonical Dify file reference"):
-        _ = AgentStubFileMapping(transfer_method="tool_file", reference="raw-tool-file-uuid")
+
+@pytest.mark.parametrize("reference", ["raw-tool-file-uuid", "dify-file-ref:W10="])
+def test_agent_stub_file_mapping_rejects_noncanonical_references(reference: str) -> None:
+    with pytest.raises(ValidationError, match="canonical Dify file reference"):
+        _ = AgentStubFileMapping(transfer_method="tool_file", reference=reference)
 
 
 def test_agent_stub_file_mapping_rejects_remote_url_with_reference() -> None:

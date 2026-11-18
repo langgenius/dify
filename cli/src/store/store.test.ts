@@ -1,9 +1,13 @@
+import type { Options as LockOptions } from 'lockfile'
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { mkdtemp, rm, unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
-import { BadYamlFormatError } from './errors'
+import { setTimeout as delay } from 'node:timers/promises'
+import lockfile from 'lockfile'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import * as sys from '@/sys'
+import { BadYamlFormatError, ConcurrentAccessError } from './errors'
 import { loadYaml, REMOVE, YamlStore } from './store'
 
 let dir: string
@@ -15,6 +19,8 @@ beforeEach(async () => {
 })
 
 afterEach(async () => {
+  vi.useRealTimers()
+  vi.restoreAllMocks()
   await rm(dir, { recursive: true, force: true })
 })
 
@@ -84,28 +90,46 @@ describe('loadYaml', () => {
 
 describe('YamlStore lock', () => {
   const HOLD_MS = 200
-  // Holds the lock the way another difyctl process would, then lets it go.
-  async function holdLock(beforeRelease: () => Promise<void> = async () => {}): Promise<void> {
+  // Own the release task so failures cannot leave it racing with afterEach.
+  async function withHeldLock<T>(
+    operation: () => Promise<T>,
+    beforeRelease: () => Promise<void> = async () => {},
+  ): Promise<T> {
     await writeFile(`${path}.lock`, '')
-    setTimeout(() => void beforeRelease().then(() => unlink(`${path}.lock`)), HOLD_MS)
+    const released = (async () => {
+      await delay(HOLD_MS)
+      await beforeRelease()
+      await unlink(`${path}.lock`)
+    })()
+    try {
+      const [result] = await Promise.all([operation(), released])
+      return result
+    } finally {
+      await released
+    }
   }
 
   it('a read waits while another process holds the lock', async () => {
     await writeFile(path, 'key: value\n')
-    await holdLock()
-    const started = Date.now()
-    expect(await new YamlStore(path).read()).toBe('key: value\n')
-    expect(Date.now() - started).toBeGreaterThanOrEqual(HOLD_MS / 2)
+    await withHeldLock(async () => {
+      const started = Date.now()
+      expect(await new YamlStore(path).read()).toBe('key: value\n')
+      // Measure the read itself, before the helper joins fixture cleanup.
+      expect(Date.now() - started).toBeGreaterThanOrEqual(HOLD_MS / 2)
+    })
   })
 
   it('an update waits while another process holds the lock, then sees its write', async () => {
     await writeFile(path, 'key: original\n')
-    await holdLock(() => writeFile(path, 'key: theirs\n'))
     let seen: string | undefined
-    await new YamlStore(path).update((content) => {
-      seen = content
-      return { key: 'mine' }
-    })
+    await withHeldLock(
+      () =>
+        new YamlStore(path).update((content) => {
+          seen = content
+          return { key: 'mine' }
+        }),
+      () => writeFile(path, 'key: theirs\n'),
+    )
     expect(seen).toBe('key: theirs\n')
     expect(readFileSync(path, 'utf8')).toBe('key: mine\n')
   })
@@ -123,6 +147,104 @@ describe('YamlStore lock', () => {
     expect(Object.keys(loadYaml(await new YamlStore(path).read(), path) ?? {})).toHaveLength(
       WRITERS,
     )
+  })
+})
+
+describe('YamlStore Windows lock contention', () => {
+  // Select the options overload for Vitest; this is the same lockfile object.
+  const locks: {
+    lock: (path: string, opts: LockOptions, callback: (error: Error | null) => void) => void
+  } = lockfile
+
+  function windows() {
+    vi.spyOn(sys, 'resolvePlatform').mockReturnValue({
+      ...sys.resolvePlatform(),
+      id: () => 'win32',
+    })
+  }
+
+  function denied(syscall = 'open'): NodeJS.ErrnoException {
+    return Object.assign(new Error('lock file is pending deletion'), {
+      code: 'EPERM',
+      syscall,
+      path: `${path}.lock`,
+    })
+  }
+
+  it('waits for a Windows lock file pending deletion, then reads normally', async () => {
+    windows()
+    await writeFile(path, 'key: value\n')
+    const lock = vi.spyOn(locks, 'lock').mockImplementationOnce((_, _opts, callback) => {
+      callback(denied())
+    })
+    await expect(new YamlStore(path).read()).resolves.toBe('key: value\n')
+    expect(lock).toHaveBeenCalledTimes(2)
+    expect(existsSync(`${path}.lock`)).toBe(false)
+  })
+
+  it('keeps the original wait budget when Windows keeps denying the lock', async () => {
+    windows()
+    vi.useFakeTimers()
+    const error = denied()
+    const lock = vi.spyOn(locks, 'lock').mockImplementation((_, _opts, callback) => {
+      callback(error)
+    })
+    const rejected = expect(new YamlStore(path).read()).rejects.toBe(error)
+    // Let mkdir complete before advancing the acquisition clock.
+    await vi.waitFor(() => expect(lock).toHaveBeenCalled())
+    await vi.advanceTimersByTimeAsync(5_000)
+    await rejected
+    expect(lock.mock.calls.length).toBeGreaterThan(1)
+    expect(lock.mock.calls.at(-1)?.[1].wait).toBe(0)
+  })
+
+  it('shares the wait budget between Windows deletion and an existing lock', async () => {
+    windows()
+    vi.useFakeTimers()
+    const lock = vi
+      .spyOn(locks, 'lock')
+      .mockImplementation((_, opts, callback) => {
+        setTimeout(
+          () => callback(Object.assign(new Error('locked'), { code: 'EEXIST' })),
+          opts.wait,
+        )
+      })
+      .mockImplementationOnce((_, _opts, callback) => callback(denied()))
+    const rejected = expect(new YamlStore(path).read()).rejects.toBeInstanceOf(
+      ConcurrentAccessError,
+    )
+    await vi.waitFor(() => expect(lock).toHaveBeenCalled())
+    await vi.advanceTimersByTimeAsync(5_000)
+    await rejected
+    expect(lock).toHaveBeenCalledTimes(2)
+    expect(lock.mock.calls[1]?.[1].wait).toBeLessThan(5_000)
+  })
+
+  it('propagates EPERM on other platforms without retrying', async () => {
+    vi.spyOn(sys, 'resolvePlatform').mockReturnValue({
+      ...sys.resolvePlatform(),
+      id: () => 'linux',
+    })
+    const error = denied()
+    const lock = vi.spyOn(locks, 'lock').mockImplementation((_, _opts, callback) => {
+      callback(error)
+    })
+    await expect(new YamlStore(path).read()).rejects.toBe(error)
+    expect(lock).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    { code: 'EPERM', syscall: 'stat' },
+    { code: 'EACCES', syscall: 'open' },
+    { code: 'EPERM', syscall: 'open', path: 'another.lock' },
+  ])('propagates unrelated Windows errors without retrying: %j', async (details) => {
+    windows()
+    const error = Object.assign(denied(), details)
+    const lock = vi.spyOn(locks, 'lock').mockImplementation((_, _opts, callback) => {
+      callback(error)
+    })
+    await expect(new YamlStore(path).read()).rejects.toBe(error)
+    expect(lock).toHaveBeenCalledTimes(1)
   })
 })
 
