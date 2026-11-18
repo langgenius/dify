@@ -1163,6 +1163,67 @@ class TestDatasetServiceDatasetCases:
             vector_task.assert_called_once_with(dataset.id, "update")
             summary_task.assert_called_once()
 
+        def test_update_internal_dataset_keeps_icon_file_id_durable_across_saves(self, sqlite_session: Session) -> None:
+            dataset = _dataset_service_dataset_dataset(name="Before")
+            upload = make_upload_file(extension=".png", mime_type="image/png")
+            sqlite_session.add_all([dataset, upload])
+            sqlite_session.commit()
+
+            updated = _dataset_service_dataset_DatasetService._update_internal_dataset(
+                dataset,
+                {
+                    "icon_info": {
+                        "icon_type": "image",
+                        "icon": upload.id,
+                        "icon_url": "data:image/png;base64,new-preview",
+                    }
+                },
+                _dataset_service_dataset_account(),
+                sqlite_session,
+            )
+
+            assert updated.icon_info["icon"] == upload.id
+            assert updated.icon_info["icon_url"] is None
+
+            updated_again = _dataset_service_dataset_DatasetService._update_internal_dataset(
+                dataset,
+                {
+                    "name": "After",
+                    "icon_info": {
+                        **updated.icon_info,
+                        "icon_url": "https://files.example/expiring-signature",
+                    },
+                },
+                _dataset_service_dataset_account(),
+                sqlite_session,
+            )
+
+            assert updated_again.name == "After"
+            assert updated_again.icon_info["icon"] == upload.id
+            assert updated_again.icon_info["icon_url"] is None
+
+        def test_update_internal_dataset_preserves_unresolved_legacy_icon_data(self, sqlite_session: Session) -> None:
+            dataset = _dataset_service_dataset_dataset()
+            foreign_upload = make_upload_file(tenant_id="tenant-2", extension=".png", mime_type="image/png")
+            sqlite_session.add_all([dataset, foreign_upload])
+            sqlite_session.commit()
+            legacy_url = "data:image/png;base64,legacy-only-copy"
+
+            updated = _dataset_service_dataset_DatasetService._update_internal_dataset(
+                dataset,
+                {
+                    "icon_info": {
+                        "icon_type": "image",
+                        "icon": foreign_upload.id,
+                        "icon_url": legacy_url,
+                    }
+                },
+                _dataset_service_dataset_account(),
+                sqlite_session,
+            )
+
+            assert updated.icon_info["icon_url"] == legacy_url
+
         def test_update_pipeline_node_data_returns_for_non_pipeline_or_missing_pipeline(
             self, sqlite_session: Session
         ) -> None:
