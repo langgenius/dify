@@ -15,7 +15,7 @@ from controllers.openapi._contract import Effect, Example, Kind, endpoint, op_of
 from controllers.openapi._errors import JobNotFound, require_uuid
 from controllers.openapi._files import end_read_transaction
 from controllers.openapi._models import Hint, JobState, JobWaitQuery
-from controllers.openapi.app_run import _RUN_GUARDS
+from controllers.openapi.app_run import RUN_GUARDS
 from controllers.openapi.auth.context import Context
 from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormSubmitApi, form_hints
 from core.app.entities.task_entities import HumanInputRequiredResponse
@@ -157,7 +157,7 @@ class JobWaitApi(Resource):
         pat_policy=PersonalAccessTokenPolicy.RESOURCE_CALLS,
         kind=Kind.OBJECT,
         summary="Wait for a background job to finish or pause, and read its state",
-        requirements=_RUN_GUARDS,
+        requirements=RUN_GUARDS,
         query=JobWaitQuery,
         examples=(Example(title="Wait for a job", input={"app_id": "<app_id>", "job_id": "<job_id>"}),),
         returns=_JOB_STATE,
@@ -187,7 +187,7 @@ class JobStopApi(Resource):
         kind=Kind.OBJECT,
         effect=Effect.DESTRUCTIVE,
         summary="Ask a background job to stop, and read its state",
-        requirements=_RUN_GUARDS,
+        requirements=RUN_GUARDS,
         examples=(Example(title="Stop a job", input={"app_id": "<app_id>", "job_id": "<job_id>"}),),
         returns=_JOB_STATE,
     )

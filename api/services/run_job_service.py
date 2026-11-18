@@ -48,7 +48,6 @@ class JobOpening:
 class RunResult:
     status: JobStatus
     outputs: Mapping[str, Any] | None = None
-    answer: str | None = None
     error: str | None = None
 
 
@@ -116,41 +115,6 @@ def _job_id(opening: JobOpening) -> str:
     owner = opening.owner
     name = f"{owner.tenant_id}:{owner.app_id}:{owner.caller_role}:{owner.caller_id}:{opening.idempotency_key}"
     return str(uuid.uuid5(JOB_ID_NAMESPACE, name))
-
-
-class _Counter:
-    """A thread-safe bounded counter of held slots."""
-
-    def __init__(self, limit: int) -> None:
-        """Create a counter.
-
-        Precondition: limit is positive.
-        Postcondition: no slot is held.
-        """
-        self._limit = limit
-        self._held = 0
-        self._lock = threading.Lock()
-
-    def try_acquire(self) -> bool:
-        """Take one slot.
-
-        Precondition: none.
-        Postcondition: true and one more slot is held when fewer than the limit were held; false otherwise.
-        """
-        with self._lock:
-            if self._held >= self._limit:
-                return False
-            self._held += 1
-            return True
-
-    def release(self) -> None:
-        """Give back one slot.
-
-        Precondition: none.
-        Postcondition: one fewer slot is held; the count never goes below zero.
-        """
-        with self._lock:
-            self._held = max(0, self._held - 1)
 
 
 def _stop_graph_job(tasks: RunTaskControl, record: JobRecord) -> None:
@@ -239,8 +203,8 @@ class RunJobService:
         self._store = store
         self._results = results
         self._stopper: JobStopper = TaskControlStopper(tasks)
-        self._slots = _Counter(max_background_runs)
-        self._waiters = _Counter(max_waiters)
+        self._slots = threading.BoundedSemaphore(max_background_runs)
+        self._waiters = threading.BoundedSemaphore(max_waiters)
         self._sleep = sleep
         self._monotonic = monotonic
 
@@ -261,7 +225,7 @@ class RunJobService:
         # Store first so a repeated key at the cap still returns its earlier job.
         if not self._store.create(record):
             return job_id
-        if not self._slots.try_acquire():
+        if not self._slots.acquire(blocking=False):
             self._store.discard(job_id)
             raise JobCapacityError("Too many background runs are active")
         frames: Iterable[str] = ()
@@ -320,13 +284,23 @@ class RunJobService:
         MESSAGE jobs, the record's own status and error are used, with no form. Raises JobNotFoundError when the job is
         missing or owned by someone else.
         """
+        record, reader_alive = self._owned(owner, job_id)
+        return self._view_of(record, reader_alive=reader_alive)
+
+    def _owned(self, owner: JobOwner, job_id: str) -> tuple[JobRecord, bool]:
+        """Load the owner's job and whether its reader is alive, read before the record.
+
+        Precondition: none.
+        Postcondition: the record and the alive flag; raises JobNotFoundError when the job is missing or owned by
+        someone else.
+        """
         reader_alive = self._store.is_alive(job_id)
         record = self._store.get(job_id)
         if record is None:
             raise JobNotFoundError(job_id)
         if record.owner != owner:
             raise JobNotFoundError(job_id)
-        return self._view_of(record, reader_alive=reader_alive)
+        return record, reader_alive
 
     def _view_of(self, record: JobRecord, *, reader_alive: bool) -> JobView:
         """Build the view of a record.
@@ -370,7 +344,7 @@ class RunJobService:
         seconds = min(wait_seconds, WAIT_MAX_SECONDS)
         if seconds <= 0:
             return view
-        if not self._waiters.try_acquire():
+        if not self._waiters.acquire(blocking=False):
             return view
         try:
             deadline = self._monotonic() + seconds
@@ -392,12 +366,7 @@ class RunJobService:
         nothing is sent. Returns the fresh view. Raises JobNotFoundError when the job is missing or owned by
         someone else.
         """
-        reader_alive = self._store.is_alive(job_id)
-        record = self._store.get(job_id)
-        if record is None:
-            raise JobNotFoundError(job_id)
-        if record.owner != owner:
-            raise JobNotFoundError(job_id)
+        record, reader_alive = self._owned(owner, job_id)
         view = self._view_of(record, reader_alive=reader_alive)
         if view.status.is_final:
             return view
