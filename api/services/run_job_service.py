@@ -1,4 +1,4 @@
-"""Use cases for non-streaming app run jobs: open, attach a reader, view, wait and stop."""
+"""Use cases for non-streaming app run jobs: start, view, wait and stop."""
 
 from __future__ import annotations
 
@@ -21,10 +21,9 @@ from services.run_job_contracts import (
     JobOwner,
     JobRecord,
     JobStatus,
-    OpenedJob,
     RunJobStore,
 )
-from services.run_job_reader import JobStopper, read_to_end
+from services.run_job_reader import JobStopper, close_frames, read_to_end
 
 if TYPE_CHECKING:
     from services.app_task_service import WorkflowStopOutcome
@@ -204,7 +203,7 @@ class TaskControlStopper:
 
 
 class RunJobService:
-    """Opens jobs, attaches their readers, and answers view, wait and stop for the owner of a job.
+    """Starts jobs with their readers, and answers view, wait and stop for the owner of a job.
 
     Precondition: built once per process with a store, result reader and task control.
     Postcondition: background runs and waiters of this process stay within their caps.
@@ -224,7 +223,7 @@ class RunJobService:
         """Create the service.
 
         Precondition: both caps are positive; sleep and monotonic are consistent with each other.
-        Postcondition: no slot, waiter or reservation is held.
+        Postcondition: no slot or waiter is held.
         """
         self._store = store
         self._results = results
@@ -233,65 +232,43 @@ class RunJobService:
         self._waiters = _Counter(max_waiters)
         self._sleep = sleep
         self._monotonic = monotonic
-        self._reserved: set[str] = set()
-        self._reserved_lock = threading.Lock()
 
-    def open(self, opening: JobOpening) -> OpenedJob:
-        """Create a job, or return the earlier one for the same idempotency key.
+    def start(self, opening: JobOpening, launch: Callable[[], Iterable[str]]) -> JobRecord:
+        """Create a job and start its run, or return the earlier job for the same idempotency key.
 
-        Precondition: opening.mode supports run jobs.
-        Postcondition: a created job holds one background slot until attach hands it to the reader thread or
-        discard releases it. An earlier job holds none. When the store raises, no slot is held. When the cap is
-        reached the new job is removed and JobCapacityError is raised.
+        Precondition: called inside a request context; opening.mode supports run jobs; launch starts the run and
+        returns its SSE frames.
+        Postcondition: for a new job, launch ran once and a daemon reader thread holds one background slot until the
+        stream ends. An earlier job is returned without launching or taking a slot. When the store raises, nothing
+        ran. At the cap, JobCapacityError is raised before launching and the new job is removed. When launch or the
+        reader start raises, the frames are closed, the slot is released, the job is removed and the error
+        propagates.
         """
-        record = JobRecord(
-            id=str(uuid.uuid4()),
-            owner=opening.owner,
-            mode=opening.mode,
-            op=opening.op,
-        )
+        record = JobRecord(id=str(uuid.uuid4()), owner=opening.owner, mode=opening.mode, op=opening.op)
         # Store first so a repeated key at the cap still returns its earlier job.
         opened = self._store.open(record, idempotency_key=opening.idempotency_key)
         if not opened.created:
-            return opened
-        if self._slots.try_acquire():
-            self._reserve(opened.record.id)
-            return opened
-        self._store.discard(opened.record.id, idempotency_key=opening.idempotency_key)
-        raise JobCapacityError("Too many background runs are active")
+            return opened.record
+        if not self._slots.try_acquire():
+            self._store.discard(record.id, idempotency_key=opening.idempotency_key)
+            raise JobCapacityError("Too many background runs are active")
+        frames: Iterable[str] = ()
+        try:
+            frames = launch()
+            self._read_in_background(record.id, frames)
+        except BaseException:
+            self._slots.release()
+            close_frames(frames)
+            self._store.discard(record.id, idempotency_key=opening.idempotency_key)
+            raise
+        return record
 
-    def _reserve(self, job_id: str) -> None:
-        """Remember that job_id holds a slot taken by open.
+    def _read_in_background(self, job_id: str, frames: Iterable[str]) -> None:
+        """Read the run's frames on a daemon thread that releases the job's slot when the stream ends.
 
-        Precondition: the slot was just acquired.
-        Postcondition: job_id is reserved.
+        Precondition: called inside a request context while the job holds a slot.
+        Postcondition: the reader thread started; raises, starting nothing, when it cannot.
         """
-        with self._reserved_lock:
-            self._reserved.add(job_id)
-
-    def _unreserve(self, job_id: str) -> bool:
-        """Forget a reservation.
-
-        Precondition: none.
-        Postcondition: true when job_id was reserved by this process's open (now forgotten); false otherwise.
-        """
-        with self._reserved_lock:
-            if job_id not in self._reserved:
-                return False
-            self._reserved.remove(job_id)
-            return True
-
-    def attach(self, job_id: str, frames: Iterable[str]) -> threading.Thread:
-        """Read the run's frames on a daemon thread.
-
-        Precondition: called inside a request context, after this process's open created the job (created=True)
-        and reserved its slot; attach is called at most once per job.
-        Postcondition: the thread owns the slot and releases it when the stream ends; if the thread cannot start,
-        the slot is released and the error propagates. Raises ValueError, taking no slot, for a job this
-        process's open did not create.
-        """
-        if not self._unreserve(job_id):
-            raise ValueError(f"Job {job_id} holds no reserved background slot")
         context = contextvars.copy_context()
 
         def reader_with_context() -> None:
@@ -311,40 +288,12 @@ class RunJobService:
             finally:
                 self._slots.release()
 
-        try:
-            thread = threading.Thread(
-                target=copy_current_request_context(reader_with_context),
-                name=READER_THREAD_NAME,
-                daemon=True,
-            )
-            thread.start()
-        except BaseException:
-            self._slots.release()
-            raise
-        return thread
-
-    def discard(self, opened: OpenedJob, *, idempotency_key: str | None) -> None:
-        """Remove a job whose run never started.
-
-        Precondition: opened came from open and attach was not called for it.
-        Postcondition: the slot reserved by this process's open is released even when the store raises (the error
-        propagates); otherwise the job is gone.
-        """
-        try:
-            self._store.discard(opened.record.id, idempotency_key=idempotency_key)
-        finally:
-            self._release_reserved_slot(opened)
-
-    def _release_reserved_slot(self, opened: OpenedJob) -> None:
-        """Give back the slot that open reserved for a job.
-
-        Precondition: none.
-        Postcondition: the slot is released only when opened was created by this process's open and still reserved.
-        """
-        if not opened.created:
-            return
-        if self._unreserve(opened.record.id):
-            self._slots.release()
+        thread = threading.Thread(
+            target=copy_current_request_context(reader_with_context),
+            name=READER_THREAD_NAME,
+            daemon=True,
+        )
+        thread.start()
 
     def view(self, owner: JobOwner, job_id: str) -> JobView:
         """Describe a job's current state.
