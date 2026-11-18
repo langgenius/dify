@@ -8,7 +8,7 @@ from uuid import UUID
 from constants.oauth_bearer import SubjectType
 from libs.pagination import PaginatedResult
 from machinery.context import AppRequestContext, CallerIdentity, RequestContext
-from machinery.scope import UNRESTRICTED, IdScope, scope_admits
+from machinery.scope import UNRESTRICTED, scope_admits
 from models.enums import AppStatus
 from services.app.access import AppAccessFilter
 from services.app_definition_query_service import AppParameterConfig
