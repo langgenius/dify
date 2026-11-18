@@ -415,7 +415,9 @@ class RecordingFrames:
 
 
 def _set_mode(world: World, sqlite_session: Session, mode: AppMode) -> None:
-    sqlite_session.get(App, world.client.app_id).mode = mode
+    app = sqlite_session.get(App, world.client.app_id)
+    assert app is not None
+    app.mode = mode
     sqlite_session.commit()
 
 
