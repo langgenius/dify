@@ -41,6 +41,7 @@ vi.mock('@/service/console', async (importOriginal) => {
         entitled: true,
         groups: [],
       }),
+      'workspaces.byWorkspaceId.members.pendingInvitations.get': async () => ({ invitations: [] }),
       'workspaces.current.members.get': async () => ({ accounts: [] }),
       'features.vectorSpace.get': async () => ({ size: 0, limit: 50, usage_unknown: false }),
       'billing.invoices.get': async () => ({ url: 'https://billing.example.com' }),

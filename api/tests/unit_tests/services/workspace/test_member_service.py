@@ -309,6 +309,8 @@ class TestMemberServiceCases:
             operator_account_id=None,
         )
         assert account_domain.invitations.list_pending(owner) == ()
+        account_domain.delivery.list_pending.return_value = ()
+        assert account_domain.invitations.list_pending(owner) == ()
 
     @staticmethod
     def test_pending_member_can_be_reinvited(
