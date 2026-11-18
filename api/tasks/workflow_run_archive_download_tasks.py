@@ -18,6 +18,7 @@ from services.retention.workflow_run.archive_month_lock import (
 logger = logging.getLogger(__name__)
 
 WORKFLOW_RUN_ARCHIVE_DOWNLOAD_QUEUE = "workflow_archive"
+_MAX_BUSY_RETRIES = 5
 
 
 @shared_task(
@@ -28,7 +29,7 @@ WORKFLOW_RUN_ARCHIVE_DOWNLOAD_QUEUE = "workflow_archive"
     autoretry_for=(WorkflowRunArchiveMonthBusyError,),
     retry_backoff=30,
     retry_backoff_max=120,
-    retry_kwargs={"max_retries": 5},
+    retry_kwargs={"max_retries": _MAX_BUSY_RETRIES},
 )
 def prepare_workflow_run_archive_download_task(self: Task, tenant_id: str, download_id: str) -> None:
     """Redeliver interrupted work; only the matching Celery claim may start a bounded preparation attempt."""
@@ -43,10 +44,18 @@ def prepare_workflow_run_archive_download_task(self: Task, tenant_id: str, downl
         (self.request.delivery_info or {}).get("redelivered", False),
         self.request.retries,
     )
-    WorkflowRunArchiveDownloadPreparer(
+    preparer = WorkflowRunArchiveDownloadPreparer(
         archive_storage_provider=get_archive_storage,
         bundles=WorkflowRunArchiveBundleQueryRepository(session_factory=get_session_maker()),
         cache=WorkflowRunArchiveDownloadTaskCache(redis=redis_client),
         download_storage_provider=get_export_storage,
         month_lock=RedisWorkflowRunArchiveMonthLock(redis=redis_client),
-    ).prepare(tenant_id=tenant_id, download_id=download_id, celery_task_id=celery_task_id)
+    )
+    try:
+        preparer.prepare(tenant_id=tenant_id, download_id=download_id, celery_task_id=celery_task_id)
+    except WorkflowRunArchiveMonthBusyError:
+        if self.request.retries >= _MAX_BUSY_RETRIES:
+            preparer.fail_pending_busy_download(
+                tenant_id=tenant_id, download_id=download_id, celery_task_id=celery_task_id
+            )
+        raise
