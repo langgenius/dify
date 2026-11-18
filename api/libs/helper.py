@@ -125,7 +125,7 @@ def extract_tenant_id(user: "Account | EndUser") -> str | None:
             raise ValueError(f"Invalid user type: {type(user)}. Expected Account or EndUser.")
 
 
-def run(script):
+def run(script: str) -> tuple[int, str]:
     return subprocess.getstatusoutput("source /root/.bashrc && " + script)
 
 
@@ -224,7 +224,7 @@ def current_timestamp() -> int:
     return int(time.time())
 
 
-def email(email):
+def email(email: str) -> str:
     # Define a regex pattern for email addresses
     pattern = r"^[\w\.!#$%&'*+\-/=?^_`{|}~]+@([\w-]+\.)+[\w-]{2,}$"
     # Reject trailing newlines as well as other unconsumed input.
@@ -306,7 +306,7 @@ def alphanumeric(value: str):
     raise ValueError(f"{value} is not a valid alphanumeric value")
 
 
-def timestamp_value(timestamp):
+def timestamp_value(timestamp: Any) -> int:
     try:
         int_timestamp = int(timestamp)
         if int_timestamp < 0:
@@ -320,11 +320,11 @@ def timestamp_value(timestamp):
 class StrLen:
     """Restrict input to an integer in a range (inclusive)"""
 
-    def __init__(self, max_length, argument="argument"):
+    def __init__(self, max_length: int, argument: str = "argument") -> None:
         self.max_length = max_length
         self.argument = argument
 
-    def __call__(self, value):
+    def __call__(self, value: str) -> str:
         length = len(value)
         if length > self.max_length:
             error = f"Invalid {self.argument}: {value}. {self.argument} cannot exceed length {self.max_length}"
@@ -334,11 +334,11 @@ class StrLen:
 
 
 class DatetimeString:
-    def __init__(self, format, argument="argument"):
+    def __init__(self, format: str, argument: str = "argument") -> None:
         self.format = format
         self.argument = argument
 
-    def __call__(self, value):
+    def __call__(self, value: str) -> str:
         try:
             datetime.strptime(value, self.format)
         except ValueError as caught_error:
@@ -348,7 +348,7 @@ class DatetimeString:
         return value
 
 
-def timezone(timezone_string):
+def timezone(timezone_string: str) -> str:
     if timezone_string and timezone_string in available_timezones():
         return timezone_string
 
@@ -365,7 +365,7 @@ def convert_datetime_to_date(field, target_timezone: str = ":tz"):
         raise NotImplementedError(f"Unsupported database type: {dify_config.DB_TYPE}")
 
 
-def generate_string(n):
+def generate_string(n: int) -> str:
     """
     Generates a cryptographically secure random string of the specified length.
 
