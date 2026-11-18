@@ -95,15 +95,15 @@ class JobCapacityError(Exception):
     """The background run cap of this process is reached."""
 
 
-def fail_if_reader_dead(store: RunJobStore, record: JobRecord, failure: JobFailure) -> JobRecord:
-    """Fail a job whose reader has ended before the job reached a final status.
+def fail_if_reader_dead(store: RunJobStore, record: JobRecord, failure: JobFailure, *, reader_alive: bool) -> JobRecord:
+    """Fail a job whose reader died before recording an ending.
 
-    Precondition: record is the stored state of the job. The reader refreshes the alive key on a timer for as long as
-    it runs, frames or not, so the key lapses only when the reader has ended.
-    Postcondition: the record unchanged while its alive key is live; otherwise the job is settled as FAILED for the
-    given reason unless it is final already, and the stored record is returned (record, if the job is gone).
+    Precondition: reader_alive was read before record. A reader deletes the alive key after its last write and the
+    key lapses when a reader dies, so a record read after the key was found gone holds every write of the reader.
+    Postcondition: the record unchanged while the reader is alive; otherwise the job is settled as FAILED for the
+    given reason unless it has an ending already, and the stored record is returned (record, if the job is gone).
     """
-    if store.is_alive(record.id):
+    if reader_alive:
         return record
     store.settle(record.id, JobEnding(status=JobStatus.FAILED, failure=failure))
     return store.get(record.id) or record
@@ -313,20 +313,22 @@ class RunJobService:
         Precondition: none.
         Postcondition: a view of the job; a GRAPH job with a stored run takes status, outputs and error from the
         run, and its form from the pending form while paused (None otherwise). A GRAPH job
-        without a run id whose reader has ended and which is not final is FAILED as RUN_NOT_CONFIRMED, and that
-        is saved; once saved it is final for good, even if a run id and a run row appear later. Without a visible
+        without a run id whose reader died (alive key gone, no ending) is FAILED as RUN_NOT_CONFIRMED, and that
+        is saved; once saved it is final for good, even if a run id and a run row appear later. The alive key is
+        read before the record. Without a visible
         run row, and for
         MESSAGE jobs, the record's own status and error are used, with no form. Raises JobNotFoundError when the job is
         missing or owned by someone else.
         """
+        reader_alive = self._store.is_alive(job_id)
         record = self._store.get(job_id)
         if record is None:
             raise JobNotFoundError(job_id)
         if record.owner != owner:
             raise JobNotFoundError(job_id)
-        return self._view_of(record)
+        return self._view_of(record, reader_alive=reader_alive)
 
-    def _view_of(self, record: JobRecord) -> JobView:
+    def _view_of(self, record: JobRecord, *, reader_alive: bool) -> JobView:
         """Build the view of a record.
 
         Precondition: record is stored.
@@ -339,7 +341,9 @@ class RunJobService:
             # Already reported final: a run that starts late is not linked to the job.
             return fallback
         if record.run_id is None:
-            unconfirmed = fail_if_reader_dead(self._store, record, JobFailure.RUN_NOT_CONFIRMED)
+            unconfirmed = fail_if_reader_dead(
+                self._store, record, JobFailure.RUN_NOT_CONFIRMED, reader_alive=reader_alive
+            )
             return JobView(record=unconfirmed, status=unconfirmed.status, error=unconfirmed.error)
         run = self._results.run(tenant_id=record.owner.tenant_id, run_id=record.run_id)
         if run is None:
@@ -388,19 +392,20 @@ class RunJobService:
         nothing is sent. Returns the fresh view. Raises JobNotFoundError when the job is missing or owned by
         someone else.
         """
+        reader_alive = self._store.is_alive(job_id)
         record = self._store.get(job_id)
         if record is None:
             raise JobNotFoundError(job_id)
         if record.owner != owner:
             raise JobNotFoundError(job_id)
-        view = self._view_of(record)
+        view = self._view_of(record, reader_alive=reader_alive)
         if view.status.is_final:
             return view
         self._store.request_stop(job_id)
         # Re-read so ids stored by the reader since the first read are not missed.
         stopping = replace(self._store.get(job_id) or record, stop_requested=True)
         self._stopper.stop(stopping)
-        return self._view_of(stopping)
+        return self._view_of(stopping, reader_alive=reader_alive)
 
 
 def _settled(view: JobView) -> bool:
