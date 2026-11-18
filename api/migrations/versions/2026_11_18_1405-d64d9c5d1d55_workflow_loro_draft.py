@@ -1,12 +1,17 @@
-"""Persist a collaborative draft's Loro history alongside its graph."""
+"""Persist a collaborative draft's Loro history alongside its graph.
+
+Revision ID: d64d9c5d1d55
+Revises: f8b6e2c4a901
+Create Date: 2026-11-18 14:05:22
+"""
 
 import sqlalchemy as sa
 from alembic import op
 
 from models.types import BinaryData, StringUUID
 
-revision = "c6d2d8bc881f"
-down_revision = "6b7e2a9c4d10"
+revision = "d64d9c5d1d55"
+down_revision = "f8b6e2c4a901"
 branch_labels = None
 depends_on = None
 
