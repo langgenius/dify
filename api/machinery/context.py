@@ -33,6 +33,28 @@ class RequestContext(NamedTuple):
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class CallerIdentity:
+    """The admitted caller before any workspace: admission builds it once, and every workspace context from it."""
+
+    request_id: str
+    trace_id: str | None
+    account_id: str
+    resource_app_ids: frozenset[str] | None = None
+    personal_app_ids: IdScope = UNRESTRICTED
+
+    def in_workspace(self, workspace_id: str) -> RequestContext:
+        """Postcondition: this caller acting in ``workspace_id``."""
+        return RequestContext(
+            request_id=self.request_id,
+            trace_id=self.trace_id,
+            account_id=self.account_id,
+            active_workspace_id=workspace_id,
+            resource_app_ids=self.resource_app_ids,
+            personal_app_ids=self.personal_app_ids,
+        )
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class ServiceApiEndUserContext(AppRequestContext):
     """Validated application mode and end-user identity for a Service API request."""
 
