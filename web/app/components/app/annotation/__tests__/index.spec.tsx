@@ -42,6 +42,8 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'features.get': () => api.features(),
+      'apps.byAppId.annotations.get': (input) => api.list(input),
+      'apps.byAppId.annotations.export.get': () => ({ data: [] }),
       'apps.byAppId.annotations.count.get': () => ({ count: 0 }),
       'apps.byAppId.annotations.post': (input) => api.add(input),
       'apps.byAppId.annotations.byAnnotationId.delete': (input) => api.remove(input),

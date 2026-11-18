@@ -10,7 +10,7 @@ import {
   DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
@@ -40,6 +40,7 @@ export type IBatchModalProps = {
 }
 
 const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) => {
+  const queryClient = useQueryClient()
   const { t } = useTranslation(['appAnnotation', 'common'])
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: annotationQuota } = useQuery(
@@ -64,6 +65,7 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
   }, [isShow])
 
   const [importStatus, setImportStatus] = useState<ProcessStatus | string>()
+  const [isReconciling, setIsReconciling] = useState(false)
   const checkProcess = async (jobID: string) => {
     try {
       const res = await consoleClient.apps.byAppId.annotations.batchImportStatus.byJobId.get(
@@ -78,9 +80,22 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
       if (res.job_status === ProcessStatus.ERROR)
         toast.error(`${t(($) => $['batchModal.runError'], { ns: 'appAnnotation' })}`)
       if (res.job_status === ProcessStatus.COMPLETED) {
-        toast.success(`${t(($) => $['batchModal.completed'], { ns: 'appAnnotation' })}`)
-        onAdded()
-        onCancel()
+        setIsReconciling(true)
+        try {
+          await Promise.all([
+            queryClient.invalidateQueries({
+              queryKey: consoleQuery.apps.byAppId.annotations.key({
+                input: { params: { app_id: appId } },
+              }),
+            }),
+            queryClient.invalidateQueries({ queryKey: consoleQuery.features.get.key() }),
+          ])
+          toast.success(`${t(($) => $['batchModal.completed'], { ns: 'appAnnotation' })}`)
+          onAdded()
+          onCancel()
+        } finally {
+          setIsReconciling(false)
+        }
       }
     } catch (e: any) {
       toast.error(
@@ -140,7 +155,9 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
             onClick={handleSend}
             disabled={isAnnotationQuotaUnavailable || isAnnotationFull || !currentCSV}
             loading={
-              importStatus === ProcessStatus.PROCESSING || importStatus === ProcessStatus.WAITING
+              isReconciling ||
+              importStatus === ProcessStatus.PROCESSING ||
+              importStatus === ProcessStatus.WAITING
             }
           >
             {t(($) => $['batchModal.run'], { ns: 'appAnnotation' })}
