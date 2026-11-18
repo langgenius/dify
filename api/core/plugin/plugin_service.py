@@ -16,7 +16,6 @@ metadata.
 
 import logging
 import time
-from collections import OrderedDict
 from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
 from hashlib import sha256
@@ -25,6 +24,7 @@ from threading import Lock
 from typing import Literal, Protocol
 
 import zstandard
+from cachetools import LRUCache, cached
 from pydantic import BaseModel, TypeAdapter
 from redis import RedisError
 from redis.exceptions import LockError
@@ -119,16 +119,16 @@ class PluginService:
     # declarations are shared and consumers must treat them as read-only. A changed payload always has a different key,
     # while the small LRU bounds per-process memory usage.
     PLUGIN_MODEL_PROVIDERS_PARSED_CACHE_MAX_ENTRIES = 8
-    _parsed_plugin_model_providers_cache: OrderedDict[tuple[int, bytes], tuple[PluginModelProviderDeclaration, ...]] = (
-        OrderedDict()
+    _parsed_plugin_model_providers_cache: LRUCache[tuple[int, bytes], tuple[PluginModelProviderDeclaration, ...]] = (
+        LRUCache(maxsize=PLUGIN_MODEL_PROVIDERS_PARSED_CACHE_MAX_ENTRIES)
     )
     _parsed_plugin_model_providers_cache_lock = Lock()
     # Declarations built from a daemon listing are a function of that listing and of the
     # installation sources resolved for it. With the Redis cache disabled the daemon is still
     # asked on every call; this only avoids rebuilding declarations from unchanged inputs.
-    _daemon_listing_declarations_cache: OrderedDict[
+    _daemon_listing_declarations_cache: LRUCache[
         tuple[tuple[int, bytes], tuple[tuple[str, str], ...]], tuple[PluginModelProviderDeclaration, ...]
-    ] = OrderedDict()
+    ] = LRUCache(maxsize=PLUGIN_MODEL_PROVIDERS_PARSED_CACHE_MAX_ENTRIES)
     _daemon_listing_declarations_cache_lock = Lock()
     PLUGIN_INSTALL_TASK_TERMINAL_STATUSES = (PluginInstallTaskStatus.Success, PluginInstallTaskStatus.Failed)
     # Mirror the detail-panel endpoint query size so list reconciliation and
@@ -244,17 +244,6 @@ class PluginService:
         return len(payload_bytes), sha256(payload_bytes).digest()
 
     @classmethod
-    def _get_parsed_plugin_model_providers_from_local_cache(
-        cls, payload: bytes | bytearray | str
-    ) -> tuple[PluginModelProviderDeclaration, ...] | None:
-        cache_key = cls._plugin_model_providers_payload_cache_key(payload)
-        with cls._parsed_plugin_model_providers_cache_lock:
-            providers = cls._parsed_plugin_model_providers_cache.pop(cache_key, None)
-            if providers is not None:
-                cls._parsed_plugin_model_providers_cache[cache_key] = providers
-        return providers
-
-    @classmethod
     def _store_parsed_plugin_model_providers_in_local_cache(
         cls,
         payload: bytes | bytearray | str,
@@ -262,10 +251,7 @@ class PluginService:
     ) -> None:
         cache_key = cls._plugin_model_providers_payload_cache_key(payload)
         with cls._parsed_plugin_model_providers_cache_lock:
-            cls._parsed_plugin_model_providers_cache.pop(cache_key, None)
             cls._parsed_plugin_model_providers_cache[cache_key] = providers
-            while len(cls._parsed_plugin_model_providers_cache) > cls.PLUGIN_MODEL_PROVIDERS_PARSED_CACHE_MAX_ENTRIES:
-                cls._parsed_plugin_model_providers_cache.popitem(last=False)
 
     @classmethod
     def _parse_plugin_model_providers_cache_payload(
@@ -275,16 +261,15 @@ class PluginService:
         return tuple(_provider_entities_adapter.validate_json(decoded_payload))
 
     @classmethod
+    @cached(
+        _parsed_plugin_model_providers_cache,
+        key=lambda cls, payload: cls._plugin_model_providers_payload_cache_key(payload),
+        lock=_parsed_plugin_model_providers_cache_lock,
+    )
     def _get_or_parse_plugin_model_providers_cache_payload(
         cls, payload: bytes | bytearray | str
     ) -> tuple[PluginModelProviderDeclaration, ...]:
-        providers = cls._get_parsed_plugin_model_providers_from_local_cache(payload)
-        if providers is not None:
-            return providers
-
-        providers = cls._parse_plugin_model_providers_cache_payload(payload)
-        cls._store_parsed_plugin_model_providers_in_local_cache(payload, providers)
-        return providers
+        return cls._parse_plugin_model_providers_cache_payload(payload)
 
     @classmethod
     def _load_plugin_model_providers_generation(cls, tenant_id: str) -> int | None:
@@ -560,34 +545,39 @@ class PluginService:
         model_client = client or PluginModelClient()
         providers = model_client.fetch_model_providers(tenant_id)
         installation_sources = cls._resolve_model_provider_installation_sources(tenant_id, providers)
-
-        cache = cls._daemon_listing_declarations_cache
-        cache_key = None
         if isinstance(providers, PluginModelProviderListing):
-            cache_key = (
-                providers.payload_key,
-                tuple(sorted((identifier, source.value) for identifier, source in installation_sources.items())),
-            )
-            with cls._daemon_listing_declarations_cache_lock:
-                declarations = cache.get(cache_key)
-                if declarations is not None:
-                    cache.move_to_end(cache_key)
-                    return declarations
+            return cls._build_daemon_listing_declarations(providers, installation_sources)
+        return cls._build_provider_declarations(providers, installation_sources)
 
-        declarations = tuple(
+    @classmethod
+    def _build_provider_declarations(
+        cls,
+        providers: Sequence[PluginModelProviderEntity],
+        installation_sources: Mapping[str, PluginInstallationSource],
+    ) -> tuple[PluginModelProviderDeclaration, ...]:
+        return tuple(
             cls._to_provider_entity(
                 provider,
                 provider.installation_source or installation_sources.get(provider.plugin_unique_identifier),
             )
             for provider in providers
         )
-        if cache_key is not None:
-            with cls._daemon_listing_declarations_cache_lock:
-                cache[cache_key] = declarations
-                cache.move_to_end(cache_key)
-                while len(cache) > cls.PLUGIN_MODEL_PROVIDERS_PARSED_CACHE_MAX_ENTRIES:
-                    cache.popitem(last=False)
-        return declarations
+
+    @classmethod
+    @cached(
+        _daemon_listing_declarations_cache,
+        key=lambda cls, listing, installation_sources: (
+            listing.payload_key,
+            tuple(sorted((identifier, source.value) for identifier, source in installation_sources.items())),
+        ),
+        lock=_daemon_listing_declarations_cache_lock,
+    )
+    def _build_daemon_listing_declarations(
+        cls,
+        listing: PluginModelProviderListing,
+        installation_sources: Mapping[str, PluginInstallationSource],
+    ) -> tuple[PluginModelProviderDeclaration, ...]:
+        return cls._build_provider_declarations(listing, installation_sources)
 
     @classmethod
     def _fetch_and_cache_plugin_model_providers(

@@ -1,9 +1,11 @@
 import binascii
-from collections import OrderedDict
 from collections.abc import Generator, Iterable, Sequence
 from hashlib import sha256
 from threading import Lock
 from typing import IO, Any, Self
+
+import httpx
+from cachetools import LRUCache, cached
 
 from core.plugin.entities.plugin_daemon import (
     PluginBasicBooleanResponse,
@@ -56,7 +58,9 @@ class PluginModelClient(BasePluginClient):
     # validated listings of the most recently seen response bodies. A changed body has a
     # different key, so nothing here can go stale; the small LRU bounds per-process memory.
     MODEL_PROVIDER_LISTING_CACHE_MAX_ENTRIES = 8
-    _model_provider_listing_cache: OrderedDict[tuple[int, bytes], PluginModelProviderListing] = OrderedDict()
+    _model_provider_listing_cache: LRUCache[tuple[int, bytes], PluginModelProviderListing] = LRUCache(
+        maxsize=MODEL_PROVIDER_LISTING_CACHE_MAX_ENTRIES
+    )
     _model_provider_listing_cache_lock = Lock()
 
     @staticmethod
@@ -80,22 +84,19 @@ class PluginModelClient(BasePluginClient):
         response = self._request_plugin_daemon("GET", path, params={"page": 1, "page_size": 256})
         payload = response.content
         payload_key = (len(payload), sha256(payload).digest())
+        return self._validate_model_provider_listing(response, path, payload_key)
 
-        cache = self._model_provider_listing_cache
-        with self._model_provider_listing_cache_lock:
-            listing = cache.get(payload_key)
-            if listing is not None:
-                cache.move_to_end(payload_key)
-                return listing
-
+    # Looked up and stored under the lock, validated outside it; a failed validation is not cached.
+    @cached(
+        _model_provider_listing_cache,
+        key=lambda self, response, path, payload_key: payload_key,
+        lock=_model_provider_listing_cache_lock,
+    )
+    def _validate_model_provider_listing(
+        self, response: httpx.Response, path: str, payload_key: tuple[int, bytes]
+    ) -> PluginModelProviderListing:
         providers = self._parse_plugin_daemon_response(response, path, list[PluginModelProviderEntity])
-        listing = PluginModelProviderListing(providers, payload_key)
-        with self._model_provider_listing_cache_lock:
-            cache[payload_key] = listing
-            cache.move_to_end(payload_key)
-            while len(cache) > self.MODEL_PROVIDER_LISTING_CACHE_MAX_ENTRIES:
-                cache.popitem(last=False)
-        return listing
+        return PluginModelProviderListing(providers, payload_key)
 
     def fetch_model_provider_bindings(self, tenant_id: str) -> Sequence[PluginModelProviderBinding]:
         """Fetch only model-provider installation identities from the daemon."""
