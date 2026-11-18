@@ -2819,7 +2819,8 @@ export const zToolCallLimitMetadata = z.object({
  * One native tool call's application-owned, persistable display metadata.
  *
  * Native call identity is independent of its display name and the SQL thought
- * row. Arguments, credentials and observations remain outside this sidecar.
+ * row. Tool inputs, credentials and successful observations remain outside
+ * this sidecar; ``error`` is a bounded failure description for display.
  * Missing metadata on older thoughts conveys no execution or quota claim.
  */
 export const zAgentToolActivity = z.object({
