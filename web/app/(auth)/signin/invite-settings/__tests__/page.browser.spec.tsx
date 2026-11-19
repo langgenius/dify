@@ -87,7 +87,9 @@ it('submits only the language and time zone confirmed in the pickers', async () 
       name: login.joinWorkspace.replace('{{workspaceName}}', workspaceName),
     })
     await name.fill('邀请测试')
-    await expect.element(timezone.getByText(/Taipei, Kaohsiung, Taichung, Tainan/)).toBeVisible()
+    await expect
+      .element(timezone)
+      .toHaveValue('+08:00 Taipei Time - Taipei, Kaohsiung, Taichung, Tainan')
     await expect
       .element(screen.getByRole('link', { name: login['license.link'] }))
       .not.toBeInTheDocument()
@@ -114,17 +116,22 @@ it('submits only the language and time zone confirmed in the pickers', async () 
     await expect.element(language).toHaveValue('English (United States)')
     expect(mocks.activate).not.toHaveBeenCalled()
 
-    await timezone.click()
-    const search = screen.getByRole('combobox', {
-      name: accountSettings['account.timezoneSearchPlaceholder'],
-    })
-    await expect.element(search).toHaveFocus()
-    await search.fill('Pacific/Niue')
-    await expect.element(screen.getByRole('option', { name: /Niue/ })).toBeVisible()
-    await userEvent.keyboard('{ArrowDown}')
-    await expect.element(search).toHaveAttribute('aria-activedescendant')
+    await timezone.fill('no-such-timezone')
+    await expect
+      .element(screen.getByText(accountSettings['account.timezoneNoResults']))
+      .toBeVisible()
     await userEvent.keyboard('{Enter}')
-    await expect.element(timezone.getByText(/Niue/)).toBeVisible()
+    await expect.element(timezone).toHaveAttribute('aria-expanded', 'false')
+    expect(mocks.activate).not.toHaveBeenCalled()
+
+    await timezone.fill('Pacific/Niue')
+    const niue = screen.getByRole('option', { name: /Niue/ })
+    await expect.element(niue).toBeVisible()
+    const niueLabel = niue.element().textContent
+    await userEvent.keyboard('{ArrowDown}')
+    await expect.element(timezone).toHaveAttribute('aria-activedescendant')
+    await userEvent.keyboard('{Enter}')
+    await expect.element(timezone).toHaveValue(niueLabel)
     await expect.element(timezone).toHaveFocus()
     expect(mocks.activate).not.toHaveBeenCalled()
 

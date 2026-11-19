@@ -199,6 +199,17 @@ export default function InviteSettingsPage() {
       </h1>
       <Form
         className="grid min-w-0 gap-5"
+        onKeyDown={(event) => {
+          const { target, key, nativeEvent } = event
+          if (
+            key === 'Enter' &&
+            !nativeEvent.isComposing &&
+            target instanceof HTMLInputElement &&
+            target.getAttribute('role') === 'combobox' &&
+            target.getAttribute('aria-expanded') === 'true'
+          )
+            event.preventDefault()
+        }}
         onFormSubmit={() => {
           void handleActivate()
         }}
@@ -235,17 +246,7 @@ export default function InviteSettingsPage() {
                 }}
               >
                 <ComboboxInputGroup>
-                  <ComboboxInput
-                    spellCheck={false}
-                    onKeyDown={(event) => {
-                      if (
-                        event.key === 'Enter' &&
-                        !event.nativeEvent.isComposing &&
-                        event.currentTarget.getAttribute('aria-expanded') === 'true'
-                      )
-                        event.preventDefault()
-                    }}
-                  />
+                  <ComboboxInput spellCheck={false} />
                   <ComboboxInputTrigger
                     aria-label={t(($) => $['placeholder.select'], { ns: 'common' })}
                   />

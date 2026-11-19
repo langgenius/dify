@@ -121,13 +121,12 @@ it.each(['Time Zone', 'Display Language'])(
     async function choosePreference(timezoneQuery = 'Niue') {
       await trigger.click()
       if (field === 'Time Zone') {
-        const search = screen.getByRole('combobox', { name: 'Search cities or time zones...' })
-        await search.fill(timezoneQuery)
+        await timezone.fill(timezoneQuery)
         await expect
           .element(screen.getByRole('option', { name: new RegExp(timezoneQuery) }))
           .toBeVisible()
         await userEvent.keyboard('{ArrowDown}')
-        await expect.element(search).toHaveAttribute('aria-activedescendant')
+        await expect.element(timezone).toHaveAttribute('aria-activedescendant')
       } else {
         await expect.element(screen.getByRole('listbox')).toBeVisible()
         await expect.element(screen.getByRole('option', { selected: true })).toHaveFocus()
@@ -140,7 +139,9 @@ it.each(['Time Zone', 'Display Language'])(
 
     try {
       const savedLanguage = language.element().textContent
-      const savedTimezone = timezone.element().textContent
+      const savedTimezone = profile.timezone
+        ? timezones.find((option) => option.value === profile.timezone)!.name
+        : ''
       await choosePreference()
       await expect.element(trigger).toHaveFocus()
       await expect.element(language).toHaveAttribute('aria-readonly', 'true')
@@ -161,11 +162,11 @@ it.each(['Time Zone', 'Display Language'])(
         await expect.element(option).toBeVisible()
         await option.click()
         expect(profileRequests.update).toHaveBeenCalledOnce()
-        expect(language.element().textContent).toBe(savedLanguage)
-        expect(timezone.element().textContent).toBe(savedTimezone)
         await userEvent.keyboard('{Escape}')
         await expect.element(picker).toHaveAttribute('aria-expanded', 'false')
         await expect.element(picker).toHaveFocus()
+        await expect.element(language).toHaveTextContent(savedLanguage)
+        await expect.element(timezone).toHaveValue(savedTimezone)
       }
 
       if (field === 'Time Zone') {
@@ -178,7 +179,7 @@ it.each(['Time Zone', 'Display Language'])(
         refetch.resolve(updatedProfile)
         await expect
           .element(timezone)
-          .toHaveTextContent(timezones.find((item) => item.value === 'Pacific/Niue')!.name)
+          .toHaveValue(timezones.find((item) => item.value === 'Pacific/Niue')!.name)
       } else {
         save.reject(new Error('Unable to save language'))
       }
@@ -216,7 +217,7 @@ function expectReadableText(text: Element, control: Element) {
   }
 }
 
-it('keeps full timezone city names readable at 320px without changing the saved selection', async () => {
+it('keeps full timezone options readable at 320px without changing the saved selection', async () => {
   // The real Settings sidebar and portal constrain both surfaces. DOM text alone missed clipping.
   const timezone = timezones.find((item) => item.value === 'America/Santo_Domingo')!
   const { screen, queryClient } = await renderPreferencesSettings({
@@ -225,13 +226,16 @@ it('keeps full timezone city names readable at 320px without changing the saved 
   })
   try {
     const trigger = screen.getByRole('combobox', { name: 'Time Zone', exact: true })
-    const savedValue = trigger.getByText(timezone.name, { exact: true })
-    await expect.element(savedValue).toBeVisible()
-    expectReadableText(savedValue.element(), trigger.element())
-
+    await expect.element(trigger).toHaveValue(timezone.name)
     await trigger.click()
-    const search = screen.getByRole('combobox', { name: 'Search cities or time zones...' })
-    await search.fill('Central European')
+    const selected = screen.getByRole('option', { name: timezone.name, selected: true })
+    await expect.element(selected).toBeVisible()
+    expectReadableText(
+      selected.getByText(timezone.name, { exact: true }).element(),
+      selected.element(),
+    )
+
+    await trigger.fill('Central European')
     const matches = timezones.filter((item) => item.name.includes('Central European'))
     await expect.element(screen.getByRole('option', { name: matches[0]!.name })).toBeVisible()
     for (const item of matches) {
@@ -242,7 +246,7 @@ it('keeps full timezone city names readable at 320px without changing the saved 
     await userEvent.keyboard('{Escape}')
     await expect.element(trigger).toHaveAttribute('aria-expanded', 'false')
     await expect.element(trigger).toHaveFocus()
-    await expect.element(savedValue).toBeVisible()
+    await expect.element(trigger).toHaveValue(timezone.name)
     expect(profileRequests.update).not.toHaveBeenCalled()
   } finally {
     await screen.unmount()
