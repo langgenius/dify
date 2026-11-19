@@ -983,6 +983,58 @@ def test_stream_events_observes_caller_stop_on_heartbeat() -> None:
     assert stop_checks == 2
 
 
+def test_stream_events_checks_caller_stop_before_each_buffered_sync_event() -> None:
+    stopped = False
+    body = "".join(
+        [
+            _event_frame(RunStartedEvent(id="1-0", run_id="run-1")),
+            _event_frame(_run_failed_event("synthetic failure")),
+        ]
+    )
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=body)
+
+    client = Client(
+        base_url="http://testserver",
+        sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+    stream = client.stream_events_sync("run-1", should_stop=lambda: stopped, reconnect=False)
+    try:
+        assert next(stream).type == "run_started"
+        stopped = True
+        with pytest.raises(DifyAgentStreamError, match="cancelled by the caller"):
+            next(stream)
+    finally:
+        stream.close()
+
+
+def test_stream_events_checks_caller_stop_before_each_buffered_async_event() -> None:
+    body = "".join(
+        [
+            _event_frame(RunStartedEvent(id="1-0", run_id="run-1")),
+            _event_frame(_run_failed_event("synthetic failure")),
+        ]
+    )
+
+    async def scenario() -> None:
+        stopped = False
+
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, content=body)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
+            client = Client(base_url="http://testserver", async_http_client=http_client)
+            stream = client.stream_events("run-1", should_stop=lambda: stopped, reconnect=False)
+            assert (await anext(stream)).type == "run_started"
+            stopped = True
+            with pytest.raises(DifyAgentStreamError, match="cancelled by the caller"):
+                await anext(stream)
+            await stream.aclose()
+
+    asyncio.run(scenario())
+
+
 def test_malformed_sse_frame_does_not_reconnect() -> None:
     calls = 0
 
