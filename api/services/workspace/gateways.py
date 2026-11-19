@@ -228,7 +228,6 @@ class WorkspaceMemberCapacityGateway:
         self._redis = redis
 
     def acquire(self, workspace_id: str) -> AbstractContextManager[object]:
-        # Shares the invite lock so acceptances and new invitations see one member count.
         return self._redis.lock(f"workspace_member_invite:{workspace_id}", timeout=60)
 
     def can_join(self, workspace_id: str, account_id: str) -> bool:
@@ -333,8 +332,6 @@ class DeploymentWorkspaceMemberAccessGateway:
             )
 
     def member_removed(self, workspace_id: str, removal: WorkspaceMemberRemoval) -> None:
-        if removal.account_deleted:
-            logger.info("Deleted orphaned pending account: account_id=%s, email=%s", removal.account_id, removal.email)
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             BillingService.clean_billing_info_cache(workspace_id)
         from services.enterprise.account_deletion_sync import sync_workspace_member_removal

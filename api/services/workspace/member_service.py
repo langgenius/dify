@@ -135,7 +135,6 @@ class WorkspaceMemberStore(Protocol):
         account_id: str,
         owner_id: str,
         actor_account_id: str,
-        delete_orphaned_pending_account: bool,
     ) -> WorkspaceMemberRemoval: ...
 
     def update_member_role(
@@ -247,13 +246,8 @@ class WorkspaceMemberService:
     def assign_role(self, workspace_id: str, operator_id: str, member_id: str, role_id: str) -> None:
         self._access.assign_role(workspace_id, operator_id, member_id, role_id)
 
-    def remove(
-        self, workspace_id: str, account_id: str, operator_id: str, *, keep_pending_account: bool = False
-    ) -> None:
-        """Remove a member and transfer their resources to the workspace owner.
-
-        A ``pending`` account left without any membership is deleted unless ``keep_pending_account``
-        is set; withdrawing an invitation keeps it because other workspaces may still invite it.
+    def remove(self, workspace_id: str, account_id: str, operator_id: str) -> None:
+        """Remove a member and transfer their resources to the workspace owner; the account itself is kept.
 
         Raises:
             AccountNotFoundError: The member account does not exist.
@@ -279,7 +273,6 @@ class WorkspaceMemberService:
             account_id=account_id,
             owner_id=owner_id,
             actor_account_id=operator_id,
-            delete_orphaned_pending_account=not keep_pending_account,
         )
         self._access.member_removed(workspace_id, removal)
 
@@ -443,8 +436,7 @@ class WorkspaceInvitationService:
                 workspace_id, normalized_email, account_id=account.id if account is not None else None
             )
             if pending_member and account is not None:
-                # Invitations from other workspaces may still name this account, so it is kept.
-                self._members.remove(workspace_id, account.id, context.account_id, keep_pending_account=True)
+                self._members.remove(workspace_id, account.id, context.account_id)
 
     def _live_pending(self, workspace_id: str) -> tuple[PendingWorkspaceInvitation, ...]:
         pending = self._invitations.list_pending(workspace_id)
@@ -571,7 +563,6 @@ class WorkspaceInvitationService:
                 is_setup=True,
                 check_normalized_email=True,
             )
-            # Without RBAC the invitation is its own record; activation creates the membership.
             if rbac_enabled:
                 self._members.join_member(
                     workspace_id=workspace_id,
@@ -601,11 +592,9 @@ class WorkspaceInvitationService:
                 if previous_role is not None or self._members.rbac_enabled:
                     raise AccountAlreadyInTenantError("Account already in tenant.")
         if rbac_enabled:
-            # A resend to an existing member only reissues the link; replacing roles would drop the others.
             if not already_member:
                 self._members.assign_role(workspace_id, inviter_id, account.id, role)
         else:
-            # Re-inviting resends: earlier links for this email stop working.
             self._invitations.revoke_pending(workspace_id, account.email, account_id=account.id)
         token = self._invitations.create(InvitationToken(account.id, account.email, workspace_id, role, requires_setup))
         self._invitations.send(

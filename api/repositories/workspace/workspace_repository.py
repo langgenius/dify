@@ -554,12 +554,8 @@ class WorkspaceRepository(
         account_id: str,
         owner_id: str,
         actor_account_id: str,
-        delete_orphaned_pending_account: bool,
     ) -> WorkspaceMemberRemoval:
-        """Remove one membership and hand the member's resources to ``owner_id``.
-
-        With ``delete_orphaned_pending_account``, a pending account left without any membership is deleted too.
-        """
+        """Remove one membership and hand the member's resources to ``owner_id``; the account itself is kept."""
         with self._session_factory.begin() as session:
             account = session.get(Account, account_id)
             membership = session.scalar(
@@ -594,17 +590,7 @@ class WorkspaceRepository(
                 replacement_owner_account_id=owner_id,
             )
             session.delete(membership)
-            delete_account = (
-                delete_orphaned_pending_account
-                and account.status == AccountStatus.PENDING
-                and not session.scalar(
-                    select(func.count(TenantAccountJoin.id)).where(TenantAccountJoin.account_id == account_id)
-                )
-            )
-            email = account.email
-            if delete_account:
-                session.delete(account)
-            return WorkspaceMemberRemoval(account_id, email, delete_account)
+            return WorkspaceMemberRemoval(account_id, account.email)
 
     def update_member_role(
         self,

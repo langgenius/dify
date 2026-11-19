@@ -262,7 +262,6 @@ class RedisInvitationTokenStore(InvitationTokenStore):
                 email=invitation.email,
                 workspace_id=invitation.workspace_id,
             )
-            # Workspace-scoped links predate the index, so a revocation or resend always retires them.
             return None if self._is_unindexed_revoked(legacy) else legacy
 
         data = self._redis.get(self._invitation_token_key(invitation.token))

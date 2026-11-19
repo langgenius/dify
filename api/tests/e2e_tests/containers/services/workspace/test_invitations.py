@@ -74,7 +74,6 @@ def test_invitation_token_round_trip_and_acceptance(
     send.assert_called_once_with(
         language="en-US", to=invited.email, token=token, inviter_name=owner.name, workspace_name=tenant.name
     )
-    # Neither a new nor an existing account joins until the invitation is accepted.
     assert services.workspaces.members.get_role(tenant.id, invited.id) is None
     lookup = InvitationLookup(workspace_id=None, email=None, token=token)
     checked = services.accounts.activation.check(lookup)
