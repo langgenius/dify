@@ -445,7 +445,7 @@ class DifyNodeFactory(NodeFactory):
         self._agent_strategy_resolver = PluginAgentStrategyResolver()
         self._agent_strategy_presentation_provider = PluginAgentStrategyPresentationProvider()
         self._agent_runtime_support = AgentRuntimeSupport()
-        self._agent_message_transformer = AgentMessageTransformer()
+        self._agent_message_transformer = AgentMessageTransformer(session_factory.create_session)
 
     def _capture_external_agent_dependencies(self) -> "ExternalAgentNodeDependencies | None":
         """Capture narrow ports while the root graph still owns its app context.
