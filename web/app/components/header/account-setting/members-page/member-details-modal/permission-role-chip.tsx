@@ -3,8 +3,11 @@
 import type { SelectorKey } from 'i18next'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useAtomValue } from 'jotai'
 import { memo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { deploymentEditionAtom } from '@/features/system-features/state'
+import { isWorkspacePermissionVisible } from '../../workspace-permission-visibility'
 
 type PermissionRoleChipProps = {
   roleId: string
@@ -24,7 +27,7 @@ const PermissionRoleChip = ({
   className,
 }: PermissionRoleChipProps) => {
   const { t } = useTranslation()
-  const permissions = permissionKeys
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const canRemoveRole = !isOwner && !!onRemove
   // Permission keys come from the catalog API, so this is a reviewed open-key boundary with a server-provided fallback.
   const translatePermissionName = (key: string) =>
@@ -32,7 +35,10 @@ const PermissionRoleChip = ({
       ns: 'permissionKeys',
       defaultValue: key,
     })
-  const permissionLabels = permissions.map(translatePermissionName).join(', ')
+  const permissionLabels = permissionKeys
+    .filter((key) => isWorkspacePermissionVisible(key, deploymentEdition))
+    .map(translatePermissionName)
+    .join(', ')
   const hasPermissionLabels = permissionLabels.length > 0
 
   const chipRootClassName = cn(
