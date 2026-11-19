@@ -16,14 +16,16 @@ from extensions.ext_application_services import build_application_services
 from extensions.ext_redis import RedisClientWrapper
 from libs.passport import PassportService
 from libs.token import generate_csrf_token
-from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from services.billing_client import billing
 from tests.helpers.billing_builders import subscription_info
 from tests.helpers.unit.account_domain import AccountDomain
 
 SUMMARY_PATH = "/console/api/workspaces/current/summary"
+APPS_PATH = "/console/api/apps"
 BOOTSTRAP_PATHS = (
     SUMMARY_PATH,
+    APPS_PATH,
     "/console/api/features",
     "/console/api/workspaces/current/rbac/my-permissions",
 )
@@ -111,7 +113,7 @@ def test_first_console_bootstrap_request_activates_workspace(
     assert summary_data["id"] == workspace_id
     assert summary_data["name"] == "End User's Workspace"
     assert summary_data["role"] == "owner"
-    apps = browser.get("/console/api/apps")
+    apps = browser.get(APPS_PATH)
     assert apps.status_code == 200, apps.json
     assert account_domain.workspaces.list_ids_for_account(account.id) == (workspace_id,)
     activated = account_domain.repository.get(account.id)
@@ -142,10 +144,47 @@ def test_console_bootstrap_preserves_existing_member_workspace(
     assert account_domain.workspaces.list_ids_for_account(account.id) == (workspace.id,)
 
 
-@pytest.mark.parametrize(
-    ("case", "status"),
-    [("missing_csrf", 401), ("creation_disabled", 403), ("previous_builder", 403)],
-)
+@pytest.mark.parametrize("has_archived_workspace", [False, True], ids=["removed", "archived"])
+def test_returning_builder_bootstraps_without_resetting_origin(
+    console_bootstrap: tuple[DifyApp, AccountDomain],
+    sqlite_session_factory: sessionmaker[Session],
+    has_archived_workspace: bool,
+) -> None:
+    """Direct Console entry recreates a usable workspace without rewriting Builder history."""
+    app, account_domain = console_bootstrap
+    origin = datetime(2020, 1, 1)
+    with sqlite_session_factory.begin() as session:
+        account = Account(name="Builder", email="builder@example.com", first_workspace_created_at=origin)
+        session.add(account)
+        if has_archived_workspace:
+            workspace = Tenant(name="Old workspace", status=TenantStatus.ARCHIVE)
+            session.add(workspace)
+            session.add(
+                TenantAccountJoin(
+                    account_id=account.id, tenant_id=workspace.id, role=TenantAccountRole.OWNER, current=True
+                )
+            )
+    previous_memberships = account_domain.workspaces.list_ids_for_account(account.id)
+    browser = _browser_session(app, account.id)
+
+    apps = browser.get(APPS_PATH)
+    assert apps.status_code == 200, apps.json
+    activation = account_domain.workspaces.get_activation(account.id)
+    assert activation.workspace_id is not None
+    assert activation.workspace_id not in previous_memberships
+    assert activation.first_workspace_created_at == origin
+    summary = browser.get(SUMMARY_PATH)
+    assert summary.status_code == 200, summary.json
+    data = summary.get_json()
+    assert isinstance(data, dict)
+    assert data["id"] == activation.workspace_id
+    assert set(account_domain.workspaces.list_ids_for_account(account.id)) == {
+        *previous_memberships,
+        activation.workspace_id,
+    }
+
+
+@pytest.mark.parametrize(("case", "status"), [("missing_csrf", 401), ("creation_disabled", 403)])
 def test_console_bootstrap_denial_does_not_provision(
     console_bootstrap: tuple[DifyApp, AccountDomain],
     sqlite_session_factory: sessionmaker[Session],
@@ -156,7 +195,7 @@ def test_console_bootstrap_denial_does_not_provision(
     """Reject workspace-less access without allocating membership, including before bootstrap."""
     app, account_domain = console_bootstrap
     with sqlite_session_factory.begin() as session:
-        origin = datetime(2026, 1, 1) if case == "previous_builder" else None
+        origin = datetime(2020, 1, 1) if case == "creation_disabled" else None
         account = Account(name="End User", email="end-user@example.com", first_workspace_created_at=origin)
         session.add(account)
     browser = _browser_session(app, account.id)
@@ -165,20 +204,19 @@ def test_console_bootstrap_denial_does_not_provision(
     if case == "creation_disabled":
         config_overrides(ALLOW_CREATE_WORKSPACE=False)
 
-    apps = browser.get("/console/api/apps")
+    create_app = browser.post(APPS_PATH, json={})
+    apps = browser.get(APPS_PATH)
     summary = browser.get(SUMMARY_PATH)
 
     assert summary.status_code == status, summary.json
     assert apps.status_code == status, apps.json
+    assert create_app.status_code == status, create_app.json
     if status == 403:
-        expected_denial = {
+        assert create_app.get_json() == {
             "code": "active_workspace_required",
             "message": "An active workspace is required.",
             "status": 403,
         }
-        assert apps.get_json() == expected_denial
-        if case == "previous_builder":
-            assert summary.get_json() == expected_denial
     assert account_domain.workspaces.list_ids_for_account(account.id) == ()
     persisted = account_domain.repository.get(account.id)
     assert persisted is not None

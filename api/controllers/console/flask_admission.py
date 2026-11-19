@@ -126,12 +126,12 @@ def console_account_identity_admission[T, **P, R](
 
 
 def _bootstrap_console_workspace() -> None:
-    """Resolve a first workspace for a Cloud browser session on opted-in Console GETs.
+    """Resolve a usable workspace for a Cloud browser session on opted-in Console GETs.
 
-    Requires login and CSRF validation first. Only a workspace-less Account with
-    no recorded Builder origin may provision. Success reloads the admitted Account
-    with its committed membership before workspace admission. Provisioning denials
-    leave workspace state unchanged and become normal admission errors.
+    Requires login and CSRF validation first. Provisioning depends on whether the
+    admitted Account has an active workspace, not its Builder history. Success
+    reloads the Account with its committed membership before workspace admission.
+    Creation policy denials do not create a workspace or membership.
     """
     if (
         dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD
@@ -146,10 +146,7 @@ def _bootstrap_console_workspace() -> None:
     if account is None:
         return
     if workspace_id is None:
-        if account.first_workspace_created_at is not None or account.status not in (
-            AccountStatus.ACTIVE,
-            AccountStatus.UNINITIALIZED,
-        ):
+        if account.status not in (AccountStatus.ACTIVE, AccountStatus.UNINITIALIZED):
             raise ActiveWorkspaceRequiredError()
         try:
             application_services().workspaces.provisioning.activate(account.id)
