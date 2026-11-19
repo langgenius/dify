@@ -51,7 +51,6 @@
   "members.memberDetails.rolePermissionSummary": "{{role}} có thể <permissionList>{{permissions}}</permissionList>",
   "members.memberDetails.title": "Chi tiết thành viên",
   "members.name": "TÊN",
-  "members.noNewInvitationsSent": "Không có lời mời mới nào được gửi",
   "members.normalTip": "Chỉ có thể sử dụng ứng dụng, không thể xây dựng ứng dụng",
   "members.ok": "OK",
   "members.recipientCountExceedsSeats": "Bạn vẫn có thể gửi lời mời. Thành viên hiện có sẽ không chiếm thêm chỗ.",

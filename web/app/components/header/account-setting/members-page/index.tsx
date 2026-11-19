@@ -131,9 +131,11 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
     }),
   )
   const joinedAccounts = accounts.filter((account) => account.status !== 'pending')
-  const deploymentEdition = systemFeatures.deployment_edition
 
-  const isNotUnlimitedMemberPlan = deploymentEdition === 'CLOUD' && features.plan !== 'team'
+  const memberLimit =
+    features.plan !== 'team' && features.members.limit !== 'unlimited'
+      ? features.members.limit
+      : null
   const detailsActionsRef = useRef<DialogActions>(null)
 
   const invitees: Invitee[] = [
@@ -245,7 +247,7 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
                     )}
                   </div>
                   <div className="mt-1 system-xs-medium text-text-tertiary">
-                    {isNotUnlimitedMemberPlan ? (
+                    {memberLimit !== null ? (
                       <div className="flex flex-wrap gap-x-1">
                         <div>
                           {t(($) => $['plansCommon.member'], { ns: 'billing' })}
@@ -254,11 +256,7 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
                         <div className="flex gap-x-1">
                           <span>{usedSeats}</span>
                           <span>/</span>
-                          <span>
-                            {features.members.limit === 'unlimited'
-                              ? t(($) => $['plansCommon.unlimited'], { ns: 'billing' })
-                              : features.members.limit}
-                          </span>
+                          <span>{memberLimit}</span>
                         </div>
                         {invitees.length > 0 && (
                           <div>

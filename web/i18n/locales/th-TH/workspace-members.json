@@ -51,7 +51,6 @@
   "members.memberDetails.rolePermissionSummary": "{{role}} สามารถ <permissionList>{{permissions}}</permissionList>",
   "members.memberDetails.title": "รายละเอียดสมาชิก",
   "members.name": "ชื่อ",
-  "members.noNewInvitationsSent": "ไม่มีการส่งคำเชิญใหม่",
   "members.normalTip": "ใช้ได้เฉพาะแอพ สร้างแอพไม่ได้",
   "members.ok": "ตกลง, ได้",
   "members.recipientCountExceedsSeats": "คุณยังส่งคำเชิญได้ สมาชิกที่มีอยู่แล้วจะไม่ใช้ที่นั่งเพิ่ม",

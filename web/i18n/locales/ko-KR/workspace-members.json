@@ -51,7 +51,6 @@
   "members.memberDetails.rolePermissionSummary": "{{role}}은(는) <permissionList>{{permissions}}</permissionList>을(를) 할 수 있습니다",
   "members.memberDetails.title": "멤버 세부 정보",
   "members.name": "이름",
-  "members.noNewInvitationsSent": "새 초대가 전송되지 않았습니다",
   "members.normalTip": "앱 사용만 가능하고 앱 빌드는 불가능",
   "members.ok": "확인",
   "members.recipientCountExceedsSeats": "초대장은 계속 보낼 수 있습니다. 기존 멤버는 좌석을 추가로 사용하지 않습니다.",

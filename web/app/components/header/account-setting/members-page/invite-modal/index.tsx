@@ -243,17 +243,12 @@ export function InviteModal({ onSend }: InviteModalProps) {
   const queryClient = useQueryClient()
   const actionsRef = useRef<DialogActions>(null)
   const formRef = useRef<HTMLFormElement>(null)
-  const {
-    data: { deploymentEdition, isEmailSetup },
-  } = useSuspenseQuery({
+  const { data: isEmailSetup } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
-    select: ({ deployment_edition, is_email_setup }) => ({
-      deploymentEdition: deployment_edition,
-      isEmailSetup: is_email_setup,
-    }),
+    select: ({ is_email_setup }) => is_email_setup,
   })
   const showsInvitationLinks = (results: InvitationResults) =>
-    deploymentEdition !== 'CLOUD' && results.some(({ status }) => status === 'success')
+    !isEmailSetup && results.some(({ status }) => status === 'success')
   const { mutate, reset, isPending, error, data } = useMutation(
     consoleQuery.workspaces.current.members.inviteEmail.post.mutationOptions({
       context: { silent: true },

@@ -58,9 +58,9 @@ export const InvitedRow = ({ ref, invitee, canManage, onRevoke }: InvitedRowProp
   const { t } = useTranslation(['common', 'workspaceMembers'])
   const locale = useLocale()
   const queryClient = useQueryClient()
-  const { data: deploymentEdition } = useSuspenseQuery({
+  const { data: isEmailSetup } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
-    select: ({ deployment_edition }) => deployment_edition,
+    select: ({ is_email_setup }) => is_email_setup,
   })
   const resend = useMutation(
     consoleQuery.workspaces.current.members.inviteEmail.post.mutationOptions({
@@ -73,7 +73,7 @@ export const InvitedRow = ({ ref, invitee, canManage, onRevoke }: InvitedRowProp
           ({ email }) => email.toLowerCase() === invitee.email.toLowerCase(),
         )
         if (result?.status === 'success') {
-          if (deploymentEdition !== 'CLOUD') return
+          if (!isEmailSetup) return
           toast.success(
             t(($) => $['members.invitationResent'], {
               ns: 'workspaceMembers',
@@ -106,8 +106,7 @@ export const InvitedRow = ({ ref, invitee, canManage, onRevoke }: InvitedRowProp
     }),
   )
   const resentLinks =
-    deploymentEdition !== 'CLOUD' &&
-    resend.data?.invitation_results.some(({ status }) => status === 'success')
+    !isEmailSetup && resend.data?.invitation_results.some(({ status }) => status === 'success')
       ? resend.data.invitation_results
       : undefined
 

@@ -51,7 +51,6 @@
   "members.memberDetails.rolePermissionSummary": "{{role}} 可以<permissionList>{{permissions}}</permissionList>",
   "members.memberDetails.title": "成员详情",
   "members.name": "姓名",
-  "members.noNewInvitationsSent": "没有新的邀请发送",
   "members.normalTip": "只能使用应用程序，不能建立应用程序",
   "members.ok": "好的",
   "members.recipientCountExceedsSeats": "仍可提交，已是成员的邮箱不会重复占用名额。",

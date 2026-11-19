@@ -14,15 +14,15 @@ const workspaceId = '74e6f5f1-621e-4ca0-910f-94c686e4ada1'
 const setup = (
   inviteResults: MemberInviteResponse['invitation_results'],
   acceptedMeanwhile?: string,
-  deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'CLOUD',
+  isEmailSetup = true,
 ) => {
   let invitations: PendingWorkspaceInvitationResponse[] = []
   const { queryClient } = createConsoleQueryWrapper({
     currentWorkspace: { id: workspaceId, role: 'owner' },
     systemFeatures: {
-      deployment_edition: deploymentEdition,
+      deployment_edition: 'CLOUD',
       rbac_enabled: false,
-      is_email_setup: true,
+      is_email_setup: isEmailSetup,
     },
     workspacePermissionKeys: ['workspace.member.manage'],
   })
@@ -207,12 +207,12 @@ it('closes the revoke dialog and refreshes when the invitation was accepted mean
     .not.toBeInTheDocument()
 })
 
-it('shows the new invitation link after a resend outside Cloud', async () => {
+it('shows the new invitation link after a resend without email delivery', async () => {
   const email = 'invited@example.com'
   const queryClient = setup(
     [{ status: 'success', email, url: 'https://example.com/invite' }],
     undefined,
-    'COMMUNITY',
+    false,
   )
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>

@@ -51,7 +51,6 @@
   "members.memberDetails.rolePermissionSummary": "{{role}} може <permissionList>{{permissions}}</permissionList>",
   "members.memberDetails.title": "Деталі учасника",
   "members.name": "ІМ'Я",
-  "members.noNewInvitationsSent": "Нові запрошення не надіслано",
   "members.normalTip": "Може лише використовувати програми, не може створювати програми",
   "members.ok": "ОК",
   "members.recipientCountExceedsSeats": "Запрошення все одно можна надіслати. Наявні учасники не займуть додаткового місця.",
