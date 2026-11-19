@@ -9,7 +9,7 @@ from uuid import UUID
 
 from flask import Response, request
 from flask_restx import Resource
-from pydantic import AliasChoices, BaseModel, Field, RootModel, field_validator
+from pydantic import AliasChoices, AliasPath, BaseModel, Field, RootModel, field_validator
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound, TooManyRequests
 
@@ -133,6 +133,8 @@ class EvaluationTemplateColumnsResponse(ResponseModel):
 
 
 class EvaluationRunResponse(ResponseModel):
+    """Expose the model pinned in the run snapshot, independent of later config edits."""
+
     id: str
     tenant_id: str
     target_type: str
@@ -140,6 +142,16 @@ class EvaluationRunResponse(ResponseModel):
     target_workflow_version_id: str | None = None
     target_agent_config_snapshot_id: str | None = None
     evaluation_config_id: str
+    evaluation_model: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("evaluation_model", AliasPath("config_snapshot_dict", "evaluation_model")),
+    )
+    evaluation_model_provider: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "evaluation_model_provider", AliasPath("config_snapshot_dict", "evaluation_model_provider")
+        ),
+    )
     status: str
     dataset_file_id: str | None = None
     result_file_id: str | None = None
