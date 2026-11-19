@@ -6,7 +6,7 @@ import { vi } from 'vite-plus/test'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
-import TransferOwnershipContent from '../index'
+import { TransferOwnershipContent } from '../index'
 
 const toastMocks = vi.hoisted(() => ({
   mockNotify: vi.fn(),

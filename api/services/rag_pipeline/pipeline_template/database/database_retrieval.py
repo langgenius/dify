@@ -89,8 +89,9 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
     def fetch_pipeline_template_detail_from_db(cls, template_id: str, *, session: Session) -> dict[str, Any] | None:
         """
         Fetch pipeline template detail from db.
-        :param pipeline_id: Pipeline ID
-        :return:
+        :param template_id: Built-in pipeline template ID
+        :param session: Database session
+        :return: Template detail, or None if the template does not exist
         """
         # is in public recommended list
         pipeline_template = session.get(PipelineBuiltInTemplate, template_id)

@@ -10,6 +10,7 @@ from flask import has_app_context
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.plugin.impl.exc import PluginDaemonInternalServerError
+from core.plugin.impl.trigger import PluginTriggerClient
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from extensions.ext_application_services import application_services
 from extensions.ext_storage import storage
@@ -19,6 +20,7 @@ from services.trigger.debug_events import PluginTriggerDebugEvent
 from services.trigger.event_gateway import PluginTriggerEventGateway
 from services.trigger.event_service import TriggerEventService
 from services.trigger.provider_gateway import PluginTriggerProviderQuery
+from services.trigger.provider_loader import PluginTriggerProviderLoader
 from services.trigger.subscription_query_service import TriggerSubscriptionQueryService, TriggerSubscriptionRuntime
 from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
 from services.workflow.entities import PluginTriggerDispatchData
@@ -38,7 +40,7 @@ def test_missing_debug_subscription_uses_injected_reader_without_flask_context(
 ) -> None:
     subscriptions = TriggerSubscriptionQueryService(
         credentials=CredentialQueryRepository(session_factory=sqlite_session_factory),
-        schemas=PluginTriggerProviderQuery(),
+        schemas=PluginTriggerProviderQuery(providers=PluginTriggerProviderLoader(client=PluginTriggerClient())),
         subscriptions=TriggerSubscriptionRepository(session_factory=sqlite_session_factory),
     )
     event = PluginTriggerDebugEvent(
@@ -62,7 +64,7 @@ def test_missing_debug_subscription_uses_injected_reader_without_flask_context(
         with pytest.raises(ValueError, match="^Subscription not found$"):
             TriggerEventService(
                 subscriptions=subscriptions,
-                plugins=PluginTriggerEventGateway(),
+                plugins=PluginTriggerEventGateway(providers=PluginTriggerProviderLoader(client=PluginTriggerClient())),
                 requests=TriggerHttpRequestCachingService(storage=storage),
             ).invoke_debug(
                 tenant_id=str(uuid4()),

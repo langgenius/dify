@@ -1,8 +1,8 @@
 import type { ParagraphFormInput } from '@/app/components/workflow/nodes/human-input/types'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { InputVarType } from '@/app/components/workflow/types'
+import { TestLexicalComposer } from '@/test/lexical'
 import HITLInputComponent from '../component'
 import { HITLInputNode } from '../node'
 
@@ -17,7 +17,7 @@ const setup = async (formInputs: ParagraphFormInput[]) => {
   const onChange = vi.fn()
   const onRename = vi.fn()
   render(
-    <LexicalComposer
+    <TestLexicalComposer
       initialConfig={{
         namespace: 'hitl-component',
         nodes: [HITLInputNode],
@@ -36,7 +36,7 @@ const setup = async (formInputs: ParagraphFormInput[]) => {
         onRemove={vi.fn()}
         workflowNodesMap={{}}
       />
-    </LexicalComposer>,
+    </TestLexicalComposer>,
   )
   await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
   return { user, onChange, onRename }

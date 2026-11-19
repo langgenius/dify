@@ -20,8 +20,6 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-vi.mock('@/next/navigation', () => ({ useParams: () => ({}) }))
-
 const emojis = [
   '😀',
   '😃',

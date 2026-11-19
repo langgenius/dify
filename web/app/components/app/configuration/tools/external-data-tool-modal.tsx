@@ -1,14 +1,7 @@
 import type { FC } from 'react'
 import type { ExternalDataTool } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@langgenius/dify-ui/dialog'
+import { DialogBody, DialogClose, DialogFooter } from '@langgenius/dify-ui/dialog'
 import {
   Select,
   SelectContent,
@@ -19,8 +12,7 @@ import {
   SelectValue,
 } from '@langgenius/dify-ui/select'
 import { useQuery } from '@tanstack/react-query'
-import { noop } from 'es-toolkit/function'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { toast } from '@/app/components/app/configuration/toast'
@@ -42,21 +34,26 @@ import {
 } from './external-data-tool-modal-utils'
 
 type ExternalDataToolModalProps = {
-  data: ExternalDataTool
-  onCancel: () => void
-  onSave: (externalDataTool: ExternalDataTool) => void
-  onValidateBeforeSave?: (externalDataTool: ExternalDataTool) => boolean
+  data?: ExternalDataTool
+  onSave: (externalDataTool: ReturnType<typeof formatExternalDataTool>) => void
+  isVariableUsed: (name: string) => boolean
 }
 const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
-  data,
-  onCancel,
+  data = {},
   onSave,
-  onValidateBeforeSave,
+  isVariableUsed,
 }) => {
   const { t } = useTranslation(['appDebug', 'common', 'app'])
   const docLink = useDocLink()
   const locale = useLocale()
-  const [localeData, setLocaleData] = useState(data.type ? data : { ...data, type: 'api' })
+  const nameId = useId()
+  const variableId = useId()
+  const [localeData, setLocaleData] = useState(() => ({
+    ...data,
+    type: data.type || 'api',
+    label: data.label ?? '',
+    variable: data.variable ?? '',
+  }))
   const { data: codeBasedExtensionList } = useQuery(
     codeBasedExtensionsQueryOptions('external_data_tool'),
   )
@@ -117,142 +114,143 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
 
     const formattedData = formatExternalDataTool(localeData, currentProvider, !!data.type)
 
-    if (onValidateBeforeSave && !onValidateBeforeSave(formattedData)) return
+    if (isVariableUsed(formattedData.variable)) {
+      toast.error(
+        t(($) => $['varKeyError.keyAlreadyExists'], {
+          ns: 'appDebug',
+          key: formattedData.variable,
+        }),
+      )
+      return
+    }
 
     onSave(formattedData)
   }
 
-  const action = data.type
-    ? t(($) => $['operation.edit'], { ns: 'common' })
-    : t(($) => $['operation.add'], { ns: 'common' })
-
   return (
-    <Dialog open onOpenChange={noop}>
-      <DialogContent className="w-160">
-        <DialogHeader>
-          <DialogTitle>
-            {`${action} ${t(($) => $['variableConfig.apiBasedVar'], { ns: 'appDebug' })}`}
-          </DialogTitle>
-        </DialogHeader>
-        <DialogBody>
-          <div className="py-2">
-            <div className="text-sm/9 font-medium text-text-primary">
-              {t(($) => $['apiBasedExtension.type'], { ns: 'common' })}
-            </div>
-            <Select
-              defaultValue={localeData.type}
-              onValueChange={(value) => value && handleDataTypeChange(value)}
+    <>
+      <DialogBody>
+        <div className="py-2">
+          <div className="text-sm/9 font-medium text-text-primary">
+            {t(($) => $['apiBasedExtension.type'], { ns: 'common' })}
+          </div>
+          <Select
+            defaultValue={localeData.type}
+            onValueChange={(value) => value && handleDataTypeChange(value)}
+          >
+            <SelectTrigger
+              className="w-full"
+              aria-label={t(($) => $['apiBasedExtension.type'], { ns: 'common' })}
             >
-              <SelectTrigger
-                className="w-full"
-                aria-label={t(($) => $['apiBasedExtension.type'], { ns: 'common' })}
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="w-88.5">
-                {providers.map((option) => (
-                  <SelectItem key={option.key} value={option.key}>
-                    <SelectItemText>{option.name}</SelectItemText>
-                    <SelectItemIndicator />
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="py-2">
-            <div className="text-sm/9 font-medium text-text-primary">
-              {t(($) => $['feature.tools.modal.name.title'], { ns: 'appDebug' })}
-            </div>
-            <div className="flex items-center">
-              <input
-                value={localeData.label || ''}
-                onChange={(e) => handleValueChange({ label: e.target.value })}
-                className="mr-2 block h-9 grow appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-components-input-text-filled outline-hidden"
-                placeholder={t(($) => $['feature.tools.modal.name.placeholder'], {
-                  ns: 'appDebug',
-                })}
-              />
-              <IconPicker
-                value={
-                  localeData.icon
-                    ? {
-                        type: 'emoji',
-                        icon: localeData.icon,
-                        background: localeData.icon_background,
-                      }
-                    : undefined
-                }
-                onValueChange={(value) => {
-                  if (value.type !== 'emoji') return
-                  const { icon, background: icon_background } = value
-                  handleValueChange({ icon, icon_background })
-                }}
-              >
-                <IconPickerTrigger
-                  aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
-                  className="shrink-0 cursor-pointer rounded-lg"
-                >
-                  <IconPickerIcon
-                    size="large"
-                    className="h-9! w-9! rounded-lg border-[0.5px] border-components-panel-border"
-                  />
-                </IconPickerTrigger>
-                <IconPickerContent enableImageUpload={false} />
-              </IconPicker>
-            </div>
-          </div>
-          <div className="py-2">
-            <div className="text-sm/9 font-medium text-text-primary">
-              {t(($) => $['feature.tools.modal.variableName.title'], { ns: 'appDebug' })}
-            </div>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="w-88.5">
+              {providers.map((option) => (
+                <SelectItem key={option.key} value={option.key}>
+                  <SelectItemText>{option.name}</SelectItemText>
+                  <SelectItemIndicator />
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="py-2">
+          <label htmlFor={nameId} className="block text-sm/9 font-medium text-text-primary">
+            {t(($) => $['feature.tools.modal.name.title'], { ns: 'appDebug' })}
+          </label>
+          <div className="flex items-center">
             <input
-              value={localeData.variable || ''}
-              onChange={(e) => handleValueChange({ variable: e.target.value })}
-              className="block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-components-input-text-filled outline-hidden"
-              placeholder={t(($) => $['feature.tools.modal.variableName.placeholder'], {
+              id={nameId}
+              value={localeData.label}
+              onChange={(e) => handleValueChange({ label: e.target.value })}
+              className="me-2 block h-9 grow appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-components-input-text-filled outline-hidden"
+              placeholder={t(($) => $['feature.tools.modal.name.placeholder'], {
                 ns: 'appDebug',
               })}
             />
+            <IconPicker
+              value={
+                localeData.icon
+                  ? {
+                      type: 'emoji',
+                      icon: localeData.icon,
+                      background: localeData.icon_background,
+                    }
+                  : undefined
+              }
+              onValueChange={(value) => {
+                if (value.type !== 'emoji') return
+                const { icon, background: icon_background } = value
+                handleValueChange({ icon, icon_background })
+              }}
+            >
+              <IconPickerTrigger
+                aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
+                className="shrink-0 cursor-pointer rounded-lg"
+              >
+                <IconPickerIcon
+                  size="large"
+                  className="h-9! w-9! rounded-lg border-[0.5px] border-components-panel-border"
+                />
+              </IconPickerTrigger>
+              <IconPickerContent enableImageUpload={false} />
+            </IconPicker>
           </div>
-          {localeData.type === 'api' && (
-            <div className="py-2">
-              <div className="flex h-9 items-center justify-between text-sm font-medium text-text-primary">
-                {t(($) => $['apiBasedExtension.selector.title'], { ns: 'common' })}
-                <a
-                  href={docLink('/use-dify/workspace/api-extension/api-extension')}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group flex items-center text-xs font-normal text-text-tertiary hover:text-text-accent"
-                >
-                  <span
-                    aria-hidden
-                    className="mr-1 i-custom-vender-line-education-book-open-01 size-3 text-text-tertiary group-hover:text-text-accent"
-                  />
-                  {t(($) => $['apiBasedExtension.link'], { ns: 'common' })}
-                </a>
-              </div>
-              <ApiBasedExtensionSelector
-                value={localeData.config?.api_based_extension_id || ''}
-                onChange={handleDataApiBasedChange}
-              />
+        </div>
+        <div className="py-2">
+          <label htmlFor={variableId} className="block text-sm/9 font-medium text-text-primary">
+            {t(($) => $['feature.tools.modal.variableName.title'], { ns: 'appDebug' })}
+          </label>
+          <input
+            id={variableId}
+            value={localeData.variable}
+            onChange={(e) => handleValueChange({ variable: e.target.value })}
+            className="block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-components-input-text-filled outline-hidden"
+            placeholder={t(($) => $['feature.tools.modal.variableName.placeholder'], {
+              ns: 'appDebug',
+            })}
+          />
+        </div>
+        {localeData.type === 'api' && (
+          <div className="py-2">
+            <div className="flex h-9 items-center justify-between text-sm font-medium text-text-primary">
+              {t(($) => $['apiBasedExtension.selector.title'], { ns: 'common' })}
+              <a
+                href={docLink('/use-dify/workspace/api-extension/api-extension')}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center text-xs font-normal text-text-tertiary hover:text-text-accent"
+              >
+                <span
+                  aria-hidden
+                  className="me-1 i-custom-vender-line-education-book-open-01 size-3 text-text-tertiary group-hover:text-text-accent"
+                />
+                {t(($) => $['apiBasedExtension.link'], { ns: 'common' })}
+              </a>
             </div>
-          )}
-          {localeData.type !== 'api' && currentProvider?.form_schema && (
-            <FormGeneration
-              forms={currentProvider?.form_schema}
-              value={localeData.config}
-              onChange={handleDataExtraChange}
+            <ApiBasedExtensionSelector
+              value={localeData.config?.api_based_extension_id || ''}
+              onChange={handleDataApiBasedChange}
             />
-          )}
-        </DialogBody>
-        <DialogFooter>
-          <Button onClick={onCancel}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
-          <Button variant="primary" onClick={handleSave}>
-            {t(($) => $['operation.save'], { ns: 'common' })}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </div>
+        )}
+        {localeData.type !== 'api' && currentProvider?.form_schema && (
+          <FormGeneration
+            forms={currentProvider?.form_schema}
+            value={localeData.config}
+            onChange={handleDataExtraChange}
+          />
+        )}
+      </DialogBody>
+      <DialogFooter>
+        <DialogClose render={<Button />}>
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
+        </DialogClose>
+        <Button variant="primary" disabled={!currentProvider} onClick={handleSave}>
+          {t(($) => $['operation.save'], { ns: 'common' })}
+        </Button>
+      </DialogFooter>
+    </>
   )
 }
 

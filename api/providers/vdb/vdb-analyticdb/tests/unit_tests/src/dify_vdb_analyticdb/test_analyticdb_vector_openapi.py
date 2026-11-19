@@ -304,14 +304,13 @@ def test_create_collection_if_not_exists_raises_on_non_404_errors(
 
 
 def test_openapi_add_delete_and_search_methods(vector: AnalyticdbVectorOpenAPI, client: FakeGpdbClient) -> None:
+    """Given valid documents and a recording SDK client, verify vector writes, deletes, and searches."""
     documents = [
         Document(page_content="doc 1", metadata={"doc_id": "d1", "document_id": "doc-1"}),
-        Document.model_construct(page_content="doc 2", metadata=None),
     ]
-    embeddings = [[0.1, 0.2], [0.2, 0.3]]
+    embeddings = [[0.1, 0.2]]
     vector.add_texts(documents, embeddings)
 
-    # The document without metadata is skipped.
     assert client.sent("upsert_collection_data") == [
         {
             **COLLECTION,

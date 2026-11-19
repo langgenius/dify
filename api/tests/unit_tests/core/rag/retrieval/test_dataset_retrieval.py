@@ -33,6 +33,7 @@ from core.app.app_config.entities import (
 )
 from core.app.app_config.entities import ModelConfig as WorkflowModelConfig
 from core.app.apps.completion.app_config_manager import CompletionAppConfig
+from core.app.apps.exc import ModerationInvocationError
 from core.app.entities.app_invoke_entities import (
     CompletionAppGenerateEntity,
     InvokeFrom,
@@ -42,6 +43,7 @@ from core.app.entities.app_invoke_entities import (
 from core.app.file_access import FileAccessScope, bind_file_access_scope, get_current_file_access_scope
 from core.entities.agent_entities import PlanningStrategy
 from core.entities.model_entities import ModelStatus
+from core.model_manager import ModelInstance
 from core.rag.data_post_processor.data_post_processor import WeightsDict
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.embedding.retrieval import RetrievalSegments
@@ -58,7 +60,7 @@ from core.workflow.nodes.knowledge_retrieval import exc
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
 from extensions.application_services.retrieval import build_dataset_retrieval
 from extensions.storage.storage_type import StorageType
-from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.model_runtime.entities.llm_entities import LLMMode, LLMUsage
 from graphon.model_runtime.entities.model_entities import ModelFeature
 from libs.datetime_utils import Timing
 from models import UploadFile
@@ -80,7 +82,9 @@ from repositories.knowledge.retrieval_repository import KnowledgeRetrievalReposi
 from repositories.knowledge.retrieval_source_repository import get_retrieval_source_documents
 from services.knowledge.retrieval import dataset_retrieval as retrieval_module
 from services.knowledge.retrieval.dataset_retrieval import DatasetRetrieval
+from services.moderation_service import ModerationPhase
 from tests.helpers.unit.core.model_fixtures import make_model_config
+from tests.helpers.unit.core.model_moderation_fixtures import make_failing_moderated_model
 from tests.helpers.unit.model_factories import make_document
 
 # ==================== Helper Functions ====================
@@ -6588,3 +6592,42 @@ class TestRetrievalSourceQueryCases:
         finally:
             event.remove(engine, "before_cursor_execute", capture_query)
         assert len(queries) == 1
+
+
+@pytest.mark.parametrize("phase", ["input", "output"])
+@pytest.mark.parametrize("unavailable", [False, True])
+def test_automatic_filters_do_not_downgrade_model_moderation(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    phase: ModerationPhase,
+    unavailable: bool,
+) -> None:
+    bound_model, provider = make_failing_moderated_model(phase=phase, unavailable=unavailable)
+    config = make_model_config(provider="test-provider", model="test-model", mode="chat")
+
+    def fetch_model_config(
+        tenant_id: str, model: AppModelConfig, user_id: str | None = None
+    ) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
+        assert tenant_id == bound_model.provider_model_bundle.configuration.tenant_id
+        assert model.name == bound_model.model_name
+        assert user_id == "user-1"
+        return bound_model, config
+
+    retrieval = build_dataset_retrieval(sqlite_session_factory)()
+    monkeypatch.setattr(retrieval, "_fetch_model_config", fetch_model_config)
+    with pytest.raises(ModerationInvocationError) as rejected:
+        retrieval.get_metadata_filter_condition(
+            dataset_ids=["dataset-1"],
+            query="content",
+            tenant_id="test-tenant-id",
+            user_id="user-1",
+            metadata_filtering_mode="automatic",
+            metadata_model_config=AppModelConfig(provider="test-provider", name="test-model", mode=LLMMode.CHAT),
+            metadata_filtering_conditions=None,
+            inputs={},
+        )
+    assert rejected.value.error_code == ("moderation_unavailable" if unavailable else "moderation_rejected")
+    assert provider.invocations == (0 if phase == "input" else 1)
+    assert len(bound_model.reservations) == (0 if phase == "input" else 1)
+    if bound_model.reservations:
+        assert bound_model.reservations[0].commits

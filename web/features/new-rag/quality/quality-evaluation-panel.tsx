@@ -28,6 +28,7 @@ import {
 import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
+import { v4 as uuid4 } from 'uuid'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
@@ -549,7 +550,7 @@ function RunEvaluationForm({
     const submission =
       submissionRef.current?.mode === mode
         ? submissionRef.current
-        : { idempotencyKey: crypto.randomUUID(), mode }
+        : { idempotencyKey: uuid4(), mode }
     submissionRef.current = submission
     try {
       const run = await createMutation.mutateAsync({

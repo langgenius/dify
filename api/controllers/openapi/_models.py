@@ -25,6 +25,7 @@ from graphon.nodes.tool.entities import ToolInputType
 from graphon.variables import SegmentType
 from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, to_timestamp, uuid_value
 from models.enums import WorkflowRunTriggeredFrom
+from models.human_input_entities import FormInputConfig, UserActionConfig
 from models.model import AppMode, IconType
 from services.entities.app_entities import SupportedAppType
 from services.entities.dsl_entities import CheckDependenciesResult, Import, ImportMode
@@ -729,9 +730,9 @@ class OpenApiFormSubmitPayload(HumanInputFormSubmitPayload):
 
 class HumanInputFormDefinitionResponse(BaseModel):
     form_content: str
-    inputs: list[dict[str, Any]] = Field(default_factory=list)
+    inputs: list[FormInputConfig] = Field(default_factory=list)
     resolved_default_values: dict[str, str]
-    user_actions: list[dict[str, Any]] = Field(default_factory=list)
+    user_actions: list[UserActionConfig] = Field(default_factory=list)
     expiration_time: int | None = None
 
 

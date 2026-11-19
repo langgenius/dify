@@ -1,7 +1,7 @@
 import json
 from os import path
 from pathlib import Path
-from typing import Any, override
+from typing import Any, ClassVar, override
 
 from flask import current_app
 from sqlalchemy.orm import Session
@@ -12,10 +12,12 @@ from services.rag_pipeline.pipeline_template.pipeline_template_type import Pipel
 
 class BuiltInPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
     """
-    Retrieval pipeline template from built-in, the location  is constants/pipeline_templates.json
+    Retrieve templates from constants/pipeline_templates.json.
+
+    All instances share the class cache. A None value means no cached data.
     """
 
-    builtin_data: dict[str, Any] | None = None
+    builtin_data: ClassVar[dict[str, Any] | None] = None
 
     @override
     def get_type(self) -> str:
