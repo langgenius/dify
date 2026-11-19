@@ -28058,8 +28058,8 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | keyword | string |  | No |
 | limit | integer, <br>**Default:** 20 |  | No |
 | page | integer, <br>**Default:** 1 |  | No |
-| sort_by | string, <br>**Available values:** "created_at", "updated_at", <br>**Default:** updated_at | *Enum:* `"created_at"`, `"updated_at"` | No |
-| sort_order | string, <br>**Available values:** "asc", "desc", <br>**Default:** desc | *Enum:* `"asc"`, `"desc"` | No |
+| sort_by | [ExternalAssetSortBy](#externalassetsortby) |  | No |
+| sort_order | [ExternalAssetSortOrder](#externalassetsortorder) |  | No |
 
 #### ExternalAgentListResponse
 
@@ -28123,9 +28123,9 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | agent_id | string |  | No |
-| auth_type | string, <br>**Available values:** "bearer", "none" | *Enum:* `"bearer"`, `"none"` | Yes |
+| auth_type | [ExternalAuthType](#externalauthtype) |  | Yes |
 | credential | string |  | No |
-| credential_action | string, <br>**Available values:** "keep", "remove", "replace", <br>**Default:** remove | *Enum:* `"keep"`, `"remove"`, `"replace"` | No |
+| credential_action | [ExternalCredentialAction](#externalcredentialaction) |  | No |
 | endpoint | string |  | Yes |
 | expected_connection_revision_id | string |  | No |
 
@@ -28145,6 +28145,24 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | keyword | string | Search keyword | No |
 | limit | integer, <br>**Default:** 20 | Number of items per page | No |
 | page | integer, <br>**Default:** 1 | Page number | No |
+
+#### ExternalAssetSortBy
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ExternalAssetSortBy | string |  |  |
+
+#### ExternalAssetSortOrder
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ExternalAssetSortOrder | string |  |  |
+
+#### ExternalAuthType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ExternalAuthType | string |  |  |
 
 #### ExternalConnectionSaverResponse
 
@@ -28184,6 +28202,12 @@ Request body for creating or updating one external contact.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | contact | [HumanInputContact](#humaninputcontact) | The updated external contact. Fields are values after updating. | Yes |
+
+#### ExternalCredentialAction
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ExternalCredentialAction | string |  |  |
 
 #### ExternalDatasetCreatePayload
 
@@ -28304,6 +28328,14 @@ Apply the deployment's description limit at the HTTP boundary.
 | days | [ [ExternalMetricDayResponse](#externalmetricdayresponse) ] |  | Yes |
 | summary | [ExternalMetricValuesResponse](#externalmetricvaluesresponse) |  | Yes |
 
+#### ExternalOutputType
+
+Frozen public output types deliberately exclude the internal integer alias.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ExternalOutputType | string | Frozen public output types deliberately exclude the internal integer alias. |  |
+
 #### ExternalPasteLinkPayload
 
 | Name | Type | Description | Required |
@@ -28370,7 +28402,7 @@ Public six-type profile; internal JSON-schema aliases are not wire types.
 | default | [ExternalAgentJsonValue](#externalagentjsonvalue) |  | No |
 | has_default | boolean |  | No |
 | item | [ExternalTestOutputField](#externaltestoutputfield) |  | No |
-| kind | string, <br>**Available values:** "array", "boolean", "file", "number", "object", "string" | *Enum:* `"array"`, `"boolean"`, `"file"`, `"number"`, `"object"`, `"string"` | Yes |
+| kind | [ExternalOutputType](#externaloutputtype) |  | Yes |
 | name | string |  | Yes |
 | required | boolean, <br>**Default:** true |  | No |
 

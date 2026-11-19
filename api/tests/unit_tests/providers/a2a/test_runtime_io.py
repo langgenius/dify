@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from providers.a2a.runtime_io import ExternalOutputNormalizer, ExternalRequestPartsBuilder, file_scope
-from services.external_agents.contracts import ConnectionRevision, ConnectionSaver
+from services.external_agents.contracts import ConnectionRevision, ConnectionSaver, ExternalOrigin
 from services.external_agents.io_contracts import (
     ExternalIOError,
     FileBlob,
@@ -15,9 +15,10 @@ from services.external_agents.io_contracts import (
     FileScope,
     JsonObject,
     OutputField,
+    OutputFieldKind,
     StoredFile,
 )
-from services.external_agents.protocol import TRACEABILITY_URI, GatewayReceipt
+from services.external_agents.protocol import TRACEABILITY_URI, GatewayReceipt, GatewayReceiptKind
 from services.external_agents.runtime_contracts import (
     CancelState,
     ExecutionIdentity,
@@ -43,7 +44,7 @@ def invocation(
 ) -> Invocation:
     value = Invocation(
         id="invocation",
-        scope=RuntimeScope(tenant_id="tenant", initiator_id="actor", app_id=None, origin="overview_test"),
+        scope=RuntimeScope(tenant_id="tenant", initiator_id="actor", app_id=None, origin=ExternalOrigin.OVERVIEW_TEST),
         agent_id="agent",
         identity=ExecutionIdentity(execution_id="execution", node_id="node", frame_id="frame"),
         message_id="message",
@@ -173,7 +174,7 @@ class InMemoryDelivery:
 
 def completed_receipt() -> GatewayReceipt:
     return GatewayReceipt(
-        kind="task",
+        kind=GatewayReceiptKind.TASK,
         task_id="remote",
         state="TASK_STATE_COMPLETED",
         payload={
@@ -287,7 +288,7 @@ def test_normalizer_excludes_exact_trace_carrier_then_publishes_only_durable_fil
     )
     normalizer.observe(invocation(), completed_receipt())
     outputs = normalizer.normalize(
-        invocation(declared_outputs=(OutputField(name="report", kind="file"),)), completed_receipt()
+        invocation(declared_outputs=(OutputField(name="report", kind=OutputFieldKind.FILE),)), completed_receipt()
     )
     assert outputs == {"report": {"upload_file_id": "durable-file"}}
     assert observations.traces == {("tenant", "invocation", "trace:part:0"): {"trace_id": "t", "steps": []}}
@@ -299,7 +300,7 @@ def test_expired_observation_owner_cannot_fail_business_outputs() -> None:
     normalizer = ExternalOutputNormalizer(files=InMemoryFiles([]), observations=InMemoryObservations([], revoked=True))
     normalizer.observe(invocation(), completed_receipt())
     outputs = normalizer.normalize(
-        invocation(declared_outputs=(OutputField(name="report", kind="file"),)), completed_receipt()
+        invocation(declared_outputs=(OutputField(name="report", kind=OutputFieldKind.FILE),)), completed_receipt()
     )
     assert outputs["report"] == {"upload_file_id": "durable-file"}
 

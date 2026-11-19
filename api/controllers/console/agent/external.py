@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from dataclasses import asdict
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any
 from uuid import UUID
 
 from flask import request
@@ -26,6 +26,10 @@ from services.external_agents.contracts import (
     ExternalAgentForbiddenError,
     ExternalAgentNotFoundError,
     ExternalAgentVerificationFailedError,
+    ExternalAssetSortBy,
+    ExternalAssetSortOrder,
+    ExternalAuthType,
+    ExternalCredentialAction,
 )
 
 
@@ -39,14 +43,14 @@ class ExternalAgentListQuery(_Payload):
     keyword: str | None = Field(default=None, max_length=255)
     enabled: bool | None = None
     connected_by_me: bool = False
-    sort_by: Literal["created_at", "updated_at"] = "updated_at"
-    sort_order: Literal["asc", "desc"] = "desc"
+    sort_by: ExternalAssetSortBy = ExternalAssetSortBy.UPDATED_AT
+    sort_order: ExternalAssetSortOrder = ExternalAssetSortOrder.DESC
 
 
 class ExternalAgentVerifyPayload(_Payload):
     endpoint: str = Field(min_length=1, max_length=4096)
-    auth_type: Literal["none", "bearer"]
-    credential_action: Literal["keep", "replace", "remove"] = "remove"
+    auth_type: ExternalAuthType
+    credential_action: ExternalCredentialAction = ExternalCredentialAction.REMOVE
     credential: str | None = Field(default=None, max_length=8192, repr=False)
     agent_id: UUID | None = None
     expected_connection_revision_id: UUID | None = None

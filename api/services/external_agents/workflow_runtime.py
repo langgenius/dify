@@ -14,7 +14,7 @@ from typing import Any, Literal, Protocol
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .invocation_service import ExternalInvocationService
-from .io_contracts import JsonObject, JsonValue, OutputField
+from .io_contracts import ExternalOutputType, JsonObject, JsonValue, OutputField, OutputFieldKind
 from .output_mapping import contains_file, normalize_node_defaults, validate_output_fields
 from .runtime_contracts import (
     InvocationDraft,
@@ -70,7 +70,7 @@ class ExternalWaitConfig(BaseModel):
 class ExternalOutputDeclaration(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     name: str = ""
-    type: Literal["string", "number", "boolean", "object", "array", "file"]
+    type: ExternalOutputType
     required: bool = True
     description: str | None = None
     children: tuple[ExternalOutputDeclaration, ...] = ()
@@ -103,7 +103,7 @@ class ExternalOutputDeclaration(BaseModel):
         default = strategy.get("default_value") if strategy.get("on_failure") == "default_value" else self.default_value
         return OutputField(
             name=self.name or ("item" if item else ""),
-            kind=self.type,
+            kind=OutputFieldKind(self.type.value),
             required=self.required,
             children=tuple(child.field() for child in self.children),
             item=self.array_item.field(item=True) if self.array_item else None,
@@ -127,7 +127,7 @@ class ExternalNodeJob(BaseModel):
     def output_fields(self) -> tuple[OutputField, ...]:
         """Return declared fields, or the fixed plain-text output when undeclared."""
         return tuple(output.field() for output in self.agent_declared_outputs) or (
-            OutputField(name="text", kind="string"),
+            OutputField(name="text", kind=OutputFieldKind.STRING),
         )
 
     @classmethod

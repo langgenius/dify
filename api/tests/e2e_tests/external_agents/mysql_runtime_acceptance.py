@@ -42,8 +42,9 @@ from models.external_agent import (
 )
 from models.model import UploadFile
 from repositories.external_agents.runtime_repository import ExternalRuntimeRepository, context_slot_key
+from services.external_agents.contracts import ExternalOrigin
 from services.external_agents.invocation_agg import ExternalInvocationAgg
-from services.external_agents.io_contracts import FileBlob, OutputField
+from services.external_agents.io_contracts import FileBlob, OutputField, OutputFieldKind
 from services.external_agents.runtime_contracts import (
     CommandKind,
     ContextBusyError,
@@ -111,7 +112,7 @@ class MySQLAcceptance:
             tenant_id=self.state["tenant_id"],
             initiator_id=self.state["account_id"],
             app_id=None,
-            origin="overview_test",
+            origin=ExternalOrigin.OVERVIEW_TEST,
         )
 
     def context(self) -> RequestContext:
@@ -325,7 +326,7 @@ class MySQLAcceptance:
         self,
         scenario: str,
         *,
-        fields: tuple[OutputField, ...] = (OutputField(name="text", kind="string"),),
+        fields: tuple[OutputField, ...] = (OutputField(name="text", kind=OutputFieldKind.STRING),),
         leases: tuple[str, ...] = (),
         page: str = "mysql-http",
     ) -> str:
@@ -482,16 +483,16 @@ class MySQLAcceptance:
             blob=FileBlob(filename="mysql.txt", media_type="text/plain", data=content),
         )
         fields = (
-            OutputField(name="text", kind="string"),
-            OutputField(name="file_count", kind="number"),
-            OutputField(name="total_bytes", kind="number"),
+            OutputField(name="text", kind=OutputFieldKind.STRING),
+            OutputField(name="file_count", kind=OutputFieldKind.NUMBER),
+            OutputField(name="total_bytes", kind=OutputFieldKind.NUMBER),
         )
         input_result = self.drain(self.start("file-input", fields=fields, leases=(uploaded.lease_id,), page=page))
         require(
             input_result.outputs == {"text": "file input ok", "file_count": 1, "total_bytes": len(content)},
             "MySQL input lease/read/gateway path lost file bytes.",
         )
-        output = self.drain(self.start("file-output", fields=(OutputField(name="report", kind="file"),)))
+        output = self.drain(self.start("file-output", fields=(OutputField(name="report", kind=OutputFieldKind.FILE),)))
         require(output.local_state == LocalState.SUCCEEDED, "MySQL file output did not complete.")
         outputs = output.outputs
         if not isinstance(outputs, dict):

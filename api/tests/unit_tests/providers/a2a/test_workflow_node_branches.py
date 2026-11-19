@@ -35,9 +35,10 @@ from providers.a2a.workflow_node import (
     task_parts,
     workflow_scope,
 )
+from services.external_agents.contracts import ExternalOrigin
 from services.external_agents.invocation_service import ExternalInvocationService
-from services.external_agents.io_contracts import OutputField
-from services.external_agents.protocol import GatewayPort, GatewayReceipt
+from services.external_agents.io_contracts import OutputField, OutputFieldKind
+from services.external_agents.protocol import GatewayPort, GatewayReceipt, GatewayReceiptKind
 from services.external_agents.runtime_contracts import RuntimeError
 from tests.unit_tests.repositories.external_agents import test_runtime_repository as runtime_fixtures
 from tests.unit_tests.repositories.external_agents.test_runtime_repository import (
@@ -202,13 +203,13 @@ def test_nested_typed_outputs_grant_only_declared_stored_files_to_the_current_ex
     document = File(
         type="document", transfer_method=FileTransferMethod.LOCAL_FILE, related_id="stored", filename="a.txt"
     )
-    file_field = OutputField(name="item", kind="file")
+    file_field = OutputField(name="item", kind=OutputFieldKind.FILE)
     declared = OutputField(
         name="result",
-        kind="object",
+        kind=OutputFieldKind.OBJECT,
         children=(
-            OutputField(name="documents", kind="array", item=file_field),
-            OutputField(name="link", kind="string"),
+            OutputField(name="documents", kind=OutputFieldKind.ARRAY, item=file_field),
+            OutputField(name="link", kind=OutputFieldKind.STRING),
         ),
     )
     scope = FileAccessScope(
@@ -233,7 +234,7 @@ class AmbiguousAgent(RemoteAgent):
     @override
     def receipt(self) -> GatewayReceipt:
         return GatewayReceipt(
-            kind="message",
+            kind=GatewayReceiptKind.MESSAGE,
             context_id="context",
             payload={"parts": [{"data": {"text": "first"}}, {"data": {"text": "second"}}]},
         )
@@ -270,7 +271,7 @@ def test_failed_node_debug_projects_error_handling_to_its_exact_sql_caller(
 ) -> None:
     db_domain, identity, _, job = owned
     repo, sessions, scope, agent, revision = db_domain
-    scope = replace(scope, origin="node_debug")
+    scope = replace(scope, origin=ExternalOrigin.NODE_DEBUG)
     debug_domain = (repo, sessions, scope, agent, revision)
     TypeBase.metadata.create_all(
         bound_engine(sessions),
@@ -335,7 +336,7 @@ def test_debug_wake_cannot_reanimate_an_expired_owner_or_overwrite_another_invoc
     TypeBase.metadata.create_all(
         bound_engine(sessions), tables=[TypeBase.metadata.tables[WorkflowNodeExecutionOffload.__tablename__]]
     )
-    scope = replace(scope, origin="node_debug")
+    scope = replace(scope, origin=ExternalOrigin.NODE_DEBUG)
     debug_domain = (repo, sessions, scope, agent, revision)
     with sessions.begin() as session:
         caller = stored(session, WorkflowNodeExecutionModel, identity.execution_id)

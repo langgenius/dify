@@ -9,6 +9,7 @@ from services.external_agents.io_contracts import (
     JsonObject,
     JsonValue,
     OutputField,
+    OutputFieldKind,
     OutputMappingResult,
     StoredFile,
 )
@@ -18,7 +19,7 @@ from services.external_agents.output_mapping import (
     safe_receipt_metadata,
     validate_output_fields,
 )
-from services.external_agents.protocol import TRACEABILITY_URI, GatewayReceipt
+from services.external_agents.protocol import TRACEABILITY_URI, GatewayReceipt, GatewayReceiptKind
 
 SCOPE = FileScope(tenant_id="tenant", app_id="app", actor_id="actor", invocation_id="inv")
 
@@ -28,7 +29,7 @@ def receipt(
 ) -> GatewayReceipt:
     wire_parts: list[JsonValue] = list(parts)
     return GatewayReceipt(
-        kind="message",
+        kind=GatewayReceiptKind.MESSAGE,
         payload={"messageId": "m", "contextId": "ctx", "role": "ROLE_AGENT", "parts": wire_parts},
         task_id=task_id,
         context_id=context_id,
@@ -62,10 +63,10 @@ class DurableImporter:
 
 def test_structured_fields_preserve_zero_false_empty_and_project_extras() -> None:
     fields = [
-        OutputField(name="n", kind="number"),
-        OutputField(name="ok", kind="boolean"),
-        OutputField(name="text", kind="string"),
-        OutputField(name="extra", kind="string", required=False),
+        OutputField(name="n", kind=OutputFieldKind.NUMBER),
+        OutputField(name="ok", kind=OutputFieldKind.BOOLEAN),
+        OutputField(name="text", kind=OutputFieldKind.STRING),
+        OutputField(name="extra", kind=OutputFieldKind.STRING, required=False),
     ]
     result = map_parts(
         [{"data": {"n": 0, "ok": False, "text": "", "unmapped": "ignored"}}, {"text": "explanation"}], fields
@@ -78,7 +79,7 @@ def test_structured_fields_preserve_zero_false_empty_and_project_extras() -> Non
 )
 def test_ambiguity_cannot_be_hidden_by_default(parts: list[JsonObject]) -> None:
     with pytest.raises(ExternalIOError) as error:
-        map_parts(parts, [OutputField(name="n", kind="number", has_default=True, default=0)])
+        map_parts(parts, [OutputField(name="n", kind=OutputFieldKind.NUMBER, has_default=True, default=0)])
     assert error.value.code == "ambiguous_output"
 
 
@@ -86,7 +87,7 @@ def test_exponent_overflow_is_rejected_before_default_mapping() -> None:
     with pytest.raises(ExternalIOError) as error:
         map_parts(
             [{"text": '{"n":1e999}', "mediaType": "application/json"}],
-            [OutputField(name="n", kind="number", has_default=True, default=0)],
+            [OutputField(name="n", kind=OutputFieldKind.NUMBER, has_default=True, default=0)],
         )
     assert error.value.code == "invalid_output_number"
 
@@ -95,12 +96,16 @@ def test_output_variable_byte_limit_uses_utf8_and_only_a_valid_bounded_default()
     output = receipt([{"data": {"text": "汉" * 5}}])
     with pytest.raises(ExternalIOError) as error:
         map_output(
-            output, [OutputField(name="text", kind="string")], scope=SCOPE, materializer=None, max_variable_bytes=12
+            output,
+            [OutputField(name="text", kind=OutputFieldKind.STRING)],
+            scope=SCOPE,
+            materializer=None,
+            max_variable_bytes=12,
         )
     assert error.value.code == "output_variable_too_large"
     result = map_output(
         output,
-        [OutputField(name="text", kind="string", has_default=True, default="ok")],
+        [OutputField(name="text", kind=OutputFieldKind.STRING, has_default=True, default="ok")],
         scope=SCOPE,
         materializer=None,
         max_variable_bytes=12,
@@ -113,10 +118,10 @@ def test_node_defaults_project_objects_apply_child_defaults_and_reject_files_and
     fields = [
         OutputField(
             name="record",
-            kind="object",
-            children=(OutputField(name="valid", kind="boolean", has_default=True, default=False),),
+            kind=OutputFieldKind.OBJECT,
+            children=(OutputField(name="valid", kind=OutputFieldKind.BOOLEAN, has_default=True, default=False),),
         ),
-        OutputField(name="report", kind="file"),
+        OutputField(name="report", kind=OutputFieldKind.FILE),
     ]
     assert normalize_node_defaults({"record": {"extra": "removed"}}, fields) == {"record": {"valid": False}}
     for defaults in ({"unknown": 1}, {"report": "file-id"}):
@@ -125,12 +130,14 @@ def test_node_defaults_project_objects_apply_child_defaults_and_reject_files_and
 
 
 def test_plain_json_looking_prose_is_not_heuristically_decoded() -> None:
-    result = map_parts([{"text": '{"n": 4}'}], [OutputField(name="text", kind="string")])
+    result = map_parts([{"text": '{"n": 4}'}], [OutputField(name="text", kind=OutputFieldKind.STRING)])
     assert result.values == {"text": '{"n": 4}'}
 
 
 def test_required_type_failure_uses_only_valid_field_default() -> None:
-    result = map_parts([{"data": {"n": False}}], [OutputField(name="n", kind="number", has_default=True, default=0)])
+    result = map_parts(
+        [{"data": {"n": False}}], [OutputField(name="n", kind=OutputFieldKind.NUMBER, has_default=True, default=0)]
+    )
     assert result.values == {"n": 0}
     assert result.defaults_applied == ("n",)
 
@@ -139,8 +146,12 @@ def test_recursive_array_and_object_children_validate_strictly() -> None:
     fields = [
         OutputField(
             name="items",
-            kind="array",
-            item=OutputField(name="item", kind="object", children=(OutputField(name="valid", kind="boolean"),)),
+            kind=OutputFieldKind.ARRAY,
+            item=OutputField(
+                name="item",
+                kind=OutputFieldKind.OBJECT,
+                children=(OutputField(name="valid", kind=OutputFieldKind.BOOLEAN),),
+            ),
         )
     ]
     assert map_parts([{"data": {"items": []}}], fields).values == {"items": []}
@@ -151,10 +162,20 @@ def test_recursive_array_and_object_children_validate_strictly() -> None:
 @pytest.mark.parametrize(
     "field",
     [
-        OutputField(name="f", kind="file", has_default=True, default="id"),
-        OutputField(name="a", kind="array", item=OutputField(name="f", kind="file"), has_default=True, default=[]),
+        OutputField(name="f", kind=OutputFieldKind.FILE, has_default=True, default="id"),
         OutputField(
-            name="o", kind="object", children=(OutputField(name="f", kind="file"),), has_default=True, default={}
+            name="a",
+            kind=OutputFieldKind.ARRAY,
+            item=OutputField(name="f", kind=OutputFieldKind.FILE),
+            has_default=True,
+            default=[],
+        ),
+        OutputField(
+            name="o",
+            kind=OutputFieldKind.OBJECT,
+            children=(OutputField(name="f", kind=OutputFieldKind.FILE),),
+            has_default=True,
+            default={},
         ),
     ],
 )
@@ -167,7 +188,7 @@ def test_no_file_default_bypass(field: OutputField) -> None:
 def test_url_string_is_not_classified_as_a_file() -> None:
     result = map_parts(
         [{"data": {"download_url": "https://example.test/file_id"}}],
-        [OutputField(name="download_url", kind="string", has_default=True, default="")],
+        [OutputField(name="download_url", kind=OutputFieldKind.STRING, has_default=True, default="")],
     )
     assert result.values["download_url"] == "https://example.test/file_id"
 
@@ -179,18 +200,25 @@ def test_file_artifact_name_and_one_target_are_unambiguous() -> None:
         "mediaType": "application/pdf",
         "filename": "not-output-name.pdf",
     }
-    result = map_output(receipt([part]), [OutputField(name="report", kind="file")], scope=SCOPE, materializer=importer)
+    result = map_output(
+        receipt([part]), [OutputField(name="report", kind=OutputFieldKind.FILE)], scope=SCOPE, materializer=importer
+    )
     assert result.values == {"report": {"upload_file_id": "owned-file"}}
     assert importer.calls == [("message", 0)]
     with pytest.raises(ExternalIOError):
         map_output(
             receipt([part]),
-            [OutputField(name="a", kind="file"), OutputField(name="b", kind="file")],
+            [OutputField(name="a", kind=OutputFieldKind.FILE), OutputField(name="b", kind=OutputFieldKind.FILE)],
             scope=SCOPE,
             materializer=importer,
         )
     with pytest.raises(ExternalIOError):
-        map_output(receipt([part, part]), [OutputField(name="report", kind="file")], scope=SCOPE, materializer=importer)
+        map_output(
+            receipt([part, part]),
+            [OutputField(name="report", kind=OutputFieldKind.FILE)],
+            scope=SCOPE,
+            materializer=importer,
+        )
 
 
 def test_history_status_and_trace_only_artifact_are_not_business_output() -> None:
@@ -208,8 +236,8 @@ def test_history_status_and_trace_only_artifact_are_not_business_output() -> Non
         ],
     }
     result = map_output(
-        GatewayReceipt(kind="task", task_id="t", state="TASK_STATE_COMPLETED", payload=payload),
-        [OutputField(name="text", kind="string")],
+        GatewayReceipt(kind=GatewayReceiptKind.TASK, task_id="t", state="TASK_STATE_COMPLETED", payload=payload),
+        [OutputField(name="text", kind=OutputFieldKind.STRING)],
         scope=SCOPE,
         materializer=None,
     )

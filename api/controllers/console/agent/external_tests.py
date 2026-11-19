@@ -20,7 +20,14 @@ from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.helper import dump_response
 from machinery.context import RequestContext
-from services.external_agents.io_contracts import ExternalIOError, FileBlob, JsonValue, OutputField
+from services.external_agents.io_contracts import (
+    ExternalIOError,
+    ExternalOutputType,
+    FileBlob,
+    JsonValue,
+    OutputField,
+    OutputFieldKind,
+)
 from services.external_agents.runtime_contracts import RuntimeError as ExternalRuntimeError
 from services.external_agents.runtime_contracts import WaitPolicy
 from services.external_agents.test_service import ExternalTestResult
@@ -32,7 +39,7 @@ class ExternalTestOutputField(_Payload):
     """Public six-type profile; internal JSON-schema aliases are not wire types."""
 
     name: str = Field(min_length=1, max_length=255)
-    kind: Literal["string", "number", "boolean", "object", "array", "file"]
+    kind: ExternalOutputType
     required: bool = True
     children: tuple[ExternalTestOutputField, ...] = ()
     item: ExternalTestOutputField | None = None
@@ -42,7 +49,7 @@ class ExternalTestOutputField(_Payload):
     def field(self) -> OutputField:
         return OutputField(
             name=self.name,
-            kind=self.kind,
+            kind=OutputFieldKind(self.kind.value),
             required=self.required,
             children=tuple(child.field() for child in self.children),
             item=self.item.field() if self.item else None,

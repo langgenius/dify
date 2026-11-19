@@ -2,16 +2,18 @@
 
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
-from typing import Literal, Unpack
+from typing import Unpack
 
 import pytest
 from typing_extensions import TypedDict
 
 from services.external_agents.context_service import context_key
+from services.external_agents.contracts import ExternalOrigin
 from services.external_agents.invocation_agg import ExternalInvocationAgg
-from services.external_agents.protocol import GatewayReceipt
+from services.external_agents.protocol import GatewayReceipt, GatewayReceiptKind
 from services.external_agents.runtime_contracts import (
     CancelState,
+    CancelTrigger,
     CommandKind,
     ExecutionIdentity,
     Invocation,
@@ -28,7 +30,7 @@ from services.external_agents.runtime_contracts import (
 class InvocationChanges(TypedDict, total=False, closed=True):
     policy: WaitPolicy
     cancel_state: CancelState
-    cancel_trigger: Literal["timeout", "user"] | None
+    cancel_trigger: CancelTrigger | None
     cancellation_deadline: datetime | None
     remote_task_id: str | None
     submission_state: SubmissionState
@@ -49,7 +51,7 @@ SETTINGS = RuntimeSettings()
 def invocation(**changes: Unpack[InvocationChanges]) -> Invocation:
     value = Invocation(
         id="invocation",
-        scope=RuntimeScope(tenant_id="tenant", app_id="app", initiator_id="user", origin="production"),
+        scope=RuntimeScope(tenant_id="tenant", app_id="app", initiator_id="user", origin=ExternalOrigin.PRODUCTION),
         agent_id="agent",
         identity=ExecutionIdentity(
             execution_id="execution",
@@ -76,7 +78,7 @@ def invocation(**changes: Unpack[InvocationChanges]) -> Invocation:
 
 
 def task(state: str, *, context_id: str | None = None) -> GatewayReceipt:
-    return GatewayReceipt(kind="task", payload={}, task_id="task", state=state, context_id=context_id)
+    return GatewayReceipt(kind=GatewayReceiptKind.TASK, payload={}, task_id="task", state=state, context_id=context_id)
 
 
 def test_end_waiting_does_not_cancel_or_replenish_budget() -> None:
@@ -111,7 +113,7 @@ def test_manual_stop_never_uses_timeout_retry_policy() -> None:
     value = invocation(
         policy=WaitPolicy(on_timeout=TimeoutPolicy.CANCEL_AND_RETRY),
         cancel_state=CancelState.REQUESTED,
-        cancel_trigger="user",
+        cancel_trigger=CancelTrigger.USER,
         cancellation_deadline=NOW + timedelta(seconds=30),
     )
     result = ExternalInvocationAgg(value, SETTINGS).receive(task("canceled"), NOW + timedelta(seconds=1))
@@ -120,7 +122,7 @@ def test_manual_stop_never_uses_timeout_retry_policy() -> None:
 
 
 def test_valid_completion_wins_during_cancellation_confirmation() -> None:
-    value = invocation(cancel_state=CancelState.REQUESTED, cancel_trigger="timeout")
+    value = invocation(cancel_state=CancelState.REQUESTED, cancel_trigger=CancelTrigger.TIMEOUT)
     result = ExternalInvocationAgg(value, SETTINGS).receive(
         task("completed"), NOW + timedelta(seconds=1), outputs={"text": "ok"}
     )
@@ -191,7 +193,7 @@ def test_full_context_scope_and_debug_isolation() -> None:
     loop = context_key(invocation(identity=replace(invocation().identity, frame_id="container:iteration:0")))
     assert loop is not None
     assert loop.frame_scope == "container:iteration:0"
-    assert context_key(invocation(scope=replace(invocation().scope, origin="node_debug"))) is None
+    assert context_key(invocation(scope=replace(invocation().scope, origin=ExternalOrigin.NODE_DEBUG))) is None
 
 
 def test_denied_read_does_not_change_accepted_submission_or_reschedule_queries() -> None:

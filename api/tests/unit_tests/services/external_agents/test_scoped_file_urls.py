@@ -39,11 +39,12 @@ from services.external_agents.contracts import (
     ExternalAgentConflictError,
     ExternalAgentForbiddenError,
     ExternalAgentNotFoundError,
+    ExternalOrigin,
 )
 from services.external_agents.file_profile import FileLimits
 from services.external_agents.invocation_agg import ExternalInvocationAgg
-from services.external_agents.io_contracts import FileBlob, FileScope, JsonObject, OutputField
-from services.external_agents.protocol import GatewayReceipt
+from services.external_agents.io_contracts import FileBlob, FileScope, JsonObject, OutputField, OutputFieldKind
+from services.external_agents.protocol import GatewayReceipt, GatewayReceiptKind
 from services.external_agents.runtime_contracts import ExecutionIdentity, InvocationDraft, RuntimeScope
 from services.external_agents.test_file_access import ExternalTestFileAccessService
 from services.external_agents.test_file_access import TestFileURL as ScopedURL
@@ -87,7 +88,7 @@ class FileURLs:
             tenant_id=self.context.active_workspace_id,
             initiator_id=self.context.account_id,
             app_id=None,
-            origin="overview_test",
+            origin=ExternalOrigin.OVERVIEW_TEST,
         )
         value = repo.create(
             scope,
@@ -97,7 +98,7 @@ class FileURLs:
                 message_id=str(uuid4()),
                 identity=ExecutionIdentity(execution_id=str(uuid4()), node_id="overview-test", frame_id="root"),
                 parts=({"text": "Test output"},),
-                declared_outputs=(OutputField(name="report", kind="file"),),
+                declared_outputs=(OutputField(name="report", kind=OutputFieldKind.FILE),),
                 test_generation=1,
                 job={"page_session_id": page, "input_lease_ids": []},
             ),
@@ -127,7 +128,11 @@ class FileURLs:
         )
         transitioned = ExternalInvocationAgg(sending, self.services.external_agents.settings).receive(
             GatewayReceipt(
-                kind="task", task_id=str(uuid4()), context_id="unit-context", state="TASK_STATE_COMPLETED", payload={}
+                kind=GatewayReceiptKind.TASK,
+                task_id=str(uuid4()),
+                context_id="unit-context",
+                state="TASK_STATE_COMPLETED",
+                payload={},
             ),
             self.clock[0],
             outputs={"report": file.value},
@@ -282,7 +287,7 @@ def test_real_output_projection_url_refresh_and_no_url_persistence(urls: FileURL
         tenant_id=urls.context.active_workspace_id,
         initiator_id=urls.context.account_id,
         app_id=None,
-        origin="overview_test",
+        origin=ExternalOrigin.OVERVIEW_TEST,
     )
     stored = urls.services.external_agents.repository.get(scope, invocation)
     assert stored.outputs == {"report": file}
@@ -300,7 +305,7 @@ def test_edit_revokes_old_urls_but_new_generation_resigns_same_live_input(
             tenant_id=urls.context.active_workspace_id,
             initiator_id=urls.context.account_id,
             app_id=None,
-            origin="overview_test",
+            origin=ExternalOrigin.OVERVIEW_TEST,
         )
         urls.services.external_agents.repository.create(
             scope,

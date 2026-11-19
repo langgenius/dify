@@ -8,17 +8,28 @@ contain no credentials; only their owning lifecycle removes them.
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Literal, Protocol
+from enum import StrEnum
+from typing import Protocol
 
 from services.external_agents.observability import aware_utc
 
 logger = logging.getLogger(__name__)
 
 
+class ExternalDeletionKind(StrEnum):
+    TENANT = "tenant"
+    APP = "app"
+    WORKFLOW_RUN = "workflow_run"
+    MESSAGE = "message"
+    INVOCATION = "invocation"
+    CONVERSATION = "conversation"
+    CONTEXT_SLOT = "context_slot"
+
+
 @dataclass(frozen=True, slots=True)
 class ExternalDeletionScope:
     tenant_id: str
-    kind: Literal["tenant", "app", "workflow_run", "message", "invocation", "conversation", "context_slot"]
+    kind: ExternalDeletionKind
     owner_id: str
 
 

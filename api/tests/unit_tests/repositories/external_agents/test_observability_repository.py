@@ -58,7 +58,7 @@ from services.external_agents.observability import (
     ObservationNotFoundError,
     TraceQuery,
 )
-from services.external_agents.retention import ExternalDeletionScope, ExternalRetentionService
+from services.external_agents.retention import ExternalDeletionKind, ExternalDeletionScope, ExternalRetentionService
 from services.external_agents.traceability import ReportedCallUsage, TraceabilityNormalizer, TraceLimits, TraceState
 from services.external_agents.tracing_config import ExternalTraceDeliveryService, build_external_trace
 from services.rbac.contracts import MyPermissionsResponse, ResourcePermissionKeys, ResourcePermissionSnapshot
@@ -548,7 +548,7 @@ def test_parent_deletion_blocks_late_data_and_keeps_unresolved_context(sessions:
                 reserved_invocation_id=identifier,
             )
         )
-    repository.delete_scope(scope=ExternalDeletionScope(TENANT, "invocation", identifier), now=NOW)
+    repository.delete_scope(scope=ExternalDeletionScope(TENANT, ExternalDeletionKind.INVOCATION, identifier), now=NOW)
     with sessions() as session:
         row = required(session.get(ExternalAgentInvocation, identifier), ExternalAgentInvocation)
         assert row.asset_snapshot == {"name": "Historical agent"}
@@ -567,7 +567,9 @@ def test_parent_deletion_blocks_late_data_and_keeps_unresolved_context(sessions:
         )
     with sessions() as session:
         assert required(session.get(ExternalAgentContextSlot, slot_key), ExternalAgentContextSlot).unresolved
-    repository.delete_scope(scope=ExternalDeletionScope(TENANT, "conversation", conversation), now=NOW)
+    repository.delete_scope(
+        scope=ExternalDeletionScope(TENANT, ExternalDeletionKind.CONVERSATION, conversation), now=NOW
+    )
     with sessions() as session:
         slot = required(session.get(ExternalAgentContextSlot, slot_key), ExternalAgentContextSlot)
         assert slot.deleted_at is not None
@@ -762,8 +764,10 @@ def test_workspace_deletion_retires_current_head_and_proofs_but_waits_for_io_to_
                     write_lease_until=DBNOW + timedelta(minutes=5),
                 )
             )
-    repository.delete_scope(scope=ExternalDeletionScope(TENANT, "tenant", TENANT), now=NOW)
-    repository.delete_scope(scope=ExternalDeletionScope(TENANT, "tenant", TENANT), now=NOW + timedelta(seconds=1))
+    repository.delete_scope(scope=ExternalDeletionScope(TENANT, ExternalDeletionKind.TENANT, TENANT), now=NOW)
+    repository.delete_scope(
+        scope=ExternalDeletionScope(TENANT, ExternalDeletionKind.TENANT, TENANT), now=NOW + timedelta(seconds=1)
+    )
     assert repository.reclaim_credentials(now=NOW + timedelta(seconds=1), limit=100) == 0
     with sessions.begin() as session:
         if in_flight == "command":
@@ -1249,7 +1253,12 @@ def test_native_message_cleanup_uses_run_link_not_a2a_wire_message_id(sessions: 
                 workflow_run_id=source_run,
             )
         )
-    assert repository.delete_scope(scope=ExternalDeletionScope(TENANT, "message", parent_message), now=NOW) == 1
+    assert (
+        repository.delete_scope(
+            scope=ExternalDeletionScope(TENANT, ExternalDeletionKind.MESSAGE, parent_message), now=NOW
+        )
+        == 1
+    )
     with pytest.raises(ObservationNotFoundError):
         repository.owner(tenant_id=TENANT, invocation_id=selected, now=NOW)
     assert repository.owner(tenant_id=TENANT, invocation_id=unrelated, now=NOW).id == unrelated

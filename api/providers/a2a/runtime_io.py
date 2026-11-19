@@ -15,6 +15,7 @@ from services.external_agents.file_profile import DEFAULT_FILE_LIMITS, FileLimit
 from services.external_agents.io_contracts import (
     ExternalIOError,
     FileReference,
+    FileReferenceKind,
     FileScope,
     InputFileReaderPort,
     JsonObject,
@@ -160,7 +161,7 @@ class ExternalRequestPartsBuilder:
                     or kind not in ("upload", "tool", "datasource")
                 ):
                     raise ExternalIOError("invalid_input_part", "The admitted file reference is invalid.")
-                references.append(FileReference(file_id=identifier, kind=kind))
+                references.append(FileReference(file_id=identifier, kind=FileReferenceKind(kind)))
             else:
                 raise ExternalIOError("invalid_input_part", "Only admitted text and file references may be dispatched.")
         task_text = "".join(texts)

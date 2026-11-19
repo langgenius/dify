@@ -12,7 +12,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
-from typing import Literal, override
+from typing import override
 
 import pytest
 from sqlalchemy import func, select
@@ -58,8 +58,15 @@ from services.external_agents.io_contracts import (
     FileWriteReservation,
     JsonObject,
     OutputField,
+    OutputFieldKind,
 )
-from services.external_agents.protocol import TRACEABILITY_URI, ConnectionSpec, GatewayError, VerificationResult
+from services.external_agents.protocol import (
+    TRACEABILITY_URI,
+    ConnectionSpec,
+    GatewayError,
+    VerificationAuthCheck,
+    VerificationResult,
+)
 from services.external_agents.runtime_contracts import CancelState, Invocation, LocalState, TimeoutPolicy, WaitPolicy
 from services.external_agents.test_service import ExternalTestService
 from services.external_agents.traceability import TraceLimits
@@ -144,7 +151,7 @@ class ReadOnlyProfileGateway(RemoteAgent):
         super().__init__()
         self.verified: list[ConnectionSpec] = []
         self.failure: GatewayError | None = None
-        self.auth_scope: Literal["passed_for_read_endpoint", "not_exercised"] = "not_exercised"
+        self.auth_scope: VerificationAuthCheck = VerificationAuthCheck.NOT_EXERCISED
         self.card: JsonObject = {
             "name": "Remote declaration",
             "description": "Remote description",
@@ -322,7 +329,7 @@ class ControlPlane:
             idempotency_key=key,
             task_text=text,
             input_lease_ids=leases,
-            outputs=(OutputField(name="text", kind="string"),),
+            outputs=(OutputField(name="text", kind=OutputFieldKind.STRING),),
             policy=WaitPolicy(),
         )
 
@@ -525,7 +532,7 @@ def test_failed_read_auth_never_saves_evidence_and_public_scope_does_not_claim_e
     with control.database[1]() as session:
         assert session.scalar(select(func.count()).select_from(ExternalAgentVerification)) == 0
     control.gateway.failure = None
-    control.gateway.auth_scope = "passed_for_read_endpoint"
+    control.gateway.auth_scope = VerificationAuthCheck.PASSED_FOR_READ_ENDPOINT
     proof = control.verify(auth="bearer", action="replace", credential="valid-shape")
     assert proof.auth_check == "passed_for_read_endpoint"
     assert len(control.gateway.verified) == 2
@@ -751,7 +758,7 @@ def test_statistics_follows_confirmed_cancel_retry_and_freezes_terminal_duration
         idempotency_key="retry-statistics",
         task_text="Task",
         input_lease_ids=(),
-        outputs=(OutputField(name="text", kind="string"),),
+        outputs=(OutputField(name="text", kind=OutputFieldKind.STRING),),
         policy=WaitPolicy(wait_seconds=60, on_timeout=TimeoutPolicy.CANCEL_AND_RETRY),
     )
     command(control.database, control.runtime, control.clock, "dispatch")
@@ -837,7 +844,11 @@ def test_request_byte_bound_and_display_configuration_fail_before_business_submi
             task_text="Task",
             input_lease_ids=(),
             policy=WaitPolicy(),
-            outputs=(OutputField(name="report", kind="file", has_default=True, default={"upload_file_id": uid()}),),
+            outputs=(
+                OutputField(
+                    name="report", kind=OutputFieldKind.FILE, has_default=True, default={"upload_file_id": uid()}
+                ),
+            ),
         )
     control.access.visibility = frozenset()
     with pytest.raises(ExternalAgentForbiddenError):

@@ -11,9 +11,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
-from typing import Literal, Protocol
+from typing import Protocol
 
-from .io_contracts import JsonObject, OutputField
+from .contracts import ExternalOrigin
+from .io_contracts import ExternalActorRole, JsonObject, OutputField
 from .protocol import ConnectionSpec, GatewayReceipt, SendRequest
 
 
@@ -61,6 +62,11 @@ class CancelState(StrEnum):
     UNCONFIRMED = "unconfirmed"
 
 
+class CancelTrigger(StrEnum):
+    TIMEOUT = "timeout"
+    USER = "user"
+
+
 class TimeoutPolicy(StrEnum):
     END_WAITING = "end_waiting"
     REQUEST_CANCELLATION = "request_cancellation"
@@ -83,8 +89,8 @@ class RuntimeScope:
     tenant_id: str
     initiator_id: str
     app_id: str | None
-    origin: Literal["production", "node_debug", "workflow_debug", "overview_test"]
-    actor_role: Literal["account", "end_user"] = "account"
+    origin: ExternalOrigin
+    actor_role: ExternalActorRole = ExternalActorRole.ACCOUNT
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -212,7 +218,7 @@ class Invocation:
     local_wait_ended_at: datetime | None = None
     wait_deadline: datetime | None = None
     cancellation_deadline: datetime | None = None
-    cancel_trigger: Literal["timeout", "user"] | None = None
+    cancel_trigger: CancelTrigger | None = None
     tracking_deadline: datetime | None = None
     outputs: JsonObject | None = None
     terminal_receipt: GatewayReceipt | None = None

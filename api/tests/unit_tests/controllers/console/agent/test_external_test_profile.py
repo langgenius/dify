@@ -6,7 +6,9 @@ from controllers.console.agent.external_tests import ExternalTestOutputField, Ex
 
 def test_public_test_output_schema_has_exactly_the_frozen_six_types() -> None:
     schema = ExternalTestOutputField.model_json_schema()
-    assert schema["$defs"]["ExternalTestOutputField"]["properties"]["kind"]["enum"] == [
+    kind = schema["$defs"]["ExternalTestOutputField"]["properties"]["kind"]
+    assert kind["$ref"] == "#/$defs/ExternalOutputType"
+    assert schema["$defs"]["ExternalOutputType"]["enum"] == [
         "string",
         "number",
         "boolean",

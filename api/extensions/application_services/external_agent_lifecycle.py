@@ -2,14 +2,13 @@
 
 from collections.abc import Sequence
 from datetime import UTC, datetime
-from typing import Literal
 
-from services.external_agents.retention import ExternalDeletionScope
+from services.external_agents.retention import ExternalDeletionKind, ExternalDeletionScope
 
 
 def fence_external_parent(
     tenant_id: str,
-    kind: Literal["tenant", "app", "workflow_run", "message", "invocation", "conversation", "context_slot"],
+    kind: ExternalDeletionKind,
     owner_id: str,
 ) -> None:
     """Persist the parent tombstone before its existing destructive effects.
@@ -25,10 +24,10 @@ def fence_external_parent(
 
 
 def fence_external_workspace(workspace_id: str) -> None:
-    fence_external_parent(workspace_id, "tenant", workspace_id)
+    fence_external_parent(workspace_id, ExternalDeletionKind.TENANT, workspace_id)
 
 
 def fence_external_archived_runs(tenant_id: str, run_ids: Sequence[str]) -> None:
     """Permanent archive deletion owns these manifest-validated run identities."""
     for run_id in run_ids:
-        fence_external_parent(tenant_id, "workflow_run", run_id)
+        fence_external_parent(tenant_id, ExternalDeletionKind.WORKFLOW_RUN, run_id)

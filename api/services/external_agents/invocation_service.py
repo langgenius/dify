@@ -10,6 +10,8 @@ from dataclasses import replace
 from datetime import datetime, timedelta
 from hashlib import sha256
 
+from services.external_agents.runtime_contracts import CancelTrigger
+
 from .invocation_agg import ExternalInvocationAgg, InvocationTransition, remote_state
 from .io_contracts import ExternalIOError
 from .protocol import TRACEABILITY_URI, ConnectionSpec, GatewayError, GatewayPort, GatewayReceipt
@@ -143,7 +145,9 @@ class ExternalInvocationService:
         elif value.cancel_state == CancelState.REQUESTED:
             if value.cancel_trigger == "user":
                 return value
-            transition = InvocationTransition(replace(value, version=value.version + 1, cancel_trigger="user"))
+            transition = InvocationTransition(
+                replace(value, version=value.version + 1, cancel_trigger=CancelTrigger.USER)
+            )
         else:
             deadline = min(now + timedelta(seconds=self._settings.cancellation_window_seconds), value.logical_deadline)
             transition = InvocationTransition(
@@ -151,7 +155,7 @@ class ExternalInvocationService:
                     value,
                     version=value.version + 1,
                     cancel_state=CancelState.REQUESTED,
-                    cancel_trigger="user",
+                    cancel_trigger=CancelTrigger.USER,
                     cancellation_deadline=deadline,
                 ),
                 (agg.command(CommandKind.CANCEL, now), agg.command(CommandKind.DEADLINE, deadline)),

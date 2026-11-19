@@ -38,9 +38,10 @@ from graphon.variables.segments import ArrayFileSegment, FileSegment
 from models.external_agent import ExternalAgentCommand
 from models.external_agent_trace import ExternalAgentDataTombstone
 from models.workflow import WorkflowNodeExecutionModel, WorkflowPause, WorkflowRun
+from services.external_agents.contracts import ExternalOrigin
 from services.external_agents.file_profile import render_task_value
 from services.external_agents.invocation_service import ExternalInvocationService
-from services.external_agents.io_contracts import JsonObject, JsonValue, OutputField
+from services.external_agents.io_contracts import ExternalActorRole, JsonObject, JsonValue, OutputField
 from services.external_agents.output_mapping import normalize_node_defaults
 from services.external_agents.runtime_contracts import (
     ExecutionIdentity,
@@ -92,10 +93,10 @@ def workflow_scope(context: DifyRunContext) -> RuntimeScope:
         tenant_id=context.tenant_id,
         app_id=context.app_id,
         initiator_id=context.user_id,
-        actor_role="account" if context.user_from == UserFrom.ACCOUNT else "end_user",
-        origin="workflow_debug"
+        actor_role=ExternalActorRole.ACCOUNT if context.user_from == UserFrom.ACCOUNT else ExternalActorRole.END_USER,
+        origin=ExternalOrigin.WORKFLOW_DEBUG
         if context.invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.VALIDATION}
-        else "production",
+        else ExternalOrigin.PRODUCTION,
     )
 
 
@@ -263,7 +264,7 @@ class ExternalAgentNode(Node[ExternalAgentNodeData]):
             if scope.origin == "workflow_debug" and not get_system_text(
                 self.runtime_state.variable_pool, SystemVariableKey.WORKFLOW_EXECUTION_ID
             ):
-                scope = replace(scope, origin="node_debug")
+                scope = replace(scope, origin=ExternalOrigin.NODE_DEBUG)
             binding = self._bindings.load_workflow_binding(
                 scope, workflow_id=self.init_params.workflow_id, node_id=self.id
             )

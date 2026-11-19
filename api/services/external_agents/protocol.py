@@ -5,12 +5,29 @@ calling send; an unknown acceptance must never be converted to a fresh send.
 """
 
 from dataclasses import dataclass, field
+from enum import StrEnum
 from typing import Literal, Protocol
 
 from .io_contracts import JsonObject, JsonValue
 
 PROFILE_VERSION = "a2a-1.0-http-json.v1"
 TRACEABILITY_URI = "https://github.com/a2aproject/a2a-samples/extensions/traceability/v1"
+
+
+class VerificationAuthCheck(StrEnum):
+    PASSED_FOR_READ_ENDPOINT = "passed_for_read_endpoint"
+    NOT_EXERCISED = "not_exercised"
+
+
+class GatewayUsageSource(StrEnum):
+    TASK = "task"
+    MESSAGE = "message"
+    STATUS_UPDATE = "statusUpdate"
+
+
+class GatewayReceiptKind(StrEnum):
+    TASK = "task"
+    MESSAGE = "message"
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,7 +84,7 @@ class VerificationResult:
     card: JsonObject
     interface_url: str
     remote_tenant: str | None
-    auth_check: Literal["passed_for_read_endpoint", "not_exercised"]
+    auth_check: VerificationAuthCheck
     card_fingerprint: str
     streaming: bool
     required_extensions: tuple[str, ...]
@@ -93,7 +110,7 @@ class GatewayUsageCarrier:
     usage profile validates it; it is not part of durable response payloads.
     """
 
-    source: Literal["task", "message", "statusUpdate"]
+    source: GatewayUsageSource
     value: JsonValue = field(repr=False)
 
 
@@ -106,7 +123,7 @@ class GatewayReceipt:
     owner, not invented transport state.
     """
 
-    kind: Literal["task", "message"]
+    kind: GatewayReceiptKind
     payload: JsonObject
     task_id: str | None = None
     context_id: str | None = None

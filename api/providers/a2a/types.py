@@ -7,9 +7,10 @@ Extension-specific JSON remains under explicitly typed metadata/params.
 
 import json
 import math
-from typing import Literal, Self
+from enum import StrEnum
+from typing import Annotated, Self
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, JsonValue, model_validator
 
 
 class WireModel(BaseModel):
@@ -103,9 +104,26 @@ class PartV1(WireModel):
         return self
 
 
+class MessageRoleV1(StrEnum):
+    USER = "ROLE_USER"
+    AGENT = "ROLE_AGENT"
+
+
+def _message_role_from_wire(value: object) -> MessageRoleV1:
+    """Accept a v1 role string; return its member or reject without coercion.
+
+    Preconditions: value is untrusted wire data or an existing role member.
+    Postconditions: only the frozen role strings succeed; bytes and other
+    non-string values fail without changing strict validation of other fields.
+    """
+    if not isinstance(value, str):
+        raise ValueError("A Message role must be a string.")
+    return MessageRoleV1(value)
+
+
 class MessageV1(WireModel):
     messageId: str = Field(min_length=1)  # noqa: N815  # Public field name.
-    role: Literal["ROLE_USER", "ROLE_AGENT"]
+    role: Annotated[MessageRoleV1, BeforeValidator(_message_role_from_wire)]
     parts: list[PartV1] = Field(min_length=1)
     contextId: str | None = Field(default=None, min_length=1)  # noqa: N815  # Public field name.
     taskId: str | None = Field(default=None, min_length=1)  # noqa: N815  # Public field name.
@@ -114,20 +132,31 @@ class MessageV1(WireModel):
     referenceTaskIds: list[str] = Field(default_factory=list)  # noqa: N815  # Public field name.
 
 
-type TaskStateV1 = Literal[
-    "TASK_STATE_SUBMITTED",
-    "TASK_STATE_WORKING",
-    "TASK_STATE_COMPLETED",
-    "TASK_STATE_FAILED",
-    "TASK_STATE_CANCELED",
-    "TASK_STATE_REJECTED",
-    "TASK_STATE_INPUT_REQUIRED",
-    "TASK_STATE_AUTH_REQUIRED",
-]
+class TaskStateV1(StrEnum):
+    SUBMITTED = "TASK_STATE_SUBMITTED"
+    WORKING = "TASK_STATE_WORKING"
+    COMPLETED = "TASK_STATE_COMPLETED"
+    FAILED = "TASK_STATE_FAILED"
+    CANCELED = "TASK_STATE_CANCELED"
+    REJECTED = "TASK_STATE_REJECTED"
+    INPUT_REQUIRED = "TASK_STATE_INPUT_REQUIRED"
+    AUTH_REQUIRED = "TASK_STATE_AUTH_REQUIRED"
+
+
+def _task_state_from_wire(value: object) -> TaskStateV1:
+    """Accept a v1 state string; return its member or reject without coercion.
+
+    Preconditions: value is untrusted wire data or an existing state member.
+    Postconditions: only the eight frozen v1 states succeed; non-string and
+    legacy 0.3 state values fail without changing the surrounding wire model.
+    """
+    if not isinstance(value, str):
+        raise ValueError("A Task state must be a string.")
+    return TaskStateV1(value)
 
 
 class StatusV1(WireModel):
-    state: TaskStateV1
+    state: Annotated[TaskStateV1, BeforeValidator(_task_state_from_wire)]
     message: MessageV1 | None = None
     timestamp: str | None = None
 
