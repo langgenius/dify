@@ -33,6 +33,9 @@ SCHEMA = "dify.native-code-environment/v1"
 PREFIX = "/usr/local"
 SITE = "lib/python3.13/site-packages"
 PACKAGES = {"Jinja2": "3.1.6", "MarkupSafe": "3.0.3"}
+# Must equal "v" + ARG NODE_VERSION in docker/Dockerfile (pinned by the shared
+# runtime image); tests/test_native_code_environment.py guards the drift.
+NODE = "v24.22.3"
 MAX_FILES = 256
 MAX_ENTRIES = 512
 PROBE_TIMEOUT_SECONDS = 15
@@ -65,7 +68,7 @@ def validate_profile(profile):
         "x86_64",
     }:
         raise Refusal("unsupported_platform")
-    if profile.get("node") != "v24.22.1":
+    if profile.get("node") != NODE:
         raise Refusal("unsupported_node")
     if profile.get("packages") != PACKAGES:
         raise Refusal("unsupported_packages")
@@ -374,7 +377,7 @@ def collect_environment():
         "packages": PACKAGES.copy(),
     }
     # Validate Python/platform before any package discovery/import or child process.
-    validate_profile({**profile, "node": "v24.22.1"})
+    validate_profile({**profile, "node": NODE})
     if (
         not sys.flags.isolated
         or sys.prefix != PREFIX
