@@ -27672,6 +27672,7 @@ Effective feature availability and limits for the current workspace.
 | can_replace_logo | boolean |  | Yes |
 | documents_upload_quota | [LimitationModel](#limitationmodel) |  | Yes |
 | education | [EducationModel](#educationmodel) |  | Yes |
+| enable_decision_node | boolean |  | Yes |
 | enable_file_scan | boolean |  | Yes |
 | enable_knowledge_fs | boolean |  | Yes |
 | enable_skill | boolean, <br>**Default:** true |  | Yes |

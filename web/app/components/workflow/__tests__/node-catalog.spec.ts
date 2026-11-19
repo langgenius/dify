@@ -6,9 +6,11 @@ import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createNode } from './fixtures'
 
-// The node catalog reads KnowledgeFS availability from the console features query.
-const catalogQueryClient = ({ enabled = true } = {}) =>
-  createConsoleQueryWrapper({ features: { enable_knowledge_fs: enabled } }).queryClient
+// The node catalog reads KnowledgeFS and Decision node availability from the console features query.
+const catalogQueryClient = ({ enabled = true, decisionNodeEnabled = false } = {}) =>
+  createConsoleQueryWrapper({
+    features: { enable_knowledge_fs: enabled, enable_decision_node: decisionNodeEnabled },
+  }).queryClient
 
 const mockIsAgentV2Enabled = vi.hoisted(() => vi.fn(() => true))
 const mockIsAgentV2InChatflowEnabled = vi.hoisted(() => vi.fn(() => false))
@@ -360,4 +362,26 @@ describe('useWorkflowNodeCatalog', () => {
     expect(result.current.nodesMap?.[BlockEnum.KnowledgeRetrieval]).toBeDefined()
     expect(result.current.nodesMap?.[BlockEnum.KnowledgeRetrievalV2]).toBeUndefined()
   })
+
+  it('should hide Decision from the node picker but keep its metadata while the switch is off', () => {
+    const { result } = renderCatalog({
+      queryClient: catalogQueryClient({ decisionNodeEnabled: false }),
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
+
+    expect(result.current.nodes.map((node) => node.metaData.type)).not.toContain(BlockEnum.Decision)
+    expect(result.current.nodesMap?.[BlockEnum.Decision]?.checkValid).toEqual(expect.any(Function))
+  })
+
+  it.each(['workflow', 'advanced-chat'] as const)(
+    'should offer Decision in %s when the switch is on',
+    (mode) => {
+      const { result } = renderCatalog({
+        queryClient: catalogQueryClient({ decisionNodeEnabled: true }),
+        resource: { kind: 'app', appId: 'app-1', mode },
+      })
+
+      expect(result.current.nodes.map((node) => node.metaData.type)).toContain(BlockEnum.Decision)
+    },
+  )
 })

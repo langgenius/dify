@@ -22,6 +22,9 @@ from core.workflow import template_rendering as workflow_template_rendering
 from core.workflow.llm_node import DifyLLMNode
 from core.workflow.node_factory import DifyNodeFactory, get_node_type_classes_mapping
 from core.workflow.node_runtime import DifyPreparedLLM
+from core.workflow.nodes.decision.entities import DECISION_NODE_TYPE
+from core.workflow.nodes.decision.exc import DecisionNodeDisabledError
+from core.workflow.nodes.decision.node import DecisionNode
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import BuiltinNodeTypes, NodeExecutionType, NodeType
@@ -1551,3 +1554,61 @@ class TestNodeFactoryCasesWorkflow:
                 node_data_memory=memory_config,
                 model_instance=sentinel.model_instance,
             )
+
+
+class TestDecisionNodeSwitch:
+    """``ENABLE_DECISION_NODE`` decides whether the factory builds decision nodes at all."""
+
+    _NODE_CONFIG: Mapping[str, object] = {
+        "id": "decision",
+        "data": {
+            "type": DECISION_NODE_TYPE,
+            "title": "Decision",
+            "decide_by": "rules",
+            "outcomes": [
+                {
+                    "id": "large",
+                    "label": "Large",
+                    "when": {
+                        "logical_operator": "and",
+                        "conditions": [
+                            {"variable_selector": ["start", "amount"], "comparison_operator": ">", "value": "1"}
+                        ],
+                    },
+                }
+            ],
+            "otherwise": {"label": "Can't decide"},
+        },
+    }
+
+    @staticmethod
+    def _factory() -> DifyNodeFactory:
+        return DifyNodeFactory(
+            init_params=build_test_graph_init_params(),
+            runtime_state=RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0),
+        )
+
+    def test_create_node_refuses_a_decision_node_while_the_switch_is_off(
+        self, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(ENABLE_DECISION_NODE=False)
+
+        with pytest.raises(DecisionNodeDisabledError, match="The Decision node is not enabled"):
+            self._factory().create_node(dict(self._NODE_CONFIG))
+
+    def test_validate_node_refuses_a_decision_node_while_the_switch_is_off(
+        self, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(ENABLE_DECISION_NODE=False)
+
+        with pytest.raises(DecisionNodeDisabledError, match="ENABLE_DECISION_NODE"):
+            self._factory().validate_node(dict(self._NODE_CONFIG))
+
+    def test_builds_a_decision_node_while_the_switch_is_on(self, config_overrides: Callable[..., None]) -> None:
+        config_overrides(ENABLE_DECISION_NODE=True)
+        factory = self._factory()
+
+        node = factory.create_node(dict(self._NODE_CONFIG))
+
+        assert isinstance(node, DecisionNode)
+        assert factory.validate_node(dict(self._NODE_CONFIG)) == NodeExecutionType.BRANCH

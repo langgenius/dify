@@ -150,6 +150,8 @@ class FeatureModel(FeatureResponseModel):
     billing: BillingModel = BillingModel()
     education: EducationModel = EducationModel()
     enable_skill: bool = True
+    # Deployment switch for the Decision workflow node; off until it is released.
+    enable_decision_node: bool = False
     enable_knowledge_fs: bool = False
     enable_file_scan: bool = False
     workflow_collaboration_enabled: bool = False

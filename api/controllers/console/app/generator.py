@@ -6,7 +6,9 @@ from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field, RootModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import NotFound
 
+from configs import dify_config
 from controllers.common.fields import ErrorMessageResponse, SimpleDataResponse
 from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
@@ -428,6 +430,16 @@ class RuleStructuredOutputGenerateApi(Resource):
         return structured_output
 
 
+def _require_decision_node_enabled() -> None:
+    """Hide the decision generator while the deployment switch is off.
+
+    Precondition: none. Postcondition: returns only when ``ENABLE_DECISION_NODE``
+    is on; otherwise raises ``NotFound`` before any model is called.
+    """
+    if not dify_config.ENABLE_DECISION_NODE:
+        raise NotFound()
+
+
 @console_ns.route("/decision-generate")
 class DecisionGenerateApi(Resource):
     """Generate a decision node's configuration from one sentence.
@@ -435,6 +447,7 @@ class DecisionGenerateApi(Resource):
     The result is draft-only: the frontend writes it into the node; nothing is
     stored server-side. Model-side problems come back as HTTP 200 with a short
     ``error``; transport and provider errors keep the generator error mapping.
+    While the ``ENABLE_DECISION_NODE`` switch is off the endpoint answers 404.
     """
 
     @error_responses(
@@ -458,6 +471,7 @@ class DecisionGenerateApi(Resource):
     @with_current_tenant_id
     @model_validate(DecisionGeneratePayload)
     def post(self, req_data: DecisionGeneratePayload, current_tenant_id: str):
+        _require_decision_node_enabled()
         try:
             result = LLMGenerator.generate_decision(tenant_id=current_tenant_id, args=req_data)
         except ProviderTokenNotInitError as ex:

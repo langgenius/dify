@@ -53,6 +53,7 @@ from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingRe
 from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
 from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeRequestBuilder
 from core.workflow.nodes.decision.entities import DECISION_NODE_TYPE, DecideBy, DecisionNodeData
+from core.workflow.nodes.decision.exc import DecisionNodeDisabledError
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import HumanInputNodeData as DifyHumanInputNodeData
 from core.workflow.nodes.human_input_v2.node import HumanInputNode as HumanInputV2Node
@@ -178,6 +179,23 @@ def resolve_workflow_node_class(
     if not node_class:
         raise ValueError(f"No latest version class found for node type: {node_type}")
     return node_class
+
+
+def disabled_node_type_error(node_type: str) -> DecisionNodeDisabledError | None:
+    """The error that refuses ``node_type`` on this deployment, if a deployment switch turns it off.
+
+    The one rule every place that offers, checks or builds a node shares, so a
+    switched-off type is hidden from discovery, reported by graph checks and
+    refused by the factory alike.
+
+    Precondition: ``node_type`` is a node data ``type`` string, known or not.
+    Postcondition: returns ``DecisionNodeDisabledError`` for a decision node while
+    ``ENABLE_DECISION_NODE`` is off; returns ``None`` (the type is not switched
+    off here) for every other case. Reads ``dify_config`` and has no side effects.
+    """
+    if node_type == DECISION_NODE_TYPE and not dify_config.ENABLE_DECISION_NODE:
+        return DecisionNodeDisabledError()
+    return None
 
 
 def is_start_node_type(node_type: NodeType) -> bool:
@@ -473,7 +491,9 @@ class DifyNodeFactory(NodeFactory):
         :return: initialized Node instance
         :raises ValueError: if node_config fails NodeConfigDict/BaseNodeData validation
             (including pydantic ValidationError, which subclasses ValueError),
-            if node type is unknown, or if no implementation exists for the resolved version
+            if node type is unknown, if no implementation exists for the resolved version,
+            or (``DecisionNodeDisabledError``) if it is a decision node while
+            ``ENABLE_DECISION_NODE`` is off
         """
         adapted_node_config, typed_node_config, node_class, resolved_node_data = self._validate_node_config(node_config)
         node_id = typed_node_config["id"]
@@ -591,6 +611,11 @@ class DifyNodeFactory(NodeFactory):
         adapted_node_config = adapt_node_config_for_graph(node_config)
         typed_node_config = NodeConfigDictAdapter.validate_python(adapted_node_config)
         node_data = typed_node_config["data"]
+        # Shared by `validate_node` and `create_node`, so a disabled decision node
+        # fails graph validation before any node in the graph is constructed.
+        disabled_error = disabled_node_type_error(node_data.type)
+        if disabled_error is not None:
+            raise disabled_error
         node_class = self._resolve_node_class_for_factory(
             node_type=node_data.type,
             node_version=str(node_data.version),
