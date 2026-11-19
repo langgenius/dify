@@ -80,7 +80,11 @@ history remains complete, so the native runtime can resume the same calls using
 their explicit model/eager/configuration/bootstrap/shell/interaction stage.
 A resumed stage uses captured history without adding a second user turn.
 Denial raises `NativePolicyStopped`; it never becomes `ToolDenied`, `False`, or
-retryable model feedback.
+retryable model feedback. A native run stops with `native_tool_boundary_unavailable`
+if the model calls a tool that has no native boundary, so such tools are not
+offered there: `read_media` and `read_config_skill_md` are hidden in native runs
+(skills stay readable through the fenced `dify-agent config skills pull` shell
+command), and ordinary runs keep both.
 
 `RedisRunStore.persist_waiting` atomically commits checkpoint, `run_waiting`
 event and waiting status. A persistence failure publishes no resumable waiting.
@@ -158,15 +162,20 @@ owner, node wiring or full native capability is enabled by this read interface.
 ### Create acknowledgement recovery
 
 A create with an `idempotency_key` (1–256 characters) binds that key to the SHA256
-fingerprint of the complete validated request, excluding only the key. Use
+fingerprint of the complete validated request, excluding the key. Use
 `dify_agent.protocol.create_run_fingerprint` before submitting it. This create
-fingerprint includes metadata and native ownership/profile fields; the existing
-native executable-request digest keeps its separate meaning.
+fingerprint includes metadata; a `builder_test` request also binds its native
+ownership/profile fields. An ordinary request leaves those fields out, so its
+fingerprint equals the one stored before native testing existed and a retained
+record replays across an upgrade. The existing native executable-request digest
+keeps its separate meaning.
 
 The server's shared keyed admission (see the server guide) atomically claims the
 hashed key and writes one RunRecord with a fresh UUID4 run id; only a newly
 created run schedules an initial supervisor. Repeating an identical retained
-create returns its current acceptance; changed request content returns 409.
+create returns its current acceptance; changed request content returns 409, and
+so does a retained record that cannot be read (corrupt or the wrong Redis type),
+without writing anything.
 Native record writes (waiting, continuation claim/start, policy stop, confirmed
 recovery) refresh the claim like other active writes. Keys and configuration are
 not exposed by lookup or stored as create payloads; only private key/request

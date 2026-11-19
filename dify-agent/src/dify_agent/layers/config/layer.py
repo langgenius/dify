@@ -104,13 +104,18 @@ class Capability(AbstractCapability[Deps]):
 
     def _instructions(self, ctx: RunContext[Deps]) -> str:
         context = self._context(ctx.deps)
-        return f"{context.build_prompt_context()}\n\n{context.build_suffix_prompt()}"
+        suffix = context.build_suffix_prompt(skill_tool=ctx.deps.native_effects is None)
+        return f"{context.build_prompt_context()}\n\n{suffix}"
 
     @override
     def get_toolset(self) -> FunctionToolset[Deps]:
         toolset = FunctionToolset[Deps](id=self.name, sequential=True)
 
         async def hide_without_skills(ctx: RunContext[Deps], tool_def: ToolDefinition) -> ToolDefinition | None:
+            # Builder native test runs stop on any tool without a native boundary, so
+            # they read skills through the fenced shell CLI instead of this tool.
+            if ctx.deps.native_effects is not None:
+                return None
             return tool_def if Config.model_validate(ctx.deps.layers[self.name]["config"]).skills else None
 
         @toolset.tool(name="read_config_skill_md", prepare=hide_without_skills)
@@ -183,13 +188,14 @@ class _ConfigContext:
 
         return "\n\n".join(section for section in sections if section)
 
-    def build_suffix_prompt(self) -> str:
+    def build_suffix_prompt(self, *, skill_tool: bool = True) -> str:
+        """Render the manifest and CLI help; ``skill_tool`` is False when read_config_skill_md is hidden."""
         sections = [
             f"{_CONFIG_CONTEXT_HEADING}\n"
             f"{_format_command_output(_CONFIG_CONTEXT_COMMAND, self._format_config_context_json())}"
         ]
         usage_lines = [_CONFIG_CLI_USAGE_PROMPT]
-        if self.config.skills:
+        if self.config.skills and skill_tool:
             usage_lines.append(_READ_SKILL_TOOL_PROMPT)
         usage_lines += [self._format_config_cli_help(), self._format_agent_file_cli_help()]
         sections.append("\n".join(usage_lines))

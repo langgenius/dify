@@ -104,13 +104,22 @@ end
 
 _CREATE_RUN_IDEMPOTENT_SCRIPT = """
 -- KEYS: claim, candidate record. ARGV: run id, fingerprint, record JSON, TTL, prefix.
--- Return {1, ""} on creation, {0, record JSON} on replay, {-1, ""} on conflict.
+-- Return {1, ""} on creation, {0, record JSON} on replay, {-1, ""} on conflict,
+-- {-2, ""} if the retained record cannot be read (it is never replaced).
 local existing_run_id = redis.call("GET", KEYS[1])
 if existing_run_id then
     local existing_record_key = ARGV[5] .. ":runs:" .. existing_run_id .. ":record"
-    local existing_record = redis.call("GET", existing_record_key)
-    if existing_record then
-        if cjson.decode(existing_record).idempotency_fingerprint ~= ARGV[2] then
+    local kind = redis.call("TYPE", existing_record_key).ok
+    if kind ~= "none" then
+        if kind ~= "string" then
+            return {-2, ""}
+        end
+        local existing_record = redis.call("GET", existing_record_key)
+        local ok, decoded = pcall(cjson.decode, existing_record)
+        if not ok or type(decoded) ~= "table" then
+            return {-2, ""}
+        end
+        if decoded.idempotency_fingerprint ~= ARGV[2] then
             return {-1, ""}
         end
         -- Reading a retained run does not extend its record or claim TTL.
@@ -514,9 +523,10 @@ class RedisRunStore(RunEventSink):
 
         The Lua script serializes admission across Redis clients, so concurrent
         requests cannot both schedule work. A live matching record is returned
-        with its current status without refreshing TTLs; a fingerprint mismatch
-        raises ``IdempotencyConflictError``. Missing claims or expired records
-        allow a new run. Only digests and a run id are stored for admission.
+        with its current status without refreshing TTLs; a fingerprint mismatch,
+        or a retained record that is corrupt or has the wrong Redis type, raises
+        ``IdempotencyConflictError`` and writes nothing. Missing claims or
+        expired records allow a new run. Only digests and a run id are stored for admission.
         A created record carries its immutable private identity in the same write.
         """
         key_digest = hashlib.sha256(idempotency_key.encode()).hexdigest()
@@ -553,7 +563,13 @@ class RedisRunStore(RunEventSink):
             raise IdempotencyConflictError("idempotency key was already used with a different create-run request")
         if status == 1:
             return record, True
-        return RunRecord.model_validate_json(_decode_redis_text(result[1])), False
+        try:
+            if status != 0:
+                raise ValueError
+            return RunRecord.model_validate_json(_decode_redis_text(result[1])), False
+        except ValueError:
+            # A retained record that cannot be read fails closed: no new run, no replay.
+            raise IdempotencyConflictError("idempotency key selects a retained run that cannot be read") from None
 
     async def lookup_run(self, selection: LookupRunRequest) -> CreateRunResponse:
         """Select retained keyed acceptance through the admission claim, read-only.

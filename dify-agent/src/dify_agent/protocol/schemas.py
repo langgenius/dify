@@ -75,6 +75,13 @@ class RunComposition(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
+# Builder native-test fields. Ordinary requests leave them out of the wire body
+# and the create-admission fingerprint, so both keep the pre-native request shape.
+NATIVE_TEST_REQUEST_FIELDS: Final[frozenset[str]] = frozenset(
+    {"execution_mode", "native_test_profile", "native_test_ref", "native_parent_node", "native_test_protocol_version"}
+)
+
+
 class CreateRunRequest(BaseModel):
     """Create a run using current Config and an optional state-only snapshot.
 
