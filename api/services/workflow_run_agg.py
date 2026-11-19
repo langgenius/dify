@@ -278,6 +278,7 @@ class WorkflowRunAgg:
                         app_id=self._prepared.generate_entity.app_config.app_id,
                         task_id=self._prepared.generate_entity.task_id,
                         owner=None,
+                        force=True,
                     )
                     aborted = GraphRunAbortedEvent(reason="User requested stop")
                     for layer in self._application_layers:
@@ -384,12 +385,26 @@ class WorkflowRunAgg:
         )
         execution.finished_at = None
         self._persistence_layer.persist_unfinished_nodes_synchronously()
-        self._workflow_execution_repository.save_synchronously(execution)
         if config is not None and snapshot is not None:
             repository = self._api_run_repository()
-            repository.create_workflow_pause(
+            repository.pause_workflow_run(
                 workflow_run_id=self._run_id,
                 state_owner_user_id=config.state_owner_user_id,
                 state=snapshot,
                 pause_reasons=self.pause_reasons,
+                outputs=execution.outputs,
+                total_tokens=execution.total_tokens,
+                total_steps=execution.total_steps,
+                exceptions_count=execution.exceptions_count,
             )
+            # The authoritative row is committed; mirror the transition to
+            # observational execution repositories (logstore/celery), best-effort.
+            try:
+                self._workflow_execution_repository.save_synchronously(execution)
+            except Exception:
+                logger.exception(
+                    "Failed to mirror paused workflow execution, workflow_run_id=%s",
+                    self._run_id,
+                )
+        else:
+            self._workflow_execution_repository.save_synchronously(execution)

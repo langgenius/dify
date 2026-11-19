@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -7,6 +8,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.nodes.human_input.entities import FormDefinition, ParagraphInputConfig, UserActionConfig
@@ -20,6 +22,7 @@ from models.human_input import HumanInputForm, HumanInputFormRecipient, Recipien
 from models.workflow import WorkflowPause, WorkflowPauseReason, WorkflowRun
 from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.api_workflow_run_repository import AppWorkflowRunStats
+from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.sqlalchemy_api_workflow_run_repository import (
     DifyAPISQLAlchemyWorkflowRunRepository,
     WorkflowRunMessageRef,
@@ -634,3 +637,235 @@ def test_stop_after_resume_leaves_running_task_to_the_engine(
     assert admitted.status == WorkflowExecutionStatus.RUNNING
     sqlite_session.expire_all()
     assert run.status == WorkflowExecutionStatus.RUNNING
+
+
+_STORAGE_SAVE = "repositories.sqlalchemy_api_workflow_run_repository.storage.save"
+_STORAGE_DELETE = "repositories.sqlalchemy_api_workflow_run_repository.storage.delete"
+
+
+def _running_run(sqlite_session: Session) -> WorkflowRun:
+    workflow_run = _workflow_run(run_id="run-1", tenant_id="tenant-1", status=WorkflowExecutionStatus.RUNNING)
+    sqlite_session.add(workflow_run)
+    sqlite_session.commit()
+    return workflow_run
+
+
+def _pause(
+    repository: DifyAPISQLAlchemyWorkflowRunRepository,
+    *,
+    state: str,
+    outputs: dict[str, object] | None,
+    total_tokens: int = 0,
+    total_steps: int = 0,
+    exceptions_count: int = 0,
+) -> WorkflowPauseEntity:
+    return repository.pause_workflow_run(
+        "run-1",
+        "owner-1",
+        state,
+        [
+            HumanInputRequired(
+                form_id="form-1",
+                form_content="Please approve",
+                inputs=[],
+                actions=[],
+                node_id="node-1",
+                node_title="Ask for approval",
+            )
+        ],
+        outputs=outputs,
+        total_tokens=total_tokens,
+        total_steps=total_steps,
+        exceptions_count=exceptions_count,
+    )
+
+
+def test_pause_workflow_run_commits_the_run_transition_with_its_pause_record(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    _running_run(sqlite_session)
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=sqlite_session_factory)
+
+    with patch(_STORAGE_SAVE) as save_state_object:
+        pause_entity = _pause(
+            repository,
+            state='{"state": "snapshot"}',
+            outputs={"answer": "paused"},
+            total_tokens=7,
+            total_steps=2,
+            exceptions_count=1,
+        )
+
+    object_key = save_state_object.call_args.args[0]
+    sqlite_session.expire_all()
+    workflow_run = sqlite_session.get(WorkflowRun, "run-1")
+    assert workflow_run is not None
+    assert workflow_run.status == WorkflowExecutionStatus.PAUSED
+    assert json.loads(workflow_run.outputs or "{}") == {"answer": "paused"}
+    assert workflow_run.total_tokens == 7
+    assert workflow_run.total_steps == 2
+    assert workflow_run.exceptions_count == 1
+
+    pause_model = sqlite_session.scalars(select(WorkflowPause)).one()
+    assert pause_model.id == pause_entity.id
+    # The committed reference points at the object that was written before the commit.
+    assert pause_model.state_object_key == object_key
+    reason_models = sqlite_session.scalars(select(WorkflowPauseReason)).all()
+    assert [reason_model.form_id for reason_model in reason_models] == ["form-1"]
+
+
+def test_pause_workflow_run_leaves_the_run_untouched_when_the_snapshot_write_fails(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    _running_run(sqlite_session)
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=sqlite_session_factory)
+
+    with patch(_STORAGE_SAVE, side_effect=OSError("storage backend down")):
+        with pytest.raises(OSError, match="storage backend down"):
+            _pause(repository, state="{}", outputs=None)
+
+    sqlite_session.expire_all()
+    workflow_run = sqlite_session.get(WorkflowRun, "run-1")
+    assert workflow_run is not None
+    assert workflow_run.status == WorkflowExecutionStatus.RUNNING
+    assert sqlite_session.scalars(select(WorkflowPause)).all() == []
+
+
+def test_pause_workflow_run_rolls_the_run_transition_back_when_the_commit_fails(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    _running_run(sqlite_session)
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=sqlite_session_factory)
+
+    def _fail_insert(*_args: object, **_kwargs: object) -> None:
+        raise RuntimeError("database commit failed")
+
+    event.listen(WorkflowPause, "before_insert", _fail_insert)
+    try:
+        with patch(_STORAGE_SAVE) as save_state_object:
+            with pytest.raises(RuntimeError, match="database commit failed"):
+                _pause(repository, state='{"state": "snapshot"}', outputs={"answer": "paused"}, total_tokens=5)
+    finally:
+        event.remove(WorkflowPause, "before_insert", _fail_insert)
+
+    sqlite_session.expire_all()
+    workflow_run = sqlite_session.get(WorkflowRun, "run-1")
+    assert workflow_run is not None
+    assert workflow_run.status == WorkflowExecutionStatus.RUNNING
+    assert json.loads(workflow_run.outputs or "{}") == {}
+    assert workflow_run.total_tokens == 0
+    assert sqlite_session.scalars(select(WorkflowPause)).all() == []
+    # The written object is an orphan, which the storage consistency model allows:
+    # no committed database reference ever pointed at it.
+    assert save_state_object.call_count == 1
+
+
+def test_pausing_twice_replaces_the_snapshot_when_the_superseded_object_survives_cleanup(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    _running_run(sqlite_session)
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=sqlite_session_factory)
+
+    with patch(_STORAGE_SAVE) as first_save:
+        _pause(repository, state='{"v": 1}', outputs=None)
+    superseded_key = first_save.call_args.args[0]
+
+    with (
+        caplog.at_level(logging.ERROR, logger="repositories.sqlalchemy_api_workflow_run_repository"),
+        patch(_STORAGE_DELETE, side_effect=PermissionError("DeleteObject denied")),
+        patch(_STORAGE_SAVE) as second_save,
+    ):
+        _pause(repository, state='{"v": 2}', outputs=None)
+
+    pause_models = sqlite_session.scalars(select(WorkflowPause)).all()
+    assert [pause_model.state_object_key for pause_model in pause_models] == [second_save.call_args.args[0]]
+    assert second_save.call_args.args[0] != superseded_key
+    assert "DeleteObject denied" in caplog.text
+
+
+def test_commit_failure_after_a_previous_pause_keeps_its_snapshot_object(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    """A rolled-back pause must not delete the superseded snapshot it restores."""
+    _running_run(sqlite_session)
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=sqlite_session_factory)
+    stored_objects: dict[str, bytes] = {}
+    saved_keys: list[str] = []
+
+    def save_object(key: str, value: bytes) -> None:
+        saved_keys.append(key)
+        stored_objects[key] = value
+
+    def delete_object(key: str) -> None:
+        stored_objects.pop(key)
+
+    def _fail_insert(*_args: object, **_kwargs: object) -> None:
+        raise RuntimeError("database commit failed")
+
+    with patch(_STORAGE_SAVE, side_effect=save_object), patch(_STORAGE_DELETE, side_effect=delete_object):
+        _pause(repository, state='{"v": 1}', outputs=None)
+        superseded_key = saved_keys[0]
+
+        event.listen(WorkflowPause, "before_insert", _fail_insert)
+        try:
+            with pytest.raises(RuntimeError, match="database commit failed"):
+                _pause(repository, state='{"v": 2}', outputs=None)
+        finally:
+            event.remove(WorkflowPause, "before_insert", _fail_insert)
+
+    sqlite_session.expire_all()
+    pause_models = sqlite_session.scalars(select(WorkflowPause)).all()
+    assert [pause_model.state_object_key for pause_model in pause_models] == [superseded_key]
+    # The committed PAUSED run still points at this object; deleting it before the
+    # transaction resolved would leave the pause unresumable.
+    assert superseded_key in stored_objects, "the superseded snapshot was deleted before the commit resolved"
+    assert stored_objects[superseded_key] == b'{"v": 1}'
+    # The unpublished replacement snapshot is an orphan and was cleaned up.
+    assert saved_keys[1] not in stored_objects
+
+
+def test_create_workflow_pause_preserves_existing_outputs_and_statistics(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    """Legacy callers pass no execution state, so existing columns must survive."""
+    run = _workflow_run(run_id="run-1", tenant_id="tenant-1", status=WorkflowExecutionStatus.RUNNING)
+    run.outputs = json.dumps({"answer": "kept"})
+    run.total_tokens = 42
+    run.total_steps = 5
+    run.exceptions_count = 3
+    sqlite_session.add(run)
+    sqlite_session.commit()
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=sqlite_session_factory)
+
+    with patch(_STORAGE_SAVE):
+        repository.create_workflow_pause(
+            "run-1",
+            "owner-1",
+            '{"state": "legacy"}',
+            [
+                HumanInputRequired(
+                    form_id="form-1",
+                    form_content="Please approve",
+                    inputs=[],
+                    actions=[],
+                    node_id="node-1",
+                    node_title="Ask for approval",
+                )
+            ],
+        )
+
+    sqlite_session.expire_all()
+    workflow_run = sqlite_session.get(WorkflowRun, "run-1")
+    assert workflow_run is not None
+    assert workflow_run.status == WorkflowExecutionStatus.PAUSED
+    assert json.loads(workflow_run.outputs or "{}") == {"answer": "kept"}
+    assert workflow_run.total_tokens == 42
+    assert workflow_run.total_steps == 5
+    assert workflow_run.exceptions_count == 3
