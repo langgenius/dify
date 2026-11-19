@@ -169,8 +169,7 @@ class WorkflowDraftVariableRepository:
     def get_node_variable_value(self, app_id: str, node_id: str, name: str, user_id: str) -> Segment | None:
         with self._sessions() as session:
             variable = session.scalar(
-                select(WorkflowDraftVariable)
-                .where(
+                select(WorkflowDraftVariable).where(
                     WorkflowDraftVariable.app_id == app_id,
                     WorkflowDraftVariable.node_id == node_id,
                     WorkflowDraftVariable.name == name,
