@@ -9,8 +9,16 @@ import {
 
 const DEFAULT_TIMEZONE = 'UTC'
 
-const resolveTimezone = (timezone?: string): string => {
-  if (timezone) return timezone
+// Node data can carry a non-IANA timezone string, e.g. "GMT+8" from a hand-edited DSL import.
+// Passing such a value to Intl or cron-parser throws and breaks the node render.
+// getTimezoneOffsetMinutes returns undefined when the runtime cannot resolve the zone.
+const isValidTimezone = (timezone: string): boolean =>
+  getTimezoneOffsetMinutes(timezone, new Date()) !== undefined
+
+// Exported for the node panel: the time picker consumes the raw node value and
+// crashes the same way when the dropdown's "now" action reads the current time.
+export const resolveTimezone = (timezone?: string): string => {
+  if (timezone && isValidTimezone(timezone)) return timezone
 
   try {
     return new Intl.DateTimeFormat().resolvedOptions().timeZone || DEFAULT_TIMEZONE
