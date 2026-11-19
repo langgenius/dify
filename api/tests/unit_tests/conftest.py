@@ -26,7 +26,6 @@ from sqlalchemy.orm import Session, sessionmaker
 import core.db.session_factory as session_factory_module
 from extensions import ext_redis
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.base import TypeBase
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.rbac_fakes import RBACDomain, build_rbac_domain
 from tests.helpers.unit.services.tracing_ports import deployment_provider_configs
@@ -82,7 +81,9 @@ def _patch_redis_clients_on_loaded_modules() -> None:
         if module is None:
             continue
         for client_attribute in ("redis_client", "_pubsub_redis_client"):
-            if hasattr(module, client_attribute):
+            # Lazy third-party modules can import optional dependencies from __getattr__.
+            # Only replace references already present in the module namespace.
+            if client_attribute in vars(module):
                 setattr(module, client_attribute, redis_mock)
 
 
@@ -224,19 +225,6 @@ def _sqlite_engine(_sqlite_database_template: Path) -> Iterator[Engine]:
             yield engine
         finally:
             engine.dispose()
-
-
-@pytest.fixture(scope="session")
-def _sqlite_database_template(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    """Create one empty full-schema SQLite database per pytest worker."""
-
-    database_path = tmp_path_factory.mktemp("sqlite-template") / "unit-tests.sqlite3"
-    engine = create_engine(URL.create("sqlite", database=str(database_path)))
-    try:
-        TypeBase.metadata.create_all(engine)
-    finally:
-        engine.dispose()
-    return database_path
 
 
 @pytest.fixture(autouse=True)

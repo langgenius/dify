@@ -11,11 +11,13 @@ runs, and the allow/deny answers live in `test_auth_matrix.py`.
 from __future__ import annotations
 
 import sys
+from collections.abc import Callable
+from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from flask import Flask
+from flask import Flask, Response
 from werkzeug.exceptions import NotFound
 
 from controllers.openapi.workflow_events import OpenApiWorkflowEventsApi, WorkflowEventsQuery
@@ -59,11 +61,11 @@ def _context(caller: Account | EndUser, caller_role: CreatorUserRole) -> _Sealab
 
 def _make_workflow_run(
     *,
-    app_id="app-1",
-    tenant_id="tenant-1",
-    created_by_role=CreatorUserRole.ACCOUNT,
-    created_by="acct-1",
-    finished_at=None,
+    app_id: str = "app-1",
+    tenant_id: str = "tenant-1",
+    created_by_role: CreatorUserRole = CreatorUserRole.ACCOUNT,
+    created_by: str = "acct-1",
+    finished_at: datetime | None = None,
 ) -> WorkflowRun:
     return WorkflowRun(
         id=_RUN_ID,
@@ -109,6 +111,35 @@ def _make_end_user() -> EndUser:
     )
 
 
+def _handler(api: OpenApiWorkflowEventsApi) -> Callable[..., Response]:
+    """Return the bare view the contract decorator attaches as ``__handler__``.
+
+    ``__handler__`` is injected at decoration time, so it is absent from the
+    static type of the decorated view; narrow it once here instead of at every
+    call site.
+    """
+    handler = vars(api.get).get("__handler__")
+    assert callable(handler)
+    return handler
+
+
+def _sse_body(response: Response) -> str:
+    """Read the streamed SSE body as text, decoding any byte chunks.
+
+    Flask types ``Response.response`` as ``Iterable[bytes] | Iterable[str]``
+    because a view may yield either; the SSE view under test yields ``str``.
+    Iterating chunk by chunk keeps the two arms separate, so no union has to be
+    handed to ``str.join`` or ``bytes.join``.
+    """
+    parts: list[str] = []
+    for chunk in response.response:
+        if isinstance(chunk, bytes):
+            parts.append(chunk.decode())
+        else:
+            parts.append(chunk)
+    return "".join(parts)
+
+
 class TestOpenApiWorkflowEventsApi:
     def _bind_repo(self, monkeypatch: pytest.MonkeyPatch, workflow_run: WorkflowRun | None) -> Mock:
         module = sys.modules["controllers.openapi.workflow_events"]
@@ -125,13 +156,13 @@ class TestOpenApiWorkflowEventsApi:
         msg_gen_mock.retrieve_events.return_value = iter([])
         monkeypatch.setattr(module, "MessageGenerator", lambda: msg_gen_mock)
 
-    def test_not_found_when_run_missing(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
+    def test_not_found_when_run_missing(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         factory_mock = self._bind_repo(monkeypatch, None)
 
         api = OpenApiWorkflowEventsApi()
         with app.test_request_context(f"/openapi/v1/apps/app-1/runs/{_RUN_ID}/events"):
             with pytest.raises(NotFound):
-                api.get.__handler__(
+                _handler(api)(
                     api,
                     _context(_make_account(), CreatorUserRole.ACCOUNT),
                     app_id="app-1",
@@ -144,13 +175,13 @@ class TestOpenApiWorkflowEventsApi:
         session_maker = factory_mock.create_api_workflow_run_repository.call_args.args[0]
         assert session_maker is session_factory.get_session_maker()
 
-    def test_not_found_when_run_belongs_to_different_app(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
+    def test_not_found_when_run_belongs_to_different_app(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         self._bind_repo(monkeypatch, _make_workflow_run(app_id="other-app"))
 
         api = OpenApiWorkflowEventsApi()
         with app.test_request_context(f"/openapi/v1/apps/app-1/runs/{_RUN_ID}/events"):
             with pytest.raises(NotFound):
-                api.get.__handler__(
+                _handler(api)(
                     api,
                     _context(_make_account(), CreatorUserRole.ACCOUNT),
                     app_id="app-1",
@@ -158,13 +189,13 @@ class TestOpenApiWorkflowEventsApi:
                     query=WorkflowEventsQuery(),
                 )
 
-    def test_account_caller_rejected_for_end_user_run(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
+    def test_account_caller_rejected_for_end_user_run(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         self._bind_repo(monkeypatch, _make_workflow_run(created_by_role=CreatorUserRole.END_USER, created_by="eu-1"))
 
         api = OpenApiWorkflowEventsApi()
         with app.test_request_context(f"/openapi/v1/apps/app-1/runs/{_RUN_ID}/events"):
             with pytest.raises(NotFound):
-                api.get.__handler__(
+                _handler(api)(
                     api,
                     _context(_make_account(), CreatorUserRole.ACCOUNT),
                     app_id="app-1",
@@ -172,14 +203,14 @@ class TestOpenApiWorkflowEventsApi:
                     query=WorkflowEventsQuery(),
                 )
 
-    def test_end_user_caller_checks_created_by_end_user(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
+    def test_end_user_caller_checks_created_by_end_user(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         """End-user caller must match created_by == caller.id and role == END_USER."""
         self._bind_repo(monkeypatch, _make_workflow_run(created_by_role=CreatorUserRole.END_USER, created_by="eu-1"))
         self._bind_generators(monkeypatch)
 
         api = OpenApiWorkflowEventsApi()
         with app.test_request_context(f"/openapi/v1/apps/app-1/runs/{_RUN_ID}/events"):
-            resp = api.get.__handler__(
+            resp = _handler(api)(
                 api,
                 _context(_make_end_user(), CreatorUserRole.END_USER),
                 app_id="app-1",
@@ -211,7 +242,7 @@ class TestOpenApiWorkflowEventsApi:
 
     def test_finished_run_reads_everything_off_the_context_before_streaming(
         self, app: Flask, monkeypatch: pytest.MonkeyPatch
-    ):
+    ) -> None:
         """A finished run answers a single done event without streaming. Its body
         is a real generator, so it runs entirely after the handler has returned
         and the router's session is gone.
@@ -221,9 +252,9 @@ class TestOpenApiWorkflowEventsApi:
         ctx = _context(_make_account(), CreatorUserRole.ACCOUNT)
         api = OpenApiWorkflowEventsApi()
         with app.test_request_context(f"/openapi/v1/apps/app-1/runs/{_RUN_ID}/events"):
-            resp = api.get.__handler__(api, ctx, app_id="app-1", run_id=_RUN_ID, query=WorkflowEventsQuery())
+            resp = _handler(api)(api, ctx, app_id="app-1", run_id=_RUN_ID, query=WorkflowEventsQuery())
             ctx.seal()
-            body = "".join(resp.response)
+            body = _sse_body(resp)
 
         assert resp.mimetype == "text/event-stream"
         assert "workflow_finished" in body
@@ -231,7 +262,7 @@ class TestOpenApiWorkflowEventsApi:
     @pytest.mark.parametrize("include_state_snapshot", [False, True], ids=["events", "snapshot"])
     def test_stream_reads_everything_off_the_context_before_streaming(
         self, app: Flask, monkeypatch: pytest.MonkeyPatch, include_state_snapshot: bool
-    ):
+    ) -> None:
         """Both stream shapes must be fully resolved before the handler returns,
         and an account caller whose id and role match `created_by` is admitted.
 
@@ -251,9 +282,9 @@ class TestOpenApiWorkflowEventsApi:
         api = OpenApiWorkflowEventsApi()
         query = WorkflowEventsQuery(include_state_snapshot=include_state_snapshot)
         with app.test_request_context(f"/openapi/v1/apps/app-1/runs/{_RUN_ID}/events"):
-            resp = api.get.__handler__(api, ctx, app_id="app-1", run_id=_RUN_ID, query=query)
+            resp = _handler(api)(api, ctx, app_id="app-1", run_id=_RUN_ID, query=query)
             ctx.seal()
-            body = "".join(resp.response)
+            body = _sse_body(resp)
 
         assert resp.mimetype == "text/event-stream"
         assert body == "event: a\n\nevent: b\n\n"
@@ -261,7 +292,7 @@ class TestOpenApiWorkflowEventsApi:
     @pytest.mark.parametrize("continue_on_pause", [False, True], ids=["close", "keep_open"])
     def test_continue_on_pause_comes_off_the_declared_query_model(
         self, app: Flask, monkeypatch: pytest.MonkeyPatch, continue_on_pause: bool
-    ):
+    ) -> None:
         module = sys.modules["controllers.openapi.workflow_events"]
         self._bind_repo(monkeypatch, _make_workflow_run(created_by_role=CreatorUserRole.ACCOUNT, created_by="acct-1"))
         msg_gen_mock = Mock()
@@ -270,14 +301,14 @@ class TestOpenApiWorkflowEventsApi:
 
         api = OpenApiWorkflowEventsApi()
         with app.test_request_context(f"/openapi/v1/apps/app-1/runs/{_RUN_ID}/events"):
-            resp = api.get.__handler__(
+            resp = _handler(api)(
                 api,
                 _context(_make_account(), CreatorUserRole.ACCOUNT),
                 app_id="app-1",
                 run_id=_RUN_ID,
                 query=WorkflowEventsQuery(continue_on_pause=continue_on_pause),
             )
-            "".join(resp.response)
+            _sse_body(resp)
 
         terminal_events = msg_gen_mock.retrieve_events.call_args.kwargs["terminal_events"]
         assert terminal_events == ([] if continue_on_pause else None)

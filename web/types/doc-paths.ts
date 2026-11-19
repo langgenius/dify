@@ -262,6 +262,7 @@ type CliPath =
   | '/cli/integrate-agents/install-the-difyctl-skill'
   | '/cli/integrate-agents/overview'
   | '/cli/overview'
+  | '/cli/personal-access-tokens'
   | '/cli/quick-start'
   | '/cli/reference/apps'
   | '/cli/reference/auth-and-contexts'

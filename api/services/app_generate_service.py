@@ -53,6 +53,27 @@ if TYPE_CHECKING:
     from controllers.console.app.workflow import LoopNodeRunPayload
 
 
+def _release_session_connection(session: Session) -> None:
+    """Return the caller session's pooled connection while keeping its loaded rows usable.
+
+    Invariant: the caller's session must not hold a pooled connection while a blocking run
+    executes. The run lasts as long as the workflow and opens its own sessions, so a held
+    connection is pinned for the whole run and each in-flight request needs a second one.
+    Once in-flight requests reach the pool capacity none of them can proceed.
+
+    Precondition: ``session`` holds only the reads done to resolve the workflow.
+    Postcondition: ``session`` is outside a transaction and its connection is back in the
+    pool; rows it loaded stay attached and unexpired; its ``expire_on_commit`` setting is
+    restored on success and on failure.
+    """
+    expire_on_commit = session.expire_on_commit
+    session.expire_on_commit = False
+    try:
+        session.commit()
+    finally:
+        session.expire_on_commit = expire_on_commit
+
+
 class AppGenerateService:
     @staticmethod
     def _build_streaming_task_on_subscribe(
@@ -336,6 +357,8 @@ class AppGenerateService:
             case AppMode.WORKFLOW:
                 workflow_id = args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
+                if not streaming:
+                    _release_session_connection(session)
                 return cls._generate_workflow_response(
                     app_model=app_model,
                     workflow=workflow,

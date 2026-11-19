@@ -15,6 +15,7 @@ from sqlalchemy import and_, delete, null, or_, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, load_only, selectinload, sessionmaker
 
+from core.workflow.human_input_policy import HumanInputSurface
 from core.workflow.human_input_forms import load_form_tokens_by_form_id
 from core.workflow.nodes.human_input.entities import FormDefinition
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
@@ -37,6 +38,7 @@ from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus, 
 from libs.datetime_utils import naive_utc_now
 from models import Message
 from models.enums import CreatorUserRole, MessageStatus
+from models.human_input_v2 import HumanInputForm as HumanInputV2Form
 from models.human_input import HumanInputForm, HumanInputFormRecipient
 from models.workflow import WorkflowNodeExecutionModel, WorkflowPause, WorkflowPauseReason, WorkflowRun
 from services.workflow.run_entities import (
@@ -198,7 +200,7 @@ class WorkflowPauseRepository:
         return self._hydrate_pause_reasons(session, self._get_reasons_by_pause_id(session, pause_id))
 
     def get_legacy_form_tokens(self, session: Session, *, form_ids: Sequence[str]) -> dict[str, str]:
-        return load_form_tokens_by_form_id(form_ids, session=session)
+        return load_form_tokens_by_form_id(form_ids, session=session, surface=HumanInputSurface.CONSOLE)
 
     def bind_workflow_task(self, *, tenant_id: str, app_id: str, workflow_run_id: str, task_id: str) -> None:
         """Bind a task only when the identified run belongs to the supplied tenant and app.
@@ -467,6 +469,16 @@ class WorkflowPauseRepository:
                     HumanInputForm.status == HumanInputFormStatus.WAITING,
                 )
                 .values(status=HumanInputFormStatus.EXPIRED)
+            )
+            session.execute(
+                update(HumanInputV2Form)
+                .where(
+                    HumanInputV2Form.tenant_id == tenant_id,
+                    HumanInputV2Form.app_id == app_id,
+                    HumanInputV2Form.workflow_run_id == workflow_run.id,
+                    HumanInputV2Form.status == HumanInputFormStatus.WAITING,
+                )
+                .values(status=HumanInputFormStatus.EXPIRED, updated_at=finished_at)
             )
             unfinished_nodes = session.scalars(
                 select(WorkflowNodeExecutionModel).where(

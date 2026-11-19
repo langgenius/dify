@@ -187,7 +187,7 @@ def test_datasource_debug_returns_result_and_saves_draft_before_async_delivery(
             )
         )
         assert variable is not None
-        assert variable.get_value().value == [1, 2]
+        assert variable.get_value(session=session).value == [1, 2]
     trace.assert_called_once()
     storage.settle()
     assert storage.nodes().get_execution_by_id(execution.id, "tenant-1") is not None

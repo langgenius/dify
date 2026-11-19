@@ -9,6 +9,7 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useRef, useState } from 'react'
 import EnvNav from '@/app/components/header/env-nav'
 import AccountSection from '@/app/components/main-nav/components/account-section'
+import ContactSupport from '@/app/components/main-nav/components/contact-support'
 import HelpMenu from '@/app/components/main-nav/components/help-menu'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { usePathname } from '@/next/navigation'
@@ -166,6 +167,7 @@ export function DetailSidebarFrame({
             </div>
           )}
         </div>
+        <ContactSupport placement="sidebar" compact={!visibleExpanded} />
         <div
           className={cn(
             'flex w-full shrink-0 flex-col items-center gap-0.5 rounded-lg px-2 pt-1 pb-3',

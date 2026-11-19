@@ -8,6 +8,7 @@ from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import Mock
 
 import pytest
@@ -28,6 +29,7 @@ from repositories.workflow.node_execution_writer import (
     _deterministic_json_dump,
     _filter_by_offload_type,
     _find_first,
+    _InputsOutputsTruncationResult,
 )
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account, make_tenant, make_upload_file
@@ -617,7 +619,7 @@ def test_offload_rejects_disallowed_files_before_storage_or_sql(
 ) -> None:
     apply_config_overrides(
         monkeypatch,
-        inner_UPLOAD_FILE_EXTENSION_BLACKLIST="json" if reject_extension else "",
+        inner_upload_file_extension_blacklist="json" if reject_extension else "",
         UPLOAD_FILE_SIZE_LIMIT=15 if reject_extension else 0,
         WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE=1,
     )
@@ -635,3 +637,205 @@ def test_offload_rejects_disallowed_files_before_storage_or_sql(
     assert save_calls == []
     with sqlite_session_factory() as session:
         assert session.scalar(select(UploadFile.id)) is None
+
+
+def _stored_columns(
+    row: WorkflowNodeExecutionModel,
+) -> tuple[object, ...]:
+    """Columns execution persistence writes, excluding the id and creation time that differ between rows."""
+    return (
+        row.inputs,
+        row.process_data,
+        row.outputs,
+        row.status,
+        row.error,
+        row.elapsed_time,
+        row.execution_metadata_dict,
+        row.finished_at,
+        row.index,
+        row.node_id,
+        row.node_type,
+        row.title,
+        row.predecessor_node_id,
+        row.workflow_run_id,
+    )
+
+
+@contextmanager
+def _record_execution_statements(engine: Engine) -> Generator[list[str]]:
+    """Collect the statements issued against the node execution table, as the driver receives them."""
+    statements: list[str] = []
+
+    def record(
+        _conn: Any,
+        _cursor: Any,
+        statement: str,
+        _parameters: Any,
+        _context: Any,
+        _executemany: Any,
+    ) -> None:
+        if "workflow_node_executions" in statement:
+            statements.append(" ".join(statement.split()))
+
+    event.listen(engine, "before_cursor_execute", record)
+    try:
+        yield statements
+    finally:
+        event.remove(engine, "before_cursor_execute", record)
+
+
+@pytest.mark.parametrize("start_row_exists", [True, False])
+@pytest.mark.parametrize(
+    "status",
+    [
+        WorkflowNodeExecutionStatus.SUCCEEDED,
+        WorkflowNodeExecutionStatus.FAILED,
+        WorkflowNodeExecutionStatus.EXCEPTION,
+        WorkflowNodeExecutionStatus.RETRY,
+    ],
+)
+def test_save_with_execution_data_stores_what_save_then_save_execution_data_stores(
+    sqlite_session_factory: sessionmaker[Session],
+    start_row_exists: bool,
+    status: WorkflowNodeExecutionStatus,
+) -> None:
+    """The combined save must leave exactly the row the two separate saves leave."""
+    finished_at = datetime(2026, 8, 12, 1, 0, 5)
+
+    def run_node(execution_id: str, *, combined: bool) -> None:
+        repo = _repository(sqlite_session_factory)
+        node_execution_id = f"node-{execution_id}"
+        if start_row_exists:
+            repo.save(
+                _execution(
+                    execution_id=execution_id,
+                    node_execution_id=node_execution_id,
+                    status=WorkflowNodeExecutionStatus.RUNNING,
+                    process_data={"workflow_agent_binding_id": "binding-1"},
+                )
+            )
+        finished = _execution(
+            execution_id=execution_id,
+            node_execution_id=node_execution_id,
+            status=status,
+            inputs={"zeta": 1, "alpha": {"b": 2, "a": 1}},
+            outputs={"text": "done", "answer": [3, 1]},
+            process_data={"step": 3, "model": "m"},
+        )
+        finished.finished_at = finished_at
+        if combined:
+            repo.save_with_execution_data(finished)
+        else:
+            repo.save(finished)
+            repo._save_execution_data(finished)
+
+    run_node("two-step", combined=False)
+    run_node("combined", combined=True)
+
+    model = WorkflowNodeExecutionModel
+    with sqlite_session_factory() as session:
+        two_step = session.get(model, "two-step")
+        combined = session.get(model, "combined")
+        assert two_step is not None
+        assert combined is not None
+        assert _stored_columns(combined) == _stored_columns(two_step)
+        # The payload keeps the key order it was produced in; it is not rewritten sorted.
+        assert combined.inputs == '{"zeta": 1, "alpha": {"b": 2, "a": 1}}'
+        assert combined.outputs == '{"text": "done", "answer": [3, 1]}'
+        expected_process_data = {"step": 3, "model": "m"}
+        if start_row_exists:
+            expected_process_data["workflow_agent_binding_id"] = "binding-1"
+        assert combined.process_data_dict == expected_process_data
+        assert combined.finished_at == finished_at
+        assert (
+            session.scalars(
+                select(WorkflowNodeExecutionOffload).where(
+                    WorkflowNodeExecutionOffload.node_execution_id.in_(["two-step", "combined"])
+                )
+            ).all()
+            == []
+        )
+
+
+def test_save_with_execution_data_writes_a_finished_node_once(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_engine: Engine,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    """A finished node whose values need no truncation is one read and one write, in one transaction."""
+    repo = _repository(sqlite_session_factory)
+    repo.save(_execution(status=WorkflowNodeExecutionStatus.RUNNING))
+    finished = _execution(inputs={"question": "hello"}, outputs={"answer": "world"}, process_data={"step": 1})
+    statements: list[str] = []
+
+    def record(_conn: object, _cursor: object, statement: str, *_args: object) -> None:
+        statements.append(statement.split(None, 1)[0].upper())
+
+    event.listen(sqlite_engine, "before_cursor_execute", record)
+    try:
+        repo.save_with_execution_data(finished)
+    finally:
+        event.remove(sqlite_engine, "before_cursor_execute", record)
+
+    assert [op for op in statements if op != "SELECT"] == ["UPDATE"]
+
+
+@pytest.mark.parametrize(
+    "offload_type",
+    [ExecutionOffLoadType.OUTPUTS, ExecutionOffLoadType.PROCESS_DATA],
+)
+def test_save_with_execution_data_offloads_values_that_need_truncation(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+    offload_type: ExecutionOffLoadType,
+) -> None:
+    """A value over the truncation limit still goes through _save_execution_data and is offloaded."""
+    monkeypatch.setattr(dify_config, "WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE", 200)
+    monkeypatch.setattr(dify_config, "WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH", 100)
+    repo = _repository(sqlite_session_factory)
+    large = {"text": "x" * 5000}
+    if offload_type == ExecutionOffLoadType.OUTPUTS:
+        execution = _execution(outputs=large)
+    else:
+        execution = _execution(process_data=large)
+    assert repo._needs_truncation(large)
+    offload = WorkflowNodeExecutionOffload(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        node_execution_id=execution.id,
+        type_=offload_type,
+        file_id="file-1",
+    )
+    uploads: list[ExecutionOffLoadType] = []
+
+    def truncate_and_upload(
+        values: Mapping[str, Any] | None, _execution_id: str, type_: ExecutionOffLoadType
+    ) -> _InputsOutputsTruncationResult | None:
+        if not values:
+            return None
+        uploads.append(type_)
+        return _InputsOutputsTruncationResult(
+            truncated_value={"text": "truncated"}, file=_upload_file(), offload=offload
+        )
+
+    monkeypatch.setattr(repo, "_truncate_and_upload", truncate_and_upload)
+
+    repo.save_with_execution_data(execution)
+
+    assert uploads == [offload_type]
+    with sqlite_session_factory() as session:
+        persisted = session.get(WorkflowNodeExecutionModel, execution.id)
+        assert persisted is not None
+        assert persisted.status == WorkflowNodeExecutionStatus.SUCCEEDED
+        if offload_type == ExecutionOffLoadType.OUTPUTS:
+            assert persisted.outputs_dict == {"text": "truncated"}
+        else:
+            assert persisted.process_data_dict == {"text": "truncated"}
+        offloads = session.scalars(
+            select(WorkflowNodeExecutionOffload).where(WorkflowNodeExecutionOffload.node_execution_id == execution.id)
+        ).all()
+        assert [item.type_ for item in offloads] == [offload_type]
+    if offload_type == ExecutionOffLoadType.OUTPUTS:
+        assert execution.get_truncated_outputs() == {"text": "truncated"}
+    else:
+        assert execution.get_truncated_process_data() == {"text": "truncated"}

@@ -67,3 +67,12 @@ it('keeps the explanation and documentation without offering read-only migration
     .not.toBeInTheDocument()
   await expect.element(page.getByRole('alertdialog')).not.toBeInTheDocument()
 })
+
+it('dismisses the migration banner without opening the migration dialog', async () => {
+  await render(<BannerOwner />)
+  await page.getByRole('button', { name: 'common.operation.close' }).click()
+  await expect
+    .element(page.getByText('workflow.nodes.humanInputMigration.banner.description'))
+    .not.toBeInTheDocument()
+  await expect.element(page.getByRole('alertdialog')).not.toBeInTheDocument()
+})

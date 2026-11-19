@@ -224,6 +224,18 @@ class LogstoreWorkflowNodeExecutionWriter(WorkflowNodeExecutionRepository):
             execution.node_execution_id,
             execution.status.value,
         )
+        execution = self._save_to_logstore(execution)
+
+        # Dual-write to SQL database if enabled (for safe migration)
+        if self._enable_dual_write:
+            try:
+                self.sql_repository.save(execution)
+                logger.debug("Dual-write: saved node execution to SQL database: id=%s", execution.id)
+            except Exception:
+                logger.exception("Failed to dual-write node execution to SQL database: id=%s", execution.id)
+                # Don't raise - LogStore write succeeded, SQL is just a backup
+
+    def _save_to_logstore(self, execution: WorkflowNodeExecution) -> WorkflowNodeExecution:
         execution, version = self._prepare_controlled_write(execution)
         try:
             logstore_model = self._to_logstore_model(execution, log_version=version)
@@ -242,15 +254,7 @@ class LogstoreWorkflowNodeExecutionWriter(WorkflowNodeExecutionRepository):
                 execution.node_execution_id,
             )
             raise
-
-        # Dual-write to SQL database if enabled (for safe migration)
-        if self._enable_dual_write:
-            try:
-                self.sql_repository.save(execution)
-                logger.debug("Dual-write: saved node execution to SQL database: id=%s", execution.id)
-            except Exception:
-                logger.exception("Failed to dual-write node execution to SQL database: id=%s", execution.id)
-                # Don't raise - LogStore write succeeded, SQL is just a backup
+        return execution
 
     def _prepare_controlled_write(self, execution: WorkflowNodeExecution) -> tuple[WorkflowNodeExecution, int]:
         """Project durable cancellation onto a snapshot while preserving LogStore ordering."""
@@ -299,21 +303,24 @@ class LogstoreWorkflowNodeExecutionWriter(WorkflowNodeExecutionRepository):
 
     @override
     def save_execution_data(self, execution: WorkflowNodeExecution) -> None:
-        """Append the supplied execution snapshot, including updated data fields."""
-        execution, version = self._prepare_controlled_write(execution)
-        self.logstore_client.put_log(
-            WORKFLOW_NODE_EXECUTION_LOGSTORE,
-            self._to_logstore_model(execution, log_version=version),
-        )
+        self.save_with_execution_data(execution)
 
-        # Dual-write to SQL database if enabled (for safe migration)
+    @override
+    def save_with_execution_data(self, execution: WorkflowNodeExecution) -> None:
+        """Write the record to LogStore, and dual-write with execution data to SQL if enabled."""
+        logger.debug(
+            "save_with_execution_data: id=%s, node_execution_id=%s, status=%s",
+            execution.id,
+            execution.node_execution_id,
+            execution.status.value,
+        )
+        execution = self._save_to_logstore(execution)
         if self._enable_dual_write:
             try:
-                self.sql_repository.save_execution_data(execution)
+                self.sql_repository.save_with_execution_data(execution)
                 logger.debug("Dual-write: saved node execution data to SQL database: id=%s", execution.id)
             except Exception:
                 logger.exception("Failed to dual-write node execution data to SQL database: id=%s", execution.id)
-                # Don't raise - LogStore write succeeded, SQL is just a backup
 
     @override
     def get_by_workflow_execution(

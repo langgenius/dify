@@ -10,6 +10,7 @@ import * as React from 'react'
 import { useCallback, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
+import { v4 as uuid4 } from 'uuid'
 import { useKeyboardSortable } from '@/app/components/base/keyboard-sortable/use-keyboard-sortable'
 import { useEdgesInteractions } from '../../../../hooks/use-edges-interactions'
 import AddButton from '../add-button'
@@ -83,7 +84,7 @@ const ClassList: FC<Props> = ({
   const handleAddClass = useCallback(() => {
     const newList = produce(list, (draft) => {
       draft.push({
-        id: crypto.randomUUID(),
+        id: uuid4(),
         name: '',
         label: labels?.defaultLabel(draft.length + 1) ?? getDefaultClassLabel(t, draft.length + 1),
       })
@@ -141,7 +142,7 @@ const ClassList: FC<Props> = ({
     <Collapse collapsed={!enabled || collapsed} onCollapse={setCollapsed} disabled={!enabled}>
       {keyboardSort.announcement}
       <CollapseHeader>
-        <CollapseTrigger className="ml-0">
+        <CollapseTrigger className="ms-0">
           <CollapseTitle>
             {labels?.title ?? t(($) => $[`${i18nPrefix}.class`], { ns: 'workflow' })}{' '}
             {enabled && <span className="text-text-destructive">*</span>}
@@ -160,7 +161,7 @@ const ClassList: FC<Props> = ({
               </div>
             )}
 
-            <div className="overflow-y-visible pl-3">
+            <div className="overflow-y-visible ps-3">
               <ReactSortable
                 list={sortableTopics}
                 setList={(items) => {
@@ -184,7 +185,7 @@ const ClassList: FC<Props> = ({
                       role="group"
                       aria-labelledby={`${labelIdPrefix}-${item.id}`}
                       className={cn(
-                        'group relative -ml-3 min-h-10 rounded-[10px] bg-components-panel-bg px-0 py-0',
+                        'group relative -ms-3 min-h-10 rounded-[10px] bg-components-panel-bg px-0 py-0',
                       )}
                       style={{
                         // Performance hint for browser
@@ -195,7 +196,7 @@ const ClassList: FC<Props> = ({
                         {canDrag && (
                           <IconButton
                             {...keyboardSort.getHandleProps(index)}
-                            className="handle pointer-events-none absolute top-1.5 left-0.5 z-10 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus:pointer-events-auto focus:opacity-100 aria-pressed:pointer-events-auto aria-pressed:opacity-100"
+                            className="handle pointer-events-none absolute inset-s-0.5 top-1.5 z-10 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus:pointer-events-auto focus:opacity-100 aria-pressed:pointer-events-auto aria-pressed:opacity-100"
                           >
                             <span aria-hidden="true" className="i-ri-draggable size-3" />
                           </IconButton>
@@ -204,7 +205,7 @@ const ClassList: FC<Props> = ({
                           labelId={`${labelIdPrefix}-${item.id}`}
                           className={cn(canDrag && 'handle')}
                           headerClassName={cn(
-                            canDrag && 'cursor-grab group-focus-within:pl-5 group-hover:pl-5',
+                            canDrag && 'cursor-grab group-focus-within:ps-5 group-hover:ps-5',
                           )}
                           nodeId={nodeId}
                           key={item.id}

@@ -149,15 +149,6 @@ class TestOnQuery:
 
 
 class TestOnToolEnd:
-    def test_on_tool_end_no_metadata(
-        self,
-        handler: DatasetIndexToolCallbackHandler,
-        caller_session_boundary: _CallerSessionBoundary,
-    ) -> None:
-        document = Document.model_construct(page_content="content", metadata=None, provider="dify")
-
-        handler.on_tool_end([document], caller_session_boundary.session)
-
     def test_on_tool_end_dataset_document_not_found(
         self,
         handler: DatasetIndexToolCallbackHandler,

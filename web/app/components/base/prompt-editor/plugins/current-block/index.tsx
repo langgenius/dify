@@ -5,8 +5,8 @@ import { $insertNodes, COMMAND_PRIORITY_EDITOR, createCommand } from 'lexical'
 import { memo, useEffect } from 'react'
 import { $createCurrentBlockNode, CurrentBlockNode } from './node'
 
-export const INSERT_CURRENT_BLOCK_COMMAND = createCommand('INSERT_CURRENT_BLOCK_COMMAND')
-export const DELETE_CURRENT_BLOCK_COMMAND = createCommand('DELETE_CURRENT_BLOCK_COMMAND')
+export const INSERT_CURRENT_BLOCK_COMMAND = createCommand<void>('INSERT_CURRENT_BLOCK_COMMAND')
+export const DELETE_CURRENT_BLOCK_COMMAND = createCommand<void>('DELETE_CURRENT_BLOCK_COMMAND')
 
 const CurrentBlock = memo(({ generatorType, onInsert, onDelete }: CurrentBlockType) => {
   const [editor] = useLexicalComposerContext()

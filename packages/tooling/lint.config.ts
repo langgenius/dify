@@ -244,6 +244,17 @@ const defaultRestrictedProperties = [
   },
 ] satisfies NonNullable<OxlintConfig['rules']>[string]
 
+// `crypto.randomUUID` exists only in secure contexts, so it is undefined on
+// self-hosted consoles opened over plain HTTP. Matching the property alone also
+// catches `globalThis.crypto.randomUUID` and optional-call forms.
+const insecureContextRestrictedProperties = [
+  {
+    property: 'randomUUID',
+    message:
+      'crypto.randomUUID is unavailable over plain HTTP (non-secure contexts). Use `v4` from `uuid` instead.',
+  },
+]
+
 const storageRestrictedProperties = [
   'error',
   {
@@ -636,6 +647,8 @@ export const lintConfig = {
     'e2e/.auth/**',
     'e2e/cucumber-report/**',
     'packages/contracts/**',
+    // Its content mapper composes the console OpenAPI from the Python API; `type-check:contracts` covers it.
+    'packages/openapi-content-mapper/examples/repository/**',
     'web/next/**',
     'web/next-env.d.ts',
     'web/public/**',
@@ -678,7 +691,7 @@ export const lintConfig = {
     reportUnusedDisableDirectives: 'error',
     respectEslintDisableDirectives: false,
     typeAware: true,
-    typeCheck: false,
+    typeCheck: true,
   },
   settings: {
     'better-tailwindcss': {
@@ -1819,7 +1832,11 @@ export const lintConfig = {
       ...handwrittenApiScope,
       rules: {
         'no-restricted-globals': [...defaultRestrictedGlobals, ...rawHttpGlobals],
-        'no-restricted-properties': [...defaultRestrictedProperties, ...rawHttpProperties],
+        'no-restricted-properties': [
+          ...defaultRestrictedProperties,
+          ...rawHttpProperties,
+          ...insecureContextRestrictedProperties,
+        ],
         'no-restricted-imports': [
           'error',
           {
@@ -1840,7 +1857,11 @@ export const lintConfig = {
       ],
       rules: {
         'no-restricted-globals': [...storageRestrictedGlobals, ...rawHttpGlobals],
-        'no-restricted-properties': [...storageRestrictedProperties, ...rawHttpProperties],
+        'no-restricted-properties': [
+          ...storageRestrictedProperties,
+          ...rawHttpProperties,
+          ...insecureContextRestrictedProperties,
+        ],
       },
     },
     {
@@ -1874,6 +1895,12 @@ export const lintConfig = {
       excludeFiles: [...handwrittenApiScope.excludeFiles, ...marketplaceBoundaryFiles],
       rules: {
         'dify/marketplace-boundary': 'error',
+      },
+    },
+    {
+      ...handwrittenApiScope,
+      rules: {
+        'dify/no-module-scope-clock': 'error',
       },
     },
   ],

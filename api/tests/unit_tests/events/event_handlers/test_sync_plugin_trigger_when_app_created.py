@@ -10,7 +10,7 @@ from redis import Redis
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
+from constants.trigger import TRIGGER_PLUGIN_NODE_TYPE
 from enums import DeploymentEdition
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from events.event_handlers.sync_plugin_trigger_when_app_created import handle

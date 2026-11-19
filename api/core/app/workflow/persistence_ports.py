@@ -56,6 +56,10 @@ class WorkflowNodeExecutionRepository(Protocol):
 
     def save_synchronously(self, execution: WorkflowNodeExecution) -> None: ...
 
+    def save_with_execution_data(self, execution: WorkflowNodeExecution) -> None:
+        """Persist the lifecycle snapshot and its payload, offloading oversized data."""
+        ...
+
     def save_execution_data(self, execution: WorkflowNodeExecution) -> None: ...
 
     def get_by_workflow_execution(

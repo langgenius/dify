@@ -208,6 +208,11 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         }
 
     @override
+    def save_with_execution_data(self, execution: WorkflowNodeExecution) -> None:
+        """Persist the complete payload, including any required offloads."""
+        self.save_execution_data(execution)
+
+    @override
     def save_synchronously(self, execution: WorkflowNodeExecution) -> None:
         """Create the Agent v2 caller row before runtime participant allocation."""
 
