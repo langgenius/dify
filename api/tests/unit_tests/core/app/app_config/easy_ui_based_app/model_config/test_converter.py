@@ -249,12 +249,12 @@ class TestModelConfigConverter:
 
         with _provider_schema_lookup(_model_schema()):
             result = ModelConfigConverter.convert(
-                _app_config(parameters={"temperature": 0.7, "stop": ["\\n"]}),
+                _app_config(parameters={"temperature": 0.7, "stop": ["\n"]}),
                 provider_model_bundle=bundle,
             )
 
         assert result.parameters == {"temperature": 0.7}
-        assert result.stop == ["\\n"]
+        assert result.stop == ["\n"]
 
     def test_convert_resolves_bundle_from_provider_manager(self, mocker: MockerFixture) -> None:
         manager = _RecordingProviderManager(bundle=_provider_model_bundle(_provider_configuration()))
