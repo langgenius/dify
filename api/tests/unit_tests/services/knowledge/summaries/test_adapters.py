@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from contextlib import nullcontext
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -494,27 +495,9 @@ class TestBatchAndGeneration:
             "node-1",
         )
 
+    @pytest.mark.parametrize("round_to_second", [False, True], ids=["microseconds", "seconds"])
     def test_generate_failure_rolls_back_then_persists_error(
-        self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        dataset, document, segment = _graph(sqlite_session)
-        summary = _persist_summary(sqlite_session, dataset, document, segment, status=SummaryStatus.NOT_STARTED)
-        monkeypatch.setattr(
-            SummaryIndexAdapter,
-            "generate_summary_for_segment",
-            MagicMock(side_effect=RuntimeError("LLM failed")),
-        )
-
-        with pytest.raises(RuntimeError, match="LLM failed"):
-            SummaryIndexAdapter.generate_and_vectorize_summary(
-                segment, dataset, {"enable": True}, session=sqlite_session
-            )
-
-        sqlite_session.refresh(summary)
-        assert (summary.status, summary.error) == (SummaryStatus.ERROR, "Summary generation failed: LLM failed")
-
-    def test_generate_failure_persists_error_with_second_precision_storage(
-        self, sqlite_session: Session, sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch
+        self, sqlite_session: Session, sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch, round_to_second: bool
     ) -> None:
         dataset, document, segment = _graph(sqlite_session)
         summary = _persist_summary(sqlite_session, dataset, document, segment, status=SummaryStatus.NOT_STARTED)
@@ -525,7 +508,8 @@ class TestBatchAndGeneration:
             MagicMock(side_effect=RuntimeError("LLM failed")),
         )
 
-        with second_precision_datetimes(sqlite_engine), pytest.raises(RuntimeError, match="LLM failed"):
+        precision = second_precision_datetimes(sqlite_engine) if round_to_second else nullcontext()
+        with precision, pytest.raises(RuntimeError, match="LLM failed"):
             SummaryIndexAdapter.generate_and_vectorize_summary(
                 segment, dataset, {"enable": True}, session=sqlite_session
             )
