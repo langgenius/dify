@@ -29,7 +29,7 @@ from models.external_agent import (
     ExternalAgentInvocation,
     ExternalWorkflowBudget,
 )
-from models.external_agent_trace import ExternalAgentDataTombstone
+from models.external_agent_trace import ExternalAgentDataTombstone, ExternalAgentTraceUsageSummary
 from models.model import App, AppMode, Conversation, EndUser
 from models.workflow import (
     Workflow,
@@ -42,6 +42,7 @@ from models.workflow import (
     WorkflowRun,
     WorkflowType,
 )
+from repositories.external_agents.observability_repository import ExternalObservabilityRepository
 from repositories.external_agents.runtime_repository import ExternalRuntimeRepository
 from services.external_agents.contracts import ExternalOrigin
 from services.external_agents.invocation_agg import ExternalInvocationAgg
@@ -77,6 +78,7 @@ from services.external_agents.runtime_contracts import (
     TimeoutPolicy,
     WaitPolicy,
 )
+from services.external_agents.traceability import TraceLimits
 from services.external_agents.workflow_runtime import ExternalNodeJob
 
 type Domain = tuple[ExternalRuntimeRepository, sessionmaker[Session], RuntimeScope, str, str]
@@ -139,6 +141,7 @@ def domain() -> Iterator[Domain]:
         ExternalAgentInvocation,
         ExternalWorkflowBudget,
         ExternalAgentDataTombstone,
+        ExternalAgentTraceUsageSummary,
     )
     TypeBase.metadata.create_all(engine, tables=[TypeBase.metadata.tables[model.__tablename__] for model in models])
     sessions = sessionmaker(engine, expire_on_commit=False)
@@ -1475,6 +1478,8 @@ def test_graphon_external_checkpoint_restores_same_execution_and_reads_fixed_res
                 service=runtime,
                 store=repo,
                 bindings=repo,
+                usage=ExternalObservabilityRepository(sessions=sessions, limits=TraceLimits()),
+                now=clock.now,
                 enqueue=lambda: None,
                 enabled=True,
                 root_app_id=required_id(scope.app_id),
@@ -1492,7 +1497,12 @@ def test_graphon_external_checkpoint_restores_same_execution_and_reads_fixed_res
     value = present(repo.for_execution(scope, identity))
     assert value is not None
     resumed_ids = []
-    wake = DifyExternalWorkflowWake(sessions=sessions, enqueue_resume=resumed_ids.append, now=clock.now)
+    wake = DifyExternalWorkflowWake(
+        sessions=sessions,
+        usage=ExternalObservabilityRepository(sessions=sessions, limits=TraceLimits()),
+        enqueue_resume=resumed_ids.append,
+        now=clock.now,
+    )
     assert not wake.wake(scope, value)  # response can beat checkpoint publication
     command(domain, runtime, clock, "dispatch")
     with sessions.begin() as session:
@@ -1554,7 +1564,12 @@ def test_wake_delivery_is_not_consumption_and_claimed_resume_crash_fails_at_pers
         if len(attempts) == 1:
             raise ConnectionError("Controlled broker loss before publish.")
 
-    wake = DifyExternalWorkflowWake(sessions=sessions, enqueue_resume=publish, now=clock.now)
+    wake = DifyExternalWorkflowWake(
+        sessions=sessions,
+        usage=ExternalObservabilityRepository(sessions=sessions, limits=TraceLimits()),
+        enqueue_resume=publish,
+        now=clock.now,
+    )
     with pytest.raises(ConnectionError):
         wake.wake(scope, value)
     clock.value += timedelta(seconds=119)
@@ -1636,6 +1651,8 @@ def test_node_debug_returns_pause_then_writes_terminal_last_run_and_draft_variab
             service=runtime,
             store=repo,
             bindings=repo,
+            usage=ExternalObservabilityRepository(sessions=sessions, limits=TraceLimits()),
+            now=clock.now,
             enqueue=lambda: None,
             enabled=True,
             root_app_id=required_id(scope.app_id),
@@ -1654,7 +1671,11 @@ def test_node_debug_returns_pause_then_writes_terminal_last_run_and_draft_variab
     assert value.identity.workflow_run_id is None
     assert value.caller_execution_id == caller_pk
     command(new_domain, runtime, clock, "dispatch")
-    wake = DifyExternalWorkflowWake(sessions=sessions, enqueue_resume=lambda _run_id: None)
+    wake = DifyExternalWorkflowWake(
+        sessions=sessions,
+        usage=ExternalObservabilityRepository(sessions=sessions, limits=TraceLimits()),
+        enqueue_resume=lambda _run_id: None,
+    )
     assert not wake.wake(scope, repo.get(scope, value.id))
     with sessions.begin() as session:
         stored(session, WorkflowNodeExecutionModel, caller_pk).status = WorkflowNodeExecutionStatus.PAUSED

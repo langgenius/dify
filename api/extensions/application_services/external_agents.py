@@ -43,11 +43,12 @@ from repositories.external_agents.workflow_bindings import ExternalWorkflowBindi
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.external_agents.asset_service import ExternalAssetService
 from services.external_agents.contracts import ExternalAgentLimits
+from services.external_agents.execution_usage import ExternalExecutionUsageQuery
 from services.external_agents.file_profile import FILE_MODES, FileLimits, supported_input_file_types
 from services.external_agents.invocation_service import ExternalInvocationService
 from services.external_agents.observability import ExternalObservabilityService
 from services.external_agents.retention import ExternalRetentionService
-from services.external_agents.runtime_contracts import RuntimeSettings
+from services.external_agents.runtime_contracts import RuntimeClock, RuntimeSettings
 from services.external_agents.test_file_access import ExternalTestFileAccessService
 from services.external_agents.test_service import ExternalTestService
 from services.external_agents.traceability import TraceabilityNormalizer, TraceLimits
@@ -87,6 +88,8 @@ class ExternalAgentServices:
     bindings: ExternalWorkflowBindingService
     runtime: ExternalInvocationService
     repository: ExternalRuntimeRepository
+    execution_usage: ExternalExecutionUsageQuery
+    clock: RuntimeClock
     observability: ExternalObservabilityService
     tracing_configs: ExternalTracingConfigService
     trace_delivery: ExternalTraceDeliveryService
@@ -247,7 +250,7 @@ def build_external_agent_services(
         ),
         outputs=normalizer,
         observer=normalizer,
-        wake=DifyExternalWorkflowWake(sessions=sessions, enqueue_resume=_resume),
+        wake=DifyExternalWorkflowWake(sessions=sessions, enqueue_resume=_resume, usage=observations, now=clock.now),
         clock=clock,
         ids=ids,
         settings=settings,
@@ -293,6 +296,8 @@ def build_external_agent_services(
         ),
         runtime=runtime,
         repository=repository,
+        execution_usage=observations,
+        clock=clock,
         observability=observation_service,
         tracing_configs=ExternalTracingConfigService(
             store=observations, access=observation_access, provider=tracing.provider_configs

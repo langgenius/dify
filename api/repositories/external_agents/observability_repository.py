@@ -19,7 +19,7 @@ import sqlalchemy as sa
 from dify_trace_sdk.egress import Egress
 from dify_trace_sdk.model import Trace
 from dify_trace_sdk.provider import SendResult
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
@@ -76,6 +76,7 @@ from services.external_agents.observability import (
     aware_utc,
 )
 from services.external_agents.retention import ExternalDeletionScope, TestFileCleanup
+from services.external_agents.runtime_contracts import Invocation, RuntimeScope
 from services.external_agents.runtime_contracts import RuntimeError as ExternalRuntimeError
 from services.external_agents.test_service import ExternalTestStatistics
 from services.external_agents.traceability import (
@@ -328,6 +329,113 @@ class ExternalObservabilityRepository:
     def owner(self, *, tenant_id: str, invocation_id: str, now: datetime) -> InvocationObservationOwner:
         with self._sessions() as session:
             return self._owner_value(self._owned(session, tenant_id=tenant_id, invocation_id=invocation_id, now=now))
+
+    @staticmethod
+    def _execution_usage_invocation(row: ExternalAgentInvocation) -> Invocation | None:
+        """Reconstruct consistent persisted owner facts without assuming legacy fields.
+
+        Preconditions: row came from the scoped query. Postconditions: return
+        its validated snapshot only when its owner and identity agree with the
+        indexed columns; missing or conflicting evidence remains unknown.
+        Invalid snapshot schemas raise ValidationError for the caller to handle.
+        """
+        value = TypeAdapter(Invocation).validate_python(row.runtime_snapshot)
+        identity = value.identity
+        execution_key = hashlib.sha256(
+            json.dumps((identity.execution_id, identity.frame_id), separators=(",", ":")).encode()
+        ).hexdigest()
+        if (
+            row.id,
+            row.tenant_id,
+            row.app_id,
+            row.initiator_id,
+            row.origin,
+            row.agent_id,
+            row.workflow_run_id,
+            row.node_id,
+            row.frame_id,
+            row.binding_epoch or "",
+            row.execution_key,
+            row.sequence,
+            row.retry_of,
+            row.test_generation,
+        ) != (
+            value.id,
+            value.scope.tenant_id,
+            value.scope.app_id,
+            value.scope.initiator_id,
+            value.scope.origin,
+            value.agent_id,
+            identity.workflow_run_id,
+            identity.node_id,
+            identity.frame_id,
+            identity.binding_epoch,
+            execution_key,
+            value.sequence,
+            value.retry_of,
+            value.test_generation,
+        ):
+            return None
+        if value.caller_execution_id is not None and value.caller_execution_id != row.node_execution_id:
+            return None
+        return value
+
+    def total_tokens(self, scope: RuntimeScope, invocation_id: str, *, now: datetime) -> int | None:
+        """Read a complete owned retry prefix, preserving unknown and reported zero.
+
+        Preconditions: scope is the admitted owner and invocation_id pins the
+        last included attempt. Postconditions: only retained, identity-matching,
+        linked attempts contribute; every actual dispatch needs one tenant-owned
+        call-total summary. Missing, expired, malformed or conflicting evidence
+        returns None without modifying execution or observation state. Storage
+        errors propagate so the consumer can keep usage observational.
+        """
+        try:
+            with self._sessions() as session:
+                anchor = self._owned(session, tenant_id=scope.tenant_id, invocation_id=invocation_id, now=now)
+                selected = self._execution_usage_invocation(anchor)
+                if selected is None or selected.scope != scope:
+                    return None
+                invocation, usage = ExternalAgentInvocation, ExternalAgentTraceUsageSummary
+                attempts = session.execute(
+                    select(invocation, usage.total_tokens)
+                    .outerjoin(
+                        usage, sa.and_(usage.tenant_id == invocation.tenant_id, usage.invocation_id == invocation.id)
+                    )
+                    .where(
+                        invocation.tenant_id == scope.tenant_id,
+                        invocation.execution_key == anchor.execution_key,
+                        invocation.sequence <= anchor.sequence,
+                    )
+                    .order_by(invocation.sequence)
+                ).all()
+                # Enumerate before retention checks: filtering revoked or
+                # missing attempts could turn a partial total into a false sum.
+                if len(attempts) != anchor.sequence + 1:
+                    return None
+                previous_id: str | None = None
+                for sequence, (attempt, _) in enumerate(attempts):
+                    self._owned(session, tenant_id=scope.tenant_id, invocation_id=attempt.id, now=now)
+                    value = self._execution_usage_invocation(attempt)
+                    if (
+                        value is None
+                        or value.scope != scope
+                        or value.agent_id != selected.agent_id
+                        or value.identity != selected.identity
+                        or value.test_generation != selected.test_generation
+                        or attempt.node_execution_id != anchor.node_execution_id
+                        or attempt.sequence != sequence
+                        or attempt.retry_of != previous_id
+                    ):
+                        return None
+                    previous_id = attempt.id
+                if previous_id != invocation_id:
+                    return None
+                dispatched = [tokens for attempt, tokens in attempts if attempt.dispatched_at is not None]
+                reported = [tokens for tokens in dispatched if type(tokens) is int and 0 <= tokens <= 2**63 - 1]
+                return sum(reported) if dispatched and len(reported) == len(dispatched) else None
+        except (ObservationNotFoundError, ObservationExpiredError, ValidationError):
+            return None
 
     def test_statistics(
         self, context: RequestContext, *, agent_id: str, invocation_id: str, now: datetime
