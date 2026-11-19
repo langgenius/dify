@@ -102,10 +102,7 @@ export function KnowledgeFsApiAccessDialog({
           </DialogBody>
           <DialogFooter>
             <Link
-              href={docLink(
-                // @ts-expect-error Agent Knowledge Base API guide not yet in the generated doc paths.
-                '/api-reference/guides/knowledge-base',
-              )}
+              href={docLink('/api-reference/guides/knowledge-base')}
               target="_blank"
               rel="noopener noreferrer"
               className={buttonVariants()}

@@ -29,7 +29,6 @@ import {
   MenuItemContent,
 } from '@/app/components/header/account-menu/menu-item-content'
 import GithubStar from '@/app/components/header/github-star'
-import { useCreatorCenterUrl } from '@/app/components/plugins/marketplace/creator-center-url'
 import { trackStepByStepTourEvent } from '@/app/components/step-by-step-tour/analytics'
 import {
   disableStepByStepTourForCurrentWorkspaceAtom,
@@ -39,7 +38,6 @@ import {
   stepByStepTourSkipRecoveryVisibleAtom,
   stepByStepTourStateUpdatingAtom,
 } from '@/app/components/step-by-step-tour/state'
-import { MARKETPLACE_URL_PREFIX } from '@/config'
 import { getLangGeniusVersionInfo } from '@/context/app-context-normalizers'
 import { useDocLink } from '@/context/i18n'
 import {
@@ -49,6 +47,7 @@ import {
 } from '@/context/workspace-state'
 import { env } from '@/env'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { useMarketplace } from '@/features/marketplace/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
 import styles from './help-menu.module.css'
@@ -93,7 +92,7 @@ const MenuSwitchIndicator = ({ checked }: { checked: boolean }) => (
 const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: HelpMenuProps) => {
   const { t } = useTranslation(['common', 'navigation'])
   const docLink = useDocLink()
-  const creatorCenterUrl = useCreatorCenterUrl(MARKETPLACE_URL_PREFIX)
+  const marketplace = useMarketplace()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: profileMeta } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -258,18 +257,20 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: He
             </MenuGroup>
             <MenuSeparator className="my-0!" />
             <MenuGroup className="py-1">
-              <MenuLinkItem
-                href={creatorCenterUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="h-8 gap-1 px-3 py-1.5"
-              >
-                <MenuItemContent
-                  iconClassName="i-ri-user-star-line"
-                  label={t(($) => $['mainNav.help.creatorCenter'], { ns: 'navigation' })}
-                  trailing={<ExternalLinkIndicator />}
-                />
-              </MenuLinkItem>
+              {marketplace && (
+                <MenuLinkItem
+                  href={marketplace.creatorCenter}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="h-8 gap-1 px-3 py-1.5"
+                >
+                  <MenuItemContent
+                    iconClassName="i-ri-user-star-line"
+                    label={t(($) => $['mainNav.help.creatorCenter'], { ns: 'navigation' })}
+                    trailing={<ExternalLinkIndicator />}
+                  />
+                </MenuLinkItem>
+              )}
               <MenuLinkItem
                 href="https://github.com/langgenius/dify"
                 target="_blank"

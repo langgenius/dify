@@ -4,6 +4,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQueryKey } from '@/test/console/operation-hooks'
+import { createDeferred } from '@/test/deferred'
 import {
   createAgentReference,
   createSkillDetail,
@@ -315,14 +316,27 @@ describe('SkillDetailPage publishing', () => {
   })
 
   it('uses the references query count when the cached sidebar reference count is stale', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, staleTime: Infinity },
+        mutations: { retry: false },
+      },
+    })
+    const references = [
+      createAgentReference({ display_name: 'Sidebar Agent', name: 'sidebar-agent' }),
+    ]
     mocks.skillDetail = createSkillDetail({ reference_count: 0 })
     mocks.skillReferencesQueryOptions.mockImplementation(() => ({
-      queryFn: async () => ({
-        data: [createAgentReference({ display_name: 'Sidebar Agent', name: 'sidebar-agent' })],
-      }),
+      queryFn: async () => ({ data: references }),
     }))
+    queryClient.setQueryData(
+      consoleQueryKey('workspaces.current.skills.bySkillId.references.get', {
+        params: { skill_id: 'skill-1' },
+      }),
+      { data: references },
+    )
 
-    renderSkillDetailPage()
+    renderSkillDetailPage({ queryClient })
 
     expect(
       await screen.findByRole('button', {
@@ -536,6 +550,8 @@ describe('SkillDetailPage publishing', () => {
 
   it('renames a version title and publish note from the version menu', async () => {
     const user = userEvent.setup()
+    const request = createDeferred()
+    mocks.versionPatchMutationFn.mockReturnValueOnce(request.promise)
     const version = createSkillVersion({
       id: 'version-1',
       publish_note: 'Initial note',
@@ -546,7 +562,13 @@ describe('SkillDetailPage publishing', () => {
         data: [version],
       }),
     }))
-    renderSkillDetailPage()
+    const client = new QueryClient()
+    const keyForVersion = (versionId: string) =>
+      consoleQueryKey('workspaces.current.skills.bySkillId.versions.byVersionId.get', {
+        params: { skill_id: 'skill-1', version_id: versionId },
+      })
+    client.setQueryData(keyForVersion('version-2'), createSkillVersion({ id: 'version-2' }))
+    renderSkillDetailPage({ queryClient: client })
 
     await user.click(
       await screen.findByRole('button', { name: 'skill.skillManagement.detail.versionHistory' }),
@@ -580,6 +602,22 @@ describe('SkillDetailPage publishing', () => {
         expect.anything(),
       )
     })
+    expect(titleInput).toBeDisabled()
+    expect(noteInput).toBeDisabled()
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('dialog')).toBe(dialog)
+    const refresh = vi.spyOn(client, 'invalidateQueries')
+    await act(async () => request.resolve())
+    expect(refresh).toHaveBeenCalledWith({
+      queryKey: expect.arrayContaining([
+        expect.objectContaining({
+          input: { params: { skill_id: 'skill-1', version_id: 'version-1' } },
+        }),
+      ]),
+    })
+    expect(client.getQueryState(keyForVersion('version-2'))?.isInvalidated).toBe(false)
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
   it.each(['restore button', 'restore menu', 'delete menu'] as const)(

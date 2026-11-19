@@ -1,11 +1,10 @@
 'use client'
-import type {
-  AccountWithRoleResponse,
-  MemberInviteResponse,
-} from '@dify/contracts/api/console/workspaces/types.gen'
-import type { Role } from '@/models/access-control'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
+import type { Invitee } from './invited-row'
 import {
   AlertDialog,
+  AlertDialogBody,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
@@ -15,36 +14,74 @@ import {
   AlertDialogTitle,
   createAlertDialogHandle,
 } from '@langgenius/dify-ui/alert-dialog'
-import {
-  createDialogHandle,
-  Dialog,
-  DialogContent,
-  DialogTrigger,
-} from '@langgenius/dify-ui/dialog'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
+import { Dialog, DialogContent, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { isDefinedError } from '@orpc/client'
+import {
+  useMutation,
+  usePrefetchQuery,
+  useQueryClient,
+  useSuspenseQueries,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useRef, useState } from 'react'
+import { Suspense, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
+import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { currentWorkspaceAtom, isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
+import {
+  currentWorkspaceAtom,
+  currentWorkspaceIdAtom,
+  isCurrentWorkspaceOwnerAtom,
+} from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { isContactsManagementEnabled } from '@/features/contacts/management/feature-flag'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getAccessControlTemplateLanguage, LanguagesSupported } from '@/i18n/language'
 import { consoleQuery } from '@/service/console'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { hasPermission } from '@/utils/permission'
-import EditWorkspaceContent from './edit-workspace-content'
-import InvitationResultsContent from './invitation-results-content'
+import { EditWorkspaceContent } from './edit-workspace-content'
 import { InviteModal } from './invite-modal'
-import MemberDetailsContent from './member-details-content'
-import MemberRow from './member-row'
+import { InvitedRow } from './invited-row'
+import { MemberDetailsContent } from './member-details-content'
+import { MemberRow } from './member-row'
+import { MembersHeaderCard } from './members-header-card'
+import { MembersPageSkeleton } from './members-page-skeleton'
 
-const MembersPage = () => {
+const revealRow = (row: HTMLTableRowElement | null) => row?.scrollIntoView({ block: 'nearest' })
+
+type MembersLanguage = ReturnType<typeof getAccessControlTemplateLanguage>
+
+const membersQueryOptions = (language: MembersLanguage) =>
+  consoleQuery.workspaces.current.members.get.queryOptions({
+    input: { query: { language } },
+    staleTime: 0,
+  })
+
+const pendingInvitationsQueryOptions = (workspaceId: string) =>
+  consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.get.queryOptions({
+    input: { params: { workspace_id: workspaceId } },
+    staleTime: 0,
+  })
+
+const PendingInvitationsPrefetch = ({ workspaceId }: { workspaceId: string }) => {
+  usePrefetchQuery(pendingInvitationsQueryOptions(workspaceId))
+  return null
+}
+
+type MembersPageContentProps = {
+  language: MembersLanguage
+  canManageMembers: boolean
+}
+
+const MembersPageContent = ({ language, canManageMembers }: MembersPageContentProps) => {
   const { t } = useTranslation([
     'billing',
     'common',
@@ -52,9 +89,9 @@ const MembersPage = () => {
     'accountSettings',
     'permission',
     'navigation',
+    'contacts',
   ])
   const locale = useLocale()
-  const language = getAccessControlTemplateLanguage(locale)
 
   const { data: userProfileEmail } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -62,14 +99,27 @@ const MembersPage = () => {
   })
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const { data } = useQuery(
-    consoleQuery.workspaces.current.members.get.queryOptions({ input: { query: { language } } }),
-  )
+  const { accounts, features } = useSuspenseQueries({
+    queries: [membersQueryOptions(language), consoleQuery.features.get.queryOptions()],
+    combine: ([members, featureResult]) => ({
+      accounts: members.data.accounts,
+      features: {
+        plan: featureResult.data.billing.subscription.plan,
+        members: getCountQuota(featureResult.data.members),
+        is_allow_transfer_workspace: featureResult.data.is_allow_transfer_workspace,
+      },
+    }),
+  })
+  const invitationQueries: Array<ReturnType<typeof pendingInvitationsQueryOptions>> =
+    canManageMembers && currentWorkspace.id
+      ? [pendingInvitationsQueryOptions(currentWorkspace.id)]
+      : []
+  const invitations = useSuspenseQueries({
+    queries: invitationQueries,
+    combine: (results) => results.flatMap(({ data }) => data.invitations),
+  })
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const [invitationDialogHandle] = useState(() =>
-    createDialogHandle<MemberInviteResponse['invitation_results']>(),
-  )
+  const [invitedEmails, setInvitedEmails] = useState<ReadonlySet<string>>(() => new Set())
   const workspaceNameInputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const [removeDialog] = useState(() =>
@@ -84,60 +134,81 @@ const MembersPage = () => {
       context: { silent: true },
     }),
   )
-  const accounts = data?.accounts || []
-  const deploymentEdition = systemFeatures.deployment_edition
-  const { data: features } = useQuery(
-    consoleQuery.features.get.queryOptions({
-      select: (data) => ({
-        plan: data.billing.subscription.plan,
-        members: data.members,
-        is_allow_transfer_workspace: data.is_allow_transfer_workspace,
-      }),
+  const joinedAccounts = accounts.filter((account) => account.status !== 'pending')
+
+  const memberLimit =
+    features.plan !== 'team' && features.members.limit !== 'unlimited'
+      ? features.members.limit
+      : null
+  const detailsActionsRef = useRef<DialogActions>(null)
+
+  const invitees: Invitee[] = [
+    ...accounts
+      .filter((account) => account.status === 'pending')
+      .map((account) => ({
+        email: account.email,
+        role: account.roles?.[0]?.id ?? account.role,
+        roleName: account.roles?.[0]?.name ?? account.role,
+      })),
+    ...invitations.map((invitation) => ({
+      email: invitation.email,
+      role: invitation.role,
+      roleName: invitation.role,
+      expiresAt: invitation.expires_at,
+    })),
+  ]
+  const usedSeats = joinedAccounts.length + invitees.length
+  const isMemberFull =
+    features.plan !== 'team' && isQuotaReached({ usage: usedSeats, limit: features.members.limit })
+  const [revokeDialog] = useState(() => createAlertDialogHandle<Invitee>())
+  const queryClient = useQueryClient()
+  const revocation = useMutation(
+    consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.revoke.post.mutationOptions({
+      context: { silent: true },
+      onSettled: () => {
+        void queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.members.get.key(),
+        })
+        void queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.get.key(),
+        })
+        void queryClient.invalidateQueries({ queryKey: consoleQuery.features.get.queryKey() })
+      },
     }),
   )
-
-  const isNotUnlimitedMemberPlan =
-    deploymentEdition === 'CLOUD' && features !== undefined && features.plan !== 'team'
-  // A limit of 0 means unlimited.
-  const isMemberFull =
-    isNotUnlimitedMemberPlan &&
-    features.members.limit > 0 &&
-    accounts.length >= features.members.limit
-  const [detailsDialogHandle] = useState(() => createDialogHandle<AccountWithRoleResponse>())
-
-  const canManageMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
+  const isInvitationGone = (error: typeof revocation.error) =>
+    isDefinedError(error) && error.code === 'pending_invitation_not_found'
+  const revocationError =
+    revocation.isError && !isInvitationGone(revocation.error)
+      ? isDefinedError(revocation.error)
+        ? revocation.error.message
+        : t(($) => $['api.actionFailed'], { ns: 'common' })
+      : null
   const roleColumnLabel = systemFeatures.rbac_enabled
     ? t(($) => $['members.roles'], { ns: 'workspaceMembers' })
     : t(($) => $['members.role'], { ns: 'workspaceMembers' })
 
-  const { mutateAsync: updateRolesOfMember, isPending: isSavingMember } = useMutation(
+  const roleUpdate = useMutation(
     consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.put.mutationOptions({
       context: { silent: true },
     }),
   )
 
-  const handleAssignRolesSubmit = (member: AccountWithRoleResponse, roles: Role[]) => {
-    const roleIds = systemFeatures.rbac_enabled
-      ? roles.map((role) => role.id)
-      : roles.slice(0, 1).map((role) => role.id)
-
-    return updateRolesOfMember({
-      params: { member_id: member.id },
-      body: { role_ids: roleIds },
-    })
-  }
+  const canAssignRoles = (member: AccountWithRoleResponse) =>
+    canManageMembers && member.role !== 'owner' && member.email !== userProfileEmail
 
   return (
-    <Dialog
-      handle={detailsDialogHandle}
+    <Dialog<AccountWithRoleResponse>
+      actionsRef={detailsActionsRef}
       onOpenChange={(open, details) => {
-        if (!open && isSavingMember) details.cancel()
+        if (open) roleUpdate.reset()
+        else if (roleUpdate.isPending && details.reason !== 'imperative-action') details.cancel()
       }}
     >
       {({ payload: member }) => (
         <>
           <div className="flex flex-col">
-            <div className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border-s-[0.5px] border-t-[0.5px] border-divider-subtle bg-linear-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 py-2 ps-2 pe-5 rtl:bg-linear-to-l">
+            <MembersHeaderCard>
               <div className="flex min-w-0 grow basis-48 items-center gap-3">
                 <WorkspaceAvatar name={currentWorkspace.name} size="2xl" className="shrink-0" />
                 <div className="min-w-0 grow">
@@ -180,29 +251,43 @@ const MembersPage = () => {
                     )}
                   </div>
                   <div className="mt-1 system-xs-medium text-text-tertiary">
-                    {isNotUnlimitedMemberPlan ? (
+                    {memberLimit !== null ? (
                       <div className="flex flex-wrap gap-x-1">
                         <div>
                           {t(($) => $['plansCommon.member'], { ns: 'billing' })}
-                          {locale !== LanguagesSupported[1] && accounts.length > 1 && 's'}
+                          {locale !== LanguagesSupported[1] && usedSeats > 1 && 's'}
                         </div>
                         <div className="flex gap-x-1">
-                          <span>{accounts.length}</span>
+                          <span>{usedSeats}</span>
                           <span>/</span>
-                          <span>
-                            {features.members.limit === 0
-                              ? t(($) => $['plansCommon.unlimited'], { ns: 'billing' })
-                              : features.members.limit}
-                          </span>
+                          <span>{memberLimit}</span>
                         </div>
+                        {invitees.length > 0 && (
+                          <div>
+                            ·{' '}
+                            {t(($) => $['members.seatsIncludingInvited'], {
+                              ns: 'workspaceMembers',
+                              count: invitees.length,
+                            })}
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="flex gap-x-1">
-                        <div className="shrink-0">{accounts.length}</div>
+                        <div className="shrink-0">{joinedAccounts.length}</div>
                         <div>
                           {t(($) => $['plansCommon.memberAfter'], { ns: 'billing' })}
-                          {locale !== LanguagesSupported[1] && accounts.length > 1 && 's'}
+                          {locale !== LanguagesSupported[1] && joinedAccounts.length > 1 && 's'}
                         </div>
+                        {invitees.length > 0 && (
+                          <div>
+                            ·{' '}
+                            {t(($) => $['members.invitedCount'], {
+                              ns: 'workspaceMembers',
+                              count: invitees.length,
+                            })}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -212,14 +297,11 @@ const MembersPage = () => {
                 {isMemberFull && <UpgradeBtn className="shrink-0" loc="member-invite" />}
                 {canManageMembers && (
                   <div className="shrink-0">
-                    <InviteModal
-                      isEmailSetup={systemFeatures.is_email_setup}
-                      onSend={(results) => invitationDialogHandle.openWithPayload(results)}
-                    />
+                    <InviteModal onSend={(emails) => setInvitedEmails(new Set(emails))} />
                   </div>
                 )}
               </div>
-            </div>
+            </MembersHeaderCard>
             <div
               ref={listRef}
               tabIndex={-1}
@@ -249,9 +331,10 @@ const MembersPage = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {accounts.map((account) => (
+                  {joinedAccounts.map((account) => (
                     <MemberRow
                       key={account.id}
+                      ref={invitedEmails.has(account.email.toLowerCase()) ? revealRow : undefined}
                       member={account}
                       onRemove={(row) => {
                         const adjacentFocusTargets = getAdjacentFocusTargets(row, (sibling) =>
@@ -265,13 +348,24 @@ const MembersPage = () => {
                           fallbackFocus: { current: null },
                         })
                       }}
-                      roles={account.roles ?? []}
                       isCurrentUser={userProfileEmail === account.email}
                       canManage={canManageMembers}
                       canTransferOwnership={
-                        isCurrentWorkspaceOwner && features?.is_allow_transfer_workspace === true
+                        isCurrentWorkspaceOwner && features.is_allow_transfer_workspace
                       }
                       allowMultipleRoles={systemFeatures.rbac_enabled}
+                    />
+                  ))}
+                  {invitees.map((invitee) => (
+                    <InvitedRow
+                      key={invitee.email}
+                      ref={invitedEmails.has(invitee.email.toLowerCase()) ? revealRow : undefined}
+                      invitee={invitee}
+                      canManage={canManageMembers}
+                      onRevoke={() => {
+                        revocation.reset()
+                        revokeDialog.openWithPayload(invitee)
+                      }}
                     />
                   ))}
                 </tbody>
@@ -279,89 +373,240 @@ const MembersPage = () => {
             </div>
           </div>
           <AlertDialog
+            handle={revokeDialog}
+            onOpenChange={(open, details) => {
+              if (!open && revocation.isPending && details.reason !== 'imperative-action')
+                details.cancel()
+            }}
+          >
+            {({ payload: invitee }) => (
+              <AlertDialogContent
+                backdropProps={{ forceRender: true }}
+                finalFocus={() => {
+                  if (!revocation.isSuccess) return true
+                  listRef.current?.focus({ preventScroll: true })
+                  return false
+                }}
+              >
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    {t(($) => $['members.revokeInvitationTitle'], {
+                      ns: 'workspaceMembers',
+                      email: invitee?.email ?? '',
+                    })}
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {t(($) => $['members.revokeInvitationDescription'], {
+                      ns: 'workspaceMembers',
+                    })}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                {revocationError && (
+                  <AlertDialogBody>
+                    <p role="alert" className="text-text-destructive">
+                      {revocationError}
+                    </p>
+                  </AlertDialogBody>
+                )}
+                <AlertDialogFooter>
+                  <AlertDialogCancelButton disabled={revocation.isPending}>
+                    {t(($) => $['operation.cancel'], { ns: 'common' })}
+                  </AlertDialogCancelButton>
+                  <AlertDialogConfirmButton
+                    loading={revocation.isPending}
+                    onClick={() => {
+                      if (!invitee || revocation.isPending) return
+                      revocation.mutate(
+                        {
+                          params: { workspace_id: currentWorkspace.id },
+                          body: { email: invitee.email },
+                        },
+                        {
+                          onSuccess: () => revokeDialog.close(),
+                          onError: (error) => {
+                            if (!isInvitationGone(error)) return
+                            revokeDialog.close()
+                            toast.warning(
+                              t(($) => $['members.invitationNoLongerPending'], {
+                                ns: 'workspaceMembers',
+                                email: invitee.email,
+                              }),
+                            )
+                          },
+                        },
+                      )
+                    }}
+                  >
+                    {t(($) => $['members.revokeInvitation'], { ns: 'workspaceMembers' })}
+                  </AlertDialogConfirmButton>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            )}
+          </AlertDialog>
+          <AlertDialog
             handle={removeDialog}
             onOpenChange={(open, details) => {
               if (!open && removal.isPending && details.reason !== 'imperative-action')
                 details.cancel()
             }}
             onOpenChangeComplete={(open) => {
-              if (!open) removal.reset()
+              if (!open) {
+                removal.reset()
+              }
             }}
           >
-            {({ payload }) => (
-              <AlertDialogContent
-                backdropProps={{ forceRender: true }}
-                finalFocus={() => {
-                  const fallback = payload?.fallbackFocus.current
-                  if (!fallback) return true
-                  const target =
-                    payload.adjacentFocusTargets.find((element) => element.isConnected) ?? fallback
-                  target.focus({ preventScroll: true })
-                  return false
-                }}
-              >
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    {t(($) => $['members.removeFromTeamConfirmTitle'], {
-                      ns: 'workspaceMembers',
-                      memberName: payload?.member.name || payload?.member.email || '',
-                    })}
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    {t(($) => $['members.removeFromTeamConfirmDescription'], {
-                      ns: 'workspaceMembers',
-                    })}
-                  </AlertDialogDescription>
-                  {removal.isError && (
-                    <p role="alert" className="text-text-destructive">
-                      {t(($) => $['api.actionFailed'], { ns: 'common' })}
-                    </p>
-                  )}
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancelButton disabled={removal.isPending}>
-                    {t(($) => $['operation.cancel'], { ns: 'common' })}
-                  </AlertDialogCancelButton>
-                  <AlertDialogConfirmButton
-                    loading={removal.isPending}
-                    onClick={() => {
-                      if (!payload || removal.isPending) return
-                      removal.mutate(
-                        { params: { member_id: payload.member.id } },
-                        {
-                          onSuccess: () => {
-                            payload.fallbackFocus.current = listRef.current
-                            removeDialog.close()
-                          },
-                        },
-                      )
-                    }}
-                  >
-                    {t(($) => $['operation.confirm'], { ns: 'common' })}
-                  </AlertDialogConfirmButton>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            )}
+            {({ payload }) => {
+              const showContactsRemovalDesign = Boolean(
+                payload && isContactsManagementEnabled() && payload.member.status !== 'pending',
+              )
+              const memberName = payload?.member.name || payload?.member.email || ''
+              return (
+                <AlertDialogContent
+                  backdropProps={{ forceRender: true }}
+                  className={showContactsRemovalDesign ? 'w-110' : undefined}
+                  finalFocus={() => {
+                    const fallback = payload?.fallbackFocus.current
+                    if (!fallback) return true
+                    const target =
+                      payload.adjacentFocusTargets.find((element) => element.isConnected) ??
+                      fallback
+                    target.focus({ preventScroll: true })
+                    return false
+                  }}
+                >
+                  <>
+                    {showContactsRemovalDesign && payload ? (
+                      <>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            {t(
+                              ($) =>
+                                $[
+                                  currentWorkspace.name
+                                    ? 'memberRemoval.workspaceTitle'
+                                    : 'memberRemoval.title'
+                                ],
+                              {
+                                ns: 'contacts',
+                                memberName,
+                                workspaceName: currentWorkspace.name,
+                              },
+                            )}
+                          </AlertDialogTitle>
+                        </AlertDialogHeader>
+                        <AlertDialogBody className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2.5 rounded-xl bg-background-section-burn py-2 ps-3 pe-2">
+                            <Avatar size="md">
+                              <AvatarImage src={payload.member.avatar_url || undefined} alt="" />
+                              <AvatarFallback aria-hidden>
+                                {memberName[0]?.toLocaleUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0 py-0.5">
+                              <div className="system-md-medium wrap-break-word text-text-secondary">
+                                {memberName}
+                              </div>
+                              <div className="system-xs-regular wrap-anywhere text-text-tertiary">
+                                {payload.member.email}
+                              </div>
+                            </div>
+                          </div>
+                          <AlertDialogDescription render={<div />}>
+                            <p>
+                              {t(($) => $['memberRemoval.accessImpact'], {
+                                ns: 'contacts',
+                                memberName,
+                              })}
+                            </p>
+                            <p>{t(($) => $['memberRemoval.contentImpact'], { ns: 'contacts' })}</p>
+                          </AlertDialogDescription>
+                          {removal.isError && (
+                            <p role="alert" className="text-text-destructive">
+                              {t(($) => $['api.actionFailed'], { ns: 'common' })}
+                            </p>
+                          )}
+                        </AlertDialogBody>
+                      </>
+                    ) : (
+                      <>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            {t(($) => $['members.removeFromTeamConfirmTitle'], {
+                              ns: 'workspaceMembers',
+                              memberName: payload?.member.name || payload?.member.email || '',
+                            })}
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {t(($) => $['members.removeFromTeamConfirmDescription'], {
+                              ns: 'workspaceMembers',
+                            })}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        {removal.isError && (
+                          <AlertDialogBody>
+                            <p role="alert" className="text-text-destructive">
+                              {t(($) => $['api.actionFailed'], { ns: 'common' })}
+                            </p>
+                          </AlertDialogBody>
+                        )}
+                      </>
+                    )}
+                    <AlertDialogFooter>
+                      <AlertDialogCancelButton disabled={removal.isPending}>
+                        {t(($) => $['operation.cancel'], { ns: 'common' })}
+                      </AlertDialogCancelButton>
+                      <AlertDialogConfirmButton
+                        loading={removal.isPending}
+                        onClick={() => {
+                          if (!payload || removal.isPending) return
+                          removal.mutate(
+                            { params: { member_id: payload.member.id } },
+                            {
+                              onSuccess: () => {
+                                payload.fallbackFocus.current = listRef.current
+                                removeDialog.close()
+                              },
+                            },
+                          )
+                        }}
+                      >
+                        {showContactsRemovalDesign
+                          ? t(($) => $['memberRemoval.remove'], { ns: 'contacts' })
+                          : t(($) => $['operation.confirm'], { ns: 'common' })}
+                      </AlertDialogConfirmButton>
+                    </AlertDialogFooter>
+                  </>
+                </AlertDialogContent>
+              )
+            }}
           </AlertDialog>
-          <Dialog handle={invitationDialogHandle}>
-            {({ payload: results }) => (
-              <DialogContent backdropProps={{ forceRender: true }}>
-                {results && <InvitationResultsContent invitationResults={results} />}
-              </DialogContent>
-            )}
-          </Dialog>
           <DialogContent className="w-110" backdropProps={{ forceRender: true }}>
             {member && (
-              <MemberDetailsContent
+              <form
+                className="contents"
                 key={member.id}
-                member={member}
-                canAssignRoles={
-                  canManageMembers && member.role !== 'owner' && userProfileEmail !== member.email
-                }
-                allowMultipleRoles={systemFeatures.rbac_enabled}
-                onClose={() => detailsDialogHandle.close()}
-                onAssignSubmit={(roles) => handleAssignRolesSubmit(member, roles)}
-              />
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  if (!canAssignRoles(member) || roleUpdate.isPending) return
+                  const roleIds = new FormData(event.currentTarget).getAll('roleId').map(String)
+                  roleUpdate.mutate(
+                    { params: { member_id: member.id }, body: { role_ids: roleIds } },
+                    { onSuccess: () => detailsActionsRef.current?.close() },
+                  )
+                }}
+              >
+                <fieldset className="contents" disabled={roleUpdate.isPending}>
+                  <MemberDetailsContent
+                    member={member}
+                    canAssignRoles={canAssignRoles(member)}
+                    saving={roleUpdate.isPending}
+                    allowMultipleRoles={systemFeatures.rbac_enabled}
+                  />
+                </fieldset>
+                {roleUpdate.isError && (
+                  <p role="alert">{t(($) => $['api.actionFailed'], { ns: 'common' })}</p>
+                )}
+              </form>
             )}
           </DialogContent>
         </>
@@ -370,4 +615,22 @@ const MembersPage = () => {
   )
 }
 
-export default MembersPage
+export function MembersPage() {
+  const language = getAccessControlTemplateLanguage(useLocale())
+  const workspaceId = useAtomValue(currentWorkspaceIdAtom)
+  const canManageMembers = hasPermission(
+    useAtomValue(workspacePermissionKeysAtom),
+    'workspace.member.manage',
+  )
+  usePrefetchQuery(membersQueryOptions(language))
+  usePrefetchQuery(consoleQuery.features.get.queryOptions())
+
+  return (
+    <>
+      {canManageMembers && workspaceId && <PendingInvitationsPrefetch workspaceId={workspaceId} />}
+      <Suspense fallback={<MembersPageSkeleton />}>
+        <MembersPageContent language={language} canManageMembers={canManageMembers} />
+      </Suspense>
+    </>
+  )
+}

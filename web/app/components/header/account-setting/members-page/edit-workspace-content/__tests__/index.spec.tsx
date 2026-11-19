@@ -5,7 +5,7 @@ import { createRef } from 'react'
 import { vi } from 'vite-plus/test'
 import { consoleClient } from '@/service/console'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
-import EditWorkspaceContent from '../index'
+import { EditWorkspaceContent } from '../index'
 
 const toastMocks = vi.hoisted(() => ({
   mockNotify: vi.fn(),
@@ -83,9 +83,12 @@ describe('EditWorkspaceContent', () => {
     await user.click(getSaveButton())
 
     await waitFor(() => {
-      expect(consoleClient.workspaces.info.post).toHaveBeenCalledWith({
-        body: { name: 'Renamed Workspace' },
-      })
+      expect(consoleClient.workspaces.info.post).toHaveBeenCalledWith(
+        {
+          body: { name: 'Renamed Workspace' },
+        },
+        { context: { silent: true } },
+      )
       expect(mockAssign).toHaveBeenCalledWith('http://localhost')
     })
 
@@ -150,7 +153,7 @@ describe('EditWorkspaceContent', () => {
 
     expect(getSaveButton()).toBeDisabled()
     expect(input).toHaveAttribute('aria-invalid', 'true')
-    expect(screen.getByRole('alert')).toBeInTheDocument()
+    expect(input).toHaveAccessibleDescription(/common\.errorMsg\.fieldRequired/)
   })
 
   it('should not submit when the form is submitted while save is disabled', async () => {

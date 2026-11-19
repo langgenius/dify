@@ -355,6 +355,135 @@ Verify password reset token validity
 | 429 | Too Many Requests | **application/json**: [EmailPasswordResetLimitError](#emailpasswordresetlimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /form/human-input/v2/public/{form_token}
+Read a public v2 form definition by delivery token without an OTP or login session.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| form_token | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Form definition | **application/json**: [FormDefinitionResponse](#formdefinitionresponse)<br> |
+| 404 | Form not found | **application/json**: [HumanInputFormNotFoundError](#humaninputformnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 412 | Form already submitted or expired | **application/json**: [HumanInputFormExpiredError](#humaninputformexpirederror)<br>[HumanInputFormSubmittedError](#humaninputformsubmittederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /form/human-input/v2/public/{form_token}
+Submit a form with inputs, an action, and email verification proof.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| form_token | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [HumanInputV2FormSubmitRequest](#humaninputv2formsubmitrequest)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Form submitted | **application/json**: [FormSubmitResponse](#formsubmitresponse)<br> |
+| 400 | Invalid form or email proof | **application/json**: [HumanInputChallengeExpiredError](#humaninputchallengeexpirederror)<br>[HumanInputChallengeStaleError](#humaninputchallengestaleerror)<br>[HumanInputInvalidOtpError](#humaninputinvalidotperror)<br>[InvalidInputError](#invalidinputerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Form not found | **application/json**: [HumanInputFormNotFoundError](#humaninputformnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Workflow not active | **application/json**: [WorkflowNotActiveError](#workflownotactiveerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 412 | Already submitted or expired | **application/json**: [HumanInputFormExpiredError](#humaninputformexpirederror)<br>[HumanInputFormSubmittedError](#humaninputformsubmittederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Invalid request body | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | Email verification unavailable | **application/json**: [HumanInputV2UnavailableError](#humaninputv2unavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /form/human-input/v2/public/{form_token}/access-request
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| form_token | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [FormAccessRequestResponse](#formaccessrequestresponse)<br> |
+| 404 | Not Found | **application/json**: [HumanInputFormNotFoundError](#humaninputformnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 412 | Precondition Failed | **application/json**: [HumanInputFormExpiredError](#humaninputformexpirederror)<br>[HumanInputFormSubmittedError](#humaninputformsubmittederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [HumanInputAccessRateLimitExceededError](#humaninputaccessratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [HumanInputAccessDeliveryFailedError](#humaninputaccessdeliveryfailederror)<br>[HumanInputV2UnavailableError](#humaninputv2unavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /form/human-input/v2/public/{form_token}/upload-token
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| form_token | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [FormUploadTokenResponse](#formuploadtokenresponse)<br> |
+| 403 | Forbidden | **application/json**: [InvalidUploadTokenError](#invaliduploadtokenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Form not found | **application/json**: [HumanInputFormNotFoundError](#humaninputformnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 412 | Already submitted or expired | **application/json**: [HumanInputFormExpiredError](#humaninputformexpirederror)<br>[HumanInputFormSubmittedError](#humaninputformsubmittederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /form/human-input/v2/{form_token}
+Read a v2 form using the original EndUser's Web App passport.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| form_token | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Form retrieved | **application/json**: [WebAppHumanInputV2FormDefinitionResponse](#webapphumaninputv2formdefinitionresponse)<br> |
+| 401 | Invalid passport | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Form not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 409 | Already submitted | **application/json**: [AlreadySubmittedError](#alreadysubmittederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 410 | Expired | **application/json**: [ExpiredError](#expirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /form/human-input/v2/{form_token}
+Submit a v2 form using the original EndUser's Web App passport.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| form_token | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WebAppHumanInputV2SubmitPayload](#webapphumaninputv2submitpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Approval accepted | **application/json**: [WebAppHumanInputV2SubmitResponse](#webapphumaninputv2submitresponse)<br> |
+| 400 | Invalid inputs | **application/json**: [InvalidInputError](#invalidinputerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Invalid passport | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Form not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 409 | Already submitted or workflow not active | **application/json**: [AlreadySubmittedError](#alreadysubmittederror)<br>[WorkflowNotActiveError](#workflownotactiveerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 410 | Expired | **application/json**: [ExpiredError](#expirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Invalid request body | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /form/human_input/{form_token}
 **Get human input form definition by token**
 
@@ -450,6 +579,66 @@ POST /api/form/human_input/<form_token>/upload-token
 | 403 | Forbidden | **application/json**: [InvalidUploadTokenError](#invaliduploadtokenerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [RemoteFileNotFoundError](#remotefilenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 412 | Precondition Failed | **application/json**: [HumanInputFormExpiredError](#humaninputformexpirederror)<br>[HumanInputFormSubmittedError](#humaninputformsubmittederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Request Entity Too Large | **application/json**: [FileTooLargeError](#filetoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported Media Type | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [RemoteFileInvalidResponseError](#remotefileinvalidresponseerror)<br>[RemoteFileUnavailableError](#remotefileunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /human-input/v2/files
+Upload a file or a remote URL using a v2 upload grant.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Authorization | header | Bearer v2 upload grant | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  No | **multipart/form-data**: { **"file"**: binary, **"url"**: string }<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | File uploaded | **application/json**: [FileWithSignedUrl](#filewithsignedurl)<br> |
+| 400 | Invalid upload | **application/json**: [FileExtensionBlockedError](#fileextensionblockederror)<br>[FilenameNotExistsError](#filenamenotexistserror)<br>[MalformedUploadTokenError](#malformeduploadtokenerror)<br>[NoFileUploadedError](#nofileuploadederror)<br>[RemoteFileAccessDeniedError](#remotefileaccessdeniederror)<br>[RemoteFileInvalidUrlError](#remotefileinvalidurlerror)<br>[RemoteFileUrlBlockedError](#remotefileurlblockederror)<br>[TooManyFilesError](#toomanyfileserror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Grant required | **application/json**: [UploadTokenRequiredError](#uploadtokenrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Invalid grant | **application/json**: [InvalidUploadTokenError](#invaliduploadtokenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Form not found | **application/json**: [HumanInputFormNotFoundError](#humaninputformnotfounderror)<br>[RemoteFileNotFoundError](#remotefilenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 412 | Form inactive | **application/json**: [HumanInputFormExpiredError](#humaninputformexpirederror)<br>[HumanInputFormSubmittedError](#humaninputformsubmittederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Request Entity Too Large | **application/json**: [FileTooLargeError](#filetoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported Media Type | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [RemoteFileInvalidResponseError](#remotefileinvalidresponseerror)<br>[RemoteFileUnavailableError](#remotefileunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /human-input/v2/files/remote
+Fetch a remote file using a v2 upload grant.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Authorization | header |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [HumanInputV2RemoteUploadPayload](#humaninputv2remoteuploadpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | File uploaded | **application/json**: [FileWithSignedUrl](#filewithsignedurl)<br> |
+| 400 | Invalid upload | **application/json**: [FileExtensionBlockedError](#fileextensionblockederror)<br>[FilenameNotExistsError](#filenamenotexistserror)<br>[MalformedUploadTokenError](#malformeduploadtokenerror)<br>[NoFileUploadedError](#nofileuploadederror)<br>[RemoteFileAccessDeniedError](#remotefileaccessdeniederror)<br>[RemoteFileInvalidUrlError](#remotefileinvalidurlerror)<br>[RemoteFileUrlBlockedError](#remotefileurlblockederror)<br>[TooManyFilesError](#toomanyfileserror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Grant required | **application/json**: [UploadTokenRequiredError](#uploadtokenrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Invalid grant | **application/json**: [InvalidUploadTokenError](#invaliduploadtokenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Form not found | **application/json**: [HumanInputFormNotFoundError](#humaninputformnotfounderror)<br>[RemoteFileNotFoundError](#remotefilenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 412 | Form inactive | **application/json**: [HumanInputFormExpiredError](#humaninputformexpirederror)<br>[HumanInputFormSubmittedError](#humaninputformsubmittederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 413 | Request Entity Too Large | **application/json**: [FileTooLargeError](#filetoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 415 | Unsupported Media Type | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 502 | Bad Gateway | **application/json**: [RemoteFileInvalidResponseError](#remotefileinvalidresponseerror)<br>[RemoteFileUnavailableError](#remotefileunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
@@ -953,6 +1142,9 @@ GET /api/workflow/<task_id>/events
 
 Returns Server-Sent Events stream.
 
+Requires a run owned by the current app and end user. Pending V1 forms
+expose only Web App recipient tokens; invalid ownership returns 404.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1029,6 +1221,12 @@ Agent config version not found.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | AgentVersionNotFoundError |  | Agent config version not found. |  |
+
+#### AlreadySubmittedError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AlreadySubmittedError |  |  |  |
 
 #### AnyJSONValue
 
@@ -1283,6 +1481,12 @@ stays open because ``HTTPException.data`` may carry extra keys.
 | ---- | ---- | ----------- | -------- |
 | ExecutionContentType | string |  |  |
 
+#### ExpiredError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ExpiredError |  |  |  |
+
 #### FileExtensionBlockedError
 
 The file extension is blocked for security reasons.
@@ -1396,17 +1600,87 @@ The specified filename does not exist.
 | email | string |  | Yes |
 | language | string |  | No |
 
+#### FormAccessRequestResponse
+
+Response body returned after creating one OTP challenge.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| challenge_token | string | The token used to complete the OTP challenge. | Yes |
+| expires_in_seconds | integer | Seconds until the current OTP challenge expires. | Yes |
+| resend_after_seconds | integer | Seconds until another OTP challenge may be requested. | Yes |
+
+#### FormDefinitionResponse
+
+Response body containing a resolved human-input form definition.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expiration_time | integer | Unix timestamp when the current form expires. | Yes |
+| form_content | string | Rendered form body shown to the approver. | No |
+| inputs | [ [FormInputConfig](#forminputconfig) ] | Resolved form input definitions. | No |
+| resolved_default_values | object | Default values after variable resolution and stringification. | No |
+| user_actions | [ [UserActionConfig](#useractionconfig) ] | Action buttons that can complete the form. | No |
+
 #### FormInputConfig
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | FormInputConfig | [ParagraphInputConfig](#paragraphinputconfig)<br>[SelectInputConfig](#selectinputconfig)<br>[FileInputConfig](#fileinputconfig)<br>[FileListInputConfig](#filelistinputconfig) |  |  |
 
+#### FormSubmitResponse
+
+Empty response body returned after a Human Input v2 form submission.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+
+#### FormUploadTokenResponse
+
+Response body returned when issuing a Human Input v2 upload token.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expires_at | integer |  | Yes |
+| upload_token | string |  | Yes |
+
 #### GeneratedAppResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | GeneratedAppResponse |  |  |  |
+
+#### HumanInputAccessDeliveryFailedError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| HumanInputAccessDeliveryFailedError |  |  |  |
+
+#### HumanInputAccessRateLimitExceededError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| HumanInputAccessRateLimitExceededError |  |  |  |
+
+#### HumanInputActionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| button_style | [ButtonStyle](#buttonstyle) |  | Yes |
+| id | string |  | Yes |
+| title | string |  | Yes |
+
+#### HumanInputChallengeExpiredError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| HumanInputChallengeExpiredError |  |  |  |
+
+#### HumanInputChallengeStaleError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| HumanInputChallengeStaleError |  |  |  |
 
 #### HumanInputContent
 
@@ -1436,6 +1710,7 @@ Parsed multipart form fields for HITL uploads.
 | form_content | string |  | Yes |
 | form_id | string |  | Yes |
 | form_token | string |  | No |
+| form_version | string, <br>**Available values:** "1", "2", <br>**Default:** 1 | *Enum:* `"1"`, `"2"` | No |
 | inputs | [ [FormInputConfig](#forminputconfig) ] |  | No |
 | node_id | string |  | Yes |
 | node_title | string |  | Yes |
@@ -1458,6 +1733,12 @@ Parsed multipart form fields for HITL uploads.
 | ---- | ---- | ----------- | -------- |
 | HumanInputFormExpiredError |  |  |  |
 
+#### HumanInputFormNotFoundError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| HumanInputFormNotFoundError |  |  |  |
+
 #### HumanInputFormSubmissionData
 
 | Name | Type | Description | Required |
@@ -1471,6 +1752,8 @@ Parsed multipart form fields for HITL uploads.
 
 #### HumanInputFormSubmitPayload
 
+Legacy Human Input v1 submit payload shared by existing runtime surfaces.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | action | string | ID of the action button the recipient selected. Must match one of the `id` values from the form's `user_actions` list. | Yes |
@@ -1483,11 +1766,15 @@ Parsed multipart form fields for HITL uploads.
 
 #### HumanInputFormSubmittedError
 
-This form has already been submitted by another user, form_id={form_id}
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| HumanInputFormSubmittedError |  |  |  |
+
+#### HumanInputInvalidOtpError
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| HumanInputFormSubmittedError |  | This form has already been submitted by another user, form_id={form_id} |  |
+| HumanInputInvalidOtpError |  |  |  |
 
 #### HumanInputUploadTokenResponse
 
@@ -1495,6 +1782,29 @@ This form has already been submitted by another user, form_id={form_id}
 | ---- | ---- | ----------- | -------- |
 | expires_at | integer |  | Yes |
 | upload_token | string |  | Yes |
+
+#### HumanInputV2FormSubmitRequest
+
+Public Human Input v2 submit payload, independent from the v1 form contract.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| action | string | Identifier of the selected Human Input v2 action. | Yes |
+| challenge_token | string | OTP challenge token returned by the Human Input v2 access-request endpoint. | No |
+| inputs | object | Submitted form values keyed by output variable name. | Yes |
+| otp_code | string | OTP code required when the current Human Input v2 approver uses email proof. | No |
+
+#### HumanInputV2RemoteUploadPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| url | string (uri) |  | Yes |
+
+#### HumanInputV2UnavailableError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| HumanInputV2UnavailableError |  |  |  |
 
 #### InvalidEmailError
 
@@ -1509,6 +1819,12 @@ The email address is not valid.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | InvalidFormDataError |  |  |  |
+
+#### InvalidInputError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| InvalidInputError |  |  |  |
 
 #### InvalidOrExpiredTokenError
 
@@ -1716,6 +2032,7 @@ Form input definition.
 | opening_statement |  |  | No |
 | retriever_resource | { **"enabled"**: boolean } |  | Yes |
 | sensitive_word_avoidance | { **"enabled"**: boolean } |  | Yes |
+| show_thoughts | { **"enabled"**: boolean } |  | No |
 | speech_to_text | { **"enabled"**: boolean } |  | Yes |
 | suggested_questions | [ string ] |  | Yes |
 | suggested_questions_after_answer | { **"enabled"**: boolean } |  | Yes |
@@ -1856,6 +2173,68 @@ The remote file URL is not allowed.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | RemoteFileUrlBlockedError |  | The remote file URL is not allowed. |  |
+
+#### ResolvedFileListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | Yes |
+| allowed_file_types | [ [FileType](#filetype) ] |  | Yes |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | Yes |
+| number_limits | integer |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | Yes |
+
+#### ResolvedFileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | Yes |
+| allowed_file_types | [ [FileType](#filetype) ] |  | Yes |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | Yes |
+
+#### ResolvedForm
+
+Keep the existing resolved-form wire shape without exposing storage metadata.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| actions | [ [HumanInputActionResponse](#humaninputactionresponse) ] |  | Yes |
+| legacy_form_content | string |  | Yes |
+| parts | [ [ResolvedPartResponse](#resolvedpartresponse) ] |  | Yes |
+| title | string |  | Yes |
+
+#### ResolvedMarkdownResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| text | string |  | Yes |
+| type | string |  | Yes |
+
+#### ResolvedParagraphResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default_value | string |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | Yes |
+
+#### ResolvedPartResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ResolvedPartResponse | [ResolvedMarkdownResponse](#resolvedmarkdownresponse)<br>[ResolvedParagraphResponse](#resolvedparagraphresponse)<br>[ResolvedSelectResponse](#resolvedselectresponse)<br>[ResolvedFileResponse](#resolvedfileresponse)<br>[ResolvedFileListResponse](#resolvedfilelistresponse) |  |  |
+
+#### ResolvedSelectResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default_value | string |  | Yes |
+| options | [ string ] |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | Yes |
 
 #### ResultResponse
 
@@ -2021,7 +2400,6 @@ Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 | deployment_edition | [DeploymentEdition](#deploymentedition) |  | Yes |
 | enable_app_deploy | boolean |  | Yes |
 | enable_change_email | boolean, <br>**Default:** true |  | Yes |
-| enable_collaboration_mode | boolean, <br>**Default:** true |  | Yes |
 | enable_creators_platform | boolean |  | Yes |
 | enable_email_code_login | boolean |  | Yes |
 | enable_email_password_login | boolean, <br>**Default:** true |  | Yes |
@@ -2149,6 +2527,25 @@ in form definition, or a variable while the workflow is running.
 | remove_webapp_brand | boolean |  | Yes |
 | replace_webapp_logo | string |  | No |
 
+#### WebAppHumanInputV2FormDefinitionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expiration_time | integer |  | Yes |
+| resolved_form | [ResolvedForm](#resolvedform) |  | Yes |
+
+#### WebAppHumanInputV2SubmitPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| action | string |  | Yes |
+| inputs | object |  | Yes |
+
+#### WebAppHumanInputV2SubmitResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+
 #### WebAppSiteResponse
 
 | Name | Type | Description | Required |
@@ -2237,6 +2634,12 @@ Too many form requests. Please try again later.
 | show_workflow_steps | boolean |  | No |
 | title | string |  | Yes |
 | use_icon_as_answer_icon | boolean |  | No |
+
+#### WorkflowNotActiveError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WorkflowNotActiveError |  |  |  |
 
 #### WorkflowRunPayload
 

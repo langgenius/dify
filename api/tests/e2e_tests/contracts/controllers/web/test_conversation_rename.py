@@ -36,9 +36,10 @@ from models.enums import ConversationFromSource, CustomizeTokenStrategy
 from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, Site
 from models.workflow import WorkflowType
 from repositories.conversation_repository import ConversationRepository
-from services.conversation_name_generator import generate_conversation_name
+from services.conversation_name_generator import DefaultModelConversationNameGenerator
 from services.conversation_name_service import ConversationNameService
 from tests.helpers.unit.model_factories import make_app, make_conversation, make_end_user, make_message, make_workflow
+from tests.helpers.unit.services.tracing_ports import untraced_scopes
 
 _CREATED_AT = datetime(2026, 1, 2, 3, 4, 5)
 _UPDATED_AT = datetime(2026, 1, 3, 3, 4, 5)
@@ -157,7 +158,7 @@ def harness(
     app.extensions["application_services"] = _Services(
         ConversationNameService(
             conversations=ConversationRepository(session_factory=repository_factory),
-            generate_name=generate_conversation_name,
+            generate_name=DefaultModelConversationNameGenerator(trace_scopes=untraced_scopes()),
         )
     )
     api = ExternalApi(app)
@@ -306,6 +307,7 @@ def test_end_user_outside_app_owner_scope_is_rejected(harness: _Harness, field: 
 def test_auto_rename_preserves_existing_name_when_real_provider_lookup_fails(
     harness: _Harness, caplog: pytest.LogCaptureFixture
 ) -> None:
+    """Given a provider lookup failure, keep the existing conversation name and log the cause."""
     response = harness.post({"auto_generate": True, "name": "Ignored manual title"})
     assert response.status_code == HTTPStatus.OK
     assert response.get_json()["name"] == "Original title"
@@ -313,7 +315,7 @@ def test_auto_rename_preserves_existing_name_when_real_provider_lookup_fails(
     failures = [
         record.exc_info[1]
         for record in caplog.records
-        if record.name == "services.conversation_name_service" and record.exc_info is not None
+        if record.name == "services.conversation_name_service" and isinstance(record.exc_info, tuple)
     ]
     assert len(failures) == 1
     assert isinstance(failures[0], ProviderTokenNotInitError)

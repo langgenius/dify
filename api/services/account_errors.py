@@ -37,6 +37,10 @@ class InvalidInvitationError(AccountApplicationError):
     """The invitation is invalid, stale, or missing required activation data."""
 
 
+class InvitationWorkspaceFullError(AccountApplicationError):
+    """The invited workspace reached its member limit, so the invitation cannot be accepted yet."""
+
+
 class InvitationAccountMismatchError(AccountApplicationError):
     """An authenticated account attempted to consume another account's invitation."""
 
@@ -258,6 +262,18 @@ class OAuthRegistrationError(AccountApplicationError):
 
 class EducationRateLimitExceededError(AccountApplicationError):
     """Too many education verification or activation requests were made."""
+
+
+class EducationVerificationFailedError(AccountApplicationError):
+    """The billing service could not verify the account's education identity."""
+
+
+class EducationActivationFailedError(AccountApplicationError):
+    """The billing service could not create the account's education identity."""
+
+
+class EducationRequestInProgressError(AccountApplicationError):
+    """An earlier education request for the account is still being processed."""
 
 
 class LoginRateLimitError(AccountApplicationError):

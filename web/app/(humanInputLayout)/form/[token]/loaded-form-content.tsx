@@ -1,6 +1,6 @@
-import type { FormData } from './form'
 import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
 import type { UserAction } from '@/app/components/workflow/nodes/human-input/types'
+import type { LegacyHumanInputFormData as FormData } from '@/features/human-input/form/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { produce } from 'immer'
@@ -15,7 +15,7 @@ import {
   initializeInputs,
   splitByOutputVar,
 } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
-import BrandingFooter from './branding-footer'
+import BrandingFooter from '@/features/human-input/form/branding-footer'
 
 type LoadedFormContentProps = {
   formData: FormData

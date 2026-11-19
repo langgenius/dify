@@ -114,8 +114,8 @@ function render(ui: ReactElement<ComponentProps<typeof NotionPageSelector>>) {
       consoleQuery.notion.preImport.pages.get.queryKey({
         input: {
           query: {
-            dataset_id: ui.props.datasetId ?? '',
             credential_id: ui.props.credentialList[0]?.id ?? '',
+            ...(ui.props.datasetId && { dataset_id: ui.props.datasetId }),
           },
         },
       }),
@@ -140,21 +140,50 @@ describe('NotionPageSelector Base', () => {
     expect(screen.getByTestId('notion-page-selector-loading')).toBeInTheDocument()
   })
 
-  it('should render connector and open settings when fetch fails', async () => {
+  it('shows the connector without requesting pages when no credential exists', () => {
     seedPages = false
-    fetchPages.mockRejectedValue(new Error('Notion unavailable'))
+
+    render(<NotionPageSelector credentialList={[]} onSelect={vi.fn()} />)
+
+    expect(
+      screen.getByRole('button', { name: 'datasetCreation.stepOne.connect' }),
+    ).toBeInTheDocument()
+    expect(fetchPages).not.toHaveBeenCalled()
+  })
+
+  it.each([undefined, ''])(
+    'omits an absent dataset ID when loading pages for a new dataset',
+    async (datasetId) => {
+      seedPages = false
+
+      render(
+        <NotionPageSelector
+          credentialList={mockCredentialList}
+          onSelect={vi.fn()}
+          datasetId={datasetId}
+        />,
+      )
+
+      expect(await screen.findByText('Root 1')).toBeInTheDocument()
+      expect(fetchPages).toHaveBeenCalledWith({ query: { credential_id: 'c1' } })
+    },
+  )
+
+  it('shows a retryable error instead of a connector when page loading fails', async () => {
+    seedPages = false
+    fetchPages.mockRejectedValueOnce(new Error('Notion unavailable'))
 
     const user = userEvent.setup()
     render(<NotionPageSelector credentialList={mockCredentialList} onSelect={vi.fn()} />)
 
-    const connectButton = await screen.findByRole('button', {
-      name: 'datasetCreation.stepOne.connect',
-    })
-    await user.click(connectButton)
+    expect(await screen.findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+    expect(
+      screen.queryByRole('button', { name: 'datasetCreation.stepOne.connect' }),
+    ).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
 
-    await waitFor(() =>
-      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('data-source'),
-    )
+    expect(await screen.findByText('Root 1')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('should render page selector and allow selecting a page tree', async () => {

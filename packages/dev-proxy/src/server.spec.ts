@@ -119,7 +119,7 @@ describe('dev proxy server', () => {
 
     const requestHeaders = fetchImpl.mock.calls[0]?.[1]?.headers
     if (!(requestHeaders instanceof Headers))
-      throw new Error('Expected proxy request headers to be Headers')
+      throw new TypeError('Expected proxy request headers to be Headers')
 
     expect(requestHeaders.get('cookie')).toBe('__Host-access_token=abc; theme=dark')
     expect(requestHeaders.get('origin')).toBe('https://cloud.example.com')
@@ -156,9 +156,59 @@ describe('dev proxy server', () => {
     // Assert
     const requestHeaders = fetchImpl.mock.calls[0]?.[1]?.headers
     if (!(requestHeaders instanceof Headers))
-      throw new Error('Expected proxy request headers to be Headers')
+      throw new TypeError('Expected proxy request headers to be Headers')
 
     expect(requestHeaders.get('cookie')).toBe('access_token=abc; refresh_token=def')
+  })
+
+  // Scenario: configured gateway headers must override stale client headers without changing proxy invariants.
+  it('should merge configured request headers only into the matching route', async () => {
+    // Arrange
+    const fetchImpl = vi.fn<typeof fetch>().mockImplementation(async () => new Response('ok'))
+    const app = createDevProxyApp({
+      routes: [
+        {
+          paths: '/console/api',
+          target: 'https://cloud.example.com',
+          cookieRewrite: { hostPrefixCookies: ['access_token'] },
+          requestHeaders: {
+            'CF-Access-Client-Id': 'configured-id',
+            'CF-Access-Client-Secret': 'configured-secret',
+            Host: 'wrong.example.com',
+            Connection: 'keep-alive, X-Hop',
+            'X-Hop': 'configured-hop',
+            'Accept-Encoding': 'gzip',
+            Origin: 'https://wrong.example.com',
+          },
+        },
+        { paths: '/api', target: 'https://other.example.com' },
+      ],
+      fetchImpl,
+    })
+
+    // Act
+    await app.request('http://localhost:5001/console/api/apps', {
+      headers: {
+        Cookie: 'access_token=abc; theme=dark',
+        'cf-access-client-id': 'stale-id',
+        'cf-access-client-secret': 'stale-secret',
+      },
+    })
+    await app.request('http://localhost:5001/api/apps')
+
+    // Assert
+    const configuredHeaders = new Headers(fetchImpl.mock.calls[0]?.[1]?.headers)
+    expect(configuredHeaders.get('cf-access-client-id')).toBe('configured-id')
+    expect(configuredHeaders.get('cf-access-client-secret')).toBe('configured-secret')
+    expect(configuredHeaders.get('cookie')).toBe('__Host-access_token=abc; theme=dark')
+    expect(configuredHeaders.get('host')).toBeNull()
+    expect(configuredHeaders.get('connection')).toBeNull()
+    expect(configuredHeaders.get('x-hop')).toBeNull()
+    expect(configuredHeaders.get('accept-encoding')).toBe('identity')
+    expect(configuredHeaders.get('origin')).toBe('https://cloud.example.com')
+    const otherHeaders = new Headers(fetchImpl.mock.calls[1]?.[1]?.headers)
+    expect(otherHeaders.get('cf-access-client-id')).toBeNull()
+    expect(otherHeaders.get('cf-access-client-secret')).toBeNull()
   })
 
   // Scenario: local HTTP upstreams expect local cookie names even when cookie rewriting is configured.
@@ -188,7 +238,7 @@ describe('dev proxy server', () => {
     // Assert
     const requestHeaders = fetchImpl.mock.calls[0]?.[1]?.headers
     if (!(requestHeaders instanceof Headers))
-      throw new Error('Expected proxy request headers to be Headers')
+      throw new TypeError('Expected proxy request headers to be Headers')
 
     expect(requestHeaders.get('cookie')).toBe('access_token=abc; refresh_token=def')
   })
@@ -249,7 +299,7 @@ describe('dev proxy server', () => {
     // Assert
     const requestHeaders = fetchImpl.mock.calls[0]?.[1]?.headers
     if (!(requestHeaders instanceof Headers))
-      throw new Error('Expected proxy request headers to be Headers')
+      throw new TypeError('Expected proxy request headers to be Headers')
 
     expect(requestHeaders.get('cookie')).toBe(
       '__Host-access_token=current-access; __Host-csrf_token=current-csrf; theme=dark',
@@ -295,6 +345,8 @@ describe('dev proxy server', () => {
     const sockets = new Set<net.Socket>()
     let upstreamRequest:
       | {
+          clientId: string | string[] | undefined
+          clientSecret: string | string[] | undefined
           connection: string | undefined
           cookie: string | undefined
           keepAlive: string | string[] | undefined
@@ -310,6 +362,8 @@ describe('dev proxy server', () => {
     upstreamServer.on('connection', (socket) => sockets.add(socket))
     upstreamServer.on('upgrade', (request, socket) => {
       upstreamRequest = {
+        clientId: request.headers['cf-access-client-id'],
+        clientSecret: request.headers['cf-access-client-secret'],
         connection: request.headers.connection,
         cookie: request.headers.cookie,
         keepAlive: request.headers['keep-alive'],
@@ -349,7 +403,17 @@ describe('dev proxy server', () => {
     proxyServer.on(
       'upgrade',
       createWebSocketUpgradeHandler({
-        routes: [{ paths: '/socket.io', target: upstreamOrigin, cookieRewrite }],
+        routes: [
+          {
+            paths: '/socket.io',
+            target: upstreamOrigin,
+            cookieRewrite,
+            requestHeaders: {
+              'CF-Access-Client-Id': 'configured-id',
+              'CF-Access-Client-Secret': 'configured-secret',
+            },
+          },
+        ],
       }),
     )
     const proxyPort = await listen(proxyServer)
@@ -378,6 +442,8 @@ describe('dev proxy server', () => {
               'Proxy-Authorization: Basic secret',
               'TE: trailers',
               'Origin: http://localhost:3000',
+              'CF-Access-Client-Id: stale-id',
+              'CF-Access-Client-Secret: stale-secret',
               `Cookie: ${accessTokenCookieName}=secret`,
               '',
               '',
@@ -410,6 +476,8 @@ describe('dev proxy server', () => {
       expect(response).not.toContain('__Host-access_token')
       expect(response).not.toContain('__Secure-refresh_token')
       expect(upstreamRequest).toEqual({
+        clientId: 'configured-id',
+        clientSecret: 'configured-secret',
         connection: 'Upgrade',
         cookie: 'access_token=secret',
         keepAlive: undefined,

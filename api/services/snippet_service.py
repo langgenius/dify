@@ -322,6 +322,7 @@ class SnippetService:
 
         with self._session_scope() as session:
             session.add(snippet)
+            session.flush()
             self._commit_if_owned(session)
 
         return snippet
@@ -375,6 +376,15 @@ class SnippetService:
         :param snippet: Snippet to delete
         :return: True if deleted successfully
         """
+        from models.evaluation import EvaluationTargetType
+        from services.evaluation_service import EvaluationService
+
+        EvaluationService.stage_target_evaluation_cleanup(
+            session=session,
+            tenant_id=snippet.tenant_id,
+            target_type=EvaluationTargetType.SNIPPETS.value,
+            target_id=snippet.id,
+        )
         SnippetService._delete_draft_variable_files(session=session, snippet=snippet)
         candidate_agent_ids = {
             agent_id

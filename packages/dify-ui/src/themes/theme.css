@@ -892,6 +892,11 @@
   --color-components-chart-area-1: var(--color-components-chart-area-1);
   --color-components-chart-area-2: var(--color-components-chart-area-2);
 
+  --color-components-brand-mark-ink: var(--color-components-brand-mark-ink);
+  --color-components-brand-mark-ink-deep: var(--color-components-brand-mark-ink-deep);
+  --color-components-brand-mark-ink-muted: var(--color-components-brand-mark-ink-muted);
+  --color-components-brand-mark-ink-muted-deep: var(--color-components-brand-mark-ink-muted-deep);
+
   --color-divider-subtle: var(--color-divider-subtle);
   --color-divider-regular: var(--color-divider-regular);
   --color-divider-deep: var(--color-divider-deep);

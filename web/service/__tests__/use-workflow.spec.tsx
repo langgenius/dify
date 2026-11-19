@@ -86,6 +86,7 @@ const createEnvironmentDeployment = ({
   environmentId: string
   targetVersion?: WorkflowVersion
 }): EnvironmentDeployment => ({
+  deployment_id: `deployment-${environmentId}`,
   access: {
     enable_api: false,
     enable_site: false,
@@ -194,7 +195,12 @@ describe('useUpdateWorkflow', () => {
 
   it.each([
     {
-      resource: { kind: 'app', appId: 'owner', mode: 'workflow' } satisfies EditorResource,
+      resource: {
+        kind: 'app',
+        collaborationEnabled: false,
+        appId: 'owner',
+        mode: 'workflow',
+      } satisfies EditorResource,
       path: '/apps/owner',
       key: (id: string) =>
         consoleQuery.apps.byAppId.workflows.get.key({ input: { params: { app_id: id } } }),
@@ -538,7 +544,10 @@ describe('useUpdateWorkflow', () => {
 
 describe('useRestoreWorkflow', () => {
   const resources = [
-    { resource: { kind: 'app', appId: 'app-1', mode: 'advanced-chat' }, path: '/apps/app-1' },
+    {
+      resource: { kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'advanced-chat' },
+      path: '/apps/app-1',
+    },
     {
       resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
       path: '/rag/pipelines/pipeline-1',

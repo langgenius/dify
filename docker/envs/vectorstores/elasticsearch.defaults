@@ -1,0 +1,21 @@
+# Defaults for elasticsearch. Copy this file to elasticsearch.env to customize it.
+# Edit the settings below in the copy; docker/.env takes precedence.
+# Optional application settings are commented to retain their application defaults.
+
+# ELASTICSEARCH_CLOUD_URL=YOUR-ELASTICSEARCH_CLOUD_URL
+ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD-elastic}
+# Set KIBANA_PORT in docker/.env; Compose needs it before loading service files.
+# ELASTICSEARCH_USE_CLOUD=false
+# ELASTICSEARCH_API_KEY=YOUR-ELASTICSEARCH_API_KEY
+# ELASTICSEARCH_VERIFY_CERTS=False
+# ELASTICSEARCH_CA_CERTS=
+# ELASTICSEARCH_REQUEST_TIMEOUT=100000
+# ELASTICSEARCH_RETRY_ON_TIMEOUT=True
+# ELASTICSEARCH_MAX_RETRIES=10
+ELASTICSEARCH_HOST=${ELASTICSEARCH_HOST-elasticsearch}
+# Set ELASTICSEARCH_PORT in docker/.env; Compose needs it before loading service files.
+# ELASTICSEARCH_USERNAME=elastic
+# Set VECTOR_STORE in docker/.env to select the backend and its Compose profile together.
+
+# Container variable mappings; keep these expressions unchanged in the copy.
+ELASTIC_PASSWORD=${ELASTICSEARCH_PASSWORD:-elastic}

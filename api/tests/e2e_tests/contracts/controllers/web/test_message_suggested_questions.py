@@ -42,6 +42,7 @@ from services.message_suggested_questions_service import (
     MessageSuggestedQuestionsService,
 )
 from tests.helpers.unit.model_factories import make_app, make_conversation, make_end_user, make_message
+from tests.helpers.unit.services.tracing_ports import untraced_scopes
 
 
 @dataclass
@@ -157,7 +158,11 @@ def harness(
     queries = SuggestedQuestionsQuery(
         session_factory=read_factory, repository=MessageRepository(session_factory=read_factory)
     )
-    services = _Services(MessageSuggestedQuestionsService(queries=queries, generator=SuggestedQuestionsGenerator()))
+    services = _Services(
+        MessageSuggestedQuestionsService(
+            queries=queries, generator=SuggestedQuestionsGenerator(trace_scopes=untraced_scopes())
+        )
+    )
     app.extensions["application_services"] = services
     api = ExternalApi(app)
     api.add_resource(message_controller.MessageSuggestedQuestionApi, "/messages/<uuid:message_id>/suggested-questions")
@@ -185,6 +190,7 @@ def test_chat_modes_return_empty_questions_when_stored_provider_config_is_invali
     mode: AppMode,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
+    """Given invalid saved provider settings, return no questions and log the internal cause."""
     with harness.factory.begin() as session:
         session.execute(update(App).where(App.id == harness.target.id).values(mode=mode))
         if mode == AppMode.ADVANCED_CHAT:
@@ -242,7 +248,7 @@ def test_chat_modes_return_empty_questions_when_stored_provider_config_is_invali
     failures = [
         record.exc_info[1]
         for record in caplog.records
-        if record.name == "services.message_suggested_questions_generator" and record.exc_info is not None
+        if record.name == "services.message_suggested_questions_generator" and isinstance(record.exc_info, tuple)
     ]
     assert len(failures) == 1
     assert isinstance(failures[0], ValueError)

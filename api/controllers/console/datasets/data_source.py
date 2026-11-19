@@ -3,7 +3,7 @@ from typing import Never
 from uuid import UUID
 
 from flask_restx import Resource
-from pydantic import BaseModel, Field, field_serializer
+from pydantic import BaseModel, Field, field_serializer, field_validator
 
 from configs import dify_config
 from controllers.common.errors import InvalidArgumentError, NotFoundError
@@ -62,6 +62,11 @@ class NotionEstimatePayload(BaseModel):
 class DataSourceNotionListQuery(BaseModel):
     dataset_id: str | None = Field(default=None, description="Dataset ID")
     credential_id: str = Field(..., description="Credential ID", min_length=1)
+
+    @field_validator("dataset_id", mode="before")
+    @classmethod
+    def empty_dataset_id_to_none(cls, value: str | None) -> str | None:
+        return None if value == "" else value
 
 
 class DataSourceNotionPreviewQuery(BaseModel):

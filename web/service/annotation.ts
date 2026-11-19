@@ -27,9 +27,13 @@ export const updateAnnotationStatus = (
   )
 
 // Multipart uploads are not described by the generated contract yet.
-export const annotationBatchImport = (appId: string, body: FormData) =>
+export const annotationBatchImport = (
+  appId: string,
+  body: FormData,
+  options?: { silent?: boolean },
+) =>
   post<{ job_id: string; job_status: string }>(
     `/apps/${appId}/annotations/batch-import`,
     { body },
-    { bodyStringify: false, deleteContentType: true },
+    { bodyStringify: false, deleteContentType: true, ...options },
   )

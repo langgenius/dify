@@ -935,7 +935,7 @@ def test_published_agent_app_parameters_use_soul_file_upload(
 
 
 @pytest.mark.parametrize("sqlite_session", [(Agent, AgentConfigSnapshot, AgentConfigRevision)], indirect=True)
-def test_published_agent_app_parameters_requires_bound_agent(sqlite_session: Session):
+def test_published_agent_app_parameters_requires_bound_agent(sqlite_session: Session) -> None:
     tenant_id = _stable_uuid("tenant:unbound")
     app_model = _app_model(tenant_id=tenant_id)
 
@@ -944,7 +944,7 @@ def test_published_agent_app_parameters_requires_bound_agent(sqlite_session: Ses
 
 
 @pytest.mark.parametrize("sqlite_session", [(Agent, AgentConfigSnapshot, AgentConfigRevision)], indirect=True)
-def test_published_agent_app_parameters_requires_existing_active_agent(sqlite_session: Session):
+def test_published_agent_app_parameters_requires_existing_active_agent(sqlite_session: Session) -> None:
     requested_tenant_id = _stable_uuid("tenant:requested")
     agent_id = _stable_uuid("agent:cross-tenant")
     app_model = _app_model(tenant_id=requested_tenant_id)
@@ -965,7 +965,7 @@ def test_published_agent_app_parameters_requires_existing_active_agent(sqlite_se
 @pytest.mark.parametrize("sqlite_session", [(Agent, AgentConfigSnapshot, AgentConfigRevision)], indirect=True)
 def test_published_agent_app_parameters_requires_published_agent(
     active_config_is_published: bool, sqlite_session: Session
-):
+) -> None:
     tenant_id = _stable_uuid(f"tenant:published:{active_config_is_published}")
     agent_id = _stable_uuid(f"agent:published:{active_config_is_published}")
     app_model = _app_model(tenant_id=tenant_id)
@@ -983,7 +983,7 @@ def test_published_agent_app_parameters_requires_published_agent(
 
 
 @pytest.mark.parametrize("sqlite_session", [(Agent, AgentConfigSnapshot, AgentConfigRevision)], indirect=True)
-def test_published_agent_app_parameters_allows_unpublished_draft_with_active_snapshot(sqlite_session: Session):
+def test_published_agent_app_parameters_allows_unpublished_draft_with_active_snapshot(sqlite_session: Session) -> None:
     tenant_id = _stable_uuid("tenant:unpublished-draft")
     agent_id = _stable_uuid("agent:unpublished-draft")
     snapshot_id = _stable_uuid("snapshot:unpublished-draft")
@@ -1014,7 +1014,7 @@ def test_published_agent_app_parameters_allows_unpublished_draft_with_active_sna
 
 
 @pytest.mark.parametrize("sqlite_session", [(Agent, AgentConfigSnapshot, AgentConfigRevision)], indirect=True)
-def test_published_agent_app_parameters_rejects_seeded_unpublished_snapshot(sqlite_session: Session):
+def test_published_agent_app_parameters_rejects_seeded_unpublished_snapshot(sqlite_session: Session) -> None:
     tenant_id = _stable_uuid("tenant:never-published")
     agent_id = _stable_uuid("agent:never-published")
     snapshot_id = _stable_uuid("snapshot:never-published")
@@ -1041,7 +1041,7 @@ def test_published_agent_app_parameters_rejects_seeded_unpublished_snapshot(sqli
 
 
 @pytest.mark.parametrize("sqlite_session", [(Agent, AgentConfigSnapshot, AgentConfigRevision)], indirect=True)
-def test_published_agent_app_parameters_requires_published_snapshot(sqlite_session: Session):
+def test_published_agent_app_parameters_requires_published_snapshot(sqlite_session: Session) -> None:
     tenant_id = _stable_uuid("tenant:missing-snapshot")
     agent_id = _stable_uuid("agent:missing-snapshot")
     app_model = _app_model(tenant_id=tenant_id)
@@ -1065,7 +1065,7 @@ def test_published_agent_app_parameters_requires_published_snapshot(sqlite_sessi
 
 
 @pytest.mark.parametrize("sqlite_session", [(Agent, AgentConfigSnapshot, AgentConfigRevision)], indirect=True)
-def test_published_agent_app_parameters_allows_missing_legacy_app_model_config(sqlite_session: Session):
+def test_published_agent_app_parameters_allows_missing_legacy_app_model_config(sqlite_session: Session) -> None:
     tenant_id = _stable_uuid("tenant:no-legacy-config")
     agent_id = _stable_uuid("agent:no-legacy-config")
     snapshot_id = _stable_uuid("snapshot:no-legacy-config")

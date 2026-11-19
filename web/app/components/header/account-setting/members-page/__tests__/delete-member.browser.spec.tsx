@@ -6,12 +6,17 @@ import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createDeferred } from '@/test/deferred'
-import MembersPage from '../index'
+import { MembersPage } from '../index'
 
 const api = vi.hoisted(() => ({
   features: vi.fn<typeof consoleClient.features.get>(),
   members: vi.fn<typeof consoleClient.workspaces.current.members.get>(),
   remove: vi.fn<typeof consoleClient.workspaces.current.members.byMemberId.delete>(),
+  contactsEnabled: vi.fn(() => false),
+}))
+// boundary: switch the deployment feature flag per scenario.
+vi.mock('@/features/contacts/management/feature-flag', () => ({
+  isContactsManagementEnabled: api.contactsEnabled,
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -19,6 +24,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.byWorkspaceId.members.pendingInvitations.get': async () => ({ invitations: [] }),
       'workspaces.current.members.get': api.members,
       'features.get': api.features,
       'workspaces.current.members.byMemberId.delete': api.remove,
@@ -39,6 +45,7 @@ const member = (id: string): AccountWithRoleResponse => ({
   status: 'active',
 })
 beforeEach(() => {
+  api.contactsEnabled.mockReturnValue(false)
   vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
   vi.stubGlobal(
     'fetch',
@@ -83,6 +90,17 @@ async function setup(ids: string[]) {
   }
   return { screen, open }
 }
+
+it('returns focus after deleting a member with Contacts enabled, using the supported member API', async () => {
+  api.contactsEnabled.mockReturnValue(true)
+  const { screen, open } = await setup(['Alpha', 'Beta'])
+  await open('Alpha')
+  await expect.element(screen.getByRole('checkbox')).not.toBeInTheDocument()
+  await screen.getByRole('button', { name: 'contacts.memberRemoval.remove', exact: true }).click()
+  await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
+  await expect.element(screen.getByRole('button', { name: 'Beta', exact: true })).toHaveFocus()
+  expect(api.remove).toHaveBeenCalledExactlyOnceWith({ params: { member_id: 'Alpha' } })
+})
 
 it('removes the member before a slow list refresh completes', async () => {
   const { screen, open } = await setup(['Alpha', 'Beta'])

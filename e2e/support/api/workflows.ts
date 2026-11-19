@@ -30,9 +30,11 @@ export async function syncRunnableWorkflowDraft(
   {
     mode = 'workflow',
     variables = [],
+    answer = 'E2E response',
   }: {
     mode?: 'workflow' | 'advanced-chat'
     variables?: Record<string, unknown>[]
+    answer?: string
   } = {},
 ): Promise<void> {
   const body = {
@@ -50,7 +52,7 @@ export async function syncRunnableWorkflowDraft(
           position: { x: 480, y: 282 },
           data:
             mode === 'advanced-chat'
-              ? { id: 'end', type: 'answer', title: 'Answer', answer: 'E2E response' }
+              ? { id: 'end', type: 'answer', title: 'Answer', answer }
               : {
                   id: 'end',
                   type: 'end',

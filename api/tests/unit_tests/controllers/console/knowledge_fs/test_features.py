@@ -9,4 +9,4 @@ def test_get_knowledge_fs_features_serializes_deployment_availability(config_ove
 
     result = unwrap(KnowledgeFSFeaturesApi.get)(KnowledgeFSFeaturesApi())
 
-    assert result == {"enabled": False, "upload_enabled": False, "agent_enabled": False}
+    assert result == {"upload_enabled": False, "agent_enabled": False}

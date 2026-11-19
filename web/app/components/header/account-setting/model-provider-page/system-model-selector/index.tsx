@@ -156,7 +156,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
         )}
         {t(($) => $['modelProvider.systemModelSettings'], { ns: 'modelProvider' })}
       </DialogTrigger>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-120">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>
             {t(($) => $['modelProvider.systemModelSettingsTitle'], { ns: 'modelProvider' })}

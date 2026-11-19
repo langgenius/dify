@@ -58,7 +58,20 @@
 
 Leave `SECRET_KEY` empty to let Dify generate a persistent key in the storage directory. To manage it explicitly, generate a value with `openssl rand -base64 42` and set `SECRET_KEY` in `api/.env`.
 
+### Timezones and local-time conversion
+
+The backend uses `zoneinfo` with the system IANA timezone database, falling back to the explicitly required `tzdata` package. `LOG_TZ` is validated when configuration loads. Valid names and aliases are accepted, and differently cased names such as `utc` and `asia/shanghai` are resolved to their canonical spelling when needed. Unknown nonempty values are rejected; they never silently fall back to UTC. Explicit `None` and empty-string values retain their existing unset behavior.
+
+When parsing a local time without an explicit UTC offset, `parse_time_range` and the Time conversion tools apply these rules:
+
+- A repeated time resolves to its **later occurrence**.
+- A nonexistent time shifts **forward by the actual size of the timezone transition**, preserving its position within the gap. The returned local time is normalized to a real wall-clock time.
+
+The `pytz` migration intentionally changes the repeated-hour choice in `Europe/Dublin`: `2024-10-27 01:30` now resolves to `01:30Z` (`01:30+00:00`), whereas the previous `is_dst=False` policy selected `00:30Z` (`01:30+01:00`). Both instants exist; the new policy consistently chooses by chronological order rather than by the timezone database's DST label. New York's existing later-occurrence behavior is preserved.
+
 ## Testing
+
+Test real production behavior with real objects. Do not use mocks, `SimpleNamespace`, or other shortcuts that bypass real testing.
 
 Backend unit-test directories must exactly mirror the production code's relative directory structure, and filenames must match the production filenames with a `test_` prefix. For example, `api/libs/schedule_utils.py` maps to `api/tests/unit_tests/libs/test_schedule_utils.py`.
 

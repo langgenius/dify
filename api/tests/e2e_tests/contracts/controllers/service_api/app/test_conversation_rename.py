@@ -31,10 +31,11 @@ from repositories.conversation_repository import ConversationRepository
 from services.app_definition_query_service import AppDefinitionQueryService
 from services.app_scoped_end_user_service import AppScopedEndUserService
 from services.auth.resource_access_token_contracts import ResourceAccessTokenResource
-from services.conversation_name_generator import generate_conversation_name
+from services.conversation_name_generator import DefaultModelConversationNameGenerator
 from services.conversation_name_service import ConversationNameService
 from services.resource_access_token_service import ResourceAccessTokenService
 from tests.helpers.unit.model_factories import make_app, make_conversation, make_end_user, make_message
+from tests.helpers.unit.services.tracing_ports import untraced_scopes
 
 _CREATED_AT = datetime(2026, 1, 2, 3, 4, 5)
 _UPDATED_AT = datetime(2026, 1, 3, 3, 4, 5)
@@ -174,7 +175,7 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
         ),
         conversation_names=ConversationNameService(
             conversations=ConversationRepository(session_factory=query_factory),
-            generate_name=generate_conversation_name,
+            generate_name=DefaultModelConversationNameGenerator(trace_scopes=untraced_scopes()),
         ),
         resource_access_tokens=build_resource_access_token_service(database_client=admission_factory),
     )
@@ -257,6 +258,7 @@ def test_invalid_manual_name_returns_422_without_renaming(harness: _Harness, bod
 def test_auto_name_ignores_manual_name_and_preserves_current_name_on_provider_failure(
     harness: _Harness, body: dict[str, object], caplog: pytest.LogCaptureFixture
 ) -> None:
+    """Given a provider failure during auto naming, keep the saved name and log the exception."""
     with harness.factory.begin() as session:
         session.add_all(
             [
@@ -286,7 +288,7 @@ def test_auto_name_ignores_manual_name_and_preserves_current_name_on_provider_fa
     failures = [
         record.exc_info[1]
         for record in caplog.records
-        if record.name == "services.conversation_name_service" and record.exc_info is not None
+        if record.name == "services.conversation_name_service" and isinstance(record.exc_info, tuple)
     ]
     assert len(failures) == 1
     assert isinstance(failures[0], ProviderTokenNotInitError)

@@ -19,6 +19,7 @@ import { DSLImportMode } from '@/models/app'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { trackCreateApp } from '@/utils/create-app-tracking'
+import { getErrorMessage } from '@/utils/error-message'
 import { hasPermission } from '@/utils/permission'
 import { List } from './list'
 
@@ -158,9 +159,12 @@ const AppsContent = () => {
       hideTryAppPanel()
 
       try {
-        const detail = await consoleClient.explore.apps.byAppId.get({
-          params: { app_id: currApp.app_id },
-        })
+        const detail = await consoleClient.explore.apps.byAppId.get(
+          {
+            params: { app_id: currApp.app_id },
+          },
+          { context: { silent: true } },
+        )
         currentCreateAppModeRef.current = detail.mode
         const payload = {
           ...getTemplateImportSource(detail),
@@ -180,8 +184,8 @@ const AppsContent = () => {
             setShowDSLConfirmModal(true)
           },
         })
-      } catch {
-        toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+      } catch (error) {
+        toast.error(getErrorMessage(error) ?? t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
       }
     },
     [canCreateApp, currApp, handleImportDSL, hideTryAppPanel, trackCurrentCreateApp, t],

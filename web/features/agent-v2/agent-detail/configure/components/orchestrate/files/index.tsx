@@ -12,8 +12,10 @@ import {
   FileTreeIcon,
   FileTreeLabel,
 } from '@langgenius/dify-ui/file-tree'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
-import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useId, useRef, useState } from 'react'
@@ -24,9 +26,10 @@ import {
   agentComposerFilesAtom,
   clearAgentConfigNoteAtom,
   removeAgentFileAtom,
-  upsertAgentFileAtom,
+  upsertAgentFilesAtom,
 } from '@/features/agent-v2/agent-composer/store-modules/files'
-import { consoleQuery } from '@/service/console'
+import { hasFileDataPreview } from '@/features/agent-v2/file-icon'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { downloadBlob, downloadUrl } from '@/utils/download'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
@@ -86,8 +89,8 @@ function AgentFileItem({
   selected: boolean
 }) {
   const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const readOnly = useAgentOrchestrateReadOnly()
-  const queryClient = useQueryClient()
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [selectedFileId, setSelectedFileId] = useState<string>()
   const selectedFile = selectedFileId ? findAgentFileNode(files, selectedFileId) : undefined
@@ -97,6 +100,9 @@ function AgentFileItem({
   const previewFileId = isVirtualPreviewFile
     ? undefined
     : getAgentFilePreviewKey(selectedPreviewFile)
+  const canLoadPreview = isPreviewOpen && !!previewFileId
+  const isFileDataPreview = hasFileDataPreview(selectedPreviewFile.icon)
+  const shouldLoadTextPreview = canLoadPreview && !isFileDataPreview
   const agentPreviewQuery = useQuery({
     ...consoleQuery.agent.byAgentId.config.files.byName.preview.get.queryOptions({
       input: {
@@ -110,12 +116,7 @@ function AgentFileItem({
         },
       },
     }),
-    enabled:
-      isPreviewOpen &&
-      !!previewFileId &&
-      !isVirtualPreviewFile &&
-      !apiContext.workflow &&
-      !apiContext.trialAppId,
+    enabled: shouldLoadTextPreview && !apiContext.workflow && !apiContext.trialAppId,
   })
   const workflowPreviewQuery = useQuery({
     ...consoleQuery.apps.byAppId.agent.config.files.byName.preview.get.queryOptions({
@@ -131,7 +132,7 @@ function AgentFileItem({
         },
       },
     }),
-    enabled: isPreviewOpen && !!previewFileId && !isVirtualPreviewFile && !!apiContext.workflow,
+    enabled: shouldLoadTextPreview && !!apiContext.workflow,
   })
   const trialPreviewQuery = useQuery(
     consoleQuery.trialApps.byAppId.agent.config.files.byName.preview.get.queryOptions({
@@ -141,7 +142,7 @@ function AgentFileItem({
             query: { version_id: apiContext.versionId },
           }
         : skipToken,
-      enabled: !!apiContext.trialAppId && isPreviewOpen && !!previewFileId && !isVirtualPreviewFile,
+      enabled: !!apiContext.trialAppId && shouldLoadTextPreview,
     }),
   )
   const previewQuery = apiContext.trialAppId
@@ -149,12 +150,8 @@ function AgentFileItem({
     : apiContext.workflow
       ? workflowPreviewQuery
       : agentPreviewQuery
-  const isImagePreviewFile = selectedPreviewFile.icon === 'image'
   const shouldDownloadPreviewFile =
-    isPreviewOpen &&
-    !!previewFileId &&
-    !isVirtualPreviewFile &&
-    (isImagePreviewFile || !!previewQuery.data?.binary)
+    canLoadPreview && (isFileDataPreview || !!previewQuery.data?.binary)
   const agentDownloadQuery = useQuery({
     ...consoleQuery.agent.byAgentId.config.files.byName.download.get.queryOptions({
       input: {
@@ -169,6 +166,7 @@ function AgentFileItem({
       },
     }),
     staleTime: 0,
+    refetchOnWindowFocus: false,
     enabled: shouldDownloadPreviewFile && !apiContext.workflow && !apiContext.trialAppId,
   })
   const workflowDownloadQuery = useQuery({
@@ -186,6 +184,7 @@ function AgentFileItem({
       },
     }),
     staleTime: 0,
+    refetchOnWindowFocus: false,
     enabled: shouldDownloadPreviewFile && !!apiContext.workflow,
   })
   const trialDownloadQuery = useQuery(
@@ -198,6 +197,7 @@ function AgentFileItem({
         : skipToken,
       enabled: !!apiContext.trialAppId && shouldDownloadPreviewFile,
       staleTime: 0,
+      refetchOnWindowFocus: false,
     }),
   )
   const downloadQuery = apiContext.trialAppId
@@ -219,58 +219,27 @@ function AgentFileItem({
       }
 
       const fileName = getAgentFilePreviewKey(targetFile)
-      if (apiContext.trialAppId) {
-        const result = await queryClient.query({
-          ...consoleQuery.trialApps.byAppId.agent.config.files.byName.download.get.queryOptions({
-            input: {
-              params: { app_id: apiContext.trialAppId, name: fileName },
-              query: { version_id: apiContext.versionId },
-            },
-          }),
-          staleTime: 0,
-        })
-        downloadUrl({ url: result.url, fileName: targetFile.name })
-        return
-      }
-      if (apiContext.workflow) {
-        const result = await queryClient.query({
-          ...consoleQuery.apps.byAppId.agent.config.files.byName.download.get.queryOptions({
-            input: {
-              params: {
-                app_id: apiContext.workflow.appId,
-                name: fileName,
-              },
+      const result = apiContext.trialAppId
+        ? await consoleClient.trialApps.byAppId.agent.config.files.byName.download.get({
+            params: { app_id: apiContext.trialAppId, name: fileName },
+            query: { version_id: apiContext.versionId },
+          })
+        : apiContext.workflow
+          ? await consoleClient.apps.byAppId.agent.config.files.byName.download.get({
+              params: { app_id: apiContext.workflow.appId, name: fileName },
               query: {
                 node_id: apiContext.workflow.nodeId,
                 draft_type: apiContext.draftType,
                 version_id: apiContext.versionId,
               },
-            },
-          }),
-          staleTime: 0,
-        })
-        downloadUrl({ url: result.url, fileName: targetFile.name })
-        return
-      }
-
-      const result = await queryClient.query({
-        ...consoleQuery.agent.byAgentId.config.files.byName.download.get.queryOptions({
-          input: {
-            params: {
-              agent_id: apiContext.agentId,
-              name: fileName,
-            },
-            query: {
-              draft_type: apiContext.draftType,
-              version_id: apiContext.versionId,
-            },
-          },
-        }),
-        staleTime: 0,
-      })
+            })
+          : await consoleClient.agent.byAgentId.config.files.byName.download.get({
+              params: { agent_id: apiContext.agentId, name: fileName },
+              query: { draft_type: apiContext.draftType, version_id: apiContext.versionId },
+            })
       downloadUrl({ url: result.url, fileName: targetFile.name })
     },
-    [apiContext, queryClient],
+    [apiContext],
   )
   const downloadFileAction = useCallback(
     (targetFile: AgentFileNode) => {
@@ -333,11 +302,12 @@ function AgentFileItem({
               content: selectedPreviewFile.virtualContent ?? previewQuery.data?.text ?? undefined,
               downloadUrl: downloadQuery.isFetching ? undefined : downloadQuery.data?.url,
               fileName: selectedPreviewFile.name,
+              fileType: selectedPreviewFile.icon,
               isDownloadError: downloadQuery.isError,
               isDownloadLoading: shouldDownloadPreviewFile && downloadQuery.isFetching,
-              isError: !isVirtualPreviewFile && previewQuery.isError,
-              isImage: isImagePreviewFile,
-              isLoading: !isVirtualPreviewFile && previewQuery.isPending,
+              isError: shouldLoadTextPreview && previewQuery.isError,
+              isLoading: shouldLoadTextPreview && previewQuery.isPending,
+              truncated: previewQuery.data?.truncated,
             },
             onDownloadFile: onDownloadFile ? () => onDownloadFile(selectedPreviewFile) : undefined,
             onSelectFile: (selectedFile) => setSelectedFileId(selectedFile.id),
@@ -359,25 +329,42 @@ function AgentFileItem({
         )}
       >
         {!file.isMissing && onDownloadFile && (
-          <button
-            type="button"
-            aria-label={t(($) => $['agentDetail.configure.files.download'], { name: file.name })}
-            onClick={handleDownload}
-            className="flex size-5 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-          >
-            <span aria-hidden className="i-ri-download-line size-4" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <IconButton
+                  aria-label={t(($) => $['agentDetail.configure.files.download'], {
+                    name: file.name,
+                  })}
+                  size="sm"
+                  onClick={handleDownload}
+                >
+                  <span aria-hidden className="i-ri-download-line size-4" />
+                </IconButton>
+              }
+            />
+            <TooltipContent>{tCommon(($) => $['operation.download'])}</TooltipContent>
+          </Tooltip>
         )}
         {canRemoveFile && (
-          <button
-            type="button"
-            data-agent-file-remove-button
-            aria-label={t(($) => $['agentDetail.configure.files.remove'], { name: file.name })}
-            onClick={handleRemove}
-            className="flex size-5 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:bg-state-destructive-hover focus-visible:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-          >
-            <span aria-hidden className="i-ri-delete-bin-line size-4" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <IconButton
+                  data-agent-file-remove-button
+                  aria-label={t(($) => $['agentDetail.configure.files.remove'], {
+                    name: file.name,
+                  })}
+                  size="sm"
+                  tone="destructive"
+                  onClick={handleRemove}
+                >
+                  <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                </IconButton>
+              }
+            />
+            <TooltipContent>{tCommon(($) => $['operation.remove'])}</TooltipContent>
+          </Tooltip>
         )}
       </div>
     </li>
@@ -436,12 +423,13 @@ export function AgentFiles() {
   const readOnly = useAgentOrchestrateReadOnly()
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const promptAddCallbackRef = useRef<AgentOrchestrateAddActionOptions['onAdded']>(undefined)
+  const uploadedFilesRef = useRef<AgentFileNode[]>([])
   const apiContext = useAgentConfigApiContext()
   const draft = useAtomValue(agentComposerDraftAtom)
   const files = useAtomValue(agentComposerFilesAtom)
   const clearAgentConfigNote = useSetAtom(clearAgentConfigNoteAtom)
   const removeAgentFile = useSetAtom(removeAgentFileAtom)
-  const upsertAgentFile = useSetAtom(upsertAgentFileAtom)
+  const upsertAgentFiles = useSetAtom(upsertAgentFilesAtom)
   const buildNoteFile = getBuildNoteFile(draft.configNote)
   const visibleFiles = buildNoteFile ? [buildNoteFile, ...files] : files
   const previewFiles = visibleFiles.filter((file) => !file.isMissing)
@@ -513,15 +501,19 @@ export function AgentFiles() {
   }, [])
   useRegisterAgentOrchestrateAddAction('files', handleOpenUpload)
   const handleUploaded = useCallback(
-    (file: AgentFileNode) => {
-      upsertAgentFile(file)
-      promptAddCallbackRef.current?.(file)
-      promptAddCallbackRef.current = undefined
+    (uploadedFiles: AgentFileNode[]) => {
+      upsertAgentFiles(uploadedFiles)
+      uploadedFilesRef.current.push(...uploadedFiles)
     },
-    [upsertAgentFile],
+    [upsertAgentFiles],
   )
   const handleUploadOpenChange = useCallback((open: boolean) => {
-    if (!open) promptAddCallbackRef.current = undefined
+    if (!open) {
+      if (uploadedFilesRef.current.length > 0)
+        promptAddCallbackRef.current?.(uploadedFilesRef.current)
+      promptAddCallbackRef.current = undefined
+      uploadedFilesRef.current = []
+    }
     setIsUploadOpen(open)
   }, [])
 

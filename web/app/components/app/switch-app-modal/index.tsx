@@ -4,7 +4,6 @@ import type {
   AppPartial,
   ConvertToWorkflowPayload,
 } from '@dify/contracts/api/console/apps/types.gen'
-import type { DialogActions, DialogProps } from '@langgenius/dify-ui/dialog'
 import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import {
   AlertDialog,
@@ -43,37 +42,47 @@ import {
   IconPickerTrigger,
 } from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
+import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { getRedirection } from '@/utils/app-redirection'
+import { getErrorMessage } from '@/utils/error-message'
 
-type SwitchAppModalProps = Pick<DialogProps, 'open' | 'onOpenChange'> & {
+type SwitchAppModalProps = {
+  open: boolean
+  onClose: () => void
   sourceApp: Pick<
     AppPartial,
     'icon' | 'icon_background' | 'icon_type' | 'icon_url' | 'id' | 'mode' | 'name'
   >
 }
 
-const SwitchAppModal = ({ open, sourceApp, onOpenChange }: SwitchAppModalProps) => {
+const SwitchAppModal = ({ open, sourceApp, onClose }: SwitchAppModalProps) => {
   const nameInputRef = useRef<HTMLInputElement>(null)
-  const actionsRef = useRef<DialogActions>(null)
   const { t } = useTranslation(['app'])
   const { push, replace } = useRouter()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const conversion = useMutation(consoleQuery.apps.byAppId.convertToWorkflow.post.mutationOptions())
-  const deletion = useMutation(consoleQuery.apps.byAppId.delete.mutationOptions())
+  const conversion = useMutation(
+    consoleQuery.apps.byAppId.convertToWorkflow.post.mutationOptions({ context: { silent: true } }),
+  )
+  const deletion = useMutation(
+    consoleQuery.apps.byAppId.delete.mutationOptions({ context: { silent: true } }),
+  )
   const isPending = conversion.isPending || deletion.isPending
   const submit = (body: ConvertToWorkflowPayload, removeOriginal: boolean) => {
     if (isPending) return
     conversion.mutate(
       { params: { app_id: sourceApp.id }, body },
       {
-        onError: () => toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' })),
+        onError: (error) =>
+          toast.error(
+            getErrorMessage(error) ?? t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+          ),
         onSuccess: ({ new_app_id, permission_keys }) => {
           const finish = (removed: boolean) => {
-            actionsRef.current?.close()
+            onClose()
             getRedirection(
               {
                 id: new_app_id,
@@ -89,8 +98,8 @@ const SwitchAppModal = ({ open, sourceApp, onOpenChange }: SwitchAppModalProps) 
               { params: { app_id: sourceApp.id } },
               {
                 onSuccess: () => finish(true),
-                onError: () => {
-                  toast.error(t(($) => $.appDeleteFailed, { ns: 'app' }))
+                onError: (error) => {
+                  toast.error(getErrorMessage(error) ?? t(($) => $.appDeleteFailed, { ns: 'app' }))
                   finish(false)
                 },
               },
@@ -102,15 +111,14 @@ const SwitchAppModal = ({ open, sourceApp, onOpenChange }: SwitchAppModalProps) 
   }
   return (
     <Dialog
-      actionsRef={actionsRef}
       open={open}
       disablePointerDismissal
       onOpenChange={(nextOpen, details) => {
-        if (!nextOpen && isPending && details.reason !== 'imperative-action') details.cancel()
-        else onOpenChange?.(nextOpen, details)
+        if (!nextOpen && isPending) details.cancel()
+        else if (!nextOpen) onClose()
       }}
     >
-      <DialogContent initialFocus={nameInputRef} className="w-150 max-w-150">
+      <DialogContent initialFocus={nameInputRef} className="w-150">
         <SwitchAppSession
           nameInputRef={nameInputRef}
           sourceApp={sourceApp}
@@ -134,22 +142,13 @@ function SwitchAppSession({
 }) {
   const formRef = useRef<HTMLFormElement>(null)
   const { t } = useTranslation(['app', 'common', 'explore'])
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-
-  const deploymentEdition = systemFeatures.deployment_edition
   const { data: appQuota } = useQuery(
     consoleQuery.features.get.queryOptions({
-      enabled: deploymentEdition === 'CLOUD',
-      select: (data) => data.apps,
+      select: (data) => getCountQuota(data.apps),
     }),
   )
-  const isAppQuotaUnavailable = deploymentEdition === 'CLOUD' && appQuota === undefined
-  // A limit of 0 means unlimited.
-  const isAppsFull =
-    deploymentEdition === 'CLOUD' &&
-    appQuota !== undefined &&
-    appQuota.limit > 0 &&
-    appQuota.size >= appQuota.limit
+  const isAppQuotaUnavailable = appQuota === undefined
+  const isAppsFull = appQuota !== undefined && isQuotaReached(appQuota)
 
   const appIconType = zIconType.safeParse(sourceApp.icon_type).data
   const [appIcon, setAppIcon] = useState(
@@ -243,7 +242,7 @@ function SwitchAppSession({
                 required
                 readOnly={isPending}
                 defaultValue={`${sourceApp.name}(copy)`}
-                placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' }) || ''}
+                placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' })}
                 className="h-10 grow"
               />
               <FieldError className="col-span-2" />
@@ -264,7 +263,7 @@ function SwitchAppSession({
                   if (checked) setShowConfirmDelete(true)
                 }}
               />
-              <span className="ml-2 text-left text-sm/5 text-text-secondary">
+              <span className="ms-2 text-start text-sm/5 text-text-secondary">
                 {t(($) => $.removeOriginal, { ns: 'app' })}
               </span>
             </label>

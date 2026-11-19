@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactElement, ReactNode } from 'react'
-import type { Theme } from '@/app/components/base/theme-selector'
+import type { ThemePreference } from '@/features/theme/theme'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -19,9 +19,8 @@ import {
   MenuTrigger,
 } from '@langgenius/dify-ui/menu'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
-import { useTheme } from 'next-themes'
 import { useQueryState } from 'nuqs'
-import { useRef, useSyncExternalStore } from 'react'
+import { useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import {
@@ -29,6 +28,8 @@ import {
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { useThemePreference } from '@/features/theme/hooks'
+import { themeOptions } from '@/features/theme/theme'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { useLogout } from '@/service/use-common'
@@ -70,42 +71,31 @@ function MainNavRadioItemContent({ iconClassName, label }: MainNavRadioItemConte
 }
 
 function AppearanceSubmenu() {
-  const { t } = useTranslation(['accountSettings'])
-  const { theme, setTheme } = useTheme()
-  const currentTheme: Theme =
-    theme === 'light' || theme === 'dark' || theme === 'system' ? theme : 'system'
+  const { t } = useTranslation(['common'])
+  const { preference, setPreference } = useThemePreference()
 
   return (
     <MenuSubmenu>
       <MenuSubmenuTrigger className="px-3 py-1">
         <MenuItemContent
           iconClassName="i-ri-sun-line"
-          label={t(($) => $['account.appearanceLabel'], { ns: 'accountSettings' })}
+          label={t(($) => $['theme.label'], { ns: 'common' })}
         />
       </MenuSubmenuTrigger>
       <MenuContent className="max-h-90 w-34.75">
-        <MenuRadioGroup<Theme>
-          value={currentTheme}
-          onValueChange={(nextTheme) => setTheme(nextTheme)}
-        >
-          <MenuRadioItem<Theme> value="light" className="py-1">
-            <MainNavRadioItemContent
-              iconClassName="i-ri-sun-line"
-              label={t(($) => $['account.appearanceLight'], { ns: 'accountSettings' })}
-            />
-          </MenuRadioItem>
-          <MenuRadioItem<Theme> value="dark" className="py-1">
-            <MainNavRadioItemContent
-              iconClassName="i-ri-moon-line"
-              label={t(($) => $['account.appearanceDark'], { ns: 'accountSettings' })}
-            />
-          </MenuRadioItem>
-          <MenuRadioItem<Theme> value="system" className="py-1">
-            <MainNavRadioItemContent
-              iconClassName="i-ri-computer-line"
-              label={t(($) => $['account.appearanceSystem'], { ns: 'accountSettings' })}
-            />
-          </MenuRadioItem>
+        <MenuRadioGroup<ThemePreference> value={preference} onValueChange={setPreference}>
+          {themeOptions.map((option) => (
+            <MenuRadioItem<ThemePreference>
+              key={option.value}
+              value={option.value}
+              className="py-1"
+            >
+              <MainNavRadioItemContent
+                iconClassName={option.iconClassName}
+                label={t(($) => $[option.labelKey], { ns: 'common' })}
+              />
+            </MenuRadioItem>
+          ))}
         </MenuRadioGroup>
       </MenuContent>
     </MenuSubmenu>
@@ -202,9 +192,6 @@ function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
 }
 
 export default function AccountMenu({ trigger }: AccountMenuProps) {
-  const triggerRef = useRef<HTMLButtonElement>(null)
-  const popupRef = useRef<HTMLDivElement>(null)
-  const keyboardNavigationRef = useRef(false)
   const isHydrating = useSyncExternalStore(
     subscribeHydrationState,
     getHydrationSnapshot,
@@ -216,58 +203,14 @@ export default function AccountMenu({ trigger }: AccountMenuProps) {
 
   return (
     <div>
-      <Menu
-        onOpenChange={(open, { event }) => {
-          if (open)
-            keyboardNavigationRef.current =
-              event.type.startsWith('key') ||
-              (event.type === 'click' && 'detail' in event && event.detail === 0)
-        }}
-      >
+      <Menu>
         <MenuTrigger
-          ref={triggerRef}
-          onKeyDownCapture={(event) => {
-            if (event.key !== 'Escape') keyboardNavigationRef.current = true
-          }}
           disabled={isHydrating}
           render={trigger({
             ariaLabel: t(($) => $['account.account'], { ns: 'accountSettings' }),
           })}
         />
         <MenuContent
-          ref={popupRef}
-          onKeyDownCapture={(event) => {
-            if (event.key !== 'Escape') keyboardNavigationRef.current = true
-          }}
-          finalFocus={(interactionType) => {
-            const canRestoreFocus = () => {
-              const activeElement = document.activeElement
-              return (
-                activeElement === document.body ||
-                activeElement === triggerRef.current ||
-                !!popupRef.current?.contains(activeElement)
-              )
-            }
-            if (
-              interactionType === 'touch' ||
-              interactionType === '' ||
-              (interactionType === 'keyboard' && keyboardNavigationRef.current)
-            )
-              return canRestoreFocus()
-            // Restore after dismissal, respecting focus moved into a destination dialog.
-            queueMicrotask(() => {
-              if (!canRestoreFocus()) return
-              const triggerElement = triggerRef.current
-              // Focusing an already focused element does not update its focus-visible state.
-              if (
-                document.activeElement === triggerElement &&
-                triggerElement?.matches(':focus-visible')
-              )
-                triggerElement.blur()
-              triggerElement?.focus({ preventScroll: true, focusVisible: false })
-            })
-            return false
-          }}
           side="top"
           align="start"
 

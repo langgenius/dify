@@ -1,15 +1,16 @@
 'use client'
+import type { MarketplaceLinks } from '@/features/marketplace/links'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Menu, MenuContent, MenuItem, MenuLinkItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useMutation } from '@tanstack/react-query'
-import { useTheme } from 'next-themes'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { marketplaceQuery } from '@/service/marketplace'
 import { downloadBlob } from '@/utils/download'
-import { getMarketplaceUrl } from '@/utils/var'
 
 type Props = Readonly<{
+  marketplace: MarketplaceLinks
   open: boolean
   onOpenChange: (v: boolean) => void
   author: string
@@ -17,9 +18,9 @@ type Props = Readonly<{
   version: string
 }>
 
-function OperationMenu({ open, onOpenChange, author, name, version }: Props) {
+function OperationMenu({ marketplace, open, onOpenChange, author, name, version }: Props) {
   const { t } = useTranslation(['common'])
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
 
   const downloadMutation = useMutation(
     marketplaceQuery.downloadPlugin.mutationOptions({
@@ -65,7 +66,7 @@ function OperationMenu({ open, onOpenChange, author, name, version }: Props) {
         </MenuItem>
         <MenuLinkItem
           className="system-md-regular"
-          href={getMarketplaceUrl(`/plugins/${author}/${name}`, { theme })}
+          href={marketplace.plugin({ org: author, name }, { theme })}
           target="_blank"
           rel="noopener noreferrer"
         >

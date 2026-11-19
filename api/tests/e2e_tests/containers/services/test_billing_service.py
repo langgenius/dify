@@ -1,11 +1,14 @@
 import json
+from collections.abc import Iterator
 from unittest.mock import patch
 
 import pytest
 from flask import Flask
 
 from extensions.ext_redis import redis_client
+from services.billing_client import billing
 from services.billing_service import BillingService
+from tests.helpers import billing_builders as builders
 
 
 class TestBillingServiceGetPlanBulkWithCache:
@@ -21,7 +24,7 @@ class TestBillingServiceGetPlanBulkWithCache:
     """
 
     @pytest.fixture(autouse=True)
-    def setup_redis_cleanup(self, flask_app_with_containers: Flask):
+    def setup_redis_cleanup(self, flask_app_with_containers: Flask) -> Iterator[None]:
         """Clean up Redis cache before and after each test."""
         with flask_app_with_containers.app_context():
             # Clean up before test
@@ -33,17 +36,17 @@ class TestBillingServiceGetPlanBulkWithCache:
             if keys:
                 redis_client.delete(*keys)
 
-    def _create_test_plan_data(self, plan: str = "sandbox", expiration_date: int = 1735689600):
-        """Helper to create test SubscriptionPlan data."""
-        return {"plan": plan, "expiration_date": expiration_date}
+    def _create_test_plan_data(
+        self, plan: str = "sandbox", expiration_date: int = 1735689600
+    ) -> billing.SubscriptionPlanItem:
+        return builders.plan_item(plan, expiration_date)
 
-    def _set_cache(self, tenant_id: str, plan_data: dict, ttl: int = 600):
+    def _set_cache(self, tenant_id: str, plan_data: billing.SubscriptionPlanItem, ttl: int = 600) -> None:
         """Helper to set cache data in Redis."""
         cache_key = BillingService._make_plan_cache_key(tenant_id)
-        json_str = json.dumps(plan_data)
-        redis_client.setex(cache_key, ttl, json_str)
+        redis_client.setex(cache_key, ttl, plan_data.model_dump_json())
 
-    def _get_cache(self, tenant_id: str):
+    def _get_cache(self, tenant_id: str) -> str | None:
         """Helper to get cache data from Redis."""
         cache_key = BillingService._make_plan_cache_key(tenant_id)
         value = redis_client.get(cache_key)
@@ -53,7 +56,7 @@ class TestBillingServiceGetPlanBulkWithCache:
             return value
         return None
 
-    def test_get_plan_bulk_with_cache_all_cache_hit(self, flask_app_with_containers: Flask):
+    def test_get_plan_bulk_with_cache_all_cache_hit(self, flask_app_with_containers: Flask) -> None:
         """Test bulk plan retrieval when all tenants are in cache."""
         with flask_app_with_containers.app_context():
             # Arrange
@@ -74,17 +77,17 @@ class TestBillingServiceGetPlanBulkWithCache:
 
             # Assert
             assert len(result) == 3
-            assert result["tenant-1"]["plan"] == "sandbox"
-            assert result["tenant-1"]["expiration_date"] == 1735689600
-            assert result["tenant-2"]["plan"] == "professional"
-            assert result["tenant-2"]["expiration_date"] == 1767225600
-            assert result["tenant-3"]["plan"] == "team"
-            assert result["tenant-3"]["expiration_date"] == 1798761600
+            assert result["tenant-1"].plan == "sandbox"
+            assert result["tenant-1"].expiration_date == 1735689600
+            assert result["tenant-2"].plan == "professional"
+            assert result["tenant-2"].expiration_date == 1767225600
+            assert result["tenant-3"].plan == "team"
+            assert result["tenant-3"].expiration_date == 1798761600
 
             # Verify API was not called
             mock_get_plan_bulk.assert_not_called()
 
-    def test_get_plan_bulk_with_cache_all_cache_miss(self, flask_app_with_containers: Flask):
+    def test_get_plan_bulk_with_cache_all_cache_miss(self, flask_app_with_containers: Flask) -> None:
         """Test bulk plan retrieval when all tenants are not in cache."""
         with flask_app_with_containers.app_context():
             # Arrange
@@ -100,8 +103,8 @@ class TestBillingServiceGetPlanBulkWithCache:
 
             # Assert
             assert len(result) == 2
-            assert result["tenant-1"]["plan"] == "sandbox"
-            assert result["tenant-2"]["plan"] == "professional"
+            assert result["tenant-1"].plan == "sandbox"
+            assert result["tenant-2"].plan == "professional"
 
             # Verify API was called with correct tenant_ids
             mock_get_plan_bulk.assert_called_once_with(tenant_ids)
@@ -113,8 +116,8 @@ class TestBillingServiceGetPlanBulkWithCache:
             assert cached_2 is not None
 
             # Verify cache content
-            cached_data_1 = json.loads(cached_1)
-            cached_data_2 = json.loads(cached_2)
+            cached_data_1 = billing.SubscriptionPlanItem.model_validate_json(cached_1)
+            cached_data_2 = billing.SubscriptionPlanItem.model_validate_json(cached_2)
             assert cached_data_1 == expected_plans["tenant-1"]
             assert cached_data_2 == expected_plans["tenant-2"]
 
@@ -124,7 +127,7 @@ class TestBillingServiceGetPlanBulkWithCache:
             assert ttl_1 > 0
             assert ttl_1 <= 600  # Should be <= 600 seconds
 
-    def test_get_plan_bulk_with_cache_partial_cache_hit(self, flask_app_with_containers: Flask):
+    def test_get_plan_bulk_with_cache_partial_cache_hit(self, flask_app_with_containers: Flask) -> None:
         """Test bulk plan retrieval when some tenants are in cache, some are not."""
         with flask_app_with_containers.app_context():
             # Arrange
@@ -142,9 +145,9 @@ class TestBillingServiceGetPlanBulkWithCache:
 
             # Assert
             assert len(result) == 3
-            assert result["tenant-1"]["plan"] == "sandbox"
-            assert result["tenant-2"]["plan"] == "professional"
-            assert result["tenant-3"]["plan"] == "team"
+            assert result["tenant-1"].plan == "sandbox"
+            assert result["tenant-2"].plan == "professional"
+            assert result["tenant-3"].plan == "team"
 
             # Verify API was called only for missing tenant
             mock_get_plan_bulk.assert_called_once_with(["tenant-3"])
@@ -152,10 +155,10 @@ class TestBillingServiceGetPlanBulkWithCache:
             # Verify tenant-3 data was written to cache
             cached_3 = self._get_cache("tenant-3")
             assert cached_3 is not None
-            cached_data_3 = json.loads(cached_3)
+            cached_data_3 = billing.SubscriptionPlanItem.model_validate_json(cached_3)
             assert cached_data_3 == missing_plan["tenant-3"]
 
-    def test_get_plan_bulk_with_cache_redis_mget_failure(self, flask_app_with_containers: Flask):
+    def test_get_plan_bulk_with_cache_redis_mget_failure(self, flask_app_with_containers: Flask) -> None:
         """Test fallback to API when Redis mget fails."""
         with flask_app_with_containers.app_context():
             # Arrange
@@ -174,8 +177,8 @@ class TestBillingServiceGetPlanBulkWithCache:
 
             # Assert
             assert len(result) == 2
-            assert result["tenant-1"]["plan"] == "sandbox"
-            assert result["tenant-2"]["plan"] == "professional"
+            assert result["tenant-1"].plan == "sandbox"
+            assert result["tenant-2"].plan == "professional"
 
             # Verify API was called for all tenants (fallback)
             mock_get_plan_bulk.assert_called_once_with(tenant_ids)
@@ -186,7 +189,7 @@ class TestBillingServiceGetPlanBulkWithCache:
             assert cached_1 is not None
             assert cached_2 is not None
 
-    def test_get_plan_bulk_with_cache_invalid_json_in_cache(self, flask_app_with_containers: Flask):
+    def test_get_plan_bulk_with_cache_invalid_json_in_cache(self, flask_app_with_containers: Flask) -> None:
         """Test fallback to API when cache contains invalid JSON."""
         with flask_app_with_containers.app_context():
             # Arrange
@@ -211,9 +214,9 @@ class TestBillingServiceGetPlanBulkWithCache:
 
             # Assert
             assert len(result) == 3
-            assert result["tenant-1"]["plan"] == "sandbox"  # From cache
-            assert result["tenant-2"]["plan"] == "professional"  # From API (fallback)
-            assert result["tenant-3"]["plan"] == "team"  # From API
+            assert result["tenant-1"].plan == "sandbox"  # From cache
+            assert result["tenant-2"].plan == "professional"  # From API (fallback)
+            assert result["tenant-3"].plan == "team"  # From API
 
             # Verify API was called for tenant-2 and tenant-3
             mock_get_plan_bulk.assert_called_once_with(["tenant-2", "tenant-3"])
@@ -221,10 +224,10 @@ class TestBillingServiceGetPlanBulkWithCache:
             # Verify tenant-2's invalid JSON was replaced with correct data in cache
             cached_2 = self._get_cache("tenant-2")
             assert cached_2 is not None
-            cached_data_2 = json.loads(cached_2)
+            cached_data_2 = billing.SubscriptionPlanItem.model_validate_json(cached_2)
             assert cached_data_2 == expected_plans["tenant-2"]
-            assert cached_data_2["plan"] == "professional"
-            assert cached_data_2["expiration_date"] == 1767225600
+            assert cached_data_2.plan == "professional"
+            assert cached_data_2.expiration_date == 1767225600
 
             # Verify tenant-2 cache has correct TTL
             cache_key_2_new = BillingService._make_plan_cache_key("tenant-2")
@@ -235,11 +238,11 @@ class TestBillingServiceGetPlanBulkWithCache:
             # Verify tenant-3 data was also written to cache
             cached_3 = self._get_cache("tenant-3")
             assert cached_3 is not None
-            cached_data_3 = json.loads(cached_3)
+            cached_data_3 = billing.SubscriptionPlanItem.model_validate_json(cached_3)
             assert cached_data_3 == expected_plans["tenant-3"]
 
-    def test_get_plan_bulk_with_cache_invalid_plan_data_in_cache(self, flask_app_with_containers: Flask):
-        """Test fallback to API when cache data doesn't match SubscriptionPlan schema."""
+    def test_get_plan_bulk_with_cache_invalid_plan_data_in_cache(self, flask_app_with_containers: Flask) -> None:
+        """Test fallback to API when cache data doesn't match the plan model."""
         with flask_app_with_containers.app_context():
             # Arrange
             tenant_ids = ["tenant-1", "tenant-2", "tenant-3"]
@@ -264,14 +267,14 @@ class TestBillingServiceGetPlanBulkWithCache:
 
             # Assert
             assert len(result) == 3
-            assert result["tenant-1"]["plan"] == "sandbox"  # From cache
-            assert result["tenant-2"]["plan"] == "professional"  # From API (fallback)
-            assert result["tenant-3"]["plan"] == "team"  # From API
+            assert result["tenant-1"].plan == "sandbox"  # From cache
+            assert result["tenant-2"].plan == "professional"  # From API (fallback)
+            assert result["tenant-3"].plan == "team"  # From API
 
             # Verify API was called for tenant-2 and tenant-3
             mock_get_plan_bulk.assert_called_once_with(["tenant-2", "tenant-3"])
 
-    def test_get_plan_bulk_with_cache_redis_pipeline_failure(self, flask_app_with_containers: Flask):
+    def test_get_plan_bulk_with_cache_redis_pipeline_failure(self, flask_app_with_containers: Flask) -> None:
         """Test that pipeline failure doesn't affect return value."""
         with flask_app_with_containers.app_context():
             # Arrange
@@ -294,13 +297,13 @@ class TestBillingServiceGetPlanBulkWithCache:
 
             # Assert - Function should still return correct result despite pipeline failure
             assert len(result) == 2
-            assert result["tenant-1"]["plan"] == "sandbox"
-            assert result["tenant-2"]["plan"] == "professional"
+            assert result["tenant-1"].plan == "sandbox"
+            assert result["tenant-2"].plan == "professional"
 
             # Verify pipeline was attempted
             mock_pipeline.assert_called_once()
 
-    def test_get_plan_bulk_with_cache_empty_tenant_ids(self, flask_app_with_containers: Flask):
+    def test_get_plan_bulk_with_cache_empty_tenant_ids(self, flask_app_with_containers: Flask) -> None:
         """Test with empty tenant_ids list."""
         with flask_app_with_containers.app_context():
             # Act
@@ -318,7 +321,7 @@ class TestBillingServiceGetPlanBulkWithCache:
             # But we should check that mget was not called at all
             # Since we can't easily verify this without more mocking, we just verify the result
 
-    def test_get_plan_bulk_with_cache_ttl_expired(self, flask_app_with_containers: Flask):
+    def test_get_plan_bulk_with_cache_ttl_expired(self, flask_app_with_containers: Flask) -> None:
         """Test that expired cache keys are treated as cache misses."""
         with flask_app_with_containers.app_context():
             # Arrange
@@ -349,8 +352,8 @@ class TestBillingServiceGetPlanBulkWithCache:
 
             # Assert
             assert len(result) == 2
-            assert result["tenant-1"]["plan"] == "sandbox"
-            assert result["tenant-2"]["plan"] == "professional"
+            assert result["tenant-1"].plan == "sandbox"
+            assert result["tenant-2"].plan == "professional"
 
             # Verify API was called for both tenants (tenant-1 expired, tenant-2 missing)
             mock_get_plan_bulk.assert_called_once_with(tenant_ids)

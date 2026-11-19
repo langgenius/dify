@@ -13,6 +13,7 @@ import type {
   FormValue,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { cn } from '@langgenius/dify-ui/cn'
+import { v4 as uuid4 } from 'uuid'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { toast } from '@/app/notifications'
 import { getFileIconType } from '@/features/agent-v2/file-icon'
@@ -1485,11 +1486,14 @@ function updateSkillListCache(
 }
 
 function refetchSkillDetail(skillId: string) {
-  return consoleClient.workspaces.current.skills.bySkillId.get({
-    params: {
-      skill_id: skillId,
+  return consoleClient.workspaces.current.skills.bySkillId.get(
+    {
+      params: {
+        skill_id: skillId,
+      },
     },
-  })
+    { context: { silent: true } },
+  )
 }
 
 export async function refreshSkillDetailAfterConflict(
@@ -1525,11 +1529,8 @@ export function isEditableKeyboardTarget(target: EventTarget | null) {
   )
 }
 
-export function createUploadItemId(file: File, index: number) {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
-    return crypto.randomUUID()
-
-  return `${file.name}-${file.size}-${file.lastModified}-${index}`
+export function createUploadItemId() {
+  return uuid4()
 }
 
 export function getUploadFileName(file: File) {

@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { usePathname, useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { newKnowledgeSettingsReturnPath } from './routes'
 
 export type KnowledgeModelReadinessGuardResult =
@@ -27,13 +28,20 @@ export function useKnowledgeModelSetupGuard(knowledgeSpaceId: string) {
   const checkPromiseRef = useRef<Promise<KnowledgeFsSettingsResponse> | undefined>(undefined)
   const settingsQuery = useQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.settings.get.queryOptions({
+      context: { silent: true },
       input: { params: { control_space_id: knowledgeSpaceId } },
     }),
   )
   const refetchSettings = settingsQuery.refetch
 
   const ensureModelReady = useCallback(
-    ({ capability }: { capability: KnowledgeModelCapability; intent?: KnowledgeModelIntent }) => {
+    ({
+      capability,
+      intent,
+    }: {
+      capability: KnowledgeModelCapability
+      intent?: KnowledgeModelIntent
+    }) => {
       if (!checkPromiseRef.current) {
         checkPromiseRef.current = refetchSettings({ cancelRefetch: false })
           .then((result) => {
@@ -48,14 +56,21 @@ export function useKnowledgeModelSetupGuard(knowledgeSpaceId: string) {
 
       return checkPromiseRef.current
         .then<KnowledgeModelReadinessGuardResult>((readiness) => {
-          if (readiness.capabilities[capability]) return { readiness, status: 'ready' }
+          // An explicit re-index can activate a complete saved model selection on its first document.
+          const canActivateOnReindex =
+            capability === 'index' &&
+            intent === 'reindex' &&
+            readiness.configuration_state === 'active' &&
+            readiness.capabilities.ingest
+          if (readiness.capabilities[capability] || canActivateOnReindex)
+            return { readiness, status: 'ready' }
           blockedCapabilityRef.current = capability
           setModelReadiness(readiness)
           setModelSetupDialogOpen(true)
           return { readiness, status: 'blocked' }
         })
-        .catch(() => {
-          toast.error(tCommon(($) => $['api.actionFailed']))
+        .catch((error) => {
+          toast.error(getErrorMessage(error) ?? tCommon(($) => $['api.actionFailed']))
           return { status: 'unavailable' } as const
         })
     },

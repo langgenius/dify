@@ -3,6 +3,7 @@
 import type { AppDetailWithSite, Import } from '@dify/contracts/api/console/apps/types.gen'
 import type { DialogActions, DialogProps } from '@langgenius/dify-ui/dialog'
 import type { ReactNode } from 'react'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -14,7 +15,7 @@ import {
   DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { RiAlertFill, RiFileDownloadLine } from '@remixicon/react'
+import { RiFileDownloadLine } from '@remixicon/react'
 import { useMutation } from '@tanstack/react-query'
 import { memo, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -316,32 +317,17 @@ function ImportForm({
         />
       </DialogHeader>
       <DialogBody>
-        <div className="relative mb-2 flex grow gap-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs">
-          <div className="pointer-events-none absolute top-0 left-0 size-full bg-toast-warning-bg opacity-40" />
-          <div className="flex items-start justify-center p-1">
-            <RiAlertFill className="size-4 shrink-0 text-text-warning-secondary" />
-          </div>
-          <div className="flex grow flex-col items-start gap-0.5 py-1">
-            <div className="system-xs-medium whitespace-pre-line text-text-primary">
-              {t(($) => $['common.importDSLTip'], { ns: 'workflow' })}
-            </div>
-            <div className="flex items-start gap-1 self-stretch pt-1 pb-0.5">
-              <Button
-                type="button"
-                size="small"
-                variant="secondary"
-                className="relative"
-                disabled={isImporting}
-                onClick={onBackup}
-              >
-                <RiFileDownloadLine className="size-3.5 text-components-button-secondary-text" />
-                <div className="flex items-center justify-center gap-1">
-                  {t(($) => $['common.backupCurrentDraft'], { ns: 'workflow' })}
-                </div>
-              </Button>
-            </div>
-          </div>
-        </div>
+        <Alert type="warning" className="mb-2">
+          <AlertTitle className="whitespace-pre-line">
+            {t(($) => $['common.importDSLTip'], { ns: 'workflow' })}
+          </AlertTitle>
+          <AlertActions>
+            <Button type="button" size="small" disabled={isImporting} onClick={onBackup}>
+              <RiFileDownloadLine className="size-3.5" />
+              {t(($) => $['common.backupCurrentDraft'], { ns: 'workflow' })}
+            </Button>
+          </AlertActions>
+        </Alert>
         <div>
           <div className="pt-2 system-md-semibold text-text-primary">
             {t(($) => $.chooseAppFile, { ns: 'app' })}

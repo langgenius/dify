@@ -29,7 +29,8 @@ from tests.helpers.unit.tasks.knowledge_fs_task_fakes import (
 )
 
 
-def _source(*, status: str = "syncing") -> KnowledgeFSSourceResponse:
+def _source(*, status: Literal["active", "disabled", "error", "syncing"] = "syncing") -> KnowledgeFSSourceResponse:
+    """Given a source status, return a complete source pending import, without I/O."""
     return source_response(
         metadata={
             "parameters": {"limit": 99},
@@ -202,12 +203,13 @@ def test_finalize_source_import_recovers_a_stale_failed_marker_after_workflow_co
 
 
 def test_finalize_source_import_persists_failure_on_visible_source() -> None:
+    """Given a failed import with a public error code, save its failure on the visible source."""
     facade = _facade(
         source_workflow_response(
             workflow_id="import-1",
             state="failed",
             failure_message="provider failed",
-            last_error_code="PROVIDER_FAILED",
+            last_error_code="SOURCE_PROVIDER_REJECTED",
         )
     )
     facade.script("get_source", _source())
@@ -221,7 +223,7 @@ def test_finalize_source_import_persists_failure_on_visible_source() -> None:
     assert update.status == "error"
     assert "parameters" not in update_metadata
     assert update_metadata["lastImport"] == {
-        "errorCode": "PROVIDER_FAILED",
+        "errorCode": "SOURCE_PROVIDER_REJECTED",
         "errorMessage": "provider failed",
         "kind": "crawl-preview-selection",
         "previewWorkflowId": "preview-1",

@@ -286,6 +286,20 @@ export const zAppSettingsInfo = z.object({
 })
 
 /**
+ * BinaryFileResponse
+ */
+export const zBinaryFileResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
+
+/**
+ * ButtonStyle
+ *
+ * Button styles for user actions.
+ */
+export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
+
+/**
  * ChatAppInfo
  */
 export const zChatAppInfo = z.object({
@@ -662,6 +676,44 @@ export const zFileResponse = z.object({
 })
 
 /**
+ * FileTransferMethod
+ */
+export const zFileTransferMethod = z.enum([
+  'datasource_file',
+  'local_file',
+  'remote_url',
+  'tool_file',
+])
+
+/**
+ * FileType
+ */
+export const zFileType = z.enum(['audio', 'custom', 'document', 'image', 'video'])
+
+/**
+ * FileInputConfig
+ */
+export const zFileInputConfig = z.object({
+  allowed_file_extensions: z.array(z.string()).optional(),
+  allowed_file_types: z.array(zFileType).optional(),
+  allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
+  output_variable_name: z.string(),
+  type: z.literal('file').optional().default('file'),
+})
+
+/**
+ * FileListInputConfig
+ */
+export const zFileListInputConfig = z.object({
+  allowed_file_extensions: z.array(z.string()).optional(),
+  allowed_file_types: z.array(zFileType).optional(),
+  allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
+  number_limits: z.int().gte(0).optional().default(0),
+  output_variable_name: z.string(),
+  type: z.literal('file-list').optional().default('file-list'),
+})
+
+/**
  * FileUploadPayload
  */
 export const zFileUploadPayload = z.object({
@@ -747,6 +799,26 @@ export const zErrorBody = z.object({
 })
 
 /**
+ * AlreadySubmittedError
+ */
+export const zAlreadySubmittedError = zErrorBody.and(
+  z.object({
+    code: z.literal('already_submitted'),
+    status: z.literal(409),
+  }),
+)
+
+/**
+ * ExpiredError
+ */
+export const zExpiredError = zErrorBody.and(
+  z.object({
+    code: z.literal('expired'),
+    status: z.literal(410),
+  }),
+)
+
+/**
  * FormSubmitResponse
  *
  * 200 body for POST /apps/<id>/human-input-forms/<token>:submit: the hint to follow the
@@ -755,17 +827,6 @@ export const zErrorBody = z.object({
  */
 export const zFormSubmitResponse = z.object({
   hints: z.array(zHint).optional(),
-})
-
-/**
- * HumanInputFormDefinitionResponse
- */
-export const zHumanInputFormDefinitionResponse = z.object({
-  expiration_time: z.int().nullish(),
-  form_content: z.string(),
-  inputs: z.array(z.record(z.string(), z.unknown())).optional(),
-  resolved_default_values: z.record(z.string(), z.string()),
-  user_actions: z.array(z.record(z.string(), z.unknown())).optional(),
 })
 
 /**
@@ -805,6 +866,16 @@ export const zImport = z.object({
   status: zImportStatus,
   warnings: z.array(zDslImportWarning).optional(),
 })
+
+/**
+ * InvalidInputError
+ */
+export const zInvalidInputError = zErrorBody.and(
+  z.object({
+    code: z.literal('invalid_input'),
+    status: z.literal(400),
+  }),
+)
 
 export const zJsonValue = z.unknown()
 
@@ -1467,6 +1538,13 @@ export const zOpenApiErrorCode = z.enum([
   'secret_mask_not_secret',
   'secret_mask_unknown_id',
   'service_api_disabled',
+  'skill_name_conflict',
+  'skill_name_mismatch',
+  'skill_not_found',
+  'skill_package_invalid',
+  'skill_request_rejected',
+  'skill_version_not_found',
+  'skills_disabled',
   'too_many_files',
   'too_many_requests',
   'trigger_workflow_service_mode_unavailable',
@@ -1500,6 +1578,18 @@ export const zOpenApiFormSubmitPayload = z.object({
     .nullish(),
   inputs: z.record(z.string(), zJsonValue),
 })
+
+/**
+ * PaidPlanRequiredError
+ *
+ * This feature requires a paid plan.
+ */
+export const zPaidPlanRequiredError = zErrorBody.and(
+  z.object({
+    code: z.literal('paid_plan_required'),
+    status: z.literal(403),
+  }),
+)
 
 /**
  * PermittedExternalAppsListResponse
@@ -1775,6 +1865,18 @@ export const zServiceApi = z.object({
 })
 
 /**
+ * ServiceApiDisabledError
+ *
+ * This app's Service API is turned off.
+ */
+export const zServiceApiDisabledError = zErrorBody.and(
+  z.object({
+    code: z.literal('service_api_disabled'),
+    status: z.literal(403),
+  }),
+)
+
+/**
  * ServiceApiPatch
  */
 export const zServiceApiPatch = z.object({
@@ -1840,6 +1942,148 @@ export const zSimpleEndUser = z.object({
  */
 export const zSimpleResultResponse = z.object({
   result: z.string(),
+})
+
+/**
+ * SkillExportQuery
+ */
+export const zSkillExportQuery = z.object({
+  version_id: z.uuid().nullish(),
+})
+
+/**
+ * SkillImportPayload
+ */
+export const zSkillImportPayload = z.object({
+  draft_hash: z
+    .string()
+    .regex(/^[0-9]+$/)
+    .nullish(),
+  files: z.record(
+    z.string(),
+    z.union([
+      z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+      z.array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File)),
+    ]),
+  ),
+  skill_id: z.uuid().nullish(),
+})
+
+/**
+ * SkillImportResponse
+ */
+export const zSkillImportResponse = z.object({
+  draft_hash: z.string(),
+  file_count: z.int(),
+  hints: z.array(zHint).optional(),
+  id: z.string(),
+  name: z.string(),
+})
+
+/**
+ * SkillListQuery
+ */
+export const zSkillListQuery = z.object({
+  keyword: z.string().max(200).nullish(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
+  tag: z.array(z.string()).nullish(),
+})
+
+/**
+ * SkillPublishPayload
+ */
+export const zSkillPublishPayload = z.object({
+  publish_note: z.string().max(1024).optional().default(''),
+  version_name: z.string().max(128).nullish(),
+})
+
+/**
+ * SkillPublishResponse
+ */
+export const zSkillPublishResponse = z.object({
+  created_at: z.int(),
+  created_by: z.string().nullable(),
+  hints: z.array(zHint).optional(),
+  id: z.string(),
+  publish_note: z.string(),
+  version_name: z.string().nullable(),
+  version_number: z.int(),
+})
+
+/**
+ * SkillRow
+ */
+export const zSkillRow = z.object({
+  description: z.string(),
+  display_name: z.string(),
+  icon: z.string().nullable(),
+  id: z.string(),
+  latest_published_version_id: z.string().nullable(),
+  name: z.string(),
+  tags: z.array(z.string()),
+  updated_at: z.int(),
+})
+
+/**
+ * SkillListResponse
+ */
+export const zSkillListResponse = z.object({
+  data: z.array(zSkillRow),
+  has_more: z.boolean(),
+  hints: z.array(zHint).optional(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
+/**
+ * SkillVersionListQuery
+ */
+export const zSkillVersionListQuery = z.object({
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
+})
+
+/**
+ * SkillVersionRow
+ */
+export const zSkillVersionRow = z.object({
+  created_at: z.int(),
+  created_by: z.string().nullable(),
+  id: z.string(),
+  publish_note: z.string(),
+  version_name: z.string().nullable(),
+  version_number: z.int(),
+})
+
+/**
+ * SkillDescribeResponse
+ */
+export const zSkillDescribeResponse = z.object({
+  description: z.string(),
+  display_name: z.string(),
+  draft_hash: z.string(),
+  hints: z.array(zHint).optional(),
+  icon: z.string().nullable(),
+  id: z.string(),
+  latest_published_version_id: z.string().nullable(),
+  latest_version: zSkillVersionRow.nullable(),
+  name: z.string(),
+  tags: z.array(z.string()),
+  updated_at: z.int(),
+})
+
+/**
+ * SkillVersionListResponse
+ */
+export const zSkillVersionListResponse = z.object({
+  data: z.array(zSkillVersionRow),
+  has_more: z.boolean(),
+  hints: z.array(zHint).optional(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
 })
 
 /**
@@ -2060,6 +2304,86 @@ export const zMessageMetadata = z.object({
 })
 
 /**
+ * UserActionConfig
+ *
+ * User action configuration.
+ */
+export const zUserActionConfig = z.object({
+  button_style: zButtonStyle.optional().default('default'),
+  id: z
+    .string()
+    .max(20)
+    .regex(/^[A-Za-z_][A-Za-z0-9_]*$/),
+  title: z.string().max(100),
+})
+
+/**
+ * ValueSourceType
+ *
+ * ValueSourceType records whether the value comes from a static setting
+ * in form definition, or a variable while the workflow is running.
+ */
+export const zValueSourceType = z.enum(['constant', 'variable'])
+
+/**
+ * StringListSource
+ */
+export const zStringListSource = z.object({
+  selector: z.array(z.string()).optional(),
+  type: zValueSourceType,
+  value: z.array(z.string()).optional(),
+})
+
+/**
+ * SelectInputConfig
+ */
+export const zSelectInputConfig = z.object({
+  option_source: zStringListSource,
+  output_variable_name: z.string(),
+  type: z.literal('select').optional().default('select'),
+})
+
+/**
+ * StringSource
+ *
+ * Default configuration for form inputs.
+ */
+export const zStringSource = z.object({
+  selector: z.array(z.string()).optional(),
+  type: zValueSourceType,
+  value: z.string().optional().default(''),
+})
+
+/**
+ * ParagraphInputConfig
+ *
+ * Form input definition.
+ */
+export const zParagraphInputConfig = z.object({
+  default: zStringSource.nullish(),
+  output_variable_name: z.string(),
+  type: z.literal('paragraph').optional().default('paragraph'),
+})
+
+export const zFormInputConfig = z.discriminatedUnion('type', [
+  zParagraphInputConfig,
+  zSelectInputConfig,
+  zFileInputConfig,
+  zFileListInputConfig,
+])
+
+/**
+ * HumanInputFormDefinitionResponse
+ */
+export const zHumanInputFormDefinitionResponse = z.object({
+  expiration_time: z.int().nullish(),
+  form_content: z.string(),
+  inputs: z.array(zFormInputConfig).optional(),
+  resolved_default_values: z.record(z.string(), z.string()),
+  user_actions: z.array(zUserActionConfig).optional(),
+})
+
+/**
  * VersionListQuery
  */
 export const zVersionListQuery = z.object({
@@ -2182,6 +2506,16 @@ export const zReleaseCheckResponse = z.object({
   ready: z.boolean(),
   state: zReleaseState,
 })
+
+/**
+ * WorkflowNotActiveError
+ */
+export const zWorkflowNotActiveError = zErrorBody.and(
+  z.object({
+    code: z.literal('workflow_not_active'),
+    status: z.literal(409),
+  }),
+)
 
 /**
  * WorkflowRunData
@@ -3669,6 +4003,84 @@ export const zPostWorkspacesByWorkspaceIdPluginsInstallPath = z.object({
  */
 export const zPostWorkspacesByWorkspaceIdPluginsInstallResponse = zPluginTaskStartResponse
 
+export const zGetWorkspacesByWorkspaceIdSkillsPath = z.object({
+  workspace_id: z.string(),
+})
+
+export const zGetWorkspacesByWorkspaceIdSkillsQuery = z.object({
+  keyword: z.string().max(200).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
+  tag: z.array(z.string()).optional(),
+})
+
+/**
+ * Skills
+ */
+export const zGetWorkspacesByWorkspaceIdSkillsResponse = zSkillListResponse
+
+export const zPostWorkspacesByWorkspaceIdSkillsImportsBody = zSkillImportPayload
+
+export const zPostWorkspacesByWorkspaceIdSkillsImportsPath = z.object({
+  workspace_id: z.string(),
+})
+
+/**
+ * Overwritten
+ */
+export const zPostWorkspacesByWorkspaceIdSkillsImportsResponse = zSkillImportResponse
+
+export const zGetWorkspacesByWorkspaceIdSkillsBySkillIdPath = z.object({
+  skill_id: z.string(),
+  workspace_id: z.string(),
+})
+
+/**
+ * Skill
+ */
+export const zGetWorkspacesByWorkspaceIdSkillsBySkillIdResponse = zSkillDescribeResponse
+
+export const zGetWorkspacesByWorkspaceIdSkillsBySkillIdArchivePath = z.object({
+  skill_id: z.string(),
+  workspace_id: z.string(),
+})
+
+export const zGetWorkspacesByWorkspaceIdSkillsBySkillIdArchiveQuery = z.object({
+  version_id: z.uuid().optional(),
+})
+
+/**
+ * Zip archive
+ */
+export const zGetWorkspacesByWorkspaceIdSkillsBySkillIdArchiveResponse = zBinaryFileResponse
+
+export const zGetWorkspacesByWorkspaceIdSkillsBySkillIdVersionsPath = z.object({
+  skill_id: z.string(),
+  workspace_id: z.string(),
+})
+
+export const zGetWorkspacesByWorkspaceIdSkillsBySkillIdVersionsQuery = z.object({
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
+})
+
+/**
+ * Versions
+ */
+export const zGetWorkspacesByWorkspaceIdSkillsBySkillIdVersionsResponse = zSkillVersionListResponse
+
+export const zPostWorkspacesByWorkspaceIdSkillsBySkillIdPublishBody = zSkillPublishPayload
+
+export const zPostWorkspacesByWorkspaceIdSkillsBySkillIdPublishPath = z.object({
+  skill_id: z.string(),
+  workspace_id: z.string(),
+})
+
+/**
+ * Published
+ */
+export const zPostWorkspacesByWorkspaceIdSkillsBySkillIdPublishResponse = zSkillPublishResponse
+
 export const zGetWorkspacesByWorkspaceIdToolProvidersByProviderPath = z.object({
   provider: z.string(),
   workspace_id: z.string(),
@@ -3726,3 +4138,12 @@ export const zGetWorkspacesByWorkspaceIdToolsQuery = z.object({
  * Tools
  */
 export const zGetWorkspacesByWorkspaceIdToolsResponse = zToolListResponse
+
+export const zPostWorkspacesByWorkspaceIdSwitchPath = z.object({
+  workspace_id: z.string(),
+})
+
+/**
+ * Workspace detail
+ */
+export const zPostWorkspacesByWorkspaceIdSwitchResponse = zWorkspaceDetailResponse

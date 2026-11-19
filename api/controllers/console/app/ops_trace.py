@@ -73,7 +73,12 @@ class TraceAppConfigResponse(ResponseModel):
     id: str | None = None
     app_id: str | None = None
     tracing_provider: str | None = None
-    tracing_config: dict[str, str | None] | None = Field(default=None)
+    tracing_config: dict[str, str | None] | None = Field(
+        default=None, description="Non-secret fields; secrets are write-only and never returned"
+    )
+    configured_secrets: list[str] | None = Field(
+        default=None, description="Secret fields that hold a value; submit them empty to keep that value"
+    )
     is_active: bool | None = None
     created_at: str | None = None
     updated_at: str | None = None
@@ -85,6 +90,7 @@ class TraceAppConfigResponse(ResponseModel):
             app_id=record.app_id,
             tracing_provider=record.tracing_provider,
             tracing_config=record.tracing_config,
+            configured_secrets=list(record.configured_secrets),
             is_active=record.is_active,
             created_at=str(record.created_at),
             updated_at=str(record.updated_at),

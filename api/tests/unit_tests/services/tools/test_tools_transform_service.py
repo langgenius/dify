@@ -1,20 +1,22 @@
-from unittest.mock import ANY, MagicMock, Mock, patch
+import json
+from unittest.mock import Mock, patch
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session
 
 from core.mcp.types import Tool as MCPTool
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
-    ApiProviderAuthType,
+    ApiProviderSchemaType,
     ToolParameter,
     ToolProviderEntity,
     ToolProviderIdentity,
     ToolProviderType,
 )
 from models.account import Account
-from models.tools import MCPToolProvider
+from models.tools import ApiToolProvider, MCPToolProvider
 from services.tools.tools_transform_service import ToolTransformService
 from tests.tool_fixtures import make_runtime_tool
 
@@ -486,6 +488,26 @@ def _parameter(
     )
 
 
+def _api_provider(session: Session, auth_type: str) -> ApiToolProvider:
+    user = Account(name="Test User", email="user@example.com")
+    session.add(user)
+    session.flush()
+    provider = ApiToolProvider(
+        name="Test API Provider",
+        icon='{"background": "#000", "content": "A"}',
+        schema="{}",
+        schema_type_str=ApiProviderSchemaType.OPENAPI,
+        user_id=user.id,
+        tenant_id="00000000-0000-0000-0000-000000000002",
+        description="Test API tool provider",
+        tools_str="[]",
+        credentials_str=json.dumps({"auth_type": auth_type}),
+    )
+    session.add(provider)
+    session.commit()
+    return provider
+
+
 class TestToolsTransformServiceCases:
     class TestToolTransformService:
         """Test cases for ToolTransformService.convert_tool_entity_to_api_entity method"""
@@ -930,42 +952,44 @@ class TestToolsTransformServiceCases:
             assert ToolTransformService.convert_mcp_schema_to_parameter(schema)[0].llm_description == ""
 
     class TestApiProviderToController:
-        def test_api_key_header_auth(self):
-            db_provider = MagicMock()
-            db_provider.credentials = {"auth_type": "api_key_header"}
-            with patch(f"{MODULE}.db.session"), patch(f"{MODULE}.ApiToolProviderController") as ctrl_cls:
-                ctrl_cls.from_db.return_value = MagicMock()
-                ToolTransformService.api_provider_to_controller(db_provider)
-            ctrl_cls.from_db.assert_called_once_with(
-                db_provider=db_provider, auth_type=ApiProviderAuthType.API_KEY_HEADER, session=ANY
-            )
+        def test_api_key_header_auth(self, sqlite_session: Session) -> None:
+            db_provider = _api_provider(sqlite_session, "api_key_header")
+            with patch(f"{MODULE}.db.session", return_value=sqlite_session):
+                controller = ToolTransformService.api_provider_to_controller(db_provider)
+            assert controller.entity.identity.author == "Test User"
+            assert [c.name for c in controller.entity.credentials_schema] == [
+                "auth_type",
+                "api_key_header",
+                "api_key_value",
+                "api_key_header_prefix",
+            ]
 
-        def test_api_key_query_auth(self):
-            db_provider = MagicMock()
-            db_provider.credentials = {"auth_type": "api_key_query"}
-            with patch(f"{MODULE}.db.session"), patch(f"{MODULE}.ApiToolProviderController") as ctrl_cls:
-                ctrl_cls.from_db.return_value = MagicMock()
-                ToolTransformService.api_provider_to_controller(db_provider)
-            ctrl_cls.from_db.assert_called_once_with(
-                db_provider=db_provider, auth_type=ApiProviderAuthType.API_KEY_QUERY, session=ANY
-            )
+        def test_api_key_query_auth(self, sqlite_session: Session) -> None:
+            db_provider = _api_provider(sqlite_session, "api_key_query")
+            with patch(f"{MODULE}.db.session", return_value=sqlite_session):
+                controller = ToolTransformService.api_provider_to_controller(db_provider)
+            assert controller.entity.identity.author == "Test User"
+            assert [c.name for c in controller.entity.credentials_schema] == [
+                "auth_type",
+                "api_key_query_param",
+                "api_key_value",
+            ]
 
-        def test_legacy_api_key_maps_to_header(self):
-            db_provider = MagicMock()
-            db_provider.credentials = {"auth_type": "api_key"}
-            with patch(f"{MODULE}.db.session"), patch(f"{MODULE}.ApiToolProviderController") as ctrl_cls:
-                ctrl_cls.from_db.return_value = MagicMock()
-                ToolTransformService.api_provider_to_controller(db_provider)
-            ctrl_cls.from_db.assert_called_once_with(
-                db_provider=db_provider, auth_type=ApiProviderAuthType.API_KEY_HEADER, session=ANY
-            )
+        def test_legacy_api_key_maps_to_header(self, sqlite_session: Session) -> None:
+            db_provider = _api_provider(sqlite_session, "api_key")
+            with patch(f"{MODULE}.db.session", return_value=sqlite_session):
+                controller = ToolTransformService.api_provider_to_controller(db_provider)
+            assert controller.entity.identity.author == "Test User"
+            assert [c.name for c in controller.entity.credentials_schema] == [
+                "auth_type",
+                "api_key_header",
+                "api_key_value",
+                "api_key_header_prefix",
+            ]
 
-        def test_unknown_auth_defaults_to_none(self):
-            db_provider = MagicMock()
-            db_provider.credentials = {"auth_type": "something_else"}
-            with patch(f"{MODULE}.db.session"), patch(f"{MODULE}.ApiToolProviderController") as ctrl_cls:
-                ctrl_cls.from_db.return_value = MagicMock()
-                ToolTransformService.api_provider_to_controller(db_provider)
-            ctrl_cls.from_db.assert_called_once_with(
-                db_provider=db_provider, auth_type=ApiProviderAuthType.NONE, session=ANY
-            )
+        def test_unknown_auth_defaults_to_none(self, sqlite_session: Session) -> None:
+            db_provider = _api_provider(sqlite_session, "something_else")
+            with patch(f"{MODULE}.db.session", return_value=sqlite_session):
+                controller = ToolTransformService.api_provider_to_controller(db_provider)
+            assert controller.entity.identity.author == "Test User"
+            assert [c.name for c in controller.entity.credentials_schema] == ["auth_type"]

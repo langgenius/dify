@@ -1,4 +1,16 @@
 {
+  "console DELETE /workspaces/current/human-input/v2/contacts/{contact_id}/im-override": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /{evaluate_target_type}/{evaluate_target_id}/evaluation": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /{evaluate_target_type}/{evaluate_target_id}/evaluation/default-metrics": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
   "console GET /account/delete/verify": ["no-input-schema", "compatible"],
   "console GET /account/education": ["no-input-schema", "compatible"],
   "console GET /account/education/verify": ["no-input-schema", "compatible"],
@@ -101,6 +113,7 @@
     "compatible",
     "parsed-vs-wire-output"
   ],
+  "console GET /datasets/{dataset_id}/evaluation": ["compatible", "parsed-vs-wire-output"],
   "console GET /datasets/{dataset_id}/metadata": ["compatible", "parsed-vs-wire-output"],
   "console GET /datasets/{resource_id}/api-keys": ["compatible", "parsed-vs-wire-output"],
   "console GET /datasets/api-base-info": ["no-input-schema", "compatible"],
@@ -114,6 +127,8 @@
   "console GET /enterprise/sso/saml/login": ["no-input-schema", "compatible"],
   "console GET /features": ["no-input-schema", "compatible"],
   "console GET /features/vector-space": ["no-input-schema", "parsed-vs-wire-output"],
+  "console GET /file-scan/provider-types": ["no-input-schema", "compatible"],
+  "console GET /file-scan/providers": ["no-input-schema", "compatible"],
   "console GET /files/support-type": ["no-input-schema", "compatible"],
   "console GET /files/upload": ["no-input-schema", "compatible"],
   "console GET /init": ["no-input-schema", "compatible"],
@@ -202,6 +217,7 @@
   ],
   "console GET /trial-models": ["no-input-schema", "compatible"],
   "console GET /workflow-run-archives": ["no-input-schema", "compatible"],
+  "console GET /workflow/{workflow_run_id}/pause-details": ["compatible", "parsed-vs-wire-output"],
   "console GET /workspaces": ["no-input-schema", "compatible"],
   "console GET /workspaces/{tenant_id}/model-providers/{provider}/{icon_type}/{lang}": [
     "compatible",
@@ -216,6 +232,40 @@
   "console GET /workspaces/current/default-model": ["compatible", "parsed-vs-wire-output"],
   "console GET /workspaces/current/endpoints/list": ["compatible", "parsed-vs-wire-output"],
   "console GET /workspaces/current/endpoints/list/plugin": ["compatible", "parsed-vs-wire-output"],
+  "console GET /workspaces/current/human-input/v2/channel-providers": [
+    "no-input-schema",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/human-input/v2/channels": ["no-input-schema", "compatible"],
+  "console GET /workspaces/current/human-input/v2/channels/email/{channel_id}": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/human-input/v2/channels/im/{channel_id}": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/human-input/v2/contacts": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/human-input/v2/contacts/{contact_id}": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/human-input/v2/contacts/batch": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/human-input/v2/im-sync-runs/latest": [
+    "no-input-schema",
+    "compatible"
+  ],
+  "console GET /workspaces/current/human-input/v2/im-sync-runs/latest/results": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/human-input/v2/test-channels": ["no-input-schema", "compatible"],
   "console GET /workspaces/current/model-providers": ["compatible", "parsed-vs-wire-output"],
   "console GET /workspaces/current/model-providers/{provider}/models": [
     "compatible",
@@ -481,6 +531,10 @@
     "parsed-vs-wire-output"
   ],
   "console PATCH /onboarding/step-by-step-tour/state": ["compatible", "parsed-vs-wire-output"],
+  "console PATCH /workspaces/current/human-input/v2/contacts/external/{contact_id}": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
   "console PATCH /workspaces/current/skills/{skill_id}": ["compatible", "parsed-vs-wire-output"],
   "console PATCH /workspaces/current/skills/{skill_id}/files": [
     "compatible",
@@ -495,6 +549,7 @@
   "console POST /agent/{agent_id}/api-keys": ["compatible", "parsed-vs-wire-output"],
   "console POST /agent/{agent_id}/build-draft/checkout": ["compatible", "parsed-vs-wire-output"],
   "console POST /agent/{agent_id}/config/files": ["compatible", "parsed-vs-wire-output"],
+  "console POST /agent/{agent_id}/config/files/batch": ["compatible", "parsed-vs-wire-output"],
   "console POST /agent/{agent_id}/config/skills/upload": ["compatible", "parsed-vs-wire-output"],
   "console POST /agent/{agent_id}/copy": ["compatible", "parsed-vs-wire-output"],
   "console POST /agent/{agent_id}/debug-conversation/refresh": [
@@ -507,6 +562,7 @@
     "parsed-vs-wire-output"
   ],
   "console POST /apps/{app_id}/agent/config/files": ["compatible", "parsed-vs-wire-output"],
+  "console POST /apps/{app_id}/agent/config/files/batch": ["compatible", "parsed-vs-wire-output"],
   "console POST /apps/{app_id}/agent/config/skills/upload": ["compatible", "parsed-vs-wire-output"],
   "console POST /apps/{app_id}/completion-messages": ["compatible", "undocumented-output"],
   "console POST /apps/{app_id}/copy": ["compatible", "parsed-vs-wire-output"],
@@ -595,6 +651,19 @@
   "console POST /trial-apps/{app_id}/workflows/run": ["compatible", "undocumented-output"],
   "console POST /workflow-generate": ["compatible", "parsed-vs-wire-output"],
   "console POST /workflow-generate/stream": ["compatible", "parsed-vs-wire-output"],
+  "console POST /workspaces/current/human-input/v2/contacts/external": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console POST /workspaces/current/human-input/v2/contacts/platform": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console POST /workspaces/current/human-input/v2/im-sync-runs": ["no-input-schema", "compatible"],
+  "console POST /workspaces/current/human-input/v2/node-data-migration": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
   "console POST /workspaces/current/network-access-groups": ["compatible", "parsed-vs-wire-output"],
   "console POST /workspaces/current/plugin/list/installations/ids": [
     "compatible",
@@ -640,6 +709,10 @@
     "parsed-vs-wire-output"
   ],
   "console POST /workspaces/current/tool-provider/mcp": ["compatible", "parsed-vs-wire-output"],
+  "console PUT /{evaluate_target_type}/{evaluate_target_id}/evaluation": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
   "console PUT /agent/{agent_id}": ["compatible", "parsed-vs-wire-output"],
   "console PUT /agent/{agent_id}/build-draft": ["compatible", "parsed-vs-wire-output"],
   "console PUT /agent/{agent_id}/composer": ["compatible", "parsed-vs-wire-output"],
@@ -647,11 +720,20 @@
     "compatible",
     "parsed-vs-wire-output"
   ],
+  "console PUT /datasets/{dataset_id}/evaluation": ["compatible", "parsed-vs-wire-output"],
   "console PUT /knowledge-fs/spaces/{control_space_id}/tags": [
     "compatible",
     "parsed-vs-wire-output"
   ],
   "console PUT /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console PUT /workspaces/current/human-input/v2/contacts/{contact_id}/im-bindings": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console PUT /workspaces/current/human-input/v2/contacts/{contact_id}/im-override": [
     "compatible",
     "parsed-vs-wire-output"
   ],

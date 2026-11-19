@@ -1,12 +1,15 @@
 import type { CloudSandboxPlanState } from '../cloud-sandbox-retention'
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import dayjs from 'dayjs'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { APP_PAGE_LIMIT } from '@/config'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createReactI18nextMock } from '@/test/i18n-mock'
 import Logs from '../index'
+const render = (ui: React.ReactElement) =>
+  renderWithConsoleQuery(<NuqsTestingAdapter>{ui}</NuqsTestingAdapter>)
 
 vi.mock('react-i18next', () => {
   const mock = createReactI18nextMock()
@@ -51,30 +54,12 @@ vi.mock('../cloud-sandbox-retention', async (importOriginal) => {
   }
 })
 
-vi.mock('../list', () => ({
-  default: ({ logs }: { logs: { total?: number } }) => (
-    <div>
-      list-total-
-      {logs?.total}
-    </div>
-  ),
-}))
-
-vi.mock('../empty-element', () => ({
-  default: () => <div>empty-logs</div>,
-}))
-
 vi.mock('../retention-upgrade-notice', () => ({
   RetentionUpgradeNotice: () => <div>retention-upgrade-notice</div>,
 }))
 
-vi.mock('@/app/components/base/loading-placeholder', () => ({
-  LoadingPlaceholder: () => <div>loading-logs</div>,
-}))
-
 describe('Logs', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     mockSearchParams = new URLSearchParams()
     mockPlanState.value = 'unrestricted'
     getChatConversations.mockReturnValue(new Promise(() => {}))
@@ -95,7 +80,7 @@ describe('Logs', () => {
       screen.getByRole('link', { name: /(?:^|\.)operation\.learnMore(?=$|:)/ }),
     ).toHaveAttribute('href', 'https://docs.example.com/use-dify/monitor/logs')
     expect(screen.getByText('retention-upgrade-notice')).toBeInTheDocument()
-    expect(screen.getByText('list-total-')).toBeInTheDocument()
+    expect(screen.getByRole('row', { busy: true })).toBeInTheDocument()
   })
 
   it('should render the empty state for completion apps without logs', async () => {
@@ -114,7 +99,8 @@ describe('Logs', () => {
         params: { app_id: 'app-2' },
       }),
     )
-    expect(await screen.findByText('list-total-0')).toBeInTheDocument()
+    expect(await screen.findByText('appLog.table.empty.element.title')).toBeInTheDocument()
+    expect(screen.queryByRole('row', { busy: true })).not.toBeInTheDocument()
   })
 
   it('should update the page query parameter when pagination changes', async () => {
@@ -170,6 +156,59 @@ describe('Logs', () => {
         }),
       }),
     )
+  })
+
+  it('should start each period on the current date after the page stays open past midnight', async () => {
+    vi.useFakeTimers({ toFake: ['Date'], shouldAdvanceTime: true })
+    try {
+      const user = userEvent.setup()
+      getChatConversations.mockResolvedValue({
+        total: 0,
+        data: [],
+        page: 1,
+        limit: APP_PAGE_LIMIT,
+        has_more: false,
+      })
+      render(
+        <Logs
+          appDetail={createAppDetailFixture({ id: 'app-past-midnight', mode: 'chat' as const })}
+        />,
+      )
+      const selectPeriod = async (current: string, next: string) => {
+        await user.click(
+          await screen.findByRole('combobox', {
+            name: new RegExp(`appLog\\.filter\\.period\\.${current}`),
+          }),
+        )
+        await user.click(await screen.findByText(new RegExp(`appLog\\.filter\\.period\\.${next}`)))
+      }
+      const expectStart = (start: string) =>
+        waitFor(() =>
+          expect(getChatConversations.mock.calls.at(-1)?.[0]).toEqual(
+            expect.objectContaining({ query: expect.objectContaining({ start }) }),
+          ),
+        )
+
+      // The page has been open since earlier days; each request uses the date of the request.
+      vi.setSystemTime(new Date(2026, 11, 1, 9))
+      await selectPeriod('last7days', 'monthToDate')
+      await expectStart('2026-12-01 00:00')
+      await selectPeriod('monthToDate', 'quarterToDate')
+      await expectStart('2026-10-01 00:00')
+      await selectPeriod('quarterToDate', 'last3months')
+      await expectStart('2026-09-01 00:00')
+
+      vi.setSystemTime(new Date(2027, 0, 1, 9))
+      await selectPeriod('last3months', 'yearToDate')
+      await expectStart('2027-01-01 00:00')
+
+      // Twelve months before February 29 is the last day of the shorter February.
+      vi.setSystemTime(new Date(2028, 1, 29, 9))
+      await selectPeriod('yearToDate', 'last12months')
+      await expectStart('2027-02-28 00:00')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('should use today when a cached period is unavailable to a Sandbox workspace', async () => {

@@ -507,7 +507,7 @@ export function AgentTools() {
     (tool: AgentCliTool) => {
       handleCliDialogSave(tool)
       if (!editingCliTool) {
-        promptAddCallbackRef.current?.(tool)
+        promptAddCallbackRef.current?.([tool])
         promptAddCallbackRef.current = undefined
       }
     },

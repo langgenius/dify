@@ -252,7 +252,7 @@ export type KnowledgeConfig = {
   duplicate?: boolean
   embedding_model?: string | null
   embedding_model_provider?: string | null
-  indexing_technique: 'economy' | 'high_quality'
+  indexing_technique: IndexTechniqueType
   is_multimodal?: boolean
   name?: string | null
   original_document_id?: string | null
@@ -602,6 +602,96 @@ export type ErrorDocsResponse = {
   total: number
 }
 
+export type EvaluationConfigResponse = {
+  customized_metrics?: CustomizedMetrics | null
+  default_metrics?: Array<DefaultMetric> | null
+  evaluation_framework?: 'deepeval' | 'ragas'
+  evaluation_model?: string | null
+  evaluation_model_provider?: string | null
+  judgment_config?: JudgmentConfig | null
+}
+
+export type PaidPlanRequiredError = ErrorResponse & {
+  code: 'paid_plan_required'
+  status: 403
+}
+
+export type EvaluationConfigPayload = {
+  customized_metrics?: CustomizedMetrics | null
+  default_metrics?: Array<DefaultMetric>
+  evaluation_framework?: 'deepeval' | 'ragas'
+  evaluation_model?: string
+  evaluation_model_provider?: string
+  judgment_config?: JudgmentConfig | null
+}
+
+export type EvaluationFileResponse = {
+  created_at?: number | null
+  download_url: string
+  extension: string
+  id: string
+  mime_type: string
+  name: string
+  size: number
+}
+
+export type EvaluationRunPaginationResponse = {
+  data: Array<EvaluationRunResponse>
+  page: number
+  page_size: number
+  total: number
+}
+
+export type EvaluationMetricsResponse = {
+  metrics:
+    | {
+        [key: string]: Array<string>
+      }
+    | Array<string>
+}
+
+export type EvaluationRunPayload = {
+  customized_metrics?: CustomizedMetrics | null
+  default_metrics?: Array<DefaultMetric>
+  evaluation_framework?: 'deepeval' | 'ragas'
+  evaluation_model?: string
+  evaluation_model_provider?: string
+  file_id: string
+  judgment_config?: JudgmentConfig | null
+}
+
+export type EvaluationRunResponse = {
+  completed_at?: number | null
+  completed_items: number
+  created_at?: number | null
+  created_by: string
+  dataset_file_id?: string | null
+  error?: string | null
+  evaluation_config_id: string
+  evaluation_model?: string | null
+  evaluation_model_provider?: string | null
+  failed_items: number
+  id: string
+  metrics_summary?: {
+    [key: string]: unknown
+  }
+  progress: number
+  result_file_id?: string | null
+  started_at?: number | null
+  status: string
+  target_agent_config_snapshot_id?: string | null
+  target_id: string
+  target_type: string
+  target_workflow_version_id?: string | null
+  tenant_id: string
+  total_items: number
+}
+
+export type EvaluationRunDetailResponse = {
+  items: EvaluationRunItemPaginationResponse
+  run: EvaluationRunResponse
+}
+
 export type ExternalHitTestingPayload = {
   external_retrieval_model?: {
     [key: string]: unknown
@@ -615,6 +705,20 @@ export type ExternalHitTestingPayload = {
 export type ExternalHitTestingResponse = {
   query: ExternalHitTestingQueryResponse
   records: Array<ExternalHitTestingRecordResponse>
+}
+
+export type FileScanPolicyResponse = {
+  enabled: boolean
+  on_unavailable: string
+  on_unscannable: string
+  provider_id?: string | null
+}
+
+export type FileScanPolicyPayload = {
+  enabled: boolean
+  on_unavailable?: FileScanFallbackAction
+  on_unscannable?: FileScanFallbackAction
+  provider_id?: string | null
 }
 
 export type HitTestingPayload = {
@@ -638,11 +742,16 @@ export type CompletionRequestError = ErrorResponse & {
   status: 400
 }
 
-export type KnowledgeFsUpgradeDiscoveryResponse = {
+export type KnowledgeFsUpgradePreparationResponse = {
   block_reason?: KnowledgeFsUpgradeBlockReason | null
   can_retry: boolean
   can_upgrade: boolean
   job?: KnowledgeFsUpgradeJobResponse | null
+  models?: KnowledgeFsUpgradeModelRecommendationsResponse | null
+}
+
+export type KnowledgeFsUpgradeStartPayload = {
+  models?: KnowledgeFsUpgradeModelsPayload | null
 }
 
 export type KnowledgeFsUpgradeJobResponse = {
@@ -659,6 +768,12 @@ export type KnowledgeFsUpgradeJobResponse = {
   status: KnowledgeFsUpgradeJobStatus
   total_documents: number
   total_sources: number
+}
+
+export type KnowledgeFsUpgradeModelsUnavailableError = ErrorResponse & {
+  code: 'knowledge_fs_upgrade_models_unavailable'
+  details?: KnowledgeFsUpgradeModelErrorDetailsResponse
+  status: 422
 }
 
 export type KnowledgeFsUpgradeRetryResponse = {
@@ -1013,6 +1128,33 @@ export type SummaryStatusResponse = {
   timeout?: number
 }
 
+export type CustomizedMetrics = {
+  evaluation_workflow_id: string
+  evaluation_workflow_version_id?: string | null
+  input_fields: {
+    [key: string]: unknown
+  }
+  output_fields: Array<CustomizedMetricOutputField>
+}
+
+export type DefaultMetric = {
+  metric: string
+  node_info_list: Array<NodeInfo>
+  value_type?: string
+}
+
+export type JudgmentConfig = {
+  conditions?: Array<JudgmentCondition>
+  logical_operator?: 'and' | 'or'
+}
+
+export type EvaluationRunItemPaginationResponse = {
+  data: Array<EvaluationRunItemResponse>
+  page: number
+  page_size: number
+  total: number
+}
+
 export type ExternalHitTestingQueryResponse = {
   content: string
 }
@@ -1025,6 +1167,8 @@ export type ExternalHitTestingRecordResponse = {
   score?: number | null
   title?: string | null
 }
+
+export type FileScanFallbackAction = 'allow' | 'block'
 
 export type HitTestingQuery = {
   content: string
@@ -1046,6 +1190,18 @@ export type KnowledgeFsUpgradeBlockReason =
   | 'unsupported_dataset_provider'
   | 'upgrade_in_progress'
 
+export type KnowledgeFsUpgradeModelRecommendationsResponse = {
+  embedding: KnowledgeFsUpgradeModelRecommendationResponse
+  reasoning: KnowledgeFsUpgradeModelRecommendationResponse
+  rerank: KnowledgeFsUpgradeModelRecommendationResponse
+}
+
+export type KnowledgeFsUpgradeModelsPayload = {
+  embedding: KnowledgeFsUpgradeModelChoice
+  reasoning: KnowledgeFsUpgradeModelChoice
+  rerank: KnowledgeFsUpgradeModelChoice
+}
+
 export type KnowledgeFsUpgradeStage =
   | 'completed'
   | 'creating_sources'
@@ -1056,6 +1212,10 @@ export type KnowledgeFsUpgradeStage =
   | 'waiting_for_space'
 
 export type KnowledgeFsUpgradeJobStatus = 'failed' | 'queued' | 'running' | 'succeeded'
+
+export type KnowledgeFsUpgradeModelErrorDetailsResponse = {
+  issues: Array<KnowledgeFsUpgradeModelIssueResponse>
+}
 
 export type DatasetMetadataListItemResponse = {
   count?: number
@@ -1083,6 +1243,13 @@ export type RelatedAppResponse = {
   id: string
   mode: AppMode
   name: string
+}
+
+export type KnowledgeFsUpgradeDiscoveryResponse = {
+  block_reason?: KnowledgeFsUpgradeBlockReason | null
+  can_retry: boolean
+  can_upgrade: boolean
+  job?: KnowledgeFsUpgradeJobResponse | null
 }
 
 export type DatasetRerankingModelResponse = {
@@ -1173,6 +1340,43 @@ export type SegmentAttachmentResponse = {
   source_url: string
 }
 
+export type CustomizedMetricOutputField = {
+  value_type: string
+  variable: string
+}
+
+export type NodeInfo = {
+  node_id: string
+  title: string
+  type: string
+}
+
+export type JudgmentCondition = {
+  comparison_operator: SupportedComparisonOperator
+  value?: string | Array<string> | boolean | null
+  variable_selector: Array<string>
+}
+
+export type EvaluationRunItemResponse = {
+  actual_output?: string | null
+  error?: string | null
+  expected_output?: string | null
+  id: string
+  inputs?: {
+    [key: string]: unknown
+  }
+  item_index: number
+  judgment?: {
+    [key: string]: unknown
+  }
+  metadata?: {
+    [key: string]: unknown
+  }
+  metrics?: Array<EvaluationMetric>
+  overall_score?: number | null
+  workflow_run_id?: string | null
+}
+
 export type HitTestingChildChunk = {
   content: string
   id: string
@@ -1213,6 +1417,42 @@ export type HitTestingSegment = {
   stopped_at: number | null
   tokens: number
   word_count: number
+}
+
+export type KnowledgeFsUpgradeModelRecommendationResponse = {
+  available: boolean
+  source: 'legacy' | 'workspace_default' | null
+  unavailable_reason?:
+    | 'credential-removed'
+    | 'deprecated'
+    | 'disabled'
+    | 'missing'
+    | 'no-configure'
+    | 'no-permission'
+    | 'not_found'
+    | 'quota-exceeded'
+    | null
+  value: KnowledgeFsUpgradeModelChoice | null
+}
+
+export type KnowledgeFsUpgradeModelChoice = {
+  model: string
+  provider: string
+}
+
+export type KnowledgeFsUpgradeModelIssueResponse = {
+  field: 'embedding' | 'reasoning' | 'rerank'
+  model?: string | null
+  provider?: string | null
+  reason:
+    | 'credential-removed'
+    | 'deprecated'
+    | 'disabled'
+    | 'missing'
+    | 'no-configure'
+    | 'no-permission'
+    | 'not_found'
+    | 'quota-exceeded'
 }
 
 export type CreatorUserRole = 'account' | 'dataset_api_key' | 'end_user'
@@ -1311,6 +1551,38 @@ export type DocumentSegmentationResponse = {
   chunk_overlap?: number
   max_tokens: number
   separator?: string
+}
+
+export type SupportedComparisonOperator =
+  | '<'
+  | '='
+  | '>'
+  | 'all of'
+  | 'contains'
+  | 'empty'
+  | 'end with'
+  | 'exists'
+  | 'in'
+  | 'is'
+  | 'is not'
+  | 'not contains'
+  | 'not empty'
+  | 'not exists'
+  | 'not in'
+  | 'not null'
+  | 'null'
+  | 'start with'
+  | '≠'
+  | '≤'
+  | '≥'
+
+export type EvaluationMetric = {
+  details?: {
+    [key: string]: unknown
+  }
+  name: string
+  node_info?: NodeInfo | null
+  value: unknown
 }
 
 export type HitTestingDocument = {
@@ -2915,6 +3187,258 @@ export type GetDatasetsByDatasetIdErrorDocsResponses = {
 export type GetDatasetsByDatasetIdErrorDocsResponse =
   GetDatasetsByDatasetIdErrorDocsResponses[keyof GetDatasetsByDatasetIdErrorDocsResponses]
 
+export type GetDatasetsByDatasetIdEvaluationData = {
+  body?: never
+  path: {
+    dataset_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/evaluation'
+}
+
+export type GetDatasetsByDatasetIdEvaluationErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetDatasetsByDatasetIdEvaluationError =
+  GetDatasetsByDatasetIdEvaluationErrors[keyof GetDatasetsByDatasetIdEvaluationErrors]
+
+export type GetDatasetsByDatasetIdEvaluationResponses = {
+  200: EvaluationConfigResponse
+}
+
+export type GetDatasetsByDatasetIdEvaluationResponse =
+  GetDatasetsByDatasetIdEvaluationResponses[keyof GetDatasetsByDatasetIdEvaluationResponses]
+
+export type PutDatasetsByDatasetIdEvaluationData = {
+  body: EvaluationConfigPayload
+  path: {
+    dataset_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/evaluation'
+}
+
+export type PutDatasetsByDatasetIdEvaluationErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PutDatasetsByDatasetIdEvaluationError =
+  PutDatasetsByDatasetIdEvaluationErrors[keyof PutDatasetsByDatasetIdEvaluationErrors]
+
+export type PutDatasetsByDatasetIdEvaluationResponses = {
+  200: EvaluationConfigResponse
+}
+
+export type PutDatasetsByDatasetIdEvaluationResponse =
+  PutDatasetsByDatasetIdEvaluationResponses[keyof PutDatasetsByDatasetIdEvaluationResponses]
+
+export type GetDatasetsByDatasetIdEvaluationFilesByFileIdData = {
+  body?: never
+  path: {
+    dataset_id: string
+    file_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/evaluation/files/{file_id}'
+}
+
+export type GetDatasetsByDatasetIdEvaluationFilesByFileIdErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetDatasetsByDatasetIdEvaluationFilesByFileIdError =
+  GetDatasetsByDatasetIdEvaluationFilesByFileIdErrors[keyof GetDatasetsByDatasetIdEvaluationFilesByFileIdErrors]
+
+export type GetDatasetsByDatasetIdEvaluationFilesByFileIdResponses = {
+  200: EvaluationFileResponse
+}
+
+export type GetDatasetsByDatasetIdEvaluationFilesByFileIdResponse =
+  GetDatasetsByDatasetIdEvaluationFilesByFileIdResponses[keyof GetDatasetsByDatasetIdEvaluationFilesByFileIdResponses]
+
+export type GetDatasetsByDatasetIdEvaluationLogsData = {
+  body?: never
+  path: {
+    dataset_id: string
+  }
+  query?: {
+    page?: number
+    page_size?: number
+  }
+  url: '/datasets/{dataset_id}/evaluation/logs'
+}
+
+export type GetDatasetsByDatasetIdEvaluationLogsErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetDatasetsByDatasetIdEvaluationLogsError =
+  GetDatasetsByDatasetIdEvaluationLogsErrors[keyof GetDatasetsByDatasetIdEvaluationLogsErrors]
+
+export type GetDatasetsByDatasetIdEvaluationLogsResponses = {
+  200: EvaluationRunPaginationResponse
+}
+
+export type GetDatasetsByDatasetIdEvaluationLogsResponse =
+  GetDatasetsByDatasetIdEvaluationLogsResponses[keyof GetDatasetsByDatasetIdEvaluationLogsResponses]
+
+export type GetDatasetsByDatasetIdEvaluationMetricsData = {
+  body?: never
+  path: {
+    dataset_id: string
+  }
+  query?: {
+    evaluation_framework?: 'deepeval' | 'ragas'
+  }
+  url: '/datasets/{dataset_id}/evaluation/metrics'
+}
+
+export type GetDatasetsByDatasetIdEvaluationMetricsErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetDatasetsByDatasetIdEvaluationMetricsError =
+  GetDatasetsByDatasetIdEvaluationMetricsErrors[keyof GetDatasetsByDatasetIdEvaluationMetricsErrors]
+
+export type GetDatasetsByDatasetIdEvaluationMetricsResponses = {
+  200: EvaluationMetricsResponse
+}
+
+export type GetDatasetsByDatasetIdEvaluationMetricsResponse =
+  GetDatasetsByDatasetIdEvaluationMetricsResponses[keyof GetDatasetsByDatasetIdEvaluationMetricsResponses]
+
+export type PostDatasetsByDatasetIdEvaluationRunData = {
+  body: EvaluationRunPayload
+  path: {
+    dataset_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/evaluation/run'
+}
+
+export type PostDatasetsByDatasetIdEvaluationRunErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostDatasetsByDatasetIdEvaluationRunError =
+  PostDatasetsByDatasetIdEvaluationRunErrors[keyof PostDatasetsByDatasetIdEvaluationRunErrors]
+
+export type PostDatasetsByDatasetIdEvaluationRunResponses = {
+  200: EvaluationRunResponse
+}
+
+export type PostDatasetsByDatasetIdEvaluationRunResponse =
+  PostDatasetsByDatasetIdEvaluationRunResponses[keyof PostDatasetsByDatasetIdEvaluationRunResponses]
+
+export type GetDatasetsByDatasetIdEvaluationRunsByRunIdData = {
+  body?: never
+  path: {
+    dataset_id: string
+    run_id: string
+  }
+  query?: {
+    page?: number
+    page_size?: number
+  }
+  url: '/datasets/{dataset_id}/evaluation/runs/{run_id}'
+}
+
+export type GetDatasetsByDatasetIdEvaluationRunsByRunIdErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetDatasetsByDatasetIdEvaluationRunsByRunIdError =
+  GetDatasetsByDatasetIdEvaluationRunsByRunIdErrors[keyof GetDatasetsByDatasetIdEvaluationRunsByRunIdErrors]
+
+export type GetDatasetsByDatasetIdEvaluationRunsByRunIdResponses = {
+  200: EvaluationRunDetailResponse
+}
+
+export type GetDatasetsByDatasetIdEvaluationRunsByRunIdResponse =
+  GetDatasetsByDatasetIdEvaluationRunsByRunIdResponses[keyof GetDatasetsByDatasetIdEvaluationRunsByRunIdResponses]
+
+export type PostDatasetsByDatasetIdEvaluationRunsByRunIdCancelData = {
+  body?: never
+  path: {
+    dataset_id: string
+    run_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/evaluation/runs/{run_id}/cancel'
+}
+
+export type PostDatasetsByDatasetIdEvaluationRunsByRunIdCancelErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostDatasetsByDatasetIdEvaluationRunsByRunIdCancelError =
+  PostDatasetsByDatasetIdEvaluationRunsByRunIdCancelErrors[keyof PostDatasetsByDatasetIdEvaluationRunsByRunIdCancelErrors]
+
+export type PostDatasetsByDatasetIdEvaluationRunsByRunIdCancelResponses = {
+  200: EvaluationRunResponse
+}
+
+export type PostDatasetsByDatasetIdEvaluationRunsByRunIdCancelResponse =
+  PostDatasetsByDatasetIdEvaluationRunsByRunIdCancelResponses[keyof PostDatasetsByDatasetIdEvaluationRunsByRunIdCancelResponses]
+
+export type PostDatasetsByDatasetIdEvaluationRunsByRunIdRetryData = {
+  body?: never
+  path: {
+    dataset_id: string
+    run_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/evaluation/runs/{run_id}/retry'
+}
+
+export type PostDatasetsByDatasetIdEvaluationRunsByRunIdRetryErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostDatasetsByDatasetIdEvaluationRunsByRunIdRetryError =
+  PostDatasetsByDatasetIdEvaluationRunsByRunIdRetryErrors[keyof PostDatasetsByDatasetIdEvaluationRunsByRunIdRetryErrors]
+
+export type PostDatasetsByDatasetIdEvaluationRunsByRunIdRetryResponses = {
+  200: EvaluationRunResponse
+}
+
+export type PostDatasetsByDatasetIdEvaluationRunsByRunIdRetryResponse =
+  PostDatasetsByDatasetIdEvaluationRunsByRunIdRetryResponses[keyof PostDatasetsByDatasetIdEvaluationRunsByRunIdRetryResponses]
+
+export type PostDatasetsByDatasetIdEvaluationTemplateDownloadData = {
+  body?: never
+  path: {
+    dataset_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/evaluation/template/download'
+}
+
+export type PostDatasetsByDatasetIdEvaluationTemplateDownloadErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostDatasetsByDatasetIdEvaluationTemplateDownloadError =
+  PostDatasetsByDatasetIdEvaluationTemplateDownloadErrors[keyof PostDatasetsByDatasetIdEvaluationTemplateDownloadErrors]
+
+export type PostDatasetsByDatasetIdEvaluationTemplateDownloadResponses = {
+  200: Blob | File
+}
+
+export type PostDatasetsByDatasetIdEvaluationTemplateDownloadResponse =
+  PostDatasetsByDatasetIdEvaluationTemplateDownloadResponses[keyof PostDatasetsByDatasetIdEvaluationTemplateDownloadResponses]
+
 export type PostDatasetsByDatasetIdExternalHitTestingData = {
   body: ExternalHitTestingPayload
   path: {
@@ -2940,6 +3464,52 @@ export type PostDatasetsByDatasetIdExternalHitTestingResponses = {
 
 export type PostDatasetsByDatasetIdExternalHitTestingResponse =
   PostDatasetsByDatasetIdExternalHitTestingResponses[keyof PostDatasetsByDatasetIdExternalHitTestingResponses]
+
+export type GetDatasetsByDatasetIdFileScanPolicyData = {
+  body?: never
+  path: {
+    dataset_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/file-scan-policy'
+}
+
+export type GetDatasetsByDatasetIdFileScanPolicyErrors = {
+  default: ErrorResponse
+}
+
+export type GetDatasetsByDatasetIdFileScanPolicyError =
+  GetDatasetsByDatasetIdFileScanPolicyErrors[keyof GetDatasetsByDatasetIdFileScanPolicyErrors]
+
+export type GetDatasetsByDatasetIdFileScanPolicyResponses = {
+  200: FileScanPolicyResponse
+}
+
+export type GetDatasetsByDatasetIdFileScanPolicyResponse =
+  GetDatasetsByDatasetIdFileScanPolicyResponses[keyof GetDatasetsByDatasetIdFileScanPolicyResponses]
+
+export type PutDatasetsByDatasetIdFileScanPolicyData = {
+  body: FileScanPolicyPayload
+  path: {
+    dataset_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/file-scan-policy'
+}
+
+export type PutDatasetsByDatasetIdFileScanPolicyErrors = {
+  default: ErrorResponse
+}
+
+export type PutDatasetsByDatasetIdFileScanPolicyError =
+  PutDatasetsByDatasetIdFileScanPolicyErrors[keyof PutDatasetsByDatasetIdFileScanPolicyErrors]
+
+export type PutDatasetsByDatasetIdFileScanPolicyResponses = {
+  200: FileScanPolicyResponse
+}
+
+export type PutDatasetsByDatasetIdFileScanPolicyResponse =
+  PutDatasetsByDatasetIdFileScanPolicyResponses[keyof PutDatasetsByDatasetIdFileScanPolicyResponses]
 
 export type PostDatasetsByDatasetIdHitTestingData = {
   body: HitTestingPayload
@@ -3011,14 +3581,14 @@ export type GetDatasetsByDatasetIdKnowledgeFsUpgradesError =
   GetDatasetsByDatasetIdKnowledgeFsUpgradesErrors[keyof GetDatasetsByDatasetIdKnowledgeFsUpgradesErrors]
 
 export type GetDatasetsByDatasetIdKnowledgeFsUpgradesResponses = {
-  200: KnowledgeFsUpgradeDiscoveryResponse
+  200: KnowledgeFsUpgradePreparationResponse
 }
 
 export type GetDatasetsByDatasetIdKnowledgeFsUpgradesResponse =
   GetDatasetsByDatasetIdKnowledgeFsUpgradesResponses[keyof GetDatasetsByDatasetIdKnowledgeFsUpgradesResponses]
 
 export type PostDatasetsByDatasetIdKnowledgeFsUpgradesData = {
-  body?: never
+  body: KnowledgeFsUpgradeStartPayload
   headers: {
     'Idempotency-Key': string
   }
@@ -3030,6 +3600,7 @@ export type PostDatasetsByDatasetIdKnowledgeFsUpgradesData = {
 }
 
 export type PostDatasetsByDatasetIdKnowledgeFsUpgradesErrors = {
+  422: KnowledgeFsUpgradeModelsUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 

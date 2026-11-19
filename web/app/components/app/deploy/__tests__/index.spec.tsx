@@ -290,6 +290,7 @@ function environmentDeployment({
 }): EnvironmentDeployment {
   return {
     access,
+    deployment_id: `deployment-${id}`,
     deployment: {
       current_version: currentVersion,
       deployed_at: currentVersion ? ACTIVITY_AT : undefined,
@@ -416,6 +417,7 @@ const ACTION_MATRIX_CASES: Array<{
     ],
     name: 'undeployed',
     row: {
+      deployment_id: 'deployment-undeployed',
       access: { enable_api: false, enable_site: false },
       environment: {
         description: '',
@@ -1501,9 +1503,6 @@ describe('AppDeploy', () => {
       'Server port workflow.env.modal.valueRequired',
     )
     expect(customPortInput).toHaveFocus()
-    expect(
-      within(rootVariables.getByRole('group', { name: 'PORT' })).getByRole('alert'),
-    ).toHaveTextContent('workflow.env.modal.valueRequired')
 
     await user.type(customPortInput, '3000')
     expect(customPortInput).not.toHaveAttribute('aria-invalid', 'true')

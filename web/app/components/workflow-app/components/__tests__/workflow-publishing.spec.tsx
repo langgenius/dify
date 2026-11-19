@@ -200,7 +200,6 @@ function renderEditor({
   const { queryClient } = createConsoleQueryWrapper({
     systemFeatures: {
       deployment_edition: edition,
-      enable_collaboration_mode: false,
       enable_marketplace: false,
       webapp_auth: { enabled: false },
     },
@@ -450,13 +449,16 @@ it('publishes the workflow with legacy image input as a tool and reports one suc
   await user.click(within(drawer).getByRole('button', { name: 'common.operation.save' }))
   await waitFor(() => expect(api.createTool).toHaveBeenCalledOnce())
   expect(api.publish).toHaveBeenCalledOnce()
-  expect(api.createTool).toHaveBeenCalledWith({
-    body: expect.objectContaining({
-      name: 'workflow_tool',
-      workflow_app_id: 'app-1',
-      parameters: [{ name: '__image', description: '', form: 'llm' }],
-    }),
-  })
+  expect(api.createTool).toHaveBeenCalledWith(
+    {
+      body: expect.objectContaining({
+        name: 'workflow_tool',
+        workflow_app_id: 'app-1',
+        parameters: [{ name: '__image', description: '', form: 'llm' }],
+      }),
+    },
+    { context: { silent: true } },
+  )
   await waitFor(() =>
     expect(
       screen.queryByRole('dialog', { name: 'navigation.common.workflowAsTool' }),

@@ -10,7 +10,7 @@ import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
-import { useId, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { OutputTypeSelect } from './type-select'
 import {
@@ -55,7 +55,6 @@ export function OutputEditCard({
   onConfirm: (output: DeclaredOutputConfig, state: EditingState) => void
 }) {
   const { t } = useTranslation(['common', 'workflowAgent'])
-  const nameErrorId = useId()
   const editorRef = useRef<HTMLFormElement>(null)
   const [draft, setDraft] = useState(state.draft)
   const trimmedName = draft.name.trim()
@@ -119,13 +118,12 @@ export function OutputEditCard({
       }}
     >
       <div className="px-2 pt-2">
-        <div className="flex h-6 items-center gap-x-2">
+        <div className="grid grid-cols-[repeat(3,auto)] items-center justify-start gap-x-2 gap-y-1">
           <Field name="name" invalid={hasNameError} className="contents">
             <FieldLabel className="sr-only">
               {t(($) => $['nodes.agent.outputVars.nameLabel'], { ns: 'workflowAgent' })}
             </FieldLabel>
             <Input
-              aria-describedby={hasNameError ? nameErrorId : undefined}
               // oxlint-disable-next-line jsx-a11y/no-autofocus -- Inline editor opens from an explicit user action and should focus the first editable field.
               autoFocus
               required
@@ -137,6 +135,13 @@ export function OutputEditCard({
               className="h-6 w-24 rounded-md px-1.5 py-0 code-sm-semibold"
               onChange={(event) => updateDraft({ name: event.currentTarget.value })}
             />
+            {hasNameError && (
+              <FieldError match className="col-span-full row-start-2 px-1">
+                {duplicateName
+                  ? t(($) => $['nodes.agent.outputVars.nameDuplicate'], { ns: 'workflowAgent' })
+                  : t(($) => $['nodes.agent.outputVars.nameInvalid'], { ns: 'workflowAgent' })}
+              </FieldError>
+            )}
           </Field>
           <OutputTypeSelect value={draft.type} onChange={(value) => updateDraft({ type: value })} />
           <Field name="required" className="contents">
@@ -150,19 +155,6 @@ export function OutputEditCard({
             </FieldLabel>
           </Field>
         </div>
-        {hasNameError && (
-          <Field name="nameError" invalid className="contents">
-            <FieldError
-              id={nameErrorId}
-              match
-              className="mt-1 px-1 py-0 system-xs-regular text-text-destructive"
-            >
-              {duplicateName
-                ? t(($) => $['nodes.agent.outputVars.nameDuplicate'], { ns: 'workflowAgent' })
-                : t(($) => $['nodes.agent.outputVars.nameInvalid'], { ns: 'workflowAgent' })}
-            </FieldError>
-          </Field>
-        )}
         <Field name="description" className="contents">
           <FieldLabel className="sr-only">
             {t(($) => $['nodes.agent.outputVars.descriptionLabel'], { ns: 'workflowAgent' })}

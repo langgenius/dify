@@ -14,9 +14,9 @@ import {
   getStructureValue,
   toolParametersToFormSchemas,
 } from '@/app/components/tools/utils/to-form-schema'
+import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
 import { consoleQuery } from '@/service/console'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
-import { getIconFromMarketPlace } from '@/utils/get-icon'
 import { matchesProviderReference } from '@/utils/provider-reference'
 import { usePluginInstalledCheck } from './use-plugin-installed-check'
 
@@ -142,7 +142,7 @@ export function useToolSelector({ value, onSelect, onSelectMultiple }: UseToolSe
 
   const manifestIcon = useMemo(() => {
     if (!manifest || !pluginID) return ''
-    return getIconFromMarketPlace(pluginID)
+    return getMarketplacePluginIconUrl(pluginID)
   }, [manifest, pluginID])
 
   const getToolValue = useCallback((tool: ToolDefaultValue): ToolValue => {

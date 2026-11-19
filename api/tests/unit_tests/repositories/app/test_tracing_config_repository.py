@@ -9,13 +9,14 @@ from sqlalchemy.orm import Session, sessionmaker
 from machinery.context import RequestContext
 from models.model import App, AppMode, TraceAppConfig
 from repositories.app.console_repository import ConsoleAppRepository
-from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
+from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository, trace_settings_from_column
 from services.app_tracing_config_service import (
     AppTraceSettings,
     AppTracingConfigAppNotFoundError,
     AppTracingConfigConflictError,
     AppTracingConfigRecord,
 )
+from services.tracing.delivery import StoredTraceDestination
 from tests.helpers.unit.repositories.app.console_visibility import UNADDRESSABLE_IN_WORKSPACE, MakeUnaddressable
 
 _APP_ID = "11111111-1111-1111-1111-111111111111"
@@ -205,3 +206,88 @@ def test_capture_policy_round_trip_and_legacy_defaults(sqlite_session_factory: s
     with pytest.raises(AppTracingConfigAppNotFoundError):
         writer.set_trace(workspace_id="other-tenant", app_id="app", settings=AppTraceSettings(), expected=None)
     assert repository.get_trace(context, "app") == policy
+
+
+"""The trace pipeline reads the stored policy leniently and only through the app's workspace."""
+
+
+@pytest.mark.parametrize(
+    ("stored", "settings"),
+    [
+        ('{"enabled": true, "tracing_provider": "langfuse"}', AppTraceSettings(True, "langfuse", False, True)),
+        (
+            '{"enabled": true, "tracing_provider": "langfuse", "capture_content": true, "capture_agent": false}',
+            AppTraceSettings(True, "langfuse", True, False),
+        ),
+        ('{"enabled": false, "tracing_provider": "langfuse"}', AppTraceSettings(False, "langfuse", False, True)),
+        ('{"enabled": "true", "tracing_provider": 7}', AppTraceSettings()),
+        ('["enabled"]', AppTraceSettings()),
+        ("not json", AppTraceSettings()),
+        (None, AppTraceSettings()),
+    ],
+    ids=["enabled", "capture-policy", "disabled", "wrong-types", "not-an-object", "unparsable", "unset"],
+)
+def test_stored_policies_that_cannot_be_read_disable_tracing(stored: str | None, settings: AppTraceSettings) -> None:
+    assert trace_settings_from_column(stored) == settings
+
+
+def _persist_traced_app(session: Session, tracing: str | None) -> None:
+    _persist_app(session)
+    app = session.get(App, _APP_ID)
+    assert app is not None
+    app.tracing = tracing
+    session.commit()
+
+
+def test_policy_is_read_through_the_apps_workspace(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    _persist_traced_app(sqlite_session, json.dumps({"enabled": True, "tracing_provider": _PROVIDER}))
+    repository = _repository(sqlite_session_factory)
+
+    assert repository.policy(tenant_id=_WORKSPACE_ID, app_id=_APP_ID) == AppTraceSettings(True, _PROVIDER, False, True)
+    assert repository.policy(tenant_id=_OTHER_WORKSPACE_ID, app_id=_APP_ID) is None
+    assert repository.policy(tenant_id=_WORKSPACE_ID, app_id="missing-app") is None
+
+
+def test_the_active_destination_is_the_enabled_providers_active_configuration(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    _persist_traced_app(sqlite_session, json.dumps({"enabled": True, "tracing_provider": _PROVIDER}))
+    sqlite_session.add_all(
+        [
+            TraceAppConfig(app_id=_APP_ID, tracing_provider=_PROVIDER, tracing_config={"public_key": "ciphertext"}),
+            TraceAppConfig(app_id=_APP_ID, tracing_provider="opik", tracing_config={"api_key": "other"}),
+        ]
+    )
+    sqlite_session.commit()
+    repository = _repository(sqlite_session_factory)
+
+    assert repository.active_destination(tenant_id=_WORKSPACE_ID, app_id=_APP_ID) == StoredTraceDestination(
+        provider_id=_PROVIDER, config={"public_key": "ciphertext"}
+    )
+    assert repository.active_destination(tenant_id=_OTHER_WORKSPACE_ID, app_id=_APP_ID) is None
+
+
+@pytest.mark.parametrize(
+    ("tracing", "active"),
+    [
+        (json.dumps({"enabled": False, "tracing_provider": _PROVIDER}), True),
+        (json.dumps({"enabled": True, "tracing_provider": None}), True),
+        (json.dumps({"enabled": True, "tracing_provider": _PROVIDER}), False),
+        (None, True),
+    ],
+    ids=["disabled", "no-provider", "inactive-config", "unset"],
+)
+def test_apps_that_do_not_trace_have_no_active_destination(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], tracing: str | None, active: bool
+) -> None:
+    _persist_traced_app(sqlite_session, tracing)
+    sqlite_session.add(
+        TraceAppConfig(
+            app_id=_APP_ID, tracing_provider=_PROVIDER, tracing_config={"public_key": "ciphertext"}, is_active=active
+        )
+    )
+    sqlite_session.commit()
+
+    assert _repository(sqlite_session_factory).active_destination(tenant_id=_WORKSPACE_ID, app_id=_APP_ID) is None

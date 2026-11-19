@@ -2,9 +2,10 @@
 
 import uuid
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import (
     BadGateway,
@@ -70,14 +71,14 @@ def fmt() -> OpenApiErrorFormatter:
 
 
 class TestErrorBodyModel:
-    def test_minimal_body_serializes_without_optional_fields(self):
+    def test_minimal_body_serializes_without_optional_fields(self) -> None:
         body = ErrorBody(code=OpenApiErrorCode.NOT_FOUND, message="app not found", status=404)
 
         wire = body.model_dump(mode="json", exclude_none=True)
 
         assert wire == {"code": "not_found", "message": "app not found", "status": 404}
 
-    def test_full_body_round_trips(self):
+    def test_full_body_round_trips(self) -> None:
         body = ErrorBody(
             code=OpenApiErrorCode.INVALID_PARAM,
             message="Request validation failed",
@@ -91,7 +92,7 @@ class TestErrorBodyModel:
         assert wire["details"] == [{"type": "int_parsing", "loc": ["page"], "msg": "must be >= 1"}]
         assert ErrorBody.model_validate(wire) == body
 
-    def test_code_field_is_open_string_for_forward_compat(self):
+    def test_code_field_is_open_string_for_forward_compat(self) -> None:
         # Old CLIs must not hard-fail when a future server adds a code, so the
         # schema type is str; enum membership is enforced by the formatter tests.
         body = ErrorBody.model_validate({"code": "some_future_code", "message": "x", "status": 400})
@@ -99,12 +100,22 @@ class TestErrorBodyModel:
         assert body.code == "some_future_code"
 
 
+class _DataCarryingUnprocessableEntity(UnprocessableEntity):
+    """flask_restx attaches ``abort(422, ...)`` kwargs as ``e.data`` at runtime.
+
+    Declaring the attribute keeps the type checker honest without an ignore, and
+    the instance is still the real ``UnprocessableEntity`` the framework raises.
+    """
+
+    data: dict[str, object]
+
+
 class TestOpenApiErrorFormatter:
-    def test_flask_restx_abort_data_path_yields_canonical_body(self, fmt):
+    def test_flask_restx_abort_data_path_yields_canonical_body(self, fmt: OpenApiErrorFormatter) -> None:
         # Simulates _contract.py's abort(422, message=..., errors=...): flask_restx
         # attaches kwargs to e.data, which handle_error would otherwise put on the
         # wire verbatim (no code/status).
-        e = UnprocessableEntity()
+        e = _DataCarryingUnprocessableEntity()
         e.data = {
             "message": "Request validation failed",
             "errors": [{"type": "int_parsing", "loc": ["page"], "msg": "must be >= 1", "extra": "drop me"}],
@@ -120,8 +131,8 @@ class TestOpenApiErrorFormatter:
         # the override channel now carries the canonical body
         assert e.data == wire
 
-    def test_finalize_is_idempotent(self, fmt):
-        e = UnprocessableEntity()
+    def test_finalize_is_idempotent(self, fmt: OpenApiErrorFormatter) -> None:
+        e = _DataCarryingUnprocessableEntity()
         e.data = {
             "message": "Request validation failed",
             "errors": [{"type": "int_parsing", "loc": ["page"], "msg": "must be >= 1"}],
@@ -133,10 +144,10 @@ class TestOpenApiErrorFormatter:
 
         assert second == first
 
-    def test_malformed_canonical_details_falls_back_instead_of_raising(self, fmt):
+    def test_malformed_canonical_details_falls_back_instead_of_raising(self, fmt: OpenApiErrorFormatter) -> None:
         # finalize runs inside the framework error handler; a ValidationError
         # escaping it would replace the response with an unformatted 500
-        e = UnprocessableEntity()
+        e = _DataCarryingUnprocessableEntity()
         e.data = {"message": "broken", "details": [{"bad": "shape"}]}
         data = {"code": "unprocessable_entity", "message": "broken", "status": 422}
 
@@ -144,7 +155,7 @@ class TestOpenApiErrorFormatter:
 
         assert wire == {"code": "invalid_param", "message": "Unprocessable Entity", "status": 422}
 
-    def test_params_shape_becomes_details(self, fmt):
+    def test_params_shape_becomes_details(self, fmt: OpenApiErrorFormatter) -> None:
         e = ValueError("is required")
         data = {"code": "invalid_param", "message": "is required", "params": "email", "status": 400}
 
@@ -153,7 +164,7 @@ class TestOpenApiErrorFormatter:
         assert "params" not in wire
         assert wire["details"] == [{"type": "invalid", "loc": ["email"], "msg": "is required"}]
 
-    def test_catch_all_exception_never_leaks_str_e(self, fmt):
+    def test_catch_all_exception_never_leaks_str_e(self, fmt: OpenApiErrorFormatter) -> None:
         e = RuntimeError("postgres password=hunter2 connection refused")
         data = {"message": str(e), "code": "unknown", "status": 500}
 
@@ -162,7 +173,7 @@ class TestOpenApiErrorFormatter:
         assert wire["code"] == "internal_server_error"
         assert "hunter2" not in wire["message"]
 
-    def test_unmapped_status_falls_back_to_unknown(self, fmt):
+    def test_unmapped_status_falls_back_to_unknown(self, fmt: OpenApiErrorFormatter) -> None:
         from werkzeug.exceptions import Gone
 
         e = Gone()
@@ -173,7 +184,7 @@ class TestOpenApiErrorFormatter:
         assert wire["code"] == "unknown"
 
     @pytest.mark.parametrize("message", [None, "custom reason"], ids=["class_description", "call_site_override"])
-    def test_openapi_error_subclass_is_throw_and_done(self, fmt, message):
+    def test_openapi_error_subclass_is_throw_and_done(self, fmt: OpenApiErrorFormatter, message: str) -> None:
         # The dedicated throwable: subclass declares status + code + message once,
         # call sites just `raise`, or pass a message to override the description;
         # the formatter emits everything verbatim.
@@ -194,7 +205,9 @@ class TestOpenApiErrorFormatter:
 
 class TestQuotaExceptions:
     @pytest.mark.parametrize("exc_class", [MemberLimitExceeded, MemberLicenseExceeded])
-    def test_quota_exception_carries_declared_code_and_message(self, fmt, exc_class):
+    def test_quota_exception_carries_declared_code_and_message(
+        self, fmt: OpenApiErrorFormatter, exc_class: type[OpenApiError]
+    ) -> None:
         # Single source: assertions read the class attributes, no re-typed strings.
         e = exc_class()
         data = {"code": "forbidden", "message": e.description, "status": 403}
@@ -211,8 +224,8 @@ class TestWireContract:
     """End-to-end: request in, canonical JSON out, through the real openapi blueprint."""
 
     def test_accepts_422_carries_code_status_details(
-        self, openapi_app, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
-    ):
+        self, openapi_app: Flask, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """`@endpoint` runs auth outermost, so reaching `@accepts` means passing
         it: one account row and a stubbed authenticator are the whole world
         `GET /account/sessions` needs.
@@ -250,7 +263,7 @@ class TestWireContract:
         assert wire["status"] == 422
         assert wire["details"]
 
-    def test_unknown_route_404_is_canonical_without_route_suggestions(self, openapi_app):
+    def test_unknown_route_404_is_canonical_without_route_suggestions(self, openapi_app: Flask) -> None:
         client = openapi_app.test_client()
 
         resp = client.get("/openapi/v1/definitely-not-a-route")
@@ -261,7 +274,7 @@ class TestWireContract:
         assert wire["code"] == "not_found"
         assert "did you mean" not in wire["message"].lower()
 
-    def test_404_outside_blueprint_prefix_is_not_claimed(self, openapi_app):
+    def test_404_outside_blueprint_prefix_is_not_claimed(self, openapi_app: Flask) -> None:
         # catch_all_404s wraps the app-level exception handler; the prefix
         # guard must keep non-/openapi/v1 paths on the app's own 404 handling
         client = openapi_app.test_client()
@@ -273,7 +286,9 @@ class TestWireContract:
         assert "application/json" not in (resp.content_type or "")
 
     @patch("controllers.openapi.oauth_device.application_services")
-    def test_oauth_device_token_keeps_rfc8628_shape(self, mock_application_services, openapi_app):
+    def test_oauth_device_token_keeps_rfc8628_shape(
+        self, mock_application_services: MagicMock, openapi_app: Flask
+    ) -> None:
         mock_application_services.return_value.oauth_device.poll.side_effect = ExpiredTokenError
 
         client = openapi_app.test_client()
@@ -333,7 +348,9 @@ class TestErrorMatrix:
         ERROR_MATRIX,
         ids=lambda v: type(v).__name__ if isinstance(v, Exception) else str(v),
     )
-    def test_every_known_error_path_yields_canonical_code(self, fmt, exc, status, expected_code):
+    def test_every_known_error_path_yields_canonical_code(
+        self, fmt: OpenApiErrorFormatter, exc: Exception, status: int, expected_code: str
+    ) -> None:
         data = dict(getattr(exc, "data", None) or {"message": str(exc), "status": status})
 
         wire = fmt.finalize(exc, data, status)
@@ -345,7 +362,7 @@ class TestErrorMatrix:
 
 
 class TestErrorCodeEnumRegistration:
-    def test_enum_registered_with_all_values(self):
+    def test_enum_registered_with_all_values(self) -> None:
         from controllers.openapi import openapi_ns
         from controllers.openapi._errors import OpenApiErrorCode
 

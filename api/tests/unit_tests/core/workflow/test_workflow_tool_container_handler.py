@@ -213,9 +213,10 @@ def _workflow_tool_container_workflow_tool_node(
         ),
         runtime=ToolRuntime(tenant_id="tenant", invoke_from=InvokeFrom.DEBUGGER),
     )
-    tool.prepare_container_inputs = lambda *_args, **_kwargs: (payload.inputs, [])
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(tool, "prepare_container_inputs", lambda *_args, **_kwargs: (payload.inputs, []))
     runtime = DifyToolNodeRuntime(init_params.run_context)
-    runtime.get_runtime = lambda **_kwargs: ToolRuntimeHandle(raw=tool)
+    monkeypatch.setattr(runtime, "get_runtime", lambda **_kwargs: ToolRuntimeHandle(raw=tool))
     node = DifyWorkflowToolNode(
         node_id="tool",
         data=ToolNodeData.model_validate(graph_config["nodes"][0]["data"]),
@@ -1662,6 +1663,7 @@ class TestWorkflowToolEventDeliveryCases:
         sqlite_session_factory: sessionmaker[Session],
         caller_save_fails: bool,
     ) -> None:
+        """Given an Agent node in a workflow tool, preserve its caller and persist explicit error outputs."""
         binding_resolver = WorkflowAgentBindingResolver()
         resolution_calls: list[dict[str, object]] = []
         if caller_save_fails:
@@ -1753,6 +1755,7 @@ class TestWorkflowToolEventDeliveryCases:
                 app_id="outer-app",
                 triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
             ),
+            trace_scope=None,
         )
         index = WorkflowRunIndex(())
         index.seed_source(source.app_id, source.workflow_id, ())
@@ -1795,6 +1798,7 @@ class TestWorkflowToolEventDeliveryCases:
                 caller.node_execution_id,
             )
             assert execution.status == "exception"
+            assert execution.outputs_dict is not None
             if caller_save_fails:
                 assert resolution_calls == []
                 assert execution.error == "Workflow node execution caller is unavailable"

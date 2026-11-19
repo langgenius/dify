@@ -1,14 +1,8 @@
 import type { TriggerLogEntity } from '@/app/components/workflow/block-selector/types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { describe, expect, it } from 'vite-plus/test'
 import LogViewer from '../log-viewer'
-
-vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ value }: { value: unknown }) => (
-    <div data-testid="code-editor">{JSON.stringify(value)}</div>
-  ),
-}))
 
 const createLog = (overrides: Partial<TriggerLogEntity> = {}): TriggerLogEntity => ({
   id: 'log-1',
@@ -61,14 +55,18 @@ describe('LogViewer', () => {
       screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ }),
     )
 
-    const editors = screen.getAllByTestId('code-editor')
+    const editors = screen.getAllByRole('textbox')
     expect(editors.length).toBe(2)
-    expect(editors[0]).toHaveTextContent('"foo":"bar"')
-    expect(editors[1]).toHaveTextContent('"status_code":200')
+    expect(JSON.parse((editors[0] as HTMLTextAreaElement).value)).toEqual({
+      headers: createLog().request.headers,
+      data: { foo: 'bar' },
+    })
+    expect(JSON.parse((editors[1] as HTMLTextAreaElement).value)).toEqual(createLog().response)
+    for (const editor of editors) expect(editor).toHaveAttribute('readonly')
     await user.click(
       screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ }),
     )
-    expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 
   it('should parse request data when it is raw JSON', async () => {
@@ -81,7 +79,9 @@ describe('LogViewer', () => {
       screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ }),
     )
 
-    expect(screen.getAllByTestId('code-editor')[0]).toHaveTextContent('"hello":1')
+    expect(
+      JSON.parse((screen.getAllByRole('textbox')[0] as HTMLTextAreaElement).value).data,
+    ).toEqual({ hello: 1 })
   })
 
   it('should fallback to raw payload when decoding fails', async () => {
@@ -94,7 +94,9 @@ describe('LogViewer', () => {
       screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ }),
     )
 
-    expect(screen.getAllByTestId('code-editor')[0]).toHaveTextContent('payload=%E0%A4%A')
+    expect(JSON.parse((screen.getAllByRole('textbox')[0] as HTMLTextAreaElement).value).data).toBe(
+      'payload=%E0%A4%A',
+    )
   })
 
   it('should keep request data string when JSON parsing fails', async () => {
@@ -107,7 +109,9 @@ describe('LogViewer', () => {
       screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ }),
     )
 
-    expect(screen.getAllByTestId('code-editor')[0]).toHaveTextContent('{invalid}')
+    expect(JSON.parse((screen.getAllByRole('textbox')[0] as HTMLTextAreaElement).value).data).toBe(
+      '{invalid}',
+    )
   })
 
   it('should render multiple log entries with distinct indices', () => {

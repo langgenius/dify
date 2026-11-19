@@ -149,31 +149,13 @@ function saveApiExtension({ name, endpoint }: ApiExtensionFormValues) {
   })
 }
 
+// Stable so `Form` re-applies the error only when the code changes, not on every render.
+const NAME_TAKEN_ERRORS = { name: 'An extension with this name already exists.' }
+
 function FormDialogDemo() {
   const actionsRef = React.useRef<DialogActions>(null)
   const nameInputRef = React.useRef<HTMLInputElement>(null)
-  const [isPending, setIsPending] = React.useState(false)
-  const [errorCode, setErrorCode] = React.useState<string | null>(null)
-  const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>()
-
-  const handleSubmit = async (values: ApiExtensionFormValues) => {
-    if (isPending) return
-
-    setIsPending(true)
-    setErrorCode(null)
-    try {
-      await saveApiExtension(values)
-      actionsRef.current?.close()
-    } catch (error) {
-      const code = error instanceof ApiExtensionRequestError ? error.code : 'unknown'
-      setErrorCode(code)
-      setFieldErrors(
-        code === 'name_taken' ? { name: 'An extension with this name already exists.' } : undefined,
-      )
-    } finally {
-      setIsPending(false)
-    }
-  }
+  const [isPending, startTransition] = React.useTransition()
 
   return (
     <Dialog
@@ -181,11 +163,6 @@ function FormDialogDemo() {
       disablePointerDismissal
       onOpenChange={(open, details) => {
         if (!open && isPending && details.reason !== 'imperative-action') details.cancel()
-      }}
-      onOpenChangeComplete={(open) => {
-        if (open) return
-        setErrorCode(null)
-        setFieldErrors(undefined)
       }}
     >
       <DialogTrigger render={<Button />}>Add API extension</DialogTrigger>
@@ -197,56 +174,92 @@ function FormDialogDemo() {
           </DialogDescription>
           <DialogHeaderCloseButton aria-label="Close dialog" />
         </DialogHeader>
-        <Form<ApiExtensionFormValues>
-          className="contents"
-          errors={fieldErrors}
-          onFormSubmit={handleSubmit}
-        >
-          <DialogBody className="flex flex-col gap-4">
-            <Field
-              name="name"
-              validate={(value) =>
-                typeof value === 'string' && value.trim() ? null : 'Name is required.'
-              }
-            >
-              <FieldLabel>Name</FieldLabel>
-              <Input
-                ref={nameInputRef}
-                aria-required
-                readOnly={isPending}
-                autoComplete="off"
-                placeholder="Production API"
-              />
-              <FieldError />
-            </Field>
-            <Field name="endpoint">
-              <FieldLabel>Endpoint</FieldLabel>
-              <Input
-                type="url"
-                required
-                readOnly={isPending}
-                autoComplete="off"
-                spellCheck={false}
-                placeholder="https://api.example.com"
-              />
-              <FieldError match="valueMissing">Endpoint is required.</FieldError>
-              <FieldError match="typeMismatch">Enter a valid URL.</FieldError>
-            </Field>
-            {errorCode && !fieldErrors && (
-              <p role="alert" className="body-xs-regular text-text-destructive">
-                Couldn’t save the extension. Try again.
-              </p>
-            )}
-          </DialogBody>
-          <DialogFooter>
-            <DialogClose render={<Button />}>Cancel</DialogClose>
-            <Button type="submit" variant="primary" loading={isPending}>
-              Save
-            </Button>
-          </DialogFooter>
-        </Form>
+        <ApiExtensionForm
+          nameInputRef={nameInputRef}
+          isPending={isPending}
+          startTransition={startTransition}
+          onSaved={() => actionsRef.current?.close()}
+        />
       </DialogContent>
     </Dialog>
+  )
+}
+
+function ApiExtensionForm({
+  nameInputRef,
+  isPending,
+  startTransition,
+  onSaved,
+}: {
+  nameInputRef: React.RefObject<HTMLInputElement | null>
+  isPending: boolean
+  startTransition: React.TransitionStartFunction
+  onSaved: () => void
+}) {
+  const [errorCode, setErrorCode] = React.useState<string | null>(null)
+  const fieldErrors = errorCode === 'name_taken' ? NAME_TAKEN_ERRORS : undefined
+
+  const handleSubmit = (values: ApiExtensionFormValues) => {
+    setErrorCode(null)
+    startTransition(async () => {
+      try {
+        await saveApiExtension(values)
+        onSaved()
+      } catch (error) {
+        setErrorCode(error instanceof ApiExtensionRequestError ? error.code : 'unknown')
+      }
+    })
+  }
+
+  return (
+    <Form<ApiExtensionFormValues>
+      className="contents"
+      errors={fieldErrors}
+      onFormSubmit={handleSubmit}
+    >
+      <DialogBody className="flex flex-col gap-4">
+        <Field
+          name="name"
+          validate={(value) =>
+            typeof value === 'string' && value.trim() ? null : 'Name is required.'
+          }
+        >
+          <FieldLabel>Name</FieldLabel>
+          <Input
+            ref={nameInputRef}
+            aria-required
+            readOnly={isPending}
+            autoComplete="off"
+            placeholder="Production API"
+          />
+          <FieldError />
+        </Field>
+        <Field name="endpoint">
+          <FieldLabel>Endpoint</FieldLabel>
+          <Input
+            type="url"
+            required
+            readOnly={isPending}
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="https://api.example.com"
+          />
+          <FieldError match="valueMissing">Endpoint is required.</FieldError>
+          <FieldError match="typeMismatch">Enter a valid URL.</FieldError>
+        </Field>
+        {errorCode && !fieldErrors && (
+          <p role="alert" className="body-xs-regular text-text-destructive">
+            Couldn’t save the extension. Try again.
+          </p>
+        )}
+      </DialogBody>
+      <DialogFooter>
+        <DialogClose render={<Button />}>Cancel</DialogClose>
+        <Button type="submit" variant="primary" loading={isPending}>
+          Save
+        </Button>
+      </DialogFooter>
+    </Form>
   )
 }
 
@@ -255,7 +268,7 @@ export const FormDialog: Story = {
     docs: {
       description: {
         story:
-          '`initialFocus` lands on the first field and `disablePointerDismissal` keeps typed input safe from a stray outside click. Enter or the submit button runs `onFormSubmit`; while the save is pending the button shows `loading`, the fields are read-only, and `onOpenChange` cancels every close except the `actionsRef` close on success. A failed save maps its error code to a field through `Form` `errors`, which focuses that field and clears on edit; an unmapped code shows a form-level alert. Session errors reset in `onOpenChangeComplete`, after the exit transition. Save "Production API" to see the field error, or an endpoint containing "unreachable" to see the alert.',
+          '`initialFocus` lands on the first field and `disablePointerDismissal` keeps typed input safe from a stray outside click. Enter or the submit button runs `onFormSubmit`; while the save is pending the button shows `loading`, the fields are read-only, and `onOpenChange` cancels every close except the `actionsRef` close on success. A failed save maps its error code to a field through `Form` `errors`, which focuses that field and clears on edit; an unmapped code shows a form-level alert. The form and its error state live inside the popup, so they reset when it unmounts on close. Save "Production API" to see the field error, or an endpoint containing "unreachable" to see the alert.',
       },
     },
   },

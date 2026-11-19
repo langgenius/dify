@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-from contextlib import nullcontext
 from datetime import datetime
 from io import BytesIO
 
 import pytest
-from sqlalchemy.sql import ClauseElement
+from sqlalchemy import delete, select
+from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
 from extensions.storage.storage_type import StorageType
 from models.enums import ApiTokenType, CreatorUserRole
-from models.model import UploadFile
+from models.model import ApiToken, UploadFile
 from services.knowledge_fs import query_images, service_query_image_upload
 from services.knowledge_fs.errors import KnowledgeFSProductRequestRejectedError, KnowledgeFSQueryImageError
 from services.knowledge_fs.service_api_authorization import KnowledgeFSServiceApiProfile
@@ -25,41 +25,25 @@ PROFILE = KnowledgeFSServiceApiProfile(TENANT_ID, "control", TOKEN_ID, TOKEN_ID,
 SUBJECT = f"dify-dataset-api-key:{TOKEN_ID}"
 
 
-class _Session:
-    def __init__(self) -> None:
-        self.active_token: str | None = TOKEN_ID
-        self.queries: list[dict[str, object]] = []
-        self.added: list[UploadFile] = []
-        self.committed = False
-        self.fail_commit = False
-
-    def scalar(self, statement: ClauseElement) -> str | None:
-        compiled_params = statement.compile().params
-        assert compiled_params is not None
-        params: dict[str, object] = dict(compiled_params)
-        self.queries.append(params)
-        assert params["tenant_id_1"] == TENANT_ID
-        assert params["type_1"] == ApiTokenType.DATASET
-        return self.active_token if params["id_1"] == self.active_token else None
-
-    def add(self, item: UploadFile) -> None:
-        self.added.append(item)
-
-    def commit(self) -> None:
-        if self.fail_commit:
-            raise RuntimeError("injected database failure")
-        self.committed = True
-
-
-def _install(monkeypatch: pytest.MonkeyPatch) -> tuple[_Session, dict[str, bytes]]:
-    session = _Session()
+def _install(monkeypatch: pytest.MonkeyPatch) -> dict[str, bytes]:
+    """Fake object storage only; database access runs against the shared SQLite fixture."""
     objects: dict[str, bytes] = {}
-    monkeypatch.setattr(query_images.session_factory, "create_session", lambda: nullcontext(session))
     monkeypatch.setattr(service_query_image_upload.storage, "save", lambda key, body: objects.__setitem__(key, body))
     monkeypatch.setattr(service_query_image_upload.storage, "delete", lambda key: objects.pop(key, None))
     monkeypatch.setattr(query_images.storage, "load", lambda key, **_kwargs: iter([objects[key]]))
     apply_config_overrides(monkeypatch, STORAGE_TYPE="local")
-    return session, objects
+    return objects
+
+
+def _seed_token(
+    sqlite_session: Session,
+    *,
+    token_id: str = TOKEN_ID,
+    tenant_id: str = TENANT_ID,
+    token_type: ApiTokenType = ApiTokenType.DATASET,
+) -> None:
+    sqlite_session.add(ApiToken(id=token_id, tenant_id=tenant_id, type=token_type, token=f"token-{token_id}"))
+    sqlite_session.commit()
 
 
 def _file(body: bytes = PNG, *, mime_type: str = "image/png", filename: str = "image.png") -> FileStorage:
@@ -84,26 +68,33 @@ def _record(*, role: CreatorUserRole = CreatorUserRole.DATASET_API_KEY, owner: s
     return record
 
 
-def test_upload_admission_and_inner_load_use_same_active_key_owner(monkeypatch: pytest.MonkeyPatch) -> None:
-    session, objects = _install(monkeypatch)
+def test_upload_admission_and_inner_load_use_same_active_key_owner(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    objects = _install(monkeypatch)
+    _seed_token(sqlite_session)
+
     response = service_query_image_upload.upload_service_query_image(profile=PROFILE, file=_file())
-    upload = session.added[0]
+
+    upload = sqlite_session.get(UploadFile, response["upload_file_id"])
+    assert upload is not None
     assert upload.created_by_role is CreatorUserRole.DATASET_API_KEY
     assert upload.created_by == TOKEN_ID
     assert upload.tenant_id == TENANT_ID
     assert upload.key.startswith(f"upload_files/{TENANT_ID}/")
     assert response == {"upload_file_id": upload.id, "byte_size": len(PNG), "mime_type": "image/png"}
     assert objects[upload.key] == PNG
-    assert session.committed
-    monkeypatch.setattr(
-        query_images.FileService, "get_upload_files_by_ids", lambda *_args, **_kwargs: {upload.id: upload}
-    )
+
     service_query_image_upload.validate_service_query_image_references(profile=PROFILE, upload_file_ids=[upload.id])
-    assert upload.used_by == TOKEN_ID  # StringUUID receives the bare token id, never the subject prefix.
-    assert upload.used
+
+    sqlite_session.expire_all()
+    marked = sqlite_session.get(UploadFile, upload.id)
+    assert marked is not None
+    assert marked.used_by == TOKEN_ID  # StringUUID receives the bare token id, never the subject prefix.
+    assert marked.used
+
     result = query_images.load_query_image(tenant_id=TENANT_ID, account_id=SUBJECT, upload_file_id=upload.id)
     assert result.body == PNG
-    assert len(session.queries) == 4
 
 
 @pytest.mark.parametrize(
@@ -117,27 +108,39 @@ def test_upload_admission_and_inner_load_use_same_active_key_owner(monkeypatch: 
     ],
 )
 def test_query_images_never_cross_creator_role_key_or_tenant(
-    monkeypatch: pytest.MonkeyPatch, role: CreatorUserRole, owner: str, actor: str, tenant: str
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    role: CreatorUserRole,
+    owner: str,
+    actor: str,
+    tenant: str,
 ) -> None:
-    session, objects = _install(monkeypatch)
+    objects = _install(monkeypatch)
+    _seed_token(sqlite_session)
     upload = _record(role=role, owner=owner)
     upload.tenant_id = tenant
     objects[upload.key] = PNG
-    monkeypatch.setattr(query_images.FileService, "get_upload_files_by_ids", lambda *_a, **_k: {FILE_ID: upload})
+    sqlite_session.add(upload)
+    sqlite_session.commit()
+
     with pytest.raises(KnowledgeFSQueryImageError, match="not found"):
         query_images.validate_query_image_references(
             tenant_id=TENANT_ID, account_id=actor, upload_file_ids=[FILE_ID], mark_used=True
         )
     with pytest.raises(KnowledgeFSQueryImageError, match="not found"):
         query_images.load_query_image(tenant_id=TENANT_ID, account_id=actor, upload_file_id=FILE_ID)
-    assert not session.committed
+
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get(UploadFile, FILE_ID)
+    assert persisted is not None
+    assert not persisted.used
 
 
 @pytest.mark.parametrize("subject", [SUBJECT, "dify-dataset-api-key:", "dify-dataset-api-key:invalid"])
 def test_revoked_or_invalid_service_subject_cannot_read(monkeypatch: pytest.MonkeyPatch, subject: str) -> None:
-    session, _ = _install(monkeypatch)
-    session.active_token = None
-    monkeypatch.setattr(query_images.FileService, "get_upload_files_by_ids", lambda *_a, **_k: {FILE_ID: _record()})
+    _install(monkeypatch)
+    # No ApiToken row: deleted credentials are revoked, so admission fails before any file lookup.
+
     with pytest.raises(KnowledgeFSQueryImageError, match="not found"):
         query_images.load_query_image(tenant_id=TENANT_ID, account_id=subject, upload_file_id=FILE_ID)
 
@@ -155,38 +158,52 @@ def test_revoked_or_invalid_service_subject_cannot_read(monkeypatch: pytest.Monk
     ],
 )
 def test_upload_rejects_invalid_input_before_storage(
-    monkeypatch: pytest.MonkeyPatch, file: FileStorage | None, status: int
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, file: FileStorage | None, status: int
 ) -> None:
-    session, objects = _install(monkeypatch)
+    objects = _install(monkeypatch)
+    _seed_token(sqlite_session)
+
     with pytest.raises(KnowledgeFSProductRequestRejectedError) as error:
         service_query_image_upload.upload_service_query_image(profile=PROFILE, file=file)
     assert error.value.status_code == status
     assert not objects
-    assert not session.added
+    assert sqlite_session.scalar(select(UploadFile)) is None
 
 
 @pytest.mark.parametrize("failure", ["commit", "storage", "revoke"])
-def test_upload_failure_cleans_its_object(monkeypatch: pytest.MonkeyPatch, failure: str) -> None:
-    session, objects = _install(monkeypatch)
-    session.fail_commit = failure == "commit"
+def test_upload_failure_cleans_its_object(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, failure: str
+) -> None:
+    objects = _install(monkeypatch)
+    _seed_token(sqlite_session)
+
+    if failure == "commit":
+
+        def boom(_session: Session) -> None:
+            raise RuntimeError("injected database failure")
+
+        monkeypatch.setattr(Session, "commit", boom)
 
     def save(key: str, body: bytes) -> None:
         objects[key] = body
         if failure == "storage":
             raise RuntimeError("injected partial storage failure")
         if failure == "revoke":
-            session.active_token = None
+            sqlite_session.execute(delete(ApiToken).where(ApiToken.id == TOKEN_ID))
+            sqlite_session.commit()
 
     monkeypatch.setattr(service_query_image_upload.storage, "save", save)
     with pytest.raises((RuntimeError, KnowledgeFSProductRequestRejectedError)):
         service_query_image_upload.upload_service_query_image(profile=PROFILE, file=_file())
     assert not objects
-    assert not session.committed
 
 
-def test_service_admission_reports_revoked_reference_as_safe_rejection(monkeypatch: pytest.MonkeyPatch) -> None:
-    session, _ = _install(monkeypatch)
-    session.active_token = None
+def test_service_admission_reports_revoked_reference_as_safe_rejection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _install(monkeypatch)
+    # No ApiToken row: the dataset credential was revoked.
+
     with pytest.raises(KnowledgeFSProductRequestRejectedError) as error:
         service_query_image_upload.validate_service_query_image_references(profile=PROFILE, upload_file_ids=[FILE_ID])
     assert error.value.status_code == 422

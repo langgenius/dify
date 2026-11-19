@@ -25,16 +25,16 @@ describe('install-plugin/hooks', () => {
   })
 
   describe('fetchReleases', () => {
-    it('returns no releases and reports a failed response', async () => {
+    it('leaves failed responses to the business caller', async () => {
       mockFetch.mockResolvedValue(new Response(null, { status: 500 }))
 
-      const releases = await fetchReleases('owner', 'repo')
+      await expect(fetchReleases('owner', 'repo')).rejects.toThrow(
+        'Failed to fetch repository releases',
+      )
 
       expect(mockFetch).toHaveBeenCalledOnce()
       expect(mockFetch).toHaveBeenCalledWith('https://ungh.cc/repos/owner/repo/releases')
-      expect(releases).toEqual([])
-      expect(mockToastError).toHaveBeenCalledOnce()
-      expect(mockToastError).toHaveBeenCalledWith('Failed to fetch repository releases')
+      expect(mockToastError).not.toHaveBeenCalled()
     })
   })
 

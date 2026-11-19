@@ -24,6 +24,7 @@ type CalendarGridProps = {
   minDate?: string
   maxDate?: string
   isDateUnavailable?: (date: string) => boolean
+  readOnly?: boolean
 }
 
 function toCalendarDate(value: string): Date {
@@ -36,9 +37,21 @@ function fromCalendarDate(date: Date): string {
   return formatDateValue(new TZDate(date.getTime(), 'UTC'))
 }
 
+function ReadOnlyMonthGrid(props: React.ComponentProps<'table'>) {
+  return <table {...props} aria-readonly />
+}
+
 function StyledDayButton(props: React.ComponentProps<typeof DayButton>) {
+  // Keep the visible numeral independently addressable (e.g. 15, not only 15th),
+  // while retaining DayPicker's localized full date, today and selected labels.
+  // DayPicker supplies formatDay's string as children and labelDayButton's label.
+  const visibleDay = String(props.children)
   return (
-    <DayButton {...props} aria-current={props.modifiers.today ? 'date' : undefined}>
+    <DayButton
+      {...props}
+      aria-label={`${visibleDay}: ${props['aria-label']}`}
+      aria-current={props.modifiers.today ? 'date' : undefined}
+    >
       {props.children}
       {props.modifiers.today && !props.modifiers.selected && (
         <span
@@ -126,6 +139,7 @@ function CalendarGrid({
   minDate,
   maxDate,
   isDateUnavailable,
+  readOnly,
 }: CalendarGridProps) {
   const [today] = React.useState(() =>
     toCalendarDate(formatDateValue(timeZone ? new TZDate(Date.now(), timeZone) : new Date())),
@@ -179,7 +193,11 @@ function CalendarGrid({
               (minDate && day < minDate) || (maxDate && day > maxDate) || isDateUnavailable?.(day),
             )
           }}
-          components={{ DayButton: StyledDayButton, Nav: CalendarNavigation }}
+          components={{
+            DayButton: StyledDayButton,
+            Nav: CalendarNavigation,
+            ...(readOnly && { MonthGrid: ReadOnlyMonthGrid }),
+          }}
           classNames={calendarClassNames}
         />
       </div>

@@ -158,7 +158,14 @@ def _install_backend_client(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
 def executed_statements(sqlite_engine: Engine) -> Iterator[list[str]]:
     statements: list[str] = []
 
-    def record_statement(_connection, _cursor, statement, _parameters, _context, _executemany) -> None:
+    def record_statement(
+        _connection: object,
+        _cursor: object,
+        statement: str,
+        _parameters: object,
+        _context: object,
+        _executemany: object,
+    ) -> None:
         statements.append(statement)
 
     event.listen(sqlite_engine, "before_cursor_execute", record_statement)
@@ -551,7 +558,7 @@ def test_load_existing_pointer_rejects_missing_workflow_identity(sqlite_session:
 
 
 def test_load_existing_pointer_reuses_matching_workflow_identity(sqlite_session: Session) -> None:
-    original_process_data = {
+    original_process_data: dict[str, object] = {
         "existing": "value",
         "workflow_agent_binding_id": "workflow-binding-1",
     }
