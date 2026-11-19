@@ -11,6 +11,7 @@ import {
   ComboboxPopup,
   ComboboxPortal,
   ComboboxPositioner,
+  ComboboxSelectTrigger,
   ComboboxValue,
   createComboboxItems,
   useComboboxFilter,
@@ -18,7 +19,6 @@ import {
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { timezones } from '@/utils/timezone'
-import { PreferenceComboboxTrigger } from './preference-combobox-trigger'
 
 type TimezoneOption = (typeof timezones)[number]
 type TimezoneValue = TimezoneOption['value']
@@ -57,11 +57,11 @@ export function TimezoneCombobox({ label, value, onValueChange, readOnly }: Time
         <ComboboxLabel>
           <span id={timezoneLabelId}>{label}</span>
         </ComboboxLabel>
-        <PreferenceComboboxTrigger>
+        <ComboboxSelectTrigger>
           <ComboboxValue<TimezoneValue>
             placeholder={t(($) => $['placeholder.select'], { ns: 'common' })}
           />
-        </PreferenceComboboxTrigger>
+        </ComboboxSelectTrigger>
         <ComboboxPortal>
           <ComboboxPositioner>
             <ComboboxPopup aria-labelledby={timezoneLabelId}>
