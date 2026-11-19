@@ -11,6 +11,9 @@ Import a Base UI part once per module and read its types from that binding's nam
 `BaseRadio.Root.Props`. Use `import type` only when the module has no runtime use of the part. Do
 not keep a value import and a type import of the same module side by side.
 
+Add a public utility subpath only when an application consumer needs it. Inside the package,
+use an existing utility entrypoint; otherwise import directly from `@base-ui/utils`.
+
 ## React imports
 
 Use React namespace imports throughout this package, including stories and tests. Use
@@ -33,10 +36,12 @@ expressions when JavaScript cannot infer their name. Use `event` or `error` inst
 Every public primitive needs a matching `package.json#exports` subpath. Import relatively between
 package components; consumers import only through public subpaths.
 
+Keep package-private helpers in `src/internal/`; top-level runtime utility modules in `src/` are
+public utility subpaths. Components share code through the owning component's entrypoint or an
+explicit internal module, not another component's implementation files.
+
 Use the primitive name without a `Root` suffix for the canonical boundary and matching props type:
-`Select` and `SelectProps`, `Drawer` and `DrawerProps`. Keep `Root` only when the same subpath
-exports both low-level anatomy and a higher-level convenience component, such as `AvatarRoot`
-and `Avatar`.
+`Select` and `SelectProps`, `Drawer` and `DrawerProps`.
 
 Every runtime component must have an accurate, importable props type with the matching name. Use a
 direct alias for an unchanged Base UI part. Define Dify-authored composite props at the Dify UI
@@ -70,7 +75,8 @@ real consumer must name it independently.
 
 State, controlled-state helpers, context values, render helpers, styling helpers, and upstream
 passthrough aliases are private by default. Public props already provide contextual typing for
-inline render and event callbacks.
+inline render and event callbacks. Expose styling helpers only when consumers need to reuse
+appearance independently.
 
 Event details and reasons are the exception. A component that aliases or wraps a Base UI part
 re-exports that part's `*EventDetails` and `*EventReason` types under its own name. A composite

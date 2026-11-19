@@ -1,8 +1,6 @@
 import logging
-import time
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
-from typing import Union
 
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -59,12 +57,11 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.base.tts import AppGeneratorTTSPublisher
-from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.system_variables import build_system_variables
 from extensions.ext_database import db
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 from models import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser
@@ -83,7 +80,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         application_generate_entity: WorkflowAppGenerateEntity,
         workflow: Workflow,
         queue_manager: AppQueueManager,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         stream: bool,
         draft_var_saver_factory: DraftVariableSaverFactory,
     ):
@@ -120,16 +117,16 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             user=user,
             system_variables=self._workflow_system_variables,
         )
-        self._graph_runtime_state: GraphRuntimeState | None = self._base_task_pipeline.queue_manager.graph_runtime_state
+        self._graph_runtime_state: RuntimeState | None = self._base_task_pipeline.queue_manager.graph_runtime_state
 
     def process(
         self,
-    ) -> Union[WorkflowAppBlockingResponse, WorkflowAppPausedBlockingResponse, Generator[WorkflowAppStreamResponse]]:
+    ) -> WorkflowAppBlockingResponse | WorkflowAppPausedBlockingResponse | Generator[WorkflowAppStreamResponse]:
         """
         Process generate task pipeline.
         :return:
         """
-        generator = self._wrapper_process_stream_response(trace_manager=self._application_generate_entity.trace_manager)
+        generator = self._wrapper_process_stream_response()
         if self._base_task_pipeline.stream:
             return self._to_stream_response(generator)
         else:
@@ -137,7 +134,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _to_blocking_response(
         self, generator: Generator[StreamResponse]
-    ) -> Union[WorkflowAppBlockingResponse, WorkflowAppPausedBlockingResponse]:
+    ) -> WorkflowAppBlockingResponse | WorkflowAppPausedBlockingResponse:
         """
         To blocking response.
         :return:
@@ -215,7 +212,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 status=WorkflowExecutionStatus.PAUSED,
                 outputs={},
                 error=None,
-                elapsed_time=time.perf_counter() - self._base_task_pipeline.start_at,
+                elapsed_time=self._application_generate_entity.workflow_execution_timing.finish(),
                 total_tokens=runtime_state.total_tokens,
                 total_steps=runtime_state.node_run_steps,
                 created_at=created_at,
@@ -249,9 +246,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             return None
         raise RuntimeError(f"TTS publisher returned an unknown status: {audio_msg.status}")
 
-    def _wrapper_process_stream_response(
-        self, trace_manager: TraceQueueManager | None = None
-    ) -> Generator[StreamResponse]:
+    def _wrapper_process_stream_response(self) -> Generator[StreamResponse]:
         tts_publisher = None
         task_id = self._application_generate_entity.task_id
         tenant_id = self._application_generate_entity.app_config.tenant_id
@@ -271,7 +266,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             )
 
         try:
-            for response in self._process_stream_response(tts_publisher=tts_publisher, trace_manager=trace_manager):
+            for response in self._process_stream_response(tts_publisher=tts_publisher):
                 while audio_response := self._listen_audio_msg(publisher=tts_publisher, task_id=task_id):
                     yield audio_response
                 if tts_publisher and isinstance(response, ErrorStreamResponse):
@@ -342,6 +337,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             workflow_run_id=run_id,
             workflow_id=self._workflow.id,
             reason=event.reason,
+            node_execution_snapshots=event.node_execution_snapshots,
         )
         yield start_resp
 
@@ -383,7 +379,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _handle_node_failed_events(
         self,
-        event: Union[QueueNodeFailedEvent, QueueNodeExceptionEvent],
+        event: QueueNodeFailedEvent | QueueNodeExceptionEvent,
         **kwargs,
     ) -> Generator[StreamResponse]:
         """Handle various node failure events."""
@@ -469,12 +465,9 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     def _handle_workflow_succeeded_event(
         self,
         event: QueueWorkflowSucceededEvent,
-        *,
-        trace_manager: TraceQueueManager | None = None,
         **kwargs,
     ) -> Generator[StreamResponse]:
         """Handle workflow succeeded events."""
-        _ = trace_manager
         self._ensure_workflow_initialized()
         validated_state = self._ensure_graph_runtime_initialized()
         workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
@@ -489,12 +482,9 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     def _handle_workflow_partial_success_event(
         self,
         event: QueueWorkflowPartialSuccessEvent,
-        *,
-        trace_manager: TraceQueueManager | None = None,
         **kwargs,
     ) -> Generator[StreamResponse]:
         """Handle workflow partial success events."""
-        _ = trace_manager
         self._ensure_workflow_initialized()
         validated_state = self._ensure_graph_runtime_initialized()
         workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
@@ -523,13 +513,10 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _handle_workflow_failed_and_stop_events(
         self,
-        event: Union[QueueWorkflowFailedEvent, QueueStopEvent],
-        *,
-        trace_manager: TraceQueueManager | None = None,
+        event: QueueWorkflowFailedEvent | QueueStopEvent,
         **kwargs,
     ) -> Generator[StreamResponse]:
         """Handle workflow failed and stop events."""
-        _ = trace_manager
         self._ensure_workflow_initialized()
         validated_state = self._ensure_graph_runtime_initialized()
 
@@ -556,7 +543,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         event: QueueTextChunkEvent,
         *,
         tts_publisher: AppGeneratorTTSPublisher | None = None,
-        queue_message: Union[WorkflowQueueMessage, MessageQueueMessage] | None = None,
+        queue_message: WorkflowQueueMessage | MessageQueueMessage | None = None,
         **kwargs,
     ) -> Generator[StreamResponse]:
         """Handle text chunk events."""
@@ -642,8 +629,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         event: AppQueueEvent,
         *,
         tts_publisher: AppGeneratorTTSPublisher | None = None,
-        trace_manager: TraceQueueManager | None = None,
-        queue_message: Union[WorkflowQueueMessage, MessageQueueMessage] | None = None,
+        queue_message: WorkflowQueueMessage | MessageQueueMessage | None = None,
     ) -> Generator[StreamResponse]:
         """Dispatch events using elegant pattern matching."""
         handlers = self._get_event_handlers()
@@ -654,7 +640,6 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             yield from handler(
                 event,
                 tts_publisher=tts_publisher,
-                trace_manager=trace_manager,
                 queue_message=queue_message,
             )
             return
@@ -670,7 +655,6 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             yield from self._handle_node_failed_events(
                 event,
                 tts_publisher=tts_publisher,
-                trace_manager=trace_manager,
                 queue_message=queue_message,
             )
             return
@@ -680,7 +664,6 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             yield from self._handle_workflow_failed_and_stop_events(
                 event,
                 tts_publisher=tts_publisher,
-                trace_manager=trace_manager,
                 queue_message=queue_message,
             )
             return
@@ -691,7 +674,6 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     def _process_stream_response(
         self,
         tts_publisher: AppGeneratorTTSPublisher | None = None,
-        trace_manager: TraceQueueManager | None = None,
     ) -> Generator[StreamResponse]:
         """
         Process stream response using elegant Fluent Python patterns.
@@ -731,7 +713,6 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                         self._dispatch_event(
                             event,
                             tts_publisher=tts_publisher,
-                            trace_manager=trace_manager,
                             queue_message=queue_message,
                         )
                     ):

@@ -10,6 +10,7 @@ import {
   EnvVarValueSource as EnvVarValueSourceEnum,
   EnvVarValueType,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import { Field, FieldDescription, FieldError } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,
@@ -23,6 +24,7 @@ import dynamic from 'next/dynamic'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isLLMEnvironmentVariableValue } from '@/app/components/workflow/llm-environment-variable'
+import { environmentVariableFieldId } from './utils/field-id'
 import { resolveEnvironmentVariableSelection } from './utils/workflow-deployment-input'
 
 const LLMEnvironmentVariableValueField = dynamic(
@@ -93,8 +95,10 @@ export const EnvironmentVariableField = memo(
         : slot.value_type === EnvVarValueType.ENV_VAR_VALUE_TYPE_SECRET
           ? t(($) => $['deployDrawer.envVarType.secret'])
           : t(($) => $['deployDrawer.envVarType.string'])
-    const inputId = `deployment-env-${encodeURIComponent(workflowId)}-${encodeURIComponent(slot.key)}`
+    const inputId = environmentVariableFieldId(workflowId, slot.key)
     const labelId = `${inputId}-label`
+    const descriptionId = `${inputId}-description`
+    const errorId = `${inputId}-error`
     const editable = source === EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CUSTOM
     const inputType =
       editable && slot.value_type === EnvVarValueType.ENV_VAR_VALUE_TYPE_SECRET
@@ -136,7 +140,8 @@ export const EnvironmentVariableField = memo(
     }
 
     return (
-      <div className="flex flex-col gap-1">
+      <fieldset className="flex min-w-0 flex-col gap-1">
+        <legend className="sr-only">{slot.key}</legend>
         <div className="flex min-w-0 items-center gap-2">
           <div className="flex min-w-0 grow items-center gap-1">
             <span
@@ -148,7 +153,11 @@ export const EnvironmentVariableField = memo(
                 {slot.key}
               </span>
             ) : (
-              <label htmlFor={inputId} className="truncate system-sm-medium text-text-primary">
+              <label
+                id={labelId}
+                htmlFor={inputId}
+                className="truncate system-sm-medium text-text-primary"
+              >
                 {slot.key}
               </label>
             )}
@@ -178,7 +187,7 @@ export const EnvironmentVariableField = memo(
             >
               {sourceLabel}
             </SelectTrigger>
-            <SelectContent placement="bottom-end" className="w-52">
+            <SelectContent align="end" className="w-52">
               {availableSources.map((option) => (
                 <SelectItem key={option} value={option}>
                   <SelectItemText>{sourceLabels[option]}</SelectItemText>
@@ -189,7 +198,16 @@ export const EnvironmentVariableField = memo(
           </Select>
         </div>
         {isLLM ? (
-          <div role="group" aria-labelledby={labelId} className="flex w-full min-w-0">
+          <div
+            id={inputId}
+            tabIndex={-1}
+            role="group"
+            aria-labelledby={labelId}
+            aria-describedby={[slot.description && descriptionId, errorId]
+              .filter(Boolean)
+              .join(' ')}
+            className="flex w-full min-w-0 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          >
             <LLMEnvironmentVariableValueField
               disabled={!editable}
               requiredMode={requiredLLMMode}
@@ -202,26 +220,31 @@ export const EnvironmentVariableField = memo(
               }
             />
           </div>
-        ) : (
-          <Input
-            id={inputId}
-            type={inputType}
-            value={editable && typeof customValue === 'string' ? customValue : ''}
-            placeholder={placeholder}
-            disabled={!editable}
-            autoComplete="off"
-            onChange={(event) =>
-              updateSelection({
-                ...selection,
-                customValue: event.target.value,
-              })
-            }
-          />
-        )}
-        {slot.description && (
-          <p className="system-xs-regular text-text-tertiary">{slot.description}</p>
-        )}
-      </div>
+        ) : null}
+        <Field name={inputId} className="contents">
+          {!isLLM && (
+            <Input
+              id={inputId}
+              step={inputType === 'number' ? 'any' : undefined}
+              type={inputType}
+              value={editable && typeof customValue === 'string' ? customValue : ''}
+              placeholder={placeholder}
+              disabled={!editable}
+              autoComplete="off"
+              onChange={(event) =>
+                updateSelection({
+                  ...selection,
+                  customValue: event.target.value,
+                })
+              }
+            />
+          )}
+          {slot.description && (
+            <FieldDescription id={descriptionId}>{slot.description}</FieldDescription>
+          )}
+          <FieldError id={errorId} />
+        </Field>
+      </fieldset>
     )
   },
 )

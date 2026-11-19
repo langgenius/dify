@@ -34,12 +34,13 @@ def plugin_permission_required(
                     .limit(1)
                 )
 
-                if not permission:
-                    # no permission set, allow access for everyone
-                    return view(*args, **kwargs)
+                install_permission = (
+                    permission.install_permission if permission else TenantPluginInstallPermission.ADMINS
+                )
+                debug_permission = permission.debug_permission if permission else TenantPluginDebugPermission.EVERYONE
 
                 if install_required:
-                    match permission.install_permission:
+                    match install_permission:
                         case TenantPluginInstallPermission.NOBODY:
                             raise Forbidden()
                         case TenantPluginInstallPermission.ADMINS:
@@ -49,7 +50,7 @@ def plugin_permission_required(
                             pass
 
                 if debug_required:
-                    match permission.debug_permission:
+                    match debug_permission:
                         case TenantPluginDebugPermission.NOBODY:
                             raise Forbidden()
                         case TenantPluginDebugPermission.ADMINS:

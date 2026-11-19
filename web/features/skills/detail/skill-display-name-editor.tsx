@@ -8,7 +8,6 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import {
-  getAsyncSkillErrorPayload,
   getErrorCode,
   getErrorDetailString,
   invalidateSkillDetail,
@@ -103,11 +102,11 @@ export function SkillDisplayNameEditor({
       onEditingChange(false)
     } catch (error) {
       setDraftName(displayName)
-      const errorPayload = await getAsyncSkillErrorPayload(error)
-      if (getErrorCode(errorPayload ?? error) === 'skill_name_conflict') {
+
+      if (getErrorCode(error) === 'skill_name_conflict') {
         toast.error(
           t(($) => $['skillManagement.errors.nameConflict'], {
-            name: getErrorDetailString(errorPayload ?? error, 'name') ?? '',
+            name: getErrorDetailString(error, 'name') ?? '',
           }),
         )
       } else {

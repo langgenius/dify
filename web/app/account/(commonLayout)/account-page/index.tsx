@@ -1,7 +1,6 @@
 'use client'
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type { IItem } from '@/app/components/header/account-setting/collapse'
-import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -17,6 +16,7 @@ import AvatarWithEdit from './AvatarWithEdit'
 import { ChangePasswordDialog } from './change-password-dialog'
 import { EditAccountNameDialog } from './edit-account-name-dialog'
 import EmailChangeModal from './email-change-modal'
+import PersonalAccessTokens from './personal-access-tokens'
 
 const titleClassName = `
   system-sm-semibold text-text-secondary
@@ -61,17 +61,10 @@ export default function AccountPage() {
   if (!userProfile) return null
 
   const renderAppItem = (item: AccountAppItem) => {
-    const appIconType = zIconType.safeParse(item.icon_type).data ?? null
     return (
       <div className="flex px-3 py-1">
         <div className="mr-3">
-          <AppIcon
-            size="tiny"
-            iconType={appIconType}
-            icon={item.icon ?? undefined}
-            background={item.icon_background}
-            imageUrl={item.icon_url}
-          />
+          <AppIcon size="tiny" icon={item} />
         </div>
         <div className="mt-0.75 system-sm-medium text-text-secondary">{item.name}</div>
       </div>
@@ -143,6 +136,8 @@ export default function AccountPage() {
           <ChangePasswordDialog isPasswordSet={userProfile.is_password_set} />
         </div>
       )}
+      <div className="mb-6 border border-divider-subtle" />
+      <PersonalAccessTokens />
       <div className="mb-6 border border-divider-subtle" />
       <div className="mb-8">
         <div className={titleClassName}>

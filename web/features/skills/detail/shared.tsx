@@ -6,17 +6,19 @@ import type {
   SkillResponse,
   SkillVersionResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { InfiniteData, useQueryClient } from '@tanstack/react-query'
 import type {
   DefaultModel,
   FormValue,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { cn } from '@langgenius/dify-ui/cn'
+import { v4 as uuid4 } from 'uuid'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { toast } from '@/app/notifications'
 import { getFileIconType } from '@/features/agent-v2/file-icon'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import {
   getSkillErrorCode,
   getSkillErrorDetailNumber,
@@ -81,12 +83,12 @@ export function runSkillFileMutation(
 
 export const skillFileHotkeys = {
   copy: {
-    command: 'Mod+C' satisfies Hotkey,
+    command: 'Mod+C' satisfies HotkeyChord,
   },
   cut: {
-    command: 'Mod+X' satisfies Hotkey,
+    command: 'Mod+X' satisfies HotkeyChord,
   },
-  paste: { command: 'Mod+V' satisfies Hotkey },
+  paste: { command: 'Mod+V' satisfies HotkeyChord },
 } as const
 
 export const skillFileMenuPopupClassName = 'w-[168px] data-ending-style:transition-none'
@@ -1340,82 +1342,8 @@ function getDraftSkillName(parsedSkillMd: ParsedMarkdownContent, displayName: st
   return generatedName || undefined
 }
 
-function parseServerMessage(message: string) {
-  const trimmedMessage = message.trim()
-  if (!trimmedMessage.startsWith('{')) return trimmedMessage
-
-  try {
-    const parsed: unknown = JSON.parse(trimmedMessage)
-    if (parsed && typeof parsed === 'object') {
-      const parsedMessage = (parsed as Record<string, unknown>).message
-      if (typeof parsedMessage === 'string' && parsedMessage.trim()) return parsedMessage.trim()
-    }
-  } catch {
-    return trimmedMessage
-  }
-
-  return trimmedMessage
-}
-
-async function readSkillResponseErrorMessage(response: Response) {
-  try {
-    const data: unknown = await response.clone().json()
-    return getSkillErrorMessage(data)
-  } catch {
-    try {
-      const text = await response.clone().text()
-      if (text.trim()) return parseServerMessage(text)
-    } catch {}
-  }
-}
-
-async function readSkillResponseErrorPayload(response: Response) {
-  try {
-    const data: unknown = await response.clone().json()
-    return isRecord(data) ? data : undefined
-  } catch {
-    return undefined
-  }
-}
-
-function getSkillErrorMessage(error: unknown, visited = new Set<unknown>()): string | undefined {
-  if (error instanceof Response) return undefined
-  if (!error || visited.has(error)) return undefined
-  if (typeof error === 'string') return parseServerMessage(error)
-  if (typeof error !== 'object') return undefined
-
-  visited.add(error)
-  const record = error as Record<string, unknown>
-
-  for (const key of ['data', 'body', 'error', 'cause', 'response']) {
-    const nestedMessage = getSkillErrorMessage(record[key], visited)
-    if (nestedMessage) return nestedMessage
-  }
-
-  const message = record.message
-  if (typeof message === 'string' && message.trim()) return parseServerMessage(message)
-
-  return undefined
-}
-
-export async function getAsyncSkillErrorMessage(error: unknown) {
-  if (error instanceof Response) return readSkillResponseErrorMessage(error)
-
-  return getSkillErrorMessage(error)
-}
-
-export async function getAsyncSkillErrorPayload(error: unknown) {
-  if (error instanceof Response) return readSkillResponseErrorPayload(error)
-
-  return isRecord(error) ? error : undefined
-}
-
 export function showSkillErrorToast(error: unknown, fallbackMessage: string) {
-  void showSkillErrorToastAsync(error, fallbackMessage)
-}
-
-async function showSkillErrorToastAsync(error: unknown, fallbackMessage: string) {
-  toast.error((await getAsyncSkillErrorMessage(error)) ?? fallbackMessage)
+  toast.error(getErrorMessage(error) ?? fallbackMessage)
 }
 
 export function getSkillCodeLanguage(file: SkillFileResponse | undefined) {
@@ -1558,11 +1486,14 @@ function updateSkillListCache(
 }
 
 function refetchSkillDetail(skillId: string) {
-  return consoleClient.workspaces.current.skills.bySkillId.get({
-    params: {
-      skill_id: skillId,
+  return consoleClient.workspaces.current.skills.bySkillId.get(
+    {
+      params: {
+        skill_id: skillId,
+      },
     },
-  })
+    { context: { silent: true } },
+  )
 }
 
 export async function refreshSkillDetailAfterConflict(
@@ -1598,11 +1529,8 @@ export function isEditableKeyboardTarget(target: EventTarget | null) {
   )
 }
 
-export function createUploadItemId(file: File, index: number) {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
-    return crypto.randomUUID()
-
-  return `${file.name}-${file.size}-${file.lastModified}-${index}`
+export function createUploadItemId() {
+  return uuid4()
 }
 
 export function getUploadFileName(file: File) {

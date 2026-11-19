@@ -8,8 +8,23 @@ export type TextContentResponse = {
   content: string
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type NotionIntegrateInfoListResponse = {
   notion_info: Array<NotionIntegrateWorkspaceResponse>
+}
+
+export type DatasetAccessDeniedError = ErrorResponse & {
+  code: 'dataset_access_denied'
+  status: 403
 }
 
 export type NotionIntegrateWorkspaceResponse = {
@@ -48,6 +63,13 @@ export type GetNotionPagesByPageIdByPageTypePreviewData = {
   url: '/notion/pages/{page_id}/{page_type}/preview'
 }
 
+export type GetNotionPagesByPageIdByPageTypePreviewErrors = {
+  default: ErrorResponse
+}
+
+export type GetNotionPagesByPageIdByPageTypePreviewError =
+  GetNotionPagesByPageIdByPageTypePreviewErrors[keyof GetNotionPagesByPageIdByPageTypePreviewErrors]
+
 export type GetNotionPagesByPageIdByPageTypePreviewResponses = {
   200: TextContentResponse
 }
@@ -64,6 +86,14 @@ export type GetNotionPreImportPagesData = {
   }
   url: '/notion/pre-import/pages'
 }
+
+export type GetNotionPreImportPagesErrors = {
+  403: DatasetAccessDeniedError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetNotionPreImportPagesError =
+  GetNotionPreImportPagesErrors[keyof GetNotionPreImportPagesErrors]
 
 export type GetNotionPreImportPagesResponses = {
   200: NotionIntegrateInfoListResponse

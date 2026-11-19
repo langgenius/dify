@@ -31,7 +31,6 @@ describe('getAgentMonitoringMetrics', () => {
   it('should map statistics summary response into monitoring chart metrics', () => {
     const metrics = getAgentMonitoringMetrics(statisticsSummary)
 
-    expect(metrics).toHaveLength(6)
     expect(metrics.map((metric) => metric.id)).toEqual([
       'total-messages',
       'active-users',
@@ -72,7 +71,6 @@ describe('getAgentMonitoringMetrics', () => {
   it('should return zero-valued metrics when statistics data is not loaded yet', () => {
     const metrics = getAgentMonitoringMetrics()
 
-    expect(metrics).toHaveLength(6)
     expect(metrics.every((metric) => metric.rows.length === 0)).toBe(true)
     expect(metrics.map((metric) => metric.summaryValue)).toEqual(['0', '0', '0', '0', '0%', '0'])
   })
@@ -84,9 +82,6 @@ describe('getAgentMonitoringMetrics', () => {
     })
     const totalMessagesMetric = metrics[0]
     const tokenUsageMetric = metrics[5]
-
-    expect(totalMessagesMetric).toBeDefined()
-    expect(tokenUsageMetric).toBeDefined()
 
     expect(totalMessagesMetric?.rows).toEqual([
       { date: '2026-06-15', message_count: 0, total_price: '0' },

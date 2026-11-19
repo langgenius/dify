@@ -1,6 +1,6 @@
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { editorCollaborationEnabledAtom } from '../editor-resource/state'
 import { useStore, useWorkflowStore } from '../store'
 import { ControlMode, WorkflowRunningStatus } from '../types'
 import { useEdgesInteractionsWithoutSync } from './use-edges-interactions-without-sync'
@@ -34,10 +34,7 @@ export const useWorkflowMoveMode = () => {
   const isRestoring = useStore((s) => s.isRestoring)
   const { getNodesReadOnly } = useNodesReadOnly()
   const { handleSelectionCancel } = useSelectionInteractions()
-  const { data: isCommentModeAvailable } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (s) => s.enable_collaboration_mode,
-  })
+  const isCommentModeAvailable = useAtomValue(editorCollaborationEnabledAtom)
   const isCommentModeOperationBlocked = !!(
     workflowRunningData?.result.status === WorkflowRunningStatus.Running ||
     workflowRunningData?.result.status === WorkflowRunningStatus.Paused ||

@@ -4,21 +4,21 @@ import type { InputValueTypes, Task } from '../../../share/text-generation/types
 import type { MoreLikeThisConfig, PromptConfig, TextToSpeechConfig } from '@/models/debug'
 import type { AppData, CustomConfigValueType, SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
+import { Alert, AlertClose, AlertTitle } from '@langgenius/dify-ui/alert'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Alert from '@/app/components/base/alert'
 import AppIcon from '@/app/components/base/app-icon'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import Res from '@/app/components/share/text-generation/result'
 import { TaskStatus } from '@/app/components/share/text-generation/types'
 import { appDefaultIconBackground } from '@/config'
 import { useWebAppStore } from '@/context/web-app-context'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { AppSourceType } from '@/service/share'
 import { useGetTryAppParams } from '@/service/use-try-app'
 import { Resolution, TransferMethod } from '@/types/app'
@@ -33,14 +33,13 @@ type Props = Readonly<{
 }>
 
 const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) => {
-  const { t } = useTranslation(['explore', 'share'])
+  const { t } = useTranslation(['explore', 'share', 'common'])
   const [descExpanded, setDescExpanded] = useState(false)
   const [showDescToggle, setShowDescToggle] = useState(false)
   const handleDescRef = useCallback((node: HTMLDivElement | null) => {
     setShowDescToggle(!!node && node.scrollHeight > node.clientHeight)
   }, [])
-  const media = useBreakpoints()
-  const isPC = media === MediaType.pc
+  const isBelowMd = useMediaQuery('(width < 48rem)', {})
 
   const [inputs, doSetInputs] = useState<Record<string, InputValueTypes>>({})
   const inputsRef = useRef<Record<string, InputValueTypes>>(inputs)
@@ -99,7 +98,7 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
     ;(async () => {
       if (!appData || !appParams) return
       const { site: siteInfo, custom_config } = appData
-      setSiteInfo(siteInfo as SiteInfo)
+      setSiteInfo(siteInfo)
       setCustomConfig(custom_config)
 
       const { user_input_form, more_like_this, file_upload, text_to_speech } = appParams
@@ -134,8 +133,7 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
       key={task?.id}
       isWorkflow={!!isWorkflow}
       isCallBatchAPI={false}
-      isPC={isPC}
-      isMobile={!isPC}
+      isBelowMd={isBelowMd}
       appSourceType={AppSourceType.tryApp}
       appId={appId}
       isError={task?.status === TaskStatus.failed}
@@ -156,14 +154,16 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
   )
 
   const renderResWrap = (
-    <div className={cn('relative flex h-full flex-col', 'rounded-r-2xl bg-chatbot-bg')}>
+    <div className={cn('relative flex h-full flex-col', 'rounded-e-2xl bg-chatbot-bg')}>
       <div className={cn('flex h-0 grow flex-col overflow-y-auto p-6')}>
         {isCompleted && !isHideTryNotice && (
-          <Alert
-            className="mb-3 shrink-0"
-            message={t(($) => $['tryApp.tryInfo'], { ns: 'explore' })}
-            onHide={hideTryNotice}
-          />
+          <Alert type="info" className="mb-3 shrink-0">
+            <AlertTitle>{t(($) => $['tryApp.tryInfo'], { ns: 'explore' })}</AlertTitle>
+            <AlertClose
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              onClick={hideTryNotice}
+            />
+          </Alert>
         )}
         {renderRes()}
       </div>
@@ -182,8 +182,7 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
     <div
       className={cn(
         'rounded-2xl border border-components-panel-border bg-background-section-burn',
-        isPC && 'flex',
-        !isPC && 'flex-col',
+        isBelowMd ? 'flex-col' : 'flex',
         'h-full rounded-2xl shadow-md',
         className,
       )}
@@ -192,19 +191,17 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
       <div
         className={cn(
           'relative flex h-full shrink-0 flex-col',
-          isPC && 'w-150 max-w-[50%]',
-          'rounded-l-2xl bg-components-panel-bg',
+          !isBelowMd && 'w-150 max-w-[50%]',
+          'rounded-s-2xl bg-components-panel-bg',
         )}
       >
         {/* Header */}
-        <div className={cn('shrink-0 space-y-4 pb-2', isPC ? 'p-8 pb-0' : 'p-4 pb-0')}>
+        <div className={cn('shrink-0 space-y-4 pb-2', isBelowMd ? 'p-4 pb-0' : 'p-8 pb-0')}>
           <div className="flex items-center gap-3">
             <AppIcon
-              size={isPC ? 'large' : 'small'}
-              iconType={siteInfo.icon_type}
-              icon={siteInfo.icon}
-              background={siteInfo.icon_background || appDefaultIconBackground}
-              imageUrl={siteInfo.icon_url}
+              fallback={{ content: '🤖', background: appDefaultIconBackground }}
+              size={isBelowMd ? 'small' : 'large'}
+              icon={siteInfo}
             />
             <div className="grow truncate system-md-semibold text-text-secondary">
               {siteInfo.title}
@@ -251,8 +248,8 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
         <div
           className={cn(
             'h-0 grow overflow-y-auto',
-            isPC ? 'px-8' : 'px-4',
-            !isPC &&
+            isBelowMd ? 'px-4' : 'px-8',
+            isBelowMd &&
               resultExisted &&
               customConfig?.remove_webapp_brand &&
               'rounded-b-2xl border-b-[0.5px] border-divider-regular',
@@ -273,12 +270,12 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
 
       {/* Result */}
       <div className={cn('h-full w-0 grow')}>
-        {!isPC && (
+        {isBelowMd && (
           <div
             className={cn(
               isShowResultPanel
                 ? 'flex items-center justify-center p-2 pt-6'
-                : 'absolute top-0 left-0 z-10 flex w-full items-center justify-center px-2 pt-0.75 pb-14.25',
+                : 'absolute inset-s-0 top-0 z-10 flex w-full items-center justify-center px-2 pt-0.75 pb-14.25',
             )}
             onClick={() => {
               if (isShowResultPanel) hideResultPanel()

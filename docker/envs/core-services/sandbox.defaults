@@ -1,0 +1,26 @@
+# Defaults for sandbox. Copy this file to sandbox.env to customize it.
+# Edit the settings below in the copy; docker/.env takes precedence.
+# Optional application settings are commented to retain their application defaults.
+
+SANDBOX_HTTP_PROXY=${SANDBOX_HTTP_PROXY:-http://ssrf_proxy:3128}
+SANDBOX_HTTPS_PROXY=${SANDBOX_HTTPS_PROXY:-http://ssrf_proxy:3128}
+SANDBOX_PORT=${SANDBOX_PORT:-8194}
+PIP_MIRROR_URL=${PIP_MIRROR_URL:-}
+# Use a strong key for your deployment, generated with `openssl rand -base64 42`.
+# Set the same value for CODE_EXECUTION_API_KEY in the API/worker configuration.
+SANDBOX_API_KEY=${SANDBOX_API_KEY:-dify-sandbox}
+SANDBOX_GIN_MODE=${SANDBOX_GIN_MODE:-release}
+SANDBOX_WORKER_TIMEOUT=${SANDBOX_WORKER_TIMEOUT:-15}
+# Dify's code executor requests networking for Code, Template, Jinja2 prompts and the Code tool.
+# Setting false rejects those requests on every architecture.
+# Sandbox 0.2.15 only allows epoll_pwait with networking enabled on both ARM64 and AMD64;
+# network-disabled Python requests can fail with "operation not permitted" (observed on ARM64).
+SANDBOX_ENABLE_NETWORK=${SANDBOX_ENABLE_NETWORK:-true}
+
+# Container variable mappings; keep these expressions unchanged in the copy.
+API_KEY=${SANDBOX_API_KEY:-dify-sandbox}
+ENABLE_NETWORK=${SANDBOX_ENABLE_NETWORK:-true}
+GIN_MODE=${SANDBOX_GIN_MODE:-release}
+HTTPS_PROXY=${SANDBOX_HTTPS_PROXY:-http://ssrf_proxy:3128}
+HTTP_PROXY=${SANDBOX_HTTP_PROXY:-http://ssrf_proxy:3128}
+WORKER_TIMEOUT=${SANDBOX_WORKER_TIMEOUT:-15}

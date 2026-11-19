@@ -8,6 +8,7 @@ import type {
   ModelLoadBalancingConfigEntry,
   ModelProvider,
 } from '../declarations'
+import type { CredentialSaved } from '@/app/components/header/account-setting/model-provider-page/model-modal/handle'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
@@ -36,7 +37,7 @@ type ModelLoadBalancingConfigsProps = {
   withSwitch?: boolean
   className?: string
   modelCredential: ModelCredential
-  onUpdate?: (payload?: any, formValues?: Record<string, any>) => void
+  onUpdate?: CredentialSaved
   onRemove?: (credentialId: string) => void
   model: CustomModelCredential
 }
@@ -150,13 +151,6 @@ const ModelLoadBalancingConfigs = ({
     return draftConfig.configs
   }, [draftConfig])
 
-  const handleUpdate = useCallback(
-    (payload?: any, formValues?: Record<string, any>) => {
-      onUpdate?.(payload, formValues)
-    },
-    [onUpdate],
-  )
-
   const handleRemove = useCallback(
     (credentialId: string) => {
       const index = draftConfig?.configs.findIndex(
@@ -220,7 +214,7 @@ const ModelLoadBalancingConfigs = ({
               aria-labelledby={loadBalancingLabelId}
               checked={Boolean(draftConfig.enabled)}
               size="lg"
-              className="ml-3 justify-self-end"
+              className="ms-3 justify-self-end"
               disabled={!modelLoadBalancingEnabled && !draftConfig.enabled}
               onCheckedChange={(value) => toggleModalBalancing(value)}
               data-testid="load-balancing-switch-main"
@@ -242,7 +236,7 @@ const ModelLoadBalancingConfigs = ({
                   className="group flex h-10 items-center rounded-lg border border-components-panel-border bg-components-panel-on-panel-item-bg px-3 shadow-xs"
                 >
                   <div className="flex grow items-center">
-                    <div className="mr-2 flex size-3 items-center justify-center">
+                    <div className="me-2 flex size-3 items-center justify-center">
                       {config.in_cooldown && Boolean(config.ttl) ? (
                         <CooldownTimer
                           secondsRemaining={config.ttl}
@@ -265,17 +259,17 @@ const ModelLoadBalancingConfigs = ({
                         </Tooltip>
                       )}
                     </div>
-                    <div id={entryLabelId} className="mr-1 text-[13px] text-text-secondary">
+                    <div id={entryLabelId} className="me-1 text-[13px] text-text-secondary">
                       {isProviderManaged
                         ? t(($) => $['modelProvider.defaultConfig'], { ns: 'modelProvider' })
                         : config.name}
                     </div>
                     {isProviderManaged && providerFormSchemaPredefined && (
-                      <Badge className="ml-2">
+                      <Badge className="ms-2">
                         {t(($) => $['modelProvider.providerManaged'], { ns: 'modelProvider' })}
                       </Badge>
                     )}
-                    {credential?.from_enterprise && <Badge className="ml-2">Enterprise</Badge>}
+                    {credential?.from_enterprise && <Badge className="ms-2">Enterprise</Badge>}
                   </div>
                   <div className="flex items-center gap-1">
                     {!isProviderManaged && (
@@ -310,7 +304,7 @@ const ModelLoadBalancingConfigs = ({
                     )}
                     {(config.credential_id || config.name === '__inherit__') && (
                       <>
-                        <span className="mr-2 h-3 border-r border-r-divider-subtle" />
+                        <span className="me-2 h-3 border-e border-e-divider-subtle" />
                         <Switch
                           aria-labelledby={entryLabelId}
                           checked={credential?.not_allowed_to_use ? false : Boolean(config.enabled)}
@@ -335,14 +329,14 @@ const ModelLoadBalancingConfigs = ({
               }
               modelCredential={modelCredential}
               onSelectCredential={addConfigEntry}
-              onUpdate={handleUpdate}
+              onUpdate={onUpdate}
               onRemove={handleRemove}
             />
           </div>
         )}
         {draftConfig.enabled && validDraftConfigList.length < 2 && (
           <div className="flex h-8.5 items-center rounded-b-xl border-t border-t-divider-subtle bg-components-panel-bg px-6 text-xs text-text-secondary">
-            <div className="mr-1 i-custom-vender-solid-alertsAndFeedback-alert-triangle h-3 w-3 text-[#f79009]" />
+            <div className="me-1 i-custom-vender-solid-alertsAndFeedback-alert-triangle h-3 w-3 text-[#f79009]" />
             {t(($) => $['modelProvider.loadBalancingLeastKeyWarning'], { ns: 'modelProvider' })}
           </div>
         )}

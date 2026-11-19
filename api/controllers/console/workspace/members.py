@@ -1,3 +1,4 @@
+from datetime import datetime
 from http import HTTPStatus
 from typing import Annotated, Literal, NoReturn
 from urllib import parse
@@ -9,9 +10,15 @@ from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
+from controllers.common.errors import ForbiddenError
 from controllers.common.fields import SimpleResultDataResponse, SimpleResultResponse, VerificationTokenResponse
 from controllers.common.rbac import rbac_language
-from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
+from controllers.common.schema import (
+    query_params_from_model,
+    register_enum_models,
+    register_response_schema_models,
+    register_schema_models,
+)
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     CannotTransferOwnerToSelfError,
@@ -25,11 +32,19 @@ from controllers.console.auth.error import (
 )
 from controllers.console.error import EmailSendIpLimitError, SeatsLimitExceeded, WorkspaceMembersLimitExceeded
 from controllers.console.flask_admission import console_account_admission
-from controllers.console.workspace.error import InvalidMemberRoleError
+from controllers.console.workspace.error import (
+    InvalidMemberRoleError,
+    MemberCannotOperateSelfError,
+    MemberNotFoundError,
+    MemberRoleAlreadyAssignedError,
+    PendingInvitationNotFoundError,
+)
+from controllers.console.workspace.rbac.schemas import _AccessControlLanguageQuery
 from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.member_fields import AccountWithRoleListResponse, AccountWithRoleResponse
+from libs.external_api import error_responses
 from libs.helper import EmailStr, dump_response, extract_remote_ip
 from machinery.context import RequestContext
 from services.account_errors import AccountNotFoundError
@@ -53,6 +68,10 @@ class MemberInvitePayload(BaseModel):
         return list(dict.fromkeys(email.lower() for email in emails))
 
 
+class PendingInvitationRevokePayload(BaseModel):
+    email: EmailStr
+
+
 class MemberRoleUpdatePayload(BaseModel):
     role: str
 
@@ -68,6 +87,16 @@ class OwnerTransferCheckPayload(BaseModel):
 
 class OwnerTransferPayload(BaseModel):
     token: str
+
+
+class PendingWorkspaceInvitationResponse(ResponseModel):
+    email: str
+    role: TenantAccountRole
+    expires_at: datetime
+
+
+class PendingWorkspaceInvitationListResponse(ResponseModel):
+    invitations: list[PendingWorkspaceInvitationResponse]
 
 
 class MemberInviteSuccessResponse(ResponseModel):
@@ -115,6 +144,7 @@ register_enum_models(console_ns, TenantAccountRole)
 register_schema_models(
     console_ns,
     MemberInvitePayload,
+    PendingInvitationRevokePayload,
     MemberRoleUpdatePayload,
     OwnerTransferEmailPayload,
     OwnerTransferCheckPayload,
@@ -125,6 +155,8 @@ register_response_schema_models(
     AccountWithRoleResponse,
     AccountWithRoleListResponse,
     MemberActionResponse,
+    PendingWorkspaceInvitationListResponse,
+    PendingWorkspaceInvitationResponse,
     MemberInviteErrorResponse,
     MemberInviteResponse,
     MemberInviteSuccessResponse,
@@ -140,6 +172,7 @@ register_response_schema_models(
 class MemberListApi(Resource):
     """List all members of current tenant."""
 
+    @console_ns.doc(params=query_params_from_model(_AccessControlLanguageQuery))
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountWithRoleListResponse.__name__])
     @console_account_admission()
     def get(self, request_context: RequestContext):
@@ -164,10 +197,55 @@ class MemberListApi(Resource):
         return dump_response(AccountWithRoleListResponse, {"accounts": serialized_members}), HTTPStatus.OK
 
 
+@console_ns.route("/workspaces/<uuid:workspace_id>/members/pending-invitations")
+class PendingWorkspaceInvitationListApi(Resource):
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[PendingWorkspaceInvitationListResponse.__name__])
+    @error_responses(ForbiddenError)
+    @console_account_admission()
+    def get(self, request_context: RequestContext, workspace_id: UUID):
+        """List pending invitations for the active workspace."""
+        if str(workspace_id) != request_context.active_workspace_id:
+            raise ForbiddenError()
+        try:
+            invitations = application_services().workspaces.invitations.list_pending(request_context)
+        except NoPermissionError as error:
+            raise ForbiddenError() from error
+        return dump_response(
+            PendingWorkspaceInvitationListResponse,
+            {
+                "invitations": [
+                    {"email": invitation.email, "role": invitation.role, "expires_at": invitation.expires_at}
+                    for invitation in invitations
+                ]
+            },
+        ), HTTPStatus.OK
+
+
+@console_ns.route("/workspaces/<uuid:workspace_id>/members/pending-invitations/revoke")
+class PendingWorkspaceInvitationRevokeApi(Resource):
+    @console_ns.expect(console_ns.models[PendingInvitationRevokePayload.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @error_responses(ForbiddenError, PendingInvitationNotFoundError)
+    @console_account_admission()
+    def post(self, request_context: RequestContext, workspace_id: UUID):
+        """Revoke an email's invitation: links stop working, a pending member is removed, the seat is freed."""
+        if str(workspace_id) != request_context.active_workspace_id:
+            raise ForbiddenError()
+        args = PendingInvitationRevokePayload.model_validate(console_ns.payload or {})
+        try:
+            application_services().workspaces.invitations.revoke_pending(request_context, args.email)
+        except NoPermissionError as error:
+            raise ForbiddenError() from error
+        except workspace_errors.PendingInvitationNotFoundError as error:
+            raise PendingInvitationNotFoundError() from error
+        return dump_response(SimpleResultResponse, {"result": "success"}), HTTPStatus.OK
+
+
 @console_ns.route("/workspaces/current/members/invite-email")
 class MemberInviteEmailApi(Resource):
     """Invite a new member by email."""
 
+    @error_responses(InvalidMemberRoleError, SeatsLimitExceeded, WorkspaceMembersLimitExceeded)
     @console_ns.expect(console_ns.models[MemberInvitePayload.__name__])
     @console_ns.response(HTTPStatus.CREATED, "Success", console_ns.models[MemberInviteResponse.__name__])
     @console_ns.response(
@@ -224,6 +302,7 @@ class MemberInviteEmailApi(Resource):
 class MemberCancelInviteApi(Resource):
     """Cancel an invitation by member id."""
 
+    @error_responses(ForbiddenError, MemberCannotOperateSelfError, MemberNotFoundError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[MemberActionResponse.__name__])
     @console_account_admission()
     def delete(self, request_context: RequestContext, member_id: UUID):
@@ -232,7 +311,7 @@ class MemberCancelInviteApi(Resource):
                 request_context.active_workspace_id, str(member_id), request_context.account_id
             )
         except (WorkspaceApplicationError, AccountNotFoundError, NoPermissionError) as error:
-            return _member_mutation_error_response(error)
+            _raise_member_mutation_error(error)
 
         return MemberActionResponse(
             result="success",
@@ -244,6 +323,13 @@ class MemberCancelInviteApi(Resource):
 class MemberUpdateRoleApi(Resource):
     """Update member role."""
 
+    @error_responses(
+        ForbiddenError,
+        InvalidMemberRoleError,
+        MemberCannotOperateSelfError,
+        MemberNotFoundError,
+        MemberRoleAlreadyAssignedError,
+    )
     @console_ns.expect(console_ns.models[MemberRoleUpdatePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission()
@@ -255,7 +341,7 @@ class MemberUpdateRoleApi(Resource):
                 request_context.active_workspace_id, str(member_id), args.role, request_context.account_id
             )
         except (WorkspaceApplicationError, AccountNotFoundError, NoPermissionError) as error:
-            return _member_mutation_error_response(error)
+            _raise_member_mutation_error(error)
 
         return SimpleResultResponse(result="success").model_dump(mode="json")
 
@@ -277,6 +363,7 @@ class DatasetOperatorMemberListApi(Resource):
 class SendOwnerTransferEmailApi(Resource):
     """Send owner transfer email."""
 
+    @error_responses(EmailSendIpLimitError, NotOwnerError, OwnerTransferRateLimitExceededError)
     @console_ns.expect(console_ns.models[OwnerTransferEmailPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     @console_account_admission(require_owner_transfer_enabled=True)
@@ -295,6 +382,7 @@ class SendOwnerTransferEmailApi(Resource):
 
 @console_ns.route("/workspaces/current/members/owner-transfer-check")
 class OwnerTransferCheckApi(Resource):
+    @error_responses(EmailCodeError, InvalidEmailError, InvalidTokenError, NotOwnerError, OwnerTransferLimitError)
     @console_ns.expect(console_ns.models[OwnerTransferCheckPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[VerificationTokenResponse.__name__])
     @console_account_admission(require_owner_transfer_enabled=True)
@@ -311,6 +399,9 @@ class OwnerTransferCheckApi(Resource):
 
 @console_ns.route("/workspaces/current/members/<uuid:member_id>/owner-transfer")
 class OwnerTransfer(Resource):
+    @error_responses(
+        CannotTransferOwnerToSelfError, InvalidEmailError, InvalidTokenError, MemberNotInTenantError, NotOwnerError
+    )
     @console_ns.expect(console_ns.models[OwnerTransferPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission(require_owner_transfer_enabled=True)
@@ -325,21 +416,21 @@ class OwnerTransfer(Resource):
         return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
-def _member_mutation_error_response(
+def _raise_member_mutation_error(
     error: WorkspaceApplicationError | AccountNotFoundError | NoPermissionError,
-) -> tuple[dict[str, str], HTTPStatus]:
+) -> NoReturn:
     if isinstance(error, (AccountNotFoundError, workspace_errors.WorkspaceNotFoundError)):
         raise NotFound() from error
     if isinstance(error, InvalidWorkspaceMemberRoleError):
-        return {"code": "invalid-role", "message": "Invalid role"}, HTTPStatus.BAD_REQUEST
+        raise InvalidMemberRoleError() from error
     if isinstance(error, workspace_errors.CannotOperateSelfError):
-        return {"code": "cannot-operate-self", "message": str(error)}, HTTPStatus.BAD_REQUEST
+        raise MemberCannotOperateSelfError(str(error)) from error
     if isinstance(error, NoPermissionError):
-        return {"code": "forbidden", "message": str(error)}, HTTPStatus.FORBIDDEN
+        raise ForbiddenError(str(error)) from error
     if isinstance(error, workspace_errors.MemberNotInTenantError):
-        return {"code": "member-not-found", "message": str(error)}, HTTPStatus.NOT_FOUND
+        raise MemberNotFoundError(str(error)) from error
     if isinstance(error, workspace_errors.RoleAlreadyAssignedError):
-        return {"code": "role-already-assigned", "message": str(error)}, HTTPStatus.BAD_REQUEST
+        raise MemberRoleAlreadyAssignedError(str(error)) from error
     raise error
 
 

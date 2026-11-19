@@ -4,7 +4,6 @@ import type { AgentLogSourceResponse } from '@dify/contracts/api/console/agent/t
 import type { ReactNode } from 'react'
 import type { AgentMonitoringPeriod } from './time-range-picker'
 import { Button } from '@langgenius/dify-ui/button'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -12,26 +11,17 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import {
-  Select,
-  SelectItem,
-  SelectItemIndicator,
-  SelectItemText,
-  SelectList,
-  SelectPopup,
-  SelectPortal,
-  SelectPositioner,
-  SelectTrigger,
-} from '@langgenius/dify-ui/select'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Chip from '@/app/components/base/chip'
 import { consoleQuery } from '@/service/console'
 import { AgentDetailSectionSurface } from '../section-surface'
 import { AgentMonitoringChart } from './chart'
 import { getAgentMonitoringMetrics } from './metrics'
 import { AgentMonitoringTimeRangePicker } from './time-range-picker'
+import { AgentTracingConfiguration } from './tracing-configuration'
 
 type SourceFilterValue = 'all' | AgentLogSourceResponse['id']
 type SourceFilterItem = {
@@ -115,20 +105,24 @@ export function AgentMonitoringPage({ agentId }: AgentMonitoringPageProps) {
                 </p>
               </div>
 
-              <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2">
-                <AgentMonitoringTimeRangePicker value={period} onChange={setPeriod} />
+              <div className="mt-3 flex min-w-0 flex-wrap items-end justify-between gap-3">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <AgentMonitoringTimeRangePicker value={period} onChange={setPeriod} />
 
-                <AgentMonitoringSourceFilter
-                  value={sourceFilter}
-                  items={sourceItems}
-                  label={t(($) => $['agentDetail.metadata.sourceLabel'])}
-                  onSelect={(item) => {
-                    setSourceFilter(item.value)
-                  }}
-                  onClear={() => {
-                    setSourceFilter('all')
-                  }}
-                />
+                  <Chip<SourceFilterValue>
+                    showLeftIcon={false}
+                    value={sourceFilter}
+                    items={sourceItems}
+                    label={t(($) => $['agentDetail.metadata.sourceLabel'])}
+                    onSelect={(item) => {
+                      setSourceFilter(item.value)
+                    }}
+                    onClear={() => {
+                      setSourceFilter('all')
+                    }}
+                  />
+                </div>
+                <AgentTracingConfiguration agentId={agentId} />
               </div>
             </header>
             <div className="px-6 pt-2">
@@ -174,74 +168,6 @@ export function AgentMonitoringPage({ agentId }: AgentMonitoringPageProps) {
         </ScrollAreaScrollbar>
       </ScrollArea>
     </AgentDetailSectionSurface>
-  )
-}
-
-function AgentMonitoringSourceFilter({
-  value,
-  items,
-  label,
-  onSelect,
-  onClear,
-}: {
-  value: SourceFilterValue
-  items: SourceFilterItem[]
-  label: string
-  onSelect: (item: SourceFilterItem) => void
-  onClear: () => void
-}) {
-  const { t } = useTranslation(['common'])
-  const selectedItem = items.find((item) => Object.is(item.value, value))
-  const selectedName = selectedItem?.name ?? ''
-  const triggerLabel = selectedName ? `${label} ${selectedName}` : label
-  const clearLabel = selectedName
-    ? `${t(($) => $['operation.clear'])} ${triggerLabel}`
-    : t(($) => $['operation.clear'])
-
-  return (
-    <Select
-      value={selectedItem?.value ?? null}
-      itemToStringLabel={(itemValue: SourceFilterValue) =>
-        items.find((item) => Object.is(item.value, itemValue))?.name ?? ''
-      }
-      itemToStringValue={(itemValue) => String(itemValue)}
-      onValueChange={(nextValue) => {
-        if (nextValue === null) return
-        const selected = items.find((item) => Object.is(item.value, nextValue))
-        if (selected) onSelect(selected)
-      }}
-    >
-      <div className="flex w-fit max-w-full items-center gap-1">
-        <SelectTrigger
-          aria-label={triggerLabel}
-          className="h-auto min-h-8 w-fit max-w-full min-w-53 cursor-pointer items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 py-1 shadow-xs hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover! data-popup-open:border-components-button-secondary-border-hover! data-popup-open:bg-components-button-secondary-bg-hover! data-popup-open:hover:border-components-button-secondary-border-hover data-popup-open:hover:bg-components-button-secondary-bg-hover! [&>*:last-child]:hidden"
-        >
-          <span className="flex min-w-0 grow items-center gap-1 text-left">
-            <span className="flex min-w-0 grow items-center gap-1 px-1">
-              <span className="shrink-0 system-sm-regular text-text-tertiary">{label}</span>
-              <span className="truncate system-sm-medium text-text-secondary">{selectedName}</span>
-            </span>
-          </span>
-        </SelectTrigger>
-        <IconButton aria-label={clearLabel} size="md" className="shrink-0" onClick={onClear}>
-          <span aria-hidden="true" className="i-ri-close-circle-fill size-3.5" />
-        </IconButton>
-        <SelectPortal>
-          <SelectPositioner placement="bottom-start" sideOffset={4}>
-            <SelectPopup className="relative w-61 rounded-xl border-[0.5px] bg-components-panel-bg-blur p-0 text-sm text-text-secondary shadow-lg outline-hidden backdrop-blur-[5px] focus:outline-hidden focus-visible:outline-hidden">
-              <SelectList className="max-h-72 p-1">
-                {items.map((item) => (
-                  <SelectItem key={item.value} value={item.value}>
-                    <SelectItemText title={item.name}>{item.name}</SelectItemText>
-                    <SelectItemIndicator />
-                  </SelectItem>
-                ))}
-              </SelectList>
-            </SelectPopup>
-          </SelectPositioner>
-        </SelectPortal>
-      </div>
-    </Select>
   )
 }
 

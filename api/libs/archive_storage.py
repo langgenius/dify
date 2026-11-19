@@ -15,6 +15,8 @@ from urllib.parse import quote
 
 import boto3
 import orjson
+from boto3.exceptions import S3UploadFailedError
+from boto3.s3.transfer import TransferConfig
 from botocore.client import Config
 from botocore.exceptions import BotoCoreError, ClientError
 
@@ -89,11 +91,11 @@ class ArchiveStorage:
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code")
             if error_code == "404":
-                raise ArchiveStorageNotConfiguredError(f"Archive bucket '{self.bucket}' does not exist")
+                raise ArchiveStorageNotConfiguredError(f"Archive bucket '{self.bucket}' does not exist") from e
             elif error_code == "403":
-                raise ArchiveStorageNotConfiguredError(f"Access denied to archive bucket '{self.bucket}'")
+                raise ArchiveStorageNotConfiguredError(f"Access denied to archive bucket '{self.bucket}'") from e
             else:
-                raise ArchiveStorageError(f"Failed to access archive bucket: {e}")
+                raise ArchiveStorageError(f"Failed to access archive bucket: {e}") from e
 
     def put_object(self, key: str, data: bytes) -> str:
         """
@@ -126,7 +128,23 @@ class ArchiveStorage:
             logger.debug("Uploaded object: %s (size=%d, checksum=%s)", key, len(data), checksum)
             return checksum
         except ClientError as e:
-            raise ArchiveStorageError(f"Failed to upload object '{key}': {e}")
+            raise ArchiveStorageError(f"Failed to upload object '{key}': {e}") from e
+
+    def upload_file(self, key: str, filename: str) -> None:
+        """Upload a closed local file with one bounded multipart buffer; raise on failure.
+
+        The caller owns the file and must keep it available until this method returns. No complete object is read
+        into memory, and the managed transfer aborts a failed multipart upload.
+        """
+        try:
+            self.client.upload_file(
+                filename,
+                self.bucket,
+                key,
+                Config=TransferConfig(multipart_chunksize=8 * 1024 * 1024, max_concurrency=1, use_threads=False),
+            )
+        except (ClientError, BotoCoreError, S3UploadFailedError) as exc:
+            raise ArchiveStorageError(f"Failed to upload file '{key}': {exc}") from exc
 
     def get_object(self, key: str) -> bytes:
         """
@@ -176,7 +194,7 @@ class ArchiveStorage:
             response = self.client.get_object(Bucket=self.bucket, Key=key)
             body = response["Body"]
             try:
-                yield from body.iter_chunks()
+                yield from body.iter_chunks(chunk_size=1024 * 1024)
             finally:
                 close_stream(body)
         except ClientError as e:
@@ -265,7 +283,7 @@ class ArchiveStorage:
                 ExpiresIn=expires_in,
             )
         except ClientError as e:
-            raise ArchiveStorageError(f"Failed to generate pre-signed URL for '{key}': {e}")
+            raise ArchiveStorageError(f"Failed to generate pre-signed URL for '{key}': {e}") from e
 
     def list_objects(self, prefix: str) -> list[str]:
         """
@@ -285,7 +303,7 @@ class ArchiveStorage:
                 for obj in page.get("Contents", []):
                     keys.append(obj["Key"])
         except ClientError as e:
-            raise ArchiveStorageError(f"Failed to list objects with prefix '{prefix}': {e}")
+            raise ArchiveStorageError(f"Failed to list objects with prefix '{prefix}': {e}") from e
 
         return keys
 

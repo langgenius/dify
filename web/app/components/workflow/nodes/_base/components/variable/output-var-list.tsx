@@ -113,7 +113,7 @@ const OutputVarList: FC<Props> = ({ readonly, outputs, outputKeyOrders, onChange
             value={item.variable_type}
             onChange={handleVarTypeChange(index)}
           />
-          <RemoveButton onClick={handleVarRemove(index)} />
+          {!readonly && <RemoveButton onClick={handleVarRemove(index)} />}
         </div>
       ))}
     </div>

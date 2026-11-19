@@ -5,6 +5,8 @@ from typing import Protocol, cast
 
 import pytest
 from flask import Flask
+from sqlalchemy import Engine
+from sqlalchemy.pool import QueuePool
 
 import tasks.initialize_created_app_rbac_access_task as task_module
 from enums import DeploymentEdition
@@ -12,12 +14,13 @@ from enums.account import TenantAccountRole
 from extensions.ext_application_services import build_application_services
 from extensions.ext_redis import redis_client
 from models import TenantAccountJoin
+from models.model import App, AppMode
 from services.rbac import contracts as dto
 from tasks.initialize_created_app_rbac_access_task import (
     initialize_created_app_rbac_access_task,
     sync_joined_workspace_member_rbac_access_task,
 )
-from tests.unit_tests.rbac_fakes import RBACDomain
+from tests.helpers.unit.rbac_fakes import RBACDomain
 
 
 class _TaskWithQueue(Protocol):
@@ -70,14 +73,11 @@ def test_initialize_created_app_rbac_access_task_batches_workspace_members(
 
     first, second = rbac_domain.transport.requests
     for request, account_ids in ((first, ["acct-1", "acct-2"]), (second, ["acct-3"])):
-        assert request.method == "PUT"
-        assert request.endpoint == "/rbac/apps/user-access-policies"
+        assert request.method == "POST"
+        assert request.endpoint == "/rbac/apps/whitelist/members/batch"
         assert (request.tenant_id, request.account_id) == ("tenant-1", "actor-1")
-        assert request.params == {"app_id": "app-1", "account_id": None}
-        assert request.json == {
-            "account_ids": account_ids,
-            "access_policy_ids": [task_module.APP_RBAC_DEFAULT_ACCESS_POLICY_ID],
-        }
+        assert request.params is None
+        assert request.json == {"data": [{"app_id": "app-1", "account_ids": account_ids, "policy_id": "default"}]}
 
 
 @pytest.mark.parametrize("kind", ["app", "dataset", "agent"])
@@ -90,10 +90,10 @@ def test_initialize_created_app_rbac_access_task_targets_the_resource_that_was_p
     initialize_created_app_rbac_access_task.run("tenant-1", "actor-1", **{f"{kind}_id": resource_id})
 
     request = rbac_domain.transport.only_request
-    assert (request.method, request.endpoint) == ("PUT", f"/rbac/{kind}s/user-access-policies")
+    assert (request.method, request.endpoint) == ("POST", f"/rbac/{kind}s/whitelist/members/batch")
     assert (request.tenant_id, request.account_id) == ("tenant-1", "actor-1")
-    assert request.params == {f"{kind}_id": resource_id, "account_id": None}
-    assert request.json == {"account_ids": ["acct-1"], "access_policy_ids": ["default"]}
+    assert request.params is None
+    assert request.json == {"data": [{f"{kind}_id": resource_id, "account_ids": ["acct-1"], "policy_id": "default"}]}
 
 
 def test_initialize_created_app_rbac_access_task_retries_on_failure(
@@ -114,7 +114,7 @@ def test_initialize_created_app_rbac_access_task_retries_on_failure(
         initialize_created_app_rbac_access_task.run("tenant-1", "actor-1", "app-1")
 
     assert retries == [failure]
-    assert rbac_domain.transport.only_request.endpoint == "/rbac/apps/user-access-policies"
+    assert rbac_domain.transport.only_request.endpoint == "/rbac/apps/whitelist/members/batch"
 
 
 def test_sync_joined_workspace_member_rbac_access_task_appends_auto_included_resources(
@@ -162,3 +162,89 @@ def test_sync_joined_workspace_member_rbac_access_task_appends_auto_included_res
         }
     for request in (lookup, *appends):
         assert (request.tenant_id, request.account_id) == ("tenant-1", "actor-1")
+
+
+def _seed_owner_lookup_memberships(domain: RBACDomain) -> None:
+    with domain.sessions.begin() as session:
+        for membership_id, tenant_id, account_id, role in (
+            ("0", "other", "foreign-owner", TenantAccountRole.OWNER),
+            ("1", "tenant-1", "member-0", TenantAccountRole.NORMAL),
+            ("2", "tenant-1", "owner-1", TenantAccountRole.OWNER),
+            ("3", "tenant-1", "owner-2", TenantAccountRole.OWNER),
+        ):
+            membership = TenantAccountJoin(tenant_id=tenant_id, account_id=account_id, role=role)
+            membership.id = membership_id
+            session.add(membership)
+
+
+def test_sync_joined_workspace_member_rbac_access_task_acts_as_the_workspace_owner(
+    monkeypatch: pytest.MonkeyPatch, rbac_domain: RBACDomain
+) -> None:
+    _seed_owner_lookup_memberships(rbac_domain)
+    resource = dto.ResourceWhitelistConfigResource(resource_type=dto.RBACResourceType.APP, resource_id="app-1")
+
+    def resource_batches(tenant_id: str, batch_size: int) -> Iterator[list[dto.ResourceWhitelistConfigResource]]:
+        assert tenant_id == "tenant-1"
+        assert batch_size == task_module.APP_RBAC_RESOURCE_CONFIG_BATCH_SIZE
+        yield [resource]
+
+    configs = dto.ResourceWhitelistConfigsResponse(
+        data=[
+            dto.ResourceWhitelistConfigItem(
+                resource_type=resource.resource_type,
+                resource_id=resource.resource_id,
+                automatic_include_workspace_members=True,
+            )
+        ]
+    )
+    rbac_domain.transport.responses["/rbac/whitelist/configs"] = configs.model_dump(mode="json")
+    monkeypatch.setattr(task_module, "_iter_resource_config_batches", resource_batches)
+
+    sync_joined_workspace_member_rbac_access_task.run("tenant-1", "member-1")
+
+    lookup, append = rbac_domain.transport.requests
+    assert (lookup.endpoint, append.endpoint) == ("/rbac/whitelist/configs", "/rbac/apps/whitelist/members/batch")
+    for request in (lookup, append):
+        assert (request.tenant_id, request.account_id) == ("tenant-1", "owner-1")
+
+
+def test_sync_joined_workspace_member_rbac_access_task_skips_a_workspace_without_owner(
+    rbac_domain: RBACDomain,
+) -> None:
+    _seed_members(rbac_domain, ("acct-1",))
+
+    sync_joined_workspace_member_rbac_access_task.run("tenant-1", "member-1")
+
+    assert rbac_domain.transport.requests == []
+
+
+def test_resource_id_batches_are_tenant_scoped_and_hold_no_connection_between_batches(
+    rbac_domain: RBACDomain, sqlite_engine: Engine
+) -> None:
+    with rbac_domain.sessions.begin() as session:
+        for app_id, tenant_id in (
+            ("app-3", "tenant-1"),
+            ("app-0", "other"),
+            ("app-1", "tenant-1"),
+            ("app-2", "tenant-1"),
+        ):
+            app = App(
+                tenant_id=tenant_id,
+                name=app_id,
+                mode=AppMode.CHAT,
+                created_by="actor-1",
+                enable_api=True,
+                enable_site=True,
+            )
+            app.id = app_id
+            session.add(app)
+    pool = sqlite_engine.pool
+    assert isinstance(pool, QueuePool)
+    app_kind = task_module._WHITELIST_RESOURCE_KIND_BY_TYPE[dto.RBACResourceType.APP]
+
+    batches: list[list[str]] = []
+    for batch in app_kind.iter_id_batches("tenant-1", 2):
+        assert pool.checkedout() == 0
+        batches.append(batch)
+
+    assert batches == [["app-1", "app-2"], ["app-3"]]

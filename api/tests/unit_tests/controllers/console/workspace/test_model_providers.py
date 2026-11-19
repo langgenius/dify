@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from inspect import unwrap
-from types import SimpleNamespace
+from types import FunctionType, SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -9,6 +9,10 @@ from pydantic_core import ValidationError
 from werkzeug.exceptions import Forbidden, UnprocessableEntity
 
 from configs import dify_config
+from controllers.common.rbac import AgentId, RBACPermission, Workspace
+from controllers.console.agent.composer import AgentComposerApi
+from controllers.console.agent.roster import AgentAppApi
+from controllers.console.datasets.rag_pipeline.datasource_auth import DatasourceAuth
 from controllers.console.workspace.model_providers import (
     ModelProviderCredentialApi,
     ModelProviderCredentialSwitchApi,
@@ -28,15 +32,23 @@ from controllers.console.workspace.model_providers import (
     ParserPreferredProviderType,
     PreferredProviderTypeUpdateApi,
 )
+from controllers.console.workspace.models import ModelProviderModelCredentialApi
+from controllers.console.workspace.tool_providers import (
+    ToolBuiltinProviderAddApi,
+    ToolMCPDetailApi,
+    ToolOAuthCustomClient,
+)
 from core.entities.provider_entities import CredentialConfiguration
-from enums import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
+from libs.external_api import ExternalApi
 from models import Account
 from models.account import TenantAccountRole
 from models.provider import ProviderType
+from services.billing_client import billing
 from services.entities.model_provider_entities import (
     CustomConfigurationResponse,
     CustomConfigurationStatus,
@@ -48,7 +60,97 @@ from services.entities.model_provider_entities import (
     SystemConfigurationResponse,
 )
 from services.workspace.contracts import EffectiveCreditPool
-from tests.unit_tests.config_override import config_overrides_context
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.controllers.rbac_introspection import rbac_checks
+
+
+@pytest.mark.parametrize(
+    ("method", "permission"),
+    [
+        (ToolBuiltinProviderAddApi.post, RBACPermission.CREDENTIAL_CREATE),
+    ],
+)
+def test_workspace_credential_mutations_require_management_permission(
+    method: FunctionType, permission: RBACPermission
+) -> None:
+    legacy_wrapper = unwrap(method, stop=lambda wrapper: "is_admin_or_owner_required" in wrapper.__code__.co_qualname)
+    assert "is_admin_or_owner_required" in legacy_wrapper.__code__.co_qualname
+
+    [check] = rbac_checks(method)
+    assert check.scene == permission
+    assert isinstance(check.locator, Workspace)
+
+
+@pytest.mark.parametrize(
+    "method",
+    [
+        ModelProviderCredentialApi.get,
+        ModelProviderModelCredentialApi.get,
+    ],
+)
+def test_model_provider_credential_get_requires_admin_and_rbac(
+    method: FunctionType,
+) -> None:
+    """GET endpoints that return provider credential details must enforce
+    the same admin + RBAC gates as their sibling POST/PUT/DELETE methods."""
+    legacy_wrapper = unwrap(method, stop=lambda wrapper: "is_admin_or_owner_required" in wrapper.__code__.co_qualname)
+    assert "is_admin_or_owner_required" in legacy_wrapper.__code__.co_qualname
+
+    [check] = rbac_checks(method)
+    assert check.scene == RBACPermission.CREDENTIAL_MANAGE
+    assert isinstance(check.locator, Workspace)
+
+
+def test_tool_oauth_custom_client_get_requires_admin_and_rbac() -> None:
+    """GET endpoint that returns custom OAuth client params must enforce
+    the same admin + RBAC gates as its sibling POST and DELETE methods."""
+    method = ToolOAuthCustomClient.get
+
+    legacy_wrapper = unwrap(method, stop=lambda wrapper: "is_admin_or_owner_required" in wrapper.__code__.co_qualname)
+    assert "is_admin_or_owner_required" in legacy_wrapper.__code__.co_qualname
+
+    [check] = rbac_checks(method)
+    assert check.scene == RBACPermission.CREDENTIAL_MANAGE
+    assert isinstance(check.locator, Workspace)
+
+
+def test_datasource_auth_get_requires_edit_and_rbac() -> None:
+    """GET endpoint that lists datasource credentials must enforce
+    the same edit + RBAC gates as its sibling POST method."""
+    method = DatasourceAuth.get
+
+    edit_wrapper = unwrap(method, stop=lambda wrapper: "edit_permission_required" in wrapper.__code__.co_qualname)
+    assert "edit_permission_required" in edit_wrapper.__code__.co_qualname
+
+    [check] = rbac_checks(method)
+    assert check.scene == RBACPermission.CREDENTIAL_MANAGE
+    assert isinstance(check.locator, Workspace)
+
+
+@pytest.mark.parametrize(
+    "method",
+    [
+        AgentAppApi.get,
+        AgentComposerApi.get,
+    ],
+)
+def test_agent_app_get_requires_rbac(method: FunctionType) -> None:
+    """GET endpoints that return agent app details or composer state must require
+    the agent preview scene on the agent resource, same as their sibling routes."""
+    [check] = rbac_checks(method)
+    assert check.scene == RBACPermission.AGENT_PREVIEW
+    assert isinstance(check.locator, AgentId)
+
+
+def test_tool_mcp_detail_get_requires_rbac() -> None:
+    """GET endpoint that returns MCP provider details must enforce
+    the workspace MCP management RBAC gate."""
+    method = ToolMCPDetailApi.get
+
+    [check] = rbac_checks(method)
+    assert check.scene == RBACPermission.MCP_MANAGE
+    assert isinstance(check.locator, Workspace)
+
 
 VALID_UUID = "123e4567-e89b-12d3-a456-426614174000"
 INVALID_UUID = "123"
@@ -140,7 +242,7 @@ def _payload() -> dict[str, object]:
 
 
 class TestModelProviderListApi:
-    def test_get_success(self, app: Flask):
+    def test_get_success(self, app: Flask) -> None:
         api = ModelProviderListApi()
         method = unwrap(api.get)
         provider = make_provider_response()
@@ -157,7 +259,7 @@ class TestModelProviderListApi:
         get_provider_list.assert_called_once_with(tenant_id="tenant1", model_type=ModelType.LLM)
         assert result == {"data": [expected_provider_payload()]}
 
-    def test_get_without_model_type_passes_none(self, app: Flask):
+    def test_get_without_model_type_passes_none(self, app: Flask) -> None:
         api = ModelProviderListApi()
         method = unwrap(api.get)
 
@@ -175,7 +277,7 @@ class TestModelProviderListApi:
 
 
 class TestModelProviderSummaryListApi:
-    def test_get_success(self, app: Flask):
+    def test_get_success(self, app: Flask) -> None:
         api = ModelProviderSummaryListApi()
         method = unwrap(api.get)
         provider = ModelProviderSummaryResponse(
@@ -255,7 +357,7 @@ class TestModelProviderCreditsApi:
         api = ModelProviderCreditsApi()
         method = unwrap(api.get)
         credit_pool = EffectiveCreditPool(
-            plan="team",
+            plan=CloudPlan.TEAM,
             pool_type="paid",
             quota_limit=-1,
             quota_used=999,
@@ -304,7 +406,7 @@ class TestModelProviderCreditsApi:
 
 
 class TestModelProviderCredentialApi:
-    def test_get_success(self, app: Flask):
+    def test_get_success(self, app: Flask) -> None:
         api = ModelProviderCredentialApi()
         method = unwrap(api.get)
 
@@ -332,7 +434,7 @@ class TestModelProviderCredentialApi:
             }
         }
 
-    def test_get_current_credential_without_id(self, app: Flask):
+    def test_get_current_credential_without_id(self, app: Flask) -> None:
         api = ModelProviderCredentialApi()
         method = unwrap(api.get)
 
@@ -348,7 +450,7 @@ class TestModelProviderCredentialApi:
         get_provider_credential.assert_called_once_with(tenant_id="tenant1", provider="openai", credential_id=None)
         assert result == {"credentials": None}
 
-    def test_get_invalid_uuid(self, app: Flask):
+    def test_get_invalid_uuid(self, app: Flask) -> None:
         api = ModelProviderCredentialApi()
         method = unwrap(api.get)
 
@@ -356,7 +458,7 @@ class TestModelProviderCredentialApi:
             with pytest.raises(ValidationError):
                 method(api, ParserCredentialId.model_validate(_payload()), "tenant1", provider="openai")
 
-    def test_post_create_success(self, app: Flask):
+    def test_post_create_success(self, app: Flask) -> None:
         api = ModelProviderCredentialApi()
         method = unwrap(api.post)
 
@@ -382,7 +484,7 @@ class TestModelProviderCredentialApi:
         assert result == {"result": "success"}
         assert status == 201
 
-    def test_post_create_validation_error(self, app: Flask):
+    def test_post_create_validation_error(self, app: Flask) -> None:
         api = ModelProviderCredentialApi()
         method = unwrap(api.post)
 
@@ -395,10 +497,10 @@ class TestModelProviderCredentialApi:
                 side_effect=CredentialsValidateFailedError("bad"),
             ),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="bad"):
                 method(api, ParserCredentialCreate.model_validate(_payload()), "tenant1", provider="openai")
 
-    def test_put_update_success(self, app: Flask):
+    def test_put_update_success(self, app: Flask) -> None:
         api = ModelProviderCredentialApi()
         method = unwrap(api.put)
 
@@ -422,7 +524,7 @@ class TestModelProviderCredentialApi:
         )
         assert result == {"result": "success"}
 
-    def test_put_invalid_uuid(self, app: Flask):
+    def test_put_invalid_uuid(self, app: Flask) -> None:
         api = ModelProviderCredentialApi()
         method = unwrap(api.put)
 
@@ -432,7 +534,7 @@ class TestModelProviderCredentialApi:
             with pytest.raises(ValidationError):
                 method(api, ParserCredentialUpdate.model_validate(_payload()), "tenant1", provider="openai")
 
-    def test_delete_success(self, app: Flask):
+    def test_delete_success(self, app: Flask) -> None:
         api = ModelProviderCredentialApi()
         method = unwrap(api.delete)
 
@@ -457,7 +559,7 @@ class TestModelProviderCredentialApi:
 
 
 class TestModelProviderCredentialSwitchApi:
-    def test_switch_success(self, app: Flask):
+    def test_switch_success(self, app: Flask) -> None:
         api = ModelProviderCredentialSwitchApi()
         method = unwrap(api.post)
 
@@ -479,7 +581,7 @@ class TestModelProviderCredentialSwitchApi:
         )
         assert result == {"result": "success"}
 
-    def test_switch_invalid_uuid(self, app: Flask):
+    def test_switch_invalid_uuid(self, app: Flask) -> None:
         api = ModelProviderCredentialSwitchApi()
         method = unwrap(api.post)
 
@@ -491,7 +593,7 @@ class TestModelProviderCredentialSwitchApi:
 
 
 class TestModelProviderValidateApi:
-    def test_validate_success(self, app: Flask):
+    def test_validate_success(self, app: Flask) -> None:
         api = ModelProviderValidateApi()
         method = unwrap(api.post)
 
@@ -511,7 +613,7 @@ class TestModelProviderValidateApi:
         )
         assert result == {"result": "success", "error": None}
 
-    def test_validate_failure(self, app: Flask):
+    def test_validate_failure(self, app: Flask) -> None:
         api = ModelProviderValidateApi()
         method = unwrap(api.post)
 
@@ -530,7 +632,8 @@ class TestModelProviderValidateApi:
 
 
 class TestModelProviderIconApi:
-    def test_icon_success(self, app: Flask):
+    @pytest.mark.parametrize("icon_type", ["icon_small", "icon_small_dark", "ICON_SMALL", "ICON_SMALL_DARK"])
+    def test_icon_success(self, app: Flask, icon_type: str) -> None:
         api = ModelProviderIconApi()
 
         with (
@@ -540,14 +643,16 @@ class TestModelProviderIconApi:
                 return_value=(b"123", "image/png"),
             ) as get_model_provider_icon,
         ):
-            response = api.get("t1", "openai", "logo", "en")
+            response = api.get(VALID_UUID, "openai", icon_type, "en_US")
 
-        get_model_provider_icon.assert_called_once_with(tenant_id="t1", provider="openai", icon_type="logo", lang="en")
+        get_model_provider_icon.assert_called_once_with(
+            tenant_id=VALID_UUID, provider="openai", icon_type=icon_type.lower(), lang="en_US"
+        )
         assert response.mimetype == "image/png"
         response.direct_passthrough = False
         assert response.get_data() == b"123"
 
-    def test_icon_not_found(self, app: Flask):
+    def test_icon_not_found(self, app: Flask) -> None:
         api = ModelProviderIconApi()
 
         with (
@@ -557,12 +662,44 @@ class TestModelProviderIconApi:
                 return_value=(None, None),
             ),
         ):
-            with pytest.raises(ValueError):
-                api.get("t1", "openai", "logo", "en")
+            with pytest.raises(
+                ValueError, match="icon not found for provider openai, icon_type icon_small, lang en_US"
+            ):
+                api.get(VALID_UUID, "openai", "icon_small", "en_US")
+
+    @pytest.mark.parametrize(
+        ("tenant_id", "icon_type", "invalid_field"),
+        [
+            ("current", "icon_large", "tenant_id"),
+            ("current", "icon_small", "tenant_id"),
+            (INVALID_UUID, "icon_small", "tenant_id"),
+            (VALID_UUID, "icon_large", "icon_type"),
+            (VALID_UUID, "logo", "icon_type"),
+        ],
+    )
+    def test_invalid_icon_path_returns_bad_request(self, tenant_id: str, icon_type: str, invalid_field: str) -> None:
+        """Reject invalid paths over HTTP without configuring provider dependencies."""
+        app = Flask(__name__)
+        api = ExternalApi(app)
+        api.add_resource(
+            ModelProviderIconApi,
+            "/console/api/workspaces/<string:tenant_id>/model-providers/"
+            "<path:provider>/<string:icon_type>/<string:lang>",
+        )
+
+        response = app.test_client().get(
+            f"/console/api/workspaces/{tenant_id}/model-providers/ollama/{icon_type}/en_US"
+        )
+
+        assert response.status_code == 400
+        body = response.get_json()
+        assert body["code"] == "invalid_param"
+        assert body["status"] == 400
+        assert invalid_field in body["message"]
 
 
 class TestPreferredProviderTypeUpdateApi:
-    def test_update_success(self, app: Flask):
+    def test_update_success(self, app: Flask) -> None:
         api = PreferredProviderTypeUpdateApi()
         method = unwrap(api.post)
 
@@ -582,7 +719,7 @@ class TestPreferredProviderTypeUpdateApi:
         )
         assert result == {"result": "success"}
 
-    def test_invalid_enum(self, app: Flask):
+    def test_invalid_enum(self, app: Flask) -> None:
         api = PreferredProviderTypeUpdateApi()
         method = unwrap(api.post)
 
@@ -594,7 +731,7 @@ class TestPreferredProviderTypeUpdateApi:
 
 
 class TestModelProviderPaymentCheckoutUrlApi:
-    def test_checkout_success(self, app: Flask):
+    def test_checkout_success(self, app: Flask) -> None:
         api = ModelProviderPaymentCheckoutUrlApi()
         method = unwrap(api.get)
 
@@ -603,7 +740,7 @@ class TestModelProviderPaymentCheckoutUrlApi:
             app.test_request_context("/"),
             patch(
                 "controllers.console.workspace.model_providers.BillingService.get_model_provider_payment_link",
-                return_value={"payment_link": "https://payment.example.com/provider"},
+                return_value=billing.GetModelProviderPaymentLinkReply(url="https://payment.example.com/provider"),
             ) as get_model_provider_payment_link,
         ):
             result = method(api, "tenant1", user, provider="anthropic")
@@ -616,15 +753,15 @@ class TestModelProviderPaymentCheckoutUrlApi:
         )
         assert result == {"payment_link": "https://payment.example.com/provider"}
 
-    def test_invalid_provider(self, app: Flask):
+    def test_invalid_provider(self, app: Flask) -> None:
         api = ModelProviderPaymentCheckoutUrlApi()
         method = unwrap(api.get)
 
         with app.test_request_context("/"):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="provider name openai is invalid"):
                 method(api, "tenant1", make_account(), provider="openai")
 
-    def test_checkout_rejects_non_privileged_role(self, app: Flask):
+    def test_checkout_rejects_non_privileged_role(self, app: Flask) -> None:
         api = ModelProviderPaymentCheckoutUrlApi()
         account = make_account()
 

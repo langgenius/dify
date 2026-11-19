@@ -40,6 +40,11 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Test development proxy file watching
+        timeout-minutes: 5
+        working-directory: ./packages/dev-proxy
+        run: pnpm test --run --maxWorkers=1
+
       - name: Validate release manifest
         if: matrix.os == 'depot-ubuntu-24.04'
         run: node scripts/release-naming.mjs validate

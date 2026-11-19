@@ -2,17 +2,18 @@
 
 import type { DatePickerProps } from '@langgenius/dify-ui/date-picker'
 import { DatePicker as BaseDatePicker } from '@langgenius/dify-ui/date-picker'
-import { getCalendarLocale } from './calendar-locales'
+import { useCalendarLocale } from './calendar-locales'
 import { usePickerLabels } from './use-picker-labels'
 
 export function DatePicker(props: DatePickerProps) {
   const defaults = usePickerLabels()
+  const locale = useCalendarLocale(defaults.locale, props.locale)
   return (
     <BaseDatePicker
       {...defaults}
       {...props}
       placeholder={props.placeholder ?? defaults.labels.backToDate}
-      locale={getCalendarLocale(defaults.locale, props.locale)}
+      locale={locale}
       labels={{ ...defaults.labels, ...props.labels }}
     />
   )
@@ -26,8 +27,10 @@ export {
   DatePickerTrigger,
   DatePickerValue,
 } from '@langgenius/dify-ui/date-picker'
-/** @public Prop types for the complete localized picker composition. */
+/** @public */
 export type {
+  DatePickerChangeEventDetails,
+  DatePickerChangeEventReason,
   DatePickerClearProps,
   DatePickerContentProps,
   DatePickerLabelProps,

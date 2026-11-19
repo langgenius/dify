@@ -1,5 +1,4 @@
 import { screen } from '@testing-library/react'
-import { vi } from 'vite-plus/test'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import EnvNav from '../index'
 
@@ -9,10 +8,6 @@ const renderEnvNav = (currentEnv: string) =>
   })
 
 describe('EnvNav', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should render null when environment is PRODUCTION', () => {
     const { container } = renderEnvNav('PRODUCTION')
     expect(container.firstChild).toBeNull()

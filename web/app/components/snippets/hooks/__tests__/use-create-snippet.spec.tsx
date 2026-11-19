@@ -1,6 +1,7 @@
-import { act } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { PipelineInputVarType } from '@/models/pipeline'
-import { renderHook } from '@/test/console/render'
+import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { useCreateSnippet } from '../use-create-snippet'
 
 const {
@@ -23,27 +24,6 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
 }))
 
-vi.mock('@/service/use-snippets', () => ({
-  useCreateSnippetMutation: () => ({
-    mutateAsync: mockMutateAsync,
-    isPending: false,
-  }),
-}))
-
-vi.mock('@/service/console', () => ({
-  consoleClient: {
-    snippets: {
-      bySnippetId: {
-        workflows: {
-          draft: {
-            post: mockSyncDraftWorkflow,
-          },
-        },
-      },
-    },
-  },
-}))
-
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => ({
@@ -58,36 +38,29 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.customizedSnippets.post': mockMutateAsync,
+      'snippets.bySnippetId.workflows.draft.post': mockSyncDraftWorkflow,
+    }),
+  }
+})
+
 describe('useCreateSnippet', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
-  })
-
-  describe('State', () => {
-    it('should open and close create snippet dialog', () => {
-      const { result } = renderHook(() => useCreateSnippet())
-
-      act(() => {
-        result.current.handleOpenCreateSnippetDialog()
-      })
-      expect(result.current.isCreateSnippetDialogOpen).toBe(true)
-
-      act(() => {
-        result.current.handleCloseCreateSnippetDialog()
-      })
-      expect(result.current.isCreateSnippetDialogOpen).toBe(false)
-    })
   })
 
   describe('Create Flow', () => {
     it('should create snippet with graph and navigate on success', async () => {
       mockMutateAsync.mockResolvedValue({ id: 'snippet-123' })
-      mockSyncDraftWorkflow.mockResolvedValue({
-        result: 'success',
-        hash: 'draft-hash',
-        updated_at: 1704067200,
-      })
+      const draftSave = createDeferred<{ result: string; hash: string; updated_at: number }>()
+      mockSyncDraftWorkflow.mockReturnValueOnce(draftSave.promise)
       const graph = {
         nodes: [],
         edges: [],
@@ -100,8 +73,9 @@ describe('useCreateSnippet', () => {
         result.current.handleOpenCreateSnippetDialog()
       })
 
-      await act(async () => {
-        await result.current.handleCreateSnippet({
+      let creating!: ReturnType<typeof result.current.handleCreateSnippet>
+      act(() => {
+        creating = result.current.handleCreateSnippet({
           name: 'My snippet',
           description: 'desc',
           input_fields: [
@@ -114,6 +88,15 @@ describe('useCreateSnippet', () => {
           ],
           graph,
         })
+      })
+
+      await waitFor(() => expect(mockSyncDraftWorkflow).toHaveBeenCalledOnce())
+      expect(result.current.isCreatingSnippet).toBe(true)
+      expect(result.current.isCreateSnippetDialogOpen).toBe(true)
+      expect(mockPush).not.toHaveBeenCalled()
+      await act(async () => {
+        draftSave.resolve({ result: 'success', hash: 'draft-hash', updated_at: 1704067200 })
+        await creating
       })
 
       expect(mockMutateAsync).toHaveBeenCalledWith({
@@ -169,6 +152,8 @@ describe('useCreateSnippet', () => {
       })
 
       expect(mockToastError).not.toHaveBeenCalled()
+      expect(mockSyncDraftWorkflow).not.toHaveBeenCalled()
+      expect(mockPush).not.toHaveBeenCalled()
       expect(result.current.isCreatingSnippet).toBe(false)
     })
   })

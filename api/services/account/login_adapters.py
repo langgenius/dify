@@ -27,7 +27,10 @@ from services.account.login_service import (
     HumanVerificationGateway,
     ResetPasswordEmailGateway,
 )
-from services.account_activation_service import AccountActivationRepository, InvitationTokenStore
+from services.account_activation_service import (
+    AccountActivationRepository,
+    InvitationTokenStore,
+)
 from services.account_security_gateway import RedisAccountEmailSecurityGateway
 from services.billing_service import BillingService
 from services.email_code_login_challenge import EmailCodeLoginChallengeStore, EmailCodeLoginChallengeUnavailableError
@@ -62,9 +65,14 @@ _RESET_PASSWORD_RATE_LIMIT_SECONDS = 60
 
 
 class AccountActivationConsoleAuthInvitationGateway(ConsoleAuthInvitationGateway):
-    """Resolve login invitations through the shared activation contracts."""
+    """Resolve login invitations to the invited account's email."""
 
-    def __init__(self, *, tokens: InvitationTokenStore, accounts: AccountActivationRepository) -> None:
+    def __init__(
+        self,
+        *,
+        tokens: InvitationTokenStore,
+        accounts: AccountActivationRepository,
+    ) -> None:
         self._tokens = tokens
         self._accounts = accounts
 
@@ -262,6 +270,7 @@ class RedisEmailCodeGateway(EmailCodeGateway):
         normalized_email: str,
         recipient_email: str,
         language: str,
+        registration_allowed: bool,
     ) -> str:
         normalized_email = normalized_email.lower()
         if self._rate_limiter.is_rate_limited(normalized_email):
@@ -274,7 +283,8 @@ class RedisEmailCodeGateway(EmailCodeGateway):
         except EmailCodeLoginChallengeUnavailableError as error:
             logger.warning("Email-code challenge creation is unavailable", exc_info=True)
             raise account_errors.EmailCodeLoginUnavailableError from error
-        send_email_code_login_mail_task.delay(language=language, to=recipient_email, code=code)
+        if account_id is not None or registration_allowed:
+            send_email_code_login_mail_task.delay(language=language, to=recipient_email, code=code)
         self._rate_limiter.increment_rate_limit(normalized_email)
         return token
 
@@ -315,25 +325,25 @@ class RedisResetPasswordEmailGateway(ResetPasswordEmailGateway):
         language: str,
         registration_allowed: bool,
     ) -> str:
-        if self._rate_limiter.is_rate_limited(email):
-            raise account_errors.ResetPasswordEmailRateLimitError(int(self._rate_limiter.time_window / 60))
+        with self._rate_limiter.reserve(email) as acquired:
+            if not acquired:
+                raise account_errors.ResetPasswordEmailRateLimitError(int(self._rate_limiter.time_window / 60))
 
-        code = "".join(str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6))
-        token = TokenManager.generate_token(
-            account_id=account_id,
-            email=email,
-            token_type="reset_password",
-            additional_data={"code": code},
-        )
-        if account_id is not None:
-            send_reset_password_mail_task.delay(language=language, to=email, code=code)
-        else:
-            send_reset_password_mail_task_when_account_not_exist.delay(
-                language=language,
-                to=email,
-                is_allow_register=registration_allowed,
+            code = "".join(str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6))
+            token = TokenManager.generate_token(
+                account_id=account_id,
+                email=email,
+                token_type="reset_password",
+                additional_data={"code": code},
             )
-        self._rate_limiter.increment_rate_limit(email)
+            if account_id is not None:
+                send_reset_password_mail_task.delay(language=language, to=email, code=code)
+            else:
+                send_reset_password_mail_task_when_account_not_exist.delay(
+                    language=language,
+                    to=email,
+                    is_allow_register=registration_allowed,
+                )
         return token
 
 

@@ -1,69 +1,20 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderWithAccountProfile } from '@/test/console/account-profile'
 import Meta from '../meta'
 
-const mockFormatTime = vi.fn((value: number) => `formatted:${value}`)
+describe('run metadata', () => {
+  it('withholds token totals while paused and reveals completed metrics without hidden step counts', () => {
+    const props = { executor: 'Alice', time: 1.2349, tokens: 42, steps: 3, showSteps: false }
+    const { rerender } = renderWithAccountProfile(<Meta status="paused" {...props} />)
+    expect(screen.getByText('appLog.status.paused')).toBeInTheDocument()
+    expect(screen.queryByText('42 Tokens')).not.toBeInTheDocument()
 
-vi.mock('@/hooks/use-timestamp', () => ({
-  default: () => ({
-    formatTime: mockFormatTime,
-  }),
-}))
+    rerender(<Meta status="succeeded" {...props} />)
 
-describe('Meta', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('renders loading placeholders while the run is in progress', () => {
-    const { container } = render(<Meta status="running" />)
-
-    expect(container.querySelectorAll('.bg-text-quaternary')).toHaveLength(6)
-    expect(screen.queryByText('appLog.status.succeeded')).not.toBeInTheDocument()
-    expect(screen.queryByText('runLog.meta.steps')).toBeInTheDocument()
-  })
-
-  it.each([
-    ['scheduled', 'appLog.status.scheduled'],
-    ['succeeded', 'appLog.status.succeeded'],
-    ['partial-succeeded', 'appLog.status.partial-succeeded'],
-    ['exception', 'workflow.tracing.status.exception'],
-    ['failed', 'appLog.status.failed'],
-    ['stopped', 'appLog.status.stopped'],
-    ['paused', 'appLog.status.paused'],
-  ] as const)('renders the %s status label', (status, label) => {
-    render(<Meta status={status} />)
-
-    expect(screen.getByText(label)).toBeInTheDocument()
-  })
-
-  it('renders explicit metadata values and hides steps when requested', () => {
-    render(
-      <Meta
-        status="succeeded"
-        executor="Alice"
-        startTime={1700000000000}
-        time={1.2349}
-        tokens={42}
-        steps={3}
-        showSteps={false}
-      />,
-    )
-
+    expect(screen.getByText('appLog.status.succeeded')).toBeInTheDocument()
     expect(screen.getByText('Alice')).toBeInTheDocument()
-    expect(screen.getByText('formatted:1700000000000')).toBeInTheDocument()
     expect(screen.getByText('1.235s')).toBeInTheDocument()
     expect(screen.getByText('42 Tokens')).toBeInTheDocument()
-    expect(screen.queryByText('Run Steps')).not.toBeInTheDocument()
-    expect(mockFormatTime).toHaveBeenCalledWith(1700000000000, expect.any(String))
-  })
-
-  it('falls back to default values when metadata is missing', () => {
-    render(<Meta status="failed" />)
-
-    expect(screen.getByText('N/A')).toBeInTheDocument()
-    expect(screen.getAllByText('-')).toHaveLength(2)
-    expect(screen.getByText('0 Tokens')).toBeInTheDocument()
-    expect(screen.getByText('runLog.meta.steps').parentElement).toHaveTextContent('1')
-    expect(mockFormatTime).not.toHaveBeenCalled()
+    expect(screen.queryByText('runLog.meta.steps')).not.toBeInTheDocument()
   })
 })

@@ -20,6 +20,130 @@ export const zSimpleResultOptionalDataResponse = z.object({
   result: z.string(),
 })
 
+/**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
+ * AccountBannedError
+ *
+ * Account is banned.
+ */
+export const zAccountBannedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_banned'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * AccountInFreezeError
+ *
+ * This email account has been deleted within the past 30 days and is temporarily unavailable for new account registration.
+ */
+export const zAccountInFreezeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_in_freeze'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * AccountNotFoundError
+ *
+ * Account not found.
+ */
+export const zAccountNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_not_found'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * EmailDomainSuspendedError
+ *
+ * This email domain has been suspended.
+ */
+export const zEmailDomainSuspendedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_domain_suspended'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * InvalidAccountPasswordError
+ *
+ * The password does not satisfy the account password policy.
+ */
+export const zInvalidAccountPasswordError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_account_password'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * InvalidEmailError
+ *
+ * The email address is not valid.
+ */
+export const zInvalidEmailError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_email'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * LimitExceededError
+ *
+ * Unable to create account because the licensed seats limit was exceeded
+ */
+export const zLimitExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('limit_exceeded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * AuthenticationFailedError
+ *
+ * Invalid email or password.
+ */
+export const zAuthenticationFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('authentication_failed'),
+    status: z.literal(401),
+  }),
+)
+
+/**
+ * EmailCodeLoginLimitError
+ *
+ * Too many incorrect password attempts. Please try again later.
+ */
+export const zEmailCodeLoginLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_code_login_limit'),
+    status: z.literal(429),
+  }),
+)
+
 export const zPostLoginBody = zLoginPayload
 
 /**

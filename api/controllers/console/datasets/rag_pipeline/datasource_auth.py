@@ -3,12 +3,14 @@ from typing import Any
 from flask import make_response, redirect, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.wraps import (
     RBACPermission,
@@ -25,7 +27,6 @@ from core.plugin.entities.plugin_daemon import PluginOAuthAuthorizationUrlRespon
 from core.plugin.impl.oauth import OAuthHandler
 from core.tools.entities.common_entities import I18nObject
 from extensions.ext_application_services import application_services
-from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from libs.helper import dump_response
@@ -180,7 +181,7 @@ class DatasourcePluginOAuthAuthorizationUrl(Resource):
             tenant_id=tenant_id,
             datasource_provider_id=datasource_provider_id,
         )
-        if not oauth_config:
+        if not oauth_config or not oauth_config.credentials:
             raise ValueError(f"No OAuth Client Config for {provider_id}")
 
         # Visibility is chosen by the user in the frontend before the redirect,
@@ -203,7 +204,10 @@ class DatasourcePluginOAuthAuthorizationUrl(Resource):
             plugin_id=plugin_id,
             provider=provider_name,
             credential_id=credential_id,
-            extra_data={"visibility": requested_visibility.value},
+            extra_data={
+                "visibility": requested_visibility.value,
+                "plugin_unique_identifier": oauth_config.plugin_unique_identifier,
+            },
         )
         oauth_handler = OAuthHandler()
         redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/datasource/callback"
@@ -213,7 +217,8 @@ class DatasourcePluginOAuthAuthorizationUrl(Resource):
             plugin_id=plugin_id,
             provider=provider_name,
             redirect_uri=redirect_uri,
-            system_credentials=oauth_config,
+            system_credentials=dict(oauth_config.credentials),
+            plugin_unique_identifier=oauth_config.plugin_unique_identifier,
         )
         # response-contract:ignore cookie-bearing Flask response
         response = make_response(dump_response(PluginOAuthAuthorizationUrlResponse, authorization_url_response))
@@ -251,8 +256,18 @@ class DatasourceOAuthCallback(Resource):
             tenant_id=tenant_id,
             datasource_provider_id=datasource_provider_id,
         )
-        if not oauth_client_params:
+        if not oauth_client_params or not oauth_client_params.credentials:
             raise NotFound()
+        try:
+            OAuthProxyService.validate_plugin_context(
+                context,
+                plugin_id=plugin_id,
+                provider=datasource_provider_id.provider_name,
+                plugin_unique_identifier=oauth_client_params.plugin_unique_identifier,
+            )
+        except ValueError as error:
+            raise Forbidden(str(error)) from error
+
         redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/datasource/callback"
         oauth_handler = OAuthHandler()
         oauth_response = oauth_handler.get_credentials(
@@ -261,7 +276,8 @@ class DatasourceOAuthCallback(Resource):
             plugin_id=plugin_id,
             provider=datasource_provider_id.provider_name,
             redirect_uri=redirect_uri,
-            system_credentials=oauth_client_params,
+            system_credentials=dict(oauth_client_params.credentials),
+            plugin_unique_identifier=oauth_client_params.plugin_unique_identifier,
             request=request,
         )
         credential_id: str | None = context.get("credential_id")
@@ -325,7 +341,7 @@ class DatasourceAuth(Resource):
                 name=req_data.name,
             )
         except CredentialsValidateFailedError as ex:
-            raise ValueError(str(ex))
+            raise ValueError(str(ex)) from ex
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
     @console_ns.response(
@@ -364,8 +380,11 @@ class DatasourceAuthDeleteApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()))
     @with_current_tenant_id
+    @with_session
     @model_validate(DatasourceCredentialDeletePayload)
-    def post(self, req_data: DatasourceCredentialDeletePayload, current_tenant_id: str, provider_id: str):
+    def post(
+        self, req_data: DatasourceCredentialDeletePayload, session: Session, current_tenant_id: str, provider_id: str
+    ):
         datasource_provider_id = DatasourceProviderID(provider_id)
         plugin_id = datasource_provider_id.plugin_id
         provider_name = datasource_provider_id.provider_name
@@ -376,7 +395,7 @@ class DatasourceAuthDeleteApi(Resource):
             auth_id=req_data.credential_id,
             provider=provider_name,
             plugin_id=plugin_id,
-            session=db.session(),
+            session=session,
         )
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
@@ -421,11 +440,12 @@ class DatasourceAuthListApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def get(self, current_tenant_id: str, user: Account):
+    @with_session(write=False)
+    def get(self, session: Session, current_tenant_id: str, user: Account):
         datasource_provider_service = application_services().data_sources.providers
         datasources = datasource_provider_service.get_all_datasource_credentials(
             tenant_id=current_tenant_id,
-            session=db.session(),
+            session=session,
             user=user,
             credential_query=application_services().credential_queries,
         )
@@ -444,11 +464,12 @@ class DatasourceHardCodeAuthListApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def get(self, current_tenant_id: str, user: Account):
+    @with_session(write=False)
+    def get(self, session: Session, current_tenant_id: str, user: Account):
         datasource_provider_service = application_services().data_sources.providers
         datasources = datasource_provider_service.get_hard_code_datasource_credentials(
             tenant_id=current_tenant_id,
-            session=db.session(),
+            session=session,
             user=user,
             credential_query=application_services().credential_queries,
         )

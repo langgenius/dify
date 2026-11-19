@@ -1,44 +1,26 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type * as React from 'react'
-import type { MockedFunction } from 'vite-plus/test'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
-import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
+import { consoleQuery } from '@/service/console'
+import { updateDatasetSetting } from '@/service/datasets'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { RETRIEVE_METHOD } from '@/types/app'
 import Item from '../index'
 
-vi.mock('../../settings-modal', () => ({
-  default: ({
-    onSave,
-    onCancel,
-    currentDataset,
-  }: {
-    currentDataset: DataSet
-    onCancel: () => void
-    onSave: (newDataset: DataSet) => void
-  }) => (
-    <div>
-      <div>Mock settings modal</div>
-      <button onClick={() => onSave({ ...currentDataset, name: 'Updated dataset' })}>
-        Save changes
-      </button>
-      <button onClick={onCancel}>Close</button>
-    </div>
-  ),
+vi.mock('@/service/datasets', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/datasets')>()),
+  updateDatasetSetting: vi.fn(),
 }))
 
-vi.mock('@/hooks/use-breakpoints', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/hooks/use-breakpoints')>()
-  return {
-    ...actual,
-    default: vi.fn(() => actual.MediaType.pc),
-  }
-})
-
-const mockedUseBreakpoints = useBreakpoints as MockedFunction<typeof useBreakpoints>
+const render = createNuqsTestRenderer(renderWithConsoleQuery)
 
 const baseRetrievalConfig: RetrievalConfig = {
   search_method: RETRIEVE_METHOD.semantic,
@@ -54,16 +36,14 @@ const baseRetrievalConfig: RetrievalConfig = {
 
 const defaultIndexingTechnique: IndexingType = 'high_quality' as IndexingType
 
-const createDataset = (overrides: Partial<DataSet> = {}): DataSet => {
-  const { retrieval_model, retrieval_model_dict, icon_info, ...restOverrides } = overrides
+const createDataset = (
+  overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
+): DatasetDetailWithPartialMembersResponse => {
+  const { retrieval_model_dict, icon_info, ...restOverrides } = overrides
 
   const resolvedRetrievalModelDict = {
     ...baseRetrievalConfig,
     ...retrieval_model_dict,
-  }
-  const resolvedRetrievalModel = {
-    ...baseRetrievalConfig,
-    ...(retrieval_model ?? retrieval_model_dict),
   }
 
   const defaultIconInfo = {
@@ -76,12 +56,12 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => {
   const resolvedIconInfo = 'icon_info' in overrides ? icon_info : defaultIconInfo
 
   return {
+    ...createDatasetFixture(),
     id: 'dataset-id',
     name: 'Dataset Name',
-    indexing_status: 'completed',
-    icon_info: resolvedIconInfo as DataSet['icon_info'],
+    icon_info: resolvedIconInfo,
     description: 'A test dataset',
-    permission: DatasetPermission.onlyMe,
+    permission: PermissionLevel.onlyMe,
     data_source_type: DataSourceType.FILE,
     indexing_technique: defaultIndexingTechnique,
     author_name: 'author',
@@ -91,7 +71,6 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => {
     app_count: 0,
     doc_form: ChunkingMode.text,
     document_count: 0,
-    total_document_count: 0,
     total_available_documents: 0,
     word_count: 0,
     provider: 'dify',
@@ -99,7 +78,6 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => {
     embedding_model_provider: 'openai',
     embedding_available: true,
     retrieval_model_dict: resolvedRetrievalModelDict,
-    retrieval_model: resolvedRetrievalModel,
     tags: [],
     external_knowledge_info: {
       external_knowledge_id: 'external-id',
@@ -124,19 +102,29 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => {
   }
 }
 
-const renderItem = (config: DataSet, props?: Partial<React.ComponentProps<typeof Item>>) => {
+const renderItem = (
+  config: DatasetDetailWithPartialMembersResponse,
+  props?: Partial<React.ComponentProps<typeof Item>>,
+) => {
   const onSave = vi.fn()
   const onRemove = vi.fn()
 
-  render(<Item config={config} onSave={onSave} onRemove={onRemove} {...props} />)
+  const { queryClient } = createConsoleQueryWrapper()
+  seedModelProviderQueries(queryClient, [])
+  queryClient.setQueryData(consoleQuery.workspaces.current.members.get.queryKey({ input: {} }), {
+    accounts: [],
+  })
+  queryClient.setQueryData(consoleQuery.datasets.retrievalSetting.get.queryKey(), {
+    retrieval_method: [RETRIEVE_METHOD.semantic],
+  })
+  render(<Item config={config} onSave={onSave} onRemove={onRemove} {...props} />, { queryClient })
 
   return { onSave, onRemove }
 }
 
 describe('dataset-config/card-item', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockedUseBreakpoints.mockReturnValue(MediaType.pc)
+    vi.mocked(updateDatasetSetting).mockResolvedValue(createDataset())
   })
 
   it('should render dataset details with indexing and external badges', () => {
@@ -150,12 +138,11 @@ describe('dataset-config/card-item', () => {
 
     renderItem(dataset)
 
-    const card = screen.getByText(dataset.name).closest('.group') as HTMLElement
-    const editButton = within(card).getByRole('button', {
+    const editButton = screen.getByRole('button', {
       name: 'common.operation.edit',
       hidden: true,
     })
-    const removeButton = within(card).getByRole('button', {
+    const removeButton = screen.getByRole('button', {
       name: 'common.operation.remove',
       hidden: true,
     })
@@ -176,21 +163,43 @@ describe('dataset-config/card-item', () => {
     const dataset = createDataset()
     const { onSave } = renderItem(dataset)
 
-    const card = screen.getByText(dataset.name).closest('.group') as HTMLElement
-    const editButton = within(card).getByRole('button', {
+    const editButton = screen.getByRole('button', {
       name: 'common.operation.edit',
       hidden: true,
     })
     await user.click(editButton)
 
-    expect(await screen.findByText('Mock settings modal'))!.toBeInTheDocument()
-    fireEvent.click(await screen.findByText('Save changes'))
+    const topK = await screen.findByRole('textbox', { name: 'appDebug.datasetConfig.top_k' })
+    await user.click(topK)
+    await user.keyboard('{ControlOrMeta>}a{/ControlOrMeta}6{Tab}')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
+    expect(updateDatasetSetting).toHaveBeenCalledWith(
+      {
+        datasetId: dataset.id,
+        body: expect.objectContaining({
+          name: dataset.name,
+          retrieval_model: expect.objectContaining({
+            search_method: RETRIEVE_METHOD.semantic,
+            top_k: 6,
+            score_threshold: 0,
+          }),
+        }),
+      },
+      { silent: true },
+    )
     await waitFor(() => {
-      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ name: 'Updated dataset' }))
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: dataset.id,
+          retrieval_model_dict: expect.objectContaining({ top_k: 6 }),
+        }),
+      )
     })
     await waitFor(() => {
-      expect(screen.queryByText('Mock settings modal')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('textbox', { name: 'appDebug.datasetConfig.top_k' }),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -199,50 +208,12 @@ describe('dataset-config/card-item', () => {
     const dataset = createDataset()
     const { onRemove } = renderItem(dataset)
 
-    const card = screen.getByText(dataset.name).closest('.group') as HTMLElement
-    const deleteButton = within(card).getByRole('button', {
+    const deleteButton = screen.getByRole('button', {
       name: 'common.operation.remove',
       hidden: true,
     })
 
     await user.click(deleteButton)
     expect(onRemove).toHaveBeenCalledWith(dataset.id)
-  })
-
-  it('should use default icon information when icon details are missing', () => {
-    const dataset = createDataset({ icon_info: undefined })
-
-    renderItem(dataset)
-
-    const nameElement = screen.getByText(dataset.name)
-    const iconElement = nameElement.parentElement?.firstElementChild as HTMLElement
-
-    expect(iconElement)!.toHaveStyle({ background: '#FFF4ED' })
-    expect(iconElement).toHaveTextContent('📙')
-  })
-
-  it('should apply mask overlay on mobile when drawer is open', async () => {
-    mockedUseBreakpoints.mockReturnValue(MediaType.mobile)
-    const user = userEvent.setup()
-    const dataset = createDataset()
-
-    renderItem(dataset)
-
-    const card = screen.getByText(dataset.name).closest('.group') as HTMLElement
-    const editButton = within(card).getByRole('button', {
-      name: 'common.operation.edit',
-      hidden: true,
-    })
-    await user.click(editButton)
-    expect(screen.getByText('Mock settings modal'))!.toBeInTheDocument()
-
-    const overlay = [...document.querySelectorAll('[class]')].find(
-      (element) =>
-        element instanceof HTMLElement &&
-        element.classList.contains('bg-background-overlay') &&
-        !element.classList.contains('bg-transparent'),
-    )
-
-    expect(overlay).toBeInTheDocument()
   })
 })

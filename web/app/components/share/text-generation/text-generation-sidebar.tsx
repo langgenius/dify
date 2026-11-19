@@ -15,9 +15,9 @@ import Badge from '@/app/components/base/badge'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import { appDefaultIconBackground } from '@/config'
 import { AccessMode } from '@/models/access-control'
-import MenuDropdown from './menu-dropdown'
 import RunBatch from './run-batch'
 import RunOnce from './run-once'
+import TextGenerationMenu from './text-generation-menu'
 
 type TextGenerationSidebarProps = {
   accessMode: AccessMode
@@ -27,7 +27,7 @@ type TextGenerationSidebarProps = {
   inputs: Record<string, InputValueTypes>
   inputsRef: RefObject<Record<string, InputValueTypes>>
   isInstalledApp: boolean
-  isPC: boolean
+  isBelowMd: boolean
   isWorkflow: boolean
   onBatchSend: (data: string[][]) => void
   onInputsChange: (inputs: Record<string, InputValueTypes>) => void
@@ -53,7 +53,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
   inputs,
   inputsRef,
   isInstalledApp,
-  isPC,
+  isBelowMd,
   isWorkflow,
   onBatchSend,
   onInputsChange,
@@ -83,28 +83,26 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
       onValueChange={onTabChange}
       className={cn(
         'relative flex h-full shrink-0 flex-col',
-        isPC ? 'w-150 max-w-[50%]' : resultExisted ? 'h-[calc(100%-64px)]' : '',
-        isInstalledApp && 'rounded-l-2xl',
+        isBelowMd ? (resultExisted ? 'h-[calc(100%-64px)]' : '') : 'w-150 max-w-[50%]',
+        isInstalledApp && 'rounded-s-2xl',
       )}
     >
       <div
         className={cn(
           'shrink-0 space-y-4 border-b border-divider-subtle',
-          isPC ? 'bg-components-panel-bg p-8 pb-0' : 'p-4 pb-0',
+          isBelowMd ? 'p-4 pb-0' : 'bg-components-panel-bg p-8 pb-0',
         )}
       >
         <div className="flex items-center gap-3">
           <AppIcon
-            size={isPC ? 'large' : 'small'}
-            iconType={siteInfo.icon_type}
-            icon={siteInfo.icon}
-            background={siteInfo.icon_background || appDefaultIconBackground}
-            imageUrl={siteInfo.icon_url}
+            fallback={{ content: '🤖', background: appDefaultIconBackground }}
+            size={isBelowMd ? 'small' : 'large'}
+            icon={siteInfo}
           />
           <div className="grow truncate system-md-semibold text-text-secondary">
             {siteInfo.title}
           </div>
-          <MenuDropdown
+          <TextGenerationMenu
             hideLogout={isInstalledApp || accessMode === AccessMode.PUBLIC}
             data={siteInfo}
           />
@@ -147,16 +145,16 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
         )}
         <TabsList className="w-full">
           <TabsTab value="create">
-            <span className="ml-2">{t(($) => $['generation.tabs.create'], { ns: 'share' })}</span>
+            <span className="ms-2">{t(($) => $['generation.tabs.create'], { ns: 'share' })}</span>
           </TabsTab>
           <TabsTab value="batch">
-            <span className="ml-2">{t(($) => $['generation.tabs.batch'], { ns: 'share' })}</span>
+            <span className="ms-2">{t(($) => $['generation.tabs.batch'], { ns: 'share' })}</span>
           </TabsTab>
           {!isWorkflow && (
-            <TabsTab value="saved" className="ml-auto">
+            <TabsTab value="saved" className="ms-auto">
               <span aria-hidden className="i-ri-bookmark-3-line size-4" />
-              <span className="ml-2">{t(($) => $['generation.tabs.saved'], { ns: 'share' })}</span>
-              {savedMessages.length > 0 && <Badge className="ml-1">{savedMessages.length}</Badge>}
+              <span className="ms-2">{t(($) => $['generation.tabs.saved'], { ns: 'share' })}</span>
+              {savedMessages.length > 0 && <Badge className="ms-1">{savedMessages.length}</Badge>}
             </TabsTab>
           )}
         </TabsList>
@@ -164,8 +162,8 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
       <div
         className={cn(
           'h-0 grow overflow-y-auto bg-components-panel-bg',
-          isPC ? 'px-8' : 'px-4',
-          !isPC &&
+          isBelowMd ? 'px-4' : 'px-8',
+          isBelowMd &&
             resultExisted &&
             customConfig?.remove_webapp_brand &&
             'rounded-b-2xl border-b-[0.5px] border-divider-regular',
@@ -194,7 +192,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
         {!isWorkflow && (
           <TabsPanel value="saved">
             <SavedItems
-              className={cn(isPC ? 'mt-6' : 'mt-4')}
+              className={cn(isBelowMd ? 'mt-4' : 'mt-6')}
               isShowTextToSpeech={textToSpeechConfig?.enabled}
               list={savedMessages}
               onRemove={onRemoveSavedMessage}
@@ -207,8 +205,8 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
         <div
           className={cn(
             'flex shrink-0 items-center gap-1.5 bg-components-panel-bg py-3',
-            isPC ? 'px-8' : 'px-4',
-            !isPC && resultExisted && 'rounded-b-2xl border-b-[0.5px] border-divider-regular',
+            isBelowMd ? 'px-4' : 'px-8',
+            isBelowMd && resultExisted && 'rounded-b-2xl border-b-[0.5px] border-divider-regular',
           )}
         >
           <div className="system-2xs-medium-uppercase text-text-tertiary">

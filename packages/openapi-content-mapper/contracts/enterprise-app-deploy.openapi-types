@@ -1,0 +1,6 @@
+{
+  "extends": "enterprise.source.json",
+  "args": [
+    "enterprise-app-deploy"
+  ]
+}

@@ -1,7 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import ShowPanel from '../index'
 
-it('keeps known object fields, descriptions, enums, file markers and collapse behavior', () => {
+it('keeps known object fields, descriptions, enums, file markers and collapse behavior', async () => {
+  const user = userEvent.setup()
   const { container } = render(
     <ShowPanel
       payload={{
@@ -30,10 +32,10 @@ it('keeps known object fields, descriptions, enums, file markers and collapse be
   expect(screen.getByText('file')).toBeInTheDocument()
   const collapse = container.querySelector('svg')
   expect(collapse).not.toBeNull()
-  fireEvent.click(collapse!)
+  await user.click(collapse!)
   expect(screen.queryByText('title')).not.toBeInTheDocument()
   expect(screen.getByText('Result details')).toBeInTheDocument()
-  fireEvent.click(collapse!)
+  await user.click(collapse!)
   expect(screen.getByText('title')).toBeInTheDocument()
 })
 

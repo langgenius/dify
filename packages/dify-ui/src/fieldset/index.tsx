@@ -2,7 +2,7 @@
 
 import { Fieldset as BaseFieldset } from '@base-ui/react/fieldset'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 type FieldsetProps = BaseFieldset.Root.Props
 

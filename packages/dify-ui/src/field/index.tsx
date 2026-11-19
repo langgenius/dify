@@ -2,8 +2,8 @@
 
 import { Field as BaseField } from '@base-ui/react/field'
 import { cn } from '../cn'
-import { formLabelClassName } from '../form-control-shared'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { formLabelClassName } from '../internal/form-control'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 type FieldActions = BaseField.Root.Actions
 

@@ -7,21 +7,6 @@ type PageLeaveGuard = {
 // or release locks. Probing them by dispatching beforeunload would run those effects.
 const guards = new Map<PageLeaveGuard, () => void>()
 
-export function registerPageLeaveGuard(guard: PageLeaveGuard) {
-  const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-    if (!guard.shouldBlock()) return
-    event.preventDefault()
-    event.returnValue = ''
-  }
-  const unregister = () => {
-    window.removeEventListener('beforeunload', handleBeforeUnload)
-    guards.delete(guard)
-  }
-  guards.set(guard, unregister)
-  window.addEventListener('beforeunload', handleBeforeUnload)
-  return unregister
-}
-
 export function confirmPageLeave() {
   const messages = [
     ...new Set(

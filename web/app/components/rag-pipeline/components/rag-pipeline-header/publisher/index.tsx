@@ -3,19 +3,19 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiArrowDownSLine } from '@remixicon/react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
-import { useStore } from '@/app/components/workflow/store'
 import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
-import {
-  useInvalidCustomizedTemplateList,
-  usePublishAsCustomizedPipeline,
-} from '@/service/use-pipeline'
+import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import PublishAsKnowledgePipelineModal from '../../publish-as-knowledge-pipeline-modal'
 import { Popup } from './popup'
 
@@ -26,9 +26,13 @@ const Publisher = () => {
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const canPipelineRelease = useHooksStore((s) => s.accessControl.canReleaseAndVersion)
   const docLink = useDocLink()
-  const pipelineId = useStore((s) => s.pipelineId)
-  const { mutateAsync: publishAsCustomizedPipeline } = usePublishAsCustomizedPipeline()
-  const invalidCustomizedTemplateList = useInvalidCustomizedTemplateList()
+  const pipelineId = useAtomValue(knowledgePipelineIdentityAtom).pipelineId
+  const queryClient = useQueryClient()
+  const { mutateAsync: publishAsCustomizedPipeline } = useMutation(
+    consoleQuery.rag.pipelines.byPipelineId.customized.publish.post.mutationOptions({
+      context: { silent: true },
+    }),
+  )
   const [showPublishAsKnowledgePipelineModal, setShowPublishAsKnowledgePipelineModal] =
     useState(false)
   const [isPublishingAsCustomizedPipeline, setIsPublishingAsCustomizedPipeline] = useState(false)
@@ -55,10 +59,8 @@ const Publisher = () => {
       try {
         setIsPublishingAsCustomizedPipeline(true)
         await publishAsCustomizedPipeline({
-          pipelineId: pipelineId || '',
-          name,
-          icon_info: icon,
-          description,
+          params: { pipeline_id: pipelineId || '' },
+          body: { name, icon_info: icon, description },
         })
         toast.success(
           t(($) => $['publishTemplate.success.message'], { ns: 'datasetPipeline' }),
@@ -79,9 +81,16 @@ const Publisher = () => {
             ),
           },
         )
-        invalidCustomizedTemplateList()
-      } catch {
-        toast.error(t(($) => $['publishTemplate.error.message'], { ns: 'datasetPipeline' }))
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.rag.pipeline.templates.get.queryKey({
+            input: { query: { type: 'customized' } },
+          }),
+        })
+      } catch (error) {
+        toast.error(
+          getErrorMessage(error) ??
+            t(($) => $['publishTemplate.error.message'], { ns: 'datasetPipeline' }),
+        )
       } finally {
         setIsPublishingAsCustomizedPipeline(false)
         hidePublishAsKnowledgePipelineModal()
@@ -90,7 +99,7 @@ const Publisher = () => {
     [
       docLink,
       hidePublishAsKnowledgePipelineModal,
-      invalidCustomizedTemplateList,
+      queryClient,
       pipelineId,
       publishAsCustomizedPipeline,
       t,
@@ -110,7 +119,7 @@ const Publisher = () => {
           }
         />
         <PopoverContent
-          placement="bottom-end"
+          align="end"
           sideOffset={4}
           alignOffset={40}
           className={cn('border-none bg-transparent shadow-none', confirmVisible && 'hidden')}

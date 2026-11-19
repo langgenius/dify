@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import { render as rtlRender, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
 import InputCombined from '../../edit-metadata-batch/input-combined'
 import { DataType } from '../../types'
@@ -12,7 +13,7 @@ vi.mock('@/hooks/use-timestamp', () => ({
 const render = (ui: ReactElement) => rtlRender(ui, { wrapper: createAccountProfileQueryWrapper() })
 
 describe('Metadata date field', () => {
-  it('keeps a read-only metadata date focusable without editing or clearing it', async () => {
+  it('keeps a read-only metadata date focusable and browsable without editing or clearing it', async () => {
     const user = userEvent.setup()
     const changed = vi.fn()
     render(
@@ -28,7 +29,8 @@ describe('Metadata date field', () => {
     await user.tab()
     expect(trigger).toHaveFocus()
     await user.keyboard('{Enter}')
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(await screen.findByRole('grid')).toHaveAttribute('aria-readonly', 'true')
+    await user.keyboard('{Escape}')
     expect(screen.queryByRole('button', { name: 'common.operation.clear' })).not.toBeInTheDocument()
     expect(changed).not.toHaveBeenCalled()
   })
@@ -62,4 +64,25 @@ describe('Metadata date field', () => {
     await user.click(screen.getByRole('button', { name: 'time.operation.ok' }))
     expect(onChange).toHaveBeenCalledExactlyOnceWith(1737034200)
   })
+})
+
+it('keeps a cleared metadata date empty when its owner stores null', async () => {
+  const user = userEvent.setup()
+  function Example() {
+    const [value, setValue] = useState<number | null>(1736947800)
+    return (
+      <InputCombined label="Published" type={DataType.time} value={value} onChange={setValue} />
+    )
+  }
+  render(<Example />)
+  await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+  expect(
+    screen.getByRole('button', { name: 'Published dataset.metadata.chooseTime' }),
+  ).toHaveTextContent('dataset.metadata.chooseTime')
+  expect(screen.queryByRole('button', { name: 'common.operation.clear' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Published dataset.metadata.chooseTime' }))
+  await user.keyboard('{Escape}')
+  expect(
+    screen.getByRole('button', { name: 'Published dataset.metadata.chooseTime' }),
+  ).toHaveTextContent('dataset.metadata.chooseTime')
 })

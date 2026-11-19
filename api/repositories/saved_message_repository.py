@@ -1,6 +1,6 @@
 from typing import cast, override
 
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.enums import CreatorUserRole
@@ -50,9 +50,16 @@ class SQLAlchemySavedMessageRepository(SavedMessageStore):
                 last_message = session.scalar(stmt.where(Message.id == last_id).limit(1))
                 if last_message is None:
                     raise LastMessageNotExistsError("The last_id cursor does not belong to the current saved messages.")
-                stmt = stmt.where(Message.created_at < last_message.created_at, Message.id != last_message.id)
+                stmt = stmt.where(
+                    or_(
+                        Message.created_at < last_message.created_at,
+                        and_(Message.created_at == last_message.created_at, Message.id < last_message.id),
+                    )
+                )
 
-            messages = list(session.scalars(stmt.order_by(Message.created_at.desc()).limit(fetch_limit)).all())
+            messages = list(
+                session.scalars(stmt.order_by(Message.created_at.desc(), Message.id.desc()).limit(fetch_limit)).all()
+            )
             has_more = len(messages) > limit
             if has_more:
                 messages = messages[:limit]

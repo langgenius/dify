@@ -1,176 +1,144 @@
-import type { CommonNodeType, Node } from '../../types'
-import { renderHook } from '@testing-library/react'
+import type { Node } from '../../types'
+import { act } from '@testing-library/react'
+import { useReactFlow } from 'reactflow'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createNode } from '../../__tests__/fixtures'
+import { renderWorkflowCanvasHook } from '../../__tests__/workflow-test-env'
 import { useLocateNode } from '../use-locate-node'
+import { useNodesInteractions } from '../use-nodes-interactions'
 
-const mockHandleNodeSelect = vi.hoisted(() => vi.fn())
-const mockScrollToWorkflowNode = vi.hoisted(() => vi.fn())
-const mockSearchParams = vi.hoisted(() => new URLSearchParams())
-const mockToastSuccess = vi.hoisted(() => vi.fn())
-const mockToastError = vi.hoisted(() => vi.fn())
-
-vi.mock('@/next/navigation', () => ({
-  useSearchParams: () => mockSearchParams,
+const { searchParams, success, error } = vi.hoisted(() => ({
+  searchParams: new URLSearchParams(),
+  success: vi.fn(),
+  error: vi.fn(),
 }))
+vi.mock('@/next/navigation', () => ({ useSearchParams: () => searchParams }))
+vi.mock('@/app/notifications', () => ({ toast: { success, error } }))
 
-vi.mock('@/app/notifications', () => ({
-  toast: Object.assign(vi.fn(), {
-    success: mockToastSuccess,
-    error: mockToastError,
-    warning: vi.fn(),
-    info: vi.fn(),
-    dismiss: vi.fn(),
-    update: vi.fn(),
-    promise: vi.fn(),
-  }),
-}))
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (
-      selector: (source: Record<string, string>) => string,
-      options?: Record<string, unknown>,
-    ) => {
-      const key = selector(
-        new Proxy({}, { get: (_, property: string) => property }) as Record<string, string>,
-      )
-      if (options?.nodeId) return `${key}:${options.nodeId}`
-      if (options?.title) return `${key}:${options.title}`
-      return key
+function renderLocate(nodes: Node[]) {
+  const { queryClient } = createConsoleQueryWrapper({ appDslVersion: '0.6.0' })
+  seedModelProviderQueries(queryClient)
+  return renderWorkflowCanvasHook(
+    ({ loadedNodes }) => {
+      useLocateNode(loadedNodes)
+      return { flow: useReactFlow(), ...useNodesInteractions() }
     },
-  }),
-}))
+    { nodes, queryClient, initialProps: { loadedNodes: nodes } },
+  )
+}
 
-vi.mock('../use-nodes-interactions', () => ({
-  useNodesInteractions: () => ({
-    handleNodeSelect: mockHandleNodeSelect,
-  }),
-}))
+const selectedIds = (view: ReturnType<typeof renderLocate>) =>
+  view.result.current.flow
+    .getNodes()
+    .filter((node) => node.selected)
+    .map((node) => node.id)
 
-vi.mock('../../utils/node-navigation', () => ({
-  scrollToWorkflowNode: (nodeId: string) => mockScrollToWorkflowNode(nodeId),
-}))
-
-const createNode = (overrides: Partial<Node> = {}): Node => ({
-  id: 'node-1',
-  type: 'custom',
-  position: { x: 0, y: 0 },
-  data: {
-    type: 'llm',
-    title: 'Writer',
-    desc: 'Draft content',
-  } as CommonNodeType,
-  ...overrides,
-})
+// The document event is the public boundary consumed by the canvas scroll listener.
+let scrollRequests: string[]
+const onScroll = (event: Event) => {
+  scrollRequests.push((event as CustomEvent<{ nodeId: string }>).detail.nodeId)
+}
 
 describe('useLocateNode', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     vi.useFakeTimers()
-    mockSearchParams.delete('node_id')
+    searchParams.delete('node_id')
+    scrollRequests = []
+    document.addEventListener('workflow:scroll-to-node', onScroll)
   })
-
   afterEach(() => {
+    document.removeEventListener('workflow:scroll-to-node', onScroll)
+    vi.clearAllTimers()
     vi.useRealTimers()
   })
 
-  it('does nothing when node_id param is absent', () => {
-    const nodes = [createNode({ id: 'n1' })]
-    renderHook(() => useLocateNode(nodes))
+  it('preserves selection when node_id is absent', () => {
+    const view = renderLocate([
+      createNode({ id: 'existing', selected: true, data: { selected: true } }),
+    ])
+    act(() => vi.advanceTimersByTime(500))
 
-    expect(mockHandleNodeSelect).not.toHaveBeenCalled()
-    expect(mockToastSuccess).not.toHaveBeenCalled()
-    expect(mockToastError).not.toHaveBeenCalled()
+    expect(selectedIds(view)).toEqual(['existing'])
+    expect(success).not.toHaveBeenCalled()
+    expect(error).not.toHaveBeenCalled()
+    expect(scrollRequests).toEqual([])
   })
 
-  it('does nothing when nodes are empty', () => {
-    mockSearchParams.set('node_id', 'n1')
-    renderHook(() => useLocateNode([]))
+  it('waits for nodes before reporting a missing target', () => {
+    searchParams.set('node_id', 'target')
+    const view = renderLocate([])
+    act(() => vi.advanceTimersByTime(500))
 
-    expect(mockHandleNodeSelect).not.toHaveBeenCalled()
-    expect(mockToastError).not.toHaveBeenCalled()
+    expect(view.result.current.flow.getNodes()).toEqual([])
+    expect(success).not.toHaveBeenCalled()
+    expect(error).not.toHaveBeenCalled()
   })
 
-  it('selects, scrolls to, and shows success toast when node is found', () => {
-    mockSearchParams.set('node_id', 'target-node')
-    const nodes = [createNode({ id: 'target-node', data: { title: 'My Node' } as CommonNodeType })]
+  it('selects the target instead of the previous node and requests scrolling after the delay', () => {
+    searchParams.set('node_id', 'target')
+    const view = renderLocate([
+      createNode({ id: 'previous', selected: true, data: { selected: true } }),
+      createNode({ id: 'target', data: { title: 'My Node' } }),
+    ])
 
-    renderHook(() => useLocateNode(nodes))
-
-    expect(mockHandleNodeSelect).toHaveBeenCalledWith('target-node')
-    expect(mockToastSuccess).toHaveBeenCalledWith('panel.locateNodeSuccess:My Node')
-
-    // Scroll happens after a 200ms delay
-    expect(mockScrollToWorkflowNode).not.toHaveBeenCalled()
-    vi.advanceTimersByTime(200)
-    expect(mockScrollToWorkflowNode).toHaveBeenCalledWith('target-node')
+    expect(selectedIds(view)).toEqual(['target'])
+    expect(view.result.current.flow.getNode('target')?.data.selected).toBe(true)
+    expect(view.result.current.flow.getNode('previous')?.data.selected).toBe(false)
+    expect(success).toHaveBeenCalledWith('workflow.panel.locateNodeSuccess:{"title":"My Node"}')
+    expect(scrollRequests).toEqual([])
+    act(() => vi.advanceTimersByTime(200))
+    expect(scrollRequests).toEqual(['target'])
   })
 
-  it('shows error toast after debounce when node is not found', () => {
-    mockSearchParams.set('node_id', 'missing-node')
-    const nodes = [createNode({ id: 'other-node' })]
+  it('reports a missing target after nodes settle without changing selection', () => {
+    searchParams.set('node_id', 'missing')
+    const view = renderLocate([createNode({ id: 'other', selected: true })])
+    expect(error).not.toHaveBeenCalled()
+    act(() => vi.advanceTimersByTime(500))
 
-    renderHook(() => useLocateNode(nodes))
-
-    // Not immediately reported
-    expect(mockToastError).not.toHaveBeenCalled()
-
-    // After 500ms debounce, reports not found
-    vi.advanceTimersByTime(500)
-    expect(mockToastError).toHaveBeenCalledWith('panel.locateNodeNotFound:missing-node')
+    expect(error).toHaveBeenCalledWith('workflow.panel.locateNodeNotFound:{"nodeId":"missing"}')
+    expect(selectedIds(view)).toEqual(['other'])
+    expect(scrollRequests).toEqual([])
   })
 
-  it('does not report not-found prematurely when nodes are still loading', () => {
-    mockSearchParams.set('node_id', 'target-node')
-    const initialNodes = [createNode({ id: 'other-node' })]
+  it('selects a target that arrives before the not-found debounce expires', () => {
+    searchParams.set('node_id', 'target')
+    const initial = [createNode({ id: 'other' })]
+    const view = renderLocate(initial)
+    act(() => vi.advanceTimersByTime(300))
+    const loadedNodes = [...initial, createNode({ id: 'target', data: { title: 'Found!' } })]
+    act(() => view.setCanvas({ nodes: loadedNodes }))
+    view.rerender({ loadedNodes })
 
-    const { rerender } = renderHook(({ nodes }) => useLocateNode(nodes), {
-      initialProps: { nodes: initialNodes },
-    })
-
-    // Before debounce fires, more nodes arrive including the target
-    vi.advanceTimersByTime(300)
-    rerender({
-      nodes: [
-        createNode({ id: 'other-node' }),
-        createNode({ id: 'target-node', data: { title: 'Found!' } as CommonNodeType }),
-      ],
-    })
-
-    // Should have located the node, not reported error
-    expect(mockToastError).not.toHaveBeenCalled()
-    expect(mockHandleNodeSelect).toHaveBeenCalledWith('target-node')
-    expect(mockToastSuccess).toHaveBeenCalledWith('panel.locateNodeSuccess:Found!')
+    expect(selectedIds(view)).toEqual(['target'])
+    expect(success).toHaveBeenCalledWith('workflow.panel.locateNodeSuccess:{"title":"Found!"}')
+    act(() => vi.advanceTimersByTime(500))
+    expect(error).not.toHaveBeenCalled()
+    expect(scrollRequests).toEqual(['target'])
   })
 
-  it('locates only once even if nodes update afterwards', () => {
-    mockSearchParams.set('node_id', 'target-node')
-    const nodes1 = [createNode({ id: 'target-node' })]
+  it('does not steal selection back when nodes update after locating', () => {
+    searchParams.set('node_id', 'target')
+    const view = renderLocate([createNode({ id: 'target' }), createNode({ id: 'other' })])
+    expect(selectedIds(view)).toEqual(['target'])
+    act(() => vi.advanceTimersByTime(200))
 
-    const { rerender } = renderHook(({ nodes }) => useLocateNode(nodes), {
-      initialProps: { nodes: nodes1 },
-    })
+    act(() => view.result.current.handleNodeSelect('other'))
+    view.rerender({ loadedNodes: view.result.current.flow.getNodes() })
+    act(() => vi.advanceTimersByTime(500))
 
-    expect(mockHandleNodeSelect).toHaveBeenCalledTimes(1)
-
-    // Simulate a nodes update after locate has already happened
-    rerender({
-      nodes: [createNode({ id: 'target-node' }), createNode({ id: 'extra' })],
-    })
-
-    expect(mockHandleNodeSelect).toHaveBeenCalledTimes(1)
-    expect(mockToastSuccess).toHaveBeenCalledTimes(1)
+    expect(selectedIds(view)).toEqual(['other'])
+    expect(success).toHaveBeenCalledTimes(1)
+    expect(scrollRequests).toEqual(['target'])
   })
 
-  it('clears scroll timeout on unmount', () => {
-    mockSearchParams.set('node_id', 'target-node')
-    const nodes = [createNode({ id: 'target-node' })]
-
-    const { unmount } = renderHook(() => useLocateNode(nodes))
-
-    // Unmount before the 200ms scroll timer fires
-    unmount()
-
-    vi.advanceTimersByTime(500)
-    expect(mockScrollToWorkflowNode).not.toHaveBeenCalled()
+  it('cancels pending scrolling when the editor unmounts', () => {
+    searchParams.set('node_id', 'target')
+    const view = renderLocate([createNode({ id: 'target' })])
+    expect(selectedIds(view)).toEqual(['target'])
+    view.unmount()
+    act(() => vi.advanceTimersByTime(500))
+    expect(scrollRequests).toEqual([])
   })
 })

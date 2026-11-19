@@ -24,7 +24,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Compound popover built on Base UI Popover. Use it for contextual affordances, overflow menus, filters, and forms that anchor to a trigger. Control placement via the `placement` prop on `PopoverContent` and compose arbitrary children inside the popup.\n\nPass `openOnHover` on `PopoverTrigger` when the popup should also reveal on hover (see the **Infotip** story). Unlike `Tooltip` and `PreviewCard`, hover on `Popover` still falls back to tap/focus, so touch and screen-reader users can reach the content.',
+          'Compound popover built on Base UI Popover. Use it for contextual affordances, overflow menus, filters, and forms that anchor to a trigger.\n\nPass `openOnHover` on `PopoverTrigger` when the popup should also reveal on hover (see the **Infotip** story). Unlike `Tooltip` and `PreviewCard`, hover on `Popover` still falls back to tap/focus, so touch and screen-reader users can reach the content.',
       },
     },
   },
@@ -180,7 +180,8 @@ export const Infotip: Story = {
           }
         />
         <PopoverContent
-          placement="top"
+          side="top"
+          align="center"
           className="max-w-75 px-3 py-2 system-xs-regular text-text-tertiary"
         >
           Set which resource to use first when running models. The Trial quota will be used after
@@ -191,45 +192,43 @@ export const Infotip: Story = {
   ),
 }
 
-type PopoverPlacement = NonNullable<PopoverContentProps['placement']>
-
-const PLACEMENTS: PopoverPlacement[] = [
-  'top-start',
-  'top',
-  'top-end',
-  'right-start',
-  'right',
-  'right-end',
-  'bottom-start',
-  'bottom',
-  'bottom-end',
-  'left-start',
-  'left',
-  'left-end',
-  'inline-start-start',
-  'inline-start',
-  'inline-start-end',
-  'inline-end-start',
-  'inline-end',
-  'inline-end-end',
-]
+const POSITIONS = [
+  { side: 'top', align: 'start' },
+  { side: 'top', align: 'center' },
+  { side: 'top', align: 'end' },
+  { side: 'right', align: 'start' },
+  { side: 'right', align: 'center' },
+  { side: 'right', align: 'end' },
+  { side: 'bottom', align: 'start' },
+  { side: 'bottom', align: 'center' },
+  { side: 'bottom', align: 'end' },
+  { side: 'left', align: 'start' },
+  { side: 'left', align: 'center' },
+  { side: 'left', align: 'end' },
+  { side: 'inline-start', align: 'start' },
+  { side: 'inline-start', align: 'center' },
+  { side: 'inline-start', align: 'end' },
+  { side: 'inline-end', align: 'start' },
+  { side: 'inline-end', align: 'center' },
+  { side: 'inline-end', align: 'end' },
+] satisfies Array<Pick<PopoverContentProps, 'side' | 'align'>>
 
 function PlacementsDemo() {
-  const [placement, setPlacement] = React.useState<PopoverPlacement>('bottom')
+  const [position, setPosition] = React.useState(POSITIONS[7]!)
 
   return (
     <div className="flex flex-col items-center gap-4 p-20">
       <div className="grid grid-cols-3 gap-2 text-xs">
-        {PLACEMENTS.map((value) => (
+        {POSITIONS.map((value) => (
           <button
-            key={value}
+            key={`${value.side}-${value.align}`}
             type="button"
-            onClick={() => setPlacement(value)}
+            onClick={() => setPosition(value)}
             className={`rounded-md border border-divider-subtle px-2 py-1 text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden ${
-              placement === value ? 'bg-state-base-hover' : 'bg-components-button-secondary-bg'
+              position === value ? 'bg-state-base-hover' : 'bg-components-button-secondary-bg'
             }`}
           >
-            {value}
+            {value.side} / {value.align}
           </button>
         ))}
       </div>
@@ -237,11 +236,10 @@ function PlacementsDemo() {
         <PopoverTrigger render={<button type="button" className={triggerButtonClassName} />}>
           Anchored trigger
         </PopoverTrigger>
-        <PopoverContent placement={placement}>
+        <PopoverContent side={position.side} align={position.align}>
           <div className="flex w-56 flex-col gap-1 p-3">
             <PopoverTitle className="text-sm font-semibold text-text-primary">
-              placement="
-              {placement}"
+              {`side="${position.side}" align="${position.align}"`}
             </PopoverTitle>
             <PopoverDescription className="text-xs text-text-secondary">
               Popover positions itself relative to the trigger using the selected placement.

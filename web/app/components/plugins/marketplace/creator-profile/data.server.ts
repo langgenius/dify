@@ -1,7 +1,8 @@
 import type { MarketplaceCreator, MarketplaceOrganization } from '@dify/contracts/marketplace'
 import type { CreatorSortField, CreatorSortOrder, LoadedCreatorProfile } from './model'
+import { ORPCError } from '@orpc/client'
 import { cache } from 'react'
-import { MARKETPLACE_API_PREFIX } from '@/config'
+import { getMarketplaceApiUrl } from '@/features/marketplace/api'
 import { marketplaceClient } from '@/service/marketplace'
 import { getPluginIconInMarketplace } from '../utils'
 import {
@@ -40,7 +41,7 @@ const mapOrganizationToCreator = (
   updated_at: organization.updated_at,
 })
 
-const getPublisher = async (uniqueHandle: string, publisherType?: string) => {
+const fetchPublisher = async (uniqueHandle: string, publisherType?: string) => {
   if (publisherType === 'organization') {
     const response = await marketplaceClient.organizationDetail({
       params: { id: uniqueHandle },
@@ -53,6 +54,17 @@ const getPublisher = async (uniqueHandle: string, publisherType?: string) => {
     params: { uniqueHandle },
   })
   return response.data?.creator
+}
+
+// The Marketplace answers an unknown or deleted handle with HTTP 404. Treat it as a missing
+// publisher so the page renders its 404 instead of failing the whole render with a 500.
+const getPublisher = async (uniqueHandle: string, publisherType?: string) => {
+  try {
+    return await fetchPublisher(uniqueHandle, publisherType)
+  } catch (error) {
+    if (error instanceof ORPCError && error.status === 404) return undefined
+    throw error
+  }
 }
 
 const loadCreatorProfileCached = cache(
@@ -81,10 +93,10 @@ const loadCreatorProfileCached = cache(
     const resource = kind === 'organization' ? 'organizations' : 'creators'
     const encodedHandle = encodeURIComponent(uniqueHandle)
     const backgroundUrl = creator.background_image
-      ? `${MARKETPLACE_API_PREFIX}/${resource}/${encodedHandle}/background-image`
+      ? getMarketplaceApiUrl(`${resource}/${encodedHandle}/background-image`)
       : ''
     const avatarUrl = creator.avatar
-      ? `${MARKETPLACE_API_PREFIX}/${resource}/${encodedHandle}/avatar`
+      ? getMarketplaceApiUrl(`${resource}/${encodedHandle}/avatar`)
       : ''
     const viewModel = adaptCreatorProfile({
       creator,

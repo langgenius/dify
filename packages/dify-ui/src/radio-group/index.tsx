@@ -4,8 +4,8 @@ import type * as React from 'react'
 import { Radio as BaseRadio } from '@base-ui/react/radio'
 import { RadioGroup as BaseRadioGroup } from '@base-ui/react/radio-group'
 import { cn } from '../cn'
-import { checkedControlFocusClassName } from '../form-control-shared'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { checkedControlFocusClassName } from '../internal/focus'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 type RadioGroupProps<Value = string> = BaseRadioGroup.Props<Value>
 type RadioGroupChangeEventReason = BaseRadioGroup.ChangeEventReason
@@ -35,10 +35,12 @@ function RadioControl({ className, ...props }: RadioControlProps) {
       keepMounted
       className={(state) =>
         cn(
-          'inline-flex size-4 shrink-0 touch-manipulation items-center justify-center rounded-full p-0 transition-colors motion-reduce:transition-none',
+          'inline-flex size-4 shrink-0 touch-manipulation items-center justify-center rounded-full p-0',
           'border border-components-radio-border bg-components-radio-bg shadow-xs shadow-shadow-shadow-3',
           'hover:border-components-radio-border-hover hover:bg-components-radio-bg-hover',
           'data-checked:border-[5px] data-checked:border-components-radio-border-checked data-checked:hover:border-components-radio-border-checked-hover',
+          'data-readonly:not-data-disabled:cursor-default data-readonly:not-data-disabled:hover:border-components-radio-border data-readonly:not-data-disabled:hover:bg-components-radio-bg',
+          'data-readonly:not-data-disabled:data-checked:hover:border-components-radio-border-checked',
           'data-disabled:cursor-not-allowed data-disabled:border-components-radio-border-disabled data-disabled:bg-components-radio-bg-disabled',
           'data-disabled:hover:border-components-radio-border-disabled data-disabled:hover:bg-components-radio-bg-disabled',
           'data-disabled:data-checked:border-[5px] data-disabled:data-checked:border-components-radio-border-checked-disabled',
@@ -57,11 +59,13 @@ function Radio<Value = string>({ className, ...props }: RadioProps<Value>) {
     <BaseRadio.Root<Value>
       className={(state) =>
         cn(
-          'inline-flex size-4 shrink-0 touch-manipulation items-center justify-center rounded-full p-0 transition-colors motion-reduce:transition-none',
+          'inline-flex size-4 shrink-0 touch-manipulation items-center justify-center rounded-full p-0',
           'border border-components-radio-border bg-components-radio-bg shadow-xs shadow-shadow-shadow-3',
           'hover:border-components-radio-border-hover hover:bg-components-radio-bg-hover',
           checkedControlFocusClassName,
           'data-checked:border-[5px] data-checked:border-components-radio-border-checked data-checked:hover:border-components-radio-border-checked-hover',
+          'data-readonly:not-data-disabled:cursor-default data-readonly:not-data-disabled:hover:border-components-radio-border data-readonly:not-data-disabled:hover:bg-components-radio-bg',
+          'data-readonly:not-data-disabled:data-checked:hover:border-components-radio-border-checked',
           'data-disabled:cursor-not-allowed data-disabled:border-components-radio-border-disabled data-disabled:bg-components-radio-bg-disabled',
           'data-disabled:hover:border-components-radio-border-disabled data-disabled:hover:bg-components-radio-bg-disabled',
           'data-disabled:data-checked:border-[5px] data-disabled:data-checked:border-components-radio-border-checked-disabled',

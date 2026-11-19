@@ -7,6 +7,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -31,13 +32,18 @@ export default function AccessRulesBatchAction({
   const { t } = useTranslation(['common', 'permission'])
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [hasDeleteError, setHasDeleteError] = useState(false)
 
   const handleDelete = async () => {
+    if (isDeleting) return
     setIsDeleting(true)
+    setHasDeleteError(false)
 
     try {
       await onDelete()
       setIsDeleteConfirmOpen(false)
+    } catch {
+      setHasDeleteError(true)
     } finally {
       setIsDeleting(false)
     }
@@ -62,7 +68,14 @@ export default function AccessRulesBatchAction({
           </span>
         </div>
         <Separator decorative orientation="vertical" className="mx-0.5 h-3.5" />
-        <Button variant="ghost" tone="destructive" onClick={() => setIsDeleteConfirmOpen(true)}>
+        <Button
+          variant="ghost"
+          tone="destructive"
+          onClick={() => {
+            setHasDeleteError(false)
+            setIsDeleteConfirmOpen(true)
+          }}
+        >
           <span className="i-ri-delete-bin-line size-4" aria-hidden />
           <span>{t(($) => $['operation.delete'], { ns: 'common' })}</span>
         </Button>
@@ -78,17 +91,20 @@ export default function AccessRulesBatchAction({
         }}
       >
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['accessRule.batchRemoveTitle'], { ns: 'permission' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['accessRule.batchRemoveDescription'], {
                 ns: 'permission',
                 count: selectedCount,
               })}
             </AlertDialogDescription>
-          </div>
+          </AlertDialogHeader>
+          {hasDeleteError && (
+            <p role="alert">{t(($) => $['api.actionFailed'], { ns: 'common' })}</p>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancelButton disabled={isDeleting}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

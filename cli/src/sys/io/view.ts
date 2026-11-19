@@ -1,4 +1,4 @@
-import type { Style } from './color'
+import type { ColorScheme } from '@/sys/io/color'
 
 type JsonPrimitive = string | number | boolean | null
 
@@ -6,7 +6,7 @@ export type Printable = JsonPrimitive | readonly unknown[] | Record<string, unkn
 
 export type View<T extends Printable = Printable> = Readonly<{
   json: T
-  text: (style: Style) => string
+  text: (style: ColorScheme) => string
 }>
 
 const TEXT_KEY = 'text'

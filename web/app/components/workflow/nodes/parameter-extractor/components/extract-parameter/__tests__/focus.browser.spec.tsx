@@ -5,8 +5,6 @@ import { render } from 'vitest-browser-react'
 import { ParamType } from '../../../types'
 import { ExtractParameterList } from '../list'
 
-vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
-
 function ParametersFixture() {
   const [parameters, setParameters] = useState<Param[]>([
     { name: 'city', type: ParamType.string, description: 'City name', required: false },

@@ -4,3 +4,11 @@ omit =
     api/tests/*
     api/migrations/*
     api/core/rag/datasource/vdb/*
+
+[paths]
+# Cache lifecycle tests execute an unchanged helper in an isolated backend.
+# Only that helper is measured there; fixture modules are omitted by the tests.
+openapi_export_tools =
+    api/dev
+    */pytest-*/test_*/api/dev
+    */pytest-*/popen-*/test_*/api/dev

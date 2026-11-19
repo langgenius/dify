@@ -1,7 +1,6 @@
 import math
 from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Any
 from uuid import uuid4
 
 import pytest
@@ -53,7 +52,7 @@ def test_integer_variable() -> None:
 
 
 def test_float_variable() -> None:
-    test_data = {"value_type": "number", "name": "test_float", "value": 3.14}
+    test_data = {"value_type": "number", "name": "test_float", "value": float("3.14")}
     result = variable_factory.build_conversation_variable_from_mapping(test_data)
     assert isinstance(result, FloatVariable)
 
@@ -197,7 +196,7 @@ def test_array_number_variable() -> None:
 def test_build_segment_scalar_values() -> None:
     @dataclass
     class TestCase:
-        value: Any
+        value: object
         expected: Segment
         description: str
 
@@ -351,7 +350,7 @@ def test_build_segment_array_file_empty_list() -> None:
 
 def test_build_segment_array_any_mixed_types() -> None:
     """Test building ArrayAnySegment from list with mixed types."""
-    mixed_values = ["string", 42, 3.14, {"key": "value"}, None]
+    mixed_values = ["string", 42, float("3.14"), {"key": "value"}, None]
     segment = variable_factory.build_segment(mixed_values)
     assert isinstance(segment, ArrayAnySegment)
     assert segment.value == mixed_values
@@ -625,9 +624,9 @@ class TestBuildSegmentWithType:
 
     def test_number_type_float(self) -> None:
         """Test building a number segment with float value."""
-        result = build_segment_with_type(SegmentType.NUMBER, 3.14)
+        result = build_segment_with_type(SegmentType.NUMBER, float("3.14"))
         assert isinstance(result, FloatSegment)
-        assert result.value == 3.14
+        assert result.value == float("3.14")
         assert result.value_type == SegmentType.FLOAT
 
     def test_object_type(self) -> None:
@@ -708,9 +707,9 @@ class TestBuildSegmentWithType:
         assert result.value_type == SegmentType.ARRAY_STRING
 
         # Array of numbers
-        result = build_segment_with_type(SegmentType.ARRAY_NUMBER, [1, 2, 3.14])
+        result = build_segment_with_type(SegmentType.ARRAY_NUMBER, [1, 2, float("3.14")])
         assert isinstance(result, ArrayNumberSegment)
-        assert result.value == [1, 2, 3.14]
+        assert result.value == [1, 2, float("3.14")]
         assert result.value_type == SegmentType.ARRAY_NUMBER
 
         # Array of objects
@@ -767,7 +766,7 @@ class TestBuildSegmentWithType:
         assert result_int.value_type == SegmentType.INTEGER
 
         # Float should work
-        result_float = build_segment_with_type(SegmentType.NUMBER, 3.14)
+        result_float = build_segment_with_type(SegmentType.NUMBER, float("3.14"))
         assert isinstance(result_float, FloatSegment)
         assert result_float.value_type == SegmentType.FLOAT
 
@@ -776,7 +775,7 @@ class TestBuildSegmentWithType:
         [
             (SegmentType.STRING, "test", StringSegment),
             (SegmentType.INTEGER, 42, IntegerSegment),
-            (SegmentType.FLOAT, 3.14, FloatSegment),
+            (SegmentType.FLOAT, float("3.14"), FloatSegment),
             (SegmentType.OBJECT, {}, ObjectSegment),
             (SegmentType.NONE, None, NoneSegment),
             (SegmentType.ARRAY_STRING, [], ArrayStringSegment),
@@ -821,7 +820,7 @@ class TestBuildSegmentValueErrors:
 
         name: str
         description: str
-        test_value: Any
+        test_value: object
 
     def _get_test_cases(self) -> list[ValueErrorTestCase]:
         """Get all test cases for ValueError scenarios."""
@@ -929,9 +928,11 @@ class TestBuildSegmentValueErrors:
             # Use test value directly
             test_value = test_case.test_value
 
-            with pytest.raises(ValueError) as exc_info:  # noqa: PT012
-                segment = variable_factory.build_segment(test_value)
-                pytest.fail(f"Test case {index} ({test_case.name}) should raise ValueError but not, result={segment}")
+            with pytest.raises(
+                ValueError,
+                match="not supported value",
+            ) as exc_info:
+                variable_factory.build_segment(test_value)
 
             error_message = str(exc_info.value)
             assert "not supported value" in error_message, (

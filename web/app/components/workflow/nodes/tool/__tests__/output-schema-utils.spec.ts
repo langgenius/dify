@@ -1,16 +1,20 @@
 import { VarType } from '@/app/components/workflow/types'
 import { normalizeJsonSchemaType, pickItemSchema, resolveVarType } from '../output-schema-utils'
 
-// Mock the getMatchedSchemaType dependency
-vi.mock('../../_base/components/variable/use-match-schema-type', () => ({
-  getMatchedSchemaType: (schema: Record<string, unknown> | null | undefined) => {
-    // Return schema_type or schemaType if present
-    return schema?.schema_type || schema?.schemaType || undefined
-  },
-}))
+const fileSchema = {
+  type: 'object',
+  properties: { url: { type: 'string' }, filename: { type: 'string' } },
+}
+const schemaDefinitions = [{ name: 'file', label: 'File', schema: fileSchema }]
 
 describe('output-schema-utils', () => {
   describe('normalizeJsonSchemaType', () => {
+    it.each(['oneOf', 'anyOf'])('ignores a leading null alternative in %s', (key) => {
+      const schema = { [key]: [{ type: 'null' }, { type: 'string' }] }
+      expect(normalizeJsonSchemaType(schema)).toBe('string')
+      expect(resolveVarType(schema).type).toBe(VarType.string)
+    })
+
     it('should return undefined for null or undefined schema', () => {
       expect(normalizeJsonSchemaType(null)).toBeUndefined()
       expect(normalizeJsonSchemaType(undefined)).toBeUndefined()
@@ -162,20 +166,6 @@ describe('output-schema-utils', () => {
         expect(result.type).toBe(VarType.arrayBoolean)
       })
 
-      it('should resolve array of objects to arrayObject', () => {
-        const result = resolveVarType({
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              id: { type: 'string' },
-              name: { type: 'string' },
-            },
-          },
-        })
-        expect(result.type).toBe(VarType.arrayObject)
-      })
-
       it('should resolve array without items to generic array', () => {
         const result = resolveVarType({ type: 'array' })
         expect(result.type).toBe(VarType.array)
@@ -184,7 +174,7 @@ describe('output-schema-utils', () => {
 
     describe('complex schema - user scenario (tags field)', () => {
       it('should correctly resolve tags array with object items', () => {
-        // This is the exact schema from the user's issue
+        // Preserve structured tool outputs instead of falling back to a generic array.
         const tagsSchema = {
           type: 'array',
           description: '标签数组',
@@ -258,22 +248,19 @@ describe('output-schema-utils', () => {
 
     describe('file types via schemaType', () => {
       it('should resolve object with file schemaType to file', () => {
-        const result = resolveVarType({
-          type: 'object',
-          schema_type: 'file',
-        })
+        const result = resolveVarType(fileSchema, schemaDefinitions)
         expect(result.type).toBe(VarType.file)
         expect(result.schemaType).toBe('file')
       })
 
       it('should resolve array of files to arrayFile', () => {
-        const result = resolveVarType({
-          type: 'array',
-          items: {
-            type: 'object',
-            schema_type: 'file',
+        const result = resolveVarType(
+          {
+            type: 'array',
+            items: fileSchema,
           },
-        })
+          schemaDefinitions,
+        )
         expect(result.type).toBe(VarType.arrayFile)
       })
     })

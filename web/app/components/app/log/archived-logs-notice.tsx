@@ -1,5 +1,6 @@
 'use client'
 
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -36,32 +37,17 @@ export function ArchivedLogsNotice() {
     return null
 
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      aria-atomic="true"
-      className="relative mb-3 shrink-0 overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]"
-    >
-      <div
-        aria-hidden="true"
-        className="absolute -inset-px bg-linear-to-r from-components-badge-status-light-normal-halo to-background-gradient-mask-transparent opacity-40"
-      />
-      <div className="relative flex items-center gap-3 px-3 py-2">
-        <span
-          aria-hidden="true"
-          className="i-ri-information-2-fill size-5 shrink-0 text-text-accent"
-        />
-        <p className="min-w-0 flex-1 system-sm-semibold wrap-break-word text-text-primary">
-          {t(($) => $['archives.notice.description'], { ns: 'appLog' })}
-        </p>
+    <Alert type="info" className="mb-3 shrink-0">
+      <AlertTitle>{t(($) => $['archives.notice.description'], { ns: 'appLog' })}</AlertTitle>
+      <AlertActions>
         <Button
+          size="small"
           variant="primary"
-          className="shrink-0"
           onClick={() => setSettingsDestination('workflow-log-archives')}
         >
           {t(($) => $['archives.notice.action'], { ns: 'appLog' })}
         </Button>
-      </div>
-    </div>
+      </AlertActions>
+    </Alert>
   )
 }

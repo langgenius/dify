@@ -13,13 +13,13 @@ export const Score = memo(({ value, besideChunkName }: ScoreProps) => {
     <span
       className={cn(
         'relative block items-center overflow-hidden border border-components-progress-bar-border px-1.25',
-        besideChunkName ? 'h-[20.5px] border-l-0' : 'h-5 rounded-md',
+        besideChunkName ? 'h-[20.5px] border-s-0' : 'h-5 rounded-md',
       )}
     >
       <span
         className={cn(
-          'absolute top-0 left-0 h-full border-r-[1.5px] border-components-progress-brand-progress bg-util-colors-blue-brand-blue-brand-100',
-          value === 1 && 'border-r-0',
+          'absolute inset-s-0 top-0 h-full border-e-[1.5px] border-components-progress-brand-progress bg-util-colors-blue-brand-blue-brand-100',
+          value === 1 && 'border-e-0',
         )}
         style={{ width: `${value * 100}%` }}
       />

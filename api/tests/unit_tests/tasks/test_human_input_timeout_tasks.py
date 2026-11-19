@@ -14,11 +14,11 @@ from core.workflow.nodes.human_input.entities import FormDefinition
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from models.human_input import HumanInputForm
 from tasks import human_input_timeout_tasks as task_module
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 class _FakeService:
-    def __init__(self):
+    def __init__(self) -> None:
         self.enqueued: list[str] = []
         self.agent_app_resumed: list[tuple[str, str]] = []
 
@@ -61,6 +61,12 @@ def _build_form(
     )
 
 
+def _require_form(session: Session, form_id: str) -> HumanInputForm:
+    form = session.get(HumanInputForm, form_id)
+    assert form is not None
+    return form
+
+
 @pytest.fixture
 def sqlite_task_database(
     sqlite_engine: Engine,
@@ -72,7 +78,7 @@ def sqlite_task_database(
     monkeypatch.setattr(task_module, "db", SimpleNamespace(engine=sqlite_engine))
 
 
-def test_is_global_timeout_uses_created_at():
+def test_is_global_timeout_uses_created_at() -> None:
     now = datetime(2025, 1, 1, 12, 0, 0)
     form = _build_form(
         form_id="form-1",
@@ -101,7 +107,7 @@ def test_check_and_handle_human_input_timeouts_marks_and_routes(
     sqlite_task_database: None,
     sqlite_engine: Engine,
     sqlite_session: Session,
-):
+) -> None:
     now = datetime(2025, 1, 1, 12, 0, 0)
     monkeypatch.setattr(task_module, "naive_utc_now", lambda: now)
     apply_config_overrides(monkeypatch, HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS=3600)
@@ -168,9 +174,9 @@ def test_check_and_handle_human_input_timeouts_marks_and_routes(
     service_factory.assert_called_once_with(task_session_maker, form_repository=repo)
 
     sqlite_session.expire_all()
-    assert sqlite_session.get(HumanInputForm, "form-global").status == HumanInputFormStatus.EXPIRED
-    assert sqlite_session.get(HumanInputForm, "form-node").status == HumanInputFormStatus.TIMEOUT
-    assert sqlite_session.get(HumanInputForm, "form-delivery").status == HumanInputFormStatus.TIMEOUT
+    assert _require_form(sqlite_session, "form-global").status == HumanInputFormStatus.EXPIRED
+    assert _require_form(sqlite_session, "form-node").status == HumanInputFormStatus.TIMEOUT
+    assert _require_form(sqlite_session, "form-delivery").status == HumanInputFormStatus.TIMEOUT
 
 
 @pytest.mark.parametrize("sqlite_session", [(HumanInputForm,)], indirect=True)
@@ -178,7 +184,7 @@ def test_check_and_handle_human_input_timeouts_orders_by_id_before_limit(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_task_database: None,
     sqlite_session: Session,
-):
+) -> None:
     now = datetime(2025, 1, 1, 12, 0, 0)
     monkeypatch.setattr(task_module, "naive_utc_now", lambda: now)
     apply_config_overrides(monkeypatch, HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS=0)
@@ -211,8 +217,8 @@ def test_check_and_handle_human_input_timeouts_orders_by_id_before_limit(
         reason="delivery_test_timeout",
     )
     sqlite_session.expire_all()
-    assert sqlite_session.get(HumanInputForm, "form-a").status == HumanInputFormStatus.TIMEOUT
-    assert sqlite_session.get(HumanInputForm, "form-b").status == HumanInputFormStatus.WAITING
+    assert _require_form(sqlite_session, "form-a").status == HumanInputFormStatus.TIMEOUT
+    assert _require_form(sqlite_session, "form-b").status == HumanInputFormStatus.WAITING
 
 
 @pytest.mark.parametrize("sqlite_session", [(HumanInputForm,)], indirect=True)
@@ -220,7 +226,7 @@ def test_check_and_handle_human_input_timeouts_omits_global_filter_when_disabled
     monkeypatch: pytest.MonkeyPatch,
     sqlite_task_database: None,
     sqlite_session: Session,
-):
+) -> None:
     now = datetime(2025, 1, 1, 12, 0, 0)
     monkeypatch.setattr(task_module, "naive_utc_now", lambda: now)
     apply_config_overrides(monkeypatch, HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS=0)

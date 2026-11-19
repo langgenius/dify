@@ -5,8 +5,8 @@ import type * as React from 'react'
 import { Input as BaseInput } from '@base-ui/react/input'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
-import { textControlGroupInputClassName } from '../form-control-shared'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { textControlGroupInputClassName } from '../internal/form-control'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const interactiveElementSelector =
   'button,a[href],[role="button"],[role="link"],select,[tabindex]:not([tabindex="-1"]),input:not([type="hidden"]):not([disabled]),[contenteditable]:not([contenteditable="false"]),textarea:not([disabled])'
@@ -20,16 +20,15 @@ function InputGroup({ className, onMouseDown, ...props }: InputGroupProps) {
       {...props}
       className={cn(
         [
-          'flex min-h-8 w-full min-w-0 items-center rounded-lg border border-transparent bg-components-input-bg-normal transition-[background-color,border-color]',
+          'flex min-h-8 w-full min-w-0 items-center rounded-lg border border-transparent bg-components-input-bg-normal',
           'has-[>input:enabled:not(:focus)]:not-has-[>input:is([readonly],[data-invalid])]:hover:border-components-input-border-hover has-[>input:enabled:not(:focus)]:not-has-[>input:is([readonly],[data-invalid])]:hover:bg-components-input-bg-hover',
-          'has-[>input:focus]:ring-2 has-[>input:focus]:ring-state-accent-solid has-[>input:focus]:transition-none has-[>input:focus]:not-has-[>input:is([readonly],[data-invalid])]:bg-components-input-bg-active',
+          'has-[>input:focus]:ring-2 has-[>input:focus]:ring-state-accent-solid has-[>input:focus]:not-has-[>input:is([readonly],[data-invalid])]:bg-components-input-bg-active',
           'has-[>input:enabled[data-invalid]]:border-components-input-border-destructive has-[>input:enabled[data-invalid]]:bg-components-input-bg-destructive',
           'has-[>input:disabled]:cursor-not-allowed has-[>input:disabled]:border-transparent has-[>input:disabled]:bg-components-input-bg-disabled has-[>input:disabled]:text-components-input-text-filled-disabled',
           'has-[>input:disabled]:*:data-align:cursor-not-allowed has-[>input:disabled]:*:data-align:text-components-input-text-filled-disabled',
           'has-[>input:enabled[readonly]]:cursor-default has-[>input:enabled[readonly]]:*:data-align:cursor-default',
           'has-[>[data-align=inline-start]]:[&>input]:ps-0',
           'has-[>[data-align=inline-end]]:[&>input]:pe-0',
-          'motion-reduce:transition-none',
         ],
         className,
       )}
@@ -83,10 +82,8 @@ const inputGroupAddonVariants = cva(
   },
 )
 
-type InputGroupAddonProps = Omit<React.ComponentPropsWithRef<'div'>, 'className'> &
-  VariantProps<typeof inputGroupAddonVariants> & {
-    className?: string
-  }
+type InputGroupAddonProps = React.ComponentProps<'div'> &
+  VariantProps<typeof inputGroupAddonVariants>
 
 function InputGroupAddon({ align = 'inline-start', className, ...props }: InputGroupAddonProps) {
   return (

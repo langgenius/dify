@@ -97,11 +97,21 @@ Notes:
 
 - App endpoints use an app API token; knowledge base and workspace endpoints use a dataset API token.
 - Chat/completion require a stable `user` identifier in the request payload.
+- Pagination cursors for `getConversations`, `getConversationMessages`, and `getConversationVariables` may be omitted, `null`, or `''` to request the first page.
 - For streaming responses, iterate the returned AsyncIterable. Use `stream.toText()` to collect text.
+- `stream.toText()` rejects with `APIError` when Dify sends an `error` event, even if the HTTP status is 200. Iterating the stream directly still yields these events for custom handling.
 
 ## Maintainers
 
-This package is published from the repository workspace. Install dependencies from the repository root with `pnpm install`, then use `./scripts/publish.sh` for dry runs and publishing so `catalog:` dependencies are resolved before release.
+This package is published from the repository workspace. Install dependencies from the repository root with `pnpm install`, then run the following commands from the same directory so `catalog:` dependencies are resolved before release:
+
+```sh
+# Check the package without publishing
+./sdks/nodejs-client/scripts/publish.sh --dry-run
+
+# Publish the package
+./sdks/nodejs-client/scripts/publish.sh
+```
 
 ## License
 

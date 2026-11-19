@@ -71,9 +71,7 @@ def clean_notion_document_task(document_ids: list[str], dataset_id: str):
     end_at = time.perf_counter()
     logger.info(
         click.style(
-            "Clean document when import form notion document deleted end :: {} latency: {}".format(
-                dataset_id, end_at - start_at
-            ),
+            f"Clean document when import form notion document deleted end :: {dataset_id} latency: {end_at - start_at}",
             fg="green",
         )
     )

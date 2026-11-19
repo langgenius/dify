@@ -1,6 +1,6 @@
 import type { CallFlags } from '@/call/flags'
 import { Buffer } from 'node:buffer'
-import { mkdtempSync, readFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { expect, it } from 'vite-plus/test'
@@ -134,6 +134,120 @@ it('file names an unnamed download after the op and its content type', async () 
     )
     await blob.code
     expect(JSON.parse(blob.buf.outBuf())).toMatchObject({ path: join(here, `${OP_ID}.bin`) })
+  } finally {
+    process.chdir(cwd)
+  }
+})
+
+it.each([
+  ['../../escape.txt', 'escape.txt'],
+  ['/etc/passwd', 'passwd'],
+  ['..\\..\\win.txt', 'win.txt'],
+  ['..', `${OP_ID}.txt`],
+  ['dir/', 'dir'],
+])('file keeps only the base name of the server filename %s', async (sent, kept) => {
+  const dir = mkdtempSync(join(tmpdir(), 'difyctl-file-'))
+  const cwd = process.cwd()
+  process.chdir(dir)
+  const here = process.cwd()
+  try {
+    const r = render(
+      'file',
+      new Response('x', {
+        headers: {
+          'content-type': 'text/plain',
+          'content-disposition': `attachment; filename="${sent}"`,
+        },
+      }),
+    )
+    await r.code
+    expect(JSON.parse(r.buf.outBuf())).toMatchObject({ path: join(here, kept) })
+    expect(readFileSync(join(here, kept), 'utf8')).toBe('x')
+  } finally {
+    process.chdir(cwd)
+  }
+})
+
+it('file refuses to overwrite an existing file it named itself, and keeps the old bytes', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'difyctl-file-'))
+  const cwd = process.cwd()
+  process.chdir(dir)
+  const here = join(process.cwd(), 'r.txt')
+  writeFileSync(here, 'old')
+  try {
+    const r = render(
+      'file',
+      new Response('new', {
+        headers: {
+          'content-type': 'text/plain',
+          'content-disposition': 'attachment; filename="r.txt"',
+        },
+      }),
+    )
+    await expect(r.code).rejects.toMatchObject({
+      code: 'usage_missing_arg',
+      message: `${here} already exists; not overwriting it`,
+      hint: 'pass --output <path> to choose where to save it',
+    })
+    expect(readFileSync(here, 'utf8')).toBe('old')
+    expect(r.buf.outBuf()).toBe('')
+  } finally {
+    process.chdir(cwd)
+  }
+})
+
+it('file overwrites an existing file when --output names it', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'difyctl-file-'))
+  const out = join(dir, 'z.txt')
+  writeFileSync(out, 'old')
+  const r = render('file', new Response('new', { headers: { 'content-type': 'text/plain' } }), {
+    output: out,
+  })
+  await r.code
+  expect(readFileSync(out, 'utf8')).toBe('new')
+})
+
+it('file reports other write failures as a failed write, not an existing file', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'difyctl-file-'))
+  const out = join(dir, 'missing', 'z.txt')
+  const r = render('file', new Response('x'), { output: out })
+  await expect(r.code).rejects.toMatchObject({
+    code: 'unknown',
+    message: `failed to write file: ${out}`,
+  })
+})
+
+it.each([
+  ["attachment; filename*=UTF-8''%E6%B5%8B%E8%AF%95.zip", '\u6D4B\u8BD5.zip'],
+  [
+    "attachment; filename=export.zip; filename*=UTF-8'en'%E6%B5%8B%E8%AF%95.zip",
+    '\u6D4B\u8BD5.zip',
+  ],
+  ["attachment; FILENAME*=utf-8''report%20%2B%20100%25.zip", 'report + 100%.zip'],
+  ["attachment; filename*=UTF-8''broken%ZZ.zip; filename=fallback.zip", 'fallback.zip'],
+  ["attachment; filename*=UTF-8''%FF.zip; filename=fallback.zip", 'fallback.zip'],
+  ["attachment; filename*=UTF-8''; filename=fallback.zip", 'fallback.zip'],
+  ["attachment; filename*=UTF-8''dir%2Freport.zip; filename=fallback.zip", 'report.zip'],
+  ['attachment; filename=report%20name.zip', 'report%20name.zip'],
+  ["attachment; filename*=ISO-8859-1''%A3.zip; filename=fallback.zip", 'fallback.zip'],
+  ["attachment; filename*=UTF-8''dir%2Freport.zip", 'report.zip'],
+  ["attachment; filename*=UTF-8''invoice%E2%80%AEfdp.exe; filename=fallback.zip", 'fallback.zip'],
+])('file resolves download names from %s', async (disposition, filename) => {
+  const dir = mkdtempSync(join(tmpdir(), 'difyctl-filename-'))
+  const cwd = process.cwd()
+  process.chdir(dir)
+  const here = process.cwd()
+  try {
+    const r = render(
+      'file',
+      new Response(new Uint8Array([1, 2, 3]), {
+        headers: { 'content-disposition': disposition },
+      }),
+    )
+    expect(await r.code).toBe(0)
+    const path = join(here, filename)
+    expect(JSON.parse(r.buf.outBuf())).toMatchObject({ path, size: 3 })
+    expect(readFileSync(path)).toEqual(Buffer.from([1, 2, 3]))
   } finally {
     process.chdir(cwd)
   }

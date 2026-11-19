@@ -23,7 +23,7 @@ from services.saved_message_service import (
     SavedMessagePage,
     SavedMessageRecord,
 )
-from tests.unit_tests.model_factories import make_account, make_tenant
+from tests.helpers.unit.model_factories import make_account, make_tenant
 
 _INPUT_FILE_URL = "https://example.com/input.pdf"
 _CREATED_AT = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)

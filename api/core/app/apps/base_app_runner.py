@@ -3,7 +3,7 @@ import logging
 import time
 from collections.abc import Generator, Mapping, Sequence
 from mimetypes import guess_extension
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy.orm import Session
 
@@ -23,7 +23,6 @@ from core.app.entities.queue_entities import (
     QueueMessageFileEvent,
 )
 from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
-from core.app.features.hosting_moderation.hosting_moderation import HostingModerationFeature
 from core.db.session_factory import session_factory
 from core.external_data_tool.external_data_fetch import ExternalDataFetch
 from core.memory.token_buffer_memory import TokenBufferMemory
@@ -33,6 +32,7 @@ from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.simple_prompt_transform import ModelMode, SimplePromptTransform
 from core.tools.tool_file_manager import ToolFileManager
+from extensions.application_services.moderation_policy import platform_owns_openai_moderation
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
@@ -115,7 +115,7 @@ class AppRunner:
         """
         # get prompt without memory and context
         if prompt_template_entity.prompt_type == PromptTemplateEntity.PromptType.SIMPLE:
-            prompt_transform: Union[SimplePromptTransform, AdvancedPromptTransform]
+            prompt_transform: SimplePromptTransform | AdvancedPromptTransform
             prompt_transform = SimplePromptTransform()
             prompt_messages, stop = prompt_transform.get_prompt(
                 app_mode=AppMode.value_of(app_record.mode),
@@ -133,7 +133,7 @@ class AppRunner:
             memory_config = MemoryConfig(window=MemoryConfig.WindowConfig(enabled=False))
 
             model_mode = ModelMode(model_config.mode)
-            prompt_template: Union[CompletionModelPromptTemplate, list[ChatModelMessage]]
+            prompt_template: CompletionModelPromptTemplate | list[ChatModelMessage]
             if model_mode == ModelMode.COMPLETION:
                 advanced_completion_prompt_template = prompt_template_entity.advanced_completion_prompt_template
                 if not advanced_completion_prompt_template:
@@ -188,8 +188,7 @@ class AppRunner:
         :return:
         """
         if stream:
-            index = 0
-            for token in text:
+            for index, token in enumerate(text):
                 chunk = LLMResultChunk(
                     model=app_generate_entity.model_conf.model,
                     prompt_messages=prompt_messages,
@@ -197,7 +196,6 @@ class AppRunner:
                 )
 
                 queue_manager.publish(QueueLLMChunkEvent(chunk=chunk), PublishFrom.APPLICATION_MANAGER)
-                index += 1
                 time.sleep(0.01)
 
         queue_manager.publish(
@@ -214,7 +212,7 @@ class AppRunner:
 
     def _handle_invoke_result(
         self,
-        invoke_result: Union[LLMResult, Generator[Any]],
+        invoke_result: LLMResult | Generator[Any],
         queue_manager: AppQueueManager,
         stream: bool,
         agent: bool = False,
@@ -466,16 +464,7 @@ class AppRunner:
         query: str | None = None,
         message_id: str,
     ) -> tuple[bool, Mapping[str, Any], str]:
-        """
-        Process sensitive_word_avoidance.
-        :param app_id: app id
-        :param tenant_id: tenant id
-        :param app_generate_entity: app generate entity
-        :param inputs: inputs
-        :param query: query
-        :param message_id: message id
-        :return:
-        """
+        """Check the admitted app input; defer OpenAI checks only on the selected platform route."""
         moderation_feature = InputModeration()
         return moderation_feature.check(
             app_id=app_id,
@@ -484,37 +473,9 @@ class AppRunner:
             inputs=dict(inputs),
             query=query or "",
             message_id=message_id,
-            trace_manager=app_generate_entity.trace_manager,
+            trace_scope=app_generate_entity.trace_scope,
+            platform_owned=platform_owns_openai_moderation(app_generate_entity),
         )
-
-    def check_hosting_moderation(
-        self,
-        application_generate_entity: EasyUIBasedAppGenerateEntity,
-        queue_manager: AppQueueManager,
-        prompt_messages: list[PromptMessage],
-    ) -> bool:
-        """
-        Check hosting moderation
-        :param application_generate_entity: application generate entity
-        :param queue_manager: queue manager
-        :param prompt_messages: prompt messages
-        :return:
-        """
-        hosting_moderation_feature = HostingModerationFeature()
-        moderation_result = hosting_moderation_feature.check(
-            application_generate_entity=application_generate_entity, prompt_messages=prompt_messages
-        )
-
-        if moderation_result:
-            self.direct_output(
-                queue_manager=queue_manager,
-                app_generate_entity=application_generate_entity,
-                prompt_messages=prompt_messages,
-                text="I apologize for any confusion, but I'm an AI assistant to be helpful, harmless, and honest.",
-                stream=application_generate_entity.stream,
-            )
-
-        return moderation_result
 
     def fill_in_inputs_from_external_data_tools(
         self,

@@ -1,51 +1,40 @@
-import type { RelatedAppResponse } from '@/models/datasets'
+import type { RelatedAppResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Statistics from '../statistics'
 
-vi.mock('@/app/components/base/linked-apps-panel', () => ({
-  default: () => <div>linked applications</div>,
+vi.mock('@/context/i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/context/i18n')>()),
+  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
 }))
+const app: RelatedAppResponse = {
+  id: 'app-1',
+  name: 'Support assistant',
+  description: '',
+  mode: 'chat',
+  icon: '🤖',
+  icon_type: 'emoji',
+  icon_background: '#FFFFFF',
+}
 
-vi.mock('../../no-linked-apps-panel', () => ({
-  default: () => <div>no linked applications</div>,
-}))
+it('shows document and application counts and links to the connected application', async () => {
+  const user = userEvent.setup()
+  render(<Statistics expand documentCount={12} relatedApps={{ total: 1, data: [app] }} />)
+  expect(screen.getByText('12')).toBeInTheDocument()
+  expect(screen.getByText('1')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'common.datasetMenus.relatedApp' }))
+  expect(await screen.findByRole('link', { name: /Support assistant/ })).toHaveAttribute(
+    'href',
+    '/app/app-1/overview',
+  )
+})
 
-describe('Statistics', () => {
-  it('shows document and related application counts', () => {
-    render(
-      <Statistics
-        expand
-        documentCount={12}
-        relatedApps={{ total: 3, data: [] } as RelatedAppResponse}
-      />,
-    )
-
-    expect(screen.getByText('12')).toBeInTheDocument()
-    expect(screen.getByText('3')).toBeInTheDocument()
-  })
-
-  it('shows linked applications from the related-apps control', async () => {
-    const user = userEvent.setup()
-    render(
-      <Statistics
-        expand
-        documentCount={12}
-        relatedApps={{ total: 1, data: [{ id: 'app-1' }] } as RelatedAppResponse}
-      />,
-    )
-
-    await user.click(screen.getByRole('button', { name: 'common.datasetMenus.relatedApp' }))
-
-    expect(screen.getByText('linked applications')).toBeInTheDocument()
-  })
-
-  it('shows an empty state when there are no linked applications', async () => {
-    const user = userEvent.setup()
-    render(<Statistics expand documentCount={12} relatedApps={{ total: 0, data: [] }} />)
-
-    await user.click(screen.getByRole('button', { name: 'common.datasetMenus.relatedApp' }))
-
-    expect(screen.getByText('no linked applications')).toBeInTheDocument()
-  })
+it('links to knowledge integration documentation when no applications use the dataset', async () => {
+  const user = userEvent.setup()
+  render(<Statistics expand documentCount={12} relatedApps={{ total: 0, data: [] }} />)
+  await user.click(screen.getByRole('button', { name: 'common.datasetMenus.relatedApp' }))
+  expect(await screen.findByRole('link', { name: 'common.datasetMenus.viewDoc' })).toHaveAttribute(
+    'href',
+    'https://docs.example.com/use-dify/knowledge/integrate-knowledge-within-application',
+  )
 })

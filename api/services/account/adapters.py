@@ -3,10 +3,12 @@
 import logging
 import secrets
 import uuid
-from collections.abc import Sequence
+from collections.abc import Generator, Sequence
+from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
-from typing import override
+from time import time
+from typing import assert_never, override
 
 from pydantic import TypeAdapter, ValidationError
 from redis import RedisError
@@ -15,6 +17,7 @@ from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
 from enums import DeploymentEdition
+from enums.account import TenantAccountRole
 from extensions.ext_redis import RedisClientWrapper
 from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter, TokenManager
@@ -40,7 +43,13 @@ from services.account_change_email_ports import (
 )
 from services.account_deletion_feedback_service import AccountDeletionFeedbackGateway
 from services.account_education_service import AccountEducationGateway
-from services.account_errors import AccountDeletionRateLimitError
+from services.account_errors import (
+    AccountApplicationError,
+    AccountDeletionRateLimitError,
+    EducationActivationFailedError,
+    EducationRequestInProgressError,
+    EducationVerificationFailedError,
+)
 from services.account_ports import (
     AccountDeletionScheduler,
     AccountDeletionSyncGateway,
@@ -48,10 +57,11 @@ from services.account_ports import (
     AccountDeletionVerificationNotifier,
 )
 from services.account_security_gateway import RedisAccountEmailSecurityGateway
+from services.billing_client import billing
 from services.billing_service import BillingService
 from services.enterprise.account_deletion_sync import sync_account_deletion_memberships
 from services.enterprise.enterprise_service import try_join_default_workspace
-from services.entities.account_activation_entities import InvitationLookup, InvitationToken
+from services.entities.account_activation_entities import InvitationLookup, InvitationToken, PendingWorkspaceInvitation
 from services.entities.account_entities import (
     AccountChangeEmailNewEmailToken,
     AccountChangeEmailNewEmailVerifiedToken,
@@ -62,6 +72,8 @@ from services.entities.account_entities import (
     AccountDeletionChallenge,
     AccountEducationActivation,
     AccountEducationAutocomplete,
+    AccountEducationEligible,
+    AccountEducationNotEligible,
     AccountEducationStatus,
     AccountEducationVerification,
 )
@@ -72,6 +84,7 @@ from services.entities.auth_entities import (
     ChangeEmailOldEmailVerifiedToken,
     ChangeEmailTokenData,
 )
+from services.errors.billing import UnknownErrorReason
 from services.telemetry_service import CommunityTelemetryService
 from tasks.delete_account_task import delete_account_task
 from tasks.mail_account_deletion_task import send_account_deletion_verification_code
@@ -108,10 +121,25 @@ class AccountIdentityGateway:
         return self._accounts.find_identity(email, case_fallback=case_fallback)
 
     def load_user(self, account_id: str) -> Account | None:
+        """Load a session identity that has an active workspace; ``None`` when it has none."""
         now = naive_utc_now()
-        account = self._accounts.load_identity(account_id, now=now)
+        return self._admit(self._accounts.load_identity(account_id, now=now), now)
+
+    def load_account(self, account_id: str) -> Account | None:
+        """Load a session identity for account-scoped resources without resolving a workspace.
+
+        Workspace memberships are neither read nor changed. Banned accounts are refused and
+        activity is recorded as for ``load_user``.
+
+        Raises:
+            Unauthorized: The account is banned.
+        """
+        return self._admit(self._accounts.get_model(account_id), naive_utc_now())
+
+    def _admit(self, account: Account | None, now: datetime) -> Account | None:
         if account is None:
             return None
+        account_id = account.id
         if account.status == AccountStatus.BANNED:
             raise Unauthorized("Account is banned.")
         before = now - _ACCOUNT_LAST_ACTIVE_REFRESH_INTERVAL
@@ -160,13 +188,92 @@ class RedisInvitationTokenStore(InvitationTokenStore):
         self._redis = redis
 
     def create(self, invitation: InvitationToken) -> str:
+        """Issue a link and index it under its workspace; no link stays live without its index entry.
+
+        Raises:
+            RedisError: The link or its index entry could not be written; nothing stays live.
+        """
         token = str(uuid.uuid4())
-        self._redis.setex(
-            self._invitation_token_key(token),
-            dify_config.INVITE_EXPIRY_HOURS * 60 * 60,
-            _invitation_token_adapter.dump_json(invitation),
-        )
+        expiry_seconds = dify_config.INVITE_EXPIRY_HOURS * 60 * 60
+        token_key = self._invitation_token_key(token)
+        self._redis.setex(token_key, expiry_seconds, _invitation_token_adapter.dump_json(invitation))
+        try:
+            now = time()
+            key = self._pending_workspace_key(invitation.workspace_id)
+            self._redis.zremrangebyscore(key, "-inf", now)
+            self._redis.zadd(key, {token: now + expiry_seconds})
+            self._redis.expire(key, expiry_seconds)
+        except RedisError:
+            try:
+                self._redis.delete(token_key)
+            except RedisError:
+                logger.warning("Could not remove an unindexed invitation link", exc_info=True)
+            raise
         return token
+
+    def list_pending(self, workspace_id: str) -> tuple[PendingWorkspaceInvitation, ...]:
+        """Return live invitations for this workspace with the latest outstanding link per email."""
+        entries = self._redis.zrangebyscore_withscores(self._pending_workspace_key(workspace_id), f"({time()}", "+inf")
+        pending: dict[str, PendingWorkspaceInvitation] = {}
+        for token_bytes, expiry in reversed(entries):
+            lookup = InvitationLookup(workspace_id=None, email=None, token=token_bytes.decode())
+            invitation = self.find(lookup)
+            if (
+                invitation is not None
+                and invitation.workspace_id == workspace_id
+                and invitation.role is not None
+                and invitation.role != TenantAccountRole.OWNER
+                and TenantAccountRole.is_valid_role(invitation.role)
+                and invitation.email.lower() not in pending
+                and not self.is_membership_consumed(lookup)
+            ):
+                pending[invitation.email.lower()] = PendingWorkspaceInvitation(
+                    account_id=invitation.account_id,
+                    email=invitation.email,
+                    role=TenantAccountRole(invitation.role),
+                    expires_at=datetime.fromtimestamp(expiry, UTC),
+                )
+        return tuple(pending.values())
+
+    def revoke_pending(self, workspace_id: str, email: str, *, account_id: str | None, keep_token: str | None) -> None:
+        """Invalidate every invitation link for this email or account in the workspace except ``keep_token``.
+
+        Indexed links are deleted. Links issued before every link was indexed cannot be found by
+        email, so the account is also marked: from now on only indexed links are accepted for it.
+        """
+        if account_id is not None:
+            self._redis.setex(
+                self._unindexed_revoked_key(workspace_id, account_id), dify_config.INVITE_EXPIRY_HOURS * 60 * 60, "1"
+            )
+        key = self._pending_workspace_key(workspace_id)
+        normalized_email = email.lower()
+        tokens = [token_bytes.decode() for token_bytes, _ in self._redis.zrangebyscore_withscores(key, "-inf", "+inf")]
+        for token in tokens:
+            invitation = self._read_token(token)
+            if token != keep_token and (
+                invitation is None
+                or (
+                    invitation.workspace_id == workspace_id
+                    and (invitation.email.lower() == normalized_email or invitation.account_id == account_id)
+                )
+            ):
+                self._discard(key, token)
+
+    def discard(self, workspace_id: str, token: str) -> None:
+        """Delete one issued link and its index entry."""
+        self._discard(self._pending_workspace_key(workspace_id), token)
+
+    def _discard(self, key: str, token: str) -> None:
+        self._redis.delete(self._invitation_token_key(token))
+        self._redis.zrem(key, token)
+
+    def _read_token(self, token: str) -> InvitationToken | None:
+        data = self._redis.get(self._invitation_token_key(token))
+        return _invitation_token_adapter.validate_json(data) if data is not None else None
+
+    @staticmethod
+    def _pending_workspace_key(workspace_id: str) -> str:
+        return f"member_invite:pending:{workspace_id}"
 
     @override
     def find(self, invitation: InvitationLookup) -> InvitationToken | None:
@@ -174,16 +281,35 @@ class RedisInvitationTokenStore(InvitationTokenStore):
             account_id = self._redis.get(self._workspace_invitation_key(invitation))
             if account_id is None:
                 return None
-            return InvitationToken(
+            legacy = InvitationToken(
                 account_id=account_id.decode("utf-8"),
                 email=invitation.email,
                 workspace_id=invitation.workspace_id,
             )
+            return None if self._is_unindexed_revoked(legacy) else legacy
 
         data = self._redis.get(self._invitation_token_key(invitation.token))
         if data is None:
             return None
-        return _invitation_token_adapter.validate_json(data)
+        token = _invitation_token_adapter.validate_json(data)
+        if self._is_unindexed_revoked(token) and not self._is_indexed(token.workspace_id, invitation.token):
+            return None
+        return token
+
+    def _is_unindexed_revoked(self, token: InvitationToken) -> bool:
+        return self._redis.get(self._unindexed_revoked_key(token.workspace_id, token.account_id)) == b"1"
+
+    def _is_indexed(self, workspace_id: str, token: str) -> bool:
+        entries = self._redis.zrangebyscore_withscores(self._pending_workspace_key(workspace_id), "-inf", "+inf")
+        return any(entry.decode() == token for entry, _ in entries)
+
+    @staticmethod
+    def _unindexed_revoked_key(workspace_id: str, account_id: str) -> str:
+        return f"member_invite:unindexed_revoked:{workspace_id}:{account_id}"
+
+    @override
+    def is_membership_consumed(self, invitation: InvitationLookup) -> bool:
+        return self._redis.get(self._membership_used_key(invitation.token)) == b"1"
 
     @override
     def revoke(self, invitation: InvitationLookup) -> None:
@@ -195,6 +321,10 @@ class RedisInvitationTokenStore(InvitationTokenStore):
     @staticmethod
     def _invitation_token_key(token: str) -> str:
         return f"member_invite:token:{token}"
+
+    @classmethod
+    def _membership_used_key(cls, token: str) -> str:
+        return f"{cls._invitation_token_key(token)}:membership_used"
 
     @staticmethod
     def _workspace_invitation_key(invitation: InvitationLookup) -> str:
@@ -249,11 +379,58 @@ class RBACWorkspaceMemberAccessSync(WorkspaceMemberAccessSync):
         )
 
 
+def _education_error(error: billing.BillingEducationUpstreamError) -> AccountApplicationError | None:
+    """The account error for a billing failure, or None to leave it to the generic billing errors."""
+    match error.reason:
+        case "EDUCATION_VERIFY_FAILED":
+            return EducationVerificationFailedError()
+        case "EDUCATION_CREATE_FAILED":
+            return EducationActivationFailedError()
+        case "REQUEST_IN_PROGRESS":
+            return EducationRequestInProgressError()
+        case (
+            ""
+            | "CODEC"
+            | "VALIDATOR"
+            | "UNKNOWN"
+            | "INVALID_SECRET_KEY"
+            | "MISSING_TENANT_ID"
+            | "INVALID_TENANT_ID"
+            | "MISSING_ACCOUNT_ID"
+            | "INVALID_ACCOUNT_ID"
+            | "MISSING_PREFILLED_EMAIL"
+            | "EDUCATION_STATUS_FAILED"
+        ):
+            return None
+        case UnknownErrorReason() | None:
+            return None
+        case unreachable:
+            assert_never(unreachable)
+
+
+@contextmanager
+def _education_errors() -> Generator[None]:
+    try:
+        yield
+    except billing.BillingEducationUpstreamError as error:
+        mapped = _education_error(error)
+        if mapped is None:
+            raise
+        raise mapped from error
+
+
 class BillingAccountEducationGateway(AccountEducationGateway):
     @override
     def verify(self, *, account_id: str) -> AccountEducationVerification:
-        result = BillingService.EducationIdentity.verify(account_id=account_id) or {}
-        return AccountEducationVerification(token=result.get("token"))
+        with _education_errors():
+            result = BillingService.EducationIdentity.verify(account_id=account_id)
+        match result.status:
+            case "eligible":
+                return AccountEducationEligible(token=result.token)
+            case "not_eligible":
+                return AccountEducationNotEligible()
+            case _:
+                assert_never(result.status)
 
     @override
     def activate(
@@ -265,33 +442,36 @@ class BillingAccountEducationGateway(AccountEducationGateway):
         institution: str,
         role: str,
     ) -> AccountEducationActivation:
-        result = BillingService.EducationIdentity.activate(
-            account_id=account_id,
-            tenant_id=tenant_id,
-            token=token,
-            institution=institution,
-            role=role,
-        )
-        return AccountEducationActivation(message=result["message"])
+        with _education_errors():
+            result = BillingService.EducationIdentity.activate(
+                account_id=account_id,
+                tenant_id=tenant_id,
+                token=token,
+                institution=institution,
+                role=role,
+            )
+        return AccountEducationActivation(message=result.message)
 
     @override
     def status(self, account_id: str) -> AccountEducationStatus:
-        result = BillingService.EducationIdentity.status(account_id) or {}
-        expire_at = result.get("expire_at")
+        with _education_errors():
+            result = BillingService.EducationIdentity.status(account_id)
         return AccountEducationStatus(
-            result=result.get("result"),
-            is_student=result.get("is_student"),
-            expire_at=datetime.fromisoformat(expire_at).astimezone(UTC) if isinstance(expire_at, str) else expire_at,
-            allow_refresh=result.get("allow_refresh"),
+            result=result.result,
+            is_student=result.is_student,
+            expire_at=result.expire_at,
+            allow_refresh=result.allow_refresh,
+            can_redeem_discount=result.can_redeem_discount,
         )
 
     @override
     def autocomplete(self, *, keywords: str, page: int, limit: int) -> AccountEducationAutocomplete:
-        result = BillingService.EducationIdentity.autocomplete(keywords, page, limit) or {}
+        with _education_errors():
+            result = BillingService.EducationIdentity.autocomplete(keywords, page, limit)
         return AccountEducationAutocomplete(
-            data=tuple(result.get("data") or ()),
-            curr_page=result.get("curr_page"),
-            has_next=result.get("has_next"),
+            data=tuple(result.data or ()),
+            curr_page=result.curr_page,
+            has_next=result.has_next,
         )
 
 

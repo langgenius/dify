@@ -177,7 +177,7 @@ class TestCorrelationIdGeneratorGenerateSpanId:
 
         set_span_id_source("not-a-uuid")
         gen = CorrelationIdGenerator()
-        with patch("enterprise.telemetry.id_generator.random.getrandbits", return_value=7) as mock_rng:
+        with patch("enterprise.telemetry.id_generator.random.getrandbits", return_value=7):
             span_id = gen.generate_span_id()
         assert span_id == 7
 
