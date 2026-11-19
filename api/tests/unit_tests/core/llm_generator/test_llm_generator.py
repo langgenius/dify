@@ -2,6 +2,7 @@ import json
 from collections.abc import Iterator
 from datetime import datetime, timedelta
 from decimal import Decimal
+from typing import NoReturn
 from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
@@ -15,7 +16,14 @@ from sqlalchemy.orm import Session, scoped_session, sessionmaker
 import core.llm_generator.llm_generator as generator_module
 from core.app.app_config.entities import ModelConfig
 from core.llm_generator import llm_generator as llm_generator_module
-from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
+from core.llm_generator.decision_generator import decision_result_error
+from core.llm_generator.entities import (
+    DecisionGeneratePayload,
+    DecisionGenerateVariable,
+    RuleCodeGeneratePayload,
+    RuleGeneratePayload,
+    RuleStructuredOutputPayload,
+)
 from core.llm_generator.llm_generator import LLMGenerator, _parse_string_list
 from core.llm_generator.prompts import CONVERSATION_TITLE_PROMPT
 from core.model_manager import ModelManager
@@ -24,7 +32,7 @@ from core.workflow.generator import tool_catalogue as tool_catalogue_module
 from core.workflow.generator.tool_catalogue import ToolCatalogueEntry
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMUsage
-from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
 from graphon.model_runtime.errors.invoke import InvokeError
 from models.dataset import Dataset
 from models.enums import ConversationFromSource, CreatorUserRole
@@ -1049,3 +1057,122 @@ class TestLlmGeneratorMissingCases:
 
             assert callable(service.get_draft_workflow)
             assert callable(service.get_node_last_run)
+
+
+class _ScriptedDecisionReplies:
+    """Stands in for ``ModelInstance.invoke_llm``: returns the scripted replies in order and records each prompt."""
+
+    def __init__(self, replies: list[str]) -> None:
+        self._replies = list(replies)
+        self.prompts: list[list[PromptMessage]] = []
+
+    def __call__(self, *, prompt_messages: list[PromptMessage], **_kwargs: object) -> LLMResult:
+        self.prompts.append(list(prompt_messages))
+        return _llm_result(self._replies.pop(0))
+
+
+def _decision_payload() -> DecisionGeneratePayload:
+    return DecisionGeneratePayload(
+        instruction="orders over 500 need approval",
+        model_config=ModelConfig(provider="openai", name="gpt-4", mode=LLMMode.CHAT, completion_params={}),
+        available_variables=[
+            DecisionGenerateVariable(value_selector=["start", "amount"], type="number", description="")
+        ],
+    )
+
+
+_VALID_DECISION_REPLY = json.dumps(
+    {
+        "decide_by": "rules",
+        "outcomes": [
+            {
+                "id": "needs_approval",
+                "label": "Needs approval",
+                "when": {
+                    "logical_operator": "and",
+                    "conditions": [
+                        {"variable_selector": ["start", "amount"], "comparison_operator": ">", "value": 500}
+                    ],
+                },
+            }
+        ],
+    }
+)
+
+#: A rules proposal whose only rule names a variable the node cannot read, without
+#: the ``when_description`` the llm fallback would need.
+_UNWRITABLE_RULES_REPLY = json.dumps(
+    {
+        "decide_by": "rules",
+        "outcomes": [
+            {
+                "id": "needs_approval",
+                "label": "Needs approval",
+                "when": {
+                    "logical_operator": "and",
+                    "conditions": [
+                        {"variable_selector": ["orders", "total"], "comparison_operator": ">", "value": 500}
+                    ],
+                },
+            }
+        ],
+    }
+)
+
+
+class TestGenerateDecisionRepair:
+    """``LLMGenerator.generate_decision``: the repair retry and the failures it cannot repair."""
+
+    @staticmethod
+    def _install(monkeypatch: pytest.MonkeyPatch, invoke: object) -> None:
+        model_instance = make_model_instance(provider="openai", model="gpt-4")
+        monkeypatch.setattr(model_instance, "invoke_llm", invoke)
+        model_manager = create_plugin_model_manager(tenant_id="tenant")
+        monkeypatch.setattr(model_manager, "get_model_instance", lambda **_kwargs: model_instance)
+        monkeypatch.setattr(llm_generator_module.ModelManager, "for_tenant", lambda **_kwargs: model_manager)
+
+    def test_a_first_reply_that_is_not_json_is_repaired(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        replies = _ScriptedDecisionReplies(["Sorry, I cannot answer in JSON.", _VALID_DECISION_REPLY])
+        self._install(monkeypatch, replies)
+
+        result = LLMGenerator.generate_decision("tenant", _decision_payload())
+
+        assert result["error"] == ""
+        assert [outcome["id"] for outcome in result["outcomes"]] == ["needs_approval"]
+        repair_prompt = replies.prompts[1][1].content
+        assert isinstance(repair_prompt, str)
+        assert "Sorry, I cannot answer in JSON." in repair_prompt
+        assert "The reply was not a JSON object." in repair_prompt
+
+    def test_two_replies_that_are_not_json_return_the_parse_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        replies = _ScriptedDecisionReplies(["Sorry.", "Still sorry."])
+        self._install(monkeypatch, replies)
+
+        result = LLMGenerator.generate_decision("tenant", _decision_payload())
+
+        assert result == decision_result_error(
+            "Failed to generate the decision configuration: The reply was not a JSON object."
+        )
+        assert len(replies.prompts) == 2
+
+    def test_an_unexpected_model_error_returns_its_message(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        def _fail(**_kwargs: object) -> NoReturn:
+            raise RuntimeError("socket closed")
+
+        self._install(monkeypatch, _fail)
+
+        result = LLMGenerator.generate_decision("tenant", _decision_payload())
+
+        assert result == decision_result_error("Failed to generate the decision configuration. Error: socket closed")
+
+    def test_unwritable_rules_without_descriptions_return_the_validation_error(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The llm fallback needs each outcome's description; without one the rules error stands."""
+        self._install(monkeypatch, _ScriptedDecisionReplies([_UNWRITABLE_RULES_REPLY, _UNWRITABLE_RULES_REPLY]))
+
+        result = LLMGenerator.generate_decision("tenant", _decision_payload())
+
+        assert result["decide_by"] == ""
+        assert result["error"].startswith("Failed to generate the decision configuration: ")
+        assert 'variable_selector ["orders", "total"] is not one of the available variables' in result["error"]

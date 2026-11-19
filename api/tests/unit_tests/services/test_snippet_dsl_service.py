@@ -893,6 +893,20 @@ def test_extract_dependencies_from_workflow_graph_ignores_a_rules_decision_model
     assert service._extract_dependencies_from_workflow_graph(graph) == ["acme/used"]
 
 
+def test_extract_dependencies_from_workflow_graph_skips_an_llm_decision_without_a_provider(
+    service: SnippetDslService,
+) -> None:
+    """A draft llm-mode decision node whose model is not chosen yet depends on no provider."""
+    graph = {
+        "nodes": [
+            {"data": {"type": "decision", "decide_by": "llm"}},
+            {"data": {"type": "decision", "decide_by": "llm", "model": {"provider": ""}}},
+        ]
+    }
+
+    assert service._extract_dependencies_from_workflow_graph(graph) == []
+
+
 @pytest.mark.usefixtures("plugin_catalog")
 def test_append_workflow_export_data_filters_credentials_and_extracts_dependencies(service: SnippetDslService):
     workflow_dict = {

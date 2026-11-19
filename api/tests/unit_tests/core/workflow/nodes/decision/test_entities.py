@@ -10,6 +10,7 @@ from core.workflow.nodes.decision.entities import (
     DecisionNodeData,
     Outcome,
     RuleGroup,
+    numeric_constant_error,
 )
 
 
@@ -179,3 +180,22 @@ class TestDecisionNodeData:
 
         assert outcome.label == ""
         assert outcome.when is None
+
+
+class TestNumericConstantError:
+    """Only a constant string that cannot parse as a number makes a numeric rule unevaluable."""
+
+    def test_a_non_numeric_string_constant_is_reported(self) -> None:
+        assert numeric_constant_error(">", "lots") == "comparison_operator '>' needs a number, but the value is 'lots'"
+
+    @pytest.mark.parametrize("value", ["500", "-1.5", "{{#start.limit#}}"])
+    def test_a_number_or_a_template_is_accepted(self, value: str) -> None:
+        assert numeric_constant_error("≥", value) is None
+
+    @pytest.mark.parametrize("value", [["3"], True, None])
+    def test_a_non_string_value_is_left_to_the_condition_processor(self, value: object) -> None:
+        """The check inspects constant strings only; other shapes are reported when the rule runs."""
+        assert numeric_constant_error("=", value) is None
+
+    def test_a_non_numeric_operator_never_reports(self) -> None:
+        assert numeric_constant_error("contains", "lots") is None

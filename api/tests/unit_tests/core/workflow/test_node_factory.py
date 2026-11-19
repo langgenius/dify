@@ -1,5 +1,5 @@
 import types
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Generator, Mapping
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch, sentinel
 
@@ -14,6 +14,7 @@ from core.app.entities.app_invoke_entities import (
     UserFrom,
     build_dify_run_context,
 )
+from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import PluginModelRuntime
 from core.plugin.plugin_service import PluginService
@@ -31,6 +32,8 @@ from graphon.enums import BuiltinNodeTypes, NodeExecutionType, NodeType
 from graphon.graph import Graph
 from graphon.graph.validation import GraphValidationError
 from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelFeature, ModelType
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from graphon.nodes.base.node import Node
@@ -45,12 +48,13 @@ from graphon.nodes.variable_assigner.v1.node import (
 from graphon.nodes.variable_assigner.v2.node import (
     VariableAssignerNode as VariableAssignerV2,
 )
-from graphon.runtime import RuntimeState, VariablePool
+from graphon.runtime import InitParams, RuntimeState, VariablePool
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment, StringSegment
+from graphon.variables.variables import FloatVariable, StringVariable
 from models.base import TypeBase
 from models.model import AppMode, Conversation, ConversationFromSource
 from tests.helpers.unit.core.model_fixtures import make_model_instance
-from tests.workflow_test_utils import build_test_graph_init_params
+from tests.workflow_test_utils import build_test_graph_init_params, build_test_variable_pool
 
 
 class DummyNode:
@@ -1612,3 +1616,156 @@ class TestDecisionNodeSwitch:
 
         assert isinstance(node, DecisionNode)
         assert factory.validate_node(dict(self._NODE_CONFIG)) == NodeExecutionType.BRANCH
+
+
+class _RecordingDecisionStream:
+    """Stands in for ``ModelInstance.invoke_llm``: streams one canned reply and records the request metadata."""
+
+    def __init__(self, reply: str) -> None:
+        self._reply = reply
+        self.request_metadata: list[Mapping[str, object] | None] = []
+
+    def __call__(
+        self,
+        *,
+        prompt_messages: list[PromptMessage],
+        request_metadata: Mapping[str, object] | None = None,
+        **_kwargs: object,
+    ) -> Generator[LLMResultChunk]:
+        self.request_metadata.append(request_metadata)
+        return self._stream(prompt_messages)
+
+    def _stream(self, prompt_messages: list[PromptMessage]) -> Generator[LLMResultChunk]:
+        yield LLMResultChunk(
+            model="gpt-4",
+            prompt_messages=prompt_messages,
+            delta=LLMResultChunkDelta(
+                index=0,
+                message=AssistantPromptMessage(content=self._reply),
+                usage=LLMUsage.empty_usage(),
+                finish_reason="stop",
+            ),
+        )
+
+
+class TestDecisionNodeModelWiring:
+    """Only an llm decision node resolves its model; the factory hands it the run's credit metadata."""
+
+    _MODEL: Mapping[str, object] = {"provider": "openai", "name": "gpt-4", "mode": "chat", "completion_params": {}}
+
+    @staticmethod
+    def _factory(*, app_type: CreditUsageAppType | None, created_by: CreditUsageCreatedBy | None) -> DifyNodeFactory:
+        run_context = build_dify_run_context(
+            tenant_id="tenant",
+            app_id="app",
+            user_id="user",
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
+            app_type=app_type,
+            created_by=created_by,
+        )
+        variable_pool = build_test_variable_pool(
+            variables=[
+                StringVariable(name="message", value="I want my money back", selector=["start", "message"]),
+                FloatVariable(name="amount", value=5.0, selector=["start", "amount"]),
+            ]
+        )
+        return DifyNodeFactory(
+            init_params=InitParams(workflow_id="workflow", graph_config={}, run_context=run_context, call_depth=0),
+            runtime_state=RuntimeState(workflow_id="workflow", variable_pool=variable_pool, start_at=0),
+        )
+
+    @pytest.mark.parametrize(
+        ("app_type", "created_by", "expected_metadata"),
+        [
+            (
+                CreditUsageAppType.WORKFLOW,
+                None,
+                {"app_id": "app", "app_type": CreditUsageAppType.WORKFLOW, "created_by": CreditUsageCreatedBy.APP},
+            ),
+            (
+                None,
+                CreditUsageCreatedBy.BUILD_DRAFT,
+                {"app_id": "app", "created_by": CreditUsageCreatedBy.BUILD_DRAFT},
+            ),
+        ],
+    )
+    def test_an_llm_decision_node_invokes_its_model_with_the_run_metadata(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        config_overrides: Callable[..., None],
+        app_type: CreditUsageAppType | None,
+        created_by: CreditUsageCreatedBy | None,
+        expected_metadata: Mapping[str, object],
+    ) -> None:
+        config_overrides(ENABLE_DECISION_NODE=True)
+        model_instance = make_model_instance(provider="openai", model="gpt-4")
+        stream = _RecordingDecisionStream('{"outcome_id": "refund", "reason": "Wants money back."}')
+        monkeypatch.setattr(model_instance, "invoke_llm", stream)
+        monkeypatch.setattr(node_factory, "fetch_model_config", lambda **_kwargs: (model_instance, None))
+        factory = self._factory(app_type=app_type, created_by=created_by)
+
+        node = factory.create_node(
+            {
+                "id": "decision",
+                "data": {
+                    "type": DECISION_NODE_TYPE,
+                    "title": "Decision",
+                    "decide_by": "llm",
+                    "model": dict(self._MODEL),
+                    "outcomes": [{"id": "refund", "label": "Refund", "when": "The user wants a refund"}],
+                    "inputs": [{"variable": "message", "value_selector": ["start", "message"]}],
+                },
+            }
+        )
+        assert isinstance(node, DecisionNode)
+        result = node._run()
+
+        assert result.outputs["outcome_id"] == "refund"
+        assert result.outputs["reason"] == "Wants money back."
+        assert stream.request_metadata == [expected_metadata]
+        # The factory's prompt serializer records the prompts in the saved-prompt shape.
+        assert [prompt["role"] for prompt in result.process_data["prompts"]] == ["system", "user"]
+        assert result.process_data["model_name"] == "gpt-4"
+
+    def test_a_rules_decision_node_never_resolves_a_leftover_model(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        config_overrides: Callable[..., None],
+    ) -> None:
+        config_overrides(ENABLE_DECISION_NODE=True)
+
+        def _unexpected_model_lookup(**_kwargs: object) -> None:
+            raise AssertionError("a rules decision node must not resolve its model")
+
+        monkeypatch.setattr(node_factory, "fetch_model_config", _unexpected_model_lookup)
+        factory = self._factory(app_type=None, created_by=None)
+
+        node = factory.create_node(
+            {
+                "id": "decision",
+                "data": {
+                    "type": DECISION_NODE_TYPE,
+                    "title": "Decision",
+                    "decide_by": "rules",
+                    "model": dict(self._MODEL),
+                    "outcomes": [
+                        {
+                            "id": "large",
+                            "label": "Large",
+                            "when": {
+                                "logical_operator": "and",
+                                "conditions": [
+                                    {"variable_selector": ["start", "amount"], "comparison_operator": ">", "value": "1"}
+                                ],
+                            },
+                        }
+                    ],
+                },
+            }
+        )
+        assert isinstance(node, DecisionNode)
+        result = node._run()
+
+        assert result.outputs["outcome_id"] == "large"
+        assert result.outputs["decided_by"] == "rules"

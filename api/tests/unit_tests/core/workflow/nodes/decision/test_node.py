@@ -329,6 +329,36 @@ class TestRulesMode:
         assert [entry["outcome_id"] for entry in result.process_data["condition_results"]] == ["a", "b"]
         assert [entry["final_result"] for entry in result.process_data["condition_results"]] == [False, True]
 
+    def test_a_boolean_constant_matches_and_renders_in_the_reason(
+        self, build_decision_node: DecisionNodeBuilder
+    ) -> None:
+        node = build_decision_node(
+            _rules_data({"id": "on", "label": "On", "when": _group(_condition(["start", "flag"], "is", True))}),
+            variables=[BooleanVariable(name="flag", value=True, selector=["start", "flag"])],
+        )
+
+        result = node._run()
+
+        assert result.outputs["outcome_id"] == "on"
+        assert result.outputs["reason"] == "flag is True"
+
+    def test_a_fixed_extra_stored_as_null_outputs_an_empty_string(
+        self, build_decision_node: DecisionNodeBuilder
+    ) -> None:
+        """Every output is a string: a null fixed value becomes ``""``, not ``"None"``."""
+        node = build_decision_node(
+            _rules_data(
+                {"id": "refund", "label": "Refund", "when": _group(_condition(["start", "amount"], ">", "3"))},
+                extras=[{"name": "urgency", "from": "fixed", "values": {"refund": None}}],
+            ),
+            variables=[_amount(5.0)],
+        )
+
+        result = node._run()
+
+        assert result.outputs["outcome_id"] == "refund"
+        assert result.outputs["urgency"] == ""
+
 
 class TestDecisionModelMode:
     def test_decision_model_fails_with_a_clear_message(self, build_decision_node: DecisionNodeBuilder) -> None:
@@ -431,6 +461,44 @@ class TestLlmMode:
         assert result.outputs["outcome_id"] == OTHERWISE_HANDLE
         assert result.outputs["reason"] == "Model output was not a JSON object"
 
+    @pytest.mark.parametrize("reply", ['{"reason": "Unsure."}', '{"outcome_id": "", "reason": "Unsure."}'])
+    def test_output_without_an_outcome_id_falls_back_to_otherwise(
+        self, build_decision_node: DecisionNodeBuilder, reply: str
+    ) -> None:
+        node = build_decision_node(
+            _llm_data({"id": "refund", "label": "Refund", "when": "w"}),
+            variables=[_message("hi")],
+            model_instance=FakeDecisionModel(reply),
+            llm_file_saver=UnusedFileSaver(),
+        )
+
+        result = node._run()
+
+        assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+        assert result.outputs["outcome_id"] == OTHERWISE_HANDLE
+        assert result.outputs["reason"] == "Model output did not name an outcome"
+        assert result.edge_source_handle == OTHERWISE_HANDLE
+
+    def test_a_think_block_before_the_answer_is_ignored(self, build_decision_node: DecisionNodeBuilder) -> None:
+        """Reasoning text may contain JSON of its own; only the answer after it decides."""
+        model = FakeDecisionModel(
+            '<think>Maybe {"outcome_id": "human"}? No.</think>{"outcome_id": "refund", "reason": "Wants money back."}'
+        )
+        node = build_decision_node(
+            _llm_data(
+                {"id": "refund", "label": "Refund", "when": "The user wants a refund"},
+                {"id": "human", "label": "Hand off", "when": "The user is upset"},
+            ),
+            variables=[_message("I want my money back")],
+            model_instance=model,
+            llm_file_saver=UnusedFileSaver(),
+        )
+
+        result = node._run()
+
+        assert result.outputs["outcome_id"] == "refund"
+        assert result.outputs["reason"] == "Wants money back."
+
     def test_model_choosing_otherwise_uses_its_reason(self, build_decision_node: DecisionNodeBuilder) -> None:
         model = FakeDecisionModel('{"outcome_id": "otherwise", "reason": "Nothing fits."}')
         node = build_decision_node(
@@ -504,6 +572,34 @@ class TestLlmMode:
 
         assert result.status == WorkflowNodeExecutionStatus.FAILED
         assert "needs a model" in result.error
+
+    def test_missing_model_instance_fails_the_node(self, build_decision_node: DecisionNodeBuilder) -> None:
+        node = build_decision_node(
+            _llm_data({"id": "refund", "label": "Refund", "when": "w"}),
+            variables=[_message("hi")],
+            llm_file_saver=UnusedFileSaver(),
+        )
+
+        result = node._run()
+
+        assert result.status == WorkflowNodeExecutionStatus.FAILED
+        assert result.error == "Decision node needs a model instance when decide_by is 'llm'"
+
+    def test_missing_file_saver_fails_the_node_before_the_model_call(
+        self, build_decision_node: DecisionNodeBuilder
+    ) -> None:
+        model = FakeDecisionModel('{"outcome_id": "refund", "reason": "r"}')
+        node = build_decision_node(
+            _llm_data({"id": "refund", "label": "Refund", "when": "w"}),
+            variables=[_message("hi")],
+            model_instance=model,
+        )
+
+        result = node._run()
+
+        assert result.status == WorkflowNodeExecutionStatus.FAILED
+        assert result.error == "Decision node needs an LLM file saver when decide_by is 'llm'"
+        assert model.prompt_messages == []
 
     def test_no_outcomes_fails_the_node_before_the_model_call(self, build_decision_node: DecisionNodeBuilder) -> None:
         """Zero outcomes fail the node in llm mode too, before any model call."""
@@ -628,6 +724,11 @@ class TestRenderRuleGroup:
 
         assert render_rule_group(group) == 'country in "JP", "KR"'
 
+    def test_renders_a_missing_value_as_nothing(self) -> None:
+        group = RuleGroup.model_validate(_group(_condition(["start", "country"], "is")))
+
+        assert render_rule_group(group) == "country is "
+
 
 class TestVariableSelectorMapping:
     def test_collects_rule_selectors_inputs_and_template_references(self) -> None:
@@ -687,6 +788,26 @@ class TestVariableSelectorMapping:
 
         assert mapping["decision.#start.a#"] == ["start", "a"]
         assert mapping["decision.#start.b#"] == ["start", "b"]
+
+    def test_an_outcome_without_when_contributes_no_selector(self) -> None:
+        """A draft outcome saved before its ``when`` is written references no variable."""
+        node_data = DecisionNodeData.model_validate(
+            {
+                "type": DECISION_NODE_TYPE,
+                "title": "Decision",
+                "decide_by": "llm",
+                "outcomes": [{"id": "blank", "label": "Not written yet"}],
+                "inputs": [{"variable": "message", "value_selector": ["start", "message"]}],
+            }
+        )
+
+        mapping = DecisionNode._extract_variable_selector_to_variable_mapping(
+            graph_config={},
+            node_id="decision",
+            node_data=node_data,
+        )
+
+        assert mapping == {"decision.message": ["start", "message"]}
 
 
 class TestRegistration:

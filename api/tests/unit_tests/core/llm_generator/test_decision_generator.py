@@ -19,6 +19,7 @@ from core.llm_generator.decision_generator import (
     _derive_outcome_id,
     build_decision_config,
     empty_decision_result,
+    fallback_to_llm,
     parse_decision_payload,
 )
 from core.llm_generator.entities import (
@@ -622,6 +623,262 @@ class TestBuildDecisionConfig:
         )
 
 
+def _rules_when(when: object, *, variables: list[DecisionGenerateVariable] | None = None) -> DecisionBuildResult:
+    """Validate a one-outcome rules proposal whose ``when`` is the value under test."""
+    return build_decision_config(
+        {"decide_by": "rules", "outcomes": [{"id": "matched", "label": "Matched", "when": when}]},
+        available_variables=_AMOUNT_VARIABLES if variables is None else variables,
+        preserved_outcomes=[],
+        forced_decide_by=None,
+    )
+
+
+def _llm_with(**overrides: object) -> DecisionBuildResult:
+    """Validate the valid llm proposal with some top-level keys replaced."""
+    return build_decision_config(
+        {**_llm_reply(), **overrides},
+        available_variables=_AMOUNT_VARIABLES,
+        preserved_outcomes=[],
+        forced_decide_by=None,
+    )
+
+
+_AMOUNT_ABOVE: dict[str, object] = {"variable_selector": ["start", "amount"], "comparison_operator": ">", "value": 1}
+
+
+class TestProposalShapeErrors:
+    """Every malformed part of a proposal is named in an error the repair retry quotes back."""
+
+    @pytest.mark.parametrize(
+        ("when", "expected"),
+        [
+            (
+                {"logical_operator": "xor", "conditions": [_AMOUNT_ABOVE]},
+                "outcome 'matched': 'logical_operator' must be 'and' or 'or'",
+            ),
+            ({"logical_operator": "and", "conditions": "amount > 1"}, "outcome 'matched': 'conditions' must be a list"),
+            ({"conditions": ["amount > 1"]}, "outcome 'matched' condition 0 must be an object"),
+            (
+                {"conditions": [{**_AMOUNT_ABOVE, "variable_selector": "start.amount"}]},
+                "outcome 'matched' condition 0: 'variable_selector' must be a non-empty list of strings",
+            ),
+            (
+                {"conditions": [{**_AMOUNT_ABOVE, "comparison_operator": 5}]},
+                "outcome 'matched' condition 0: 'comparison_operator' must be a string",
+            ),
+            (
+                {"conditions": [{**_AMOUNT_ABOVE, "value": None}]},
+                "outcome 'matched' condition 0: a value is required for comparison_operator '>'",
+            ),
+            (
+                {"conditions": [{**_AMOUNT_ABOVE, "value": {"min": 1}}]},
+                "outcome 'matched' condition 0: the value must be a string, a number or a list of strings",
+            ),
+            (
+                {"conditions": [{**_AMOUNT_ABOVE, "value": [1, True]}]},
+                "outcome 'matched' condition 0: the value must be a string, a number or a list of strings",
+            ),
+        ],
+    )
+    def test_a_malformed_rule_is_reported(self, when: dict[str, object], expected: str) -> None:
+        build = _rules_when(when)
+
+        assert build.config is None
+        assert expected in build.errors
+        assert build.valid_rule_groups == 0
+
+    def test_a_logical_operator_defaults_to_and(self) -> None:
+        build = _rules_when({"conditions": [_AMOUNT_ABOVE]})
+
+        assert build.config is not None
+        assert build.config["outcomes"][0]["when"]["logical_operator"] == "and"
+
+    def test_a_boolean_constant_is_kept_as_a_boolean(self) -> None:
+        build = _rules_when(
+            {"conditions": [{"variable_selector": ["start", "vip"], "comparison_operator": "is", "value": True}]},
+            variables=[_variable(["start", "vip"], "boolean")],
+        )
+
+        assert build.config is not None
+        assert build.config["outcomes"][0]["when"]["conditions"] == [
+            {"variable_selector": ["start", "vip"], "comparison_operator": "is", "value": True}
+        ]
+
+    def test_outcomes_that_are_not_a_list_are_reported(self) -> None:
+        build = _llm_with(outcomes="urgent, pass")
+
+        assert build.config is None
+        assert "'outcomes' must be a list of objects" in build.errors
+        assert "At least one outcome is required" in build.errors
+
+    def test_an_outcome_that_is_not_an_object_is_reported_by_position(self) -> None:
+        build = _llm_with(outcomes=["urgent", {"id": "pass", "label": "Pass", "when": "Routine."}])
+
+        assert build.config is None
+        assert build.errors == ["outcomes[0] must be an object"]
+
+    def test_an_empty_llm_when_is_reported(self) -> None:
+        build = _llm_with(outcomes=[{"id": "urgent", "label": "Urgent", "when": "   "}])
+
+        assert build.config is None
+        assert build.errors == ["outcome 'urgent': 'when' must be a non-empty sentence in llm mode"]
+
+    @pytest.mark.parametrize(
+        ("inputs", "expected"),
+        [
+            ("note", "'inputs' must be a list"),
+            (["note"], "inputs[0] must be an object"),
+            (
+                [{"variable": " ", "value_selector": ["start", "note"]}],
+                "inputs[0]: 'variable' must be a non-empty string",
+            ),
+            (
+                [{"variable": "note", "value_selector": []}],
+                "inputs[0]: 'value_selector' must be a non-empty list of strings",
+            ),
+            (
+                [{"variable": "note", "value_selector": ["start", "memo"]}],
+                'inputs[0]: value_selector ["start", "memo"] is not one of the available variables',
+            ),
+        ],
+    )
+    def test_a_malformed_llm_input_is_reported(self, inputs: object, expected: str) -> None:
+        build = _llm_with(inputs=inputs)
+
+        assert build.config is None
+        assert build.errors == [expected]
+
+    def test_missing_llm_inputs_mean_no_inputs(self) -> None:
+        build = _llm_with(inputs=None)
+
+        assert build.config is not None
+        assert build.config["inputs"] == []
+
+    @pytest.mark.parametrize(
+        ("extras", "expected"),
+        [
+            ({"name": "tier", "from": "model"}, "'extras' must be a list"),
+            (["tier"], "extras[0] must be an object"),
+            ([{"name": "tier", "from": "guess"}], "extras[0]: Input should be 'fixed' or 'model'"),
+        ],
+    )
+    def test_a_malformed_extra_is_reported(self, extras: object, expected: str) -> None:
+        build = _llm_with(extras=extras)
+
+        assert build.config is None
+        assert build.errors == [expected]
+
+    @pytest.mark.parametrize(
+        ("otherwise", "expected"),
+        [
+            ("Can't decide", "'otherwise' must be an object with a 'label'"),
+            ({"label": 3}, "'otherwise.label' must be a string"),
+        ],
+    )
+    def test_a_malformed_otherwise_is_reported(self, otherwise: object, expected: str) -> None:
+        build = _llm_with(otherwise=otherwise)
+
+        assert build.config is None
+        assert build.errors == [expected]
+
+    def test_a_missing_otherwise_gets_an_empty_label(self) -> None:
+        build = _llm_with(otherwise=None)
+
+        assert build.config is not None
+        assert build.config["otherwise"] == {"label": ""}
+
+    def test_duplicate_preserved_ids_fail_the_node_entity_check(self) -> None:
+        """The node entity is the final schema: a request repeating an outcome id cannot become a draft."""
+        build = build_decision_config(
+            {"decide_by": "llm", "outcomes": [{"id": "approve", "label": "Approve", "when": "Over 500."}]},
+            available_variables=_AMOUNT_VARIABLES,
+            preserved_outcomes=[
+                DecisionGenerateOutcome(id="approve", label="Approve"),
+                DecisionGenerateOutcome(id="approve", label="Approve again"),
+            ],
+            forced_decide_by=None,
+        )
+
+        assert build.config is None
+        assert build.errors == ["node data: Value error, Duplicate outcome id 'approve'"]
+        assert build.attempted_decide_by is DecideBy.LLM
+
+
+class TestFallbackToLlm:
+    """A rules proposal with no writable rule becomes an llm configuration built from its descriptions."""
+
+    def test_outcomes_that_are_not_a_list_give_no_fallback(self) -> None:
+        assert fallback_to_llm({"outcomes": "x"}, available_variables=_AMOUNT_VARIABLES, preserved_outcomes=[]) is None
+
+    def test_outcomes_without_descriptions_give_no_fallback(self) -> None:
+        payload: dict[str, object] = {
+            "outcomes": [{"id": "a", "label": "A", "when_description": "  "}, "not an object", {"id": "b"}]
+        }
+
+        assert fallback_to_llm(payload, available_variables=_AMOUNT_VARIABLES, preserved_outcomes=[]) is None
+
+    def test_a_preserved_outcome_without_a_description_gives_no_fallback(self) -> None:
+        payload: dict[str, object] = {"outcomes": [{"id": "other", "label": "Other", "when_description": "Other."}]}
+
+        result = fallback_to_llm(
+            payload,
+            available_variables=_AMOUNT_VARIABLES,
+            preserved_outcomes=[DecisionGenerateOutcome(id="approve", label="Approve me")],
+        )
+
+        assert result is None
+
+    def test_preserved_outcomes_come_first_and_inputs_cover_every_variable(self) -> None:
+        payload: dict[str, object] = {
+            "outcomes": [
+                {"id": "zero", "when_description": " The amount is zero. "},
+                {"id": "approve", "label": "Renamed", "when_description": "The amount is over 500."},
+            ],
+            "otherwise": {"label": "Can't decide"},
+            "extras": [{"name": "tier", "from": "guess"}],
+        }
+
+        result = fallback_to_llm(
+            payload,
+            available_variables=[
+                _variable(["start", "amount"]),
+                _variable(["llm", "amount"]),
+                _variable(["start", ""], "string"),
+            ],
+            preserved_outcomes=[DecisionGenerateOutcome(id="approve", label="Approve me")],
+        )
+
+        assert result is not None
+        assert result["decide_by"] == "llm"
+        assert result["outcomes"] == [
+            {"id": "approve", "label": "Approve me", "when": "The amount is over 500."},
+            {"id": "zero", "label": "", "when": "The amount is zero."},
+        ]
+        # Input names come from the selector's last part, deduplicated; an empty part gets a generic name.
+        assert result["inputs"] == [
+            {"variable": "amount", "value_selector": ["start", "amount"]},
+            {"variable": "amount_2", "value_selector": ["llm", "amount"]},
+            {"variable": "variable", "value_selector": ["start", ""]},
+        ]
+        # A malformed extra is optional, so it is dropped instead of blocking the fallback.
+        assert result["extras"] == []
+        assert result["otherwise"] == {"label": "Can't decide"}
+
+    def test_a_proposal_the_node_entity_rejects_gives_no_fallback(self) -> None:
+        payload: dict[str, object] = {"outcomes": [{"id": "approve", "when_description": "Over 500."}]}
+
+        result = fallback_to_llm(
+            payload,
+            available_variables=_AMOUNT_VARIABLES,
+            preserved_outcomes=[
+                DecisionGenerateOutcome(id="approve", label="Approve"),
+                DecisionGenerateOutcome(id="approve", label="Approve again"),
+            ],
+        )
+
+        assert result is None
+
+
 class TestExtraNames:
     """F1: extra names become output variable names, so the editor's pattern is enforced."""
 
@@ -803,6 +1060,13 @@ class TestParseDecisionPayload:
         payload, error = parse_decision_payload('["rules"]')
         assert payload is None
         assert error is not None
+
+    def test_a_reply_nested_beyond_the_repair_depth_is_an_error(self) -> None:
+        """A truncated, deeply nested reply defeats both parsers; it is reported, not raised."""
+        payload, error = parse_decision_payload('{"a":' * 600)
+
+        assert payload is None
+        assert error == "The reply was not a valid JSON object."
 
 
 def test_parse_decision_payload_ignores_think_block_with_braces() -> None:
