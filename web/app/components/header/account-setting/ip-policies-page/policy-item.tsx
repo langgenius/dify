@@ -17,7 +17,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMutation } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackNetworkAccessEvent } from '@/features/network-access/analytics'
 import { PolicyReferencedApps } from '@/features/network-access/policy-references'
@@ -34,13 +34,14 @@ export const policyActionsColClassName = 'flex w-8 shrink-0 items-center justify
 type PolicyItemProps = {
   group: NetworkAccessGroupResponse
   canMutate: boolean
-  onView: (group: NetworkAccessGroupResponse) => void
-  onEdit: (group: NetworkAccessGroupResponse) => void
+  onView: (group: NetworkAccessGroupResponse, trigger: HTMLElement) => void
+  onEdit: (group: NetworkAccessGroupResponse, trigger: HTMLElement) => void
 }
 
 export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps) {
   const { t } = useTranslation(['common'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const deleteGroup = useMutation(
@@ -88,7 +89,8 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
         <Button
           variant="ghost"
           className="h-auto w-full min-w-0 justify-start gap-0 overflow-visible rounded-none p-0 text-start after:absolute after:inset-0 hover:bg-transparent"
-          onClick={() => onView(group)}
+          aria-haspopup="dialog"
+          onClick={(event) => onView(group, event.currentTarget)}
         >
           <span className={`${policyNameColClassName} system-sm-medium text-text-secondary`}>
             {group.name}
@@ -122,6 +124,7 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
                   <MenuTrigger
                     render={
                       <IconButton
+                        ref={menuButtonRef}
                         size="md"
                         aria-label={t(($) => $['operation.moreActionsFor'], {
                           ns: 'common',
@@ -145,7 +148,7 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
                 className="system-sm-semibold text-text-secondary"
                 onClick={() => {
                   if (!canMutate) return
-                  onEdit(group)
+                  if (menuButtonRef.current) onEdit(group, menuButtonRef.current)
                 }}
               >
                 {t(($) => $['operation.edit'], { ns: 'common' })}

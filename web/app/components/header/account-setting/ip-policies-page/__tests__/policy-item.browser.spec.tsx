@@ -42,7 +42,10 @@ it.each([true, false])(
     for (const [index, position] of positions.entries()) {
       await row.click({ position })
       expect(onView).toHaveBeenCalledTimes(index + 1)
-      expect(onView).toHaveBeenLastCalledWith(group)
+      expect(onView).toHaveBeenLastCalledWith(
+        group,
+        screen.getByRole('button', { name: group.name }).element(),
+      )
     }
     expect(onEdit).not.toHaveBeenCalled()
   },
@@ -55,7 +58,7 @@ it('keeps the row and its separate actions reachable with pointer and keyboard',
 
   await more.click()
   await screen.getByRole('menuitem', { name: 'common.operation.edit' }).click()
-  expect(onEdit).toHaveBeenCalledExactlyOnceWith(group)
+  expect(onEdit).toHaveBeenCalledExactlyOnceWith(group, more.element())
   expect(onView).not.toHaveBeenCalled()
 
   await more.click()
@@ -71,7 +74,7 @@ it('keeps the row and its separate actions reachable with pointer and keyboard',
   await expect.element(policy).toHaveFocus()
   expect(policy.element().matches(':focus-visible')).toBe(true)
   await userEvent.keyboard('{Enter}')
-  expect(onView).toHaveBeenCalledExactlyOnceWith(group)
+  expect(onView).toHaveBeenCalledExactlyOnceWith(group, policy.element())
   await userEvent.tab()
   await expect.element(more).toHaveFocus()
   await userEvent.keyboard('{Enter}')
