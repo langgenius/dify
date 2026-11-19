@@ -69,62 +69,6 @@ When parsing a local time without an explicit UTC offset, `parse_time_range` and
 
 The `pytz` migration intentionally changes the repeated-hour choice in `Europe/Dublin`: `2024-10-27 01:30` now resolves to `01:30Z` (`01:30+00:00`), whereas the previous `is_dst=False` policy selected `00:30Z` (`01:30+01:00`). Both instants exist; the new policy consistently chooses by chronological order rather than by the timezone database's DST label. New York's existing later-occurrence behavior is preserved.
 
-## CPython GC metrics
-
-Enable `ENABLE_OTEL` and configure the existing OTLP metric endpoint. The standard
-`SystemMetricsInstrumentor` supplies `cpython.gc.collections`,
-`cpython.gc.collected_objects` and `cpython.gc.uncollectable_objects`, by generation.
-GC metrics are independent of trace sampling and use the existing OTel provider,
-collector and `OTEL_METRIC_EXPORT_INTERVAL` (milliseconds, default 60000).
-Preserve `process.pid` and Pod/container resource identity when comparing workers
-or blue/green deployments; a PID alone is not unique across Pods.
-
-The small GC callback adapter adds:
-
-| Metric | Meaning |
-| --- | --- |
-| `cpython.gc.count` | Scheduling counters by generation, not live object counts |
-| `cpython.gc.threshold` | Active GC thresholds by generation |
-| `cpython.gc.enabled` | Whether automatic cyclic GC is enabled |
-| `dify.gc.duration` | Collection elapsed-time histogram in seconds, by generation |
-| `dify.gc.duration_samples_dropped` | Duration samples overwritten before SDK collection, by generation |
-
-The GC callback only timestamps events and appends to a bounded 4096-sample buffer
-per generation, so frequent young collections cannot overwrite full-collection
-durations. An OTel observable callback publishes the samples into the histogram
-during the existing SDK collection cycle. This avoids reentering SDK aggregation
-locks from GC, without adding a publisher thread, exporter or collection timer.
-Cleanup stops GC callbacks before the final telemetry flush, which can still drain
-pending samples. The default Gunicorn and Celery gevent workers initialize these
-instruments with the application. Prefork children inherit the existing OTel
-resource, which can include the parent's `process.pid`; this change does not add
-per-child provider initialization.
-
-Check dropped samples before interpreting histogram counts, sums or quantiles:
-they cover retained samples only. Native GC counters remain complete when duration
-buffers overflow. Metric collection never calls `gc.collect()`, `gc.get_objects()`
-or `gc.get_freeze_count()`. This adapter targets Dify's GIL-enabled CPython 3.13
-runtime with OTel SDK 1.44.0 and system-metrics instrumentation 0.65b0. It does not
-change automatic collection, thresholds or object lifetimes.
-
-With standard OTLP-to-Prometheus name translation:
-
-```promql
-# Full-GC elapsed seconds per second, retaining process and Pod labels.
-rate(dify_gc_duration_seconds_sum{generation="2"}[5m])
-
-# Full-GC p95 across selected workers; sparse windows may have too few samples.
-histogram_quantile(0.95, sum by (le) (
-  rate(dify_gc_duration_seconds_bucket{generation="2"}[5m])
-))
-```
-
-Filter or group by deployment/Pod identity when comparing blue and green groups.
-Correlate collection frequency, cumulative duration and pause distribution with
-request volume, workload mix, CPU, RSS and request latency. These metrics exclude
-ordinary reference-counting destruction. They provide observability and do not
-establish a performance improvement on their own.
-
 ## Testing
 
 Test real production behavior with real objects. Do not use mocks, `SimpleNamespace`, or other shortcuts that bypass real testing.
