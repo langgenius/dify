@@ -39,6 +39,7 @@ export function PolicyItem({
 }: PolicyItemProps) {
   const { t } = useTranslation(['common'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
+  const rowTriggerRef = useRef<HTMLButtonElement>(null)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const usedByLabel =
     group.used_by_count <= 0
@@ -59,7 +60,7 @@ export function PolicyItem({
         {/* Extend the name button's hit area across the row without nesting the actions. */}
         <DialogTrigger
           handle={policyDialog}
-          payload={{ mode: canMutate ? 'edit' : 'view', group }}
+          payload={{ mode: canMutate ? 'edit' : 'view', group, opener: rowTriggerRef }}
           onClick={() =>
             onFormOpen({
               mode: canMutate ? 'edit' : 'view',
@@ -69,6 +70,7 @@ export function PolicyItem({
           }
           render={
             <Button
+              ref={rowTriggerRef}
               variant="ghost"
               className="h-auto w-full min-w-0 justify-start gap-0 overflow-visible rounded-none p-0 text-start after:absolute after:inset-0 hover:bg-transparent"
             />
@@ -128,12 +130,11 @@ export function PolicyItem({
               <MenuItem
                 className="system-sm-semibold text-text-secondary"
                 onClick={() => {
-                  if (!menuButtonRef.current) return
                   onFormOpen({ mode: 'edit', source: 'list_row_menu', policy_id: group.id })
                   policyDialog.openWithPayload({
                     mode: 'edit',
                     group,
-                    opener: menuButtonRef.current,
+                    opener: menuButtonRef,
                   })
                 }}
               >

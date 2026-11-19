@@ -18,12 +18,12 @@ import AccountSetting from '../../index'
 
 vi.unmock('react-i18next')
 
-const request = vi.hoisted(() => vi.fn<(path: string) => unknown>())
+const request = vi.hoisted(() => vi.fn<(path: string, input?: unknown) => unknown>())
 
 // boundary: IP-policy reads and writes stop at the generated console transport.
 vi.mock('@/service/console/browser', () => ({
   consoleBrowserLink: {
-    call: (path: readonly string[]) => request(path.join('.')),
+    call: (path: readonly string[], input?: unknown) => request(path.join('.'), input),
   },
 }))
 
@@ -169,10 +169,10 @@ it('keeps policy data readable and keyboard scrollable inside Settings at 320 px
   }
 })
 
-it('returns focus to the row menu button after editing from the menu', async () => {
+it('restores edit focus to the opener or the heading if its row disappears', async () => {
   vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
   try {
-    const { screen } = await renderPoliciesSettings(1000)
+    const { screen, queryClient, groups } = await renderPoliciesSettings(1000)
     const more = screen.getByRole('button', { name: 'More actions for Internal Network' })
     await more.click()
     await screen.getByRole('menuitem', { name: 'Edit', exact: true }).click()
@@ -181,15 +181,22 @@ it('returns focus to the row menu button after editing from the menu', async () 
     await expect.element(screen.getByRole('menu')).not.toBeInTheDocument()
     await userEvent.keyboard('{Escape}')
     await expect.element(more).toHaveFocus()
+
+    await screen.getByRole('button', { name: 'Internal Network', exact: true }).click()
+    await expect.element(editor).toBeVisible()
+    seedNetworkAccessGroups(queryClient, { groups: groups.slice(1) })
+    await userEvent.keyboard('{Escape}')
+    await expect.element(editor).not.toBeInTheDocument()
+    await expect.element(screen.getByRole('heading', { name: 'IP Policies' })).toHaveFocus()
   } finally {
     vi.unstubAllGlobals()
   }
 })
 
-it('closes confirmation and focuses the list heading after deleting its opening row', async () => {
+it('confirms using the latest policy details and focuses the list after deleting the row', async () => {
   vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
   try {
-    const { screen, groups } = await renderPoliciesSettings(1000)
+    const { screen, queryClient, groups } = await renderPoliciesSettings(1000)
     const originalRequest = request.getMockImplementation()
     let remainingGroups = groups
     request.mockImplementation((path) => {
@@ -205,7 +212,23 @@ it('closes confirmation and focuses the list heading after deleting its opening 
     await screen.getByRole('button', { name: 'More actions for Internal Network' }).click()
     await screen.getByRole('menuitem', { name: 'Delete', exact: true }).click()
     const confirmation = screen.getByRole('alertdialog', { name: 'Delete “Internal Network”?' })
+    await expect
+      .element(confirmation.getByText(common['settings.ipPolicyDeleteBoundDescription']))
+      .toBeVisible()
+    const refreshedPolicy = { ...groups[0]!, version: 7, used_by_count: 0 }
+    remainingGroups = [refreshedPolicy, ...groups.slice(1)]
+    seedNetworkAccessGroups(queryClient, { groups: remainingGroups })
+    await expect
+      .element(confirmation.getByText(common['settings.ipPolicyDeleteDescription']))
+      .toBeVisible()
     await confirmation.getByRole('button', { name: 'Delete', exact: true }).click()
+    expect(request).toHaveBeenCalledWith(
+      'workspaces.current.networkAccessGroups.byGroupId.delete',
+      {
+        params: { group_id: refreshedPolicy.id },
+        query: { expected_version: 7 },
+      },
+    )
     await expect
       .element(screen.getByRole('button', { name: 'Internal Network', exact: true }))
       .not.toBeInTheDocument()

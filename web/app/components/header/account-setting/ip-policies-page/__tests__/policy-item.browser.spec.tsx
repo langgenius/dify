@@ -35,14 +35,18 @@ async function renderPolicy(canMutate = true) {
           />
         </div>
       </section>
-      {canMutate && <DeletePolicyDialog dialog={deleteDialog} fallbackFocus={{ current: null }} />}
+      {canMutate && (
+        <DeletePolicyDialog
+          dialog={deleteDialog}
+          groups={[group]}
+          fallbackFocus={{ current: null }}
+        />
+      )}
       <Dialog handle={policyDialog}>
-        {({ payload }) => (
-          <DialogContent>
-            <DialogTitle>{payload?.opener ? 'Edit from menu' : 'Open from row'}</DialogTitle>
-            <DialogClose>Close</DialogClose>
-          </DialogContent>
-        )}
+        <DialogContent>
+          <DialogTitle>Open policy</DialogTitle>
+          <DialogClose>Close</DialogClose>
+        </DialogContent>
       </Dialog>
     </ConsoleProvider>,
   )
@@ -64,7 +68,7 @@ it.each([true, false])(
     ]
     if (!canMutate) positions.push({ x: width - 20, y: height / 2 })
 
-    const editor = screen.getByRole('dialog', { name: 'Open from row' })
+    const editor = screen.getByRole('dialog', { name: 'Open policy' })
     for (const position of positions) {
       await row.click({ position })
       await expect.element(editor).toBeVisible()
@@ -81,7 +85,7 @@ it('keeps the row and its separate actions reachable with pointer and keyboard',
 
   await more.click()
   await screen.getByRole('menuitem', { name: 'common.operation.edit' }).click()
-  const menuEditor = screen.getByRole('dialog', { name: 'Edit from menu' })
+  const menuEditor = screen.getByRole('dialog', { name: 'Open policy' })
   await expect.element(menuEditor).toBeVisible()
   await menuEditor.getByRole('button', { name: 'Close' }).click()
   await expect.element(menuEditor).not.toBeInTheDocument()
@@ -98,7 +102,7 @@ it('keeps the row and its separate actions reachable with pointer and keyboard',
   await expect.element(policy).toHaveFocus()
   expect(policy.element().matches(':focus-visible')).toBe(true)
   await userEvent.keyboard('{Enter}')
-  const rowEditor = screen.getByRole('dialog', { name: 'Open from row' })
+  const rowEditor = screen.getByRole('dialog', { name: 'Open policy' })
   await expect.element(rowEditor).toBeVisible()
   await userEvent.keyboard('{Escape}')
   await expect.element(rowEditor).not.toBeInTheDocument()

@@ -442,7 +442,9 @@ export default function IpPoliciesPage() {
         </ScrollArea>
       )}
 
-      {canMutate && <DeletePolicyDialog dialog={deleteDialog} fallbackFocus={titleRef} />}
+      {canMutate && (
+        <DeletePolicyDialog dialog={deleteDialog} groups={groups} fallbackFocus={titleRef} />
+      )}
       {canMutate && (
         <Dialog
           handle={createDialog}
@@ -470,13 +472,7 @@ export default function IpPoliciesPage() {
         {({ payload: request }) => {
           if (!request) return null
           return (
-            <IpPolicyDialogContent
-              finalFocus={
-                request.opener
-                  ? () => (request.opener?.isConnected ? request.opener : titleRef.current)
-                  : undefined
-              }
-            >
+            <IpPolicyDialogContent finalFocus={() => request.opener.current ?? titleRef.current}>
               <EditPolicySession
                 request={request}
                 recovery={recovery}

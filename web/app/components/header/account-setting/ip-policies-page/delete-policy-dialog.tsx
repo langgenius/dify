@@ -25,10 +25,11 @@ import { consoleQuery } from '@/service/console'
 
 type DeletePolicyDialogProps = {
   dialog: AlertDialogHandle<DeletePolicyPayload>
+  groups: readonly NetworkAccessGroupResponse[]
   fallbackFocus: RefObject<HTMLElement | null>
 }
 
-export function DeletePolicyDialog({ dialog, fallbackFocus }: DeletePolicyDialogProps) {
+export function DeletePolicyDialog({ dialog, groups, fallbackFocus }: DeletePolicyDialogProps) {
   const { t } = useTranslation(['common'])
   const deleteGroup = useMutation(
     consoleQuery.workspaces.current.networkAccessGroups.byGroupId.delete.mutationOptions({
@@ -62,7 +63,10 @@ export function DeletePolicyDialog({ dialog, fallbackFocus }: DeletePolicyDialog
     >
       {({ payload }) => {
         if (!payload) return null
-        const { group, opener } = payload
+        const { opener } = payload
+        const currentGroup = groups.find((group) => group.id === payload.group.id)
+        // Keep the confirmation visible through exit if the refreshed list removed the row.
+        const group = currentGroup ?? payload.group
         const isBound = group.used_by_count > 0
         return (
           <AlertDialogContent
@@ -127,8 +131,11 @@ export function DeletePolicyDialog({ dialog, fallbackFocus }: DeletePolicyDialog
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </AlertDialogCancelButton>
               <AlertDialogConfirmButton
+                disabled={!currentGroup}
                 loading={deleteGroup.isPending}
-                onClick={() => handleDelete(group)}
+                onClick={() => {
+                  if (currentGroup) handleDelete(currentGroup)
+                }}
               >
                 {t(($) => $['operation.delete'], { ns: 'common' })}
               </AlertDialogConfirmButton>
