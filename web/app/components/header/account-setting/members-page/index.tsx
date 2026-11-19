@@ -18,7 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Dialog, DialogContent, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { safe } from '@orpc/client'
+import { isDefinedError } from '@orpc/client'
 import {
   useMutation,
   usePrefetchQuery,
@@ -44,7 +44,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { isContactsManagementEnabled } from '@/features/contacts/management/feature-flag'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getAccessControlTemplateLanguage, LanguagesSupported } from '@/i18n/language'
-import { consoleClient, consoleQuery } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { hasPermission } from '@/utils/permission'
 import { EditWorkspaceContent } from './edit-workspace-content'
@@ -54,11 +54,6 @@ import { MemberDetailsContent } from './member-details-content'
 import { MemberRow } from './member-row'
 import { MembersHeaderCard } from './members-header-card'
 import { MembersPageSkeleton } from './members-page-skeleton'
-
-type RevocationOutcome =
-  | { status: 'revoked' }
-  | { status: 'gone' }
-  | { status: 'failed'; message: string }
 
 const revealRow = (row: HTMLTableRowElement | null) => row?.scrollIntoView({ block: 'nearest' })
 
@@ -148,7 +143,6 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
         email: account.email,
         role: account.roles?.[0]?.id ?? account.role,
         roleName: account.roles?.[0]?.name ?? account.role,
-        memberId: account.id,
       })),
     ...invitations.map((invitation) => ({
       email: invitation.email,
@@ -162,42 +156,28 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
     features.plan !== 'team' && isQuotaReached({ usage: usedSeats, limit: features.members.limit })
   const [revokeDialog] = useState(() => createAlertDialogHandle<Invitee>())
   const queryClient = useQueryClient()
-  const revocation = useMutation({
-    mutationFn: async (invitee: Invitee): Promise<RevocationOutcome> => {
-      const [error, , isDefined] = invitee.memberId
-        ? await safe(
-            consoleClient.workspaces.current.members.byMemberId.delete(
-              { params: { member_id: invitee.memberId } },
-              { context: { silent: true } },
-            ),
-          )
-        : await safe(
-            consoleClient.workspaces.byWorkspaceId.members.pendingInvitations.revoke.post(
-              { params: { workspace_id: currentWorkspace.id }, body: { email: invitee.email } },
-              { context: { silent: true } },
-            ),
-          )
-      if (!error) return { status: 'revoked' }
-      if (!isDefined) throw error
-      if (error.code === 'pending_invitation_not_found') return { status: 'gone' }
-      return { status: 'failed', message: error.message }
-    },
-    onSettled: () => {
-      void queryClient.invalidateQueries({
-        queryKey: consoleQuery.workspaces.current.members.get.key(),
-      })
-      void queryClient.invalidateQueries({
-        queryKey: consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.get.key(),
-      })
-      void queryClient.invalidateQueries({ queryKey: consoleQuery.features.get.queryKey() })
-    },
-  })
+  const revocation = useMutation(
+    consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.revoke.post.mutationOptions({
+      context: { silent: true },
+      onSettled: () => {
+        void queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.members.get.key(),
+        })
+        void queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.get.key(),
+        })
+        void queryClient.invalidateQueries({ queryKey: consoleQuery.features.get.queryKey() })
+      },
+    }),
+  )
+  const isInvitationGone = (error: typeof revocation.error) =>
+    isDefinedError(error) && error.code === 'pending_invitation_not_found'
   const revocationError =
-    revocation.data?.status === 'failed'
-      ? revocation.data.message
-      : revocation.isError
-        ? t(($) => $['api.actionFailed'], { ns: 'common' })
-        : null
+    revocation.isError && !isInvitationGone(revocation.error)
+      ? isDefinedError(revocation.error)
+        ? revocation.error.message
+        : t(($) => $['api.actionFailed'], { ns: 'common' })
+      : null
   const roleColumnLabel = systemFeatures.rbac_enabled
     ? t(($) => $['members.roles'], { ns: 'workspaceMembers' })
     : t(($) => $['members.role'], { ns: 'workspaceMembers' })
@@ -401,7 +381,7 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
               <AlertDialogContent
                 backdropProps={{ forceRender: true }}
                 finalFocus={() => {
-                  if (revocation.data?.status === 'failed' || !revocation.isSuccess) return true
+                  if (!revocation.isSuccess) return true
                   listRef.current?.focus({ preventScroll: true })
                   return false
                 }}
@@ -434,19 +414,25 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
                     loading={revocation.isPending}
                     onClick={() => {
                       if (!invitee || revocation.isPending) return
-                      revocation.mutate(invitee, {
-                        onSuccess: ({ status }) => {
-                          if (status === 'failed') return
-                          revokeDialog.close()
-                          if (status === 'gone')
+                      revocation.mutate(
+                        {
+                          params: { workspace_id: currentWorkspace.id },
+                          body: { email: invitee.email },
+                        },
+                        {
+                          onSuccess: () => revokeDialog.close(),
+                          onError: (error) => {
+                            if (!isInvitationGone(error)) return
+                            revokeDialog.close()
                             toast.warning(
                               t(($) => $['members.invitationNoLongerPending'], {
                                 ns: 'workspaceMembers',
                                 email: invitee.email,
                               }),
                             )
+                          },
                         },
-                      })
+                      )
                     }}
                   >
                     {t(($) => $['members.revokeInvitation'], { ns: 'workspaceMembers' })}
