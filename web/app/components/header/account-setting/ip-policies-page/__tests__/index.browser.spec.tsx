@@ -186,6 +186,38 @@ it('returns focus to the row menu button after editing from the menu', async () 
   }
 })
 
+it('closes confirmation and focuses the list heading after deleting its opening row', async () => {
+  vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
+  try {
+    const { screen, groups } = await renderPoliciesSettings(1000)
+    const originalRequest = request.getMockImplementation()
+    let remainingGroups = groups
+    request.mockImplementation((path) => {
+      if (path === 'workspaces.current.networkAccessGroups.byGroupId.delete') {
+        remainingGroups = groups.slice(1)
+        return
+      }
+      if (path === 'workspaces.current.networkAccessGroups.get')
+        return { tenant_id: 'workspace-1', entitled: true, groups: remainingGroups }
+      return originalRequest?.(path)
+    })
+
+    await screen.getByRole('button', { name: 'More actions for Internal Network' }).click()
+    await screen.getByRole('menuitem', { name: 'Delete', exact: true }).click()
+    const confirmation = screen.getByRole('alertdialog', { name: 'Delete “Internal Network”?' })
+    await confirmation.getByRole('button', { name: 'Delete', exact: true }).click()
+    await expect
+      .element(screen.getByRole('button', { name: 'Internal Network', exact: true }))
+      .not.toBeInTheDocument()
+    await expect.element(confirmation).not.toBeInTheDocument()
+    await expect
+      .element(screen.getByRole('heading', { name: 'IP Policies', exact: true }))
+      .toHaveFocus()
+  } finally {
+    vi.unstubAllGlobals()
+  }
+})
+
 it('keeps Add clear of Settings Close at 320 px and preserves the desktop action order', async () => {
   // Real hit testing catches the global Close overlay; the desktop order must survive reflow.
   const { screen, queryClient } = await renderPoliciesSettings()

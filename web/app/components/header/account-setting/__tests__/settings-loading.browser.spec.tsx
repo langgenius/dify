@@ -1,4 +1,7 @@
-import type { NetworkAccessGroupListResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
+  NetworkAccessGroupListResponse,
+  NetworkAccessGroupMutationResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Resource } from 'i18next'
 import type { AccountSettingTab } from '../constants'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
@@ -7,6 +10,7 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { I18nClientProvider } from '@/app/components/provider/i18n'
 import commonTranslations from '@/i18n/locales/en-US/common.json'
+import { createNetworkAccessGroupFixture } from '@/test/console/network-access'
 import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
@@ -17,6 +21,7 @@ vi.unmock('react-i18next')
 const mocks = vi.hoisted(() => ({
   loadResource: vi.fn(),
   loadGroups: vi.fn<() => Promise<NetworkAccessGroupListResponse>>(),
+  createPolicy: vi.fn<() => Promise<NetworkAccessGroupMutationResponse>>(),
 }))
 // boundary: defer the external translation load while keeping i18next and its consumers real.
 vi.mock('@/i18n/load-resource', () => ({ loadI18nResource: mocks.loadResource }))
@@ -28,6 +33,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.networkAccessGroups.get': () => mocks.loadGroups(),
+      'workspaces.current.networkAccessGroups.post': () => mocks.createPolicy(),
       'workspaces.current.networkAccessGroups.currentIp.get': async () => ({
         client_ip: '203.0.113.42',
       }),
@@ -136,9 +142,10 @@ describe('Settings content loading', () => {
   beforeEach(() => {
     mocks.loadResource.mockReset()
     mocks.loadGroups.mockReset()
+    mocks.createPolicy.mockReset()
   })
 
-  it('loads the IP Policies deep link without waiting for unrelated copy or flashing a create button', async () => {
+  it('keeps the IP Policies deep link stable through loading, dismissal and first creation', async () => {
     vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
     const { finishLoading } = deferNamespace('deployments')
     const groups = createDeferred<NetworkAccessGroupListResponse>()
@@ -175,8 +182,23 @@ describe('Settings content loading', () => {
       await userEvent.keyboard('{Escape}{Enter}')
       await expect.element(editor).not.toBeInTheDocument()
       await expect.element(create).toHaveFocus()
+      expect(mocks.createPolicy).not.toHaveBeenCalled()
       await userEvent.keyboard('{Enter}')
       await expect.element(name).toHaveValue('')
+
+      const group = createNetworkAccessGroupFixture({ name: 'Office network' })
+      mocks.createPolicy.mockResolvedValue({ group })
+      mocks.loadGroups.mockResolvedValue({
+        tenant_id: 'workspace-1',
+        entitled: true,
+        groups: [group],
+      })
+      await name.fill(group.name)
+      await editor.getByPlaceholder('10.0.0.0/8').fill('10.0.0.0/8')
+      await editor.getByRole('button', { name: 'Create', exact: true }).click()
+      await expect.element(editor).not.toBeInTheDocument()
+      await expect.element(settings.getByRole('button', { name: 'Add', exact: true })).toHaveFocus()
+      expect(mocks.createPolicy).toHaveBeenCalledTimes(1)
       expect(mocks.loadResource).not.toHaveBeenCalledWith('en-US', 'deployments')
     } finally {
       finishLoading()

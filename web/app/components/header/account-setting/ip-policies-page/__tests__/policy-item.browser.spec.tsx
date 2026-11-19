@@ -1,4 +1,5 @@
-import type { PolicyDialogPayload } from '../policy-dialog-payload'
+import type { DeletePolicyPayload, PolicyDialogPayload } from '../policy-dialog-payload'
+import { createAlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
 import {
   createDialogHandle,
   Dialog,
@@ -11,11 +12,13 @@ import { render } from 'vitest-browser-react'
 import { createNetworkAccessGroupFixture } from '@/test/console/network-access'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { DeletePolicyDialog } from '../delete-policy-dialog'
 import { PolicyItem } from '../policy-item'
 
 async function renderPolicy(canMutate = true) {
   onTestFinished(guardUnexpectedFetch())
   const group = createNetworkAccessGroupFixture()
+  const deleteDialog = createAlertDialogHandle<DeletePolicyPayload>()
   const policyDialog = createDialogHandle<PolicyDialogPayload>()
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper()
   const screen = await render(
@@ -27,10 +30,12 @@ async function renderPolicy(canMutate = true) {
             group={group}
             canMutate={canMutate}
             policyDialog={policyDialog}
+            deleteDialog={deleteDialog}
             onFormOpen={() => {}}
           />
         </div>
       </section>
+      {canMutate && <DeletePolicyDialog dialog={deleteDialog} fallbackFocus={{ current: null }} />}
       <Dialog handle={policyDialog}>
         {({ payload }) => (
           <DialogContent>
