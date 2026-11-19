@@ -14,10 +14,32 @@ import {
   isSelectFormInput,
   UserActionButtonType,
 } from '@/app/components/workflow/nodes/human-input/types'
+import { localeMap } from '@/i18n/language'
+import 'dayjs/locale/ar'
+import 'dayjs/locale/az'
+import 'dayjs/locale/de'
 import 'dayjs/locale/en'
-import 'dayjs/locale/zh-cn'
+import 'dayjs/locale/es'
+import 'dayjs/locale/fa'
+import 'dayjs/locale/fr'
+import 'dayjs/locale/hi'
+import 'dayjs/locale/id'
+import 'dayjs/locale/it'
 import 'dayjs/locale/ja'
+import 'dayjs/locale/ko'
+import 'dayjs/locale/lo'
 import 'dayjs/locale/nl'
+import 'dayjs/locale/pl'
+import 'dayjs/locale/pt-br'
+import 'dayjs/locale/ro'
+import 'dayjs/locale/ru'
+import 'dayjs/locale/sl'
+import 'dayjs/locale/th'
+import 'dayjs/locale/tr'
+import 'dayjs/locale/uk'
+import 'dayjs/locale/vi'
+import 'dayjs/locale/zh-cn'
+import 'dayjs/locale/zh-tw'
 
 dayjs.extend(utc)
 dayjs.extend(relativeTime)
@@ -162,13 +184,6 @@ export const getProcessedHumanInputFormInputs = (
   })
 
   return processedInputs
-}
-
-const localeMap: Record<string, string> = {
-  'en-US': 'en',
-  'zh-Hans': 'zh-cn',
-  'ja-JP': 'ja',
-  'nl-NL': 'nl',
 }
 
 export const getRelativeTime = (utcTimestamp: string | number, locale: Locale = 'en-US') => {
