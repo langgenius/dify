@@ -23,9 +23,9 @@ import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
+import { getCountQuota } from '@/app/components/billing/quota'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import { InvitationResultsContent } from '../invitation-results-content'
 import { InviteButton } from '../invite-button'
@@ -35,7 +35,6 @@ import { RoleSelector } from './role-selector'
 
 type InvitationResults = MemberInviteResponse['invitation_results']
 type InviteModalProps = {
-  isEmailSetup: boolean
   onSend: (emails: string[]) => void
 }
 
@@ -72,10 +71,8 @@ function InviteForm({
   onDismissError,
 }: InviteFormProps) {
   const { t } = useTranslation(['workspaceMembers'])
-  const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: features } = useQuery(consoleQuery.features.get.queryOptions())
   const workspaceId = useAtomValue(currentWorkspaceAtom).id
-  // Live invitations reserve seats that the member count does not include yet.
   const { data: reservedSeats = 0 } = useQuery({
     ...consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.get.queryOptions({
       input: { params: { workspace_id: workspaceId } },
@@ -96,15 +93,14 @@ function InviteForm({
     hasError && !fieldErrors
       ? t(($) => $['members.inviteFailed'], { ns: 'workspaceMembers' })
       : null
-  // A limit of 0 means unlimited.
-  const memberLimit = features?.workspace_members.enabled
-    ? features.workspace_members
-    : deploymentEdition === 'CLOUD' && features && features.members.limit > 0
-      ? features.members
-      : undefined
+  const memberLimit = features
+    ? getCountQuota(
+        features.workspace_members.enabled ? features.workspace_members : features.members,
+      )
+    : undefined
   const remainingSeats =
-    memberLimit && memberLimit.limit > 0
-      ? Math.max(memberLimit.limit - memberLimit.size - reservedSeats, 0)
+    memberLimit && memberLimit.limit !== 'unlimited'
+      ? Math.max(memberLimit.limit - memberLimit.usage - reservedSeats, 0)
       : null
   const effectiveRecipients = mergeEmailRecipients(recipients, draft)
   const validRecipientCount = effectiveRecipients.filter(({ isValid }) => isValid).length
@@ -241,15 +237,20 @@ function InviteForm({
   )
 }
 
-export function InviteModal({ isEmailSetup, onSend }: InviteModalProps) {
+export function InviteModal({ onSend }: InviteModalProps) {
   const { t } = useTranslation(['common', 'workspaceMembers'])
   const locale = useLocale()
   const queryClient = useQueryClient()
   const actionsRef = useRef<DialogActions>(null)
   const formRef = useRef<HTMLFormElement>(null)
-  const { data: deploymentEdition } = useSuspenseQuery({
+  const {
+    data: { deploymentEdition, isEmailSetup },
+  } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
-    select: ({ deployment_edition }) => deployment_edition,
+    select: ({ deployment_edition, is_email_setup }) => ({
+      deploymentEdition: deployment_edition,
+      isEmailSetup: is_email_setup,
+    }),
   })
   const showsInvitationLinks = (results: InvitationResults) =>
     deploymentEdition !== 'CLOUD' && results.some(({ status }) => status === 'success')

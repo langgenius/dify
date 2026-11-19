@@ -42,10 +42,6 @@ vi.mock('@/next/navigation', () => ({
   useParams: () => ({}),
   useSearchParams: () => new URLSearchParams(),
 }))
-// boundary: next-themes requires a Next document and persisted browser theme outside this journey.
-vi.mock('next-themes', () => ({
-  useTheme: () => ({ theme: 'light', setTheme: vi.fn() }),
-}))
 
 beforeEach(() => {
   profileRequests.update.mockReset()

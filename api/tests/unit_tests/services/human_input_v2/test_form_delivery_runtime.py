@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+import secrets
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field, replace
@@ -3348,11 +3350,22 @@ def test_initial_delivery_results_control_graph_failure_and_approval(
 
 @pytest.mark.parametrize("recipient_kind", ["external_contact", "dynamic_email", "onetime_email"])
 def test_public_email_links_use_the_v2_form_page(
-    context: Context, providers: tuple[Mock, EmailOutbox], recipient_kind: str
+    context: Context,
+    providers: tuple[Mock, EmailOutbox],
+    recipient_kind: str,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Deliver a public approval email and resolve its form using the rendered URL."""
+    from models.model import App, AppMode
     from repositories.human_input_v2.contact import ExternalContact
     from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
     from services.human_input_v2.composition import build_human_input_delivery_service
+    from services.human_input_v2.submission_service import HumanInputSubmissionService
+
+    with context.sessions.begin() as session:
+        session.add(
+            App(id=_APP, tenant_id=_TENANT, name="Email form", mode=AppMode.WORKFLOW, enable_api=True, enable_site=True)
+        )
 
     email = "approver@example.com"
     pool = VariablePool()
@@ -3378,15 +3391,20 @@ def test_public_email_links_use_the_v2_form_page(
 
     created = context.prepare(_node(recipient), pool)
     assert isinstance(created, CreatedForm)
+    # URL-safe base64 encodes this prefix as _g_-, which Markdown interprets as emphasis.
+    monkeypatch.setattr(secrets, "token_bytes", lambda _size: bytes.fromhex("fe0ffe" + "a1" * 29))
     build_human_input_delivery_service(tenant_id=_TENANT, session_factory=context.sessions).deliver(
         form=created.form,
         recipient=created.recipients[0],
         message_template=created.message_template,
     )
 
-    email_send = providers[1]
-    assert email_send.messages[-1].to == email
-    assert "https://app.example.com/form-v2/" in email_send.messages[-1].html
+    sent = providers[1].messages[-1]
+    assert sent.to == email
+    match = re.search(r"https://app\.example\.com/form-v2/([A-Za-z0-9_-]+)", sent.html)
+    assert match is not None, sent.html
+    form = HumanInputSubmissionService(session_factory=context.sessions).get_public_form(form_token=match[1])
+    assert form.id == created.form.id
 
 
 def test_delivery_uses_one_injected_email_client_for_multiple_recipients(

@@ -170,7 +170,6 @@ export default function InviteSettingsPage() {
       )
       if (error) {
         setIsActivating(false)
-        // The link stays valid when the workspace is full, so the invitee can retry later.
         if (isDefined && error.code === 'workspace_member_limit_reached') {
           setIsWorkspaceFull(true)
           return

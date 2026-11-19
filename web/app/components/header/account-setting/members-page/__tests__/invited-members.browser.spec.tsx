@@ -11,7 +11,10 @@ import { MembersPage } from '../index'
 
 const workspaceId = '74e6f5f1-621e-4ca0-910f-94c686e4ada1'
 
-const setup = (inviteResults: MemberInviteResponse['invitation_results']) => {
+const setup = (
+  inviteResults: MemberInviteResponse['invitation_results'],
+  acceptedMeanwhile?: string,
+) => {
   let invitations: PendingWorkspaceInvitationResponse[] = []
   const { queryClient } = createConsoleQueryWrapper({
     currentWorkspace: { id: workspaceId, role: 'owner' },
@@ -55,7 +58,17 @@ const setup = (inviteResults: MemberInviteResponse['invitation_results']) => {
       if (pathname.endsWith(`/workspaces/${workspaceId}/members/pending-invitations/revoke`)) {
         const body = input instanceof Request ? await input.clone().text() : String(init?.body)
         const { email } = JSON.parse(body)
+        const live = invitations.some((invitation) => invitation.email === email)
         invitations = invitations.filter((invitation) => invitation.email !== email)
+        if (!live || email === acceptedMeanwhile)
+          return Response.json(
+            {
+              code: 'pending_invitation_not_found',
+              message: 'No live invitation exists for this email in the workspace.',
+              status: 404,
+            },
+            { status: 404 },
+          )
         return Response.json({ result: 'success' })
       }
       if (pathname.endsWith('/workspaces/current/members/new-member')) {
@@ -159,4 +172,31 @@ it('revokes both kinds of invited people through the same row menu', async () =>
       .element(members.getByRole('row', { name: new RegExp(invitee) }))
       .not.toBeInTheDocument()
   }
+})
+
+it('closes the revoke dialog and refreshes when the invitation was accepted meanwhile', async () => {
+  const email = 'invited@example.com'
+  const queryClient = setup(
+    [{ status: 'success', email, url: 'https://example.com/invite' }],
+    email,
+  )
+  const screen = await render(
+    <QueryClientTestProvider queryClient={queryClient}>
+      <MembersPage />
+    </QueryClientTestProvider>,
+  )
+  await sendInvite(screen, email)
+  const members = screen.getByRole('table')
+
+  await members
+    .getByRole('button', { name: new RegExp(`members\\.invitationActions.*${email}`) })
+    .click()
+  await screen.getByRole('menuitem', { name: /members\.revokeInvitation$/ }).click()
+  const confirm = screen.getByRole('alertdialog', { name: /members\.revokeInvitationTitle/ })
+  await confirm.getByRole('button', { name: /members\.revokeInvitation$/ }).click()
+
+  await expect.element(confirm).not.toBeInTheDocument()
+  await expect
+    .element(members.getByRole('row', { name: new RegExp(email) }))
+    .not.toBeInTheDocument()
 })

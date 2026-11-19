@@ -17,7 +17,7 @@ import { List } from '../list'
 const api = vi.hoisted(() => ({
   apps: vi.fn<typeof consoleClient.apps.get>(),
 }))
-vi.mock('react-i18next', async (importOriginal) => importOriginal())
+vi.unmock('react-i18next')
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),

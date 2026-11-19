@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { useLocale } from '#i18n'
 import { setLocaleOnClient } from '@/i18n/client'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import InviteSettingsPage from '../page'
@@ -39,11 +40,20 @@ vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses, withConsoleClientResponses } =
     await import('@/test/console/service-responses')
+  const { activate } = await import('@dify/contracts/api/console/activate/orpc.gen')
+  const { validateDefinedErrors } = await import('@/service/console/defined-errors')
+  const validate = validateDefinedErrors({ activate })
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, { 'activate.check.get': mocks.check }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'activate.post': mocks.activate,
+      'activate.post': (input: never, options?: unknown) =>
+        validate({
+          context: {},
+          input,
+          path: ['activate', 'post'],
+          next: () => mocks.activate(input, options),
+        }),
     }),
   }
 })
@@ -173,6 +183,27 @@ describe('Invitation activation', () => {
     await user.click(submit)
     await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/'))
     expect(mocks.activate).toHaveBeenCalledTimes(2)
+  })
+
+  it('explains a full workspace in place and lets the invitee retry with the same link', async () => {
+    const user = userEvent.setup()
+    mocks.activate.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 400 }), {
+        code: 'workspace_member_limit_reached',
+        message: 'Backend message',
+        status: 400,
+      }),
+    )
+    setup()
+    await user.type(screen.getByLabelText('login.name'), 'Invitee')
+    const submit = screen.getByRole('button', { name: 'Rejoindre Acme' })
+    await user.click(submit)
+    expect(await screen.findByText('login.invitationWorkspaceFull')).toBeInTheDocument()
+    expect(mocks.replace).not.toHaveBeenCalled()
+    await waitFor(() => expect(submit).toBeEnabled())
+    await user.click(submit)
+    await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/'))
+    expect(screen.queryByText('login.invitationWorkspaceFull')).not.toBeInTheDocument()
   })
 
   it('falls back to console home for an external redirect', async () => {

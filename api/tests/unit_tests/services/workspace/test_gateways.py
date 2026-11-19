@@ -196,16 +196,16 @@ class TestGatewaysCases:
         allowed: bool,
     ) -> None:
         config_overrides(DEPLOYMENT_EDITION=edition)
-        monkeypatch.setattr(
-            gateways.FeatureService,
-            "get_features",
-            Mock(
-                return_value=FeatureModel(
-                    members=LimitationModel(size=0, limit=4),
-                    workspace_members=LicenseLimitationModel(enabled=True, size=2, limit=4),
-                )
-            ),
+        features = FeatureModel(
+            members=LimitationModel(size=0, limit=4),
+            workspace_members=LicenseLimitationModel(enabled=True, size=2, limit=4),
         )
+
+        def get_features(*, tenant_id: str, exclude_vector_space: bool) -> FeatureModel:
+            assert (tenant_id, exclude_vector_space) == ("workspace", True)
+            return features
+
+        monkeypatch.setattr(gateways.FeatureService, "get_features", get_features)
 
         def check() -> None:
             invitations.check_capacity(
@@ -240,11 +240,12 @@ class TestGatewaysCases:
         workspaces = create_autospec(WorkspaceRepository, instance=True)
         workspaces.member_role.return_value = "normal" if is_member else None
         workspaces.count_members.return_value = members
-        monkeypatch.setattr(
-            gateways.FeatureService,
-            "get_features",
-            Mock(return_value=FeatureModel(members=LimitationModel(size=0, limit=3))),
-        )
+
+        def get_features(*, tenant_id: str, exclude_vector_space: bool) -> FeatureModel:
+            assert (tenant_id, exclude_vector_space) == ("workspace", True)
+            return FeatureModel(members=LimitationModel(size=0, limit=3))
+
+        monkeypatch.setattr(gateways.FeatureService, "get_features", get_features)
         capacity = gateways.WorkspaceMemberCapacityGateway(
             workspaces=workspaces, redis=create_autospec(RedisClientWrapper, instance=True)
         )
