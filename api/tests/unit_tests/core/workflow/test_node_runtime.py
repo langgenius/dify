@@ -87,6 +87,11 @@ from models.human_input_entities import FileInputConfig, FileListInputConfig, Hu
 from models.model import StorageType, UploadFile
 from models.tools import ToolFile
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
+from services.moderation_invocation_errors import (
+    ModerationRejectedInvocationError,
+    ModerationUnavailableInvocationError,
+)
+from services.moderation_service import ModerationPhase
 from services.tools.tool_engine import ToolEngine
 from services.tools.tool_manager import ToolManager
 from services.workflow.execution.adapters import node_runtime
@@ -106,6 +111,7 @@ from services.workflow.execution.adapters.node_runtime import (
 )
 from services.workflow.execution.ports import WorkflowToolInvoker
 from tests.helpers.unit.core.model_fixtures import make_model_config, make_model_instance
+from tests.helpers.unit.core.model_moderation_fixtures import RecordingPollingRuntime, make_failing_moderated_model
 from tests.helpers.unit.core.workflow.nodes.parameter_extractor.fixtures.model import get_mocked_fetch_model_instance
 from tests.helpers.unit.model_factories import make_dataset, make_document
 from tests.tool_fixtures import make_runtime_tool
@@ -1506,6 +1512,10 @@ class _ModelTypeInstanceStub(LargeLanguageModel):
 
 
 class _ModelInstanceStub:
+    @property
+    def moderation(self) -> None:
+        return None
+
     def __init__(
         self,
         *,
@@ -2615,3 +2625,52 @@ class TestNodeRuntimeCases:
         assert isinstance(tool_file_manager, DifyToolFileManager)
         assert isinstance(file_reference_factory, DifyFileReferenceFactory)
         assert file_saver_cls.call_args.kwargs["http_client"] is http_client
+
+
+@pytest.mark.parametrize("phase", ["input", "output"])
+@pytest.mark.parametrize("unavailable", [False, True])
+@pytest.mark.parametrize("immediate", [False, True])
+def test_polling_moderation_stops_delivery_without_refunding_consumed_usage(
+    phase: ModerationPhase, unavailable: bool, immediate: bool
+) -> None:
+    instance, provider = make_failing_moderated_model(phase=phase, unavailable=unavailable)
+    usage = LLMUsage.empty_usage().model_copy(update={"total_tokens": 7})
+    running = LLMPollingResult(status=LLMPollingStatus.RUNNING, plugin_state={"task_id": "task-1"})
+    terminal = LLMPollingResult(
+        status=LLMPollingStatus.SUCCEEDED,
+        result=node_runtime.LLMResult(
+            model="test-model", message=_node_runtime_AssistantPromptMessage(content="output"), usage=usage
+        ),
+    )
+    runtime = RecordingPollingRuntime(initial=terminal if immediate else running, terminal=terminal)
+    provider.model_runtime = runtime
+    prepared = DifyPreparedPollingLLM(instance)
+    expected_error = ModerationUnavailableInvocationError if unavailable else ModerationRejectedInvocationError
+
+    def start() -> LLMPollingResult:
+        return prepared.start_llm_polling(
+            prompt_messages=[UserPromptMessage(content="input")],
+            model_parameters={},
+            tools=None,
+            stop=None,
+            json_schema=None,
+        )
+
+    if phase == "input" or immediate:
+        with pytest.raises(expected_error):
+            start()
+    else:
+        assert start() == running
+        with pytest.raises(expected_error):
+            prepared.check_llm_polling(plugin_state={"task_id": "task-1"})
+
+    assert provider.invocations == 0
+    if phase == "input":
+        assert runtime.starts == 0
+        assert not instance.reservations
+    else:
+        assert runtime.starts == 1
+        assert runtime.checks == (0 if immediate else 1)
+        assert len(instance.reservations) == 1
+        assert instance.reservations[0].commits == [usage]
+        assert instance.reservations[0].released

@@ -468,12 +468,14 @@ def _binding(
 
 
 @pytest.fixture
-def orm_statements(sqlite_session_factory: sessionmaker[Session]) -> Iterator[list[Executable]]:
+def orm_statements(sqlite_session_factory: sessionmaker[Session]) -> Iterator[list[ClauseElement]]:
     """Record statements executed by the service-owned SQLite sessions."""
-    scalar_statements: list[Executable] = []
+    scalar_statements: list[ClauseElement] = []
 
     def record_statement(execute_state: ORMExecuteState) -> None:
-        scalar_statements.append(execute_state.statement)
+        statement = execute_state.statement
+        assert isinstance(statement, ClauseElement)
+        scalar_statements.append(statement)
 
     event.listen(sqlite_session_factory.class_, "do_orm_execute", record_statement)
     try:

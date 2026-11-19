@@ -300,6 +300,20 @@ class AppGenerationRepository:
                 .limit(1)
             )
 
+    def retire_superseded_debug_conversations(
+        self, *, tenant_id: str, app_id: str, account_id: str, current_conversation_id: str
+    ) -> None:
+        from services.conversation_service import ConversationService
+
+        with self._sessions() as session:
+            ConversationService.retire_superseded_debug_conversations(
+                session=session,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                account_id=account_id,
+                current_conversation_id=current_conversation_id,
+            )
+
     def dialogue_count(self, conversation_id: str) -> int:
         with self._sessions() as session:
             return get_thread_messages_length(conversation_id, session=session) + 1

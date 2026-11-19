@@ -2,6 +2,7 @@
 Shared fixtures for ObservabilityLayer tests.
 """
 
+from collections.abc import Iterator
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -9,17 +10,20 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
+from graphon.engine_events import NodeRunSucceededEvent
 from graphon.enums import BuiltinNodeTypes
 
 
 @pytest.fixture
-def memory_span_exporter():
+def memory_span_exporter() -> InMemorySpanExporter:
     """Provide an in-memory span exporter for testing."""
     return InMemorySpanExporter()
 
 
 @pytest.fixture
-def tracer_provider_with_memory_exporter(memory_span_exporter, monkeypatch):
+def tracer_provider_with_memory_exporter(
+    memory_span_exporter: InMemorySpanExporter, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[TracerProvider]:
     """Provide a TracerProvider configured with memory exporter."""
     provider = TracerProvider()
     processor = SimpleSpanProcessor(memory_span_exporter)
@@ -32,7 +36,7 @@ def tracer_provider_with_memory_exporter(memory_span_exporter, monkeypatch):
 
 
 @pytest.fixture
-def mock_start_node():
+def mock_start_node() -> MagicMock:
     """Create a mock Start Node."""
     node = MagicMock()
     node.id = "test-start-node-id"
@@ -43,7 +47,7 @@ def mock_start_node():
 
 
 @pytest.fixture
-def mock_llm_node():
+def mock_llm_node() -> MagicMock:
     """Create a mock LLM Node."""
     node = MagicMock()
     node.id = "test-llm-node-id"
@@ -54,7 +58,7 @@ def mock_llm_node():
 
 
 @pytest.fixture
-def mock_tool_node():
+def mock_tool_node() -> MagicMock:
     """Create a mock Tool Node with tool-specific attributes."""
     from core.tools.entities.tool_entities import ToolProviderType
     from graphon.nodes.tool.entities import ToolNodeData
@@ -82,21 +86,21 @@ def mock_tool_node():
 
 
 @pytest.fixture
-def mock_is_instrument_flag_enabled_false():
+def mock_is_instrument_flag_enabled_false() -> Iterator[None]:
     """Mock is_instrument_flag_enabled to return False."""
     with patch("core.app.workflow.layers.observability.is_instrument_flag_enabled", return_value=False, autospec=True):
         yield
 
 
 @pytest.fixture
-def mock_is_instrument_flag_enabled_true():
+def mock_is_instrument_flag_enabled_true() -> Iterator[None]:
     """Mock is_instrument_flag_enabled to return True."""
     with patch("core.app.workflow.layers.observability.is_instrument_flag_enabled", return_value=True, autospec=True):
         yield
 
 
 @pytest.fixture
-def mock_retrieval_node():
+def mock_retrieval_node() -> MagicMock:
     """Create a mock Knowledge Retrieval Node."""
     node = MagicMock()
     node.id = "test-retrieval-node-id"
@@ -107,7 +111,7 @@ def mock_retrieval_node():
 
 
 @pytest.fixture
-def mock_result_event():
+def mock_result_event() -> NodeRunSucceededEvent:
     """Create a mock result event with NodeRunResult."""
     from datetime import datetime
 

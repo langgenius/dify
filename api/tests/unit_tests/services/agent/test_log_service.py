@@ -38,6 +38,7 @@ from services.agent.log_contracts import AgentLogAppNotFoundError, AgentLogConfi
 from services.agent.log_service import AgentLogService
 from services.workflow.variable_contracts import WorkflowExecutionVariables
 from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_message, make_upload_file
+from tests.helpers.unit.rbac_fakes import RBACDomain
 
 CONTEXT = RequestContext("request", None, "viewer", "tenant")
 
@@ -87,7 +88,9 @@ def _provide_app_context() -> None:
 
 
 @pytest.fixture
-def store(monkeypatch: pytest.MonkeyPatch, workflow_variables: WorkflowExecutionVariables) -> Iterator[AgentLogStore]:
+def store(
+    monkeypatch: pytest.MonkeyPatch, workflow_variables: WorkflowExecutionVariables, rbac_domain: RBACDomain
+) -> Iterator[AgentLogStore]:
     engine = create_engine("sqlite://", poolclass=QueuePool)
     tables: list[Table] = []
     for model in (
@@ -197,7 +200,9 @@ def store(monkeypatch: pytest.MonkeyPatch, workflow_variables: WorkflowExecution
                 message_files='["generated-file"]',
             )
         )
-    service = build_agent_app_services(database_client=sessions, variables=workflow_variables).logs
+    service = build_agent_app_services(
+        database_client=sessions, variables=workflow_variables, rbac_members=rbac_domain.rbac.members
+    ).logs
     try:
         yield sessions, service
     finally:

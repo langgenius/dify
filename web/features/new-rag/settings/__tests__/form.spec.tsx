@@ -38,12 +38,15 @@ import { KnowledgeSettingsPage } from '../page'
 
 const serviceMock = vi.hoisted(() => ({
   deleteSpace: vi.fn(),
+  getFileScanPolicy: vi.fn(),
+  getFileScanProviders: vi.fn(),
   getMigration: vi.fn(),
   getSpace: vi.fn(),
   getSpaces: vi.fn(),
   patchExternalAccess: vi.fn(),
   patchSettings: vi.fn(),
   patchSpace: vi.fn(),
+  putFileScanPolicy: vi.fn(),
   replaceMembers: vi.fn(),
 }))
 
@@ -78,7 +81,10 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'fileScan.providers.get': serviceMock.getFileScanProviders,
       'knowledgeFs.spaces.get': serviceMock.getSpaces,
+      [`${space}.fileScanPolicy.get`]: serviceMock.getFileScanPolicy,
+      [`${space}.fileScanPolicy.put`]: serviceMock.putFileScanPolicy,
       [`${space}.delete`]: serviceMock.deleteSpace,
       [`${space}.externalAccess.get`]: async () => knowledgeQueryMock.externalAccess,
       [`${space}.externalAccess.put`]: serviceMock.patchExternalAccess,
@@ -285,6 +291,7 @@ function KnowledgeSpaceList({ keyword }: { keyword: string }) {
 async function renderForm({
   accountProfile = {},
   externalAccess: externalAccessOverride = externalAccess,
+  fileScanEnabled = false,
   members = [],
   listKeywords = [],
   permissions = [],
@@ -302,6 +309,7 @@ async function renderForm({
     timezone: string
   }>
   externalAccess?: typeof externalAccess
+  fileScanEnabled?: boolean
   members?: AccountWithRoleResponse[]
   listKeywords?: string[]
   permissions?: KnowledgeFsPermissionResponse[]
@@ -350,6 +358,8 @@ async function renderForm({
         timezone: 'Asia/Shanghai',
         ...accountProfile,
       },
+      // The form reads the workspace features to decide whether to offer the malware scan.
+      features: { enable_file_scan: fileScanEnabled },
       queryClient,
     },
   )
@@ -521,6 +531,113 @@ describe('KnowledgeSettingsPage workflows', () => {
         name: 'knowledgeSettings.settings.saveChanges',
       }),
     ).toBeDisabled()
+  })
+
+  describe('file security scan', () => {
+    const policyOff = {
+      enabled: false,
+      provider_id: null,
+      on_unavailable: 'block',
+      on_unscannable: 'block',
+    }
+    const pageSaveButton = () =>
+      screen.getByRole('button', { name: 'knowledgeSettings.settings.saveChanges' })
+
+    async function renderFormWithFileScan() {
+      serviceMock.getFileScanPolicy.mockResolvedValue(policyOff)
+      serviceMock.getFileScanProviders.mockResolvedValue({
+        data: [
+          {
+            id: 'scanner-1',
+            name: 'Office scanner',
+            provider_type: 'cloudmersive',
+            config: {},
+            credentials_set: { api_key: true },
+            status: 'active',
+            last_error: null,
+            last_tested_at: null,
+            created_at: 1_780_000_000,
+            policy_count: 0,
+          },
+        ],
+      })
+      serviceMock.putFileScanPolicy.mockImplementation(
+        async ({ body }: { body: typeof policyOff }) => body,
+      )
+      await renderForm({ fileScanEnabled: true })
+      const enable = await screen.findByRole('switch', { name: 'fileScan.policy.enable' })
+      await waitFor(() => expect(enable).toBeEnabled())
+      return enable
+    }
+
+    it('saves the scan policy with the page Save button and has no button of its own', async () => {
+      const user = userEvent.setup()
+      const enable = await renderFormWithFileScan()
+      expect(pageSaveButton()).toBeDisabled()
+
+      await user.click(enable)
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.save' }),
+      ).not.toBeInTheDocument()
+      expect(serviceMock.putFileScanPolicy).not.toHaveBeenCalled()
+
+      // Scanning cannot be turned on without a scanner: nothing is sent.
+      await user.click(pageSaveButton())
+      expect(await screen.findByText('fileScan.policy.scannerRequired')).toBeInTheDocument()
+      expect(toastMock.error).toHaveBeenCalledWith('fileScan.policy.scannerRequired')
+      expect(serviceMock.putFileScanPolicy).not.toHaveBeenCalled()
+
+      await user.click(screen.getByRole('combobox', { name: 'fileScan.policy.scanner' }))
+      await user.click(await screen.findByRole('option', { name: /Office scanner/ }))
+      await user.click(pageSaveButton())
+
+      await waitFor(() => {
+        expect(serviceMock.putFileScanPolicy).toHaveBeenCalledWith({
+          body: { ...policyOff, enabled: true, provider_id: 'scanner-1' },
+          params: { control_space_id: 'space-1' },
+        })
+      })
+      await waitFor(() =>
+        expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess'),
+      )
+      // Only the scan policy changed, so the other settings are not written.
+      expectNoWrites()
+    })
+
+    it('stops the save and keeps the other changes when the scan policy is rejected', async () => {
+      const user = userEvent.setup()
+      const enable = await renderFormWithFileScan()
+      serviceMock.putFileScanPolicy.mockRejectedValue(
+        createHttpError(new Response(null, { status: 400 }), { code: 'bad_request' }),
+      )
+
+      const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
+      await user.clear(nameInput)
+      await user.type(nameInput, 'Updated camera specs')
+      await user.click(enable)
+      await user.click(screen.getByRole('combobox', { name: 'fileScan.policy.scanner' }))
+      await user.click(await screen.findByRole('option', { name: /Office scanner/ }))
+      await user.click(pageSaveButton())
+
+      await waitFor(() =>
+        expect(toastMock.error).toHaveBeenCalledWith('fileScan.policy.saveFailed'),
+      )
+      expect(serviceMock.patchSpace).not.toHaveBeenCalled()
+      expect(nameInput).toHaveValue('Updated camera specs')
+      expect(pageSaveButton()).toBeEnabled()
+    })
+
+    it('drops the scan policy changes on Cancel', async () => {
+      const user = userEvent.setup()
+      const enable = await renderFormWithFileScan()
+
+      await user.click(enable)
+      await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+
+      await waitFor(() => expect(enable).not.toBeChecked())
+      expect(pageSaveButton()).toBeDisabled()
+      expect(serviceMock.putFileScanPolicy).not.toHaveBeenCalled()
+    })
   })
 
   it('saves a changed knowledge name through the generated space mutation', async () => {

@@ -82,7 +82,7 @@ def form() -> Form:
             legacy_form_content="Answer: {{#$output.answer#}}; files: {{#$output.files#}}",
             parts=(
                 MarkdownFragment(text="Answer: "),
-                ParagraphInput(output_variable_name="answer", default_value="original"),
+                ParagraphInput(output_variable_name="answer", resolved_default_value="original"),
                 MarkdownFragment(text="; files: "),
                 FileListInput(
                     output_variable_name="files",
@@ -420,9 +420,9 @@ def test_filled_rendering_skips_missing_and_null_inputs_and_preserves_select_tex
             update={
                 "parts": (
                     MarkdownFragment(text="Before "),
-                    ParagraphInput(output_variable_name="missing", default_value="unused"),
-                    ParagraphInput(output_variable_name="null", default_value=None),
-                    SelectInput(output_variable_name="choice", options=("Yes", "No"), default_value=None),
+                    ParagraphInput(output_variable_name="missing", resolved_default_value="unused"),
+                    ParagraphInput(output_variable_name="null", resolved_default_value=None),
+                    SelectInput(output_variable_name="choice", options=("Yes", "No"), resolved_default_value=None),
                     MarkdownFragment(text=" after"),
                 )
             }
@@ -445,7 +445,7 @@ def test_filled_rendering_skips_missing_and_null_inputs_and_preserves_select_tex
 def test_waiting_projection_freezes_select_options_and_deduplicates_slots(form: Form) -> None:
     from services.workflow.execution.adapters.response_converter import WorkflowResponseConverter
 
-    option = SelectInput(output_variable_name="choice", options=("old-a", "old-b"), default_value="old-b")
+    option = SelectInput(output_variable_name="choice", options=("old-a", "old-b"), resolved_default_value="old-b")
     form = replace(form, resolved_form=form.resolved_form.model_copy(update={"parts": (option, option)}))
     prepared = PreparedForm(form, SecretStr("secret-token"))
     data = WorkflowResponseConverter.human_input_v2_required_data(prepared, node_id="node-1")

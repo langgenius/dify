@@ -22,6 +22,7 @@ from models.model import App, AppMode, AppModelConfig
 from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.app.agent_app_feature_gateway import AgentAppFeatureValidator
 from services.workflow.variable_contracts import WorkflowExecutionVariables
+from tests.helpers.unit.rbac_fakes import RBACDomain
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 APP_ID = "22222222-2222-2222-2222-222222222222"
@@ -111,11 +112,12 @@ def agent_app(sqlite_session: Session) -> App:
 
 
 def test_feature_save_is_atomic(
-    agent_app: App, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+    agent_app: App, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], rbac_domain: RBACDomain
 ) -> None:
     service = build_agent_app_services(
         database_client=sqlite_session_factory,
         variables=create_autospec(WorkflowExecutionVariables, instance=True, spec_set=True),
+        rbac_members=rbac_domain.rbac.members,
     ).features
     context = RequestContext("request", None, ACCOUNT_ID, TENANT_ID)
     calls: list[str] = []
@@ -148,11 +150,12 @@ def test_feature_save_is_atomic(
 
 
 def test_feature_validation_failure_does_not_write(
-    agent_app: App, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+    agent_app: App, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], rbac_domain: RBACDomain
 ) -> None:
     service = build_agent_app_services(
         database_client=sqlite_session_factory,
         variables=create_autospec(WorkflowExecutionVariables, instance=True, spec_set=True),
+        rbac_members=rbac_domain.rbac.members,
     ).features
     with pytest.raises(ValueError, match="opening_statement"):
         service.update_features(
@@ -165,7 +168,11 @@ def test_feature_validation_failure_does_not_write(
 
 @pytest.mark.parametrize("invalid", ["agent-tenant", "app-tenant", "app-mode", "missing-app", "agent-status"])
 def test_features_require_owned_active_agent_app(
-    agent_app: App, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], invalid: str
+    agent_app: App,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    rbac_domain: RBACDomain,
+    invalid: str,
 ) -> None:
     agent = sqlite_session.get(Agent, "agent")
     assert agent is not None
@@ -183,6 +190,7 @@ def test_features_require_owned_active_agent_app(
     service = build_agent_app_services(
         database_client=sqlite_session_factory,
         variables=create_autospec(WorkflowExecutionVariables, instance=True, spec_set=True),
+        rbac_members=rbac_domain.rbac.members,
     ).features
     with pytest.raises(AgentAppNotFoundError):
         service.update_features(RequestContext("request", None, ACCOUNT_ID, TENANT_ID), "agent", {})

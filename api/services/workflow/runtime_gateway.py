@@ -9,7 +9,7 @@ from core.app.app_config.features.file_upload.manager import FileUploadConfigMan
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.file_access import DatabaseFileAccessController
 from core.plugin.impl.exc import PluginInvokeError
-from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
+from constants.trigger import TRIGGER_SCHEDULE_NODE_TYPE
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from factories import file_factory
 from graphon.entities.graph_config import NodeConfigDictAdapter

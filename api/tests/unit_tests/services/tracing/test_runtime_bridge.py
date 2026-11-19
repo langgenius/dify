@@ -909,7 +909,16 @@ def workflow_agent_context(preview: bool) -> WorkflowAgentRuntimeBuildContext:
 
 
 def workflow_entity(extras: dict[str, object]) -> WorkflowAppGenerateEntity:
-    return WorkflowAppGenerateEntity.model_construct(
+    """Given tracing extras, return a complete workflow invocation without I/O."""
+    return WorkflowAppGenerateEntity(
+        task_id="task",
+        inputs={},
+        files=[],
+        user_id="account",
+        stream=False,
+        invoke_from=InvokeFrom.DEBUGGER,
+        user_from=UserFrom.ACCOUNT,
+        workflow_execution_id="workflow-execution",
         app_config=WorkflowUIBasedAppConfig(
             app_id="workflow-app", tenant_id="tenant", app_mode=AppMode.WORKFLOW, workflow_id="workflow"
         ),

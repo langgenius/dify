@@ -560,11 +560,19 @@ class WorkflowDefinitionStore:
         if draft_workflow is None:
             raise ValueError("No valid workflow found.")
 
+        from services.workflow_service import WorkflowService
+
+        kind = WorkflowService._resolve_publish_workflow_kind(session=session, app_model=app_model, requested_kind=None)
+        if kind == WorkflowKind.EVALUATION:
+            WorkflowService._require_evaluation_paid_plan(app_model.tenant_id)
+            WorkflowService._validate_evaluation_workflow_nodes(draft_workflow)
+
         # create new workflow
         workflow = Workflow.new(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             type=draft_workflow.type,
+            kind=kind.value,
             version=Workflow.version_from_datetime(naive_utc_now()),
             version_number=allocate_version_number(session=session, app_id=app_model.id),
             graph=draft_workflow.graph,
