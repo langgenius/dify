@@ -3,11 +3,10 @@
 // failure mode and so a new server error code can be wired up here once —
 // this maps a server code to an i18n key, then the key to translated copy.
 
-import type { TFunction } from 'i18next'
-import type deviceFlowResources from '@/i18n/locales/en-US/device-flow.json'
+import type { ParseKeysWithoutVariables, TFunction } from 'i18next'
 import { DeviceFlowError } from '@/service/device-flow'
 
-type DeviceFlowKey = keyof typeof deviceFlowResources
+type DeviceFlowKey = ParseKeysWithoutVariables<'deviceFlow'>
 
 const APPROVE_KEY: Record<string, DeviceFlowKey> = {
   rate_limited: 'approveError.rateLimited',

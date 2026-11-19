@@ -81,72 +81,72 @@ export type HumanInputFormExpiredError = ErrorResponse & {
 }
 
 export type ResolvedForm = {
-  actions: Array<UserAction>
+  actions: Array<HumanInputActionResponse>
   legacy_form_content: string
-  parts: Array<FormPart>
+  parts: Array<ResolvedPartResponse>
   title: string
 }
 
 export type JsonValue = unknown
 
-export type UserAction = {
+export type HumanInputActionResponse = {
   button_style: ButtonStyle
   id: string
   title: string
 }
 
-export type FormPart =
+export type ResolvedPartResponse =
   | ({
       type: 'markdown_fragment'
-    } & MarkdownFragment)
+    } & ResolvedMarkdownResponse)
   | ({
       type: 'paragraph_input'
-    } & ParagraphInput)
+    } & ResolvedParagraphResponse)
   | ({
       type: 'select_input'
-    } & SelectInput)
+    } & ResolvedSelectResponse)
   | ({
       type: 'file_input'
-    } & FileInput)
+    } & ResolvedFileResponse)
   | ({
       type: 'file_list_input'
-    } & FileListInput)
+    } & ResolvedFileListResponse)
 
 export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
 
-export type MarkdownFragment = {
+export type ResolvedMarkdownResponse = {
   text: string
-  type?: 'markdown_fragment'
+  type: 'markdown_fragment'
 }
 
-export type ParagraphInput = {
+export type ResolvedParagraphResponse = {
   default_value: string | null
   output_variable_name: string
-  type?: 'paragraph_input'
+  type: 'paragraph_input'
 }
 
-export type SelectInput = {
+export type ResolvedSelectResponse = {
   default_value: string | null
   options: Array<string>
   output_variable_name: string
-  type?: 'select_input'
+  type: 'select_input'
 }
 
-export type FileInput = {
+export type ResolvedFileResponse = {
   allowed_file_extensions: Array<string>
   allowed_file_types: Array<FileType>
   allowed_file_upload_methods: Array<FileTransferMethod>
   output_variable_name: string
-  type?: 'file_input'
+  type: 'file_input'
 }
 
-export type FileListInput = {
+export type ResolvedFileListResponse = {
   allowed_file_extensions: Array<string>
   allowed_file_types: Array<FileType>
   allowed_file_upload_methods: Array<FileTransferMethod>
   number_limits: number
   output_variable_name: string
-  type?: 'file_list_input'
+  type: 'file_list_input'
 }
 
 export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'

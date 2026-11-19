@@ -166,7 +166,7 @@ def _adapter(
 
 def _intent(*, input_type: str = "paragraph") -> ResolvedForm:
     if input_type == "select":
-        input_block = SelectInput(output_variable_name="comment", options=("One", "Two"), default_value="One")
+        input_block = SelectInput(output_variable_name="comment", options=("One", "Two"), resolved_default_value="One")
     elif input_type == "file":
         input_block = FileInput(
             output_variable_name="comment",
@@ -183,7 +183,7 @@ def _intent(*, input_type: str = "paragraph") -> ResolvedForm:
             number_limits=1,
         )
     else:
-        input_block = ParagraphInput(output_variable_name="comment", default_value="Initial")
+        input_block = ParagraphInput(output_variable_name="comment", resolved_default_value="Initial")
     return ResolvedForm(
         title="Approval",
         parts=(MarkdownFragment(text="Rendered **content**"), input_block, MarkdownFragment(text="After input")),
@@ -198,7 +198,7 @@ def _intent(*, input_type: str = "paragraph") -> ResolvedForm:
 def _intent_with_paragraph_default(default_value: str) -> ResolvedForm:
     return ResolvedForm(
         title="Approval",
-        parts=(ParagraphInput(output_variable_name="comment", default_value=default_value),),
+        parts=(ParagraphInput(output_variable_name="comment", resolved_default_value=default_value),),
         actions=(UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),),
         legacy_form_content="This value must not be rendered",
     )
@@ -208,7 +208,7 @@ def _intent_with_select_option_count(option_count: int) -> ResolvedForm:
     options = tuple(f"option-{ordinal}" for ordinal in range(option_count))
     return ResolvedForm(
         title="Approval",
-        parts=(SelectInput(output_variable_name="risk_level", options=options, default_value=options[0]),),
+        parts=(SelectInput(output_variable_name="risk_level", options=options, resolved_default_value=options[0]),),
         actions=(UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),),
         legacy_form_content="This value must not be rendered",
     )

@@ -1,3 +1,4 @@
+import gzip
 from collections.abc import Iterator
 from inspect import unwrap
 from unittest.mock import MagicMock, patch
@@ -40,6 +41,19 @@ def _download(
 
 
 class TestToolFileApi:
+    def test_compressed_svg_download_preserves_the_original_stream(self) -> None:
+        payload = gzip.compress(b'<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"/>')
+        stream = iter([payload])
+        download = _download(content=stream, mime_type="image/svg+xml", filename="image.svgz", size=len(payload))
+
+        response = module.ToolFileApi._build_response(download=download, as_attachment=False, extension="svg")
+
+        assert response.headers["Content-Disposition"].startswith("attachment")
+        assert response.headers["Content-Type"] == "application/octet-stream"
+        assert "Content-Encoding" not in response.headers
+        assert response.response is stream
+        assert b"".join(response.response) == payload
+
     @patch.object(module, "application_services")
     def test_success_stream(self, mock_application_services: MagicMock) -> None:
         stream = iter([b"data"])
@@ -114,6 +128,63 @@ class TestToolFileApi:
 
         with pytest.raises(Forbidden, match=r"Invalid request\."):
             _get(_query(sign="bad-sig"), "file-id", "txt")
+
+    @pytest.mark.parametrize("as_attachment", [False, True])
+    @pytest.mark.parametrize(
+        ("mime_type", "filename", "route_extension", "svg_preview"),
+        [
+            ("image/svg+xml", "image.svg", "svg", True),
+            ("Image/SVG+XML; charset=UTF-8", "image.txt", "txt", True),
+            ("image/png", "image.SVG", "png", True),
+            ("image/png", "image.png", "SVG", True),
+            ("application/octet-stream", "image.SVGZ", "bin", False),
+            ("image/svg+xml", None, "bin", True),
+            ("text/xml", "image.svg", "bin", True),
+            ("application/xml", "image.bin", "SVG", True),
+            ("application/xml", "image.xml", "xml", False),
+            ("text/xml", "image.xml", "xml", False),
+            ("Application/XML; charset=UTF-8", "image.txt", "txt", False),
+            ("application/vnd.dify+xml", "image.bin", "bin", False),
+            ("text/xsl", "image.xsl", "xsl", False),
+            ("application/xslt+xml", "image.xslt", "xslt", False),
+            ("text/plain", "image.XML", "txt", False),
+            ("text/plain", "image.txt", "XML", False),
+            (None, "a", "bin", False),
+            ("", "a", "bin", False),
+            ("image/svg+xml", "image.SVGZ", "svg", False),
+            ("image/svg+xml", "image.svg", "SVGZ", False),
+        ],
+    )
+    def test_active_content_respects_download_mode(
+        self,
+        mime_type: str | None,
+        filename: str | None,
+        route_extension: str,
+        as_attachment: bool,
+        svg_preview: bool,
+    ) -> None:
+        payload = b'<svg xmlns="http://www.w3.org/2000/svg" onload="alert(document.domain)"/>'
+        stream = iter([payload])
+        download = _download(content=stream, mime_type=mime_type, filename=filename, size=len(payload))
+
+        response = module.ToolFileApi._build_response(
+            download=download, as_attachment=as_attachment, extension=route_extension
+        )
+
+        if svg_preview and not as_attachment:
+            assert response.headers["Content-Disposition"] == "inline"
+            assert response.headers["Content-Type"] == "image/svg+xml"
+            assert response.headers["Content-Security-Policy"] == (
+                "default-src 'none'; style-src 'unsafe-inline'; img-src data:; sandbox"
+            )
+        else:
+            assert response.headers["Content-Disposition"].startswith("attachment")
+            assert response.headers["Content-Type"] == "application/octet-stream"
+            assert response.headers["Content-Security-Policy"] == "default-src 'none'; sandbox"
+        assert response.headers["X-Content-Type-Options"] == "nosniff"
+        assert response.headers["Content-Length"] == str(len(payload))
+        assert response.response is stream
+        assert b"".join(response.response) == payload
 
     @patch.object(module, "application_services")
     def test_file_not_found(self, mock_application_services: MagicMock) -> None:

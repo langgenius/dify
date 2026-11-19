@@ -114,7 +114,7 @@ def test_save_materializes_commands_and_replaces_the_existing_scope(
         assert stored_variable.app_id == app_id
         assert stored_variable.user_id == user_id
         assert stored_variable.description == "Generated answer"
-        assert stored_variable.get_value() == build_segment("truncated")
+        assert stored_variable.get_value(session=session) == build_segment("truncated")
         assert stored_variable.file_id == variable_file_id
         assert stored_variable.visible is False
         assert stored_variable.editable is False
@@ -149,7 +149,7 @@ def test_save_materializes_commands_and_replaces_the_existing_scope(
         stored_variable = stored_variables[0]
         assert stored_variable.id == variable_id
         assert stored_variable.description == "Replacement answer"
-        assert stored_variable.get_value() == build_segment("complete")
+        assert stored_variable.get_value(session=session) == build_segment("complete")
         assert stored_variable.file_id is None
         assert stored_variable.visible is True
         assert stored_variable.editable is True
@@ -196,7 +196,7 @@ def test_prefill_preserves_an_existing_edited_value(sqlite_session_factory: sess
     with sqlite_session_factory() as session:
         stored = session.get(WorkflowDraftVariable, variable_id)
         assert stored is not None
-        assert stored.get_value() == build_segment("edited")
+        assert stored.get_value(session=session) == build_segment("edited")
         assert stored.description == "Original default"
         assert stored.last_edited_at == edited_at
         assert session.scalar(select(func.count()).select_from(WorkflowDraftVariable)) == 1

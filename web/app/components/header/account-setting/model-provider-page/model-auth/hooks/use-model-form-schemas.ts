@@ -59,19 +59,9 @@ export const useModelFormSchemas = (
     return [modelNameSchema, modelTypeSchema]
   }, [supported_model_types, model_credential_schema?.model, providerFormSchemaPredefined])
 
-  const modelNameAndTypeFormValues = useMemo(() => {
-    let result = {}
-    if (providerFormSchemaPredefined) return result
-
-    if (model) result = { ...result, __model_name: model?.model, __model_type: model?.model_type }
-
-    return result
-  }, [model, providerFormSchemaPredefined])
-
   return {
     formSchemas: formSchemasWithAuthorizationName,
     formValues,
     modelNameAndTypeFormSchemas,
-    modelNameAndTypeFormValues,
   }
 }
