@@ -44,6 +44,7 @@
   "invalidInvitationCode": "無効な招待コード",
   "invitationCode": "招待コード",
   "invitationCodePlaceholder": "招待コードを入力してください",
+  "invitationWorkspaceFull": "このワークスペースには空き枠がないため、現在は参加できません。招待した人に枠を空けるか、プランをアップグレードするよう依頼してください。",
   "join": "参加する",
   "joinTipEnd": "チームに参加する",
   "joinTipStart": "あなたを招待します",

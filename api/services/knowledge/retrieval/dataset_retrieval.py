@@ -17,6 +17,7 @@ from core.app.app_config.entities import (
     MetadataFilteringCondition,
     ModelConfig,
 )
+from core.app.apps.exc import ModerationInvocationError
 from core.app.entities.app_invoke_entities import (
     CreditUsageCreatedBy,
     EasyUIBasedAppGenerateEntity,
@@ -1305,6 +1306,8 @@ class DatasetRetrieval:
                                 "condition": item.get("comparison_operator"),
                             }
                         )
+        except ModerationInvocationError:
+            raise
         except Exception as e:
             logger.warning(e, exc_info=True)
             return None

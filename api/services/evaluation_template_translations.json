@@ -1,0 +1,227 @@
+{
+  "en-US": {
+    "index": "Use a unique integer to identify this test row and find its results.",
+    "input": "Enter the input for this test row, such as a question, instruction, or value required by this field.",
+    "expectedOutput": "Enter the answer this node should produce for this test row. It is compared with the actual output.",
+    "retrievalExpectedOutput": "Enter the reference answer or key facts for this query to assess retrieval relevance and coverage.",
+    "successCriteria": "Enter the conditions the Agent must meet, one per line. Each is judged separately. Leave blank if none.",
+    "expectedToolCalls": "Enter the tools and arguments the Agent is expected to use as a JSON array.",
+    "notice": "This row contains example explanations. Delete this row before uploading the dataset for evaluation."
+  },
+  "zh-Hans": {
+    "index": "填写不重复的整数作为本条测试的序号，方便定位评测结果。",
+    "input": "填写本条测试的输入内容，例如用户问题、指令或该字段要求的值。",
+    "expectedOutput": "填写该节点对本条输入应给出的参考答案，用于对照实际输出。",
+    "retrievalExpectedOutput": "填写本条问题的参考答案或关键事实，用于评估检索内容的相关性和覆盖程度。",
+    "successCriteria": "填写 Agent 完成任务必须满足的条件，每行一条；评测会逐条判断。没有额外条件可留空。",
+    "expectedToolCalls": "以 JSON 数组填写 Agent 预期调用的工具和参数。",
+    "notice": "该行为示例说明请删除本行后进行上传评估。"
+  },
+  "zh-Hant": {
+    "index": "填寫不重複的整數作為本筆測試的序號，方便定位評測結果。",
+    "input": "填寫本筆測試的輸入內容，例如使用者問題、指令或此欄位要求的值。",
+    "expectedOutput": "填寫此節點對本筆輸入應給出的參考答案，用於對照實際輸出。",
+    "retrievalExpectedOutput": "填寫本筆問題的參考答案或關鍵事實，用於評估檢索內容的相關性與涵蓋程度。",
+    "successCriteria": "填寫 Agent 完成任務必須符合的條件，每行一項；評測會逐項判斷。沒有額外條件可留空。",
+    "expectedToolCalls": "以 JSON 陣列填寫 Agent 預期呼叫的工具與參數。",
+    "notice": "此行為範例說明，請刪除此行後再上傳進行評估。"
+  },
+  "pt-BR": {
+    "index": "Use um número inteiro exclusivo para identificar esta linha de teste e localizar o resultado.",
+    "input": "Informe a entrada desta linha, como uma pergunta, instrução ou o valor exigido por este campo.",
+    "expectedOutput": "Informe a resposta de referência que este nó deve produzir para esta linha. Ela será comparada com a saída real.",
+    "retrievalExpectedOutput": "Informe a resposta de referência ou os fatos principais desta consulta para avaliar a relevância e a cobertura da recuperação.",
+    "successCriteria": "Informe as condições que o Agente deve cumprir, uma por linha. Cada uma é avaliada separadamente. Deixe em branco se não houver condições.",
+    "expectedToolCalls": "Informe as ferramentas e os argumentos que o Agente deve usar como uma matriz JSON.",
+    "notice": "Esta linha contém explicações de exemplo. Exclua esta linha antes de enviar o conjunto de dados para avaliação."
+  },
+  "es-ES": {
+    "index": "Usa un número entero único para identificar esta fila de prueba y localizar su resultado.",
+    "input": "Introduce el dato de entrada de esta fila, como una pregunta, instrucción o el valor que requiere este campo.",
+    "expectedOutput": "Introduce la respuesta de referencia que este nodo debería dar para esta fila. Se comparará con la salida real.",
+    "retrievalExpectedOutput": "Introduce la respuesta de referencia o los datos clave de esta consulta para evaluar la relevancia y cobertura de la recuperación.",
+    "successCriteria": "Introduce las condiciones que debe cumplir el agente, una por línea. Cada una se evalúa por separado. Déjalo vacío si no hay más condiciones.",
+    "expectedToolCalls": "Introduce las herramientas y los argumentos que se espera que use el agente como un array JSON.",
+    "notice": "Esta fila contiene explicaciones de ejemplo. Elimínala antes de subir los datos para su evaluación."
+  },
+  "fr-FR": {
+    "index": "Utilisez un entier unique pour identifier cette ligne de test et retrouver son résultat.",
+    "input": "Saisissez l’entrée de cette ligne, par exemple une question, une instruction ou la valeur attendue par ce champ.",
+    "expectedOutput": "Saisissez la réponse de référence attendue de ce nœud pour cette ligne. Elle sera comparée à la sortie réelle.",
+    "retrievalExpectedOutput": "Saisissez la réponse de référence ou les faits clés de cette requête pour évaluer la pertinence et la couverture de la recherche.",
+    "successCriteria": "Saisissez les conditions que l’agent doit remplir, une par ligne. Chacune est évaluée séparément. Laissez vide s’il n’y en a pas.",
+    "expectedToolCalls": "Saisissez les outils et arguments que l’agent est censé utiliser sous forme de tableau JSON.",
+    "notice": "Cette ligne contient des explications à titre d’exemple. Supprimez-la avant de téléverser le jeu de données pour l’évaluation."
+  },
+  "de-DE": {
+    "index": "Verwenden Sie eine eindeutige Ganzzahl, um diese Testzeile und ihr Ergebnis zu identifizieren.",
+    "input": "Geben Sie die Eingabe für diese Testzeile ein, etwa eine Frage, Anweisung oder den für dieses Feld benötigten Wert.",
+    "expectedOutput": "Tragen Sie die Referenzantwort ein, die dieser Knoten für diese Testzeile liefern soll. Sie wird mit der tatsächlichen Ausgabe verglichen.",
+    "retrievalExpectedOutput": "Tragen Sie die Referenzantwort oder Schlüsselfakten für diese Anfrage ein, um Relevanz und Abdeckung der abgerufenen Inhalte zu bewerten.",
+    "successCriteria": "Tragen Sie die Bedingungen ein, die der Agent erfüllen muss, eine pro Zeile. Jede wird einzeln bewertet. Ohne zusätzliche Bedingungen leer lassen.",
+    "expectedToolCalls": "Tragen Sie die erwarteten Tools und Argumente des Agenten als JSON-Array ein.",
+    "notice": "Diese Zeile enthält Beispielerklärungen. Löschen Sie sie vor dem Hochladen zur Auswertung."
+  },
+  "ja-JP": {
+    "index": "テスト行と結果を特定できるよう、重複しない整数を入力します。",
+    "input": "この行の入力値を入力します。質問、指示、またはこの項目に必要な値などを指定してください。",
+    "expectedOutput": "このテスト行でノードが出力すべき参照回答を入力します。実際の出力との比較に使用します。",
+    "retrievalExpectedOutput": "検索結果の関連性と網羅性を評価するため、この質問の参照回答または重要な事実を入力します。",
+    "successCriteria": "Agent が満たすべき条件を 1 行に 1 つずつ入力します。各条件を個別に評価します。追加条件がなければ空欄にできます。",
+    "expectedToolCalls": "Agent が呼び出すべきツールと引数を JSON 配列で入力します。",
+    "notice": "この行は入力例の説明です。評価用データセットをアップロードする前に、この行を削除してください。"
+  },
+  "ko-KR": {
+    "index": "테스트 행과 결과를 식별할 수 있도록 중복되지 않는 정수를 입력하세요.",
+    "input": "이 행의 입력값을 입력하세요. 질문, 지시 또는 이 필드에 필요한 값 등을 입력할 수 있습니다.",
+    "expectedOutput": "이 테스트 행에서 노드가 생성해야 할 기준 답변을 입력하세요. 실제 출력과 비교하는 데 사용됩니다.",
+    "retrievalExpectedOutput": "검색 결과의 관련성과 포괄성을 평가할 수 있도록 질문의 기준 답변이나 핵심 사실을 입력하세요.",
+    "successCriteria": "Agent가 충족해야 할 조건을 한 줄에 하나씩 입력하세요. 각 조건은 개별 평가됩니다. 추가 조건이 없으면 비워 두세요.",
+    "expectedToolCalls": "Agent가 사용해야 할 도구와 인수를 JSON 배열로 입력하세요.",
+    "notice": "이 행은 예시 설명입니다. 평가용 데이터셋을 업로드하기 전에 이 행을 삭제하세요."
+  },
+  "lo-LA": {
+    "index": "ໃສ່ຈຳນວນເຕັມທີ່ບໍ່ຊ້ຳກັນ ເພື່ອລະບຸແຖວທົດສອບ ແລະ ຄົ້ນຫາຜົນ.",
+    "input": "ໃສ່ຂໍ້ມູນເຂົ້າຂອງແຖວນີ້ ເຊັ່ນ ຄຳຖາມ, ຄຳສັ່ງ ຫຼື ຄ່າທີ່ຊ່ອງນີ້ຕ້ອງການ.",
+    "expectedOutput": "ໃສ່ຄຳຕອບອ້າງອີງທີ່ໂນດນີ້ຄວນສົ່ງອອກສຳລັບແຖວທົດສອບນີ້ ເພື່ອທຽບກັບຜົນຈິງ.",
+    "retrievalExpectedOutput": "ໃສ່ຄຳຕອບອ້າງອີງ ຫຼື ຂໍ້ເທັດຈິງສຳຄັນ ເພື່ອປະເມີນຄວາມກ່ຽວຂ້ອງ ແລະ ຄວາມຄອບຄຸມຂອງຜົນຄົ້ນຫາ.",
+    "successCriteria": "ໃສ່ເງື່ອນໄຂທີ່ Agent ຕ້ອງບັນລຸ ໜຶ່ງຂໍ້ຕໍ່ແຖວ. ແຕ່ລະຂໍ້ຈະຖືກປະເມີນແຍກກັນ. ປ່ອຍວ່າງຖ້າບໍ່ມີ.",
+    "expectedToolCalls": "ໃສ່ເຄື່ອງມື ແລະ ອາກິວເມນທີ່ຄາດວ່າ Agent ຈະໃຊ້ໃນຮູບແບບອາເຣ JSON.",
+    "notice": "ແຖວນີ້ແມ່ນຄຳອະທິບາຍຕົວຢ່າງ. ກະລຸນາລຶບແຖວນີ້ກ່ອນອັບໂຫຼດຊຸດຂໍ້ມູນເພື່ອປະເມີນ."
+  },
+  "ru-RU": {
+    "index": "Укажите уникальное целое число, чтобы обозначить строку теста и найти её результат.",
+    "input": "Введите данные для этой строки: вопрос, инструкцию или значение, необходимое для этого поля.",
+    "expectedOutput": "Введите эталонный ответ, который должен выдать этот узел для данной строки. Он сравнивается с фактическим результатом.",
+    "retrievalExpectedOutput": "Введите эталонный ответ или ключевые факты по запросу, чтобы оценить релевантность и полноту найденного содержимого.",
+    "successCriteria": "Укажите условия, которые должен выполнить агент, по одному на строку. Каждое оценивается отдельно. Если условий нет, оставьте поле пустым.",
+    "expectedToolCalls": "Укажите инструменты и аргументы, которые должен использовать агент, в виде массива JSON.",
+    "notice": "Эта строка содержит пояснения к примеру. Удалите её перед загрузкой набора данных для оценки."
+  },
+  "it-IT": {
+    "index": "Usa un numero intero univoco per identificare questa riga di test e trovarne il risultato.",
+    "input": "Inserisci l'input per questa riga, ad esempio una domanda, un'istruzione o il valore richiesto dal campo.",
+    "expectedOutput": "Inserisci la risposta di riferimento che questo nodo dovrebbe fornire per questa riga. Verrà confrontata con l'output effettivo.",
+    "retrievalExpectedOutput": "Inserisci la risposta di riferimento o i fatti chiave della query per valutare pertinenza e copertura dei risultati recuperati.",
+    "successCriteria": "Inserisci le condizioni che l'Agent deve soddisfare, una per riga. Ognuna viene valutata separatamente. Lascia vuoto se non ce ne sono.",
+    "expectedToolCalls": "Inserisci gli strumenti e gli argomenti che l'Agent dovrebbe usare come array JSON.",
+    "notice": "Questa riga contiene spiegazioni di esempio. Eliminala prima di caricare i dati per la valutazione."
+  },
+  "uk-UA": {
+    "index": "Укажіть унікальне ціле число, щоб позначити цей тестовий рядок і знайти його результат.",
+    "input": "Введіть дані для цього рядка: запитання, інструкцію або значення, потрібне для цього поля.",
+    "expectedOutput": "Введіть еталонну відповідь, яку цей вузол має надати для цього тестового рядка. Її порівняють із фактичним результатом.",
+    "retrievalExpectedOutput": "Введіть еталонну відповідь або ключові факти для цього запиту, щоб оцінити доречність і повноту знайденого вмісту.",
+    "successCriteria": "Укажіть умови, які Агент має виконати, по одній у рядку. Кожну оцінюють окремо. Якщо умов немає, залиште поле порожнім.",
+    "expectedToolCalls": "Укажіть інструменти й аргументи, які Агент має використати, у форматі масиву JSON.",
+    "notice": "Цей рядок містить приклади пояснень. Видаліть його перед завантаженням набору даних для оцінювання."
+  },
+  "vi-VN": {
+    "index": "Dùng một số nguyên không trùng lặp để xác định dòng kiểm thử này và tìm kết quả.",
+    "input": "Nhập dữ liệu đầu vào cho dòng này, chẳng hạn câu hỏi, chỉ dẫn hoặc giá trị mà trường này yêu cầu.",
+    "expectedOutput": "Nhập câu trả lời tham chiếu mà nút này cần tạo cho dòng kiểm thử này. Câu trả lời sẽ được so sánh với đầu ra thực tế.",
+    "retrievalExpectedOutput": "Nhập câu trả lời tham chiếu hoặc các thông tin chính cho truy vấn này để đánh giá độ liên quan và mức độ bao phủ của nội dung truy xuất.",
+    "successCriteria": "Nhập các điều kiện Agent phải đáp ứng, mỗi dòng một điều kiện. Từng điều kiện được đánh giá riêng. Để trống nếu không có.",
+    "expectedToolCalls": "Nhập các công cụ và đối số mà Agent dự kiến sử dụng dưới dạng mảng JSON.",
+    "notice": "Hàng này chứa phần giải thích mẫu. Hãy xóa hàng này trước khi tải bộ dữ liệu lên để đánh giá."
+  },
+  "ro-RO": {
+    "index": "Folosește un număr întreg unic pentru a identifica acest rând de test și rezultatul său.",
+    "input": "Introdu datele de intrare pentru acest rând, cum ar fi o întrebare, o instrucțiune sau valoarea cerută de acest câmp.",
+    "expectedOutput": "Introdu răspunsul de referință pe care acest nod ar trebui să îl producă pentru acest rând. Este comparat cu rezultatul real.",
+    "retrievalExpectedOutput": "Introdu răspunsul de referință sau faptele esențiale pentru această interogare, pentru a evalua relevanța și acoperirea căutării.",
+    "successCriteria": "Introdu condițiile pe care Agentul trebuie să le îndeplinească, câte una pe rând. Fiecare este evaluată separat. Lasă necompletat dacă nu există.",
+    "expectedToolCalls": "Introdu instrumentele și argumentele pe care Agentul trebuie să le folosească sub forma unui tablou JSON.",
+    "notice": "Acest rând conține explicații de exemplu. Ștergeți-l înainte de încărcarea datelor pentru evaluare."
+  },
+  "pl-PL": {
+    "index": "Użyj unikalnej liczby całkowitej, aby oznaczyć ten wiersz testowy i znaleźć jego wynik.",
+    "input": "Wpisz dane wejściowe dla tego wiersza, np. pytanie, polecenie lub wartość wymaganą przez to pole.",
+    "expectedOutput": "Wpisz odpowiedź wzorcową, którą ten węzeł powinien zwrócić dla tego wiersza. Zostanie porównana z rzeczywistym wynikiem.",
+    "retrievalExpectedOutput": "Wpisz odpowiedź wzorcową lub kluczowe fakty dla tego zapytania, aby ocenić trafność i zakres wyszukanych treści.",
+    "successCriteria": "Wpisz warunki, które Agent musi spełnić, po jednym w wierszu. Każdy jest oceniany osobno. Jeśli ich nie ma, pozostaw pole puste.",
+    "expectedToolCalls": "Wpisz narzędzia i argumenty, których Agent powinien użyć, jako tablicę JSON.",
+    "notice": "Ten wiersz zawiera przykładowe objaśnienia. Usuń go przed przesłaniem zbioru danych do oceny."
+  },
+  "hi-IN": {
+    "index": "इस परीक्षण पंक्ति और उसके परिणाम की पहचान के लिए एक अलग पूर्णांक दर्ज करें।",
+    "input": "इस पंक्ति का इनपुट दर्ज करें, जैसे प्रश्न, निर्देश या इस फ़ील्ड के लिए आवश्यक मान।",
+    "expectedOutput": "इस परीक्षण पंक्ति के लिए इस नोड से अपेक्षित संदर्भ उत्तर दर्ज करें। इसकी तुलना वास्तविक आउटपुट से की जाती है।",
+    "retrievalExpectedOutput": "खोज की प्रासंगिकता और कवरेज जाँचने के लिए इस प्रश्न का संदर्भ उत्तर या मुख्य तथ्य दर्ज करें।",
+    "successCriteria": "एजेंट को पूरी करनी वाली शर्तें दर्ज करें, हर पंक्ति में एक। प्रत्येक का अलग मूल्यांकन होगा। अतिरिक्त शर्त न हो तो खाली छोड़ें।",
+    "expectedToolCalls": "एजेंट से अपेक्षित टूल और आर्ग्युमेंट JSON ऐरे के रूप में दर्ज करें।",
+    "notice": "इस पंक्ति में उदाहरण के रूप में स्पष्टीकरण दिए गए हैं। मूल्यांकन के लिए डेटा सेट अपलोड करने से पहले इस पंक्ति को हटा दें।"
+  },
+  "tr-TR": {
+    "index": "Bu test satırını ve sonucunu belirlemek için benzersiz bir tam sayı kullanın.",
+    "input": "Bu satırın girdisini girin; örneğin bir soru, talimat veya bu alanın gerektirdiği değer.",
+    "expectedOutput": "Bu test satırı için düğümün üretmesi gereken referans yanıtı girin. Gerçek çıktıyla karşılaştırılır.",
+    "retrievalExpectedOutput": "Getirilen içeriğin ilgisini ve kapsamını değerlendirmek için bu sorguya ait referans yanıtı veya temel bilgileri girin.",
+    "successCriteria": "Agent'ın karşılaması gereken koşulları her satıra bir tane yazın. Her biri ayrı değerlendirilir. Koşul yoksa boş bırakın.",
+    "expectedToolCalls": "Agent'ın kullanması beklenen araçları ve bağımsız değişkenleri JSON dizisi olarak girin.",
+    "notice": "Bu satır örnek açıklamalar içerir. Veri kümesini değerlendirme için yüklemeden önce bu satırı silin."
+  },
+  "fa-IR": {
+    "index": "برای شناسایی این ردیف آزمون و یافتن نتیجه‌اش، یک عدد صحیح یکتا وارد کنید.",
+    "input": "ورودی این ردیف را وارد کنید؛ مانند پرسش، دستور یا مقداری که این فیلد نیاز دارد.",
+    "expectedOutput": "پاسخ مرجعی را که این گره باید برای این ردیف تولید کند وارد کنید تا با خروجی واقعی مقایسه شود.",
+    "retrievalExpectedOutput": "پاسخ مرجع یا نکات کلیدی این پرس‌وجو را برای سنجش ارتباط و پوشش نتایج بازیابی وارد کنید.",
+    "successCriteria": "شرایطی را که عامل باید برآورده کند، هر کدام در یک خط وارد کنید. هر شرط جداگانه ارزیابی می‌شود. اگر شرطی نیست، خالی بگذارید.",
+    "expectedToolCalls": "ابزارها و آرگومان‌هایی را که انتظار می‌رود عامل استفاده کند به صورت آرایه JSON وارد کنید.",
+    "notice": "این ردیف شامل توضیحات نمونه است. پیش از بارگذاری مجموعه‌داده برای ارزیابی، این ردیف را حذف کنید."
+  },
+  "sl-SI": {
+    "index": "Uporabite enolično celo število, da označite testno vrstico in poiščete njen rezultat.",
+    "input": "Vnesite vhod za to vrstico, na primer vprašanje, navodilo ali vrednost, ki jo zahteva to polje.",
+    "expectedOutput": "Vnesite referenčni odgovor, ki ga mora to vozlišče podati za to testno vrstico. Primerja se z dejanskim izhodom.",
+    "retrievalExpectedOutput": "Vnesite referenčni odgovor ali ključna dejstva za to poizvedbo, da ocenite ustreznost in pokritost pridobljene vsebine.",
+    "successCriteria": "Vnesite pogoje, ki jih mora Agent izpolniti, po enega v vsako vrstico. Vsak se oceni posebej. Če jih ni, pustite prazno.",
+    "expectedToolCalls": "Vnesite orodja in argumente, ki naj bi jih Agent uporabil, kot tabelo JSON.",
+    "notice": "Ta vrstica vsebuje primer pojasnil. Pred nalaganjem nabora podatkov za vrednotenje jo izbrišite."
+  },
+  "th-TH": {
+    "index": "ใช้จำนวนเต็มที่ไม่ซ้ำกันเพื่อระบุแถวทดสอบนี้และค้นหาผลลัพธ์",
+    "input": "กรอกข้อมูลนำเข้าของแถวนี้ เช่น คำถาม คำสั่ง หรือค่าที่ช่องนี้ต้องการ",
+    "expectedOutput": "กรอกคำตอบอ้างอิงที่โหนดนี้ควรให้สำหรับแถวทดสอบนี้ เพื่อเปรียบเทียบกับผลลัพธ์จริง",
+    "retrievalExpectedOutput": "กรอกคำตอบอ้างอิงหรือข้อเท็จจริงสำคัญของคำถามนี้ เพื่อประเมินความเกี่ยวข้องและความครอบคลุมของเนื้อหาที่ค้นคืน",
+    "successCriteria": "กรอกเงื่อนไขที่ Agent ต้องทำให้ได้ บรรทัดละหนึ่งข้อ แต่ละข้อจะถูกประเมินแยกกัน หากไม่มีเงื่อนไขเพิ่มเติมให้เว้นว่าง",
+    "expectedToolCalls": "กรอกเครื่องมือและอาร์กิวเมนต์ที่คาดว่า Agent จะใช้ในรูปแบบอาร์เรย์ JSON",
+    "notice": "แถวนี้เป็นคำอธิบายตัวอย่าง โปรดลบแถวนี้ก่อนอัปโหลดชุดข้อมูลเพื่อประเมินผล"
+  },
+  "id-ID": {
+    "index": "Gunakan bilangan bulat unik untuk mengidentifikasi baris pengujian ini dan menemukan hasilnya.",
+    "input": "Masukkan input untuk baris ini, misalnya pertanyaan, instruksi, atau nilai yang diperlukan kolom ini.",
+    "expectedOutput": "Masukkan jawaban acuan yang seharusnya dihasilkan node ini untuk baris pengujian ini. Jawaban tersebut dibandingkan dengan keluaran sebenarnya.",
+    "retrievalExpectedOutput": "Masukkan jawaban acuan atau fakta utama untuk kueri ini guna menilai relevansi dan cakupan hasil pencarian.",
+    "successCriteria": "Masukkan syarat yang harus dipenuhi Agen, satu per baris. Setiap syarat dinilai terpisah. Kosongkan jika tidak ada.",
+    "expectedToolCalls": "Masukkan alat dan argumen yang diharapkan digunakan Agen sebagai array JSON.",
+    "notice": "Baris ini berisi penjelasan contoh. Hapus baris ini sebelum mengunggah set data untuk evaluasi."
+  },
+  "ar-TN": {
+    "index": "استخدم عددًا صحيحًا فريدًا لتحديد صف الاختبار والعثور على نتيجته.",
+    "input": "أدخل مدخل هذا الصف، مثل سؤال أو تعليمات أو قيمة يتطلبها هذا الحقل.",
+    "expectedOutput": "أدخل الإجابة المرجعية التي يجب أن تقدمها هذه العقدة لهذا الصف لمقارنتها بالمخرجات الفعلية.",
+    "retrievalExpectedOutput": "أدخل الإجابة المرجعية أو الحقائق الأساسية لهذا الاستعلام لتقييم صلة نتائج الاسترجاع وتغطيتها.",
+    "successCriteria": "أدخل الشروط التي يجب أن يحققها الوكيل، شرطًا في كل سطر. يُقيَّم كل شرط على حدة. اتركه فارغًا إن لم توجد شروط.",
+    "expectedToolCalls": "أدخل الأدوات والوسائط المتوقع أن يستخدمها الوكيل على شكل مصفوفة JSON.",
+    "notice": "يحتوي هذا الصف على شروحات توضيحية. احذف هذا الصف قبل رفع مجموعة البيانات للتقييم."
+  },
+  "nl-NL": {
+    "index": "Gebruik een uniek geheel getal om deze testrij en het resultaat te identificeren.",
+    "input": "Vul de invoer voor deze rij in, zoals een vraag, instructie of de waarde die dit veld vereist.",
+    "expectedOutput": "Vul het referentieantwoord in dat deze node voor deze testrij moet geven. Dit wordt vergeleken met de werkelijke uitvoer.",
+    "retrievalExpectedOutput": "Vul het referentieantwoord of de belangrijkste feiten voor deze zoekvraag in om relevantie en dekking van de opgehaalde inhoud te beoordelen.",
+    "successCriteria": "Vul de voorwaarden in waaraan de Agent moet voldoen, één per regel. Elke voorwaarde wordt apart beoordeeld. Laat leeg als er geen zijn.",
+    "expectedToolCalls": "Vul de tools en argumenten in die de Agent naar verwachting gebruikt, als JSON-array.",
+    "notice": "Deze rij bevat voorbeelduitleg. Verwijder deze rij voordat je de dataset uploadt voor evaluatie."
+  },
+  "az-AZ": {
+    "index": "Test sətrini və nəticəsini müəyyən etmək üçün təkrarlanmayan tam ədəd daxil edin.",
+    "input": "Bu test sətrinin girişini, məsələn, sual, təlimat və ya bu sahənin tələb etdiyi dəyəri daxil edin.",
+    "expectedOutput": "Bu test sətri üçün düyünün verməli olduğu istinad cavabını daxil edin. O, faktiki çıxışla müqayisə olunur.",
+    "retrievalExpectedOutput": "Axtarışın uyğunluğunu və əhatəsini qiymətləndirmək üçün sorğuya aid istinad cavabını və ya əsas faktları daxil edin.",
+    "successCriteria": "Agentin yerinə yetirməli olduğu şərtləri hər sətirdə bir şərt olmaqla daxil edin. Hər biri ayrıca qiymətləndirilir. Yoxdursa boş saxlayın.",
+    "expectedToolCalls": "Agentin istifadə etməsi gözlənilən alətləri və arqumentləri JSON massivi kimi daxil edin.",
+    "notice": "Bu sətirdə nümunə izahlar var. Məlumat dəstini qiymətləndirmə üçün yükləməzdən əvvəl bu sətri silin."
+  }
+}

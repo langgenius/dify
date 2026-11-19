@@ -1588,10 +1588,14 @@ export const webapp = {
  * GET /api/workflow/<task_id>/events
  *
  * Returns Server-Sent Events stream.
+ *
+ * Requires a run owned by the current app and end user. Pending V1 forms
+ * expose only Web App recipient tokens; invalid ownership returns 404.
  */
 export const get18 = oc
   .route({
-    description: 'GET /api/workflow/<task_id>/events\n\nReturns Server-Sent Events stream.',
+    description:
+      'GET /api/workflow/<task_id>/events\n\nReturns Server-Sent Events stream.\n\nRequires a run owned by the current app and end user. Pending V1 forms\nexpose only Web App recipient tokens; invalid ownership returns 404.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkflowByTaskIdEvents',

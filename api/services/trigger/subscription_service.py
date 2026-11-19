@@ -10,9 +10,9 @@ from constants import HIDDEN_VALUE, UNKNOWN_VALUE
 from core.entities.provider_entities import BasicProviderConfig
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.trigger.entities.entities import Subscription, UnsubscribeResult
-from core.trigger.utils.endpoint import generate_plugin_trigger_endpoint_url
 from models.enums import PermissionEnum
 from models.provider_ids import TriggerProviderID
+from models.utils.trigger_endpoint import generate_plugin_trigger_endpoint_url
 from services.trigger.subscription_query_service import TriggerSubscriptionSchemas
 
 logger = logging.getLogger(__name__)

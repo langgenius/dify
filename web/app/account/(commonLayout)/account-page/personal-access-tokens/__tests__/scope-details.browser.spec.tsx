@@ -3,21 +3,29 @@ import type {
   PersonalAccessTokenResourceResponse,
 } from '@dify/contracts/api/console/account/types.gen'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { render } from 'vitest-browser-react'
+import { page } from 'vite-plus/test/browser'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createTestQueryClient } from '@/test/query-client'
 import ScopeDetails from '../scope-details'
+import { renderWithTokenMessages as render } from './browser-test-env'
 
-const transport = vi.hoisted(() => ({ call: vi.fn() }))
-vi.mock('@/service/console/browser', () => ({ consoleBrowserLink: transport }))
-vi.mock('react-i18next', async () => {
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  const account = await import('@/i18n/locales/en-US/account-settings.json')
-  const common = await import('@/i18n/locales/en-US/common.json')
-  const dataset = await import('@/i18n/locales/en-US/dataset.json')
-  return createReactI18nextMock({ ...account.default, ...common.default, ...dataset.default })
+const responses = vi.hoisted(() => ({ call: vi.fn() }))
+// boundary: supply operation results while preserving generated options and real Query observers.
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withTokenResponses } = await import('./operation-responses')
+  return { ...actual, consoleQuery: withTokenResponses(actual.consoleQuery, responses.call) }
 })
+vi.unmock('react-i18next')
+
+beforeEach(async () => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-11-12T00:00:00Z'))
+  await page.viewport(1100, 800)
+})
+
+afterEach(() => vi.useRealTimers())
 
 const production: PersonalAccessTokenResourceResponse = {
   resource_type: 'app_deployment',
@@ -82,7 +90,7 @@ it.each([
     resources,
     workspaces: [],
   }
-  transport.call.mockResolvedValue(detail)
+  responses.call.mockResolvedValue(detail)
   const queryClient = createTestQueryClient()
   seedSystemFeatures(queryClient)
   const screen = await render(
@@ -110,4 +118,113 @@ it.each([
       .not.toBeInTheDocument()
   }
   await expect.element(table.getByText(/Staging/)).not.toBeInTheDocument()
+})
+
+it('opens saved expired access with workspace roles and unavailable items without offering a secret', async () => {
+  const { token, tokenList, renderTokenPage } = await import('./browser-test-env')
+  const expired = {
+    ...token,
+    status: 'expired' as const,
+    created_at: '2026-07-01T00:00:00Z',
+    expires_at: '2026-09-29T00:00:00Z',
+  }
+  responses.call.mockImplementation(async (operation: string) =>
+    operation.includes('byTokenId')
+      ? {
+          token: expired,
+          resources: [
+            { ...builtIn, display_name: 'Customer FAQ Bot', workspace_name: 'Acme' },
+            {
+              ...builtIn,
+              resource_id: staging.resource_id,
+              display_name: 'Built-in app',
+              workspace_name: "fatelei's Workspace",
+              app_deployments: [],
+            },
+            {
+              ...production,
+              resource_type: 'dataset',
+              display_name: 'Internal Docs',
+              available: false,
+              reason: 'access_removed',
+            },
+          ],
+          workspaces: [
+            {
+              workspace_id: production.workspace_id,
+              display_name: 'Production',
+              role: 'owner',
+              available: true,
+              reason: null,
+            },
+            {
+              workspace_id: staging.resource_id,
+              display_name: 'Missing workspace',
+              role: null,
+              available: false,
+              reason: null,
+            },
+          ],
+        }
+      : tokenList([expired]),
+  )
+  const { screen } = await renderTokenPage()
+  const row = screen.getByRole('row', { name: /release-pipeline/ })
+  await expect.element(row.getByText('••••7f21')).toBeVisible()
+  await expect.element(row.getByText('2026-09-29')).toBeVisible()
+  await expect
+    .element(row.getByRole('button', { name: 'Copy', exact: true }))
+    .not.toBeInTheDocument()
+  await row.getByRole('button', { name: token.name }).click()
+  const dialog = screen.getByRole('dialog', { name: 'Access scope' })
+  await expect.element(dialog.getByText('Expired on 2026-09-29')).toBeVisible()
+  await expect.element(dialog.getByText('Created · 2026-07-01')).toBeVisible()
+  await expect
+    .element(dialog.getByRole('cell', { name: 'Acme · Built-in', exact: true }))
+    .toBeVisible()
+  await expect
+    .element(dialog.getByRole('cell', { name: 'fatelei · Built-in', exact: true }))
+    .toBeVisible()
+  await expect
+    .element(dialog.getByRole('row', { name: /Internal Docs/ }))
+    .toMatchTextContent('Deleted')
+  await expect.element(dialog.getByRole('row', { name: /Production.*Owner/ })).toBeVisible()
+  await expect
+    .element(dialog.getByText('2 unavailable items across resources and workspaces'))
+    .toBeVisible()
+  await expect
+    .element(dialog.getByRole('button', { name: 'Copy', exact: true }))
+    .not.toBeInTheDocument()
+})
+
+it('explains cross-workspace deployment access without labeling it revoked or expired', async () => {
+  const { token, tokenList, renderTokenPage } = await import('./browser-test-env')
+  const active = {
+    ...token,
+    status: 'active' as const,
+    unavailable_count: 0,
+    expires_at: '2027-01-13T00:00:00Z',
+  }
+  responses.call.mockImplementation(async (operation: string) =>
+    operation.includes('byTokenId')
+      ? {
+          token: active,
+          resources: [
+            {
+              ...production,
+              workspace_name: 'Other workspace',
+              available: false,
+              reason: 'workspace_not_current',
+            },
+          ],
+          workspaces: [],
+        }
+      : tokenList([active]),
+  )
+  const { screen } = await renderTokenPage()
+  await screen.getByRole('button', { name: token.name }).click()
+  const dialog = screen.getByRole('dialog', { name: 'Access scope' })
+  await expect.element(dialog.getByText('Switch to this workspace to check access')).toBeVisible()
+  await expect.element(dialog.getByText('Deleted', { exact: true })).not.toBeInTheDocument()
+  await expect.element(dialog.getByText(/Expired on/)).not.toBeInTheDocument()
 })

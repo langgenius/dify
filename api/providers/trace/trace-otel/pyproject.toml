@@ -1,0 +1,14 @@
+[project]
+name = "dify-trace-otel"
+version = "0.0.1"
+dependencies = ["dify-trace-sdk"]
+description = "Dify tracing provider for generic OTLP/HTTP collectors."
+
+[project.entry-points."dify.trace_providers"]
+otel = "dify_trace_otel.provider:OTelProvider"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+dify_trace_otel = ["py.typed"]

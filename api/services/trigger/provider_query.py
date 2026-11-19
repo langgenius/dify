@@ -2,8 +2,8 @@
 
 from typing import Protocol
 
-from core.trigger.entities.api_entities import TriggerProviderApiEntity
 from models.provider_ids import TriggerProviderID
+from services.trigger.api_entities import TriggerProviderApiEntity
 
 
 class TriggerProviderQuery(Protocol):

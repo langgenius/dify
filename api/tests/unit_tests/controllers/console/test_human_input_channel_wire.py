@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Never
 
 import pytest
@@ -12,6 +13,11 @@ from controllers.console import bp as console_bp
 from controllers.console.human_input_v2 import channel as channel_controller
 from controllers.console.human_input_v2.config_version import encode_im_config_version
 from controllers.console.wraps import _is_setup_completed
+from core.human_input_v2.im_integration.adapters.entities import (
+    CredentialTestFailure,
+    CredentialTestFailureKind,
+    CredentialTestRejectedError,
+)
 from enums import DeploymentEdition
 from libs.login import AccountWithTenant
 from models.account import Account, AccountStatus, TenantAccountRole
@@ -69,6 +75,7 @@ def wire_app(console_app: Flask, monkeypatch: pytest.MonkeyPatch) -> Flask:
     _is_setup_completed.mark_success()
 
     monkeypatch.setattr(dify_config, "LOGIN_DISABLED", True)
+    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
     monkeypatch.setattr("libs.login.current_user", LocalProxy(lambda: account))
     monkeypatch.setattr(
@@ -265,7 +272,62 @@ def test_candidate_provider_failures_are_credential_free_test_outcomes(
     assert response.get_json() == {
         "status": failure_kind.value,
         "status_description": f"Safe {failure_kind.value} description.",
+        "provider_error_code": None,
+        "provider_request_id": None,
     }
+
+
+@pytest.mark.parametrize("operation", ["test", "saved_test", "create", "update", "replacement"])
+@pytest.mark.parametrize("request_id", [None, "9592fb05-8aaa-4210-a062-a51cb6198185"])
+def test_adapter_error_diagnostics_reach_the_final_api_response(
+    wire_app: Flask, monkeypatch: pytest.MonkeyPatch, operation: str, request_id: str | None
+) -> None:
+    error = CredentialTestRejectedError(
+        CredentialTestFailure(
+            CredentialTestFailureKind.AUTHENTICATION_REJECTED,
+            "Check the configured Tenant ID.",
+            provider_error_code="AADSTS90002",
+            http_status=400,
+            provider_request_id=request_id,
+        )
+    )
+
+    class IMOwner:
+        def test(self, *_args: object) -> Never:
+            raise error
+
+        test_saved = test
+        create = test
+        update = test
+        replace = test
+
+    monkeypatch.setattr(channel_controller, "_workspace_im_channel_service", lambda *_args: IMOwner())
+    paths = {
+        "test": ("POST", "/test"),
+        "saved_test": ("POST", f"/{_CHANNEL_ID}/test"),
+        "create": ("POST", ""),
+        "update": ("PUT", f"/{_CHANNEL_ID}"),
+        "replacement": ("POST", f"/{_CHANNEL_ID}/replacement"),
+    }
+    method, suffix = paths[operation]
+    payload: dict[str, object] = {"credentials": _SLACK_CREDENTIALS}
+    if operation in {"saved_test", "update", "replacement"}:
+        payload["expected_config_version"] = encode_im_config_version(IMChannelId(_CHANNEL_ID), 1)
+    response = wire_app.test_client().open(f"{_BASE_PATH}/channels/im{suffix}", method=method, json=payload)
+
+    testing = operation in {"test", "saved_test"}
+    assert response.status_code == (200 if testing else 400)
+    body = response.get_json()
+    assert body["provider_error_code"] == "AADSTS90002"
+    assert body["provider_request_id"] == request_id
+    description = body["status_description"] if testing else body["message"]
+    assert description.startswith("Check the configured Tenant ID.")
+    assert "AADSTS90002" in description
+    if request_id is None:
+        assert "Request ID:" not in description
+        assert body["provider_request_id"] is None
+    else:
+        assert request_id in description
 
 
 _CANONICAL_REQUESTS = (
@@ -273,16 +335,100 @@ _CANONICAL_REQUESTS = (
     ("GET", f"{_BASE_PATH}/channels"),
     ("POST", f"{_BASE_PATH}/channels/email"),
     ("POST", f"{_BASE_PATH}/channels/email/test"),
+    ("POST", f"{_BASE_PATH}/channels/email/{_CHANNEL_ID}/test"),
     ("GET", f"{_BASE_PATH}/channels/email/{_CHANNEL_ID}"),
     ("PUT", f"{_BASE_PATH}/channels/email/{_CHANNEL_ID}"),
     ("DELETE", f"{_BASE_PATH}/channels/email/{_CHANNEL_ID}"),
     ("POST", f"{_BASE_PATH}/channels/im"),
     ("POST", f"{_BASE_PATH}/channels/im/test"),
+    ("POST", f"{_BASE_PATH}/channels/im/{_CHANNEL_ID}/test"),
     ("GET", f"{_BASE_PATH}/channels/im/{_CHANNEL_ID}"),
     ("PUT", f"{_BASE_PATH}/channels/im/{_CHANNEL_ID}"),
     ("DELETE", f"{_BASE_PATH}/channels/im/{_CHANNEL_ID}"),
     ("POST", f"{_BASE_PATH}/channels/im/{_CHANNEL_ID}/replacement"),
 )
+
+
+@pytest.mark.parametrize(
+    ("method", "path"),
+    [request for request in _CANONICAL_REQUESTS if "/channels/email" in request[1]],
+)
+@pytest.mark.parametrize("authenticated", [False, True])
+def test_community_rejects_email_management_before_authentication_and_dispatch(
+    wire_app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    method: str,
+    path: str,
+    authenticated: bool,
+) -> None:
+    def unexpected_authentication() -> Never:
+        raise AssertionError("disabled Email management must not resolve authentication")
+
+    def unexpected_service() -> Never:
+        raise AssertionError("disabled Email management must not read, write or send through its owner")
+
+    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    monkeypatch.setattr(dify_config, "LOGIN_DISABLED", authenticated)
+    monkeypatch.setattr("libs.login._resolve_current_user", unexpected_authentication)
+    monkeypatch.setattr(channel_controller, "build_human_input_email_channel_management_service", unexpected_service)
+
+    response = wire_app.test_client().open(path, method=method, json={"unexpected": "invalid-candidate"})
+
+    assert response.status_code == 501
+
+
+@pytest.mark.parametrize("path", ["channel-providers", "channels"])
+@pytest.mark.parametrize("mail_type", [None, "resend"])
+def test_community_discovery_exposes_only_im_channels(
+    wire_app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    path: str,
+    mail_type: str | None,
+) -> None:
+    from core.human_input_v2.entities import IMProvider
+    from repositories.human_input_v2.im_channel_repository import IMChannelStatus
+    from services.human_input_v2.im_channel_service import IMChannelView
+
+    im_channel = IMChannelView(
+        id=IMChannelId(_CHANNEL_ID),
+        created_at=datetime(2026, 11, 17),
+        updated_at=datetime(2026, 11, 17),
+        provider=IMProvider.FEISHU,
+        status=IMChannelStatus.CONNECTED,
+        status_reason=None,
+        app_identifier="feishu-app",
+        webhook_url=None,
+        config_version=1,
+    )
+
+    class IMOwner:
+        def available_providers(self) -> tuple[IMProvider, ...]:
+            return (IMProvider.FEISHU,)
+
+        def get_current(self) -> IMChannelView:
+            return im_channel
+
+    def unexpected_email_owner() -> Never:
+        raise AssertionError("Community discovery must not access tenant Email configuration")
+
+    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    monkeypatch.setattr(dify_config, "MAIL_TYPE", mail_type)
+    monkeypatch.setattr(
+        channel_controller, "build_human_input_email_channel_management_service", unexpected_email_owner
+    )
+    monkeypatch.setattr(channel_controller, "_workspace_im_channel_service", lambda *_args: IMOwner())
+
+    response = wire_app.test_client().get(f"{_BASE_PATH}/{path}")
+
+    assert response.status_code == 200
+    if path == "channel-providers":
+        assert response.get_json() == {
+            "email_providers": [],
+            "im_providers": [{"provider": "feishu", "connection_mode": "custom_app"}],
+        }
+    else:
+        channels = response.get_json()["channels"]
+        assert [(channel["kind"], channel["id"]) for channel in channels] == [("im", _CHANNEL_ID)]
 
 
 @pytest.mark.parametrize(("method", "path"), _CANONICAL_REQUESTS)
@@ -367,7 +513,12 @@ def test_saved_connection_test_accepts_retention_without_saving(
     )
 
     assert response.status_code == 200
-    assert response.get_json() == {"status": "connected", "status_description": ""}
+    assert response.get_json() == {
+        "status": "connected",
+        "status_description": "",
+        "provider_error_code": None,
+        "provider_request_id": None,
+    }
     assert len(tested) == 1
 
 
@@ -423,7 +574,12 @@ def test_saved_connection_test_translates_failures_safely(
     if expected_code is not None:
         assert response.get_json()["code"] == expected_code
     else:
-        assert response.get_json() == {"status": "invalid_credentials", "status_description": "Invalid credentials."}
+        assert response.get_json() == {
+            "status": "invalid_credentials",
+            "status_description": "Invalid credentials.",
+            "provider_error_code": None,
+            "provider_request_id": None,
+        }
     assert "private-" not in response.get_data(as_text=True)
 
 
@@ -503,3 +659,97 @@ def test_saved_im_test_rejects_provider_mismatch_as_bad_request(
     assert response.status_code == 400
     assert response.get_json()["code"] == "bad_request"
     assert "private-provider-mismatch" not in response.get_data(as_text=True)
+
+
+@pytest.mark.parametrize("kind", ["im", "email"])
+@pytest.mark.parametrize("saved", [False, True])
+@pytest.mark.parametrize("request_id", ["DT-Request:ABC/42", "  vendor\nrequest\x00  ", None])
+def test_provider_diagnostics_are_structured_test_results(
+    wire_app: Flask, monkeypatch: pytest.MonkeyPatch, kind: str, saved: bool, request_id: str | None
+) -> None:
+    from controllers.console.human_input_v2.config_version import encode_email_config_version
+    from core.human_input_v2.shared import EmailProviderId
+    from repositories.human_input_v2.email_channel import EmailConfigurationSnapshot
+
+    failure = ChannelProviderError(
+        ProviderFailureKind.CONNECTION_FAILURE,
+        "Provider rejected the request.",
+        provider_error_code="40013",
+        provider_request_id=request_id,
+        http_status=500,
+    )
+
+    class Owner:
+        def test(self, *_args: object) -> Never:
+            raise failure
+
+        def test_saved(self, *_args: object) -> Never:
+            raise failure
+
+    monkeypatch.setattr(channel_controller, "_workspace_im_channel_service", lambda *_args: Owner())
+    monkeypatch.setattr(channel_controller, "build_human_input_email_channel_management_service", Owner)
+    credentials = _SLACK_CREDENTIALS if kind == "im" else {"provider": "resend", "api_key": "fake-secret"}
+    body: dict[str, object] = {"credentials": credentials}
+    if kind == "email":
+        body.update({"sender_email": "sender@example.com", "sender_name": "Dify"})
+    if saved:
+        body["expected_config_version"] = (
+            encode_im_config_version(IMChannelId(_CHANNEL_ID), 1)
+            if kind == "im"
+            else encode_email_config_version(EmailConfigurationSnapshot(EmailProviderId(_CHANNEL_ID), 1))
+        )
+    suffix = f"/{_CHANNEL_ID}/test" if saved else "/test"
+    response = wire_app.test_client().post(
+        f"{_BASE_PATH}/channels/{kind}{suffix}", json=body, headers={"X-Request-Id": "dify-local-request"}
+    )
+
+    assert response.status_code == 200
+    assert response.get_json() == {
+        "status": "connection_failure",
+        "status_description": failure.status_description,
+        "provider_error_code": "40013",
+        "provider_request_id": request_id,
+    }
+    assert "dify-local-request" not in response.get_data(as_text=True)
+
+
+@pytest.mark.parametrize("operation", ["create", "update", "replace"])
+@pytest.mark.parametrize("request_id", ["DT-Request:ABC/42", "  vendor\nrequest\x00  ", None])
+def test_im_mutation_errors_expose_original_provider_diagnostics(
+    wire_app: Flask, monkeypatch: pytest.MonkeyPatch, operation: str, request_id: str | None
+) -> None:
+    failure = ChannelProviderError(
+        ProviderFailureKind.CONNECTION_FAILURE,
+        "Provider rejected the request.",
+        provider_error_code="40013",
+        provider_request_id=request_id,
+    )
+
+    class Owner:
+        def create(self, *_args: object) -> Never:
+            raise failure
+
+        def update(self, *_args: object) -> Never:
+            raise failure
+
+        def replace(self, *_args: object) -> Never:
+            raise failure
+
+    monkeypatch.setattr(channel_controller, "_workspace_im_channel_service", lambda *_args: Owner())
+    body: dict[str, object] = {"credentials": _SLACK_CREDENTIALS}
+    path = f"{_BASE_PATH}/channels/im"
+    if operation != "create":
+        body["expected_config_version"] = encode_im_config_version(IMChannelId(_CHANNEL_ID), 1)
+        path += f"/{_CHANNEL_ID}"
+    if operation == "replace":
+        path += "/replacement"
+    response = wire_app.test_client().open(path, method="PUT" if operation == "update" else "POST", json=body)
+
+    assert response.status_code == 400
+    assert response.get_json() == {
+        "code": "bad_request",
+        "message": failure.status_description,
+        "status": 400,
+        "provider_error_code": "40013",
+        "provider_request_id": request_id,
+    }
