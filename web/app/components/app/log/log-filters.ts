@@ -1,4 +1,7 @@
-import type { ConversationWithSummary } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  ConversationLogIdentityResponse,
+  ConversationWithSummary,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { Dayjs } from 'dayjs'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import dayjs from 'dayjs'
@@ -60,11 +63,7 @@ export function logDateRange(days: number) {
   }
 }
 
-export type LogIdentity = {
-  id: string
-  label: string
-  source: 'end-user' | 'account'
-}
+export type LogIdentity = ConversationLogIdentityResponse
 
 export const identityKey = ({ id, source }: LogIdentity) => `${source}:${id}`
 

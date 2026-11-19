@@ -107,6 +107,7 @@ const Filter: FC<IFilterProps> = ({
       />
       {identityOptions && (
         <LogIdentityPicker
+          appId={appId}
           options={identityOptions}
           value={queryParams.identities ?? []}
           onChange={(identities) => setQueryParams({ ...queryParams, identities })}

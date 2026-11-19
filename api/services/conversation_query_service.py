@@ -15,6 +15,7 @@ from services.entities.conversation_entities import (
     ConsoleConversationLogFilters,
     ConsoleConversationPage,
     ConsoleConversationScope,
+    ConsoleLogIdentity,
     ConversationInputValue,
     ConversationListSource,
     ConversationLogExportCounts,
@@ -37,6 +38,12 @@ class ConversationQueryStore(Protocol):
     def get_console_page(
         self, *, scope: ConsoleConversationScope, filters: ConsoleConversationFilters
     ) -> ConsoleConversationPage: ...
+
+    def search_console_log_identities(
+        self, context: RequestContext, app_id: str, *, keyword: str
+    ) -> tuple[ConsoleLogIdentity, ...]:
+        """Find bounded matches among identities appearing in the admitted app's visible Logs."""
+        ...
 
     def get_console_log_export_counts(
         self, *, scope: ConsoleConversationScope, filters: ConsoleConversationLogFilters
@@ -117,6 +124,12 @@ class ConversationQueryService:
                 for record in page.items
             ),
         )
+
+    def search_console_log_identities(
+        self, context: RequestContext, app_id: str, *, keyword: str
+    ) -> tuple[ConsoleLogIdentity, ...]:
+        """Search an admitted chat app's identities with a validated nonblank keyword."""
+        return self._conversations.search_console_log_identities(context, app_id, keyword=keyword)
 
     def get_console_log_export_counts(
         self, *, scope: ConsoleConversationScope, filters: ConsoleConversationLogFilters

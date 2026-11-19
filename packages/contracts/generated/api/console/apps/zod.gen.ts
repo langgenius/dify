@@ -3570,6 +3570,24 @@ export const zConversationWithSummaryPagination = z.object({
   total: z.int(),
 })
 
+export const zConsoleLogIdentitySource = z.enum(['account', 'end-user'])
+
+/**
+ * ConversationLogIdentityResponse
+ */
+export const zConversationLogIdentityResponse = z.object({
+  id: z.string(),
+  label: z.string(),
+  source: zConsoleLogIdentitySource,
+})
+
+/**
+ * ConversationLogIdentitySearchResponse
+ */
+export const zConversationLogIdentitySearchResponse = z.object({
+  data: z.array(zConversationLogIdentityResponse),
+})
+
 /**
  * SimpleMessageDetail
  */
@@ -7486,6 +7504,20 @@ export const zGetAppsByAppIdChatConversationsQuery = z.object({
  * Success
  */
 export const zGetAppsByAppIdChatConversationsResponse = zConversationWithSummaryPagination
+
+export const zGetAppsByAppIdChatConversationsIdentityOptionsPath = z.object({
+  app_id: z.uuid(),
+})
+
+export const zGetAppsByAppIdChatConversationsIdentityOptionsQuery = z.object({
+  keyword: z.string().min(1).max(255),
+})
+
+/**
+ * Matching identities
+ */
+export const zGetAppsByAppIdChatConversationsIdentityOptionsResponse =
+  zConversationLogIdentitySearchResponse
 
 export const zDeleteAppsByAppIdChatConversationsByConversationIdPath = z.object({
   app_id: z.uuid(),

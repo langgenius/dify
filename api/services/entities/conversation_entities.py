@@ -121,6 +121,18 @@ class ConsoleConversationFilters(ConsoleConversationLogFilters):
     limit: int
 
 
+type ConsoleLogIdentitySource = Literal["end-user", "account"]
+
+
+@dataclass(frozen=True, slots=True)
+class ConsoleLogIdentity:
+    """Display label and the exact ID accepted by the Console Logs filters."""
+
+    id: str
+    label: str
+    source: ConsoleLogIdentitySource
+
+
 @dataclass(frozen=True, slots=True)
 class ConversationLogExportCounts:
     conversation_count: int

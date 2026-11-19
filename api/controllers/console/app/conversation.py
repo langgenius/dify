@@ -63,6 +63,7 @@ from services.entities.conversation_entities import (
     ConsoleConversationFilters,
     ConsoleConversationLogFilters,
     ConsoleConversationScope,
+    ConsoleLogIdentitySource,
 )
 from services.errors.base import NoPermissionError
 from services.errors.conversation import ConversationNotExistsError
@@ -110,6 +111,22 @@ class ChatConversationFilterQuery(ConversationLogFilterQuery):
 
 class ChatConversationQuery(BaseConversationQuery, ChatConversationFilterQuery):
     pass
+
+
+class ConversationLogIdentitySearchQuery(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    keyword: str = Field(min_length=1, max_length=255, description="Full end-user ID, account name, or account ID")
+
+
+class ConversationLogIdentityResponse(ResponseModel):
+    id: str
+    label: str
+    source: ConsoleLogIdentitySource
+
+
+class ConversationLogIdentitySearchResponse(ResponseModel):
+    data: list[ConversationLogIdentityResponse]
 
 
 class ConversationLogExportPreviewQuery(ChatConversationFilterQuery):
@@ -210,6 +227,8 @@ register_response_schema_models(
     ConversationMessageDetailResponse,
     ConversationWithSummaryPaginationResponse,
     ConversationDetailResponse,
+    ConversationLogIdentityResponse,
+    ConversationLogIdentitySearchResponse,
     ConversationLogExportPreviewResponse,
     ConversationLogExportTaskResponse,
     ConversationLogExportStatusResponse,
@@ -365,6 +384,31 @@ class ChatConversationApi(Resource):
         except ConsoleAppNotFoundError as exc:
             raise AppNotFoundError(str(exc)) from exc
         return dump_response(ConversationWithSummaryPaginationResponse, page)
+
+
+@console_ns.route("/apps/<uuid:app_id>/chat-conversations/identity-options")
+class ChatConversationIdentityOptionsApi(Resource):
+    @error_responses(AppNotFoundError)
+    @console_ns.doc("search_chat_conversation_identities")
+    @console_ns.doc(description="Search for end users or workspace accounts with visible chat logs in this app")
+    @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(ConversationLogIdentitySearchQuery)})
+    @console_ns.response(
+        HTTPStatus.OK, "Matching identities", console_ns.models[ConversationLogIdentitySearchResponse.__name__]
+    )
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=(RBACCheck(RBACPermission.APP_LOG_AND_ANNOTATION, PlainApp()),),
+    )
+    def get(self, request_context: RequestContext, app_id: UUID) -> dict[str, object]:
+        """Return up to 20 matches per identity type for the admitted chat app."""
+        query = validate_request(ConversationLogIdentitySearchQuery)
+        try:
+            matches = application_services().conversation_queries.search_console_log_identities(
+                request_context, str(app_id), keyword=query.keyword
+            )
+        except ConsoleAppNotFoundError as exc:
+            raise AppNotFoundError(str(exc)) from exc
+        return dump_response(ConversationLogIdentitySearchResponse, {"data": matches})
 
 
 @console_ns.route("/apps/<uuid:app_id>/conversation-log-exports/preview")

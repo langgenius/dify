@@ -34,6 +34,11 @@ const appId = '2015f4b7-90e7-4c04-a4a7-9ce976816d69'
 const taskId = 'bfb96e29-3cf9-4874-9c82-12a54749767a'
 const endUserId = 'e0c627f9-78d3-4dce-86a0-a19e245f465b'
 const accountId = '3eb56edf-8a82-42b0-bca3-93128b83d64d'
+const olderEndUser = {
+  id: '14d8f121-7854-4b3f-88cb-b9bb1b64e7ba',
+  label: 'customer-42',
+  source: 'end-user',
+}
 
 const conversation: ConversationWithSummary = {
   id: 'conversation-1',
@@ -87,12 +92,18 @@ async function openExport() {
             : conversations
         return Response.json({ data, total: 38, page: 2, limit: 10, has_more: true })
       }
+      case 'chat-conversations/identity-options':
+        return Response.json({
+          data: url.searchParams.get('keyword') === olderEndUser.label ? [olderEndUser] : [],
+        })
       case 'annotations/count':
         return Response.json({ count: 0 })
       case 'conversation-log-exports/preview': {
         previews.push(url.searchParams)
-        const count =
-          url.searchParams.has('end_user_ids') && !url.searchParams.has('account_ids') ? 1 : 2
+        const identities =
+          url.searchParams.getAll('end_user_ids').length +
+          url.searchParams.getAll('account_ids').length
+        const count = identities || 2
         return Response.json({
           counts: { conversation_count: count, message_count: count * 2 },
         })
@@ -188,7 +199,7 @@ it('exports the current filters across pages and downloads when the task is read
   ])
 })
 
-it('requires a selected identity when narrowing all logs and previews the new scope', async () => {
+it('finds identities beyond the visible Logs page and previews the selected IDs', async () => {
   const { trigger, dialog, previews } = await openExport()
   await trigger.click()
   await dialog.getByRole('combobox', { name: 'appLog.export.scope' }).click()
@@ -206,12 +217,14 @@ it('requires a selected identity when narrowing all logs and previews the new sc
     .element(dialog.getByRole('status'))
     .toHaveTextContent('appLog.export.previewSize:{"conversations":1,"rows":2}')
   await page.getByRole('checkbox', { name: 'Mia Chen' }).click()
+  await page.getByRole('searchbox', { name: 'common.operation.search' }).fill(olderEndUser.label)
+  await page.getByRole('checkbox', { name: olderEndUser.label }).click()
   await userEvent.keyboard('{Escape}')
   await expect
     .element(dialog.getByRole('status'))
-    .toHaveTextContent('appLog.export.previewSize:{"conversations":2,"rows":4}')
+    .toHaveTextContent('appLog.export.previewSize:{"conversations":3,"rows":6}')
   await expect.element(submit).toBeEnabled()
-  expect(previews.at(-1)?.getAll('end_user_ids')).toEqual([endUserId])
+  expect(previews.at(-1)?.getAll('end_user_ids')).toEqual([endUserId, olderEndUser.id])
   expect(previews.at(-1)?.getAll('account_ids')).toEqual([accountId])
   expect(previews.at(-1)?.has('start')).toBe(false)
 })

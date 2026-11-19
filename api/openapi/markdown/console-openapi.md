@@ -3057,6 +3057,26 @@ Get chat conversations with pagination and filtering
 | 422 | Invalid query parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /apps/{app_id}/chat-conversations/identity-options
+**Return up to 20 matches per identity type for the admitted chat app**
+
+Search for end users or workspace accounts with visible chat logs in this app
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| keyword | query | Full end-user ID, account name, or account ID | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Matching identities | **application/json**: [ConversationLogIdentitySearchResponse](#conversationlogidentitysearchresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [DELETE] /apps/{app_id}/chat-conversations/{conversation_id}
 Delete a chat conversation
 
@@ -24748,6 +24768,12 @@ Frozen form definition and effective expiration in UTC epoch seconds.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 
+#### ConsoleLogIdentitySource
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConsoleLogIdentitySource | string |  |  |
+
 #### ConsoleSegmentListResponse
 
 | Name | Type | Description | Required |
@@ -24982,6 +25008,20 @@ The conversation log export is not ready for download.
 | ---- | ---- | ----------- | -------- |
 | status | string |  | Yes |
 | task_id | string |  | Yes |
+
+#### ConversationLogIdentityResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| label | string |  | Yes |
+| source | [ConsoleLogIdentitySource](#consolelogidentitysource) |  | Yes |
+
+#### ConversationLogIdentitySearchResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ConversationLogIdentityResponse](#conversationlogidentityresponse) ] |  | Yes |
 
 #### ConversationMessageDetail
 

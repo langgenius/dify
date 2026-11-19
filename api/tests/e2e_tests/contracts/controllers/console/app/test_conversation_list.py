@@ -23,6 +23,7 @@ from controllers.console import wraps as console_wraps
 from controllers.console.app import conversation as conversation_module
 from controllers.console.app.conversation import (
     ChatConversationApi,
+    ChatConversationIdentityOptionsApi,
     CompletionConversationApi,
     ConversationLogExportApi,
     ConversationLogExportFileApi,
@@ -56,9 +57,9 @@ from services.retention.conversation.log_export_service import (
     ConversationLogExportStatus,
     ConversationLogExportTask,
 )
-from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_message
+from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_end_user, make_message
 
-type _Kind = Literal["chat", "completion", "export-preview"]
+type _Kind = Literal["chat", "completion", "export-preview", "identity-options"]
 _CREATED_AT = datetime(2024, 1, 15, 6, 30, 0)
 
 
@@ -90,7 +91,12 @@ class _Harness:
         csrf: bool = True,
     ) -> TestResponse:
         client, headers = self._client(authenticated=authenticated, csrf=csrf)
-        resource = "conversation-log-exports/preview" if kind == "export-preview" else f"{kind}-conversations"
+        resource = {
+            "chat": "chat-conversations",
+            "completion": "completion-conversations",
+            "export-preview": "conversation-log-exports/preview",
+            "identity-options": "chat-conversations/identity-options",
+        }[kind]
         response = client.get(f"/apps/{app_id or self.target.id}/{resource}", query_string=query, headers=headers)
         assert all(not session.in_transaction() and not session.identity_map for session in self.sessions)
         assert response.content_type == "application/json"
@@ -207,6 +213,7 @@ def harness(
     )
     api = ExternalApi(app)
     api.add_resource(ChatConversationApi, "/apps/<uuid:app_id>/chat-conversations")
+    api.add_resource(ChatConversationIdentityOptionsApi, "/apps/<uuid:app_id>/chat-conversations/identity-options")
     api.add_resource(CompletionConversationApi, "/apps/<uuid:app_id>/completion-conversations")
     api.add_resource(ConversationLogExportPreviewApi, "/apps/<uuid:app_id>/conversation-log-exports/preview")
     api.add_resource(ConversationLogExportApi, "/apps/<uuid:app_id>/conversation-log-exports")
@@ -384,6 +391,62 @@ def test_list_and_export_preview_filter_by_selected_identities(
         assert page.get_json()["total"] == len(expected)
         assert preview.status_code == 200
         assert preview.get_json() == {"counts": {"conversation_count": len(expected), "message_count": len(expected)}}
+
+
+def test_search_log_identities_matches_only_visible_logs_in_the_app(harness: _Harness) -> None:
+    harness.mode(AppMode.ADVANCED_CHAT)
+    user_ids = [str(uuid4()) for _ in range(5)]
+    conversations = (
+        _conversation(harness),
+        _conversation(harness, app_id=str(uuid4())),
+        _conversation(harness, deleted=True),
+        _conversation(harness, invoke_from="debugger"),
+        _conversation(harness),
+    )
+    account_log = _conversation(harness, invoke_from="explore")
+    with harness.factory.begin() as session:
+        for index, (conversation, user_id) in enumerate(zip(conversations, user_ids, strict=True)):
+            session.add(
+                make_end_user(
+                    end_user_id=user_id,
+                    tenant_id=str(uuid4()) if index == 4 else harness.tenant.id,
+                    app_id=conversation.app_id,
+                    session_id="customer-42",
+                )
+            )
+            stored = session.get_one(Conversation, conversation.id)
+            stored.from_end_user_id = user_id
+            stored.from_account_id = None
+        session.get_one(Conversation, account_log.id).from_source = ConversationFromSource.CONSOLE
+        session.get_one(Account, harness.account.id).name = "Support Agent"
+        other = make_account(account_id=str(uuid4()), name="Support Admin", email="admin@example.test")
+        session.add(other)
+        session.add(TenantAccountJoin(tenant_id=harness.tenant.id, account_id=other.id))
+
+    end_user = {"id": user_ids[0], "label": "customer-42", "source": "end-user"}
+    account = {"id": harness.account.id, "label": "Support Agent", "source": "account"}
+    for keyword, expected in (
+        (" customer-42 ", [end_user]),
+        (user_ids[0], [end_user]),
+        ("port ag", [account]),
+        (harness.account.id, [account]),
+        ("%", []),
+    ):
+        response = harness.get("identity-options", query={"keyword": keyword})
+        assert response.status_code == 200
+        assert response.get_json() == {"data": expected}
+
+
+def test_log_identity_search_checks_app_and_account_admission(harness: _Harness) -> None:
+    query = {"keyword": "customer-42"}
+    assert harness.get("identity-options", query=query, csrf=False).status_code == 401
+    assert harness.get("identity-options", query=query, app_id=str(uuid4())).status_code == 404
+    assert harness.get("identity-options", query={"keyword": "  "}).status_code == 422
+    checks = vars(ChatConversationIdentityOptionsApi.get)[RBAC_CHECKS_ATTR]
+    assert len(checks) == 1
+    assert checks[0].scene == RBACPermission.APP_LOG_AND_ANNOTATION
+    assert isinstance(checks[0].locator, PlainApp)
+    assert checks[0].locator.param == "app_id"
 
 
 @pytest.mark.parametrize("kind", ["chat", "export-preview"])

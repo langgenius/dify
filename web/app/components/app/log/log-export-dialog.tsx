@@ -297,6 +297,7 @@ export function LogExportDialog({
                     {filterIdentities && (
                       <div className="flex flex-wrap items-center gap-1.5">
                         <LogIdentityPicker
+                          appId={appId}
                           options={identityOptions}
                           value={identities}
                           onChange={setIdentities}

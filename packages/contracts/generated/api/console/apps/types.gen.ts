@@ -542,6 +542,10 @@ export type ConversationWithSummaryPagination = {
   total: number
 }
 
+export type ConversationLogIdentitySearchResponse = {
+  data: Array<ConversationLogIdentityResponse>
+}
+
 export type ConversationNotFoundError = ErrorResponse & {
   code: 'conversation_not_found'
   status: 404
@@ -2061,6 +2065,12 @@ export type ConversationWithSummary = {
   user_feedback_stats?: FeedbackStat | null
 }
 
+export type ConversationLogIdentityResponse = {
+  id: string
+  label: string
+  source: ConsoleLogIdentitySource
+}
+
 export type FeedbackStat = {
   dislike: number
   like: number
@@ -3232,6 +3242,8 @@ export type StatusCount = {
   paused: number
   success: number
 }
+
+export type ConsoleLogIdentitySource = 'account' | 'end-user'
 
 export type SimpleMessageDetail = {
   answer: string
@@ -6361,6 +6373,32 @@ export type GetAppsByAppIdChatConversationsResponses = {
 
 export type GetAppsByAppIdChatConversationsResponse =
   GetAppsByAppIdChatConversationsResponses[keyof GetAppsByAppIdChatConversationsResponses]
+
+export type GetAppsByAppIdChatConversationsIdentityOptionsData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query: {
+    keyword: string
+  }
+  url: '/apps/{app_id}/chat-conversations/identity-options'
+}
+
+export type GetAppsByAppIdChatConversationsIdentityOptionsErrors = {
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdChatConversationsIdentityOptionsError =
+  GetAppsByAppIdChatConversationsIdentityOptionsErrors[keyof GetAppsByAppIdChatConversationsIdentityOptionsErrors]
+
+export type GetAppsByAppIdChatConversationsIdentityOptionsResponses = {
+  200: ConversationLogIdentitySearchResponse
+}
+
+export type GetAppsByAppIdChatConversationsIdentityOptionsResponse =
+  GetAppsByAppIdChatConversationsIdentityOptionsResponses[keyof GetAppsByAppIdChatConversationsIdentityOptionsResponses]
 
 export type DeleteAppsByAppIdChatConversationsByConversationIdData = {
   body?: never
