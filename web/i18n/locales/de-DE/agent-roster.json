@@ -159,6 +159,7 @@
   "external.overview.testRun.recoverRequest": "Anfrage wiederherstellen",
   "external.overview.testRun.requestUnknown": "Das Ergebnis der Anfrage ist unbekannt. Stellen Sie dieselbe Anfrage wieder her, bevor Sie einen neuen Test starten.",
   "external.overview.testRun.result": "Ergebnis",
+  "external.overview.testRun.resultFileUnavailable": "Diese Datei ist nicht mehr verfügbar.",
   "external.overview.testRun.retryFile": "{{name}} erneut versuchen",
   "external.overview.testRun.running": "Wird ausgeführt",
   "external.overview.testRun.runningDescription": "Sie können dieses Panel schließen. Der Test wird fortgesetzt.",

@@ -163,6 +163,7 @@
   "external.overview.testRun.recoverRequest": "استعادة الطلب",
   "external.overview.testRun.requestUnknown": "نتيجة الطلب غير معروفة. استعد الطلب نفسه قبل بدء اختبار جديد.",
   "external.overview.testRun.result": "النتيجة",
+  "external.overview.testRun.resultFileUnavailable": "هذا الملف لم يعد متاحًا.",
   "external.overview.testRun.retryFile": "إعادة محاولة {{name}}",
   "external.overview.testRun.running": "قيد التشغيل",
   "external.overview.testRun.runningDescription": "يمكنك إغلاق هذه اللوحة. سيستمر الاختبار.",

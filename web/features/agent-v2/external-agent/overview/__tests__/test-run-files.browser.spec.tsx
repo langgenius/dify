@@ -77,18 +77,20 @@ it('uses server leases for pasted files, preserves them on panel close and submi
   await pasteDialog()
     .getByRole('textbox', { name: 'File link', exact: true })
     .fill('https://files.example.test/download?id=1')
-  await pasteDialog().getByRole('textbox', { name: 'Filename', exact: true }).fill('contract.pdf')
-  await pasteDialog().getByRole('combobox', { name: 'File type', exact: true }).click()
-  await page.getByRole('option', { name: 'PDF', exact: true }).click()
+  await expect
+    .element(pasteDialog().getByRole('textbox', { name: 'Filename', exact: true }))
+    .not.toBeInTheDocument()
+  await expect
+    .element(pasteDialog().getByRole('combobox', { name: 'File type', exact: true }))
+    .not.toBeInTheDocument()
   await pasteDialog().getByRole('button', { name: 'Add', exact: true }).click()
   await expect
     .element(panel().getByRole('button', { name: 'Remove contract.pdf', exact: true }))
     .toBeVisible()
   expect(api.start).not.toHaveBeenCalled()
-  expect(api.paste.mock.calls[0]![0].body).toMatchObject({
+  expect(api.paste.mock.calls[0]![0].body).toEqual({
     url: 'https://files.example.test/download?id=1',
-    filename: 'contract.pdf',
-    media_type: 'application/pdf',
+    page_session_id: expect.any(String),
   })
   await panel().getByRole('button', { name: 'Close', exact: true }).click()
   await expect.element(panel()).not.toBeInTheDocument()

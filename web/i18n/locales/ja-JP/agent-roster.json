@@ -159,6 +159,7 @@
   "external.overview.testRun.recoverRequest": "リクエストを復元",
   "external.overview.testRun.requestUnknown": "リクエストの結果が不明です。新しいテストを開始する前に、同じリクエストを復元してください。",
   "external.overview.testRun.result": "結果",
+  "external.overview.testRun.resultFileUnavailable": "このファイルは利用できなくなりました。",
   "external.overview.testRun.retryFile": "{{name}} を再試行",
   "external.overview.testRun.running": "実行中",
   "external.overview.testRun.runningDescription": "このパネルを閉じても、テストは続行されます。",

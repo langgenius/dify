@@ -159,6 +159,7 @@
   "external.overview.testRun.recoverRequest": "Khôi phục yêu cầu",
   "external.overview.testRun.requestUnknown": "Chưa xác định được kết quả yêu cầu. Hãy khôi phục cùng yêu cầu đó trước khi bắt đầu thử nghiệm mới.",
   "external.overview.testRun.result": "Kết quả",
+  "external.overview.testRun.resultFileUnavailable": "Tệp này không còn khả dụng.",
   "external.overview.testRun.retryFile": "Thử lại {{name}}",
   "external.overview.testRun.running": "Đang chạy",
   "external.overview.testRun.runningDescription": "Bạn có thể đóng bảng này. Quá trình kiểm thử sẽ tiếp tục.",

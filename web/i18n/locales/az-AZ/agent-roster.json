@@ -159,6 +159,7 @@
   "external.overview.testRun.recoverRequest": "Sorğunu bərpa et",
   "external.overview.testRun.requestUnknown": "Sorğunun nəticəsi məlum deyil. Yeni testə başlamazdan əvvəl eyni sorğunu bərpa edin.",
   "external.overview.testRun.result": "Nəticə",
+  "external.overview.testRun.resultFileUnavailable": "Bu fayl artıq əlçatan deyil.",
   "external.overview.testRun.retryFile": "{{name}} üçün yenidən cəhd et",
   "external.overview.testRun.running": "İcra olunur",
   "external.overview.testRun.runningDescription": "Bu paneli bağlaya bilərsiniz. Test davam edəcək.",

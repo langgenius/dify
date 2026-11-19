@@ -159,6 +159,7 @@
   "external.overview.testRun.recoverRequest": "恢复请求",
   "external.overview.testRun.requestUnknown": "请求结果未知。请恢复同一请求后再开始新的测试。",
   "external.overview.testRun.result": "结果",
+  "external.overview.testRun.resultFileUnavailable": "此文件已不可用。",
   "external.overview.testRun.retryFile": "重试 {{name}}",
   "external.overview.testRun.running": "运行中",
   "external.overview.testRun.runningDescription": "你可以关闭此面板。测试将继续运行。",

@@ -161,6 +161,7 @@
   "external.overview.testRun.recoverRequest": "Відновити запит",
   "external.overview.testRun.requestUnknown": "Результат запиту невідомий. Відновіть той самий запит перед початком нового тесту.",
   "external.overview.testRun.result": "Результат",
+  "external.overview.testRun.resultFileUnavailable": "Цей файл більше недоступний.",
   "external.overview.testRun.retryFile": "Повторити спробу для {{name}}",
   "external.overview.testRun.running": "Виконується",
   "external.overview.testRun.runningDescription": "Ви можете закрити цю панель. Тест продовжиться.",

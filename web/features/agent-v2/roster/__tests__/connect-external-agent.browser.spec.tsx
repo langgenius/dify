@@ -1,4 +1,7 @@
-import type { ExternalAgentVerificationResponse } from '@dify/contracts/api/console/external-agents/types.gen'
+import type {
+  ExternalAgentVerificationResponse,
+  VerificationFailureReason,
+} from '@dify/contracts/api/console/external-agents/types.gen'
 import { ORPCError } from '@orpc/client'
 import { createInstance } from 'i18next'
 import { I18nextProvider } from 'react-i18next'
@@ -201,6 +204,37 @@ it('locks a pending verification and displays a generic HTTP400 without inventin
   await verify().click()
   await expect.element(description()).toBeVisible()
 })
+
+it.each([
+  ['connection_failed', 'Could not reach the agent.'],
+  ['authentication_failed', 'Authentication failed.'],
+  ['unsupported_protocol', 'This endpoint does not provide a supported A2A connection.'],
+  ['invalid_agent_card', 'Could not verify the Agent Card.'],
+] satisfies [VerificationFailureReason, string][])(
+  'explains the documented %s verification failure and allows another attempt',
+  async (reason, explanation) => {
+    requests.verify.mockRejectedValueOnce(
+      new ORPCError('verification_failed', {
+        defined: true,
+        status: 400,
+        message: 'Remote verification failed.',
+        data: {
+          code: 'verification_failed',
+          status: 400,
+          message: 'Remote verification failed.',
+          details: { reason },
+        },
+      }),
+    )
+    await setup()
+    await endpoint().fill('https://agents.example.test/contract')
+    await verify().click()
+    await expect.element(dialog().getByRole('alert')).toHaveTextContent(explanation)
+    expect(requests.create).not.toHaveBeenCalled()
+    await verify().click()
+    await expect.element(description()).toBeVisible()
+  },
+)
 
 it('rejects expired verification before any Create request', async () => {
   const proof = createExternalVerification()

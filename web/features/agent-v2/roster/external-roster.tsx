@@ -45,6 +45,8 @@ export function ExternalRoster() {
   const [filters, setFilters] = useQueryStates(externalRosterQueryParsers)
   const keyword = useDebounce(filters.external_keyword.trim().slice(0, 255), { wait: 300 })
   const capabilities = useQuery(consoleQuery.externalAgents.capabilities.get.queryOptions())
+  const sortBy = filters.external_sort_by === 'last_modified' ? 'updated_at' : 'created_at'
+  const sortOrder = filters.external_sort_by === 'earliest_created' ? 'asc' : 'desc'
   const commonFilters = {
     ...(keyword ? { keyword } : {}),
     connected_by_me: filters.external_connected_by_me,
@@ -56,6 +58,8 @@ export function ExternalRoster() {
           ...commonFilters,
           page: Number(page),
           limit: 20,
+          sort_by: sortBy,
+          sort_order: sortOrder,
           ...(filters.external_status === 'all'
             ? {}
             : { enabled: filters.external_status === 'enabled' }),
@@ -66,35 +70,28 @@ export function ExternalRoster() {
       enabled: capabilities.isSuccess && !workspaceLoading,
     }),
   )
-  const enabledCount = useQuery(
-    consoleQuery.externalAgents.get.queryOptions({
-      input: { query: { ...commonFilters, page: 1, limit: 1, enabled: true } },
-      select: (data) => data.total,
-      enabled: capabilities.isSuccess && !workspaceLoading,
-    }),
-  )
-  const disabledCount = useQuery(
-    consoleQuery.externalAgents.get.queryOptions({
-      input: { query: { ...commonFilters, page: 1, limit: 1, enabled: false } },
-      select: (data) => data.total,
-      enabled: capabilities.isSuccess && !workspaceLoading,
-    }),
-  )
+  const counts = list.data?.pages[0]
   const agents =
     list.data?.pages.flatMap((page) =>
       page.items.map((asset) => toExternalAgentListItem(asset, profile.data?.profile.id)),
     ) ?? []
   const statusOptions = [
     { value: 'all', label: t(($) => $['roster.filters.all']) },
-    { value: 'enabled', label: t(($) => $['external.filters.enabled']), count: enabledCount.data },
+    {
+      value: 'enabled',
+      label: t(($) => $['external.filters.enabled']),
+      count: counts?.enabled_count,
+    },
     {
       value: 'disabled',
       label: t(($) => $['external.filters.disabled']),
-      count: disabledCount.data,
+      count: counts?.disabled_count,
     },
   ] as const
   const sortOptions = [
     { value: 'last_modified', label: t(($) => $['roster.sort.lastModified']) },
+    { value: 'recently_created', label: t(($) => $['roster.sort.recentlyCreated']) },
+    { value: 'earliest_created', label: t(($) => $['roster.sort.earliestCreated']) },
   ] as const
   return (
     <>
@@ -143,7 +140,13 @@ export function ExternalRoster() {
           </span>
         </label>
         <div className="ms-auto flex flex-wrap items-center justify-end gap-2">
-          <Select disabled items={sortOptions} value="last_modified">
+          <Select
+            items={sortOptions}
+            value={filters.external_sort_by}
+            onValueChange={(value) => {
+              if (value !== null) void setFilters({ external_sort_by: value })
+            }}
+          >
             <SelectTrigger aria-labelledby={sortLabelId} className="w-auto max-w-45 min-w-0">
               <span className="flex min-w-0 items-center gap-1 whitespace-nowrap">
                 <span
@@ -157,10 +160,12 @@ export function ExternalRoster() {
               </span>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="last_modified">
-                <SelectItemText>{sortOptions[0].label}</SelectItemText>
-                <SelectItemIndicator />
-              </SelectItem>
+              {sortOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  <SelectItemText>{option.label}</SelectItemText>
+                  <SelectItemIndicator />
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           {canManage && <ConnectExternalAgent key={workspace.id} />}

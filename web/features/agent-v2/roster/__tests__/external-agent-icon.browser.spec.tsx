@@ -84,7 +84,7 @@ async function setup() {
     },
   ])
   onTestFinished(() => queryClient.clear())
-  await render(
+  const rendered = await render(
     <QueryProvider>
       <NuqsTestingAdapter hasMemory>
         <I18nextProvider i18n={i18n}>
@@ -94,6 +94,7 @@ async function setup() {
     </QueryProvider>,
   )
   await expect.element(card()).toBeVisible()
+  return rendered
 }
 
 async function openEdit() {
@@ -123,6 +124,8 @@ beforeEach(({ onTestFinished }) => {
         page: input?.query?.page ?? 1,
         limit: input?.query?.limit ?? 20,
         total: items.length,
+        enabled_count: 1,
+        disabled_count: 0,
       }
     })
   detail.mockReset().mockImplementation(() => createExternalAgentDetail({ asset }))
@@ -185,12 +188,29 @@ it('keeps nested emoji drafts local, discards both cancellation scopes, and comm
   expect(uploadImage).not.toHaveBeenCalled()
 })
 
-it('uploads a native image for the draft and saves its file ID without inventing a persisted image URL', async () => {
-  await setup()
+it('saves an image file ID and displays the server icon URL after saving and reloading', async () => {
+  const rendered = await setup()
   await openEdit()
   await avatar().click()
   await picker().getByRole('tab', { name: 'Image', exact: true }).click()
   const file = createGifFile('external-agent.gif')
+  const savedUrl = URL.createObjectURL(file)
+  const refreshedUrl = URL.createObjectURL(file)
+  onTestFinished(() => {
+    URL.revokeObjectURL(savedUrl)
+    URL.revokeObjectURL(refreshedUrl)
+  })
+  info.mockImplementationOnce(
+    ({ body }: Parameters<ConsoleClient['externalAgents']['byAgentId']['info']['patch']>[0]) => {
+      asset = {
+        ...asset,
+        ...body.changes,
+        metadata_revision: asset.metadata_revision + 1,
+        icon_url: savedUrl,
+      }
+      return asset
+    },
+  )
   await picker().getByTestId('image-input').upload(file)
   const preview = picker().getByRole('img', { name: 'Image', exact: true })
   await expect.element(preview).toBeVisible()
@@ -220,9 +240,15 @@ it('uploads a native image for the draft and saves its file ID without inventing
       changes: { icon_type: 'image', icon: 'external-agent-icon', icon_background: null },
     },
   })
-  // The current asset protocol returns the file ID but no authorized image URL.
-  expect(card().element().querySelector('img')).toBeNull()
+  await expect.poll(() => card().element().querySelector('img')?.naturalWidth).toBe(1)
+  expect(card().element().querySelector('img')?.getAttribute('src')).toBe(savedUrl)
+  await rendered.unmount()
+  asset = { ...asset, icon_url: refreshedUrl }
+  await setup()
+  await expect.poll(() => card().element().querySelector('img')?.naturalWidth).toBe(1)
+  expect(card().element().querySelector('img')?.getAttribute('src')).toBe(refreshedUrl)
   await openEdit()
-  expect(avatar().element().querySelector('img')).toBeNull()
+  await expect.poll(() => avatar().element().querySelector('img')?.naturalWidth).toBe(1)
+  expect(avatar().element().querySelector('img')?.getAttribute('src')).toBe(refreshedUrl)
   await edit().getByRole('button', { name: 'Cancel', exact: true }).click()
 })

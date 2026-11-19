@@ -5,6 +5,7 @@ import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useTranslation } from 'react-i18next'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 import { ExternalAgentInvocationTrace } from '../../invocation-trace'
+import { TestAgentOutputValue } from './result-output'
 
 const isTokenCount = (value: unknown): value is number =>
   typeof value === 'number' && Number.isInteger(value) && value >= 0
@@ -39,9 +40,12 @@ export function TestAgentResults({
   const totalTokens = statistics?.total_tokens
   const reportedAttempts = statistics?.token_reporting_numerator
   const totalAttempts = statistics?.token_reporting_denominator
+  const attempts = statistics?.attempt_count
   const hasCoverage =
     isTokenCount(reportedAttempts) &&
     isTokenCount(totalAttempts) &&
+    isTokenCount(attempts) &&
+    totalAttempts === attempts &&
     reportedAttempts <= totalAttempts
   const numberFormat = new Intl.NumberFormat(i18n.language)
   return (
@@ -136,13 +140,7 @@ export function TestAgentResults({
                   {name !== 'text' && (
                     <h4 className="mb-1 system-xs-medium-uppercase text-text-tertiary">{name}</h4>
                   )}
-                  {typeof value === 'string' ? (
-                    <p className="whitespace-pre-wrap">{value}</p>
-                  ) : (
-                    <pre className="max-h-80 overflow-auto rounded-md bg-background-section p-2 system-xs-regular wrap-anywhere whitespace-pre-wrap">
-                      {JSON.stringify(value, null, 2)}
-                    </pre>
-                  )}
+                  <TestAgentOutputValue value={value} access={run.fileAccess} />
                 </div>
               ))}
             </div>

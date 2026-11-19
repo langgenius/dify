@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
 import { consoleQuery } from '@/service/console'
-import { localFileMime } from './file-limits'
+import { localFileMime, suggestedLinkFile } from './file-limits'
 
 export type TestAgentAttachment = {
   id: string
@@ -19,7 +19,7 @@ export type TestAgentAttachment = {
 }
 type FilePreparation = {
   scope: string
-  mediaType: string
+  mediaType?: string
   size: number
   prepareLease: () => Promise<ExternalTestFileResponse>
 }
@@ -37,6 +37,8 @@ export function useTestAgentFiles({
 }) {
   const { t } = useTranslation(['agentRoster', 'common'])
   const [items, setItems] = useState<TestAgentAttachment[]>([])
+  const itemsRef = useRef<TestAgentAttachment[]>([])
+  const rulesRef = useRef(rules)
   const [failure, setFailure] = useState<string | null>(null)
   const scope = `${agentId}:${pageSessionId}`
   const scopeRef = useRef(scope)
@@ -44,6 +46,9 @@ export function useTestAgentFiles({
   const removedIdsRef = useRef(new Set<string>())
   const preparationsRef = useRef(new Map<string, FilePreparation>())
   const preparingIdsRef = useRef(new Set<string>())
+  useEffect(() => {
+    rulesRef.current = rules
+  }, [rules])
   useEffect(() => {
     scopeRef.current = scope
     const preparations = preparationsRef.current
@@ -74,6 +79,11 @@ export function useTestAgentFiles({
     }),
   )
   const attachments = items.filter((item) => item.pageSessionId === pageSessionId)
+  function updateItems(update: (current: TestAgentAttachment[]) => TestAgentAttachment[]) {
+    const next = update(itemsRef.current)
+    itemsRef.current = next
+    setItems(next)
+  }
   function releaseLease(lease: ExternalTestFileResponse) {
     const releasedScope = scope
     release.mutate(
@@ -99,7 +109,7 @@ export function useTestAgentFiles({
     )
       return
     preparingIdsRef.current.add(id)
-    setItems((current) =>
+    updateItems((current) =>
       current.map((item) =>
         item.id === id ? { ...item, state: 'uploading', error: undefined, lease: undefined } : item,
       ),
@@ -112,8 +122,14 @@ export function useTestAgentFiles({
         return
       }
       if (preparationsRef.current.get(id) !== preparation) return
+      const previousSize = itemsRef.current.find((item) => item.id === id)?.size ?? 0
+      const invalid = validate(lease.media_type, lease.size, 0, lease.size - previousSize)
+      if (invalid) {
+        releaseLease(lease)
+        throw new Error(invalid)
+      }
       preparationsRef.current.delete(id)
-      setItems((current) => {
+      updateItems((current) => {
         return current.map((item) =>
           item.id === id
             ? {
@@ -135,7 +151,7 @@ export function useTestAgentFiles({
         preparationsRef.current.get(id) !== preparation
       )
         return
-      setItems((current) =>
+      updateItems((current) =>
         current.map((item) =>
           item.id === id
             ? {
@@ -153,42 +169,50 @@ export function useTestAgentFiles({
       preparingIdsRef.current.delete(id)
     }
   }
-  function validate(mime: string, size: number, count: number, total: number) {
-    if (!rules || !rules.modes.includes(mime))
+  function validate(mime: string | undefined, size: number, count: number, total: number) {
+    const currentRules = rulesRef.current
+    const currentItems = itemsRef.current.filter((item) => item.pageSessionId === pageSessionId)
+    if (!currentRules?.modes.length || (mime !== undefined && !currentRules.modes.includes(mime)))
       return t(($) => $['external.overview.testRun.fileTypeUnsupported'])
-    if (attachments.length + count > rules.maxFiles)
-      return t(($) => $['external.overview.testRun.fileCountLimit'], { count: rules.maxFiles })
-    const cap = mime.startsWith('image/') ? rules.maxImageBytes : rules.maxDocumentBytes
+    if (currentItems.length + count > currentRules.maxFiles)
+      return t(($) => $['external.overview.testRun.fileCountLimit'], {
+        count: currentRules.maxFiles,
+      })
+    const cap = mime?.startsWith('image/')
+      ? currentRules.maxImageBytes
+      : currentRules.maxDocumentBytes
     if (size > cap)
       return t(($) => $['external.overview.testRun.fileSizeLimit'], {
         size: `${cap.toLocaleString()} B`,
       })
-    if (attachments.reduce((sum, item) => sum + item.size, 0) + total > rules.maxTotalBytes)
+    if (currentItems.reduce((sum, item) => sum + item.size, 0) + total > currentRules.maxTotalBytes)
       return t(($) => $['external.overview.testRun.fileTotalLimit'], {
-        size: `${rules.maxTotalBytes.toLocaleString()} B`,
+        size: `${currentRules.maxTotalBytes.toLocaleString()} B`,
       })
     return null
   }
-  function pasteLink(url: string, filename: string, mediaType: string) {
-    const error = validate(mediaType, 0, 1, 0)
+  function pasteLink(url: string) {
+    const error = validate(undefined, 0, 1, 0)
     if (error) {
       setFailure(error)
       return false
     }
     setFailure(null)
     const id = uuid4()
+    const filename =
+      suggestedLinkFile(url, rules?.fileTypes ?? []).name ||
+      t(($) => $['external.overview.fileLink'])
     const preparation: FilePreparation = {
       scope,
-      mediaType,
       size: 0,
       prepareLease: () =>
         paste.mutateAsync({
           params: { agent_id: agentId },
-          body: { page_session_id: pageSessionId, url, filename, media_type: mediaType },
+          body: { page_session_id: pageSessionId, url },
         }),
     }
     preparationsRef.current.set(id, preparation)
-    setItems((current) => [
+    updateItems((current) => [
       ...current,
       { id, name: filename, pageSessionId, size: 0, state: 'uploading' },
     ])
@@ -224,14 +248,13 @@ export function useTestAgentFiles({
         mediaType: mime,
         size: file.size,
         prepareLease: () =>
-          // The generated input omits this existing endpoint's multipart body.
           upload.mutateAsync({
             params: { agent_id: agentId },
             body: { file: uploadFile, page_session_id: pageSessionId },
-          } as Parameters<typeof upload.mutateAsync>[0]),
+          }),
       }
       preparationsRef.current.set(id, preparation)
-      setItems((current) => [
+      updateItems((current) => [
         ...current,
         { id, name: file.name, pageSessionId, size: file.size, state: 'uploading' },
       ])
@@ -262,12 +285,12 @@ export function useTestAgentFiles({
     removedIdsRef.current.add(id)
     preparationsRef.current.delete(id)
     const item = attachments.find((item) => item.id === id)
-    setItems((current) => current.filter((item) => item.id !== id))
+    updateItems((current) => current.filter((item) => item.id !== id))
     setFailure(null)
     if (item?.lease) releaseLease(item.lease)
   }
   function markSubmitted(leaseIds: readonly string[]) {
-    setItems((current) =>
+    updateItems((current) =>
       current.map((item) =>
         item.lease && leaseIds.includes(item.lease.lease_id) ? { ...item, submitted: true } : item,
       ),

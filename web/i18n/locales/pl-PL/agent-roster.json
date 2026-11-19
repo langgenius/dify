@@ -161,6 +161,7 @@
   "external.overview.testRun.recoverRequest": "Odzyskaj żądanie",
   "external.overview.testRun.requestUnknown": "Wynik żądania jest nieznany. Odzyskaj to samo żądanie przed rozpoczęciem nowego testu.",
   "external.overview.testRun.result": "Wynik",
+  "external.overview.testRun.resultFileUnavailable": "Ten plik nie jest już dostępny.",
   "external.overview.testRun.retryFile": "Ponów próbę dla {{name}}",
   "external.overview.testRun.running": "W toku",
   "external.overview.testRun.runningDescription": "Możesz zamknąć ten panel. Test będzie kontynuowany.",

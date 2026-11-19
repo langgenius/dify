@@ -159,6 +159,7 @@
   "external.overview.testRun.recoverRequest": "요청 복구",
   "external.overview.testRun.requestUnknown": "요청 결과를 알 수 없습니다. 새 테스트를 시작하기 전에 동일한 요청을 복구하세요.",
   "external.overview.testRun.result": "결과",
+  "external.overview.testRun.resultFileUnavailable": "이 파일은 더 이상 사용할 수 없습니다.",
   "external.overview.testRun.retryFile": "{{name}} 다시 시도",
   "external.overview.testRun.running": "실행 중",
   "external.overview.testRun.runningDescription": "이 패널을 닫아도 테스트는 계속됩니다.",

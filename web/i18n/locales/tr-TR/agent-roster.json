@@ -159,6 +159,7 @@
   "external.overview.testRun.recoverRequest": "İsteği kurtar",
   "external.overview.testRun.requestUnknown": "İsteğin sonucu bilinmiyor. Yeni bir test başlatmadan önce aynı isteği kurtarın.",
   "external.overview.testRun.result": "Sonuç",
+  "external.overview.testRun.resultFileUnavailable": "Bu dosya artık kullanılamıyor.",
   "external.overview.testRun.retryFile": "{{name}} için yeniden dene",
   "external.overview.testRun.running": "Çalışıyor",
   "external.overview.testRun.runningDescription": "Bu paneli kapatabilirsiniz. Test devam edecektir.",

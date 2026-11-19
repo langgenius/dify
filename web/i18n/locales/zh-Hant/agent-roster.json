@@ -159,6 +159,7 @@
   "external.overview.testRun.recoverRequest": "復原請求",
   "external.overview.testRun.requestUnknown": "請求結果未知。請復原同一請求後再開始新的測試。",
   "external.overview.testRun.result": "結果",
+  "external.overview.testRun.resultFileUnavailable": "此檔案已無法使用。",
   "external.overview.testRun.retryFile": "重試 {{name}}",
   "external.overview.testRun.running": "執行中",
   "external.overview.testRun.runningDescription": "你可以關閉此面板。測試將繼續執行。",

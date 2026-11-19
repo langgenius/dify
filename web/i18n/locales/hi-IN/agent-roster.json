@@ -159,6 +159,7 @@
   "external.overview.testRun.recoverRequest": "अनुरोध पुनर्प्राप्त करें",
   "external.overview.testRun.requestUnknown": "अनुरोध का परिणाम अज्ञात है। नया परीक्षण शुरू करने से पहले उसी अनुरोध को पुनर्प्राप्त करें।",
   "external.overview.testRun.result": "परिणाम",
+  "external.overview.testRun.resultFileUnavailable": "यह फ़ाइल अब उपलब्ध नहीं है।",
   "external.overview.testRun.retryFile": "{{name}} के लिए फिर से प्रयास करें",
   "external.overview.testRun.running": "चल रहा है",
   "external.overview.testRun.runningDescription": "आप यह पैनल बंद कर सकते हैं। परीक्षण जारी रहेगा।",

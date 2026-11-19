@@ -55,17 +55,42 @@ beforeEach(({ onTestFinished }) => {
 })
 
 it.each([
-  { label: 'unknown', tokens: null, reported: 1, total: 2, expected: 'Not reported' },
-  { label: 'zero', tokens: 0, reported: 1, total: 1, expected: '0' },
-  { label: 'positive', tokens: 12345, reported: 2, total: 2, expected: '12,345' },
+  {
+    label: 'unknown',
+    tokens: null,
+    elapsed: null,
+    reported: 1,
+    total: 2,
+    expected: 'Not reported',
+    expectedTime: 'Not provided',
+  },
+  {
+    label: 'zero',
+    tokens: 0,
+    elapsed: 0,
+    reported: 1,
+    total: 1,
+    expected: '0',
+    expectedTime: '0.0 s',
+  },
+  {
+    label: 'positive',
+    tokens: 12345,
+    elapsed: 14.2,
+    reported: 2,
+    total: 2,
+    expected: '12,345',
+    expectedTime: '14.2 s',
+  },
 ])(
   'shows $label token usage and its reported attempt coverage',
-  async ({ tokens, reported, total, expected }) => {
+  async ({ tokens, elapsed, reported, total, expected, expectedTime }) => {
     api.start.mockResolvedValue(
       testResult('succeeded', {
         statistics: {
           ...testResult().statistics,
           total_tokens: tokens,
+          elapsed_time: elapsed,
           attempt_count: total,
           token_reporting_numerator: reported,
           token_reporting_denominator: total,
@@ -78,6 +103,7 @@ it.each([
     await task().fill('Review this contract.')
     await panel().getByRole('button', { name: 'Run test', exact: true }).click()
     await expect.element(status().getByText('Success', { exact: true })).toBeVisible()
+    await expect.element(status().getByText(expectedTime, { exact: true })).toBeVisible()
     await expect
       .element(
         status().getByText(new RegExp(`^${expected}\\s*${reported}/${total} attempts reported$`)),
@@ -120,6 +146,13 @@ it('polls the fixed anchor, cancels its latest retry child, and gives completion
           test_generation: 1,
           cancellation_state: 'requested',
         },
+        statistics: {
+          elapsed_time: 37.8,
+          total_tokens: 0,
+          attempt_count: 2,
+          token_reporting_numerator: 2,
+          token_reporting_denominator: 2,
+        },
       }),
     )
   usePollClock()
@@ -136,7 +169,8 @@ it('polls the fixed anchor, cancels its latest retry child, and gives completion
   await expect
     .element(panel().getByText('Result supplied by the agent.', { exact: true }))
     .toBeVisible()
-  await expect.element(status().getByText(/^Not reported\s*0\/0 attempts reported$/)).toBeVisible()
+  await expect.element(status().getByText(/^0\s*2\/2 attempts reported$/)).toBeVisible()
+  await expect.element(status().getByText('37.8 s', { exact: true })).toBeVisible()
   await vi.advanceTimersByTimeAsync(10_000)
   expect(api.start).toHaveBeenCalledTimes(1)
   expect(api.read).toHaveBeenCalledTimes(2)

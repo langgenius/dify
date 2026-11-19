@@ -159,6 +159,7 @@
   "external.overview.testRun.recoverRequest": "กู้คืนคำขอ",
   "external.overview.testRun.requestUnknown": "ไม่ทราบผลลัพธ์ของคำขอ โปรดกู้คืนคำขอเดิมก่อนเริ่มการทดสอบใหม่",
   "external.overview.testRun.result": "ผลลัพธ์",
+  "external.overview.testRun.resultFileUnavailable": "ไฟล์นี้ไม่พร้อมใช้งานอีกต่อไป",
   "external.overview.testRun.retryFile": "ลอง {{name}} ใหม่",
   "external.overview.testRun.running": "กำลังทำงาน",
   "external.overview.testRun.runningDescription": "คุณสามารถปิดแผงนี้ได้ การทดสอบจะดำเนินต่อไป",

@@ -160,6 +160,7 @@
   "external.overview.testRun.recoverRequest": "Récupérer la requête",
   "external.overview.testRun.requestUnknown": "Le résultat de la requête est inconnu. Récupérez la même requête avant de lancer un nouveau test.",
   "external.overview.testRun.result": "Résultat",
+  "external.overview.testRun.resultFileUnavailable": "Ce fichier n’est plus disponible.",
   "external.overview.testRun.retryFile": "Réessayer {{name}}",
   "external.overview.testRun.running": "En cours",
   "external.overview.testRun.runningDescription": "Vous pouvez fermer ce panneau. Le test continuera.",

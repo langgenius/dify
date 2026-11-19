@@ -159,6 +159,7 @@
   "external.overview.testRun.recoverRequest": "ກູ້ຄືນຄຳຂໍ",
   "external.overview.testRun.requestUnknown": "ບໍ່ຮູ້ຜົນຂອງຄຳຂໍ. ກູ້ຄືນຄຳຂໍເດີມກ່ອນເລີ່ມການທົດສອບໃໝ່.",
   "external.overview.testRun.result": "ຜົນລັບ",
+  "external.overview.testRun.resultFileUnavailable": "ໄຟລ໌ນີ້ບໍ່ສາມາດໃຊ້ໄດ້ອີກຕໍ່ໄປ.",
   "external.overview.testRun.retryFile": "ລອງ {{name}} ໃໝ່",
   "external.overview.testRun.running": "ກຳລັງເຮັດວຽກ",
   "external.overview.testRun.runningDescription": "ທ່ານສາມາດປິດແຜງນີ້ໄດ້. ການທົດສອບຈະດຳເນີນຕໍ່ໄປ.",

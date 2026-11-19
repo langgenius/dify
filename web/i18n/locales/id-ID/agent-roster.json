@@ -159,6 +159,7 @@
   "external.overview.testRun.recoverRequest": "Pulihkan permintaan",
   "external.overview.testRun.requestUnknown": "Hasil permintaan tidak diketahui. Pulihkan permintaan yang sama sebelum memulai pengujian baru.",
   "external.overview.testRun.result": "Hasil",
+  "external.overview.testRun.resultFileUnavailable": "File ini sudah tidak tersedia.",
   "external.overview.testRun.retryFile": "Coba lagi {{name}}",
   "external.overview.testRun.running": "Berjalan",
   "external.overview.testRun.runningDescription": "Anda dapat menutup panel ini. Pengujian akan terus berjalan.",

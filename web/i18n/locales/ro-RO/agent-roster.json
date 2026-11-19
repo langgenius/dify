@@ -160,6 +160,7 @@
   "external.overview.testRun.recoverRequest": "Recuperează cererea",
   "external.overview.testRun.requestUnknown": "Rezultatul cererii este necunoscut. Recuperează aceeași cerere înainte de a începe un test nou.",
   "external.overview.testRun.result": "Rezultat",
+  "external.overview.testRun.resultFileUnavailable": "Acest fișier nu mai este disponibil.",
   "external.overview.testRun.retryFile": "Reîncearcă {{name}}",
   "external.overview.testRun.running": "În curs",
   "external.overview.testRun.runningDescription": "Poți închide acest panou. Testul va continua.",

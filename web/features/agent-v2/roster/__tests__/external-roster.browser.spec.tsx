@@ -1,25 +1,19 @@
-import type { ExternalAgentAssetResponse } from '@dify/contracts/api/console/external-agents/types.gen'
-import type { ConsoleClient } from '@/service/console'
+import type {
+  ExternalAgentAssetResponse,
+  ExternalAgentListResponse,
+} from '@dify/contracts/api/console/external-agents/types.gen'
 import { ORPCError } from '@orpc/client'
-import { createInstance } from 'i18next'
-import { I18nextProvider } from 'react-i18next'
+import { onTestFinished } from 'vite-plus/test'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import agentRoster from '@/i18n/locales/en-US/agent-roster.json'
-import app from '@/i18n/locales/en-US/app.json'
-import common from '@/i18n/locales/en-US/common.json'
 import {
   createExternalAgentAsset,
   createExternalAgentCapabilities,
-  createExternalAgentDetail,
   createExternalAgentReferences,
 } from '@/test/console/external-agents'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
-import { ExternalRoster } from '../external-roster'
-import RosterPage from '../page'
+import { createRosterFixture, resetRoster, server, vendorId } from './external-roster-fixture'
 
 // boundary: the fixture supplies real English labels for browser interaction.
 vi.mock('react-i18next', async (importOriginal) => importOriginal())
@@ -55,45 +49,21 @@ vi.mock('@/service/console', async (importOriginal) => {
 // boundary: app routing is external to this rendered Roster owner.
 vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 
-const vendorId = '44444444-4444-4444-8444-444444444444'
-let assets: ExternalAgentAssetResponse[]
+beforeEach(() => {
+  resetRoster(requests)
+  onTestFinished(guardUnexpectedFetch())
+})
 
-async function setup({
-  role = 'owner',
-  searchParams = '',
-  pageOwner = false,
-}: { role?: 'owner' | 'editor' | 'normal'; searchParams?: string; pageOwner?: boolean } = {}) {
-  const i18n = createInstance()
-  await i18n.init({
-    lng: 'en-US',
-    resources: { 'en-US': { agentRoster, common, app } },
-    keySeparator: false,
-    interpolation: { escapeValue: false },
-  })
-  const { queryClient, wrapper: QueryProvider } = createConsoleQueryWrapper({
-    currentWorkspace: { role, id: '99999999-9999-4999-8999-999999999999' },
-    accountProfile: { id: '11111111-1111-4111-8111-111111111111' },
-  })
-  const { wrapper: UrlState, onUrlUpdate } = createNuqsTestWrapper({
-    hasMemory: true,
-    searchParams,
-  })
-  onTestFinished(() => queryClient.clear())
+async function setup(options?: Parameters<typeof createRosterFixture>[0]) {
+  const result = await createRosterFixture(options)
   await page.viewport(1440, 900)
-  await render(
-    <QueryProvider>
-      <UrlState>
-        <I18nextProvider i18n={i18n}>
-          <div className="flex h-screen flex-col">
-            {pageOwner ? <RosterPage /> : <ExternalRoster />}
-          </div>
-        </I18nextProvider>
-      </UrlState>
-    </QueryProvider>,
-  )
-  return { queryClient, onUrlUpdate }
+  const rendered = await render(result.ui)
+  onTestFinished(async () => {
+    await rendered.unmount()
+    result.queryClient.clear()
+  })
+  return result
 }
-
 const card = (name: string) => page.getByRole('listitem', { name, exact: true })
 const search = () => page.getByRole('searchbox', { name: 'Search agents', exact: true })
 async function openActions(name: string) {
@@ -104,92 +74,72 @@ async function openActions(name: string) {
     .click()
 }
 
-beforeEach(({ onTestFinished }) => {
-  onTestFinished(guardUnexpectedFetch())
-  requests.difyList.mockReset().mockResolvedValue({
-    data: [],
+it('uses status totals from the selected list response without separate count requests', async () => {
+  const response: ExternalAgentListResponse = {
+    items: [server.assets[0]!],
+    enabled_count: 8,
+    disabled_count: 1,
+    total: 1,
     page: 1,
-    has_more: false,
-    publication_counts: { drafts: 0, published: 0 },
-  })
-  assets = [
-    createExternalAgentAsset({
-      id: vendorId,
-      name: 'Vendor Screening Agent',
+    limit: 20,
+  }
+  requests.list.mockResolvedValue(response)
+  await setup({ searchParams: '?external_status=disabled' })
+
+  await expect.element(card('Vendor Screening Agent')).toBeVisible()
+  await expect.element(page.getByRole('radio', { name: 'Enabled 8', exact: true })).toBeVisible()
+  await expect.element(page.getByRole('radio', { name: 'Disabled 1', exact: true })).toBeChecked()
+  expect(requests.list).toHaveBeenCalledExactlyOnceWith({
+    query: {
+      page: 1,
+      limit: 20,
       enabled: false,
-      created_by: 'another-actor',
-    }),
-    createExternalAgentAsset(),
-  ]
-  requests.capabilities.mockReset().mockResolvedValue(createExternalAgentCapabilities())
-  requests.list
-    .mockReset()
-    .mockImplementation((input: Parameters<ConsoleClient['externalAgents']['get']>[0]) => {
-      const query = input?.query ?? {}
-      const matched = assets.filter(
-        (asset) =>
-          (query.enabled === undefined || asset.enabled === query.enabled) &&
-          (!query.keyword || asset.name.toLowerCase().includes(query.keyword.toLowerCase())) &&
-          (!query.connected_by_me || asset.created_by === '11111111-1111-4111-8111-111111111111'),
-      )
-      const page = query.page ?? 1
-      const limit = query.limit ?? 20
-      return {
-        items: matched.slice((page - 1) * limit, page * limit),
-        total: matched.length,
-        page,
-        limit,
-      }
-    })
-  requests.detail
-    .mockReset()
-    .mockImplementation(
-      ({ params }: Parameters<ConsoleClient['externalAgents']['byAgentId']['get']>[0]) => {
-        const asset = assets.find((item) => item.id === params.agent_id)
-        if (!asset) throw new ORPCError('not_found', { status: 404 })
-        return createExternalAgentDetail({ asset })
-      },
-    )
-  requests.references.mockReset().mockResolvedValue(createExternalAgentReferences())
-  requests.info
-    .mockReset()
-    .mockImplementation(
-      ({
-        params,
-        body,
-      }: Parameters<ConsoleClient['externalAgents']['byAgentId']['info']['patch']>[0]) => {
-        const current = assets.find((item) => item.id === params.agent_id)
-        if (!current) throw new ORPCError('not_found', { status: 404 })
-        const updated = {
-          ...current,
-          ...body.changes,
-          metadata_revision: current.metadata_revision + 1,
-        }
-        assets = assets.map((item) => (item.id === updated.id ? updated : item))
-        return updated
-      },
-    )
-  requests.enabled
-    .mockReset()
-    .mockImplementation(
-      ({
-        params,
-        body,
-      }: Parameters<ConsoleClient['externalAgents']['byAgentId']['enabled']['put']>[0]) => {
-        const current = assets.find((item) => item.id === params.agent_id)
-        if (!current) throw new ORPCError('not_found', { status: 404 })
-        const updated = { ...current, enabled: body.enabled }
-        assets = assets.map((item) => (item.id === updated.id ? updated : item))
-        return updated
-      },
-    )
-  requests.remove
-    .mockReset()
-    .mockImplementation(
-      ({ params }: Parameters<ConsoleClient['externalAgents']['byAgentId']['delete']>[0]) => {
-        assets = assets.filter((item) => item.id !== params.agent_id)
-      },
-    )
+      connected_by_me: false,
+      sort_by: 'updated_at',
+      sort_order: 'desc',
+    },
+  })
+  expect(requests.references).not.toHaveBeenCalled()
+})
+
+it('requests each server sort and keeps external and Dify filters in the URL', async () => {
+  const { onUrlUpdate } = await setup({
+    searchParams:
+      '?external_status=disabled&external_keyword=Vendor&filter=drafts&sort_by=earliest_created',
+  })
+  await expect.element(card('Vendor Screening Agent')).toBeVisible()
+  const sort = page.getByRole('combobox', { name: 'Sort by', exact: true })
+  await expect.element(sort).toBeEnabled()
+
+  for (const [label, value, sortBy, sortOrder] of [
+    ['Recently created', 'recently_created', 'created_at', 'desc'],
+    ['Earliest created', 'earliest_created', 'created_at', 'asc'],
+    ['Last modified', 'last_modified', 'updated_at', 'desc'],
+  ] as const) {
+    await sort.click()
+    await page.getByRole('option', { name: label, exact: true }).click()
+    await expect.element(sort).toMatchTextContent(label)
+    // Returning to the default sort can reuse its already-fetched query result.
+    await expect
+      .poll(() => requests.list.mock.calls.map(([input]) => input))
+      .toContainEqual({
+        query: {
+          page: 1,
+          limit: 20,
+          keyword: 'Vendor',
+          enabled: false,
+          connected_by_me: false,
+          sort_by: sortBy,
+          sort_order: sortOrder,
+        },
+      })
+    const params = onUrlUpdate.mock.lastCall?.[0].searchParams
+    expect(params?.get('external_sort_by')).toBe(value === 'last_modified' ? null : value)
+    expect(params?.get('external_status')).toBe('disabled')
+    expect(params?.get('external_keyword')).toBe('Vendor')
+    expect(params?.get('filter')).toBe('drafts')
+    expect(params?.get('sort_by')).toBe('earliest_created')
+  }
 })
 
 it('queries server filters and clears them without touching Dify parameters', async () => {
@@ -203,7 +153,14 @@ it('queries server filters and clears them without touching Dify parameters', as
   await page.getByRole('checkbox', { name: 'Connected by me', exact: true }).click()
   await expect.element(page.getByText('No matching agents', { exact: true })).toBeVisible()
   expect(requests.list).toHaveBeenCalledWith({
-    query: { page: 1, limit: 20, enabled: false, connected_by_me: true },
+    query: {
+      page: 1,
+      limit: 20,
+      enabled: false,
+      connected_by_me: true,
+      sort_by: 'updated_at',
+      sort_order: 'desc',
+    },
   })
   await search().fill('vendor')
   await expect
@@ -268,7 +225,7 @@ it('keeps unavailable references distinct from zero apps without a query error o
 })
 
 it('appends actual server pages in returned order and resets pagination on a new filter', async () => {
-  assets = Array.from({ length: 21 }, (_, index) =>
+  server.assets = Array.from({ length: 21 }, (_, index) =>
     createExternalAgentAsset({
       id: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
       name: `Server order ${index}`,
@@ -284,9 +241,15 @@ it('appends actual server pages in returned order and resets pagination on a new
       .getByRole('heading', { level: 2 })
       .elements()
       .map((heading) => heading.textContent),
-  ).toEqual(assets.map((asset) => asset.name))
+  ).toEqual(server.assets.map((asset) => asset.name))
   expect(requests.list).toHaveBeenCalledWith({
-    query: { page: 2, limit: 20, connected_by_me: false },
+    query: {
+      page: 2,
+      limit: 20,
+      connected_by_me: false,
+      sort_by: 'created_at',
+      sort_order: 'desc',
+    },
   })
   await page.getByRole('radio', { name: 'Enabled 21', exact: true }).click()
   await expect
@@ -301,6 +264,8 @@ it('appends actual server pages in returned order and resets pagination on a new
 })
 
 it('loads permitted reference links only after the reference popup opens', async () => {
+  server.assets[0] = { ...server.assets[0]!, reference_count: 0 }
+  server.assets[1] = { ...server.assets[1]!, reference_count: 7 }
   requests.references.mockResolvedValue(
     createExternalAgentReferences({
       apps: [
@@ -315,14 +280,26 @@ it('loads permitted reference links only after the reference popup opens', async
   )
   await setup()
   await expect.element(card('Contract Review Agent')).toBeVisible()
+  const trigger = card('Contract Review Agent').getByRole('button', {
+    name: 'Apps using Contract Review Agent',
+    exact: true,
+  })
+  await expect.element(trigger).toHaveTextContent('7 apps')
+  await expect
+    .element(
+      card('Vendor Screening Agent').getByRole('button', {
+        name: 'Apps using Vendor Screening Agent',
+        exact: true,
+      }),
+    )
+    .toHaveTextContent('0 apps')
   expect(requests.references).not.toHaveBeenCalled()
-  await card('Contract Review Agent')
-    .getByRole('button', { name: 'Apps using Contract Review Agent', exact: true })
-    .click()
+  await trigger.click()
   await expect
     .element(page.getByRole('link', { name: 'Contract workspace', exact: true }))
     .toHaveAttribute('href', '/app/readable-app/workflow')
-  expect(requests.references).toHaveBeenCalledWith({
+  await expect.element(trigger).toHaveTextContent('7 apps')
+  expect(requests.references).toHaveBeenCalledExactlyOnceWith({
     params: { agent_id: createExternalAgentAsset().id },
   })
 })
@@ -373,7 +350,7 @@ it('keeps asset management available when execution is disabled but blocks new c
 })
 
 it('keeps canceled info drafts local and PATCHes only changed fields with the loaded metadata revision', async () => {
-  assets[1] = createExternalAgentAsset({ metadata_revision: 4 })
+  server.assets[1] = createExternalAgentAsset({ metadata_revision: 4 })
   await setup()
   await openActions('Contract Review Agent')
   await page.getByRole('menuitem', { name: 'Edit info', exact: true }).click()
@@ -411,7 +388,7 @@ it('preserves a conflicted info draft until explicitly loading the latest metada
     )
     .toBeVisible()
   await expect.element(name).toHaveValue('My draft')
-  assets[1] = createExternalAgentAsset({ name: 'Latest name', metadata_revision: 2 })
+  server.assets[1] = createExternalAgentAsset({ name: 'Latest name', metadata_revision: 2 })
   await dialog.getByRole('button', { name: 'Load latest configuration', exact: true }).click()
   await expect.element(name).toHaveValue('Latest name')
   await name.fill('Final name')
@@ -438,8 +415,8 @@ it('waits for the server enabled result before updating filtered results and glo
     params: { agent_id: vendorId },
     body: { enabled: true },
   })
-  const updated = createExternalAgentAsset({ ...assets[0], enabled: true })
-  assets[0] = updated
+  const updated = createExternalAgentAsset({ ...server.assets[0], enabled: true })
+  server.assets[0] = updated
   saved.resolve(updated)
   await expect.element(page.getByText('No matching agents', { exact: true })).toBeVisible()
   await expect.element(page.getByRole('radio', { name: 'Enabled 2', exact: true })).toBeVisible()

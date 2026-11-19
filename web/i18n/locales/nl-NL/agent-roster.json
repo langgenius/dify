@@ -159,6 +159,7 @@
   "external.overview.testRun.recoverRequest": "Verzoek herstellen",
   "external.overview.testRun.requestUnknown": "Het resultaat van het verzoek is onbekend. Herstel hetzelfde verzoek voordat je een nieuwe test start.",
   "external.overview.testRun.result": "Resultaat",
+  "external.overview.testRun.resultFileUnavailable": "Dit bestand is niet meer beschikbaar.",
   "external.overview.testRun.retryFile": "{{name}} opnieuw proberen",
   "external.overview.testRun.running": "Wordt uitgevoerd",
   "external.overview.testRun.runningDescription": "Je kunt dit paneel sluiten. De test gaat door.",

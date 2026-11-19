@@ -161,6 +161,7 @@
   "external.overview.testRun.recoverRequest": "Obnovi zahtevo",
   "external.overview.testRun.requestUnknown": "Rezultat zahteve ni znan. Pred začetkom novega preizkusa obnovite isto zahtevo.",
   "external.overview.testRun.result": "Rezultat",
+  "external.overview.testRun.resultFileUnavailable": "Ta datoteka ni več na voljo.",
   "external.overview.testRun.retryFile": "Poskusi znova za {{name}}",
   "external.overview.testRun.running": "V teku",
   "external.overview.testRun.runningDescription": "To ploščo lahko zaprete. Preizkus se bo nadaljeval.",
