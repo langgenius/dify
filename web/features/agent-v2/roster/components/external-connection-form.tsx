@@ -3,7 +3,7 @@ import type {
   ExternalConnectionSettings,
   ExternalConnectionVerificationState,
 } from './external-connection-verification'
-import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Alert, AlertDescription, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import { DialogBody, DialogClose, DialogFooter } from '@langgenius/dify-ui/dialog'
 import {
@@ -85,6 +85,13 @@ export function ExternalConnectionForm({
     unsupported_protocol: t(($) => $['external.connection.errors.unsupported']),
     invalid_agent_card: t(($) => $['external.connection.errors.invalidAgentCard']),
   }
+  const failureTitle = t(($) => $['external.connection.errors.unknown'])
+  const failureReason =
+    verification.status === 'failed'
+      ? verification.reason
+        ? verificationErrors[verification.reason]
+        : verification.message
+      : undefined
 
   function updateSetting<K extends keyof ExternalConnectionSettings>(
     name: K,
@@ -221,11 +228,12 @@ export function ExternalConnectionForm({
         )}
         {verification.status === 'failed' && (
           <Alert type="error">
-            <AlertTitle>
-              {verification.reason
-                ? verificationErrors[verification.reason]
-                : verification.message || t(($) => $['external.connection.errors.unknown'])}
-            </AlertTitle>
+            <AlertTitle>{failureTitle}</AlertTitle>
+            <AlertDescription>
+              {failureReason && failureReason !== failureTitle
+                ? failureReason
+                : t(($) => $['external.connection.errors.changesKept'])}
+            </AlertDescription>
           </Alert>
         )}
         {verification.status === 'expired' && (

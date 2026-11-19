@@ -101,6 +101,26 @@ it('enables verification only while the connection has edits and disables it aga
   expect(requests.save).not.toHaveBeenCalled()
 })
 
+it('shows a fixed verification failure title with the server conflict reason', async () => {
+  requests.verify.mockRejectedValueOnce(
+    new ORPCError('conflict', {
+      status: 409,
+      message: 'The connection changed; load its current configuration.',
+    }),
+  )
+  await setup()
+  await endpoint().fill('https://my-change.example.test/agent')
+  await verify().click()
+  await expect
+    .element(dialog().getByRole('alert'))
+    .toMatchTextContent('Could not verify the connection.')
+  await expect
+    .element(dialog().getByRole('alert'))
+    .toMatchTextContent('The connection changed; load its current configuration.')
+  await expect.element(endpoint()).toHaveValue('https://my-change.example.test/agent')
+  expect(requests.save).not.toHaveBeenCalled()
+})
+
 it('keeps a saved Bearer credential without sending a mask and saves the verified connection revision', async () => {
   requests.verify.mockResolvedValue(
     createExternalVerification({
@@ -141,6 +161,23 @@ it('keeps a saved Bearer credential without sending a mask and saves the verifie
       idempotency_key: expect.any(String),
     },
   })
+})
+
+it('shows a fixed save failure title and keeps the edited draft when the server gives no reason', async () => {
+  requests.save.mockRejectedValueOnce(new ORPCError('', { status: 400, message: '' }))
+  await setup()
+  await endpoint().fill('https://my-change.example.test/agent')
+  await verify().click()
+  await dialog().getByRole('button', { name: 'Save', exact: true }).click()
+  await expect
+    .element(dialog().getByRole('alert'))
+    .toMatchTextContent('Could not save the connection.')
+  await expect
+    .element(dialog().getByRole('alert'))
+    .toMatchTextContent('Your changes have been kept.')
+  await dialog().getByRole('button', { name: 'Back', exact: true }).click()
+  await expect.element(endpoint()).toHaveValue('https://my-change.example.test/agent')
+  await expect.element(verify()).toBeEnabled()
 })
 
 it('shows the referenced apps in the verified connection review before saving', async () => {

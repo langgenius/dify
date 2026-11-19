@@ -6,7 +6,7 @@ import type {
 } from '@dify/contracts/api/console/external-agents/types.gen'
 import type { ExternalConnectionSettings } from '../../roster/components/external-connection-verification'
 import type { ExternalAgentOverview } from '../model'
-import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Alert, AlertDescription, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -178,7 +178,7 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
                 ? undefined
                 : externalAgentErrorMessage(
                     error,
-                    t(($) => $['external.api.saveFailed']),
+                    t(($) => $['external.connection.errors.changesKept']),
                   ),
           )
           if (!unknown) {
@@ -311,7 +311,10 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
               )}
               {saveError && (
                 <Alert type="error">
-                  <AlertTitle>{saveError}</AlertTitle>
+                  <AlertTitle>
+                    {saveUnknown ? saveError : t(($) => $['external.connection.errors.saveFailed'])}
+                  </AlertTitle>
+                  {!saveUnknown && <AlertDescription>{saveError}</AlertDescription>}
                 </Alert>
               )}
             </DialogBody>
