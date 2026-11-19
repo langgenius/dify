@@ -87,6 +87,16 @@ class ContactRepository(Protocol):
         """
         ...
 
+    def get_contacts_by_account_ids(
+        self, tenant_id: TenantId, account_ids: Sequence[AccountId]
+    ) -> Mapping[AccountId, Contact]:
+        """Read available Account-backed Contacts in one workspace snapshot.
+
+        Missing or unavailable Accounts are omitted. This read never provisions
+        identities or substitutes a Contact sharing an Account's Email.
+        """
+        ...
+
     def get_contacts_by_ids(
         self,
         tenant_id: TenantId,

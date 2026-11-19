@@ -239,6 +239,7 @@ class WorkflowBasedAppRunner:
         root_node_id: str | None = None,
         app_type: CreditUsageAppType | None = None,
         trace_session_id: str | None = None,
+        capture_agent_evaluation_trace: bool = False,
     ) -> Graph:
         """
         Init graph
@@ -254,6 +255,7 @@ class WorkflowBasedAppRunner:
             invoke_from=invoke_from,
             app_type=app_type,
             trace_session_id=trace_session_id,
+            capture_agent_evaluation_trace=capture_agent_evaluation_trace,
         )
         graph_init_context = DifyGraphInitContext(
             execution_driver=self._execution_driver,
@@ -595,7 +597,7 @@ class WorkflowBasedAppRunner:
         human_input_v2_forms: Mapping[str, PreparedForm] | None = None,
     ) -> None:
         """
-        Handle event
+        Project ordered engine events without reinterpreting Graphon's failure strategy or terminal cause.
         :param workflow_entry: workflow entry
         :param event: event
         """
@@ -652,7 +654,10 @@ class WorkflowBasedAppRunner:
                 )
             case GraphRunFailedEvent():
                 self._publish_event(
-                    QueueWorkflowFailedEvent(error=event.error, exceptions_count=event.exceptions_count)
+                    QueueWorkflowFailedEvent(
+                        error=event.error,
+                        exceptions_count=event.exceptions_count,
+                    )
                 )
             case GraphRunAbortedEvent():
                 self._publish_event(
