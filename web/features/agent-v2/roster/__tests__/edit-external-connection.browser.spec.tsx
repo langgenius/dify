@@ -121,6 +121,26 @@ it('shows a fixed verification failure title with the server conflict reason', a
   expect(requests.save).not.toHaveBeenCalled()
 })
 
+it.each([
+  [
+    'an unpunctuated generic server reason',
+    () => new ORPCError('bad_request', { status: 400, message: 'Could not verify the connection' }),
+  ],
+  [
+    'a punctuated generic server reason',
+    () =>
+      new ORPCError('bad_request', { status: 400, message: 'Could not verify the connection.' }),
+  ],
+])('shows only the fixed verification title when editing with %s', async (_, error) => {
+  requests.verify.mockRejectedValueOnce(error())
+  await setup()
+  await endpoint().fill('https://my-change.example.test/agent')
+  await verify().click()
+  const alert = dialog().getByRole('alert')
+  await expect.element(alert).toHaveTextContent('Could not verify the connection.')
+  expect(requests.save).not.toHaveBeenCalled()
+})
+
 it('keeps a saved Bearer credential without sending a mask and saves the verified connection revision', async () => {
   requests.verify.mockResolvedValue(
     createExternalVerification({

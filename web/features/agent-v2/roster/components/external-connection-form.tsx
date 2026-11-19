@@ -92,6 +92,10 @@ export function ExternalConnectionForm({
         ? verificationErrors[verification.reason]
         : verification.message
       : undefined
+  const genericFailure =
+    !failureReason ||
+    failureReason === failureTitle ||
+    /^could not verify the connection\.?$/i.test(failureReason.trim())
 
   function updateSetting<K extends keyof ExternalConnectionSettings>(
     name: K,
@@ -229,11 +233,13 @@ export function ExternalConnectionForm({
         {verification.status === 'failed' && (
           <Alert type="error">
             <AlertTitle>{failureTitle}</AlertTitle>
-            <AlertDescription>
-              {failureReason && failureReason !== failureTitle
-                ? failureReason
-                : t(($) => $['external.connection.errors.changesKept'])}
-            </AlertDescription>
+            {(!savedSettings || !genericFailure) && (
+              <AlertDescription>
+                {genericFailure
+                  ? t(($) => $['external.connection.errors.changesKept'])
+                  : failureReason}
+              </AlertDescription>
+            )}
           </Alert>
         )}
         {verification.status === 'expired' && (
