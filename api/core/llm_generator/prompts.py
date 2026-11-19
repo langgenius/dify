@@ -1,5 +1,10 @@
 # Written by YORKI MINAKO🤡, Edited by Xiaoyi, Edited by yasu-oh
 
+import json
+from collections.abc import Mapping, Sequence
+
+from core.llm_generator.decision_generator import format_operator_table
+
 CONVERSATION_TITLE_PROMPT = """You are asked to generate a concise chat title by decomposing the user’s input into two parts: “Intention” and “Subject”.
 
 1. Detect Input Language
@@ -444,3 +449,134 @@ Output only the summary text. Start summarizing now:
 
 """
 )
+
+
+# ── Decision node configuration generator ───────────────────────────────────
+# The system prompt is the contract for one generation roundtrip; the user
+# message (``build_decision_generate_user_content``) carries the sentence, the
+# variables, the author's existing outcomes and, on the repair retry, the
+# validation errors from the previous attempt.
+
+DECISION_GENERATE_SYSTEM = f"""You configure a Dify "decision" workflow node from one sentence written by its author. \
+The author names the business outcomes; you produce the node's configuration: how to decide, the outcomes, \
+the fallback exit, and — only when asked — extra outputs.
+
+## How to decide
+
+- Choose "rules" when every outcome can be decided by comparing variable values from the available variables.
+- Choose "llm" when any outcome needs understanding the meaning of free text.
+- Set "decide_by" to "rules" or "llm" and write "decide_by_reason": one short sentence saying why this mode fits.
+- Never choose or invent any other mode.
+
+## Outcomes
+
+- Outcome labels are business results in the author's words. Never use IF, ELSE, CASE 1, CLASS 1 or similar filler.
+- "when" depends on the mode:
+  - rules: a rule group object, e.g.
+    {{"logical_operator": "and", "conditions": [{{"variable_selector": ["start", "amount"], "comparison_operator": ">", "value": "500"}}]}}
+  - llm: one short sentence saying when the outcome applies.
+- Always also write "when_description": one short sentence saying when the outcome applies. It is kept for display, never executed.
+- Rules are evaluated in list order and the first matching outcome wins; order the outcomes accordingly.
+- When the author already listed outcomes, keep their ids and labels exactly, in the same order, and only write their "when". \
+You may append new outcomes only when the instruction clearly needs them.
+- "otherwise" only holds a short label meaning "none of the above or unable to tell" (for example "Can't decide"). \
+Never add conditions to it and never invent an outcome named otherwise.
+
+## Rules mode
+
+- Every "variable_selector" must be exactly one of the available variables.
+- The comparison operator must be legal for that variable's type:
+{format_operator_table()}
+- Write numbers as strings ("500", not 500).
+- For "empty", "not empty", "null" and "not null" do not write a "value" at all.
+
+## llm mode
+
+- "inputs" lists the variables the deciding model should be given, chosen from the available variables: \
+[{{"variable": "<short name>", "value_selector": [...]}}]. List only the ones needed to decide.
+
+## extras
+
+- Only when the instruction explicitly asks for additional information to be passed on (for example "and also give the urgency") \
+add extras: {{"name": "<output name>", "from": "fixed", "values": {{"<outcome id>": <value>}}}} or \
+{{"name": "<output name>", "from": "model", "hint": "<what the model should write>"}}. Otherwise return an empty list.
+- The "name" of an extra is a short ASCII snake_case identifier: letters, digits and underscores, starting with a letter or underscore, \
+at most 30 characters — for example "urgency_level". Never name an extra "outcome", "outcome_id", "reason" or "decided_by".
+- The human wording is never in the name: the "hint" carries it, written in the author's language.
+
+## Output
+
+Return only one JSON object, no code fence, no commentary:
+{{
+  "decide_by": "rules" | "llm",
+  "decide_by_reason": "<one short sentence>",
+  "outcomes": [
+    {{"id": "<snake_case id>", "label": "<business result in the author's words>", "when": <rule group or sentence>, "when_description": "<one short sentence>"}}
+  ],
+  "otherwise": {{"label": "<none of the above or unable to tell, in the author's words>"}},
+  "inputs": [{{"variable": "<short name>", "value_selector": [...]}}],
+  "extras": []
+}}
+"""  # noqa: E501
+
+
+def build_decision_generate_user_content(
+    *,
+    instruction: str,
+    available_variables: Sequence[Mapping[str, object]],
+    decide_by: str | None,
+    decide_by_note: str,
+    outcomes: Sequence[Mapping[str, object]],
+    language: str | None,
+    previous_output: str = "",
+    validation_errors: Sequence[str] = (),
+) -> str:
+    """Build the user message for one decision-node generation roundtrip.
+
+    Preconditions: ``decide_by`` is ``None`` (the model chooses) or one of
+    ``"rules"`` / ``"llm"``; on a repair retry ``previous_output`` holds the
+    model's last reply and ``validation_errors`` the errors to quote back.
+    Postconditions: the returned text names the instruction, the available
+    variables, the author's existing outcomes and the language, plus the
+    repair sections when the retry supplies them.
+    """
+    if decide_by is None:
+        decide_by_section = (
+            "### Decide by\n"
+            'Choose "rules" or "llm" yourself, following the system instructions, '
+            'and explain the choice in "decide_by_reason".'
+        )
+    else:
+        decide_by_section = (
+            f'### Decide by\nThe mode is fixed: "{decide_by}". Generate only for this mode '
+            f'and set "decide_by" to "{decide_by}".'
+        )
+    if decide_by_note:
+        decide_by_section += "\n" + decide_by_note
+
+    sections = [
+        "### Instruction\n" + instruction.strip(),
+        "### Available variables\n"
+        + json.dumps(list(available_variables), ensure_ascii=False, indent=2)
+        + "\nEvery rule condition and llm input may only use these variables.",
+        decide_by_section,
+    ]
+    if outcomes:
+        sections.append(
+            "### Existing outcomes\nKeep these ids and labels exactly, in this order, "
+            'and only write their "when":\n' + json.dumps(list(outcomes), ensure_ascii=False, indent=2)
+        )
+    language_line = language or "the language of the instruction."
+    sections.append(
+        '### Language\nWrite every label, "decide_by_reason", "when" sentence, '
+        f'"when_description" and the "otherwise" label in: {language_line}'
+    )
+    if previous_output:
+        sections.append("### Your previous attempt\n" + previous_output.strip())
+    if validation_errors:
+        sections.append(
+            "### Validation errors\n"
+            + "\n".join(f"- {error}" for error in validation_errors)
+            + "\nFix every error and return the corrected JSON object only."
+        )
+    return "\n\n".join(sections)

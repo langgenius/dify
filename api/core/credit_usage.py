@@ -16,6 +16,7 @@ class CreditUsageCreatedBy(StrEnum):
     CODE_GENERATION = "code_generation"
     QA_DOCUMENT = "qa_document"
     STRUCTURED_OUTPUT = "structured_output"
+    DECISION_GENERATION = "decision_generation"
     INSTRUCTION_MODIFICATION = "instruction_modification"
     KNOWLEDGE_RETRIEVAL = "knowledge_retrieval"
     KNOWLEDGE_INDEXING = "knowledge_indexing"
