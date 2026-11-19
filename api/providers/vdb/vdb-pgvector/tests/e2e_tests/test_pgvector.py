@@ -22,5 +22,5 @@ class PGVectorTest(AbstractVectorTest):
         )
 
 
-def test_pgvector(setup_mock_redis):
+def test_pgvector(setup_real_redis):
     PGVectorTest().run_all_tests()

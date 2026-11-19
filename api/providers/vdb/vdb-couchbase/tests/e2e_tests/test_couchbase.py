@@ -49,6 +49,6 @@ class CouchbaseTest(AbstractVectorTest):
         assert len(hits_by_vector) == 1
 
 
-def test_couchbase(setup_mock_redis):
+def test_couchbase(setup_real_redis):
     wait_for_healthy_container("couchbase-server", timeout=60)
     CouchbaseTest().run_all_tests()
