@@ -44,7 +44,7 @@ export const MAIN_NAV_ROUTES = [
     key: 'home',
     href: '/',
     labelKey: 'mainNav.home',
-    active: (path: string) => path === '/' || path === '/explore/apps',
+    active: (path: string) => path === '/',
     icon: 'i-custom-vender-main-nav-home-v2',
     activeIcon: 'i-custom-vender-main-nav-home-v2-active',
     visibility: VISIBLE_TO_ALL,
