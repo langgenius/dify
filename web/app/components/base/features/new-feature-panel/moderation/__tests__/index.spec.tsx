@@ -48,10 +48,12 @@ const renderModeration = (
 const openSettings = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.hover(screen.getByText('appDebug.feature.moderation.title'))
   await user.click(screen.getByRole('button', { name: 'common.operation.settings' }))
-  return screen.findByRole('dialog')
+  return screen.findByRole('dialog', { name: 'appDebug.feature.moderation.modal.title' })
 }
 const closeModal = async (user: ReturnType<typeof userEvent.setup>, action: 'save' | 'cancel') => {
-  const dialog = await screen.findByRole('dialog')
+  const dialog = await screen.findByRole('dialog', {
+    name: 'appDebug.feature.moderation.modal.title',
+  })
   await user.click(within(dialog).getByRole('button', { name: `common.operation.${action}` }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 }
@@ -67,7 +69,9 @@ describe('Moderation', () => {
     const { store } = renderModeration(undefined, { onChange })
     const toggle = screen.getByRole('switch')
     await user.click(toggle)
-    const dialog = await screen.findByRole('dialog')
+    const dialog = await screen.findByRole('dialog', {
+      name: 'appDebug.feature.moderation.modal.title',
+    })
     expect(toggle).not.toBeChecked()
     expect(store.getState().features.moderation).toEqual({ enabled: false })
     expect(onChange).not.toHaveBeenCalled()
@@ -97,7 +101,7 @@ describe('Moderation', () => {
     await closeModal(user, 'cancel')
     expect(screen.getByRole('switch')).not.toBeChecked()
     expect(store.getState().features.moderation).toEqual({ enabled: false })
-    expect(onChange).toHaveBeenCalledExactlyOnceWith()
+    expect(onChange).not.toHaveBeenCalled()
   })
 
   it('re-enables an existing configuration without reopening setup', async () => {
@@ -133,7 +137,9 @@ describe('Moderation', () => {
           .getState()
           .setFeatures({ ...store.getState().features, suggested: { enabled: true } }),
       )
-      const dialog = await screen.findByRole('dialog')
+      const dialog = await screen.findByRole('dialog', {
+        name: 'appDebug.feature.moderation.modal.title',
+      })
       const keywords = within(dialog).getByRole('textbox', {
         name: 'appDebug.feature.moderation.modal.provider.keywords',
       })
@@ -168,7 +174,7 @@ describe('Moderation', () => {
     await user.type(keywords, ' unsaved')
     await closeModal(user, 'cancel')
     expect(store.getState().features.moderation).toEqual(configured)
-    expect(onChange).toHaveBeenCalledExactlyOnceWith()
+    expect(onChange).not.toHaveBeenCalled()
   })
 
   it('disables both the feature toggle and settings for read-only users', async () => {

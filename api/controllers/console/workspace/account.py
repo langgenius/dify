@@ -242,6 +242,9 @@ class EducationStatusResponse(ResponseModel):
     is_student: bool
     expire_at: int | None
     allow_refresh: bool
+    can_redeem_discount: bool = Field(
+        description="Whether the account can redeem its education discount in the current verification period."
+    )
 
     @field_validator("expire_at", mode="before")
     @classmethod
@@ -304,7 +307,7 @@ class AccountInitApi(Resource):
 class AccountProfileApi(Resource):
     @error_responses(AccountNotFound)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
-    @console_account_admission(require_valid_enterprise_license=True)
+    @console_account_admission(require_valid_enterprise_license=True, require_active_workspace=False)
     def get(self, request_context: RequestContext):
         try:
             account = application_services().accounts.profile.get(request_context)

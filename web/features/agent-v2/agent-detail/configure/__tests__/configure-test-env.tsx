@@ -221,18 +221,23 @@ export function createEnvironment({
   composer = createComposer(),
   buildDraft,
   edition = 'CLOUD',
+  previewEnabled = true,
   permissions = Object.values(AgentPermission),
   conversationId = 'old-build',
 }: {
   composer?: AgentAppComposerResponse | null
   buildDraft?: AgentBuildDraftResponse
   edition?: 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE'
+  previewEnabled?: boolean
   permissions?: string[]
   conversationId?: string | null
 } = {}) {
   const { queryClient, wrapper: QueryProvider } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: edition, license: { status: 'lost' } },
-    features: { billing: { subscription: { plan: 'professional' } } },
+    features: {
+      agent_preview_enabled: previewEnabled,
+      billing: { subscription: { plan: 'professional' } },
+    },
   })
   queryClient.setDefaultOptions({
     queries: { retry: false, retryOnMount: false, staleTime: Infinity, gcTime: Infinity },

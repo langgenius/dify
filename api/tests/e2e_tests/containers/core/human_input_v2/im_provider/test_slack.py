@@ -572,7 +572,9 @@ def test_slack_card_assessment_matches_static_select_provider_boundary(
         title="Supported Slack selector boundary",
         parts=(
             SelectInput(
-                output_variable_name="risk_level", options=supported_options, default_value=supported_options[0]
+                output_variable_name="risk_level",
+                options=supported_options,
+                resolved_default_value=supported_options[0],
             ),
         ),
         actions=(UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),),
@@ -583,7 +585,9 @@ def test_slack_card_assessment_matches_static_select_provider_boundary(
         title="Unsupported Slack selector boundary",
         parts=(
             SelectInput(
-                output_variable_name="risk_level", options=unsupported_options, default_value=unsupported_options[0]
+                output_variable_name="risk_level",
+                options=unsupported_options,
+                resolved_default_value=unsupported_options[0],
             ),
         ),
         actions=(UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),),
@@ -611,8 +615,8 @@ def test_slack_card_sender_and_decoder_cross_real_web_api_boundary(
         title=f"Slack card integration [{marker}]",
         parts=(
             MarkdownFragment(text="Review the provider-persisted form."),
-            ParagraphInput(output_variable_name="review_comment", default_value="Initial review"),
-            SelectInput(output_variable_name="risk_level", options=("low", "high"), default_value="low"),
+            ParagraphInput(output_variable_name="review_comment", resolved_default_value="Initial review"),
+            SelectInput(output_variable_name="risk_level", options=("low", "high"), resolved_default_value="low"),
         ),
         actions=(
             UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),

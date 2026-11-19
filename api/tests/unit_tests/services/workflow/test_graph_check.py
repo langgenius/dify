@@ -16,6 +16,68 @@ START = _node("start", {"type": "start", "title": "Start", "variables": []})
 END = _node("end", {"type": "end", "title": "End", "outputs": []})
 
 
+def _human_input_v2(**overrides: object) -> dict[str, object]:
+    return _node(
+        "approval",
+        {
+            "type": "human-input",
+            "version": "2",
+            "title": "Approval",
+            "recipients_spec": [{"type": "initiator"}],
+            "message_template": {"subject": "Review", "body": "Review {{#url#}}"},
+            "debug_mode": {"enabled": False, "channels": []},
+            "form_content": "Please approve",
+            "inputs": [],
+            "user_actions": [{"id": "approve", "title": "Approve"}],
+            **overrides,
+        },
+    )
+
+
+@pytest.mark.parametrize(
+    ("overrides", "loc"),
+    [
+        ({"recipients_spec": []}, ("recipients_spec",)),
+        ({"message_template": {"subject": "Review"}}, ("message_template", "body")),
+        ({"message_template": {"body": "{{#url#}}"}}, ("message_template", "subject")),
+        ({"message_template": {"subject": " ", "body": "{{#url#}}"}}, ("message_template", "subject")),
+        ({"message_template": {"subject": "Review", "body": " "}}, ("message_template", "body")),
+        ({"message_template": {"subject": "Review", "body": "Review"}}, ("message_template", "body")),
+        (
+            {"message_template": {"subject": "Review", "body": "{{#url#}} {{#url#}}"}},
+            ("message_template", "body"),
+        ),
+        ({"debug_mode": {"enabled": True, "channels": []}}, ("debug_mode", "channels")),
+        ({"debug_mode": "invalid"}, ("debug_mode",)),
+    ],
+)
+def test_human_input_v2_errors_locate_the_invalid_field(overrides: dict[str, object], loc: tuple[str, ...]) -> None:
+    issues = check_graph({"nodes": [_human_input_v2(**overrides)], "edges": []}, mode=AppMode.WORKFLOW)
+    errors = [issue for issue in issues if issue.code.severity is IssueSeverity.ERROR]
+    assert [(issue.code, issue.loc) for issue in errors] == [
+        (IssueCode.NODE_DATA_INVALID, ("nodes", "approval", "data", *loc))
+    ]
+
+
+def test_human_input_v2_reports_each_missing_field() -> None:
+    node = _node("approval", {"type": "human-input", "version": "2", "title": "Approval"})
+    issues = check_graph({"nodes": [node], "edges": []}, mode=AppMode.WORKFLOW)
+    assert {issue.loc for issue in issues if issue.code is IssueCode.NODE_DATA_INVALID} == {
+        ("nodes", "approval", "data", field) for field in ("recipients_spec", "message_template", "debug_mode")
+    }
+
+
+@pytest.mark.parametrize("version", ["1", "2"])
+def test_human_input_check_accepts_each_versions_own_configuration(version: str) -> None:
+    node = (
+        _human_input_v2()
+        if version == "2"
+        else _node("approval", {"type": "human-input", "version": "1", "title": "Approval"})
+    )
+    issues = check_graph({"nodes": [node], "edges": []}, mode=AppMode.WORKFLOW)
+    assert not [issue for issue in issues if issue.code.severity is IssueSeverity.ERROR]
+
+
 def _template(selector: list[str]) -> dict[str, object]:
     return _node(
         "t",

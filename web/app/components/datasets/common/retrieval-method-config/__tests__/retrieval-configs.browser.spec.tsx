@@ -3,6 +3,8 @@ import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { toast } from '@/app/notifications'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { DEFAULT_WEIGHTED_SCORE, RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
 import { consoleQuery } from '@/service/console'
 import {
@@ -15,9 +17,6 @@ import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/cons
 import { RETRIEVE_METHOD } from '@/types/app'
 import EconomicalRetrievalMethodConfig from '../../economical-retrieval-method-config'
 import RetrievalMethodConfig from '../index'
-
-const { notify } = vi.hoisted(() => ({ notify: vi.fn() }))
-vi.mock('@/app/notifications', () => ({ toast: { error: notify } }))
 
 const methods = [RETRIEVE_METHOD.semantic, RETRIEVE_METHOD.fullText, RETRIEVE_METHOD.hybrid]
 const methodName = (method: RETRIEVE_METHOD) => `dataset.retrieval.${method}.title`
@@ -142,13 +141,14 @@ async function renderRetrieval({
   return render(
     <ConsoleQuery>
       <NuqsTestingAdapter>
+        <AppToaster timeout={0} />
         <RetrievalOwner initial={initial} {...ownerProps} />
       </NuqsTestingAdapter>
     </ConsoleQuery>,
   )
 }
 
-beforeEach(() => notify.mockReset())
+afterEach(() => toast.dismiss())
 
 it('applies semantic controls to the live caller instead of emitting stale snapshots', async () => {
   const screen = await renderRetrieval({ showMultiModalTip: true })
@@ -288,7 +288,7 @@ it('falls back to weighted hybrid retrieval and reports an unavailable reranker'
   await screen
     .getByRole('radio', { name: /modelProvider\.modelProvider\.rerankModel\.key/ })
     .click()
-  expect(notify).toHaveBeenCalledWith('workflow.errorMsg.rerankModelRequired')
+  await expect.element(screen.getByText('workflow.errorMsg.rerankModelRequired')).toBeVisible()
   expect(saved(screen).reranking_mode).toBe(RerankingModeEnum.RerankingModel)
 })
 

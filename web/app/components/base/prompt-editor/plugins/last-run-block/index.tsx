@@ -5,8 +5,8 @@ import { $insertNodes, COMMAND_PRIORITY_EDITOR, createCommand } from 'lexical'
 import { memo, useEffect } from 'react'
 import { $createLastRunBlockNode, LastRunBlockNode } from './node'
 
-export const INSERT_LAST_RUN_BLOCK_COMMAND = createCommand('INSERT_LAST_RUN_BLOCK_COMMAND')
-export const DELETE_LAST_RUN_COMMAND = createCommand('DELETE_LAST_RUN_COMMAND')
+export const INSERT_LAST_RUN_BLOCK_COMMAND = createCommand<void>('INSERT_LAST_RUN_BLOCK_COMMAND')
+export const DELETE_LAST_RUN_COMMAND = createCommand<void>('DELETE_LAST_RUN_COMMAND')
 
 const LastRunBlock = memo(({ onInsert, onDelete }: LastRunBlockType) => {
   const [editor] = useLexicalComposerContext()
