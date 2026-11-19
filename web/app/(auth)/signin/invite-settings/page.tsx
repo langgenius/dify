@@ -304,7 +304,7 @@ export default function InviteSettingsPage() {
           </>
         )}
         {isWorkspaceFull && (
-          <Alert type="warning">
+          <Alert type="warning" className="mb-5">
             <AlertTitle>{t(($) => $.invitationWorkspaceFull, { ns: 'login' })}</AlertTitle>
           </Alert>
         )}
