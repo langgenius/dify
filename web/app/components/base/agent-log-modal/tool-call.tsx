@@ -64,7 +64,7 @@ const ToolCallItem: FC<Props> = ({
       >
         <div
           className={cn(
-            'flex cursor-pointer items-center py-3 pr-3 pl-1.5',
+            'flex cursor-pointer items-center py-3 ps-1.5 pe-3',
             !collapseState && 'pb-2!',
           )}
           onClick={() => setCollapseState(!collapseState)}
@@ -74,13 +74,13 @@ const ToolCallItem: FC<Props> = ({
             className={cn(
               'i-custom-vender-line-arrows-chevron-right h-3.5 w-3.5',
               cn(
-                'mr-1 size-3 shrink-0 text-text-quaternary transition-all group-hover:text-text-tertiary',
+                'me-1 size-3 shrink-0 text-text-quaternary transition-all group-hover:text-text-tertiary',
                 !collapseState && 'rotate-90',
               ),
             )}
           />
           <BlockIcon
-            className={cn('mr-2 shrink-0')}
+            className={cn('me-2 shrink-0')}
             type={isLLM ? BlockEnum.LLM : BlockEnum.Tool}
             toolIcon={getToolIcon(toolCall.tool_icon)}
           />
@@ -95,10 +95,10 @@ const ToolCallItem: FC<Props> = ({
             {isLLM && <span>{`${getTokenCount(tokens || 0)} tokens`}</span>}
           </div>
           {toolCall.status === 'success' && (
-            <RiCheckboxCircleLine className="ml-2 h-3.5 w-3.5 shrink-0 text-[#12B76A]" />
+            <RiCheckboxCircleLine className="ms-2 h-3.5 w-3.5 shrink-0 text-[#12B76A]" />
           )}
           {toolCall.status === 'error' && (
-            <RiErrorWarningLine className="ml-2 h-3.5 w-3.5 shrink-0 text-[#F04438]" />
+            <RiErrorWarningLine className="ms-2 h-3.5 w-3.5 shrink-0 text-[#F04438]" />
           )}
         </div>
         {!collapseState && (
@@ -110,7 +110,7 @@ const ToolCallItem: FC<Props> = ({
                 </div>
               )}
             </div>
-            {toolCall.tool_input && (
+            {toolCall.tool_input != null && (
               <div className={cn('px-2.5 py-1')}>
                 <CodeEditor
                   readOnly
@@ -121,7 +121,7 @@ const ToolCallItem: FC<Props> = ({
                 />
               </div>
             )}
-            {toolCall.tool_output && (
+            {toolCall.tool_output != null && (
               <div className={cn('px-2.5 py-1')}>
                 <CodeEditor
                   readOnly

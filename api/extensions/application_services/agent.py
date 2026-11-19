@@ -2,17 +2,23 @@
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import partial
 
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from core.app.file_access import DatabaseFileAccessController
 from enums import CloudPlan, DeploymentEdition
 from repositories.agent_observability_repository import SQLAlchemyAgentObservabilityRepository
 from repositories.agent_roster_repository import SQLAlchemyAgentRosterRepository
 from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
 from repositories.app.agent_app_repository import AgentAppRepository
 from repositories.app.agent_sandbox_repository import AgentSandboxRepository
+from repositories.app.generation_repository import AppGenerationRepository
+from repositories.tools.provider_repository import ToolProviderRepository
 from services.agent.invite_options import AgentInviteOptionsService
+from services.agent.log_file_gateway import AgentLogFileGateway
+from services.agent.log_service import AgentLogService
 from services.agent.observability_contracts import AgentObservability
 from services.agent.version_service import AgentVersionService
 from services.app.agent_app_feature_gateway import AgentAppFeatureValidator
@@ -35,10 +41,12 @@ from services.feature_service import FeatureService
 from services.file_request_service import FileRequestService
 from services.rbac.agent_list_gateway import AgentListVisibilityGateway
 from services.rbac.members import MemberService
+from services.tools.tool_manager import ToolManager
 
 
 @dataclass(frozen=True, slots=True)
 class AgentAppServices:
+    logs: AgentLogService
     access: AgentAppAccessService
     api_access: AgentApiAccessService
     lifecycle: AgentAppDeletionService
@@ -62,6 +70,11 @@ def build_agent_app_services(
         runtime=lifecycle, presentation=AgentAppDetailPresentationGateway(members=rbac_members)
     )
     return AgentAppServices(
+        logs=AgentLogService(
+            records=AppGenerationRepository(database_client),
+            icons=partial(ToolManager.get_tool_icon, tool_providers=ToolProviderRepository(database_client)),
+            files=AgentLogFileGateway(sessions=database_client, access=DatabaseFileAccessController()),
+        ),
         access=AgentAppAccessService(references=apps),
         api_access=AgentApiAccessService(store=apps, notify_updated=notify_agent_app_updated),
         lifecycle=AgentAppDeletionService(lifecycle=lifecycle),
