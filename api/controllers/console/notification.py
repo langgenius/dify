@@ -1,3 +1,5 @@
+from typing import Literal
+
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
@@ -22,8 +24,8 @@ class NotificationQuery(BaseModel):
 
 
 class NotificationItemResponse(ResponseModel):
-    notification_id: str | None = None
-    frequency: str | None = None
+    notification_id: str
+    frequency: Literal["once", "every_page_load"]
     lang: str
     title: str
     subtitle: str

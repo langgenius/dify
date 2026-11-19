@@ -73,7 +73,7 @@
   "nodes.parameterExtractor.addExtractParameterContent.requiredContent": "ຈຳເປັນຖືກໃຊ້ເປັນຂໍ້ມູນອ້າງອີງສຳລັບການອະນຸມານຂອງຕົວແບບເທົ່ານັ້ນ, ບໍ່ແມ່ນການກວດສອບຜົນອອກທີ່ບັງຄັບ.",
   "nodes.parameterExtractor.addExtractParameterContent.type": "ປະເພດ",
   "nodes.parameterExtractor.advancedSetting": "ການຕັ້ງຄ່າຂັ້ນສູງ",
-  "nodes.parameterExtractor.extractParametersNotSet": "ຍັງບໍ່ໄດ້ຕັ້ງຄ່າການສະກັດພະລາມີເຕີ",
+  "nodes.parameterExtractor.extractParametersNotSet": "ບໍ່ມີການຕັ້ງຄ່າພະລາມີເຕີການສະກັດ",
   "nodes.parameterExtractor.importFromTool": "ນຳເຂົ້າຈາກເຄື່ອງມື",
   "nodes.parameterExtractor.instruction": "ຄຳແນະນຳ",
   "nodes.parameterExtractor.instructionTip": "ປ້ອນຄຳແນະນຳເພີ່ມເຕີມເພື່ອຊ່ວຍໃຫ້ຕົວສະກັດພະລາມີເຕີເຂົ້າໃຈວິທີການສະກັດ.",

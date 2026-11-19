@@ -1,10 +1,12 @@
 import type { TestWorld } from '@test/fixtures/kernel'
+import type { BaseError } from '@/errors/base'
 import type { CommandTree } from '@/plugins/commands/registry'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { testContext } from '@test/fixtures/kernel'
 import { afterEach, expect, it } from 'vite-plus/test'
 import { z } from 'zod'
+import { ExitCode } from '@/errors/codes'
 import { parseCatalog } from '@/plugins/catalog'
 import { Command } from '@/plugins/commands/command'
 import { propertiesOf } from '@/protocol/shape'
@@ -31,7 +33,7 @@ it('bare difyctl prints a pointer to help and the skill, and makes no request', 
   expect(JSON.parse(w.io.outBuf())).toEqual({
     message: 'difyctl has no built-in business commands; every server operation is a command',
     help: 'difyctl help',
-    skill: 'difyctl install skills <dir>',
+    skill: 'difyctl install skills <skills root>',
   })
   expect(w.mock.requestCount).toBe(0)
 })
@@ -67,7 +69,7 @@ it('the map with no server known is the static half and says so on stderr', asyn
   const map = JSON.parse(w.io.outBuf())
   expect(map.version).toMatchObject({ count: 1 })
   expect(map.console_app).toBeUndefined()
-  expect(w.io.errBuf()).toMatch(/log in to list server operations/)
+  expect(w.io.errBuf()).toMatch(/not logged in: run difyctl help login/)
   expect(w.mock.requestCount).toBe(0)
 })
 
@@ -78,8 +80,9 @@ it('the map still prints the static half when the catalog cannot be fetched', as
   const map = JSON.parse(w.io.outBuf())
   expect(map.version).toMatchObject({ count: 1 })
   expect(map.console_app).toBeUndefined()
-  expect(w.io.errBuf().trim().split('\n')).toHaveLength(1)
-  expect(w.io.errBuf()).toMatch(/^could not list server operations: failed to fetch the catalog: /)
+  const [couldNotList, ...rest] = w.io.errBuf().trim().split('\n')
+  expect(couldNotList).toMatch(/^could not list server operations: failed to fetch the catalog: /)
+  expect(rest).toEqual([])
 })
 
 it('help accepts a dotted id and prints the same descriptor as the spaced path', async () => {
@@ -145,11 +148,10 @@ it('help routes a word to a namespace listing or a search, and --full is the fla
   const c = await world(true, ['help', 'get'])
   await (await c.ctx.get(commands)).run()
   const ids = JSON.parse(c.io.outBuf()).entries.map((e: { id: string }) => e.id)
-  expect(ids).toContain('get skills')
   expect(ids).toContain('get workspace member')
   expect(ids).toEqual([...ids].sort())
 
-  const d = await world(true, ['help', 'chatbot'])
+  const d = await world(true, ['help', 'chatbot', 'streams'])
   await (await d.ctx.get(commands)).run()
   expect(JSON.parse(d.io.outBuf()).entries[0]).toMatchObject({
     id: 'run console_app chat',
@@ -218,7 +220,7 @@ it('takes --verbose anywhere and keeps it out of the command input', async () =>
   const b = await world(false, ['--verbose', 'version'])
   expect(await (await b.ctx.get(commands)).run()).toBe(0)
   expect(JSON.parse(b.io.outBuf()).client.version).toBe('0.0.0-test')
-  const c = await world(false, ['nope', '--verbose'])
+  const c = await world(false, ['versoin', '--verbose'])
   await expect((await c.ctx.get(commands)).run()).rejects.toMatchObject({
     code: 'usage_invalid_flag',
   })
@@ -254,18 +256,29 @@ it('a command word may be spelled with dashes where the op id has underscores', 
   })
 })
 
-it('an unknown path refetches the catalog once before giving up', async () => {
-  const w = await world(true, ['get', 'nope'])
-  await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
-    code: 'usage_invalid_flag',
-    message: 'unknown command: get nope',
+it('an unknown path refetches the catalog once, then is unknown_op (exit 6)', async () => {
+  const w = await world(true, ['get', 'qqqq'])
+  const miss = (await w.ctx.get(commands)).run()
+  await expect(miss).rejects.toMatchObject({
+    code: 'unknown_op',
+    message: 'no command or server operation named get qqqq',
     hint: 'run difyctl help',
   })
+  await expect(miss).rejects.toSatisfy((err: BaseError) => err.exit() === ExitCode.Catalog)
   expect(w.mock.requestCount).toBe(2) // the cached catalog, then one refetch
 
   const typo = await world(true, ['get', 'consol_app'])
   await expect((await typo.ctx.get(commands)).run()).rejects.toMatchObject({
-    hint: 'did you mean: get console_app',
+    code: 'unknown_op',
+    hint: 'did you mean: get console_app, get console_app version',
+  })
+})
+
+it('a typo of a static command stays exit 2 once the catalog is loaded', async () => {
+  const w = await world(true, ['versoin'])
+  await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
+    code: 'usage_invalid_flag',
+    hint: 'did you mean: version',
   })
 })
 
@@ -302,13 +315,33 @@ it('an unreachable catalog costs a notice, not the static suggestion', async () 
   expect(w.io.errBuf()).toMatch(/^could not list server operations: failed to fetch the catalog: /)
 })
 
-it('without a login only statics resolve and the hint says to log in', async () => {
-  const w = await world(false, ['get', 'console_app'])
-  await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
-    code: 'usage_invalid_flag',
-    message: 'unknown command: get console_app',
-    hint: 'log in to use server operations',
+it('an unreachable catalog makes a word no static claims catalog_unavailable (exit 6)', async () => {
+  const w = await world(true, ['get', 'console_app'])
+  w.mock.setScenario('no-catalog')
+  const miss = (await w.ctx.get(commands)).run()
+  await expect(miss).rejects.toMatchObject({
+    code: 'catalog_unavailable',
+    message: expect.stringMatching(/^failed to fetch the catalog: /),
+    hint: expect.any(String),
   })
+  await expect(miss).rejects.toSatisfy((err: BaseError) => err.exit() === ExitCode.Catalog)
+})
+
+it('without a login a word no static claims is not_logged_in (exit 4)', async () => {
+  const w = await world(false, ['get', 'console_app'])
+  const miss = (await w.ctx.get(commands)).run()
+  await expect(miss).rejects.toMatchObject({
+    code: 'not_logged_in',
+    message: 'not logged in: get console_app may be a server operation; log in to load them',
+    hint: 'run difyctl help login',
+  })
+  await expect(miss).rejects.toSatisfy((err: BaseError) => err.exit() === ExitCode.Auth)
+  expect(w.mock.requestCount).toBe(0)
+})
+
+it('without a login a namespace still lists its static commands', async () => {
+  const w = await world(false, ['get'])
+  expect(await (await w.ctx.get(commands)).run()).toBe(0)
   expect(w.mock.requestCount).toBe(0)
 })
 

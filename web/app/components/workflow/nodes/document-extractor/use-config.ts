@@ -1,10 +1,12 @@
 import type { ValueSelector, Var } from '../../types'
 import type { DocExtractorNodeType } from './types'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { useCallback, useMemo } from 'react'
 import { useStoreApi } from 'reactflow'
+import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
+import { useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
 import { useWorkflowVariables } from '../../hooks/use-workflow-variables'
 import { VarType } from '../../types'
 
@@ -16,7 +18,7 @@ const useConfig = (id: string, payload: DocExtractorNodeType) => {
     return varPayload.type === VarType.file || varPayload.type === VarType.arrayFile
   }, [])
 
-  const isChatMode = useIsChatMode()
+  const isChatflow = useAtomValue(isChatflowAtom)
 
   const store = useStoreApi()
   const { getBeforeNodesInSameBranch } = useWorkflow()
@@ -39,12 +41,12 @@ const useConfig = (id: string, payload: DocExtractorNodeType) => {
         parentNode: isInIteration ? iterationNode : loopNode,
         valueSelector: variable || [],
         availableNodes,
-        isChatMode,
+        isChatflow,
         isConstant: false,
       })
       return varType
     },
-    [getCurrentVariableType, isInIteration, availableNodes, isChatMode, iterationNode, loopNode],
+    [getCurrentVariableType, isInIteration, availableNodes, isChatflow, iterationNode, loopNode],
   )
 
   const handleVarChanges = useCallback(

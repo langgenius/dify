@@ -49,9 +49,10 @@ class FakeAccounts:
 @dataclass
 class FakeWorkspaces:
     active: bool = False
+    checks: list[str] = field(default_factory=list)
 
     def has_active_for_account(self, account_id: str) -> bool:
-        _ = account_id
+        self.checks.append(account_id)
         return self.active
 
 
@@ -208,7 +209,7 @@ class FakeWorkspaceProvisioning:
 @dataclass
 class FakeEmailCodes:
     status: EmailCodeChallengeStatus = EmailCodeChallengeStatus.VERIFIED
-    sent: list[tuple[str | None, str, str, str]] = field(default_factory=list)
+    sent: list[tuple[str | None, str, str, str, bool]] = field(default_factory=list)
 
     def send(
         self,
@@ -217,8 +218,9 @@ class FakeEmailCodes:
         normalized_email: str,
         recipient_email: str,
         language: str,
+        registration_allowed: bool,
     ) -> str:
-        self.sent.append((account_id, normalized_email, recipient_email, language))
+        self.sent.append((account_id, normalized_email, recipient_email, language, registration_allowed))
         return "email-token"
 
     def verify(self, *, normalized_email: str, code: str, token: str) -> EmailCodeChallengeStatus:
@@ -331,6 +333,7 @@ def _email_code_command(**changes: str | None) -> EmailCodeLoginCommand:
         "language": "zh-Hans",
         "timezone": "Asia/Singapore",
         "ip_address": "127.0.0.1",
+        "invite_token": None,
     }
     values.update(changes)
     return EmailCodeLoginCommand(**values)  # type: ignore[arg-type]
@@ -449,6 +452,18 @@ def test_invalid_password_records_rate_limit_and_audit() -> None:
     assert dependencies.audit.failures == [("user@example.com", LoginFailureReason.INVALID_CREDENTIALS, "127.0.0.1")]
 
 
+def test_wrong_password_does_not_restore_invited_membership() -> None:
+    dependencies = Dependencies()
+    dependencies.accounts.candidates = [_account()]
+    dependencies.invitations.invitation = LoginInvitation(email="user@example.com")
+    dependencies.passwords.valid = False
+
+    with pytest.raises(account_errors.InvalidLoginCredentialsError):
+        dependencies.service().login_with_password(_password_command(invite_token="invite"))
+
+    assert dependencies.security.failures == ["user@example.com"]
+
+
 def test_password_login_rejects_locked_account_before_loading_candidates() -> None:
     dependencies = Dependencies()
     dependencies.security.login_limited = True
@@ -533,6 +548,37 @@ def test_password_login_returns_no_workspace_without_creating_one() -> None:
     assert dependencies.workspaces_provisioning.account_ids == []
 
 
+def test_password_login_with_invitation_issues_a_session_without_a_workspace() -> None:
+    dependencies = Dependencies()
+    dependencies.accounts.candidates = [_account()]
+    dependencies.invitations.invitation = LoginInvitation(email="user@example.com")
+    dependencies.policies.workspace_capacity = False
+
+    result = dependencies.service().login_with_password(_password_command(invite_token="invite"))
+
+    assert dependencies.workspaces.active is False
+    assert dependencies.workspaces_provisioning.account_ids == []
+    assert result.workspace_found
+    assert result.tokens == TOKENS
+    assert dependencies.sessions.issued == ["account-1"]
+    assert dependencies.security.resets == ["user@example.com"]
+
+
+@pytest.mark.parametrize("invite_token", [None, "invite"])
+def test_password_login_does_not_restore_membership_for_an_existing_workspace(invite_token: str | None) -> None:
+    dependencies = Dependencies()
+    dependencies.accounts.candidates = [_account()]
+    dependencies.workspaces.active = True
+    if invite_token is not None:
+        dependencies.invitations.invitation = LoginInvitation(email="user@example.com")
+
+    result = dependencies.service().login_with_password(_password_command(invite_token=invite_token))
+
+    assert result.workspace_found
+    assert result.tokens == TOKENS
+    assert dependencies.workspaces.checks == ([] if invite_token else ["account-1"])
+
+
 def test_password_login_enforces_workspace_capacity() -> None:
     dependencies = Dependencies()
     dependencies.accounts.candidates = [_account()]
@@ -557,22 +603,56 @@ def test_send_email_code_normalizes_identity_and_preserves_account_recipient_add
 
     assert token == "email-token"
     assert dependencies.human.calls == [("turnstile", "127.0.0.1", "signin_code")]
-    assert dependencies.email_codes.sent == [("account-1", "user@example.com", "User@Example.COM", "zh-Hans")]
+    assert dependencies.email_codes.sent == [("account-1", "user@example.com", "User@Example.COM", "zh-Hans", True)]
 
 
-def test_send_email_code_rejects_unknown_account_when_registration_is_disabled() -> None:
+@pytest.mark.parametrize("account_exists", [False, True])
+@pytest.mark.parametrize("registration_allowed", [False, True])
+def test_send_email_code_returns_challenge_regardless_of_account_existence(
+    account_exists: bool, registration_allowed: bool
+) -> None:
     dependencies = Dependencies()
-    dependencies.policies.registration_allowed = False
+    dependencies.policies.registration_allowed = registration_allowed
+    if account_exists:
+        dependencies.accounts.candidates = [_account()]
 
-    with pytest.raises(account_errors.AccountNotFoundError):
-        dependencies.service().send_email_code(
-            EmailCodeSendCommand(
-                email="user@example.com",
-                language=None,
-                turnstile_token=None,
-                ip_address="127.0.0.1",
-            )
+    token = dependencies.service().send_email_code(
+        EmailCodeSendCommand(
+            email="user@example.com",
+            language=None,
+            turnstile_token=None,
+            ip_address="127.0.0.1",
         )
+    )
+
+    assert token == "email-token"
+    assert dependencies.email_codes.sent == [
+        (
+            "account-1" if account_exists else None,
+            "user@example.com",
+            "user@example.com",
+            "en-US",
+            account_exists or registration_allowed,
+        )
+    ]
+
+
+def test_send_email_code_for_existing_account_does_not_load_registration_policy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    dependencies = Dependencies()
+    dependencies.accounts.candidates = [_account()]
+
+    def unavailable_policy() -> bool:
+        raise AssertionError("Registration policy is irrelevant to an existing account")
+
+    monkeypatch.setattr(dependencies.policies, "is_registration_allowed", unavailable_policy)
+
+    token = dependencies.service().send_email_code(
+        EmailCodeSendCommand(email="user@example.com", language=None, turnstile_token=None, ip_address="127.0.0.1")
+    )
+
+    assert token == "email-token"
 
 
 def test_send_email_code_rejects_ip_rate_limit_before_human_verification() -> None:
@@ -763,6 +843,59 @@ def test_email_code_login_creates_workspace_for_existing_account() -> None:
 
     assert result == TOKENS
     assert dependencies.workspaces_provisioning.account_ids == ["account-1"]
+
+
+@pytest.mark.parametrize(
+    ("workspace_creation_allowed", "workspace_capacity"),
+    [(False, True), (True, True), (True, False)],
+    ids=["no-self-serve", "self-serve", "workspace-limit-reached"],
+)
+def test_email_code_login_with_invitation_issues_a_session_without_provisioning(
+    workspace_creation_allowed: bool, workspace_capacity: bool
+) -> None:
+    dependencies = Dependencies()
+    dependencies.accounts.candidates = [_account(status="pending", password=False)]
+    dependencies.policies.workspace_creation_allowed = workspace_creation_allowed
+    dependencies.policies.workspace_capacity = workspace_capacity
+    dependencies.invitations.invitation = LoginInvitation(email="user@example.com")
+
+    result = dependencies.service().login_with_email_code(_email_code_command(invite_token="invite-token"))
+
+    assert result == TOKENS
+    assert dependencies.workspaces.active is False
+    assert dependencies.workspaces_provisioning.account_ids == []
+    assert dependencies.sessions.issued == ["account-1"]
+
+
+def test_email_code_login_ignores_invitation_when_account_already_has_a_workspace() -> None:
+    dependencies = Dependencies()
+    dependencies.accounts.candidates = [_account()]
+    dependencies.workspaces.active = True
+    dependencies.invitations.invitation = LoginInvitation(email="user@example.com")
+
+    dependencies.service().login_with_email_code(_email_code_command(invite_token="invite-token"))
+
+    assert dependencies.workspaces_provisioning.account_ids == []
+
+
+def test_email_code_login_falls_back_to_provisioning_when_invitation_is_stale() -> None:
+    dependencies = Dependencies()
+    dependencies.accounts.candidates = [_account(status="pending", password=False)]
+
+    dependencies.service().login_with_email_code(_email_code_command(invite_token="stale-token"))
+
+    assert dependencies.workspaces_provisioning.account_ids == ["account-1"]
+
+
+def test_email_code_login_rejects_invitation_for_another_email() -> None:
+    dependencies = Dependencies()
+    dependencies.accounts.candidates = [_account()]
+    dependencies.invitations.invitation = LoginInvitation(email="other@example.com")
+
+    with pytest.raises(account_errors.InvalidLoginInvitationEmailError):
+        dependencies.service().login_with_email_code(_email_code_command(invite_token="invite-token"))
+
+    assert dependencies.workspaces_provisioning.account_ids == []
 
 
 def test_email_code_login_provisions_new_account() -> None:

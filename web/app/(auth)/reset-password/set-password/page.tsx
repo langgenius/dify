@@ -1,0 +1,226 @@
+'use client'
+import type { FormActions } from '@langgenius/dify-ui/form'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  FieldValidity,
+} from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
+import {
+  PasswordField,
+  PasswordFieldInput,
+  PasswordFieldToggle,
+} from '@langgenius/dify-ui/password-field'
+import { useCountDown } from 'ahooks'
+import { useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { validPassword } from '@/config'
+import useDocumentTitle from '@/hooks/use-document-title'
+import Link from '@/next/link'
+import { useRouter, useSearchParams } from '@/next/navigation'
+import { consoleClient } from '@/service/console'
+
+type PasswordFormValues = {
+  password: string
+  confirmPassword: string
+}
+
+const ChangePasswordForm = () => {
+  const { t } = useTranslation(['login', 'accountSettings'])
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const token = decodeURIComponent(searchParams.get('token') || '')
+
+  const formActionsRef = useRef<FormActions>(null)
+  const confirmPasswordRef = useRef<HTMLInputElement>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
+  useDocumentTitle(
+    showSuccess
+      ? t(($) => $.passwordChangedTip, { ns: 'login' })
+      : t(($) => $.changePassword, { ns: 'login' }),
+  )
+
+  const getSignInUrl = () => {
+    if (searchParams.has('invite_token')) {
+      const params = new URLSearchParams()
+      params.set('token', searchParams.get('invite_token') as string)
+      return `/activate?${params.toString()}`
+    }
+
+    const redirectUrl = searchParams.get('redirect_url')
+    if (redirectUrl) {
+      const params = new URLSearchParams()
+      params.set('redirect_url', redirectUrl)
+      return `/signin?${params.toString()}`
+    }
+
+    return '/signin'
+  }
+
+  const AUTO_REDIRECT_TIME = 5000
+  const [leftTime, setLeftTime] = useState<number | undefined>(undefined)
+  const [countdown] = useCountDown({
+    leftTime,
+    onEnd: () => {
+      router.replace(getSignInUrl())
+    },
+  })
+
+  const handleChangePassword = useCallback(
+    async (formValues: PasswordFormValues) => {
+      if (isSubmitting) return
+      setIsSubmitting(true)
+      try {
+        await consoleClient.forgotPassword.resets.post({
+          body: {
+            token,
+            new_password: formValues.password,
+            password_confirm: formValues.confirmPassword,
+          },
+        })
+        setShowSuccess(true)
+        setLeftTime(AUTO_REDIRECT_TIME)
+      } catch (error) {
+        console.error(error)
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
+    [isSubmitting, token],
+  )
+
+  return (
+    <>
+      {!showSuccess && (
+        <div className="flex flex-col">
+          <div className="mx-auto w-full">
+            <h1 className="title-4xl-semi-bold text-text-primary">
+              {t(($) => $.changePassword, { ns: 'login' })}
+            </h1>
+            <p className="mt-2 body-md-regular text-text-secondary">
+              {t(($) => $.changePasswordTip, { ns: 'login' })}
+            </p>
+          </div>
+
+          <div className="mx-auto mt-6 w-full">
+            <Form<PasswordFormValues>
+              actionsRef={formActionsRef}
+              onFormSubmit={(formValues) => void handleChangePassword(formValues)}
+            >
+              <Field
+                name="password"
+                validate={(value) => {
+                  const passwordValue = String(value)
+                  if (!passwordValue.trim())
+                    return t(($) => $['error.passwordEmpty'], { ns: 'login' })
+                  return validPassword.test(passwordValue)
+                    ? null
+                    : t(($) => $['error.passwordInvalid'], { ns: 'login' })
+                }}
+                className="mb-5"
+              >
+                <FieldLabel>
+                  {t(($) => $['account.newPassword'], { ns: 'accountSettings' })}
+                </FieldLabel>
+                <PasswordField>
+                  <PasswordFieldInput
+                    required
+                    autoComplete="new-password"
+                    onValueChange={() => {
+                      if (confirmPasswordRef.current?.value)
+                        formActionsRef.current?.validate('confirmPassword')
+                    }}
+                    placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' })}
+                  />
+                  <PasswordFieldToggle aria-label={t(($) => $.showPassword, { ns: 'login' })} />
+                </PasswordField>
+                <FieldValidity>
+                  {({ validity }) =>
+                    validity.valid !== false ? (
+                      <FieldDescription>
+                        {t(($) => $['error.passwordInvalid'], { ns: 'login' })}
+                      </FieldDescription>
+                    ) : null
+                  }
+                </FieldValidity>
+                <FieldValidity>
+                  {({ validity }) => (
+                    <FieldError>
+                      {t(
+                        ($) =>
+                          $[
+                            validity.valueMissing ? 'error.passwordEmpty' : 'error.passwordInvalid'
+                          ],
+                        { ns: 'login' },
+                      )}
+                    </FieldError>
+                  )}
+                </FieldValidity>
+              </Field>
+              <Field
+                name="confirmPassword"
+                validate={(value, formValues) => {
+                  const confirmationValue = String(value)
+                  return !confirmationValue || confirmationValue === formValues.password
+                    ? null
+                    : t(($) => $['account.notEqual'], { ns: 'accountSettings' })
+                }}
+                className="mb-5"
+              >
+                <FieldLabel>
+                  {t(($) => $['account.confirmPassword'], { ns: 'accountSettings' })}
+                </FieldLabel>
+                <PasswordField>
+                  <PasswordFieldInput
+                    required
+                    autoComplete="new-password"
+                    ref={confirmPasswordRef}
+                    placeholder={t(($) => $.confirmPasswordPlaceholder, { ns: 'login' })}
+                  />
+                  <PasswordFieldToggle aria-label={t(($) => $.showPassword, { ns: 'login' })} />
+                </PasswordField>
+                <FieldError>
+                  {t(($) => $['account.notEqual'], { ns: 'accountSettings' })}
+                </FieldError>
+              </Field>
+              <Button type="submit" variant="primary" className="w-full" loading={isSubmitting}>
+                {t(($) => $.changePasswordBtn, { ns: 'login' })}
+              </Button>
+            </Form>
+          </div>
+        </div>
+      )}
+      {showSuccess && (
+        <div className="flex flex-col">
+          <div className="mx-auto w-full">
+            <div className="mb-3 flex size-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle font-bold shadow-lg">
+              <span
+                className="i-ri-checkbox-circle-fill size-6 text-text-success"
+                aria-hidden="true"
+              />
+            </div>
+            <h1 className="title-4xl-semi-bold text-text-primary">
+              {t(($) => $.passwordChangedTip, { ns: 'login' })}
+            </h1>
+          </div>
+          <div className="mx-auto mt-6 w-full">
+            <Link
+              href={getSignInUrl()}
+              replace
+              className={cn(buttonVariants({ variant: 'primary' }), 'w-full')}
+            >
+              {t(($) => $.passwordChanged, { ns: 'login' })} ({Math.round(countdown / 1000)}){' '}
+            </Link>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+export default ChangePasswordForm

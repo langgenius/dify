@@ -4,6 +4,7 @@ import type {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ParameterValue } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/parameter-item'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,8 +12,8 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import ParameterItem from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/parameter-item'
 import PresetsParameter from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/presets-parameter'
 import { getSupportedPresetConfig } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/presets-parameter-utils'
+import { modelParameterRulesQueryOptions } from '@/app/components/header/account-setting/model-provider-page/utils'
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE } from '@/config'
-import { useModelParameterRules } from '@/service/use-common'
 
 type Props = Readonly<{
   isAdvancedMode: boolean
@@ -30,7 +31,9 @@ const LLMParamsPanel = ({
   onCompletionParamsChange,
 }: Props) => {
   const { t } = useTranslation(['modelProvider'])
-  const { data: parameterRulesData, isLoading } = useModelParameterRules(provider, modelId)
+  const { data: parameterRulesData, isLoading } = useQuery(
+    modelParameterRulesQueryOptions({ provider, model: modelId }),
+  )
   const isRulesLoading = !!provider && !!modelId && isLoading
 
   const parameterRules: ModelParameterRule[] = useMemo(() => {

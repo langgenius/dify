@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -37,10 +38,21 @@ _ERROR_PATTERN = re.compile(
 VECTOR_SPACE_ADMISSION_ERROR_CODE = "vector_space_estimate_exceeded"
 
 
+class _VectorSpaceEstimateWatermark(BaseModel):
+    model_config = ConfigDict(strict=True)
+
+    projected_usage_bytes: int = Field(ge=0)
+    document_ids: list[str]
+
+
 class VectorSpaceAdmissionError(ValueError):
     def __init__(self, message: str):
         self.description = message
         super().__init__(message)
+
+
+class VectorSpaceAdmissionUnavailableError(VectorSpaceAdmissionError):
+    """The usage or reservation dependency cannot safely authorize a write."""
 
 
 @dataclass(frozen=True)
@@ -189,11 +201,48 @@ def _items(value: Any, name: str) -> list[Any]:
 
 
 class VectorSpaceAdmissionService:
-    """Cloud-only pre-write guard for unusually large TiDB vector workloads."""
+    """Cloud-only pre-write guard for unusually large TiDB vector workloads.
+
+    Configured estimate thresholds reject unusually large writes and are separate
+    from Billing plan limits. Billing supplies current usage and the displayed limit.
+    """
 
     def __init__(self) -> None:
         self._dimension_by_dataset: dict[str, int] = {}
         self._plan_by_tenant: dict[str, CloudPlan | None] = {}
+
+    def ensure_external_points_can_be_indexed(
+        self, *, tenant_id: str, batch_id: str, point_count: int, dimension: int
+    ) -> None:
+        """Apply the same cloud quota to pre-embedded KnowledgeFS vector batches.
+
+        A stable content-addressed batch ID prevents duplicate reservations on
+        retry. BillingService caches the usage probe; no model call is needed.
+        """
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD or dify_config.VECTOR_STORE != "tidb_on_qdrant":
+            return
+        if point_count < 1 or dimension < 1:
+            raise VectorSpaceAdmissionError("Invalid external vector storage estimate")
+        plan = self._get_plan(tenant_id)
+        if plan is None:
+            return
+        estimate_limit_mb = parse_vector_space_estimate_limits(
+            dify_config.TIDB_ON_QDRANT_ESTIMATED_STORAGE_LIMITS_MB
+        ).get(plan)
+        if estimate_limit_mb is None:
+            return
+        usage_mb, plan_limit_mb = self._get_usage_and_limit_mb(tenant_id)
+        _, projected_bytes = self._reserve_projected_usage(
+            tenant_id=tenant_id,
+            document_id=f"knowledgefs:{batch_id}",
+            current_usage_bytes=math.ceil(usage_mb * _MEBIBYTE),
+            document_estimate_bytes=math.ceil(estimate_tidb_storage_bytes(point_count, dimension)),
+            estimate_limit_bytes=estimate_limit_mb * _MEBIBYTE,
+        )
+        if projected_bytes > estimate_limit_mb * _MEBIBYTE:
+            raise VectorSpaceAdmissionError(
+                format_vector_space_admission_error(math.ceil(projected_bytes / _MEBIBYTE), plan_limit_mb)
+            )
 
     def ensure_document_can_be_indexed(
         self,
@@ -317,10 +366,14 @@ class VectorSpaceAdmissionService:
     def _get_usage_and_limit_mb(self, tenant_id: str) -> tuple[float, int]:
         try:
             vector_space = BillingService.get_vector_space(tenant_id)
-            current_usage_mb = float(vector_space["size"])
-            plan_limit_mb = int(vector_space["limit"])
+            if vector_space.usage_unknown:
+                raise ValueError("Vector storage usage is unknown")
+            current_usage_mb = float(vector_space.size)
+            plan_limit_mb = int(vector_space.limit)
+            if not math.isfinite(current_usage_mb) or current_usage_mb < 0 or plan_limit_mb < -1:
+                raise ValueError("Invalid vector storage quota")
         except Exception as error:
-            raise VectorSpaceAdmissionError(
+            raise VectorSpaceAdmissionUnavailableError(
                 "Unable to verify vector storage usage right now. Please try again later."
             ) from error
         return current_usage_mb, plan_limit_mb
@@ -347,17 +400,9 @@ class VectorSpaceAdmissionService:
                 stored_usage_bytes = 0
                 document_ids: set[str] = set()
                 if raw_state:
-                    state = json.loads(raw_state)
-                    stored_usage_bytes = state.get("projected_usage_bytes")
-                    raw_document_ids = state.get("document_ids")
-                    if (
-                        type(stored_usage_bytes) is not int
-                        or stored_usage_bytes < 0
-                        or not isinstance(raw_document_ids, list)
-                        or not all(isinstance(item, str) for item in raw_document_ids)
-                    ):
-                        raise ValueError("Invalid vector-space estimate watermark")
-                    document_ids = set(raw_document_ids)
+                    state = _VectorSpaceEstimateWatermark.model_validate_json(raw_state)
+                    stored_usage_bytes = state.projected_usage_bytes
+                    document_ids = set(state.document_ids)
 
                 base_usage_bytes = max(current_usage_bytes, stored_usage_bytes)
                 projected_usage_bytes = base_usage_bytes
@@ -380,7 +425,7 @@ class VectorSpaceAdmissionService:
 
                 return base_usage_bytes, projected_usage_bytes
         except Exception as error:
-            raise VectorSpaceAdmissionError(
+            raise VectorSpaceAdmissionUnavailableError(
                 "Unable to reserve estimated vector storage right now. Please try again later."
             ) from error
 
@@ -390,13 +435,13 @@ class VectorSpaceAdmissionService:
         try:
             billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
         except Exception as error:
-            raise VectorSpaceAdmissionError(
+            raise VectorSpaceAdmissionUnavailableError(
                 "Unable to verify the subscription plan right now. Please try again later."
             ) from error
 
         plan = None
         try:
-            plan = CloudPlan(billing_info["subscription"]["plan"])
+            plan = CloudPlan(billing_info.subscription.plan)
         except ValueError:
             logger.warning(
                 "Skipping TiDB vector-space admission for unknown plan tenant_id=%s",
@@ -426,7 +471,7 @@ class VectorSpaceAdmissionService:
 
         embeddings = CacheEmbedding(model_instance).embed_documents([probe_text])
         if not embeddings or not embeddings[0]:
-            raise VectorSpaceAdmissionError(
+            raise VectorSpaceAdmissionUnavailableError(
                 "Unable to estimate vector storage for this document. Please try again later."
             )
 

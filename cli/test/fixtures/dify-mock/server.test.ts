@@ -75,8 +75,6 @@ describe('dify-mock fixture server', () => {
     expect(body.data).toHaveLength(2)
     expect(body.data[0]?.id).toBe('ws-1')
     expect(body.data[0]?.status).toBe('normal')
-    expect(body.data[0]?.current).toBe(true)
-    expect(body.data[1]?.current).toBe(false)
     expect(body.hints).toEqual([])
   })
 

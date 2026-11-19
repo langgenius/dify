@@ -57,7 +57,6 @@
   "stepByStepTour.markTaskIncomplete": "ໝາຍ {{title}} ວ່າບໍ່ທັນສຳເລັດ",
   "stepByStepTour.minimize": "ຫຍໍ້ໜ້າຕ່າງ",
   "stepByStepTour.progressAriaValueText": "ສຳເລັດ {{completed}} ຈາກ {{total}} ຂັ້ນຕອນ",
-  "stepByStepTour.restore": "ເປີດການແນະນຳເທື່ອລະຂັ້ນຕອນ",
   "stepByStepTour.skip": "ຂ້າມການແນະນຳ",
   "stepByStepTour.skipRecovery.dismiss": "ຮັບຊາບແລ້ວ",
   "stepByStepTour.skipRecovery.label": "ຄຳແນະນຳການກູ້ຄືນການແນະນຳເທື່ອລະຂັ້ນຕອນ",

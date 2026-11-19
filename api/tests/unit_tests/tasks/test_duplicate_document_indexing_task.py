@@ -2,11 +2,12 @@
 
 import json
 import uuid
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock, create_autospec, patch
 
 import pytest
 
 from tasks.duplicate_document_indexing_task import (
+    _duplicate_document_indexing_task,
     _duplicate_document_indexing_task_with_tenant_queue,
     duplicate_document_indexing_task,
     normal_duplicate_document_indexing_task,
@@ -62,10 +63,10 @@ class TestDuplicateDocumentIndexingTaskWithTenantQueue:
     """Tests for _duplicate_document_indexing_task_with_tenant_queue function."""
 
     @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task", autospec=True)
+    @pytest.mark.usefixtures("tenant_queue_commands")
     def test_tenant_queue_wrapper_calls_core_function(
         self,
         mock_core_func: MagicMock,
-        tenant_queue_commands: MagicMock,
         tenant_id: str,
         dataset_id: str,
         document_ids: list[str],
@@ -80,10 +81,12 @@ class TestDuplicateDocumentIndexingTaskWithTenantQueue:
         # Assert
         mock_core_func.assert_called_once_with(dataset_id, document_ids)
 
-    @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task", autospec=True)
+    @patch(
+        "tasks.duplicate_document_indexing_task._duplicate_document_indexing_task",
+        new=create_autospec(_duplicate_document_indexing_task),
+    )
     def test_tenant_queue_wrapper_deletes_key_when_no_tasks(
         self,
-        mock_core_func: MagicMock,
         tenant_queue_commands: MagicMock,
         tenant_id: str,
         dataset_id: str,
@@ -100,10 +103,12 @@ class TestDuplicateDocumentIndexingTaskWithTenantQueue:
         # Assert
         tenant_queue_commands.assert_any_call("DEL", f"tenant_duplicate_document_indexing_task:{tenant_id}")
 
-    @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task", autospec=True)
+    @patch(
+        "tasks.duplicate_document_indexing_task._duplicate_document_indexing_task",
+        new=create_autospec(_duplicate_document_indexing_task),
+    )
     def test_tenant_queue_wrapper_processes_next_tasks(
         self,
-        mock_core_func: MagicMock,
         tenant_queue_commands: MagicMock,
         tenant_id: str,
         dataset_id: str,

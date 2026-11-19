@@ -3,6 +3,7 @@ import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/wor
 import type { FC } from 'react'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RetrievalConfig } from '@/types/app'
+import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -10,6 +11,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -95,17 +97,17 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
           if (!open) onQAConfirmDialogClose()
         }}
       >
-        <AlertDialogContent className="w-108">
-          <div className="flex flex-col gap-2 p-6 pb-4">
-            <AlertDialogTitle className="text-lg/7 font-semibold text-text-primary">
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['stepTwo.qaSwitchHighQualityTipTitle'], { ns: 'datasetCreation' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-sm/5 text-text-secondary">
+            <AlertDialogDescription>
               {t(($) => $['stepTwo.qaSwitchHighQualityTipContent'], { ns: 'datasetCreation' })}
             </AlertDialogDescription>
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancelButton variant="secondary">
+            <AlertDialogCancelButton>
               {t(($) => $['stepTwo.cancel'], { ns: 'datasetCreation' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton tone="default" onClick={onQAConfirmDialogConfirm}>
@@ -170,15 +172,11 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
 
       {/* High quality tip */}
       {!hasSetIndexType && indexType === IndexingType.QUALIFIED && (
-        <div className="mt-2 flex min-h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
-          <div className="absolute inset-0 bg-dataset-warning-message-bg opacity-40"></div>
-          <div className="p-1">
-            <span className="size-4 text-text-warning-secondary" />
-          </div>
-          <span className="system-xs-medium text-text-primary">
+        <Alert type="warning" className="mt-2">
+          <AlertTitle>
             {t(($) => $['stepTwo.highQualityTip'], { ns: 'datasetCreation' })}
-          </span>
-        </div>
+          </AlertTitle>
+        </Alert>
       )}
 
       {/* Economical index setting tip */}

@@ -16,6 +16,7 @@ from dify_agent.layers.dify_plugin import (
 
 def test_dify_plugin_package_exports_client_safe_config_symbols_only() -> None:
     assert dify_plugin_exports.__all__ == [
+        "DifyModelModality",
         "DifyPluginCredentialValue",
         "DifyPluginLLMLayerConfig",
         "DifyPluginToolCredentialType",
@@ -91,6 +92,7 @@ def test_dify_plugin_tools_layer_config_accepts_prepared_parameters_and_schema()
                     "properties": {"query": {"type": "string", "description": "Search query"}},
                     "required": ["query"],
                 },
+                plugin_unique_identifier="langgenius/tools:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             )
         ]
     )
@@ -159,6 +161,7 @@ def test_dify_plugin_tool_config_rejects_non_json_runtime_parameters() -> None:
                 "tool_name": "web_search",
                 "credential_type": "api-key",
                 "runtime_parameters": {"bad": object()},
+                "plugin_unique_identifier": "langgenius/tools:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             }
         )
 
@@ -172,6 +175,7 @@ def test_dify_plugin_tool_config_rejects_non_json_schema_values() -> None:
                 "tool_name": "web_search",
                 "credential_type": "api-key",
                 "parameters_json_schema": {"type": object()},
+                "plugin_unique_identifier": "langgenius/tools:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             }
         )
 
@@ -185,6 +189,7 @@ def test_dify_plugin_tool_config_rejects_strict_flag() -> None:
                 "tool_name": "web_search",
                 "credential_type": "api-key",
                 "strict": True,
+                "plugin_unique_identifier": "langgenius/tools:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             }
         )
 
@@ -192,5 +197,10 @@ def test_dify_plugin_tool_config_rejects_strict_flag() -> None:
 def test_dify_plugin_tool_config_requires_explicit_credential_type() -> None:
     with pytest.raises(ValidationError):
         _ = DifyPluginToolConfig.model_validate(
-            {"plugin_id": "langgenius/tools", "provider": "search", "tool_name": "web_search"}
+            {
+                "plugin_id": "langgenius/tools",
+                "provider": "search",
+                "tool_name": "web_search",
+                "plugin_unique_identifier": "langgenius/tools:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            }
         )

@@ -421,7 +421,7 @@ class ClickzettaVector(BaseVector):
                     break
             except queue.Empty:
                 continue
-            except (RuntimeError, ValueError, TypeError, ConnectionError) as e:
+            except (RuntimeError, ValueError, TypeError, ConnectionError):
                 logger.exception("Write worker error")
 
     def _execute_write(self, func, *args, **kwargs):
@@ -658,7 +658,7 @@ class ClickzettaVector(BaseVector):
         data_rows = []
         vector_dimension = len(batch_embeddings[0]) if batch_embeddings and batch_embeddings[0] else 768
 
-        for doc, embedding, doc_id in zip(batch_docs, batch_embeddings, batch_doc_ids):
+        for doc, embedding, doc_id in zip(batch_docs, batch_embeddings, batch_doc_ids, strict=False):
             # Optimized: minimal checks for common case, fallback for edge cases
             metadata = doc.metadata if isinstance(doc.metadata, dict) else {}
 

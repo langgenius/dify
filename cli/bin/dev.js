@@ -9,6 +9,7 @@ globalThis.__DIFYCTL_VERSION__ = info.version
 globalThis.__DIFYCTL_COMMIT__ = info.commit
 globalThis.__DIFYCTL_BUILD_DATE__ = info.buildDate
 globalThis.__DIFYCTL_CHANNEL__ = info.channel
+globalThis.__DIFYCTL_COMPILED__ = false
 
 const { main } = await import('../src/main.ts')
 process.exitCode = await main(process.argv.slice(2))

@@ -3,6 +3,10 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zDataSourceApiKeyAuthProviderUnavailableError,
+  zUnsupportedDataSourceApiKeyAuthProviderError,
+} from './zod.gen.ts'
+import {
   zDeleteApiKeyAuthDataSourceByBindingIdPath,
   zDeleteApiKeyAuthDataSourceByBindingIdResponse,
   zGetApiKeyAuthDataSourceResponse,
@@ -20,6 +24,16 @@ export const post = oc
   })
   .input(z.object({ body: zPostApiKeyAuthDataSourceBindingBody }))
   .output(zPostApiKeyAuthDataSourceBindingResponse)
+  .errors({
+    data_source_api_key_auth_provider_unavailable: {
+      status: 502,
+      data: zDataSourceApiKeyAuthProviderUnavailableError,
+    },
+    unsupported_data_source_api_key_auth_provider: {
+      status: 400,
+      data: zUnsupportedDataSourceApiKeyAuthProviderError,
+    },
+  })
 
 export const binding = {
   post,

@@ -60,8 +60,13 @@ class WorkflowAgentPublishService:
     _AGENT_OUTPUT_ROUTES_KEY = "agent_output_routes"
 
     @classmethod
-    def project_draft_bindings_to_graph(cls, *, session: Session, draft_workflow: Workflow) -> dict[str, Any]:
-        """Return draft graph with persisted Agent binding fields projected into node data.
+    def project_draft_bindings_to_graph(
+        cls, *, session: Session, draft_workflow: Workflow, binding_version: str = Workflow.VERSION_DRAFT
+    ) -> dict[str, Any]:
+        """Return the workflow graph with persisted Agent binding fields projected into node data.
+
+        Reads the binding rows of ``binding_version``. The default is the draft;
+        a DSL export passes the exported workflow's own version.
 
         Workflow draft graph is the front-end's editing source of truth, while
         runtime/publish reads WorkflowAgentNodeBinding. This
@@ -78,7 +83,7 @@ class WorkflowAgentPublishService:
                 WorkflowAgentNodeBinding.tenant_id == draft_workflow.tenant_id,
                 WorkflowAgentNodeBinding.app_id == draft_workflow.app_id,
                 WorkflowAgentNodeBinding.workflow_id == draft_workflow.id,
-                WorkflowAgentNodeBinding.workflow_version == cls._DRAFT_WORKFLOW_VERSION,
+                WorkflowAgentNodeBinding.workflow_version == binding_version,
                 WorkflowAgentNodeBinding.node_id.in_(list(agent_nodes.keys())),
             )
         ).all()
@@ -390,6 +395,7 @@ class WorkflowAgentPublishService:
                 workflow_id=draft_workflow.id,
                 workflow_version=cls._DRAFT_WORKFLOW_VERSION,
                 node_id=node_id,
+                binding_type=resolved_binding_type,
                 node_job_config=node_job_config,
                 created_by=account_id,
             )
@@ -601,19 +607,18 @@ class WorkflowAgentPublishService:
         session: Session,
         draft_workflow: Workflow,
         published_workflow: Workflow,
-    ) -> bool:
+    ) -> None:
         """Copy all draft Roster and inline bindings to a published version.
 
         Only copied inline bindings add owners for workflow-only Agents.
         Publishing does not release existing draft or historical inline owners,
-        produces no retirement candidates. The return value reports whether
-        the published Workflow contains an inline Agent binding.
+        produces no retirement candidates.
         """
         node_ids = {
             node_id for node_id, _node_data in WorkflowAgentNodeValidator.iter_agent_v2_nodes(draft_workflow.graph_dict)
         }
         if not node_ids:
-            return False
+            return
 
         bindings = session.scalars(
             select(WorkflowAgentNodeBinding).where(
@@ -625,15 +630,9 @@ class WorkflowAgentPublishService:
             )
         ).all()
         if not bindings:
-            return False
+            return
 
-        has_inline_agent = False
         for binding in bindings:
-            has_inline_agent = has_inline_agent or (
-                binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT
-                and binding.agent_id is not None
-                and binding.current_snapshot_id is not None
-            )
             current_snapshot_id = binding.current_snapshot_id
             if binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT and binding.agent_id:
                 _, current_snapshot_id = cls._resolve_roster_agent_graph_binding(
@@ -656,7 +655,6 @@ class WorkflowAgentPublishService:
                 updated_by=binding.updated_by,
             )
             session.add(copied)
-        return has_inline_agent
 
     @classmethod
     def restore_agent_node_bindings_to_draft(

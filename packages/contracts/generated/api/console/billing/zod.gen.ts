@@ -10,6 +10,22 @@ export const zBillingInvoiceResponse = z.object({
 })
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
  * BillingOperationFailedErrorResponse
  */
 export const zBillingOperationFailedErrorResponse = z.object({
@@ -17,6 +33,18 @@ export const zBillingOperationFailedErrorResponse = z.object({
   message: z.string(),
   status: z.literal(502),
 })
+
+/**
+ * BillingOperationFailedError
+ *
+ * We couldn't complete this request. Please try again. If the problem persists, contact support.
+ */
+export const zBillingOperationFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('billing_operation_failed'),
+    status: z.literal(502),
+  }),
+)
 
 /**
  * BillingUnavailableErrorResponse
@@ -28,11 +56,44 @@ export const zBillingUnavailableErrorResponse = z.object({
 })
 
 /**
+ * BillingUnavailableError
+ *
+ * This operation is temporarily unavailable. Please try again later.
+ */
+export const zBillingUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('billing_unavailable'),
+    status: z.literal(503),
+  }),
+)
+
+/**
  * BillingSubscriptionResponse
  */
 export const zBillingSubscriptionResponse = z.object({
   url: z.string(),
 })
+
+/**
+ * AnnualDiscountActiveErrorResponse
+ */
+export const zAnnualDiscountActiveErrorResponse = z.object({
+  code: z.literal('annual_discount_active'),
+  message: z.string(),
+  status: z.literal(409),
+})
+
+/**
+ * AnnualDiscountActiveError
+ *
+ * You can switch to annual billing after your current discount ends.
+ */
+export const zAnnualDiscountActiveError = zErrorResponse.and(
+  z.object({
+    code: z.literal('annual_discount_active'),
+    status: z.literal(409),
+  }),
+)
 
 /**
  * BillingUnprocessableEntityErrorResponse

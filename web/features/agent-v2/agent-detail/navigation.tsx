@@ -10,6 +10,7 @@ import {
 } from '@langgenius/dify-ui/breadcrumb'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -17,8 +18,9 @@ import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
 import NavLink from '@/app/components/app-sidebar/nav-link'
 import AppIcon from '@/app/components/base/app-icon'
+import { useEvaluationAccess } from '@/app/components/billing/use-evaluation-access'
 import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
-import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
+import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/handles'
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
 import { getAgentSectionAccess } from '@/features/agent-v2/acl'
 import { useAgentPermissions } from '@/features/agent-v2/permissions'
@@ -41,14 +43,21 @@ type AgentDetailNavItem = {
   href: string
   icon: string
   activeIcon: string
+  requiresPublishedAgent?: boolean
 }
-
 const getAgentDetailNavigation = (agentId: string): AgentDetailNavItem[] => [
   {
     labelKey: 'agentDetail.sections.configure',
     href: getAgentDetailPath(agentId, 'configure'),
     icon: 'i-custom-vender-agent-v2-configure',
     activeIcon: 'i-custom-vender-agent-v2-configure-active',
+  },
+  {
+    labelKey: 'agentDetail.sections.evaluation',
+    href: getAgentDetailPath(agentId, 'evaluation'),
+    icon: 'i-ri-flask-line',
+    activeIcon: 'i-ri-flask-fill',
+    requiresPublishedAgent: true,
   },
   {
     labelKey: 'agentDetail.sections.access',
@@ -97,7 +106,7 @@ export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps)
   }
 
   return (
-    <div className="flex items-center py-2 pr-2 pl-1">
+    <div className="flex items-center py-2 ps-1 pe-2">
       <Breadcrumb
         aria-label={tCommon(($) => $['roster.title'], { ns: 'agentRoster' })}
         className="flex-1"
@@ -107,7 +116,7 @@ export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps)
             <BreadcrumbLink
               render={<Link href="/" />}
               aria-label={tCommon(($) => $['mainNav.home'], { ns: 'navigation' })}
-              className="gap-0 rounded-lg py-2 pr-1.5 pl-0.5 hover:bg-background-default-hover"
+              className="gap-0 rounded-lg py-2 ps-0.5 pe-1.5 hover:bg-background-default-hover"
             >
               <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
               <span aria-hidden className="i-custom-vender-main-nav-app-home size-4" />
@@ -130,18 +139,18 @@ export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps)
             <DialogTrigger
               handle={gotoAnythingDialogHandle}
               render={
-                <button
-                  type="button"
+                <IconButton
+                  size="lg"
                   aria-label={tApp(($) => $['gotoAnything.searchTitle'])}
-                  className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
+                  className="shrink-0 rounded-[10px] transition-colors"
                 >
                   <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
-                </button>
+                </IconButton>
               }
             />
           }
         />
-        <TooltipContent placement="bottom" className="flex items-center gap-1">
+        <TooltipContent side="bottom" className="flex items-center gap-1">
           <span className="px-0.5">{tApp(($) => $['gotoAnything.quickAction'])}</span>
           <KbdGroup>
             {formatForDisplay(GOTO_ANYTHING_HOTKEY, { parts: true }).map((key) => (
@@ -165,9 +174,12 @@ export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps)
 
 export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
   const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const pathname = usePathname()
   const agentId = getAgentIdFromPathname(pathname)
   const { agentQuery, ...capabilities } = useAgentPermissions(agentId)
+  const { isVisible: isEvaluationVisible, requiresUpgrade: evaluationRequiresUpgrade } =
+    useEvaluationAccess()
 
   if (!agentId) return null
 
@@ -175,15 +187,9 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
   const sectionAccess = getAgentSectionAccess(capabilities)
   const navigation = getAgentDetailNavigation(agentId).filter(
     (item) =>
+      (item.labelKey !== 'agentDetail.sections.evaluation' || isEvaluationVisible) &&
       sectionAccess[item.labelKey.slice('agentDetail.sections.'.length) as AgentDetailSectionKey],
   )
-  const imageUrl =
-    agent?.icon_type === 'image'
-      ? agent.icon_url
-      : agent?.icon_type === 'link'
-        ? agent.icon
-        : undefined
-  const iconType = imageUrl ? 'image' : agent?.icon_type
 
   return (
     <div className={cn('flex min-h-0 flex-1 flex-col', expand ? 'px-2 pb-2' : 'pb-2')}>
@@ -200,25 +206,18 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
       <div className={cn('py-2', expand && '-mx-1')}>
         <div
           className={cn(
-            'flex h-13 items-center rounded-xl py-1.5 pr-2 pl-1.5',
+            'flex h-13 items-center rounded-xl py-1.5 ps-1.5 pe-2',
             !expand && 'justify-center',
           )}
         >
-          <div className={cn('shrink-0', expand && 'mr-2')}>
+          <div className={cn('shrink-0', expand && 'me-2')}>
             <span aria-hidden>
-              <AppIcon
-                size="large"
-                rounded
-                iconType={iconType}
-                icon={agent?.icon_type === 'emoji' ? (agent.icon ?? undefined) : undefined}
-                background={agent?.icon_background}
-                imageUrl={imageUrl}
-              />
+              <AppIcon size="large" shape="circle" icon={agent} />
             </span>
           </div>
           <div
             className={cn(
-              'relative flex h-10 min-w-0 flex-1 flex-col justify-center gap-0.5 pr-7',
+              'relative flex h-10 min-w-0 flex-1 flex-col justify-center gap-0.5 pe-7',
               !expand && 'hidden',
             )}
           >
@@ -232,7 +231,7 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
               <div className="truncate system-xs-regular text-text-tertiary">{agent.role}</div>
             )}
             {agent && expand && (
-              <div className="absolute -top-px right-0">
+              <div className="absolute inset-e-0 -top-px">
                 <AgentDetailSidebarActions agent={agent} />
               </div>
             )}
@@ -259,6 +258,15 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
             name={t(($) => $[item.labelKey])}
             href={item.href}
             pathname={pathname}
+            disabled={
+              (item.requiresPublishedAgent && agent?.access_ready !== true) ||
+              (item.labelKey === 'agentDetail.sections.evaluation' && evaluationRequiresUpgrade)
+            }
+            disabledReason={
+              item.labelKey === 'agentDetail.sections.evaluation' && evaluationRequiresUpgrade
+                ? tCommon(($) => $['compliance.sandboxUpgradeTooltip'])
+                : undefined
+            }
           />
         ))}
       </nav>

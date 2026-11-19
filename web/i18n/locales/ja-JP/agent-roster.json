@@ -12,6 +12,8 @@
   "roster.createForm.rolePlaceholder": "例: リサーチアシスタント",
   "roster.dateTimeFormat": "YYYY/MM/DD HH:mm:ss",
   "roster.deleteDialog.description": "{{name}} を完全に削除します。その Web アプリと API アクセス、これを使用するワークフローは直ちに動作しなくなります。",
+  "roster.deleteDialog.inputLabel": "確認のため <name>{{name}}</name> を入力してください",
+  "roster.deleteDialog.inputPlaceholder": "エージェント名を入力",
   "roster.deleteDialog.title": "{{name}} を削除しますか？",
   "roster.deleteFailed": "エージェントの削除に失敗しました。",
   "roster.duplicateDialog.description": "{{name}} のコピーを作成し、その Agent ID 情報をカスタマイズします。",

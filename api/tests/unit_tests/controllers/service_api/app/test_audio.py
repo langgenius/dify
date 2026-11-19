@@ -10,7 +10,7 @@ Tests coverage for:
 import io
 import uuid
 from inspect import unwrap
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask, request
@@ -45,10 +45,10 @@ from services.errors.audio import (
     SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
-from tests.unit_tests.model_factories import make_app, make_end_user
+from tests.helpers.unit.model_factories import make_app, make_end_user
 
 
-def _file_data():
+def _file_data() -> FileStorage:
     return FileStorage(stream=io.BytesIO(b"audio"), filename="audio.wav", content_type="audio/wav")
 
 
@@ -75,7 +75,7 @@ def _end_user(*, end_user_id: str = "u1", external_user_id: str | None = None) -
 class TestTextToAudioPayload:
     """Test suite for TextToAudioPayload Pydantic model."""
 
-    def test_payload_with_all_fields(self):
+    def test_payload_with_all_fields(self) -> None:
         """Test payload with all fields populated."""
         payload = TextToAudioPayload(
             message_id="msg_123",
@@ -88,7 +88,7 @@ class TestTextToAudioPayload:
         assert payload.text == "Hello, this is a test."
         assert payload.streaming is False
 
-    def test_payload_with_defaults(self):
+    def test_payload_with_defaults(self) -> None:
         """Test payload with default values."""
         payload = TextToAudioPayload()
         assert payload.message_id is None
@@ -96,14 +96,14 @@ class TestTextToAudioPayload:
         assert payload.text is None
         assert payload.streaming is None
 
-    def test_payload_with_only_text(self):
+    def test_payload_with_only_text(self) -> None:
         """Test payload with only text field."""
         payload = TextToAudioPayload(text="Simple text to speech")
         assert payload.text == "Simple text to speech"
         assert payload.voice is None
         assert payload.message_id is None
 
-    def test_payload_with_streaming_true(self):
+    def test_payload_with_streaming_true(self) -> None:
         """Test payload with streaming enabled."""
         payload = TextToAudioPayload(
             text="Streaming test",
@@ -115,12 +115,12 @@ class TestTextToAudioPayload:
 class TestAudioServiceInterface:
     """Test suite for AudioService interface methods."""
 
-    def test_transcript_asr_method_exists(self):
+    def test_transcript_asr_method_exists(self) -> None:
         """Test that AudioService.transcript_asr exists."""
         assert hasattr(AudioService, "transcript_asr")
         assert callable(AudioService.transcript_asr)
 
-    def test_transcript_tts_method_exists(self):
+    def test_transcript_tts_method_exists(self) -> None:
         """Test that AudioService.transcript_tts exists."""
         assert hasattr(AudioService, "transcript_tts")
         assert callable(AudioService.transcript_tts)
@@ -129,22 +129,22 @@ class TestAudioServiceInterface:
 class TestServiceErrorTypes:
     """Test service error types used by audio controller."""
 
-    def test_no_audio_uploaded_service_error(self):
+    def test_no_audio_uploaded_service_error(self) -> None:
         """Test NoAudioUploadedServiceError exists."""
         error = NoAudioUploadedServiceError()
         assert error is not None
 
-    def test_audio_too_large_service_error(self):
+    def test_audio_too_large_service_error(self) -> None:
         """Test AudioTooLargeServiceError with message."""
         error = AudioTooLargeServiceError("File too large")
         assert "File too large" in str(error)
 
-    def test_unsupported_audio_type_service_error(self):
+    def test_unsupported_audio_type_service_error(self) -> None:
         """Test UnsupportedAudioTypeServiceError exists."""
         error = UnsupportedAudioTypeServiceError()
         assert error is not None
 
-    def test_provider_not_support_speech_to_text_service_error(self):
+    def test_provider_not_support_speech_to_text_service_error(self) -> None:
         """Test ProviderNotSupportSpeechToTextServiceError exists."""
         error = ProviderNotSupportSpeechToTextServiceError()
         assert error is not None
@@ -159,7 +159,7 @@ class TestAudioServiceMockedBehavior:
     """Test AudioService behavior with mocked methods."""
 
     @pytest.fixture
-    def mock_app(self):
+    def mock_app(self) -> App:
         """Create an app model."""
         from models.model import App
 
@@ -169,15 +169,14 @@ class TestAudioServiceMockedBehavior:
         return app
 
     @pytest.fixture
-    def mock_file(self):
-        """Create mock file upload."""
-        mock = Mock()
-        mock.filename = "test_audio.mp3"
-        mock.content_type = "audio/mpeg"
-        return mock
+    def mock_file(self) -> FileStorage:
+        """Create a file upload."""
+        return FileStorage(stream=io.BytesIO(b"audio"), filename="test_audio.mp3", content_type="audio/mpeg")
 
     @patch.object(AudioService, "transcript_asr")
-    def test_transcript_asr_returns_response(self, mock_asr, mock_app, mock_file, sqlite_session: Session):
+    def test_transcript_asr_returns_response(
+        self, mock_asr: MagicMock, mock_app: App, mock_file: FileStorage, sqlite_session: Session
+    ) -> None:
         """Test ASR transcription returns response dict."""
         mock_response = {"text": "Transcribed text"}
         mock_asr.return_value = mock_response
@@ -192,7 +191,7 @@ class TestAudioServiceMockedBehavior:
         assert result["text"] == "Transcribed text"
 
     @patch.object(AudioService, "transcript_tts")
-    def test_transcript_tts_returns_response(self, mock_tts, mock_app, sqlite_session: Session):
+    def test_transcript_tts_returns_response(self, mock_tts: MagicMock, mock_app: App, sqlite_session: Session) -> None:
         """Test TTS transcription returns response."""
         mock_response = {"audio": "base64_audio_data"}
         mock_tts.return_value = mock_response
@@ -205,8 +204,12 @@ class TestAudioServiceMockedBehavior:
             end_user="user_123",
         )
 
+        # `transcript_tts` is patched to return the payload dict in this test, but the
+        # real signature is `Response | None`; narrow before reading the key.
+        assert isinstance(result, dict)
         assert result["audio"] == "base64_audio_data"
-        assert mock_tts.call_args.kwargs["session"] is sqlite_session
+        tts_kwargs = mock_tts.call_args.kwargs
+        assert tts_kwargs["session"] is sqlite_session
 
 
 class TestAudioApi:
@@ -298,9 +301,9 @@ class TestTextApi:
     def test_success_with_message_ref(
         self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
     ) -> None:
-        calls = {}
+        calls: dict[str, object] = {}
 
-        def fake_transcript_tts(**kwargs):
+        def fake_transcript_tts(**kwargs: object) -> dict[str, str]:
             calls.update(kwargs)
             return {"audio": "ok"}
 
@@ -323,10 +326,25 @@ class TestTextApi:
         assert calls["message_ref"] == MessageRef(AppRef("tenant-1", "a1"), "message-1", end_user_id="end-user-1")
         assert calls["session"] is sqlite_session
 
-    def test_error_mapping(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-        monkeypatch.setattr(
-            AudioService, "transcript_tts", lambda **_kwargs: (_ for _ in ()).throw(QuotaExceededError())
-        )
+    @pytest.mark.parametrize(
+        ("exc", "expected"),
+        [
+            (QuotaExceededError(), ProviderQuotaExceededError),
+            (RuntimeError("internal provider failure"), InternalServerError),
+        ],
+    )
+    def test_error_mapping(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        exc: Exception,
+        expected: type[Exception],
+    ) -> None:
+        def raise_error(**_kwargs: object) -> None:
+            raise exc
+
+        monkeypatch.setattr(AudioService, "transcript_tts", raise_error)
 
         api = TextApi()
         handler = unwrap(api.post)
@@ -335,5 +353,5 @@ class TestTextApi:
 
         with app.test_request_context("/text-to-audio", method="POST", json={"text": "hello"}):
             payload = TextToAudioPayload.model_validate(request.get_json() or {})
-            with pytest.raises(ProviderQuotaExceededError):
+            with pytest.raises(expected):
                 handler(api, payload, sqlite_session, app_model=app_model, end_user=end_user)

@@ -39,7 +39,7 @@ class PluginToolProviderController(BuiltinToolProviderController):
         """
         validate the credentials of the provider
         """
-        manager = PluginToolManager()
+        manager = PluginToolManager(plugin_unique_identifier=self.plugin_unique_identifier)
         if not manager.validate_provider_credentials(
             tenant_id=self.tenant_id,
             user_id=user_id,

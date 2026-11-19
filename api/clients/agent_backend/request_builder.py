@@ -17,6 +17,7 @@ from typing import ClassVar, Literal
 from dify_agent.layers.config import DifyConfigLayerConfig
 from dify_agent.layers.dify_core_tools import DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_plugin import (
+    DifyModelModality,
     DifyPluginLLMLayerConfig,
     DifyPluginToolsLayerConfig,
 )
@@ -24,12 +25,15 @@ from dify_agent.layers.execution_context import (
     DifyExecutionContextLayerConfig,
 )
 from dify_agent.layers.knowledge import DifyKnowledgeBaseLayerConfig
+from dify_agent.layers.knowledge_fs import DifyKnowledgeFsLayerConfig
 from dify_agent.layers.output import DifyOutputLayerConfig
 from dify_agent.layers.prompt import Config as PromptConfig
+from dify_agent.layers.read_media import DifyReadMediaLayerConfig
 from dify_agent.layers.runtime import DifyRuntimeLayerConfig
 from dify_agent.layers.shell import DifyShellLayerConfig
 from dify_agent.layers.user_prompt import (
     DifyUserPromptFileConfig,
+    DifyUserPromptImageConfig,
     DifyUserPromptLayerConfig,
 )
 from dify_agent.protocol import (
@@ -53,8 +57,19 @@ DIFY_CONFIG_LAYER_ID = "config"
 DIFY_PLUGIN_TOOLS_LAYER_ID = "tools"
 DIFY_CORE_TOOLS_LAYER_ID = "core_tools"
 DIFY_KNOWLEDGE_BASE_LAYER_ID = "knowledge"
+DIFY_KNOWLEDGE_FS_LAYER_ID = "knowledge_fs"
 DIFY_SHELL_LAYER_ID = "shell"
+DIFY_READ_MEDIA_LAYER_ID = "read_media"
 type AgentConfigVersionKind = Literal["snapshot", "draft", "build_draft"]
+
+
+def _knowledge_fs_spec(run_input: AgentBackendWorkflowNodeRunInput | AgentBackendAgentAppRunInput) -> RunLayerSpec:
+    if not run_input.include_shell or run_input.knowledge_fs is None:
+        raise ValueError("KnowledgeFS requires shell and a KnowledgeFS binding")
+    return RunLayerSpec(
+        name=DIFY_KNOWLEDGE_FS_LAYER_ID,
+        config=run_input.knowledge_fs.model_dump(mode="json"),
+    )
 
 
 def _markdown_backtick_fence(text: str) -> str:
@@ -118,6 +133,7 @@ class AgentBackendModelConfig(BaseModel):
     model: str
     model_settings: dict[str, JsonValue] = Field(default_factory=dict)
     context_window_tokens: int | None = Field(default=None, gt=0)
+    supported_modalities: list[DifyModelModality] = Field(default_factory=list)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -138,7 +154,8 @@ _AGENT_MODEL_SETTINGS_PASSTHROUGH_KEYS = (
     "frequency_penalty",
     "max_tokens",
 )
-_AGENT_MODEL_SETTINGS_KNOWN_KEYS = frozenset({*_AGENT_MODEL_SETTINGS_PASSTHROUGH_KEYS, "stop", "response_format"})
+# response_format uses extra_body so both plugin strings and saved native objects reach the plugin unchanged.
+_AGENT_MODEL_SETTINGS_KNOWN_KEYS = frozenset({*_AGENT_MODEL_SETTINGS_PASSTHROUGH_KEYS, "stop"})
 
 
 def _agent_model_settings(settings: Mapping[str, JsonValue]) -> dict[str, JsonValue] | None:
@@ -183,6 +200,7 @@ class AgentBackendWorkflowNodeRunInput(BaseModel):
     backend_binding_ref: str = Field(min_length=1)
     workflow_node_job_prompt: str
     user_prompt: str
+    user_images: list[DifyUserPromptImageConfig] = Field(default_factory=list)
     agent_soul_prompt: str | None = None
     agent_config_version_kind: AgentConfigVersionKind = "snapshot"
     idempotency_key: str | None = None
@@ -190,6 +208,7 @@ class AgentBackendWorkflowNodeRunInput(BaseModel):
     tools: DifyPluginToolsLayerConfig | None = None
     core_tools: DifyCoreToolsLayerConfig | None = None
     knowledge: DifyKnowledgeBaseLayerConfig | None = None
+    knowledge_fs: DifyKnowledgeFsLayerConfig | None = None
     config_layer_config: DifyConfigLayerConfig | None = None
     include_shell: bool = False
     shell_config: DifyShellLayerConfig | None = None
@@ -211,9 +230,9 @@ class AgentBackendAgentAppRunInput(BaseModel):
     """Inputs to build one Agent App conversation-turn run request.
 
     Unlike the workflow-node input there is no workflow-node-job prompt and no
-    previous-node context: the user prompt is the chat message, and multi-turn
-    continuity comes from ``session_snapshot`` + the history layer keyed by the
-    conversation.
+    previous-node context: the user prompt is the chat message, optionally
+    prefixed with declared app inputs. Multi-turn continuity comes from
+    ``session_snapshot`` + the history layer keyed by the conversation.
     """
 
     model: AgentBackendModelConfig
@@ -228,6 +247,7 @@ class AgentBackendAgentAppRunInput(BaseModel):
     tools: DifyPluginToolsLayerConfig | None = None
     core_tools: DifyCoreToolsLayerConfig | None = None
     knowledge: DifyKnowledgeBaseLayerConfig | None = None
+    knowledge_fs: DifyKnowledgeFsLayerConfig | None = None
     config_layer_config: DifyConfigLayerConfig | None = None
     include_shell: bool = False
     shell_config: DifyShellLayerConfig | None = None
@@ -253,7 +273,7 @@ class AgentBackendRunRequestBuilder:
 
         Layer graph: optional Agent Soul system prompt → user prompt →
         execution context → optional shell / config / history
-        (multi-turn) → LLM → optional plugin-direct tools / core-routed tools /
+        (multi-turn) → LLM → read_media → optional plugin-direct tools / core-routed tools /
         knowledge search / structured output. Mirrors the
         workflow-node layer ordering minus the workflow-job / previous-node
         prompt.
@@ -281,28 +301,30 @@ class AgentBackendRunRequestBuilder:
                 ),
                 RunLayerSpec(
                     name=DIFY_EXECUTION_CONTEXT_LAYER_ID,
-                    config=(run_input.execution_context).model_dump(mode="json"),
+                    config=run_input.execution_context.model_dump(
+                        mode="json", exclude={"tracing"} if run_input.execution_context.tracing is None else set()
+                    ),
                 ),
             ]
         )
 
         include_shell = run_input.include_shell or run_input.config_layer_config is not None
         if include_shell:
-            layers.append(
-                RunLayerSpec(
-                    name=DIFY_RUNTIME_LAYER_ID,
-                    config=(DifyRuntimeLayerConfig(backend_binding_ref=run_input.backend_binding_ref)).model_dump(
-                        mode="json"
+            layers.extend(
+                [
+                    RunLayerSpec(
+                        name=DIFY_RUNTIME_LAYER_ID,
+                        config=(DifyRuntimeLayerConfig(backend_binding_ref=run_input.backend_binding_ref)).model_dump(
+                            mode="json"
+                        ),
                     ),
-                )
-            )
-            # Sandboxed bash workspace (dify.shell). It enters before config so
-            # eager pulls materialize content in the same filesystem used by model commands.
-            layers.append(
-                RunLayerSpec(
-                    name=DIFY_SHELL_LAYER_ID,
-                    config=(run_input.shell_config or DifyShellLayerConfig()).model_dump(mode="json"),
-                )
+                    # Sandboxed bash workspace (dify.shell). It enters before config so
+                    # eager pulls materialize content in the same filesystem used by model commands.
+                    RunLayerSpec(
+                        name=DIFY_SHELL_LAYER_ID,
+                        config=(run_input.shell_config or DifyShellLayerConfig()).model_dump(mode="json"),
+                    ),
+                ]
             )
 
         if run_input.config_layer_config is not None:
@@ -320,19 +342,26 @@ class AgentBackendRunRequestBuilder:
                 )
             )
 
-        layers.append(
-            RunLayerSpec(
-                name=DIFY_AGENT_MODEL_LAYER_ID,
-                config=(
-                    DifyPluginLLMLayerConfig(
+        layers.extend(
+            [
+                RunLayerSpec(
+                    name=DIFY_AGENT_MODEL_LAYER_ID,
+                    config=DifyPluginLLMLayerConfig(
                         plugin_id=run_input.model.plugin_id,
                         model_provider=run_input.model.model_provider,
                         model=run_input.model.model,
                         model_settings=_agent_model_settings(run_input.model.model_settings),
                         context_window_tokens=run_input.model.context_window_tokens,
-                    )
-                ).model_dump(mode="json"),
-            )
+                        supported_modalities=run_input.model.supported_modalities,
+                    ).model_dump(mode="json"),
+                ),
+                RunLayerSpec(
+                    name=DIFY_READ_MEDIA_LAYER_ID,
+                    config=DifyReadMediaLayerConfig(shell=DIFY_SHELL_LAYER_ID if include_shell else None).model_dump(
+                        mode="json"
+                    ),
+                ),
+            ]
         )
 
         if run_input.tools is not None and run_input.tools.tools:
@@ -353,6 +382,8 @@ class AgentBackendRunRequestBuilder:
                 )
             )
 
+        if run_input.knowledge_fs is not None:
+            layers.append(_knowledge_fs_spec(run_input))
         if run_input.knowledge is not None and run_input.knowledge.sets:
             layers.append(
                 RunLayerSpec(
@@ -386,7 +417,7 @@ class AgentBackendRunRequestBuilder:
         """Build a workflow Agent Node run request without defining another wire schema.
 
         Layer graph mirrors the workflow surface: prompts → execution context →
-        optional shell / config / history → LLM → optional
+        optional shell / config / history → LLM → read_media → optional
         plugin-direct tools / core-routed tools / knowledge search /
         structured output.
         """
@@ -410,33 +441,41 @@ class AgentBackendRunRequestBuilder:
                     config=(PromptConfig(user=run_input.workflow_node_job_prompt)).model_dump(mode="json"),
                 ),
                 RunLayerSpec(
-                    name=WORKFLOW_USER_PROMPT_LAYER_ID,
-                    config=(PromptConfig(user=run_input.user_prompt)).model_dump(mode="json"),
+                    name="user_prompt" if run_input.user_images else WORKFLOW_USER_PROMPT_LAYER_ID,
+                    config=(
+                        DifyUserPromptLayerConfig(text=run_input.user_prompt, files=run_input.user_images).model_dump(
+                            mode="json"
+                        )
+                        if run_input.user_images
+                        else PromptConfig(user=run_input.user_prompt).model_dump(mode="json")
+                    ),
                 ),
                 RunLayerSpec(
                     name=DIFY_EXECUTION_CONTEXT_LAYER_ID,
-                    config=(run_input.execution_context).model_dump(mode="json"),
+                    config=run_input.execution_context.model_dump(
+                        mode="json", exclude={"tracing"} if run_input.execution_context.tracing is None else set()
+                    ),
                 ),
             ]
         )
 
         include_shell = run_input.include_shell or run_input.config_layer_config is not None
         if include_shell:
-            layers.append(
-                RunLayerSpec(
-                    name=DIFY_RUNTIME_LAYER_ID,
-                    config=(DifyRuntimeLayerConfig(backend_binding_ref=run_input.backend_binding_ref)).model_dump(
-                        mode="json"
+            layers.extend(
+                [
+                    RunLayerSpec(
+                        name=DIFY_RUNTIME_LAYER_ID,
+                        config=(DifyRuntimeLayerConfig(backend_binding_ref=run_input.backend_binding_ref)).model_dump(
+                            mode="json"
+                        ),
                     ),
-                )
-            )
-            # Sandboxed bash workspace (dify.shell). It enters before config so
-            # eager pulls materialize content in the same filesystem used by model commands.
-            layers.append(
-                RunLayerSpec(
-                    name=DIFY_SHELL_LAYER_ID,
-                    config=(run_input.shell_config or DifyShellLayerConfig()).model_dump(mode="json"),
-                )
+                    # Sandboxed bash workspace (dify.shell). It enters before config so
+                    # eager pulls materialize content in the same filesystem used by model commands.
+                    RunLayerSpec(
+                        name=DIFY_SHELL_LAYER_ID,
+                        config=(run_input.shell_config or DifyShellLayerConfig()).model_dump(mode="json"),
+                    ),
+                ]
             )
 
         if run_input.config_layer_config is not None:
@@ -465,8 +504,15 @@ class AgentBackendRunRequestBuilder:
                             model=run_input.model.model,
                             model_settings=_agent_model_settings(run_input.model.model_settings),
                             context_window_tokens=run_input.model.context_window_tokens,
+                            supported_modalities=run_input.model.supported_modalities,
                         )
                     ).model_dump(mode="json"),
+                ),
+                RunLayerSpec(
+                    name=DIFY_READ_MEDIA_LAYER_ID,
+                    config=DifyReadMediaLayerConfig(shell=DIFY_SHELL_LAYER_ID if include_shell else None).model_dump(
+                        mode="json"
+                    ),
                 ),
             ]
         )
@@ -489,6 +535,8 @@ class AgentBackendRunRequestBuilder:
                 )
             )
 
+        if run_input.knowledge_fs is not None:
+            layers.append(_knowledge_fs_spec(run_input))
         if run_input.knowledge is not None and run_input.knowledge.sets:
             layers.append(
                 RunLayerSpec(
@@ -531,7 +579,11 @@ def redact_for_agent_backend_log(value: object) -> object:
         is_multimodal_file = value.get("type") == "image" and "filename" in value and "mime_type" in value
         for key, item in value.items():
             key_text = str(key).lower()
-            if any(part in key_text for part in _SENSITIVE_KEY_PARTS) or (is_multimodal_file and key_text == "url"):
+            if (
+                any(part in key_text for part in _SENSITIVE_KEY_PARTS)
+                or (is_multimodal_file and key_text == "url")
+                or (key_text == "tracing" and item is not None)
+            ):
                 redacted[key] = "[REDACTED]"
             else:
                 redacted[key] = redact_for_agent_backend_log(item)

@@ -2,6 +2,7 @@
   "dateFormats.compact": "MM/DD/YYYY HH:mm",
   "dateFormats.withSeconds": "MM/DD/YYYY hh:mm:ss A",
   "operation.cancel": "لغو",
+  "operation.close": "بستن",
   "operation.now": "حالا",
   "operation.ok": "خوب",
   "operation.pickDate": "تاریخ را انتخاب کنید",

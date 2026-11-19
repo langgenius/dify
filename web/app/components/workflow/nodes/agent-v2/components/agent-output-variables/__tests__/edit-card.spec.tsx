@@ -50,7 +50,8 @@ describe('OutputEditCard keyboard ownership', () => {
     )
   })
 
-  it('ignores composing submission and disables both paths for an invalid name', () => {
+  it('ignores composing submission and disables both paths for an invalid name', async () => {
+    const user = userEvent.setup()
     const onConfirm = vi.fn()
     render(
       <OutputEditCard
@@ -64,7 +65,8 @@ describe('OutputEditCard keyboard ownership', () => {
       name: 'workflowAgent.nodes.agent.outputVars.nameLabel',
     })
     expect(confirmFrom(name, { isComposing: true }).defaultPrevented).toBe(false)
-    fireEvent.change(name, { target: { value: 'invalid name' } })
+    await user.clear(name)
+    await user.type(name, 'invalid name')
     expect(
       screen.getByRole('button', { name: 'workflowAgent.nodes.agent.outputVars.confirm' }),
     ).toBeDisabled()

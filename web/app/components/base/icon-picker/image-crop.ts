@@ -7,7 +7,7 @@ export const createImage = (url: string) =>
     image.src = url
   })
 
-export function getRadianAngle(degreeValue: number) {
+function getRadianAngle(degreeValue: number) {
   return (degreeValue * Math.PI) / 180
 }
 
@@ -152,10 +152,24 @@ function isWebP(arr: Uint8Array) {
 
 // Function to check if the WebP is animated (contains ANIM chunk)
 function checkWebPAnimation(arr: Uint8Array) {
-  // Search for the ANIM chunk in WebP to determine if it's animated
-  for (let i = 12; i < arr.length - 4; i++) {
-    if (arr[i] === 0x41 && arr[i + 1] === 0x4e && arr[i + 2] === 0x49 && arr[i + 3] === 0x4d)
-      return true // Found animation
+  const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength)
+  const containerEnd = view.getUint32(4, true) + 8
+  if (containerEnd > arr.length) return false
+
+  // RIFF chunks have an eight-byte header and an optional padding byte.
+  // Searching inside payloads can mistake compressed image data for an ANIM chunk.
+  for (let offset = 12; offset + 8 <= containerEnd;) {
+    const size = view.getUint32(offset + 4, true)
+    const nextOffset = offset + 8 + size + (size % 2)
+    if (nextOffset > containerEnd) return false
+    if (
+      arr[offset] === 0x41 &&
+      arr[offset + 1] === 0x4e &&
+      arr[offset + 2] === 0x49 &&
+      arr[offset + 3] === 0x4d
+    )
+      return size >= 6
+    offset = nextOffset
   }
-  return false // No animation chunk found
+  return false
 }

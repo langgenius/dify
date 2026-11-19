@@ -94,6 +94,7 @@
   "nodes.humanInput.userActions.buttonTextPlaceholder": "Значение действия",
   "nodes.humanInput.userActions.buttonTextTooLong": "Текст кнопки должен содержать не более {{maxLength}} символов",
   "nodes.humanInput.userActions.chooseStyle": "Выберите стиль кнопки",
+  "nodes.humanInput.userActions.defaultTitle": "Текст кнопки {{index}}",
   "nodes.humanInput.userActions.emptyTip": "Нажмите кнопку '+' для добавления действий пользователя",
   "nodes.humanInput.userActions.title": "Действия пользователя",
   "nodes.humanInput.userActions.tooltip": "Определите кнопки, на которые пользователи могут нажимать, чтобы ответить на эту форму. Идентификатор действия управляет ветвлением. Значение действия передаётся далее как выбранный встроенный вывод. Идентификатор действия должен начинаться с буквы или подчеркивания, за которым следуют буквы, цифры или подчеркивания.",

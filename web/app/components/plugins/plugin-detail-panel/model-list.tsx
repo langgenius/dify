@@ -1,9 +1,10 @@
 import type { PluginDetail } from '@/app/components/plugins/types'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
 import ModelName from '@/app/components/header/account-setting/model-provider-page/model-name'
-import { useModelProviderModelList } from '@/service/use-models'
+import { consoleQuery } from '@/service/console'
 
 type Props = Readonly<{
   detail: PluginDetail
@@ -11,8 +12,10 @@ type Props = Readonly<{
 
 const ModelList = ({ detail }: Props) => {
   const { t } = useTranslation(['plugin'])
-  const { data: res } = useModelProviderModelList(
-    `${detail.plugin_id}/${detail.declaration.model.provider}`,
+  const { data: res } = useQuery(
+    consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryOptions({
+      input: { params: { provider: `${detail.plugin_id}/${detail.declaration.model.provider}` } },
+    }),
   )
 
   if (!res) return null

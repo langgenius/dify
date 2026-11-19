@@ -42,7 +42,7 @@ const useSingleRunFormParams = ({
 
   const visionFiles = runInputData['#files#']
   const setVisionFiles = useCallback(
-    (newFiles: any[]) => {
+    (newFiles: unknown[]) => {
       setRunInputData?.({
         ...runInputDataRef.current,
         '#files#': newFiles,
@@ -64,7 +64,7 @@ const useSingleRunFormParams = ({
   })()
 
   const setInputVarValues = useCallback(
-    (newPayload: Record<string, any>) => {
+    (newPayload: Record<string, unknown>) => {
       const newVars = {
         ...newPayload,
         '#files#': runInputDataRef.current['#files#'],

@@ -205,8 +205,8 @@ class OracleVector(BaseVector):
         with self._get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(f"SELECT id FROM {self.table_name} WHERE id = :1", (id,))
-                return cur.fetchone() is not None
-            conn.close()
+                row = cur.fetchone()
+        return row is not None
 
     def get_by_ids(self, ids: list[str]) -> list[Document]:
         if not ids:
@@ -319,8 +319,10 @@ class OracleVector(BaseVector):
                 try:
                     nltk.data.find("tokenizers/punkt_tab")
                     nltk.data.find("corpora/stopwords")
-                except LookupError:
-                    raise LookupError("Unable to find the required NLTK data package: punkt_tab and stopwords")
+                except LookupError as caught_error:
+                    raise LookupError(
+                        "Unable to find the required NLTK data package: punkt_tab and stopwords"
+                    ) from caught_error
                 e_str = re.sub(r"[^\w ]", "", query)
                 all_tokens = nltk.word_tokenize(e_str)
                 stop_words = stopwords.words("english")

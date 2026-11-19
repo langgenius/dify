@@ -1,9 +1,10 @@
 import io
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
+from uuid import UUID
 
 from flask import send_file
 from flask_restx import Resource
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, BeforeValidator, Field, field_validator
 
 from controllers.common.fields import SimpleResultResponse, ValidationResultResponse
 from controllers.common.rbac import RBACCheck, Workspace
@@ -37,6 +38,11 @@ from services.model_provider.service import ModelProviderService
 
 class ParserModelList(BaseModel):
     model_type: ModelType | None = None
+
+
+class ModelProviderIconPath(BaseModel):
+    tenant_id: UUID
+    icon_type: Annotated[Literal["icon_small", "icon_small_dark"], BeforeValidator(str.lower)]
 
 
 class ParserCredentialId(BaseModel):
@@ -238,7 +244,7 @@ class ModelProviderCredentialApi(Resource):
                 credential_name=args.name,
             )
         except CredentialsValidateFailedError as ex:
-            raise ValueError(str(ex))
+            raise ValueError(str(ex)) from ex
 
         return SimpleResultResponse(result="success").model_dump(mode="json"), 201
 
@@ -263,7 +269,7 @@ class ModelProviderCredentialApi(Resource):
                 credential_name=args.name,
             )
         except CredentialsValidateFailedError as ex:
-            raise ValueError(str(ex))
+            raise ValueError(str(ex)) from ex
 
         return SimpleResultResponse(result="success").model_dump(mode="json")
 
@@ -349,12 +355,17 @@ class ModelProviderIconApi(Resource):
 
     @console_ns.response(200, "Model provider icon")
     def get(self, tenant_id: str, provider: str, icon_type: str, lang: str):
+        """Return an icon for a tenant UUID and a supported icon type.
+
+        Invalid path arguments fail before provider discovery or asset access.
+        """
         # response-contract:ignore binary send_file response
+        path = ModelProviderIconPath.model_validate({"tenant_id": tenant_id, "icon_type": icon_type})
         model_provider_service = ModelProviderService()
         icon, mimetype = model_provider_service.get_model_provider_icon(
-            tenant_id=tenant_id,
+            tenant_id=str(path.tenant_id),
             provider=provider,
-            icon_type=icon_type,
+            icon_type=path.icon_type,
             lang=lang,
         )
         if icon is None:
@@ -400,10 +411,10 @@ class ModelProviderPaymentCheckoutUrlApi(Resource):
         if provider != "anthropic":
             raise ValueError(f"provider name {provider} is invalid")
         # pyrefly: ignore [deprecated]
-        data = BillingService.get_model_provider_payment_link(
+        link = BillingService.get_model_provider_payment_link(
             provider_name=provider,
             tenant_id=current_tenant_id,
             account_id=current_user.id,
             prefilled_email=current_user.email,
         )
-        return dump_response(ModelProviderPaymentCheckoutUrlResponse, data)
+        return dump_response(ModelProviderPaymentCheckoutUrlResponse, {"payment_link": link.url})

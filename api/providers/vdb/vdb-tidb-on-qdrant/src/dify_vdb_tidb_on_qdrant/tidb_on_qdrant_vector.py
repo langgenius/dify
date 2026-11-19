@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import time
 import uuid
 from collections.abc import Generator, Iterable, Sequence
 from itertools import islice
@@ -8,9 +9,6 @@ from typing import TYPE_CHECKING, Any, override
 
 import httpx
 import qdrant_client
-from sqlalchemy.orm import Session
-
-logger = logging.getLogger(__name__)
 from flask import current_app
 from httpx import DigestAuth
 from pydantic import BaseModel
@@ -24,7 +22,7 @@ from qdrant_client.http.models import (
     TokenizerType,
 )
 from qdrant_client.local.qdrant_local import QdrantLocal
-from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
@@ -33,11 +31,11 @@ from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
-from dify_vdb_tidb_on_qdrant.tidb_service import TidbService
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models.dataset import Dataset, TidbAuthBinding
-from models.enums import TidbAuthBindingStatus
+from models.dataset import Dataset
+from services.tidb_binding_service import TidbBindingPendingError, resolve_tidb_auth_binding
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from qdrant_client import grpc  # noqa
@@ -228,6 +226,7 @@ class TidbOnQdrantVector(BaseVector):
                         group_id or "",
                         Field.GROUP_KEY,
                     ),
+                    strict=False,
                 )
             ]
 
@@ -385,36 +384,69 @@ class TidbOnQdrantVector(BaseVector):
 
     @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        """Return docs most similar by bm25.
-        Returns:
-            List of documents most similar to the query text and distance for each.
-        """
+        """Return keyword matches in query order, leaving relevance scoring to reranking."""
         from qdrant_client.http import models
 
-        scroll_filter = None
+        keywords = list(dict.fromkeys(query.split()))[:10]
+        top_k = kwargs.get("top_k", 2)
+        if not keywords or top_k <= 0:
+            return []
+
+        base_must_conditions: list[models.FieldCondition] = []
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
+            base_must_conditions.append(
+                models.FieldCondition(
+                    key="metadata.document_id",
+                    match=models.MatchAny(any=document_ids_filter),
+                )
+            )
+
+        seen_ids: set[str | int] = set()
+        documents: list[Document] = []
+        keyword_results: list[list[rest.Record]] = []
+        # MatchText combines tokens with AND; separate searches provide OR between keywords.
+        for keyword in keywords:
             scroll_filter = models.Filter(
                 must=[
+                    *base_must_conditions,
                     models.FieldCondition(
-                        key="metadata.document_id",
-                        match=models.MatchAny(any=document_ids_filter),
-                    )
+                        key="page_content",
+                        match=models.MatchText(text=keyword),
+                    ),
                 ]
             )
-        response = self._client.scroll(
-            collection_name=self._collection_name,
-            scroll_filter=scroll_filter,
-            limit=kwargs.get("top_k", 2),
-            with_payload=True,
-            with_vectors=True,
-        )
-        results = response[0]
-        documents = []
-        for result in results:
-            if result:
-                document = self._document_from_scored_point(result, Field.CONTENT_KEY, Field.METADATA_KEY)
-                documents.append(document)
+            results, _ = self._client.scroll(
+                collection_name=self._collection_name,
+                scroll_filter=scroll_filter,
+                limit=top_k,
+                with_payload=True,
+                with_vectors=True,
+            )
+            keyword_results.append(results)
+
+        # Select round-robin so a common first keyword cannot fill top_k before
+        # later keywords contribute their matches.
+        result_indexes = [0] * len(keyword_results)
+        while True:
+            found_result = False
+            for index, results in enumerate(keyword_results):
+                while result_indexes[index] < len(results):
+                    result = results[result_indexes[index]]
+                    result_indexes[index] += 1
+                    if result.id not in seen_ids:
+                        seen_ids.add(result.id)
+                        documents.append(
+                            self._document_from_scored_point(result, Field.CONTENT_KEY, Field.METADATA_KEY)
+                        )
+                        found_result = True
+                        break
+                if len(documents) >= top_k:
+                    break
+            if len(documents) >= top_k:
+                break
+            if not found_result:
+                break
 
         return documents
 
@@ -442,76 +474,19 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
         self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
     ) -> TidbOnQdrantVector:
         logger.info("init_vector: tenant_id=%s, dataset_id=%s", dataset.tenant_id, dataset.id)
-        stmt = select(TidbAuthBinding).where(TidbAuthBinding.tenant_id == dataset.tenant_id)
-        tidb_auth_binding = db.session.scalars(stmt).one_or_none()
-        if not tidb_auth_binding:
-            logger.info("No existing TidbAuthBinding for tenant %s, acquiring lock", dataset.tenant_id)
-            with redis_client.lock("create_tidb_serverless_cluster_lock", timeout=900):
-                stmt = select(TidbAuthBinding).where(TidbAuthBinding.tenant_id == dataset.tenant_id)
-                tidb_auth_binding = db.session.scalars(stmt).one_or_none()
-                if tidb_auth_binding:
-                    logger.info("Found binding after lock: cluster_id=%s", tidb_auth_binding.cluster_id)
-                    TIDB_ON_QDRANT_API_KEY = f"{tidb_auth_binding.account}:{tidb_auth_binding.password}"
-
-                else:
-                    idle_tidb_auth_binding = db.session.scalar(
-                        select(TidbAuthBinding)
-                        .where(TidbAuthBinding.active == False, TidbAuthBinding.status == "ACTIVE")
-                        .limit(1)
-                    )
-                    if idle_tidb_auth_binding:
-                        logger.info(
-                            "Assigning idle cluster %s to tenant %s",
-                            idle_tidb_auth_binding.cluster_id,
-                            dataset.tenant_id,
-                        )
-                        idle_tidb_auth_binding.active = True
-                        idle_tidb_auth_binding.tenant_id = dataset.tenant_id
-                        db.session.commit()
-                        tidb_auth_binding = idle_tidb_auth_binding
-                        TIDB_ON_QDRANT_API_KEY = f"{idle_tidb_auth_binding.account}:{idle_tidb_auth_binding.password}"
-                    else:
-                        logger.info("No idle clusters available, creating new cluster for tenant %s", dataset.tenant_id)
-                        new_cluster = TidbService.create_tidb_serverless_cluster(
-                            dify_config.TIDB_PROJECT_ID or "",
-                            dify_config.TIDB_API_URL or "",
-                            dify_config.TIDB_IAM_API_URL or "",
-                            dify_config.TIDB_PUBLIC_KEY or "",
-                            dify_config.TIDB_PRIVATE_KEY or "",
-                            dify_config.TIDB_REGION or "",
-                        )
-                        logger.info(
-                            "New cluster created: cluster_id=%s, qdrant_endpoint=%s",
-                            new_cluster["cluster_id"],
-                            new_cluster.get("qdrant_endpoint"),
-                        )
-                        new_tidb_auth_binding = TidbAuthBinding(
-                            cluster_id=new_cluster["cluster_id"],
-                            cluster_name=new_cluster["cluster_name"],
-                            account=new_cluster["account"],
-                            password=new_cluster["password"],
-                            qdrant_endpoint=new_cluster.get("qdrant_endpoint"),
-                            tenant_id=dataset.tenant_id,
-                            active=True,
-                            status=TidbAuthBindingStatus.ACTIVE,
-                        )
-                        db.session.add(new_tidb_auth_binding)
-                        db.session.commit()
-                        tidb_auth_binding = new_tidb_auth_binding
-                        TIDB_ON_QDRANT_API_KEY = f"{new_tidb_auth_binding.account}:{new_tidb_auth_binding.password}"
-        else:
-            logger.info("Existing binding found: cluster_id=%s", tidb_auth_binding.cluster_id)
-            TIDB_ON_QDRANT_API_KEY = f"{tidb_auth_binding.account}:{tidb_auth_binding.password}"
-
-        qdrant_url = (
-            (tidb_auth_binding.qdrant_endpoint if tidb_auth_binding else None) or dify_config.TIDB_ON_QDRANT_URL or ""
-        )
-        logger.info(
-            "Using qdrant endpoint: %s (from_binding=%s, fallback_global=%s)",
-            qdrant_url,
-            tidb_auth_binding.qdrant_endpoint if tidb_auth_binding else None,
-            dify_config.TIDB_ON_QDRANT_URL,
-        )
+        # Legacy indexing waits synchronously; the KnowledgeFS bridge signals
+        # readiness retries. Both paths share the same durable tenant reservation.
+        deadline = time.monotonic() + 900
+        while True:
+            try:
+                tidb_auth_binding = resolve_tidb_auth_binding(dataset.tenant_id, allow_create=True)
+                break
+            except TidbBindingPendingError:
+                if time.monotonic() >= deadline:
+                    raise
+                time.sleep(5)
+        qdrant_url = tidb_auth_binding.qdrant_endpoint or dify_config.TIDB_ON_QDRANT_URL or ""
+        api_key = f"{tidb_auth_binding.account}:{tidb_auth_binding.password}"
 
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
@@ -528,7 +503,7 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
             group_id=dataset.id,
             config=TidbOnQdrantConfig(
                 endpoint=qdrant_url,
-                api_key=TIDB_ON_QDRANT_API_KEY,
+                api_key=api_key,
                 root_path=str(config.root_path),
                 timeout=dify_config.TIDB_ON_QDRANT_CLIENT_TIMEOUT,
                 grpc_port=dify_config.TIDB_ON_QDRANT_GRPC_PORT,

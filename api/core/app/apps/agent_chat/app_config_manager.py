@@ -171,11 +171,15 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
     def validate_agent_mode_and_set_defaults(
         cls, tenant_id: str, config: dict[str, Any], session: Session
     ) -> tuple[dict[str, Any], list[str]]:
-        """
-        Validate agent_mode and set defaults for agent feature
+        """Validate agent settings and populate defaults in place.
+
+        The caller supplies untrusted config and a session for tenant-scoped
+        dataset checks. On success, every tool entry is a non-empty object.
+        Empty or non-object entries raise ValueError rather than being ignored.
 
         :param tenant_id: tenant ID
-        :param config: app model config args
+        :param config: app model config args, updated with defaults
+        :param session: session used to validate dataset references
         """
         if not config.get("agent_mode"):
             config["agent_mode"] = {"enabled": False, "tools": []}
@@ -206,6 +210,8 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
             raise ValueError("tools in agent_mode must be a list of objects")
 
         for tool in agent_mode["tools"]:
+            if not isinstance(tool, dict) or not tool:
+                raise ValueError("Each item in agent_mode.tools must be a non-empty object")
             key = list(tool.keys())[0]
             if key in OLD_TOOLS:
                 # old style, use tool name as key
@@ -223,8 +229,8 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
 
                     try:
                         uuid.UUID(tool_item["id"])
-                    except ValueError:
-                        raise ValueError("id in dataset must be of UUID type")
+                    except ValueError as caught_error:
+                        raise ValueError("id in dataset must be of UUID type") from caught_error
 
                     if not DatasetConfigManager.is_dataset_exists(tenant_id, tool_item["id"], session):
                         raise ValueError("Dataset ID does not exist, please check your permission.")

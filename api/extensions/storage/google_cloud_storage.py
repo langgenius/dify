@@ -73,3 +73,8 @@ class GoogleCloudStorage(BaseStorage):
     def delete(self, filename: str):
         bucket = self.client.get_bucket(self.bucket_name)
         bucket.delete_blob(filename)
+
+    @override
+    def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
+        keys = (blob.name for blob in self.client.list_blobs(self.bucket_name, prefix=path))
+        return self._filter_scan_keys(keys, files, directories)

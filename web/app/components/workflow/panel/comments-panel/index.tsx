@@ -1,4 +1,4 @@
-import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
+import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
@@ -33,7 +33,7 @@ const CommentsPanel = () => {
   const [showFilter, setShowFilter] = useState(false)
 
   const handleSelect = useCallback(
-    (comment: WorkflowCommentList) => {
+    (comment: WorkflowCommentBasic) => {
       handleCommentIconClick(comment)
     },
     [handleCommentIconClick],
@@ -53,7 +53,7 @@ const CommentsPanel = () => {
   }, [comments, currentUserId, showOnlyMine, showResolvedComments])
 
   const handleResolve = useCallback(
-    async (comment: WorkflowCommentList) => {
+    async (comment: WorkflowCommentBasic) => {
       if (comment.resolved) return
       try {
         await handleCommentResolve(comment.id)

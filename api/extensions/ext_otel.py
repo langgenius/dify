@@ -3,7 +3,6 @@ import logging
 import os
 import platform
 import socket
-from typing import Union
 
 from configs import dify_config
 from dify_app import DifyApp
@@ -73,8 +72,8 @@ def init_app(app: DifyApp):
     provider = TracerProvider(resource=resource, sampler=sampler)
 
     set_tracer_provider(provider)
-    exporter: Union[GRPCSpanExporter, HTTPSpanExporter, ConsoleSpanExporter]
-    metric_exporter: Union[GRPCMetricExporter, HTTPMetricExporter, ConsoleMetricExporter]
+    exporter: GRPCSpanExporter | HTTPSpanExporter | ConsoleSpanExporter
+    metric_exporter: GRPCMetricExporter | HTTPMetricExporter | ConsoleMetricExporter
     protocol = (dify_config.OTEL_EXPORTER_OTLP_PROTOCOL or "").lower()
     if dify_config.OTEL_EXPORTER_TYPE == "otlp":
         if protocol == "grpc":

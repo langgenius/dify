@@ -27,6 +27,7 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({ id, data }) => {
     filterToAssignedVar,
   } = useConfig(id, data)
   const handleAddOperation = () => {
+    if (readOnly) return
     const newList = handleAddOperationItem(inputs.items || [])
     handleOperationListChanges(newList)
   }
@@ -40,6 +41,7 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({ id, data }) => {
           </div>
           <IconButton
             aria-label={t(($) => $['operation.add'], { ns: 'common' })}
+            disabled={readOnly}
             onClick={handleAddOperation}
           >
             <RiAddLine aria-hidden="true" className="size-4 shrink-0 text-text-tertiary" />

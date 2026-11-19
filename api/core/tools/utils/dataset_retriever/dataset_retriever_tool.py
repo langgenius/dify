@@ -78,10 +78,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
             self.retrieve_config.metadata_filtering_conditions,
             self.inputs,
         )
-        if metadata_filter_document_ids:
-            document_ids_filter = metadata_filter_document_ids.get(dataset.id, [])
-        else:
-            document_ids_filter = None
+        document_ids_filter = metadata_filter_document_ids.get(dataset.id, []) if metadata_filter_document_ids else None
         if dataset.provider == "external":
             results: list[RetrievalDocument] = []
             external_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
@@ -183,10 +180,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                             segment_content = sign_segment_content(segment, session=session)
 
                         # If summary exists, prepend it to the content
-                        if record.summary:
-                            final_content = f"{record.summary}\n{segment_content}"
-                        else:
-                            final_content = segment_content
+                        final_content = f"{record.summary}\n{segment_content}" if record.summary else segment_content
 
                         document_context_list.append(
                             DocumentContext(
@@ -201,8 +195,8 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                             dataset = session.get(Dataset, segment.dataset_id)
                             dataset_document_stmt = select(DatasetDocument).where(
                                 DatasetDocument.id == segment.document_id,
-                                DatasetDocument.enabled == True,
-                                DatasetDocument.archived == False,
+                                DatasetDocument.enabled.is_(True),
+                                DatasetDocument.archived.is_(False),
                             )
                             document = session.scalar(dataset_document_stmt)
                             if dataset and document:

@@ -1,7 +1,7 @@
 import { act, waitFor } from '@testing-library/react'
 import { baseRunningData } from '../../../__tests__/workflow-test-env'
 import { useWorkflowNodeRetry } from '../use-workflow-node-retry'
-import { getNodeRuntimeState, renderRunEventHook } from './test-helpers'
+import { createNodeFinishedResponse, getNodeRuntimeState, renderRunEventHook } from './test-helpers'
 
 describe('useWorkflowNodeRetry', () => {
   it('pushes retry data to tracing and updates _retryIndex', async () => {
@@ -9,13 +9,13 @@ describe('useWorkflowNodeRetry', () => {
       initialStoreState: { workflowRunningData: baseRunningData() },
     })
 
+    const response = createNodeFinishedResponse()
+    response.data.retry_index = 2
     act(() => {
-      result.current.handleWorkflowNodeRetry({
-        data: { node_id: 'n1', retry_index: 2 },
-      } as never)
+      result.current.handleWorkflowNodeRetry(response)
     })
 
-    expect(store.getState().workflowRunningData!.tracing).toHaveLength(1)
+    expect(store.getState().workflowRunningData!.tracing).toEqual([response.data])
 
     await waitFor(() => {
       expect(getNodeRuntimeState(result.current.nodes[0])._retryIndex).toBe(2)

@@ -47,12 +47,12 @@ class BaseIndexProcessor(ABC):
     """Interface for extract files."""
 
     @abstractmethod
-    def extract(self, extract_setting: ExtractSetting, *, session: Session, **kwargs) -> list[Document]:
+    def extract(self, extract_setting: ExtractSetting, *, session: Session, **kwargs: Any) -> list[Document]:
         raise NotImplementedError
 
     @abstractmethod
     def transform(
-        self, documents: list[Document], current_user: Account | None = None, *, session: Session, **kwargs
+        self, documents: list[Document], current_user: Account | None = None, *, session: Session, **kwargs: Any
     ) -> list[Document]:
         raise NotImplementedError
 
@@ -89,13 +89,19 @@ class BaseIndexProcessor(ABC):
         with_keywords: bool = True,
         *,
         session: Session,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         raise NotImplementedError
 
     @abstractmethod
     def clean(
-        self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, *, session: Session, **kwargs
+        self,
+        dataset: Dataset,
+        node_ids: list[str] | None,
+        with_keywords: bool = True,
+        *,
+        session: Session,
+        **kwargs: Any,
     ) -> None:
         raise NotImplementedError
 
@@ -260,17 +266,17 @@ class BaseIndexProcessor(ABC):
         """
         from services.file_service import FileService
 
-        MAX_IMAGE_SIZE = dify_config.ATTACHMENT_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024
-        DOWNLOAD_TIMEOUT = dify_config.ATTACHMENT_IMAGE_DOWNLOAD_TIMEOUT
+        max_image_size = dify_config.ATTACHMENT_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024
+        download_timeout = dify_config.ATTACHMENT_IMAGE_DOWNLOAD_TIMEOUT
 
         try:
             # Download with timeout
-            response = remote_fetcher.make_request("GET", image_url, timeout=DOWNLOAD_TIMEOUT)
+            response = remote_fetcher.make_request("GET", image_url, timeout=download_timeout)
             response.raise_for_status()
 
             # Check Content-Length header if available
             content_length = response.headers.get("Content-Length")
-            if content_length and int(content_length) > MAX_IMAGE_SIZE:
+            if content_length and int(content_length) > max_image_size:
                 logging.warning("Image from %s exceeds 2MB limit (size: %s bytes)", image_url, content_length)
                 return None
 
@@ -304,7 +310,7 @@ class BaseIndexProcessor(ABC):
             blob = b""
             for chunk in response.iter_bytes(chunk_size=8192):
                 blob += chunk
-                if len(blob) > MAX_IMAGE_SIZE:
+                if len(blob) > max_image_size:
                     logging.warning("Image from %s exceeds 2MB limit during download", image_url)
                     return None
 
@@ -320,7 +326,7 @@ class BaseIndexProcessor(ABC):
             )
             return upload_file.id
         except httpx.TimeoutException:
-            logging.warning("Timeout downloading image from %s after %s seconds", image_url, DOWNLOAD_TIMEOUT)
+            logging.warning("Timeout downloading image from %s after %s seconds", image_url, download_timeout)
             return None
         except httpx.RequestError as e:
             logging.warning("Error downloading image from %s: %s", image_url, str(e))

@@ -32,6 +32,7 @@ export type MarkdownProps = {
   | 'rehypePlugins'
   | 'isAnimating'
   | 'mode'
+  | 'renderSoftBreaks'
 >
 
 export const Markdown = memo((props: MarkdownProps) => {
@@ -45,6 +46,7 @@ export const Markdown = memo((props: MarkdownProps) => {
     rehypePlugins,
     mode,
     className,
+    renderSoftBreaks,
   } = props
   const latexContent = useMemo(() => preprocess(content), [content])
   const hasContent = !!latexContent.trim() && !MARKDOWN_DIVIDER_ONLY_RE.test(latexContent)
@@ -64,6 +66,7 @@ export const Markdown = memo((props: MarkdownProps) => {
           rehypePlugins={rehypePlugins}
           isAnimating={isAnimating}
           mode={mode}
+          renderSoftBreaks={renderSoftBreaks}
         />
       )}
     </div>

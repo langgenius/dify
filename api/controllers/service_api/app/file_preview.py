@@ -6,7 +6,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 
 from controllers.common.fields import BinaryFileResponse
-from controllers.common.file_response import enforce_download_for_html
+from controllers.common.file_response import harden_active_content_response
 from controllers.common.schema import query_params_from_model, register_response_schema_model, register_schema_model
 from controllers.console.wraps import model_validate
 from controllers.service_api import service_api_ns
@@ -17,6 +17,7 @@ from controllers.service_api.app.error import (
 from controllers.service_api.schema import binary_response
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from extensions.ext_application_services import application_services
+from libs.external_api import error_responses
 from models.model import App, EndUser
 from services.message_file_preview_service import (
     MessageFilePreview,
@@ -61,6 +62,7 @@ class FilePreviewApi(Resource):
     Files can only be accessed if they belong to messages within the requesting app's context.
     """
 
+    @error_responses(FileAccessDeniedError, FileNotFoundError)
     @service_api_ns.doc(
         summary="Download File",
         description=(
@@ -131,7 +133,8 @@ class FilePreviewApi(Resource):
             as_attachment: Whether to set Content-Disposition as attachment
 
         Returns:
-            Flask Response object with streaming file content
+            Flask Response object with the original stream. SVG previews are
+            sandboxed inline; other active content and requested attachments download.
         """
         file = preview.file
         response = Response(
@@ -156,11 +159,12 @@ class FilePreviewApi(Resource):
             # Override content-type for downloads to force download
             response.headers["Content-Type"] = "application/octet-stream"
 
-        enforce_download_for_html(
+        harden_active_content_response(
             response,
             mime_type=file.mime_type,
             filename=file.name,
             extension=file.extension,
+            inline_svg=not as_attachment,
         )
 
         # Add caching headers for performance

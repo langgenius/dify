@@ -72,7 +72,7 @@ export function ConfigureSection({
             )}
             <span
               aria-hidden="true"
-              className="i-custom-vender-solid-general-arrow-down-round-fill size-3.5 shrink-0 rotate-270 text-text-quaternary transition-transform group-has-data-panel-open/collapse-title:rotate-0 motion-reduce:transition-none"
+              className="i-custom-vender-solid-general-arrow-down-round-fill size-3.5 shrink-0 -rotate-90 text-text-quaternary transition-transform group-has-data-panel-open/collapse-title:rotate-0 motion-reduce:transition-none"
             />
           </div>
           {hasDescription && <p className="system-xs-regular text-text-tertiary">{description}</p>}

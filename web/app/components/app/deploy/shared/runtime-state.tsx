@@ -14,11 +14,11 @@ type RuntimeStateIndicatorProps = {
 const RUNTIME_STATE_TEXT_CLASS_NAMES: Record<RuntimeStateValue, string> = {
   [RuntimeState.RUNTIME_STATE_UNSPECIFIED]: 'text-text-tertiary',
   [RuntimeState.RUNTIME_STATE_UNDEPLOYED]: 'text-text-tertiary',
-  [RuntimeState.RUNTIME_STATE_RUNNING]: 'text-util-colors-green-green-600',
-  [RuntimeState.RUNTIME_STATE_STARTING]: 'text-util-colors-blue-light-blue-light-600',
-  [RuntimeState.RUNTIME_STATE_STOPPING]: 'text-util-colors-blue-light-blue-light-600',
-  [RuntimeState.RUNTIME_STATE_ERROR]: 'text-util-colors-red-red-600',
-  [RuntimeState.RUNTIME_STATE_UNKNOWN]: 'text-text-warning',
+  [RuntimeState.RUNTIME_STATE_RUNNING]: 'text-util-colors-green-green-700',
+  [RuntimeState.RUNTIME_STATE_STARTING]: 'text-util-colors-blue-light-blue-light-700',
+  [RuntimeState.RUNTIME_STATE_STOPPING]: 'text-util-colors-blue-light-blue-light-700',
+  [RuntimeState.RUNTIME_STATE_ERROR]: 'text-util-colors-red-red-700',
+  [RuntimeState.RUNTIME_STATE_UNKNOWN]: 'text-util-colors-orange-orange-700',
 }
 
 const RUNTIME_STATE_DOT: Partial<Record<RuntimeStateValue, StatusDotStatus>> = {

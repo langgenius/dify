@@ -12,7 +12,7 @@ from services.plugin.endpoint_service import EndpointService
 
 class TestEndpointServiceDelegation:
     @patch("services.plugin.endpoint_service.PluginEndpointClient")
-    def test_create_delegates_correctly(self, mock_client_cls):
+    def test_create_delegates_correctly(self, mock_client_cls: MagicMock) -> None:
         expected = MagicMock()
         mock_client_cls.return_value.create_endpoint.return_value = expected
 
@@ -24,7 +24,7 @@ class TestEndpointServiceDelegation:
         )
 
     @patch("services.plugin.endpoint_service.PluginEndpointClient")
-    def test_list_delegates_correctly(self, mock_client_cls):
+    def test_list_delegates_correctly(self, mock_client_cls: MagicMock) -> None:
         expected = MagicMock()
         mock_client_cls.return_value.list_endpoints.return_value = expected
 
@@ -33,7 +33,7 @@ class TestEndpointServiceDelegation:
         assert result is expected
 
     @patch("services.plugin.endpoint_service.PluginEndpointClient")
-    def test_enable_disable_delegates(self, mock_client_cls):
+    def test_enable_disable_delegates(self, mock_client_cls: MagicMock) -> None:
         EndpointService.enable_endpoint("t1", "u1", "ep-1")
         mock_client_cls.return_value.enable_endpoint.assert_called_once()
 

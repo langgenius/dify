@@ -1,13 +1,11 @@
 'use client'
 
 import type * as React from 'react'
-import type { Placement } from '../placement'
 import { Popover as BasePopover } from '@base-ui/react/popover'
 import { cn } from '../cn'
 import { iconButtonVariants } from '../icon-button'
-import { resolveClassName } from '../internals/resolve-class-name'
-import { hintPopupClassName } from '../overlay-shared'
-import { parsePlacement } from '../placement'
+import { hintPopupClassName, positionerClassName } from '../internal/overlay'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const iconClassNames = {
   question: 'i-ri-question-line',
@@ -24,6 +22,8 @@ const iconSizeClassNames = {
 const Infotip = BasePopover.Root
 const InfotipTitle = BasePopover.Title
 type InfotipActions = BasePopover.Root.Actions
+type InfotipChangeEventReason = BasePopover.Root.ChangeEventReason
+type InfotipChangeEventDetails = BasePopover.Root.ChangeEventDetails
 
 type InfotipProps<Payload = unknown> = BasePopover.Root.Props<Payload>
 type InfotipTitleProps = BasePopover.Title.Props
@@ -74,19 +74,18 @@ function InfotipTrigger<Payload = unknown>({
 }
 
 type InfotipContentProps = Omit<BasePopover.Popup.Props, 'children'> &
-  Pick<BasePopover.Positioner.Props, 'sideOffset' | 'alignOffset'> & {
+  Pick<BasePopover.Positioner.Props, 'side' | 'align' | 'sideOffset' | 'alignOffset'> & {
     children: React.ReactNode
-    placement?: Placement
   }
 
 function InfotipContent({
-  placement = 'top',
+  side = 'top',
+  align,
   sideOffset = 8,
-  alignOffset = 0,
+  alignOffset,
   className,
   ...props
 }: InfotipContentProps) {
-  const { side, align } = parsePlacement(placement)
   return (
     <BasePopover.Portal>
       <BasePopover.Positioner
@@ -94,7 +93,7 @@ function InfotipContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className="z-50 outline-hidden"
+        className={positionerClassName}
       >
         <BasePopover.Popup
           {...props}
@@ -110,6 +109,8 @@ function InfotipContent({
 export { Infotip, InfotipContent, InfotipTitle, InfotipTrigger }
 export type {
   InfotipActions,
+  InfotipChangeEventDetails,
+  InfotipChangeEventReason,
   InfotipContentProps,
   InfotipProps,
   InfotipTitleProps,

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from typing import Any, Never
 from uuid import UUID
@@ -8,6 +9,7 @@ from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, field_validator
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
+from configs import dify_config
 from controllers.common.fields import UsageCountResponse
 from controllers.common.rbac import DatasetId, RBACCheck, Workspace
 from controllers.common.schema import (
@@ -27,14 +29,18 @@ from fields.base import ResponseModel
 from fields.dataset_fields import (
     DatasetDetailResponse,
 )
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
-from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalDatasetCreatePayload
+from services.entities.external_knowledge_entities.external_knowledge_entities import (
+    ExternalDatasetCreatePayload as ExternalDatasetCreateInput,
+)
 from services.errors.dataset import DatasetNameDuplicateError as DatasetNameDuplicateFailure
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.external.application import ExternalHitTestingError, ExternalTemplateNotFoundError
 
+logger = logging.getLogger(__name__)
 _DATASET_EDIT_ROLES = frozenset(
     {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR, TenantAccountRole.DATASET_OPERATOR}
 )
@@ -49,8 +55,15 @@ def _raise_external_error(error: Exception) -> Never:
     if isinstance(error, DatasetNameDuplicateFailure):
         raise DatasetNameDuplicateError() from error
     if isinstance(error, ExternalHitTestingError):
-        raise InternalServerError(str(error)) from error
+        logger.exception("External hit testing failed")
+        raise InternalServerError() from error
     raise error
+
+
+class ExternalDatasetCreatePayload(ExternalDatasetCreateInput):
+    """Apply the deployment's description limit at the HTTP boundary."""
+
+    description: str | None = Field(None, max_length=dify_config.DATASET_DESCRIPTION_MAX_LENGTH)
 
 
 class ExternalKnowledgeApiPayload(BaseModel):
@@ -75,12 +88,19 @@ class ExternalKnowledgeApiBindingResponse(ResponseModel):
     name: str
 
 
+class ExternalKnowledgeApiSettingsResponse(ResponseModel):
+    endpoint: str | None = None
+    api_key: str | None = None
+
+
 class ExternalKnowledgeApiResponse(ResponseModel):
     id: str
     tenant_id: str
     name: str
     description: str
-    settings: dict[str, Any] | None = Field(validation_alias=AliasChoices("settings_dict", "settings"))
+    settings: ExternalKnowledgeApiSettingsResponse | None = Field(
+        validation_alias=AliasChoices("settings_dict", "settings")
+    )
     dataset_bindings: list[ExternalKnowledgeApiBindingResponse]
     created_by: str
     created_at: str
@@ -155,6 +175,7 @@ class ExternalApiTemplateListApi(Resource):
         )
         return dump_response(ExternalKnowledgeApiListResponse, result), 200
 
+    @error_responses(DatasetNameDuplicateError)
     @console_ns.doc("create_external_api_template")
     @console_ns.doc(description="Create external knowledge API template")
     @console_ns.expect(console_ns.models[ExternalKnowledgeApiPayload.__name__])
@@ -178,6 +199,7 @@ class ExternalApiTemplateListApi(Resource):
 
 @console_ns.route("/datasets/external-knowledge-api/<uuid:external_knowledge_api_id>")
 class ExternalApiTemplateApi(Resource):
+    @error_responses(DatasetNameDuplicateError)
     @console_ns.doc("get_external_api_template")
     @console_ns.doc(description="Get external knowledge API template details")
     @console_ns.doc(params={"external_knowledge_api_id": "External knowledge API ID"})
@@ -197,6 +219,7 @@ class ExternalApiTemplateApi(Resource):
             _raise_external_error(error)
         return dump_response(ExternalKnowledgeApiResponse, result), 200
 
+    @error_responses(DatasetNameDuplicateError)
     @console_ns.doc("update_external_api_template")
     @console_ns.doc(description="Update external knowledge API template")
     @console_ns.doc(params={"external_knowledge_api_id": "External knowledge API ID"})
@@ -223,6 +246,7 @@ class ExternalApiTemplateApi(Resource):
             _raise_external_error(error)
         return dump_response(ExternalKnowledgeApiResponse, result), 200
 
+    @error_responses(DatasetNameDuplicateError)
     @console_ns.response(204, "External knowledge API deleted successfully")
     @console_account_admission(allowed_roles=_DATASET_EDIT_ROLES)
     def delete(self, request_context: RequestContext, external_knowledge_api_id: UUID):
@@ -251,6 +275,7 @@ class ExternalApiUseCheckApi(Resource):
 
 @console_ns.route("/datasets/external")
 class ExternalDatasetCreateApi(Resource):
+    @error_responses(DatasetNameDuplicateError)
     @console_ns.doc("create_external_dataset")
     @console_ns.doc(description="Create external knowledge dataset")
     @console_ns.expect(console_ns.models[ExternalDatasetCreatePayload.__name__])
@@ -274,6 +299,7 @@ class ExternalDatasetCreateApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/external-hit-testing")
 class ExternalKnowledgeHitTestingApi(Resource):
+    @error_responses(DatasetNameDuplicateError)
     @console_ns.doc("test_external_knowledge_retrieval")
     @console_ns.doc(description="Test external knowledge retrieval for dataset")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})

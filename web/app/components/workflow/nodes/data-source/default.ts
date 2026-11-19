@@ -1,8 +1,8 @@
+import type { SchemaDefinitionItemResponse } from '@dify/contracts/api/console/spec/types.gen'
 import type { TFunction } from 'i18next'
 import type { NodeDefault, Var } from '../../types'
 import type { getDataSourceCheckParams } from '../../utils/data-source'
 import type { DataSourceNodeType } from './types'
-import type { SchemaTypeDefinition } from '@/service/use-common'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
@@ -21,7 +21,7 @@ const metaData = genNodeMetaData({
 })
 const getOutputProperties = (
   schema: unknown,
-  schemaTypeDefinitions?: SchemaTypeDefinition[],
+  schemaTypeDefinitions?: SchemaDefinitionItemResponse[],
 ): Var[] => {
   if (!schema || typeof schema !== 'object' || !('properties' in schema)) return []
   const properties = schema.properties

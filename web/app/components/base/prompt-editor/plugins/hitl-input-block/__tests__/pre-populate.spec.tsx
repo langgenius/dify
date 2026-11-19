@@ -1,39 +1,90 @@
 import type { i18n as I18nType } from 'i18next'
 import type { ReactNode } from 'react'
-import type { Var } from '@/app/components/workflow/types'
-import { render, screen } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import i18next from 'i18next'
 import { useState } from 'react'
 import { I18nextProvider, initReactI18next } from 'react-i18next'
+import {
+  createEdge,
+  createNode,
+  createStartNode,
+} from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import PrePopulate from '../pre-populate'
 
 vi.unmock('react-i18next')
 
-const { mockVarReferencePicker } = vi.hoisted(() => ({
-  mockVarReferencePicker: vi.fn(),
-}))
-
-type VarReferencePickerProps = {
-  onChange: (value: string[]) => void
-  filterVar: (v: Var) => boolean
-}
-
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
-  default: (props: VarReferencePickerProps) => {
-    mockVarReferencePicker(props)
-    return (
-      <button type="button" onClick={() => props.onChange(['node-1', 'var-1'])}>
-        pick-variable
-      </button>
-    )
-  },
-}))
-
 let i18n: I18nType
 
-const renderWithI18n = (ui: ReactNode) => {
-  return render(<I18nextProvider i18n={i18n}>{ui}</I18nextProvider>)
+const render = (ui: ReactNode) => {
+  const { queryClient } = createConsoleQueryWrapper()
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+
+  const start = createStartNode({
+    id: 'start',
+    data: {
+      variables: [
+        { variable: 'title', label: 'Title', type: InputVarType.textInput, required: false },
+        { variable: 'count', label: 'Count', type: InputVarType.number, required: false },
+      ],
+    },
+  })
+  const code = createNode({
+    id: 'code',
+    data: {
+      title: 'Code output',
+      type: BlockEnum.Code,
+      outputs: {
+        payload: {
+          type: VarType.object,
+          children: [{ variable: 'label', type: VarType.string }],
+        },
+      },
+    },
+  })
+  const human = createNode({
+    id: 'human',
+    data: { title: 'Human input', type: BlockEnum.HumanInput },
+  })
+
+  return renderWorkflowFlowComponent(<I18nextProvider i18n={i18n}>{ui}</I18nextProvider>, {
+    queryClient,
+    nodes: [start, code, human],
+    edges: [
+      createEdge({
+        source: 'start',
+        target: 'code',
+        data: { sourceType: BlockEnum.Start, targetType: BlockEnum.Code },
+      }),
+      createEdge({
+        source: 'code',
+        target: 'human',
+        data: { sourceType: BlockEnum.Code, targetType: BlockEnum.HumanInput },
+      }),
+    ],
+    initialStoreState: {
+      environmentVariables: [
+        {
+          id: 'env-secret',
+          name: 'API_KEY',
+          value: '[__HIDDEN__]',
+          value_type: 'secret',
+          description: 'Credential',
+        },
+      ],
+    },
+  })
 }
 
 describe('PrePopulate', () => {
@@ -64,112 +115,104 @@ describe('PrePopulate', () => {
     })
   })
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('keeps Tab navigation native and opens static content on activation', async () => {
     const user = userEvent.setup()
-    renderWithI18n(<PrePopulate nodeId="node-1" isVariable={false} value="" />)
+    render(
+      <>
+        <button type="button">Before prepopulation</button>
+        <PrePopulate nodeId="human" isVariable={false} value="" />
+      </>,
+    )
 
-    expect(screen.getByText('Static Content'))!.toBeInTheDocument()
-
+    expect(screen.getByText('Static Content')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Before prepopulation' }))
     await user.keyboard('{Tab}')
 
     expect(screen.getByRole('button', { name: 'Static Content' })).toHaveFocus()
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     await user.keyboard('{Enter}')
-    expect(screen.getByRole('textbox')).toHaveFocus()
+    expect(screen.getByRole('textbox', { name: 'Static Content' })).toHaveFocus()
   })
 
-  it('should update constant value and toggle to variable mode when type switch is clicked', async () => {
+  it('updates the constant value and switches the controlled caller to variable mode', async () => {
     const user = userEvent.setup()
     const onValueChange = vi.fn()
     const onIsVariableChange = vi.fn()
 
     const Wrapper = () => {
       const [value, setValue] = useState('initial value')
+      const [isVariable, setIsVariable] = useState(false)
       return (
         <PrePopulate
-          nodeId="node-1"
-          isVariable={false}
+          nodeId="human"
+          isVariable={isVariable}
           value={value}
           onValueChange={(next) => {
             onValueChange(next)
             setValue(next)
           }}
-          onIsVariableChange={onIsVariableChange}
+          onIsVariableChange={(next) => {
+            onIsVariableChange(next)
+            setIsVariable(next)
+          }}
+          onValueSelectorChange={() => {}}
         />
       )
     }
 
-    renderWithI18n(<Wrapper />)
+    render(<Wrapper />)
 
-    await user.clear(screen.getByRole('textbox'))
-    await user.type(screen.getByRole('textbox'), 'next')
-    await user.click(screen.getByText('Use Variable Instead'))
+    await user.clear(screen.getByRole('textbox', { name: 'Static Content' }))
+    await user.type(screen.getByRole('textbox', { name: 'Static Content' }), 'next')
+    await user.click(screen.getByRole('button', { name: 'Use Variable Instead' }))
 
     expect(onValueChange).toHaveBeenLastCalledWith('next')
     expect(onIsVariableChange).toHaveBeenCalledWith(true)
+    expect(screen.queryByRole('textbox', { name: 'Static Content' })).not.toBeInTheDocument()
   })
 
-  it('should render variable picker mode and propagate selected value selector', async () => {
+  it('selects a supported graph variable and switches the controlled caller to constant mode', async () => {
     const user = userEvent.setup()
     const onValueSelectorChange = vi.fn()
     const onIsVariableChange = vi.fn()
 
-    renderWithI18n(
-      <PrePopulate
-        nodeId="node-2"
-        isVariable
-        valueSelector={['node-2', 'existing']}
-        onValueSelectorChange={onValueSelectorChange}
-        onIsVariableChange={onIsVariableChange}
-      />,
-    )
+    const Wrapper = () => {
+      const [isVariable, setIsVariable] = useState(true)
+      const [valueSelector, setValueSelector] = useState<string[]>(['start', 'title'])
+      return (
+        <PrePopulate
+          nodeId="human"
+          isVariable={isVariable}
+          valueSelector={valueSelector}
+          onValueSelectorChange={(next) => {
+            onValueSelectorChange(next)
+            if (Array.isArray(next)) setValueSelector(next)
+          }}
+          onIsVariableChange={(next) => {
+            onIsVariableChange(next)
+            setIsVariable(next)
+          }}
+          value=""
+          onValueChange={() => {}}
+        />
+      )
+    }
 
-    await user.click(screen.getByText('pick-variable'))
-    await user.click(screen.getByText('Use Constant Instead'))
+    render(<Wrapper />)
 
-    expect(onValueSelectorChange).toHaveBeenCalledWith(['node-1', 'var-1'])
+    expect(screen.getByText('title')).toBeVisible()
+    await user.click(screen.getByText('title'))
+    const picker = await screen.findByRole('dialog')
+    expect(within(picker).queryByText('payload')).not.toBeInTheDocument()
+    expect(within(picker).getByText('API_KEY')).toBeVisible()
+    await user.click(within(picker).getByText('count'))
+
+    expect(onValueSelectorChange).toHaveBeenCalledWith(['start', 'count'])
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.getByText('count')).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'Use Constant Instead' }))
     expect(onIsVariableChange).toHaveBeenCalledWith(false)
-  })
-
-  it('should pass variable type filter to picker that allows string number and secret', () => {
-    renderWithI18n(
-      <PrePopulate nodeId="node-3" isVariable valueSelector={['node-3', 'existing']} />,
-    )
-
-    const pickerProps = mockVarReferencePicker.mock.calls[0]![0] as VarReferencePickerProps
-
-    const allowString = pickerProps.filterVar({ type: 'string' } as Var)
-    const allowNumber = pickerProps.filterVar({ type: 'number' } as Var)
-    const allowSecret = pickerProps.filterVar({ type: 'secret' } as Var)
-    const blockObject = pickerProps.filterVar({ type: 'object' } as Var)
-
-    expect(allowString).toBe(true)
-    expect(allowNumber).toBe(true)
-    expect(allowSecret).toBe(true)
-    expect(blockObject).toBe(false)
-  })
-
-  it('should trigger static-content placeholder action and switch to non-placeholder mode', async () => {
-    const user = userEvent.setup()
-    const onIsVariableChange = vi.fn()
-
-    renderWithI18n(
-      <PrePopulate
-        nodeId="node-4"
-        isVariable={false}
-        value=""
-        onIsVariableChange={onIsVariableChange}
-      />,
-    )
-
-    await user.click(screen.getByText('Static Content'))
-
-    expect(onIsVariableChange).toHaveBeenCalledTimes(1)
-    expect(onIsVariableChange).toHaveBeenCalledWith(false)
-    expect(screen.queryByText('Static Content')).not.toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Static Content' })).toBeInTheDocument()
   })
 })

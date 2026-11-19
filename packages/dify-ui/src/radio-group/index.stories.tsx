@@ -146,7 +146,7 @@ function OptionCardsDemo() {
               value={option.value}
               nativeButton
               render={<button type="button" />}
-              className="w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-4 text-left outline-hidden transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg"
+              className="w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-4 text-start outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -249,6 +249,31 @@ export const StateMatrix: Story = {
           </FieldItem>
         </Fieldset>
       </Field>
+      <Field name="readOnlyRadioStates">
+        <Fieldset
+          render={
+            <RadioGroup
+              defaultValue="read-only-checked"
+              readOnly
+              className="flex-col items-start gap-3"
+            />
+          }
+        >
+          <FieldsetLegend>Read-only radio states</FieldsetLegend>
+          <FieldItem>
+            <FieldLabel className="flex items-center gap-2 system-sm-medium text-text-secondary">
+              <Radio value="read-only-unchecked" />
+              Read-only unchecked
+            </FieldLabel>
+          </FieldItem>
+          <FieldItem>
+            <FieldLabel className="flex items-center gap-2 system-sm-medium text-text-secondary">
+              <Radio value="read-only-checked" />
+              Read-only checked
+            </FieldLabel>
+          </FieldItem>
+        </Fieldset>
+      </Field>
       <Field name="disabledRadioStates">
         <Fieldset
           render={
@@ -284,7 +309,7 @@ export const StateMatrix: Story = {
     docs: {
       description: {
         story:
-          'The visual matrix for Dify radio states. State styling comes from Base UI data attributes such as data-checked and data-disabled.',
+          'The visual matrix for Dify radio states. State styling comes from Base UI data attributes such as data-checked, data-readonly and data-disabled.',
       },
     },
   },

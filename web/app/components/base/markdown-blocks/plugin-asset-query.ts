@@ -5,7 +5,7 @@ export function pluginAssetQueryOptions(
   fileName: string | undefined,
   pluginUniqueIdentifier: string | undefined,
 ) {
-  const isAssetFile = fileName?.startsWith('./_assets') || fileName?.startsWith('_assets')
+  const isAssetFile = /^(?:\.\/|\/)?_assets\//.test(fileName ?? '')
 
   return consoleQuery.workspaces.current.plugin.asset.get.queryOptions({
     input:
@@ -13,7 +13,7 @@ export function pluginAssetQueryOptions(
         ? {
             query: {
               plugin_unique_identifier: pluginUniqueIdentifier,
-              file_name: fileName.replace(/^\.\/_assets\//, '').replace(/^_assets\//, ''),
+              file_name: fileName.replace(/^(?:\.\/|\/)?_assets\//, ''),
             },
           }
         : skipToken,

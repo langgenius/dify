@@ -34,10 +34,10 @@ def test_snippet_list_fields_include_author_name(sqlite_session: Session) -> Non
         is_published=False,
         icon_info=None,
         created_by="account-1",
-        created_at=datetime.fromtimestamp(1704067200, tz=UTC),
         updated_by="account-1",
-        updated_at=datetime.fromtimestamp(1704067201, tz=UTC),
     )
+    snippet.created_at = datetime.fromtimestamp(1704067200, tz=UTC)
+    snippet.updated_at = datetime.fromtimestamp(1704067201, tz=UTC)
     sqlite_session.add_all([account, snippet])
     sqlite_session.flush()
 
@@ -68,7 +68,7 @@ def populated_snippet(sqlite_session: Session) -> CustomizedSnippet:
     sqlite_session.add_all((workflow, author, editor, tag, binding))
     sqlite_session.commit()
 
-    return CustomizedSnippet(
+    snippet = CustomizedSnippet(
         id=SNIPPET_ID,
         tenant_id=TENANT_ID,
         name="Snippet",
@@ -82,9 +82,10 @@ def populated_snippet(sqlite_session: Session) -> CustomizedSnippet:
         input_fields=json.dumps([{"variable": "query"}]),
         created_by=ACCOUNT_1_ID,
         updated_by=ACCOUNT_2_ID,
-        created_at=datetime.fromtimestamp(1704067200, tz=UTC),
-        updated_at=datetime.fromtimestamp(1704067201, tz=UTC),
     )
+    snippet.created_at = datetime.fromtimestamp(1704067200, tz=UTC)
+    snippet.updated_at = datetime.fromtimestamp(1704067201, tz=UTC)
+    return snippet
 
 
 def test_snippet_response_resolves_fields_from_the_given_session(

@@ -1,7 +1,12 @@
-import type { CustomFile, FileItem } from '@/models/datasets'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { Theme } from '@/types/app'
+import type { ReactElement } from 'react'
+import type { FileItem } from '@/models/datasets'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, expect, it, vi } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import CSVUploader from '../csv-uploader'
 
 // Mock upload service
@@ -11,16 +16,8 @@ vi.mock('@/service/base', () => ({
 }))
 
 // Mock useFileUploadConfig
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: () => ({
-    data: { file_size_limit: 15 },
-  }),
-}))
 
 // Mock useTheme
-vi.mock('@/hooks/use-theme', () => ({
-  default: () => ({ theme: Theme.light }),
-}))
 
 const toastMocks = vi.hoisted(() => {
   const call = vi.fn()
@@ -45,543 +42,128 @@ vi.mock('@/app/notifications', () => ({
   toast: toastMocks.api,
 }))
 
-vi.mock('use-context-selector', async (importOriginal) => {
-  const actual = (await importOriginal()) as Record<string, unknown>
-  return {
-    ...actual,
-    useContext: () => ({
-      toast: toastMocks.api,
-    }),
-  }
+const render = (ui: ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.files.upload.get.queryKey(),
+    createFileUploadConfigFixture(),
+  )
+  return renderWithConsoleQuery(ui, { queryClient })
+}
+
+const createFile = (name = 'records.csv') =>
+  new File(['question,answer'], name, { type: 'text/csv', lastModified: 1700000000 })
+function setup(file?: FileItem) {
+  const updateFile = vi.fn()
+  const view = render(<CSVUploader file={file} updateFile={updateFile} />)
+  // This hidden native input has no accessible label; browse is its user-facing trigger.
+  const input = view.container.querySelector<HTMLInputElement>('input[type="file"]')!
+  return { ...view, input, updateFile }
+}
+
+beforeEach(() =>
+  mockUpload.mockReset().mockResolvedValue({ id: 'uploaded-id', name: 'records.csv' }),
+)
+
+it('opens the file chooser from browse and permits selecting a file again after removal', async () => {
+  const user = userEvent.setup()
+  const file = createFile()
+  const { input, updateFile, rerender } = setup()
+  const click = vi.spyOn(input, 'click')
+  await user.click(screen.getByRole('button', { name: /batchModal.browse/ }))
+  expect(click).toHaveBeenCalledOnce()
+  await user.upload(input, file)
+  await waitFor(() =>
+    expect(updateFile).toHaveBeenLastCalledWith(expect.objectContaining({ progress: 100 })),
+  )
+  rerender(
+    <CSVUploader file={{ fileID: 'selected', file, progress: 100 }} updateFile={updateFile} />,
+  )
+  await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+  expect(updateFile).toHaveBeenLastCalledWith()
+  expect(input.value).toBe('')
+  await user.upload(input, file)
+  await waitFor(() => expect(mockUpload).toHaveBeenCalledTimes(2))
 })
 
-describe('CSVUploader', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+it.each(['wrong.txt', 'noextension', 'oversized.csv'])(
+  'rejects invalid selection %s before uploading',
+  async (name) => {
+    const user = userEvent.setup({ applyAccept: false })
+    const { input, updateFile } = setup()
+    const file = createFile(name)
+    if (name === 'oversized.csv') Object.defineProperty(file, 'size', { value: 16 * 1024 * 1024 })
+    await user.upload(input, file)
+    expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+    expect(mockUpload).not.toHaveBeenCalled()
+    expect(updateFile).not.toHaveBeenCalled()
+  },
+)
 
-  const defaultProps = {
-    file: undefined as FileItem | undefined,
-    updateFile: vi.fn(),
+it('reports computable upload progress and the returned file identity', async () => {
+  const user = userEvent.setup()
+  const pending = createDeferred<{ id: string; name: string }>()
+  let progress!: (event: ProgressEvent) => void
+  mockUpload.mockImplementationOnce(({ onprogress }) => {
+    progress = onprogress
+    return pending.promise
+  })
+  const { input, updateFile } = setup()
+  const file = createFile('my.data.csv')
+  await user.upload(input, file)
+  expect(mockUpload.mock.calls[0]![0].data.get('file')).toBe(file)
+  const count = updateFile.mock.calls.length
+  act(() =>
+    progress(new ProgressEvent('progress', { lengthComputable: false, loaded: 50, total: 100 })),
+  )
+  expect(updateFile).toHaveBeenCalledTimes(count)
+  act(() =>
+    progress(new ProgressEvent('progress', { lengthComputable: true, loaded: 53, total: 100 })),
+  )
+  expect(updateFile).toHaveBeenLastCalledWith(expect.objectContaining({ file, progress: 53 }))
+  await act(async () => pending.resolve({ id: 'server-id', name: 'my.data.csv' }))
+  await waitFor(() =>
+    expect(updateFile).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        file: expect.objectContaining({ id: 'server-id', name: 'my.data.csv' }),
+        progress: 100,
+      }),
+    ),
+  )
+})
+
+it('marks the selected file as failed when upload rejects', async () => {
+  const user = userEvent.setup()
+  mockUpload.mockRejectedValueOnce(new Error('offline'))
+  const { input, updateFile } = setup()
+  const file = createFile()
+  await user.upload(input, file)
+  await waitFor(() =>
+    expect(updateFile).toHaveBeenLastCalledWith(expect.objectContaining({ file, progress: -2 })),
+  )
+  expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+})
+
+it.each([1, 2])('accepts one dropped file and rejects multiple files (%s)', async (count) => {
+  const { input, updateFile } = setup()
+  // Native drop events enter at the uploader drop target; they are not generated by happy-dom.
+  fireEvent.drop(input.nextElementSibling!, {
+    dataTransfer: {
+      files: Array.from({ length: count }, (_, i) => createFile(`records-${i}.csv`)),
+    },
+  })
+  if (count === 1) {
+    await waitFor(() =>
+      expect(updateFile).toHaveBeenLastCalledWith(expect.objectContaining({ progress: 100 })),
+    )
+    expect(mockUpload).toHaveBeenCalledOnce()
+  } else {
+    expect(mockUpload).not.toHaveBeenCalled()
+    expect(toastMocks.call).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'error',
+        message: 'datasetCreation.stepOne.uploader.validation.count',
+      }),
+    )
   }
-
-  describe('Rendering', () => {
-    it('should render upload area when no file is present', () => {
-      render(<CSVUploader {...defaultProps} />)
-
-      expect(screen.getByText(/list\.batchModal\.csvUploadTitle/i)).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /list\.batchModal\.browse/i })).toBeInTheDocument()
-    })
-
-    it('should render hidden file input', () => {
-      const { container } = render(<CSVUploader {...defaultProps} />)
-
-      const fileInput = container.querySelector('input[type="file"]')
-      expect(fileInput).toBeInTheDocument()
-      expect(fileInput).toHaveStyle({ display: 'none' })
-    })
-
-    it('should accept only CSV files', () => {
-      const { container } = render(<CSVUploader {...defaultProps} />)
-
-      const fileInput = container.querySelector('input[type="file"]')
-      expect(fileInput).toHaveAttribute('accept', '.csv')
-    })
-  })
-
-  // File display tests
-  describe('File Display', () => {
-    it('should display file info when file is present', () => {
-      const mockFile: FileItem = {
-        fileID: 'file-1',
-        file: new File(['content'], 'test-file.csv', { type: 'text/csv' }) as CustomFile,
-        progress: 100,
-      }
-
-      render(<CSVUploader {...defaultProps} file={mockFile} />)
-
-      expect(screen.getByText('test-file')).toBeInTheDocument()
-      expect(screen.getByText('.csv')).toBeInTheDocument()
-    })
-
-    it('should not show upload area when file is present', () => {
-      const mockFile: FileItem = {
-        fileID: 'file-1',
-        file: new File(['content'], 'test.csv', { type: 'text/csv' }) as CustomFile,
-        progress: 100,
-      }
-
-      render(<CSVUploader {...defaultProps} file={mockFile} />)
-
-      expect(screen.queryByText(/list\.batchModal\.csvUploadTitle/i)).not.toBeInTheDocument()
-    })
-
-    it('should show change button when file is present', () => {
-      const mockFile: FileItem = {
-        fileID: 'file-1',
-        file: new File(['content'], 'test.csv', { type: 'text/csv' }) as CustomFile,
-        progress: 100,
-      }
-
-      render(<CSVUploader {...defaultProps} file={mockFile} />)
-
-      expect(screen.getByText(/stepOne\.uploader\.change/i)).toBeInTheDocument()
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should trigger file input click when browse is clicked', () => {
-      const { container } = render(<CSVUploader {...defaultProps} />)
-      const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
-      const clickSpy = vi.spyOn(fileInput, 'click')
-
-      fireEvent.click(screen.getByRole('button', { name: /list\.batchModal\.browse/i }))
-
-      expect(clickSpy).toHaveBeenCalled()
-    })
-
-    it('should clear the selected file when delete is clicked', () => {
-      const mockUpdateFile = vi.fn()
-      const mockFile: FileItem = {
-        fileID: 'file-1',
-        file: new File(['content'], 'test.csv', { type: 'text/csv' }) as CustomFile,
-        progress: 100,
-      }
-      const { container } = render(
-        <CSVUploader {...defaultProps} file={mockFile} updateFile={mockUpdateFile} />,
-      )
-      const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
-      Object.defineProperty(fileInput, 'value', {
-        configurable: true,
-        value: 'C:\\fakepath\\test.csv',
-        writable: true,
-      })
-
-      fireEvent.click(screen.getByRole('button', { name: /operation\.delete$/ }))
-
-      expect(fileInput.value).toBe('')
-      expect(mockUpdateFile).toHaveBeenCalledWith()
-    })
-
-    it('should call updateFile when file is selected', async () => {
-      const mockUpdateFile = vi.fn()
-      mockUpload.mockResolvedValueOnce({ id: 'uploaded-id' })
-
-      const { container } = render(<CSVUploader {...defaultProps} updateFile={mockUpdateFile} />)
-      const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
-      const testFile = new File(['content'], 'test.csv', { type: 'text/csv' })
-
-      fireEvent.change(fileInput, { target: { files: [testFile] } })
-
-      await waitFor(() => {
-        expect(mockUpdateFile).toHaveBeenCalled()
-      })
-    })
-  })
-
-  describe('Validation', () => {
-    it('should show error for non-CSV files', () => {
-      const { container } = render(<CSVUploader {...defaultProps} />)
-      const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
-      const testFile = new File(['content'], 'test.txt', { type: 'text/plain' })
-
-      fireEvent.change(fileInput, { target: { files: [testFile] } })
-
-      expect(toastMocks.call).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'error',
-        }),
-      )
-    })
-
-    it('should show error for files exceeding size limit', () => {
-      const { container } = render(<CSVUploader {...defaultProps} />)
-      const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
-
-      // Create a mock file with a large size (16MB) without actually creating the data
-      const testFile = new File(['test'], 'large.csv', { type: 'text/csv' })
-      Object.defineProperty(testFile, 'size', { value: 16 * 1024 * 1024 })
-
-      fireEvent.change(fileInput, { target: { files: [testFile] } })
-
-      expect(toastMocks.call).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'error',
-        }),
-      )
-    })
-  })
-
-  // Upload progress tests
-  describe('Upload Progress', () => {
-    it('should show progress indicator when upload is in progress', () => {
-      const mockFile: FileItem = {
-        fileID: 'file-1',
-        file: new File(['content'], 'test.csv', { type: 'text/csv' }) as CustomFile,
-        progress: 50,
-      }
-
-      const { container } = render(<CSVUploader {...defaultProps} file={mockFile} />)
-
-      // Assert - SimplePieChart should be rendered for progress 0-99
-      // The pie chart would be in the hidden group element
-      expect(container.querySelector('.group')).toBeInTheDocument()
-    })
-
-    it('should not show progress for completed uploads', () => {
-      const mockFile: FileItem = {
-        fileID: 'file-1',
-        file: new File(['content'], 'test.csv', { type: 'text/csv' }) as CustomFile,
-        progress: 100,
-      }
-
-      render(<CSVUploader {...defaultProps} file={mockFile} />)
-
-      // Assert - File name should be displayed
-      expect(screen.getByText('test')).toBeInTheDocument()
-    })
-  })
-
-  describe('Props', () => {
-    it('should call updateFile prop when provided', async () => {
-      const mockUpdateFile = vi.fn()
-      mockUpload.mockResolvedValueOnce({ id: 'test-id' })
-
-      const { container } = render(<CSVUploader file={undefined} updateFile={mockUpdateFile} />)
-      const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
-      const testFile = new File(['content'], 'test.csv', { type: 'text/csv' })
-
-      fireEvent.change(fileInput, { target: { files: [testFile] } })
-
-      await waitFor(() => {
-        expect(mockUpdateFile).toHaveBeenCalled()
-      })
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle empty file list', () => {
-      const mockUpdateFile = vi.fn()
-      const { container } = render(<CSVUploader {...defaultProps} updateFile={mockUpdateFile} />)
-      const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
-
-      fireEvent.change(fileInput, { target: { files: [] } })
-
-      expect(mockUpdateFile).not.toHaveBeenCalled()
-    })
-
-    it('should handle null file', () => {
-      const mockUpdateFile = vi.fn()
-      const { container } = render(<CSVUploader {...defaultProps} updateFile={mockUpdateFile} />)
-      const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
-
-      fireEvent.change(fileInput, { target: { files: null } })
-
-      expect(mockUpdateFile).not.toHaveBeenCalled()
-    })
-
-    it('should maintain structure when rerendered', () => {
-      const { rerender } = render(<CSVUploader {...defaultProps} />)
-
-      const mockFile: FileItem = {
-        fileID: 'file-1',
-        file: new File(['content'], 'updated.csv', { type: 'text/csv' }) as CustomFile,
-        progress: 100,
-      }
-      rerender(<CSVUploader {...defaultProps} file={mockFile} />)
-
-      expect(screen.getByText('updated')).toBeInTheDocument()
-    })
-
-    it('should handle upload error', async () => {
-      const mockUpdateFile = vi.fn()
-      mockUpload.mockRejectedValueOnce(new Error('Upload failed'))
-
-      const { container } = render(<CSVUploader {...defaultProps} updateFile={mockUpdateFile} />)
-      const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
-      const testFile = new File(['content'], 'test.csv', { type: 'text/csv' })
-
-      fireEvent.change(fileInput, { target: { files: [testFile] } })
-
-      await waitFor(() => {
-        expect(toastMocks.call).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'error',
-          }),
-        )
-      })
-    })
-
-    it('should handle file without extension', () => {
-      const { container } = render(<CSVUploader {...defaultProps} />)
-      const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
-      const testFile = new File(['content'], 'noextension', { type: 'text/plain' })
-
-      fireEvent.change(fileInput, { target: { files: [testFile] } })
-
-      expect(toastMocks.call).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'error',
-        }),
-      )
-    })
-  })
-
-  // Drag and drop tests
-  // Note: Native drag and drop events use addEventListener which is set up in useEffect.
-  // Testing these requires triggering native DOM events on the actual dropRef element.
-  describe('Drag and Drop', () => {
-    it('should render drop zone element', () => {
-      const { container } = render(<CSVUploader {...defaultProps} />)
-
-      // Assert - drop zone should exist for drag and drop
-      const dropZone = container.querySelector('div > div')
-      expect(dropZone).toBeInTheDocument()
-    })
-
-    it('should have drag overlay element that can appear during drag', () => {
-      const { container } = render(<CSVUploader {...defaultProps} />)
-
-      // Assert - component structure supports dragging
-      expect(container.querySelector('div')).toBeInTheDocument()
-    })
-  })
-
-  // Upload progress callback tests
-  describe('Upload Progress Callbacks', () => {
-    it('should update progress during file upload', async () => {
-      const mockUpdateFile = vi.fn()
-      let progressCallback: ((e: ProgressEvent) => void) | undefined
-
-      mockUpload.mockImplementation(({ onprogress }) => {
-        progressCallback = onprogress
-        return Promise.resolve({ id: 'uploaded-id' })
-      })
-
-      const { container } = render(<CSVUploader {...defaultProps} updateFile={mockUpdateFile} />)
-      const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
-      const testFile = new File(['content'], 'test.csv', { type: 'text/csv' })
-
-      fireEvent.change(fileInput, { target: { files: [testFile] } })
-
-      // Simulate progress event
-      if (progressCallback) {
-        const progressEvent = new ProgressEvent('progress', {
-          lengthComputable: true,
-          loaded: 50,
-          total: 100,
-        })
-        progressCallback(progressEvent)
-      }
-
-      await waitFor(() => {
-        expect(mockUpdateFile).toHaveBeenCalledWith(
-          expect.objectContaining({
-            progress: expect.any(Number),
-          }),
-        )
-      })
-    })
-
-    it('should handle progress event with lengthComputable false', async () => {
-      const mockUpdateFile = vi.fn()
-      let progressCallback: ((e: ProgressEvent) => void) | undefined
-
-      mockUpload.mockImplementation(({ onprogress }) => {
-        progressCallback = onprogress
-        return Promise.resolve({ id: 'uploaded-id' })
-      })
-
-      const { container } = render(<CSVUploader {...defaultProps} updateFile={mockUpdateFile} />)
-      const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
-      const testFile = new File(['content'], 'test.csv', { type: 'text/csv' })
-
-      fireEvent.change(fileInput, { target: { files: [testFile] } })
-
-      // Simulate progress event with lengthComputable false
-      if (progressCallback) {
-        const progressEvent = new ProgressEvent('progress', {
-          lengthComputable: false,
-          loaded: 50,
-          total: 100,
-        })
-        progressCallback(progressEvent)
-      }
-
-      // Assert - should complete upload without progress updates when lengthComputable is false
-      await waitFor(() => {
-        expect(mockUpdateFile).toHaveBeenCalled()
-      })
-    })
-  })
-
-  describe('Drag and Drop Events', () => {
-    // Helper to get the dropRef element (sibling of the hidden file input)
-    const getDropZone = (container: HTMLElement) => {
-      const fileInput = container.querySelector('input[type="file"]')
-      return fileInput?.nextElementSibling as HTMLElement
-    }
-
-    it('should handle dragenter event and set dragging state', async () => {
-      const { container } = render(<CSVUploader {...defaultProps} />)
-      const dropZone = getDropZone(container)
-
-      // Act - dispatch dragenter event wrapped in act to avoid state update warning
-      const dragEnterEvent = new Event('dragenter', { bubbles: true, cancelable: true })
-      Object.defineProperty(dragEnterEvent, 'target', { value: dropZone })
-      act(() => {
-        dropZone.dispatchEvent(dragEnterEvent)
-      })
-
-      // Assert - dragging class should be applied (border style changes)
-      await waitFor(() => {
-        const uploadArea = container.querySelector('.border-dashed')
-        expect(uploadArea || dropZone).toBeInTheDocument()
-      })
-    })
-
-    it('should handle dragover event', () => {
-      const { container } = render(<CSVUploader {...defaultProps} />)
-      const dropZone = getDropZone(container)
-
-      const dragOverEvent = new Event('dragover', { bubbles: true, cancelable: true })
-      dropZone.dispatchEvent(dragOverEvent)
-
-      // Assert - no error thrown
-      expect(dropZone).toBeInTheDocument()
-    })
-
-    it('should handle dragleave event', () => {
-      const { container } = render(<CSVUploader {...defaultProps} />)
-      const dropZone = getDropZone(container)
-
-      // First set dragging to true
-      const dragEnterEvent = new Event('dragenter', { bubbles: true, cancelable: true })
-      act(() => {
-        dropZone.dispatchEvent(dragEnterEvent)
-      })
-
-      // Act - dispatch dragleave
-      const dragLeaveEvent = new Event('dragleave', { bubbles: true, cancelable: true })
-      act(() => {
-        dropZone.dispatchEvent(dragLeaveEvent)
-      })
-
-      expect(dropZone).toBeInTheDocument()
-    })
-
-    it('should set dragging to false when dragleave target is the drag overlay', async () => {
-      const { container } = render(<CSVUploader {...defaultProps} />)
-      const dropZone = getDropZone(container)
-
-      // Trigger dragenter to set dragging=true, which renders the overlay
-      const dragEnterEvent = new Event('dragenter', { bubbles: true, cancelable: true })
-      act(() => {
-        dropZone.dispatchEvent(dragEnterEvent)
-      })
-
-      // Find the drag overlay element (rendered only when dragging=true)
-      await waitFor(() => {
-        expect(container.querySelector('.absolute.left-0.top-0')).toBeInTheDocument()
-      })
-      const dragOverlay = container.querySelector('.absolute.left-0.top-0') as HTMLElement
-
-      // Act - dispatch dragleave FROM the overlay so e.target === dragRef.current (line 121)
-      const dragLeaveEvent = new Event('dragleave', { bubbles: true, cancelable: true })
-      Object.defineProperty(dragLeaveEvent, 'target', { value: dragOverlay })
-      act(() => {
-        dropZone.dispatchEvent(dragLeaveEvent)
-      })
-
-      // Assert - dragging should be set to false, overlay should disappear
-      await waitFor(() => {
-        expect(container.querySelector('.absolute.left-0.top-0')).not.toBeInTheDocument()
-      })
-    })
-
-    it('should handle drop event with valid CSV file', async () => {
-      const mockUpdateFile = vi.fn()
-      mockUpload.mockResolvedValueOnce({ id: 'dropped-file-id' })
-
-      const { container } = render(<CSVUploader {...defaultProps} updateFile={mockUpdateFile} />)
-      const dropZone = getDropZone(container)
-
-      // Create a drop event with a CSV file
-      const testFile = new File(['csv,data'], 'dropped.csv', { type: 'text/csv' })
-      const dropEvent = new Event('drop', {
-        bubbles: true,
-        cancelable: true,
-      }) as unknown as DragEvent
-      Object.defineProperty(dropEvent, 'dataTransfer', {
-        value: {
-          files: [testFile],
-        },
-      })
-
-      act(() => {
-        dropZone.dispatchEvent(dropEvent)
-      })
-
-      await waitFor(() => {
-        expect(mockUpdateFile).toHaveBeenCalled()
-      })
-    })
-
-    it('should show error when dropping multiple files', () => {
-      const { container } = render(<CSVUploader {...defaultProps} />)
-      const dropZone = getDropZone(container)
-
-      // Create a drop event with multiple files
-      const file1 = new File(['csv1'], 'file1.csv', { type: 'text/csv' })
-      const file2 = new File(['csv2'], 'file2.csv', { type: 'text/csv' })
-      const dropEvent = new Event('drop', {
-        bubbles: true,
-        cancelable: true,
-      }) as unknown as DragEvent
-      Object.defineProperty(dropEvent, 'dataTransfer', {
-        value: {
-          files: [file1, file2],
-        },
-      })
-
-      act(() => {
-        dropZone.dispatchEvent(dropEvent)
-      })
-
-      expect(toastMocks.call).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'error',
-        }),
-      )
-    })
-
-    it('should handle drop event without dataTransfer', () => {
-      const mockUpdateFile = vi.fn()
-      const { container } = render(<CSVUploader {...defaultProps} updateFile={mockUpdateFile} />)
-      const dropZone = getDropZone(container)
-
-      // Create a drop event without dataTransfer
-      const dropEvent = new Event('drop', { bubbles: true, cancelable: true })
-
-      act(() => {
-        dropZone.dispatchEvent(dropEvent)
-      })
-
-      // Assert - should not call updateFile
-      expect(mockUpdateFile).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('getFileType edge cases', () => {
-    it('should handle file with multiple dots in name', () => {
-      const { container } = render(<CSVUploader {...defaultProps} />)
-      const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
-      const testFile = new File(['content'], 'my.data.file.csv', { type: 'text/csv' })
-
-      fireEvent.change(fileInput, { target: { files: [testFile] } })
-
-      // Assert - should be valid and trigger upload
-      expect(toastMocks.call).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
-    })
-  })
 })

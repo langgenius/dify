@@ -94,6 +94,7 @@
   "nodes.humanInput.userActions.buttonTextPlaceholder": "Eylem Değeri",
   "nodes.humanInput.userActions.buttonTextTooLong": "Düğme metni {{maxLength}} karakter veya daha az olmalıdır",
   "nodes.humanInput.userActions.chooseStyle": "Bir düğme stili seçin",
+  "nodes.humanInput.userActions.defaultTitle": "Düğme Metni {{index}}",
   "nodes.humanInput.userActions.emptyTip": "Kullanıcı eylemleri eklemek için '+' düğmesine tıklayın",
   "nodes.humanInput.userActions.title": "Kullanıcı Eylemleri",
   "nodes.humanInput.userActions.tooltip": "Kullanıcıların bu forma yanıt vermek için tıklayabileceği düğmeleri tanımlayın. Eylem kimliği dallanmayı kontrol eder. Eylem Değeri, seçilen yerleşik çıktı olarak aşağı akışta sunulur. Eylem kimliği bir harf veya alt çizgi ile başlamalı, ardından harf, rakam veya alt çizgi gelmelidir.",

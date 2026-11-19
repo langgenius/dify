@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Any, TypeAlias
+from typing import Any, Literal, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
@@ -13,6 +13,7 @@ class HumanInputFormDefinition(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     form_id: str
+    form_version: Literal["1", "2"] = "1"
     node_id: str
     node_title: str
     form_content: str
@@ -20,7 +21,7 @@ class HumanInputFormDefinition(BaseModel):
     actions: Sequence[UserActionConfig] = Field(default_factory=list)
     display_in_ui: bool = False
 
-    # `form_token` is `None` if the corresponding form has been submitted.
+    # `form_token` is `None` unless the corresponding form is still waiting for an answer.
     form_token: str | None = None
     resolved_default_values: Mapping[str, Any] = Field(default_factory=dict)
     expiration_time: int

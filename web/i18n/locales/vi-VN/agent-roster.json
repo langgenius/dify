@@ -12,6 +12,8 @@
   "roster.createForm.rolePlaceholder": "ví dụ: Trợ lý nghiên cứu",
   "roster.dateTimeFormat": "DD/MM/YYYY HH:mm:ss",
   "roster.deleteDialog.description": "Thao tác này sẽ xóa vĩnh viễn {{name}}. Ứng dụng web, quyền truy cập API và các quy trình làm việc sử dụng Agent này sẽ ngừng hoạt động ngay lập tức.",
+  "roster.deleteDialog.inputLabel": "Nhập <name>{{name}}</name> để xác nhận",
+  "roster.deleteDialog.inputPlaceholder": "Nhập tên tác nhân",
   "roster.deleteDialog.title": "Xóa {{name}}?",
   "roster.deleteFailed": "Xóa tác nhân thất bại.",
   "roster.duplicateDialog.description": "Tạo một bản sao của {{name}} và tùy chỉnh danh tính Agent của nó.",

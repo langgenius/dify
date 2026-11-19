@@ -22,8 +22,9 @@ def extract_diagnostics(raw_output: str) -> str:
     diagnostics: list[str] = []
 
     for index, line in enumerate(lines):
-        if line.startswith(_DIAGNOSTIC_PREFIXES):
-            diagnostics.append(line.rstrip())
+        headline = line.lstrip()
+        if headline.startswith(_DIAGNOSTIC_PREFIXES):
+            diagnostics.append(headline.rstrip())
 
             next_index = index + 1
             if next_index < len(lines):

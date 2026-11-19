@@ -56,8 +56,8 @@ def clean_unused_datasets_task():
                     select(Document.dataset_id, func.count(Document.id).label("document_count"))
                     .where(
                         Document.indexing_status == "completed",
-                        Document.enabled == True,
-                        Document.archived == False,
+                        Document.enabled.is_(True),
+                        Document.archived.is_(False),
                         Document.updated_at > clean_day,
                     )
                     .group_by(Document.dataset_id)
@@ -69,8 +69,8 @@ def clean_unused_datasets_task():
                     select(Document.dataset_id, func.count(Document.id).label("document_count"))
                     .where(
                         Document.indexing_status == "completed",
-                        Document.enabled == True,
-                        Document.archived == False,
+                        Document.enabled.is_(True),
+                        Document.archived.is_(False),
                         Document.updated_at < clean_day,
                     )
                     .group_by(Document.dataset_id)
@@ -127,8 +127,8 @@ def clean_unused_datasets_task():
                                         documents = session.scalars(
                                             select(Document).where(
                                                 Document.dataset_id == dataset.id,
-                                                Document.enabled == True,
-                                                Document.archived == False,
+                                                Document.enabled.is_(True),
+                                                Document.archived.is_(False),
                                             )
                                         ).all()
                                         for document in documents:

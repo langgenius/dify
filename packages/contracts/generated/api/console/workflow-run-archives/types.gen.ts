@@ -9,6 +9,21 @@ export type WorkflowRunArchiveListResponse = {
   summary: WorkflowRunArchiveSummaryResponse
 }
 
+export type PaidPlanRequiredError = ErrorResponse & {
+  code: 'paid_plan_required'
+  status: 403
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type WorkflowRunArchiveDownloadPayload = {
   month: number
   year: number
@@ -31,9 +46,17 @@ export type WorkflowRunArchiveDownloadTaskResponse = {
   year: number
 }
 
+export type WorkflowRunArchiveDeletionTaskResponse = {
+  error?: string | null
+  month: number
+  status: WorkflowRunArchiveDeletionStatus
+  year: number
+}
+
 export type WorkflowRunArchiveMonthResponse = {
   archive_bytes: number
   bundle_count: number
+  deletion_status?: 'failed' | 'pending' | 'processing' | null
   download_task?: WorkflowRunArchiveDownloadTaskResponse | null
   latest_archived_at: string
   month: number
@@ -51,12 +74,22 @@ export type WorkflowRunArchiveSummaryResponse = {
 
 export type WorkflowRunArchiveDownloadStatus = 'failed' | 'pending' | 'processing' | 'ready'
 
+export type WorkflowRunArchiveDeletionStatus = 'completed' | 'failed' | 'pending' | 'processing'
+
 export type GetWorkflowRunArchivesData = {
   body?: never
   path?: never
   query?: never
   url: '/workflow-run-archives'
 }
+
+export type GetWorkflowRunArchivesErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetWorkflowRunArchivesError =
+  GetWorkflowRunArchivesErrors[keyof GetWorkflowRunArchivesErrors]
 
 export type GetWorkflowRunArchivesResponses = {
   200: WorkflowRunArchiveListResponse
@@ -71,6 +104,14 @@ export type PostWorkflowRunArchivesDownloadsData = {
   query?: never
   url: '/workflow-run-archives/downloads'
 }
+
+export type PostWorkflowRunArchivesDownloadsErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkflowRunArchivesDownloadsError =
+  PostWorkflowRunArchivesDownloadsErrors[keyof PostWorkflowRunArchivesDownloadsErrors]
 
 export type PostWorkflowRunArchivesDownloadsResponses = {
   202: WorkflowRunArchiveDownloadTaskResponse
@@ -88,9 +129,42 @@ export type GetWorkflowRunArchivesDownloadsByDownloadIdData = {
   url: '/workflow-run-archives/downloads/{download_id}'
 }
 
+export type GetWorkflowRunArchivesDownloadsByDownloadIdErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetWorkflowRunArchivesDownloadsByDownloadIdError =
+  GetWorkflowRunArchivesDownloadsByDownloadIdErrors[keyof GetWorkflowRunArchivesDownloadsByDownloadIdErrors]
+
 export type GetWorkflowRunArchivesDownloadsByDownloadIdResponses = {
   200: WorkflowRunArchiveDownloadTaskResponse
 }
 
 export type GetWorkflowRunArchivesDownloadsByDownloadIdResponse =
   GetWorkflowRunArchivesDownloadsByDownloadIdResponses[keyof GetWorkflowRunArchivesDownloadsByDownloadIdResponses]
+
+export type DeleteWorkflowRunArchivesByYearByMonthData = {
+  body?: never
+  path: {
+    month: number
+    year: number
+  }
+  query?: never
+  url: '/workflow-run-archives/{year}/{month}'
+}
+
+export type DeleteWorkflowRunArchivesByYearByMonthErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type DeleteWorkflowRunArchivesByYearByMonthError =
+  DeleteWorkflowRunArchivesByYearByMonthErrors[keyof DeleteWorkflowRunArchivesByYearByMonthErrors]
+
+export type DeleteWorkflowRunArchivesByYearByMonthResponses = {
+  202: WorkflowRunArchiveDeletionTaskResponse
+}
+
+export type DeleteWorkflowRunArchivesByYearByMonthResponse =
+  DeleteWorkflowRunArchivesByYearByMonthResponses[keyof DeleteWorkflowRunArchivesByYearByMonthResponses]

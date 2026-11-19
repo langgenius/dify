@@ -1,4 +1,4 @@
-import type { CompositionEvent, Ref } from 'react'
+import type { CompositionEvent, KeyboardEvent, MouseEvent, Ref } from 'react'
 import { useMergedRefs } from '@langgenius/dify-ui/use-merged-refs'
 import { useRef, useState } from 'react'
 
@@ -14,6 +14,7 @@ export function useSearchInput({ value, onValueChange, ref }: SearchInputOptions
   const isComposingRef = useRef(false)
   const compositionCommitRef = useRef<string | null>(null)
   const [compositionValue, setCompositionValue] = useState<string | null>(null)
+  const displayValue = compositionValue ?? value
 
   const clear = () => {
     isComposingRef.current = false
@@ -25,9 +26,23 @@ export function useSearchInput({ value, onValueChange, ref }: SearchInputOptions
 
   return {
     clear,
+    canClear: displayValue !== '',
+    // The input is the only tab stop; the clear button is a pointer shortcut that never takes
+    // focus, matching Base UI's `Combobox.Clear`. Keyboard users clear with Escape.
+    clearProps: {
+      tabIndex: -1,
+      onMouseDown: (event: MouseEvent<HTMLButtonElement>) => {
+        event.preventDefault()
+      },
+      onClick: clear,
+    },
     inputProps: {
       ref: mergedRef,
-      value: compositionValue ?? value,
+      // A plain text input with the searchbox role: browsers attach private Escape and
+      // cancel-button behavior to `type="search"`, and this hook owns both instead.
+      type: 'text' as const,
+      role: 'searchbox',
+      value: displayValue,
       onValueChange: (nextValue: string) => {
         if (isComposingRef.current) {
           setCompositionValue(nextValue)
@@ -39,6 +54,16 @@ export function useSearchInput({ value, onValueChange, ref }: SearchInputOptions
           if (committedValue === nextValue) return
         }
         onValueChange(nextValue)
+      },
+      onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => {
+        if (event.key !== 'Escape') return
+        // Escape ends the composition first; the IME owns that press.
+        if (isComposingRef.current || event.nativeEvent.isComposing) return
+        // An empty searchbox lets Escape reach the owning popover or dialog.
+        if (displayValue === '') return
+        event.preventDefault()
+        event.stopPropagation()
+        clear()
       },
       onCompositionStart: () => {
         isComposingRef.current = true

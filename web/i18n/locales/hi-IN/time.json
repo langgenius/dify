@@ -2,6 +2,7 @@
   "dateFormats.compact": "MM/DD/YYYY HH:mm",
   "dateFormats.withSeconds": "MM/DD/YYYY hh:mm:ss A",
   "operation.cancel": "रद्द करें",
+  "operation.close": "बंद करना",
   "operation.now": "अब",
   "operation.ok": "ठीक है",
   "operation.pickDate": "तारीख़ चुनें",

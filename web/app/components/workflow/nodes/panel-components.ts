@@ -2,6 +2,7 @@ import type { ComponentProps, ComponentType } from 'react'
 import { createElement } from 'react'
 import { BlockEnum } from '../types'
 import { isAgentV2NodeData } from './agent-v2/types'
+import { isHumanInputV2NodeData } from './human-input-v2/types'
 import { lazyPanel } from './lazy-panel'
 
 const AgentV2Panel = lazyPanel(async () => {
@@ -17,10 +18,15 @@ const DocExtractorPanel = lazyPanel(() => import('./document-extractor/panel'))
 const EndPanel = lazyPanel(() => import('./end/panel'))
 const HttpPanel = lazyPanel(() => import('./http/panel'))
 const HumanInputPanel = lazyPanel(() => import('./human-input/panel'))
+const HumanInputV2Panel = lazyPanel(async () => {
+  const { HumanInputV2Panel } = await import('./human-input-v2/panel')
+  return { default: HumanInputV2Panel }
+})
 const IfElsePanel = lazyPanel(() => import('./if-else/panel'))
 const IterationPanel = lazyPanel(() => import('./iteration/panel'))
 const KnowledgeBasePanel = lazyPanel(() => import('./knowledge-base/panel'))
 const KnowledgeRetrievalPanel = lazyPanel(() => import('./knowledge-retrieval/panel'))
+const KnowledgeRetrievalV2Panel = lazyPanel(() => import('./knowledge-retrieval-v2/panel'))
 const ListFilterPanel = lazyPanel(() => import('./list-operator/panel'))
 const LLMPanel = lazyPanel(() => import('./llm/panel'))
 const LoopPanel = lazyPanel(() => import('./loop/panel'))
@@ -44,6 +50,15 @@ function WorkflowAgentPanel(
   return createElement(AgentPanel, props as ComponentProps<typeof AgentPanel>)
 }
 
+function WorkflowHumanInputPanel(
+  props: ComponentProps<typeof HumanInputPanel> | ComponentProps<typeof HumanInputV2Panel>,
+) {
+  if (isHumanInputV2NodeData(props.data))
+    return createElement(HumanInputV2Panel, props as ComponentProps<typeof HumanInputV2Panel>)
+
+  return createElement(HumanInputPanel, props as ComponentProps<typeof HumanInputPanel>)
+}
+
 export const PanelComponentMap = {
   [BlockEnum.Start]: StartPanel,
   [BlockEnum.StartPlaceholder]: StartPlaceholderPanel,
@@ -51,6 +66,7 @@ export const PanelComponentMap = {
   [BlockEnum.Answer]: AnswerPanel,
   [BlockEnum.LLM]: LLMPanel,
   [BlockEnum.KnowledgeRetrieval]: KnowledgeRetrievalPanel,
+  [BlockEnum.KnowledgeRetrievalV2]: KnowledgeRetrievalV2Panel,
   [BlockEnum.QuestionClassifier]: QuestionClassifierPanel,
   [BlockEnum.IfElse]: IfElsePanel,
   [BlockEnum.Code]: CodePanel,
@@ -69,7 +85,8 @@ export const PanelComponentMap = {
   [BlockEnum.AgentV2]: AgentV2Panel,
   [BlockEnum.DataSource]: DataSourcePanel,
   [BlockEnum.KnowledgeBase]: KnowledgeBasePanel,
-  [BlockEnum.HumanInput]: HumanInputPanel,
+  [BlockEnum.HumanInput]: WorkflowHumanInputPanel,
+  [BlockEnum.HumanInputV2]: HumanInputV2Panel,
   [BlockEnum.TriggerSchedule]: TriggerSchedulePanel,
   [BlockEnum.TriggerWebhook]: TriggerWebhookPanel,
   [BlockEnum.TriggerPlugin]: TriggerPluginPanel,

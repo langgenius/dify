@@ -337,9 +337,23 @@ describe('EmailRecipientsField', () => {
     expect(input).toHaveFocus()
   })
 
-  it('disables every editing action while the composer is frozen', () => {
-    render(<EmailRecipientsFieldWrapper disabled />)
+  it('disables draft, chip editing, and removal while the composer is frozen', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(<EmailRecipientsFieldWrapper />)
+    const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
+    await user.click(input)
+    await user.paste('valid@example.com, not-an-email')
+    await user.type(input, 'draft@example.com')
 
-    expect(screen.getByRole('textbox', { name: /members\.emailRecipients/i })).toBeDisabled()
+    rerender(<EmailRecipientsFieldWrapper disabled />)
+
+    expect(input).toBeDisabled()
+    const recipients = screen.getByRole('list')
+    for (const button of within(recipients).getAllByRole('button')) {
+      expect(button).toBeDisabled()
+      await user.click(button)
+    }
+    expect(within(recipients).getAllByRole('listitem')).toHaveLength(2)
+    expect(input).toHaveValue('draft@example.com')
   })
 })

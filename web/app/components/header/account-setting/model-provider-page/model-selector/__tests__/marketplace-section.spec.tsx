@@ -1,4 +1,6 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { marketplaceLinks } from '@/features/marketplace/links'
 import { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import MarketplaceSection from '../marketplace-section'
 
@@ -12,8 +14,11 @@ const defaultProps = {
 }
 
 describe('MarketplaceSection', () => {
-  it('keeps the install action named and focusable while it is pending', () => {
-    const { rerender } = render(<MarketplaceSection {...defaultProps} />)
+  it('keeps the install action named and focused while preventing repeat installation', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(
+      <MarketplaceSection marketplace={marketplaceLinks} {...defaultProps} />,
+    )
     const installButton = screen.getByRole('button', {
       name: 'modelProvider.modelProvider.selector.install OpenAI',
     })
@@ -22,10 +27,12 @@ describe('MarketplaceSection', () => {
         name: 'modelProvider.modelProvider.selector.install Anthropic',
       }),
     ).toBeInTheDocument()
-    installButton.focus()
+    await user.click(installButton)
+    expect(defaultProps.onInstallPlugin).toHaveBeenCalledWith(ModelProviderQuotaGetPaid.OPENAI)
 
     rerender(
       <MarketplaceSection
+        marketplace={marketplaceLinks}
         {...defaultProps}
         installingProvider={ModelProviderQuotaGetPaid.OPENAI}
       />,
@@ -33,7 +40,8 @@ describe('MarketplaceSection', () => {
 
     expect(installButton).toHaveAccessibleName('plugin.installModal.installing OpenAI')
     expect(installButton).toHaveAttribute('aria-disabled', 'true')
-    expect(installButton).not.toHaveAttribute('aria-busy')
     expect(installButton).toHaveFocus()
+    await user.click(installButton)
+    expect(defaultProps.onInstallPlugin).toHaveBeenCalledTimes(1)
   })
 })

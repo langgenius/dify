@@ -345,7 +345,7 @@ def builtin_permissions(role: TenantAccountRole | str | None) -> MyPermissionsRe
 
 _BUILTIN_ROLE_PERMISSION_KEYS: dict[str, list[str]] = {
     # This is a compatibility projection from the pre-RBAC workspace roles into
-    # the 2.0 permission matrix documented in "权限整理2.0". It intentionally
+    # the matrix documented in "Permissions 2.0". It intentionally
     # models the product-facing role surface for the new RBAC UI instead of the
     # legacy backend's exact hard-authorization checks.
     "owner": [

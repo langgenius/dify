@@ -184,6 +184,15 @@ class TestWebAppAuth:
         with pytest.raises(ValueError, match="access_mode must be"):
             EnterpriseService.WebAppAuth.update_app_access_mode("a1", "invalid")
 
+    def test_update_access_mode_accepts_sso_verified(self) -> None:
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = {"result": True}
+            EnterpriseService.WebAppAuth.update_app_access_mode("a1", "sso_verified")
+
+        req.send_request.assert_called_once_with(
+            "POST", "/webapp/access-mode", json={"appId": "a1", "accessMode": "sso_verified"}
+        )
+
     def test_update_access_mode_delegates_and_returns(self) -> None:
         with patch(f"{MODULE}.EnterpriseRequest") as req:
             req.send_request.return_value = {"result": True}
@@ -262,7 +271,7 @@ class TestJoinDefaultWorkspace:
                 EnterpriseService.join_default_workspace(account_id=account_id)
 
     def test_join_default_workspace_invalid_account_id_raises(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="account_id must be a valid UUID: not\\-a\\-uuid"):
             EnterpriseService.join_default_workspace(account_id="not-a-uuid")
 
     def test_join_default_workspace_missing_required_fields_raises(self) -> None:
@@ -552,3 +561,49 @@ class TestIssueMCPToken:
             req.send_request.return_value = {"token": "t", "expires_at": True}
             with pytest.raises(MCPTokenError, match="non-numeric expires_at"):
                 self._call()
+
+
+class TestWebAppAccessModeInheritance:
+    @pytest.mark.parametrize("mode", ["public", "private", "private_all", "sso_verified"])
+    @pytest.mark.parametrize("write_result", [True, False])
+    def test_inherits_source_mode(self, mode: str, write_result: bool) -> None:
+        from unittest.mock import call
+
+        with patch(f"{MODULE}.EnterpriseRequest.send_request") as request:
+            request.side_effect = [{"accessMode": mode}, {"result": write_result}]
+            assert EnterpriseService.WebAppAuth.inherit_app_access_mode("source", "target") is None
+        assert request.call_args_list == [
+            call("GET", "/webapp/access-mode/id", params={"appId": "source"}),
+            call("POST", "/webapp/access-mode", json={"appId": "target", "accessMode": mode}),
+        ]
+
+    @pytest.mark.parametrize("response", [{}, {"accessMode": None}])
+    def test_invalid_read_falls_back_to_public(self, response: dict[str, object]) -> None:
+        with patch(f"{MODULE}.EnterpriseRequest.send_request") as request:
+            request.side_effect = [response, {"result": True}]
+            EnterpriseService.WebAppAuth.inherit_app_access_mode("source", "target")
+        request.assert_called_with("POST", "/webapp/access-mode", json={"appId": "target", "accessMode": "public"})
+
+    def test_read_timeout_falls_back_to_public(self) -> None:
+        import httpx
+
+        with patch(f"{MODULE}.EnterpriseRequest.send_request") as request:
+            request.side_effect = [httpx.ReadTimeout("unavailable"), {"result": True}]
+            EnterpriseService.WebAppAuth.inherit_app_access_mode("source", "target")
+        request.assert_called_with("POST", "/webapp/access-mode", json={"appId": "target", "accessMode": "public"})
+
+    def test_unknown_mode_is_not_replaced_with_public(self) -> None:
+        with patch(f"{MODULE}.EnterpriseRequest.send_request") as request:
+            request.return_value = {"accessMode": "unknown"}
+            with pytest.raises(ValueError, match="access_mode must be one of"):
+                EnterpriseService.WebAppAuth.inherit_app_access_mode("source", "target")
+        assert request.call_count == 1
+
+    def test_write_error_propagates(self) -> None:
+        error = EnterpriseServiceError("write failed")
+        with patch(f"{MODULE}.EnterpriseRequest.send_request") as request:
+            request.side_effect = [{"accessMode": "private"}, error]
+            with pytest.raises(EnterpriseServiceError) as raised:
+                EnterpriseService.WebAppAuth.inherit_app_access_mode("source", "target")
+        assert raised.value is error
+        assert request.call_count == 2

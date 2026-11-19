@@ -48,8 +48,14 @@ class AgentHomeSnapshotService:
         *,
         session: Session,
         build_draft: AgentConfigDraft,
-    ) -> AgentHomeSnapshot:
-        """Checkpoint the exact participant owned by ``build_draft``."""
+    ) -> AgentHomeSnapshot | None:
+        """Checkpoint the exact participant owned by ``build_draft``.
+
+        Returns ``None`` when the runtime backend does not support Home
+        Snapshots (explicit ``snapshot_ref: null`` response): the apply still
+        succeeds and the new Home is materialized image-fresh. No ledger row
+        is persisted in that case — there is no snapshot to track.
+        """
 
         source_binding_id = build_draft.agent_workspace_binding_id
         if source_binding_id is None:
@@ -111,6 +117,8 @@ class AgentHomeSnapshotService:
         except DifyAgentClientError as exc:
             raise AgentHomeSnapshotCreateFailedError(str(exc)) from exc
 
+        if response.snapshot_ref is None:
+            return None
         home_snapshot = AgentHomeSnapshot(
             id=home_snapshot_id,
             tenant_id=build_draft.tenant_id,
@@ -129,6 +137,21 @@ class AgentHomeSnapshotService:
                 AgentHomeSnapshot.agent_id == agent_id,
             )
         ).all()
+        now = naive_utc_now()
+        for row in rows:
+            if row.status == AgentWorkingResourceStatus.ACTIVE:
+                row.status = AgentWorkingResourceStatus.RETIRED
+                row.retired_at = now
+        return [row.id for row in rows]
+
+    @classmethod
+    def retire_all_for_tenant(cls, *, session: Session, tenant_id: str) -> list[str]:
+        """Retire every tenant Home Snapshot in the caller's transaction.
+
+        Includes orphan snapshots whose Agent row is already gone. Returns all
+        matched ids, including already-retired ones, so repeated collection converges.
+        """
+        rows = session.scalars(select(AgentHomeSnapshot).where(AgentHomeSnapshot.tenant_id == tenant_id)).all()
         now = naive_utc_now()
         for row in rows:
             if row.status == AgentWorkingResourceStatus.ACTIVE:

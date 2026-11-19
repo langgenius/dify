@@ -1,4 +1,5 @@
 import type { MarketplacePlugin, MarketplaceTemplate } from '@dify/contracts/marketplace'
+import { ORPCError } from '@orpc/client'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { loadCreatorProfile } from '../data.server'
 
@@ -10,7 +11,16 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('server-only', () => ({}))
-vi.mock('@/config', () => ({ MARKETPLACE_API_PREFIX: 'https://marketplace.example/api/v1' }))
+vi.mock('@/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/env')>()
+  return {
+    ...actual,
+    env: {
+      ...actual.env,
+      NEXT_PUBLIC_MARKETPLACE_API_PREFIX: 'https://marketplace.example/api/v1',
+    },
+  }
+})
 vi.mock('@/service/marketplace', () => ({ marketplaceClient: mocks }))
 
 const plugin = {
@@ -53,21 +63,54 @@ describe('loadCreatorProfile', () => {
 
   it('loads individual data through all publisher contracts', async () => {
     const loaded = await loadCreatorProfile({
-      uniqueHandle: 'creator-one',
+      uniqueHandle: 'evanz',
       locale: 'en-US',
     })
 
     expect(mocks.creatorDetail).toHaveBeenCalledWith({
-      params: { uniqueHandle: 'creator-one' },
+      params: { uniqueHandle: 'evanz' },
     })
     expect(mocks.publisherPlugins).toHaveBeenCalledWith({
-      params: { uniqueHandle: 'creator-one' },
+      params: { uniqueHandle: 'evanz' },
       query: { page: 1, page_size: 40, sort_by: 'version_updated_at', sort_order: 'DESC' },
+    })
+    expect(mocks.publisherTemplates).toHaveBeenCalledWith({
+      params: { uniqueHandle: 'evanz' },
+      query: { page: 1, page_size: 40, sort_by: 'updated_at', sort_order: 'DESC' },
     })
     expect(loaded?.viewModel.creations).toHaveLength(2)
     expect(loaded?.pluginsByCreationId['plugin:dify/search']).toBeDefined()
     expect(loaded?.viewModel.profile.backgroundUrl).toBe('')
     expect(loaded?.viewModel.profile.avatarUrl).toBe('')
+  })
+
+  it('reports an unknown creator as missing so the page can render its 404', async () => {
+    mocks.creatorDetail.mockRejectedValue(new ORPCError('NOT_FOUND', { status: 404 }))
+
+    await expect(
+      loadCreatorProfile({ uniqueHandle: 'unknown-creator', locale: 'en-US' }),
+    ).resolves.toBeNull()
+  })
+
+  it('reports an unknown organization as missing so the page can render its 404', async () => {
+    mocks.organizationDetail.mockRejectedValue(new ORPCError('NOT_FOUND', { status: 404 }))
+
+    await expect(
+      loadCreatorProfile({
+        uniqueHandle: 'unknown-organization',
+        publisherType: 'organization',
+        locale: 'en-US',
+      }),
+    ).resolves.toBeNull()
+  })
+
+  it('still fails when the Marketplace cannot load the creator', async () => {
+    const error = new ORPCError('INTERNAL_SERVER_ERROR', { status: 500 })
+    mocks.creatorDetail.mockRejectedValue(error)
+
+    await expect(
+      loadCreatorProfile({ uniqueHandle: 'unavailable-creator', locale: 'en-US' }),
+    ).rejects.toBe(error)
   })
 
   it('only emits the remote background URL when the API reports an uploaded background', async () => {
@@ -112,16 +155,6 @@ describe('loadCreatorProfile', () => {
     expect(loaded?.viewModel.profile.avatarUrl).toBe(
       'https://marketplace.example/api/v1/creators/creator-with-avatar/avatar',
     )
-  })
-
-  it('loads evanz from the Marketplace API without a development fixture branch', async () => {
-    await loadCreatorProfile({ uniqueHandle: 'evanz', locale: 'en-US' })
-
-    expect(mocks.creatorDetail).toHaveBeenCalledWith({ params: { uniqueHandle: 'evanz' } })
-    expect(mocks.publisherTemplates).toHaveBeenCalledWith({
-      params: { uniqueHandle: 'evanz' },
-      query: { page: 1, page_size: 40, sort_by: 'updated_at', sort_order: 'DESC' },
-    })
   })
 
   it('forwards popularity sort to each publisher API column', async () => {
