@@ -297,6 +297,7 @@ AGENT_BACKEND_BASE_URL=${AGENT_BACKEND_BASE_URL-http://agent_backend:5050}
 # ------------------------------
 # Dify Builder (API, workers and Beat)
 # ------------------------------
+# DIFY_BUILDER_ENABLED is off by default; uncomment and set to true to expose the Dify Builder feature.
 # DIFY_BUILDER_ENABLED=true
 # DIFY_BUILDER_MAX_ADVANCE_SECONDS=600
 # DIFY_BUILDER_SKILL_LEARNING_POLICY=ask
