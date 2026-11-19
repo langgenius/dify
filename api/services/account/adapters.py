@@ -121,10 +121,25 @@ class AccountIdentityGateway:
         return self._accounts.find_identity(email, case_fallback=case_fallback)
 
     def load_user(self, account_id: str) -> Account | None:
+        """Load a session identity that has an active workspace; ``None`` when it has none."""
         now = naive_utc_now()
-        account = self._accounts.load_identity(account_id, now=now)
+        return self._admit(self._accounts.load_identity(account_id, now=now), now)
+
+    def load_account(self, account_id: str) -> Account | None:
+        """Load a session identity for account-scoped resources without resolving a workspace.
+
+        Workspace memberships are neither read nor changed. Banned accounts are refused and
+        activity is recorded as for ``load_user``.
+
+        Raises:
+            Unauthorized: The account is banned.
+        """
+        return self._admit(self._accounts.get_model(account_id), naive_utc_now())
+
+    def _admit(self, account: Account | None, now: datetime) -> Account | None:
         if account is None:
             return None
+        account_id = account.id
         if account.status == AccountStatus.BANNED:
             raise Unauthorized("Account is banned.")
         before = now - _ACCOUNT_LAST_ACTIVE_REFRESH_INTERVAL

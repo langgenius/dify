@@ -69,6 +69,12 @@ def console_personal_account_admission[T, **P, R](
     return admitted
 
 
+def console_account_only_identity[F: Callable[..., object]](view: F) -> F:
+    """Resolve this view's signed-in account without requiring a current workspace."""
+    setattr(view, ACCOUNT_ONLY_ADMISSION_ATTR, True)
+    return view
+
+
 def console_admin_admission[T, **P, R](
     view: Callable[Concatenate[T, P], R],
 ) -> Callable[Concatenate[T, P], R]:
@@ -173,6 +179,8 @@ def console_account_admission[T, **P, R](
             admitted = account_initialization_required(admitted)
         admitted = login_required(admitted)
         admitted = setup_required(admitted)
+        if not require_active_workspace:
+            setattr(admitted, ACCOUNT_ONLY_ADMISSION_ATTR, True)
 
         return admitted
 
