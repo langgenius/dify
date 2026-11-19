@@ -34,7 +34,7 @@ from models.enums import CredentialSourceType
 from models.model import AppMode
 from models.provider import LoadBalancingModelConfig
 from models.tools import BuiltinToolProvider
-from models.workflow import Workflow, WorkflowDraftVariable, WorkflowVersionCounter
+from models.workflow import Workflow, WorkflowDraftVariable, WorkflowKind, WorkflowVersionCounter
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.workflow.definition_repository import (
@@ -2083,6 +2083,48 @@ def test_publication_repository_is_independent_of_agent_service_and_commits_requ
             assert app is not None
             assert app.workflow_id == created.id
             assert session.get(Workflow, created.id) is not None
+
+
+@pytest.mark.parametrize(
+    ("active_kind", "draft_kind", "expected_kind"),
+    [
+        (None, WorkflowKind.EVALUATION, WorkflowKind.STANDARD),
+        (WorkflowKind.STANDARD, WorkflowKind.EVALUATION, WorkflowKind.STANDARD),
+        (WorkflowKind.EVALUATION, WorkflowKind.STANDARD, WorkflowKind.EVALUATION),
+    ],
+)
+def test_publish_preserves_active_evaluator_kind(
+    sqlite_session: Session,
+    active_kind: WorkflowKind | None,
+    draft_kind: WorkflowKind,
+    expected_kind: WorkflowKind,
+) -> None:
+    """The active publication, not the editable draft, determines the new kind."""
+    active_id = "active-1" if active_kind is not None else None
+    app = make_app(app_id="app-1", mode=AppMode.WORKFLOW, workflow_id=active_id)
+    draft = make_workflow(
+        workflow_id="draft-1",
+        app_id=app.id,
+        kind=draft_kind,
+        graph={"nodes": [{"id": "end", "data": {"type": "end", "outputs": [{"variable": "score"}]}}], "edges": []},
+    )
+    sqlite_session.add_all([app, draft])
+    if active_kind is not None:
+        sqlite_session.add(make_workflow(workflow_id="active-1", app_id=app.id, kind=active_kind, version="2026-01-01"))
+    sqlite_session.flush()
+
+    published = WorkflowDefinitionStore.publish_workflow(
+        session=sqlite_session,
+        app_model=app,
+        account=make_account(account_id="account-1"),
+        marked_name="Release",
+        marked_comment="",
+    )
+    sqlite_session.commit()
+
+    assert published.kind == expected_kind
+    assert published.version != draft.version
+    assert sqlite_session.get(type(draft), published.id) is published
 
 
 def test_workflow_record_preserves_variable_types_and_masks_stored_secrets(sqlite_session: Session) -> None:
