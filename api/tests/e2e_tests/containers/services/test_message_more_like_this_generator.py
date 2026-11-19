@@ -431,6 +431,7 @@ def test_real_missing_credentials_returns_http_error_without_creating_records(
 
 @pytest.mark.parametrize("streaming", [False, True])
 @pytest.mark.parametrize("failure", ["missing_plugin", "invalid_transport"])
+@pytest.mark.usefixtures("dify_plugin_daemon_container")
 def test_real_provider_failure_persists_worker_error_and_preserves_http_or_sse_contract(
     scenario: _Scenario,
     test_client_with_containers: FlaskClient,

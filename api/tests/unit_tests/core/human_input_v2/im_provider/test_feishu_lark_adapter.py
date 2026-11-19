@@ -238,7 +238,7 @@ def _scope_page(
 def _intent(input_type: str = "paragraph") -> ResolvedForm:
     if input_type == "select":
         input_block: FormPart = SelectInput(
-            output_variable_name="comment", options=("Approve", "Reject"), default_value="Approve"
+            output_variable_name="comment", options=("Approve", "Reject"), resolved_default_value="Approve"
         )
     elif input_type == "file":
         input_block = FileInput(
@@ -256,7 +256,7 @@ def _intent(input_type: str = "paragraph") -> ResolvedForm:
             number_limits=1,
         )
     else:
-        input_block = ParagraphInput(output_variable_name="comment", default_value="Initial")
+        input_block = ParagraphInput(output_variable_name="comment", resolved_default_value="Initial")
     return ResolvedForm(
         title="Approval",
         parts=(MarkdownFragment(text="Rendered **content**"), input_block),
@@ -273,8 +273,8 @@ def _provider_confirmed_form_intent() -> ResolvedForm:
         title="Synthetic decision",
         parts=(
             MarkdownFragment(text="Synthetic **approval** content"),
-            ParagraphInput(output_variable_name="explanation", default_value="Synthetic default"),
-            SelectInput(output_variable_name="decision", options=("allow", "deny"), default_value="allow"),
+            ParagraphInput(output_variable_name="explanation", resolved_default_value="Synthetic default"),
+            SelectInput(output_variable_name="decision", options=("allow", "deny"), resolved_default_value="allow"),
         ),
         actions=(
             UserAction(id="continue", title="Continue", button_style=ButtonStyle.PRIMARY),
@@ -1335,7 +1335,7 @@ def test_provider_confirmed_form_preserves_markdown_after_input_without_reorderi
     intent = ResolvedForm(
         title="Approval",
         parts=(
-            ParagraphInput(output_variable_name="comment", default_value=None),
+            ParagraphInput(output_variable_name="comment", resolved_default_value=None),
             MarkdownFragment(text="After input"),
         ),
         actions=(UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),),

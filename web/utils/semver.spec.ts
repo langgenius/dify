@@ -15,6 +15,8 @@ it.each([
   { base: '2.0.0', target: '1.9.9', comparison: 1, earlier: false, atLeast: true },
   { base: '1.0.0', target: '1.0.0', comparison: 0, earlier: false, atLeast: true },
   { base: '1.0.0-beta', target: '1.0.0', comparison: -1, earlier: true, atLeast: false },
+  { base: '1.0.0-rc.10', target: '1.0.0-rc.2', comparison: 1, earlier: false, atLeast: true },
+  { base: '1.0.0+one', target: '1.0.0+two', comparison: 0, earlier: false, atLeast: true },
 ])(
   'preserves comparison direction for $base and $target',
   ({ base, target, comparison, earlier, atLeast }) => {

@@ -1,15 +1,15 @@
 'use client'
 
 import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { RenameDocumentPayload } from './rename-document-form'
+import type { DocumentToRename } from './rename-document-form'
 import type { SortType } from '@/service/datasets'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { createDialogHandle, Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Pagination } from '@langgenius/dify-ui/pagination'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useCallback, useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-metadata-batch/modal'
 import useBatchEditDocumentMetadata from '@/app/components/datasets/metadata/hooks/use-batch-edit-document-metadata'
@@ -17,6 +17,7 @@ import { useDatasetDetailContextWithSelector as useDatasetDetailContext } from '
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { ChunkingMode, DocumentActionType } from '@/models/datasets'
+import { documentRenameFilter } from '@/service/datasets'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import BatchAction from '../detail/completed/common/batch-action'
 import { DocumentTableRow, SortHeader } from './document-list/components'
@@ -124,14 +125,9 @@ const DocumentList = ({
       onUpdate,
     })
 
-  const [renameDialog] = useState(() => createDialogHandle<RenameDocumentPayload>())
-  const handleShowRenameModal = (doc: LocalDoc) =>
-    renameDialog.openWithPayload({ id: doc.id, name: doc.name })
-
-  const handleRenamed = useCallback(() => {
-    onUpdate()
-  }, [onUpdate])
-
+  const [renameDialog] = useState(() => createDialogHandle<DocumentToRename>())
+  const queryClient = useQueryClient()
+  const activeDocumentIdRef = useRef<string>(null)
   return (
     <div className="relative mt-3 flex size-full flex-col">
       <div role="status" aria-atomic="true" className="sr-only">
@@ -222,7 +218,7 @@ const DocumentList = ({
                 isGeneralMode={isGeneralMode}
                 isQAMode={isQAMode}
                 embeddingAvailable={embeddingAvailable}
-                onShowRenameModal={handleShowRenameModal}
+                renameDialog={renameDialog}
                 onUpdate={onUpdate}
                 onDelete={(row) => onDelete(doc.id, row)}
               />
@@ -294,16 +290,27 @@ const DocumentList = ({
         />
       )}
 
-      <Dialog handle={renameDialog}>
+      <Dialog
+        handle={renameDialog}
+        onOpenChange={(open, details) => {
+          if (
+            !open &&
+            details.reason !== 'imperative-action' &&
+            activeDocumentIdRef.current &&
+            queryClient.isMutating(documentRenameFilter(datasetId, activeDocumentIdRef.current))
+          )
+            details.cancel()
+        }}
+      >
         {({ payload }) => (
           <DialogContent>
             {payload && (
               <RenameDocumentForm
+                key={payload.id}
+                activeDocumentIdRef={activeDocumentIdRef}
                 datasetId={datasetId}
-                documentId={payload.id}
-                name={payload.name}
-                onSaved={handleRenamed}
-                onClose={() => renameDialog.close()}
+                document={payload}
+                onRenamed={() => renameDialog.close()}
               />
             )}
           </DialogContent>

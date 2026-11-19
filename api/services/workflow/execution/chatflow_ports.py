@@ -11,6 +11,10 @@ from services.workflow.execution.ports import WorkflowRuntime
 
 
 class ChatflowRecords(ChatRecords, Protocol):
+    def retire_superseded_debug_conversations(
+        self, *, tenant_id: str, app_id: str, account_id: str, current_conversation_id: str
+    ) -> None: ...
+
     def dialogue_count(self, conversation_id: str) -> int: ...
 
 

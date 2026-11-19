@@ -29,6 +29,7 @@ from services.data_source.credential_gateway import (
     TrustedStoredDatasourceCredentialGateway,
 )
 from services.data_source.provider_service import DatasourceProviderService
+from services.file_scan.admission import reject_dataset_upload_file
 from services.knowledge.api_key_service import DatasetApiKeyService
 from services.knowledge.dataset_access import DatasetAccessService
 from services.knowledge.dataset_service import DocumentService
@@ -174,6 +175,7 @@ def build_knowledge_services(
             metadata_schema=DocumentService.DOCUMENT_METADATA_SCHEMA,
         ),
         pipeline_generator=PipelineGenerator(
+            file_admission=reject_dataset_upload_file,
             runtime=workflow_runtime,
             execution_driver=workflow_runtime.execution_driver,
             documents=documents,

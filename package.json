@@ -26,7 +26,6 @@
     "@iconify-json/logos": "catalog:",
     "@iconify-json/ri": "catalog:",
     "@types/node": "catalog:",
-    "@typescript/native": "catalog:",
     "concurrently": "catalog:",
     "eslint": "catalog:",
     "knip": "catalog:",
@@ -36,7 +35,7 @@
     "vite-plus": "catalog:"
   },
   "engines": {
-    "node": "^24.22.1"
+    "node": "^24.22.3"
   },
-  "packageManager": "pnpm@12.16.1"
+  "packageManager": "pnpm@12.18.0"
 }

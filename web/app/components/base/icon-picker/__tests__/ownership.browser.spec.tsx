@@ -12,7 +12,6 @@ vi.mock('@/service/console', () => ({
     files: { upload: { post: { mutationOptions: () => ({ mutationFn: vi.fn() }) } } },
   },
 }))
-vi.mock('@/next/navigation', () => ({ useParams: () => ({}) }))
 
 const initial: EmojiIcon = { type: 'emoji', icon: '😀', background: '#FEF3F2' }
 

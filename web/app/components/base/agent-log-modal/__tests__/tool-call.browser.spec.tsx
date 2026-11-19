@@ -2,11 +2,13 @@ import { useLocale } from '#i18n'
 import ToolCallItem from '../tool-call'
 import { renderAgentLog } from './browser-test-env'
 
+// boundary: keep Monaco's separately loaded editor runtime and workers out of this view test.
 vi.mock('@monaco-editor/react', async () => {
   const { createMonacoEditorModuleMock } = await import('@/test/monaco-editor-mock')
   return createMonacoEditorModuleMock()
 })
 
+// boundary: pin the app locale that selects the localized tool label.
 vi.mock('#i18n', async (importOriginal) => ({
   ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: vi.fn(() => 'en'),
@@ -122,4 +124,3 @@ it.each([0, false, ''])('reveals falsey JSON tool payload %j', async (payload) =
   for (const editor of editors)
     await expect.element(editor).toHaveValue(JSON.stringify(payload))
 })
-

@@ -4,7 +4,7 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useRef } from 'react'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
-import AssignRolesContent from '../index'
+import { AssignRolesContent } from '../index'
 
 function TestDialog({
   onClose,

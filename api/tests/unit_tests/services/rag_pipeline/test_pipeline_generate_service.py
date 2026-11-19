@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock
+
 import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
@@ -15,7 +17,7 @@ from services.workflow.execution.adapters.pipeline.pipeline_generator import Pip
 
 
 @pytest.fixture
-def pipeline_generator(mocker: MockerFixture):
+def pipeline_generator(mocker: MockerFixture) -> MagicMock:
     return mocker.create_autospec(PipelineGenerator, instance=True, spec_set=True)
 
 
@@ -112,7 +114,7 @@ def test_generate_delegates_original_document_and_returns_event_stream(
 
 
 def test_generate_rejects_pipeline_dataset_from_another_tenant(
-    mocker: MockerFixture, sqlite_session: Session, pipeline_generator
+    mocker: MockerFixture, sqlite_session: Session, pipeline_generator: MagicMock
 ) -> None:
     dataset = _make_dataset(tenant_id="tenant-2")
     pipeline = _make_pipeline()
@@ -136,7 +138,7 @@ def test_generate_rejects_pipeline_dataset_from_another_tenant(
 
 def test_generate_rejects_original_document_outside_pipeline_dataset_before_dispatch(
     sqlite_session: Session,
-    pipeline_generator,
+    pipeline_generator: MagicMock,
 ) -> None:
     dataset = _make_dataset()
     pipeline = _make_pipeline()
@@ -250,7 +252,6 @@ def test_pipeline_execution_definition_is_owned_snapshot_before_generation(
     workflow_application,
     draft: bool,
 ) -> None:
-    from services.errors.app import WorkflowNotFoundError
 
     pipeline = _make_pipeline()
     workflow = _make_workflow()
@@ -273,5 +274,5 @@ def test_pipeline_execution_definition_is_owned_snapshot_before_generation(
     assert loaded.features_dict == {}
     assert sqlite_session_factory.kw["bind"].pool.checkedout() == 0
     pipeline.tenant_id = "other-tenant"
-    with pytest.raises(WorkflowNotFoundError):
+    with pytest.raises(ValueError, match="Workflow not initialized" if draft else "Workflow not published"):
         generator.load_workflow(pipeline, invocation)

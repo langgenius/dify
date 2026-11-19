@@ -12,6 +12,7 @@ from pydantic import ValidationError
 
 import contexts
 from configs import dify_config
+from constants.trigger import is_trigger_node_type
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
@@ -29,7 +30,6 @@ from core.helper.trace_id_helper import (
     extract_trace_session_id_from_args,
 )
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
-from core.trigger.constants import is_trigger_node_type
 from extensions.tracing import create_trace_scope
 from factories import file_factory
 from graphon.engine.filter import ResponseStreamFilter
@@ -99,6 +99,7 @@ class WorkflowAppGenerator(AppInputAdapter):
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[Layer] = (),
         allow_human_input: bool = True,
+        capture_agent_evaluation_trace: bool = False,
         pause_state_config: PauseStateLayerConfig | None = None,
     ) -> Generator[Mapping[str, Any] | str]: ...
 
@@ -119,6 +120,7 @@ class WorkflowAppGenerator(AppInputAdapter):
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[Layer] = (),
         allow_human_input: bool = True,
+        capture_agent_evaluation_trace: bool = False,
         pause_state_config: PauseStateLayerConfig | None = None,
     ) -> Mapping[str, Any]: ...
 
@@ -139,6 +141,7 @@ class WorkflowAppGenerator(AppInputAdapter):
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[Layer] = (),
         allow_human_input: bool = True,
+        capture_agent_evaluation_trace: bool = False,
         pause_state_config: PauseStateLayerConfig | None = None,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]: ...
 
@@ -158,6 +161,7 @@ class WorkflowAppGenerator(AppInputAdapter):
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[Layer] = (),
         allow_human_input: bool = True,
+        capture_agent_evaluation_trace: bool = False,
         pause_state_config: PauseStateLayerConfig | None = None,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]:
         with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
@@ -187,6 +191,7 @@ class WorkflowAppGenerator(AppInputAdapter):
             inputs: Mapping[str, Any] = args["inputs"]
 
             extras = {
+                "capture_agent_evaluation_trace": capture_agent_evaluation_trace,
                 **extract_external_trace_id_from_args(args),
                 **extract_parent_trace_context_from_args(args),
                 **extract_trace_session_id_from_args(args),

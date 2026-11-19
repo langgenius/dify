@@ -17,6 +17,7 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
+from core.app.llm.model_access import ModelRuntimeProfile
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
@@ -267,8 +268,7 @@ class TestPipelineWorkflowToolsCases:
             lambda **_kwargs: FakeAgentBackendRunClient(scenario=scenario),
         )
         monkeypatch.setattr(
-            "services.workflow.execution.adapters.agent_v2.runtime_request_builder.resolve_model_context_window",
-            lambda **_kwargs: None,
+            "core.app.llm.model_access.resolve_model_runtime_profile", lambda **_kwargs: ModelRuntimeProfile(None, [])
         )
         collections: list[dict[str, object]] = []
 
