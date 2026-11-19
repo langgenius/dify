@@ -314,3 +314,22 @@ def test_a_chatflow_job_takes_its_ids_and_ending_from_cores_stream(
         task_id=TASK_ID, run_id=RUN_ID, message_id=MESSAGE_ID, conversation_id=CONVERSATION_ID
     )
     assert record.status is JobStatus.SUCCEEDED
+
+
+def test_a_chatflow_answered_without_a_workflow_run_succeeds(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """An annotation reply or input moderation: the stream is the answer and message_end, with no run.
+
+    Core's worker completes such a stream without inventing a workflow run, and the job ends with its message.
+    """
+    stream = _chat_stream(
+        MessageStreamResponse(task_id=TASK_ID, id=MESSAGE_ID, answer="a preset answer"),
+        MessageEndStreamResponse(task_id=TASK_ID, id=MESSAGE_ID),
+    )
+    frames = _graph_frames(monkeypatch, AppMode.ADVANCED_CHAT, AdvancedChatAppGenerateResponseConverter, stream)
+
+    record = _read(AppMode.ADVANCED_CHAT, frames, caplog)
+
+    assert _ids(record) == JobIds(task_id=TASK_ID, message_id=MESSAGE_ID, conversation_id=CONVERSATION_ID)
+    assert (record.status, record.failure) == (JobStatus.SUCCEEDED, None)
