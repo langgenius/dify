@@ -46,7 +46,6 @@ jobs:
       cli-changed: ${{ steps.changes.outputs.cli }}
       e2e-changed: ${{ steps.changes.outputs.e2e }}
       web-changed: ${{ steps.changes.outputs.web }}
-      openapi-sdk-changed: ${{ steps.changes.outputs.openapi-sdk }}
       vdb-changed: ${{ steps.changes.outputs.vdb }}
       migration-changed: ${{ steps.changes.outputs.migration }}
       sandbox-runtime-changed: ${{ steps.changes.outputs.sandbox-runtime }}
@@ -116,27 +115,6 @@ jobs:
               - 'pnpm-workspace.yaml'
               - 'patches/**'
               - '.github/workflows/main-ci.yml'
-              - '.github/workflows/web-tests.yml'
-              - '.github/actions/setup-web/**'
-            # Inputs of the OpenAPI SDK job, which runs inside Web Tests.
-            openapi-sdk:
-              - 'packages/openapi-content-mapper/**'
-              - 'packages/contracts/**'
-              - 'packages/tsconfig/**'
-              - 'api/dev/cached_console_openapi.py'
-              - 'api/knowledge-fs-contract/**'
-              - 'api/pyproject.toml'
-              - 'api/uv.lock'
-              - 'web/package.json'
-              - 'web/tsconfig.json'
-              - 'web/global.d.ts'
-              - 'web/types/**/*.d.ts'
-              - '.vscode/settings.example.json'
-              - 'package.json'
-              - 'pnpm-lock.yaml'
-              - 'pnpm-workspace.yaml'
-              - 'patches/**'
-              - '.npmrc'
               - '.github/workflows/web-tests.yml'
               - '.github/actions/setup-web/**'
             e2e:
@@ -387,8 +365,6 @@ jobs:
       - check-changes
     if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.web-changed == 'true'
     uses: ./.github/workflows/web-tests.yml
-    with:
-      openapi-sdk-changed: ${{ needs.check-changes.outputs.openapi-sdk-changed == 'true' }}
     secrets: inherit
 
   web-tests:
