@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from controllers.common.errors import InvalidArgumentError
 from controllers.common.schema import (
+    query_params_from_model,
     register_response_schema_models,
     register_schema_models,
 )
@@ -18,13 +19,28 @@ from libs.datetime_utils import parse_time_range
 from libs.helper import dump_response
 from models.model import App, AppMode
 
-# 公共查询参数
+# Request parameters
 
 
 class StatisticQuery(BaseModel):
-    start: str | None = Field(default=None)
-    end: str | None = Field(default=None)
-    timezone: str = Field(default="UTC")
+    start: str | None = Field(
+        default=None,
+        description=(
+            "Start of the statistics period in YYYY-MM-DD HH:MM format. "
+            "If omitted, the existing Dify default time range is used."
+        ),
+    )
+    end: str | None = Field(
+        default=None,
+        description=(
+            "End of the statistics period in YYYY-MM-DD HH:MM format. "
+            "If omitted, the existing Dify default time range is used."
+        ),
+    )
+    timezone: str = Field(
+        default="UTC",
+        description="IANA timezone name used for the statistics period. Defaults to UTC.",
+    )
 
     @field_validator("start", "end", mode="before")
     @classmethod
@@ -43,7 +59,7 @@ def resolve_time_range(query: StatisticQuery):
         raise InvalidArgumentError(str(exc)) from exc
 
 
-# 统计响应模型
+# Response models
 
 
 class StatisticResponse[T](ResponseModel):
@@ -147,7 +163,7 @@ register_response_schema_models(
 )
 
 
-# 公共统计查询
+# Shared statistics helpers
 
 
 def query_statistics(app_model, query, method_name):
@@ -169,67 +185,162 @@ def check_mode(app_model, supported_modes):
         raise InvalidArgumentError("This statistic is not supported for the current application mode.")
 
 
-# 每日消息量
+# Daily messages
 
 
 @service_api_ns.route("/statistics/daily-messages")
 class DailyMessageApi(Resource):
+    @service_api_ns.doc(
+        "get_daily_message_statistics",
+        summary="Get Daily Message Statistics",
+        description=("Retrieve daily message counts for the authenticated application."),
+        tags=["Statistics"],
+        params=query_params_from_model(StatisticQuery),
+        responses={
+            400: "Invalid time range or timezone.",
+            401: "Unauthorized - invalid API token.",
+        },
+    )
+    @service_api_ns.response(
+        200,
+        "Daily message statistics retrieved successfully.",
+        service_api_ns.models[DailyMessageResponse.__name__],
+    )
     @validate_app_token
     @model_validate(StatisticQuery)
     def get(self, req_data: StatisticQuery, app_model: App):
-
-        data = query_statistics(app_model, req_data, "get_daily_messages")
+        data = query_statistics(
+            app_model,
+            req_data,
+            "get_daily_messages",
+        )
         return dump_response(DailyMessageResponse, {"data": data})
 
 
-# 每日会话量
+# Daily conversations
 
 
 @service_api_ns.route("/statistics/daily-conversations")
 class DailyConversationApi(Resource):
+    @service_api_ns.doc(
+        "get_daily_conversation_statistics",
+        summary="Get Daily Conversation Statistics",
+        description=("Retrieve daily conversation counts for the authenticated application."),
+        tags=["Statistics"],
+        params=query_params_from_model(StatisticQuery),
+        responses={
+            400: "Invalid time range or timezone.",
+            401: "Unauthorized - invalid API token.",
+        },
+    )
+    @service_api_ns.response(
+        200,
+        "Daily conversation statistics retrieved successfully.",
+        service_api_ns.models[DailyConversationResponse.__name__],
+    )
     @validate_app_token
     @model_validate(StatisticQuery)
     def get(self, req_data: StatisticQuery, app_model: App):
-
-        data = query_statistics(app_model, req_data, "get_daily_conversations")
+        data = query_statistics(
+            app_model,
+            req_data,
+            "get_daily_conversations",
+        )
         return dump_response(DailyConversationResponse, {"data": data})
 
 
-# 每日终端用户量
+# Daily end users
 
 
 @service_api_ns.route("/statistics/daily-end-users")
 class DailyEndUsersApi(Resource):
+    @service_api_ns.doc(
+        "get_daily_end_user_statistics",
+        summary="Get Daily End User Statistics",
+        description=("Retrieve daily end-user counts for the authenticated application."),
+        tags=["Statistics"],
+        params=query_params_from_model(StatisticQuery),
+        responses={
+            400: "Invalid time range or timezone.",
+            401: "Unauthorized - invalid API token.",
+        },
+    )
+    @service_api_ns.response(
+        200,
+        "Daily end-user statistics retrieved successfully.",
+        service_api_ns.models[DailyEndUserResponse.__name__],
+    )
     @validate_app_token
     @model_validate(StatisticQuery)
     def get(self, req_data: StatisticQuery, app_model: App):
-
-        data = query_statistics(app_model, req_data, "get_daily_terminals")
+        data = query_statistics(
+            app_model,
+            req_data,
+            "get_daily_terminals",
+        )
         return dump_response(DailyEndUserResponse, {"data": data})
 
 
-# Token消耗及费用
+# Token usage and costs
 
 
 @service_api_ns.route("/statistics/token-costs")
 class TokenCostsApi(Resource):
+    @service_api_ns.doc(
+        "get_token_cost_statistics",
+        summary="Get Token Usage and Cost Statistics",
+        description=("Retrieve daily token consumption and cost statistics for the authenticated application."),
+        tags=["Statistics"],
+        params=query_params_from_model(StatisticQuery),
+        responses={
+            400: "Invalid time range or timezone.",
+            401: "Unauthorized - invalid API token.",
+        },
+    )
+    @service_api_ns.response(
+        200,
+        "Token usage and cost statistics retrieved successfully.",
+        service_api_ns.models[TokenCostResponse.__name__],
+    )
     @validate_app_token
     @model_validate(StatisticQuery)
     def get(self, req_data: StatisticQuery, app_model: App):
-
-        data = query_statistics(app_model, req_data, "get_daily_token_costs")
+        data = query_statistics(
+            app_model,
+            req_data,
+            "get_daily_token_costs",
+        )
         return dump_response(TokenCostResponse, {"data": data})
 
 
-# 平均会话交互次数
+# Average session interactions
 
 
 @service_api_ns.route("/statistics/average-session-interactions")
 class AverageSessionInteractionsApi(Resource):
+    @service_api_ns.doc(
+        "get_average_session_interaction_statistics",
+        summary="Get Average Session Interactions",
+        description=(
+            "Retrieve average interactions per session for the authenticated "
+            "application. Supported application modes include chat, "
+            "agent chat, advanced chat, and agent."
+        ),
+        tags=["Statistics"],
+        params=query_params_from_model(StatisticQuery),
+        responses={
+            400: "Invalid time range, timezone, or unsupported application mode.",
+            401: "Unauthorized - invalid API token.",
+        },
+    )
+    @service_api_ns.response(
+        200,
+        "Average session interaction statistics retrieved successfully.",
+        service_api_ns.models[SessionInteractionResponse.__name__],
+    )
     @validate_app_token
     @model_validate(StatisticQuery)
     def get(self, req_data: StatisticQuery, app_model: App):
-
         check_mode(
             app_model,
             (
@@ -248,15 +359,30 @@ class AverageSessionInteractionsApi(Resource):
         return dump_response(SessionInteractionResponse, {"data": data})
 
 
-# 用户满意度
+# User satisfaction
 
 
 @service_api_ns.route("/statistics/user-satisfaction-rate")
 class UserSatisfactionApi(Resource):
+    @service_api_ns.doc(
+        "get_user_satisfaction_statistics",
+        summary="Get User Satisfaction Statistics",
+        description=("Retrieve user satisfaction rates for the authenticated application."),
+        tags=["Statistics"],
+        params=query_params_from_model(StatisticQuery),
+        responses={
+            400: "Invalid time range or timezone.",
+            401: "Unauthorized - invalid API token.",
+        },
+    )
+    @service_api_ns.response(
+        200,
+        "User satisfaction statistics retrieved successfully.",
+        service_api_ns.models[UserSatisfactionResponse.__name__],
+    )
     @validate_app_token
     @model_validate(StatisticQuery)
     def get(self, req_data: StatisticQuery, app_model: App):
-
         data = query_statistics(
             app_model,
             req_data,
@@ -265,15 +391,33 @@ class UserSatisfactionApi(Resource):
         return dump_response(UserSatisfactionResponse, {"data": data})
 
 
-# 平均响应时间
+# Average response time
 
 
 @service_api_ns.route("/statistics/average-response-time")
 class AverageResponseTimeApi(Resource):
+    @service_api_ns.doc(
+        "get_average_response_time_statistics",
+        summary="Get Average Response Time Statistics",
+        description=(
+            "Retrieve average response times for the authenticated application. "
+            "This statistic is supported for completion applications."
+        ),
+        tags=["Statistics"],
+        params=query_params_from_model(StatisticQuery),
+        responses={
+            400: "Invalid time range, timezone, or unsupported application mode.",
+            401: "Unauthorized - invalid API token.",
+        },
+    )
+    @service_api_ns.response(
+        200,
+        "Average response time statistics retrieved successfully.",
+        service_api_ns.models[ResponseTimeResponse.__name__],
+    )
     @validate_app_token
     @model_validate(StatisticQuery)
     def get(self, req_data: StatisticQuery, app_model: App):
-
         check_mode(app_model, (AppMode.COMPLETION,))
 
         data = query_statistics(
@@ -284,15 +428,30 @@ class AverageResponseTimeApi(Resource):
         return dump_response(ResponseTimeResponse, {"data": data})
 
 
-# 每秒生成Token数
+# Tokens per second
 
 
 @service_api_ns.route("/statistics/tokens-per-second")
 class TokensPerSecondApi(Resource):
+    @service_api_ns.doc(
+        "get_tokens_per_second_statistics",
+        summary="Get Tokens Per Second Statistics",
+        description=("Retrieve token generation throughput statistics for the authenticated application."),
+        tags=["Statistics"],
+        params=query_params_from_model(StatisticQuery),
+        responses={
+            400: "Invalid time range or timezone.",
+            401: "Unauthorized - invalid API token.",
+        },
+    )
+    @service_api_ns.response(
+        200,
+        "Tokens per second statistics retrieved successfully.",
+        service_api_ns.models[TokensPerSecondResponse.__name__],
+    )
     @validate_app_token
     @model_validate(StatisticQuery)
     def get(self, req_data: StatisticQuery, app_model: App):
-
         data = query_statistics(
             app_model,
             req_data,
