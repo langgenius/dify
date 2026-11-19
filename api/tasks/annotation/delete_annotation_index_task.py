@@ -8,7 +8,7 @@ from core.db.session_factory import session_factory
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from models.dataset import Dataset
-from services.knowledge.dataset_service import DatasetCollectionBindingService
+from repositories.knowledge.collection_binding_repository import DatasetCollectionBindingRepository
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +22,10 @@ def delete_annotation_index_task(annotation_id: str, app_id: str, tenant_id: str
     start_at = time.perf_counter()
     try:
         with session_factory.create_session() as session:
-            dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
-                collection_binding_id, session, "annotation"
+            dataset_collection_binding = (
+                DatasetCollectionBindingRepository.get_dataset_collection_binding_by_id_and_type(
+                    collection_binding_id, session, "annotation"
+                )
             )
 
         dataset = Dataset(

@@ -2,7 +2,8 @@
 
 from collections.abc import Generator
 from contextlib import contextmanager
-from unittest.mock import MagicMock, patch
+from dataclasses import dataclass
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
 from flask import Flask
@@ -16,6 +17,7 @@ from services.errors.knowledge_retrieval import (
     InnerKnowledgeRetrieveAppNotFoundError,
     InnerKnowledgeRetrieveDatasetTenantMismatchError,
 )
+from services.knowledge_retrieval_inner_service import InnerKnowledgeRetrievalService
 from tests.helpers.unit.config_override import config_overrides_context
 
 
@@ -25,6 +27,27 @@ def inner_api_app() -> Flask:
     app.config["TESTING"] = True
     app.register_blueprint(inner_api_bp)
     return app
+
+
+@dataclass
+class _KnowledgeServices:
+    inner_retrieval: InnerKnowledgeRetrievalService
+
+
+@dataclass
+class _ApplicationServices:
+    knowledge: _KnowledgeServices
+
+
+@pytest.fixture
+def mock_retrieve(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    inner_retrieval = create_autospec(InnerKnowledgeRetrievalService, instance=True, spec_set=True)
+    services = _ApplicationServices(knowledge=_KnowledgeServices(inner_retrieval=inner_retrieval))
+    monkeypatch.setattr(
+        "controllers.inner_api.knowledge.retrieval.application_services",
+        lambda: services,
+    )
+    return inner_retrieval.retrieve
 
 
 def _headers(api_key: str | None = "inner-key") -> dict[str, str]:
@@ -96,7 +119,6 @@ class TestInnerKnowledgeRetrieveApi:
         assert response.status_code == 400
         assert response.get_json()["code"] == "invalid_request"
 
-    @patch("controllers.inner_api.knowledge.retrieval.InnerKnowledgeRetrievalService.retrieve")
     def test_post_returns_404_for_service_not_found_error(self, mock_retrieve: MagicMock, inner_api_app: Flask) -> None:
         mock_retrieve.side_effect = InnerKnowledgeRetrieveAppNotFoundError("app missing")
 
@@ -110,7 +132,6 @@ class TestInnerKnowledgeRetrieveApi:
         assert response.status_code == 404
         assert response.get_json()["code"] == "app_not_found"
 
-    @patch("controllers.inner_api.knowledge.retrieval.InnerKnowledgeRetrievalService.retrieve")
     def test_post_returns_403_for_service_forbidden_error(self, mock_retrieve: MagicMock, inner_api_app: Flask) -> None:
         mock_retrieve.side_effect = InnerKnowledgeRetrieveDatasetTenantMismatchError("wrong tenant")
 
@@ -124,7 +145,6 @@ class TestInnerKnowledgeRetrieveApi:
         assert response.status_code == 403
         assert response.get_json()["code"] == "dataset_tenant_mismatch"
 
-    @patch("controllers.inner_api.knowledge.retrieval.InnerKnowledgeRetrievalService.retrieve")
     def test_post_returns_422_for_retrieval_config_value_error(
         self, mock_retrieve: MagicMock, inner_api_app: Flask
     ) -> None:
@@ -140,7 +160,6 @@ class TestInnerKnowledgeRetrieveApi:
         assert response.status_code == 422
         assert response.get_json()["code"] == "retrieval_config_invalid"
 
-    @patch("controllers.inner_api.knowledge.retrieval.InnerKnowledgeRetrievalService.retrieve")
     def test_post_returns_429_for_rate_limit_error(self, mock_retrieve: MagicMock, inner_api_app: Flask) -> None:
         mock_retrieve.side_effect = RateLimitExceededError("knowledge rate limited")
 
@@ -182,7 +201,6 @@ class TestInnerKnowledgeRetrieveApi:
         assert response.status_code == 400
         assert response.get_json()["code"] == "invalid_request"
 
-    @patch("controllers.inner_api.knowledge.retrieval.InnerKnowledgeRetrievalService.retrieve")
     def test_post_returns_502_for_external_knowledge_failure(
         self, mock_retrieve: MagicMock, inner_api_app: Flask
     ) -> None:
@@ -198,7 +216,6 @@ class TestInnerKnowledgeRetrieveApi:
         assert response.status_code == 502
         assert response.get_json()["code"] == "external_knowledge_failed"
 
-    @patch("controllers.inner_api.knowledge.retrieval.InnerKnowledgeRetrievalService.retrieve")
     def test_post_returns_service_response(self, mock_retrieve: MagicMock, inner_api_app: Flask) -> None:
         mock_retrieve.return_value = InnerKnowledgeRetrieveResponse(
             results=[

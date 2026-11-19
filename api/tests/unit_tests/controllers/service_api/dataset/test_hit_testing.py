@@ -15,20 +15,41 @@ Strategy:
 """
 
 import uuid
+from dataclasses import dataclass
 from typing import TypedDict
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask, g
 from pydantic import TypeAdapter
-from werkzeug.exceptions import Forbidden, NotFound
 
 import services.errors.base
+from controllers.common.errors import AccessDeniedError, NotFoundError
+from controllers.console.datasets import hit_testing_base as hit_testing_base_module
 from controllers.service_api.dataset.hit_testing import HitTestingApi, HitTestingPayload
 from models.account import Account, Tenant, TenantAccountRole
 from models.dataset import Dataset
 from services.knowledge.entities.knowledge_entities import RetrievalModel
 from tests.helpers.unit.controllers.knowledge_fs_controller_fakes import narrowed
+
+
+@dataclass
+class _WorkflowRuntimeServices:
+    retrieval: object
+
+
+@dataclass
+class _ApplicationServices:
+    workflow_runtime: _WorkflowRuntimeServices
+
+
+@pytest.fixture
+def workflow_retrieval(monkeypatch: pytest.MonkeyPatch) -> object:
+    retrieval = object()
+    services = _ApplicationServices(workflow_runtime=_WorkflowRuntimeServices(retrieval=retrieval))
+    monkeypatch.setattr(hit_testing_base_module, "application_services", lambda: services)
+    return retrieval
+
 
 # ---------------------------------------------------------------------------
 # HitTestingPayload Model Tests
@@ -165,6 +186,7 @@ class TestHitTestingApiPost:
         mock_hit_svc: MagicMock,
         mock_ns: MagicMock,
         app: Flask,
+        workflow_retrieval: object,
     ) -> None:
         """Preconditions: The dataset exists and the account is admitted.
 
@@ -193,6 +215,7 @@ class TestHitTestingApiPost:
 
         assert response["query"] == {"content": "test query"}
         mock_hit_svc.retrieve.assert_called_once()
+        assert mock_hit_svc.retrieve.call_args.kwargs["retrieval"] is workflow_retrieval
 
     @patch("controllers.service_api.dataset.hit_testing.service_api_ns")
     @patch("controllers.console.datasets.hit_testing_base.HitTestingService")
@@ -203,6 +226,7 @@ class TestHitTestingApiPost:
         mock_hit_svc: MagicMock,
         mock_ns: MagicMock,
         app: Flask,
+        workflow_retrieval: object,
     ) -> None:
         """Preconditions: The request supplies a valid retrieval model for an accessible dataset.
 
@@ -242,6 +266,7 @@ class TestHitTestingApiPost:
 
         assert response["query"] == {"content": "complex query"}
         call_kwargs = mock_hit_svc.retrieve.call_args
+        assert call_kwargs.kwargs["retrieval"] is workflow_retrieval
         # retrieval_model is serialized via model_dump, verify key fields
         passed_retrieval_model = call_kwargs.kwargs.get("retrieval_model")
         assert passed_retrieval_model is not None
@@ -257,6 +282,7 @@ class TestHitTestingApiPost:
         mock_hit_svc: MagicMock,
         mock_ns: MagicMock,
         app: Flask,
+        workflow_retrieval: object,
     ) -> None:
         """Preconditions: The retrieval model includes metadata filters.
 
@@ -301,6 +327,7 @@ class TestHitTestingApiPost:
             vars(HitTestingApi.post)["__wrapped__"](api, tenant_id, dataset_id)
 
         passed_retrieval_model = mock_hit_svc.retrieve.call_args.kwargs.get("retrieval_model")
+        assert mock_hit_svc.retrieve.call_args.kwargs["retrieval"] is workflow_retrieval
         assert passed_retrieval_model is not None
         assert passed_retrieval_model["metadata_filtering_conditions"] == metadata_filtering_conditions
 
@@ -313,6 +340,7 @@ class TestHitTestingApiPost:
         mock_hit_svc: MagicMock,
         mock_ns: MagicMock,
         app: Flask,
+        workflow_retrieval: object,
     ) -> None:
         """Preconditions: The retrieval result contains nullable list fields.
 
@@ -350,6 +378,7 @@ class TestHitTestingApiPost:
         assert record["score"] == 0.9
         assert record["tsne_position"] is None
         assert record["summary"] is None
+        assert mock_hit_svc.retrieve.call_args.kwargs["retrieval"] is workflow_retrieval
 
     @patch("controllers.service_api.dataset.hit_testing.service_api_ns")
     @patch("controllers.console.datasets.hit_testing_base.DatasetService")
@@ -374,7 +403,7 @@ class TestHitTestingApiPost:
             # TODO: the service APIs are NOT migrated yet, so we have to do the very dirty hack
             g._login_user = account
             api = HitTestingApi()
-            with pytest.raises(NotFound):
+            with pytest.raises(NotFoundError):
                 vars(HitTestingApi.post)["__wrapped__"](api, tenant_id, dataset_id)
 
     @patch("controllers.service_api.dataset.hit_testing.service_api_ns")
@@ -403,5 +432,5 @@ class TestHitTestingApiPost:
             # TODO: the service APIs are NOT migrated yet, so we have to do the very dirty hack
             g._login_user = account
             api = HitTestingApi()
-            with pytest.raises(Forbidden):
+            with pytest.raises(AccessDeniedError):
                 vars(HitTestingApi.post)["__wrapped__"](api, tenant_id, dataset_id)
