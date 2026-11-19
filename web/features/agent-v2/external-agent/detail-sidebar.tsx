@@ -19,6 +19,7 @@ import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import NavLink from '@/app/components/app-sidebar/nav-link'
 import AppIcon from '@/app/components/base/app-icon'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { DetailSidebarFrame } from '@/app/components/detail-sidebar'
 import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/handles'
@@ -121,7 +122,12 @@ function ExternalAgentSection({ agentId, expand }: { agentId: string; expand: bo
   return (
     <div className="flex min-h-0 flex-1 flex-col pb-2">
       {agent && (
-        <div className={cn('flex items-center gap-2 px-3 py-3', !expand && 'justify-center px-2')}>
+        <div
+          className={cn(
+            'flex h-15 shrink-0 items-center gap-2 px-3 py-3',
+            !expand && 'justify-center px-2',
+          )}
+        >
           <AppIcon
             size="medium"
             shape="circle"
@@ -142,9 +148,13 @@ function ExternalAgentSection({ agentId, expand }: { agentId: string; expand: bo
           </div>
         </div>
       )}
-      {canRead && !agent && expand && (
-        <ExternalAgentRequestState pending={detail.isPending} error={detail.error} />
-      )}
+      {canRead &&
+        !agent &&
+        (detail.isPending ? (
+          <LoadingPlaceholder className="h-15 shrink-0" />
+        ) : (
+          expand && <ExternalAgentRequestState error={detail.error} />
+        ))}
       <div className={cn('py-0.5', expand ? 'px-5' : 'px-3')}>
         <Separator
           decorative

@@ -6,6 +6,7 @@ import { useAtomValue } from 'jotai'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useDocLink } from '@/context/i18n'
 import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -80,58 +81,64 @@ function MonitoringSession({ agentId, timezone }: { agentId: string; timezone: s
             {data?.apps !== undefined && data.apps !== null && (
               <MonitoringAppsFilter apps={data.apps} value={appId} onChange={setAppId} />
             )}
-            <span className="system-xs-regular text-text-tertiary">{timezone}</span>
           </div>
           <ExternalAgentTracingConfiguration agentId={agentId} />
         </div>
-        {monitoring.isPending ? (
-          <ExternalAgentRequestState pending />
-        ) : (
-          summary && (
-            <div className="grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-2">
-              <MonitoringChart
-                metric="calls"
-                summary={value(summary.calls)}
-                rows={rows}
-                empty={empty}
-              />
-              <MonitoringChart
-                metric="reportedTokens"
-                summary={value(summary.reported_tokens)}
-                rows={rows}
-                empty={empty}
-              />
-              <MonitoringChart
-                metric="averageCallDuration"
-                summary={
-                  summary.average_call_duration === null
-                    ? '—'
-                    : `${value(summary.average_call_duration)} s`
-                }
-                rows={rows}
-                empty={empty}
-              />
-              <MonitoringChart
-                metric="tokenReportingCoverage"
-                summary={
-                  summary.token_reporting_coverage === null
-                    ? '—'
-                    : `${value(summary.token_reporting_coverage * 100)}%`
-                }
-                detail={
-                  summary.token_reporting_denominator === 0
-                    ? undefined
-                    : t(($) => $['external.monitoring.coverageDetail'], {
-                        reported: summary.token_reporting_numerator,
-                        total: summary.token_reporting_denominator,
-                      })
-                }
-                rows={rows}
-                empty={empty}
-              />
-            </div>
-          )
-        )}
+        <div className="grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-2">
+          {monitoring.isPending
+            ? ['calls', 'reportedTokens', 'averageCallDuration', 'tokenReportingCoverage'].map(
+                (metric) => (
+                  <LoadingPlaceholder
+                    key={metric}
+                    className="h-79 rounded-xl bg-components-chart-bg shadow-xs"
+                  />
+                ),
+              )
+            : summary && (
+                <>
+                  <MonitoringChart
+                    metric="calls"
+                    summary={value(summary.calls)}
+                    rows={rows}
+                    empty={empty}
+                  />
+                  <MonitoringChart
+                    metric="reportedTokens"
+                    summary={value(summary.reported_tokens)}
+                    rows={rows}
+                    empty={empty}
+                  />
+                  <MonitoringChart
+                    metric="averageCallDuration"
+                    summary={
+                      summary.average_call_duration === null
+                        ? '—'
+                        : `${value(summary.average_call_duration)} s`
+                    }
+                    rows={rows}
+                    empty={empty}
+                  />
+                  <MonitoringChart
+                    metric="tokenReportingCoverage"
+                    summary={
+                      summary.token_reporting_coverage === null
+                        ? '—'
+                        : `${value(summary.token_reporting_coverage * 100)}%`
+                    }
+                    detail={
+                      summary.token_reporting_denominator === 0
+                        ? undefined
+                        : t(($) => $['external.monitoring.coverageDetail'], {
+                            reported: summary.token_reporting_numerator,
+                            total: summary.token_reporting_denominator,
+                          })
+                    }
+                    rows={rows}
+                    empty={empty}
+                  />
+                </>
+              )}
+        </div>
       </div>
     </div>
   )

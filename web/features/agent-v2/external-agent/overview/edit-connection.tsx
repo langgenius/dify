@@ -11,30 +11,32 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
+  DialogClose,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogHeaderCloseButton,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
+import { Form } from '@langgenius/dify-ui/form'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
-import { ExternalConnectionForm } from '../../roster/components/external-connection-form'
+import { ExternalConnectionFeedback } from '../../roster/components/external-connection-feedback'
+import { ExternalConnectionFields } from '../../roster/components/external-connection-fields'
 import {
   externalAgentErrorMessage,
   isUnknownExternalSaveResult,
   useExternalConnectionVerification,
 } from '../../roster/components/external-connection-verification'
 import { toExternalAgentOverview } from '../model'
-import { EditConnectionApps } from './edit-connection-apps'
 import { EditConnectionConflict } from './edit-connection-conflict'
+import { EditConnectionReview } from './edit-connection-review'
 
 function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }) {
   const { t } = useTranslation(['agentRoster', 'common'])
@@ -47,6 +49,7 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
   const [saveError, setSaveError] = useState<string>()
   const [latestEndpoint, setLatestEndpoint] = useState<string>()
   const endpointRef = useRef<HTMLInputElement>(null)
+  const submitLabelId = useId()
   const loadEpochRef = useRef(0)
   const detail = useQuery(
     consoleQuery.externalAgents.byAgentId.get.queryOptions({
@@ -67,6 +70,16 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
     }),
   )
   const pending = verification.pending || save.isPending
+  const hasChanges = Boolean(
+    base &&
+    settings &&
+    (settings.endpoint.trim() !== base.endpoint.trim() ||
+      settings.authentication !== base.authentication ||
+      (settings.authentication === 'bearer' && settings.token !== '')),
+  )
+  const executionEnabled = capabilities.data?.enabled === true
+  const canSubmit =
+    saveUnknown || Boolean(verification.evidence) || (executionEnabled && hasChanges)
   const scopeRef = useRef(verification.scope)
   scopeRef.current = verification.scope
 
@@ -190,19 +203,34 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
       },
     )
   }
+  function updateSettings(next: ExternalConnectionSettings) {
+    if (pending || saveUnknown) return
+    setSettings(next)
+    setReview(undefined)
+    setSaveError(undefined)
+    verification.invalidate()
+    save.reset()
+  }
+  function verifyOrSave(values: Pick<ExternalConnectionSettings, 'endpoint' | 'token'>) {
+    if (pending || !settings || !canSubmit) return
+    if (saveUnknown || verification.evidence) {
+      submit()
+      return
+    }
+    const draft: ExternalConnectionSettings = {
+      endpoint: values.endpoint.trim(),
+      authentication: settings.authentication,
+      token: settings.authentication === 'bearer' ? (values.token ?? '') : '',
+    }
+    setSettings(draft)
+    setReview(undefined)
+    setSaveError(undefined)
+    save.reset()
+    verification.verify(draft, setReview)
+  }
   const conflicted = getHttpErrorStatus(save.error) === 409
   const latest =
     conflicted && detail.data && !detail.isError ? toExternalAgentOverview(detail.data) : undefined
-  const warnings = review ? [...review.warnings.technical, ...review.warnings.business] : []
-  const warningLabels: Record<string, string> = {
-    input_modes_narrowed: t(($) => $['external.connection.warnings.inputModesNarrowed']),
-    output_modes_narrowed: t(($) => $['external.connection.warnings.outputModesNarrowed']),
-    streaming_removed: t(($) => $['external.connection.warnings.streamingRemoved']),
-    auth_requirements_changed: t(($) => $['external.connection.warnings.authenticationChanged']),
-    traceability_removed: t(($) => $['external.connection.warnings.traceabilityRemoved']),
-    agent_info_changed: t(($) => $['external.connection.warnings.agentInfoChanged']),
-    skills_changed: t(($) => $['external.connection.warnings.skillsChanged']),
-  }
 
   return (
     <Dialog
@@ -233,7 +261,6 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
       <DialogContent className="w-150" initialFocus={endpointRef}>
         <DialogHeader>
           <DialogTitle>{t(($) => $['external.overview.editConnection'])}</DialogTitle>
-          <DialogDescription>{t(($) => $['external.connection.description'])}</DialogDescription>
           <DialogHeaderCloseButton
             disabled={pending}
             aria-label={t(($) => $['operation.close'], { ns: 'common' })}
@@ -243,7 +270,7 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
           <DialogBody>
             {(detail.isPending || detail.isFetching) && (
               <LoadingPlaceholder
-                className={overview.authentication === 'bearer' ? 'h-92' : 'h-66'}
+                className={overview.authentication === 'bearer' ? 'h-80' : 'h-54'}
               />
             )}
           </DialogBody>
@@ -276,38 +303,42 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
               </Button>
             </DialogFooter>
           </>
-        ) : review ? (
-          <>
-            <DialogBody className="space-y-4">
-              <h3 className="system-sm-semibold text-text-primary">
-                {t(($) => $['external.connection.changes'])}
-              </h3>
-              <p className="system-sm-regular wrap-break-word text-text-secondary">
-                {settings.endpoint}
-              </p>
-              <p className="system-xs-regular text-text-secondary">
-                {review.auth_check === 'passed_for_read_endpoint'
-                  ? t(($) => $['external.connection.authReadPassed'])
-                  : t(($) => $['external.connection.authNotExercised'])}
-              </p>
-              <div className="space-y-3 rounded-lg bg-background-section p-3">
-                <EditConnectionApps agentId={base.asset.id} />
-                {warnings.length ? (
-                  <ul className="space-y-2 system-sm-regular text-text-warning">
-                    {warnings.map((warning) => (
-                      <li key={warning}>{warningLabels[warning] ?? warning}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="system-sm-regular text-text-tertiary">
-                    {t(($) => $['external.connection.noWarnings'])}
-                  </p>
-                )}
-              </div>
-              {verification.state.status === 'expired' && !saveUnknown && (
-                <Alert type="warning">
-                  <AlertTitle>{t(($) => $['external.connection.proofExpired'])}</AlertTitle>
-                </Alert>
+        ) : (
+          <Form<Pick<ExternalConnectionSettings, 'endpoint' | 'token'>>
+            key={base.connectionRevisionId}
+            className="contents"
+            onFormSubmit={verifyOrSave}
+          >
+            <DialogBody className="flex flex-col gap-4">
+              <ExternalConnectionFields
+                settings={settings}
+                endpointRef={endpointRef}
+                disabled={pending || saveUnknown}
+                verified={Boolean(verification.evidence) || saveUnknown}
+                hasCredential={base.authentication === 'bearer' && base.hasCredential}
+                endpointDescription={
+                  latestEndpoint
+                    ? t(($) => $['external.connection.conflict.latestEndpoint'], {
+                        endpoint: latestEndpoint,
+                      })
+                    : undefined
+                }
+                onChange={updateSettings}
+              />
+              {review && (
+                <EditConnectionReview
+                  agentId={base.asset.id}
+                  review={review}
+                  verified={Boolean(verification.evidence) && !saveUnknown}
+                />
+              )}
+              {!saveUnknown && (
+                <ExternalConnectionFeedback
+                  verification={verification.state}
+                  executionEnabled={executionEnabled}
+                  editing
+                  showVerifiedStatus={false}
+                />
               )}
               {saveError && (
                 <Alert type="error">
@@ -319,51 +350,34 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
               )}
             </DialogBody>
             <DialogFooter>
-              <Button
-                variant="secondary"
-                disabled={pending || saveUnknown}
-                onClick={() => setReview(undefined)}
-              >
-                {t(($) => $['operation.back'], { ns: 'common' })}
-              </Button>
-              <Button
-                variant="primary"
-                loading={save.isPending}
-                disabled={!saveUnknown && !verification.evidence}
-                onClick={submit}
-              >
+              <DialogClose disabled={pending} render={<Button variant="secondary" />}>
                 {saveUnknown
-                  ? t(($) => $['external.api.retrySave'])
-                  : t(($) => $['operation.save'], { ns: 'common' })}
+                  ? t(($) => $['operation.close'], { ns: 'common' })
+                  : t(($) => $['operation.cancel'], { ns: 'common' })}
+              </DialogClose>
+              <Button
+                type="submit"
+                variant="primary"
+                loading={pending}
+                disabled={!canSubmit}
+                aria-labelledby={submitLabelId}
+              >
+                <span id={submitLabelId}>
+                  {saveUnknown
+                    ? t(($) => $['external.api.retrySave'])
+                    : verification.pending
+                      ? t(($) => $['external.connection.verifying'])
+                      : verification.evidence
+                        ? t(($) => $['external.connection.saveChanges'])
+                        : t(($) => $['external.connection.verify'])}
+                </span>
               </Button>
             </DialogFooter>
-          </>
-        ) : (
-          <ExternalConnectionForm
-            key={base.connectionRevisionId}
-            initialSettings={settings}
-            savedSettings={base}
-            endpointDescription={
-              latestEndpoint
-                ? t(($) => $['external.connection.conflict.latestEndpoint'], {
-                    endpoint: latestEndpoint,
-                  })
-                : undefined
-            }
-            endpointRef={endpointRef}
-            verification={verification.state}
-            executionEnabled={capabilities.data?.enabled === true}
-            hasCredential={base.authentication === 'bearer' && base.hasCredential}
-            onVerify={(values) => {
-              setSettings({ ...values, token: '' })
-              verification.verify(values, setReview)
-            }}
-            onContinue={() => {
-              if (verification.evidence) setReview(verification.evidence)
-            }}
-            onInvalidate={verification.invalidate}
-          />
+          </Form>
         )}
+        <p className="shrink-0 border-t border-divider-subtle bg-background-section px-6 py-3 text-center system-xs-regular text-text-tertiary">
+          {t(($) => $['external.connection.callsHint'])}
+        </p>
       </DialogContent>
     </Dialog>
   )
