@@ -16,6 +16,7 @@ from pydantic import JsonValue
 
 from dify_agent.agent_stub.shell_env import ShellAgentStubTokenFactory
 from dify_agent.runtime_backend import RuntimeBackendProfile, RuntimeLease
+from dify_agent.runtime.tool_call_limits import InMemoryToolCallLimitStore, ToolCallLimitStore
 
 if TYPE_CHECKING:
     from dify_agent.layers.knowledge_fs.session import KnowledgeFsSessionStore
@@ -43,6 +44,9 @@ class Services:
     agent_stub_api_base_url: str | None = None
     agent_stub_token_factory: ShellAgentStubTokenFactory | None = None
     knowledge_session_store: KnowledgeFsSessionStore | None = None
+    # Native callers keep reservations for the lifetime of Services. The HTTP
+    # server injects the durable adapter tied to its existing run records.
+    tool_call_limit_store: ToolCallLimitStore = field(default_factory=InMemoryToolCallLimitStore)
 
 
 @dataclass

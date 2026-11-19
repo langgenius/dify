@@ -94,8 +94,28 @@ class RunNotFoundError(LookupError):
     """Raised when a requested run record does not exist."""
 
 
+_TERMINAL_TOOL_CALL_LIMITS = """
+local function with_tool_call_limits(payload, record)
+    -- Decode only to reject a top-level caller override. Preserve every byte of
+    -- the original payload: re-encoding it would turn empty snapshot maps into arrays.
+    local envelope = cjson.decode(payload)
+    if envelope.tool_call_limits ~= nil then
+        error("terminal tool_call_limits must be owned by run storage")
+    end
+    if type(record.tool_call_limits) == "table" and next(record.tool_call_limits) ~= nil then
+        if string.sub(payload, -1) ~= "}" then
+            error("terminal event must be a JSON object")
+        end
+        return string.sub(payload, 1, -2) .. ',"tool_call_limits":' .. cjson.encode(record.tool_call_limits) .. "}"
+    end
+    return payload
+end
+"""
+
+
 _FINALIZE_RUN_SCRIPT = (
-    """
+    _TERMINAL_TOOL_CALL_LIMITS
+    + """
 -- KEYS: record, events, cancel intent. ARGV: status, updated time, error flag/text,
 -- error-type flag/text, event JSON, TTL, max stream length.
 -- Return {code, status, event id}: -1 missing, -2 cancellation won, 0 sealed, 1 applied.
@@ -128,7 +148,8 @@ end
 
 local ttl = tonumber(ARGV[8])
 local updated_record_json = cjson.encode(record)
-local event_id = redis.call("XADD", KEYS[2], "MAXLEN", "~", ARGV[9], "*", "payload", ARGV[7])
+local payload = with_tool_call_limits(ARGV[7], record)
+local event_id = redis.call("XADD", KEYS[2], "MAXLEN", "~", ARGV[9], "*", "payload", payload)
 redis.call("EXPIRE", KEYS[2], ttl)
 redis.call("SET", KEYS[1], updated_record_json, "EX", ttl)
 """
@@ -200,7 +221,8 @@ return {1, "running"}
 
 
 _FINALIZE_CANCELLATION_SCRIPT = (
-    """
+    _TERMINAL_TOOL_CALL_LIMITS
+    + """
 -- KEYS: record, cancel intent, events. ARGV: updated time, error flag/text,
 -- event JSON, TTL, max stream length.
 -- Return {code, status, event id}: -1 missing, -2 no intent, 0 sealed, 1 applied.
@@ -230,7 +252,8 @@ end
 record.error_type = cjson.null
 
 local ttl = tonumber(ARGV[5])
-local event_id = redis.call("XADD", KEYS[3], "MAXLEN", "~", ARGV[6], "*", "payload", ARGV[4])
+local payload = with_tool_call_limits(ARGV[4], record)
+local event_id = redis.call("XADD", KEYS[3], "MAXLEN", "~", ARGV[6], "*", "payload", payload)
 redis.call("DEL", KEYS[2])
 redis.call("EXPIRE", KEYS[3], ttl)
 redis.call("SET", KEYS[1], cjson.encode(record), "EX", ttl)
@@ -376,9 +399,15 @@ class RedisRunStore(RunEventSink):
 
     @override
     async def finalize_run(self, event: TerminalRunEvent) -> RunFinalizationResult:
-        """Atomically append the first success/failure event and update its run record."""
+        """Finalize with the authoritative reservation summary from the same record.
+
+        Callers cannot supply a quota summary. The Lua transition copies current
+        reservations atomically, including attempts whose result event was lost.
+        """
+        if event.tool_call_limits:
+            raise ValueError("terminal tool_call_limits must be owned by run storage")
         status, error, error_type = terminal_event_status_fields(event)
-        payload = RUN_EVENT_ADAPTER.dump_json(event, exclude={"id"}).decode()
+        payload = RUN_EVENT_ADAPTER.dump_json(event, exclude={"id", "tool_call_limits"}).decode()
         evaluation = cast(
             Awaitable[object],
             self.redis.eval(
@@ -471,7 +500,7 @@ class RedisRunStore(RunEventSink):
             ),
             created_at=utc_now(),
         )
-        payload = RUN_EVENT_ADAPTER.dump_json(event, exclude={"id"}).decode()
+        payload = RUN_EVENT_ADAPTER.dump_json(event, exclude={"id", "tool_call_limits"}).decode()
         error = event.data.message or event.data.reason
         evaluation = cast(
             Awaitable[object],

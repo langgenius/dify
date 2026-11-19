@@ -184,6 +184,11 @@ class WorkflowAgentDifyToolsBuilder:
         Composer test run, SERVICE_API / WEB_APP for a published run). It must
         be threaded through to `ToolManager` so credential quotas, rate limits,
         and audit tags match the actual call site.
+
+        Requires validated Agent Soul tools. Preserves each concrete
+        operation's call limit on either transport, including generated
+        Knowledge Base variants, so exposing another name cannot add quota.
+        Declaration or credential failures abort request preparation.
         """
         enabled_tools = [tool for tool in tools.dify_tools if tool.enabled]
         if not enabled_tools:
@@ -461,6 +466,7 @@ class WorkflowAgentDifyToolsBuilder:
             runtime_parameters=runtime_parameters,
             parameters=parameters,
             parameters_json_schema=self._plugin_parameters_json_schema(tool_runtime, parameters),
+            max_calls_per_run=tool_config.max_calls_per_run,
         )
 
     def _to_core_backend_tool_config(
@@ -481,6 +487,7 @@ class WorkflowAgentDifyToolsBuilder:
             runtime_parameters=self._runtime_parameters(tool_runtime, parameters),
             parameters=parameters,
             parameters_json_schema=tool_runtime.get_llm_parameters_json_schema(),
+            max_calls_per_run=tool_config.max_calls_per_run,
         )
 
     @staticmethod

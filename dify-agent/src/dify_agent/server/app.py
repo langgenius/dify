@@ -47,6 +47,7 @@ from dify_agent.server.home_snapshots import HomeSnapshotService
 from dify_agent.server.settings import ServerSettings
 from dify_agent.storage.redis_knowledge_sessions import RedisKnowledgeSessionStore
 from dify_agent.storage.redis_run_store import RedisRunStore
+from dify_agent.storage.redis_tool_call_limits import RedisToolCallLimitStore
 
 
 def create_app(settings: ServerSettings | None = None) -> FastAPI:
@@ -146,6 +147,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
                 agent_stub_api_base_url=resolved_settings.agent_stub_api_base_url,
                 agent_stub_token_factory=agent_stub_token_factory,
                 knowledge_session_store=knowledge_store,
+                tool_call_limit_store=RedisToolCallLimitStore(redis, prefix=resolved_settings.redis_prefix),
             ),
             shutdown_grace_seconds=resolved_settings.shutdown_grace_seconds,
             run_timeout_seconds=resolved_settings.run_timeout_seconds,
