@@ -7,11 +7,10 @@ tool descendants are admitted only through their owning caller in the same
 tenant and run. Persistence models never cross the application port.
 """
 
-import json
 from collections import deque
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timedelta
-from typing import Any, override
+from typing import Annotated, Any, TypedDict, override
 
 from dify_trace_sdk.events import (
     ConversationNamed,
@@ -25,6 +24,7 @@ from dify_trace_sdk.events import (
     TraceEvent,
     WorkflowRunCompleted,
 )
+from pydantic import Field, OnErrorOmit, TypeAdapter, ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -115,22 +115,33 @@ def _trace_message(message: Message) -> TraceMessage:
     )
 
 
-def _streaming_metrics(message: Message) -> dict[str, Any]:
-    if not message.message_metadata:
+type _DurationSeconds = Annotated[float, Field(strict=True, ge=0, allow_inf_nan=False)]
+
+
+class _StreamingUsage(TypedDict, total=False):
+    time_to_first_token: OnErrorOmit[_DurationSeconds]
+    time_to_generate: OnErrorOmit[_DurationSeconds]
+
+
+class _StreamingMetadata(TypedDict, total=False):
+    usage: _StreamingUsage
+
+
+_streaming_metadata = TypeAdapter(_StreamingMetadata)
+
+
+def _read_streaming_usage(raw: str | None) -> _StreamingUsage:
+    """Read optional persisted timings, discarding invalid fields independently.
+
+    Only finite nonnegative JSON numbers are durations. Unreadable metadata has
+    no timings; an invalid timing must not prevent a trace or hide its other timing.
+    """
+    if not raw:
         return {}
     try:
-        metadata = json.loads(message.message_metadata)
-    except ValueError:
+        return _streaming_metadata.validate_json(raw).get("usage", {})
+    except ValidationError:
         return {}
-    usage = metadata.get("usage") if isinstance(metadata, dict) else None
-    if not isinstance(usage, dict):
-        return {}
-    time_to_first_token = usage.get("time_to_first_token")
-    return {
-        "gen_ai_server_time_to_first_token": time_to_first_token,
-        "llm_streaming_time_to_generate": usage.get("time_to_generate"),
-        "is_streaming_request": time_to_first_token is not None,
-    }
 
 
 class TraceRecordRepository(TraceRecordSource):
@@ -271,7 +282,8 @@ class TraceRecordRepository(TraceRecordSource):
             "workspace_name": workspace_name,
         }
         created_at = message.created_at
-        streaming = _streaming_metrics(message)
+        usage = _read_streaming_usage(message.message_metadata)
+        first_token_time = usage.get("time_to_first_token")
         return MessageTraceInfo(
             trace_id=event.correlation.external_trace_id,
             message_id=message.id,
@@ -290,9 +302,9 @@ class TraceRecordRepository(TraceRecordSource):
             else created_at + timedelta(seconds=message.provider_response_latency),
             metadata=metadata,
             conversation_mode=conversation_mode,
-            gen_ai_server_time_to_first_token=streaming.get("gen_ai_server_time_to_first_token"),
-            llm_streaming_time_to_generate=streaming.get("llm_streaming_time_to_generate"),
-            is_streaming_request=streaming.get("is_streaming_request", False),
+            gen_ai_server_time_to_first_token=first_token_time,
+            llm_streaming_time_to_generate=usage.get("time_to_generate"),
+            is_streaming_request=first_token_time is not None,
         )
 
     def _workflow(self, event: TraceEvent, payload: WorkflowRunCompleted) -> WorkflowTraceInfo:
