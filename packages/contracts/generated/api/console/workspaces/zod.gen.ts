@@ -2020,7 +2020,7 @@ export const zParserDeleteModels = z.object({
  * LoadBalancingCredentialPayload
  */
 export const zLoadBalancingCredentialPayload = z.object({
-  credentials: z.record(z.string(), z.unknown()),
+  credentials: z.record(z.string(), z.union([z.string(), z.boolean()])),
   model: z.string(),
   model_type: zModelType,
 })

@@ -60,7 +60,7 @@ describe('SnippetEvaluationPage', () => {
 
   it('renders evaluation for a published snippet', () => {
     renderWithConsoleQuery(<SnippetEvaluationPage snippetId="snippet-1" />, {
-      systemFeatures: { deployment_edition: 'ENTERPRISE' },
+      features: { evaluation_enabled: true },
     })
 
     expect(mockUseSnippetApiDetail).toHaveBeenCalledWith('snippet-1')
@@ -78,7 +78,7 @@ describe('SnippetEvaluationPage', () => {
     })
 
     renderWithConsoleQuery(<SnippetEvaluationPage snippetId="snippet-1" />, {
-      systemFeatures: { deployment_edition: 'ENTERPRISE' },
+      features: { evaluation_enabled: true },
     })
 
     await waitFor(() => {

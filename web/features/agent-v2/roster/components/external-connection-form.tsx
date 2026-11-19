@@ -70,6 +70,12 @@ export function ExternalConnectionForm({
     verified && verification.evidence.auth_check === 'passed_for_read_endpoint'
       ? t(($) => $['external.connection.authReadPassed'])
       : t(($) => $['external.connection.authNotExercised'])
+  const verificationErrors = {
+    authentication_failed: t(($) => $['external.connection.errors.authentication']),
+    connection_failed: t(($) => $['external.connection.errors.unreachable']),
+    unsupported_protocol: t(($) => $['external.connection.errors.unsupported']),
+    invalid_agent_card: t(($) => $['external.connection.errors.invalidAgentCard']),
+  }
 
   function updateSetting<K extends keyof ExternalConnectionSettings>(
     name: K,
@@ -206,7 +212,9 @@ export function ExternalConnectionForm({
         {verification.status === 'failed' && (
           <Alert type="error">
             <AlertTitle>
-              {verification.message || t(($) => $['external.connection.errors.unknown'])}
+              {verification.reason
+                ? verificationErrors[verification.reason]
+                : verification.message || t(($) => $['external.connection.errors.unknown'])}
             </AlertTitle>
           </Alert>
         )}

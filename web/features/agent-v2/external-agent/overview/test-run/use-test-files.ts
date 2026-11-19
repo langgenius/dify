@@ -3,8 +3,9 @@ import type { TestFileRules } from './file-limits'
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { v4 as uuid4 } from 'uuid'
 import { consoleQuery } from '@/service/console'
-import { localFileMime } from './file-limits'
+import { localFileMime, suggestedLinkFile } from './file-limits'
 
 export type TestAgentAttachment = {
   id: string
@@ -16,6 +17,13 @@ export type TestAgentAttachment = {
   submitted?: boolean
   error?: string
 }
+type FilePreparation = {
+  scope: string
+  mediaType?: string
+  size: number
+  prepareLease: () => Promise<ExternalTestFileResponse>
+}
+
 const message = (error: unknown, fallback: string) =>
   error instanceof Error && error.message ? error.message : fallback
 export function useTestAgentFiles({
@@ -29,13 +37,25 @@ export function useTestAgentFiles({
 }) {
   const { t } = useTranslation(['agentRoster', 'common'])
   const [items, setItems] = useState<TestAgentAttachment[]>([])
+  const itemsRef = useRef<TestAgentAttachment[]>([])
+  const rulesRef = useRef(rules)
   const [failure, setFailure] = useState<string | null>(null)
   const scope = `${agentId}:${pageSessionId}`
   const scopeRef = useRef(scope)
   const mountedRef = useRef(true)
   const removedIdsRef = useRef(new Set<string>())
+  const preparationsRef = useRef(new Map<string, FilePreparation>())
+  const preparingIdsRef = useRef(new Set<string>())
+  useEffect(() => {
+    rulesRef.current = rules
+  }, [rules])
   useEffect(() => {
     scopeRef.current = scope
+    const preparations = preparationsRef.current
+    preparations.clear()
+    return () => {
+      preparations.clear()
+    }
   }, [scope])
   useEffect(() => {
     mountedRef.current = true
@@ -59,12 +79,18 @@ export function useTestAgentFiles({
     }),
   )
   const attachments = items.filter((item) => item.pageSessionId === pageSessionId)
+  function updateItems(update: (current: TestAgentAttachment[]) => TestAgentAttachment[]) {
+    const next = update(itemsRef.current)
+    itemsRef.current = next
+    setItems(next)
+  }
   function releaseLease(lease: ExternalTestFileResponse) {
+    const releasedScope = scope
     release.mutate(
       { params: { agent_id: agentId, lease_id: lease.lease_id } },
       {
         onError(error) {
-          if (mountedRef.current)
+          if (mountedRef.current && scopeRef.current === releasedScope)
             setFailure(
               message(
                 error,
@@ -75,16 +101,35 @@ export function useTestAgentFiles({
       },
     )
   }
-  async function prepare(id: string, prepareLease: () => Promise<ExternalTestFileResponse>) {
-    const submittedScope = scope
+  async function prepare(id: string, preparation: FilePreparation) {
+    if (
+      preparingIdsRef.current.has(id) ||
+      removedIdsRef.current.has(id) ||
+      preparation.scope !== scopeRef.current
+    )
+      return
+    preparingIdsRef.current.add(id)
+    updateItems((current) =>
+      current.map((item) =>
+        item.id === id ? { ...item, state: 'uploading', error: undefined, lease: undefined } : item,
+      ),
+    )
     try {
-      const lease = await prepareLease()
-      if (!mountedRef.current || scopeRef.current !== submittedScope) return
+      const lease = await preparation.prepareLease()
+      if (!mountedRef.current || scopeRef.current !== preparation.scope) return
       if (removedIdsRef.current.has(id)) {
         releaseLease(lease)
         return
       }
-      setItems((current) => {
+      if (preparationsRef.current.get(id) !== preparation) return
+      const previousSize = itemsRef.current.find((item) => item.id === id)?.size ?? 0
+      const invalid = validate(lease.media_type, lease.size, 0, lease.size - previousSize)
+      if (invalid) {
+        releaseLease(lease)
+        throw new Error(invalid)
+      }
+      preparationsRef.current.delete(id)
+      updateItems((current) => {
         return current.map((item) =>
           item.id === id
             ? {
@@ -99,8 +144,14 @@ export function useTestAgentFiles({
         )
       })
     } catch (error) {
-      if (!mountedRef.current || scopeRef.current !== submittedScope) return
-      setItems((current) =>
+      if (
+        !mountedRef.current ||
+        scopeRef.current !== preparation.scope ||
+        removedIdsRef.current.has(id) ||
+        preparationsRef.current.get(id) !== preparation
+      )
+        return
+      updateItems((current) =>
         current.map((item) =>
           item.id === id
             ? {
@@ -114,42 +165,58 @@ export function useTestAgentFiles({
             : item,
         ),
       )
+    } finally {
+      preparingIdsRef.current.delete(id)
     }
   }
-  function validate(mime: string, size: number, count: number, total: number) {
-    if (!rules || !rules.modes.includes(mime))
+  function validate(mime: string | undefined, size: number, count: number, total: number) {
+    const currentRules = rulesRef.current
+    const currentItems = itemsRef.current.filter((item) => item.pageSessionId === pageSessionId)
+    if (!currentRules?.modes.length || (mime !== undefined && !currentRules.modes.includes(mime)))
       return t(($) => $['external.overview.testRun.fileTypeUnsupported'])
-    if (attachments.length + count > rules.maxFiles)
-      return t(($) => $['external.overview.testRun.fileCountLimit'], { count: rules.maxFiles })
-    const cap = mime.startsWith('image/') ? rules.maxImageBytes : rules.maxDocumentBytes
+    if (currentItems.length + count > currentRules.maxFiles)
+      return t(($) => $['external.overview.testRun.fileCountLimit'], {
+        count: currentRules.maxFiles,
+      })
+    const cap = mime?.startsWith('image/')
+      ? currentRules.maxImageBytes
+      : currentRules.maxDocumentBytes
     if (size > cap)
       return t(($) => $['external.overview.testRun.fileSizeLimit'], {
         size: `${cap.toLocaleString()} B`,
       })
-    if (attachments.reduce((sum, item) => sum + item.size, 0) + total > rules.maxTotalBytes)
+    if (currentItems.reduce((sum, item) => sum + item.size, 0) + total > currentRules.maxTotalBytes)
       return t(($) => $['external.overview.testRun.fileTotalLimit'], {
-        size: `${rules.maxTotalBytes.toLocaleString()} B`,
+        size: `${currentRules.maxTotalBytes.toLocaleString()} B`,
       })
     return null
   }
-  function pasteLink(url: string, filename: string, mediaType: string) {
-    const error = validate(mediaType, 0, 1, 0)
+  function pasteLink(url: string) {
+    const error = validate(undefined, 0, 1, 0)
     if (error) {
       setFailure(error)
       return false
     }
     setFailure(null)
-    const id = crypto.randomUUID()
-    setItems((current) => [
+    const id = uuid4()
+    const filename =
+      suggestedLinkFile(url, rules?.fileTypes ?? []).name ||
+      t(($) => $['external.overview.fileLink'])
+    const preparation: FilePreparation = {
+      scope,
+      size: 0,
+      prepareLease: () =>
+        paste.mutateAsync({
+          params: { agent_id: agentId },
+          body: { page_session_id: pageSessionId, url },
+        }),
+    }
+    preparationsRef.current.set(id, preparation)
+    updateItems((current) => [
       ...current,
       { id, name: filename, pageSessionId, size: 0, state: 'uploading' },
     ])
-    void prepare(id, () =>
-      paste.mutateAsync({
-        params: { agent_id: agentId },
-        body: { page_session_id: pageSessionId, url, filename, media_type: mediaType },
-      }),
-    )
+    void prepare(id, preparation)
     return true
   }
   function uploadFiles(files: File[]) {
@@ -157,7 +224,12 @@ export function useTestAgentFiles({
     let total = 0
     for (const file of files) {
       total += file.size
-      const error = validate(localFileMime(file), file.size, files.length, total)
+      const error = validate(
+        localFileMime(file, rules?.fileTypes ?? []),
+        file.size,
+        files.length,
+        total,
+      )
       if (error) {
         setFailure(error)
         return false
@@ -165,35 +237,60 @@ export function useTestAgentFiles({
     }
     setFailure(null)
     for (const file of files) {
-      const id = crypto.randomUUID()
-      const mime = localFileMime(file)
+      const id = uuid4()
+      const mime = localFileMime(file, rules?.fileTypes ?? [])
       const uploadFile =
         file.type === mime
           ? file
           : new File([file], file.name, { type: mime, lastModified: file.lastModified })
-      setItems((current) => [
+      const preparation: FilePreparation = {
+        scope,
+        mediaType: mime,
+        size: file.size,
+        prepareLease: () =>
+          upload.mutateAsync({
+            params: { agent_id: agentId },
+            body: { file: uploadFile, page_session_id: pageSessionId },
+          }),
+      }
+      preparationsRef.current.set(id, preparation)
+      updateItems((current) => [
         ...current,
         { id, name: file.name, pageSessionId, size: file.size, state: 'uploading' },
       ])
-      void prepare(id, () =>
-        // The generated input omits this existing endpoint's multipart body.
-        upload.mutateAsync({
-          params: { agent_id: agentId },
-          body: { file: uploadFile, page_session_id: pageSessionId },
-        } as Parameters<typeof upload.mutateAsync>[0]),
-      )
+      void prepare(id, preparation)
     }
+    return true
+  }
+  function retry(id: string) {
+    const preparation = preparationsRef.current.get(id)
+    if (
+      !preparation ||
+      preparation.scope !== scope ||
+      preparingIdsRef.current.has(id) ||
+      removedIdsRef.current.has(id) ||
+      !attachments.some((item) => item.id === id && item.state === 'error')
+    )
+      return false
+    const error = validate(preparation.mediaType, preparation.size, 0, 0)
+    if (error) {
+      setFailure(error)
+      return false
+    }
+    setFailure(null)
+    void prepare(id, preparation)
     return true
   }
   function remove(id: string) {
     removedIdsRef.current.add(id)
+    preparationsRef.current.delete(id)
     const item = attachments.find((item) => item.id === id)
-    setItems((current) => current.filter((item) => item.id !== id))
+    updateItems((current) => current.filter((item) => item.id !== id))
     setFailure(null)
     if (item?.lease) releaseLease(item.lease)
   }
   function markSubmitted(leaseIds: readonly string[]) {
-    setItems((current) =>
+    updateItems((current) =>
       current.map((item) =>
         item.lease && leaseIds.includes(item.lease.lease_id) ? { ...item, submitted: true } : item,
       ),
@@ -232,6 +329,7 @@ export function useTestAgentFiles({
     failure,
     pasteLink,
     uploadFiles,
+    retry,
     remove,
     markSubmitted,
     selectedLeaseIds,

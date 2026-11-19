@@ -11,6 +11,7 @@ import { isWorkflowAppMode } from '@/app/components/apps/app-type'
 import { FeaturesProvider } from '@/app/components/base/features'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
+import { CollaborationUpgradeModal } from '@/app/components/workflow/collaboration/upgrade-modal'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
 import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
@@ -139,6 +140,7 @@ const WorkflowAppWithAdditionalContext = () => {
     <WorkflowWithDefaultContext edges={edgesData} nodes={nodesData}>
       <FeaturesProvider features={initialFeatures}>
         <WorkflowAppMain nodes={nodesData} edges={edgesData} viewport={data.graph.viewport} />
+        <CollaborationUpgradeModal />
       </FeaturesProvider>
     </WorkflowWithDefaultContext>
   )

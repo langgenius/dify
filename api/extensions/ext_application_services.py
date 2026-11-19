@@ -49,6 +49,7 @@ from extensions.application_services.model_billing import (
     build_model_billing_dependencies,
     build_model_billing_migration_inventory,
 )
+from extensions.application_services.moderation import build_moderation_service
 from extensions.application_services.personal_access_token import build_personal_access_token_service
 from extensions.application_services.rbac import RBACServices, build_rbac_services
 from extensions.application_services.resource_access_token import build_resource_access_token_service
@@ -197,6 +198,7 @@ from services.model_billing_dependency_inventory import ModelBillingDependencyIn
 from services.model_billing_free_migration_service import ModelBillingFreeMigrationService
 from services.model_billing_migration_inventory import ModelBillingMigrationInventory
 from services.model_billing_source_plugin_admission import ModelBillingSourcePluginAdmission
+from services.moderation_service import ModerationService
 from services.network_access_group_gateway import (
     BillingNetworkAccessGroupEntitlementGateway,
     NetworkAccessGroupGateway,
@@ -328,6 +330,7 @@ class AppScopedEndUserServices:
 
 @dataclass(frozen=True, slots=True)
 class ApplicationServices:
+    moderation: ModerationService
     annotation_commands: AnnotationCommandService
     annotation_imports: AnnotationImportService
     annotation_queries: AnnotationQuery
@@ -683,6 +686,7 @@ def build_application_services(
         sessions=database_client, workspaces=workspace_repository, rbac=rbac, tracing=tracing, files=file_service
     )
     return ApplicationServices(
+        moderation=build_moderation_service(database_client=database_client),
         annotation_commands=AnnotationCommandService(
             annotations=annotations,
             add_index=add_annotation_to_index_task.delay,
@@ -990,6 +994,8 @@ def build_application_services(
 
 
 def init_app(app: Flask) -> None:
+    from core.moderation.base import AppModeration as AppModerationPort
+    from extensions.application_services.app_moderation import AppModeration
     from extensions.application_services.tools import resolve_tool_credentials
     from extensions.ext_login import bind_account_loader, bind_account_only_loader
 
@@ -1005,6 +1011,8 @@ def init_app(app: Flask) -> None:
         redis=redis_client,
     )
     app.extensions[_EXTENSION_KEY] = services
+    app_moderation: AppModerationPort = AppModeration()
+    app.extensions["app_moderation"] = app_moderation
     bind_tracing(app, scopes=StoredPolicyTraceScopes(services.tracing.scopes), hooks=services.tracing.hooks)
     bind_legacy_trace_capture(app, services.tracing.legacy_capture)
     bind_account_loader(app, services.accounts.identity.load_user)

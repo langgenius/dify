@@ -319,6 +319,8 @@ class _Schema(BaseModel):
 
     ref: str | None = Field(default=None, alias="$ref")
     any_of: list["_Schema"] = Field(default_factory=list, alias="anyOf")
+    properties: dict[str, "_Schema"] = Field(default_factory=dict)
+    enum: list[str | int] = Field(default_factory=list)
 
 
 class _MediaType(BaseModel):
@@ -724,8 +726,8 @@ def test_details_added_by_document_finisher_have_deterministic_enum_order() -> N
     """Finalized typed error details expose the same stable enum order as exported specs."""
     document = _documented_operation(ExternalApi(Blueprint("enum_details", __name__)), _StringEnumConflictError)
 
-    details = document["components"]["schemas"]["_StringEnumConflictDetails"]
-    assert details["properties"]["state"]["enum"] == ["configure", "retry"]
+    details = _Schema.model_validate(document.components.schemas["_StringEnumConflictDetails"])
+    assert details.properties["state"].enum == ["configure", "retry"]
     assert _error_options(document, "409") == ["StringEnumConflictError"]
 
 

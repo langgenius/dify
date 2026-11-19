@@ -20,7 +20,7 @@ export function createExternalAgentAsset(
     icon: '🤖',
     icon_background: '#E0E7FF',
     icon_url: null,
-    reference_count: 0,
+    reference_count: null,
     enabled: true,
     tracing_enabled: true,
     metadata_revision: 1,

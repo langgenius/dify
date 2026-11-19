@@ -33,8 +33,8 @@ def migration() -> ModuleType:
     return module
 
 
-def test_real_sqlite_upgrade_preserves_native_rows_and_merges_heads() -> None:
-    engine = sa.create_engine("sqlite://")
+def test_real_sqlite_upgrade_preserves_native_rows_and_merges_heads(tmp_path: Path) -> None:
+    engine = sa.create_engine(sa.URL.create("sqlite", database=str(tmp_path / "external-agent-migration.db")))
     metadata = sa.MetaData()
     added = {"binding_epoch", "external_job_config", "original_reference"}
     current = WorkflowAgentNodeBinding.__table__
@@ -121,16 +121,49 @@ def test_real_sqlite_upgrade_preserves_native_rows_and_merges_heads() -> None:
         assert not added.intersection(column["name"] for column in sa.inspect(connection).get_columns(legacy.name))
     engine.dispose()
     scripts = ScriptDirectory(str(API / "migrations"))
-    head = scripts.get_current_head()
+    assert scripts.get_heads() == ["b3025merge1119"]
+    head = scripts.get_revision("b3025merge1119")
     assert head is not None
-    revisions = {rev.revision for rev in scripts.iterate_revisions(head, "base")}
-    assert {"d3046fe1115", "a6d8e0f2b413", "f8b6e2c4a901"} <= revisions
+    assert head.down_revision == ("b6b0741cf19d", "c3051merge1117")
+    revisions = {rev.revision for rev in scripts.iterate_revisions(head.revision, "base")}
+    assert {
+        "d3025a2a1112",
+        "d3046fe1115",
+        "a6d8e0f2b413",
+        "c3025a2a1109",
+        "c3025merge1112",
+        "c3046merge1115",
+        "c3051merge1117",
+        "8c2f5d7a1e30",
+        "f8b6e2c4a901",
+    } <= revisions
+    deployed_merge = scripts.get_revision("b6b0741cf19d")
+    assert deployed_merge is not None
+    assert deployed_merge.down_revision == ("d3046fe1115", "a6d8e0f2b413", "f8b6e2c4a901")
+    tokener = scripts.get_revision("a6d8e0f2b413")
+    assert tokener is not None
+    assert tokener.down_revision == "d4e5f6a7b8c9"
     external = scripts.get_revision("c3025a2a1109")
     assert external is not None
     assert external.down_revision == "e4f9a2c7b681"
-    merged = scripts.get_revision("d3046fe1115")
+    agent_merge = scripts.get_revision("d3025a2a1112")
+    assert agent_merge is not None
+    assert agent_merge.down_revision == ("f9b1c3e5a724", "c3025dflt1112")
+    preserved_merge = scripts.get_revision("d3046fe1115")
+    assert preserved_merge is not None
+    assert preserved_merge.down_revision == ("d3025a2a1112", "b2e4c6d8a013")
+    incoming_merge = scripts.get_revision("c3051merge1117")
+    assert incoming_merge is not None
+    assert incoming_merge.down_revision == ("c3046merge1115", "f8b6e2c4a901")
+    file_scanning_merge = scripts.get_revision("c3046merge1115")
+    assert file_scanning_merge is not None
+    assert file_scanning_merge.down_revision == ("c3025merge1112", "8c2f5d7a1e30")
+    evaluation_merge = scripts.get_revision("f8b6e2c4a901")
+    assert evaluation_merge is not None
+    assert evaluation_merge.down_revision == ("8c2f5d7a1e30", "c7e4a1b2d9f0")
+    merged = scripts.get_revision("c3025merge1112")
     assert merged is not None
-    assert merged.down_revision == ("d3025a2a1112", "b2e4c6d8a013")
+    assert merged.down_revision == ("c3025dflt1112", "b2e4c6d8a013")
 
 
 @pytest.mark.parametrize("dialect", [postgresql.dialect(), mysql.dialect()])

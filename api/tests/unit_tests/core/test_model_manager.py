@@ -15,8 +15,9 @@ from core.entities.provider_entities import (
     QuotaUnit,
     RestrictModel,
 )
-from core.errors.error import ModelCurrentlyNotSupportError
+from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError
 from core.model_billing_profile import ModelBillingSource, TenantModelBillingResolution
+from core.model_invocation_routing import LegacyModelBinding, LegacyModelCredentials
 from core.model_manager import LBModelManager, ModelInstance, ModelManager, QuotaManagedModelInstance
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from extensions.ext_redis import redis_client
@@ -28,7 +29,9 @@ from graphon.model_runtime.entities.provider_entities import ProviderEntity
 from graphon.model_runtime.model_providers.base.tts_model import TTSModel
 from graphon.model_runtime.protocols.tts_runtime import TTSChunk
 from models.provider import ProviderType
+from models.provider_ids import ModelProviderID
 from models.tokener import TenantTokenerIntegrationStatus
+from tests.helpers.unit.core.model_moderation_fixtures import make_tenant_moderation_provider
 
 
 @pytest.fixture(autouse=True)
@@ -88,6 +91,104 @@ def test_model_manager_with_cache_enabled_reuses_stored_credentials() -> None:
     second = manager.get_model_instance("tenant-1", "openai", ModelType.LLM, "gpt-4")
     assert second.credentials == {"api_key": "first"}
     get_creds.assert_called_once()
+
+
+def test_tenant_only_model_does_not_reuse_system_credentials_from_cache() -> None:
+    provider, _ = make_tenant_moderation_provider()
+    manager = ModelManager(provider, enable_credentials_cache=True)
+    tenant_id = provider.bundle.configuration.tenant_id
+    model = "omni-moderation-latest"
+    system_instance = manager.get_model_instance(tenant_id, "openai", ModelType.MODERATION, model)
+    tenant_instance = manager.get_model_instance(
+        tenant_id, "openai", ModelType.MODERATION, model, require_custom_credentials=True
+    )
+
+    assert isinstance(system_instance, QuotaManagedModelInstance)
+    assert system_instance.credentials == {"openai_api_key": "system-key"}
+    assert type(tenant_instance) is ModelInstance
+    assert tenant_instance.credentials == {"openai_api_key": "tenant-key"}
+    assert provider.bundle.configuration.using_provider_type == ProviderType.SYSTEM
+
+
+@pytest.mark.parametrize("credentials_available", [True, False])
+def test_tenant_only_model_reprepare_preserves_custom_credential_requirement(
+    monkeypatch: pytest.MonkeyPatch, credentials_available: bool
+) -> None:
+    """Refreshing an invalidated credential snapshot never admits the workspace's system key."""
+    provider, client = make_tenant_moderation_provider()
+    configuration = provider.bundle.configuration
+    custom_provider = configuration.custom_configuration.provider
+    assert custom_provider is not None
+    tenant_id = configuration.tenant_id
+    model = "omni-moderation-latest"
+    custom_provider.credentials = LegacyModelCredentials(
+        dict(custom_provider.credentials),
+        LegacyModelBinding(
+            tenant_id=tenant_id,
+            logical_provider=str(ModelProviderID("openai")),
+            logical_model=model,
+            model_type=ModelType.MODERATION,
+            route_epoch=0,
+        ),
+    )
+    manager = ModelManager(provider, enable_credentials_cache=True)
+    initial = manager.get_model_instance(
+        tenant_id, "openai", ModelType.MODERATION, model, require_custom_credentials=True
+    )
+    assert initial.credentials == {"openai_api_key": "tenant-key"}
+    state_reads: list[str] = []
+
+    def read_routing_state(requested_tenant_id: str) -> dict[str, int]:
+        state_reads.append(requested_tenant_id)
+        return {"route_epoch": 1}
+
+    monkeypatch.setattr("core.model_invocation_routing.get_routing_state", read_routing_state)
+    if credentials_available:
+        custom_provider.credentials = {"openai_api_key": "refreshed-tenant-key"}
+        refreshed = manager.get_model_instance(
+            tenant_id, "openai", ModelType.MODERATION, model, require_custom_credentials=True
+        )
+        assert type(refreshed) is ModelInstance
+        assert refreshed.credentials == {"openai_api_key": "refreshed-tenant-key"}
+    else:
+        configuration.custom_configuration.provider = None
+        with pytest.raises(ProviderTokenNotInitError):
+            manager.get_model_instance(
+                tenant_id, "openai", ModelType.MODERATION, model, require_custom_credentials=True
+            )
+
+    assert state_reads == [tenant_id]
+    assert provider.lookups == 3
+    assert configuration.using_provider_type == ProviderType.SYSTEM
+    assert not client.calls
+
+
+def test_tenant_only_model_requires_an_explicit_provider() -> None:
+    provider, _ = make_tenant_moderation_provider()
+    manager = ModelManager(provider)
+
+    with pytest.raises(ValueError, match="explicit provider"):
+        manager.get_model_instance(
+            provider.bundle.configuration.tenant_id,
+            "",
+            ModelType.MODERATION,
+            "omni-moderation-latest",
+            require_custom_credentials=True,
+        )
+    assert provider.lookups == 0
+
+
+def test_missing_tenant_credentials_do_not_fall_back_to_system() -> None:
+    provider, client = make_tenant_moderation_provider()
+    config = provider.bundle.configuration
+    config.custom_configuration.provider = None
+    manager = ModelManager(provider)
+
+    with pytest.raises(ProviderTokenNotInitError):
+        manager.get_model_instance(
+            config.tenant_id, "openai", ModelType.MODERATION, "omni-moderation-latest", require_custom_credentials=True
+        )
+    assert not client.calls
 
 
 def _build_model_manager_bundle(
@@ -299,7 +400,7 @@ def test_quota_managed_non_streaming_invocation_finalizes_reservation() -> None:
     invocation_id = str(uuid4())
     with (
         patch.object(model_instance, "reserve_quota", return_value=reservation) as reserve_quota,
-        patch.object(ModelInstance, "invoke_llm", return_value=result) as invoke,
+        patch.object(ModelInstance, "_invoke_llm", return_value=result) as invoke,
     ):
         response = model_instance.invoke_llm(
             prompt_messages=[],
@@ -335,7 +436,7 @@ def test_quota_managed_stream_commits_before_first_chunk() -> None:
     invocation_id = str(uuid4())
     with (
         patch.object(model_instance, "reserve_quota", return_value=reservation) as reserve_quota,
-        patch.object(ModelInstance, "invoke_llm", return_value=(item for item in [chunk])),
+        patch.object(ModelInstance, "_invoke_llm", return_value=(item for item in [chunk])),
     ):
         response = model_instance.invoke_llm(
             prompt_messages=[],
@@ -366,7 +467,7 @@ def test_quota_managed_stream_releases_when_provider_fails_before_first_chunk() 
 
     with (
         patch.object(model_instance, "reserve_quota", return_value=reservation),
-        patch.object(ModelInstance, "invoke_llm", return_value=failing_stream()),
+        patch.object(ModelInstance, "_invoke_llm", return_value=failing_stream()),
         pytest.raises(RuntimeError, match="provider failed"),
     ):
         list(model_instance.invoke_llm(prompt_messages=[], stream=True))
@@ -405,7 +506,7 @@ def test_quota_managed_usage_stream_commits_before_delivering_buffered_chunks() 
 
     with (
         patch.object(model_instance, "reserve_quota", return_value=reservation),
-        patch.object(ModelInstance, "invoke_llm", return_value=provider_stream()),
+        patch.object(ModelInstance, "_invoke_llm", return_value=provider_stream()),
     ):
         response = model_instance.invoke_llm(prompt_messages=[], stream=True)
         assert next(response) is chunks[0]
@@ -433,7 +534,7 @@ def test_quota_managed_usage_stream_does_not_deliver_when_settlement_fails() -> 
 
     with (
         patch.object(model_instance, "reserve_quota", return_value=reservation),
-        patch.object(ModelInstance, "invoke_llm", return_value=(item for item in [chunk])),
+        patch.object(ModelInstance, "_invoke_llm", return_value=(item for item in [chunk])),
         pytest.raises(ValueError, match="terminal usage is required"),
     ):
         next(model_instance.invoke_llm(prompt_messages=[], stream=True))

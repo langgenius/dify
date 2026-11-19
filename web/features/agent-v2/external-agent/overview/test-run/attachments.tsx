@@ -1,25 +1,16 @@
 import type { TestFileRules } from './file-limits'
 import type { TestAgentAttachment } from './use-test-files'
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectItemIndicator,
-  SelectItemText,
-  SelectTrigger,
-  SelectValue,
-} from '@langgenius/dify-ui/select'
-import { useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatAgentMimeType } from '../../model'
-import { suggestedLinkFile } from './file-limits'
 
 export function TestAgentAttachments({
   attachments,
@@ -28,26 +19,34 @@ export function TestAgentAttachments({
   disabled,
   onPaste,
   onUpload,
+  onRetry,
   onRemove,
 }: {
   attachments: TestAgentAttachment[]
   rules: TestFileRules | null
   failure: string | null
   disabled: boolean
-  onPaste: (url: string, name: string, mediaType: string) => boolean
+  onPaste: (url: string) => boolean
   onUpload: (files: File[]) => boolean
+  onRetry: (id: string) => void
   onRemove: (id: string) => void
 }) {
   const { t } = useTranslation(['agentRoster', 'common'])
   const [linkOpen, setLinkOpen] = useState(false)
-  const [filename, setFilename] = useState('')
-  const [mediaType, setMediaType] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const supportedTypesId = useId()
+  const supportedTypes = rules?.fileTypes
+    .map(
+      ({ media_type, extensions }) =>
+        `${formatAgentMimeType(media_type)} (${extensions.join(', ')})`,
+    )
+    .join(', ')
+  const hint =
+    failure ||
+    (supportedTypes
+      ? t(($) => $['external.overview.testRun.supportedFileTypes'], { types: supportedTypes })
+      : null)
   const unavailable = disabled || !rules?.modes.length || rules.maxFiles === 0
-  const mimeOptions = (rules?.modes ?? []).map((value) => ({
-    value,
-    label: formatAgentMimeType(value),
-  }))
   return (
     <Fieldset>
       <FieldsetLegend className="system-xs-medium">
@@ -58,7 +57,9 @@ export function TestAgentAttachments({
           ref={fileInputRef}
           type="file"
           data-testid="external-agent-local-file-input"
-          accept={rules?.modes.join(',')}
+          accept={rules?.fileTypes
+            .flatMap(({ media_type, extensions }) => [media_type, ...extensions])
+            .join(',')}
           multiple={!!rules && rules.maxFiles > 1}
           hidden
           onChange={(event) => {
@@ -72,6 +73,7 @@ export function TestAgentAttachments({
           variant="tertiary"
           size="large"
           disabled={unavailable}
+          aria-describedby={hint ? supportedTypesId : undefined}
           onClick={() => fileInputRef.current?.click()}
           className="h-auto min-h-9 min-w-0 flex-1 rounded-lg px-2 py-2 whitespace-normal"
         >
@@ -86,6 +88,7 @@ export function TestAgentAttachments({
                 variant="tertiary"
                 size="large"
                 disabled={unavailable}
+                aria-describedby={hint ? supportedTypesId : undefined}
                 className="h-auto min-h-9 min-w-0 flex-1 rounded-lg px-2 py-2 whitespace-normal"
               />
             }
@@ -97,11 +100,10 @@ export function TestAgentAttachments({
             <PopoverTitle className="mb-2 system-sm-semibold text-text-primary">
               {t(($) => $['external.overview.pasteFileLink'])}
             </PopoverTitle>
-            <Form<{ url: string; filename: string; mediaType: string }>
+            <Form<{ url: string }>
               className="space-y-3"
               onFormSubmit={(values) => {
-                if (onPaste(values.url.trim(), values.filename.trim(), values.mediaType))
-                  setLinkOpen(false)
+                if (onPaste(values.url.trim())) setLinkOpen(false)
               }}
             >
               <Field
@@ -113,68 +115,7 @@ export function TestAgentAttachments({
                 }
               >
                 <FieldLabel>{t(($) => $['external.overview.fileLink'])}</FieldLabel>
-                <Input
-                  inputMode="url"
-                  autoComplete="off"
-                  onValueChange={(value) => {
-                    const suggested = suggestedLinkFile(value)
-                    setFilename(suggested.name)
-                    setMediaType(rules?.modes.includes(suggested.mime) ? suggested.mime : null)
-                  }}
-                />
-                <FieldError />
-              </Field>
-              <Field
-                name="filename"
-                validate={(value) =>
-                  typeof value === 'string' &&
-                  value.trim() &&
-                  value.length <= 255 &&
-                  !/[/\\\0\r\n]/.test(value)
-                    ? null
-                    : t(($) => $['errorMsg.fieldRequired'], {
-                        ns: 'common',
-                        field: t(($) => $['external.overview.testRun.fileName']),
-                      })
-                }
-              >
-                <FieldLabel>{t(($) => $['external.overview.testRun.fileName'])}</FieldLabel>
-                <Input
-                  value={filename}
-                  onValueChange={setFilename}
-                  maxLength={255}
-                  autoComplete="off"
-                  required
-                />
-                <FieldError />
-              </Field>
-              <Field
-                name="mediaType"
-                validate={(value) =>
-                  typeof value === 'string' && rules?.modes.includes(value)
-                    ? null
-                    : t(($) => $['external.overview.testRun.fileTypeUnsupported'])
-                }
-              >
-                <FieldLabel>{t(($) => $['external.overview.testRun.fileMediaType'])}</FieldLabel>
-                <Select
-                  name="mediaType"
-                  items={mimeOptions}
-                  value={mediaType}
-                  onValueChange={setMediaType}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {mimeOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        <SelectItemText>{option.label}</SelectItemText>
-                        <SelectItemIndicator />
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Input inputMode="url" autoComplete="off" />
                 <FieldError />
               </Field>
               <div className="flex justify-end">
@@ -186,9 +127,16 @@ export function TestAgentAttachments({
           </PopoverContent>
         </Popover>
       </div>
-      {failure && (
-        <p role="alert" className="mt-2 system-xs-regular text-text-destructive">
-          {failure}
+      {hint && (
+        <p
+          id={supportedTypesId}
+          role={failure ? 'alert' : undefined}
+          className={cn(
+            'mt-1 system-xs-regular',
+            failure ? 'text-text-destructive' : 'text-text-tertiary',
+          )}
+        >
+          {hint}
         </p>
       )}
       {attachments.length > 0 && (
@@ -201,12 +149,28 @@ export function TestAgentAttachments({
                   className={
                     attachment.state === 'uploading'
                       ? 'i-ri-loader-2-line size-4 shrink-0 animate-spin motion-reduce:animate-none'
-                      : 'i-ri-attachment-2 size-4 shrink-0 text-text-tertiary'
+                      : attachment.state === 'error'
+                        ? 'i-ri-file-warning-line size-4 shrink-0 text-text-destructive'
+                        : 'i-ri-attachment-2 size-4 shrink-0 text-text-tertiary'
                   }
                 />
                 <span className="min-w-0 flex-1 system-xs-regular break-all text-text-secondary">
                   {attachment.name}
                 </span>
+                {attachment.state === 'error' && (
+                  <Button
+                    type="button"
+                    size="small"
+                    variant="ghost"
+                    disabled={disabled}
+                    aria-label={t(($) => $['external.overview.testRun.retryFile'], {
+                      name: attachment.name,
+                    })}
+                    onClick={() => onRetry(attachment.id)}
+                  >
+                    {t(($) => $['operation.retry'], { ns: 'common' })}
+                  </Button>
+                )}
                 <IconButton
                   size="md"
                   disabled={disabled}

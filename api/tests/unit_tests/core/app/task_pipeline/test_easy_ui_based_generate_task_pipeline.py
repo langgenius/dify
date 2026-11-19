@@ -28,6 +28,7 @@ from core.app.app_config.entities import (
     PromptTemplateEntity,
 )
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.exc import AppGenerateError
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, CompletionAppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import (
@@ -62,8 +63,10 @@ from core.app.entities.task_entities import (
     PingStreamResponse,
     StreamEvent,
 )
+from core.app.llm.message_billing import ClassicMessageBilling
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
+from core.moderation.output_moderation import ModerationRule, OutputModeration
 from core.plugin.impl.model import PluginModelClient
 from extensions.ext_redis import RedisClientWrapper
 from extensions.storage.storage_type import StorageType
@@ -939,21 +942,16 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
                 stream=True,
             )
 
-            class _Moderation:
-                def should_direct_output(self):
-                    return True
-
-                def get_final_output(self):
-                    return "final"
-
-            _set_method(pipeline, "output_moderation_handler", _Moderation())
-
-            result = pipeline._handle_output_moderation_chunk("token")
-
-            assert result is True
+            pipeline.output_moderation_handler = OutputModeration(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                rule=ModerationRule(type="keywords", config={}),
+                final_output="final",
+            )
+            result = list(pipeline._handle_output_moderation_chunk("token"))
+            assert result == []
             events = cast(_FakeQueueManager, pipeline.queue_manager).published_events
-            assert any(isinstance(event, QueueLLMChunkEvent) for event in events)
-            assert any(isinstance(event, QueueStopEvent) for event in events)
+            assert events == []
 
         def test_handle_stop_updates_usage(self, monkeypatch: pytest.MonkeyPatch):
             apply_config_overrides(monkeypatch, PLUGIN_BASED_TOKEN_COUNTING_ENABLED=True)
@@ -1171,6 +1169,43 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             assert isinstance(responses[-1], ErrorStreamResponse)
             assert isinstance(responses[-1].err, ValueError)
             assert pipeline._task_state.llm_result.message.content == "annotated"
+
+        @pytest.mark.parametrize("raised", [False, True])
+        def test_error_paths_release_message_billing_before_delivery(
+            self, sqlite_engine: _easy_ui_based_generate_task_pipeline_Engine, raised: bool
+        ) -> None:
+            """Queued and raised errors retain their type and release the same unsettled message owner."""
+            error = AppGenerateError("generation failed")
+
+            class ErrorQueue(_QueueManager):
+                def listen(self) -> Generator[MessageQueueMessage]:
+                    if raised:
+                        raise error
+                    yield queue_message(QueueErrorEvent(error=error))
+
+            entity = _make_entity(ChatAppGenerateEntity, AppMode.CHAT)
+            billing = ClassicMessageBilling(
+                tenant_id=entity.app_config.tenant_id,
+                message_id="msg",
+                provider="test-provider",
+                model="test-model",
+                backend="unmetered",
+            )
+            entity._classic_message_billing = billing
+            pipeline = EasyUIBasedGenerateTaskPipeline(
+                application_generate_entity=entity,
+                queue_manager=ErrorQueue(),
+                conversation=_make_conversation(AppMode.CHAT),
+                message=_make_message(),
+                stream=True,
+            )
+
+            responses = list(pipeline._process_stream_response(publisher=None))
+
+            assert len(responses) == 1
+            assert isinstance(responses[0], ErrorStreamResponse)
+            assert str(responses[0].err) == "generation failed"
+            assert billing.settled is True
 
         def test_process_stream_response_error_event_emits_message_trace_after_commit(self) -> None:
             timeline: list[str] = []
@@ -1745,7 +1780,12 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
                 prompt_messages=[],
                 delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content="x")),
             )
-            pipeline._handle_output_moderation_chunk = lambda text: True
+            pipeline.output_moderation_handler = OutputModeration(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                rule=ModerationRule(type="keywords", config={}),
+                final_output="final",
+            )
             _set_queue_events(pipeline, [_queue_message(QueueLLMChunkEvent(chunk=chunk))])
 
             responses = list(pipeline._process_stream_response(publisher=None))
@@ -2241,7 +2281,7 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
 
             assert response is None
 
-        def test_handle_output_moderation_chunk_appends_token_when_not_directing(self):
+        def test_handle_output_moderation_chunk_buffers_unchecked_token(self):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
             pipeline = EasyUIBasedGenerateTaskPipeline(
@@ -2251,21 +2291,13 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
                 message=message,
                 stream=True,
             )
-            appended_tokens: list[str] = []
-
-            class _Moderation:
-                def should_direct_output(self):
-                    return False
-
-                def append_new_token(self, text):
-                    appended_tokens.append(text)
-
-            _set_method(pipeline, "output_moderation_handler", _Moderation())
-
-            result = pipeline._handle_output_moderation_chunk("next-token")
-
-            assert result is False
-            assert appended_tokens == ["next-token"]
+            handler = OutputModeration(
+                tenant_id="tenant-1", app_id="app-1", rule=ModerationRule(type="keywords", config={})
+            )
+            pipeline.output_moderation_handler = handler
+            result = list(pipeline._handle_output_moderation_chunk("next-token"))
+            assert result == []
+            assert handler.buffer == "next-token"
 
 
 """Exercise message-end file serialization against persisted SQLite rows.

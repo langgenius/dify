@@ -148,8 +148,7 @@ class ExternalAgentCapabilitiesResponse(ResponseModel):
     input_file_modes: tuple[str, ...]
     input_file_types: tuple[ExternalInputFileTypeResponse, ...] = Field(
         description=(
-            "Finite Dify input types; when agent_id is supplied, "
-            "intersected with saved Agent defaults, never Skills"
+            "Finite Dify input types; when agent_id is supplied, intersected with saved Agent defaults, never Skills"
         )
     )
     limits: dict

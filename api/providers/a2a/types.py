@@ -20,8 +20,8 @@ class WireModel(BaseModel):
 
 class AgentInterfaceV1(WireModel):
     url: str = Field(min_length=1)
-    protocolBinding: str
-    protocolVersion: str
+    protocolBinding: str  # noqa: N815  # Public field name.
+    protocolVersion: str  # noqa: N815  # Public field name.
     tenant: str | None = None
 
 
@@ -34,8 +34,8 @@ class ExtensionV1(WireModel):
 
 class CapabilitiesV1(WireModel):
     streaming: bool = False
-    pushNotifications: bool = False
-    extendedAgentCard: bool = False
+    pushNotifications: bool = False  # noqa: N815  # Public field name.
+    extendedAgentCard: bool = False  # noqa: N815  # Public field name.
     extensions: list[ExtensionV1] = Field(default_factory=list)
 
 
@@ -45,9 +45,9 @@ class SkillV1(WireModel):
     description: str
     tags: list[str]
     examples: list[str] = Field(default_factory=list)
-    inputModes: list[str] = Field(default_factory=list)
-    outputModes: list[str] = Field(default_factory=list)
-    securityRequirements: list[dict[str, JsonValue]] = Field(default_factory=list)
+    inputModes: list[str] = Field(default_factory=list)  # noqa: N815  # Public field name.
+    outputModes: list[str] = Field(default_factory=list)  # noqa: N815  # Public field name.
+    securityRequirements: list[dict[str, JsonValue]] = Field(default_factory=list)  # noqa: N815  # Public field name.
 
 
 class ProviderV1(WireModel):
@@ -66,17 +66,17 @@ class SecurityRequirementV1(WireModel):
 class AgentCardV1(WireModel):
     name: str = Field(min_length=1)
     description: str
-    supportedInterfaces: list[AgentInterfaceV1] = Field(min_length=1)
+    supportedInterfaces: list[AgentInterfaceV1] = Field(min_length=1)  # noqa: N815  # Public field name.
     version: str
     capabilities: CapabilitiesV1
-    defaultInputModes: list[str]
-    defaultOutputModes: list[str]
+    defaultInputModes: list[str]  # noqa: N815  # Public field name.
+    defaultOutputModes: list[str]  # noqa: N815  # Public field name.
     skills: list[SkillV1]
     provider: ProviderV1 | None = None
-    documentationUrl: str | None = None
-    iconUrl: str | None = None
-    securitySchemes: dict[str, dict[str, JsonValue]] = Field(default_factory=dict)
-    securityRequirements: list[SecurityRequirementV1] = Field(default_factory=list)
+    documentationUrl: str | None = None  # noqa: N815  # Public field name.
+    iconUrl: str | None = None  # noqa: N815  # Public field name.
+    securitySchemes: dict[str, dict[str, JsonValue]] = Field(default_factory=dict)  # noqa: N815  # Public field name.
+    securityRequirements: list[SecurityRequirementV1] = Field(default_factory=list)  # noqa: N815  # Public field name.
     signatures: list[dict[str, JsonValue]] = Field(default_factory=list)
 
 
@@ -87,7 +87,7 @@ class PartV1(WireModel):
     data: JsonValue = None
     metadata: dict[str, JsonValue] = Field(default_factory=dict)
     filename: str | None = None
-    mediaType: str | None = None
+    mediaType: str | None = None  # noqa: N815  # Public field name.
 
     @model_validator(mode="after")
     def require_one_content(self) -> Self:
@@ -104,14 +104,14 @@ class PartV1(WireModel):
 
 
 class MessageV1(WireModel):
-    messageId: str = Field(min_length=1)
+    messageId: str = Field(min_length=1)  # noqa: N815  # Public field name.
     role: Literal["ROLE_USER", "ROLE_AGENT"]
     parts: list[PartV1] = Field(min_length=1)
-    contextId: str | None = Field(default=None, min_length=1)
-    taskId: str | None = Field(default=None, min_length=1)
+    contextId: str | None = Field(default=None, min_length=1)  # noqa: N815  # Public field name.
+    taskId: str | None = Field(default=None, min_length=1)  # noqa: N815  # Public field name.
     metadata: dict[str, JsonValue] = Field(default_factory=dict)
     extensions: list[str] = Field(default_factory=list)
-    referenceTaskIds: list[str] = Field(default_factory=list)
+    referenceTaskIds: list[str] = Field(default_factory=list)  # noqa: N815  # Public field name.
 
 
 type TaskStateV1 = Literal[
@@ -133,7 +133,7 @@ class StatusV1(WireModel):
 
 
 class ArtifactV1(WireModel):
-    artifactId: str = Field(min_length=1)
+    artifactId: str = Field(min_length=1)  # noqa: N815  # Public field name.
     parts: list[PartV1] = Field(min_length=1)
     name: str | None = None
     description: str | None = None
@@ -144,33 +144,33 @@ class ArtifactV1(WireModel):
 class TaskV1(WireModel):
     id: str = Field(min_length=1)
     status: StatusV1
-    contextId: str | None = Field(default=None, min_length=1)
+    contextId: str | None = Field(default=None, min_length=1)  # noqa: N815  # Public field name.
     artifacts: list[ArtifactV1] = Field(default_factory=list)
     history: list[MessageV1] = Field(default_factory=list)
     metadata: dict[str, JsonValue] = Field(default_factory=dict)
 
 
 class StatusUpdateV1(WireModel):
-    taskId: str = Field(min_length=1)
-    contextId: str = Field(min_length=1)
+    taskId: str = Field(min_length=1)  # noqa: N815  # Public field name.
+    contextId: str = Field(min_length=1)  # noqa: N815  # Public field name.
     status: StatusV1
     metadata: dict[str, JsonValue] = Field(default_factory=dict)
 
 
 class ArtifactUpdateV1(WireModel):
-    taskId: str = Field(min_length=1)
-    contextId: str = Field(min_length=1)
+    taskId: str = Field(min_length=1)  # noqa: N815  # Public field name.
+    contextId: str = Field(min_length=1)  # noqa: N815  # Public field name.
     artifact: ArtifactV1
     append: bool = False
-    lastChunk: bool = False
+    lastChunk: bool = False  # noqa: N815  # Public field name.
     metadata: dict[str, JsonValue] = Field(default_factory=dict)
 
 
 class ResponseV1(WireModel):
     task: TaskV1 | None = None
     message: MessageV1 | None = None
-    statusUpdate: StatusUpdateV1 | None = None
-    artifactUpdate: ArtifactUpdateV1 | None = None
+    statusUpdate: StatusUpdateV1 | None = None  # noqa: N815  # Public field name.
+    artifactUpdate: ArtifactUpdateV1 | None = None  # noqa: N815  # Public field name.
 
     @model_validator(mode="after")
     def require_one_response(self) -> Self:

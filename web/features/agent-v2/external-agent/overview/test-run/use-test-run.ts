@@ -6,6 +6,7 @@ import type { ExternalAgentOverview } from '../../model'
 import { hashKey, skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { v4 as uuid4 } from 'uuid'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
 
@@ -13,7 +14,6 @@ export type TestAgentRunOutcome = 'succeeded' | 'failed'
 export type TestAgentResultTab = 'result' | 'tracing'
 type TestRequest = {
   body: ExternalTestPayload
-  startedAt: number
   anchorId?: string
   unknown: boolean
   tracing: boolean
@@ -24,13 +24,19 @@ export type TestAgentRun = {
   elapsedSeconds: number | null
   currentInvocationId: string | undefined
   tracing: boolean
+  fileAccess?: {
+    agentId: string
+    invocationId: string
+    pageSessionId: string
+    generation: number
+  }
 }
 const isTerminal = (state: string) => ['succeeded', 'failed', 'ended', 'stopped'].includes(state)
 const message = (error: unknown, fallback: string) =>
   error instanceof Error && error.message ? error.message : fallback
 
 export function useTestAgentPageSession(overview: ExternalAgentOverview) {
-  const [pageSessionId, setPageSessionId] = useState(() => crypto.randomUUID())
+  const [pageSessionId, setPageSessionId] = useState(() => uuid4())
   const mountedRef = useRef(false)
   useEffect(() => {
     mountedRef.current = true
@@ -48,7 +54,7 @@ export function useTestAgentPageSession(overview: ExternalAgentOverview) {
         })
     }
     const restorePage = (event: PageTransitionEvent) => {
-      if (event.persisted) setPageSessionId(crypto.randomUUID())
+      if (event.persisted) setPageSessionId(uuid4())
     }
     window.addEventListener('pagehide', leavePage)
     window.addEventListener('pageshow', restorePage)
@@ -81,7 +87,6 @@ export function useTestAgentRun({
   const [request, setRequest] = useState<TestRequest | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
   const [tab, setTab] = useState<TestAgentResultTab>('result')
-  const [completedAt, setCompletedAt] = useState<number | null>(null)
   const requestRef = useRef<TestRequest | null>(null)
   const submittingRef = useRef(false)
   const completedRef = useRef<string | null>(null)
@@ -143,7 +148,7 @@ export function useTestAgentRun({
       ? resultQuery.data
       : undefined
   const complete = useCallback(
-    (response: ExternalTestStatusResponse, acceptedAnchor: string, observedAt: number) => {
+    (response: ExternalTestStatusResponse, acceptedAnchor: string) => {
       if (
         !isTerminal(response.state) ||
         response.metadata.test_generation !== generation ||
@@ -154,7 +159,6 @@ export function useTestAgentRun({
       if (completedRef.current === completion) return
       completedRef.current = completion
       setFailure(null)
-      setCompletedAt(observedAt)
       setTab('result')
       if (response.state !== 'stopped')
         onCompletedRef.current(response.state === 'succeeded' ? 'succeeded' : 'failed')
@@ -185,7 +189,7 @@ export function useTestAgentRun({
         }
       } else if (event.action.type === 'success') {
         const response = queryClient.getQueryData<ExternalTestStatusResponse>(event.query.queryKey)
-        if (response) complete(response, anchorId, event.query.state.dataUpdatedAt)
+        if (response) complete(response, anchorId)
       }
     })
   }, [anchorId, identity, queryClient, resultQueryHash, complete, t])
@@ -214,7 +218,7 @@ export function useTestAgentRun({
       onAccepted(snapshot.body.input_lease_ids ?? [])
       requestRef.current = accepted
       setRequest(accepted)
-      complete(response, response.invocation_id, Date.now())
+      complete(response, response.invocation_id)
     } catch (error) {
       if (
         !mountedRef.current ||
@@ -249,16 +253,14 @@ export function useTestAgentRun({
       body: {
         page_session_id: pageSessionId,
         expected_generation: generation,
-        idempotency_key: crypto.randomUUID(),
+        idempotency_key: uuid4(),
         task_text: task,
         input_lease_ids: leaseIds,
       },
-      startedAt: Date.now(),
       unknown: false,
       tracing: overview.tracing,
     }
     requestRef.current = snapshot
-    setCompletedAt(null)
     setRequest(snapshot)
     setTab(overview.tracing ? 'tracing' : 'result')
     void submit(snapshot)
@@ -309,9 +311,19 @@ export function useTestAgentRun({
         status,
         currentInvocationId: result?.invocation_id,
         tracing: activeRequest.tracing,
+        fileAccess: result
+          ? {
+              agentId: overview.asset.id,
+              invocationId: result.invocation_id,
+              pageSessionId,
+              generation,
+            }
+          : undefined,
         elapsedSeconds:
-          result && isTerminal(result.state) && completedAt !== null
-            ? Math.max(0, (completedAt - activeRequest.startedAt) / 1_000)
+          typeof result?.statistics?.elapsed_time === 'number' &&
+          Number.isFinite(result.statistics.elapsed_time) &&
+          result.statistics.elapsed_time >= 0
+            ? result.statistics.elapsed_time
             : null,
       }
     : null

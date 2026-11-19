@@ -244,6 +244,17 @@ const defaultRestrictedProperties = [
   },
 ] satisfies NonNullable<OxlintConfig['rules']>[string]
 
+// `crypto.randomUUID` exists only in secure contexts, so it is undefined on
+// self-hosted consoles opened over plain HTTP. Matching the property alone also
+// catches `globalThis.crypto.randomUUID` and optional-call forms.
+const insecureContextRestrictedProperties = [
+  {
+    property: 'randomUUID',
+    message:
+      'crypto.randomUUID is unavailable over plain HTTP (non-secure contexts). Use `v4` from `uuid` instead.',
+  },
+]
+
 const storageRestrictedProperties = [
   'error',
   {
@@ -1821,7 +1832,11 @@ export const lintConfig = {
       ...handwrittenApiScope,
       rules: {
         'no-restricted-globals': [...defaultRestrictedGlobals, ...rawHttpGlobals],
-        'no-restricted-properties': [...defaultRestrictedProperties, ...rawHttpProperties],
+        'no-restricted-properties': [
+          ...defaultRestrictedProperties,
+          ...rawHttpProperties,
+          ...insecureContextRestrictedProperties,
+        ],
         'no-restricted-imports': [
           'error',
           {
@@ -1842,7 +1857,11 @@ export const lintConfig = {
       ],
       rules: {
         'no-restricted-globals': [...storageRestrictedGlobals, ...rawHttpGlobals],
-        'no-restricted-properties': [...storageRestrictedProperties, ...rawHttpProperties],
+        'no-restricted-properties': [
+          ...storageRestrictedProperties,
+          ...rawHttpProperties,
+          ...insecureContextRestrictedProperties,
+        ],
       },
     },
     {

@@ -26,11 +26,11 @@ export function testResult(
     error_code: null,
     error_message: null,
     statistics: {
-      elapsed_time: state === 'waiting' ? null : 0,
+      elapsed_time: null,
       total_tokens: null,
-      attempt_count: state === 'waiting' ? 0 : 1,
+      attempt_count: 0,
       token_reporting_numerator: 0,
-      token_reporting_denominator: state === 'waiting' ? 0 : 1,
+      token_reporting_denominator: 0,
     },
     metadata: {
       agent_id: agentId,

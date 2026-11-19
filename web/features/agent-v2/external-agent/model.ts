@@ -83,9 +83,7 @@ export function toExternalAgentListItem(
           icon_type: type,
           icon: asset.icon,
           icon_background: asset.icon_background,
-          ...('icon_url' in asset && typeof asset.icon_url === 'string'
-            ? { icon_url: asset.icon_url }
-            : {}),
+          icon_url: asset.icon_url,
         }
       : undefined
   return {
@@ -96,6 +94,7 @@ export function toExternalAgentListItem(
     icon,
     enabled: asset.enabled,
     connectedByMe: asset.created_by === currentAccountId,
+    referenceCount: asset.reference_count,
     createdAt: Date.parse(asset.created_at),
     updatedAt: Date.parse(asset.updated_at),
   }

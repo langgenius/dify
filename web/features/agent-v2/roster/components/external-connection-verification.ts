@@ -3,7 +3,9 @@
 import type {
   ExternalAgentVerificationResponse,
   ExternalAgentVerifyPayload,
+  VerificationFailureReason,
 } from '@dify/contracts/api/console/external-agents/types.gen'
+import { isDefinedError } from '@orpc/client'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -21,7 +23,7 @@ export type ExternalConnectionSettings = {
 export type ExternalConnectionVerificationState =
   | { status: 'unverified' | 'verifying' | 'expired' }
   | { status: 'verified'; evidence: ExternalAgentVerificationResponse }
-  | { status: 'failed'; message?: string }
+  | { status: 'failed'; reason?: VerificationFailureReason; message?: string }
 
 export function externalAgentErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback
@@ -125,7 +127,15 @@ export function useExternalConnectionVerification(edit?: {
       : expired
         ? { status: 'expired' }
         : verification.error
-          ? { status: 'failed', message: externalAgentErrorMessage(verification.error, '') }
+          ? {
+              status: 'failed',
+              reason:
+                isDefinedError(verification.error) &&
+                verification.error.code === 'verification_failed'
+                  ? verification.error.data.details?.reason
+                  : undefined,
+              message: externalAgentErrorMessage(verification.error, ''),
+            }
           : { status: 'unverified' }
   return {
     evidence,

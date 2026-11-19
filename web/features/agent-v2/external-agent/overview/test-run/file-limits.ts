@@ -1,4 +1,7 @@
-import type { ExternalAgentCapabilitiesResponse } from '@dify/contracts/api/console/external-agents/types.gen'
+import type {
+  ExternalAgentCapabilitiesResponse,
+  ExternalInputFileTypeResponse,
+} from '@dify/contracts/api/console/external-agents/types.gen'
 import { asRecord } from '../../model'
 
 const aliases: Record<string, string> = {
@@ -6,23 +9,9 @@ const aliases: Record<string, string> = {
   'application/x-pdf': 'application/pdf',
   'text/x-markdown': 'text/markdown',
 }
-const extensionMimeTypes: Record<string, string> = {
-  md: 'text/markdown',
-  txt: 'text/plain',
-  pdf: 'application/pdf',
-  png: 'image/png',
-  jpg: 'image/jpeg',
-  jpeg: 'image/jpeg',
-}
-export const fileMimeTypes = [
-  'application/pdf',
-  'text/plain',
-  'text/markdown',
-  'image/png',
-  'image/jpeg',
-] as const
 export type TestFileRules = {
   modes: string[]
+  fileTypes: ExternalInputFileTypeResponse[]
   maxFiles: number
   maxDocumentBytes: number
   maxImageBytes: number
@@ -32,9 +21,15 @@ export function normalizeMime(value: string) {
   const mime = value.split(';')[0]!.trim().toLowerCase()
   return aliases[mime] ?? mime
 }
-export function localFileMime(file: File) {
+function fileMimeFromName(name: string, fileTypes: readonly ExternalInputFileTypeResponse[]) {
+  const type = fileTypes.find((type) =>
+    type.extensions.some((extension) => name.toLowerCase().endsWith(extension.toLowerCase())),
+  )
+  return type ? normalizeMime(type.media_type) : ''
+}
+export function localFileMime(file: File, fileTypes: readonly ExternalInputFileTypeResponse[]) {
   if (file.type) return normalizeMime(file.type)
-  return extensionMimeTypes[file.name.split('.').at(-1)?.toLowerCase() ?? ''] ?? ''
+  return fileMimeFromName(file.name, fileTypes)
 }
 function accepts(modes: readonly string[], mime: string) {
   return modes.some((mode) => {
@@ -57,17 +52,23 @@ export function getTestFileRules(
     )
   )
     return null
+  const fileTypes = capabilities.input_file_types.filter(({ media_type }) => {
+    const mime = normalizeMime(media_type)
+    return accepts(capabilities.input_file_modes, mime) && accepts(inputModes, mime)
+  })
   return {
-    modes: fileMimeTypes.filter(
-      (mime) => accepts(capabilities.input_file_modes, mime) && accepts(inputModes, mime),
-    ),
+    modes: fileTypes.map(({ media_type }) => normalizeMime(media_type)),
+    fileTypes,
     maxFiles: maxFiles as number,
     maxDocumentBytes: maxDocumentBytes as number,
     maxImageBytes: maxImageBytes as number,
     maxTotalBytes: maxTotalBytes as number,
   }
 }
-export function suggestedLinkFile(url: string) {
+export function suggestedLinkFile(
+  url: string,
+  fileTypes: readonly ExternalInputFileTypeResponse[],
+) {
   const parsed = URL.parse(url)
   let name = ''
   try {
@@ -75,7 +76,5 @@ export function suggestedLinkFile(url: string) {
   } catch {
     /* A malformed escape is not a filename. */
   }
-  const extension = name.split('.').at(-1)?.toLowerCase()
-  const mime = extensionMimeTypes[extension ?? ''] ?? ''
-  return { name, mime }
+  return { name, mime: fileMimeFromName(name, fileTypes) }
 }

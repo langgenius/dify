@@ -22,6 +22,7 @@ import {
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { v4 as uuid4 } from 'uuid'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
@@ -124,7 +125,7 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
       body = {
         verification_id: proof.verification_id,
         expected_revision_id: base.connectionRevisionId,
-        idempotency_key: crypto.randomUUID(),
+        idempotency_key: uuid4(),
       }
     }
     const scope = verification.scope

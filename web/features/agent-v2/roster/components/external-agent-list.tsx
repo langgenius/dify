@@ -39,6 +39,7 @@ export type ExternalAgentListItem = {
   connectedByMe: boolean
   createdAt: number
   updatedAt: number
+  referenceCount?: number | null
   apps?: readonly { id?: string; name: string; kind: 'workflow' | 'chatflow' }[]
 }
 
@@ -197,9 +198,9 @@ function ExternalAgentReferences({ agent }: { agent: ExternalAgentListItem }) {
       >
         <span aria-hidden className="i-custom-vender-agent-v2-plan size-3" />
         <span>
-          {references.data
-            ? t(($) => $['external.appsCount'], { count: references.data.apps.length })
-            : t(($) => $['external.api.apps'])}
+          {agent.referenceCount === null || agent.referenceCount === undefined
+            ? t(($) => $['external.api.apps'])
+            : t(($) => $['external.appsCount'], { count: agent.referenceCount })}
         </span>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-66 max-w-[calc(100vw-2rem)] p-1">

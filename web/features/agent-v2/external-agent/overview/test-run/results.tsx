@@ -5,7 +5,10 @@ import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useTranslation } from 'react-i18next'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 import { ExternalAgentInvocationTrace } from '../../invocation-trace'
-import { asRecord } from '../../model'
+import { TestAgentOutputValue } from './result-output'
+
+const isTokenCount = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
 
 export function TestAgentResults({
   run,
@@ -33,21 +36,18 @@ export function TestAgentResults({
     unknown: t(($) => $['external.overview.testRun.unsupportedState']),
   }
   const outputs = run.result?.outputs
-  // Older Console responses omit this additive statistics projection. Keep
-  // missing/unproved usage distinct from a real reported zero at display time.
-  const statistics = asRecord(asRecord(run.result).statistics)
-  const totalTokens = statistics.total_tokens
-  const reported = statistics.token_reporting_numerator
-  const total = statistics.token_reporting_denominator
-  const hasTotalTokens =
-    typeof totalTokens === 'number' && Number.isSafeInteger(totalTokens) && totalTokens >= 0
-  const hasReportingCounts =
-    typeof reported === 'number' &&
-    Number.isSafeInteger(reported) &&
-    reported >= 0 &&
-    typeof total === 'number' &&
-    Number.isSafeInteger(total) &&
-    total >= reported
+  const statistics = run.result?.statistics
+  const totalTokens = statistics?.total_tokens
+  const reportedAttempts = statistics?.token_reporting_numerator
+  const totalAttempts = statistics?.token_reporting_denominator
+  const attempts = statistics?.attempt_count
+  const hasCoverage =
+    isTokenCount(reportedAttempts) &&
+    isTokenCount(totalAttempts) &&
+    isTokenCount(attempts) &&
+    totalAttempts === attempts &&
+    reportedAttempts <= totalAttempts
+  const numberFormat = new Intl.NumberFormat(i18n.language)
   return (
     <div className="flex shrink-0 flex-col gap-4">
       <StatusContainer status={stopping ? 'running' : ended ? 'stopped' : run.status}>
@@ -92,15 +92,16 @@ export function TestAgentResults({
                   {t(($) => $['external.overview.testRun.totalTokens'])}
                 </dt>
                 <dd className="system-sm-medium text-text-secondary">
-                  <span>
-                    {hasTotalTokens
-                      ? new Intl.NumberFormat(i18n.language).format(totalTokens)
-                      : t(($) => $['external.overview.testRun.notProvided'])}
-                  </span>
-                  {hasReportingCounts && (
-                    <span className="mt-1 block system-xs-regular text-text-tertiary">
-                      {t(($) => $['external.monitoring.coverageDetail'], { reported, total })}
-                    </span>
+                  {isTokenCount(totalTokens)
+                    ? numberFormat.format(totalTokens)
+                    : t(($) => $['external.overview.testRun.tokensNotReported'])}
+                  {hasCoverage && (
+                    <p className="mt-0.5 system-2xs-regular text-text-tertiary">
+                      {t(($) => $['external.overview.testRun.tokenReportingCoverage'], {
+                        reported: numberFormat.format(reportedAttempts),
+                        total: numberFormat.format(totalAttempts),
+                      })}
+                    </p>
                   )}
                 </dd>
               </div>
@@ -139,13 +140,7 @@ export function TestAgentResults({
                   {name !== 'text' && (
                     <h4 className="mb-1 system-xs-medium-uppercase text-text-tertiary">{name}</h4>
                   )}
-                  {typeof value === 'string' ? (
-                    <p className="whitespace-pre-wrap">{value}</p>
-                  ) : (
-                    <pre className="max-h-80 overflow-auto rounded-md bg-background-section p-2 system-xs-regular wrap-anywhere whitespace-pre-wrap">
-                      {JSON.stringify(value, null, 2)}
-                    </pre>
-                  )}
+                  <TestAgentOutputValue value={value} access={run.fileAccess} />
                 </div>
               ))}
             </div>

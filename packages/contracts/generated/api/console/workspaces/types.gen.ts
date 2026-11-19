@@ -688,7 +688,7 @@ export type ParserDeleteModels = {
 
 export type LoadBalancingCredentialPayload = {
   credentials: {
-    [key: string]: unknown
+    [key: string]: string | boolean
   }
   model: string
   model_type: ModelType

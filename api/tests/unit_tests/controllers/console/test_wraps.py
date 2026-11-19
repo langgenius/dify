@@ -970,7 +970,7 @@ class TestBillingPaidPlanRequired:
         with (
             patch(
                 "controllers.console.wraps.current_account_with_tenant",
-                side_effect=AssertionError("no tenant lookup"),
+                return_value=(MockUser("test_user"), "tenant123"),
             ),
             patch("controllers.console.wraps.BillingService.get_info", side_effect=AssertionError("no billing")),
         ):
