@@ -23,12 +23,14 @@ its fixed selection IDs are untouched; a later attempt to dispatch with a delete
 ID fails instead of resolving a new default.
 
 For OAuth, that transaction saves only the encrypted grant and its original Client
-and plugin artifact references in a revocation job. The worker calls the Provider
-only after committing a short job lease. Unsupported, failed and unavailable
-revocations are logged and retire the job without restoring the Connection. A worker
-interrupted before settling the job can be retried after its five-minute lease;
-this may repeat a revoke request for the already-deleted grant. Cleanup logs contain
-Connection IDs and normalized outcomes, never credentials or provider error text.
+and plugin artifact references in a revocation job. After committing a short job
+lease, the worker attempts best-effort revocation outside the database transaction.
+Unsupported, failed and unavailable outcomes are logged and retire the job without
+retrying the Provider or restoring the Connection. If the worker is interrupted
+before settling the job, the first sweep after the five-minute lease expires can
+retry it. This may repeat a revoke request for the already-deleted grant. Cleanup
+logs contain Connection IDs and normalized outcomes, never credentials or provider
+error text.
 
 API keys are deleted locally without calling the Provider. If the Connection
 response has `manual_revocation_required_on_expiry: true`, callers can explain
@@ -46,7 +48,7 @@ initial cutoff before enabling cleanup on an existing deployment.
 | --- | --- | --- |
 | `ENABLE_GUEST_CONNECTION_CLEANUP_TASK` | `false` | Opt in on Beat and workers after deployment. |
 | `GUEST_CONNECTION_INACTIVITY_DAYS` | `30` | Time since the last qualifying activity; the sweep uses a strict cutoff in UTC. |
-| `GUEST_CONNECTION_CLEANUP_INTERVAL_MINUTES` | `5` | Interval between sweeps. |
+| `GUEST_CONNECTION_CLEANUP_INTERVAL_MINUTES` | `60` | Interval between sweeps for expiry and revocation recovery. |
 | `GUEST_CONNECTION_CLEANUP_BATCH_SIZE` | `100` | Page size for candidate and revocation-job scans. Each deletion is its own transaction. |
 
 Workers with custom queue lists must subscribe to `retention`. A failed row does

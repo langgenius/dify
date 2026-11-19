@@ -1582,7 +1582,7 @@ class CeleryScheduleTasksConfig(BaseSettings):
         default=30, le=36500, description="Days of inactivity before a Guest Connection is eligible for cleanup."
     )
     GUEST_CONNECTION_CLEANUP_INTERVAL_MINUTES: PositiveInt = Field(
-        default=5, le=1440, description="Minutes between Guest Connection cleanup sweeps."
+        default=60, le=1440, description="Minutes between Guest Connection cleanup sweeps."
     )
     GUEST_CONNECTION_CLEANUP_BATCH_SIZE: PositiveInt = Field(
         default=100, le=1000, description="Maximum candidates read per page by a Guest Connection cleanup sweep."
