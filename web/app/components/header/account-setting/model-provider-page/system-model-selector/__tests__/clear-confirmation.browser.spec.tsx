@@ -1,6 +1,11 @@
 import type { DefaultModelResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import { createInstance } from 'i18next'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { I18nextProvider } from 'react-i18next'
 import { render } from 'vitest-browser-react'
+import common from '@/i18n/locales/en-US/common.json'
+import modelProvider from '@/i18n/locales/en-US/model-provider.json'
+import plugin from '@/i18n/locales/en-US/plugin.json'
 import {
   createCatalogModelFixture,
   createDefaultModelFixture,
@@ -10,6 +15,9 @@ import {
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import SystemModel from '../index'
 
+vi.unmock('react-i18next')
+
+// boundary: default-model reads and writes stop at the generated console transport.
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -27,31 +35,11 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-vi.mock('react-i18next', async () => {
-  const actual = await vi.importActual<typeof import('react-i18next')>('react-i18next')
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return {
-    ...actual,
-    ...createReactI18nextMock({
-      'modelProvider.systemModelSettings': 'System Model Settings',
-      'modelProvider.systemModelSettingsTitle': 'Default Model Settings',
-      'modelProvider.systemReasoningModel.key': 'System Reasoning Model',
-      'modelProvider.ttsModel.key': 'TTS Model',
-      'modelProvider.embeddingModel.key': 'Embedding Model',
-      'modelProvider.rerankModel.key': 'Rerank Model',
-      'modelProvider.clearDefaultModel.title': 'Clear {{modelType}}?',
-      'operation.cancel': 'Cancel',
-      'operation.clear': 'Clear',
-      'operation.save': 'Save',
-    }),
-  }
-})
-
 beforeEach(() => vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false))
 afterEach(() => vi.unstubAllGlobals())
 
 it.each([
-  { modelType: 'tts', label: 'TTS Model', requiresConfirmation: true },
+  { modelType: 'tts', label: 'Text-to-Speech Model', requiresConfirmation: true },
   { modelType: 'text-embedding', label: 'Embedding Model', requiresConfirmation: false },
   { modelType: 'rerank', label: 'Rerank Model', requiresConfirmation: false },
 ])(
@@ -60,6 +48,12 @@ it.each([
     // The clear button unmounts on clearing; browser focus must stay on this field in the parent dialog.
     const { queryClient, wrapper: Wrapper } = createConsoleQueryWrapper({
       workspacePermissionKeys: ['plugin.model_config'],
+    })
+    const i18n = createInstance()
+    await i18n.init({
+      lng: 'en-US',
+      keySeparator: false,
+      resources: { 'en-US': { common, modelProvider, plugin } },
     })
     seedModelProviderQueries(queryClient, [
       createModelCatalogFixture({
@@ -76,12 +70,14 @@ it.each([
     try {
       const screen = await render(
         <NuqsTestingAdapter>
-          <Wrapper>
-            <SystemModel notConfigured={false} />
-          </Wrapper>
+          <I18nextProvider i18n={i18n}>
+            <Wrapper>
+              <SystemModel notConfigured={false} />
+            </Wrapper>
+          </I18nextProvider>
         </NuqsTestingAdapter>,
       )
-      await screen.getByRole('button', { name: 'System Model Settings' }).click()
+      await screen.getByRole('button', { name: 'Default Models' }).click()
       const settings = screen.getByRole('dialog', { name: 'Default Model Settings' })
       await settings.getByRole('button', { name: `${label} ${modelType} model` }).hover()
       const clearButton = settings.getByRole('button', { name: `Clear ${label}` })
@@ -102,9 +98,7 @@ it.each([
       }
       await expect.element(clearButton).not.toBeInTheDocument()
       await expect
-        .element(
-          settings.getByRole('button', { name: `${label} plugin.detailPanel.configureModel` }),
-        )
+        .element(settings.getByRole('button', { name: `${label} Configure model` }))
         .toHaveFocus()
     } finally {
       queryClient.clear()

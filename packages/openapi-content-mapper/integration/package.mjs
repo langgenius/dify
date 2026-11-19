@@ -47,7 +47,12 @@ async function files(directory, prefix = '') {
   return found
 }
 
-test('packed SDK installs and works outside the workspace with npm and official Vite', async () => {
+// Skipped: npm resolves dependency ranges against the live registry, so a version published
+// seconds earlier (`@tanstack/query-core@5.108.0` on 2026-11-17) can resolve before its tarball
+// is downloadable and fail with E404. That removed three PRs from the merge queue within ten
+// minutes. Re-enable once the install no longer picks versions that are only minutes old,
+// for example with `npm install --before`.
+test.skip('packed SDK installs and works outside the workspace with npm and official Vite', async () => {
   const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
   const directory = await mkdtemp(join(tmpdir(), 'openapi-package-'))
   try {
@@ -69,7 +74,7 @@ test('packed SDK installs and works outside the workspace with npm and official 
         '--package-lock=false',
         tarball,
         'typescript@7.1.0-beta',
-        'vite@8.3.5',
+        'vite@8.3.6',
       ],
       directory,
     )

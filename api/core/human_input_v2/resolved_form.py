@@ -8,7 +8,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from enums.human_input import ButtonStyle
+from enums.human_input import ButtonStyle, ValueSourceType
 from graphon.file.enums import FileTransferMethod, FileType
 
 
@@ -23,16 +23,26 @@ class FormPartType(StrEnum):
 class MarkdownFragment(BaseModel):
     """One source-ordered Markdown fragment in a resolved form."""
 
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True, validate_default=True)
+    model_config = ConfigDict(extra="ignore", frozen=True, strict=True, validate_default=True)
 
     type: Literal[FormPartType.MARKDOWN_FRAGMENT] = FormPartType.MARKDOWN_FRAGMENT
     text: str
 
 
 class _BasicInput(BaseModel, abc.ABC):
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True, validate_default=True)
+    model_config = ConfigDict(extra="ignore", frozen=True, strict=True, validate_default=True)
 
     output_variable_name: str
+
+
+class ParagraphDefaultConfig(BaseModel):
+    """Frozen authoring metadata retained only for the legacy response contract."""
+
+    model_config = ConfigDict(extra="ignore", frozen=True, strict=True, validate_default=True)
+
+    type: ValueSourceType
+    selector: tuple[str, ...]
+    value: str
 
 
 class ParagraphInput(_BasicInput):
@@ -40,7 +50,9 @@ class ParagraphInput(_BasicInput):
 
     type: Literal[FormPartType.PARAGRAPH_INPUT] = FormPartType.PARAGRAPH_INPUT
     # Populated only when a default value is configured; otherwise None.
-    default_value: str | None
+    resolved_default_value: str | None
+    # Source metadata never participates in runtime variable resolution.
+    default_config: ParagraphDefaultConfig | None = None
 
 
 class SelectInput(_BasicInput):
@@ -49,7 +61,7 @@ class SelectInput(_BasicInput):
     type: Literal[FormPartType.SELECT_INPUT] = FormPartType.SELECT_INPUT
     options: tuple[str, ...]
     # Populated only when a default value is configured; otherwise None.
-    default_value: str | None
+    resolved_default_value: str | None
 
 
 class FileInput(_BasicInput):
@@ -74,7 +86,7 @@ class FileListInput(_BasicInput):
 class UserAction(BaseModel):
     """Resolved action values required for presentation and submission validation."""
 
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True, validate_default=True)
+    model_config = ConfigDict(extra="ignore", frozen=True, strict=True, validate_default=True)
 
     id: str
     title: str
@@ -90,7 +102,7 @@ type FormPart = Annotated[
 class ResolvedForm(BaseModel):
     """Immutable authoritative presentation snapshot for one v2 form."""
 
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True, validate_default=True)
+    model_config = ConfigDict(extra="ignore", frozen=True, strict=True, validate_default=True)
 
     # An empty string represents a form without a title.
     title: str

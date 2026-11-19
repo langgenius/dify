@@ -16,10 +16,12 @@ from yarl import URL
 from configs import dify_config
 from core.plugin.impl import base as plugin_transport
 from core.plugin.impl.oauth import OAuthHandler
+from core.plugin.impl.trigger import PluginTriggerClient
 from models.provider_ids import TriggerProviderID
 from services.plugin.dispatch_identity import PluginOAuthClientConfig
 from services.trigger.oauth_gateway import PluginTriggerOAuthGateway
 from services.trigger.oauth_service import TriggerOAuthCallbackRequest, TriggerOAuthProviderError
+from services.trigger.provider_loader import PluginTriggerProviderLoader
 
 _PROVIDER = TriggerProviderID("langgenius/github/github")
 _REDIRECT_URI = "https://console.example/console/api/oauth/plugin/langgenius/github/github/trigger/callback"
@@ -47,7 +49,11 @@ class _Daemon:
 
 @pytest.fixture
 def daemon() -> Iterator[_Daemon]:
-    daemon = _Daemon(gateway=PluginTriggerOAuthGateway(oauth=OAuthHandler()))
+    daemon = _Daemon(
+        gateway=PluginTriggerOAuthGateway(
+            oauth=OAuthHandler(), providers=PluginTriggerProviderLoader(client=PluginTriggerClient())
+        )
+    )
 
     class Handler(BaseHTTPRequestHandler):
         def do_POST(self) -> None:

@@ -44,6 +44,7 @@
   "invalidInvitationCode": "Neveljavna vabilna koda",
   "invitationCode": "Vabilna koda",
   "invitationCodePlaceholder": "Vaša vabilna koda",
+  "invitationWorkspaceFull": "Ta delovni prostor nima več prostih mest, zato se mu še ne morete pridružiti. Prosite osebo, ki vas je povabila, naj sprosti mesto ali nadgradi paket.",
   "join": "Pridruži se",
   "joinTipEnd": "ekipi na Dify",
   "joinTipStart": "Vabimo vas, da se pridružite",

@@ -11,6 +11,7 @@ from core.human_input_v2.resolved_form import (
     FileListInput,
     FormPart,
     MarkdownFragment,
+    ParagraphDefaultConfig,
     ParagraphInput,
     ResolvedForm,
     SelectInput,
@@ -101,7 +102,16 @@ def _resolve_input(
             default_value = _resolve_paragraph_default(input_config.default, variable_pool)
             if default_value is None and resolved_default is not None:
                 default_value = _resolved_text(resolved_default, field_name=input_config.output_variable_name)
-            return ParagraphInput(output_variable_name=input_config.output_variable_name, default_value=default_value)
+            source = input_config.default
+            return ParagraphInput(
+                output_variable_name=input_config.output_variable_name,
+                resolved_default_value=default_value,
+                default_config=(
+                    ParagraphDefaultConfig(type=source.type, selector=tuple(source.selector), value=source.value)
+                    if source is not None
+                    else None
+                ),
+            )
         case SelectInputConfig():
             options = _resolve_select_options(input_config.option_source, variable_pool)
             default_value = (
@@ -110,7 +120,9 @@ def _resolve_input(
                 else None
             )
             return SelectInput(
-                output_variable_name=input_config.output_variable_name, options=options, default_value=default_value
+                output_variable_name=input_config.output_variable_name,
+                options=options,
+                resolved_default_value=default_value,
             )
         case FileInputConfig():
             return FileInput(

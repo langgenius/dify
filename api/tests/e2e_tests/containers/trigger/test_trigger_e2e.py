@@ -14,11 +14,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
-from core.plugin.entities.plugin_daemon import CredentialType
-from core.trigger.constants import (
+from constants.trigger import (
     TRIGGER_SCHEDULE_NODE_TYPE,
     TRIGGER_WEBHOOK_NODE_TYPE,
 )
+from core.plugin.entities.plugin_daemon import CredentialType
 from core.trigger.entities.entities import Subscription
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
@@ -126,7 +126,7 @@ def test_trigger_url_uses_config_base(monkeypatch: pytest.MonkeyPatch) -> None:
 
     try:
         monkeypatch.setattr(dify_config, "TRIGGER_URL", TEST_TRIGGER_URL)
-        endpoint_module = importlib.reload(importlib.import_module("core.trigger.utils.endpoint"))
+        endpoint_module = importlib.reload(importlib.import_module("models.utils.trigger_endpoint"))
 
         assert (
             endpoint_module.generate_webhook_trigger_endpoint(WEBHOOK_ID_PRODUCTION)
@@ -143,7 +143,7 @@ def test_trigger_url_uses_config_base(monkeypatch: pytest.MonkeyPatch) -> None:
         # Restore original config and reload module
         if original_url is not None:
             monkeypatch.setattr(dify_config, "TRIGGER_URL", original_url)
-        importlib.reload(importlib.import_module("core.trigger.utils.endpoint"))
+        importlib.reload(importlib.import_module("models.utils.trigger_endpoint"))
 
 
 def test_webhook_trigger_creates_trigger_log(

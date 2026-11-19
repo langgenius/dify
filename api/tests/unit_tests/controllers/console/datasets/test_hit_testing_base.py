@@ -30,7 +30,7 @@ pytestmark = pytest.mark.usefixtures("workflow_application")
 
 
 @pytest.fixture
-def account():
+def account() -> Account:
     acc = Account(name="User", email="user@example.com")
     acc.id = "account-1"
     tenant = Tenant(name="Tenant")
@@ -41,7 +41,7 @@ def account():
 
 
 @pytest.fixture
-def dataset():
+def dataset() -> Dataset:
     return Dataset(id="dataset-1", tenant_id="tenant-1", name="Dataset", created_by="account-1")
 
 
@@ -84,7 +84,7 @@ def hit_testing_record() -> dict[str, object]:
 
 
 class TestGetAndValidateDataset:
-    def test_success(self, dataset, account):
+    def test_success(self, dataset: Dataset, account: Account) -> None:
         with (
             patch.object(
                 DatasetService,
@@ -100,7 +100,7 @@ class TestGetAndValidateDataset:
 
         assert result == dataset
 
-    def test_dataset_not_found(self, account):
+    def test_dataset_not_found(self, account: Account) -> None:
         with patch.object(
             DatasetService,
             "get_dataset",
@@ -109,7 +109,7 @@ class TestGetAndValidateDataset:
             with pytest.raises(NotFoundError, match="Dataset not found"):
                 DatasetsHitTestingBase.get_and_validate_dataset(Mock(), "dataset-1", account, "tenant-1")
 
-    def test_permission_denied(self, dataset, account):
+    def test_permission_denied(self, dataset: Dataset, account: Account) -> None:
         with (
             patch.object(
                 DatasetService,
@@ -127,7 +127,7 @@ class TestGetAndValidateDataset:
 
 
 class TestHitTestingArgsCheck:
-    def test_args_check_called(self):
+    def test_args_check_called(self) -> None:
         args = {"query": "test"}
 
         with patch.object(
@@ -140,20 +140,20 @@ class TestHitTestingArgsCheck:
 
 
 class TestParseArgs:
-    def test_parse_args_success(self):
+    def test_parse_args_success(self) -> None:
         payload = {"query": "hello"}
 
         result = DatasetsHitTestingBase.parse_args(payload)
 
         assert result["query"] == "hello"
 
-    def test_parse_args_invalid(self):
+    def test_parse_args_invalid(self) -> None:
         payload = {"query": "x" * 300}
 
         with pytest.raises(ValueError, match="1 validation error for HitTestingPayload\\\nquery"):
             DatasetsHitTestingBase.parse_args(payload)
 
-    def test_parse_args_ignores_unknown_fields_for_compatibility(self):
+    def test_parse_args_ignores_unknown_fields_for_compatibility(self) -> None:
         payload = {"query": "hello", "top_k": 3}
 
         result = DatasetsHitTestingBase.parse_args(payload)
@@ -162,10 +162,10 @@ class TestParseArgs:
 
 
 class TestPerformHitTesting:
-    def test_success(self, dataset, account):
+    def test_success(self, dataset: Dataset, account: Account) -> None:
         response = {
             "query": {"content": "hello"},
-            "records": [],
+            "records": list[object](),
         }
 
         with patch.object(
@@ -180,7 +180,7 @@ class TestPerformHitTesting:
         assert result["query"] == {"content": "hello"}
         assert result["records"] == []
 
-    def test_success_prepares_nullable_list_fields(self, dataset, account):
+    def test_success_prepares_nullable_list_fields(self, dataset: Dataset, account: Account) -> None:
         response = {
             "query": {"content": "hello"},
             "records": [hit_testing_record()],
@@ -205,7 +205,7 @@ class TestPerformHitTesting:
         assert record["tsne_position"] is None
         assert record["summary"] is None
 
-    def test_invalid_query_response_raises_value_error(self, dataset, account):
+    def test_invalid_query_response_raises_value_error(self, dataset: Dataset, account: Account) -> None:
         with (
             patch.object(
                 HitTestingService,
@@ -216,15 +216,15 @@ class TestPerformHitTesting:
         ):
             DatasetsHitTestingBase.perform_hit_testing(Mock(), dataset, {"query": "hello"}, account, "tenant-1")
 
-    def test_invalid_records_response_raises_value_error(self):
+    def test_invalid_records_response_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="Invalid hit testing records response"):
             DatasetsHitTestingBase._prepare_hit_testing_records({"records": []})
 
-    def test_invalid_record_response_raises_value_error(self):
+    def test_invalid_record_response_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="Invalid hit testing record response"):
             DatasetsHitTestingBase._prepare_hit_testing_records(["record"])
 
-    def test_index_not_initialized(self, dataset, account):
+    def test_index_not_initialized(self, dataset: Dataset, account: Account) -> None:
         with patch.object(
             HitTestingService,
             "retrieve",
@@ -233,7 +233,7 @@ class TestPerformHitTesting:
             with pytest.raises(DatasetNotInitializedError):
                 DatasetsHitTestingBase.perform_hit_testing(Mock(), dataset, {"query": "hello"}, account, "tenant-1")
 
-    def test_provider_token_not_init(self, dataset, account):
+    def test_provider_token_not_init(self, dataset: Dataset, account: Account) -> None:
         with patch.object(
             HitTestingService,
             "retrieve",
@@ -242,7 +242,7 @@ class TestPerformHitTesting:
             with pytest.raises(ProviderNotInitializeError):
                 DatasetsHitTestingBase.perform_hit_testing(Mock(), dataset, {"query": "hello"}, account, "tenant-1")
 
-    def test_quota_exceeded(self, dataset, account):
+    def test_quota_exceeded(self, dataset: Dataset, account: Account) -> None:
         with patch.object(
             HitTestingService,
             "retrieve",
@@ -251,7 +251,7 @@ class TestPerformHitTesting:
             with pytest.raises(ProviderQuotaExceededError):
                 DatasetsHitTestingBase.perform_hit_testing(Mock(), dataset, {"query": "hello"}, account, "tenant-1")
 
-    def test_model_not_supported(self, dataset, account):
+    def test_model_not_supported(self, dataset: Dataset, account: Account) -> None:
         with patch.object(
             HitTestingService,
             "retrieve",
@@ -260,7 +260,7 @@ class TestPerformHitTesting:
             with pytest.raises(ProviderModelCurrentlyNotSupportError):
                 DatasetsHitTestingBase.perform_hit_testing(Mock(), dataset, {"query": "hello"}, account, "tenant-1")
 
-    def test_llm_bad_request(self, dataset, account):
+    def test_llm_bad_request(self, dataset: Dataset, account: Account) -> None:
         with patch.object(
             HitTestingService,
             "retrieve",
@@ -269,7 +269,7 @@ class TestPerformHitTesting:
             with pytest.raises(ProviderNotInitializeError):
                 DatasetsHitTestingBase.perform_hit_testing(Mock(), dataset, {"query": "hello"}, account, "tenant-1")
 
-    def test_invoke_error(self, dataset, account):
+    def test_invoke_error(self, dataset: Dataset, account: Account) -> None:
         with patch.object(
             HitTestingService,
             "retrieve",
@@ -278,7 +278,7 @@ class TestPerformHitTesting:
             with pytest.raises(CompletionRequestError):
                 DatasetsHitTestingBase.perform_hit_testing(Mock(), dataset, {"query": "hello"}, account, "tenant-1")
 
-    def test_value_error(self, dataset, account):
+    def test_value_error(self, dataset: Dataset, account: Account) -> None:
         with patch.object(
             HitTestingService,
             "retrieve",
@@ -287,7 +287,7 @@ class TestPerformHitTesting:
             with pytest.raises(ValueError, match="bad args"):
                 DatasetsHitTestingBase.perform_hit_testing(Mock(), dataset, {"query": "hello"}, account, "tenant-1")
 
-    def test_unexpected_error(self, dataset, account):
+    def test_unexpected_error(self, dataset: Dataset, account: Account) -> None:
         with patch.object(
             HitTestingService,
             "retrieve",

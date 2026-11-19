@@ -59,7 +59,7 @@ describe('upload HTTP failure contract', () => {
       status: 400,
       data,
     })
-    if (!(error instanceof ORPCError)) throw new Error('Expected an upload HTTP failure')
+    if (!(error instanceof ORPCError)) throw new TypeError('Expected an upload HTTP failure')
     expect(error.cause).toEqual({ headers: new Headers({ 'X-Request-Id': 'upload-123' }) })
   })
 
@@ -107,7 +107,7 @@ describe('HTTP failure contract', () => {
 
       expect(error).toBeInstanceOf(Error)
       expect(error).toBeInstanceOf(ORPCError)
-      if (!(error instanceof ORPCError)) throw new Error('Expected an HTTP failure')
+      if (!(error instanceof ORPCError)) throw new TypeError('Expected an HTTP failure')
       expect(error).toMatchObject({
         code: body.code,
         message: body.message,
