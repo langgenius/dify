@@ -171,13 +171,25 @@ class WorkspaceMemberAccessGateway(Protocol):
     def member_removed(self, workspace_id: str, removal: WorkspaceMemberRemoval) -> None: ...
 
 
+class WorkspaceInvitationLinks(Protocol):
+    def acquire(self, workspace_id: str) -> AbstractContextManager[object]: ...
+
+    def revoke_pending(self, workspace_id: str, email: str, *, account_id: str | None) -> None: ...
+
+
 class WorkspaceMemberService:
     def __init__(
-        self, *, workspaces: WorkspaceMemberStore, accounts: AccountSnapshotQuery, access: WorkspaceMemberAccessGateway
+        self,
+        *,
+        workspaces: WorkspaceMemberStore,
+        accounts: AccountSnapshotQuery,
+        access: WorkspaceMemberAccessGateway,
+        invitation_links: WorkspaceInvitationLinks,
     ) -> None:
         self._workspaces = workspaces
         self._accounts = accounts
         self._access = access
+        self._invitation_links = invitation_links
 
     @property
     def rbac_enabled(self) -> bool:
@@ -247,7 +259,16 @@ class WorkspaceMemberService:
         self._access.assign_role(workspace_id, operator_id, member_id, role_id)
 
     def remove(self, workspace_id: str, account_id: str, operator_id: str) -> None:
-        """Remove a member and transfer their resources to the workspace owner; the account itself is kept.
+        """Remove a member under the workspace invitation lock; see ``remove_locked``."""
+        with self._invitation_links.acquire(workspace_id):
+            self.remove_locked(workspace_id, account_id, operator_id)
+
+    def remove_locked(self, workspace_id: str, account_id: str, operator_id: str) -> None:
+        """Remove a member while the caller holds the workspace invitation lock.
+
+        Postconditions on success: the membership is gone, the member's resources belong to the
+        workspace owner, and no invitation link for the account in this workspace is accepted.
+        The account and its invitations to other workspaces are kept.
 
         Raises:
             AccountNotFoundError: The member account does not exist.
@@ -256,7 +277,8 @@ class WorkspaceMemberService:
             MemberNotInTenantError: The account is not a member of the workspace.
             ValueError: The workspace has no owner to receive the member's resources.
         """
-        if self._accounts.get(account_id) is None:
+        account = self._accounts.get(account_id)
+        if account is None:
             raise AccountNotFoundError()
         self.check_permission(workspace_id, operator_id, account_id, "remove")
         if self.get_role(workspace_id, account_id) is None:
@@ -268,6 +290,7 @@ class WorkspaceMemberService:
         )
         if owner_id is None:
             raise ValueError(f"Workspace owner not found for tenant {workspace_id}.")
+        self._invitation_links.revoke_pending(workspace_id, account.email, account_id=account_id)
         removal = self._workspaces.remove_member(
             workspace_id=workspace_id,
             account_id=account_id,
@@ -432,11 +455,12 @@ class WorkspaceInvitationService:
             )
             if not has_live_link and not pending_member:
                 raise PendingInvitationNotFoundError()
-            self._invitations.revoke_pending(
-                workspace_id, normalized_email, account_id=account.id if account is not None else None
-            )
             if pending_member and account is not None:
-                self._members.remove(workspace_id, account.id, context.account_id)
+                self._members.remove_locked(workspace_id, account.id, context.account_id)
+            else:
+                self._invitations.revoke_pending(
+                    workspace_id, normalized_email, account_id=account.id if account is not None else None
+                )
 
     def _live_pending(self, workspace_id: str) -> tuple[PendingWorkspaceInvitation, ...]:
         pending = self._invitations.list_pending(workspace_id)

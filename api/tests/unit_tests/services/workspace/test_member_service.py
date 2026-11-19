@@ -1,7 +1,8 @@
 from collections.abc import Callable, Mapping, Sequence
-from contextlib import nullcontext
+from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from hashlib import sha256
 from unittest.mock import Mock, create_autospec
 
 import pytest
@@ -19,11 +20,18 @@ from models.dataset import Dataset
 from models.human_input_v2 import HumanInputContactIdentity
 from models.model import App, AppMode
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
-from services.account.adapters import RedisInvitationTokenStore
-from services.account_errors import AccountNotFoundError
+from services.account.adapters import (
+    BillingAccountActivationEligibility,
+    BillingWorkspaceMembershipCache,
+    DeploymentWorkspaceInvitePolicy,
+    RBACWorkspaceMemberAccessSync,
+    RedisInvitationTokenStore,
+)
+from services.account_activation_service import AccountActivationService
+from services.account_errors import AccountNotFoundError, InvalidInvitationError
 from services.enterprise.rbac_service import RBACService
 from services.entities.account_activation_entities import (
-    AccountSetup,
+    ActivationCommand,
     InvitationLookup,
     InvitationToken,
     PendingWorkspaceInvitation,
@@ -70,6 +78,22 @@ from tests.helpers.unit.account_domain import AccountDomain
 from tests.helpers.unit.redis_commands import RedisCommandEmulator
 
 """Membership and invitation behavior across the application/persistence boundary."""
+
+
+class _StoreInvitationLinks:
+    def __init__(self, tokens: RedisInvitationTokenStore) -> None:
+        self._tokens = tokens
+        self.locked: list[str] = []
+
+    def acquire(self, workspace_id: str) -> AbstractContextManager[object]:
+        self.locked.append(workspace_id)
+        return nullcontext()
+
+    def revoke_pending(self, workspace_id: str, email: str, *, account_id: str | None) -> None:
+        self._tokens.revoke_pending(workspace_id, email, account_id=account_id)
+
+    def can_join(self, workspace_id: str, account_id: str) -> bool:
+        return bool(workspace_id and account_id)
 
 
 @dataclass(frozen=True)
@@ -149,7 +173,7 @@ class TestMemberServiceCases:
         account_domain.access.member_removed.assert_called_once()
 
     @staticmethod
-    def test_removing_a_pending_member_keeps_another_workspaces_invitation_acceptable(
+    def test_removing_a_pending_member_retires_only_this_workspaces_links(
         account_domain: AccountDomain,
         sqlite_session: Session,
         sqlite_session_factory: sessionmaker[Session],
@@ -164,26 +188,47 @@ class TestMemberServiceCases:
         sqlite_session.add(other)
         sqlite_session.commit()
         other_id, email = other.id, member.email
-        redis_transport[1].side_effect = RedisCommandEmulator()
+        redis = RedisCommandEmulator()
+        redis_transport[1].side_effect = redis
         tokens = RedisInvitationTokenStore(redis=redis_transport[0])
-        link = tokens.create(InvitationToken(member_id, email, other_id, "editor", True))
-
-        account_domain.members.remove(workspace_id, member_id, owner_id)
-
-        assert [invitation.email for invitation in tokens.list_pending(other_id)] == [email]
-        accepted = tokens.find(InvitationLookup(workspace_id=None, email=None, token=link))
-        assert accepted is not None
-        activation = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
-        invitation = activation.resolve(accepted)
-        assert invitation is not None
-        result = activation.activate(
-            invitation,
-            role="editor",
-            setup=AccountSetup(name="Member", interface_language="en-US", timezone="UTC"),
+        indexed_link = tokens.create(InvitationToken(member_id, email, workspace_id, "editor", True))
+        email_hash = sha256(email.encode()).hexdigest()
+        redis.values[f"member_invite_token:{workspace_id}, {email_hash}:legacy"] = member_id.encode()
+        other_link = tokens.create(InvitationToken(member_id, email, other_id, "editor", True))
+        links = _StoreInvitationLinks(tokens)
+        service = WorkspaceMemberService(
+            workspaces=account_domain.workspaces,
+            accounts=account_domain.repository,
+            access=account_domain.access,
+            invitation_links=links,
         )
-        assert result is not None
-        assert result.membership_created
-        assert account_domain.members.get_role(other_id, member_id) == TenantAccountRole.EDITOR
+        activation = AccountActivationService(
+            tokens=tokens,
+            accounts=SQLAlchemyAccountActivationRepository(sqlite_session_factory),
+            workspace_policy=DeploymentWorkspaceInvitePolicy(),
+            eligibility=BillingAccountActivationEligibility(enabled=False),
+            membership_cache=BillingWorkspaceMembershipCache(enabled=False),
+            member_access_sync=RBACWorkspaceMemberAccessSync(enabled=False),
+            capacity=links,
+        )
+
+        def accept(lookup: InvitationLookup) -> None:
+            activation.activate(
+                ActivationCommand(invitation=lookup, name="Member", interface_language="en-US", timezone="UTC"),
+                authenticated_account_id=None,
+            )
+
+        service.remove(workspace_id, member_id, owner_id)
+
+        assert links.locked == [workspace_id]
+        with pytest.raises(InvalidInvitationError):
+            accept(InvitationLookup(workspace_id=None, email=None, token=indexed_link))
+        with pytest.raises(InvalidInvitationError):
+            accept(InvitationLookup(workspace_id=workspace_id, email=email, token="legacy"))
+        assert service.get_role(workspace_id, member_id) is None
+        assert [invitation.email for invitation in tokens.list_pending(other_id)] == [email]
+        accept(InvitationLookup(workspace_id=None, email=None, token=other_link))
+        assert service.get_role(other_id, member_id) == TenantAccountRole.EDITOR
 
     @staticmethod
     @pytest.mark.parametrize("action", ["add", "remove", "update"])
@@ -603,6 +648,7 @@ class TestMemberServiceCases:
             RequestContext("request", None, owner_id, workspace_id), "Member@Example.com"
         )
 
+        account_domain.delivery.acquire.assert_called_once_with(workspace_id)
         account_domain.delivery.revoke_pending.assert_called_once_with(
             workspace_id, "member@example.com", account_id=member_id
         )
@@ -895,7 +941,10 @@ class TestMemberServiceCases:
 
         monkeypatch.setattr(sync_joined_workspace_member_rbac_access_task, "delay", sync)
         member_service = WorkspaceMemberService(
-            workspaces=account_domain.workspaces, accounts=account_domain.repository, access=access
+            workspaces=account_domain.workspaces,
+            accounts=account_domain.repository,
+            access=access,
+            invitation_links=account_domain.delivery,
         )
         invitations = WorkspaceInvitationService(
             accounts=account_domain.accounts,
@@ -988,7 +1037,10 @@ class TestMemberServiceCases:
         sqlite_session.commit()
         gateway, replace = rbac_access
         service = WorkspaceMemberService(
-            workspaces=account_domain.workspaces, accounts=account_domain.repository, access=gateway
+            workspaces=account_domain.workspaces,
+            accounts=account_domain.repository,
+            access=gateway,
+            invitation_links=account_domain.delivery,
         )
 
         with pytest.raises(NoPermissionError):
@@ -1059,7 +1111,10 @@ class TestMemberServiceCases:
         sqlite_session.commit()
         gateway, replace = rbac_access
         service = WorkspaceMemberService(
-            workspaces=account_domain.workspaces, accounts=account_domain.repository, access=gateway
+            workspaces=account_domain.workspaces,
+            accounts=account_domain.repository,
+            access=gateway,
+            invitation_links=account_domain.delivery,
         )
 
         service.update_role(workspace_id, target.id, "editor", operator_id)
@@ -1101,7 +1156,10 @@ class TestMemberServiceCases:
         sqlite_session.commit()
         gateway, replace = rbac_access
         service = WorkspaceMemberService(
-            workspaces=account_domain.workspaces, accounts=account_domain.repository, access=gateway
+            workspaces=account_domain.workspaces,
+            accounts=account_domain.repository,
+            access=gateway,
+            invitation_links=account_domain.delivery,
         )
         if remote_fails:
             replace.failure = RuntimeError("RBAC unavailable")
@@ -1147,7 +1205,10 @@ class TestMemberServiceCases:
 
         monkeypatch.setattr(RBACService.MemberRoles, "get", get_roles)
         service = WorkspaceMemberService(
-            workspaces=account_domain.workspaces, accounts=account_domain.repository, access=gateway
+            workspaces=account_domain.workspaces,
+            accounts=account_domain.repository,
+            access=gateway,
+            invitation_links=account_domain.delivery,
         )
 
         service.update_role(workspace_id, member_id, "owner", owner_id)
@@ -1213,7 +1274,10 @@ class TestMemberServiceCases:
         )
         replace.on_apply = replace_roles
         service = WorkspaceMemberService(
-            workspaces=account_domain.workspaces, accounts=account_domain.repository, access=gateway
+            workspaces=account_domain.workspaces,
+            accounts=account_domain.repository,
+            access=gateway,
+            invitation_links=account_domain.delivery,
         )
 
         event.listen(sqlite_session_factory, "before_commit", fail_commit)
@@ -1261,7 +1325,10 @@ class TestMemberServiceCases:
 
         monkeypatch.setattr(RBACService.MemberRoles, "get", get_roles)
         service = WorkspaceMemberService(
-            workspaces=account_domain.workspaces, accounts=account_domain.repository, access=gateway
+            workspaces=account_domain.workspaces,
+            accounts=account_domain.repository,
+            access=gateway,
+            invitation_links=account_domain.delivery,
         )
 
         with pytest.raises(RuntimeError, match="RBAC unavailable"):

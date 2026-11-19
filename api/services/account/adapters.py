@@ -221,7 +221,7 @@ class RedisInvitationTokenStore(InvitationTokenStore):
         return tuple(pending.values())
 
     def revoke_pending(self, workspace_id: str, email: str, *, account_id: str | None) -> None:
-        """Invalidate every invitation link for this email in the workspace.
+        """Invalidate every invitation link for this email or account in the workspace.
 
         Indexed links are deleted. Links issued before every link was indexed cannot be found by
         email, so the account is also marked: from now on only indexed links are accepted for it.
@@ -236,7 +236,8 @@ class RedisInvitationTokenStore(InvitationTokenStore):
         for token in tokens:
             invitation = self._read_token(token)
             if invitation is None or (
-                invitation.workspace_id == workspace_id and invitation.email.lower() == normalized_email
+                invitation.workspace_id == workspace_id
+                and (invitation.email.lower() == normalized_email or invitation.account_id == account_id)
             ):
                 self._redis.delete(self._invitation_token_key(token))
                 self._redis.zrem(key, token)
