@@ -1,17 +1,17 @@
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { PermissionCatalogResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
 import type { Role } from '@/models/access-control'
-import { QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
-import { createTestQueryClient } from '@/test/query-client'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import RoleModal from '../index'
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
   return createReactI18nextMock({
-    'permission.group.workspace_management': 'Translated workspace permissions',
+    'permission.group.workspace': 'Translated workspace permissions',
     'permissionKeys.workspace.member.manage': 'Manage workspace members',
   })
 })
@@ -19,8 +19,8 @@ vi.mock('react-i18next', async () => {
 const workspacePermissionCatalog = {
   groups: [
     {
-      group_key: 'workspace_management',
-      group_name: 'Workspace management',
+      group_key: 'workspace',
+      group_name: 'Workspace',
       description: '',
       permissions: [
         {
@@ -28,19 +28,23 @@ const workspacePermissionCatalog = {
           name: 'Manage members',
           description: '',
         },
+        { key: 'ip_policy.view', name: 'View IP Policies', description: '' },
+        { key: 'ip_policy.manage', name: 'Create, Edit and Delete IP Policies', description: '' },
       ],
     },
   ],
 } satisfies PermissionCatalogResponse
 
-const renderModal = (modal: ReactNode) => {
-  const queryClient = createTestQueryClient()
+const renderModal = (modal: ReactNode, deploymentEdition: DeploymentEdition = 'ENTERPRISE') => {
+  const { queryClient, wrapper } = createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: deploymentEdition, rbac_enabled: true },
+  })
   queryClient.setQueryData(
     consoleQuery.workspaces.current.rbac.rolePermissions.catalog.get.queryKey({ input: {} }),
     workspacePermissionCatalog,
   )
 
-  return render(<QueryClientProvider client={queryClient}>{modal}</QueryClientProvider>)
+  return render(modal, { wrapper })
 }
 
 const createRole = (overrides: Partial<Role> = {}): Role => ({
@@ -88,7 +92,7 @@ describe('RoleModal', () => {
 
   // Submitting creates the payload expected by role create/update mutations.
   describe('User Interactions', () => {
-    it('should submit trimmed role fields and selected permission keys', async () => {
+    it('should submit trimmed fields and only visible permissions when selecting all in Enterprise', async () => {
       const user = userEvent.setup()
       const handleClose = vi.fn()
       const handleSubmit = vi.fn()
@@ -100,7 +104,8 @@ describe('RoleModal', () => {
         screen.getByLabelText('permission.role.modal.descriptionLabel'),
         '  Helps members  ',
       )
-      await user.click(screen.getByText('Manage workspace members'))
+      expect(screen.queryAllByRole('checkbox', { name: /IP Policies/ })).toHaveLength(0)
+      await user.click(screen.getByRole('button', { name: 'permission.permissionList.selectAll' }))
       await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       expect(handleSubmit).toHaveBeenCalledTimes(1)
@@ -112,7 +117,7 @@ describe('RoleModal', () => {
       expect(handleClose).toHaveBeenCalledTimes(1)
     })
 
-    it('should submit an updated role description when editing an existing role', async () => {
+    it('should preserve hidden grants when clearing visible permissions on an Enterprise role', async () => {
       const user = userEvent.setup()
       const handleSubmit = vi.fn()
 
@@ -122,7 +127,7 @@ describe('RoleModal', () => {
           mode="edit"
           role={createRole({
             description: 'Original description',
-            permission_keys: ['workspace.member.manage'],
+            permission_keys: ['workspace.member.manage', 'ip_policy.view'],
           })}
           onClose={vi.fn()}
           onSubmit={handleSubmit}
@@ -132,14 +137,24 @@ describe('RoleModal', () => {
       const descriptionInput = screen.getByLabelText('permission.role.modal.descriptionLabel')
       await user.clear(descriptionInput)
       await user.type(descriptionInput, '  Updated role description  ')
+      await user.click(screen.getByRole('button', { name: 'permission.permissionList.clearAll' }))
       await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       expect(handleSubmit).toHaveBeenCalledTimes(1)
       expect(handleSubmit).toHaveBeenCalledWith({
         name: 'Operator',
         description: 'Updated role description',
-        permissionKeys: ['workspace.member.manage'],
+        permissionKeys: ['ip_policy.view'],
       })
+    })
+
+    it('should offer both IP policy permissions when creating a Cloud role', () => {
+      renderModal(<RoleModal open mode="create" onClose={vi.fn()} />, 'CLOUD')
+
+      expect(screen.getByRole('checkbox', { name: /View IP Policies/ })).toBeEnabled()
+      expect(
+        screen.getByRole('checkbox', { name: /Create, Edit and Delete IP Policies/ }),
+      ).toBeEnabled()
     })
   })
 

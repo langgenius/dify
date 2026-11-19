@@ -1,10 +1,11 @@
 import type { Role } from '@/models/access-control'
 import type { Member } from '@/models/common'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
 import { useRolesOfMember } from '@/service/access-control/use-member-roles'
 import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import MemberDetailsModal from '../index'
 
 vi.mock('@/service/access-control/use-member-roles')
@@ -74,6 +75,24 @@ describe('MemberDetailsModal', () => {
   })
 
   describe('Rendering', () => {
+    it('should show an empty permission summary for an Enterprise role with only IP policy grants', async () => {
+      const user = userEvent.setup()
+      vi.mocked(useRolesOfMember).mockReturnValue({
+        data: {
+          account_id: member.id,
+          roles: [createRole({ permission_keys: ['ip_policy.view', 'ip_policy.manage'] })],
+        },
+        isLoading: false,
+      } as ReturnType<typeof useRolesOfMember>)
+
+      render(<MemberDetailsModal member={member} onClose={vi.fn()} />, {
+        systemFeatures: { deployment_edition: 'ENTERPRISE', rbac_enabled: true },
+      })
+
+      await user.click(screen.getByRole('button', { name: 'Custom role' }))
+      expect(await screen.findByText(/Current role has no permissions/)).toBeVisible()
+    })
+
     it('should render edit role action when multiple roles are disabled', () => {
       render(
         <MemberDetailsModal
