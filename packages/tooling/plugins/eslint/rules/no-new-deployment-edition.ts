@@ -222,7 +222,7 @@ const rule: Rule.RuleModule = {
       edition:
         'New raw deployment-edition dependency or decision. Read docs/FEATURE_FLAGS.md#fixing-a-lint-error.',
       baseline:
-        'Cannot check the deployment-edition baseline: {{reason}}. Read docs/FEATURE_FLAGS.md#git-baselines.',
+        'Cannot check the deployment-edition baseline: {{reason}}. Fetch the target branch and rerun lint.',
     },
   },
   create(context) {

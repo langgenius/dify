@@ -229,8 +229,7 @@ does not enforce Query ownership.
 
 ### Deployment Edition Policies
 
-See the shared [feature flag guidelines] for policy design, the backend and Web
-allowlists, lint scope, and Git baseline behavior.
+See the shared [feature flag guidelines] for resolving deployment-edition lint errors.
 
 ### Translation Function Types
 

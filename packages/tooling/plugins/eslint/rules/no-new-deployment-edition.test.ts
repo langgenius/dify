@@ -204,6 +204,6 @@ it('provides actionable guidance and reports invalid baselines', () => {
   const diagnostic = lintFixture(check)[0]!
   expect(diagnostic.message).toContain('Read docs/FEATURE_FLAGS.md#fixing-a-lint-error')
   expect(lintFixture(check, { base: 'missing-revision' })[0]!.message).toContain(
-    'docs/FEATURE_FLAGS.md#git-baselines',
+    'Fetch the target branch and rerun lint.',
   )
 })
