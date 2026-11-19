@@ -259,10 +259,12 @@ it('shows Normal aggregate data without App or provider access and distinguishes
   api.monitoring.mockImplementationOnce(() => failedRequest.promise)
   await page.getByRole('combobox', { name: 'Time range', exact: true }).click()
   await page.getByRole('option', { name: 'Last 30 days', exact: true }).click()
-  await expect.element(page.getByText('Loading external agent…', { exact: true })).toBeVisible()
+  await expect
+    .element(page.getByRole('progressbar', { name: 'Loading', exact: true }).first())
+    .toBeVisible()
   failedRequest.reject(new ORPCError('SERVICE_UNAVAILABLE', { status: 503 }))
   await expect
-    .element(page.getByText('Loading external agent…', { exact: true }))
+    .element(page.getByRole('progressbar', { name: 'Loading', exact: true }).first())
     .not.toBeInTheDocument()
   await expect
     .element(page.getByRole('button', { name: 'Retry', exact: true }))
