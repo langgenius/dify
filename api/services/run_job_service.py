@@ -189,7 +189,7 @@ class GraphJobs:
             return _record_view(record)
         if record.run_id is None:
             unconfirmed = fail_if_reader_dead(store, record, JobFailure.RUN_NOT_CONFIRMED, reader_alive=reader_alive)
-            return _record_view(unconfirmed)
+            return _answered_without_run(results, unconfirmed)
         run = results.run(tenant_id=record.owner.tenant_id, run_id=record.run_id)
         if run is None:
             return _record_view(record)
@@ -309,6 +309,24 @@ def _record_view(record: JobRecord) -> JobView:
     Postcondition: status and error are the record's; answer, outputs and form are None.
     """
     return JobView(record=record, status=record.status, error=record.error)
+
+
+def _answered_without_run(results: RunResultReader, record: JobRecord) -> JobView:
+    """View a graph job that has no run id.
+
+    Precondition: record is a GRAPH job without a run id.
+    Postcondition: the record's view; for a chatflow that ended without a failure (an annotation reply or input
+    moderation answered it and no run started), with the saved message's answer.
+    """
+    view = _record_view(record)
+    if not record.status.is_final:
+        return view
+    if record.failure is not None:
+        return view
+    message = _saved_message(results, record)
+    if message is None:
+        return view
+    return replace(view, answer=message.answer)
 
 
 def _saved_message(results: RunResultReader, record: JobRecord) -> MessageResult | None:
