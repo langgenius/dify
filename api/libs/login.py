@@ -44,6 +44,18 @@ def _get_login_manager() -> DifyLoginManager:
     return app.login_manager
 
 
+def current_account() -> Account:
+    """Resolve the signed-in account, whether or not it has a current workspace.
+
+    Raises:
+        ValueError: The current user is not an account.
+    """
+    user = _resolve_current_user()
+    if not isinstance(user, Account):
+        raise ValueError("current_user must be an Account instance")
+    return user
+
+
 def current_account_with_tenant() -> AccountWithTenant:
     """
     Resolve the underlying account for the current user proxy and ensure tenant context exists.

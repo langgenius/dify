@@ -16,7 +16,7 @@ from controllers.console.wraps import model_validate
 from extensions.ext_application_services import application_services
 from libs.external_api import error_responses
 from libs.helper import EmailStr, dump_response, timezone
-from libs.login import current_account_with_tenant
+from libs.login import current_account
 from libs.token import extract_access_token
 from services.account_errors import AccountEmailDomainSuspendedError as EmailDomainSuspendedRegistrationError
 from services.account_errors import (
@@ -137,7 +137,7 @@ class ActivateApi(Resource):
         """
         authenticated_account_id: str | None = None
         if extract_access_token(request) is not None:
-            authenticated_account_id = current_account_with_tenant().account.id
+            authenticated_account_id = current_account().id
 
         try:
             application_services().accounts.activation.activate(

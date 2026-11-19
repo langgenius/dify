@@ -39,7 +39,6 @@ from controllers.console.error import (
     EmailDomainSuspendedError,
     EmailSendIpLimitError,
     InvalidAccountPasswordRequestError,
-    InvitationWorkspaceMemberLimitError,
     NotAllowedCreateWorkspace,
     SeatsLimitExceeded,
     WorkspacesLimitExceeded,
@@ -283,7 +282,6 @@ class LoginApi(Resource):
         EmailPasswordLoginLimitError,
         InvalidAccountPasswordRequestError,
         InvalidEmailError,
-        InvitationWorkspaceMemberLimitError,
         WorkspacesLimitExceeded,
     )
     @setup_required
@@ -405,7 +403,6 @@ class EmailCodeLoginApi(Resource):
         InvalidEmailError,
         InvalidTokenError,
         NormalizedEmailAlreadyInUseError,
-        InvitationWorkspaceMemberLimitError,
         NotAllowedCreateWorkspace,
         SeatsLimitExceeded,
         TurnstileServiceUnavailableError,
@@ -497,8 +494,6 @@ def _raise_password_login_error(error: account_errors.AccountApplicationError) -
         raise InvalidEmailError() from error
     if isinstance(error, account_errors.LoginWorkspaceLimitError):
         raise WorkspacesLimitExceeded() from error
-    if isinstance(error, account_errors.InvitationWorkspaceFullError):
-        raise InvitationWorkspaceMemberLimitError() from error
     if isinstance(error, account_errors.AccountNotFoundError):
         raise AccountNotFound() from error
     _raise_account_state_error(error)
@@ -529,8 +524,6 @@ def _raise_email_code_login_error(error: account_errors.AccountApplicationError)
         raise InvalidTokenError() from error
     if isinstance(error, (account_errors.EmailCodeEmailMismatchError, account_errors.InvalidLoginInvitationEmailError)):
         raise InvalidEmailError() from error
-    if isinstance(error, account_errors.InvitationWorkspaceFullError):
-        raise InvitationWorkspaceMemberLimitError() from error
     if isinstance(error, account_errors.InvalidEmailCodeError):
         raise EmailCodeError() from error
     if isinstance(error, account_errors.HumanVerificationRejectedError):

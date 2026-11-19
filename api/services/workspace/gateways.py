@@ -207,8 +207,11 @@ class WorkspaceInvitationGateway:
         """List the outstanding invitation links indexed for this workspace."""
         return self._tokens.list_pending(workspace_id)
 
-    def revoke_pending(self, workspace_id: str, email: str, *, account_id: str | None) -> None:
-        self._tokens.revoke_pending(workspace_id, email, account_id=account_id)
+    def revoke_pending(self, workspace_id: str, email: str, *, account_id: str | None, keep_token: str | None) -> None:
+        self._tokens.revoke_pending(workspace_id, email, account_id=account_id, keep_token=keep_token)
+
+    def discard(self, workspace_id: str, token: str) -> None:
+        self._tokens.discard(workspace_id, token)
 
     def send(self, *, language: str, email: str, token: str, inviter_name: str, workspace_name: str) -> None:
         send_invite_member_mail_task.delay(

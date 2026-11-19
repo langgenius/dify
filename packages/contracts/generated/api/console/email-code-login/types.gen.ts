@@ -116,11 +116,6 @@ export type NotAllowedCreateWorkspaceError = ErrorResponse & {
   status: 400
 }
 
-export type WorkspaceMemberLimitReachedError = ErrorResponse & {
-  code: 'workspace_member_limit_reached'
-  status: 400
-}
-
 export type LoginMode = 'console' | 'end_user'
 
 export type PostEmailCodeLoginData = {
@@ -171,7 +166,6 @@ export type PostEmailCodeLoginValidityErrors = {
     | NormalizedEmailAlreadyInUseError
     | NotAllowedCreateWorkspaceError
     | TurnstileVerificationFailedError
-    | WorkspaceMemberLimitReachedError
     | ErrorResponse
   503: EmailCodeLoginServiceUnavailableError | TurnstileServiceUnavailableError | ErrorResponse
   default: ErrorResponse

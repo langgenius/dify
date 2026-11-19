@@ -784,19 +784,22 @@ export default function StepByStepTourMount({
                       setChecklistMinimized(true)
                   }}
                 >
-                  {(!expanded || checklistOpen) && (
-                    <PopoverTrigger
-                      ref={restoreTriggerRef}
-                      render={(props) => (
-                        <MinimizedTourPill
-                          {...props}
-                          className={cn(props.className, 'data-popup-open:opacity-0')}
-                          title={title}
-                          progress={progress}
-                        />
-                      )}
-                    />
-                  )}
+                  {/* Preserve the clicked anchor while the checklist waits for its host. */}
+                  <PopoverTrigger
+                    ref={restoreTriggerRef}
+                    render={(props) => (
+                      <MinimizedTourPill
+                        {...props}
+                        className={cn(
+                          props.className,
+                          'data-popup-open:opacity-0',
+                          expanded && !checklistOpen && 'invisible',
+                        )}
+                        title={title}
+                        progress={progress}
+                      />
+                    )}
+                  />
                   {overlayVisible && (
                     <PopoverPortal className="aria-hidden:invisible">
                       <PopoverPositioner

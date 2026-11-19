@@ -13,7 +13,6 @@ import {
   zInvalidEmailError,
   zLimitExceededError,
   zWebLoginUnavailableError,
-  zWorkspaceMemberLimitReachedError,
 } from './zod.gen.ts'
 import { zGetLoginQuery, zGetLoginResponse, zPostLoginBody, zPostLoginResponse } from './zod.gen.ts'
 
@@ -58,7 +57,6 @@ export const post = oc
     invalid_account_password: { status: 400, data: zInvalidAccountPasswordError },
     invalid_email: { status: 400, data: zInvalidEmailError },
     limit_exceeded: { status: 400, data: zLimitExceededError },
-    workspace_member_limit_reached: { status: 400, data: zWorkspaceMemberLimitReachedError },
   })
 
 export const login = {

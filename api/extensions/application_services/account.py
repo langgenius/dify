@@ -232,7 +232,6 @@ def build_account_services(
             invitations=AccountActivationConsoleAuthInvitationGateway(
                 tokens=invitation_tokens,
                 accounts=activation_accounts,
-                activation=activation,
             ),
             policies=DeploymentConsoleAuthPolicyGateway(
                 billing_enabled=deployment_edition == DeploymentEdition.CLOUD,

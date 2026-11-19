@@ -181,7 +181,7 @@ def test_revoking_pending_invitations_invalidates_every_link_for_the_email(
     other = store.create(InvitationToken("account-2", "other@example.com", "workspace-1", "normal", True))
     redis_commands.values["member_invite:token:legacy"] = _payload("invitee@example.com", requires_setup=True)
 
-    store.revoke_pending("workspace-1", "INVITEE@example.com", account_id="account-1")
+    store.revoke_pending("workspace-1", "INVITEE@example.com", account_id="account-1", keep_token=None)
 
     def live(token: str) -> bool:
         return store.find(InvitationLookup(workspace_id=None, email=None, token=token)) is not None
@@ -206,11 +206,39 @@ def test_workspace_scoped_legacy_links_stop_working_after_revoke_or_resend(
     redis_commands.values[f"member_invite_token:workspace-1, {email_hash}:legacy"] = b"account-1"
     assert store.find(lookup) is not None
 
-    store.revoke_pending("workspace-1", "invitee@example.com", account_id="account-1")
+    store.revoke_pending("workspace-1", "invitee@example.com", account_id="account-1", keep_token=None)
 
     assert store.find(lookup) is None
     reissued = store.create(InvitationToken("account-1", "invitee@example.com", "workspace-1", "normal", True))
     assert store.find(InvitationLookup(workspace_id=None, email=None, token=reissued)) is not None
+
+
+@pytest.mark.usefixtures("redis_commands")
+def test_reissuing_keeps_the_new_link_and_retires_the_rest(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    store = RedisInvitationTokenStore(redis=redis_transport[0])
+    old = store.create(InvitationToken("account-1", "invitee@example.com", "workspace-1", "normal", True))
+    new = store.create(InvitationToken("account-1", "invitee@example.com", "workspace-1", "editor", True))
+
+    store.revoke_pending("workspace-1", "invitee@example.com", account_id="account-1", keep_token=new)
+
+    assert store.find(InvitationLookup(workspace_id=None, email=None, token=old)) is None
+    assert store.find(InvitationLookup(workspace_id=None, email=None, token=new)) is not None
+    assert [invitation.role for invitation in store.list_pending("workspace-1")] == [TenantAccountRole.EDITOR]
+
+
+def test_discarding_a_link_removes_it_from_the_index(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    redis_commands: RedisCommandEmulator,
+) -> None:
+    store = RedisInvitationTokenStore(redis=redis_transport[0])
+    token = store.create(InvitationToken("account-1", "invitee@example.com", "workspace-1", "normal", True))
+
+    store.discard("workspace-1", token)
+
+    assert store.find(InvitationLookup(workspace_id=None, email=None, token=token)) is None
+    assert redis_commands.sorted_sets["member_invite:pending:workspace-1"] == {}
 
 
 def test_invitation_token_store_revokes_its_redis_key(redis_transport: tuple[RedisClientWrapper, MagicMock]) -> None:
@@ -222,36 +250,6 @@ def test_invitation_token_store_revokes_its_redis_key(redis_transport: tuple[Red
     email_hash = sha256(b"invitee@example.com").hexdigest()
     commands.assert_any_call("DEL", f"member_invite_token:workspace-1, {email_hash}:token-1")
     assert commands.call_count == 1
-
-
-def test_invitation_token_store_marks_membership_use_with_token_ttl(
-    redis_transport: tuple[RedisClientWrapper, MagicMock],
-) -> None:
-    redis, commands = redis_transport
-    commands.side_effect = [1200, b"OK"]
-    lookup = InvitationLookup(workspace_id=None, email="invitee@example.com", token="token-1")
-
-    assert RedisInvitationTokenStore(redis=redis).consume_membership(lookup) is True
-
-    assert commands.call_args_list[0].args == ("PTTL", "member_invite:token:token-1")
-    set_args = commands.call_args_list[1].args
-    assert set_args[:3] == ("SET", "member_invite:token:token-1:membership_used", "1")
-    assert "NX" in set_args
-    assert set_args[set_args.index("PX") + 1] == 1200
-
-
-@pytest.mark.parametrize("ttl", [-2, -1, 0])
-def test_invitation_token_store_refuses_membership_use_without_live_token(
-    redis_transport: tuple[RedisClientWrapper, MagicMock], ttl: int
-) -> None:
-    redis, commands = redis_transport
-    commands.return_value = ttl
-    lookup = InvitationLookup(workspace_id=None, email="invitee@example.com", token="token-1")
-
-    assert RedisInvitationTokenStore(redis=redis).consume_membership(lookup) is False
-
-    assert commands.call_count == 1
-    assert commands.call_args.args == ("PTTL", "member_invite:token:token-1")
 
 
 @pytest.mark.parametrize(("stored", "expected"), [(b"1", True), (None, False)])
