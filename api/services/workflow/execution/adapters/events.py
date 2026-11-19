@@ -34,7 +34,7 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from core.rag.entities import RetrievalSourceMetadata
-from core.workflow.nodes.agent.events import NodeRunAgentLogEvent
+from core.workflow.agent_log_events import NodeRunAgentLogEvent
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired, PauseReason
 from core.workflow.nodes.human_input_v2.events import (
     NodeRunHumanInputV2FormFilledEvent,

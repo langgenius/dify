@@ -114,6 +114,12 @@ def agent_stub_config_prompt_url(base_url: str) -> str:
     return f"{_require_http_base_url(base_url)}/config/prompt"
 
 
+def file_reference(record_id: str) -> str:
+    """Encode an opaque record locator, never file content."""
+    payload = json.dumps({"record_id": record_id}, separators=(",", ":")).encode()
+    return "dify-file-ref:" + base64.urlsafe_b64encode(payload).decode()
+
+
 def is_canonical_dify_file_reference(reference: str) -> bool:
     """Return whether one string matches Dify's opaque file reference format."""
     prefix = "dify-file-ref:"
@@ -123,6 +129,8 @@ def is_canonical_dify_file_reference(reference: str) -> bool:
     try:
         payload = json.loads(base64.urlsafe_b64decode(encoded_payload.encode()))
     except (ValueError, json.JSONDecodeError):
+        return False
+    if not isinstance(payload, dict):
         return False
     record_id = payload.get("record_id")
     return isinstance(record_id, str) and bool(record_id)
@@ -186,6 +194,34 @@ class AgentStubFileMapping(BaseModel):
         if self.url is not None:
             raise ValueError("url is not allowed for non-remote file mappings")
         return self
+
+
+def format_media_observation(
+    mapping: AgentStubFileMapping,
+    *,
+    filename: str | None = None,
+    mime_type: str | None = None,
+    size: int | None = None,
+) -> str:
+    """Render a copyable lightweight handle, omitting unavailable metadata.
+
+    No multimodal content is attached. Both the API and agent runtime use this
+    client-safe format so the model can pass the object back to read_media.
+    """
+    summary = mapping.model_dump(mode="json", exclude_none=True)
+    summary.update(
+        {
+            key: value
+            for key, value in {"filename": filename, "mime_type": mime_type, "size": size}.items()
+            if value is not None
+        }
+    )
+    kind = "link" if mapping.transfer_method == "remote_url" else "file"
+    return (
+        f"\nTool generated media {kind}: "
+        + json.dumps(summary, ensure_ascii=False, separators=(",", ":"))
+        + " (call `read_media` with `file` set to this object only if you need to inspect its content).\n"
+    )
 
 
 class AgentStubConfigDownloadSource(BaseModel):
@@ -390,6 +426,8 @@ __all__ = [
     "agent_stub_connections_url",
     "agent_stub_file_download_request_url",
     "agent_stub_file_upload_request_url",
+    "file_reference",
+    "format_media_observation",
     "is_canonical_dify_file_reference",
     "normalize_agent_stub_api_base_url",
     "parse_agent_stub_endpoint",
