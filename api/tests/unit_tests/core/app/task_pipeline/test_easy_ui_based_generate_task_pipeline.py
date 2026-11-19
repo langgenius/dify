@@ -1040,7 +1040,11 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
 
             assert files is not None
             assert len(files) == 3
-            files_by_id = {cast(str, file_dict["related_id"]): file_dict for file_dict in files}
+            files_by_id = {}
+            for file_dict in files:
+                related_id = file_dict["related_id"]
+                assert isinstance(related_id, str)
+                files_by_id[related_id] = file_dict
             assert set(files_by_id) == {"mf-1", "mf-2", "mf-3"}
 
             remote_file = files_by_id["mf-1"]
