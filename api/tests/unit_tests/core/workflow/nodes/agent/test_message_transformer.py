@@ -1,10 +1,8 @@
 from collections.abc import Generator
-from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
-from sqlalchemy import Engine
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
@@ -35,9 +33,16 @@ def _message_stream(messages: list[ToolInvokeMessage]) -> Generator[ToolInvokeMe
     yield from messages
 
 
-def _run_transform(messages: list[ToolInvokeMessage]) -> tuple[str, ArrayFileSegment]:
+@pytest.fixture
+def transformer(sqlite_session_factory: sessionmaker[Session]) -> AgentMessageTransformer:
+    return AgentMessageTransformer(sqlite_session_factory)
+
+
+def _run_transform(
+    transformer: AgentMessageTransformer, messages: list[ToolInvokeMessage]
+) -> tuple[str, ArrayFileSegment]:
     events = list(
-        AgentMessageTransformer().transform(
+        transformer.transform(
             messages=_message_stream(messages),
             tool_info={},
             parameters_for_log={},
@@ -61,6 +66,7 @@ def _persist_tool_file(session: Session, *, file_id: str = "tool-file-id", tenan
         tenant_id=tenant_id,
         conversation_id=None,
         file_key="tools/report.docx",
+        name="stored-report.docx",
         mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     )
     tool_file.id = file_id
@@ -69,9 +75,10 @@ def _persist_tool_file(session: Session, *, file_id: str = "tool-file-id", tenan
     return tool_file
 
 
-def test_transform_passes_conversation_id_to_tool_file_message_transformer() -> None:
+def test_transform_passes_conversation_id_to_tool_file_message_transformer(
+    transformer: AgentMessageTransformer,
+) -> None:
     messages = _message_stream([])
-    transformer = AgentMessageTransformer()
 
     with patch.object(ToolFileMessageTransformer, "transform_tool_invoke_messages", return_value=iter(())) as transform:
         result = list(
@@ -97,7 +104,7 @@ def test_transform_passes_conversation_id_to_tool_file_message_transformer() -> 
     )
 
 
-def test_transform_promotes_tool_file_message_to_files_output() -> None:
+def test_transform_promotes_tool_file_message_to_files_output(transformer: AgentMessageTransformer) -> None:
     file = _file()
     message = ToolInvokeMessage(
         type=ToolInvokeMessage.MessageType.FILE,
@@ -105,14 +112,14 @@ def test_transform_promotes_tool_file_message_to_files_output() -> None:
         meta={"file": file},
     )
 
-    text, files = _run_transform([message])
+    text, files = _run_transform(transformer, [message])
 
     assert text == "File: /files/tools/tool-file-id.docx\n"
     assert files.value == [file]
 
 
 def test_transform_promotes_serialized_tool_file_link_to_files_output(
-    sqlite_engine: Engine, sqlite_session: Session
+    transformer: AgentMessageTransformer, sqlite_session: Session
 ) -> None:
     file = _file()
     message = ToolInvokeMessage(
@@ -120,23 +127,18 @@ def test_transform_promotes_serialized_tool_file_link_to_files_output(
         message=ToolInvokeMessage.TextMessage(text="/files/tools/tool-file-id.docx"),
         meta={"file": file.model_dump(mode="json"), "tool_file_id": "tool-file-id"},
     )
-    _persist_tool_file(sqlite_session)
+    tool_file = _persist_tool_file(sqlite_session)
 
-    with (
-        patch("core.workflow.nodes.agent.message_transformer.db", SimpleNamespace(engine=sqlite_engine)),
-        patch(
-            "core.workflow.nodes.agent.message_transformer.file_factory.build_from_mapping",
-            return_value=file,
-        ) as build_file,
-    ):
-        text, files = _run_transform([message])
+    text, files = _run_transform(transformer, [message])
 
     assert text == "File: /files/tools/tool-file-id.docx\n"
-    assert files.value == [file]
-    build_file.assert_called_once()
+    (result,) = files.value
+    assert result.reference == build_file_reference(record_id=tool_file.id)
+    assert result.filename == tool_file.name
+    assert result.mime_type == tool_file.mimetype
 
 
-def test_transform_promotes_serialized_file_mapping_without_tool_file_id() -> None:
+def test_transform_promotes_serialized_file_mapping_without_tool_file_id(transformer: AgentMessageTransformer) -> None:
     file = _file()
     file_mapping = file.model_dump(mode="json")
     message = ToolInvokeMessage(
@@ -149,14 +151,16 @@ def test_transform_promotes_serialized_file_mapping_without_tool_file_id() -> No
         "core.workflow.nodes.agent.message_transformer.file_factory.build_from_mapping",
         return_value=file,
     ) as build_file:
-        text, files = _run_transform([message])
+        text, files = _run_transform(transformer, [message])
 
     assert text == "File: https://example.com/report.docx\n"
     assert files.value == [file]
     build_file.assert_called_once()
 
 
-def test_transform_rejects_unknown_tool_file_link(sqlite_engine: Engine, sqlite_session: Session) -> None:
+def test_transform_rejects_unknown_tool_file_link(
+    transformer: AgentMessageTransformer, sqlite_session: Session
+) -> None:
     message = ToolInvokeMessage(
         type=ToolInvokeMessage.MessageType.LINK,
         message=ToolInvokeMessage.TextMessage(text="/files/tools/missing.docx"),
@@ -164,23 +168,22 @@ def test_transform_rejects_unknown_tool_file_link(sqlite_engine: Engine, sqlite_
     )
     _persist_tool_file(sqlite_session)  # an unrelated file exists; "missing" does not
 
-    with (
-        patch("core.workflow.nodes.agent.message_transformer.db", SimpleNamespace(engine=sqlite_engine)),
-        pytest.raises(ToolFileNotFoundError, match="missing"),
-    ):
-        _run_transform([message])
+    with pytest.raises(ToolFileNotFoundError, match="missing"):
+        _run_transform(transformer, [message])
 
 
-def test_file_from_link_message_ignores_non_text_message() -> None:
+def test_file_from_link_message_ignores_non_text_message(transformer: AgentMessageTransformer) -> None:
     message = ToolInvokeMessage(
         type=ToolInvokeMessage.MessageType.JSON,
         message=ToolInvokeMessage.JsonMessage(json_object={}),
     )
 
-    assert AgentMessageTransformer._file_from_link_message(message=message, tenant_id="tenant-id") is None
+    assert transformer._file_from_link_message(message=message, tenant_id="tenant-id") is None
 
 
-def test_transform_rejects_tool_file_from_another_tenant(sqlite_engine: Engine, sqlite_session: Session) -> None:
+def test_transform_rejects_tool_file_from_another_tenant(
+    transformer: AgentMessageTransformer, sqlite_session: Session
+) -> None:
     message = ToolInvokeMessage(
         type=ToolInvokeMessage.MessageType.LINK,
         message=ToolInvokeMessage.TextMessage(text="/files/tools/other.docx"),
@@ -188,33 +191,30 @@ def test_transform_rejects_tool_file_from_another_tenant(sqlite_engine: Engine, 
     )
     _persist_tool_file(sqlite_session, file_id="other-tenant-file", tenant_id="other-tenant")
 
-    with (
-        patch("core.workflow.nodes.agent.message_transformer.db", SimpleNamespace(engine=sqlite_engine)),
-        pytest.raises(ToolFileNotFoundError, match="other-tenant-file"),
-    ):
-        _run_transform([message])
+    with pytest.raises(ToolFileNotFoundError, match="other-tenant-file"):
+        _run_transform(transformer, [message])
 
 
-def test_transform_keeps_fileless_link_metadata_as_text() -> None:
+def test_transform_keeps_fileless_link_metadata_as_text(transformer: AgentMessageTransformer) -> None:
     message = ToolInvokeMessage(
         type=ToolInvokeMessage.MessageType.LINK,
         message=ToolInvokeMessage.TextMessage(text="https://dify.ai/docs"),
         meta={"tool_file_id": "", "description": "documentation"},
     )
 
-    text, files = _run_transform([message])
+    text, files = _run_transform(transformer, [message])
 
     assert text == "Link: https://dify.ai/docs\n"
     assert files.value == []
 
 
-def test_transform_keeps_plain_link_as_text() -> None:
+def test_transform_keeps_plain_link_as_text(transformer: AgentMessageTransformer) -> None:
     message = ToolInvokeMessage(
         type=ToolInvokeMessage.MessageType.LINK,
         message=ToolInvokeMessage.TextMessage(text="https://dify.ai"),
     )
 
-    text, files = _run_transform([message])
+    text, files = _run_transform(transformer, [message])
 
     assert text == "Link: https://dify.ai\n"
     assert files.value == []
@@ -239,32 +239,34 @@ def _log(*, message_id: str = "log-1", label: str = "ROUND 1") -> ToolInvokeMess
     )
 
 
-def test_transform_closes_think_tag_before_nested_open() -> None:
+def test_transform_closes_think_tag_before_nested_open(transformer: AgentMessageTransformer) -> None:
     text, _ = _run_transform(
+        transformer,
         [
             _text("<think>first pass\n"),
             _text("<think>second pass"),
-        ]
+        ],
     )
 
     assert text == "<think>first pass\n</think><think>second pass</think>"
 
 
-def test_transform_closes_think_tag_when_tool_log_interrupts() -> None:
+def test_transform_closes_think_tag_when_tool_log_interrupts(transformer: AgentMessageTransformer) -> None:
     text, _ = _run_transform(
+        transformer,
         [
             _text("<think>need to search"),
             _log(label="CALL search"),
             _text("search result summary"),
-        ]
+        ],
     )
 
     assert text == "<think>need to search</think>search result summary"
 
 
-def test_transform_streams_close_tag_before_post_tool_text() -> None:
+def test_transform_streams_close_tag_before_post_tool_text(transformer: AgentMessageTransformer) -> None:
     events = list(
-        AgentMessageTransformer().transform(
+        transformer.transform(
             messages=_message_stream(
                 [
                     _text("<think>need to search"),
