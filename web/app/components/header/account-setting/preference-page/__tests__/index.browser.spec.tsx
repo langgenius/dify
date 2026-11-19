@@ -216,7 +216,7 @@ function expectReadableText(text: Element, control: Element) {
   }
 }
 
-it('keeps full timezone city names readable at 320px without changing the saved selection', async () => {
+it('keeps full timezone options readable at 320px without changing the saved selection', async () => {
   // The real Settings sidebar and portal constrain both surfaces. DOM text alone missed clipping.
   const timezone = timezones.find((item) => item.value === 'America/Santo_Domingo')!
   const { screen, queryClient } = await renderPreferencesSettings({
@@ -227,9 +227,15 @@ it('keeps full timezone city names readable at 320px without changing the saved 
     const trigger = screen.getByRole('combobox', { name: 'Time Zone', exact: true })
     const savedValue = trigger.getByText(timezone.name, { exact: true })
     await expect.element(savedValue).toBeVisible()
-    expectReadableText(savedValue.element(), trigger.element())
 
     await trigger.click()
+    const selected = screen.getByRole('option', { name: timezone.name, selected: true })
+    await expect.element(selected).toBeVisible()
+    expectReadableText(
+      selected.getByText(timezone.name, { exact: true }).element(),
+      selected.element(),
+    )
+
     const search = screen.getByRole('combobox', { name: 'Search cities or time zones...' })
     await search.fill('Central European')
     const matches = timezones.filter((item) => item.name.includes('Central European'))
