@@ -333,10 +333,19 @@ def fallback_to_llm(
     each outcome's ``when`` taken from its ``when_description`` sentence, or
     ``None`` when the proposal carries no usable descriptions. A preserved
     outcome is matched only by the id the model proposed, exactly once; a
-    missing or repeated match also yields ``None`` instead of a guess.
+    missing or repeated match also yields ``None`` instead of a guess; a
+    repeat counts over every outcome object in the proposal, including those
+    without a description.
     """
     raw_outcomes = model_payload.get("outcomes")
     if not isinstance(raw_outcomes, list):
+        return None
+    # An existing outcome proposed more than once cannot be matched without
+    # guessing which proposal owns its wired exit. Count before dropping the
+    # outcomes without a description: the builder already rejected this
+    # ambiguity, and the fallback must not quietly resolve it.
+    proposed_ids = [raw.get("id") for raw in raw_outcomes if isinstance(raw, Mapping)]
+    if any(proposed_ids.count(preserved.id) > 1 for preserved in preserved_outcomes):
         return None
     parsed = [
         (index, raw)
@@ -344,11 +353,6 @@ def fallback_to_llm(
         if isinstance(raw, Mapping) and isinstance(raw.get("when_description"), str) and raw["when_description"].strip()
     ]
     if not parsed:
-        return None
-    # An existing outcome proposed more than once cannot be matched without
-    # guessing which proposal owns its wired exit.
-    proposed_ids = [raw.get("id") for _, raw in parsed]
-    if any(proposed_ids.count(preserved.id) > 1 for preserved in preserved_outcomes):
         return None
 
     model_by_id = {raw.get("id"): raw for _, raw in parsed if isinstance(raw.get("id"), str)}

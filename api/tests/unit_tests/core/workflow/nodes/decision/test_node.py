@@ -340,6 +340,24 @@ class TestRulesMode:
         assert result.outputs["outcome_id"] == OTHERWISE_HANDLE
         assert result.outputs["reason"].startswith("Input missing or invalid:")
 
+    def test_leftover_duplicate_llm_inputs_do_not_stop_a_rules_node(
+        self, build_decision_node: DecisionNodeBuilder
+    ) -> None:
+        """Review V5 R1: inputs kept from llm mode are unused by rules, so repeats there still run."""
+        data = _rules_data(
+            {"id": "approve", "label": "Approve", "when": _group(_condition(["start", "country"], "is", "US"))}
+        )
+        data["inputs"] = [
+            {"variable": "text", "value_selector": ["extract_a", "text"]},
+            {"variable": "text", "value_selector": ["extract_b", "text"]},
+        ]
+        node = build_decision_node(data, variables=[_country("US")])
+
+        result = node._run()
+
+        assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+        assert result.outputs["outcome_id"] == "approve"
+
     def test_string_when_fails_the_node(self, build_decision_node: DecisionNodeBuilder) -> None:
         node = build_decision_node(_rules_data({"id": "big", "label": "Big", "when": "not a rule group"}))
 

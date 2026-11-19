@@ -203,13 +203,17 @@ class DecisionNodeData(BaseNodeData):
 
     @model_validator(mode="after")
     def _validate_input_names(self) -> "DecisionNodeData":
-        """Reject repeated ``inputs[].variable`` names, whatever ``decide_by`` is.
+        """Reject repeated ``inputs[].variable`` names when ``decide_by`` is ``llm``.
 
-        Postconditions: on success every input name is unique, so the
-        name -> value mapping built for the model keeps every input; DSL
-        import and draft validation reject a repeated name instead.
+        Preconditions: none beyond field validation.
+        Postconditions: on success an ``llm`` node has unique input names, so
+        the name -> value mapping built for the model keeps every input; DSL
+        import and draft validation reject a repeated name instead. Other
+        modes never read ``inputs`` (the editor keeps them across a mode
+        switch and hides them), so leftover repeats there are accepted
+        unchanged and the node still loads and runs.
         """
-        names = [input_.variable for input_ in self.inputs]
+        names = [input_.variable for input_ in self.inputs] if self.decide_by == DecideBy.LLM else []
         duplicates = sorted({name for name in names if names.count(name) > 1})
         if duplicates:
             raise ValueError(f"Duplicate input variable {duplicates[0]!r}")

@@ -397,6 +397,32 @@ class TestGenerateDecision:
             {"variable": "note", "value_selector": ["start", "note"]},
         ]
 
+    def test_an_existing_outcome_repeated_without_a_description_does_not_fall_back(
+        self, install_model: _InstallModel
+    ) -> None:
+        """Review V5 R2: the repeat lacking a description still makes the existing exit ambiguous."""
+        reply: dict[str, object] = {
+            "decide_by": "rules",
+            "outcomes": [
+                {
+                    "id": "urgent",
+                    "label": "Escalate",
+                    "when": None,
+                    "when_description": "Routine requests need no human",
+                },
+                {"id": "urgent", "label": "Escalate", "when": None},
+            ],
+        }
+        invoke = install_model([json.dumps(reply), json.dumps(reply)])
+
+        result = LLMGenerator.generate_decision(
+            "tenant", _payload(outcomes=[DecisionGenerateOutcome(id="urgent", label="Escalate")])
+        )
+
+        assert len(invoke.calls) == 2
+        assert result == {**empty_decision_result(), "error": result["error"]}
+        assert "Failed to generate the decision configuration" in result["error"]
+
     def test_no_variables_forces_llm_before_the_first_call(self, install_model: _InstallModel) -> None:
         reply = _llm_reply()
         no_inputs: list[dict[str, object]] = []

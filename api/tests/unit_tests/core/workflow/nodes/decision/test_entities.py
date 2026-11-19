@@ -151,18 +151,36 @@ class TestDecisionNodeData:
                 )
             )
 
-    def test_rejects_duplicate_input_names(self) -> None:
+    def test_rejects_duplicate_input_names_in_llm_mode(self) -> None:
         """Review V4 F4: the model inputs are a name -> value mapping, so a repeated
         name would silently drop a value; DSL import must not bypass the generator check."""
         with pytest.raises(ValidationError, match="Duplicate input variable 'text'"):
             DecisionNodeData.model_validate(
                 _data(
+                    decide_by="llm",
                     inputs=[
                         {"variable": "text", "value_selector": ["extract_a", "text"]},
                         {"variable": "text", "value_selector": ["extract_b", "text"]},
-                    ]
+                    ],
                 )
             )
+
+    def test_accepts_leftover_duplicate_input_names_in_rules_mode(self) -> None:
+        """Review V5 R1: a rules draft may keep the llm inputs from before a mode
+        switch; rules never read them, so a repeat there must not block loading."""
+        node_data = DecisionNodeData.model_validate(
+            _data(
+                decide_by="rules",
+                outcomes=[{"id": "approve", "when": None}],
+                inputs=[
+                    {"variable": "text", "value_selector": ["extract_a", "text"]},
+                    {"variable": "text", "value_selector": ["extract_b", "text"]},
+                ],
+            )
+        )
+
+        assert node_data.decide_by == DecideBy.RULES
+        assert [input_.variable for input_ in node_data.inputs] == ["text", "text"]
 
     def test_rejects_an_empty_extra_name(self) -> None:
         with pytest.raises(ValidationError, match="must not be empty"):
