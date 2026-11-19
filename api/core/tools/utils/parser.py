@@ -43,11 +43,12 @@ class ApiBasedToolSchemaParser:
         if len(openapi["servers"]) == 0:
             raise ToolProviderNotFoundError("No server found in the openapi yaml.")
 
-        server_url = openapi["servers"][0]["url"]
+        server = openapi["servers"][0]
         request_env = request.headers.get("X-Request-Env") if has_request_context() else None
         if request_env:
-            matched_servers = [server["url"] for server in openapi["servers"] if server.get("env") == request_env]
-            server_url = matched_servers[0] if matched_servers else server_url
+            matched_servers = [server for server in openapi["servers"] if server.get("env") == request_env]
+            server = matched_servers[0] if matched_servers else server
+        server_url = ApiBasedToolSchemaParser._resolve_server_url(server)
 
         # list all interfaces
         interfaces: list[InterfaceDict] = []
@@ -204,7 +205,7 @@ class ApiBasedToolSchemaParser:
 
             bundles.append(
                 ApiToolBundle(
-                    server_url=server_url + interface["path"],
+                    server_url=server_url.rstrip("/") + interface["path"],
                     method=interface["method"],
                     summary=interface["operation"]["description"]
                     if "description" in interface["operation"]
@@ -218,6 +219,24 @@ class ApiBasedToolSchemaParser:
             )
 
         return bundles
+
+    @staticmethod
+    def _resolve_server_url(server: Mapping[str, Any]) -> str:
+        """
+        Return the server URL with its server variables replaced by their default values.
+
+        OpenAPI 3 server URLs can contain variables, e.g. ``https://{region}.example.com/{version}``.
+        Each variable in ``server["variables"]`` has a required ``default`` that is used when the
+        caller does not supply a value. A variable without a ``default`` is left in the URL.
+        """
+        url = str(server["url"])
+        variables = server.get("variables") or {}
+        if not isinstance(variables, Mapping):
+            return url
+        for name, variable in variables.items():
+            if isinstance(variable, Mapping) and "default" in variable:
+                url = url.replace(f"{{{name}}}", str(variable["default"]))
+        return url
 
     @staticmethod
     def _sanitize_default_value(value):
@@ -238,7 +257,7 @@ class ApiBasedToolSchemaParser:
     @staticmethod
     def _get_tool_parameter_type(parameter: dict[str, Any]) -> ToolParameter.ToolParameterType | None:
         parameter = parameter or {}
-        typ: str | None = None
+        typ: str | list[str] | None = None
         if parameter.get("format") == "binary":
             return ToolParameter.ToolParameterType.FILE
 
@@ -246,6 +265,11 @@ class ApiBasedToolSchemaParser:
             typ = parameter["type"]
         elif "schema" in parameter and "type" in parameter["schema"]:
             typ = parameter["schema"]["type"]
+
+        if isinstance(typ, list):
+            # OpenAPI 3.1 expresses nullable types as unions, e.g.
+            # ["integer", "null"]. Use the first non-null member.
+            typ = next((item for item in typ if item != "null"), None)
 
         if typ in {"integer", "number"}:
             return ToolParameter.ToolParameterType.NUMBER

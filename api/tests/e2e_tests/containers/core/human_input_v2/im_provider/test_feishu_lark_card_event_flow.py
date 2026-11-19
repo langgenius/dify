@@ -153,8 +153,8 @@ def _intent(marker: str = "test-only") -> ResolvedForm:
         title=f"Feishu/Lark card agreement [{marker}]",
         parts=(
             MarkdownFragment(text="Review the provider wire card."),
-            ParagraphInput(output_variable_name="comment", default_value="Initial review"),
-            SelectInput(output_variable_name="decision", options=("ship", "hold"), default_value="hold"),
+            ParagraphInput(output_variable_name="comment", resolved_default_value="Initial review"),
+            SelectInput(output_variable_name="decision", options=("ship", "hold"), resolved_default_value="hold"),
         ),
         actions=(UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),),
         legacy_form_content="unused",

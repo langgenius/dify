@@ -21,7 +21,7 @@ from core.app.file_access import FileAccessScope, bind_file_access_scope
 from core.helper import encrypter, http_client_pooling
 from core.human_input import ButtonStyle
 from core.human_input_v2.resolved_form import MarkdownFragment, ParagraphInput, ResolvedForm, UserAction
-from core.tools.signature import verify_tool_file_signature
+from core.tools.signature import sign_tool_file, sign_upload_file_preview_url, verify_tool_file_signature
 from core.workflow.file_reference import build_file_reference, resolve_file_record_id
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from extensions.storage.storage_type import StorageType
@@ -324,17 +324,21 @@ def test_missing_and_invalid_file_references_keep_existing_errors(
 
 @pytest.mark.parametrize("shape", ["{}", "`{}`", "[download]({})"])
 @pytest.mark.parametrize("kind", ["tool", "file-preview", "image-preview"])
-def test_answer_signing_preserves_legacy_url_shapes(shape: str, kind: str) -> None:
+def test_answer_signing_preserves_legacy_url_shapes(shape: str, kind: str, monkeypatch: pytest.MonkeyPatch) -> None:
     file_id = str(uuid4())
     path = f"/files/tools/{file_id}.pdf" if kind == "tool" else f"/files/{file_id}/{kind}"
-    original = f"http://internal.example{path}?timestamp=1&nonce=old&sign=old&as_attachment=true"
+    sign_file = sign_upload_file_preview_url if kind == "image-preview" else sign_tool_file
+    with monkeypatch.context() as clock:
+        clock.setattr("core.tools.signature.time.time", lambda: 1)
+        old_query = urlsplit(sign_file(file_id, ".pdf")).query
+    original = f"http://internal.example{path}?{old_query}&as_attachment=true"
     result = MessageFileResolver().resolve(tenant_id=str(uuid4()), inputs={}, answer=shape.format(original), files=[])
     signed = result.answer.removeprefix("[download](").removesuffix(")").strip("`")
     parsed = urlsplit(signed)
     query = parse_qs(parsed.query)
     assert parsed.netloc == "files.example.test"
     assert query["as_attachment"] == ["true"]
-    assert query["nonce"] != ["old"]
+    assert query["nonce"] != parse_qs(old_query)["nonce"]
     assert query["timestamp"] != ["1"]
     assert verify_tool_file_signature(file_id, query["timestamp"][0], query["nonce"][0], query["sign"][0])
     assert parsed.path == (f"/files/tools/{file_id}.pdf" if kind == "tool" else f"/files/{file_id}/file-preview")
@@ -384,7 +388,7 @@ def test_v2_history_restores_frozen_forms_and_only_waiting_initiator_tokens(
         title="Frozen approval",
         parts=(
             MarkdownFragment(text="Review: "),
-            ParagraphInput(output_variable_name="comment", default_value="Draft"),
+            ParagraphInput(output_variable_name="comment", resolved_default_value="Draft"),
         ),
         actions=(UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),),
         legacy_form_content="Review: {{#$output.comment#}}",

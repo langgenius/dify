@@ -285,6 +285,6 @@ export const post9Errors = {
   invalid_account_password: { status: 400, data: zInvalidAccountPasswordError },
 }
 
-export const get7Errors = { account_not_found: { status: 400, data: zAccountNotFoundError } }
+export const get11Errors = { account_not_found: { status: 400, data: zAccountNotFoundError } }
 
-export const patchErrors = { account_not_found: { status: 400, data: zAccountNotFoundError } }
+export const patch2Errors = { account_not_found: { status: 400, data: zAccountNotFoundError } }

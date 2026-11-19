@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from typing import NewType
 
 from pydantic import NaiveDatetime
 
@@ -127,9 +128,33 @@ class SynchronizedIMIdentityPage:
     total: int
 
 
+SysUserId = NewType("SysUserId", str)
+
+
+@dataclass(frozen=True, slots=True)
+class AccountIMSyncInitiator:
+    """A Dify Account that initiated a CE/SaaS synchronization."""
+
+    account_id: AccountId
+
+
+@dataclass(frozen=True, slots=True)
+class SysUserIMSyncInitiator:
+    """An EE administrator identified by the upstream sys_users.id UUID."""
+
+    sys_user_id: SysUserId
+
+
+type IMSyncInitiator = AccountIMSyncInitiator | SysUserIMSyncInitiator
+
+
 @dataclass(frozen=True, slots=True)
 class IMSyncRun:
-    """Independent sync aggregate that captures one complete Channel revision."""
+    """Capture one Channel revision and either an Account or EE administrator.
+
+    Every run has exactly one initiating identity, represented by one of the
+    two variants. Missing initiators are not valid synchronization state.
+    """
 
     id: IMSyncRunId
     channel_revision: IMChannelRevision
@@ -140,7 +165,7 @@ class IMSyncRun:
     failed_count: int
     removed_count: int
     skipped_count: int
-    started_by_account_id: AccountId | None
+    started_by: IMSyncInitiator
     started_at: NaiveDatetime | None
     finished_at: NaiveDatetime | None
     error_code: str | None
@@ -155,9 +180,10 @@ class IMSyncRun:
         sync_run_id: IMSyncRunId,
         channel_revision: IMChannelRevision,
         provider: IMProvider,
-        started_by_account_id: AccountId | None,
+        started_by: IMSyncInitiator,
         now: NaiveDatetime,
     ) -> IMSyncRun:
+        """Create a queued run from one trusted initiating identity, without I/O."""
         return cls(
             id=sync_run_id,
             channel_revision=channel_revision,
@@ -168,7 +194,7 @@ class IMSyncRun:
             failed_count=0,
             removed_count=0,
             skipped_count=0,
-            started_by_account_id=started_by_account_id,
+            started_by=started_by,
             started_at=None,
             finished_at=None,
             error_code=None,

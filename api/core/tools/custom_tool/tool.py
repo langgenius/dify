@@ -3,7 +3,7 @@ from collections.abc import Generator
 from dataclasses import dataclass
 from os import getenv
 from typing import Any, override
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 import httpx
 from sqlalchemy.orm import Session
@@ -263,9 +263,10 @@ class ApiTool(Tool):
                             pass
                     break
 
-        # replace path parameters
+        # replace path parameters (percent-encoded so reserved characters
+        # like ?, #, % or newlines cannot alter the URL structure)
         for name, value in path_params.items():
-            url = url.replace(f"{{{name}}}", f"{value}")
+            url = url.replace(f"{{{name}}}", quote(str(value), safe=""))
 
         # parse http body data if needed
         if "Content-Type" in headers:

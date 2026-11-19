@@ -23,7 +23,7 @@ SERVER_RUNTIME_DEPENDENCIES = {
     "jsonschema>=4.23.0,<5.0.0",
     "jwcrypto>=1.5.6,<2",
     "logfire[fastapi,httpx,redis]>=4.37.0,<5.0.0",
-    "openshell>=0.0.106,<0.1.0",
+    "openshell>=0.1.3,<0.2.0",
     "pillow>=13.0.0,<14",
     "pydantic-ai-slim[anthropic,google,openai]==2.53.0",
     "pydantic-settings>=2.12.0,<3.0.0",
@@ -39,6 +39,8 @@ DEV_DEPENDENCIES = {
     "pytest-examples>=0.0.18",
     "pytest-mock>=3.14.0",
     "ruff>=0.15.11",
+    "types-grpcio>=1.60.0",
+    "types-protobuf>=4.25.0",
 }
 
 

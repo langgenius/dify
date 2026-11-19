@@ -66,6 +66,7 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
     }
     const request = {
       yaml_content: pipelineTemplateInfo.export_data,
+      icon_info: pipelineTemplateInfo.icon_info,
     }
     createDataset(
       { body: request },
@@ -193,6 +194,7 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
       {showEditModal && (
         <Dialog
           open={showEditModal}
+          disablePointerDismissal
           onOpenChange={(open) => {
             if (!open) closeEditModal()
           }}

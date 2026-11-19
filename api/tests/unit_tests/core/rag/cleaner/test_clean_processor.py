@@ -4,7 +4,7 @@ from core.rag.cleaner.clean_processor import CleanProcessor
 class TestCleanProcessor:
     """Test cases for CleanProcessor.clean method."""
 
-    def test_clean_default_removal_of_invalid_symbols(self):
+    def test_clean_default_removal_of_invalid_symbols(self) -> None:
         """Test default cleaning removes invalid symbols."""
         # Test <| replacement
         assert CleanProcessor.clean("text<|with<|invalid", None) == "text<with<invalid"
@@ -22,7 +22,7 @@ class TestCleanProcessor:
         expected = "normalpadding"
         assert CleanProcessor.clean(text_with_ufffe, None) == expected
 
-    def test_clean_preserves_valid_extended_characters(self):
+    def test_clean_preserves_valid_extended_characters(self) -> None:
         """Default cleaning must not strip valid printable characters.
 
         The invalid-symbol filter used to include the UTF-8 bytes of U+FFFE
@@ -39,25 +39,25 @@ class TestCleanProcessor:
         # The U+FFFE noncharacter is still stripped by its dedicated substitution.
         assert CleanProcessor.clean("keep\ufffedrop", None) == "keepdrop"
 
-    def test_clean_with_none_process_rule(self):
+    def test_clean_with_none_process_rule(self) -> None:
         """Test cleaning with None process_rule - only default cleaning applied."""
         text = "Hello<|World\x00"
         expected = "Hello<World"
         assert CleanProcessor.clean(text, None) == expected
 
-    def test_clean_with_empty_process_rule(self):
+    def test_clean_with_empty_process_rule(self) -> None:
         """Test cleaning with empty process_rule dict - only default cleaning applied."""
         text = "Hello<|World\x00"
         expected = "Hello<World"
         assert CleanProcessor.clean(text, {}) == expected
 
-    def test_clean_with_empty_rules(self):
+    def test_clean_with_empty_rules(self) -> None:
         """Test cleaning with empty rules - only default cleaning applied."""
         text = "Hello<|World\x00"
         expected = "Hello<World"
         assert CleanProcessor.clean(text, {"rules": {}}) == expected
 
-    def test_clean_remove_extra_spaces_enabled(self):
+    def test_clean_remove_extra_spaces_enabled(self) -> None:
         """Test remove_extra_spaces rule when enabled."""
         process_rule = {"rules": {"pre_processing_rules": [{"id": "remove_extra_spaces", "enabled": True}]}}
 
@@ -76,7 +76,7 @@ class TestCleanProcessor:
         expected = "Line1\n\n Line2"
         assert CleanProcessor.clean(text, process_rule) == expected
 
-    def test_clean_remove_extra_spaces_disabled(self):
+    def test_clean_remove_extra_spaces_disabled(self) -> None:
         """Test remove_extra_spaces rule when disabled."""
         process_rule = {"rules": {"pre_processing_rules": [{"id": "remove_extra_spaces", "enabled": False}]}}
 
@@ -84,7 +84,7 @@ class TestCleanProcessor:
         # Should only apply default cleaning (no invalid symbols here)
         assert CleanProcessor.clean(text, process_rule) == text
 
-    def test_clean_remove_urls_emails_enabled(self):
+    def test_clean_remove_urls_emails_enabled(self) -> None:
         """Test remove_urls_emails rule when enabled."""
         process_rule = {"rules": {"pre_processing_rules": [{"id": "remove_urls_emails", "enabled": True}]}}
 
@@ -103,7 +103,7 @@ class TestCleanProcessor:
         expected = "Email  and visit "
         assert CleanProcessor.clean(text, process_rule) == expected
 
-    def test_clean_preserve_markdown_links_and_images(self):
+    def test_clean_preserve_markdown_links_and_images(self) -> None:
         """Test that markdown links and images are preserved when removing URLs."""
         process_rule = {"rules": {"pre_processing_rules": [{"id": "remove_urls_emails", "enabled": True}]}}
 
@@ -132,7 +132,7 @@ class TestCleanProcessor:
         expected = "Email: , link: [Click](https://site.com)"
         assert CleanProcessor.clean(text, process_rule) == expected
 
-    def test_clean_remove_urls_emails_keeps_email_like_text_in_markdown_urls(self):
+    def test_clean_remove_urls_emails_keeps_email_like_text_in_markdown_urls(self) -> None:
         """Email-like text inside protected Markdown link/image URLs must not be stripped."""
         process_rule = {"rules": {"pre_processing_rules": [{"id": "remove_urls_emails", "enabled": True}]}}
 
@@ -144,7 +144,7 @@ class TestCleanProcessor:
             "mail  [cal](https://x.io/?u=bob@corp.com)"
         )
 
-    def test_clean_remove_urls_emails_disabled(self):
+    def test_clean_remove_urls_emails_disabled(self) -> None:
         """Test remove_urls_emails rule when disabled."""
         process_rule = {"rules": {"pre_processing_rules": [{"id": "remove_urls_emails", "enabled": False}]}}
 
@@ -152,7 +152,7 @@ class TestCleanProcessor:
         # Should only apply default cleaning
         assert CleanProcessor.clean(text, process_rule) == text
 
-    def test_clean_both_rules_enabled(self):
+    def test_clean_both_rules_enabled(self) -> None:
         """Test both pre-processing rules enabled together."""
         process_rule = {
             "rules": {
@@ -167,7 +167,7 @@ class TestCleanProcessor:
         expected = "Hello\n\n World  \n\n"
         assert CleanProcessor.clean(text, process_rule) == expected
 
-    def test_clean_with_markdown_link_and_extra_spaces(self):
+    def test_clean_with_markdown_link_and_extra_spaces(self) -> None:
         """Test markdown link preservation with extra spaces removal."""
         process_rule = {
             "rules": {
@@ -182,7 +182,7 @@ class TestCleanProcessor:
         expected = "[Link](https://example.com)\n\n Text "
         assert CleanProcessor.clean(text, process_rule) == expected
 
-    def test_clean_unknown_rule_id_ignored(self):
+    def test_clean_unknown_rule_id_ignored(self) -> None:
         """Test that unknown rule IDs are silently ignored."""
         process_rule = {"rules": {"pre_processing_rules": [{"id": "unknown_rule", "enabled": True}]}}
 
@@ -191,19 +191,19 @@ class TestCleanProcessor:
         # Only default cleaning should be applied
         assert CleanProcessor.clean(text, process_rule) == expected
 
-    def test_clean_empty_text(self):
+    def test_clean_empty_text(self) -> None:
         """Test cleaning empty text."""
         assert CleanProcessor.clean("", None) == ""
         assert CleanProcessor.clean("", {}) == ""
         assert CleanProcessor.clean("", {"rules": {}}) == ""
 
-    def test_clean_text_with_only_invalid_symbols(self):
+    def test_clean_text_with_only_invalid_symbols(self) -> None:
         """Test text containing only invalid symbols."""
         text = "<|<|\x00\x01\x02\ufffe|>|>"
         # <| becomes <, |> becomes >, control chars and U+FFFE are removed
         assert CleanProcessor.clean(text, None) == "<<>>"
 
-    def test_clean_multiple_markdown_links_preserved(self):
+    def test_clean_multiple_markdown_links_preserved(self) -> None:
         """Test multiple markdown links are all preserved."""
         process_rule = {"rules": {"pre_processing_rules": [{"id": "remove_urls_emails", "enabled": True}]}}
 
@@ -211,7 +211,7 @@ class TestCleanProcessor:
         expected = "[One](https://one.com) [Two](http://two.org) [Three](https://three.net)"
         assert CleanProcessor.clean(text, process_rule) == expected
 
-    def test_clean_markdown_link_text_as_url(self):
+    def test_clean_markdown_link_text_as_url(self) -> None:
         """Test markdown link where the link text itself is a URL."""
         process_rule = {"rules": {"pre_processing_rules": [{"id": "remove_urls_emails", "enabled": True}]}}
 
@@ -225,7 +225,7 @@ class TestCleanProcessor:
         expected = " "
         assert CleanProcessor.clean(text, process_rule) == expected
 
-    def test_clean_complex_markdown_link_content(self):
+    def test_clean_complex_markdown_link_content(self) -> None:
         """Test markdown links with complex content - known limitation with brackets in link text."""
         process_rule = {"rules": {"pre_processing_rules": [{"id": "remove_urls_emails", "enabled": True}]}}
 
@@ -241,7 +241,7 @@ class TestCleanProcessor:
         expected = "[Text with (parens) and symbols](https://example.com)"
         assert CleanProcessor.clean(text, process_rule) == expected
 
-    def test_clean_remove_urls_emails_preserves_markdown_image_links(self):
+    def test_clean_remove_urls_emails_preserves_markdown_image_links(self) -> None:
         """Remove plain URLs and emails while preserving markdown image links."""
         process_rule = {"rules": {"pre_processing_rules": [{"id": "remove_urls_emails", "enabled": True}]}}
         text = "Email test@example.com and remove https://remove.com but keep ![diagram](https://example.com/image.png)"
@@ -249,7 +249,7 @@ class TestCleanProcessor:
 
         assert result == "Email  and remove  but keep ![diagram](https://example.com/image.png)"
 
-    def test_filter_string_returns_input_text(self):
+    def test_filter_string_returns_input_text(self) -> None:
         """Test filter_string passthrough behavior."""
         processor = CleanProcessor()
         assert processor.filter_string("raw text") == "raw text"

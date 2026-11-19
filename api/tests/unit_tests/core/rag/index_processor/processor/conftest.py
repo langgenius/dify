@@ -11,7 +11,6 @@ class _FakeFlaskApp:
 class _FakeExecutor:
     def __init__(self, future: object) -> None:
         self._future = future
-        self.shutdown_kwargs: dict[str, object] | None = None
 
     def __enter__(self) -> "_FakeExecutor":
         return self
@@ -21,9 +20,6 @@ class _FakeExecutor:
 
     def submit(self, *_args: object) -> object:
         return self._future
-
-    def shutdown(self, wait: bool = True, *, cancel_futures: bool = False) -> None:
-        self.shutdown_kwargs = {"wait": wait, "cancel_futures": cancel_futures}
 
 
 @pytest.fixture

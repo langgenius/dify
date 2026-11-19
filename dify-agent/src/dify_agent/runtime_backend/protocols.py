@@ -71,11 +71,14 @@ class ExecutionBindingBackend(Protocol):
     async def create_binding(self, spec: ExecutionBindingCreateSpec) -> ExecutionBindingAllocation:
         """Materialize a mutable Home and make the requested Workspace ready.
 
-        With a non-null ``home_snapshot_ref``, implementations must initialize
-        the Home from that exact immutable snapshot and must fail rather than
-        fall back when it is unavailable. With ``None``, implementations must
-        create an independent mutable Home from their deployment default without
-        implicitly creating an immutable snapshot.
+        With a non-null ``home_snapshot_ref``, snapshot-capable implementations
+        must initialize the Home from that exact immutable snapshot and must
+        fail rather than fall back when it is unavailable. An implementation
+        without snapshot capability — one whose ``HomeSnapshotBackend`` reports
+        unsupported — ignores the ref and materializes image-fresh. With
+        ``None``, implementations must create an independent mutable Home from
+        their deployment default without implicitly creating an immutable
+        snapshot.
 
         Implementations must return stable opaque refs only after Home and
         Workspace are usable. With an ``existing_workspace_ref``, they must
@@ -122,13 +125,17 @@ class ExecutionBindingBackend(Protocol):
 class HomeSnapshotBackend(Protocol):
     """Manage immutable backend-native Home resources."""
 
-    async def create_from_runtime(self, *, spec: HomeSnapshotCreateSpec, source: RuntimeLease) -> str:
+    async def create_from_runtime(self, *, spec: HomeSnapshotCreateSpec, source: RuntimeLease) -> str | None:
         """Capture the source lease's current Home as a new immutable snapshot.
 
         Implementations must not mutate or release ``source``. Workspace content
         is not logically part of a Home Snapshot; if a provider can only snapshot
         a coupled runtime, later materialization must prevent captured Workspace
         state from becoming the new Binding's Workspace.
+
+        Returns the opaque ref of the exact snapshot captured, or ``None`` when
+        the backend cannot snapshot at all — ``None`` means no snapshot exists,
+        never a fallback reference.
         """
         ...
 

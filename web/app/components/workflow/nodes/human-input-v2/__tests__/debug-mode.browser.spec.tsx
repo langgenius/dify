@@ -1,33 +1,43 @@
-import type { ChannelSummary } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { HumanInputTestChannelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { HumanInputV2DebugMode } from '../types'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient } from '@tanstack/react-query'
+import { createInstance } from 'i18next'
 import { useState } from 'react'
+import { I18nextProvider, initReactI18next } from 'react-i18next'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
+import common from '@/i18n/locales/en-US/common.json'
+import contacts from '@/i18n/locales/en-US/contacts.json'
+import workflow from '@/i18n/locales/en-US/workflow.json'
 import { consoleQuery } from '@/service/console'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import DebugMode from '../components/debug-mode'
 import { createChannelsQueryClient } from './channel-fixtures'
 
 const api = vi.hoisted(() => ({ channels: vi.fn() }))
+// boundary: workspace channel reads stop at the generated Console transport.
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.humanInput.v2.channels.get': api.channels,
+      'workspaces.current.humanInput.v2.testChannels.get': api.channels,
     }),
   }
 })
 
-vi.mock('react-i18next', async () => {
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return createReactI18nextMock({
-    'workflow.nodes.humanInputV2.debug.channel.email': 'Email',
-    'workflow.nodes.humanInputV2.debug.channel.slack': 'Slack',
-    'workflow.nodes.humanInputV2.debug.channel.lark': 'Lark',
-    'workflow.nodes.humanInputV2.debug.channel.feishu': 'Feishu',
+vi.unmock('react-i18next')
+const i18n = createInstance().use(initReactI18next)
+
+beforeAll(async () => {
+  await i18n.init({
+    lng: 'en-US',
+    fallbackLng: false,
+    keySeparator: false,
+    resources: { 'en-US': { common, contacts, workflow } },
   })
 })
 
@@ -50,23 +60,34 @@ function DebugOwner({
 }
 async function renderOwner(
   props: Parameters<typeof DebugOwner>[0] = {},
-  providers?: ChannelSummary['provider'][],
+  providers?: HumanInputTestChannelsResponse['channels'],
   suppliedClient?: QueryClient,
+  appId = 'app-test-channels',
 ) {
   const queryClient = suppliedClient ?? createChannelsQueryClient(providers)
   onTestFinished(() => queryClient.clear())
   return render(
-    <QueryClientProvider client={queryClient}>
-      <DebugOwner {...props} />
-    </QueryClientProvider>,
+    <I18nextProvider i18n={i18n}>
+      <QueryClientTestProvider queryClient={queryClient}>
+        <EditorResourceScope
+          resource={{
+            kind: 'app',
+            appId,
+            mode: 'workflow',
+            collaborationEnabled: false,
+          }}
+        >
+          <DebugOwner {...props} />
+        </EditorResourceScope>
+      </QueryClientTestProvider>
+    </I18nextProvider>,
   )
 }
 const label = (channel: string) =>
   ({ email: 'Email', slack: 'Slack', lark: 'Lark', feishu: 'Feishu' })[channel] ?? channel
 const channel = (name: string) => page.getByRole('checkbox', { name: label(name) })
-const configure = () =>
-  page.getByRole('button', { name: 'workflow.nodes.humanInputV2.debug.configure' })
-const toggle = () => page.getByRole('switch', { name: 'workflow.nodes.humanInputV2.debug.toggle' })
+const configure = () => page.getByRole('button', { name: 'Configure Debug Mode' })
+const toggle = () => page.getByRole('switch', { name: 'Enable Debug Mode' })
 const settings = () => page.getByRole('status', { name: 'Debug settings' })
 
 beforeEach(async () => {
@@ -76,12 +97,34 @@ beforeEach(async () => {
 })
 
 it('only offers channels configured in the current workspace', async () => {
-  await renderOwner()
+  api.channels.mockResolvedValue({ channels: ['email', 'slack'] })
+  await renderOwner(
+    {},
+    undefined,
+    new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+  )
   await configure().click()
   await expect.element(channel('email')).toBeVisible()
   await expect.element(channel('slack')).toBeVisible()
   await expect.element(channel('feishu')).not.toBeInTheDocument()
   expect(page.getByRole('checkbox').all()).toHaveLength(2)
+  expect(api.channels).toHaveBeenCalledTimes(1)
+})
+
+it('reuses fresh workspace channels when another app editor opens', async () => {
+  api.channels.mockResolvedValue({ channels: ['slack'] })
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, staleTime: 5 * 60 * 1000 } },
+  })
+  const first = await renderOwner({}, undefined, client)
+  await configure().click()
+  await expect.element(channel('slack')).toBeVisible()
+  await first.unmount()
+
+  await renderOwner({}, undefined, client, 'another-app')
+  await configure().click()
+  await expect.element(channel('slack')).toBeVisible()
+  expect(api.channels).toHaveBeenCalledTimes(1)
 })
 
 it('explains the final channel guard and keeps its selection after pointer and keyboard activation', async () => {
@@ -93,9 +136,7 @@ it('explains the final channel guard and keeps its selection after pointer and k
   await expect.element(page.getByText('reviewer@example.com')).toBeVisible()
   await expect.element(channel('email')).toBeChecked()
   await expect.element(channel('email')).toHaveAttribute('aria-disabled', 'true')
-  await expect
-    .element(channel('email'))
-    .toHaveAccessibleDescription('workflow.nodes.humanInputV2.debug.keepOneChannel')
+  await expect.element(channel('email')).toHaveAccessibleDescription('Keep at least one channel on')
   // Its label is clickable and the checkbox intentionally remains focusable to explain the guard.
   await page.getByRole('dialog').getByText(label('email'), { exact: true }).click()
   await expect.element(channel('email')).toBeChecked()
@@ -127,9 +168,7 @@ it('keeps empty workspace configuration unavailable without changing the node', 
   await renderOwner({}, [])
   await configure().click()
   await expect.element(page.getByRole('checkbox')).not.toBeInTheDocument()
-  await expect
-    .element(page.getByText('workflow.nodes.humanInputV2.template.notConfigured'))
-    .toBeVisible()
+  await expect.element(page.getByText('Not configured')).toBeVisible()
   await expect.element(toggle()).toHaveAttribute('aria-disabled', 'true')
   await expect.element(settings()).toHaveTextContent('{"enabled":false,"channels":[]}')
 })
@@ -137,7 +176,7 @@ it('keeps empty workspace configuration unavailable without changing the node', 
 it('does not fall back to all channels after a load failure and can retry', async () => {
   const seeded = createChannelsQueryClient()
   const response = seeded.getQueryData(
-    consoleQuery.workspaces.current.humanInput.v2.channels.get.queryKey(),
+    consoleQuery.workspaces.current.humanInput.v2.testChannels.get.queryKey(),
   )
   seeded.clear()
   api.channels.mockRejectedValueOnce(new Error('Service unavailable')).mockResolvedValue(response)
@@ -149,9 +188,9 @@ it('does not fall back to all channels after a load failure and can retry', asyn
   await configure().click()
   const error = page.getByRole('alert')
   await expect.element(error).toBeVisible()
-  expect(error.element().textContent).toContain('contacts.imPlatform.loadError.title')
+  expect(error.element().textContent).toContain("Channels couldn't be loaded")
   await expect.element(page.getByRole('checkbox')).not.toBeInTheDocument()
-  await page.getByRole('button', { name: 'common.operation.retry' }).click()
+  await page.getByRole('button', { name: 'Retry' }).click()
   await expect.element(channel('slack')).toBeVisible()
   expect(page.getByRole('checkbox').all()).toHaveLength(2)
 })
@@ -175,14 +214,25 @@ it('shows missing-channel and imported compatibility errors', async () => {
   const queryClient = createChannelsQueryClient()
   onTestFinished(() => queryClient.clear())
   const wrap = (value: HumanInputV2DebugMode) => (
-    <QueryClientProvider client={queryClient}>
-      <DebugMode value={value} onChange={vi.fn()} readonly={false} />
-    </QueryClientProvider>
+    <I18nextProvider i18n={i18n}>
+      <QueryClientTestProvider queryClient={queryClient}>
+        <EditorResourceScope
+          resource={{
+            kind: 'app',
+            appId: 'app-test-channels',
+            mode: 'workflow',
+            collaborationEnabled: false,
+          }}
+        >
+          <DebugMode value={value} onChange={vi.fn()} readonly={false} />
+        </EditorResourceScope>
+      </QueryClientTestProvider>
+    </I18nextProvider>
   )
   const view = await render(wrap({ enabled: true, channels: [] }))
   await expect
     .element(page.getByRole('alert'))
-    .toHaveTextContent('workflow.nodes.humanInputV2.error.debugChannelRequired')
+    .toHaveTextContent('Select at least one Debug Mode channel')
   // Imported DSL can contain channel identifiers from a different server version.
   await view.rerender(
     wrap({ enabled: false, channels: ['email', 'legacy_channel'] } as HumanInputV2DebugMode),
@@ -190,7 +240,7 @@ it('shows missing-channel and imported compatibility errors', async () => {
   await expect
     .element(page.getByRole('alert'))
     .toHaveTextContent(
-      'workflow.nodes.humanInputV2.debug.unsupported:{"channels":"legacy_channel"}',
+      'Unsupported imported channels: legacy_channel. Remove or update them before running this workflow.',
     )
 })
 
@@ -207,7 +257,7 @@ it('keeps stored channels and configuration unavailable in read-only mode', asyn
 })
 
 it('toggles an imported Lark selection without losing Email', async () => {
-  await renderOwner({ initial: { enabled: true, channels: ['lark', 'email'] } }, ['resend', 'lark'])
+  await renderOwner({ initial: { enabled: true, channels: ['lark', 'email'] } }, ['email', 'lark'])
   await expect.element(page.getByRole('alert')).not.toBeInTheDocument()
   await expect
     .element(configure())

@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import AsyncIterator, Iterator
+from contextlib import aclosing
 from datetime import UTC, datetime
 from typing import cast, override
 
@@ -14,6 +15,7 @@ from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.client import _client as client_module
 from dify_agent.client import (
     Client,
+    DifyAgentClientError,
     DifyAgentHTTPError,
     DifyAgentNotFoundError,
     DifyAgentStreamError,
@@ -136,12 +138,45 @@ class DisconnectingAsyncStream(httpx.AsyncByteStream):
 
     def __init__(self, *chunks: str) -> None:
         self.chunks = [chunk.encode() for chunk in chunks]
+        self.closed = False
+
+    @override
+    async def aclose(self) -> None:
+        self.closed = True
 
     @override
     async def __aiter__(self) -> AsyncIterator[bytes]:
         for chunk in self.chunks:
             yield chunk
         raise httpx.ReadError("stream disconnected")
+
+
+class TrackingAsyncStream(httpx.AsyncByteStream):
+    def __init__(self, *chunks: str, close_error: httpx.HTTPError | None = None) -> None:
+        self.chunks = [chunk.encode() for chunk in chunks]
+        self.closed = False
+        self.close_error = close_error
+
+    @override
+    async def aclose(self) -> None:
+        self.closed = True
+        if self.close_error is not None:
+            raise self.close_error
+
+    @override
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        for chunk in self.chunks:
+            yield chunk
+
+
+class OpenAsyncStream(TrackingAsyncStream):
+    """Keep the response open until the client closes it, rejecting further reads."""
+
+    @override
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        for chunk in self.chunks:
+            yield chunk
+        raise AssertionError("stream was read past expected frames before close")
 
 
 def test_sse_decoder_accepts_function_tool_result_part_alias(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -245,6 +280,52 @@ def test_async_methods_and_wait_run_parse_protocol_dtos() -> None:
     asyncio.run(scenario())
 
 
+@pytest.mark.parametrize("sync", [False, True], ids=["async", "sync"])
+def test_wait_run_does_not_poll_after_its_deadline(monkeypatch: pytest.MonkeyPatch, sync: bool) -> None:
+    class PollingClock:
+        def __init__(self) -> None:
+            self.now = 0.0
+
+        def monotonic(self) -> float:
+            return self.now
+
+        def sleep(self, seconds: float) -> None:
+            self.now += seconds
+
+        async def sleep_async(self, seconds: float) -> None:
+            self.sleep(seconds)
+
+    clock = PollingClock()
+    request_count = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        assert request.method == "GET"
+        assert request.url.path == "/runs/run-1"
+        request_count += 1
+        return httpx.Response(200, json=_run_status_json("running" if request_count == 1 else "succeeded"))
+
+    monkeypatch.setattr(client_module, "time", clock)
+    monkeypatch.setattr(client_module, "_sleep_sync", clock.sleep)
+    monkeypatch.setattr(client_module, "_sleep_async", clock.sleep_async)
+    transport = httpx.MockTransport(handler)
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient(transport=transport) as http_client:
+            client = Client(base_url="http://testserver", async_http_client=http_client)
+            await client.wait_run("run-1", poll_interval_seconds=2, timeout_seconds=1)
+
+    with pytest.raises(DifyAgentTimeoutError, match="did not finish before timeout"):
+        if sync:
+            with httpx.Client(transport=transport) as http_client:
+                client = Client(base_url="http://testserver", sync_http_client=http_client)
+                client.wait_run_sync("run-1", poll_interval_seconds=2, timeout_seconds=1)
+        else:
+            asyncio.run(scenario())
+    assert request_count == 1
+    assert clock.now == 1
+
+
 def test_cancel_run_and_wait_sync_resumes_after_cursor_and_returns_cancelled_snapshot() -> None:
     snapshot = SessionSnapshot(layers={})
 
@@ -311,20 +392,84 @@ def test_cancel_run_and_wait_sync_replays_when_cursor_already_points_to_cancelle
 
 
 def test_cancel_run_and_wait_async_returns_cancelled_terminal() -> None:
+    stream = OpenAsyncStream(_event_frame(RunCancelledEvent(id="2-0", run_id="run-1")))
+
     def handler(request: httpx.Request) -> httpx.Response:
         if request.method == "POST":
             return httpx.Response(202, json={"run_id": "run-1", "status": "cancelled"})
         if request.url.path == "/runs/run-1":
             return httpx.Response(200, json=_run_status_json("running"))
         assert request.url.params["after"] == "1-0"
-        return httpx.Response(200, content=_event_frame(RunCancelledEvent(id="2-0", run_id="run-1")))
+        return httpx.Response(200, stream=stream)
 
     async def scenario() -> None:
         http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
         client = Client(base_url="http://testserver", async_http_client=http_client)
         event = await client.cancel_run_and_wait("run-1", after="1-0")
         assert event.type == "run_cancelled"
+        assert stream.closed
         await http_client.aclose()
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("terminal_event", [_run_succeeded_event(), _run_failed_event("failed")])
+def test_cancel_run_and_wait_async_closes_response_on_unexpected_terminal(terminal_event: RunEvent) -> None:
+    stream = OpenAsyncStream(_event_frame(terminal_event))
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(202, json={"run_id": "run-1", "status": "cancelled"})
+        return httpx.Response(200, stream=stream)
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
+            client = Client(base_url="http://testserver", async_http_client=http_client)
+            with pytest.raises(DifyAgentClientError, match="before cancellation"):
+                await client.cancel_run_and_wait("run-1")
+            assert stream.closed
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("close_error", [None, httpx.ReadError])
+def test_cancel_run_and_wait_async_closes_response_when_cancelled(close_error: type[httpx.HTTPError] | None) -> None:
+    async def scenario() -> None:
+        waiting = asyncio.Event()
+
+        class WaitingAsyncStream(TrackingAsyncStream):
+            @override
+            async def __aiter__(self) -> AsyncIterator[bytes]:
+                for chunk in self.chunks:
+                    yield chunk
+                waiting.set()
+                await asyncio.Event().wait()
+
+        stream = WaitingAsyncStream(
+            _event_frame(RunStartedEvent(id="1-0", run_id="run-1")),
+            close_error=close_error("response close failed") if close_error is not None else None,
+        )
+        calls = 0
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal calls
+            if request.method == "POST":
+                return httpx.Response(202, json={"run_id": "run-1", "status": "cancelled"})
+            calls += 1
+            assert calls == 1, "task cancellation must not reconnect the SSE stream"
+            return httpx.Response(200, stream=stream)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
+            client = Client(base_url="http://testserver", async_http_client=http_client)
+            task = asyncio.create_task(client.cancel_run_and_wait("run-1"))
+            await asyncio.wait_for(waiting.wait(), timeout=1)
+            assert not stream.closed
+            task.cancel()
+            expected_error = asyncio.CancelledError if close_error is None else DifyAgentStreamError
+            with pytest.raises(expected_error):
+                await task
+            assert stream.closed
+            assert calls == 1
 
     asyncio.run(scenario())
 
@@ -828,6 +973,58 @@ def test_stream_events_raises_when_reconnects_are_exhausted() -> None:
     assert calls == 2
 
 
+def test_stream_events_resets_reconnect_budget_after_each_delivered_event() -> None:
+    """A proxy that drops every connection must not fail a run that keeps resuming."""
+    seen_after: list[str] = []
+    progress_events = 5
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen_after.append(request.url.params["after"])
+        index = len(seen_after)
+        if index <= progress_events:
+            return httpx.Response(
+                200,
+                stream=DisconnectingSyncStream(_event_frame(RunStartedEvent(id=f"{index}-0", run_id="run-1"))),
+            )
+        return httpx.Response(200, content=_event_frame(_run_succeeded_event(event_id=f"{index}-0")))
+
+    client = Client(
+        base_url="http://testserver",
+        sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    events = list(client.stream_events_sync("run-1", max_reconnects=1, reconnect_delay_seconds=0))
+
+    assert seen_after == ["0-0", "1-0", "2-0", "3-0", "4-0", "5-0"]
+    assert [event.type for event in events] == ["run_started"] * progress_events + ["run_succeeded"]
+
+
+def test_stream_events_still_bounds_consecutive_reconnects_after_progress() -> None:
+    """Only a delivered event restores spent retries; comment-only heartbeats do not."""
+    seen_after: list[str] = []
+    progress_event = RunStartedEvent(id="1-0", run_id="run-1")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen_after.append(request.url.params["after"])
+        assert len(seen_after) <= 4, "heartbeats must not restore the reconnect budget"
+        if len(seen_after) == 2:
+            return httpx.Response(
+                200,
+                stream=DisconnectingSyncStream(_event_frame(progress_event)),
+            )
+        return httpx.Response(200, stream=DisconnectingSyncStream(": keepalive\n\n"))
+
+    events: list[RunEvent] = []
+    with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
+        client = Client(base_url="http://testserver", sync_http_client=http_client)
+        with pytest.raises(DifyAgentStreamError, match="^SSE stream reconnect attempts exhausted$"):
+            for event in client.stream_events_sync("run-1", max_reconnects=2, reconnect_delay_seconds=0):
+                events.append(event)
+
+    assert seen_after == ["0-0", "0-0", "1-0", "1-0"]
+    assert events == [progress_event]
+
+
 def test_stream_events_default_reconnect_budget_is_finite() -> None:
     calls = 0
 
@@ -903,20 +1100,92 @@ def test_malformed_sse_frame_does_not_reconnect() -> None:
     assert calls == 1
 
 
-def test_async_stream_events_yields_terminal_event() -> None:
-    body = _event_frame(_run_succeeded_event())
+@pytest.mark.parametrize(
+    "terminal_event",
+    [_run_succeeded_event(), _run_failed_event("failed"), RunCancelledEvent(id="2-0", run_id="run-1")],
+)
+@pytest.mark.parametrize("close_error", [None, httpx.ReadError, httpx.StreamError, httpx.ReadTimeout])
+def test_async_stream_events_yields_terminal_event(
+    terminal_event: RunEvent, close_error: type[httpx.HTTPError] | None
+) -> None:
+    stream = OpenAsyncStream(
+        _event_frame(terminal_event),
+        close_error=close_error("response close failed") if close_error is not None else None,
+    )
 
     def handler(_request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, content=body)
+        return httpx.Response(200, stream=stream)
 
     async def scenario() -> None:
         http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
         client = Client(base_url="http://testserver", async_http_client=http_client)
 
-        events = [event async for event in client.stream_events("run-1")]
-
-        assert [event.type for event in events] == ["run_succeeded"]
+        events = client.stream_events("run-1")
+        try:
+            assert await anext(events) == terminal_event
+            assert stream.closed
+            with pytest.raises(StopAsyncIteration):
+                _ = await anext(events)
+        finally:
+            await events.aclose()
         await http_client.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_async_stream_events_closes_response_when_the_iterator_is_closed() -> None:
+    stream = OpenAsyncStream(_event_frame(RunStartedEvent(id="1-0", run_id="run-1")))
+    transport = httpx.MockTransport(lambda _request: httpx.Response(200, stream=stream))
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient(transport=transport) as http_client:
+            client = Client(base_url="http://testserver", async_http_client=http_client)
+            events = client.stream_events("run-1")
+            assert (await anext(events)).type == "run_started"
+            assert not stream.closed
+            await events.aclose()
+            assert stream.closed
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("exit_method", ["aclose", "athrow"])
+@pytest.mark.parametrize(
+    ("close_error", "expected_error"),
+    [
+        (httpx.ReadError, DifyAgentStreamError),
+        (httpx.StreamError, DifyAgentStreamError),
+        (httpx.ReadTimeout, DifyAgentTimeoutError),
+    ],
+)
+def test_async_stream_events_does_not_reconnect_when_interrupted_close_fails(
+    exit_method: str, close_error: type[httpx.HTTPError], expected_error: type[DifyAgentClientError]
+) -> None:
+    stream = OpenAsyncStream(
+        _event_frame(RunStartedEvent(id="1-0", run_id="run-1")),
+        close_error=close_error("response close failed"),
+    )
+    calls = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        assert calls == 1, "caller-driven iterator exit must not reconnect the SSE stream"
+        return httpx.Response(200, stream=stream)
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
+            client = Client(base_url="http://testserver", async_http_client=http_client)
+            async with aclosing(client.stream_events("run-1", reconnect_delay_seconds=0)) as events:
+                assert (await anext(events)).type == "run_started"
+                assert not stream.closed
+                with pytest.raises(expected_error):
+                    if exit_method == "aclose":
+                        await events.aclose()
+                    else:
+                        await events.athrow(ValueError("caller stopped"))
+                assert stream.closed
+                assert calls == 1
 
     asyncio.run(scenario())
 
@@ -941,44 +1210,32 @@ def test_async_stream_events_enforces_total_timeout_before_connecting() -> None:
     assert calls == 0
 
 
-def test_async_stream_events_does_not_reconnect_after_terminal_when_until_terminal_is_false() -> None:
+@pytest.mark.parametrize("stream_type", [TrackingAsyncStream, DisconnectingAsyncStream], ids=["eof", "disconnect"])
+def test_async_stream_events_consumes_response_after_terminal_without_reconnecting(
+    stream_type: type[TrackingAsyncStream] | type[DisconnectingAsyncStream],
+) -> None:
+    terminal_event = _run_succeeded_event()
+    trailing_event = RunStartedEvent(id="3-0", run_id="run-1")
+    stream = stream_type(_event_frame(terminal_event), _event_frame(trailing_event))
     calls = 0
 
     def handler(_request: httpx.Request) -> httpx.Response:
         nonlocal calls
         calls += 1
-        return httpx.Response(200, content=_event_frame(_run_succeeded_event()))
+        return httpx.Response(200, stream=stream)
 
     async def scenario() -> None:
-        http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
-        client = Client(base_url="http://testserver", async_http_client=http_client)
-
-        events = [event async for event in client.stream_events("run-1", until_terminal=False)]
-
-        assert [event.type for event in events] == ["run_succeeded"]
-        assert calls == 1
-        await http_client.aclose()
-
-    asyncio.run(scenario())
-
-
-def test_async_stream_events_does_not_reconnect_after_terminal_transport_error() -> None:
-    calls = 0
-
-    def handler(_request: httpx.Request) -> httpx.Response:
-        nonlocal calls
-        calls += 1
-        return httpx.Response(200, stream=DisconnectingAsyncStream(_event_frame(_run_succeeded_event())))
-
-    async def scenario() -> None:
-        http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
-        client = Client(base_url="http://testserver", async_http_client=http_client)
-
-        events = [event async for event in client.stream_events("run-1", until_terminal=False)]
-
-        assert [event.type for event in events] == ["run_succeeded"]
-        assert calls == 1
-        await http_client.aclose()
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
+            client = Client(base_url="http://testserver", async_http_client=http_client)
+            async with aclosing(client.stream_events("run-1", until_terminal=False)) as events:
+                assert await anext(events) == terminal_event
+                assert not stream.closed
+                assert await anext(events) == trailing_event
+                assert not stream.closed
+                with pytest.raises(StopAsyncIteration):
+                    _ = await anext(events)
+                assert stream.closed
+                assert calls == 1
 
     asyncio.run(scenario())
 
@@ -1004,6 +1261,62 @@ def test_async_stream_events_reconnects_from_latest_event_after_transport_error(
         assert seen_after == ["0-0", "1-0"]
         assert [event.type for event in events] == ["run_started", "run_succeeded"]
         await http_client.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_async_stream_events_resets_reconnect_budget_after_each_delivered_event() -> None:
+    seen_after: list[str] = []
+    progress_events = 5
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen_after.append(request.url.params["after"])
+        index = len(seen_after)
+        if index <= progress_events:
+            return httpx.Response(
+                200,
+                stream=DisconnectingAsyncStream(_event_frame(RunStartedEvent(id=f"{index}-0", run_id="run-1"))),
+            )
+        return httpx.Response(200, content=_event_frame(_run_succeeded_event(event_id=f"{index}-0")))
+
+    async def scenario() -> None:
+        http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = Client(base_url="http://testserver", async_http_client=http_client)
+
+        events = [event async for event in client.stream_events("run-1", max_reconnects=1, reconnect_delay_seconds=0)]
+
+        assert seen_after == ["0-0", "1-0", "2-0", "3-0", "4-0", "5-0"]
+        assert [event.type for event in events] == ["run_started"] * progress_events + ["run_succeeded"]
+        await http_client.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_async_stream_events_still_bounds_consecutive_reconnects_after_progress() -> None:
+    """Only a delivered event restores spent retries; comment-only heartbeats do not."""
+    seen_after: list[str] = []
+    progress_event = RunStartedEvent(id="1-0", run_id="run-1")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen_after.append(request.url.params["after"])
+        assert len(seen_after) <= 4, "heartbeats must not restore the reconnect budget"
+        if len(seen_after) == 2:
+            return httpx.Response(
+                200,
+                stream=DisconnectingAsyncStream(_event_frame(progress_event)),
+            )
+        return httpx.Response(200, stream=DisconnectingAsyncStream(": keepalive\n\n"))
+
+    async def scenario() -> None:
+        events: list[RunEvent] = []
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
+            client = Client(base_url="http://testserver", async_http_client=http_client)
+            with pytest.raises(DifyAgentStreamError, match="^SSE stream reconnect attempts exhausted$"):
+                async for event in client.stream_events("run-1", max_reconnects=2, reconnect_delay_seconds=0):
+                    events.append(event)
+
+        assert seen_after == ["0-0", "0-0", "1-0", "1-0"]
+        assert events == [progress_event]
 
     asyncio.run(scenario())
 
@@ -1098,3 +1411,39 @@ def test_stream_timeout_can_reconnect_until_terminal() -> None:
 
     assert calls == 2
     assert [event.type for event in events] == ["run_succeeded"]
+
+
+def test_sync_home_snapshot_client_parses_null_snapshot_ref() -> None:
+    """A backend that cannot snapshot reports explicit null; the client must
+    preserve it instead of failing or fabricating a ref."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "POST"
+        assert request.url.path == "/home-snapshots/from-binding"
+        return httpx.Response(201, json={"snapshot_ref": None})
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    client = Client(base_url="http://testserver", sync_http_client=http_client)
+
+    created = client.create_home_snapshot_from_binding_sync(_create_home_snapshot_from_binding_request())
+
+    assert created.snapshot_ref is None
+    http_client.close()
+
+
+def test_async_home_snapshot_client_parses_null_snapshot_ref() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "POST"
+        assert request.url.path == "/home-snapshots/from-binding"
+        return httpx.Response(201, json={"snapshot_ref": None})
+
+    async def scenario() -> None:
+        http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = Client(base_url="http://testserver", async_http_client=http_client)
+
+        created = await client.create_home_snapshot_from_binding(_create_home_snapshot_from_binding_request())
+
+        assert created.snapshot_ref is None
+        await http_client.aclose()
+
+    asyncio.run(scenario())

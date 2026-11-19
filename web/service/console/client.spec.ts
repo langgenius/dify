@@ -1,3 +1,4 @@
+import type { AgentAppPagination } from '@dify/contracts/api/console/agent/types.gen'
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { AppSiteResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
@@ -5,6 +6,7 @@ import type { MutationFunctionContext, QueryFunctionContext } from '@tanstack/re
 import type { consoleQuery as ConsoleQuery } from '@/service/console'
 import { MutationObserver, QueryClient, QueryObserver } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createDeferred } from '@/test/deferred'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
 import { normalizeConsoleOpenAPIURL } from './openapi-url'
@@ -688,7 +690,13 @@ describe('consoleQuery education defaults', () => {
       const consoleQuery = await loadConsoleQuery()
       const queryClient = createQueryClient()
       const key = consoleQuery.account.education.get.queryKey()
-      const cached = { is_student: false, allow_refresh: false, expire_at: null, result: false }
+      const cached = {
+        is_student: false,
+        allow_refresh: false,
+        can_redeem_discount: false,
+        expire_at: null,
+        result: false,
+      }
       queryClient.setQueryData(key, cached)
       const unrelatedKey = ['unrelated-account-data']
       queryClient.setQueryData(unrelatedKey, { name: 'User' })
@@ -990,6 +998,34 @@ describe('consoleQuery app mutation defaults', () => {
 
     expect(synchronized).toBe(true)
   })
+
+  it.each(['success', 'failure'] as const)(
+    'settles the workflow deletion guard after the initiating observer leaves on %s',
+    async (outcome) => {
+      const query = await loadConsoleQuery()
+      const { isAppDeletingOrDeleted } = await import('@/service/app-deletion')
+      const client = createQueryClient()
+      const result = createDeferred<void>()
+      const mutation = new MutationObserver(client, {
+        ...query.apps.byAppId.delete.mutationOptions(),
+        mutationFn: () => result.promise,
+      })
+      const unsubscribe = mutation.subscribe(() => {})
+      const appId = 'deleted-from-another-surface'
+      const completion = mutation.mutate({ params: { app_id: appId } })
+      await vi.waitFor(() => expect(isAppDeletingOrDeleted(appId)).toBe(true))
+      unsubscribe()
+      if (outcome === 'success') {
+        result.resolve()
+        await completion
+        expect(isAppDeletingOrDeleted(appId)).toBe(true)
+      } else {
+        result.reject(new Error('Delete failed'))
+        await expect(completion).rejects.toThrow('Delete failed')
+        expect(isAppDeletingOrDeleted(appId)).toBe(false)
+      }
+    },
+  )
 
   it('should wait for deleted app lists to synchronize without waiting for quota', async () => {
     const consoleQuery = await loadConsoleQuery()
@@ -1475,6 +1511,72 @@ describe('consoleQuery agent mutation defaults', () => {
     })
   })
 
+  it.each([true, false])(
+    'preserves roster publication and reference data when renaming an agent with published state %s',
+    async (isPublished) => {
+      const consoleQuery = await loadConsoleQuery()
+      const queryClient = createQueryClient()
+      const agent = {
+        ...createAgent(),
+        active_config_is_published: isPublished,
+        hidden_app_backed: false,
+        is_starred: false,
+        published_reference_count: 1,
+        published_references: [{ app_id: 'workflow-1', app_name: 'Research Workflow' }],
+      }
+      const otherAgent = {
+        ...createAgent({ id: 'agent-2', name: 'Other Agent' }),
+        active_config_is_published: false,
+        hidden_app_backed: false,
+        is_starred: false,
+        published_reference_count: 0,
+      }
+      const rosterPage = {
+        data: [agent, otherAgent],
+        has_more: false,
+        limit: 30,
+        page: 1,
+        publication_counts: { drafts: isPublished ? 1 : 2, published: isPublished ? 1 : 0 },
+        total: 2,
+      } satisfies AgentAppPagination
+      const listQueryKey = consoleQuery.agent.get.queryKey({
+        input: { query: { page: 1, limit: 30 } },
+      })
+      const infiniteQueryKey = consoleQuery.agent.get.infiniteOptions({
+        input: (pageParam) => ({ query: { page: Number(pageParam), limit: 30 } }),
+        initialPageParam: 1,
+        getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
+      }).queryKey
+      queryClient.setQueryData(listQueryKey, rosterPage)
+      queryClient.setQueryData(infiniteQueryKey, { pages: [rosterPage], pageParams: [1] })
+      const updatedAgent = createAgent({ name: 'Updated Agent' })
+
+      await consoleQuery.agent.byAgentId.put.mutationOptions().onSuccess!(
+        updatedAgent,
+        { params: { agent_id: agent.id }, body: { name: updatedAgent.name } },
+        undefined,
+        createMutationContext(queryClient),
+      )
+
+      const expectedPage = {
+        ...rosterPage,
+        data: [{ ...agent, name: updatedAgent.name }, otherAgent],
+      }
+      expect(queryClient.getQueryData(listQueryKey)).toEqual(expectedPage)
+      expect(queryClient.getQueryData(infiniteQueryKey)).toEqual({
+        pages: [expectedPage],
+        pageParams: [1],
+      })
+      expect(
+        queryClient.getQueryData(
+          consoleQuery.agent.byAgentId.get.queryKey({
+            input: { params: { agent_id: agent.id } },
+          }),
+        ),
+      ).toEqual(updatedAgent)
+    },
+  )
+
   it('should invalidate invite option lists after updating an agent', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = createQueryClient()
@@ -1785,6 +1887,7 @@ describe('consoleQuery App Deploy cache behavior', () => {
       })
       const params = { app_id: 'app-1', environment_id: 'staging' }
       const staging = {
+        deployment_id: 'deployment-staging',
         environment: {
           id: 'staging',
           display_name: 'Staging',
@@ -1793,7 +1896,11 @@ describe('consoleQuery App Deploy cache behavior', () => {
         },
         access: { enable_api: true, enable_site: true },
       }
-      const production = { ...staging, environment: { ...staging.environment, id: 'production' } }
+      const production = {
+        ...staging,
+        deployment_id: 'deployment-production',
+        environment: { ...staging.environment, id: 'production' },
+      }
       const deployments = consoleQuery.enterprise.appDeploy.deploymentService
       const list = deployments.listEnvironmentDeployments.queryOptions({
         input: { params: { app_id: params.app_id } },

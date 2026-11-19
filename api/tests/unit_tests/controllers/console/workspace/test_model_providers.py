@@ -39,7 +39,7 @@ from controllers.console.workspace.tool_providers import (
     ToolOAuthCustomClient,
 )
 from core.entities.provider_entities import CredentialConfiguration
-from enums import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
@@ -242,7 +242,7 @@ def _payload() -> dict[str, object]:
 
 
 class TestModelProviderListApi:
-    def test_get_success(self, app: Flask):
+    def test_get_success(self, app: Flask) -> None:
         api = ModelProviderListApi()
         method = unwrap(api.get)
         provider = make_provider_response()
@@ -259,7 +259,7 @@ class TestModelProviderListApi:
         get_provider_list.assert_called_once_with(tenant_id="tenant1", model_type=ModelType.LLM)
         assert result == {"data": [expected_provider_payload()]}
 
-    def test_get_without_model_type_passes_none(self, app: Flask):
+    def test_get_without_model_type_passes_none(self, app: Flask) -> None:
         api = ModelProviderListApi()
         method = unwrap(api.get)
 
@@ -277,7 +277,7 @@ class TestModelProviderListApi:
 
 
 class TestModelProviderSummaryListApi:
-    def test_get_success(self, app: Flask):
+    def test_get_success(self, app: Flask) -> None:
         api = ModelProviderSummaryListApi()
         method = unwrap(api.get)
         provider = ModelProviderSummaryResponse(
@@ -357,7 +357,7 @@ class TestModelProviderCreditsApi:
         api = ModelProviderCreditsApi()
         method = unwrap(api.get)
         credit_pool = EffectiveCreditPool(
-            plan="team",
+            plan=CloudPlan.TEAM,
             pool_type="paid",
             quota_limit=-1,
             quota_used=999,
@@ -406,7 +406,7 @@ class TestModelProviderCreditsApi:
 
 
 class TestModelProviderCredentialApi:
-    def test_get_success(self, app: Flask):
+    def test_get_success(self, app: Flask) -> None:
         api = ModelProviderCredentialApi()
         method = unwrap(api.get)
 
@@ -434,7 +434,7 @@ class TestModelProviderCredentialApi:
             }
         }
 
-    def test_get_current_credential_without_id(self, app: Flask):
+    def test_get_current_credential_without_id(self, app: Flask) -> None:
         api = ModelProviderCredentialApi()
         method = unwrap(api.get)
 
@@ -450,7 +450,7 @@ class TestModelProviderCredentialApi:
         get_provider_credential.assert_called_once_with(tenant_id="tenant1", provider="openai", credential_id=None)
         assert result == {"credentials": None}
 
-    def test_get_invalid_uuid(self, app: Flask):
+    def test_get_invalid_uuid(self, app: Flask) -> None:
         api = ModelProviderCredentialApi()
         method = unwrap(api.get)
 
@@ -458,7 +458,7 @@ class TestModelProviderCredentialApi:
             with pytest.raises(ValidationError):
                 method(api, ParserCredentialId.model_validate(_payload()), "tenant1", provider="openai")
 
-    def test_post_create_success(self, app: Flask):
+    def test_post_create_success(self, app: Flask) -> None:
         api = ModelProviderCredentialApi()
         method = unwrap(api.post)
 
@@ -484,7 +484,7 @@ class TestModelProviderCredentialApi:
         assert result == {"result": "success"}
         assert status == 201
 
-    def test_post_create_validation_error(self, app: Flask):
+    def test_post_create_validation_error(self, app: Flask) -> None:
         api = ModelProviderCredentialApi()
         method = unwrap(api.post)
 
@@ -500,7 +500,7 @@ class TestModelProviderCredentialApi:
             with pytest.raises(ValueError, match="bad"):
                 method(api, ParserCredentialCreate.model_validate(_payload()), "tenant1", provider="openai")
 
-    def test_put_update_success(self, app: Flask):
+    def test_put_update_success(self, app: Flask) -> None:
         api = ModelProviderCredentialApi()
         method = unwrap(api.put)
 
@@ -524,7 +524,7 @@ class TestModelProviderCredentialApi:
         )
         assert result == {"result": "success"}
 
-    def test_put_invalid_uuid(self, app: Flask):
+    def test_put_invalid_uuid(self, app: Flask) -> None:
         api = ModelProviderCredentialApi()
         method = unwrap(api.put)
 
@@ -534,7 +534,7 @@ class TestModelProviderCredentialApi:
             with pytest.raises(ValidationError):
                 method(api, ParserCredentialUpdate.model_validate(_payload()), "tenant1", provider="openai")
 
-    def test_delete_success(self, app: Flask):
+    def test_delete_success(self, app: Flask) -> None:
         api = ModelProviderCredentialApi()
         method = unwrap(api.delete)
 
@@ -559,7 +559,7 @@ class TestModelProviderCredentialApi:
 
 
 class TestModelProviderCredentialSwitchApi:
-    def test_switch_success(self, app: Flask):
+    def test_switch_success(self, app: Flask) -> None:
         api = ModelProviderCredentialSwitchApi()
         method = unwrap(api.post)
 
@@ -581,7 +581,7 @@ class TestModelProviderCredentialSwitchApi:
         )
         assert result == {"result": "success"}
 
-    def test_switch_invalid_uuid(self, app: Flask):
+    def test_switch_invalid_uuid(self, app: Flask) -> None:
         api = ModelProviderCredentialSwitchApi()
         method = unwrap(api.post)
 
@@ -593,7 +593,7 @@ class TestModelProviderCredentialSwitchApi:
 
 
 class TestModelProviderValidateApi:
-    def test_validate_success(self, app: Flask):
+    def test_validate_success(self, app: Flask) -> None:
         api = ModelProviderValidateApi()
         method = unwrap(api.post)
 
@@ -613,7 +613,7 @@ class TestModelProviderValidateApi:
         )
         assert result == {"result": "success", "error": None}
 
-    def test_validate_failure(self, app: Flask):
+    def test_validate_failure(self, app: Flask) -> None:
         api = ModelProviderValidateApi()
         method = unwrap(api.post)
 
@@ -633,7 +633,7 @@ class TestModelProviderValidateApi:
 
 class TestModelProviderIconApi:
     @pytest.mark.parametrize("icon_type", ["icon_small", "icon_small_dark", "ICON_SMALL", "ICON_SMALL_DARK"])
-    def test_icon_success(self, app: Flask, icon_type: str):
+    def test_icon_success(self, app: Flask, icon_type: str) -> None:
         api = ModelProviderIconApi()
 
         with (
@@ -652,7 +652,7 @@ class TestModelProviderIconApi:
         response.direct_passthrough = False
         assert response.get_data() == b"123"
 
-    def test_icon_not_found(self, app: Flask):
+    def test_icon_not_found(self, app: Flask) -> None:
         api = ModelProviderIconApi()
 
         with (
@@ -677,7 +677,7 @@ class TestModelProviderIconApi:
             (VALID_UUID, "logo", "icon_type"),
         ],
     )
-    def test_invalid_icon_path_returns_bad_request(self, tenant_id: str, icon_type: str, invalid_field: str):
+    def test_invalid_icon_path_returns_bad_request(self, tenant_id: str, icon_type: str, invalid_field: str) -> None:
         """Reject invalid paths over HTTP without configuring provider dependencies."""
         app = Flask(__name__)
         api = ExternalApi(app)
@@ -699,7 +699,7 @@ class TestModelProviderIconApi:
 
 
 class TestPreferredProviderTypeUpdateApi:
-    def test_update_success(self, app: Flask):
+    def test_update_success(self, app: Flask) -> None:
         api = PreferredProviderTypeUpdateApi()
         method = unwrap(api.post)
 
@@ -719,7 +719,7 @@ class TestPreferredProviderTypeUpdateApi:
         )
         assert result == {"result": "success"}
 
-    def test_invalid_enum(self, app: Flask):
+    def test_invalid_enum(self, app: Flask) -> None:
         api = PreferredProviderTypeUpdateApi()
         method = unwrap(api.post)
 
@@ -731,7 +731,7 @@ class TestPreferredProviderTypeUpdateApi:
 
 
 class TestModelProviderPaymentCheckoutUrlApi:
-    def test_checkout_success(self, app: Flask):
+    def test_checkout_success(self, app: Flask) -> None:
         api = ModelProviderPaymentCheckoutUrlApi()
         method = unwrap(api.get)
 
@@ -753,7 +753,7 @@ class TestModelProviderPaymentCheckoutUrlApi:
         )
         assert result == {"payment_link": "https://payment.example.com/provider"}
 
-    def test_invalid_provider(self, app: Flask):
+    def test_invalid_provider(self, app: Flask) -> None:
         api = ModelProviderPaymentCheckoutUrlApi()
         method = unwrap(api.get)
 
@@ -761,7 +761,7 @@ class TestModelProviderPaymentCheckoutUrlApi:
             with pytest.raises(ValueError, match="provider name openai is invalid"):
                 method(api, "tenant1", make_account(), provider="openai")
 
-    def test_checkout_rejects_non_privileged_role(self, app: Flask):
+    def test_checkout_rejects_non_privileged_role(self, app: Flask) -> None:
         api = ModelProviderPaymentCheckoutUrlApi()
         account = make_account()
 
