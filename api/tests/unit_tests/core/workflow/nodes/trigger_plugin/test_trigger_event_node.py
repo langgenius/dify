@@ -1,6 +1,6 @@
 from collections.abc import Mapping
 
-from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
+from constants.trigger import TRIGGER_PLUGIN_NODE_TYPE
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from core.workflow.nodes.trigger_plugin.trigger_event_node import TriggerEventNode
 from core.workflow.system_variables import build_system_variables

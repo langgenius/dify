@@ -12,6 +12,7 @@ from pydantic import ValidationError
 
 import contexts
 from configs import dify_config
+from constants.trigger import is_trigger_node_type
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
@@ -29,7 +30,6 @@ from core.helper.trace_id_helper import (
     extract_trace_session_id_from_args,
 )
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
-from core.trigger.constants import is_trigger_node_type
 from extensions.tracing import create_trace_scope
 from factories import file_factory
 from graphon.engine.filter import ResponseStreamFilter

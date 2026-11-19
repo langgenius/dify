@@ -19,11 +19,22 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
-from controllers.console.wraps import with_current_tenant_id, with_current_user
+from controllers.console.wraps import (
+    account_initialization_required,
+    setup_required,
+    with_current_tenant_id,
+    with_current_user,
+)
 from core.human_input_v2.entities import (
     ChannelKind,
+    DebugChannel,
     EmailProviderType,
     IMProvider,
+)
+from core.human_input_v2.im_integration.adapters.entities import (
+    CredentialTestFailureKind,
+    CredentialTestRejectedError,
+    IMProviderError,
 )
 from core.human_input_v2.shared import (
     AccountId,
@@ -35,10 +46,12 @@ from core.human_input_v2.shared import (
 from fields.base import ResponseModel
 from fields.timestamp import Timestamp
 from libs.helper import EmailStr
+from libs.login import login_required
 from models.account import Account
 from repositories.human_input_v2.email_channel import EmailChannelView, EmailConfigurationSnapshot
 from repositories.human_input_v2.email_channel.entities import ResendCandidate
 from repositories.human_input_v2.im_channel_repository import IMChannelId, IMChannelStatus
+from services.feature_service import FeatureService
 from services.human_input_v2.credential_update import ResendChannelUpdate, Unchanged
 from services.human_input_v2.email_channel_management_composition import (
     build_human_input_email_channel_management_service,
@@ -56,7 +69,11 @@ from services.human_input_v2.im_channel_service_composition import (
 )
 
 from ._common import StrictModel
-from ._decorators import require_admin_or_owner, workspace_channel_api_admission
+from ._decorators import (
+    require_admin_or_owner,
+    workspace_channel_api_admission,
+    workspace_email_channel_api_admission,
+)
 from .config_version import (
     InvalidConfigVersionError,
     decode_email_config_version,
@@ -68,6 +85,7 @@ from .errors import (
     ChannelAlreadyConfiguredHttpError,
     ChannelNotFoundHttpError,
     ChannelProviderBadRequestHttpError,
+    ChannelProviderBadRequestResponse,
     ChannelProviderConfigurationUpdatedHttpError,
     ChannelReplacementRequiredHttpError,
 )
@@ -90,6 +108,12 @@ class WorkspaceChannelResource(Resource):
     method_decorators = [workspace_channel_api_admission]
 
 
+class _WorkspaceEmailChannelResource(WorkspaceChannelResource):
+    """Admit tenant Email management before invoking any canonical handler."""
+
+    method_decorators = [*WorkspaceChannelResource.method_decorators, workspace_email_channel_api_admission]
+
+
 class ChannelStatus(StrEnum):
     CONFIGURED = "configured"
     CONNECTED = "connected"
@@ -104,6 +128,8 @@ class ConnectionMode(StrEnum):
 class ChannelTestResponse(ResponseModel):
     status: ChannelStatus
     status_description: str
+    provider_error_code: str | None = Field(default=None, description="Original provider error code, if supplied.")
+    provider_request_id: str | None = Field(default=None, description="Original provider request ID, if supplied.")
 
 
 class ChannelDeleteResponse(ResponseModel):
@@ -152,6 +178,10 @@ class ChannelSummary(ResponseModel):
 
 class ListChannelsResponse(ResponseModel):
     channels: Sequence[ChannelSummary]
+
+
+class HumanInputTestChannelsResponse(ResponseModel):
+    channels: tuple[DebugChannel, ...]
 
 
 type _SenderName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)]
@@ -250,12 +280,14 @@ register_schema_models(
 register_response_schema_models(
     console_ns,
     ChannelTestResponse,
+    ChannelProviderBadRequestResponse,
     ChannelDeleteResponse,
     ChannelConflictResponse,
     ChannelProvider,
     ListChannelProvidersResponse,
     ChannelSummary,
     ListChannelsResponse,
+    HumanInputTestChannelsResponse,
     EmailChannelMutationResponse,
     EmailChannelDetailResponse,
     IMChannelMutationResponse,
@@ -338,6 +370,52 @@ def _workspace_im_channel_service(tenant_id: str, account: Account) -> Workspace
     return build_workspace_im_channel_service(TenantId(tenant_id), _actor_id(account))
 
 
+def _configured_channel_views(tenant_id: str, account: Account) -> tuple[EmailChannelView | None, IMChannelView | None]:
+    """Read supported channel views for the server-resolved Workspace.
+
+    Credentials are not decrypted and providers are not called.
+    """
+    email = (
+        build_human_input_email_channel_management_service().get_current(_workspace_scope(tenant_id))
+        if FeatureService.use_tenant_scoped_email_config()
+        else None
+    )
+    return email, _workspace_im_channel_service(tenant_id, account).get_current()
+
+
+def _provider_failure_response(error: ChannelProviderError | IMProviderError) -> ChannelTestResponse:
+    """Map a safe provider failure at the API boundary without dropping supplied diagnostics."""
+    if isinstance(error, CredentialTestRejectedError):
+        failure = error.failure
+        description = failure.reason
+        if failure.http_status is not None:
+            description += f" HTTP status: {failure.http_status}."
+        if failure.provider_error_code is not None:
+            description += f" API error code: {failure.provider_error_code}."
+        if failure.missing_permissions:
+            description += f" Missing permissions: {', '.join(failure.missing_permissions)}."
+        if failure.provider_request_id is not None:
+            description += f" Provider request ID: {failure.provider_request_id}."
+        return ChannelTestResponse(
+            status=(
+                ChannelStatus.INVALID_CREDENTIALS
+                if failure.kind is CredentialTestFailureKind.AUTHENTICATION_REJECTED
+                else ChannelStatus.CONNECTION_FAILURE
+            ),
+            status_description=description,
+            provider_error_code=failure.provider_error_code,
+            provider_request_id=failure.provider_request_id,
+        )
+    if isinstance(error, ChannelProviderError):
+        return ChannelTestResponse(
+            status=ChannelStatus(error.kind.value),
+            status_description=error.status_description,
+            provider_error_code=error.provider_error_code,
+            provider_request_id=error.provider_request_id,
+        )
+    return ChannelTestResponse(status=ChannelStatus.CONNECTION_FAILURE, status_description=str(error))
+
+
 @console_ns.route("/workspaces/current/human-input/v2/channel-providers")
 class ListChannelProvidersApi(WorkspaceChannelResource):
     @console_ns.response(200, "Success", console_ns.models[ListChannelProvidersResponse.__name__])
@@ -345,7 +423,12 @@ class ListChannelProvidersApi(WorkspaceChannelResource):
     @with_current_user
     @with_current_tenant_id
     def get(self, tenant_id: str, current_user: Account) -> ResponseReturnValue:
-        email_providers = build_human_input_email_channel_management_service().available_providers()
+        """List supported providers for the admitted administrator without accessing disabled owners."""
+        email_providers = (
+            build_human_input_email_channel_management_service().available_providers()
+            if FeatureService.use_tenant_scoped_email_config()
+            else ()
+        )
         im_providers = _workspace_im_channel_service(tenant_id, current_user).available_providers()
         return ListChannelProvidersResponse(
             email_providers=[_channel_provider_response(provider) for provider in email_providers],
@@ -360,9 +443,8 @@ class ListChannelsApi(WorkspaceChannelResource):
     @with_current_user
     @with_current_tenant_id
     def get(self, tenant_id: str, current_user: Account) -> ResponseReturnValue:
-        workspace_scope = _workspace_scope(tenant_id)
-        email = build_human_input_email_channel_management_service().get_current(workspace_scope)
-        im = _workspace_im_channel_service(tenant_id, current_user).get_current()
+        """List supported configured channels for the admitted administrator without reading disabled owners."""
+        email, im = _configured_channel_views(tenant_id, current_user)
         channels: list[ChannelSummary] = []
         if email is not None:
             channels.append(_email_channel_summary_response(email))
@@ -371,8 +453,30 @@ class ListChannelsApi(WorkspaceChannelResource):
         return ListChannelsResponse(channels=channels).model_dump(mode="json")
 
 
+@console_ns.route("/workspaces/current/human-input/v2/test-channels")
+class ListTestChannelsApi(Resource):
+    """Expose only test channel identifiers to authenticated Dify Workspace members."""
+
+    @console_ns.response(200, "Success", console_ns.models[HumanInputTestChannelsResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @workspace_channel_api_admission
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, current_user: Account) -> ResponseReturnValue:
+        """List current Workspace test channels without granting channel management or app execution permissions."""
+        email, im = _configured_channel_views(tenant_id, current_user)
+        channels: list[DebugChannel] = []
+        if email is not None:
+            channels.append(DebugChannel.EMAIL)
+        if im is not None:
+            channels.append(DebugChannel(im.provider.value))
+        return HumanInputTestChannelsResponse(channels=tuple(channels)).model_dump(mode="json")
+
+
 @console_ns.route("/workspaces/current/human-input/v2/channels/email/test")
-class EmailChannelTestApi(WorkspaceChannelResource):
+class EmailChannelTestApi(_WorkspaceEmailChannelResource):
     @console_ns.expect(console_ns.models[EmailChannelTestPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[ChannelTestResponse.__name__])
     @require_admin_or_owner
@@ -389,6 +493,8 @@ class EmailChannelTestApi(WorkspaceChannelResource):
             return ChannelTestResponse(
                 status=ChannelStatus(error.kind.value),
                 status_description=error.status_description,
+                provider_error_code=error.provider_error_code,
+                provider_request_id=error.provider_request_id,
             ).model_dump(mode="json")
         return ChannelTestResponse(
             status=ChannelStatus.CONNECTED,
@@ -397,7 +503,7 @@ class EmailChannelTestApi(WorkspaceChannelResource):
 
 
 @console_ns.route("/workspaces/current/human-input/v2/channels/email/<uuid:channel_id>/test")
-class EmailChannelSavedTestApi(WorkspaceChannelResource):
+class EmailChannelSavedTestApi(_WorkspaceEmailChannelResource):
     @console_ns.expect(console_ns.models[EmailChannelUpdatePayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[ChannelTestResponse.__name__])
     @console_ns.response(409, "Configuration conflict", console_ns.models[ChannelConflictResponse.__name__])
@@ -421,14 +527,19 @@ class EmailChannelSavedTestApi(WorkspaceChannelResource):
             return ChannelTestResponse(
                 status=ChannelStatus(error.kind.value),
                 status_description=error.status_description,
+                provider_error_code=error.provider_error_code,
+                provider_request_id=error.provider_request_id,
             ).model_dump(mode="json")
         return ChannelTestResponse(status=ChannelStatus.CONNECTED, status_description="").model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/human-input/v2/channels/email")
-class EmailChannelCreateApi(WorkspaceChannelResource):
+class EmailChannelCreateApi(_WorkspaceEmailChannelResource):
     @console_ns.expect(console_ns.models[EmailChannelCreatePayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[EmailChannelMutationResponse.__name__])
+    @console_ns.response(
+        400, "Provider configuration rejected", console_ns.models[ChannelProviderBadRequestResponse.__name__]
+    )
     @require_admin_or_owner
     @with_current_user
     @with_current_tenant_id
@@ -443,12 +554,16 @@ class EmailChannelCreateApi(WorkspaceChannelResource):
         except ChannelAlreadyConfiguredError as error:
             raise ChannelAlreadyConfiguredHttpError() from error
         except ChannelProviderError as error:
-            raise ChannelProviderBadRequestHttpError(error.status_description) from error
+            raise ChannelProviderBadRequestHttpError(
+                error.status_description,
+                provider_error_code=error.provider_error_code,
+                provider_request_id=error.provider_request_id,
+            ) from error
         return EmailChannelMutationResponse(summary=_email_channel_summary_response(snapshot)).model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/human-input/v2/channels/email/<uuid:channel_id>")
-class EmailChannelApi(WorkspaceChannelResource):
+class EmailChannelApi(_WorkspaceEmailChannelResource):
     @console_ns.response(200, "Success", console_ns.models[EmailChannelDetailResponse.__name__])
     @require_admin_or_owner
     @with_current_tenant_id
@@ -469,6 +584,9 @@ class EmailChannelApi(WorkspaceChannelResource):
 
     @console_ns.expect(console_ns.models[EmailChannelUpdatePayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[EmailChannelMutationResponse.__name__])
+    @console_ns.response(
+        400, "Provider configuration rejected", console_ns.models[ChannelProviderBadRequestResponse.__name__]
+    )
     @console_ns.response(409, "Configuration conflict", console_ns.models[ChannelConflictResponse.__name__])
     @require_admin_or_owner
     @with_current_user
@@ -489,7 +607,11 @@ class EmailChannelApi(WorkspaceChannelResource):
         except ProviderConfigurationUpdatedError as error:
             raise ChannelProviderConfigurationUpdatedHttpError() from error
         except ChannelProviderError as error:
-            raise ChannelProviderBadRequestHttpError(error.status_description) from error
+            raise ChannelProviderBadRequestHttpError(
+                error.status_description,
+                provider_error_code=error.provider_error_code,
+                provider_request_id=error.provider_request_id,
+            ) from error
         return EmailChannelMutationResponse(summary=_email_channel_summary_response(snapshot)).model_dump(mode="json")
 
     @console_ns.doc(params=query_params_from_model(ChannelDeleteQuery))
@@ -524,11 +646,8 @@ class IMChannelTestApi(WorkspaceChannelResource):
         request_body = IMChannelTestPayload.model_validate(console_ns.payload or {})
         try:
             _workspace_im_channel_service(tenant_id, current_user).test(request_body.credentials.to_owner_credentials())
-        except ChannelProviderError as error:
-            return ChannelTestResponse(
-                status=ChannelStatus(error.kind.value),
-                status_description=error.status_description,
-            ).model_dump(mode="json")
+        except (ChannelProviderError, IMProviderError) as error:
+            return _provider_failure_response(error).model_dump(mode="json")
         return ChannelTestResponse(
             status=ChannelStatus.CONNECTED,
             status_description="",
@@ -539,7 +658,11 @@ class IMChannelTestApi(WorkspaceChannelResource):
 class IMChannelSavedTestApi(WorkspaceChannelResource):
     @console_ns.expect(console_ns.models[IMChannelUpdatePayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[ChannelTestResponse.__name__])
-    @console_ns.response(400, "The test provider must match the saved IM Channel.")
+    @console_ns.response(
+        400,
+        "The test provider must match the saved IM Channel.",
+        console_ns.models[ChannelProviderBadRequestResponse.__name__],
+    )
     @console_ns.response(409, "Configuration conflict", console_ns.models[ChannelConflictResponse.__name__])
     @require_admin_or_owner
     @with_current_user
@@ -559,11 +682,8 @@ class IMChannelSavedTestApi(WorkspaceChannelResource):
             raise ChannelProviderConfigurationUpdatedHttpError() from error
         except ReplacementRequiredError as error:
             raise ChannelProviderBadRequestHttpError("The test provider must match the saved IM Channel.") from error
-        except ChannelProviderError as error:
-            return ChannelTestResponse(
-                status=ChannelStatus(error.kind.value),
-                status_description=error.status_description,
-            ).model_dump(mode="json")
+        except (ChannelProviderError, IMProviderError) as error:
+            return _provider_failure_response(error).model_dump(mode="json")
         return ChannelTestResponse(status=ChannelStatus.CONNECTED, status_description="").model_dump(mode="json")
 
 
@@ -571,6 +691,9 @@ class IMChannelSavedTestApi(WorkspaceChannelResource):
 class IMChannelCreateApi(WorkspaceChannelResource):
     @console_ns.expect(console_ns.models[IMChannelCreatePayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[IMChannelMutationResponse.__name__])
+    @console_ns.response(
+        400, "Provider configuration rejected", console_ns.models[ChannelProviderBadRequestResponse.__name__]
+    )
     @require_admin_or_owner
     @with_current_user
     @with_current_tenant_id
@@ -582,8 +705,13 @@ class IMChannelCreateApi(WorkspaceChannelResource):
             )
         except ChannelAlreadyConfiguredError as error:
             raise ChannelAlreadyConfiguredHttpError() from error
-        except ChannelProviderError as error:
-            raise ChannelProviderBadRequestHttpError(error.status_description) from error
+        except (ChannelProviderError, IMProviderError) as error:
+            failure = _provider_failure_response(error)
+            raise ChannelProviderBadRequestHttpError(
+                failure.status_description,
+                provider_error_code=failure.provider_error_code,
+                provider_request_id=failure.provider_request_id,
+            ) from error
         return IMChannelMutationResponse(summary=_im_channel_summary_response(snapshot)).model_dump(mode="json")
 
 
@@ -605,6 +733,9 @@ class IMChannelApi(WorkspaceChannelResource):
 
     @console_ns.expect(console_ns.models[IMChannelUpdatePayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[IMChannelMutationResponse.__name__])
+    @console_ns.response(
+        400, "Provider configuration rejected", console_ns.models[ChannelProviderBadRequestResponse.__name__]
+    )
     @console_ns.response(409, "Configuration conflict", console_ns.models[ChannelConflictResponse.__name__])
     @require_admin_or_owner
     @with_current_user
@@ -624,8 +755,13 @@ class IMChannelApi(WorkspaceChannelResource):
             raise ChannelReplacementRequiredHttpError() from error
         except ProviderConfigurationUpdatedError as error:
             raise ChannelProviderConfigurationUpdatedHttpError() from error
-        except ChannelProviderError as error:
-            raise ChannelProviderBadRequestHttpError(error.status_description) from error
+        except (ChannelProviderError, IMProviderError) as error:
+            failure = _provider_failure_response(error)
+            raise ChannelProviderBadRequestHttpError(
+                failure.status_description,
+                provider_error_code=failure.provider_error_code,
+                provider_request_id=failure.provider_request_id,
+            ) from error
         return IMChannelMutationResponse(summary=_im_channel_summary_response(snapshot)).model_dump(mode="json")
 
     @console_ns.doc(params=query_params_from_model(ChannelDeleteQuery))
@@ -653,6 +789,9 @@ class IMChannelApi(WorkspaceChannelResource):
 class IMChannelReplacementApi(WorkspaceChannelResource):
     @console_ns.expect(console_ns.models[IMChannelReplacementPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[IMChannelMutationResponse.__name__])
+    @console_ns.response(
+        400, "Provider configuration rejected", console_ns.models[ChannelProviderBadRequestResponse.__name__]
+    )
     @console_ns.response(409, "Configuration conflict", console_ns.models[ChannelConflictResponse.__name__])
     @require_admin_or_owner
     @with_current_user
@@ -670,8 +809,13 @@ class IMChannelReplacementApi(WorkspaceChannelResource):
             raise ChannelNotFoundHttpError() from error
         except ProviderConfigurationUpdatedError as error:
             raise ChannelProviderConfigurationUpdatedHttpError() from error
-        except ChannelProviderError as error:
-            raise ChannelProviderBadRequestHttpError(error.status_description) from error
+        except (ChannelProviderError, IMProviderError) as error:
+            failure = _provider_failure_response(error)
+            raise ChannelProviderBadRequestHttpError(
+                failure.status_description,
+                provider_error_code=failure.provider_error_code,
+                provider_request_id=failure.provider_request_id,
+            ) from error
         return IMChannelMutationResponse(summary=_im_channel_summary_response(snapshot)).model_dump(mode="json")
 
 
