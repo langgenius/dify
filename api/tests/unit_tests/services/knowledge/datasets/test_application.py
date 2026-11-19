@@ -92,7 +92,9 @@ def test_list_applies_visibility_and_reports_model_availability(
     }
     operations.embedding_models.return_value = set()
     result = service.list_datasets(CONTEXT, DatasetListFilter(ids=["a"]))
-    operations.list_datasets.assert_called_once_with(CONTEXT, DatasetListFilter(ids=["a"]), ["a"])
+    operations.list_datasets.assert_called_once_with(
+        CONTEXT, DatasetListFilter(ids=["a"]), ["a"], embedding_models=set()
+    )
     assert result["data"][0]["embedding_available"] is False
     assert result["data"][0]["permission_keys"] == ["dataset.edit"]
     assert result["data"][1]["embedding_available"] is True

@@ -1,5 +1,6 @@
 'use client'
 
+import type { DatasetAvailabilityFilter } from './availability'
 import { useSuspenseQuery } from '@tanstack/react-query'
 // Libraries
 import { useBoolean } from 'ahooks'
@@ -32,6 +33,7 @@ import { hasPermission } from '@/utils/permission'
 // Components
 import FilterEmptyState from '../../base/filter-empty-state'
 import { creatorIdsParser } from '../creator-filter-query'
+import { DEFAULT_DATASET_AVAILABILITY } from './availability'
 import Datasets from './datasets'
 import DatasetFirstEmptyState from './first-empty-state'
 import DatasetListHeader from './header'
@@ -53,6 +55,9 @@ function LegacyList() {
   const debouncedKeywords = useDebouncedValue(keywords, 500)
   const searchKeywords = keywords ? debouncedKeywords : ''
   const [tagFilterValue, setTagFilterValue] = useState<string[]>([])
+  const [availabilityFilterValue, setAvailabilityFilterValue] = useState<DatasetAvailabilityFilter>(
+    DEFAULT_DATASET_AVAILABILITY,
+  )
   const [creatorIDs, setCreatorIDs] = useQueryState('creator_ids', creatorIdsParser)
   const debouncedTagIDs = useDebouncedValue(tagFilterValue, 500)
   const tagIDs = tagFilterValue.length > 0 ? debouncedTagIDs : []
@@ -64,6 +69,7 @@ function LegacyList() {
     'dataset.external.connect',
   )
   const datasetListQuery = useDatasetList({
+    availability: availabilityFilterValue,
     creatorIds: creatorIDs,
     includeAll,
     keyword: searchKeywords,
@@ -77,7 +83,8 @@ function LegacyList() {
     creatorIDs.length > 0 ||
     keywords.trim().length > 0 ||
     searchKeywords.trim().length > 0 ||
-    includeAll
+    includeAll ||
+    availabilityFilterValue !== DEFAULT_DATASET_AVAILABILITY
   const showEmptyDataList = !hasAnyDataset && hasResolvedFirstPage && !hasActiveFilters
   const showFilteredEmptyState = !hasAnyDataset && hasResolvedFirstPage && hasActiveFilters
   const filtersHaveSettled =
@@ -130,6 +137,7 @@ function LegacyList() {
   return (
     <div className="relative flex grow flex-col overflow-y-auto bg-background-body">
       <DatasetListHeader
+        availabilityFilterValue={availabilityFilterValue}
         canConnectExternalDataset={canConnectExternalDataset}
         canCreateDataset={canCreateDataset}
         creatorFilterValue={creatorIDs}
@@ -137,6 +145,7 @@ function LegacyList() {
         isCurrentWorkspaceOwner={isCurrentWorkspaceOwner}
         keywords={keywords}
         tagFilterValue={tagFilterValue}
+        onAvailabilityChange={setAvailabilityFilterValue}
         onCreateDataset={() => push('/datasets/create')}
         onCreateFromPipeline={() => push('/datasets/create-from-pipeline')}
         onConnectDataset={() => push('/datasets/connect')}

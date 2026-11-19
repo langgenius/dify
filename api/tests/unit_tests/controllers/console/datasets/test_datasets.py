@@ -61,6 +61,7 @@ from services.knowledge.datasets.upgrades import (
     KnowledgeFSUpgradeUnavailableError,
     KnowledgeUpgradeApplicationService,
 )
+from services.knowledge.entities.datasets import DatasetAvailabilityFilter
 from services.knowledge.entities.indexing_estimate import (
     NotionEstimateSource,
     UploadFileEstimateSource,
@@ -160,6 +161,7 @@ def test_scoped_reads_pass_context_and_map_access_errors(
 
 
 def test_list_parses_repeated_filters_and_serializes_page(app: Flask, datasets: MagicMock) -> None:
+    """Given valid list parameters, forward typed filters and serialize the returned page."""
     datasets.list_datasets.return_value = {
         "data": list[object](),
         "page": 2,
@@ -168,7 +170,8 @@ def test_list_parses_repeated_filters_and_serializes_page(app: Flask, datasets: 
         "has_more": False,
     }
     with app.test_request_context(
-        "/?page=2&limit=3&ids=a&ids=b&tag_ids=x&tag_ids=y&creator_ids=c&include_all=true&keyword=term"
+        "/?page=2&limit=3&ids=a&ids=b&tag_ids=x&tag_ids=y&creator_ids=c"
+        "&include_all=true&keyword=term&availability=unavailable"
     ):
         result, status = unwrap(DatasetListApi.get)(DatasetListApi(), CONTEXT)
     datasets.list_datasets.assert_called_once_with(
@@ -181,6 +184,7 @@ def test_list_parses_repeated_filters_and_serializes_page(app: Flask, datasets: 
             creator_ids=["c"],
             include_all=True,
             keyword="term",
+            availability=DatasetAvailabilityFilter.UNAVAILABLE,
         ),
     )
     assert status == 200

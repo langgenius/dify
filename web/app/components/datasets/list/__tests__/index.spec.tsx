@@ -211,6 +211,89 @@ it('filters by real tag IDs and restores the list after clearing tags', async ()
   expect(await screen.findByRole('link', { name: 'Test Dataset' })).toBeInTheDocument()
 })
 
+it('filters knowledge cards by availability status', async () => {
+  api.datasets.mockImplementation(async ({ query }: Parameters<typeof api.datasets>[0] = {}) =>
+    datasetPage(query?.availability ? [] : [createDatasetFixture()]),
+  )
+  const { user } = setup()
+  await screen.findByRole('link', { name: 'Test Dataset' })
+  expect(api.datasets.mock.calls.at(-1)?.[0]?.query).not.toHaveProperty('availability')
+
+  await user.click(screen.getByRole('button', { name: 'dataset.availabilityFilter.label' }))
+  await user.click(await screen.findByRole('menuitemradio', { name: 'dataset.unavailable' }))
+
+  await waitFor(() =>
+    expect(api.datasets).toHaveBeenLastCalledWith({
+      query: expect.objectContaining({ availability: 'unavailable', page: 1 }),
+    }),
+  )
+  await waitFor(() =>
+    expect(screen.getByRole('status')).toHaveTextContent('dataset.filterEmpty.noKnowledge'),
+  )
+  expect(screen.queryByText('dataset.firstEmpty.title')).not.toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'dataset.unavailable' }))
+  await user.click(
+    await screen.findByRole('menuitemradio', { name: 'dataset.availabilityFilter.all' }),
+  )
+
+  expect(await screen.findByRole('link', { name: 'Test Dataset' })).toBeInTheDocument()
+  expect(
+    await screen.findByRole('button', { name: 'dataset.availabilityFilter.label' }),
+  ).toBeInTheDocument()
+})
+
+it('restarts at the first page when the availability filter changes', async () => {
+  api.datasets.mockImplementation(async ({ query }: Parameters<typeof api.datasets>[0] = {}) =>
+    datasetPage(undefined, query?.page ?? 1, !query?.availability),
+  )
+  const { user } = setup()
+  await screen.findByRole('link', { name: 'Test Dataset' })
+
+  intersect()
+  await waitFor(() =>
+    expect(api.datasets).toHaveBeenCalledWith({
+      query: expect.objectContaining({ page: 2 }),
+    }),
+  )
+
+  await user.click(screen.getByRole('button', { name: 'dataset.availabilityFilter.label' }))
+  await user.click(
+    await screen.findByRole('menuitemradio', { name: 'dataset.availabilityFilter.available' }),
+  )
+
+  await waitFor(() =>
+    expect(api.datasets).toHaveBeenLastCalledWith({
+      query: expect.objectContaining({ availability: 'available', page: 1 }),
+    }),
+  )
+})
+
+it('combines the availability filter with keyword search and tag filters', async () => {
+  const { user } = setup()
+  await screen.findByRole('link', { name: 'Test Dataset' })
+
+  await user.type(screen.getByRole('searchbox'), 'handbook')
+  await user.click(screen.getByRole('combobox', { name: 'common.tag.placeholder' }))
+  await user.click(await screen.findByRole('option', { name: 'Research' }))
+  await user.keyboard('{Escape}')
+  await user.click(screen.getByRole('button', { name: 'dataset.availabilityFilter.label' }))
+  await user.click(
+    await screen.findByRole('menuitemradio', { name: 'dataset.availabilityFilter.available' }),
+  )
+
+  await waitFor(() =>
+    expect(api.datasets).toHaveBeenLastCalledWith({
+      query: expect.objectContaining({
+        availability: 'available',
+        keyword: 'handbook',
+        page: 1,
+        tag_ids: ['tag-1'],
+      }),
+    }),
+  )
+})
+
 it('opens real tag management from the filter and closes it', async () => {
   const { user } = setup()
   await user.click(screen.getByRole('combobox', { name: 'common.tag.placeholder' }))

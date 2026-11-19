@@ -1,5 +1,6 @@
 'use client'
 
+import type { DatasetAvailabilityFilter } from './availability'
 import { Button } from '@langgenius/dify-ui/button'
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useTranslation } from 'react-i18next'
@@ -11,8 +12,10 @@ import {
   useStepByStepTourControlledMenu,
 } from '@/app/components/step-by-step-tour/menu'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
+import AvailabilityFilter from './availability-filter'
 
 type Props = {
+  availabilityFilterValue: DatasetAvailabilityFilter
   canConnectExternalDataset: boolean
   canCreateDataset: boolean
   creatorFilterValue: string[]
@@ -24,6 +27,7 @@ type Props = {
   onCreateFromPipeline: () => void
   onConnectDataset: () => void
   onCreatorsChange: (value: string[]) => void
+  onAvailabilityChange: (value: DatasetAvailabilityFilter) => void
   onIncludeAllChange: () => void
   onKeywordsChange: (value: string) => void
   onOpenTagManagement: () => void
@@ -34,6 +38,7 @@ type Props = {
 }
 
 const DatasetListHeader = ({
+  availabilityFilterValue,
   canConnectExternalDataset,
   canCreateDataset,
   creatorFilterValue,
@@ -45,6 +50,7 @@ const DatasetListHeader = ({
   onCreateFromPipeline,
   onConnectDataset,
   onCreatorsChange,
+  onAvailabilityChange,
   onIncludeAllChange,
   onKeywordsChange,
   onOpenTagManagement,
@@ -71,6 +77,7 @@ const DatasetListHeader = ({
           triggerClassName="min-w-0"
         />
         <CreatorFilter value={creatorFilterValue} onChange={onCreatorsChange} />
+        <AvailabilityFilter value={availabilityFilterValue} onChange={onAvailabilityChange} />
         <SearchInput
           className="w-full min-w-0 sm:w-50"
           value={keywords}

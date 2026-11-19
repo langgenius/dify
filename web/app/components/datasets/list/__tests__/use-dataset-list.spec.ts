@@ -1,3 +1,4 @@
+import type { DatasetAvailabilityFilter } from '../availability'
 import { act, waitFor } from '@testing-library/react'
 import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { useDatasetList, useInvalidDatasetList } from '../use-dataset-list'
@@ -32,6 +33,7 @@ describe('useDatasetList', () => {
   it('requests the filtered dataset pages and continues while more pages exist', async () => {
     const { result } = renderHookWithConsoleQuery(() =>
       useDatasetList({
+        availability: 'all',
         creatorIds: ['creator-1', 'creator-2'],
         includeAll: true,
         keyword: 'handbook',
@@ -60,7 +62,13 @@ describe('useDatasetList', () => {
 
   it('omits empty optional filters', async () => {
     renderHookWithConsoleQuery(() =>
-      useDatasetList({ creatorIds: [], includeAll: false, keyword: '', tagIds: [] }),
+      useDatasetList({
+        availability: 'all',
+        creatorIds: [],
+        includeAll: false,
+        keyword: '',
+        tagIds: [],
+      }),
     )
 
     await waitFor(() =>
@@ -73,12 +81,50 @@ describe('useDatasetList', () => {
   it('refreshes the mounted dataset list when invalidated', async () => {
     const { result } = renderHookWithConsoleQuery(() => ({
       invalidate: useInvalidDatasetList(),
-      list: useDatasetList({ creatorIds: [], includeAll: false, keyword: 'handbook', tagIds: [] }),
+      list: useDatasetList({
+        availability: 'all',
+        creatorIds: [],
+        includeAll: false,
+        keyword: 'handbook',
+        tagIds: [],
+      }),
     }))
     await waitFor(() => expect(result.current.list.isSuccess).toBe(true))
 
     act(() => result.current.invalidate())
 
     await waitFor(() => expect(listDatasets).toHaveBeenCalledTimes(2))
+  })
+
+  it('requests the availability filter and restarts at the first page when it changes', async () => {
+    const { result, rerender } = renderHookWithConsoleQuery(
+      ({ availability }: { availability: DatasetAvailabilityFilter }) =>
+        useDatasetList({
+          availability,
+          creatorIds: [],
+          includeAll: false,
+          keyword: '',
+          tagIds: [],
+        }),
+      { initialProps: { availability: 'available' } },
+    )
+
+    await waitFor(() =>
+      expect(listDatasets).toHaveBeenLastCalledWith({
+        query: { availability: 'available', include_all: false, limit: 30, page: 1 },
+      }),
+    )
+    await act(() => result.current.fetchNextPage())
+    expect(listDatasets).toHaveBeenLastCalledWith({
+      query: expect.objectContaining({ page: 2 }),
+    })
+
+    rerender({ availability: 'unavailable' })
+
+    await waitFor(() =>
+      expect(listDatasets).toHaveBeenLastCalledWith({
+        query: { availability: 'unavailable', include_all: false, limit: 30, page: 1 },
+      }),
+    )
   })
 })
