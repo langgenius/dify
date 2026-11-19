@@ -11,7 +11,7 @@ from graphon.enums import WorkflowExecutionStatus
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from repositories.run_job_store import RedisRunJobStore
-from services.run_job_contracts import JobFailure, JobIds, JobOwner, JobRecord, JobStatus
+from services.run_job_contracts import JobEnding, JobFailure, JobIds, JobOwner, JobRecord, JobStatus
 from services.run_job_reader import RUN_STATUS_TO_JOB_STATUS, read_to_end
 from tests.unit_tests.services.run_job_fakes import InMemoryRedis, RecordingJobStopper
 
@@ -489,6 +489,43 @@ class IdsFailOnceStore(RedisRunJobStore):
             self.failures_left -= 1
             raise ConnectionError("redis blip")
         super().record_ids(job_id, ids)
+
+
+class SettleFailsOnceStore(RedisRunJobStore):
+    def __init__(self, redis: InMemoryRedis) -> None:
+        super().__init__(redis_client=redis)
+        self.failures_left = 1
+
+    @override
+    def settle(self, job_id: str, ending: JobEnding) -> None:
+        if self.failures_left > 0:
+            self.failures_left -= 1
+            raise ConnectionError("redis blip")
+        super().settle(job_id, ending)
+
+
+def test_a_chat_ending_whose_save_failed_is_saved_when_the_stream_ends(
+    redis: InMemoryRedis, stopper: RecordingJobStopper
+) -> None:
+    store = SettleFailsOnceStore(redis)
+    _open(store, AppMode.CHAT)
+    end = _frame(StreamEvent.MESSAGE_END, task_id="task-1", id="msg-1", message_id="msg-1", metadata={})
+
+    record = _read(store, stopper, [end, PING])
+
+    assert (record.status, record.failure) == (JobStatus.SUCCEEDED, None)
+
+
+def test_a_workflow_ending_whose_save_failed_is_saved_when_the_stream_ends(
+    redis: InMemoryRedis, stopper: RecordingJobStopper
+) -> None:
+    store = SettleFailsOnceStore(redis)
+    _open(store, AppMode.WORKFLOW)
+    frames = [_frame(StreamEvent.WORKFLOW_STARTED, **IDS, data={}), _finished(WorkflowExecutionStatus.FAILED, "boom")]
+
+    record = _read(store, stopper, frames)
+
+    assert (record.status, record.error, record.failure) == (JobStatus.FAILED, "boom", None)
 
 
 def test_ids_whose_save_failed_are_saved_by_the_next_frame(redis: InMemoryRedis, stopper: RecordingJobStopper) -> None:
