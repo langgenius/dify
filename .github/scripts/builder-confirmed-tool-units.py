@@ -28,7 +28,9 @@ FILES = [
     "api/tests/unit_tests/services/dify_builder/test_native_agent_binding.py",
     "api/tests/unit_tests/services/dify_builder/test_node_policy.py",
     "api/tests/unit_tests/services/workflow_runtime/test_agent_binding.py",
-    "api/tests/unit_tests/controllers/common/test_agent_access.py",
+    # Main #46111 deleted controllers/common/agent_access.py; the Builder access
+    # filter and its tests moved to services/agent/access_service.py.
+    "api/tests/unit_tests/services/agent/test_access_service.py",
     "api/tests/unit_tests/core/workflow/generator/test_tool_catalogue.py",
     "api/tests/unit_tests/services/tools/test_api_tool_catalogue.py",
     "api/tests/unit_tests/services/dify_builder/test_api_tool_output_context.py",
@@ -3332,6 +3334,53 @@ for module, functions in {
     },
 }.items():
     a4_expected.setdefault(module, {}).update(functions)
+# 2026-11-19 main merge (594eac5033): main's cases in already-guarded owners, main cases the
+# merge ported into Builder's workflow_runtime owners, and the merge's single-write receipt
+# variant. Main #45743 replaced the final-delete collection case; follow main, keep the rest.
+workspace_module = "tests.unit_tests.services.agent.test_workspace_service"
+del a4_expected[workspace_module]["test_workspace_collection_final_delete_failure_propagates"]
+for module, functions in {
+    "tests.unit_tests.services.agent.test_workspace_service": {
+        "test_collection_commit_failure_preserves_ledgers_and_replay_converges": 2,
+        "test_collection_leaves_active_and_foreign_resources_untouched": 4,
+    },
+    "tests.unit_tests.services.test_agent_tool_inner_service": {
+        "test_external_media_link_observations_preserve_original_urls": 4,
+        "test_file_message_observations_preserve_copyable_locators": 14,
+        "test_file_message_without_file_metadata_preserves_default_formatter_output": 1,
+        "test_media_tool_observations_expose_persisted_canonical_handles": 3,
+        "test_media_tool_observations_read_tool_files_committed_in_separate_transaction_under_pinned_snapshot": 1,
+        "test_non_http_media_links_preserve_existing_observations": 2,
+    },
+    "tests.unit_tests.services.workflow_runtime.test_workflow_generator": {
+        "test_generate_marks_agent_evaluation_trace": 1,
+        "test_resumed_end_user_can_output_accepted_hitl_files": 4,
+        "test_worker_publishes_a_preparation_failure_to_the_waiting_caller": 1,
+    },
+    "tests.unit_tests.core.repositories.test_sqlalchemy_workflow_node_execution_repository": {
+        "test_agent_create_receipt_survives_stale_terminal_and_offload_write": 4,
+        "test_save_update_reads_only_the_stored_process_data": 1,
+        "test_save_with_execution_data_offloads_values_that_need_truncation": 2,
+        "test_save_with_execution_data_stores_what_save_then_save_execution_data_stores": 8,
+        "test_save_with_execution_data_writes_a_finished_node_once": 1,
+    },
+    "tests.unit_tests.services.workflow_runtime.test_agent_node": {
+        "test_agent_node_cancelled_run_closes_unfinished_tool_calls": 2,
+        "test_agent_node_captures_trace_only_for_evaluation_execution": 1,
+        "test_agent_node_default_value_strategy_suppresses_tool_activity_and_stream_chunks": 1,
+        "test_agent_node_dispatch_maps_agent_log_to_legacy_node_run_event": 1,
+        "test_agent_node_non_stream_run_consumes_tool_events_without_logs": 1,
+        "test_agent_node_output_routes_suppress_tool_activity_and_stream_chunks": 1,
+        "test_agent_node_projects_early_started_running_and_succeeded_tool_activity": 1,
+        "test_agent_node_projects_tool_activity_into_agent_log_events": 1,
+        "test_agent_node_stream_end_without_terminal_fails_unfinished_tool_calls": 2,
+        "test_agent_node_stream_end_without_terminal_run_fails_with_stream_exhausted_error": 1,
+        "test_agent_node_structured_run_suppresses_tool_activity_and_stream_chunks": 1,
+        "test_agent_node_transport_failure_closes_unfinished_tool_calls": 2,
+        "test_confirmed_waiting_keeps_tool_activity_open_until_the_resumed_stream_finishes_it": 1,
+    },
+}.items():
+    a4_expected[module].update(functions)
 for module, expected in {**a3_expected, **a4_expected}.items():
     actual = {}
     for classname, name in identities:

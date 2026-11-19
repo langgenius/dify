@@ -797,7 +797,7 @@ jobs:
           EXPECTED.update({'tests.local.dify_agent.runtime.test_native_continuation': {'test_stage_checkpoint_preserves_reason_without_faking_tool_history': 3, 'test_real_native_deferral_checkpoint_and_resume_without_reissuing_call': 2, 'test_denied_or_changed_native_arguments_never_become_model_feedback': 1, 'test_direct_runner_rejects_marked_test_before_module_loading': 1, 'test_scheduler_rejects_native_before_persistence': 1, 'test_runner_commits_wait_instead_of_success_and_persistence_failure_is_not_resumable': 2, 'test_scheduler_restores_only_matching_pinned_snapshot_before_scheduling': 1, 'test_scheduler_resume_keeps_run_and_claim_after_lost_acknowledgement': 2, 'test_api_owner_denial_stops_waiting_run_instead_of_returning_model_feedback': 1, 'test_continuation_cannot_relabel_pending_approval_as_external_result': 1, 'test_duplicate_before_start_cas_does_not_block_unrelated_admission_or_shutdown': 1, 'test_private_protocol_move_preserves_runtime_capture_and_wire_contract': 1}, 'tests.local.dify_agent.protocol.test_native_checkpoint_readback': {'test_read_request_preserves_backend_generation_and_selected_event': 1, 'test_noncanonical_or_zero_event_selectors_refuse': 11, 'test_request_does_not_coerce_or_accept_caller_proof': 4, 'test_checkpoint_data_models_remain_runtime_compatible': 1}, 'tests.local.dify_agent.server.test_native_checkpoint_readback': {'test_authenticated_real_app_reader_preserves_selected_private_bytes': 1, 'test_real_app_authentication_precedes_any_private_store_read': 2, 'test_anonymous_migration_keeps_private_reader_absent': 1, 'test_request_bounds_and_validation_do_not_echo_body_or_read_store': 2, 'test_storage_reply_cannot_override_selected_run_wait_or_generation': 6, 'test_private_checkpoint_must_match_complete_selected_owner': 5, 'test_real_selected_event_must_match_checkpoint_without_decode_leaks': 8, 'test_missing_or_oversized_storage_refuses_without_checkpoint_decode': 3, 'test_private_wait_does_not_coerce_corrupt_internal_state': 3, 'test_embedded_event_id_cannot_be_replaced_by_selected_stream_id': 1, 'test_private_route_normalizes_store_failures_without_history': 3}, 'tests.local.dify_agent.storage.test_native_continuation_store': {'test_mismatched_waiting_event_rejected_before_redis': 1, 'test_persistence_failure_cannot_publish_waiting': 1, 'test_real_redis_atomic_claim_restart_stale_generation_and_cancellation': 1, 'test_real_redis_atomic_read_race_never_mixes_wait_and_execution_generation': 2, 'test_real_redis_lost_wait_ack_discovers_exact_committed_event_without_republish': 1, 'test_real_redis_result_store_owner_bound_and_restart': 1, 'test_real_redis_selected_checkpoint_ack_and_fresh_process_read': 2, 'test_real_redis_selected_checkpoint_refuses_actual_changed_or_unavailable_state': 10, 'test_real_redis_initial_identity_persists_before_prepare_and_private_read_survives_restart': 1}})
           EXPECTED.update({'tests.local.dify_agent.protocol.test_initial_preparation': {'test_parent_is_pure_canonical_and_marked_request_requires_exact_parent': 1, 'test_ordinary_serialization_remains_old_server_compatible': 1, 'test_digest_covers_only_executable_material_and_callback_has_no_authority_fields': 1, 'test_sdk_identity_read_is_bounded_exact_and_once': 5, 'test_api_prepare_adapter_is_bounded_once_and_checks_digest': 5, 'test_async_sdk_identity_stream_has_same_exact_owner_and_byte_cap': 3, 'test_protected_config_adapter_checks_current_parent_digest_and_actual_byte_cap': 5}, 'tests.local.dify_agent.server.test_initial_identity': {'test_identity_is_private_persisted_metadata_and_not_public_response': 1, 'test_bearer_precedes_body_and_store': 3, 'test_oversize_and_authority_fields_stop_before_store': 1, 'test_scheduler_persists_exact_actual_identity_before_callback_and_schedules_zero_on_denial': 1}})
           EXPECTED.update({'tests.local.dify_agent.adapters.native_testing.test_producers': {'test_direct_producers_preserve_wire_and_results_on_strict_routes': 3, 'test_policy_preparation_and_control_callbacks_all_use_bound_strict_transport': 1, 'test_llm_layer_strict_transport_keeps_stream_usage_and_checks_actual_deps_run': 1}, 'tests.local.dify_agent.adapters.native_testing.test_transport': {'test_request_stream_and_prebuilt_send_ignore_all_body_markers': 1, 'test_missing_binding_and_detached_task_after_owner_exit_refuse_locally': 1, 'test_destination_method_and_signed_url_do_not_acquire_authority': 10, 'test_supplied_auth_selection_or_legacy_headers_refuse': 5, 'test_redirect_never_forwards_authority_even_with_follow_redirects_requested': 1, 'test_cached_prebuilt_request_uses_current_binding_but_caller_mismatch_refuses': 1, 'test_concurrent_scopes_nested_misuse_exception_and_cancellation_do_not_leak': 1, 'test_daemon_transport_refuses_native_without_effect_markers_and_after_exit': 1, 'test_inherited_send_waiting_for_body_cannot_dispatch_after_owner_exit': 1}, 'tests.local.dify_agent.layers.dify_plugin.test_layers': {'test_model_assembly_reads_config_reference_and_borrows_shared_client': 1,
-              'test_native_plugin_tool_converts_file_inputs': 2,
+              'test_native_plugin_tool_converts_file_inputs': 4,
               'test_native_plugin_tool_deduplicates_json_output_that_arrived_as_equivalent_text': 6,
               'test_native_plugin_tool_keeps_json_output_that_differs_from_the_text': 1,
               'test_native_plugin_tool_prepares_schema_merges_hidden_parameters_and_decodes_stream': 1,
@@ -825,6 +825,7 @@ jobs:
           for module, functions in {'tests.local.dify_agent.client.test_run_recovery': {'test_lookup_after_lost_create_ack_is_one_read_post_with_no_create_retry': 2,
                                                                'test_lookup_errors_never_fall_back_to_create': 3},
            'tests.local.dify_agent.protocol.test_run_recovery': {'test_fingerprint_binds_metadata_and_snapshot_but_not_key_or_object_order': 1,
+                                                                 'test_fingerprint_keeps_the_stored_admission_encoding_for_non_ascii_requests': 1,
                                                                  'test_lookup_refuses_unbounded_or_configuration_payload': 5},
            'tests.local.dify_agent.runtime.test_confirmed_continuation_owner': {'test_confirmed_profile_requires_bounded_create_identity': 1,
                                                                                 'test_confirmed_profile_requires_create_recovery_capability_before_post': 1,
@@ -856,7 +857,7 @@ jobs:
                                                                'test_lookup_rejects_oversized_and_malformed_private_bodies_with_bounded_errors': 1,
                                                                'test_lookup_rejects_private_extra_input_without_echo_or_store_access': 1},
            'tests.local.dify_agent.storage.test_run_recovery': {'test_real_redis_keyed_claim_lookup_conflict_expiry_and_corrupt_state': 1,
-                                                                'test_real_redis_two_schedulers_and_lost_set_ack_do_not_replay': 1}}.items():
+                                                                'test_real_redis_two_schedulers_and_lost_admission_ack_do_not_replay': 1}}.items():
               EXPECTED.setdefault(module, {}).update(functions)
           # Preparation's bounded metadata wait and connection loss must never replay a callback.
           EXPECTED['tests.local.dify_agent.protocol.test_initial_preparation'].update({
@@ -1025,8 +1026,33 @@ jobs:
               "test_enterprise_inspection_requires_exact_control_plane_absence": 20,
               "test_inspection_rejects_spoofed_cross_adapter_absence": 5
           })
+          # 2026-11-19 main merge (594eac5033): main's plugin file/media cases in the shared plugin
+          # layer, and the merge's keyed native claim test, which only runs with this lane's Redis.
+          for module, functions in {
+              'tests.local.dify_agent.layers.dify_plugin.test_layers': {
+                  'test_plugin_blob_is_persisted_as_a_copyable_file_handle_without_inline_data': 1,
+                  'test_plugin_blob_upload_failures_never_stringify_file_content': 6,
+                  'test_plugin_file_message_keeps_an_existing_file_locator': 2,
+                  'test_plugin_file_observations_omit_invalid_optional_metadata': 6,
+                  'test_plugin_media_links_return_handles_without_fetching_them': 3,
+              },
+              'tests.local.dify_agent.storage.test_keyed_native_claim': {
+                  'test_real_redis_native_writes_refresh_only_their_own_admission_claim': 1,
+              },
+              # Post-merge review fixes: builder_test fingerprints bind the native fields, and native
+              # runs do not offer main's unfenced read_media / read_config_skill_md tools.
+              'tests.local.dify_agent.protocol.test_run_recovery': {
+                  'test_builder_test_fingerprint_binds_native_fields': 1,
+              },
+              'tests.local.dify_agent.runtime.test_native_tool_exposure': {
+                  'test_native_run_does_not_offer_unfenced_tools_and_a_stray_call_does_not_stop_it': 2,
+                  'test_ordinary_run_still_offers_both_tools': 2,
+                  'test_skill_tool_prompt_is_only_given_when_the_tool_is_offered': 2,
+              },
+          }.items():
+              EXPECTED.setdefault(module, {}).update(functions)
           REPORT = "builder-native-agent.xml"
-          code = pytest.main(['tests/local/dify_agent/protocol/test_confirmed_recovery.py', 'tests/local/dify_agent/runtime/test_confirmed_recovery.py', 'tests/local/dify_agent/runtime_backend/test_binding_inspection_deadline.py', 'tests/local/dify_agent/server/test_binding_inspection.py', 'tests/local/dify_agent/protocol/test_shell_job_receipt.py', 'tests/local/dify_agent/server/test_binding_job_status.py', 'tests/local/dify_agent/layers/shell/test_layer.py', 'tests/local/dify_agent/client/test_run_recovery.py', 'tests/local/dify_agent/protocol/test_run_recovery.py', 'tests/local/dify_agent/runtime/test_confirmed_continuation_owner.py', 'tests/local/dify_agent/runtime/test_native_lost_ack.py', 'tests/local/dify_agent/runtime/test_run_recovery.py', 'tests/local/dify_agent/server/test_identity_profile.py', 'tests/local/dify_agent/server/test_run_recovery.py', 'tests/local/dify_agent/storage/test_run_recovery.py', 'tests/local/dify_agent/agent_stub/server/test_runtime_admission.py', 'tests/integration/dify_agent/storage/test_active_stub_identity.py', 'tests/local/dify_agent/adapters/native_testing/test_producers.py', 'tests/local/dify_agent/adapters/native_testing/test_transport.py', 'tests/local/dify_agent/layers/dify_plugin/test_layers.py', 'tests/local/dify_agent/layers/knowledge/test_layer.py', 'tests/local/dify_agent/runtime/test_run_transport.py', 'tests/local/dify_agent/server/test_app.py', 'tests/local/dify_agent/server/test_runtime_transport.py', 'tests/local/dify_agent/protocol/test_initial_preparation.py', 'tests/local/dify_agent/server/test_initial_identity.py', 'tests/local/dify_agent/protocol/test_native_testing.py', 'tests/local/dify_agent/runtime/test_native_continuation.py', 'tests/local/dify_agent/storage/test_native_continuation_store.py', 'tests/local/dify_agent/runtime/test_native_effects.py', 'tests/local/dify_agent/protocol/test_native_checkpoint_readback.py', 'tests/local/dify_agent/server/test_native_checkpoint_readback.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-native-agent.xml'])
+          code = pytest.main(['tests/local/dify_agent/protocol/test_confirmed_recovery.py', 'tests/local/dify_agent/runtime/test_confirmed_recovery.py', 'tests/local/dify_agent/runtime_backend/test_binding_inspection_deadline.py', 'tests/local/dify_agent/server/test_binding_inspection.py', 'tests/local/dify_agent/protocol/test_shell_job_receipt.py', 'tests/local/dify_agent/server/test_binding_job_status.py', 'tests/local/dify_agent/layers/shell/test_layer.py', 'tests/local/dify_agent/client/test_run_recovery.py', 'tests/local/dify_agent/protocol/test_run_recovery.py', 'tests/local/dify_agent/runtime/test_confirmed_continuation_owner.py', 'tests/local/dify_agent/runtime/test_native_lost_ack.py', 'tests/local/dify_agent/runtime/test_run_recovery.py', 'tests/local/dify_agent/server/test_identity_profile.py', 'tests/local/dify_agent/server/test_run_recovery.py', 'tests/local/dify_agent/storage/test_run_recovery.py', 'tests/local/dify_agent/storage/test_keyed_native_claim.py', 'tests/local/dify_agent/agent_stub/server/test_runtime_admission.py', 'tests/integration/dify_agent/storage/test_active_stub_identity.py', 'tests/local/dify_agent/adapters/native_testing/test_producers.py', 'tests/local/dify_agent/adapters/native_testing/test_transport.py', 'tests/local/dify_agent/layers/dify_plugin/test_layers.py', 'tests/local/dify_agent/layers/knowledge/test_layer.py', 'tests/local/dify_agent/runtime/test_run_transport.py', 'tests/local/dify_agent/server/test_app.py', 'tests/local/dify_agent/server/test_runtime_transport.py', 'tests/local/dify_agent/protocol/test_initial_preparation.py', 'tests/local/dify_agent/server/test_initial_identity.py', 'tests/local/dify_agent/protocol/test_native_testing.py', 'tests/local/dify_agent/runtime/test_native_continuation.py', 'tests/local/dify_agent/storage/test_native_continuation_store.py', 'tests/local/dify_agent/runtime/test_native_effects.py', 'tests/local/dify_agent/runtime/test_native_tool_exposure.py', 'tests/local/dify_agent/protocol/test_native_checkpoint_readback.py', 'tests/local/dify_agent/server/test_native_checkpoint_readback.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-native-agent.xml'])
           problems = []
           identities = set()
           actual = {module: Counter() for module in EXPECTED}
@@ -1130,6 +1156,58 @@ jobs:
                                                       'test_real_lifespan_accepts_prefixed_inner_api_alongside_ordinary_credentials': 1,
                                                       'test_create_app_authenticates_control_plane_routes': 6}}.items():
               EXPECTED.setdefault(module, {}).update(functions)
+          # 2026-11-19 main merge (594eac5033): main's idempotent run admission (#44318), read_media
+          # and client reconnect cases. Main renamed one legacy-record case; follow the rename.
+          for module, removed in {
+              'tests.local.dify_agent.storage.test_redis_run_store': (
+                  'test_get_run_accepts_legacy_record_without_error_type',
+              ),
+          }.items():
+              for function in removed:
+                  del EXPECTED[module][function]
+          for module, functions in {
+              'tests.local.dify_agent.client.test_client': {
+                  'test_async_home_snapshot_client_parses_null_snapshot_ref': 1,
+                  'test_async_stream_events_resets_reconnect_budget_after_each_delivered_event': 1,
+                  'test_async_stream_events_still_bounds_consecutive_reconnects_after_progress': 1,
+                  'test_stream_events_resets_reconnect_budget_after_each_delivered_event': 1,
+                  'test_stream_events_still_bounds_consecutive_reconnects_after_progress': 1,
+                  'test_sync_home_snapshot_client_parses_null_snapshot_ref': 1,
+                  'test_wait_run_does_not_poll_after_its_deadline': 2,
+              },
+              'tests.local.dify_agent.protocol.test_protocol_schemas': {
+                  'test_create_run_request_preserves_nonblank_idempotency_key': 3,
+                  'test_create_run_request_rejects_blank_idempotency_key': 3,
+              },
+              'tests.local.dify_agent.runtime.test_run_scheduler': {
+                  'test_create_run_fingerprint_excludes_the_idempotency_key': 1,
+                  'test_create_run_idempotency_conflicts_when_normalized_payload_changes': 3,
+                  'test_create_run_idempotency_rejects_different_request': 1,
+                  'test_create_run_idempotency_replay_does_not_schedule_a_second_runner': 3,
+                  'test_create_run_idempotency_replays_normalized_requests': 3,
+                  'test_create_run_persists_only_admission_digests_and_run_metadata_in_redis': 1,
+              },
+              'tests.local.dify_agent.runtime.test_runner': {
+                  'test_read_media_snapshot_events_and_next_turn_model_switch': 1,
+              },
+              'tests.local.dify_agent.server.test_runs_routes': {
+                  'test_create_run_maps_idempotency_conflict_to_409': 1,
+                  'test_create_run_preserves_nonblank_idempotency_keys': 3,
+                  'test_create_run_rejects_blank_idempotency_key_before_scheduling': 3,
+                  'test_create_run_returns_current_terminal_status_for_idempotent_replay': 3,
+              },
+              'tests.local.dify_agent.storage.test_redis_run_store': {
+                  'test_active_run_writes_refresh_only_unowned_or_same_run_claims': 12,
+                  'test_append_event_refreshes_pending_cancellation_retention': 1,
+                  'test_create_run_idempotent_claim_is_atomic_and_replay_does_not_refresh_retention': 1,
+                  'test_create_run_idempotent_persists_only_admission_digests_and_run_metadata': 1,
+                  'test_create_run_idempotent_reclaims_when_claimed_run_record_expires': 1,
+                  'test_create_run_idempotent_rejects_live_fingerprint_conflict': 1,
+                  'test_get_run_accepts_legacy_record_without_error_type_or_idempotency_fields': 1,
+                  'test_legacy_record_without_idempotency_fields_still_accepts_active_writes': 1,
+              },
+          }.items():
+              EXPECTED.setdefault(module, {}).update(functions)
           REPORT = "builder-agent-regressions.xml"
           code = pytest.main(['tests/local/dify_agent/protocol/test_protocol_schemas.py', 'tests/local/dify_agent/protocol/test_working_environment.py', 'tests/local/dify_agent/runtime/test_runner.py', 'tests/local/dify_agent/runtime/test_run_scheduler.py', 'tests/local/dify_agent/storage/test_redis_run_store.py', 'tests/local/dify_agent/server/test_runs_routes.py', 'tests/local/dify_agent/server/test_app.py', 'tests/local/dify_agent/client/test_client.py', 'tests/local/dify_agent/test_client_safe_exports.py', 'tests/local/dify_agent/server/test_auth.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-agent-regressions.xml'])
           problems = []
@@ -1177,7 +1255,7 @@ jobs:
               'test_core_tools_client_posts_inner_api_request': 2,
               'test_core_tools_client_raises_invalid_response_for_malformed_success_body': 1,
               'test_core_tools_client_validates_execution_context_prerequisites_separately': 1}, 'tests.local.dify_agent.layers.dify_core_tools.test_configs': {'test_dify_core_tools_package_exports_client_safe_config_symbols_only': 1, 'test_dify_core_tools_layer_config_accepts_supported_provider_types': 1, 'test_dify_core_tool_config_rejects_unsupported_provider_types': 1}, 'tests.local.dify_agent.layers.dify_core_tools.test_layer': {'test_native_tool_preserves_schema_invocation_and_observations': 8}, 'tests.local.dify_agent.layers.dify_plugin.test_configs': {'test_dify_plugin_package_exports_client_safe_config_symbols_only': 1, 'test_dify_plugin_llm_config_discards_legacy_credentials': 1, 'test_dify_plugin_llm_config_rejects_old_provider_field': 1, 'test_dify_plugin_llm_config_rejects_non_positive_context_window': 1, 'test_dify_plugin_tools_layer_config_accepts_prepared_parameters_and_schema': 1, 'test_dify_plugin_tool_parameter_accepts_api_tool_parameter_dump_shape': 1, 'test_dify_plugin_tool_parameter_accepts_api_tool_parameter_attributes': 1, 'test_dify_plugin_tool_config_rejects_non_json_runtime_parameters': 1, 'test_dify_plugin_tool_config_rejects_non_json_schema_values': 1, 'test_dify_plugin_tool_config_rejects_strict_flag': 1, 'test_dify_plugin_tool_config_requires_explicit_credential_type': 1}, 'tests.local.dify_agent.layers.dify_plugin.test_layers': {'test_model_assembly_reads_config_reference_and_borrows_shared_client': 1,
-              'test_native_plugin_tool_converts_file_inputs': 2,
+              'test_native_plugin_tool_converts_file_inputs': 4,
               'test_native_plugin_tool_deduplicates_json_output_that_arrived_as_equivalent_text': 6,
               'test_native_plugin_tool_keeps_json_output_that_differs_from_the_text': 1,
               'test_native_plugin_tool_prepares_schema_merges_hidden_parameters_and_decodes_stream': 1,
@@ -1254,6 +1332,133 @@ jobs:
               'test_local_inspection_has_total_deadline_and_private_cleanup': 5,
               'test_inspection_helper_bounds_and_sanitizes_owned_resource_close': 2,
           }
+          # 2026-11-19 main merge (594eac5033). Main rewrote shared runtime backends and layers:
+          # OpenShell now exposes the shellctl service instead of an SSH tunnel and no longer
+          # snapshots homes (test_openshell_tunnel.py deleted), output $defs handling changed,
+          # and read_media, read_config_skill_md and agent file uploads are new. Shared
+          # infrastructure follows main: drop the cases main deleted, add every main case.
+          del EXPECTED['tests.local.dify_agent.runtime_backend.test_openshell_tunnel']
+          for module, removed in {
+              'tests.local.dify_agent.layers.output.test_configs': (
+                  'test_output_layer_allows_literal_dollar_ref_values_under_const_and_examples',
+              ),
+              'tests.local.dify_agent.runtime_backend.test_openshell': (
+                  'test_openshell_acquire_bootstraps_shellctl_and_opens_tunnel',
+                  'test_openshell_binding_create_materializes_snapshot_without_fallback',
+                  'test_openshell_release_closes_both_resources_on_error',
+                  'test_openshell_release_preserves_cancellation_and_closes_resources',
+                  'test_openshell_snapshot_copies_home_to_shared_volume',
+                  'test_openshell_snapshot_delete_still_removes_maintenance_sandbox_on_failure',
+                  'test_openshell_snapshot_delete_uses_short_lived_maintenance_sandbox',
+                  'test_openshell_snapshot_failure_removes_partial_copy',
+                  'test_openshell_snapshot_refs_must_be_safe_path_segments',
+                  'test_openshell_snapshot_rejects_foreign_lease',
+                  'test_ssh_session_token_supplier_fails_closed_when_renewal_fails',
+                  'test_ssh_session_token_supplier_keeps_token_without_expiry',
+                  'test_ssh_session_token_supplier_renews_ahead_of_expiry',
+              ),
+              'tests.local.dify_agent.runtime_backend.test_profile': (
+                  'test_openshell_backend_rejects_empty_driver_config_object',
+                  'test_openshell_backend_rejects_relative_shared_mount_path',
+                  'test_openshell_backend_requires_gateway_endpoint_and_driver_config',
+                  'test_openshell_backend_wires_shared_deployment_config_into_both_drivers',
+              ),
+          }.items():
+              for function in removed:
+                  del EXPECTED[module][function]
+          for module, functions in {
+              'tests.local.dify_agent.client.test_client': {
+                  'test_async_home_snapshot_client_parses_null_snapshot_ref': 1,
+                  'test_async_stream_events_resets_reconnect_budget_after_each_delivered_event': 1,
+                  'test_async_stream_events_still_bounds_consecutive_reconnects_after_progress': 1,
+                  'test_stream_events_resets_reconnect_budget_after_each_delivered_event': 1,
+                  'test_stream_events_still_bounds_consecutive_reconnects_after_progress': 1,
+                  'test_sync_home_snapshot_client_parses_null_snapshot_ref': 1,
+                  'test_wait_run_does_not_poll_after_its_deadline': 2,
+              },
+              'tests.local.dify_agent.layers.config.test_layer': {
+                  'test_read_config_skill_md_does_not_mask_invalid_layer_data': 2,
+                  'test_read_config_skill_md_is_offered_only_with_configured_skills': 2,
+                  'test_read_config_skill_md_prepare_only_requires_config': 2,
+                  'test_read_config_skill_md_recovers_after_unknown_name_and_consecutive_pull_errors': 7,
+                  'test_read_config_skill_md_returns_full_large_skill_after_consecutive_unknown_names': 1,
+              },
+              'tests.local.dify_agent.layers.dify_plugin.test_layers': {
+                  'test_plugin_blob_is_persisted_as_a_copyable_file_handle_without_inline_data': 1,
+                  'test_plugin_blob_upload_failures_never_stringify_file_content': 6,
+                  'test_plugin_file_message_keeps_an_existing_file_locator': 2,
+                  'test_plugin_file_observations_omit_invalid_optional_metadata': 6,
+                  'test_plugin_media_links_return_handles_without_fetching_them': 3,
+              },
+              'tests.local.dify_agent.layers.output.test_configs': {
+                  'test_output_layer_keeps_literal_dollar_ref_values_when_inlining_local_defs': 1,
+                  'test_output_layer_rejects_invalid_local_defs_refs_during_contract_build': 6,
+                  'test_output_layer_rejects_remote_ref_under_keyword_named_property': 5,
+                  'test_output_layer_rejects_remote_ref_under_keyword_named_schema_map_entry': 5,
+                  'test_output_layer_rejects_unresolved_local_defs_ref_during_contract_build': 2,
+                  'test_output_layer_resolves_json_pointer_escaped_defs_names': 6,
+                  'test_output_layer_resolves_local_defs_ref_under_keyword_named_property': 5,
+                  'test_output_layer_resolves_ref_under_keyword_named_schema_map_entry': 4,
+                  'test_output_layer_runs_agent_with_keyword_named_ref_property': 1,
+              },
+              'tests.local.dify_agent.layers.read_media.test_history': {
+                  'test_serialized_history_folds_only_marked_media_and_preserves_tool_pairs': 1,
+              },
+              'tests.local.dify_agent.layers.read_media.test_layer': {
+                  'test_control_plane_errors_are_observations': 5,
+                  'test_invalid_locator_and_text_model_short_circuit_without_io': 9,
+                  'test_metadata_authorized_media_becomes_user_content': 6,
+                  'test_native_request_hook_keeps_only_latest_four_attachments': 1,
+                  'test_remote_url_remains_original_and_unknown_size_is_allowed': 1,
+                  'test_unsupported_or_oversized_media_returns_only_text': 11,
+                  'test_workspace_path_uploads_through_shell_then_attaches_only_reference': 1,
+              },
+              'tests.local.dify_agent.layers.test_agent_files': {
+                  'test_sandbox_upload_quotes_path_and_uses_stub_environment': 3,
+                  'test_sandbox_upload_rejects_failed_or_malformed_results': 3,
+              },
+              'tests.local.dify_agent.runtime.test_runner': {
+                  'test_read_media_snapshot_events_and_next_turn_model_switch': 1,
+              },
+              'tests.local.dify_agent.runtime_backend.test_openshell': {
+                  'test_noop_home_snapshot_backend_reports_unsupported': 1,
+                  'test_openshell_acquire_bootstraps_shellctl_and_exposes_service': 1,
+                  'test_openshell_acquire_leaves_sandbox_running_when_expose_fails': 1,
+                  'test_openshell_binding_create_ignores_supplied_snapshot_ref': 1,
+                  'test_openshell_data_plane_sends_shellctl_bearer_only': 1,
+                  'test_openshell_distinct_bindings_reject_cross_sandbox_credentials': 1,
+                  'test_openshell_failed_acquire_closes_attempt_transport_when_readiness_fails': 1,
+                  'test_openshell_failed_acquire_refresh_does_not_interrupt_running_lease': 1,
+                  'test_openshell_release_closes_transport_on_client_error': 1,
+                  'test_openshell_release_preserves_cancellation_and_closes_transport': 1,
+                  'test_openshell_sdk_expose_service_does_not_retry_other_codes': 1,
+                  'test_openshell_sdk_expose_service_normalizes_not_found': 1,
+                  'test_openshell_sdk_expose_service_rejects_malformed_urls': 9,
+                  'test_openshell_sdk_expose_service_rejects_unapplied_auth_mode': 3,
+                  'test_openshell_sdk_expose_service_request_shape': 1,
+                  'test_openshell_sdk_expose_service_retries_aborted_and_is_bounded': 1,
+                  'test_openshell_service_client_dials_loopback_and_preserves_host': 1,
+                  'test_openshell_service_client_keeps_https_host_and_tls_material': 1,
+                  'test_openshell_service_client_rejects_plaintext_http_to_nonlocal_host': 1,
+                  'test_openshell_shellctl_token_changes_with_master': 1,
+                  'test_openshell_shellctl_token_depends_on_canonical_sandbox_name': 1,
+                  'test_openshell_shellctl_token_stable_across_leases_and_backends': 1,
+              },
+              'tests.local.dify_agent.runtime_backend.test_profile': {
+                  'test_openshell_backend_accepts_absent_or_empty_driver_config': 4,
+                  'test_openshell_backend_requires_gateway_endpoint': 1,
+                  'test_openshell_backend_wires_deployment_config_into_binding_driver': 1,
+              },
+              'tests.local.dify_agent.runtime_backend.test_shellctl_backend': {
+                  'test_control_command_captures_real_shell_stderr_and_deletes_failed_job': 1,
+              },
+              'tests.local.dify_agent.server.test_home_snapshots': {
+                  'test_home_snapshot_response_requires_explicit_nullable_ref': 1,
+                  'test_home_snapshot_service_reports_unsupported_as_null': 1,
+                  'test_home_snapshots_route_serializes_nullable_ref': 2,
+              },
+          }.items():
+              EXPECTED.setdefault(module, {}).update(functions)
           REPORT = "builder-agent-workspace-regressions.xml"
           code = pytest.main(['tests/local/dify_agent/runtime_backend', 'tests/local/dify_agent/layers', 'tests/local/dify_agent/server/test_binding_files.py', 'tests/local/dify_agent/server/test_execution_bindings.py', 'tests/local/dify_agent/server/test_home_snapshots.py', 'tests/local/dify_agent/server/test_app.py', 'tests/local/dify_agent/runtime/test_runner.py', 'tests/local/dify_agent/runtime/test_native_continuation.py', 'tests/local/dify_agent/client/test_client.py', 'tests/local/dify_agent/runtime/test_modules.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-agent-workspace-regressions.xml'])
           problems = []
@@ -1812,6 +2017,25 @@ jobs:
               'test_sdk_failure_never_changes_handler_result_or_exception': 2,
               'test_startup_instance_is_shared_and_repeated_initialization_preserves_state': 1,
           }
+          # 2026-11-19 main merge (594eac5033): exact main additions to already-guarded owners.
+          for module, functions in {
+              'tests.unit_tests.core.helper.code_executor.jinja2.test_jinja2_transformer.TestJinja2TransformCallerSandbox': {
+                  'test_renders_template_with_special_characters': 1,
+              },
+              'tests.unit_tests.core.helper.test_trace_id_helper': {'test_is_valid_trace_id_boundaries': 7},
+              'tests.unit_tests.core.helper.test_trace_id_helper.TestParseTraceparentHeader': {
+                  'test_returns_none_for_traceparent_the_spec_rejects': 8,
+                  'test_accepts_an_upper_bound_flags_byte': 1,
+              },
+              'tests.unit_tests.services.workflow_runtime.test_response_converter': {
+                  'test_pause_response_selects_token_for_invocation_surface': 8,
+                  'test_pause_response_without_surface_recipient_has_no_token': 5,
+              },
+              'tests.unit_tests.dev.test_generate_swagger_specs': {
+                  'test_generate_specs_include_evaluation_console_contract': 1,
+              },
+          }.items():
+              new_expected.setdefault(module, {}).update(functions)
           files = list(dict.fromkeys(files))
           new_actual = {module: Counter() for module in new_expected}
           expected = {path.removeprefix("api/").removesuffix(".py").replace("/", ".") for path in files}
