@@ -20,12 +20,6 @@ from core.app.app_config.entities import (
     WorkflowUIBasedAppConfig,
 )
 from core.app.apps.advanced_chat.generate_response_converter import AdvancedChatAppGenerateResponseConverter
-from core.app.apps.advanced_chat.generate_task_pipeline import (
-    AdvancedChatAppGenerateTaskPipeline,
-    ConversationSnapshot,
-    MessageSnapshot,
-    WorkflowSnapshot,
-)
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.apps.base_app_runner import AppRunner
@@ -84,6 +78,12 @@ from services.moderation_service import (
     ModerationRule,
     ModerationService,
     ModerationVerdict,
+)
+from services.workflow_runtime.chatflow_pipeline import (
+    AdvancedChatAppGenerateTaskPipeline,
+    ConversationSnapshot,
+    MessageSnapshot,
+    WorkflowSnapshot,
 )
 from tests.helpers.unit.core.model_fixtures import make_model_config
 from tests.helpers.unit.core.model_moderation_fixtures import (

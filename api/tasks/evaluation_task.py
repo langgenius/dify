@@ -128,12 +128,12 @@ def _evaluate_with_customized_workflow(
     Postcondition: row failures contain only public diagnostics, results retain
     input positions, and cancellation is checked before and after each row.
     """
-    from core.app.apps.workflow.app_generator import WorkflowAppGenerator
     from core.app.entities.app_invoke_entities import InvokeFrom
     from core.evaluation.runners import get_service_account_for_app
     from models.model import App
     from services.workflow_execution_identity import build_workflow_execution_identity
     from services.workflow_run_agg import WorkflowRunAgg
+    from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
     from services.workflow_service import WorkflowService
 
     workflow_id = customized_metrics.evaluation_workflow_id

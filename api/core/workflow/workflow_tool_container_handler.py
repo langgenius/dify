@@ -15,7 +15,6 @@ from core.tools.workflow_as_tool.repository import WorkflowToolSource
 from core.workflow.node_execution_process_data import (
     WORKFLOW_TOOL_INVOCATION_ID_KEY,
 )
-from core.workflow.node_factory import DifyGraphInitContext, DifyNodeFactory, get_default_root_node_id
 from core.workflow.node_runtime import resolve_dify_run_context
 from core.workflow.nodes.human_input.boundary import human_input_container_selector
 from core.workflow.nodes.human_input.session_binding import default_session_binding
@@ -55,6 +54,7 @@ from graphon.runtime.container_state import (
 from graphon.runtime.execution import ROOT_FRAME_ID
 from graphon.variables.segments import ArrayFileSegment
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from services.workflow_runtime.node_factory import DifyGraphInitContext, DifyNodeFactory, get_default_root_node_id
 
 from .workflow_tool_container_types import WorkflowToolContainerPayload
 

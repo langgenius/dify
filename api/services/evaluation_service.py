@@ -2625,11 +2625,11 @@ class EvaluationService:
         :raises ValueError: If the target itself is invalid or missing.
         :raises EvaluationWorkflowVersionNotFoundError: If the pinned published version was deleted.
         """
-        from core.app.apps.workflow.app_generator import WorkflowAppGenerator
         from core.app.entities.app_invoke_entities import InvokeFrom
         from core.evaluation.runners import get_service_account_for_app, get_service_account_for_snippet
         from services.workflow_execution_identity import build_workflow_execution_identity
         from services.workflow_run_agg import WorkflowRunAgg
+        from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
 
         if target_type == EvaluationTargetType.SNIPPETS.value:
             from services.snippet_generate_service import SnippetGenerateService
