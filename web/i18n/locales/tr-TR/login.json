@@ -44,6 +44,7 @@
   "invalidInvitationCode": "Geçersiz davet kodu",
   "invitationCode": "Davet Kodu",
   "invitationCodePlaceholder": "Davet kodunuz",
+  "invitationWorkspaceFull": "Bu çalışma alanında boş koltuk kalmadığı için henüz katılamazsınız. Sizi davet eden kişiden bir koltuk boşaltmasını veya planı yükseltmesini isteyin.",
   "join": "Katıl",
   "joinTipEnd": " takımına Dify'de davet ediyor",
   "joinTipStart": "Sizi ",
