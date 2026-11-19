@@ -13,13 +13,19 @@ from flask.testing import FlaskClient
 from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.console.human_input_v2 import form as controller
-from core.human_input_v2.resolved_form import MarkdownFragment, ParagraphInput, ResolvedForm, UserAction
+from core.human_input_v2.resolved_form import (
+    MarkdownFragment,
+    ParagraphDefaultConfig,
+    ParagraphInput,
+    ResolvedForm,
+    UserAction,
+)
 from core.human_input_v2.shared.values import ContactId, TenantId
 from core.tools.signature import sign_tool_file, verify_tool_file_signature
 from core.workflow.nodes.human_input_v2.entities import Contact
 from dify_app import DifyApp
 from enums import DeploymentEdition
-from enums.human_input import ButtonStyle, HumanInputFormKind, HumanInputFormStatus
+from enums.human_input import ButtonStyle, HumanInputFormKind, HumanInputFormStatus, ValueSourceType
 from extensions.ext_login import DifyLoginManager
 from graphon.variables.segments import StringSegment
 from libs.external_api import ExternalApi
@@ -107,7 +113,13 @@ def console_form(
                     title="Frozen approval",
                     parts=(
                         MarkdownFragment(text="Review: "),
-                        ParagraphInput(output_variable_name="note", default_value="Draft"),
+                        ParagraphInput(
+                            output_variable_name="note",
+                            resolved_default_value="Draft",
+                            default_config=ParagraphDefaultConfig(
+                                type=ValueSourceType.VARIABLE, selector=("seed", "note"), value=""
+                            ),
+                        ),
                     ),
                     actions=(UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),),
                     legacy_form_content="Review: {{#$output.note#}}",
@@ -186,7 +198,7 @@ def test_reads_refresh_file_signatures_without_changing_the_snapshot(
         update={
             "parts": (
                 MarkdownFragment(text=f"[Report]({old_url}) "),
-                ParagraphInput(output_variable_name="note", default_value="Draft"),
+                ParagraphInput(output_variable_name="note", resolved_default_value="Draft"),
             ),
             "legacy_form_content": content,
         }

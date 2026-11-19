@@ -11,8 +11,6 @@ type KnowledgeFsSpaceListItemResponse = Awaited<
   ReturnType<typeof consoleClient.knowledgeFs.spaces.get>
 >['data'][number]
 
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
-
 const api = vi.hoisted(() => ({
   list: vi.fn<typeof consoleClient.knowledgeFs.spaces.get>(),
   remove: vi.fn<typeof consoleClient.knowledgeFs.spaces.byControlSpaceId.delete>(),

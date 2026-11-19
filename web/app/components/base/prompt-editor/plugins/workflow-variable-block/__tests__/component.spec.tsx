@@ -2,7 +2,6 @@ import type { LexicalEditor } from 'lexical'
 import type { ComponentProps } from 'react'
 import type WorkflowVariableBlockComponent from '../component'
 import type { WorkflowNodesMap } from '../node'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
@@ -16,6 +15,7 @@ import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { TestLexicalComposer } from '@/test/lexical'
 import { UPDATE_WORKFLOW_NODES_MAP } from '../index'
 import { $createWorkflowVariableBlockNode, WorkflowVariableBlockNode } from '../node'
 
@@ -48,7 +48,7 @@ function renderVariables(props: Props[], hasContainer = true) {
   })
   const view = renderWorkflowFlowComponent(
     <div id={hasContainer ? 'workflow-container' : undefined}>
-      <LexicalComposer
+      <TestLexicalComposer
         initialConfig={{
           namespace: 'workflow-variable-test',
           nodes: [WorkflowVariableBlockNode],
@@ -76,7 +76,7 @@ function renderVariables(props: Props[], hasContainer = true) {
           ErrorBoundary={LexicalErrorBoundary}
         />
         <Capture />
-      </LexicalComposer>
+      </TestLexicalComposer>
     </div>,
     { queryClient, reactFlowProps: { fitView: false, defaultViewport: { x: 0, y: 0, zoom: 2 } } },
   )
