@@ -469,6 +469,8 @@ export const zEvaluationMetricsResponse = z.object({
 
 /**
  * EvaluationRunResponse
+ *
+ * Expose the model pinned in the run snapshot, independent of later config edits.
  */
 export const zEvaluationRunResponse = z.object({
   completed_at: z.int().nullish(),
@@ -478,6 +480,8 @@ export const zEvaluationRunResponse = z.object({
   dataset_file_id: z.string().nullish(),
   error: z.string().nullish(),
   evaluation_config_id: z.string(),
+  evaluation_model: z.string().nullish(),
+  evaluation_model_provider: z.string().nullish(),
   failed_items: z.int(),
   id: z.string(),
   metrics_summary: z.record(z.string(), z.unknown()).optional(),

@@ -6,8 +6,8 @@ from typing import Any
 from core.plugin.entities.parameters import PluginParameterOption
 from core.plugin.impl.dynamic_select import DynamicSelectClient
 from core.tools.plugin_tool.provider import PluginToolProviderController
-from core.tools.tool_manager import ToolManager
 from models.provider_ids import TriggerProviderID
+from services.tools.tool_manager import ToolManager
 from services.trigger.plugin_provider import PluginTriggerProvider
 from services.trigger.provider_loader import PluginTriggerProviderLoader
 

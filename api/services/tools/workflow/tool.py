@@ -33,7 +33,6 @@ from models import Account
 from models.model import App, EndUser
 from models.tool_runtime_contracts import WorkflowToolQueries
 from models.utils.file_input_compat import build_file_from_stored_mapping
-from repositories.workflow.definition_repository import workflow_snapshot
 from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.ports import WorkflowRuntime
 from services.workflow_execution_identity import build_workflow_execution_identity
@@ -300,6 +299,8 @@ class WorkflowTool(Tool):
         return self._queries.actor(tenant_id=self.runtime.tenant_id, user_id=user_id)
 
     def _get_workflow(self, app_id: str, version: str) -> WorkflowSnapshot:
+        from repositories.workflow.definition_repository import workflow_snapshot
+
         workflow = self._queries.workflow(tenant_id=self.runtime.tenant_id, app_id=app_id, version=version)
         return workflow_snapshot(workflow)
 
