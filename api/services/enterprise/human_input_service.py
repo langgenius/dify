@@ -166,7 +166,8 @@ class AppDeployHumanInputService:
         pool = VariablePool()
         variables = restore_input_files(inputs=payload.variables, tenant_resolver=lambda: str(tenant_id))
         for selector, value in variables.items():
-            pool.add(selector.split("."), value)
+            # flatten() separates the node once; variable names can contain dots.
+            pool.add(selector.split(".", 1), value)
         prepared = DifyHumanInputRuntime(
             form_service=HumanInputFormService(session_factory=session_factory.get_session_maker(), context=context),
             delivery_service=build_human_input_delivery_service(

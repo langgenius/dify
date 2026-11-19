@@ -57,7 +57,7 @@ def test_prepare_replay_submit_and_expire(
     base = f"/inner/api/enterprise/apps/{app.id}/workflow-runs/{run_id}/human-input-forms"
     node = {
         "title": "Approve",
-        "form_content": "Review {{#$output.note#}}",
+        "form_content": "Review {{#start.reviewer#}} {{#$output.note#}}",
         "inputs": [{"type": "paragraph", "output_variable_name": "note"}],
         "user_actions": [{"id": "approve", "title": "Approve"}],
     }
@@ -75,7 +75,7 @@ def test_prepare_replay_submit_and_expire(
         "node_id": "approval",
         "form_version": version,
         "node_data": node,
-        "variables": {},
+        "variables": {"start.sys.user_id": "system-user-17", "start.reviewer": "reviewer-42"},
         "initiator": {"type": "end_user", "id": end_user.id},
         "run_created_at": (naive_utc_now() - timedelta(hours=1)).isoformat(),
     }
@@ -107,6 +107,7 @@ def test_prepare_replay_submit_and_expire(
     assert prepared["event"]["node_id"] == "approval"
     assert prepared["event"]["node_title"] == "Approve"
     assert prepared["event"]["form_version"] == version
+    assert "reviewer-42" in prepared["event"]["form_content"]
     assert client.post(base + ":prepare", json=payload, headers=headers).json == prepared
     replay = client.get(base, headers=headers)
     assert replay.status_code == 200

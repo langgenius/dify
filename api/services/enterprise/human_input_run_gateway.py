@@ -34,7 +34,7 @@ class EnterpriseHumanInputRunGateway:
         if form.workflow_run_id is None:
             raise ValueError("Enterprise form requires a workflow run")
         return (
-            f"/inner/api/app-deploy/apps/{quote(form.app_id, safe='')}"
+            f"/app-deploy/apps/{quote(form.app_id, safe='')}"
             f"/workflow-runs/{quote(form.workflow_run_id, safe='')}"
         )
 

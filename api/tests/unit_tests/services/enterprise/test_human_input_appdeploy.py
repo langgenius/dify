@@ -175,7 +175,7 @@ def test_enterprise_timeout_does_not_require_a_local_workflow_run(
         settled = SQLAlchemyFormRepository(session, TenantId("tenant"), "app").get_form_by_id(form.id)
     assert settled.status == (HumanInputFormStatus.EXPIRED if global_timeout else HumanInputFormStatus.TIMEOUT)
     assert requests.call_args.args[1] == (
-        "/inner/api/app-deploy/apps/app/workflow-runs/run" + (":stop" if global_timeout else ":requestResume")
+        "/app-deploy/apps/app/workflow-runs/run" + (":stop" if global_timeout else ":requestResume")
     )
     assert isinstance(build_run_gateway(settled, sqlite_session_factory), EnterpriseHumanInputRunGateway)
     assert isinstance(
