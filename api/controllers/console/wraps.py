@@ -178,7 +178,7 @@ def is_cloud_edition_billing_paid_plan(tenant_id: str) -> bool:
 def evaluation_edition_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
-        if not SystemFeatureService.is_evaluation_enabled():
+        if not FeatureService.is_evaluation_supported():
             abort(404)
 
         return view(*args, **kwargs)
@@ -187,18 +187,22 @@ def evaluation_edition_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 
 
 def evaluation_paid_plan_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
-    """Admit an authenticated Evaluation request only for Cloud paid or self-hosted workspaces.
+    """Admit an authenticated Evaluation request only when the workspace may use Evaluation.
 
+    Shares ``FeatureService.can_use_evaluation`` with the ``evaluation_enabled`` feature flag.
     The caller must authenticate and initialize the account first. On success the
     view runs unchanged; Cloud Sandbox raises 403, and billing failures raise 503.
     """
 
     @wraps(view)
     def evaluation_plan_decorated(*args: P.args, **kwargs: P.kwargs):
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
-            _, tenant_id = current_account_with_tenant()
-            if not is_cloud_edition_billing_paid_plan(tenant_id):
-                raise PaidPlanRequiredError()
+        _, tenant_id = current_account_with_tenant()
+        try:
+            allowed = FeatureService.can_use_evaluation(tenant_id)
+        except BillingError as exc:
+            raise ServiceUnavailable("Billing entitlement is temporarily unavailable.") from exc
+        if not allowed:
+            raise PaidPlanRequiredError()
         return view(*args, **kwargs)
 
     return document_errors(evaluation_plan_decorated, PaidPlanRequiredError)

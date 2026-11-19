@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import secrets
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from unittest.mock import Mock, create_autospec
@@ -243,7 +244,11 @@ def context(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> _Context:
     return result
 
 
-def test_email_renders_and_sends_only_to_editor_with_a_real_test_form(context: _Context) -> None:
+def test_email_renders_and_sends_only_to_editor_with_a_real_test_form(
+    context: _Context, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # URL-safe base64 encodes this prefix as `_g_-`, which Markdown can parse as emphasis.
+    monkeypatch.setattr(secrets, "token_bytes", lambda _size: bytes.fromhex("fe0ffe" + "a1" * 29))
     context.send(**{"#start.name#": "Alice\r\nBcc: other@example.com"})
 
     candidate = context.gateway.send_message.call_args.args[0]

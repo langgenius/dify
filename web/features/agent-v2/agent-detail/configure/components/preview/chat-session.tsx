@@ -221,7 +221,7 @@ export function AgentPreviewChatSession({
         <div
           className={cn(
             isEmptyChat
-              ? cn('flex w-full flex-col items-start text-left', chatMaxWidthClassName)
+              ? cn('flex w-full flex-col items-start text-start', chatMaxWidthClassName)
               : 'pointer-events-none relative w-full',
           )}
         >

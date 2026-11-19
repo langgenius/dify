@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
 import { AppPublisher } from '@/app/components/app/app-publisher'
 import { useFeatures } from '@/app/components/base/features/hooks'
+import { useEvaluationAccess } from '@/app/components/billing/use-evaluation-access'
 import {
   isChatflowAtom,
   workflowAppIdentityAtom,
@@ -33,7 +34,6 @@ import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { BlockEnum, InputVarType, isTriggerNode } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { isEvaluationEdition } from '@/features/system-features/utils'
 import { consoleQuery } from '@/service/console'
 import { useInvalidateAppWorkflow, useResetWorkflowVersionHistory } from '@/service/use-workflow'
 
@@ -58,7 +58,7 @@ const FeaturesTrigger = () => {
       select: (features) => features.billing.subscription.plan,
     }),
   )
-  const evaluationEnabled = isEvaluationEdition(deploymentEdition)
+  const { isVisible: evaluationEnabled } = useEvaluationAccess()
   const publishedAt = useStore((s) => s.publishedAt)
   const draftUpdatedAt = useStore((s) => s.draftUpdatedAt)
   const toolPublished = useStore((s) => s.toolPublished)
