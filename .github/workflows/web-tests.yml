@@ -57,15 +57,73 @@ jobs:
       - name: Check all Console types against the reviewed migration differences
         run: pnpm --filter @dify/openapi-content-mapper check:console
 
+  plan:
+    name: Plan Web Test Shards
+    runs-on: depot-ubuntu-24.04-4
+    timeout-minutes: 10
+    outputs:
+      unit-shards: ${{ steps.plan.outputs.unit-shards }}
+      unit-total: ${{ steps.plan.outputs.unit-total }}
+      browser-shards: ${{ steps.plan.outputs.browser-shards }}
+      browser-total: ${{ steps.plan.outputs.browser-total }}
+    steps:
+      - name: Checkout code
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # `--changed` diffs the PR merge commit against its base-branch parent.
+          fetch-depth: 2
+
+      - name: Setup web environment
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: ./.github/actions/setup-web
+        with:
+          cache-save: 'false'
+
+      - name: Plan shards from selected test files
+        id: plan
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          # Selected component tests take about 0.9s per file on one machine; 200 files keep a
+          # shard near three minutes, close to the other Web CI jobs.
+          FILES_PER_SHARD: 200
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == pull_request ]]; then
+            (cd web && vp test list --filesOnly --changed=HEAD^1 --passWithNoTests) > selected-tests.txt
+            unit_files=$(grep -c '^\[unit\]' selected-tests.txt || true)
+            browser_files=$(grep -c '^\[browser' selected-tests.txt || true)
+          else
+            # Full runs keep the fixed shard counts that the coverage uploads use.
+            unit_files=$((FILES_PER_SHARD * 4))
+            browser_files=$((FILES_PER_SHARD * 2))
+          fi
+          shards() {
+            local count=$(( ($1 + FILES_PER_SHARD - 1) / FILES_PER_SHARD ))
+            echo $(( count < $2 ? count : $2 ))
+          }
+          unit_total=$(shards "$unit_files" 4)
+          browser_total=$(shards "$browser_files" 2)
+          echo "Selected $unit_files unit and $browser_files browser test files: $unit_total unit and $browser_total browser shards." | tee -a "$GITHUB_STEP_SUMMARY"
+          {
+            echo "unit-total=$unit_total"
+            echo "unit-shards=$(jq -cn --argjson total "$unit_total" '[range(1; $total + 1)]')"
+            echo "browser-total=$browser_total"
+            echo "browser-shards=$(jq -cn --argjson total "$browser_total" '[range(1; $total + 1)]')"
+          } >> "$GITHUB_OUTPUT"
+
   test:
     name: Web Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
+    needs: plan
+    if: ${{ needs.plan.outputs.unit-total != '0' }}
     runs-on: depot-ubuntu-24.04-4
     strategy:
       fail-fast: false
       matrix:
-        # Pull requests run only affected tests, so one machine avoids repeated setup cost.
-        shardIndex: ${{ fromJSON(github.event_name == 'pull_request' && '[1]' || '[1, 2, 3, 4]') }}
-        shardTotal: ${{ fromJSON(github.event_name == 'pull_request' && '[1]' || '[4]') }}
+        shardIndex: ${{ fromJSON(needs.plan.outputs.unit-shards) }}
+        shardTotal: ${{ fromJSON(format('[{0}]', needs.plan.outputs.unit-total)) }}
     defaults:
       run:
         shell: bash
@@ -103,14 +161,15 @@ jobs:
 
   browser-test:
     name: Web Browser Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
+    needs: plan
+    if: ${{ needs.plan.outputs.browser-total != '0' }}
     runs-on: depot-ubuntu-24.04-4
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        # Pull requests run only affected tests, so one machine avoids repeated setup cost.
-        shardIndex: ${{ fromJSON(github.event_name == 'pull_request' && '[1]' || '[1, 2]') }}
-        shardTotal: ${{ fromJSON(github.event_name == 'pull_request' && '[1]' || '[2]') }}
+        shardIndex: ${{ fromJSON(needs.plan.outputs.browser-shards) }}
+        shardTotal: ${{ fromJSON(format('[{0}]', needs.plan.outputs.browser-total)) }}
     defaults:
       run:
         shell: bash
