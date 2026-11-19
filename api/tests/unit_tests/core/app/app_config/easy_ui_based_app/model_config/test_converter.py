@@ -27,7 +27,12 @@ from core.app.app_config.entities import (
     ModelConfigEntity,
     PromptTemplateEntity,
 )
-from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
+from core.entities.provider_configuration import (
+    ProviderConfigurateMethodsRegistry,
+    ProviderConfiguration,
+    ProviderModelBundle,
+    original_provider_configurate_methods,
+)
 from core.entities.provider_entities import (
     CustomConfiguration,
     CustomProviderConfiguration,
@@ -65,13 +70,17 @@ def _model_schema(model_properties: dict[ModelPropertyKey, object] | None = None
     )
 
 
-def _provider_schema(*, models: list[AIModelEntity] | None = None) -> ProviderEntity:
+def _provider_schema(
+    *,
+    models: list[AIModelEntity] | None = None,
+    configurate_methods: list[ConfigurateMethod] | None = None,
+) -> ProviderEntity:
     """Build a real provider schema; carrying ``models`` keeps schema resolution fully offline."""
     return ProviderEntity(
         provider=PROVIDER_ID,
         label=I18nObject(en_US="OpenAI"),
         supported_model_types=[ModelType.LLM],
-        configurate_methods=[],
+        configurate_methods=[] if configurate_methods is None else configurate_methods,
         models=[_model_schema()] if models is None else models,
     )
 
@@ -108,26 +117,27 @@ def _provider_configuration(
     system_configuration: SystemConfiguration | None = None,
     using_provider_type: ProviderType = ProviderType.CUSTOM,
     models: list[AIModelEntity] | None = None,
+    configurate_methods: list[ConfigurateMethod] | None = None,
+    registry: ProviderConfigurateMethodsRegistry | None = None,
 ) -> ProviderConfiguration:
-    """Build a real provider configuration.
+    """Build a real provider configuration with an isolated original-method registry.
 
-    The model validator records the provider's configure methods in a module-level registry, so the
-    registry is replaced with a fresh instance of the production registry type for the duration of
-    the construction to keep tests isolated from each other.
+    Preconditions: optional values are valid production entities; an injected registry is a fresh
+    production-owned dependency when the caller needs to inspect its captured provider snapshot.
+    Postconditions: returns a real validated configuration without patching the production registry.
     """
-    with patch(
-        "core.entities.provider_configuration.original_provider_configurate_methods",
-        dict[str, list[ConfigurateMethod]](),
-    ):
-        return ProviderConfiguration(
-            tenant_id=TENANT_ID,
-            provider=_provider_schema(models=models),
-            preferred_provider_type=using_provider_type,
-            using_provider_type=using_provider_type,
-            system_configuration=system_configuration or SystemConfiguration(enabled=False),
-            custom_configuration=custom_configuration or _custom_configuration(credentials={"api_key": "key"}),
-            model_settings=[],
-        )
+    return ProviderConfiguration.model_validate_with_configurate_methods_registry(
+        {
+            "tenant_id": TENANT_ID,
+            "provider": _provider_schema(models=models, configurate_methods=configurate_methods),
+            "preferred_provider_type": using_provider_type,
+            "using_provider_type": using_provider_type,
+            "system_configuration": system_configuration or SystemConfiguration(enabled=False),
+            "custom_configuration": custom_configuration or _custom_configuration(credentials={"api_key": "key"}),
+            "model_settings": [],
+        },
+        registry=registry if registry is not None else ProviderConfigurateMethodsRegistry(),
+    )
 
 
 def _provider_model_bundle(configuration: ProviderConfiguration) -> ProviderModelBundle:
@@ -196,6 +206,24 @@ class _RecordingProviderManager:
 
 
 class TestModelConfigConverter:
+    def test_provider_configuration_uses_injected_registry(self) -> None:
+        original_registry_before = {
+            provider_id: tuple(methods) for provider_id, methods in original_provider_configurate_methods.items()
+        }
+        registry = ProviderConfigurateMethodsRegistry()
+        initial_methods = [ConfigurateMethod.PREDEFINED_MODEL]
+        subsequent_methods = [ConfigurateMethod.CUSTOMIZABLE_MODEL]
+
+        initial_configuration = _provider_configuration(registry=registry, configurate_methods=initial_methods)
+        subsequent_configuration = _provider_configuration(registry=registry, configurate_methods=subsequent_methods)
+
+        assert initial_configuration._get_original_provider_configurate_methods() == initial_methods
+        assert subsequent_configuration._get_original_provider_configurate_methods() == subsequent_methods
+        assert registry.methods_by_provider == {PROVIDER_ID: initial_methods}
+        assert {
+            provider_id: tuple(methods) for provider_id, methods in original_provider_configurate_methods.items()
+        } == original_registry_before
+
     # =============================
     # Positive Scenarios
     # =============================
