@@ -100,6 +100,7 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
   return (
     <Dialog
       open={show}
+      disablePointerDismissal
       onOpenChange={(open) => {
         if (!open) onHide()
       }}

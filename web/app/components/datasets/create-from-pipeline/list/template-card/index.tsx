@@ -193,6 +193,7 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
       {showEditModal && (
         <Dialog
           open={showEditModal}
+          disablePointerDismissal
           onOpenChange={(open) => {
             if (!open) closeEditModal()
           }}
