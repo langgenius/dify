@@ -9,6 +9,11 @@ on:
 permissions:
   contents: read
 
+env:
+  # Pull requests run only tests affected by the PR merge commit (`HEAD^1` is the base branch).
+  # Partial coverage would replace Codecov's carried-forward flags, so only full runs upload it.
+  VITEST_SCOPE_ARGS: ${{ github.event_name == 'pull_request' && '--changed=HEAD^1 --passWithNoTests' || '--coverage' }}
+
 jobs:
   openapi-sdk-test:
     name: OpenAPI SDK and Next.js adapters
@@ -58,8 +63,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shardIndex: [1, 2, 3, 4]
-        shardTotal: [4]
+        # Pull requests run only affected tests, so one machine avoids repeated setup cost.
+        shardIndex: ${{ fromJSON(github.event_name == 'pull_request' && '[1]' || '[1, 2, 3, 4]') }}
+        shardTotal: ${{ fromJSON(github.event_name == 'pull_request' && '[1]' || '[4]') }}
     defaults:
       run:
         shell: bash
@@ -70,6 +76,8 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # `--changed` diffs the PR merge commit against its base-branch parent.
+          fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 1 }}
 
       # All Web jobs restore the same dependency cache; only one shard saves it.
       - name: Setup web environment
@@ -78,10 +86,11 @@ jobs:
           cache-save: ${{ matrix.shardIndex == 1 }}
 
       - name: Run tests
-        run: vp test run --project unit --reporter=minimal --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --coverage
+        run: vp test run --project unit --reporter=minimal --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} $VITEST_SCOPE_ARGS
 
       # Codecov combines the shard uploads under the same commit and web flag.
       - name: Report coverage
+        if: ${{ github.event_name != 'pull_request' }}
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           files: web/coverage/coverage-final.json
@@ -99,8 +108,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shardIndex: [1, 2]
-        shardTotal: [2]
+        # Pull requests run only affected tests, so one machine avoids repeated setup cost.
+        shardIndex: ${{ fromJSON(github.event_name == 'pull_request' && '[1]' || '[1, 2]') }}
+        shardTotal: ${{ fromJSON(github.event_name == 'pull_request' && '[1]' || '[2]') }}
     defaults:
       run:
         shell: bash
@@ -111,6 +121,8 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # `--changed` diffs the PR merge commit against its base-branch parent.
+          fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 1 }}
 
       - name: Setup web environment
         uses: ./.github/actions/setup-web
@@ -125,10 +137,10 @@ jobs:
         env:
           # Unit uploads already include all authored sources, including untested modules.
           DIFY_TEST_COVERAGE_ONLY_EXECUTED: 'true'
-        run: vp test run --project browser --silent=passed-only --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --coverage
+        run: vp test run --project browser --silent=passed-only --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} $VITEST_SCOPE_ARGS
 
       - name: Report browser coverage
-        if: ${{ !cancelled() && hashFiles('web/coverage/coverage-final.json') != '' }}
+        if: ${{ !cancelled() && github.event_name != 'pull_request' && hashFiles('web/coverage/coverage-final.json') != '' }}
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           files: web/coverage/coverage-final.json
@@ -163,6 +175,8 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # `--changed` diffs the PR merge commit against its base-branch parent.
+          fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 1 }}
 
       - name: Setup web environment
         uses: ./.github/actions/setup-web
@@ -174,7 +188,7 @@ jobs:
         run: vp exec playwright install --with-deps --only-shell chromium
 
       - name: Run dify-ui tests
-        run: vp test run --project unit --coverage --silent=passed-only
+        run: vp test run --project unit --silent=passed-only $VITEST_SCOPE_ARGS
 
       - name: Upload dify-ui test failure artifacts
         if: ${{ failure() && !cancelled() }}
@@ -189,6 +203,7 @@ jobs:
           retention-days: 7
 
       - name: Report coverage
+        if: ${{ github.event_name != 'pull_request' }}
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           files: packages/dify-ui/coverage/coverage-final.json

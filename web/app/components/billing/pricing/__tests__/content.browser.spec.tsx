@@ -24,6 +24,7 @@ vi.mock('@/service/console', async (importOriginal) => {
 async function setup(options: Parameters<typeof createConsoleQueryWrapper>[0] = {}) {
   const { queryClient, wrapper: Providers } = createConsoleQueryWrapper({
     currentWorkspace: { role: 'owner' },
+    features: null,
     ...options,
   })
   onTestFinished(() => queryClient.clear())
