@@ -78,7 +78,13 @@ class InMemoryAnnotationRetrieval:
         return self.match
 
 
-type OwnershipChange = Literal["disable", "foreign_annotation", "foreign_message", "binding"]
+type OwnershipChange = Literal[
+    "binding",
+    "disable",
+    "foreign_annotation",
+    "foreign_message",
+    "missing_annotation",
+]
 
 
 @pytest.fixture
@@ -290,9 +296,18 @@ def test_search_releases_connection_and_commits_hit(
         hit = session.scalar(select(AppAnnotationHitHistory))
         assert hit is not None
         assert (hit.annotation_id, hit.message_id, hit.source) == (reply.id, "msg-1", source)
+        assert (hit.question, hit.annotation_question, hit.annotation_content, hit.score) == (
+            "hi",
+            "question",
+            "answer",
+            0.8,
+        )
 
 
-@pytest.mark.parametrize("change", ["disable", "foreign_annotation", "foreign_message", "binding"])
+@pytest.mark.parametrize(
+    "change",
+    ["disable", "foreign_annotation", "foreign_message", "missing_annotation", "binding"],
+)
 def test_revalidates_after_remote_search(
     annotation_store: AnnotationStore,
     monkeypatch: pytest.MonkeyPatch,
@@ -312,6 +327,10 @@ def test_revalidates_after_remote_search(
                 annotation = session.get(MessageAnnotation, "annotation-1")
                 assert annotation is not None
                 annotation.app_id = "foreign"
+            elif change == "missing_annotation":
+                annotation = session.get(MessageAnnotation, "annotation-1")
+                assert annotation is not None
+                session.delete(annotation)
             else:
                 message = session.get(Message, "msg-1")
                 assert message is not None

@@ -9,8 +9,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import InternalServerError
 
-from controllers.common.errors import InternalServerError
 from controllers.web.completion import ChatApi, ChatStopApi, CompletionApi, CompletionStopApi
 from controllers.web.error import (
     AgentNotPublishedError,
