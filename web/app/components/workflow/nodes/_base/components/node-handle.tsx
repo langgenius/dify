@@ -91,7 +91,7 @@ export const NodeTargetHandle = memo(
           className={cn(
             'z-1 size-4! rounded-none! border-none! bg-transparent! outline-hidden!',
             'before:absolute before:-inset-1 before:scale-[var(--workflow-control-scale,1)]',
-            'after:absolute after:top-1 after:left-1.5 after:h-2 after:w-0.5 after:bg-workflow-link-line-handle',
+            'after:absolute after:inset-s-1.5 after:top-1 after:h-2 after:w-0.5 after:bg-workflow-link-line-handle',
             data._runningStatus === NodeRunningStatus.Succeeded &&
               'after:bg-workflow-link-line-success-handle',
             data._runningStatus === NodeRunningStatus.Failed &&
@@ -177,6 +177,7 @@ export const NodeSourceHandle = memo(
     const hasMultipleSourceHandles =
       data.type === BlockEnum.IfElse ||
       data.type === BlockEnum.QuestionClassifier ||
+      data.type === BlockEnum.Decision ||
       hasAgentV2OutputRoutes(data) ||
       data.type === BlockEnum.HumanInput ||
       data.error_strategy === ErrorHandleTypeEnum.failBranch
@@ -240,7 +241,7 @@ export const NodeSourceHandle = memo(
           'group/handle z-1 size-4! rounded-none! border-none! bg-transparent! outline-hidden!',
           'before:absolute before:-inset-1',
           !hasMultipleSourceHandles && 'before:scale-[var(--workflow-control-scale,1)]',
-          'after:absolute after:top-1 after:right-1.5 after:h-2 after:w-0.5 after:bg-workflow-link-line-handle',
+          'after:absolute after:inset-e-1.5 after:top-1 after:h-2 after:w-0.5 after:bg-workflow-link-line-handle',
           data._runningStatus === NodeRunningStatus.Succeeded &&
             'after:bg-workflow-link-line-success-handle',
           data._runningStatus === NodeRunningStatus.Failed &&

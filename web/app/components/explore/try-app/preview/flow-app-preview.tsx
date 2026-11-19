@@ -23,6 +23,7 @@ const blockTypeMap: Record<string, BlockEnum> = {
   code: BlockEnum.Code,
   datasource: BlockEnum.DataSource,
   'datasource-empty': BlockEnum.DataSourceEmpty,
+  decision: BlockEnum.Decision,
   'document-extractor': BlockEnum.DocExtractor,
   end: BlockEnum.End,
   'http-request': BlockEnum.HttpRequest,

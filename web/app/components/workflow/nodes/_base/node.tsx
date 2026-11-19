@@ -146,7 +146,7 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
       return (
         <div
           className={cn(
-            'mr-2 system-xs-medium text-text-tertiary',
+            'me-2 system-xs-medium text-text-tertiary',
             data._runningStatus === NodeRunningStatus.Running && 'text-text-accent',
           )}
         >
@@ -228,6 +228,7 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
         {data.type !== BlockEnum.StartPlaceholder &&
           data.type !== BlockEnum.IfElse &&
           data.type !== BlockEnum.QuestionClassifier &&
+          data.type !== BlockEnum.Decision &&
           !hasAgentV2OutputRoutes(data) &&
           data.type !== BlockEnum.HumanInput &&
           !data._isCandidate && (
@@ -244,14 +245,14 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
             isContainerNode(data.type) && 'bg-transparent',
           )}
         >
-          <div className="mr-1 flex min-w-0 grow items-center">
-            <BlockIcon className="mr-2 shrink-0" type={data.type} size="md" toolIcon={toolIcon} />
+          <div className="me-1 flex min-w-0 grow items-center">
+            <BlockIcon className="me-2 shrink-0" type={data.type} size="md" toolIcon={toolIcon} />
             <div className="flex min-w-0 grow items-center system-sm-semibold-uppercase text-text-primary">
               <div title={data.title} className="min-w-0 grow truncate">
                 {data.title}
               </div>
               {viewingUsers.length > 0 && (
-                <div className="ml-3 shrink-0">
+                <div className="ms-3 shrink-0">
                   <UserAvatarList users={viewingUsers} maxVisible={3} size="sm" />
                 </div>
               )}

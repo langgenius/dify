@@ -1,3 +1,4 @@
+import type { DecisionNodeType } from '../nodes/decision/types'
 import type { IfElseNodeType } from '../nodes/if-else/types'
 import type { IterationNodeType } from '../nodes/iteration/types'
 import type { LoopNodeType } from '../nodes/loop/types'
@@ -20,6 +21,7 @@ import {
   NODE_WIDTH_X_OFFSET,
   START_INITIAL_POSITION,
 } from '../constants'
+import { OTHERWISE_HANDLE_ID } from '../nodes/decision/types'
 import { branchNameCorrect } from '../nodes/if-else/utils'
 import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
@@ -254,6 +256,20 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
       node.data._targetBranches = (node.data as QuestionClassifierNodeType).classes.map((topic) => {
         return topic
       })
+    }
+
+    if (node.data.type === BlockEnum.Decision) {
+      const nodeData = node.data as DecisionNodeType
+      node.data._targetBranches = [
+        ...(nodeData.outcomes || []).map((outcome) => ({
+          id: outcome.id,
+          name: outcome.label,
+        })),
+        {
+          id: OTHERWISE_HANDLE_ID,
+          name: nodeData.otherwise?.label ?? '',
+        },
+      ]
     }
 
     if (hasAgentV2OutputRoutes(node.data))
