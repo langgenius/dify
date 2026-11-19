@@ -14,6 +14,7 @@ from controllers.common.schema import register_response_schema_model
 from controllers.web import api, web_ns
 from controllers.web.wraps import WebApiResource
 from core.workflow.human_input_policy import HumanInputSurface
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from libs.external_api import error_responses
 from models.enums import CreatorUserRole
@@ -95,6 +96,7 @@ class WorkflowEventsApi(WebApiResource):
                             tenant_id=app_model.tenant_id,
                             app_id=app_model.id,
                             session_maker=session_maker,
+                            tool_providers=application_services().tools.tool_providers,
                             human_input_surface=HumanInputSurface.WEB_APP,
                             close_on_pause=not continue_on_pause,
                         )

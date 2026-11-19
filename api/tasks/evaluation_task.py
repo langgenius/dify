@@ -128,10 +128,10 @@ def _evaluate_with_customized_workflow(
     Postcondition: row failures contain only public diagnostics, results retain
     input positions, and cancellation is checked before and after each row.
     """
-    from core.app.apps.workflow.app_generator import WorkflowAppGenerator
     from core.app.entities.app_invoke_entities import InvokeFrom
     from core.evaluation.runners import get_service_account_for_app
     from models.model import App
+    from services.workflow.execution.adapters.workflow.app_generator import WorkflowAppGenerator
     from services.workflow_execution_identity import build_workflow_execution_identity
     from services.workflow_run_agg import WorkflowRunAgg
     from services.workflow_service import WorkflowService
@@ -171,11 +171,17 @@ def _evaluate_with_customized_workflow(
                 node_run_result_mapping,
             )
 
-            generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
+            from extensions.application_services.workflow import build_workflow_execution_dependencies
+            from repositories.workflow.definition_repository import workflow_snapshot
+
+            generator = WorkflowAppGenerator(
+                runtime=build_workflow_execution_dependencies(session_factory.get_session_maker()),
+                execution_driver=WorkflowRunAgg.run,
+            )
             response: Mapping[str, Any] = generator.generate(
                 execution_identity=build_workflow_execution_identity(service_account),
                 app_model=app,
-                workflow=published_workflow,
+                workflow=workflow_snapshot(published_workflow),
                 user=service_account,
                 args={"inputs": workflow_inputs},
                 invoke_from=InvokeFrom.SERVICE_API,

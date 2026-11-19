@@ -578,12 +578,14 @@ class TestChatAppRunner:
         assert annotation_query.call_args.kwargs["app_id"] == "app-1"
         mock_direct.assert_called_once()
 
-    def test_run_closes_explicit_session_before_stream_consumption(self, sqlite_session: Session):
-        from core.app.apps.chat.app_runner import ChatAppRunner as CoreChatAppRunner
+    def test_run_releases_database_connection_before_stream_consumption(
+        self, sqlite_session: Session, app_records, annotation_replies, sqlite_session_factory
+    ):
+        from services.app.generation.adapters.chat_runner import ChatAppRunner as CoreChatAppRunner
 
-        _, conversation, message = _persist_records(sqlite_session)
-        runner = CoreChatAppRunner()
-        app_config = SimpleNamespace(
+        app_record, conversation, message = _persist_records(sqlite_session)
+        runner = CoreChatAppRunner(records=app_records, retrieval=build_dataset_retrieval(sqlite_session_factory))
+        app_config = ChatAppConfig.model_construct(
             app_id="app-1",
             tenant_id="tenant-1",
             app_mode=AppMode.CHAT,
@@ -613,6 +615,7 @@ class TestChatAppRunner:
             events.append("commit")
 
         def invoke_stream():
+            assert sqlite_session_factory.kw["bind"].pool.checkedout() == 0
             events.append("first-chunk")
             yield "chunk"
 
@@ -620,26 +623,33 @@ class TestChatAppRunner:
             events.append("invoke")
             return invoke_stream()
 
+        sqlite_session.close()
         event.listen(sqlite_session, "after_commit", record_commit)
         try:
             with (
                 patch.object(CoreChatAppRunner, "organize_prompt_messages", return_value=([], [])),
                 patch.object(CoreChatAppRunner, "moderation_for_inputs", return_value=(None, {}, "hi")),
-                patch.object(CoreChatAppRunner, "query_app_annotations_to_reply", return_value=None),
                 patch.object(CoreChatAppRunner, "recalc_llm_max_tokens"),
                 patch.object(
                     CoreChatAppRunner,
                     "_handle_invoke_result",
                     side_effect=lambda invoke_result, **kwargs: list(invoke_result),
                 ) as mock_handle,
-                patch("core.app.apps.chat.app_runner.ModelInstance", return_value=model_instance),
+                patch("services.app.generation.adapters.chat_runner.ModelInstance", return_value=model_instance),
             ):
                 model_instance.invoke_llm.side_effect = invoke_llm
-                runner.run(app_generate_entity, queue_manager, conversation, message, sqlite_session)
+                runner.run(
+                    app_generate_entity,
+                    queue_manager,
+                    conversation,
+                    message,
+                    app_record=app_record,
+                    annotations=annotation_replies,
+                )
         finally:
             event.remove(sqlite_session, "after_commit", record_commit)
 
-        assert events == ["commit", "commit", "invoke", "first-chunk"]
+        assert events == ["invoke", "first-chunk"]
         mock_handle.assert_called_once_with(
             invoke_result=ANY,
             queue_manager=queue_manager,

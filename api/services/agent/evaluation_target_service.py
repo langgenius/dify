@@ -8,11 +8,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
-from core.app.apps.agent_app.runtime_request_builder import (
-    AgentAppRuntimeBuildContext,
-    AgentAppRuntimeRequest,
-    AgentAppRuntimeRequestBuilder,
-)
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.credit_usage import CreditUsageAppType
 from models.agent import (
@@ -29,6 +24,11 @@ from models.agent_config_entities import AgentSoulConfig
 from models.enums import AppStatus
 from models.model import App, AppMode
 from services.agent.workspace_service import AgentWorkspaceService, WorkspaceOwnerScope
+from services.app.generation.adapters.agent_request_builder import (
+    AgentAppRuntimeBuildContext,
+    AgentAppRuntimeRequest,
+    AgentAppRuntimeRequestBuilder,
+)
 
 
 @dataclass(frozen=True, slots=True)

@@ -44,7 +44,6 @@ from graphon.variables.segments import ArrayFileSegment, FileSegment
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
-from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionTriggeredFrom, WorkflowRun, WorkflowType
 from repositories.entities.workflow_execution import WorkflowExecutionIdentity
 from repositories.human_input_v2.form_repository import Form, FormCreateParams
@@ -56,7 +55,6 @@ from services.workflow.execution.adapters.workflow.app_generator import Workflow
 from services.workflow.execution.adapters.workflow.app_queue_manager import WorkflowAppQueueManager
 from services.workflow.execution.adapters.workflow.app_runner import WorkflowAppRunner
 from services.workflow.execution.ports import WorkflowRuntime
-from services.workflow_run_agg import WorkflowRunAgg
 from tests.helpers.unit.model_factories import make_account, make_upload_file, make_workflow
 
 """SQLite-backed tests for workflow app generation and worker reload behavior."""
@@ -412,10 +410,16 @@ class TestWorkflowAppGeneratorCases:
 
     @staticmethod
     def test_worker_publishes_a_preparation_failure_to_the_waiting_caller(
-        app: Flask, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+        app: Flask,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        workflow_runtime,
+        monkeypatch,
     ) -> None:
         """The caller blocks on the queue, so a failure before the run starts must reach it."""
-        from core.app.apps.workflow.app_generator import WorkflowAppGenerator as CoreWorkflowAppGenerator
+        from services.workflow.execution.adapters.workflow.app_generator import (
+            WorkflowAppGenerator as CoreWorkflowAppGenerator,
+        )
 
         app_model, workflow, end_user = _persist_generator_rows(sqlite_session)
         recorder = _PersistedRunRecorder(sqlite_session_factory)
@@ -437,7 +441,16 @@ class TestWorkflowAppGeneratorCases:
         queue = WorkflowAppQueueManager(entity.task_id, end_user.id, entity.invoke_from, AppMode.WORKFLOW)
         execution_repository, node_repository = _repositories(sqlite_session_factory, app_model, end_user)
 
-        CoreWorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)._generate_worker(
+        def fail_restore(*_args):
+            raise ValueError("Workflow not found")
+
+        monkeypatch.setattr(workflow_runtime.contexts, "restore_graph", fail_restore)
+        CoreWorkflowAppGenerator(
+            runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+        )._generate_worker(
+            system_user_id=end_user.id,
+            workflow=workflow_snapshot(workflow),
+            graph_runtime_state=MagicMock(),
             flask_app=app,
             application_generate_entity=entity,
             queue_manager=queue,
@@ -453,74 +466,6 @@ class TestWorkflowAppGeneratorCases:
         assert str(events[-1].error) == "Workflow not found"
         assert sqlite_session.get(WorkflowRun, entity.workflow_execution_id) is None
         assert recorder.events == []
-
-    @staticmethod
-    def test_ensure_snippet_start_node_in_worker_returns_standard_workflow_without_lookup(
-        sqlite_session: Session,
-    ) -> None:
-        from core.app.apps.workflow.app_generator import WorkflowAppGenerator as CoreWorkflowAppGenerator
-
-        workflow = _workflow_app_generator_workflow()
-        sqlite_session.add(workflow)
-        sqlite_session.commit()
-
-        result = CoreWorkflowAppGenerator._ensure_snippet_start_node_in_worker(
-            session=sqlite_session, workflow=workflow
-        )
-
-        assert result is workflow
-
-    @staticmethod
-    def test_ensure_snippet_start_node_in_worker_returns_snippet_workflow_when_snippet_missing(
-        sqlite_session: Session,
-    ) -> None:
-        from core.app.apps.workflow.app_generator import WorkflowAppGenerator as CoreWorkflowAppGenerator
-
-        workflow = _workflow_app_generator_workflow(app_id="snippet-1", tenant_id="tenant-1", kind=WorkflowKind.SNIPPET)
-        other_tenant_snippet = CustomizedSnippet(
-            id="snippet-1",
-            tenant_id="tenant-2",
-            name="Other tenant snippet",
-            description="",
-            type="node",
-        )
-        sqlite_session.add_all([workflow, other_tenant_snippet])
-        sqlite_session.commit()
-
-        result = CoreWorkflowAppGenerator._ensure_snippet_start_node_in_worker(
-            session=sqlite_session, workflow=workflow
-        )
-
-        assert result is workflow
-
-    @staticmethod
-    def test_ensure_snippet_start_node_in_worker_applies_snippet_start_injection(
-        monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-    ) -> None:
-        from core.app.apps.workflow.app_generator import WorkflowAppGenerator as CoreWorkflowAppGenerator
-
-        workflow = _workflow_app_generator_workflow(app_id="snippet-1", tenant_id="tenant-1", kind=WorkflowKind.SNIPPET)
-        snippet = CustomizedSnippet(
-            id="snippet-1",
-            tenant_id="tenant-1",
-            name="Matching snippet",
-            description="",
-            type="node",
-        )
-        sqlite_session.add_all([workflow, snippet])
-        sqlite_session.commit()
-        ensure_start_node = MagicMock(return_value=workflow)
-        monkeypatch.setattr(
-            "services.snippet_generate_service.SnippetGenerateService.ensure_start_node_for_worker",
-            ensure_start_node,
-        )
-
-        result = CoreWorkflowAppGenerator._ensure_snippet_start_node_in_worker(
-            session=sqlite_session, workflow=workflow
-        )
-
-        assert result is workflow
-        ensure_start_node.assert_called_once_with(workflow, snippet)
 
     @staticmethod
     def test_generate_includes_parent_trace_context_in_extras(

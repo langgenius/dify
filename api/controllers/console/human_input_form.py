@@ -28,6 +28,7 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from libs.external_api import error_responses
 from libs.login import login_required
@@ -246,6 +247,7 @@ class ConsoleWorkflowEventsApi(Resource):
                             tenant_id=workflow_run.tenant_id,
                             app_id=workflow_run.app_id,
                             session_maker=session_maker,
+                            tool_providers=application_services().tools.tool_providers,
                             human_input_surface=HumanInputSurface.CONSOLE,
                             include_node_details=include_node_details,
                             close_on_pause=not continue_on_pause,

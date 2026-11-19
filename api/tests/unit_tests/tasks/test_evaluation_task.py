@@ -17,7 +17,6 @@ from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from clients.agent_backend.fake_client import FakeAgentBackendRunClient, FakeAgentBackendScenario
-from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeRequest
 from core.evaluation.entities.evaluation_entity import (
     AgentEvaluationItem,
     CustomizedMetricOutputField,
@@ -55,6 +54,7 @@ from models.evaluation import (
 from models.model import UploadFile
 from models.workflow import WorkflowKind
 from services.agent.evaluation_target_service import ResolvedAgentEvaluationTarget
+from services.app.generation.adapters.agent_request_builder import AgentAppRuntimeRequest
 from services.evaluation_service import EvaluationService
 from tasks.evaluation_task import (
     EvaluationRunCancelledError,
@@ -161,8 +161,8 @@ def test_delete_stored_result_file_ignores_storage_failure(monkeypatch: pytest.M
 def test_customized_workflow_uses_pinned_version_and_keeps_row_errors(
     sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from core.app.apps.workflow.app_generator import WorkflowAppGenerator
     from models.model import AppMode
+    from services.workflow.execution.adapters.workflow.app_generator import WorkflowAppGenerator
     from services.workflow_service import WorkflowService
 
     account = make_account()
@@ -220,7 +220,9 @@ def test_customized_workflow_uses_pinned_version_and_keeps_row_errors(
     )
 
     assert len(generated) == 2
-    assert generated[0]["workflow"] is workflow
+    from repositories.workflow.definition_repository import workflow_snapshot
+
+    assert generated[0]["workflow"] == workflow_snapshot(workflow)
     assert generated[0]["args"] == {"inputs": {"prompt": "first"}}
     assert generated[1]["args"] == {"inputs": {"prompt": "second"}}
     assert results[0].metrics[0].name == "score"

@@ -24,7 +24,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from clients.agent_backend import FakeAgentBackendRunClient
 from context import capture_current_context
 from context.flask_app_context import capture_flask_context
-from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.file_access import FileAccessScope, bind_file_access_scope
 from core.app.workflow.file_runtime import init_app
@@ -138,12 +137,13 @@ from services.workflow.execution.adapters.human_input import DifyHITLCallback
 from services.workflow.execution.adapters.human_input_events import resolve_human_input_node_id
 from services.workflow.execution.adapters.node_factory import DifyNodeFactory
 from services.workflow.execution.adapters.node_runtime import DifyToolFileManager, DifyToolNodeRuntime
+from services.workflow.execution.adapters.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
+from services.workflow.execution.adapters.workflow.app_config_manager import WorkflowAppConfig
 from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
 from services.workflow.execution.adapters.workflow_tool_container_handler import (
     WorkflowToolContainerHandler,
     WorkflowToolNestedContainerHandler,
 )
-from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from services.workflow_run_index import WorkflowRunIndex
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_run_context

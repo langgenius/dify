@@ -22,7 +22,6 @@ from controllers.service_api.app.workflow_events import WorkflowEventsApi
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
 from core.app.apps.draft_variable_saver import DraftVariableSaver, NoopDraftVariableSaver
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
-from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     InvokeFrom,
@@ -59,6 +58,7 @@ from services.app.generation.ports import ConversationSnapshot, MessageSnapshot,
 from services.app.generation.runtime import AppGenerationRuntime
 from services.app_generate_service import AppGenerateService
 from services.workflow.execution.adapters.response_converter import WorkflowResponseConverter
+from services.workflow.execution.adapters.workflow.app_queue_manager import WorkflowAppQueueManager
 from services.workflow.variable_contracts import WorkflowExecutionVariables
 from services.workflow_event_snapshot_service import _build_paused_snapshot_events
 from tests.helpers.unit.config_override import apply_config_overrides
@@ -285,6 +285,22 @@ def _build_workflow_paused_blocking_response() -> WorkflowAppPausedBlockingRespo
     )
 
 
+@dataclass
+class _ToolProvidersStub:
+    def icon(self, *args: object, **kwargs: object) -> str | None:
+        return None
+
+
+@dataclass
+class _ToolsServiceStub:
+    tool_providers: object
+
+
+@dataclass
+class _AppServicesStub:
+    tools: _ToolsServiceStub
+
+
 @dataclass(frozen=True)
 class _FakePauseEntity(WorkflowPauseEntity):
     pause_id: str
@@ -442,6 +458,12 @@ class TestHitlServiceApi:
         )
         msg_generator = Mock()
         snapshot_calls: list[dict[str, object]] = []
+        tool_providers = _ToolProvidersStub()
+        monkeypatch.setattr(
+            workflow_events_module,
+            "application_services",
+            lambda: _AppServicesStub(tools=_ToolsServiceStub(tool_providers=tool_providers)),
+        )
 
         def snapshot_builder(**kwargs: object) -> list[dict[str, str]]:
             snapshot_calls.append(kwargs)
@@ -470,6 +492,7 @@ class TestHitlServiceApi:
                 "tenant_id": "tenant-1",
                 "app_id": "app-1",
                 "session_maker": ANY,
+                "tool_providers": tool_providers,
                 "human_input_surface": HumanInputSurface.SERVICE_API,
                 "close_on_pause": False,
             }
@@ -882,6 +905,7 @@ class TestHitlServiceApi:
             session_maker=sqlite_session_maker,
             human_input_surface=HumanInputSurface.SERVICE_API,
             node_executions={},
+            tool_providers=_ToolProvidersStub(),
         )
 
         assert [event["event"] for event in events] == [
@@ -1074,6 +1098,12 @@ class TestWorkflowEventsApi:
         )
         msg_generator = Mock()
         snapshot_calls: list[dict[str, object]] = []
+        tool_providers = _ToolProvidersStub()
+        monkeypatch.setattr(
+            workflow_events_module,
+            "application_services",
+            lambda: _AppServicesStub(tools=_ToolsServiceStub(tool_providers=tool_providers)),
+        )
 
         def snapshot_builder(**kwargs: object) -> list[dict[str, str]]:
             snapshot_calls.append(kwargs)

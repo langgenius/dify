@@ -236,8 +236,10 @@ class SnippetGenerateService:
         :return: Blocking response mapping with workflow outputs
         :raises ValueError: If the snippet has no published workflow
         """
-        from core.app.apps.workflow.app_generator import WorkflowAppGenerator as EvaluationWorkflowGenerator
         from extensions.application_services.snippets import build_snippet_service
+        from services.workflow.execution.adapters.workflow.app_generator import (
+            WorkflowAppGenerator as EvaluationWorkflowGenerator,
+        )
 
         snippet_service = build_snippet_service(session_maker or session_factory.get_session_maker())
         workflow = (
@@ -274,6 +276,20 @@ class SnippetGenerateService:
         return response
 
     @classmethod
+    def ensure_start_node_for_worker(cls, workflow: Workflow, snippet: CustomizedSnippet) -> Workflow:
+        """Inject the virtual Start node after a worker reloads a snippet workflow."""
+        graph_dict = workflow.graph_dict
+        nodes: list[dict[str, Any]] = graph_dict.get("nodes", [])
+        if any(node.get("data", {}).get("type") == "start" for node in nodes):
+            return workflow
+
+        modified_graph = cls._inject_virtual_start_node(graph_dict=graph_dict, input_fields=snippet.input_fields_list)
+        serialized_graph = json.dumps(modified_graph)
+        make_transient(workflow)
+        workflow.graph = serialized_graph
+        return workflow
+
+    @classmethod
     def _ensure_start_node(cls, workflow: WorkflowSnapshot, snippet: CustomizedSnippet) -> WorkflowSnapshot:
         """
         Return *workflow* with a Start node.
@@ -295,20 +311,6 @@ class SnippetGenerateService:
         )
 
         return replace(workflow, graph=json.dumps(modified_graph))
-
-    @classmethod
-    def ensure_start_node_for_worker(cls, workflow: Workflow, snippet: CustomizedSnippet) -> Workflow:
-        """Inject the virtual Start node after a worker reloads a snippet workflow."""
-        graph_dict = workflow.graph_dict
-        nodes: list[dict[str, Any]] = graph_dict.get("nodes", [])
-        if any(node.get("data", {}).get("type") == "start" for node in nodes):
-            return workflow
-
-        modified_graph = cls._inject_virtual_start_node(graph_dict=graph_dict, input_fields=snippet.input_fields_list)
-        serialized_graph = json.dumps(modified_graph)
-        make_transient(workflow)
-        workflow.graph = serialized_graph
-        return workflow
 
     @classmethod
     def _inject_virtual_start_node(

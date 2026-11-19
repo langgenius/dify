@@ -1,7 +1,7 @@
 import json
 import queue
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from decimal import Decimal
 from itertools import cycle
@@ -63,6 +63,43 @@ from services.workflow_event_snapshot_service import (
 from services.workflow_event_snapshot_service import (
     _build_paused_snapshot_events as _build_checkpoint_snapshot_events,
 )
+
+
+@dataclass
+class _CallArgs:
+    args: tuple[object, ...]
+    kwargs: dict[str, object]
+
+
+@dataclass
+class _CallSpy:
+    return_value: object = None
+    calls: list[_CallArgs] = field(default_factory=list)
+
+    def __call__(self, *args: object, **kwargs: object) -> object:
+        self.calls.append(_CallArgs(args=args, kwargs=kwargs))
+        return self.return_value
+
+    @property
+    def call_args(self) -> _CallArgs:
+        assert self.calls, "Expected at least one call"
+        return self.calls[-1]
+
+    def assert_called_once(self) -> None:
+        assert len(self.calls) == 1, f"Expected 1 call, got {len(self.calls)}"
+
+    def assert_not_called(self) -> None:
+        assert len(self.calls) == 0, f"Expected 0 calls, got {len(self.calls)}"
+
+
+@dataclass
+class _TestToolProviders:
+    def icon(self, *args: object, **kwargs: object) -> str | None:
+        del args, kwargs
+        return None
+
+
+_TEST_TOOL_PROVIDERS = _TestToolProviders()
 
 
 @dataclass(frozen=True)
@@ -202,6 +239,7 @@ def test_build_snapshot_events_applies_message_context() -> None:
         task_id="task-1",
         message_context=message_context,
         node_executions={},
+        tool_providers=_TEST_TOOL_PROVIDERS,
     )
 
     assert [event["event"] for event in events] == [
@@ -821,6 +859,8 @@ def test_console_snapshot_replays_node_details_without_exposing_them_by_default(
     buffer_state = BufferState(queue.Queue(), Event(), Event(), Event(), task_id_hint="task-1")
     buffer_state.done_event.set()
     monkeypatch.setattr(service_module, "_start_buffering", lambda _sub: buffer_state)
+    extras_builder = _CallSpy(return_value={"icon": "node-icon"})
+    monkeypatch.setattr(service_module, "node_execution_extras", extras_builder)
 
     events = list(
         build_workflow_event_stream(
@@ -829,6 +869,7 @@ def test_console_snapshot_replays_node_details_without_exposing_them_by_default(
             tenant_id="tenant-1",
             app_id="app-1",
             session_maker=sqlite_session_factory,
+            tool_providers=_TEST_TOOL_PROVIDERS,
             human_input_surface=HumanInputSurface.CONSOLE,
             include_node_details=include_node_details,
         )
@@ -846,10 +887,17 @@ def test_console_snapshot_replays_node_details_without_exposing_them_by_default(
         assert finished["process_data"] == {"action": "approve"}
         assert finished["outputs"] == {"approved_text": "approved"}
         assert finished["execution_metadata"] == {"total_tokens": 7}
+        assert started["extras"] == {"icon": "node-icon"}
+        extras_builder.assert_called_once()
+        replayed_execution = extras_builder.call_args.args[0]
+        assert replayed_execution.id == execution.id
+        assert extras_builder.call_args.kwargs == {"tool_providers": _TEST_TOOL_PROVIDERS}
     else:
         assert detail_queries == []
         assert started["inputs"] is None
+        assert started["extras"] == {}
         assert all(finished[key] is None for key in ("inputs", "process_data", "outputs", "execution_metadata"))
+        extras_builder.assert_not_called()
 
 
 def test_build_workflow_event_stream_should_emit_ping_and_terminal_snapshot_event(
@@ -909,6 +957,7 @@ def test_build_workflow_event_stream_should_emit_ping_and_terminal_snapshot_even
             tenant_id="tenant-1",
             app_id="app-1",
             session_maker=session_maker,
+            tool_providers=_TEST_TOOL_PROVIDERS,
             human_input_surface=HumanInputSurface.CONSOLE,
         )
     )
@@ -988,6 +1037,7 @@ def test_build_advanced_chat_snapshot_requires_conversation_context(
             tenant_id="tenant-1",
             app_id="app-1",
             session_maker=unbound_session_factory,
+            tool_providers=_TEST_TOOL_PROVIDERS,
             human_input_surface=HumanInputSurface.CONSOLE,
         )
     conversation_lookup.assert_not_called()
@@ -1029,6 +1079,7 @@ def test_build_non_suspended_advanced_chat_snapshot_uses_app_scoped_fallback(
         tenant_id="tenant-1",
         app_id="app-1",
         session_maker=session_maker,
+        tool_providers=_TEST_TOOL_PROVIDERS,
         human_input_surface=HumanInputSurface.CONSOLE,
     )
 
@@ -1089,6 +1140,7 @@ def test_build_workflow_event_stream_should_emit_periodic_ping_and_stop_after_id
             tenant_id="tenant-1",
             app_id="app-1",
             session_maker=sqlite_session_factory,
+            tool_providers=_TEST_TOOL_PROVIDERS,
             human_input_surface=HumanInputSurface.CONSOLE,
             idle_timeout=20.0,
             ping_interval=5.0,
@@ -1136,6 +1188,7 @@ def test_build_workflow_event_stream_should_exit_when_buffer_done_and_empty(
             tenant_id="tenant-1",
             app_id="app-1",
             session_maker=sqlite_session_factory,
+            tool_providers=_TEST_TOOL_PROVIDERS,
             human_input_surface=HumanInputSurface.CONSOLE,
         )
     )
@@ -1181,6 +1234,7 @@ def test_build_workflow_event_stream_should_continue_when_pause_loading_fails(
             tenant_id="tenant-1",
             app_id="app-1",
             session_maker=sqlite_session_factory,
+            tool_providers=_TEST_TOOL_PROVIDERS,
             human_input_surface=HumanInputSurface.CONSOLE,
         )
     )
@@ -1231,6 +1285,7 @@ def test_build_snapshot_events_preserves_public_form_token(
         session_maker=sqlite_session_factory,
         human_input_surface=HumanInputSurface.CONSOLE,
         node_executions={},
+        tool_providers=_TEST_TOOL_PROVIDERS,
     )
 
     assert events[-2]["event"] == StreamEvent.HUMAN_INPUT_REQUIRED
@@ -1274,6 +1329,7 @@ def _build_recipient_snapshot_events(
         session_maker=session_maker,
         human_input_surface=surface,
         node_executions={},
+        tool_providers=_TEST_TOOL_PROVIDERS,
     )
 
 
@@ -1436,6 +1492,7 @@ def test_build_snapshot_events_resolves_pause_reason_select_options(
         session_maker=sqlite_session_factory,
         human_input_surface=HumanInputSurface.CONSOLE,
         node_executions={},
+        tool_providers=_TEST_TOOL_PROVIDERS,
     )
 
     human_input_event = events[-2]
@@ -1484,6 +1541,7 @@ def test_build_workflow_event_stream_loads_pause_tokens_without_flask_app_contex
             tenant_id="tenant-1",
             app_id="app-1",
             session_maker=sqlite_session_factory,
+            tool_providers=_TEST_TOOL_PROVIDERS,
             human_input_surface=HumanInputSurface.CONSOLE,
         )
     )
@@ -1528,6 +1586,7 @@ def _build_paused_snapshot_events(
         session_maker=session_maker,
         human_input_surface=HumanInputSurface.CONSOLE,
         node_executions={},
+        tool_providers=_TEST_TOOL_PROVIDERS,
     )
 
 
@@ -1630,6 +1689,7 @@ def test_stream_continues_with_live_events_when_all_forms_submitted(
             tenant_id="tenant-1",
             app_id="app-1",
             session_maker=sqlite_session_factory,
+            tool_providers=_TEST_TOOL_PROVIDERS,
             human_input_surface=HumanInputSurface.CONSOLE,
             close_on_pause=True,
         )
@@ -1687,6 +1747,7 @@ def test_authorized_snapshot_indexes_legacy_pause_for_stop(
         tenant_id=run.tenant_id,
         app_id=run.app_id,
         session_maker=sqlite_session_factory,
+        tool_providers=_TEST_TOOL_PROVIDERS,
         human_input_surface=HumanInputSurface.CONSOLE,
     )
     stream.close()

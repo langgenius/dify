@@ -48,7 +48,6 @@ from clients.agent_backend import (
     FakeAgentBackendRunClient,
     FakeAgentBackendScenario,
 )
-from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeRequest
 from core.app.apps.agent_app.session_store import (
     AgentAppSessionScope,
     AgentAppWorkspaceStore,
@@ -79,6 +78,7 @@ from models.model import AppMode, Message, MessageAgentThought
 from services.app.generation.adapters import agent_runner as app_runner_module
 from services.app.generation.adapters.agent_request_builder import (
     AgentAppRuntimeBuildContext,
+    AgentAppRuntimeRequest,
     AgentAppRuntimeRequestBuilder,
 )
 from services.app.generation.adapters.agent_runner import AgentAppRunner

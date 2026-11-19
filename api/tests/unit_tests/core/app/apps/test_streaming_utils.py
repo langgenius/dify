@@ -8,8 +8,6 @@ import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
-from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.apps.draft_variable_saver import NoopDraftVariableSaver
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
@@ -43,6 +41,7 @@ from libs.broadcast_channel.channel import SupportsPreparedSubscription
 from machinery.context import AppRequestContext
 from models.enums import ConversationFromSource, MessageStatus
 from models.model import AppMode, EndUser, Message
+from services.app.generation.input_adapter import AppInputAdapter
 from services.app.generation.ports import ConversationSnapshot, MessageSnapshot, WorkflowSnapshot
 from services.moderation_adapters import HostedOpenAIModerationGateway
 from services.moderation_invocation_errors import (
@@ -50,6 +49,7 @@ from services.moderation_invocation_errors import (
     PlatformModerationRejectedInvocationError,
 )
 from services.moderation_service import ModerationPhase, ModerationRule, ModerationService
+from services.workflow.execution.adapters.chatflow.app_config_manager import AdvancedChatAppConfigManager
 from services.workflow.execution.adapters.chatflow.generate_response_converter import (
     AdvancedChatAppGenerateResponseConverter,
 )
@@ -603,7 +603,7 @@ def test_chatflow_model_failures_do_not_override_graphon_results(
         user=user,
         stream=stream,
         dialogue_count=1,
-        draft_var_saver_factory=BaseAppGenerator._get_draft_var_saver_factory(
+        draft_var_saver_factory=AppInputAdapter()._get_draft_var_saver_factory(
             invoke_from, user, tenant_id=app.tenant_id
         ),
     )

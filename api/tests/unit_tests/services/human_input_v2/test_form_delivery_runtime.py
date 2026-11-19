@@ -1754,6 +1754,7 @@ def test_pause_persistence_and_reconnect_preserve_v2_form_and_initiator_only_tok
         pause_entity=pause,
         resumption_context=None,
         session_maker=context.sessions,
+        tool_providers=tool_providers,
         human_input_surface=HumanInputSurface.CONSOLE,
     )
     required = next(event["data"] for event in events if event["event"] == "human_input_required")

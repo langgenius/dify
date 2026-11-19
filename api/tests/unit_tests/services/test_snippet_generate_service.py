@@ -8,7 +8,6 @@ from sqlalchemy import inspect
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
-from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.workflow.snippet_start import SNIPPET_VIRTUAL_START_NODE_ID
 from graphon.file import FileUploadConfig
 from graphon.file.models import File
@@ -22,6 +21,7 @@ from services.snippet_generate_service import SnippetGenerateService, _SnippetAs
 from services.snippet_service import SnippetService
 from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.adapters.node_factory import DifyNodeFactory
+from services.workflow.execution.adapters.workflow.app_generator import WorkflowAppGenerator
 from services.workflow.execution.ports import WorkflowRuntime
 from services.workflow.variable_contracts import WorkflowExecutionVariables
 from services.workflow_service import WorkflowService

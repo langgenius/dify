@@ -19,17 +19,9 @@ from core.app.app_config.entities import (
     SensitiveWordAvoidanceEntity,
     WorkflowUIBasedAppConfig,
 )
-from core.app.apps.advanced_chat.generate_response_converter import AdvancedChatAppGenerateResponseConverter
-from core.app.apps.advanced_chat.generate_task_pipeline import (
-    AdvancedChatAppGenerateTaskPipeline,
-    ConversationSnapshot,
-    MessageSnapshot,
-    WorkflowSnapshot,
-)
-from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import PublishFrom
-from core.app.apps.base_app_runner import AppRunner
 from core.app.apps.chat.generate_response_converter import ChatAppGenerateResponseConverter
+from core.app.apps.draft_variable_saver import NoopDraftVariableSaver
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, ChatAppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import (
@@ -44,7 +36,6 @@ from core.app.entities.task_entities import (
     MessageStreamResponse,
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
-from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit
 from core.model_manager import ModelInstance
 from core.moderation.base import ModerationAction, ModerationInputsResult, ModerationOutputsResult
@@ -71,6 +62,8 @@ from machinery.context import AppRequestContext
 from models.enums import ConversationFromSource, MessageStatus
 from models.model import AppMode, Conversation, Message
 from models.provider import ProviderType
+from services.app.generation.adapters.base_runner import AppRunner
+from services.app.generation.adapters.message_pipeline import EasyUIBasedGenerateTaskPipeline
 from services.moderation_adapters import HostedOpenAIModerationGateway, LLMModerationGuard
 from services.moderation_invocation_errors import (
     ModerationRejectedInvocationError,
@@ -85,13 +78,22 @@ from services.moderation_service import (
     ModerationService,
     ModerationVerdict,
 )
+from services.workflow.execution.adapters.chatflow.generate_response_converter import (
+    AdvancedChatAppGenerateResponseConverter,
+)
+from services.workflow.execution.adapters.chatflow.generate_task_pipeline import (
+    AdvancedChatAppGenerateTaskPipeline,
+    ConversationSnapshot,
+    MessageSnapshot,
+    WorkflowSnapshot,
+)
 from tests.helpers.unit.core.model_fixtures import make_model_config
 from tests.helpers.unit.core.model_moderation_fixtures import (
     RecordingHostedModerationClient,
     RecordingLLM,
     make_tenant_moderation_provider,
 )
-from tests.helpers.unit.model_factories import make_account, make_conversation, make_message
+from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_message
 from tests.workflow_test_utils import build_test_variable_pool
 
 
@@ -456,6 +458,7 @@ def test_independent_model_checks_do_not_serialize_or_deduplicate(same_text: boo
 )
 @pytest.mark.parametrize("registered", [False, True], ids=["standalone", "registered"])
 def test_direct_app_routes_input_and_output_to_exactly_one_openai_backend(
+    workflow_runtime,
     monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
     unbound_session_factory: sessionmaker[Session],
@@ -530,7 +533,7 @@ def test_direct_app_routes_input_and_output_to_exactly_one_openai_backend(
     )
     with flask_app.app_context():
         pipeline = BasedGenerateTaskPipeline(application_generate_entity=entity, queue_manager=queue, stream=False)
-        assert AppRunner().moderation_for_inputs(
+        assert AppRunner(records=workflow_runtime.chat_records).moderation_for_inputs(
             app_id=config.app_id,
             tenant_id=config.tenant_id,
             app_generate_entity=entity,
@@ -565,6 +568,7 @@ def test_direct_app_routes_input_and_output_to_exactly_one_openai_backend(
 @pytest.mark.parametrize("phase", ["input", "output"])
 @pytest.mark.parametrize("previous_answer", ["", "safe prefix"])
 def test_chat_pipeline_renders_platform_rejection_with_existing_app_reply_events(
+    workflow_runtime,
     monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
     phase: ModerationPhase,
@@ -599,6 +603,7 @@ def test_chat_pipeline_renders_platform_rejection_with_existing_app_reply_events
     message = Message(id="message-1")
     message.created_at = datetime.now(UTC)
     pipeline = EasyUIBasedGenerateTaskPipeline(
+        records=workflow_runtime.chat_records,
         application_generate_entity=entity,
         queue_manager=queue,
         conversation=Conversation(id="conversation-1", mode=AppMode.CHAT),
@@ -625,7 +630,7 @@ def test_chat_pipeline_renders_platform_rejection_with_existing_app_reply_events
 @pytest.mark.parametrize("background", [False, True])
 @pytest.mark.parametrize("stream", [False, True])
 def test_output_failure_emits_safe_error_and_persists_message_status(
-    sqlite_session_factory: sessionmaker[Session], advanced: bool, background: bool, stream: bool
+    workflow_runtime, sqlite_session_factory: sessionmaker[Session], advanced: bool, background: bool, stream: bool
 ) -> None:
     gateway = TransientAppFailureGateway()
     flask_app = Flask(__name__)
@@ -637,7 +642,7 @@ def test_output_failure_emits_safe_error_and_persists_message_status(
         query="query", message={}, answer="", from_source=ConversationFromSource.CONSOLE, created_at=datetime.now(UTC)
     )
     with sqlite_session_factory() as database:
-        database.add_all([conversation, message])
+        database.add_all([make_app(app_id=conversation.app_id, tenant_id="tenant-1"), conversation, message])
         database.commit()
     queue = MessageBasedAppQueueManager(
         task_id="task-1",
@@ -663,6 +668,9 @@ def test_output_failure_emits_safe_error_and_persists_message_status(
                 workflow_id="workflow-1", variable_pool=build_test_variable_pool(), start_at=perf_counter()
             )
             pipeline = AdvancedChatAppGenerateTaskPipeline(
+                contexts=workflow_runtime.contexts,
+                tool_providers=workflow_runtime.tool_providers,
+                chat_records=workflow_runtime.chat_records,
                 application_generate_entity=entity,
                 workflow=WorkflowSnapshot(id="workflow-1", tenant_id="tenant-1", features_dict={}),
                 queue_manager=queue,
@@ -671,9 +679,7 @@ def test_output_failure_emits_safe_error_and_persists_message_status(
                 user=make_account(),
                 stream=stream,
                 dialogue_count=1,
-                draft_var_saver_factory=BaseAppGenerator._get_draft_var_saver_factory(
-                    InvokeFrom.DEBUGGER, make_account(), tenant_id="tenant-1"
-                ),
+                draft_var_saver_factory=lambda **_kwargs: NoopDraftVariableSaver(),
             )
             pipeline._task_state.answer = "model output"
             handler = pipeline._base_task_pipeline.output_moderation_handler
@@ -696,6 +702,7 @@ def test_output_failure_emits_safe_error_and_persists_message_status(
                 invoke_from=InvokeFrom.DEBUGGER,
             )
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=workflow_runtime.chat_records,
                 application_generate_entity=entity,
                 queue_manager=queue,
                 conversation=conversation,
@@ -788,6 +795,7 @@ def test_final_output_does_not_retry_a_failed_sequential_segment() -> None:
     ],
 )
 def test_sequential_app_replacements_are_delivered_and_persisted_without_final_recheck(
+    workflow_runtime,
     sqlite_session_factory: sessionmaker[Session],
     config_overrides: Callable[..., None],
     advanced: bool,
@@ -808,7 +816,7 @@ def test_sequential_app_replacements_are_delivered_and_persisted_without_final_r
         query="query", message={}, answer="", from_source=ConversationFromSource.CONSOLE, created_at=datetime.now(UTC)
     )
     with sqlite_session_factory() as database:
-        database.add_all([conversation, message])
+        database.add_all([make_app(app_id=conversation.app_id, tenant_id="tenant-1"), conversation, message])
         database.commit()
     queue = MessageBasedAppQueueManager(
         task_id="task-1",
@@ -834,6 +842,9 @@ def test_sequential_app_replacements_are_delivered_and_persisted_without_final_r
                 workflow_id="workflow-1", variable_pool=build_test_variable_pool(), start_at=perf_counter()
             )
             pipeline = AdvancedChatAppGenerateTaskPipeline(
+                contexts=workflow_runtime.contexts,
+                tool_providers=workflow_runtime.tool_providers,
+                chat_records=workflow_runtime.chat_records,
                 application_generate_entity=entity,
                 workflow=WorkflowSnapshot(id="workflow-1", tenant_id="tenant-1", features_dict={}),
                 queue_manager=queue,
@@ -842,9 +853,7 @@ def test_sequential_app_replacements_are_delivered_and_persisted_without_final_r
                 user=make_account(),
                 stream=stream,
                 dialogue_count=1,
-                draft_var_saver_factory=BaseAppGenerator._get_draft_var_saver_factory(
-                    InvokeFrom.DEBUGGER, make_account(), tenant_id="tenant-1"
-                ),
+                draft_var_saver_factory=lambda **_kwargs: NoopDraftVariableSaver(),
             )
         else:
             chat_entity = ChatAppGenerateEntity(
@@ -865,6 +874,7 @@ def test_sequential_app_replacements_are_delivered_and_persisted_without_final_r
                 invoke_from=InvokeFrom.DEBUGGER,
             )
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=workflow_runtime.chat_records,
                 application_generate_entity=chat_entity,
                 queue_manager=queue,
                 conversation=conversation,
@@ -927,6 +937,7 @@ def test_sequential_app_replacements_are_delivered_and_persisted_without_final_r
 @pytest.mark.parametrize("stream", [False, True])
 @pytest.mark.parametrize("previous_answer", ["", "approved prefix"])
 def test_default_chat_reply_finishes_and_persists_without_app_configuration(
+    workflow_runtime,
     sqlite_session_factory: sessionmaker[Session],
     phase: ModerationPhase,
     stream: bool,
@@ -939,7 +950,7 @@ def test_default_chat_reply_finishes_and_persists_without_app_configuration(
         query="query", message={}, answer="", from_source=ConversationFromSource.CONSOLE, created_at=datetime.now(UTC)
     )
     with sqlite_session_factory() as database:
-        database.add_all([conversation, message])
+        database.add_all([make_app(app_id=conversation.app_id, tenant_id="tenant-1"), conversation, message])
         database.commit()
     queue = MessageBasedAppQueueManager(
         task_id="task-1",
@@ -969,6 +980,7 @@ def test_default_chat_reply_finishes_and_persists_without_app_configuration(
             invoke_from=InvokeFrom.DEBUGGER,
         )
         pipeline = EasyUIBasedGenerateTaskPipeline(
+            records=workflow_runtime.chat_records,
             application_generate_entity=chat_entity,
             queue_manager=queue,
             conversation=conversation,

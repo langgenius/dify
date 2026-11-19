@@ -5,7 +5,6 @@ from decimal import Decimal
 
 import pytest
 from redis import Redis
-from sqlalchemy import event
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import (
@@ -368,7 +367,7 @@ class TestCompletionAppRunner:
         assert organize_prompt_messages.calls[-1].kwargs["context_files"] == []
         assert len(handle_invoke_result.calls) == 1
 
-    def test_run_closes_explicit_session_before_stream_consumption(
+    def test_run_releases_database_connection_before_stream_consumption(
         self,
         runner: CompletionAppRunner,
         monkeypatch: pytest.MonkeyPatch,
@@ -376,24 +375,12 @@ class TestCompletionAppRunner:
         queue_manager: MessageBasedAppQueueManager,
         model_runtime: tuple[ProviderModelBundle, list[RecordedCall], list[str]],
     ) -> None:
-        from core.app.apps.completion.app_runner import CompletionAppRunner as CoreCompletionAppRunner
 
-        runner = CoreCompletionAppRunner()
-        _, message = _persist_records(sqlite_session)
+        app_record, message = _persist_records(sqlite_session)
         app_config = _build_app_config()
         app_generate_entity = _build_generate_entity(app_config)
 
         _, _, events = model_runtime
-        session = sqlite_session
-        original_close = session.close
-
-        def record_commit(_session: Session) -> None:
-            events.append("commit")
-
-        def record_close() -> None:
-            events.append("close")
-            original_close()
-
         runner.organize_prompt_messages = CallRecorder(result=([], None))  # type: ignore[method-assign]
         runner.moderation_for_inputs = CallRecorder(  # type: ignore[method-assign]
             result=(None, app_generate_entity.inputs, "query")
@@ -402,15 +389,11 @@ class TestCompletionAppRunner:
         handle_invoke_result = CallRecorder(implementation=lambda invoke_result, **kwargs: list(invoke_result))
         runner._handle_invoke_result = handle_invoke_result  # type: ignore[method-assign]
 
-        monkeypatch.setattr(session, "close", record_close)
+        sqlite_session.close()
+        runner.run(app_generate_entity, queue_manager, message, app_record)
 
-        event.listen(session, "after_commit", record_commit)
-        try:
-            runner.run(app_generate_entity, queue_manager, message, session)
-        finally:
-            event.remove(session, "after_commit", record_commit)
-
-        assert events == ["commit", "close", "invoke", "first-chunk"]
+        assert events == ["invoke", "first-chunk"]
+        assert sqlite_session.get_bind().pool.checkedout() == 0
         assert len(handle_invoke_result.calls) == 1
         handle_call = handle_invoke_result.calls[0]
         assert handle_call.args == ()

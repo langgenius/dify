@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from dataclasses import dataclass
 from datetime import datetime
 from unittest.mock import ANY, MagicMock, patch
 
@@ -20,6 +21,21 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowRun, WorkflowType
 from tests.helpers.unit.model_factories import make_end_user
+
+
+@dataclass
+class _ToolProvidersStub:
+    pass
+
+
+@dataclass
+class _ToolsServiceStub:
+    tool_providers: object
+
+
+@dataclass
+class _AppServicesStub:
+    tools: _ToolsServiceStub
 
 
 def _workflow_app() -> App:
@@ -170,6 +186,11 @@ class TestWorkflowEventsApi:
         mock_factory.create_api_workflow_run_repository.return_value = mock_repo
 
         snapshot_calls: list[dict[str, object]] = []
+        tool_providers = _ToolProvidersStub()
+        monkeypatch.setattr(
+            "controllers.web.workflow_events.application_services",
+            lambda: _AppServicesStub(tools=_ToolsServiceStub(tool_providers=tool_providers)),
+        )
 
         def snapshot_builder(**kwargs: object) -> list[dict[str, str]]:
             snapshot_calls.append(kwargs)
@@ -188,12 +209,13 @@ class TestWorkflowEventsApi:
                 "tenant_id": "tenant-1",
                 "app_id": "app-1",
                 "session_maker": ANY,
+                "tool_providers": tool_providers,
                 "human_input_surface": HumanInputSurface.WEB_APP,
                 "close_on_pause": False,
             }
         ]
 
-    @pytest.mark.usefixtures("workflow_database")
+    @pytest.mark.usefixtures("workflow_database", "workflow_application")
     def test_snapshot_stream_restricts_pending_forms_to_web_app_surface(
         self, app: Flask, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -225,7 +247,7 @@ class TestWorkflowEventsApi:
 
         monkeypatch.setattr("controllers.web.workflow_events.build_workflow_event_stream", snapshot_builder)
         monkeypatch.setattr(
-            "controllers.web.workflow_events.MessageGenerator.retrieve_events",
+            "controllers.web.workflow_events.WorkflowEventStream.retrieve_events",
             lambda *_args, **_kwargs: iter([{"event": "message"}]),
         )
 

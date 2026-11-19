@@ -19,6 +19,7 @@ from controllers.service_api.schema import event_stream_response
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.entities.task_entities import StreamEvent
 from core.workflow.human_input_policy import HumanInputSurface
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from libs.external_api import error_responses
 from models.enums import CreatorUserRole
@@ -150,6 +151,7 @@ class WorkflowEventsApi(Resource):
                             tenant_id=app_model.tenant_id,
                             app_id=app_model.id,
                             session_maker=session_maker,
+                            tool_providers=application_services().tools.tool_providers,
                             human_input_surface=HumanInputSurface.SERVICE_API,
                             close_on_pause=not continue_on_pause,
                         )
