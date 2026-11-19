@@ -2,7 +2,6 @@
 
 import json
 from pathlib import Path
-from typing import Literal
 from uuid import uuid4
 
 import pytest
@@ -11,6 +10,7 @@ from dev.evaluate_generative_ui import (
     DEFAULT_CASES,
     EvaluationReport,
     QualityCase,
+    UIPolicy,
     assess_response,
     build_prompt,
     load_cases,
@@ -30,16 +30,16 @@ from tests.helpers.unit.core.model_fixtures import make_model_instance
 @pytest.mark.parametrize(
     ("policy", "response", "policy_passed", "fences_complete"),
     [
-        ("forbidden", "There are no records to analyze.", True, True),
-        ("required", "Only a conclusion.", False, True),
-        ("optional", "Only a conclusion.", True, True),
-        ("required", 'Conclusion\n```openui\nroot = Stack([Text("data")])\n```\nRecommendation', True, True),
-        ("forbidden", '```openui\nroot = Stack([Text("data")])\n```', False, True),
-        ("required", "```openui\nroot = Stack([", True, False),
+        (UIPolicy.FORBIDDEN, "There are no records to analyze.", True, True),
+        (UIPolicy.REQUIRED, "Only a conclusion.", False, True),
+        (UIPolicy.OPTIONAL, "Only a conclusion.", True, True),
+        (UIPolicy.REQUIRED, 'Conclusion\n```openui\nroot = Stack([Text("data")])\n```\nRecommendation', True, True),
+        (UIPolicy.FORBIDDEN, '```openui\nroot = Stack([Text("data")])\n```', False, True),
+        (UIPolicy.REQUIRED, "```openui\nroot = Stack([", True, False),
     ],
 )
 def test_transport_checks_do_not_automatically_grade_semantic_rubrics(
-    policy: Literal["required", "forbidden", "optional"],
+    policy: UIPolicy,
     response: str,
     policy_passed: bool,
     fences_complete: bool,
@@ -59,7 +59,7 @@ def test_transport_checks_do_not_automatically_grade_semantic_rubrics(
 
 
 def test_response_report_preserves_order_offsets_without_claiming_dsl_validity() -> None:
-    case = QualityCase(id="comparison", prompt="Compare", ui="required", rubric=["Readable chart"])
+    case = QualityCase(id="comparison", prompt="Compare", ui=UIPolicy.REQUIRED, rubric=["Readable chart"])
     response = "Conclusion\n```openui\nNotARegisteredComponent()\n```\nRecommendation"
 
     result = assess_response(case, response, 0.3)
@@ -110,8 +110,8 @@ def test_evaluation_persists_remaining_cases_after_provider_failure(
 ) -> None:
     model = make_model_instance(provider="langgenius/openai/openai", model="test-model")
     cases = [
-        QualityCase(id="failed", prompt="Fail this call", ui="optional", rubric=[]),
-        QualityCase(id="complete", prompt="Say hello", ui="forbidden", rubric=[]),
+        QualityCase(id="failed", prompt="Fail this call", ui=UIPolicy.OPTIONAL, rubric=[]),
+        QualityCase(id="complete", prompt="Say hello", ui=UIPolicy.FORBIDDEN, rubric=[]),
     ]
 
     def invoke(*, prompt_messages: list[PromptMessage], stream: bool, **_kwargs: object) -> LLMResult:

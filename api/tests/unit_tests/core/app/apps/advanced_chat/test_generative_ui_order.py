@@ -20,7 +20,7 @@ from core.app.entities.queue_entities import QueueTextChunkEvent
 from core.app.entities.task_entities import MessageContentStreamResponse
 from graphon.engine_events import NodeRunStreamChunkEvent
 from graphon.enums import BuiltinNodeTypes
-from libs.generative_ui import OpenUIContentBlock
+from libs.generative_ui import OpenUIContentBlock, OpenUIContentStatus
 from models.enums import EndUserType, MessageStatus
 from models.model import AppMode, Conversation, EndUser, Message
 from tests.unit_tests.core.app.apps.test_workflow_app_runner import _workflow_entry
@@ -72,7 +72,7 @@ def test_interleaved_producers_use_global_prose_offsets_and_persist_them(
         responses.extend(
             pipeline._handle_text_chunk_event(QueueTextChunkEvent(text=text, from_variable_selector=selector))
         )
-    responses.extend(pipeline._finish_generative_ui("completed"))
+    responses.extend(pipeline._finish_generative_ui(OpenUIContentStatus.COMPLETED))
 
     expected_offsets = [
         len("Introduction \U00020000\nFirst conclusion\n"),
@@ -105,7 +105,9 @@ def test_resumed_message_keeps_existing_positions_and_offsets_new_ui_after_previ
     message = agent_records[1]
     message.status = MessageStatus.PAUSED
     message.answer = "Previous\n"
-    previous = OpenUIContentBlock(id="previous", source="root = Stack([])", status="completed", text_offset=0)
+    previous = OpenUIContentBlock(
+        id="previous", source="root = Stack([])", status=OpenUIContentStatus.COMPLETED, text_offset=0
+    )
     message.message_metadata = json.dumps({"content_blocks": [previous.model_dump(mode="json")]})
     pipeline = _pipeline(message, agent_queue_manager)
 
@@ -160,7 +162,7 @@ def test_repeated_producer_finishes_each_execution_without_a_trailing_newline(
     assert [block.source for block in blocks] == ['root = Text("First")\n', 'root = Text("Second")\n']
     assert len({block.id for block in blocks}) == 2
     assert pipeline._task_state.answer == ""
-    assert list(pipeline._finish_generative_ui("completed")) == []
+    assert list(pipeline._finish_generative_ui(OpenUIContentStatus.COMPLETED)) == []
 
 
 def test_parallel_executions_of_one_producer_keep_independent_source_and_offsets(

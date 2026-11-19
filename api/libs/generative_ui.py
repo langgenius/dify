@@ -5,6 +5,7 @@ envelope; stored UI and user-visible prose have separate message channels.
 """
 
 from collections.abc import Sequence
+from enum import StrEnum
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
@@ -12,7 +13,12 @@ from pydantic.json_schema import JsonSchemaValue
 
 OPENUI_LIBRARY_VERSION = "dify-ui-v1"
 
-type OpenUIContentStatus = Literal["streaming", "completed", "cancelled", "error"]
+
+class OpenUIContentStatus(StrEnum):
+    STREAMING = "streaming"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+    ERROR = "error"
 
 
 class GenerativeUIConfig(BaseModel):
@@ -40,7 +46,7 @@ class OpenUIContentBlock(BaseModel):
     type: Literal["openui"] = "openui"
     library_version: Literal["dify-ui-v1"] = OPENUI_LIBRARY_VERSION
     source: str = ""
-    status: OpenUIContentStatus = "streaming"
+    status: OpenUIContentStatus = OpenUIContentStatus.STREAMING
     sequence: int = Field(default=0, ge=0)
     text_offset: int = Field(
         default=0,
@@ -72,8 +78,8 @@ def encode_openui_update(
     """
     if (
         previous is None
-        or block.status != "streaming"
-        or previous.status != "streaming"
+        or block.status != OpenUIContentStatus.STREAMING
+        or previous.status != OpenUIContentStatus.STREAMING
         or block.text_offset != previous.text_offset
         or not block.source.startswith(previous.source)
     ):
@@ -95,7 +101,9 @@ def generative_ui_enabled(config: object) -> bool:
 def extract_openui_prose(text: str) -> str:
     """Drop UI programs, including incomplete ones, from transformed model text."""
     parser = OpenUIStreamParser("text")
-    return "".join(part for part in [*parser.feed(text), *parser.finish("completed")] if isinstance(part, str))
+    return "".join(
+        part for part in [*parser.feed(text), *parser.finish(OpenUIContentStatus.COMPLETED)] if isinstance(part, str)
+    )
 
 
 def restore_openui_content(text: str, blocks: Sequence[OpenUIContentBlock]) -> str:
@@ -145,7 +153,7 @@ class OpenUIStreamParser:
                     newline_size = 2 if self._pending.startswith(marker + "\r\n") else 1
                     self._pending = self._pending[len(marker) + newline_size :]
                     if self._active:
-                        output.append(self._update(status="completed"))
+                        output.append(self._update(status=OpenUIContentStatus.COMPLETED))
                         self._active = None
                     else:
                         self._active = OpenUIContentBlock(
@@ -165,14 +173,17 @@ class OpenUIStreamParser:
                 self._text_offset += len(part)
         return self._coalesce(output)
 
-    def finish(self, status: Literal["completed", "cancelled", "error"]) -> list[str | OpenUIContentBlock]:
+    def finish(self, status: OpenUIContentStatus) -> list[str | OpenUIContentBlock]:
+        """Flush the pending text or block using the caller's terminal status.
+
+        Successful completion without a closing fence records a block error.
+        Finishing clears pending content so it cannot be flushed twice.
+        """
         output: list[str | OpenUIContentBlock] = []
         if self._active:
             closed = self._line_start and self._pending in {"```", "```\r"}
             source = self._active.source + ("" if closed else self._pending)
-            terminal = "completed" if closed and status == "completed" else status
-            if not closed and status == "completed":
-                terminal = "error"
+            terminal = OpenUIContentStatus.ERROR if not closed and status == OpenUIContentStatus.COMPLETED else status
             output.append(self._update(source=source, status=terminal))
             self._active = None
         elif self._pending:
@@ -181,7 +192,9 @@ class OpenUIStreamParser:
         self._pending = ""
         return output
 
-    def _update(self, *, source: str | None = None, status: OpenUIContentStatus = "streaming") -> OpenUIContentBlock:
+    def _update(
+        self, *, source: str | None = None, status: OpenUIContentStatus = OpenUIContentStatus.STREAMING
+    ) -> OpenUIContentBlock:
         assert self._active is not None
         self._active = self._active.model_copy(
             update={

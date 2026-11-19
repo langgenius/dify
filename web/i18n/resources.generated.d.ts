@@ -1187,7 +1187,7 @@ export default interface Resources {
     formattingChangedTitle: 'Formatting changed'
     'generativeUI.chartData': 'View data'
     'generativeUI.chartEmpty': 'No chart data'
-    'generativeUI.description': 'Generate interactive answers with cards, tables, and forms.'
+    'generativeUI.description': 'Present answers through interactive interfaces.'
     'generativeUI.loading': 'Generating interface…'
     'generativeUI.metricComparison': 'vs. previous period'
     'generativeUI.metricDeclined': 'Declined'

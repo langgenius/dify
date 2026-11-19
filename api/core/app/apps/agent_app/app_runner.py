@@ -67,7 +67,7 @@ from graphon.model_runtime.errors.invoke import (
     InvokeRateLimitError,
     InvokeServerUnavailableError,
 )
-from libs.generative_ui import OpenUIStreamParser
+from libs.generative_ui import OpenUIContentStatus, OpenUIStreamParser, extract_openui_prose
 from models.agent import AgentConfigVersionKind
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import CreatorUserRole
@@ -339,9 +339,12 @@ class _AgentProcessRecorder:
         self._append_answer_prose(content_delta)
 
     def finish_answer_text(self) -> None:
+        """Flush pending prose without adding an incomplete UI block to Agent history."""
         if self._answer_parser is not None:
             self._append_answer_prose(
-                "".join(part for part in self._answer_parser.finish("cancelled") if isinstance(part, str))
+                "".join(
+                    part for part in self._answer_parser.finish(OpenUIContentStatus.CANCELLED) if isinstance(part, str)
+                )
             )
 
     def _append_answer_prose(self, content_delta: str) -> None:
@@ -355,11 +358,9 @@ class _AgentProcessRecorder:
         self._update_thought(self._answer_thought_id, answer_delta=content_delta)
 
     def trim_answer_suffix(self, final_answer: str) -> None:
+        """Remove overlapping final prose from the last recorded answer segment when one exists."""
         if self._answer_parser is not None:
-            parser = OpenUIStreamParser(self._message_id)
-            final_answer = "".join(
-                part for part in [*parser.feed(final_answer), *parser.finish("completed")] if isinstance(part, str)
-            )
+            final_answer = extract_openui_prose(final_answer)
         if not final_answer or self._answer_thought_id is None:
             return
 

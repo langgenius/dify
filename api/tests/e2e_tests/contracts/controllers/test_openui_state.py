@@ -2,7 +2,7 @@
 
 import json
 from collections.abc import Callable
-from typing import Literal
+from enum import StrEnum
 
 import pytest
 from flask import Blueprint
@@ -15,7 +15,7 @@ from controllers.console.app.message import AgentMessageOpenUIStateApi, MessageO
 from controllers.console.explore.message import MessageOpenUIStateApi as InstalledAppOpenUIStateApi
 from controllers.web.message import MessageOpenUIStateApi as WebOpenUIStateApi
 from libs.external_api import ExternalApi
-from libs.generative_ui import OpenUIContentBlock
+from libs.generative_ui import OpenUIContentBlock, OpenUIContentStatus
 from libs.passport import PassportService
 from libs.token import generate_csrf_token
 from models.model import Message
@@ -34,6 +34,12 @@ __all__ = ["console_harness", "web_harness"]
 _STATE_ROUTE = "/messages/<uuid:message_id>/content-blocks/<string:block_id>/state"
 
 
+class ConsoleDraftScope(StrEnum):
+    APP = "app"
+    AGENT = "agent"
+    INSTALLED = "installed"
+
+
 def _assert_draft_contract(
     factory: sessionmaker[Session],
     message_id: str,
@@ -41,7 +47,9 @@ def _assert_draft_contract(
     *,
     missing_code: str,
 ) -> None:
-    block = OpenUIContentBlock(id=f"{message_id}:openui:0", status="completed", source='root = Text("Hello")')
+    block = OpenUIContentBlock(
+        id=f"{message_id}:openui:0", status=OpenUIContentStatus.COMPLETED, source='root = Text("Hello")'
+    )
     streaming = OpenUIContentBlock(id=f"{message_id}:openui:1")
     usage = {"total_tokens": 7}
     with factory.begin() as session:
@@ -82,10 +90,9 @@ def _assert_draft_contract(
         }
 
 
-@pytest.mark.parametrize("kind", ["app", "agent", "installed"])
-def test_console_openui_draft_contract(
-    console_harness: ConsoleHarness, kind: Literal["app", "agent", "installed"]
-) -> None:
+@pytest.mark.parametrize("kind", list(ConsoleDraftScope))
+def test_console_openui_draft_contract(console_harness: ConsoleHarness, kind: ConsoleDraftScope) -> None:
+    """An admitted Console caller can save a completed block's draft in each supported scope."""
     state = console_harness
     api = ExternalApi(state.app)
     api.add_resource(MessageOpenUIStateApi, "/apps/<uuid:app_id>" + _STATE_ROUTE, endpoint="console.app_openui_state")
@@ -97,11 +104,10 @@ def test_console_openui_draft_contract(
         "/installed-apps/<uuid:installed_app_id>" + _STATE_ROUTE,
         endpoint="console.installed_app_openui_state",
     )
-    prefix = (
-        f"/installed-apps/{state.installation.id}"
-        if kind == "installed"
-        else _admin_route(state, kind).removesuffix("/feedbacks")
-    )
+    if kind == ConsoleDraftScope.INSTALLED:
+        prefix = f"/installed-apps/{state.installation.id}"
+    else:
+        prefix = _admin_route(state, "agent" if kind == ConsoleDraftScope.AGENT else "app").removesuffix("/feedbacks")
     client = state.app.test_client()
     csrf = generate_csrf_token(state.account.id)
     client.set_cookie(COOKIE_NAME_CSRF_TOKEN, csrf)
@@ -119,7 +125,7 @@ def test_console_openui_draft_contract(
         state.factory,
         state.message.id,
         put_state,
-        missing_code="message_not_found" if kind == "installed" else "not_found",
+        missing_code="message_not_found" if kind == ConsoleDraftScope.INSTALLED else "not_found",
     )
     state.assert_closed()
 

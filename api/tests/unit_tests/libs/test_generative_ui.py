@@ -1,18 +1,20 @@
 """Protocol tests exercise every token boundary without a model or renderer."""
 
 from collections.abc import Iterator
-from typing import Literal
 
 import pytest
 
 from libs.generative_ui import (
     OpenUIContentBlock,
     OpenUIContentDelta,
+    OpenUIContentStatus,
     OpenUIStreamParser,
     encode_openui_update,
     extract_openui_prose,
     restore_openui_content,
 )
+
+TERMINAL_STATUSES = (OpenUIContentStatus.COMPLETED, OpenUIContentStatus.CANCELLED, OpenUIContentStatus.ERROR)
 
 
 @pytest.mark.parametrize("newline", ["\n", "\r\n"])
@@ -24,7 +26,7 @@ def test_protocol_separates_prose_and_ui_at_arbitrary_boundaries(newline: str, c
     parts: list[str | OpenUIContentBlock] = []
     for offset in range(0, len(text), chunk_size):
         parts.extend(parser.feed(text[offset : offset + chunk_size]))
-    parts.extend(parser.finish("completed"))
+    parts.extend(parser.finish(OpenUIContentStatus.COMPLETED))
     assert "".join(part for part in parts if isinstance(part, str)) == f"Summary{newline}After"
     assert len(parser.blocks) == 1
     assert parser.blocks[0].source == source
@@ -34,9 +36,9 @@ def test_protocol_separates_prose_and_ui_at_arbitrary_boundaries(newline: str, c
     assert sequences == sorted(set(sequences))
 
 
-@pytest.mark.parametrize("status", ["completed", "cancelled", "error"])
+@pytest.mark.parametrize("status", TERMINAL_STATUSES)
 def test_incomplete_program_is_retained_outside_text_with_terminal_status(
-    status: Literal["completed", "cancelled", "error"],
+    status: OpenUIContentStatus,
 ) -> None:
     parser = OpenUIStreamParser("message")
     parser.feed("Summary\n```openui\nroot = Stack([")
@@ -44,13 +46,13 @@ def test_incomplete_program_is_retained_outside_text_with_terminal_status(
     assert len(result) == 1
     assert parser.blocks[0].source == "root = Stack(["
     assert parser.blocks[0].status == ("error" if status == "completed" else status)
-    assert parser.finish("completed") == []
+    assert parser.finish(OpenUIContentStatus.COMPLETED) == []
 
 
 def test_closing_fence_without_trailing_newline_is_complete() -> None:
     parser = OpenUIStreamParser("message")
     parser.feed("```openui\nroot = Stack([]);\n```")
-    parser.finish("completed")
+    parser.finish(OpenUIContentStatus.COMPLETED)
     assert parser.blocks[0].source == "root = Stack([]);\n"
     assert parser.blocks[0].status == "completed"
 
@@ -58,7 +60,7 @@ def test_closing_fence_without_trailing_newline_is_complete() -> None:
 def test_ordinary_code_and_inline_marker_remain_text() -> None:
     text = "Use ```openui inline.\n```python\nprint('x')\n```\nBackticks: ```"
     parser = OpenUIStreamParser("message")
-    parts = parser.feed(text) + parser.finish("completed")
+    parts = parser.feed(text) + parser.finish(OpenUIContentStatus.COMPLETED)
     assert "".join(part for part in parts if isinstance(part, str)) == text
     assert parser.blocks == []
 
@@ -78,7 +80,7 @@ def test_enabled_ui_parser_streams_text_only_answers_without_ui_blocks(text: str
     parts: list[str | OpenUIContentBlock] = []
     for offset in range(0, len(text), chunk_size):
         parts.extend(parser.feed(text[offset : offset + chunk_size]))
-    parts.extend(parser.finish("completed"))
+    parts.extend(parser.finish(OpenUIContentStatus.COMPLETED))
 
     assert all(isinstance(part, str) for part in parts)
     assert "".join(part for part in parts if isinstance(part, str)) == text
@@ -88,7 +90,7 @@ def test_enabled_ui_parser_streams_text_only_answers_without_ui_blocks(text: str
 def test_multiple_blocks_have_distinct_stable_identities() -> None:
     parser = OpenUIStreamParser("message:node")
     parser.feed("```openui\nfirst\n```\nBetween\n```openui\nsecond\n```\n")
-    parser.finish("cancelled")
+    parser.finish(OpenUIContentStatus.CANCELLED)
     assert [block.id for block in parser.blocks] == ["message:node:openui:0", "message:node:openui:1"]
     assert all(block.status == "completed" for block in parser.blocks)
     assert [block.text_offset for block in parser.blocks] == [0, len("Between\n")]
@@ -98,7 +100,9 @@ def test_wire_schema_requires_all_serialized_fields() -> None:
     schema = OpenUIContentBlock.model_json_schema()
     assert set(schema["required"]) == set(OpenUIContentBlock.model_fields)
     assert all("default" not in field for field in schema["properties"].values())
-    assert OpenUIContentBlock(id="block").model_dump()["form_state"] == {}
+    snapshot = OpenUIContentBlock(id="block").model_dump(mode="json")
+    assert snapshot["form_state"] == {}
+    assert snapshot["status"] == "streaming"
 
 
 def test_text_processor_envelope_keeps_ui_out_of_replacement_prose() -> None:
@@ -120,7 +124,7 @@ def test_stream_deltas_reconstruct_multiple_blocks_with_linear_source_payload(ch
     def chunks() -> Iterator[str | OpenUIContentBlock]:
         for offset in range(0, len(text), chunk_size):
             yield from parser.feed(text[offset : offset + chunk_size])
-        yield from parser.finish("completed")
+        yield from parser.finish(OpenUIContentStatus.COMPLETED)
 
     for part in chunks():
         if isinstance(part, str):
@@ -152,9 +156,9 @@ def test_stream_deltas_reconstruct_multiple_blocks_with_linear_source_payload(ch
     assert source_bytes_sent <= 2 * sum(len(block.source.encode()) for block in parser.blocks)
 
 
-@pytest.mark.parametrize("status", ["completed", "cancelled", "error"])
+@pytest.mark.parametrize("status", TERMINAL_STATUSES)
 def test_stream_termination_always_contains_a_complete_authoritative_snapshot(
-    status: Literal["completed", "cancelled", "error"],
+    status: OpenUIContentStatus,
 ) -> None:
     parser = OpenUIStreamParser("message")
     parser.feed('```openui\nroot = Stack([Text("Hello")])\n```')
@@ -188,7 +192,7 @@ def test_offsets_retain_interleaved_unicode_prose_and_adjacent_blocks(chunk_size
     parts: list[str | OpenUIContentBlock] = []
     for offset in range(0, len(text), chunk_size):
         parts.extend(parser.feed(text[offset : offset + chunk_size]))
-    parts.extend(parser.finish("completed"))
+    parts.extend(parser.finish(OpenUIContentStatus.COMPLETED))
 
     prose = "".join(part for part in parts if isinstance(part, str))
     assert prose == "Summary \U00020000\nNext\nEnd"
@@ -208,6 +212,10 @@ def test_changed_offset_in_authoritative_replay_requires_snapshot() -> None:
 def test_memory_projection_does_not_include_form_drafts_or_protocol_metadata() -> None:
     source = 'root = Stack([Table("Regions", ["Region", "Sales"], [["East", "72"]])])'
     block = OpenUIContentBlock(
-        id="block-secret-id", source=source, status="completed", text_offset=7, form_state={"draft": "private text"}
+        id="block-secret-id",
+        source=source,
+        status=OpenUIContentStatus.COMPLETED,
+        text_offset=7,
+        form_state={"draft": "private text"},
     )
     assert restore_openui_content("HighestNext", [block]) == f"Highest\n```openui\n{source}\n```\nNext"

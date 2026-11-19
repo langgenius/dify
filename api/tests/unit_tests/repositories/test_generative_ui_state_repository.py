@@ -9,7 +9,7 @@ import pytest
 from sqlalchemy import update
 from sqlalchemy.orm import Session, sessionmaker
 
-from libs.generative_ui import OpenUIContentBlock
+from libs.generative_ui import OpenUIContentBlock, OpenUIContentStatus
 from models.account import Account
 from models.enums import ConversationFromSource, EndUserType
 from models.model import App, AppMode, Conversation, EndUser, InstalledApp, Message
@@ -45,7 +45,9 @@ class DraftCase:
 
 @pytest.fixture(params=["account", "end_user"])
 def draft_case(request: pytest.FixtureRequest, sqlite_session_factory: sessionmaker[Session]) -> DraftCase:
-    block = OpenUIContentBlock(id="message:openui:0", source="root = Stack([]);", status="completed", sequence=4)
+    block = OpenUIContentBlock(
+        id="message:openui:0", source="root = Stack([]);", status=OpenUIContentStatus.COMPLETED, sequence=4
+    )
     with sqlite_session_factory.begin() as session:
         app = App(tenant_id=str(uuid4()), name="OpenUI", mode=AppMode.AGENT, enable_site=True, enable_api=True)
         account = Account(name="Owner", email="openui@example.com")
@@ -130,9 +132,13 @@ def test_state_save_rejects_another_owner_or_resource(draft_case: DraftCase, fie
         draft_case.save()
 
 
-@pytest.mark.parametrize("status", ["streaming", "cancelled", "error"])
-def test_state_save_rejects_incomplete_or_cancelled_ui_without_writing(draft_case: DraftCase, status: str) -> None:
-    metadata = {"content_blocks": [draft_case.block.model_copy(update={"status": status}).model_dump()]}
+@pytest.mark.parametrize(
+    "status", [OpenUIContentStatus.STREAMING, OpenUIContentStatus.CANCELLED, OpenUIContentStatus.ERROR]
+)
+def test_state_save_rejects_incomplete_or_cancelled_ui_without_writing(
+    draft_case: DraftCase, status: OpenUIContentStatus
+) -> None:
+    metadata = {"content_blocks": [draft_case.block.model_copy(update={"status": status}).model_dump(mode="json")]}
     with draft_case.factory.begin() as session:
         session.execute(
             update(Message).where(Message.id == draft_case.message_id).values(message_metadata=json.dumps(metadata))

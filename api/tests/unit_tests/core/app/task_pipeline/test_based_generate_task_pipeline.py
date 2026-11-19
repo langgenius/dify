@@ -28,6 +28,7 @@ from core.app.entities.queue_entities import QueueErrorEvent
 from core.app.entities.task_entities import ChatbotAppStreamResponse, CompletionAppStreamResponse
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline, OutputModerationResult
 from core.errors.error import QuotaExceededError
+from core.moderation.base import ModerationAction, ModerationOutputsResult
 from core.moderation.output_moderation import ModerationRule, OutputModeration
 from extensions.ext_code_based_extension import code_based_extension
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError, InvokeRateLimitError
@@ -216,30 +217,32 @@ class TestBasedGenerateTaskPipeline:
             "message": "run limit reached (agent_run_id=run-1)",
         }
 
-    def test_handle_output_moderation_when_flagged(
-        self, pipeline: BasedGenerateTaskPipeline[AppGenerateEntity], monkeypatch: pytest.MonkeyPatch
+    @pytest.mark.parametrize(
+        ("flagged", "expected"), [(True, OutputModerationResult(answer="filtered", flagged=True)), (False, None)]
+    )
+    def test_finish_output_moderation_retires_the_handler(
+        self,
+        pipeline: BasedGenerateTaskPipeline[AppGenerateEntity],
+        flagged: bool,
+        expected: OutputModerationResult | None,
     ) -> None:
-        handler = Mock(spec=OutputModeration, flagged=True)
-        handler.moderation_completion.return_value = ("filtered", True)
-        monkeypatch.setattr(pipeline, "output_moderation_handler", handler)
+        """An active handler checks the final answer once and is retired after the verdict."""
+        checked: list[str] = []
+
+        def evaluate(text: str) -> ModerationOutputsResult:
+            checked.append(text)
+            return ModerationOutputsResult(
+                flagged=flagged, action=ModerationAction.DIRECT_OUTPUT, preset_response="filtered"
+            )
+
+        pipeline.output_moderation_handler = OutputModeration(
+            tenant_id="tenant-1", app_id="app-1", rule=ModerationRule(type="api", config={}), output_evaluator=evaluate
+        )
 
         result = pipeline.handle_output_moderation_when_task_finished("raw")
 
-        assert result == OutputModerationResult(answer="filtered", flagged=True)
-        handler.moderation_completion.assert_called_once_with(completion="raw")
-        assert pipeline.output_moderation_handler is None
-
-    def test_handle_output_moderation_when_not_flagged(
-        self, pipeline: BasedGenerateTaskPipeline[AppGenerateEntity], monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        handler = Mock(spec=OutputModeration, flagged=False)
-        handler.moderation_completion.return_value = ("safe", False)
-        monkeypatch.setattr(pipeline, "output_moderation_handler", handler)
-
-        result = pipeline.handle_output_moderation_when_task_finished("raw")
-
-        assert result is None
-        handler.moderation_completion.assert_called_once_with(completion="raw")
+        assert result == expected
+        assert checked == ["raw"]
         assert pipeline.output_moderation_handler is None
 
 

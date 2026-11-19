@@ -72,7 +72,6 @@ from core.app.entities.task_entities import (
     WorkflowPauseStreamResponse,
     WorkflowTaskState,
 )
-from core.app.task_pipeline.based_generate_task_pipeline import OutputModerationResult
 from core.base.tts.app_generator_tts_publisher import AppGeneratorTTSPublisher, AudioTrunk
 from core.moderation.base import ModerationAction, ModerationOutputsResult
 from core.moderation.output_moderation import ModerationRule, OutputModeration
@@ -84,7 +83,7 @@ from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.runtime import RuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
-from libs.generative_ui import OpenUIContentBlock, OpenUIContentDelta
+from libs.generative_ui import OpenUIContentBlock, OpenUIContentDelta, OpenUIContentStatus
 from models.enums import CreatorUserRole, MessageStatus, WorkflowRunTriggeredFrom
 from models.execution_extra_content import HumanInputContent
 from models.human_input import HumanInputForm
@@ -1245,6 +1244,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert finished.data.status == WorkflowExecutionStatus.STOPPED
 
     def test_handle_message_end_event_applies_output_moderation(self):
+        """A flagged final answer is replaced before the message ends and is saved."""
         pipeline = _make_pipeline()
         pipeline._task_state.answer = "unsafe"
         pipeline._graph_runtime_state = RuntimeState(
@@ -1254,8 +1254,13 @@ class TestAdvancedChatGenerateTaskPipeline:
             ),
             start_at=0.0,
         )
-        pipeline._base_task_pipeline.handle_output_moderation_when_task_finished = mock.Mock(
-            return_value=OutputModerationResult(answer="safe", flagged=True)
+        pipeline._base_task_pipeline.output_moderation_handler = OutputModeration(
+            tenant_id="tenant",
+            app_id="app",
+            rule=ModerationRule(type="api", config={}),
+            output_evaluator=lambda _text: ModerationOutputsResult(
+                flagged=True, action=ModerationAction.DIRECT_OUTPUT, preset_response="safe"
+            ),
         )
         pipeline._message_cycle_manager.message_replace_to_stream_response = lambda **kwargs: "replace"
         pipeline._message_end_to_stream_response = lambda: "end"
@@ -1271,6 +1276,7 @@ class TestAdvancedChatGenerateTaskPipeline:
 
         assert responses == ["replace", "end"]
         assert saved == ["saved"]
+        assert pipeline._task_state.answer == "safe"
 
     @pytest.mark.parametrize(
         ("saved_on_pause", "expected_timeline", "expected_payloads"),
@@ -1503,7 +1509,7 @@ class TestChatflowGenerativeUI:
                     QueueTextChunkEvent(text=text[offset : offset + 20], from_variable_selector=["ui-producer", "text"])
                 )
             )
-        responses.extend(pipeline._finish_generative_ui("completed"))
+        responses.extend(pipeline._finish_generative_ui(OpenUIContentStatus.COMPLETED))
 
         blocks = [response.data for response in responses if isinstance(response, MessageContentStreamResponse)]
         assert isinstance(blocks[0], OpenUIContentBlock)

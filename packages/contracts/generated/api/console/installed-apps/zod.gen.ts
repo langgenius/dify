@@ -1062,6 +1062,9 @@ export const zSavedMessageInfiniteScrollPagination = z.object({
   limit: z.int(),
 })
 
+/**
+ * OpenUIContentStatus
+ */
 export const zOpenUiContentStatus = z.enum(['cancelled', 'completed', 'error', 'streaming'])
 
 /**

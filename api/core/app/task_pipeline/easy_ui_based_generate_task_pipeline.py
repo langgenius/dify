@@ -3,7 +3,7 @@ import logging
 import time
 from collections.abc import Generator, Mapping, Sequence
 from threading import Thread
-from typing import Any, Literal, cast
+from typing import Any, cast
 
 from dify_trace_sdk.events import MessageCompleted
 from sqlalchemy import select
@@ -67,6 +67,7 @@ from graphon.model_runtime.model_providers.base.large_language_model import Larg
 from libs.datetime_utils import naive_utc_now
 from libs.generative_ui import (
     OpenUIContentBlock,
+    OpenUIContentStatus,
     OpenUIStreamParser,
     encode_openui_update,
     extract_openui_prose,
@@ -300,7 +301,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
     def _handle_error_event(self, event: QueueErrorEvent) -> Generator[StreamResponse]:
         """Close partial UI and persist the message error before exposing its transport classification."""
         if self._generative_ui_enabled:
-            yield from self._finish_generative_ui("error")
+            yield from self._finish_generative_ui(OpenUIContentStatus.ERROR)
         with session_factory.create_session() as session:
             if self._generative_ui_enabled:
                 self._save_message(session=session)
@@ -354,7 +355,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                                 event.llm_result.message.get_text_content()
                             )
                         yield from self._finish_generative_ui(
-                            "cancelled" if isinstance(event, QueueStopEvent) else "completed"
+                            OpenUIContentStatus.CANCELLED
+                            if isinstance(event, QueueStopEvent)
+                            else OpenUIContentStatus.COMPLETED
                         )
                     delivered_answer = self._task_state.llm_result.message.get_text_content()
                     if isinstance(event, QueueMessageEndEvent):
@@ -524,7 +527,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
             return
         if not self._openui_final_started:
             self._openui_final_started = True
-            for part in self._openui_agent_parser.finish("completed"):
+            for part in self._openui_agent_parser.finish(OpenUIContentStatus.COMPLETED):
                 if isinstance(part, str):
                     yield self._agent_message_to_stream_response(answer=part, message_id=self._message_id)
             self._openui_live_prose = ""
@@ -540,7 +543,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
             else:
                 yield from self._handle_output_moderation_chunk(part)
 
-    def _finish_generative_ui(self, status: Literal["completed", "cancelled", "error"]) -> Generator[StreamResponse]:
+    def _finish_generative_ui(self, status: OpenUIContentStatus) -> Generator[StreamResponse]:
         """Close content streams and retain live prose when no authoritative answer arrived.
 
         The partial marker tells history consumers that the saved answer already
@@ -558,9 +561,13 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
             if isinstance(part, OpenUIContentBlock):
                 if not self._generative_ui_suppressed:
                     yield self._openui_to_stream_response(part)
-            elif status != "error" or self.output_moderation_handler is None:
+            elif status != OpenUIContentStatus.ERROR or self.output_moderation_handler is None:
                 yield from self._handle_output_moderation_chunk(part)
-        if status != "completed" and not self._openui_final_started and not self._generative_ui_suppressed:
+        if (
+            status != OpenUIContentStatus.COMPLETED
+            and not self._openui_final_started
+            and not self._generative_ui_suppressed
+        ):
             self._task_state.llm_result.message.content = self._openui_live_prose
             self._openui_response_is_partial = True
 

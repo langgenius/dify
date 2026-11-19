@@ -16,6 +16,7 @@ import time
 from collections.abc import Sequence
 from contextlib import chdir
 from datetime import UTC, datetime
+from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 from uuid import UUID
@@ -33,7 +34,7 @@ API_ROOT = Path(__file__).resolve().parents[1]
 if str(API_ROOT) not in sys.path:
     sys.path.insert(0, str(API_ROOT))
 
-from libs.generative_ui import OpenUIContentBlock, OpenUIStreamParser  # noqa: E402
+from libs.generative_ui import OpenUIContentBlock, OpenUIContentStatus, OpenUIStreamParser  # noqa: E402
 from libs.generative_ui_prompt import load_generative_ui_prompt  # noqa: E402
 
 if TYPE_CHECKING:
@@ -43,8 +44,19 @@ if TYPE_CHECKING:
 DEFAULT_CASES = API_ROOT / "resources/generative_ui/quality-cases.json"
 
 
+class HistoryRole(StrEnum):
+    ASSISTANT = "assistant"
+    USER = "user"
+
+
+class UIPolicy(StrEnum):
+    REQUIRED = "required"
+    FORBIDDEN = "forbidden"
+    OPTIONAL = "optional"
+
+
 class HistoryMessage(BaseModel):
-    role: Literal["assistant", "user"]
+    role: HistoryRole
     content: str
 
 
@@ -52,7 +64,7 @@ class QualityCase(BaseModel):
     id: str
     prompt: str
     history: list[HistoryMessage] = Field(default_factory=list)
-    ui: Literal["required", "forbidden", "optional"]
+    ui: UIPolicy
     rubric: list[str]
 
 
@@ -98,9 +110,10 @@ def load_cases(path: Path, selected_ids: Sequence[str]) -> list[QualityCase]:
 
 
 def build_prompt(case: QualityCase, system_prompt: str) -> list[PromptMessage]:
+    """Turn validated case history and the active question into ordered prompt messages."""
     messages: list[PromptMessage] = [SystemPromptMessage(content=system_prompt)]
     for message in case.history:
-        if message.role == "assistant":
+        if message.role == HistoryRole.ASSISTANT:
             messages.append(AssistantPromptMessage(content=message.content))
         else:
             messages.append(UserPromptMessage(content=message.content))
@@ -111,9 +124,9 @@ def build_prompt(case: QualityCase, system_prompt: str) -> list[PromptMessage]:
 def assess_response(case: QualityCase, response: str, elapsed_seconds: float) -> CaseResult:
     """Inspect transport shape without claiming that the UI source is valid or accurate."""
     parser = OpenUIStreamParser(case.id)
-    parts = parser.feed(response) + parser.finish("completed")
+    parts = parser.feed(response) + parser.finish(OpenUIContentStatus.COMPLETED)
     has_ui = bool(parser.blocks)
-    ui_policy = case.ui == "optional" or (has_ui if case.ui == "required" else not has_ui)
+    ui_policy = case.ui == UIPolicy.OPTIONAL or (has_ui if case.ui == UIPolicy.REQUIRED else not has_ui)
     return CaseResult(
         case=case,
         raw_response=response,
@@ -122,7 +135,7 @@ def assess_response(case: QualityCase, response: str, elapsed_seconds: float) ->
         elapsed_seconds=elapsed_seconds,
         automated_checks=AutomatedChecks(
             ui_policy=ui_policy,
-            fences_complete=all(block.status == "completed" for block in parser.blocks),
+            fences_complete=all(block.status == OpenUIContentStatus.COMPLETED for block in parser.blocks),
         ),
     )
 

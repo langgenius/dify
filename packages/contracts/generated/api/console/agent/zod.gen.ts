@@ -1947,6 +1947,9 @@ export const zFeedback = z.object({
   rating: z.string(),
 })
 
+/**
+ * OpenUIContentStatus
+ */
 export const zOpenUiContentStatus = z.enum(['cancelled', 'completed', 'error', 'streaming'])
 
 /**

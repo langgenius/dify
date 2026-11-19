@@ -1003,6 +1003,9 @@ export const zNotWorkflowAppError = zErrorResponse.and(
   }),
 )
 
+/**
+ * OpenUIContentStatus
+ */
 export const zOpenUiContentStatus = z.enum(['cancelled', 'completed', 'error', 'streaming'])
 
 /**

@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from threading import Thread
-from typing import Any, Literal
+from typing import Any
 
 from dify_trace_sdk.events import MessageCompleted
 from sqlalchemy import select, update
@@ -86,6 +86,7 @@ from graphon.runtime import RuntimeState
 from libs.datetime_utils import naive_utc_now
 from libs.generative_ui import (
     OpenUIContentBlock,
+    OpenUIContentStatus,
     OpenUIStreamParser,
     encode_openui_update,
     extract_openui_prose,
@@ -449,7 +450,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _handle_error_event(self, event: QueueErrorEvent, **kwargs) -> Generator[StreamResponse]:
         """Surface runner failures without inferring moderation outcomes from workflow nodes."""
-        yield from self._finish_generative_ui("error")
+        yield from self._finish_generative_ui(OpenUIContentStatus.ERROR)
         with self._database_session() as session:
             self._persist_generative_ui_blocks(session)
             err = self._base_task_pipeline.handle_error(event=event, session=session, message_id=self._message_id)
@@ -578,7 +579,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 self._generative_ui_parsers[producer_execution] = parser
             parts = parser.feed(delta_text)
             if event.is_final:
-                parts.extend(parser.finish("completed"))
+                parts.extend(parser.finish(OpenUIContentStatus.COMPLETED))
             for part in parts:
                 if isinstance(part, OpenUIContentBlock):
                     if not self._generative_ui_suppressed:
@@ -675,7 +676,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _finish_generative_ui(
         self,
-        status: Literal["completed", "cancelled", "error"],
+        status: OpenUIContentStatus,
         *,
         tts_publisher: AppGeneratorTTSPublisher | None = None,
         queue_message: WorkflowQueueMessage | MessageQueueMessage | None = None,
@@ -686,7 +687,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 if isinstance(part, OpenUIContentBlock):
                     if not self._generative_ui_suppressed:
                         yield self._openui_to_stream_response(part)
-                elif status != "error" or self._base_task_pipeline.output_moderation_handler is None:
+                elif status != OpenUIContentStatus.ERROR or self._base_task_pipeline.output_moderation_handler is None:
                     yield from self._handle_plain_text_chunk(
                         QueueTextChunkEvent(text=part), tts_publisher=tts_publisher, queue_message=queue_message
                     )
@@ -840,7 +841,9 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     ) -> Generator[StreamResponse]:
         """Close producers and flush checked output before saving a resumable message."""
         validated_state = self._ensure_graph_runtime_initialized()
-        yield from self._finish_generative_ui("completed", tts_publisher=tts_publisher, queue_message=queue_message)
+        yield from self._finish_generative_ui(
+            OpenUIContentStatus.COMPLETED, tts_publisher=tts_publisher, queue_message=queue_message
+        )
         yield from self._flush_output_moderation(tts_publisher=tts_publisher, queue_message=queue_message)
         responses = self._workflow_response_converter.workflow_pause_to_stream_response(
             event=event,
@@ -881,7 +884,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         **kwargs,
     ) -> Generator[StreamResponse]:
         """Preserve Graphon's terminal failure without reclassifying handled or historical model errors."""
-        yield from self._finish_generative_ui("error")
+        yield from self._finish_generative_ui(OpenUIContentStatus.ERROR)
         self._ensure_workflow_initialized()
         validated_state = self._ensure_graph_runtime_initialized()
 
@@ -913,7 +916,9 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         **kwargs,
     ) -> Generator[StreamResponse]:
         """Close interrupted UI blocks before saving the stopped answer and delivering its terminal events."""
-        yield from self._finish_generative_ui("cancelled", tts_publisher=tts_publisher, queue_message=queue_message)
+        yield from self._finish_generative_ui(
+            OpenUIContentStatus.CANCELLED, tts_publisher=tts_publisher, queue_message=queue_message
+        )
         if self._generative_ui_parsers:
             yield from self._flush_output_moderation(tts_publisher=tts_publisher, queue_message=queue_message)
         resolved_state = None
@@ -999,7 +1004,9 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     ) -> Generator[StreamResponse]:
         """Finish UI and moderation, then persist and emit the terminal message unless already saved on pause."""
         resolved_state = self._ensure_graph_runtime_initialized(graph_runtime_state)
-        yield from self._finish_generative_ui("completed", tts_publisher=tts_publisher, queue_message=queue_message)
+        yield from self._finish_generative_ui(
+            OpenUIContentStatus.COMPLETED, tts_publisher=tts_publisher, queue_message=queue_message
+        )
         yield from self._flush_output_moderation(tts_publisher=tts_publisher, queue_message=queue_message)
 
         # Save message unless it has already been persisted on pause.
