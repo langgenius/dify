@@ -1333,6 +1333,10 @@ class ModelCredentialUpdatePayload(ModelRef):
     name: str | None = None
 
 
+class ModelDeleteQuery(ModelRef):
+    pass
+
+
 class SkillListQuery(PageQuery):
     model_config = ConfigDict(extra="forbid")
 

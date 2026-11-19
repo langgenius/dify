@@ -12,6 +12,7 @@ from controllers.openapi import model_providers
 from controllers.openapi._models import (
     CredentialWriteResponse,
     ModelCredentialCreatePayload,
+    ModelDeleteQuery,
     ModelListQuery,
     ModelProviderDetailResponse,
     ModelRef,
@@ -20,8 +21,10 @@ from controllers.openapi._search import matches
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import AccountSubject
 from controllers.openapi.model_providers import (
+    ModelCredentialApi,
     ModelCredentialsApi,
     ModelProviderApi,
+    ModelProviderModelsApi,
     _model_write_response,
     _provider_write_response,
     model_rows,
@@ -310,3 +313,46 @@ def test_describe_asks_for_credentials_only_while_the_provider_is_not_configured
 
     assert (_ASK_SUMMARY in [hint.summary for hint in response.hints]) is asks
     assert response.configured is (status == CustomConfigurationStatus.ACTIVE)
+
+
+def test_delete_model(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+    deleted: list[tuple[str, str, str, str]] = []
+
+    def remove_model(_self: ModelProviderService, tenant_id: str, provider: str, model_type: str, model: str) -> None:
+        deleted.append((tenant_id, provider, model_type, model))
+
+    monkeypatch.setattr(ModelProviderService, "remove_model", remove_model)
+    query = ModelDeleteQuery(model="llama3", model_type=ModelType.LLM)
+    api = ModelProviderModelsApi()
+    with app.test_request_context(
+        "/openapi/v1/workspaces/ws/model-providers/x/models?model=llama3&model_type=llm", method="DELETE"
+    ):
+        response = api.delete.__handler__(  # pyrefly: ignore[missing-attribute]
+            api, _context(sqlite_session), "ws", _OLLAMA, query=query
+        )
+
+    assert response.result == "success"
+    assert deleted == [("ws", _OLLAMA, "llm", "llama3")]
+
+
+def test_delete_model_credential(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+    deleted: list[tuple[str, str, str, str, str]] = []
+
+    def remove_model_credential(
+        _self: ModelProviderService, tenant_id: str, provider: str, model_type: str, model: str, credential_id: str
+    ) -> None:
+        deleted.append((tenant_id, provider, model_type, model, credential_id))
+
+    monkeypatch.setattr(ModelProviderService, "remove_model_credential", remove_model_credential)
+    query = ModelDeleteQuery(model="llama3", model_type=ModelType.LLM)
+    api = ModelCredentialApi()
+    with app.test_request_context(
+        "/openapi/v1/workspaces/ws/model-providers/x/models/credentials/cred-1?model=llama3&model_type=llm",
+        method="DELETE",
+    ):
+        response = api.delete.__handler__(  # pyrefly: ignore[missing-attribute]
+            api, _context(sqlite_session), "ws", _OLLAMA, "cred-1", query=query
+        )
+
+    assert response.result == "success"
+    assert deleted == [("ws", _OLLAMA, "llm", "llama3", "cred-1")]
