@@ -6,10 +6,10 @@ from typing import Any
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
+from constants.trigger import TRIGGER_PLUGIN_NODE_TYPE
 from core.helper import marketplace
 from core.plugin.entities.plugin import PluginDependency, PluginDependencyType, PluginInstallationSource
 from core.plugin.impl.plugin import PluginInstaller
-from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from graphon.enums import BuiltinNodeTypes
 from models.provider_ids import GenericProviderID, ModelProviderID, ToolProviderID
 

@@ -1,5 +1,6 @@
 import { Button } from '@langgenius/dify-ui/button'
-import { memo } from 'react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -16,6 +17,9 @@ const HumanInputMigrationBanner = ({
   onMigrate,
 }: HumanInputMigrationBannerProps) => {
   const { t } = useTranslation(['workflow', 'common'])
+  const [dismissed, setDismissed] = useState(false)
+
+  if (dismissed) return null
 
   return (
     <div className="pointer-events-auto flex w-full min-w-0 flex-wrap items-center justify-center gap-2 rounded-lg border-[0.5px] border-components-badge-status-light-warning-halo bg-state-warning-hover px-3 py-2 shadow-xs">
@@ -44,6 +48,15 @@ const HumanInputMigrationBanner = ({
           <span aria-hidden className="i-ri-arrow-right-line size-3.5" />
         </Button>
       )}
+      <IconButton
+        variant="ghost"
+        size="sm"
+        className="shrink-0"
+        aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+        onClick={() => setDismissed(true)}
+      >
+        <span aria-hidden className="i-ri-close-line size-4" />
+      </IconButton>
     </div>
   )
 }

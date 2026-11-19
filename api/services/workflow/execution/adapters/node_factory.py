@@ -8,6 +8,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, final, override
 
 from configs import dify_config
+from constants.trigger import TRIGGER_NODE_TYPES
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.app.llm.model_access import build_dify_model_access, fetch_model_config
@@ -19,7 +20,6 @@ from core.helper.code_executor.code_executor import (
 )
 from core.helper.ssrf_proxy import graphon_ssrf_proxy
 from core.model_manager import ModelInstance
-from core.trigger.constants import TRIGGER_NODE_TYPES
 from core.workflow.human_input_adapter import adapt_node_config_for_graph, parse_human_input_delivery_methods
 from core.workflow.llm_environment_variable import (
     parse_llm_model_selector,

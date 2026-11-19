@@ -11,6 +11,7 @@ from core.workflow.nodes.human_input.session_binding import SessionBinding
 from enums.human_input import HumanInputFormStatus, ValueSourceType
 from graphon.nodes.human_input.entities import Completed, Expired, HITLContext, PauseRequested
 from graphon.runtime import VariablePool
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables.factory import build_segment
 from libs.datetime_utils import naive_utc_now
 from models.human_input import HumanInputForm
@@ -29,12 +30,17 @@ from repositories.human_input.form_repository import (
 from services.workflow.execution.adapters.human_input import DifyHITLCallback
 
 
-def _ctx(workflow_execution_id: str, node_id: str, node_title: str = "Human Input") -> HITLContext:
+def _ctx(
+    workflow_execution_id: str,
+    node_id: str,
+    node_title: str = "Human Input",
+    variable_pool: ReadOnlyVariablePool | None = None,
+) -> HITLContext:
     return HITLContext(
         workflow_execution_id=workflow_execution_id,
         node_id=node_id,
         node_title=node_title,
-        variable_pool=VariablePool(),
+        variable_pool=variable_pool if variable_pool is not None else VariablePool(),
     )
 
 
@@ -125,11 +131,7 @@ def test_dify_hitl_callback_persists_variable_select_options(
         ),
     )
 
-    callback(
-        HITLContext(
-            workflow_execution_id="run-1", node_id="node-1", node_title="Human Input", variable_pool=variable_pool
-        )
-    )
+    callback(_ctx("run-1", "node-1", variable_pool=variable_pool))
 
     params: FormCreateParams = create.call_args.args[0]
     select_input = params.form_config.inputs[0]

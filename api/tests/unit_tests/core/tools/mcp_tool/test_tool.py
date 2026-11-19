@@ -709,3 +709,15 @@ class TestMcpToolCasesTools:
                 )
                 if expected_total:
                     assert usage.total_tokens == expected_total
+
+
+def _text_message(message: ToolInvokeMessage) -> ToolInvokeMessage.TextMessage:
+    """Return the text payload, asserting the message really is a text message."""
+    assert isinstance(message.message, ToolInvokeMessage.TextMessage)
+    return message.message
+
+
+def _variable_message(message: ToolInvokeMessage) -> ToolInvokeMessage.VariableMessage:
+    """Return the variable payload, asserting the message really is a variable message."""
+    assert isinstance(message.message, ToolInvokeMessage.VariableMessage)
+    return message.message

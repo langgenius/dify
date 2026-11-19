@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from types import SimpleNamespace
+from typing import TypedDict, Unpack
 from unittest.mock import ANY, Mock
 
 import pytest
@@ -37,13 +38,15 @@ from services.workflow.snippet_policy import validate_snippet_graph_forbidden_no
 from tests.helpers.unit.model_factories import make_account
 
 
-def _create_workflow(*, workflow_id: str, version: str, graph: dict, features: dict) -> Workflow:
+def _create_workflow(
+    *, workflow_id: str, version: str, graph: dict[str, object], features: dict[str, object]
+) -> Workflow:
     return Workflow(
         id=workflow_id,
         tenant_id="tenant-1",
         app_id="snippet-1",
-        type=WorkflowType.WORKFLOW.value,
-        kind=WorkflowKind.SNIPPET.value,
+        type=WorkflowType.WORKFLOW,
+        kind=WorkflowKind.SNIPPET,
         version=version,
         graph=json.dumps(graph),
         _features=json.dumps(features),
@@ -54,8 +57,8 @@ def _create_workflow(*, workflow_id: str, version: str, graph: dict, features: d
     )
 
 
-def _snippet(**overrides) -> CustomizedSnippet:
-    values = {
+def _snippet(**overrides: Unpack[SnippetFactoryOverrides]) -> CustomizedSnippet:
+    values: SnippetFactoryOverrides = {
         "id": "snippet-1",
         "tenant_id": "tenant-1",
         "name": "Snippet",
@@ -64,7 +67,17 @@ def _snippet(**overrides) -> CustomizedSnippet:
         "created_by": "account-1",
     }
     values.update(overrides)
-    return CustomizedSnippet(**values)
+    snippet = CustomizedSnippet(
+        id=values["id"],
+        tenant_id=values["tenant_id"],
+        name=values["name"],
+        description=values["description"],
+        type=values["type"],
+        created_by=values["created_by"],
+    )
+    for field, value in overrides.items():
+        setattr(snippet, field, value)
+    return snippet
 
 
 def _account(account_id: str = "account-1") -> Account:
@@ -119,7 +132,7 @@ def test_validate_snippet_graph_forbidden_nodes_raises_with_node_details() -> No
 
 
 def test_get_snippets_returns_empty_when_tag_filter_has_no_targets(
-    application_tags, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    application_tags: TagApplicationService, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     get_target_ids = Mock(return_value=[])
     monkeypatch.setattr(application_tags, "find_target_ids", get_target_ids)
@@ -134,7 +147,7 @@ def test_get_snippets_returns_empty_when_tag_filter_has_no_targets(
 
 
 def test_get_snippets_applies_filters_and_paginates(
-    application_tags, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    application_tags: TagApplicationService, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     snippets = []
     for index in range(3):
@@ -242,7 +255,9 @@ def test_update_snippet_allows_duplicate_names(sqlite_session: Session) -> None:
     assert result is snippet
     assert snippet.name == "shared name"
     sqlite_session.flush()
-    assert sqlite_session.get(CustomizedSnippet, snippet.id).name == "shared name"
+    stored_snippet = sqlite_session.get(CustomizedSnippet, snippet.id)
+    assert stored_snippet is not None
+    assert stored_snippet.name == "shared name"
 
 
 def test_update_snippet_updates_optional_fields(sqlite_session: Session) -> None:
@@ -878,7 +893,9 @@ def test_increment_use_count_adds_updated_snippet(sqlite_session: Session) -> No
 
     assert snippet.use_count == 3
     sqlite_session.flush()
-    assert sqlite_session.get(CustomizedSnippet, snippet.id).use_count == 3
+    stored_snippet = sqlite_session.get(CustomizedSnippet, snippet.id)
+    assert stored_snippet is not None
+    assert stored_snippet.use_count == 3
 
 
 @pytest.mark.parametrize("concurrent_edit", [None, "graph", "binding", "agent"])
@@ -1054,3 +1071,13 @@ def test_snippet_publication_rolls_back_version_and_pointer_on_binding_write_fai
         assert snippet.is_published is False
         assert snippet.version == 1
         assert session.scalar(select(func.count()).select_from(Workflow).where(Workflow.version != "draft")) == 0
+
+
+class SnippetFactoryOverrides(TypedDict, total=False):
+    id: str
+    tenant_id: str
+    name: str
+    description: str | None
+    type: str
+    workflow_id: str | None
+    created_by: str | None

@@ -147,7 +147,7 @@ describe('Base Prompt Editor Flow', () => {
     it('should display external updates while read-only', async () => {
       const captures: Captures = { eventEmitter: null, events: [] }
 
-      const { container } = render(
+      render(
         <PromptEditorHarness
           captures={captures}
           instanceId="editor-2"
@@ -168,10 +168,10 @@ describe('Base Prompt Editor Flow', () => {
         })
       })
 
-      const editable = container.querySelector('[contenteditable="false"]') as HTMLElement
-
-      expect(editable).toBeInTheDocument()
-      expect(screen.getByRole('textbox')).toHaveTextContent('silent update')
+      const editor = screen.getByRole('textbox')
+      expect(editor).toHaveAttribute('contenteditable', 'false')
+      expect(editor).toHaveAttribute('aria-readonly', 'true')
+      expect(editor).toHaveTextContent('silent update')
     })
   })
 })

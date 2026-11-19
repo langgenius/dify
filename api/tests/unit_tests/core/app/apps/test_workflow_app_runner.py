@@ -50,7 +50,7 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from core.credit_usage import CreditUsageAppType
-from core.workflow.nodes.agent.events import NodeRunAgentLogEvent
+from core.workflow.agent_log_events import NodeRunAgentLogEvent
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import default_system_variables
 from enums.human_input import HumanInputFormKind, HumanInputFormStatus

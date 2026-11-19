@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
+from core.workflow.human_input_policy import HumanInputSurface
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from enums.human_input import HumanInputFormStatus, ValueSourceType
 from graphon.entities.pause_reason import HitlRequired
@@ -18,7 +19,12 @@ from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import RuntimeState, VariablePool
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm
-from models.human_input_entities import FormDefinition, SelectInputConfig, StringListSource, UserActionConfig
+from models.human_input_entities import (
+    FormDefinition,
+    SelectInputConfig,
+    StringListSource,
+    UserActionConfig,
+)
 from models.model import AppMode
 from models.workflow import WorkflowPauseReason, WorkflowRun, WorkflowType
 from repositories.entities.workflow_pause import WorkflowPauseEntity
@@ -179,6 +185,7 @@ def test_build_snapshot_events_resolves_variable_select_options(db_session_with_
         pause_entity=pause_entity,
         resumption_context=_build_resumption_context(workflow_run_id, form.id),
         session_maker=session_maker,
+        human_input_surface=HumanInputSurface.CONSOLE,
         node_executions={},
         tool_providers=_ToolProvidersStub(),
     )

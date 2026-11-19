@@ -28,7 +28,7 @@ import {
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { formatForDisplay, matchesKeyboardEvent } from '@tanstack/react-hotkeys'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -38,7 +38,7 @@ import {
   IconPickerTrigger,
 } from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { consoleQuery } from '@/service/console'
 
 const SUBMIT_APP_HOTKEY = 'Mod+Enter' satisfies HotkeyChord
@@ -75,24 +75,15 @@ export function AppMetadataForm({
   const formRef = useRef<HTMLFormElement>(null)
   const [source] = useState(appDetail)
   const [selectedIcon, setSelectedIcon] = useState<IconPickerValue | null>(null)
-  const { data: deploymentEdition } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (data) => data.deployment_edition,
-  })
   const isEdit = operation === 'edit'
   const { data: quota } = useQuery(
     consoleQuery.features.get.queryOptions({
-      enabled: !isEdit && deploymentEdition === 'CLOUD',
-      select: (data) => data.apps,
+      enabled: !isEdit,
+      select: (data) => getCountQuota(data.apps),
     }),
   )
-  const quotaUnavailable = !isEdit && deploymentEdition === 'CLOUD' && !quota
-  const isFull =
-    !isEdit &&
-    deploymentEdition === 'CLOUD' &&
-    !!quota &&
-    quota.limit > 0 &&
-    quota.size >= quota.limit
+  const quotaUnavailable = !isEdit && !quota
+  const isFull = !isEdit && !!quota && isQuotaReached(quota)
   const icon: IconPickerInputValue | undefined =
     selectedIcon ??
     (source.icon_type === 'image' && source.icon

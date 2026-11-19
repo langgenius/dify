@@ -52,7 +52,7 @@ class _DummyRateLimit:
     def exit(self, request_id: str) -> None:
         self._exited.append(request_id)
 
-    def generate(self, generator, request_id: str):
+    def generate[G](self, generator: G, request_id: str) -> G:
         return generator
 
 
@@ -62,7 +62,8 @@ def _make_app(mode: AppMode | str, *, max_active_requests: int = 0) -> App:
         tenant_id="tenant-id",
         name="App",
         description="",
-        mode=AppMode.CHAT if isinstance(mode, str) and mode == "invalid-mode" else mode,
+        # "invalid-mode" is deliberately passed through to exercise the error path.
+        mode=AppMode.CHAT if isinstance(mode, str) and mode == "invalid-mode" else mode,  # pyrefly: ignore[bad-argument-type]
         status=AppStatus.NORMAL,
         enable_site=False,
         enable_api=False,
@@ -713,7 +714,7 @@ class TestAppGenerateServiceCases(_RealSessionTest):
             side_effect=lambda value: value,
         )
         app = _make_app(AppMode.WORKFLOW)
-        session = object()
+        session = MagicMock(spec=Session, expire_on_commit=True)
 
         result = AppGenerateService.generate(
             app_model=app,
@@ -1270,3 +1271,6 @@ class TestGenerateSingleLoop(_RealSessionTest):
                 variables=workflow_variables,
                 runtime=workflow_runtime,
             )
+
+
+type JsonValue = str | int | float | bool | None | list[JsonValue] | dict[str, JsonValue]

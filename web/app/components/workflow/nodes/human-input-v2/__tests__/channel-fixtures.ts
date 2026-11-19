@@ -1,12 +1,9 @@
-import type {
-  ChannelSummary,
-  ListChannelsResponse,
-} from '@dify/contracts/api/console/workspaces/types.gen'
+import type { HumanInputTestChannelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { QueryClient } from '@tanstack/react-query'
 import { consoleQuery } from '@/service/console'
 
 export const createChannelsQueryClient = (
-  providers: ChannelSummary['provider'][] = ['resend', 'slack'],
+  channels: HumanInputTestChannelsResponse['channels'] = ['email', 'slack'],
 ) => {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -14,21 +11,9 @@ export const createChannelsQueryClient = (
       mutations: { retry: false },
     },
   })
-  const channels: ChannelSummary[] = providers.map((provider) => ({
-    id: `channel-${provider}`,
-    kind: provider === 'resend' ? 'email' : 'im',
-    provider,
-    config_version: `version-${provider}`,
-    created_at: 1,
-    updated_at: 1,
-    display_identifier: provider,
-    status: provider === 'resend' ? 'configured' : 'connected',
-    status_description: '',
-    webhook_url: null,
-  }))
   queryClient.setQueryData(
-    consoleQuery.workspaces.current.humanInput.v2.channels.get.queryOptions().queryKey,
-    { channels } satisfies ListChannelsResponse,
+    consoleQuery.workspaces.current.humanInput.v2.testChannels.get.queryKey(),
+    { channels } satisfies HumanInputTestChannelsResponse,
   )
   return queryClient
 }

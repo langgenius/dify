@@ -1,12 +1,14 @@
 import json
 from dataclasses import dataclass
+from unittest.mock import Mock
 
 import pytest
 
+from constants.trigger import TRIGGER_PLUGIN_NODE_TYPE
+from core.plugin.impl.trigger import PluginTriggerClient
 from core.tools.entities.tool_entities import ToolProviderType
-from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
-from core.trigger.trigger_manager import TriggerManager
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
+from models.utils.trigger_endpoint import generate_trigger_plugin_icon_url
 from models.workflow import WorkflowNodeExecutionModel
 from services.tools.tool_manager import ToolManager
 from services.workflow.node_execution_extras import node_execution_extras
@@ -42,14 +44,14 @@ def test_tool_extras_use_injected_provider_icons(
     tool_providers = _ToolProviderIconsStub()
     execution = _execution(
         node_type=BuiltinNodeTypes.TOOL,
-        metadata={"tool_info": {"provider_type": provider_type, "provider_id": "provider-1"}},
+        metadata={"tool_info": {"provider_type": provider_type, "provider_id": "acme/calendar/calendar"}},
     )
 
     def get_tool_icon(**kwargs: object) -> str:
         assert kwargs == {
             "tenant_id": "tenant-1",
             "provider_type": provider_type,
-            "provider_id": "provider-1",
+            "provider_id": "acme/calendar/calendar",
             "tool_providers": tool_providers,
         }
         return "tool-icon"
@@ -71,16 +73,17 @@ def test_datasource_extras_preserve_persisted_icon() -> None:
 def test_trigger_extras_resolve_plugin_icon(monkeypatch: pytest.MonkeyPatch) -> None:
     execution = _execution(
         node_type=TRIGGER_PLUGIN_NODE_TYPE,
-        metadata={WorkflowNodeExecutionMetadataKey.TRIGGER_INFO: {"provider_id": "provider-1"}},
+        metadata={WorkflowNodeExecutionMetadataKey.TRIGGER_INFO: {"provider_id": "acme/calendar/calendar"}},
     )
 
-    def get_trigger_plugin_icon(*, tenant_id: str, provider_id: str) -> str:
-        assert (tenant_id, provider_id) == ("tenant-1", "provider-1")
-        return "trigger-icon"
-
-    monkeypatch.setattr(TriggerManager, "get_trigger_plugin_icon", get_trigger_plugin_icon)
-
-    assert node_execution_extras(execution, tool_providers=_ToolProviderIconsStub()) == {"icon": "trigger-icon"}
+    provider = Mock()
+    provider.declaration.identity.icon = "icon.svg"
+    fetch = Mock(return_value=provider)
+    monkeypatch.setattr(PluginTriggerClient, "fetch_trigger_provider", fetch)
+    assert node_execution_extras(execution, tool_providers=_ToolProviderIconsStub()) == {
+        "icon": generate_trigger_plugin_icon_url("tenant-1", "icon.svg")
+    }
+    assert fetch.call_args.args[0] == "tenant-1"
 
 
 def test_extras_are_empty_without_supported_metadata() -> None:

@@ -30,10 +30,6 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
   useRouter: () => ({ push: vi.fn() }),
 }))
 
-// boundary: ECharts is an external renderer; the page's real chart surface remains asserted.
-vi.mock('echarts-for-react', () => ({
-  default: () => <div aria-label="query outcomes chart" />,
-}))
 type OverviewResource =
   | 'activity'
   | 'attention'

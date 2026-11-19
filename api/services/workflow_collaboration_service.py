@@ -17,6 +17,7 @@ from core.rbac import RBACPermission, RBACResourceScope
 from models.account import Account
 from models.model import App
 from repositories.workflow.collaboration_repository import WorkflowCollaborationRepository, WorkflowSessionInfo
+from services.account_avatar_service import AccountAvatarService
 from services.enterprise.rbac_service import RBACService
 from services.feature_service import FeatureService
 
@@ -448,6 +449,35 @@ class WorkflowCollaborationService:
             {"workflow_id": workflow_id, "users": users, "leader": leader_sid},
             room=workflow_id,
         )
+
+    def get_online_user_avatars(self, sid: str, *, avatar_service: AccountAvatarService) -> dict[str, str]:
+        """Resolve current-room avatars for an admitted socket; an unjoined socket receives no URLs.
+
+        The room, account IDs, and profile avatars come from server-managed sessions.
+        Missing or unowned uploads are omitted so clients can show initials.
+        """
+        mapping = self._repository.get_sid_mapping(sid)
+        if not mapping:
+            return {}
+        workflow_id = mapping["workflow_id"]
+        if not self.is_session_active(workflow_id, sid):
+            return {}
+
+        urls: dict[str, str] = {}
+        for user in self._repository.list_sessions(workflow_id):
+            avatar = user["avatar"]
+            if avatar and self.is_session_active(workflow_id, user["sid"]):
+                # The profile accepts arbitrary strings, but the upload lookup requires a valid UUID.
+                if not avatar.startswith(("http://", "https://")):
+                    try:
+                        avatar = str(uuid.UUID(avatar))
+                    except ValueError:
+                        avatar = ""
+
+                if avatar and (url := avatar_service.resolve_for_account(account_id=user["user_id"], avatar=avatar)):
+                    urls[user["sid"]] = url
+
+        return urls
 
     def refresh_session_state(self, workflow_id: str, sid: str) -> None:
         self._refresh_server_heartbeat()

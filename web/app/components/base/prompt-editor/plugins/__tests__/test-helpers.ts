@@ -1,6 +1,5 @@
 import type { Klass, LexicalEditor, LexicalNode } from 'lexical'
 import type { ReactNode } from 'react'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { act, render, waitFor } from '@testing-library/react'
 import {
   $createParagraphNode,
@@ -11,6 +10,7 @@ import {
   getNearestEditorFromDOMNode,
 } from 'lexical'
 import { createElement } from 'react'
+import { TestLexicalComposer } from '@/test/lexical'
 import { CaptureEditorPlugin } from './test-utils'
 
 type RenderLexicalEditorProps = {
@@ -32,7 +32,7 @@ export const renderLexicalEditor = ({
 
   const renderResult = render(
     createElement(
-      LexicalComposer,
+      TestLexicalComposer,
       {
         initialConfig: {
           namespace,

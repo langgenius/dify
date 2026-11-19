@@ -1426,14 +1426,12 @@ def test_draft_webhook_receiver_uses_injected_database(
 ) -> None:
     from events.event_handlers.sync_webhook_when_app_created import handle
     from models.trigger import WorkflowWebhookTrigger
-    from services.trigger import webhook_service
 
     configure_runtime_draft(seeded, "draft")
     with seeded() as session:
         draft = session.get(Workflow, "draft")
         assert draft is not None
         snapshot = workflow_snapshot(draft)
-    monkeypatch.setattr(webhook_service, "db", object())
     monkeypatch.setattr(gateway_module.app_draft_workflow_was_synced, "receivers_for", lambda _app: iter([handle]))
     lifecycle = WorkflowDefinitionGateway(
         session_factory=seeded,

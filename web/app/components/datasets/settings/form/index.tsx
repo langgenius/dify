@@ -3,7 +3,10 @@ import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/ap
 import { Button } from '@langgenius/dify-ui/button'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { FileScanSetting } from '@/features/file-scan/file-scan-setting'
+import { useFileScanPolicyController } from '@/features/file-scan/use-file-scan-policy'
 import BasicInfoSection from './components/basic-info-section'
 import ExternalKnowledgeSection from './components/external-knowledge-section'
 import IndexingSection from './components/indexing-section'
@@ -15,6 +18,7 @@ const DatasetSettingsForm = ({
   currentDataset: DatasetDetailWithPartialMembersResponse
 }) => {
   const { t } = useTranslation(['datasetSettings'])
+  const { t: tFileScan } = useTranslation(['fileScan'])
   const {
     canEditSettings,
 
@@ -68,6 +72,27 @@ const DatasetSettingsForm = ({
 
   const isExternalProvider = currentDataset?.provider === 'external'
   const readonly = !canEditSettings
+  const fileScan = useFileScanPolicyController({
+    // An external knowledge base stores no uploaded files, so there is nothing to scan.
+    active: !isExternalProvider,
+    product: 'dataset',
+    readonly,
+    resourceId: currentDataset.id,
+  })
+
+  const saveAll = async () => {
+    // The scan policy has its own endpoint; it goes first so a rejected policy stops the save.
+    const fileScanResult = await fileScan.save()
+    if (fileScanResult === 'invalid') {
+      toast.error(tFileScan(($) => $['policy.scannerRequired']))
+      return
+    }
+    if (fileScanResult === 'failed') {
+      toast.error(tFileScan(($) => $['policy.saveFailed']))
+      return
+    }
+    await handleSave()
+  }
 
   return (
     <div className="flex w-full max-w-240 flex-col gap-y-4 px-4 py-8 @3xl/settings:px-20">
@@ -117,6 +142,13 @@ const DatasetSettingsForm = ({
 
       <Separator decorative orientation="horizontal" className="my-1 bg-divider-subtle" />
 
+      {fileScan.active && (
+        <>
+          <FileScanSetting controller={fileScan} />
+          <Separator decorative orientation="horizontal" className="my-1 bg-divider-subtle" />
+        </>
+      )}
+
       {/* Save Button */}
       <div className="flex gap-x-1">
         <div className="hidden h-7 w-45 shrink-0 items-center pt-1 @3xl/settings:flex" />
@@ -124,9 +156,9 @@ const DatasetSettingsForm = ({
           <Button
             className="min-w-24"
             variant="primary"
-            loading={loading}
+            loading={loading || fileScan.isSaving}
             disabled={readonly}
-            onClick={handleSave}
+            onClick={() => void saveAll()}
           >
             {t(($) => $['form.save'], { ns: 'datasetSettings' })}
           </Button>
