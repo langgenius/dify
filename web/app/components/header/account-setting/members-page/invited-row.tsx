@@ -1,15 +1,18 @@
 'use client'
 import type { Ref } from 'react'
 import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { isDefinedError } from '@orpc/client'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { toast } from '@/app/notifications'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
 import { getAvatarInitial } from '@/utils/avatar'
+import { InvitationResultsContent } from './invitation-results-content'
 import { RoleBadges } from './role-badges'
 
 export type Invitee = {
@@ -17,7 +20,6 @@ export type Invitee = {
   role: string
   roleName: string
   expiresAt?: string
-  memberId?: string
 }
 
 const InvitedStatus = ({ expiresAt }: { expiresAt?: string }) => {
@@ -56,6 +58,10 @@ export const InvitedRow = ({ ref, invitee, canManage, onRevoke }: InvitedRowProp
   const { t } = useTranslation(['common', 'workspaceMembers'])
   const locale = useLocale()
   const queryClient = useQueryClient()
+  const { data: isEmailSetup } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ is_email_setup }) => is_email_setup,
+  })
   const resend = useMutation(
     consoleQuery.workspaces.current.members.inviteEmail.post.mutationOptions({
       context: { silent: true },
@@ -67,6 +73,7 @@ export const InvitedRow = ({ ref, invitee, canManage, onRevoke }: InvitedRowProp
           ({ email }) => email.toLowerCase() === invitee.email.toLowerCase(),
         )
         if (result?.status === 'success') {
+          if (!isEmailSetup) return
           toast.success(
             t(($) => $['members.invitationResent'], {
               ns: 'workspaceMembers',
@@ -98,6 +105,10 @@ export const InvitedRow = ({ ref, invitee, canManage, onRevoke }: InvitedRowProp
       },
     }),
   )
+  const resentLinks =
+    !isEmailSetup && resend.data?.invitation_results.some(({ status }) => status === 'success')
+      ? resend.data.invitation_results
+      : undefined
 
   return (
     <tr ref={ref} className="border-b border-divider-subtle">
@@ -149,6 +160,16 @@ export const InvitedRow = ({ ref, invitee, canManage, onRevoke }: InvitedRowProp
               </MenuItem>
             </MenuContent>
           </Menu>
+          <Dialog
+            open={Boolean(resentLinks)}
+            onOpenChange={(open) => {
+              if (!open) resend.reset()
+            }}
+          >
+            <DialogContent backdropProps={{ forceRender: true }}>
+              {resentLinks && <InvitationResultsContent invitationResults={resentLinks} />}
+            </DialogContent>
+          </Dialog>
         </td>
       )}
     </tr>

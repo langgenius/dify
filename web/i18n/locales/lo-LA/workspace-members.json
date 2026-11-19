@@ -51,7 +51,6 @@
   "members.memberDetails.rolePermissionSummary": "{{role}} ສາມາດ <permissionList>{{permissions}}</permissionList>",
   "members.memberDetails.title": "ລາຍລະອຽດສະມາຊິກ",
   "members.name": "ຊື່",
-  "members.noNewInvitationsSent": "ບໍ່ມີການສົ່ງຄຳເຊີນໃໝ່",
   "members.normalTip": "ສາມາດໃຊ້ແອັບໄດ້ເທົ່ານັ້ນ, ບໍ່ສາມາດສ້າງແອັບໄດ້",
   "members.ok": "ຕົກລົງ",
   "members.recipientCountExceedsSeats": "ທ່ານຍັງສາມາດສົ່ງໄດ້. ສະມາຊິກທີ່ມີຢູ່ແລ້ວຈະບໍ່ໃຊ້ບ່ອນນັ່ງເພີ່ມ.",

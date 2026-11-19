@@ -214,6 +214,18 @@ export const zNotAllowedCreateWorkspaceError = zErrorResponse.and(
 )
 
 /**
+ * WorkspaceMemberLimitReachedError
+ *
+ * The workspace has reached its member limit, so this invitation cannot be accepted right now.
+ */
+export const zWorkspaceMemberLimitReachedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('workspace_member_limit_reached'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * LoginMode
  */
 export const zLoginMode = z.enum(['console', 'end_user'])
@@ -234,6 +246,7 @@ export const zEmailCodeSendPayload = z.object({
 export const zEmailCodeLoginPayload = z.object({
   code: z.string(),
   email: z.string(),
+  invite_token: z.string().nullish(),
   language: z.string().nullish(),
   mode: zLoginMode.optional().default('console'),
   timezone: z.string().nullish(),

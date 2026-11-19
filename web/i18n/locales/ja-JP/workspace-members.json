@@ -51,7 +51,6 @@
   "members.memberDetails.rolePermissionSummary": "{{role}} は <permissionList>{{permissions}}</permissionList> できます",
   "members.memberDetails.title": "メンバー詳細",
   "members.name": "名前",
-  "members.noNewInvitationsSent": "新しい招待は送信されませんでした",
   "members.normalTip": "アプリの使用のみが可能で、アプリの構築はできません",
   "members.ok": "OK",
   "members.recipientCountExceedsSeats": "このまま送信できます。既存メンバーは追加の枠を使用しません。",

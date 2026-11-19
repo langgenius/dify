@@ -51,7 +51,6 @@
   "members.memberDetails.rolePermissionSummary": "{{role}} <permissionList>{{permissions}}</permissionList> कर सकता है",
   "members.memberDetails.title": "सदस्य विवरण",
   "members.name": "नाम",
-  "members.noNewInvitationsSent": "कोई नया आमंत्रण नहीं भेजा गया",
   "members.normalTip": "केवल ऐप्स का उपयोग कर सकते हैं, ऐप्स नहीं बना सकते",
   "members.ok": "ठीक है",
   "members.recipientCountExceedsSeats": "आप फिर भी आमंत्रण भेज सकते हैं। मौजूदा सदस्य कोई अतिरिक्त सीट नहीं लेंगे।",

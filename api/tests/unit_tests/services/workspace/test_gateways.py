@@ -13,6 +13,7 @@ from services.account.adapters import RedisInvitationTokenStore
 from services.credit_pool_service import CreditPoolBalance
 from services.enterprise.base import EnterpriseRequest
 from services.enterprise.enterprise_service import WorkspacePermission
+from services.entities.account_activation_entities import InvitationToken
 from services.entities.feature_entities import FeatureModel, LicenseLimitationModel, LicenseModel, LimitationModel
 from services.errors.base import NoPermissionError
 from services.errors.workspace import WorkspaceInvitationQuotaError, WorkspaceMemberLicenseQuotaError
@@ -40,16 +41,23 @@ class TestGatewaysCases:
         return gateways.WorkspaceInvitationGateway(tokens=RedisInvitationTokenStore(redis=redis), redis=redis)
 
     @staticmethod
-    def test_invitation_index_failure_preserves_issued_link(
-        redis_transport: tuple[RedisClientWrapper, MagicMock], caplog: pytest.LogCaptureFixture
+    def test_invitation_index_failure_reports_the_link_as_not_issued(
+        redis_transport: tuple[RedisClientWrapper, MagicMock],
     ) -> None:
         redis, commands = redis_transport
-        commands.side_effect = RedisError("index unavailable")
+
+        def execute(command: str, *_args: object, **_kwargs: object) -> object:
+            if command == "ZADD":
+                raise RedisError("index unavailable")
+            return b"OK"
+
+        commands.side_effect = execute
         invitations = gateways.WorkspaceInvitationGateway(tokens=RedisInvitationTokenStore(redis=redis), redis=redis)
 
-        invitations.track_pending("workspace", "token")
+        with pytest.raises(RedisError):
+            invitations.create(InvitationToken("account", "invitee@example.com", "workspace", "normal", True))
 
-        assert "Could not index an issued workspace invitation for workspace" in caplog.messages
+        assert [c.args[0] for c in commands.call_args_list if c.args[0] in {"SETEX", "DEL"}] == ["SETEX", "DEL"]
 
     @staticmethod
     @pytest.mark.parametrize("allowed", [True, False])

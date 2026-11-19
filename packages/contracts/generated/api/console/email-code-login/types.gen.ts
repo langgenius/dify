@@ -69,6 +69,7 @@ export type TurnstileServiceUnavailableError = ErrorResponse & {
 export type EmailCodeLoginPayload = {
   code: string
   email: string
+  invite_token?: string | null
   language?: string | null
   mode?: LoginMode
   timezone?: string | null
@@ -112,6 +113,11 @@ export type NormalizedEmailAlreadyInUseError = ErrorResponse & {
 
 export type NotAllowedCreateWorkspaceError = ErrorResponse & {
   code: 'not_allowed_create_workspace'
+  status: 400
+}
+
+export type WorkspaceMemberLimitReachedError = ErrorResponse & {
+  code: 'workspace_member_limit_reached'
   status: 400
 }
 
@@ -165,6 +171,7 @@ export type PostEmailCodeLoginValidityErrors = {
     | NormalizedEmailAlreadyInUseError
     | NotAllowedCreateWorkspaceError
     | TurnstileVerificationFailedError
+    | WorkspaceMemberLimitReachedError
     | ErrorResponse
   503: EmailCodeLoginServiceUnavailableError | TurnstileServiceUnavailableError | ErrorResponse
   default: ErrorResponse

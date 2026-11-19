@@ -51,7 +51,6 @@
   "members.memberDetails.rolePermissionSummary": "{{role}} üçün icazələr: <permissionList>{{permissions}}</permissionList>",
   "members.memberDetails.title": "Üzv məlumatları",
   "members.name": "Ad",
-  "members.noNewInvitationsSent": "Yeni dəvət göndərilmədi",
   "members.normalTip": "Yalnız tətbiqlərdən istifadə edə bilər, tətbiq yarada bilməz",
   "members.ok": "Oldu",
   "members.recipientCountExceedsSeats": "Yenə də göndərə bilərsiniz. Mövcud üzvlər əlavə yer tutmayacaq.",

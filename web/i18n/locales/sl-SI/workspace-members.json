@@ -51,7 +51,6 @@
   "members.memberDetails.rolePermissionSummary": "{{role}} lahko <permissionList>{{permissions}}</permissionList>",
   "members.memberDetails.title": "Podrobnosti člana",
   "members.name": "IME",
-  "members.noNewInvitationsSent": "Nova povabila niso bila poslana",
   "members.normalTip": "Lahko uporablja samo aplikacije, ne more ustvarjati aplikacij",
   "members.ok": "V redu",
   "members.recipientCountExceedsSeats": "Povabila lahko še vedno pošljete. Obstoječi člani ne bodo zasedli dodatnega mesta.",

@@ -175,24 +175,28 @@ class RedisInvitationTokenStore(InvitationTokenStore):
         self._redis = redis
 
     def create(self, invitation: InvitationToken) -> str:
-        token = str(uuid.uuid4())
-        self._redis.setex(
-            self._invitation_token_key(token),
-            dify_config.INVITE_EXPIRY_HOURS * 60 * 60,
-            _invitation_token_adapter.dump_json(invitation),
-        )
-        return token
+        """Issue a link and index it under its workspace; no link stays live without its index entry.
 
-    def track_pending(self, workspace_id: str, token: str) -> None:
-        """Index a delivered legacy invitation for the remaining lifetime of its token."""
-        now = time()
-        ttl_ms = self._redis.pttl(self._invitation_token_key(token))
-        if ttl_ms <= 0:
-            return
-        key = self._pending_workspace_key(workspace_id)
-        self._redis.zremrangebyscore(key, "-inf", now)
-        self._redis.zadd(key, {token: now + ttl_ms / 1000})
-        self._redis.expire(key, dify_config.INVITE_EXPIRY_HOURS * 60 * 60)
+        Raises:
+            RedisError: The link or its index entry could not be written; nothing stays live.
+        """
+        token = str(uuid.uuid4())
+        expiry_seconds = dify_config.INVITE_EXPIRY_HOURS * 60 * 60
+        token_key = self._invitation_token_key(token)
+        self._redis.setex(token_key, expiry_seconds, _invitation_token_adapter.dump_json(invitation))
+        try:
+            now = time()
+            key = self._pending_workspace_key(invitation.workspace_id)
+            self._redis.zremrangebyscore(key, "-inf", now)
+            self._redis.zadd(key, {token: now + expiry_seconds})
+            self._redis.expire(key, expiry_seconds)
+        except RedisError:
+            try:
+                self._redis.delete(token_key)
+            except RedisError:
+                logger.warning("Could not remove an unindexed invitation link", exc_info=True)
+            raise
+        return token
 
     def list_pending(self, workspace_id: str) -> tuple[PendingWorkspaceInvitation, ...]:
         """Return live invitations for this workspace with the latest outstanding link per email."""
@@ -218,19 +222,30 @@ class RedisInvitationTokenStore(InvitationTokenStore):
                 )
         return tuple(pending.values())
 
-    def revoke_pending(self, workspace_id: str, email: str) -> None:
-        """Invalidate every indexed invitation link for this email in the workspace."""
+    def revoke_pending(self, workspace_id: str, email: str, *, account_id: str | None) -> None:
+        """Invalidate every invitation link for this email in the workspace.
+
+        Indexed links are deleted. Links issued before every link was indexed cannot be found by
+        email, so the account is also marked: from now on only indexed links are accepted for it.
+        """
+        if account_id is not None:
+            self._redis.setex(
+                self._unindexed_revoked_key(workspace_id, account_id), dify_config.INVITE_EXPIRY_HOURS * 60 * 60, "1"
+            )
         key = self._pending_workspace_key(workspace_id)
         normalized_email = email.lower()
-        for token_bytes, _ in self._redis.zrangebyscore_withscores(key, "-inf", "+inf"):
-            token = token_bytes.decode()
-            invitation = self.find(InvitationLookup(workspace_id=None, email=None, token=token))
-            if invitation is not None and (
-                invitation.workspace_id != workspace_id or invitation.email.lower() != normalized_email
+        tokens = [token_bytes.decode() for token_bytes, _ in self._redis.zrangebyscore_withscores(key, "-inf", "+inf")]
+        for token in tokens:
+            invitation = self._read_token(token)
+            if invitation is None or (
+                invitation.workspace_id == workspace_id and invitation.email.lower() == normalized_email
             ):
-                continue
-            self._redis.delete(self._invitation_token_key(token))
-            self._redis.zrem(key, token)
+                self._redis.delete(self._invitation_token_key(token))
+                self._redis.zrem(key, token)
+
+    def _read_token(self, token: str) -> InvitationToken | None:
+        data = self._redis.get(self._invitation_token_key(token))
+        return _invitation_token_adapter.validate_json(data) if data is not None else None
 
     @staticmethod
     def _pending_workspace_key(workspace_id: str) -> str:
@@ -251,7 +266,19 @@ class RedisInvitationTokenStore(InvitationTokenStore):
         data = self._redis.get(self._invitation_token_key(invitation.token))
         if data is None:
             return None
-        return _invitation_token_adapter.validate_json(data)
+        token = _invitation_token_adapter.validate_json(data)
+        unindexed_revoked = self._redis.get(self._unindexed_revoked_key(token.workspace_id, token.account_id)) == b"1"
+        if unindexed_revoked and not self._is_indexed(token.workspace_id, invitation.token):
+            return None
+        return token
+
+    def _is_indexed(self, workspace_id: str, token: str) -> bool:
+        entries = self._redis.zrangebyscore_withscores(self._pending_workspace_key(workspace_id), "-inf", "+inf")
+        return any(entry.decode() == token for entry, _ in entries)
+
+    @staticmethod
+    def _unindexed_revoked_key(workspace_id: str, account_id: str) -> str:
+        return f"member_invite:unindexed_revoked:{workspace_id}:{account_id}"
 
     @override
     def consume_membership(self, invitation: InvitationLookup) -> bool:

@@ -14,11 +14,16 @@ const workspaceId = '74e6f5f1-621e-4ca0-910f-94c686e4ada1'
 const setup = (
   inviteResults: MemberInviteResponse['invitation_results'],
   acceptedMeanwhile?: string,
+  isEmailSetup = true,
 ) => {
   let invitations: PendingWorkspaceInvitationResponse[] = []
   const { queryClient } = createConsoleQueryWrapper({
     currentWorkspace: { id: workspaceId, role: 'owner' },
-    systemFeatures: { deployment_edition: 'CLOUD', rbac_enabled: false, is_email_setup: true },
+    systemFeatures: {
+      deployment_edition: 'CLOUD',
+      rbac_enabled: false,
+      is_email_setup: isEmailSetup,
+    },
     workspacePermissionKeys: ['workspace.member.manage'],
   })
   let accounts = [
@@ -58,8 +63,13 @@ const setup = (
       if (pathname.endsWith(`/workspaces/${workspaceId}/members/pending-invitations/revoke`)) {
         const body = input instanceof Request ? await input.clone().text() : String(init?.body)
         const { email } = JSON.parse(body)
-        const live = invitations.some((invitation) => invitation.email === email)
+        const live =
+          invitations.some((invitation) => invitation.email === email) ||
+          accounts.some((account) => account.email === email && account.status === 'pending')
         invitations = invitations.filter((invitation) => invitation.email !== email)
+        accounts = accounts.filter(
+          (account) => !(account.email === email && account.status === 'pending'),
+        )
         if (!live || email === acceptedMeanwhile)
           return Response.json(
             {
@@ -69,10 +79,6 @@ const setup = (
             },
             { status: 404 },
           )
-        return Response.json({ result: 'success' })
-      }
-      if (pathname.endsWith('/workspaces/current/members/new-member')) {
-        accounts = accounts.filter(({ id }) => id !== 'new-member')
         return Response.json({ result: 'success' })
       }
       if (pathname.endsWith(`/workspaces/${workspaceId}/members/pending-invitations`))
@@ -199,4 +205,29 @@ it('closes the revoke dialog and refreshes when the invitation was accepted mean
   await expect
     .element(members.getByRole('row', { name: new RegExp(email) }))
     .not.toBeInTheDocument()
+})
+
+it('shows the new invitation link after a resend without email delivery', async () => {
+  const email = 'invited@example.com'
+  const queryClient = setup(
+    [{ status: 'success', email, url: 'https://example.com/invite' }],
+    undefined,
+    false,
+  )
+  const screen = await render(
+    <QueryClientTestProvider queryClient={queryClient}>
+      <MembersPage />
+    </QueryClientTestProvider>,
+  )
+  await sendInvite(screen, email)
+  await screen.getByRole('button', { name: /members\.ok$/ }).click()
+
+  await screen
+    .getByRole('table')
+    .getByRole('button', { name: new RegExp(`members\\.invitationActions.*${email}`) })
+    .click()
+  await screen.getByRole('menuitem', { name: /members\.resendInvitation$/ }).click()
+
+  const result = screen.getByRole('dialog', { name: /members\.invitationSent$/ })
+  await expect.element(result.getByText(/members\.invitationLink$/)).toBeVisible()
 })

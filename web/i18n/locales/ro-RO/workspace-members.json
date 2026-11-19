@@ -51,7 +51,6 @@
   "members.memberDetails.rolePermissionSummary": "{{role}} poate <permissionList>{{permissions}}</permissionList>",
   "members.memberDetails.title": "Detalii membru",
   "members.name": "NUME",
-  "members.noNewInvitationsSent": "Nu au fost trimise invitații noi",
   "members.normalTip": "Poate doar utiliza aplicații, nu poate construi aplicații",
   "members.ok": "OK",
   "members.recipientCountExceedsSeats": "Puteți trimite invitațiile în continuare. Membrii existenți nu vor ocupa un loc suplimentar.",

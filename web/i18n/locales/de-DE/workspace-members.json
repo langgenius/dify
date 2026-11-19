@@ -51,7 +51,6 @@
   "members.memberDetails.rolePermissionSummary": "{{role}} kann <permissionList>{{permissions}}</permissionList>",
   "members.memberDetails.title": "Mitgliederdetails",
   "members.name": "NAME",
-  "members.noNewInvitationsSent": "Keine neuen Einladungen gesendet",
   "members.normalTip": "Kann nur Apps verwenden, kann keine Apps erstellen",
   "members.ok": "OK",
   "members.recipientCountExceedsSeats": "Sie können die Einladungen trotzdem senden. Bereits vorhandene Mitglieder belegen keinen weiteren Platz.",

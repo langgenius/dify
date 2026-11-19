@@ -227,6 +227,24 @@ describe('CheckCode', () => {
     expect(turnstileMocks.render).not.toHaveBeenCalled()
   })
 
+  it('carries the invitation token so sign-in can join the inviting workspace', async () => {
+    const user = userEvent.setup()
+    navigationMocks.searchParams.set('invite_token', 'invite-token')
+    vi.mocked(consoleClient.emailCodeLogin.validity.post).mockResolvedValue({ result: 'fail' })
+    render(
+      <QueryClientProvider client={createQueryClient()}>
+        <CheckCode />
+      </QueryClientProvider>,
+    )
+
+    await user.type(screen.getByLabelText('login.checkCode.verificationCode'), '123456')
+    await user.click(screen.getByRole('button', { name: 'login.checkCode.verify' }))
+
+    expect(consoleClient.emailCodeLogin.validity.post).toHaveBeenCalledWith({
+      body: expect.objectContaining({ invite_token: 'invite-token' }),
+    })
+  })
+
   it('does not resend while verification is in progress', async () => {
     const user = userEvent.setup()
     const queryClient = createQueryClient()

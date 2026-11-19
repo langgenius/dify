@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from unittest.mock import Mock, create_autospec
 
 import pytest
+from redis import RedisError
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -277,7 +278,8 @@ class TestMemberServiceCases:
         assert invitation.requires_setup is True
         assert invitation.role == "editor"
         assert invitation.email == "new@example.com"
-        account_domain.delivery.track_pending.assert_called_once_with(workspace_id, "invitation-token")
+        account_domain.delivery.create.assert_called_once()
+        account_domain.delivery.acquire.assert_called_once_with(workspace_id)
 
     @staticmethod
     def test_reinvitation_invalidates_earlier_links_before_issuing_a_new_one(
@@ -291,8 +293,12 @@ class TestMemberServiceCases:
         account_domain.invitations.invite(owner, "New@Example.com", None, "editor")
 
         names = [name for name, *_ in account_domain.delivery.mock_calls]
-        assert names.index("revoke_pending") < names.index("create") < names.index("track_pending")
-        account_domain.delivery.revoke_pending.assert_called_once_with(workspace_id, "new@example.com")
+        assert names.index("revoke_pending") < names.index("create") < names.index("send")
+        invitee = account_domain.repository.find_by_email("new@example.com")
+        assert invitee is not None
+        account_domain.delivery.revoke_pending.assert_called_once_with(
+            workspace_id, "new@example.com", account_id=invitee.id
+        )
         assert account_domain.delivery.create.call_args.args[0].role == "editor"
 
     @staticmethod
@@ -335,7 +341,9 @@ class TestMemberServiceCases:
         account_domain.delivery.revoke_pending.assert_not_called()
 
         account_domain.invitations.revoke_pending(owner, "New@Example.com")
-        account_domain.delivery.revoke_pending.assert_called_once_with(workspace_id, "new@example.com")
+        account_domain.delivery.revoke_pending.assert_called_once_with(
+            workspace_id, "new@example.com", account_id=result.account_id
+        )
 
     @staticmethod
     def test_active_invitee_must_accept_before_joining(
@@ -344,8 +352,8 @@ class TestMemberServiceCases:
         workspace_id, owner_id, regular_member_id = members
         owner = RequestContext("request", None, owner_id, workspace_id)
         account = account_domain.accounts.create_account("new@example.com", "New", "en-US")
-        result = account_domain.invitations.invite(owner, account.email, None, "editor")
-        account_domain.delivery.track_pending.assert_called_once_with(workspace_id, result.token)
+        account_domain.invitations.invite(owner, account.email, None, "editor")
+        account_domain.delivery.create.assert_called_once()
         assert account_domain.members.get_role(workspace_id, account.id) is None
         assert account_domain.delivery.create.call_args.args[0].requires_setup is False
 
@@ -551,6 +559,86 @@ class TestMemberServiceCases:
             workspace_id, current_members=2, pending_invitations=2, new_members=1, new_accounts=1
         )
         assert account_domain.repository.find_by_email("new@example.com") is None
+
+    @staticmethod
+    def test_revoking_a_legacy_pending_member_removes_the_membership_and_its_links(
+        account_domain: AccountDomain, members: tuple[str, str, str], sqlite_session: Session
+    ) -> None:
+        workspace_id, owner_id, member_id = members
+        member = sqlite_session.get(Account, member_id)
+        assert member is not None
+        member.status = AccountStatus.PENDING
+        sqlite_session.commit()
+
+        account_domain.invitations.revoke_pending(
+            RequestContext("request", None, owner_id, workspace_id), "Member@Example.com"
+        )
+
+        account_domain.delivery.revoke_pending.assert_called_once_with(
+            workspace_id, "member@example.com", account_id=member_id
+        )
+        assert account_domain.members.get_role(workspace_id, member_id) is None
+
+    @staticmethod
+    def test_revoking_never_removes_an_active_member(
+        account_domain: AccountDomain, members: tuple[str, str, str]
+    ) -> None:
+        workspace_id, owner_id, member_id = members
+
+        with pytest.raises(PendingInvitationNotFoundError):
+            account_domain.invitations.revoke_pending(
+                RequestContext("request", None, owner_id, workspace_id), "member@example.com"
+            )
+
+        account_domain.delivery.revoke_pending.assert_not_called()
+        assert account_domain.members.get_role(workspace_id, member_id) == TenantAccountRole.NORMAL
+
+    @staticmethod
+    def test_single_invitation_uses_the_locked_invitation_aware_admission(
+        account_domain: AccountDomain, members: tuple[str, str, str]
+    ) -> None:
+        workspace_id, owner_id, _ = members
+        waiting = account_domain.accounts.create_account("waiting@example.com", "Waiting", "en-US")
+        account_domain.delivery.list_pending.return_value = (
+            PendingWorkspaceInvitation(
+                waiting.id, waiting.email, TenantAccountRole.NORMAL, datetime(2026, 12, 1, tzinfo=UTC)
+            ),
+        )
+        account_domain.delivery.requires_capacity_check = True
+        account_domain.delivery.check_capacity.side_effect = WorkspaceInvitationQuotaError()
+
+        with pytest.raises(WorkspaceInvitationQuotaError):
+            account_domain.invitations.invite(
+                RequestContext("request", None, owner_id, workspace_id), "new@example.com", None, "normal"
+            )
+
+        account_domain.delivery.acquire.assert_called_once_with(workspace_id)
+        account_domain.delivery.check_capacity.assert_called_once_with(
+            workspace_id, current_members=2, pending_invitations=1, new_members=1, new_accounts=1
+        )
+        account_domain.delivery.create.assert_not_called()
+        assert account_domain.repository.find_by_email("new@example.com") is None
+
+    @staticmethod
+    def test_link_that_cannot_be_indexed_is_reported_failed_and_not_mailed(
+        account_domain: AccountDomain, members: tuple[str, str, str]
+    ) -> None:
+        workspace_id, owner_id, _ = members
+        account_domain.delivery.create.side_effect = [RedisError("index unavailable"), "invitation-token"]
+
+        results = account_domain.invitations.invite_many(
+            RequestContext("request", None, owner_id, workspace_id),
+            emails=["first@example.com", "second@example.com"],
+            language=None,
+            role="normal",
+        )
+
+        assert [(result.email, result.status) for result in results] == [
+            ("first@example.com", "failed"),
+            ("second@example.com", "success"),
+        ]
+        assert account_domain.delivery.send.call_args.kwargs["email"] == "second@example.com"
+        account_domain.delivery.send.assert_called_once()
 
     @staticmethod
     def test_bulk_invitation_retains_partial_results_under_workspace_lock(
@@ -816,7 +904,6 @@ class TestMemberServiceCases:
                 assert len(replace.calls) == 1
         if status == AccountStatus.ACTIVE:
             assert results[0].status == "already_member"
-            account_domain.delivery.track_pending.assert_not_called()
             account_domain.delivery.create.assert_not_called()
             account_domain.delivery.send.assert_not_called()
         else:

@@ -6504,7 +6504,7 @@ export const byTenantId = {
 }
 
 /**
- * Revoke the live invitation for an email so its link stops working and its seat is released
+ * Revoke an email's invitation: links stop working, a pending member is removed, the seat is freed
  */
 export const post97 = oc
   .route({
@@ -6513,7 +6513,7 @@ export const post97 = oc
     operationId: 'postWorkspacesByWorkspaceIdMembersPendingInvitationsRevoke',
     path: '/workspaces/{workspace_id}/members/pending-invitations/revoke',
     summary:
-      'Revoke the live invitation for an email so its link stops working and its seat is released',
+      "Revoke an email's invitation: links stop working, a pending member is removed, the seat is freed",
     tags: ['console'],
   })
   .input(

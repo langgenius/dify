@@ -51,7 +51,6 @@
   "members.memberDetails.rolePermissionSummary": "{{role}} <permissionList>{{permissions}}</permissionList> yapabilir",
   "members.memberDetails.title": "Üye Ayrıntıları",
   "members.name": "İSİM",
-  "members.noNewInvitationsSent": "Yeni davet gönderilmedi",
   "members.normalTip": "Sadece uygulamaları kullanabilir, uygulama oluşturamaz",
   "members.ok": "Tamam",
   "members.recipientCountExceedsSeats": "Davetleri yine de gönderebilirsiniz. Mevcut üyeler ek bir koltuk kullanmaz.",

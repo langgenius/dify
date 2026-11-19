@@ -51,7 +51,6 @@
   "members.memberDetails.rolePermissionSummary": "{{role}} kan <permissionList>{{permissions}}</permissionList>",
   "members.memberDetails.title": "Ledendetails",
   "members.name": "NAME",
-  "members.noNewInvitationsSent": "Geen nieuwe uitnodigingen verzonden",
   "members.normalTip": "Only can use apps, can not build apps",
   "members.ok": "OK",
   "members.recipientCountExceedsSeats": "U kunt de uitnodigingen nog steeds verzenden. Bestaande leden nemen geen extra plaats in.",

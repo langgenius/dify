@@ -51,7 +51,6 @@
   "members.memberDetails.rolePermissionSummary": "{{role}} może <permissionList>{{permissions}}</permissionList>",
   "members.memberDetails.title": "Szczegóły członka",
   "members.name": "NAZWA",
-  "members.noNewInvitationsSent": "Nie wysłano nowych zaproszeń",
   "members.normalTip": "Może tylko korzystać z aplikacji, nie może tworzyć aplikacji",
   "members.ok": "OK",
   "members.recipientCountExceedsSeats": "Nadal możesz wysłać zaproszenia. Obecni członkowie nie zajmą kolejnego miejsca.",

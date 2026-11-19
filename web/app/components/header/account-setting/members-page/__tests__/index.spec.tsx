@@ -216,9 +216,9 @@ describe('MembersPage', () => {
     )
   })
 
-  it('sends an invitation and displays the returned invitation link', async () => {
+  it('sends an invitation and displays the returned invitation link without email delivery', async () => {
     const user = userEvent.setup()
-    await renderMembersPage()
+    await renderMembersPage({ systemFeatures: { is_email_setup: false } })
     await user.click(screen.getByRole('button', { name: /members\.invite$/ }))
     await user.type(
       screen.getByRole('textbox', { name: /members\.emailRecipients/ }),
@@ -434,7 +434,7 @@ describe('MembersPage', () => {
 
   it.each([
     ['sandbox', 5, 'plansCommon.member'],
-    ['sandbox', 0, 'plansCommon.unlimited'],
+    ['sandbox', 0, 'plansCommon.memberAfter'],
     ['team', 50, 'plansCommon.memberAfter'],
   ] as const)('shows the %s member allowance with limit %s', async (plan, limit, label) => {
     await renderMembersPage({
@@ -446,7 +446,7 @@ describe('MembersPage', () => {
 
   it('hands invitation results to a persistent dialog and closes them normally', async () => {
     const user = userEvent.setup()
-    await renderMembersPage()
+    await renderMembersPage({ systemFeatures: { is_email_setup: false } })
     const invite = screen.getByRole('button', { name: /members\.invite$/ })
     await user.click(invite)
     await user.type(

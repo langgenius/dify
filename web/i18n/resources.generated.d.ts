@@ -7663,7 +7663,6 @@ export default interface Resources {
     'members.memberDetails.rolePermissionSummary': '{{role}} can <permissionList>{{permissions}}</permissionList>'
     'members.memberDetails.title': 'Member Details'
     'members.name': 'NAME'
-    'members.noNewInvitationsSent': 'No new invitations sent'
     'members.normalTip': 'Only can use apps, can not build apps'
     'members.ok': 'OK'
     'members.recipientCount': '{{count}} recipient' | '{{count}} recipients'

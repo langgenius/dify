@@ -130,6 +130,14 @@ const zNotAllowedCreateWorkspaceError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zWorkspaceMemberLimitReachedError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('workspace_member_limit_reached'),
+      status: z.literal(400),
+    }),
+  ))()
+
 export const postErrors = {
   account_banned: { status: 400, data: zAccountBannedError },
   account_in_freeze: { status: 400, data: zAccountInFreezeError },
@@ -147,6 +155,7 @@ export const postErrors = {
   not_allowed_create_workspace: { status: 400, data: zNotAllowedCreateWorkspaceError },
   turnstile_service_unavailable: { status: 503, data: zTurnstileServiceUnavailableError },
   turnstile_verification_failed: { status: 400, data: zTurnstileVerificationFailedError },
+  workspace_member_limit_reached: { status: 400, data: zWorkspaceMemberLimitReachedError },
 }
 
 export const post2Errors = {

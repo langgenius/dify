@@ -208,7 +208,7 @@ class ConsoleAuthenticationService:
                 ip_address=command.ip_address,
             )
 
-        invitation_token = self._resolve_invitation_token(command, normalized_email)
+        invitation_token = self._resolve_invitation_token(command.email, command.invite_token, command.ip_address)
         account = None
         for candidate in self._accounts.list_for_login(command.email):
             completion = self._password_login_completion(
@@ -283,6 +283,17 @@ class ConsoleAuthenticationService:
         )
 
     def login_with_email_code(self, command: EmailCodeLoginCommand) -> AccountSessionTokens:
+        """Sign in with an email code, accepting the invitation in ``command.invite_token`` when given.
+
+        An existing account without a workspace first joins through a valid invitation for its
+        email; only when that yields no workspace is an owner workspace provisioned (or the
+        sign-in refused where creation is not allowed).
+
+        Raises:
+            InvalidLoginInvitationEmailError: The invitation belongs to another email.
+            InvitationWorkspaceFullError: The invited workspace reached its member limit.
+            LoginWorkspaceLimitError, LoginWorkspaceCreationNotAllowedError: No workspace can be provided.
+        """
         normalized_email = command.email.lower()
         if not self._is_valid_email_code(command.code):
             self._fail(
@@ -306,6 +317,14 @@ class ConsoleAuthenticationService:
         account = self._preferred_account(command.email)
         self._ensure_account_not_banned(account, normalized_email, command.ip_address)
         if account is not None:
+            if command.mode == LoginMode.CONSOLE and not self._workspaces.has_active_for_account(account.id):
+                invitation_token = self._resolve_invitation_token(
+                    command.email, command.invite_token, command.ip_address
+                )
+                if invitation_token is not None:
+                    self._invitations.ensure_membership(
+                        account_id=account.id, email=command.email, token=invitation_token
+                    )
             if (
                 command.mode == LoginMode.CONSOLE
                 and not self._defer_workspace_creation
@@ -428,20 +447,26 @@ class ConsoleAuthenticationService:
             raise account_errors.AccountNotFoundError
         return self._sessions.issue(account_id)
 
-    def _resolve_invitation_token(self, command: PasswordLoginCommand, normalized_email: str) -> str | None:
-        if command.invite_token is None:
+    def _resolve_invitation_token(self, email: str, invite_token: str | None, ip_address: str) -> str | None:
+        """Return the invitation token when it is live for ``email``; ``None`` when absent or stale.
+
+        Raises:
+            InvalidLoginInvitationEmailError: The live invitation belongs to another email.
+        """
+        if invite_token is None:
             return None
-        invitation = self._invitations.resolve(email=command.email, token=command.invite_token)
+        invitation = self._invitations.resolve(email=email, token=invite_token)
         if invitation is None:
             return None
+        normalized_email = email.lower()
         if invitation.email.lower() != normalized_email:
             self._fail(
                 account_errors.InvalidLoginInvitationEmailError(),
                 email=normalized_email,
                 reason=LoginFailureReason.INVALID_INVITATION_EMAIL,
-                ip_address=command.ip_address,
+                ip_address=ip_address,
             )
-        return command.invite_token
+        return invite_token
 
     def _ensure_email_eligible(self, email: str, ip_address: str) -> None:
         freeze_type = self._policies.get_email_freeze_type(email)

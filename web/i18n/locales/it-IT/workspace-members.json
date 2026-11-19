@@ -51,7 +51,6 @@
   "members.memberDetails.rolePermissionSummary": "{{role}} può <permissionList>{{permissions}}</permissionList>",
   "members.memberDetails.title": "Dettagli membro",
   "members.name": "NOME",
-  "members.noNewInvitationsSent": "Nessun nuovo invito inviato",
   "members.normalTip": "Può solo usare le app, non può crearle",
   "members.ok": "OK",
   "members.recipientCountExceedsSeats": "Puoi comunque inviare gli inviti. I membri già presenti non occuperanno un altro posto.",

@@ -1,5 +1,6 @@
 """Account test composition with real persistence and explicit external ports."""
 
+from contextlib import nullcontext
 from dataclasses import dataclass
 from datetime import datetime
 from unittest.mock import Mock, create_autospec
@@ -74,6 +75,7 @@ def build_account_domain(session_factory: sessionmaker[Session]) -> AccountDomai
     delivery.requires_capacity_check = False
     delivery.create.return_value = "invitation-token"
     delivery.list_pending.return_value = ()
+    delivery.acquire.return_value = nullcontext()
     invitations = WorkspaceInvitationService(
         accounts=accounts, workspaces=workspaces, members=members, invitations=delivery
     )

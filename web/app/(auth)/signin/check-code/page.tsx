@@ -72,6 +72,7 @@ export default function CheckCode() {
           language,
           timezone: getBrowserTimezone(),
           ...(isEndUserSignIn(searchParams) ? { mode: 'end_user' } : {}),
+          ...(invite_token ? { invite_token } : {}),
           ...(isTurnstileRequired ? { turnstile_token: verifyTurnstileToken } : {}),
         },
       })

@@ -51,7 +51,6 @@
   "members.memberDetails.rolePermissionSummary": "{{role}} يمكنه <permissionList>{{permissions}}</permissionList>",
   "members.memberDetails.title": "تفاصيل العضو",
   "members.name": "الاسم",
-  "members.noNewInvitationsSent": "لم يتم إرسال دعوات جديدة",
   "members.normalTip": "يمكنه استخدام التطبيقات فقط، ولا يمكنه بناء التطبيقات",
   "members.ok": "موافق",
   "members.recipientCountExceedsSeats": "لا يزال بإمكانك إرسال الدعوات. لن يشغل الأعضاء الحاليون مقعدًا إضافيًا.",
