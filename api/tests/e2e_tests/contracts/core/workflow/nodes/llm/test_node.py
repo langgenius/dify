@@ -19,7 +19,12 @@ from core.entities.provider_entities import CustomConfiguration, SystemConfigura
 from core.model_manager import ModelInstance
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
-from core.workflow.node_runtime import DifyFileReferenceFactory, DifyPromptMessageSerializer, DifyToolFileManager
+from core.workflow.node_runtime import (
+    DifyFileReferenceFactory,
+    DifyPreparedLLM,
+    DifyPromptMessageSerializer,
+    DifyToolFileManager,
+)
 from core.workflow.system_variables import default_system_variables
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.common_entities import I18nObject
@@ -89,6 +94,7 @@ from graphon.runtime import InitParams, RuntimeState, VariablePool
 from graphon.template_rendering import TemplateRenderError
 from graphon.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
 from models.provider import ProviderType
+from tests.helpers.unit.core.model_fixtures import make_model_instance
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -144,22 +150,13 @@ class _RecordingFileSaver(LLMFileSaver):
         return self.saved_file
 
 
-def _build_prepared_llm_mock() -> mock.MagicMock:
-    model_instance = mock.MagicMock()
-    model_instance.provider = "openai"
-    model_instance.model_name = "gpt-3.5-turbo"
-    model_instance.parameters = dict[str, str | int | float | bool | None]()
-    model_instance.stop = ()
-    model_instance.get_llm_num_tokens.return_value = 0
-    model_instance.get_model_schema.return_value = AIModelEntity(
-        model="gpt-3.5-turbo",
-        label=I18nObject(en_US="GPT-3.5 Turbo"),
-        model_type=ModelType.LLM,
-        fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
-        model_properties={},
-    )
-    model_instance.is_structured_output_parse_error.return_value = False
-    return model_instance
+def _build_prepared_llm(mocker: MockerFixture, *, model_schema: AIModelEntity | None = None) -> DifyPreparedLLM:
+    prepared_llm = DifyPreparedLLM(make_model_instance(provider="openai", model="gpt-3.5-turbo"))
+    prepared_llm.parameters = dict[str, str | int | float | bool | None]()
+    mocker.patch.object(prepared_llm, "get_model_schema", return_value=model_schema or _build_model_schema(features=[]))
+    mocker.patch.object(prepared_llm, "get_llm_num_tokens", return_value=0)
+    mocker.patch.object(prepared_llm, "is_structured_output_parse_error", return_value=False)
+    return prepared_llm
 
 
 def _build_model_schema(
@@ -247,7 +244,9 @@ def graph_runtime_state() -> RuntimeState:
 
 
 @pytest.fixture
-def llm_node(llm_node_data: LLMNodeData, graph_init_params: InitParams, graph_runtime_state: RuntimeState) -> LLMNode:
+def llm_node(
+    llm_node_data: LLMNodeData, graph_init_params: InitParams, graph_runtime_state: RuntimeState, mocker: MockerFixture
+) -> LLMNode:
     file_saver = _build_file_saver()
     credentials_provider = DifyCredentialsProvider(run_context=_run_context())
     model_factory = DifyModelFactory(run_context=_run_context())
@@ -260,7 +259,7 @@ def llm_node(llm_node_data: LLMNodeData, graph_init_params: InitParams, graph_ru
         runtime_state=graph_runtime_state,
         credentials_provider=credentials_provider,
         model_factory=model_factory,
-        model_instance=_build_prepared_llm_mock(),
+        model_instance=_build_prepared_llm(mocker),
         llm_file_saver=file_saver,
         prompt_message_serializer=prompt_message_serializer,
         http_client=http_client,
@@ -1091,8 +1090,10 @@ def test_fetch_context_rejects_invalid_context_structure(llm_node: LLMNode) -> N
 
 
 def test_fetch_prompt_messages_chat_mode_appends_memory_query_and_files(mocker: MockerFixture) -> None:
-    model_instance = _build_prepared_llm_mock()
-    model_instance.get_model_schema.return_value = _build_model_schema(features=[ModelFeature.VISION])
+    model_instance = _build_prepared_llm(mocker)
+    mocker.patch.object(
+        model_instance, "get_model_schema", return_value=_build_model_schema(features=[ModelFeature.VISION])
+    )
 
     memory = MockTokenBufferMemory([AssistantPromptMessage(content="history answer")])
     history_lookup = mocker.spy(memory, "get_history_prompt_messages")
@@ -1159,9 +1160,9 @@ def test_fetch_prompt_messages_chat_mode_appends_memory_query_and_files(mocker: 
     history_lookup.assert_called_once_with(max_token_limit=2000, message_limit=None)
 
 
-def test_fetch_prompt_messages_completion_mode_injects_histories_and_query() -> None:
-    model_instance = _build_prepared_llm_mock()
-    model_instance.get_model_schema.return_value = _build_model_schema(features=[])
+def test_fetch_prompt_messages_completion_mode_injects_histories_and_query(mocker: MockerFixture) -> None:
+    model_instance = _build_prepared_llm(mocker)
+    mocker.patch.object(model_instance, "get_model_schema", return_value=_build_model_schema(features=[]))
 
     memory = MockTokenBufferMemory(
         history_messages=[
@@ -1199,9 +1200,9 @@ def test_fetch_prompt_messages_completion_mode_injects_histories_and_query() -> 
     ]
 
 
-def test_fetch_prompt_messages_raises_when_only_unsupported_content_remains() -> None:
-    model_instance = _build_prepared_llm_mock()
-    model_instance.get_model_schema.return_value = _build_model_schema(features=[])
+def test_fetch_prompt_messages_raises_when_only_unsupported_content_remains(mocker: MockerFixture) -> None:
+    model_instance = _build_prepared_llm(mocker)
+    mocker.patch.object(model_instance, "get_model_schema", return_value=_build_model_schema(features=[]))
 
     variable_pool = VariablePool.empty()
     variable_pool.add(
@@ -1282,7 +1283,7 @@ def test_handle_memory_completion_mode_uses_prompt_message_interface(mocker: Moc
     )
     history_lookup = mocker.spy(memory, "get_history_prompt_messages")
 
-    model_instance = _build_prepared_llm_mock()
+    model_instance = _build_prepared_llm(mocker)
 
     memory_config = MemoryConfig(
         role_prefix=MemoryConfig.RolePrefix(user="Human", assistant="Assistant"),
@@ -1303,7 +1304,10 @@ def test_handle_memory_completion_mode_uses_prompt_message_interface(mocker: Moc
 
 @pytest.fixture
 def llm_node_for_multimodal(
-    llm_node_data: LLMNodeData, graph_init_params: InitParams, graph_runtime_state: RuntimeState
+    llm_node_data: LLMNodeData,
+    graph_init_params: InitParams,
+    graph_runtime_state: RuntimeState,
+    mocker: MockerFixture,
 ) -> tuple[LLMNode, _RecordingFileSaver]:
     file_saver = _RecordingFileSaver(saved_file=None)
     credentials_provider = DifyCredentialsProvider(run_context=_run_context())
@@ -1317,7 +1321,7 @@ def llm_node_for_multimodal(
         runtime_state=graph_runtime_state,
         credentials_provider=credentials_provider,
         model_factory=model_factory,
-        model_instance=_build_prepared_llm_mock(),
+        model_instance=_build_prepared_llm(mocker),
         llm_file_saver=file_saver,
         prompt_message_serializer=prompt_message_serializer,
         http_client=http_client,
@@ -1570,14 +1574,14 @@ type JsonValue = str | int | float | bool | None | list[JsonValue] | dict[str, J
     ],
 )
 def test_invoke_llm_dispatches_to_expected_model_method(
-    structured_output_enabled: bool, structured_output: dict[str, JsonValue] | None
+    mocker: MockerFixture, structured_output_enabled: bool, structured_output: dict[str, JsonValue] | None
 ) -> None:
-    model_instance = _build_prepared_llm_mock()
+    model_instance = _build_prepared_llm(mocker)
     prompt_messages = [UserPromptMessage(content="hello")]
     file_saver = _build_file_saver()
 
-    model_instance.invoke_llm.return_value = iter([])
-    model_instance.invoke_llm_with_structured_output.return_value = iter([])
+    mocker.patch.object(model_instance, "invoke_llm", return_value=iter([]))
+    mocker.patch.object(model_instance, "invoke_llm_with_structured_output", return_value=iter([]))
 
     with (
         mock.patch.object(LLMNode, "handle_invoke_result", return_value=iter(["handled"])) as mock_handle,
@@ -1620,7 +1624,7 @@ def test_invoke_llm_dispatches_to_expected_model_method(
     assert mock_handle.call_args.kwargs["request_start_time"] == 10.0
 
 
-def test_handle_invoke_result_streaming_collects_text_metrics_and_structured_output() -> None:
+def test_handle_invoke_result_streaming_collects_text_metrics_and_structured_output(mocker: MockerFixture) -> None:
     usage = LLMUsage.from_metadata({"prompt_tokens": 12, "completion_tokens": 4, "total_tokens": 16})
     first_chunk = LLMResultChunkWithStructuredOutput(
         model="gpt-3.5-turbo",
@@ -1649,7 +1653,7 @@ def test_handle_invoke_result_streaming_collects_text_metrics_and_structured_out
                 file_saver=_build_file_saver(),
                 file_outputs=[],
                 node_id="node-1",
-                model_instance=_build_prepared_llm_mock(),
+                model_instance=_build_prepared_llm(mocker),
                 reasoning_format="separated",
                 request_start_time=1.0,
             )
@@ -1675,9 +1679,9 @@ def test_handle_invoke_result_streaming_collects_text_metrics_and_structured_out
     assert completed.usage.time_to_generate == 3.0
 
 
-def test_handle_invoke_result_wraps_structured_output_parse_errors() -> None:
-    model_instance = _build_prepared_llm_mock()
-    model_instance.is_structured_output_parse_error.return_value = True
+def test_handle_invoke_result_wraps_structured_output_parse_errors(mocker: MockerFixture) -> None:
+    model_instance = _build_prepared_llm(mocker)
+    mocker.patch.object(model_instance, "is_structured_output_parse_error", return_value=True)
 
     def broken_stream() -> Generator[LLMResultChunk]:
         raise ValueError("bad json")
@@ -1804,20 +1808,24 @@ def test_render_jinja2_message_requires_renderer_and_passes_inputs() -> None:
     renderer.render_template.assert_called_once_with("Hello {{ name }}", {"name": "Dify"})
 
 
-def test_calculate_rest_token_uses_context_size_and_max_tokens() -> None:
-    model_instance = _build_prepared_llm_mock()
+def test_calculate_rest_token_uses_context_size_and_max_tokens(mocker: MockerFixture) -> None:
+    model_instance = _build_prepared_llm(mocker)
     model_instance.parameters = {"max_tokens": 512}
-    model_instance.get_model_schema.return_value = _build_model_schema(
-        model_properties={ModelPropertyKey.CONTEXT_SIZE: 4096},
-        parameter_rules=[
-            ParameterRule(
-                name="max_tokens",
-                label=I18nObject(en_US="Max Tokens"),
-                type=ParameterType.INT,
-            )
-        ],
+    mocker.patch.object(
+        model_instance,
+        "get_model_schema",
+        return_value=_build_model_schema(
+            model_properties={ModelPropertyKey.CONTEXT_SIZE: 4096},
+            parameter_rules=[
+                ParameterRule(
+                    name="max_tokens",
+                    label=I18nObject(en_US="Max Tokens"),
+                    type=ParameterType.INT,
+                )
+            ],
+        ),
     )
-    model_instance.get_llm_num_tokens.return_value = 1000
+    mocker.patch.object(model_instance, "get_llm_num_tokens", return_value=1000)
 
     assert (
         calculate_rest_token(
@@ -1837,7 +1845,7 @@ def test_handle_memory_chat_mode_uses_calculated_token_budget(mocker: MockerFixt
         result = handle_memory_chat_mode(
             memory=memory,
             memory_config=MemoryConfig(window=MemoryConfig.WindowConfig(enabled=True, size=2)),
-            model_instance=_build_prepared_llm_mock(),
+            model_instance=_build_prepared_llm(mocker),
         )
 
     assert result == history
