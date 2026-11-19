@@ -8,6 +8,7 @@ the injected provider gateway/sender performs I/O, outside repository writes.
 from __future__ import annotations
 
 import hashlib
+import logging
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
@@ -27,9 +28,16 @@ from services.external_agents.observability import (
     ObservationConflictError,
     ObservationExpiredError,
     ObservationNotFoundError,
+    TraceSecretReader,
     TraceSnapshot,
     aware_utc,
 )
+
+from .contracts import ExternalAuthType
+from .trace_content import ExternalTraceContentSource, operation_trace_input, root_trace_inputs, safe_trace_content
+from .traceability import TraceLimits
+
+logger = logging.getLogger(__name__)
 
 
 class ExternalTraceTargetKind(StrEnum):
@@ -109,6 +117,16 @@ class ExternalTraceDeliveryStatus:
     trace_url: str | None
 
 
+@dataclass(frozen=True, slots=True)
+class ExternalTraceExportBundle:
+    """One fenced source revision; raw content is never a delivery by itself."""
+
+    owner: InvocationObservationOwner
+    snapshot: TraceSnapshot
+    targets: Sequence[FrozenExternalTraceTarget]
+    content: ExternalTraceContentSource
+
+
 class ExternalTracingStore(Protocol):
     def configured_provider_states(
         self, context: RequestContext, *, agent_id: str
@@ -151,9 +169,9 @@ class ExternalTracingStore(Protocol):
         """
         ...
 
-    def export_source(
-        self, *, tenant_id: str, invocation_id: str, now: datetime
-    ) -> tuple[InvocationObservationOwner, TraceSnapshot, Sequence[FrozenExternalTraceTarget]]: ...
+    def export_source(self, *, tenant_id: str, invocation_id: str, now: datetime) -> ExternalTraceExportBundle:
+        """Read retained owner, revision and frozen content under the same source fence."""
+        ...
 
     def enqueue_delivery(
         self, *, target: FrozenExternalTraceTarget, payload_revision: int, trace: Trace, now: datetime
@@ -308,13 +326,21 @@ class ExternalTracingConfigService:
 
 
 def build_external_trace(
-    owner: InvocationObservationOwner, snapshot: TraceSnapshot, target: FrozenExternalTraceTarget
+    owner: InvocationObservationOwner,
+    snapshot: TraceSnapshot,
+    target: FrozenExternalTraceTarget,
+    *,
+    content: ExternalTraceContentSource,
+    secrets: Sequence[str] | None,
+    limits: TraceLimits,
 ) -> Trace | None:
     """Build only truthful canonical spans under the known local Invocation.
 
     Missing remote time/status stays in Console rather than being fabricated for
     a provider's mandatory fields. Total-only tokens remain metadata, not invented
-    input/output token splits. Source content can only be further reduced here.
+    input/output token splits. Content requires both frozen permission and known
+    pinned credential-redaction facts; None secrets means metadata-only. Empty
+    secrets is valid only for a positively identified no-auth connection.
     """
     if owner.started_at is None or owner.ended_at is None or owner.ended_at < owner.started_at:
         return None
@@ -332,6 +358,8 @@ def build_external_trace(
         "a2a.reported_call_total_tokens": snapshot.call_total_tokens,
         "dify.external.usage_revision": snapshot.usage_revision,
     }
+    capture = target.capture_content and secrets is not None
+    redaction_values = () if secrets is None else secrets
     spans = [
         Span(
             span_id=root_id,
@@ -342,6 +370,10 @@ def build_external_trace(
             end_time=aware_utc(owner.ended_at),
             status=status,
             attributes=attributes,
+            inputs=safe_trace_content(root_trace_inputs(content), limits=limits, secrets=redaction_values)
+            if capture
+            else None,
+            outputs=safe_trace_content(content.outputs, limits=limits, secrets=redaction_values) if capture else None,
         )
     ]
     admitted: set[str] = {root_id}
@@ -379,6 +411,9 @@ def build_external_trace(
                         "a2a.parent_step_id": step.parent_step_id,
                         "a2a.reported_total_tokens": step.total_tokens,
                     }
+                    step_error = (
+                        safe_trace_content(step.error, limits=limits, secrets=redaction_values) if capture else None
+                    )
                     spans.append(
                         Span(
                             span_id=identifier,
@@ -390,16 +425,22 @@ def build_external_trace(
                             status=SpanStatus.ERROR
                             if step.error or step.status in {"error", "failed"}
                             else SpanStatus.OK,
-                            error=step.error if target.capture_content else None,
+                            error=step_error if isinstance(step_error, str) else None,
                             attributes=step_attributes,
-                            inputs=dict(step.raw_data) if target.capture_content else None,
+                            inputs=safe_trace_content(
+                                operation_trace_input(step.raw_data, kind=step.kind),
+                                limits=limits,
+                                secrets=redaction_values,
+                            )
+                            if capture
+                            else None,
                         )
                     )
                     admitted.add(identifier)
             consumed = {step.key for step in ready}
             pending = [step for step in pending if step.key not in consumed]
     digest = hashlib.sha256(f"external:{owner.id}:{target.kind}:{target.owner_id}".encode()).hexdigest()
-    return Trace(
+    trace = Trace(
         trace_id=trace_id_for(digest),
         external_trace_id=None,
         session_id=owner.id,
@@ -407,6 +448,15 @@ def build_external_trace(
         parent=None,
         spans=tuple(spans),
     )
+    if len(trace.model_dump_json().encode()) > limits.max_bytes:
+        # The full canonical payload, not just each field, owns this budget.
+        # At most one metadata-only reconstruction is attempted.
+        return (
+            build_external_trace(owner, snapshot, target, content=content, secrets=None, limits=limits)
+            if capture
+            else None
+        )
+    return trace
 
 
 class ExternalTraceDeliveryService:
@@ -417,10 +467,33 @@ class ExternalTraceDeliveryService:
         sender: ExternalTraceSender,
         access: ExternalObservationAccess,
         clock: Callable[[], datetime],
+        secrets: TraceSecretReader,
+        limits: TraceLimits,
     ) -> None:
         self._store, self._sender = store, sender
         self._access = access
         self._clock = clock
+        self._secrets, self._limits = secrets, limits
+
+    def _content_secrets(self, bundle: ExternalTraceExportBundle) -> Sequence[str] | None:
+        """Admit known no-auth or readable pinned Bearer facts, failing closed.
+
+        Preconditions: the bundle passed the retained source fence. Postconditions:
+        missing revisions, reclaimed credentials or decryption failure suppress
+        content without changing delivery/business outcome or logging secrets.
+        """
+        if bundle.content.auth_type == ExternalAuthType.NONE:
+            return ()
+        if bundle.content.auth_type != ExternalAuthType.BEARER:
+            return None
+        try:
+            values = self._secrets.values(
+                tenant_id=bundle.owner.tenant_id, connection_revision_id=bundle.owner.connection_revision_id
+            )
+            return tuple(values) if values and all(isinstance(value, str) and value for value in values) else None
+        except Exception:
+            logger.warning("External trace content redaction unavailable: invocation_id=%s", bundle.owner.id)
+            return None
 
     def freeze(self, *, tenant_id: str, invocation_id: str, now: datetime) -> None:
         """Freeze destinations before dispatch; repeated reservations reuse original snapshots."""
@@ -428,14 +501,22 @@ class ExternalTraceDeliveryService:
 
     def enqueue(self, *, tenant_id: str, invocation_id: str, now: datetime) -> tuple[str, ...]:
         """Freeze a separate payload per target/revision, without sending in the request."""
-        owner, snapshot, targets = self._store.export_source(tenant_id=tenant_id, invocation_id=invocation_id, now=now)
+        bundle = self._store.export_source(tenant_id=tenant_id, invocation_id=invocation_id, now=now)
+        owner, snapshot, targets = bundle.owner, bundle.snapshot, bundle.targets
         deliveries: list[str] = []
         for target in targets:
             existing = self._store.existing_delivery_id(target=target, payload_revision=snapshot.revision)
             if existing is not None:
                 deliveries.append(existing)
             else:
-                trace = build_external_trace(owner, snapshot, target)
+                trace = build_external_trace(
+                    owner,
+                    snapshot,
+                    target,
+                    content=bundle.content,
+                    secrets=self._content_secrets(bundle) if target.capture_content else None,
+                    limits=self._limits,
+                )
                 if trace is not None:
                     deliveries.append(
                         self._store.enqueue_delivery(
@@ -522,9 +603,9 @@ class ExternalTraceDeliveryService:
         self, context: RequestContext, invocation_id: str, *, now: datetime
     ) -> tuple[ExternalTraceDeliveryStatus, ...]:
         """Read target-independent acknowledgements under the source record permission."""
-        owner, _, _ = self._store.export_source(
+        owner = self._store.export_source(
             tenant_id=context.active_workspace_id, invocation_id=invocation_id, now=now
-        )
+        ).owner
         self._access.trace_read(context, owner)
         return tuple(self._store.delivery_statuses(tenant_id=context.active_workspace_id, invocation_id=invocation_id))
 
@@ -538,9 +619,9 @@ class ExternalTraceDeliveryService:
         now: datetime,
     ) -> None:
         """Explicitly retry one delivery; no business-dispatch port is reachable here."""
-        owner, _, _ = self._store.export_source(
+        owner = self._store.export_source(
             tenant_id=context.active_workspace_id, invocation_id=invocation_id, now=now
-        )
+        ).owner
         self._access.trace_read(context, owner)
         self._access.manage(context, owner.agent_id)
         self._store.retry_delivery(

@@ -447,7 +447,9 @@ def test_asset_and_app_destinations_freeze_and_payloads_are_idempotent(sessions:
             return SendResult("accepted", "https://platform.example/trace", {})
 
     sender = Sender()
-    deliveries = ExternalTraceDeliveryService(store=repository, sender=sender, access=access, clock=lambda: NOW)
+    deliveries = ExternalTraceDeliveryService(
+        secrets=Secrets(), limits=TraceLimits(), store=repository, sender=sender, access=access, clock=lambda: NOW
+    )
     assert deliveries.reconcile_sources(now=NOW) == 1
     ids = tuple(status.id for status in deliveries.statuses(CONTEXT, identifier, now=NOW))
     assert len(ids) == 2
@@ -464,7 +466,14 @@ def test_export_source_scan_filters_expiry_tombstone_missing_parent_and_unfrozen
     sessions: sessionmaker[Session],
 ) -> None:
     repository, _, access, _ = services(sessions)
-    service = ExternalTraceDeliveryService(store=repository, sender=UnexpectedIO(), access=access, clock=lambda: NOW)
+    service = ExternalTraceDeliveryService(
+        secrets=Secrets(),
+        limits=TraceLimits(),
+        store=repository,
+        sender=UnexpectedIO(),
+        access=access,
+        clock=lambda: NOW,
+    )
     with sessions.begin() as session:
         session.add(
             ExternalAgentTracingConfig(
@@ -1302,7 +1311,9 @@ def test_real_provider_codec_has_no_hidden_app_and_never_returns_credentials(ses
         assert set(session.scalars(select(App.id))) == {APP, APP2}
     identifier = invocation(sessions, origin="overview_test", app_id=None, dispatched_at=None, ended_at=None)
     sender = ExistingProviderTraceSender(providers=providers, codec=codec, egress=egress)
-    delivery = ExternalTraceDeliveryService(store=repository, sender=sender, access=access, clock=lambda: NOW)
+    delivery = ExternalTraceDeliveryService(
+        secrets=Secrets(), limits=TraceLimits(), store=repository, sender=sender, access=access, clock=lambda: NOW
+    )
     delivery.freeze(tenant_id=TENANT, invocation_id=identifier, now=NOW)
     with sessions.begin() as session:
         row = required(session.get(ExternalAgentInvocation, identifier), ExternalAgentInvocation)
@@ -1338,7 +1349,9 @@ def test_uncertain_delivery_requires_ack_and_reuses_frozen_payload(sessions: ses
             raise ExportOutcomeUnknownError("sensitive transport details")
 
     sender = Sender()
-    service = ExternalTraceDeliveryService(store=repository, sender=sender, access=access, clock=lambda: NOW)
+    service = ExternalTraceDeliveryService(
+        secrets=Secrets(), limits=TraceLimits(), store=repository, sender=sender, access=access, clock=lambda: NOW
+    )
     service.freeze(tenant_id=TENANT, invocation_id=identifier, now=NOW)
     with sessions.begin() as session:
         required(session.get(ExternalAgentInvocation, identifier), ExternalAgentInvocation).dispatched_at = DBNOW
@@ -1367,7 +1380,14 @@ def test_late_trace_and_zero_usage_create_new_frozen_payload_revision(sessions: 
                 encrypted_config={"frozen": "original"},
             )
         )
-    service = ExternalTraceDeliveryService(store=repository, sender=UnexpectedIO(), access=access, clock=lambda: NOW)
+    service = ExternalTraceDeliveryService(
+        secrets=Secrets(),
+        limits=TraceLimits(),
+        store=repository,
+        sender=UnexpectedIO(),
+        access=access,
+        clock=lambda: NOW,
+    )
     service.freeze(tenant_id=TENANT, invocation_id=identifier, now=NOW)
     with sessions.begin() as session:
         required(session.get(ExternalAgentInvocation, identifier), ExternalAgentInvocation).dispatched_at = DBNOW
@@ -1405,7 +1425,14 @@ def test_publication_lease_allows_worker_claim_and_never_replays_stale_export(se
                 id=uid(), tenant_id=TENANT, agent_id=AGENT, provider="langfuse", enabled=True, encrypted_config={}
             )
         )
-    service = ExternalTraceDeliveryService(store=repository, sender=UnexpectedIO(), access=access, clock=lambda: NOW)
+    service = ExternalTraceDeliveryService(
+        secrets=Secrets(),
+        limits=TraceLimits(),
+        store=repository,
+        sender=UnexpectedIO(),
+        access=access,
+        clock=lambda: NOW,
+    )
     service.freeze(tenant_id=TENANT, invocation_id=identifier, now=NOW)
     with sessions.begin() as session:
         required(session.get(ExternalAgentInvocation, identifier), ExternalAgentInvocation).dispatched_at = DBNOW
@@ -1459,7 +1486,12 @@ def test_unknown_remote_kind_remains_local_without_fabricated_export_kind(sessio
     )
     assert len(snapshot.steps) == 3
     trace = build_external_trace(
-        repository.owner(tenant_id=TENANT, invocation_id=identifier, now=NOW), snapshot, target
+        repository.owner(tenant_id=TENANT, invocation_id=identifier, now=NOW),
+        snapshot,
+        target,
+        content=repository.export_source(tenant_id=TENANT, invocation_id=identifier, now=NOW).content,
+        secrets=None,
+        limits=TraceLimits(),
     )
     assert trace is not None
     assert [span.name for span in trace.spans] == ["External Agent invocation", "step-2"]
@@ -1487,7 +1519,12 @@ def test_unknown_send_uses_completion_time_and_does_not_offer_safe_retry(
             raise RuntimeError("could have sent; sensitive transport details")
 
     service = ExternalTraceDeliveryService(
-        store=repository, sender=Sender(), access=access, clock=lambda: NOW + timedelta(seconds=2)
+        secrets=Secrets(),
+        limits=TraceLimits(),
+        store=repository,
+        sender=Sender(),
+        access=access,
+        clock=lambda: NOW + timedelta(seconds=2),
     )
     service.freeze(tenant_id=TENANT, invocation_id=identifier, now=NOW)
     with sessions.begin() as session:

@@ -60,8 +60,10 @@ from services.external_agents.contracts import (
     ExternalAgentForbiddenError,
     ExternalAgentNotFoundError,
     ExternalAssetAccess,
+    ExternalAuthType,
     ExternalSecretCodec,
 )
+from services.external_agents.io_contracts import JsonObject
 from services.external_agents.observability import (
     InvocationMetric,
     InvocationObservationOwner,
@@ -79,6 +81,7 @@ from services.external_agents.retention import ExternalDeletionScope, TestFileCl
 from services.external_agents.runtime_contracts import Invocation, RuntimeScope
 from services.external_agents.runtime_contracts import RuntimeError as ExternalRuntimeError
 from services.external_agents.test_service import ExternalTestStatistics
+from services.external_agents.trace_content import ExternalTraceContentSource, admitted_trace_parts
 from services.external_agents.traceability import (
     ExternalTraceStep,
     NormalizedExternalTrace,
@@ -91,6 +94,7 @@ from services.external_agents.traceability import (
 from services.external_agents.tracing_config import (
     ExternalTraceDelivery,
     ExternalTraceDeliveryStatus,
+    ExternalTraceExportBundle,
     ExternalTraceTargetKind,
     ExternalTracingProviderState,
     FrozenExternalTraceTarget,
@@ -1157,20 +1161,45 @@ class ExternalObservabilityRepository:
             session.flush()
             return self._targets(session, tenant_id, invocation_id)
 
-    def export_source(
-        self, *, tenant_id: str, invocation_id: str, now: datetime
-    ) -> tuple[InvocationObservationOwner, TraceSnapshot, Sequence[FrozenExternalTraceTarget]]:
+    def export_source(self, *, tenant_id: str, invocation_id: str, now: datetime) -> ExternalTraceExportBundle:
         with self._sessions.begin() as session:
             # Trace/usage writers take this same lock. Revision, steps, usage
             # and local terminal facts therefore form one coherent snapshot.
-            owner = self._owner_value(
-                self._owned(session, tenant_id=tenant_id, invocation_id=invocation_id, now=now, lock=True)
-            )
+            row = self._owned(session, tenant_id=tenant_id, invocation_id=invocation_id, now=now, lock=True)
+            owner = self._owner_value(row)
             snapshot = self._snapshot(session, tenant_id=tenant_id, invocation_id=invocation_id)
-            return (
+            targets = self._targets(session, tenant_id, invocation_id)
+            parts, outputs, auth_type = None, None, None
+            if any(target.capture_content for target in targets):
+                parts = (
+                    admitted_trace_parts(row.runtime_snapshot.get("parts"))
+                    if isinstance(row.runtime_snapshot, dict)
+                    else None
+                )
+                if row.local_state == "succeeded" and row.outputs is not None:
+                    try:
+                        outputs = TypeAdapter(JsonObject).validate_python(row.outputs)
+                    except ValidationError:
+                        outputs = None
+                revision = session.execute(
+                    select(
+                        ExternalAgentConnectionRevision.auth_type, ExternalAgentConnectionRevision.credential_ciphertext
+                    ).where(
+                        ExternalAgentConnectionRevision.tenant_id == tenant_id,
+                        ExternalAgentConnectionRevision.agent_id == row.agent_id,
+                        ExternalAgentConnectionRevision.id == row.connection_revision_id,
+                    )
+                ).one_or_none()
+                if revision is not None:
+                    if revision.auth_type == "none" and revision.credential_ciphertext is None:
+                        auth_type = ExternalAuthType.NONE
+                    elif revision.auth_type == "bearer" and revision.credential_ciphertext:
+                        auth_type = ExternalAuthType.BEARER
+            return ExternalTraceExportBundle(
                 owner,
                 snapshot or TraceSnapshot(TraceState.NOT_RETURNED, 0, (), ()),
-                self._targets(session, tenant_id, invocation_id),
+                targets,
+                ExternalTraceContentSource(parts, outputs, auth_type),
             )
 
     def existing_delivery_id(self, *, target: FrozenExternalTraceTarget, payload_revision: int) -> str | None:

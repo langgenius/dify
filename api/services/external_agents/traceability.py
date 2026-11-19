@@ -40,6 +40,7 @@ _SECRET_KEYS = frozenset(
 _FILE_BODY_KEYS = frozenset({"raw", "bytes", "base64"})
 _URL_SECRET = re.compile(r"(?:token|secret|signature|credential|authorization|api.?key|^sig$)", re.IGNORECASE)
 _HTTP_URL = re.compile(r"https?://[^\s<>\"']+")
+TRACE_KEY_MAX_CHARS = 256
 
 
 class TraceState(StrEnum):
@@ -126,6 +127,27 @@ def _redacted_url(match: re.Match[str]) -> str:
         return "[redacted URL]"
 
 
+def is_protected_trace_field(key: str) -> bool:
+    """Identify original credential/file-body labels before any key transformation.
+
+    Preconditions: key is the original JSON field name. Postconditions: the
+    existing case-insensitive redaction policy is shared without broadening it.
+    """
+    return key.lower() in _SECRET_KEYS | _FILE_BODY_KEYS
+
+
+def redact_trace_key(key: str, *, secrets: Sequence[str]) -> str:
+    """Mask complete known credentials before bounding an original trace key.
+
+    Preconditions: protected-value decisions still use the original key.
+    Postconditions: truncation cannot preserve a known credential prefix; no
+    business object or original raw identity is modified by this projection.
+    """
+    for secret in secrets:
+        key = key.replace(secret, "[redacted]") if secret else key
+    return key[:TRACE_KEY_MAX_CHARS]
+
+
 def redact_trace_data(value: object, *, limits: TraceLimits, secrets: Sequence[str] = (), depth: int = 0) -> Any:
     """Return bounded JSON with credentials and reusable file bodies removed.
 
@@ -136,8 +158,8 @@ def redact_trace_data(value: object, *, limits: TraceLimits, secrets: Sequence[s
         return "[truncated]"
     if isinstance(value, Mapping):
         return {
-            str(key)[:256]: "[redacted]"
-            if str(key).lower() in _SECRET_KEYS | _FILE_BODY_KEYS
+            redact_trace_key(str(key), secrets=secrets): "[redacted]"
+            if is_protected_trace_field(str(key))
             else redact_trace_data(item, limits=limits, secrets=secrets, depth=depth + 1)
             for key, item in islice(value.items(), limits.max_array_items)
         }
