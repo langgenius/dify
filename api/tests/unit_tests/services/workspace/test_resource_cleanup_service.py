@@ -264,6 +264,7 @@ def test_direct_cleanup_does_not_resolve_a_console_login(
     monkeypatch.setattr(app_service.app_was_deleted, "send", Mock())
     monkeypatch.setattr(app_service, "build_resource_access_token_cleanup_service", Mock())
     monkeypatch.setattr(app_service, "remove_app_and_related_data_task", Mock())
+    monkeypatch.setattr("tasks.app_deletion_outbox_task.dispatch_app_deletion_outbox.delay", Mock())
     retirement = Mock()
     monkeypatch.setattr(app_service, "WorkflowAgentRetirementService", retirement)
     monkeypatch.setattr(app_service, "enqueue_agent_resource_collection", Mock())
@@ -271,9 +272,12 @@ def test_direct_cleanup_does_not_resolve_a_console_login(
     features.is_webapp_auth_enabled.return_value = False
     monkeypatch.setattr(app_service, "SystemFeatureService", features)
     monkeypatch.setattr(app_service, "BillingService", Mock())
-    monkeypatch.setattr(module, "enqueue_agent_resource_collection", Mock())
+    monkeypatch.setattr(module, "enqueue_agent_resource_collection", lambda **_kwargs: None)
     with app.test_request_context(method="DELETE"):
         _service(sqlite_session_factory).cleanup("target")
+    from tasks.app_deletion_outbox_task import _dispatch
+
+    _dispatch(sqlite_session_factory)
     sqlite_session.expire_all()
     assert sqlite_session.get(App, "app") is None
     assert retirement.retire_unowned.call_args.kwargs["account_id"] is None

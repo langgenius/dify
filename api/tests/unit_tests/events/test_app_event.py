@@ -26,6 +26,7 @@ def _mock_deps() -> Iterator[None]:
         patch("services.app_service.SystemFeatureService"),
         patch("services.app_service.EnterpriseService"),
         patch("services.app_service.remove_app_and_related_data_task"),
+        patch("tasks.app_deletion_outbox_task.dispatch_app_deletion_outbox"),
     ):
         yield
 
@@ -68,12 +69,21 @@ def _make_collector[T](target: list[T]) -> Callable[..., None]:
 @pytest.mark.parametrize("sqlite_session", [(App, Account, Agent, AgentWorkspace)], indirect=True)
 @pytest.mark.usefixtures("_mock_deps")
 class TestAppWasDeletedSignal:
-    def test_sends_signal(self, app_services: AppServices, app_model: App, sqlite_session: Session) -> None:
+    def test_sends_signal(
+        self,
+        app_services: AppServices,
+        app_model: App,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
         received: list[AppEvent] = []
         handler = _make_collector(received)
         app_was_deleted.connect(handler)
         try:
             app_services.console.delete(RequestContext("req", None, "test-actor", app_model.tenant_id), app_model.id)
+            from tasks.app_deletion_outbox_task import _dispatch
+
+            _dispatch(sqlite_session_factory)
         finally:
             app_was_deleted.disconnect(handler)
 
@@ -107,12 +117,16 @@ class TestAppWasDeletedSignal:
         event.listen(sqlite_session_factory, "after_commit", after_commit)
         try:
             app_services.console.delete(RequestContext("req", None, "test-actor", app_model.tenant_id), app_model.id)
+            from tasks.app_deletion_outbox_task import _dispatch
+
+            _dispatch(sqlite_session_factory)
         finally:
             event.remove(sqlite_session_factory, "before_flush", before_flush)
             event.remove(sqlite_session_factory, "after_commit", after_commit)
             app_was_deleted.disconnect(signal_handler)
 
-        assert call_order == ["db_delete", "commit", "signal"]
+        assert call_order.index("db_delete") < call_order.index("signal")
+        assert "commit" in call_order[: call_order.index("signal")]
         app_id = app_model.id
         sqlite_session.expunge_all()
         assert sqlite_session.get(App, app_id) is None

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import logging
 from collections.abc import Callable, Sequence
 from contextlib import AbstractContextManager
 from dataclasses import dataclass, replace
@@ -31,6 +32,7 @@ from models.tools import WorkflowToolProvider
 from repositories.app.agent_app_queries import get_roster_agent_app
 from repositories.app.console_repository import ConsoleAppRepository, console_app_actor, require_console_app
 from repositories.app.response import app_record
+from repositories.app_deletion_outbox_repository import AppDeletionOutboxRepository
 from repositories.resource_access_token_repository import ResourceAccessTokenCleanupRepository
 from services.agent.errors import AgentNameConflictError, AgentNotFoundError
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
@@ -87,6 +89,8 @@ from services.tools.workflow_tools_manage_service import WorkflowToolManageServi
 from services.workflow_service import WorkflowService
 from services.workflow_tool_references import WorkflowToolTarget
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
+
+logger = logging.getLogger(__name__)
 
 # Positions as the console editor lays out its templates (START_INITIAL_POSITION and
 # NODE_WIDTH_X_OFFSET in web/app/components/workflow/constants.ts).
@@ -718,7 +722,9 @@ class AppLifecycleGateway(AppLifecycle):
         workspaces = AgentWorkspaceService.retire_all_for_app(
             session=session, tenant_id=context.active_workspace_id, app_id=app.id
         )
-        return replace(deleted, home_snapshot_ids=snapshots, workspace_ids=workspaces)
+        deleted = replace(deleted, home_snapshot_ids=snapshots, workspace_ids=workspaces)
+        AppDeletionOutboxRepository(session).add(deletion=deleted, account_id=context.account_id)
+        return deleted
 
     @override
     def prepare_creation(self, context: RequestContext, params: CreateAppParams) -> AppCreationSettings:
@@ -738,7 +744,14 @@ class AppLifecycleGateway(AppLifecycle):
 
     @override
     def deleted(self, context: RequestContext, deleted: AppDeletion) -> None:
-        AppService.notify_deleted_app(deleted, account_id=context.account_id)
+        from tasks.app_deletion_outbox_task import dispatch_app_deletion_outbox
+
+        try:
+            dispatch_app_deletion_outbox.delay()
+        except Exception:
+            # The deletion intent is committed in the same transaction. The
+            # periodic poller will deliver it after the broker recovers.
+            logger.exception("Failed to wake App deletion outbox dispatcher", extra={"app_id": deleted.app.id})
 
     @override
     def present(self, context: RequestContext, app: AppRecord, *, mask_credentials: bool = False) -> AppRecord:

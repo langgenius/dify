@@ -819,7 +819,9 @@ class TestAgentAppType:
         sqlite_session.expire_all()
         assert sqlite_session.get(Agent, backing_agent.id).name == "Old"  # type: ignore[union-attr]
 
-    def test_delete_agent_app_archives_backing_agent(self, sqlite_session: Session) -> None:
+    def test_delete_agent_app_archives_backing_agent(
+        self, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
         app, backing_agent = _persist_agent_app(sqlite_session)
         workflow_app = _persist_app(sqlite_session, tenant_id=app.tenant_id, name="Workflow")
         workflow_app.mode = AppMode.WORKFLOW
@@ -880,6 +882,7 @@ class TestAgentAppType:
                 "services.app_service.remove_app_and_related_data_task.delay",
                 side_effect=lambda **_kwargs: events.append("enqueue-app-cleanup"),
             ),
+            patch("tasks.app_deletion_outbox_task.dispatch_app_deletion_outbox.delay"),
             patch(
                 "services.app_service.AgentHomeSnapshotService.retire_all_for_agent",
                 return_value=["home-1"],
@@ -898,6 +901,9 @@ class TestAgentAppType:
             ) as mock_enqueue_collection,
         ):
             AppService().delete_app(app, session=sqlite_session)
+            from tasks.app_deletion_outbox_task import _dispatch
+
+            _dispatch(sqlite_session_factory)
 
         assert events == [
             "retire-app-workspaces",
@@ -975,16 +981,18 @@ class TestAgentAppType:
             patch("services.app_service.AgentWorkspaceService.retire_all_for_app", return_value=["workspace-1"]),
             patch("services.app_service.WorkflowAgentRetirementService.retire_unowned") as retire_unowned,
             patch("services.app_service.enqueue_agent_resource_collection") as enqueue_collection,
-            patch("services.app_service.remove_app_and_related_data_task.delay") as enqueue_app_cleanup,
+            patch("tasks.app_deletion_outbox_task.dispatch_app_deletion_outbox.delay") as enqueue_dispatch,
         ):
             with pytest.raises(RuntimeError, match="commit failed"):
                 AppService().delete_app(app, session=sqlite_session)
 
         retire_unowned.assert_not_called()
         enqueue_collection.assert_not_called()
-        enqueue_app_cleanup.assert_not_called()
+        enqueue_dispatch.assert_not_called()
 
-    def test_delete_workflow_app_releases_all_bindings_before_retirement(self, sqlite_session: Session) -> None:
+    def test_delete_workflow_app_releases_all_bindings_before_retirement(
+        self, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
         app = _persist_app(sqlite_session, tenant_id=str(uuid4()))
         app.mode = AppMode.WORKFLOW
         workflow = Workflow.new(
@@ -1042,6 +1050,7 @@ class TestAgentAppType:
                 "services.app_service.remove_app_and_related_data_task.delay",
                 side_effect=lambda **_kwargs: events.append("enqueue-app-cleanup"),
             ),
+            patch("tasks.app_deletion_outbox_task.dispatch_app_deletion_outbox.delay"),
             patch(
                 "services.app_service.WorkflowAgentRetirementService.retire_unowned",
                 side_effect=retire_unowned,
@@ -1049,12 +1058,15 @@ class TestAgentAppType:
             patch("services.app_service.enqueue_agent_resource_collection"),
         ):
             AppService().delete_app(app, session=sqlite_session)
+            from tasks.app_deletion_outbox_task import _dispatch
+
+            _dispatch(sqlite_session_factory)
 
         assert events == ["enqueue-app-cleanup", "retire"]
         assert sqlite_session.get(WorkflowAgentNodeBinding, inline_binding.id) is None
         assert sqlite_session.get(WorkflowAgentNodeBinding, roster_binding.id) is None
 
-    def test_delete_app_cleanup_enqueue_failure_propagates_before_retirement(self, sqlite_session: Session) -> None:
+    def test_delete_app_wakeup_failure_keeps_durable_cleanup_pending(self, sqlite_session: Session) -> None:
         app = _persist_app(sqlite_session, tenant_id=str(uuid4()))
         error = RuntimeError("broker unavailable")
 
@@ -1062,14 +1074,13 @@ class TestAgentAppType:
             patch("services.app_service.current_user", _account_identity(str(uuid4()))),
             patch("services.app_service.app_was_deleted.send"),
             patch("services.app_service.AgentWorkspaceService.retire_all_for_app", return_value=[]),
-            patch("services.app_service.remove_app_and_related_data_task.delay", side_effect=error),
+            patch("tasks.app_deletion_outbox_task.dispatch_app_deletion_outbox.delay", side_effect=error),
             patch("services.app_service.WorkflowAgentRetirementService.retire_unowned") as retire_unowned,
             patch("services.app_service.enqueue_agent_resource_collection") as enqueue_collection,
         ):
-            with pytest.raises(RuntimeError) as exc_info:
-                AppService().delete_app(app, session=sqlite_session)
+            AppService().delete_app(app, session=sqlite_session)
 
-        assert exc_info.value is error
+        assert sqlite_session.get(App, app.id) is None
         retire_unowned.assert_not_called()
         enqueue_collection.assert_not_called()
 
