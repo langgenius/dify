@@ -43,8 +43,9 @@ vi.mock('@/utils/timezone', async (importOriginal) => ({
   getBrowserTimezone: () => 'Asia/Taipei',
 }))
 
-it('submits only the language and time zone confirmed in the pickers', async () => {
-  await page.viewport(620, 740)
+const workspaceName = "invitee@example.com's Workspace"
+
+async function renderInvitation() {
   mocks.activate.mockResolvedValue({ result: 'success' })
   const i18n = createInstance()
   await i18n.init({
@@ -52,7 +53,6 @@ it('submits only the language and time zone confirmed in the pickers', async () 
     lng: 'zh-Hans',
     resources: { 'zh-Hans': { accountSettings, common, login } },
   })
-  const workspaceName = "invitee@example.com's Workspace"
   const { queryClient } = createConsoleQueryWrapper({
     accountProfile: { email: 'invitee@example.com' },
     systemFeatures: { branding: { enabled: false }, deployment_edition: 'CLOUD' },
@@ -79,6 +79,12 @@ it('submits only the language and time zone confirmed in the pickers', async () 
     </QueryClientTestProvider>,
   )
 
+  return { screen, queryClient }
+}
+
+it('selects highlighted options with Enter and submits the confirmed preferences', async () => {
+  await page.viewport(620, 740)
+  const { screen, queryClient } = await renderInvitation()
   try {
     const name = screen.getByRole('textbox', { name: login.name })
     const language = screen.getByRole('combobox', { name: login.interfaceLanguage })
@@ -111,12 +117,6 @@ it('submits only the language and time zone confirmed in the pickers', async () 
     await userEvent.keyboard('{Escape}')
     await expect.element(language).toHaveValue('简体中文')
 
-    await language.fill('unknown language')
-    await expect.element(screen.getByText(common['dynamicSelect.noData'])).toBeVisible()
-    await userEvent.keyboard('{Enter}')
-    await expect.element(language).toHaveValue('简体中文')
-    expect(mocks.activate).not.toHaveBeenCalled()
-
     await language.fill('United States')
     await expect
       .element(screen.getByRole('option', { name: 'English (United States)' }))
@@ -126,14 +126,6 @@ it('submits only the language and time zone confirmed in the pickers', async () 
     await expect.element(language).toHaveAttribute('aria-activedescendant')
     await userEvent.keyboard('{Enter}')
     await expect.element(language).toHaveValue('English (United States)')
-    expect(mocks.activate).not.toHaveBeenCalled()
-
-    await timezone.fill('no-such-timezone')
-    await expect
-      .element(screen.getByText(accountSettings['account.timezoneNoResults']))
-      .toBeVisible()
-    await userEvent.keyboard('{Enter}')
-    await expect.element(timezone).toHaveAttribute('aria-expanded', 'false')
     expect(mocks.activate).not.toHaveBeenCalled()
 
     await timezone.fill('Pacific/Niue')
@@ -164,3 +156,43 @@ it('submits only the language and time zone confirmed in the pickers', async () 
     queryClient.clear()
   }
 })
+
+it.each([
+  {
+    field: login.interfaceLanguage,
+    query: 'United States',
+    visibleResult: 'English (United States)',
+  },
+  {
+    field: login.timezone,
+    query: 'no-such-timezone',
+    visibleResult: accountSettings['account.timezoneNoResults'],
+  },
+])(
+  'submits with Enter when $field has no highlighted option',
+  async ({ field, query, visibleResult }) => {
+    const { screen, queryClient } = await renderInvitation()
+    try {
+      await screen.getByRole('textbox', { name: login.name }).fill('邀请测试')
+      const picker = screen.getByRole('combobox', { name: field, exact: true })
+      await picker.fill(query)
+      await expect.element(screen.getByText(visibleResult, { exact: true })).toBeVisible()
+      await expect.element(picker).toHaveAttribute('aria-expanded', 'true')
+      await expect.element(picker).not.toHaveAttribute('aria-activedescendant')
+
+      await userEvent.keyboard('{Enter}')
+      await expect.poll(() => mocks.replace.mock.calls.length).toBe(1)
+      expect(mocks.activate).toHaveBeenCalledExactlyOnceWith({
+        body: {
+          token: 'invite-token',
+          name: '邀请测试',
+          interface_language: 'zh-Hans',
+          timezone: 'Asia/Taipei',
+        },
+      })
+    } finally {
+      await screen.unmount()
+      queryClient.clear()
+    }
+  },
+)

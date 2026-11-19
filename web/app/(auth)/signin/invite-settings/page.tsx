@@ -199,17 +199,6 @@ export default function InviteSettingsPage() {
       </h1>
       <Form
         className="grid min-w-0 gap-5"
-        onKeyDown={(event) => {
-          const { target, key, nativeEvent } = event
-          if (
-            key === 'Enter' &&
-            !nativeEvent.isComposing &&
-            target instanceof HTMLInputElement &&
-            target.getAttribute('role') === 'combobox' &&
-            target.getAttribute('aria-expanded') === 'true'
-          )
-            event.preventDefault()
-        }}
         onFormSubmit={() => {
           void handleActivate()
         }}
