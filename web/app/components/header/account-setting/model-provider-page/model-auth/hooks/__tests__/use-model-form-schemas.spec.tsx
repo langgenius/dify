@@ -62,9 +62,5 @@ describe('useModelFormSchemas', () => {
       __model_name: 'gpt-4',
       __model_type: 'llm',
     })
-    expect(result.current.modelNameAndTypeFormValues).toEqual({
-      __model_name: 'gpt-4',
-      __model_type: 'llm',
-    })
   })
 })

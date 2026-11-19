@@ -3,7 +3,7 @@ import type {
   AccountWithRoleResponse,
   MemberInviteResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { Role } from '@/models/access-control'
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import {
   AlertDialog,
   AlertDialogBody,
@@ -31,6 +31,7 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
+import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceAtom, isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
@@ -94,7 +95,7 @@ const MembersPageContent = () => {
     consoleQuery.features.get.queryOptions({
       select: (data) => ({
         plan: data.billing.subscription.plan,
-        members: data.members,
+        members: getCountQuota(data.members),
         is_allow_transfer_workspace: data.is_allow_transfer_workspace,
       }),
     }),
@@ -102,40 +103,32 @@ const MembersPageContent = () => {
 
   const isNotUnlimitedMemberPlan =
     deploymentEdition === 'CLOUD' && features !== undefined && features.plan !== 'team'
-  // A limit of 0 means unlimited.
   const isMemberFull =
-    isNotUnlimitedMemberPlan &&
-    features.members.limit > 0 &&
-    accounts.length >= features.members.limit
-  const [detailsDialogHandle] = useState(() => createDialogHandle<AccountWithRoleResponse>())
+    features !== undefined &&
+    features.plan !== 'team' &&
+    isQuotaReached({ usage: accounts.length, limit: features.members.limit })
+  const detailsActionsRef = useRef<DialogActions>(null)
 
   const canManageMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
   const roleColumnLabel = systemFeatures.rbac_enabled
     ? t(($) => $['members.roles'], { ns: 'workspaceMembers' })
     : t(($) => $['members.role'], { ns: 'workspaceMembers' })
 
-  const { mutateAsync: updateRolesOfMember, isPending: isSavingMember } = useMutation(
+  const roleUpdate = useMutation(
     consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.put.mutationOptions({
       context: { silent: true },
     }),
   )
 
-  const handleAssignRolesSubmit = (member: AccountWithRoleResponse, roles: Role[]) => {
-    const roleIds = systemFeatures.rbac_enabled
-      ? roles.map((role) => role.id)
-      : roles.slice(0, 1).map((role) => role.id)
-
-    return updateRolesOfMember({
-      params: { member_id: member.id },
-      body: { role_ids: roleIds },
-    })
-  }
+  const canAssignRoles = (member: AccountWithRoleResponse) =>
+    canManageMembers && member.role !== 'owner' && member.email !== userProfileEmail
 
   return (
-    <Dialog
-      handle={detailsDialogHandle}
+    <Dialog<AccountWithRoleResponse>
+      actionsRef={detailsActionsRef}
       onOpenChange={(open, details) => {
-        if (!open && isSavingMember && details.reason !== 'imperative-action') details.cancel()
+        if (open) roleUpdate.reset()
+        else if (roleUpdate.isPending && details.reason !== 'imperative-action') details.cancel()
       }}
     >
       {({ payload: member }) => (
@@ -194,7 +187,7 @@ const MembersPageContent = () => {
                           <span>{accounts.length}</span>
                           <span>/</span>
                           <span>
-                            {features.members.limit === 0
+                            {features.members.limit === 'unlimited'
                               ? t(($) => $['plansCommon.unlimited'], { ns: 'billing' })
                               : features.members.limit}
                           </span>
@@ -428,16 +421,31 @@ const MembersPageContent = () => {
           </Dialog>
           <DialogContent className="w-110" backdropProps={{ forceRender: true }}>
             {member && (
-              <MemberDetailsContent
+              <form
+                className="contents"
                 key={member.id}
-                member={member}
-                canAssignRoles={
-                  canManageMembers && member.role !== 'owner' && userProfileEmail !== member.email
-                }
-                allowMultipleRoles={systemFeatures.rbac_enabled}
-                onClose={() => detailsDialogHandle.close()}
-                onAssignSubmit={(roles) => handleAssignRolesSubmit(member, roles)}
-              />
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  if (!canAssignRoles(member) || roleUpdate.isPending) return
+                  const roleIds = new FormData(event.currentTarget).getAll('roleId').map(String)
+                  roleUpdate.mutate(
+                    { params: { member_id: member.id }, body: { role_ids: roleIds } },
+                    { onSuccess: () => detailsActionsRef.current?.close() },
+                  )
+                }}
+              >
+                <fieldset className="contents" disabled={roleUpdate.isPending}>
+                  <MemberDetailsContent
+                    member={member}
+                    canAssignRoles={canAssignRoles(member)}
+                    saving={roleUpdate.isPending}
+                    allowMultipleRoles={systemFeatures.rbac_enabled}
+                  />
+                </fieldset>
+                {roleUpdate.isError && (
+                  <p role="alert">{t(($) => $['api.actionFailed'], { ns: 'common' })}</p>
+                )}
+              </form>
             )}
           </DialogContent>
         </>

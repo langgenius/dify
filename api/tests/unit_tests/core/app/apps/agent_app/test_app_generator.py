@@ -12,11 +12,13 @@ from unittest.mock import MagicMock
 import httpx
 import pytest
 from dify_agent.client import Client
+from dify_agent.layers.history import State as HistoryState
 from dify_agent.protocol import CreateRunRequest, CreateRunResponse
 from dify_agent.protocol.snapshot import SessionSnapshot
 from dify_trace_sdk.emitter import TraceScope
 from dify_trace_sdk.events import TraceCorrelation, TraceEvent
 from flask import Flask
+from pydantic_ai.messages import ModelRequest, UserPromptPart
 from pytest_mock import MockerFixture
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -1371,8 +1373,18 @@ def test_finalization_commits_mapping_and_retries_without_creating_chat_state(
     finalization_model_bundle: ProviderModelBundle,
     finalization_records: tuple[App, _app_generator_Account, AgentConfigDraft],
 ) -> None:
-    """Finalize a valid draft twice without input guards or persisted chat state."""
+    """Preserve existing history across finalization and retry without input guards or chat writes."""
     app_model, user, draft = finalization_records
+    history = SessionSnapshot(
+        layers={
+            "history": HistoryState(
+                messages=[ModelRequest(parts=[UserPromptPart(content="Preserve this Build chat context.")])]
+            ).model_dump(mode="json")
+        }
+    )
+    binding = sqlite_session.get(AgentWorkspaceBinding, "binding-1")
+    assert binding is not None
+    binding.session_snapshot = history.model_dump_json()
     # An unrelated editor's newer draft must not become this account's runtime.
     sqlite_session.add(
         AgentConfigDraft(
@@ -1421,6 +1433,7 @@ def test_finalization_commits_mapping_and_retries_without_creating_chat_state(
         external_trace_id="trace-1",
     )
     assert client.request is not None
+    assert client.request.session_snapshot == history
     first_request_id = client.request.idempotency_key
     context = next(layer for layer in client.request.composition.layers if layer.name == "execution_context")
     assert context.config["agent_config_version_id"] == "build-1"
@@ -1428,6 +1441,8 @@ def test_finalization_commits_mapping_and_retries_without_creating_chat_state(
     assert context.config["invoke_from"] == "debugger"
     assert context.config["trace_id"] == "trace-1"
     generator.finalize_build_chat(app_model=app_model, user=user, conversation_id="conv", session=sqlite_session)
+    assert client.request is not None
+    assert client.request.session_snapshot == history
     assert client.request.idempotency_key != first_request_id
     with sqlite_session_factory() as observer:
         assert observer.scalars(select(Conversation)).all() == []
@@ -1435,7 +1450,7 @@ def test_finalization_commits_mapping_and_retries_without_creating_chat_state(
         assert observer.scalars(select(MessageAgentThought)).all() == []
         binding = observer.get(AgentWorkspaceBinding, "binding-1")
         assert binding is not None
-        assert binding.session_snapshot == SessionSnapshot().model_dump_json()
+        assert binding.session_snapshot == history.model_dump_json()
 
 
 @pytest.mark.parametrize(

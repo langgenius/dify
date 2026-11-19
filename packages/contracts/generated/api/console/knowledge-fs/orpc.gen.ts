@@ -91,6 +91,8 @@ import {
   zGetKnowledgeFsSpacesByControlSpaceIdDocumentsResponse,
   zGetKnowledgeFsSpacesByControlSpaceIdExternalAccessPath,
   zGetKnowledgeFsSpacesByControlSpaceIdExternalAccessResponse,
+  zGetKnowledgeFsSpacesByControlSpaceIdFileScanPolicyPath,
+  zGetKnowledgeFsSpacesByControlSpaceIdFileScanPolicyResponse,
   zGetKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsPath,
   zGetKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsQuery,
   zGetKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsResponse,
@@ -347,6 +349,9 @@ import {
   zPutKnowledgeFsSpacesByControlSpaceIdExternalAccessBody,
   zPutKnowledgeFsSpacesByControlSpaceIdExternalAccessPath,
   zPutKnowledgeFsSpacesByControlSpaceIdExternalAccessResponse,
+  zPutKnowledgeFsSpacesByControlSpaceIdFileScanPolicyBody,
+  zPutKnowledgeFsSpacesByControlSpaceIdFileScanPolicyPath,
+  zPutKnowledgeFsSpacesByControlSpaceIdFileScanPolicyResponse,
   zPutKnowledgeFsSpacesByControlSpaceIdMembersBody,
   zPutKnowledgeFsSpacesByControlSpaceIdMembersPath,
   zPutKnowledgeFsSpacesByControlSpaceIdMembersResponse,
@@ -1277,6 +1282,46 @@ export const externalAccess = {
   put: put2,
 }
 
+/**
+ * Get the malware scan policy of an Agent Knowledge Base
+ */
+export const get18 = oc
+  .route({
+    description: 'Get the malware scan policy of an Agent Knowledge Base',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getKnowledgeFsSpacesByControlSpaceIdFileScanPolicy',
+    path: '/knowledge-fs/spaces/{control_space_id}/file-scan-policy',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdFileScanPolicyPath }))
+  .output(zGetKnowledgeFsSpacesByControlSpaceIdFileScanPolicyResponse)
+
+/**
+ * Set the malware scan policy of an Agent Knowledge Base
+ */
+export const put3 = oc
+  .route({
+    description: 'Set the malware scan policy of an Agent Knowledge Base',
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putKnowledgeFsSpacesByControlSpaceIdFileScanPolicy',
+    path: '/knowledge-fs/spaces/{control_space_id}/file-scan-policy',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPutKnowledgeFsSpacesByControlSpaceIdFileScanPolicyBody,
+      params: zPutKnowledgeFsSpacesByControlSpaceIdFileScanPolicyPath,
+    }),
+  )
+  .output(zPutKnowledgeFsSpacesByControlSpaceIdFileScanPolicyResponse)
+
+export const fileScanPolicy = {
+  get: get18,
+  put: put3,
+}
+
 export const post8 = oc
   .route({
     inputStructure: 'detailed',
@@ -1398,7 +1443,7 @@ export const byQuestionId = {
   patch: patch2,
 }
 
-export const get18 = oc
+export const get19 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1455,7 +1500,7 @@ export const post10 = oc
   })
 
 export const goldenQuestions = {
-  get: get18,
+  get: get19,
   post: post10,
   bulkImport,
   evidenceMatches,
@@ -1512,7 +1557,7 @@ export const delete6 = oc
     knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
   })
 
-export const get19 = oc
+export const get20 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1536,7 +1581,7 @@ export const get19 = oc
 
 export const byJobId3 = {
   delete: delete6,
-  get: get19,
+  get: get20,
   retry: retry2,
 }
 
@@ -1609,7 +1654,7 @@ export const downloadZip = {
   post: post12,
 }
 
-export const get20 = oc
+export const get21 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1636,7 +1681,7 @@ export const get20 = oc
   })
 
 export const download = {
-  get: get20,
+  get: get21,
 }
 
 export const delete8 = oc
@@ -1669,7 +1714,7 @@ export const delete8 = oc
     knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
   })
 
-export const get21 = oc
+export const get22 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1723,12 +1768,12 @@ export const patch3 = oc
 
 export const byDocumentId2 = {
   delete: delete8,
-  get: get21,
+  get: get22,
   patch: patch3,
   download,
 }
 
-export const get22 = oc
+export const get23 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1783,14 +1828,14 @@ export const patch4 = oc
   })
 
 export const logicalDocuments = {
-  get: get22,
+  get: get23,
   patch: patch4,
   bulk: bulk2,
   downloadZip,
   byDocumentId: byDocumentId2,
 }
 
-export const put3 = oc
+export const put4 = oc
   .route({
     inputStructure: 'detailed',
     method: 'PUT',
@@ -1816,7 +1861,7 @@ export const put3 = oc
   })
 
 export const members = {
-  put: put3,
+  put: put4,
 }
 
 export const delete9 = oc
@@ -1880,7 +1925,7 @@ export const byFieldId = {
   patch: patch5,
 }
 
-export const get23 = oc
+export const get24 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1938,12 +1983,12 @@ export const post13 = oc
   })
 
 export const metadata = {
-  get: get23,
+  get: get24,
   post: post13,
   byFieldId,
 }
 
-export const get24 = oc
+export const get25 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1971,10 +2016,10 @@ export const get24 = oc
   })
 
 export const activity = {
-  get: get24,
+  get: get25,
 }
 
-export const get25 = oc
+export const get26 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2002,10 +2047,10 @@ export const get25 = oc
   })
 
 export const attention = {
-  get: get25,
+  get: get26,
 }
 
-export const get26 = oc
+export const get27 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2028,10 +2073,10 @@ export const get26 = oc
   })
 
 export const health = {
-  get: get26,
+  get: get27,
 }
 
-export const get27 = oc
+export const get28 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2054,10 +2099,10 @@ export const get27 = oc
   })
 
 export const inventory = {
-  get: get27,
+  get: get28,
 }
 
-export const get28 = oc
+export const get29 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2085,10 +2130,10 @@ export const get28 = oc
   })
 
 export const queryOutcomes = {
-  get: get28,
+  get: get29,
 }
 
-export const get29 = oc
+export const get30 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2116,7 +2161,7 @@ export const get29 = oc
   })
 
 export const stats = {
-  get: get29,
+  get: get30,
 }
 
 export const overview = {
@@ -2128,7 +2173,7 @@ export const overview = {
   stats,
 }
 
-export const get30 = oc
+export const get31 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2148,10 +2193,10 @@ export const get30 = oc
   })
 
 export const permissions = {
-  get: get30,
+  get: get31,
 }
 
-export const get31 = oc
+export const get32 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2179,10 +2224,10 @@ export const get31 = oc
   })
 
 export const traceReference = {
-  get: get31,
+  get: get32,
 }
 
-export const get32 = oc
+export const get33 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2234,12 +2279,12 @@ export const patch6 = oc
   })
 
 export const byBadCaseId = {
-  get: get32,
+  get: get33,
   patch: patch6,
   traceReference,
 }
 
-export const get33 = oc
+export const get34 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2297,12 +2342,12 @@ export const post14 = oc
   })
 
 export const badCases = {
-  get: get33,
+  get: get34,
   post: post14,
   byBadCaseId,
 }
 
-export const get34 = oc
+export const get35 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2331,10 +2376,10 @@ export const get34 = oc
   })
 
 export const byRunId = {
-  get: get34,
+  get: get35,
 }
 
-export const get35 = oc
+export const get36 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2393,7 +2438,7 @@ export const post15 = oc
   })
 
 export const replayRuns = {
-  get: get35,
+  get: get36,
   post: post15,
   byRunId,
 }
@@ -2523,7 +2568,7 @@ export const plan = {
   post: post19,
 }
 
-export const get36 = oc
+export const get37 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2551,7 +2596,7 @@ export const get36 = oc
   })
 
 export const partials = {
-  get: get36,
+  get: get37,
 }
 
 export const delete10 = oc
@@ -2577,7 +2622,7 @@ export const delete10 = oc
     knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
   })
 
-export const get37 = oc
+export const get38 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2601,11 +2646,11 @@ export const get37 = oc
 
 export const byTaskId3 = {
   delete: delete10,
-  get: get37,
+  get: get38,
   partials,
 }
 
-export const get38 = oc
+export const get39 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2663,13 +2708,13 @@ export const post20 = oc
   })
 
 export const researchTasks2 = {
-  get: get38,
+  get: get39,
   post: post20,
   plan,
   byTaskId: byTaskId3,
 }
 
-export const get39 = oc
+export const get40 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2694,14 +2739,14 @@ export const get39 = oc
   })
 
 export const byMigrationId = {
-  get: get39,
+  get: get40,
 }
 
 export const migrations = {
   byMigrationId,
 }
 
-export const get40 = oc
+export const get41 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2753,7 +2798,7 @@ export const patch7 = oc
   })
 
 export const settings = {
-  get: get40,
+  get: get41,
   patch: patch7,
   migrations,
 }
@@ -2794,7 +2839,7 @@ export const byConnectionId = {
   refresh,
 }
 
-export const get41 = oc
+export const get42 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2850,12 +2895,12 @@ export const post22 = oc
   })
 
 export const sourceConnections = {
-  get: get41,
+  get: get42,
   post: post22,
   byConnectionId,
 }
 
-export const get42 = oc
+export const get43 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2877,7 +2922,7 @@ export const get42 = oc
   })
 
 export const sourceProviders = {
-  get: get42,
+  get: get43,
 }
 
 export const post23 = oc
@@ -2912,7 +2957,7 @@ export const cancel2 = {
   post: post23,
 }
 
-export const get43 = oc
+export const get44 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2940,7 +2985,7 @@ export const get43 = oc
   })
 
 export const pages = {
-  get: get43,
+  get: get44,
 }
 
 export const post24 = oc
@@ -3006,7 +3051,7 @@ export const selection = {
   post: post25,
 }
 
-export const get44 = oc
+export const get45 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3029,7 +3074,7 @@ export const get44 = oc
   })
 
 export const byRunId2 = {
-  get: get44,
+  get: get45,
   cancel: cancel2,
   pages,
   retry: retry3,
@@ -3141,7 +3186,7 @@ export const crawlPreview = {
   post: post28,
 }
 
-export const get45 = oc
+export const get46 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3169,7 +3214,7 @@ export const get45 = oc
   })
 
 export const files = {
-  get: get45,
+  get: get46,
 }
 
 export const post29 = oc
@@ -3236,7 +3281,7 @@ export const importFiles = {
   post: post30,
 }
 
-export const get46 = oc
+export const get47 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3264,7 +3309,7 @@ export const get46 = oc
   })
 
 export const pages2 = {
-  get: get46,
+  get: get47,
 }
 
 export const post31 = oc
@@ -3300,7 +3345,7 @@ export const sync = {
   post: post31,
 }
 
-export const get47 = oc
+export const get48 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3322,7 +3367,7 @@ export const get47 = oc
     knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
   })
 
-export const put4 = oc
+export const put5 = oc
   .route({
     inputStructure: 'detailed',
     method: 'PUT',
@@ -3351,8 +3396,8 @@ export const put4 = oc
   })
 
 export const syncPolicy = {
-  get: get47,
-  put: put4,
+  get: get48,
+  put: put5,
 }
 
 export const post32 = oc
@@ -3446,7 +3491,7 @@ export const delete11 = oc
     knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
   })
 
-export const get48 = oc
+export const get49 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3498,7 +3543,7 @@ export const patch8 = oc
 
 export const bySourceId = {
   delete: delete11,
-  get: get48,
+  get: get49,
   patch: patch8,
   asyncImport,
   crawlImport,
@@ -3513,7 +3558,7 @@ export const bySourceId = {
   workflowImports,
 }
 
-export const get49 = oc
+export const get50 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3571,12 +3616,12 @@ export const post34 = oc
   })
 
 export const sources = {
-  get: get49,
+  get: get50,
   post: post34,
   bySourceId,
 }
 
-export const get50 = oc
+export const get51 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3594,7 +3639,7 @@ export const get50 = oc
     knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
   })
 
-export const put5 = oc
+export const put6 = oc
   .route({
     inputStructure: 'detailed',
     method: 'PUT',
@@ -3620,11 +3665,11 @@ export const put5 = oc
   })
 
 export const tags = {
-  get: get50,
-  put: put5,
+  get: get51,
+  put: put6,
 }
 
-export const get51 = oc
+export const get52 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3652,10 +3697,10 @@ export const get51 = oc
   })
 
 export const conflicts = {
-  get: get51,
+  get: get52,
 }
 
-export const get52 = oc
+export const get53 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3683,10 +3728,10 @@ export const get52 = oc
   })
 
 export const evidence = {
-  get: get52,
+  get: get53,
 }
 
-export const get53 = oc
+export const get54 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3714,10 +3759,10 @@ export const get53 = oc
   })
 
 export const missing = {
-  get: get53,
+  get: get54,
 }
 
-export const get54 = oc
+export const get55 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3740,13 +3785,13 @@ export const get54 = oc
   })
 
 export const byTraceId = {
-  get: get54,
+  get: get55,
   conflicts,
   evidence,
   missing,
 }
 
-export const get55 = oc
+export const get56 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3775,7 +3820,7 @@ export const get55 = oc
   })
 
 export const traces = {
-  get: get55,
+  get: get56,
   byTraceId,
 }
 
@@ -3992,7 +4037,7 @@ export const delete12 = oc
     knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
   })
 
-export const get56 = oc
+export const get57 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -4040,7 +4085,7 @@ export const patch9 = oc
 
 export const byControlSpaceId = {
   delete: delete12,
-  get: get56,
+  get: get57,
   patch: patch9,
   appBindings,
   backgroundTasks,
@@ -4048,6 +4093,7 @@ export const byControlSpaceId = {
   documentReferences,
   documents,
   externalAccess,
+  fileScanPolicy,
   goldenQuestions,
   jobs: jobs2,
   logicalDocuments,
@@ -4069,7 +4115,7 @@ export const byControlSpaceId = {
   uploadSessions,
 }
 
-export const get57 = oc
+export const get58 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -4110,7 +4156,7 @@ export const post40 = oc
   })
 
 export const spaces = {
-  get: get57,
+  get: get58,
   post: post40,
   byControlSpaceId,
 }

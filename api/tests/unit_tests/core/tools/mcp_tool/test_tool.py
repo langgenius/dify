@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import base64
 import contextlib
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from decimal import Decimal
 from typing import Any
 from unittest.mock import patch
@@ -12,10 +12,12 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.entities.mcp_provider import IdentityMode
 from core.mcp.types import (
     AudioContent,
     BlobResourceContents,
     CallToolResult,
+    ContentBlock,
     EmbeddedResource,
     ImageContent,
     TextContent,
@@ -60,10 +62,22 @@ _STRING = {"type": "string"}
 _STRING_LIST = {"type": "array", "items": {"type": "string"}}
 
 
+def _text_message(message: ToolInvokeMessage) -> ToolInvokeMessage.TextMessage:
+    """Return the text payload, asserting the message really is a text message."""
+    assert isinstance(message.message, ToolInvokeMessage.TextMessage)
+    return message.message
+
+
+def _variable_message(message: ToolInvokeMessage) -> ToolInvokeMessage.VariableMessage:
+    """Return the variable payload, asserting the message really is a variable message."""
+    assert isinstance(message.message, ToolInvokeMessage.VariableMessage)
+    return message.message
+
+
 # ----- M2/M3 user-identity forwarding ---------------------------------------
 
 
-def _build_forwarding_tool(*, mode: str = "idp_token") -> MCPTool:
+def _build_forwarding_tool(*, mode: IdentityMode = IdentityMode.IDP_TOKEN) -> MCPTool:
     """Helper that builds an MCPTool with the identity_mode set."""
     entity = ToolEntity(
         identity=ToolIdentity(
@@ -88,7 +102,7 @@ def _build_forwarding_tool(*, mode: str = "idp_token") -> MCPTool:
 
 class TestMcpToolCases:
     @staticmethod
-    def test_mcp_tool_provider_type_and_fork_runtime():
+    def test_mcp_tool_provider_type_and_fork_runtime() -> None:
         tool = _build_mcp_tool()
         assert tool.tool_provider_type() == ToolProviderType.MCP
 
@@ -98,7 +112,7 @@ class TestMcpToolCases:
         assert forked.server_identifier == "mcp_server"
 
     @staticmethod
-    def test_mcp_tool_text_and_json_processing_helpers():
+    def test_mcp_tool_text_and_json_processing_helpers() -> None:
         tool = _build_mcp_tool()
 
         json_messages = list(tool._process_text_content(TextContent(type="text", text='{"a": 1}')))
@@ -106,7 +120,7 @@ class TestMcpToolCases:
 
         plain_messages = list(tool._process_text_content(TextContent(type="text", text="not-json")))
         assert plain_messages[0].type == ToolInvokeMessage.MessageType.TEXT
-        assert plain_messages[0].message.text == "not-json"
+        assert _text_message(plain_messages[0]).text == "not-json"
 
         list_messages = list(tool._process_json_content([{"k": 1}, {"k": 2}]))
         assert [m.type for m in list_messages] == [
@@ -119,10 +133,10 @@ class TestMcpToolCases:
         assert mixed_list_messages[0].type == ToolInvokeMessage.MessageType.TEXT
 
         primitive_messages = list(tool._process_json_content(123))
-        assert primitive_messages[0].message.text == "123"
+        assert _text_message(primitive_messages[0]).text == "123"
 
     @staticmethod
-    def test_mcp_tool_usage_extraction_helpers():
+    def test_mcp_tool_usage_extraction_helpers() -> None:
         usage = MCPTool._extract_usage_dict({"usage": {"total_tokens": 9}})
         assert usage == {"total_tokens": 9}
 
@@ -146,7 +160,7 @@ class TestMcpToolCases:
 
     @staticmethod
     @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-    def test_mcp_tool_invoke_handles_content_types_and_structured_output(sqlite_session: Session):
+    def test_mcp_tool_invoke_handles_content_types_and_structured_output(sqlite_session: Session) -> None:
         tool = _build_mcp_tool()
         img_data = base64.b64encode(b"img").decode()
         blob_data = base64.b64encode(b"blob").decode()
@@ -183,10 +197,11 @@ class TestMcpToolCases:
 
     @staticmethod
     @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-    def test_mcp_tool_invoke_raises_for_unsupported_embedded_resource(sqlite_session: Session):
+    def test_mcp_tool_invoke_raises_for_unsupported_embedded_resource(sqlite_session: Session) -> None:
         tool = _build_mcp_tool()
         # Use model_construct to bypass pydantic validation and force unsupported resource path.
-        bad_resource = EmbeddedResource.model_construct(type="resource", resource=object())
+        unsupported_resource: Any = object()
+        bad_resource = EmbeddedResource.model_construct(type="resource", resource=unsupported_resource)
         result = CallToolResult(content=[bad_resource], _meta=None)
 
         with patch.object(MCPTool, "invoke_remote_mcp_tool", return_value=result):
@@ -194,7 +209,7 @@ class TestMcpToolCases:
                 list(tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={}))
 
     @staticmethod
-    def test_mcp_tool_handle_none_parameter_filters_empty_values():
+    def test_mcp_tool_handle_none_parameter_filters_empty_values() -> None:
         tool = _build_mcp_tool()
         cleaned = tool._handle_none_parameter({"a": 1, "b": None, "c": "", "d": "  ", "e": "ok"})
         assert cleaned == {"a": 1, "e": "ok"}
@@ -214,10 +229,14 @@ class TestMcpToolCases:
     )
     @pytest.mark.parametrize("domain", [["light", "cover"], "light"])
     def test_mcp_tool_invoke_preserves_values_of_mixed_type_union_parameters(
-        sqlite_session: Session, domain_schema, domain
-    ):
+        sqlite_session: Session, domain_schema: dict[str, Any], domain: list[str] | str
+    ) -> None:
         tool = _build_mcp_tool()
-        schema = {"type": "object", "properties": {"domain": domain_schema, "name": _STRING}, "required": []}
+        schema: dict[str, Any] = {
+            "type": "object",
+            "properties": {"domain": domain_schema, "name": _STRING},
+            "required": list[object](),
+        }
         tool.entity.parameters = ToolTransformService.convert_mcp_schema_to_parameter(schema)
         result = CallToolResult(content=[TextContent(type="text", text="ok")])
 
@@ -230,7 +249,7 @@ class TestMcpToolCases:
         assert sent["name"] == "1"
 
     @staticmethod
-    def test_inject_forwarded_identity_stamps_custom_header():
+    def test_inject_forwarded_identity_stamps_custom_header() -> None:
         """The minted SSO token must be placed in X-Dify-SSO-Token; the
         workspace-scoped Authorization header and any other custom headers must
         pass through untouched so provider credentials keep working."""
@@ -252,7 +271,7 @@ class TestMcpToolCases:
         assert headers["X-Other"] == "keep"
 
     @staticmethod
-    def test_inject_forwarded_identity_translates_token_error_to_invoke_error():
+    def test_inject_forwarded_identity_translates_token_error_to_invoke_error() -> None:
         """EnterpriseService failures must surface as ToolInvokeError so the
         workflow halts loudly instead of proceeding without identity."""
         from core.tools.mcp_tool.tool import FORWARDED_IDENTITY_HEADER
@@ -275,7 +294,7 @@ class TestMcpToolCases:
         assert "Authorization" not in headers
 
     @staticmethod
-    def test_inject_forwarded_identity_sends_end_user_type_for_webapp():
+    def test_inject_forwarded_identity_sends_end_user_type_for_webapp() -> None:
         """A WEB_APP run forwards user_type=end_user so enterprise routes to the
         published-webapp token store."""
         tool = _build_forwarding_tool()
@@ -293,7 +312,7 @@ class TestMcpToolCases:
         assert issue.call_args.kwargs["user_type"] == "end_user"
 
     @staticmethod
-    def test_inject_forwarded_identity_sends_account_type_for_debugger():
+    def test_inject_forwarded_identity_sends_account_type_for_debugger() -> None:
         """A DEBUGGER/console run forwards user_type=account (the existing behaviour)."""
         tool = _build_forwarding_tool()  # built with InvokeFrom.DEBUGGER
         headers: dict[str, str] = {}
@@ -309,7 +328,7 @@ class TestMcpToolCases:
         assert issue.call_args.kwargs["user_type"] == "account"
 
     @staticmethod
-    def test_invoke_remote_mcp_tool_fails_closed_when_user_id_missing(config_overrides):
+    def test_invoke_remote_mcp_tool_fails_closed_when_user_id_missing(config_overrides: Callable[..., None]) -> None:
         """When forwarding is enabled AND the deployment is enterprise, missing
         user_id must raise — never silently invoke as the static identity."""
         tool = _build_forwarding_tool()
@@ -319,7 +338,7 @@ class TestMcpToolCases:
             tool.invoke_remote_mcp_tool({}, user_id=None, app_id=None)
 
     @staticmethod
-    def test_invoke_skips_forwarding_outside_enterprise_edition(config_overrides):
+    def test_invoke_skips_forwarding_outside_enterprise_edition(config_overrides: Callable[..., None]) -> None:
         """Non-enterprise deployments treat the DB selector as a no-op: a stale
         `identity_mode="idp_token"` row must NOT raise (fail-closed) AND must
         NOT call the enterprise inner API. The runtime falls through to the
@@ -387,7 +406,9 @@ class TestMcpToolCasesTools:
                 ),
             ],
         )
-        def test_invoke_image_or_audio_yields_blob(self, content_factory, mime_type, orm_session: Session) -> None:
+        def test_invoke_image_or_audio_yields_blob(
+            self, content_factory: Callable[[str, str], ContentBlock], mime_type: str, orm_session: Session
+        ) -> None:
             tool = _make_mcp_tool()
             raw = b"\x00\x01test-bytes\x02"
             b64 = base64.b64encode(raw).decode()
@@ -424,7 +445,7 @@ class TestMcpToolCasesTools:
             [("application/pdf", "application/pdf"), (None, "application/octet-stream")],
         )
         def test_invoke_embedded_blob_resource_yields_blob(
-            self, mime_type, expected_mime, orm_session: Session
+            self, mime_type: str | None, expected_mime: str, orm_session: Session
         ) -> None:
             tool = _make_mcp_tool()
             raw = b"binary-data"
@@ -452,10 +473,12 @@ class TestMcpToolCasesTools:
 
             # Expect two variable messages corresponding to keys a and b
             assert len(messages) == 2
-            var_msgs = [m for m in messages if isinstance(m.message, ToolInvokeMessage.VariableMessage)]
-            assert {m.message.variable_name for m in var_msgs} == {"a", "b"}
+            var_msgs = [
+                _variable_message(m) for m in messages if isinstance(m.message, ToolInvokeMessage.VariableMessage)
+            ]
+            assert {m.variable_name for m in var_msgs} == {"a", "b"}
             # Validate values
-            values = {m.message.variable_name: m.message.variable_value for m in var_msgs}
+            values = {m.variable_name: m.variable_value for m in var_msgs}
             assert values == {"a": 1, "b": "x"}
 
         def test_invoke_yields_json_when_structured_content_has_no_output_schema(self, orm_session: Session) -> None:
@@ -681,7 +704,7 @@ class TestMcpToolCasesTools:
                 {"level1": {"level2": {"usage": {"total_tokens": 200}}}},
             ],
         )
-        def test_various_meta_formats(self, meta_data) -> None:
+        def test_various_meta_formats(self, meta_data: dict[str, Any]) -> None:
             """Test that various meta formats are correctly parsed."""
             result = CallToolResult(content=[], _meta=meta_data)
             usage = MCPTool._derive_usage_from_result(result)

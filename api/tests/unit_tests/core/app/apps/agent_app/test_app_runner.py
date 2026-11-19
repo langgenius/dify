@@ -77,6 +77,7 @@ from core.app.entities.queue_entities import (
     QueueMessageEndEvent,
     QueueRetrieverResourcesEvent,
 )
+from core.app.llm.model_access import ModelRuntimeProfile
 from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentToolLayers
 from extensions.tracing import bind_tracing
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
@@ -108,8 +109,8 @@ def bind_agent_dependencies(monkeypatch: pytest.MonkeyPatch, sqlite_session: Ses
     """Bind local runner dependencies without reaching external services."""
     monkeypatch.setattr(app_runner_module.db, "session", sqlite_session)
     monkeypatch.setattr(
-        "core.app.apps.agent_app.runtime_request_builder.resolve_model_context_window",
-        lambda **_kwargs: None,
+        "core.app.llm.model_access.resolve_model_runtime_profile",
+        lambda **_kwargs: ModelRuntimeProfile(None, []),
     )
 
 

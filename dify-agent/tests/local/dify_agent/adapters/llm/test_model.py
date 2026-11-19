@@ -4,7 +4,7 @@ import unittest
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from decimal import Decimal
-from typing import cast
+from typing import cast, override
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -19,6 +19,7 @@ from pydantic_ai import Agent
 from pydantic_ai.exceptions import ModelAPIError, ModelHTTPError, UnexpectedModelBehavior, UserError
 from pydantic_ai.messages import (
     InstructionPart,
+    ImageUrl,
     ModelMessage,
     ModelMessagesTypeAdapter,
     ModelRequest,
@@ -41,6 +42,8 @@ from dify_agent.adapters.llm import DifyApiLLMProvider, DifyLLMAdapterModel
 from dify_agent.layers.execution_context import ApplicationTracingContext, DifyExecutionContextLayerConfig
 from dify_agent.runtime.compaction import build_compaction_capability
 from dify_agent.runtime.context import Deps, Services
+from dify_agent.layers.read_media.layer import Capability as ReadMediaCapability
+from dify_agent.agent_stub.protocol import file_reference
 
 from ._test_support import (
     AssistantPromptMessage,
@@ -51,9 +54,359 @@ from ._test_support import (
     build_stream_response,
     make_usage,
     single_text_chunk,
+    wrap_plugin_daemon_stream_item,
 )
 
 _OMIT_ID = object()
+
+
+def media_adapter(client):
+    provider = DifyApiLLMProvider(
+        plugin_id="openai",
+        inner_api_url="http://dify-api",
+        inner_api_key="inner-key",
+        execution_context=DifyExecutionContextLayerConfig(
+            tenant_id="tenant",
+            user_id="user",
+            user_from="account",
+            app_id="app",
+            agent_mode="agent_app",
+            invoke_from="debugger",
+        ),
+        agent_run_id="run",
+        http_client=client,
+    )
+    return DifyLLMAdapterModel("demo-model", provider, model_provider="openai")
+
+
+def marked_media_messages(*, marked=True, filename="chart.png"):
+    return [
+        ModelRequest(
+            parts=[
+                UserPromptPart(
+                    content=[
+                        f"Attached vision media from read_media ({filename}):",
+                        ImageUrl(
+                            url=f"https://example.com/{filename}",
+                            media_type="image/png",
+                            vendor_metadata={
+                                "dify_read_media": marked,
+                                "modality": "vision",
+                                "filename": filename,
+                                "mime_type": "image/png",
+                                "locator": {"path": f"./{filename}"},
+                            },
+                        ),
+                    ]
+                )
+            ]
+        )
+    ]
+
+
+@pytest.mark.anyio
+async def test_prefetched_media_usage_is_retained_when_stream_is_closed_before_iteration():
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda request: build_stream_response(*single_text_chunk("seen")))
+    ) as client:
+        model = media_adapter(client)
+        async with model.request_stream(marked_media_messages(), None, ModelRequestParameters()):
+            pass
+        assert model.accumulated_usage is not None
+        assert model.accumulated_usage.total_tokens == 8
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("status", [400, 413, 415, 422, "parameter-sse", "dimensions-sse", "wrapped-content-sse"])
+async def test_media_rejection_before_first_chunk_retries_once_with_persistent_text(status):
+    requests = []
+
+    def handler(request):
+        requests.append(json.loads(request.content))
+        if len(requests) == 1:
+            if status == "dimensions-sse":
+                return build_stream_error("InvokeError", "Invalid image dimensions: expected width below 512 pixels")
+            if status == "wrapped-content-sse":
+                return build_stream_error("InvokeError", "Error code: 413 - Image content too large: 512 pixels")
+            return (
+                build_stream_error("InvokeError", "unsupported image format")
+                if status == "parameter-sse"
+                else build_error_response("InvokeBadRequestError", "invalid image", status_code=status)
+            )
+        return build_stream_response(*single_text_chunk("text fallback succeeded"))
+
+    messages = marked_media_messages()
+    original_part = messages[0].parts[0]
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        model = media_adapter(client)
+        response = await model.request(messages, None, ModelRequestParameters())
+        assert response.parts[0].content == "text fallback succeeded"
+    assert len(requests) == 2
+    first = requests[0]["target"]["prompt_messages"]
+    assert any(isinstance(m["content"], list) and any(p["type"] == "image" for p in m["content"]) for m in first)
+    assert all(isinstance(m["content"], str) for m in requests[1]["target"]["prompt_messages"])
+    assert "read_media fallback" in str(original_part.content) and "./chart.png" in str(original_part.content)
+    assert not any(isinstance(p, ImageUrl) for p in original_part.content)
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "status",
+    [
+        401,
+        403,
+        404,
+        429,
+        500,
+        503,
+        "quota-sse",
+        "connection-sse",
+        "model-missing-sse",
+        "plugin-id-sse",
+        "http-status-sse",
+    ],
+)
+async def test_auth_quota_and_infrastructure_errors_do_not_trigger_media_fallback(status):
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        if status == "quota-sse":
+            return build_stream_error("UnknownProviderError", "quota exhausted for image model")
+        if status == "connection-sse":
+            return build_stream_error("UnknownProviderError", "image server connection failed")
+        if status == "model-missing-sse":
+            return build_stream_error("ModelNotExistError", "Unknown image model")
+        if status == "plugin-id-sse":
+            return build_stream_error("PluginUniqueIdentifierError", "Invalid plugin identifier for image model")
+        if status == "http-status-sse":
+            return build_stream_error("InvokeError", "HTTP Error 503: invalid upstream image request")
+        return build_error_response("gateway_error", "provider unavailable", status_code=status)
+
+    messages = marked_media_messages()
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(ModelAPIError):
+            await media_adapter(client).request(messages, None, ModelRequestParameters())
+    assert len(requests) == 1
+    assert isinstance(messages[0].parts[0].content[-1], ImageUrl)
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("source", ["http", "InvokeBadRequestError", "PluginDaemonBadRequestError", "InvokeError"])
+@pytest.mark.parametrize(
+    "filename",
+    ["credentials.png", "permissions.pdf", "timeout_chart.png", "connection_diagram.png", "unavailable_chart.png"],
+)
+async def test_media_rejections_with_error_words_in_filenames_retry_as_text(source, filename):
+    requests = []
+    rejection = f"unsupported image format: {filename}"
+
+    def handler(request):
+        requests.append(json.loads(request.content))
+        if len(requests) == 1:
+            return (
+                build_error_response("InvokeBadRequestError", rejection, status_code=400)
+                if source == "http"
+                else build_stream_error(source, rejection)
+            )
+        return build_stream_response(*single_text_chunk("text fallback succeeded"))
+
+    messages = marked_media_messages(filename=filename)
+    original_part = messages[0].parts[0]
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        response = await media_adapter(client).request(messages, None, ModelRequestParameters())
+    assert response.parts[0].content == "text fallback succeeded"
+    assert len(requests) == 2
+    assert any(
+        isinstance(message["content"], list) and any(part["type"] == "image" for part in message["content"])
+        for message in requests[0]["target"]["prompt_messages"]
+    )
+    assert all(isinstance(message["content"], str) for message in requests[1]["target"]["prompt_messages"])
+    assert "read_media fallback" in str(original_part.content)
+    assert rejection in str(original_part.content)
+    assert not any(isinstance(part, ImageUrl) for part in original_part.content)
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("error_type", ["InvokeError", "InvokeBadRequestError"])
+@pytest.mark.parametrize(
+    "rejection",
+    [
+        "Error code: 503 - {'error': {'message': 'Image service failed', 'type': 'server_error'}}",
+        "error_code=503 - Image service failed",
+        "Image service failed - {'error': {'type': 'server_error'}}",
+        'Image service failed - {"error": {"type": "server_error"}}',
+        "Error code: 400, upstream status_code=503 - Image service failed",
+    ],
+)
+async def test_wrapped_upstream_infrastructure_errors_preserve_media_without_retry(error_type, rejection):
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        return build_stream_error(error_type, rejection)
+
+    messages = marked_media_messages()
+    original_content = list(messages[0].parts[0].content)
+    expected_type = ModelAPIError if error_type == "InvokeError" else ModelHTTPError
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(expected_type, match="Image service failed") as exc_info:
+            await media_adapter(client).request(messages, None, ModelRequestParameters())
+    assert type(exc_info.value) is expected_type
+    if isinstance(exc_info.value, ModelHTTPError):
+        assert exc_info.value.status_code == 400
+        assert exc_info.value.body == {"error_type": error_type, "message": rejection}
+    else:
+        assert str(exc_info.value) == f"{error_type}: {rejection}"
+    assert len(requests) == 1
+    assert messages[0].parts[0].content == original_content
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "rejection",
+    [
+        "Model image-test credentials is not initialized.",
+        "provider token not init",
+        "model is not configured",
+        "model quota has been exceeded",
+        "no permission to use this model",
+        "model is disabled",
+        "model currently not support image-test",
+    ],
+)
+async def test_gateway_model_preparation_errors_preserve_media_without_retry(rejection):
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        return build_error_response("invalid_model_request", rejection, status_code=400)
+
+    messages = marked_media_messages()
+    original_content = list(messages[0].parts[0].content)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(ModelHTTPError) as exc_info:
+            await media_adapter(client).request(messages, None, ModelRequestParameters())
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.body == rejection
+    assert len(requests) == 1
+    assert messages[0].parts[0].content == original_content
+
+
+@pytest.mark.anyio
+async def test_credentials_validation_failure_preserves_media_and_propagates_without_retry():
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        return build_stream_error("CredentialsValidateFailedError", "Invalid API key for image model")
+
+    messages = marked_media_messages()
+    original_content = list(messages[0].parts[0].content)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(ModelHTTPError, match="CredentialsValidateFailedError") as exc_info:
+            await media_adapter(client).request(messages, None, ModelRequestParameters())
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.body == {
+        "error_type": "CredentialsValidateFailedError",
+        "message": "Invalid API key for image model",
+    }
+    assert len(requests) == 1
+    assert messages[0].parts[0].content == original_content
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("case", ["unmarked", "after-first-chunk", "retry-failed"])
+async def test_media_retry_is_local_to_marked_content_before_first_chunk(case):
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        if case == "after-first-chunk":
+            body = build_stream_response(*single_text_chunk("partial")).content
+            return httpx.Response(200, content=body + build_stream_error("InvokeBadRequestError", "bad image").content)
+        return build_error_response("InvokeBadRequestError", "bad image", status_code=400)
+
+    messages = marked_media_messages(marked=case != "unmarked")
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(ModelHTTPError):
+            await media_adapter(client).request(messages, None, ModelRequestParameters())
+    assert len(requests) == (2 if case == "retry-failed" else 1)
+
+
+@pytest.mark.anyio
+async def test_native_agent_reads_media_handles_and_recovers_from_provider_rejection():
+    """Real Agent + ToolReturn + HTTP/SSE adapter; no provider SDK or media bytes."""
+    requests = []
+    mapping = {"transfer_method": "tool_file", "reference": file_reference("chart")}
+
+    def handler(request):
+        payload = json.loads(request.content)
+        if request.url.path.endswith("/files/download-request"):
+            assert payload["file"] == mapping
+            return httpx.Response(
+                200,
+                json={
+                    "filename": "chart.png",
+                    "mime_type": "image/png",
+                    "size": 42,
+                    "download_uri": "/files/do-not-fetch",
+                },
+            )
+        requests.append(payload["target"]["prompt_messages"])
+        if len(requests) == 1:
+            return build_stream_response(_tool_chunk(_tool_call("read_media", json.dumps({"file": mapping}))))
+        if len(requests) == 2:
+            media = [
+                p
+                for m in requests[-1]
+                if m["role"] == "user" and isinstance(m["content"], list)
+                for p in m["content"]
+                if p["type"] == "image"
+            ]
+            assert len(media) == 1 and media[0]["url"] == f"dify-file://tool_file/{mapping['reference']}"
+            assert media[0]["base64_data"] == ""
+            assert all(isinstance(m["content"], str) for m in requests[-1] if m["role"] == "tool")
+            return build_stream_error("InvokeBadRequestError", "provider cannot accept this image")
+        assert all(isinstance(m["content"], str) for m in requests[-1])
+        return build_stream_response(*single_text_chunk("I can continue using text."))
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        deps = Deps(
+            layers={
+                "read_media": {"config": {}, "state": {}},
+                "llm": {
+                    "config": {
+                        "plugin_id": "openai",
+                        "model_provider": "openai",
+                        "model": "demo-model",
+                        "supported_modalities": ["vision"],
+                    },
+                    "state": {},
+                },
+                "execution_context": {
+                    "config": {
+                        "tenant_id": "tenant",
+                        "user_id": "user",
+                        "user_from": "account",
+                        "agent_mode": "agent_app",
+                        "invoke_from": "debugger",
+                    },
+                    "state": {},
+                },
+            },
+            services=Services(client, client, inner_api_url="http://dify-api"),
+            run_id="run",
+        )
+        result = await Agent(
+            media_adapter(client), deps_type=Deps, capabilities=[ReadMediaCapability("read_media")]
+        ).run(
+            "Inspect chart",
+            deps=deps,
+        )
+    assert result.output == "I can continue using text." and len(requests) == 3
+    assert b"read_media fallback" in ModelMessagesTypeAdapter.dump_json(result.all_messages())
+    assert b"image-url" not in ModelMessagesTypeAdapter.dump_json(result.all_messages())
 
 
 def _tool_call(
@@ -158,15 +511,16 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
             http_client=http_client,
         )
 
-    def make_streaming_adapter(self, body: _TrackingResponseBody) -> DifyLLMAdapterModel:
-        """Exercise HTTPX's real stream cleanup, which mock_gateway_stream bypasses."""
+    def make_streaming_adapter(self, *bodies: _TrackingResponseBody) -> DifyLLMAdapterModel:
+        """Serve bodies in request order, exercising HTTPX cleanup that mock_gateway_stream bypasses."""
+        response_bodies = iter(bodies)
 
         async def handler(request: httpx.Request) -> httpx.Response:
             return httpx.Response(
                 200,
                 request=request,
                 headers={"content-type": "text/event-stream"},
-                stream=body,
+                stream=next(response_bodies),
             )
 
         http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler), trust_env=False)
@@ -176,6 +530,53 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
             self.make_provider(http_client=http_client),
             model_provider="openai",
         )
+
+    async def cancel_request_after_first_chunk(
+        self,
+        inflight_chunk: LLMResultChunk,
+        *,
+        stream: bool,
+        completed_chunk: LLMResultChunk | None = None,
+    ) -> DifyLLMAdapterModel:
+        """Cancel while awaiting the next gateway chunk, optionally after a completed round."""
+        read_blocked = asyncio.Event()
+
+        class BlockingResponseBody(_TrackingResponseBody):
+            @override
+            async def __aiter__(self) -> AsyncGenerator[bytes, None]:
+                async for payload in super().__aiter__():
+                    yield payload
+                read_blocked.set()
+                await asyncio.Event().wait()
+
+        inflight_body = BlockingResponseBody([build_stream_response(inflight_chunk).content])
+        bodies: list[_TrackingResponseBody] = []
+        if completed_chunk is not None:
+            bodies.append(_TrackingResponseBody([build_stream_response(completed_chunk).content]))
+        bodies.append(inflight_body)
+        adapter = self.make_streaming_adapter(*bodies)
+        messages: list[ModelMessage] = [ModelRequest(parts=[UserPromptPart("hello")])]
+        if completed_chunk is not None:
+            await adapter.request(messages, None, ModelRequestParameters())
+
+        async def consume_request() -> None:
+            if stream:
+                async with adapter.request_stream(messages, None, ModelRequestParameters()) as response:
+                    async for _event in response:
+                        pass
+            else:
+                await adapter.request(messages, None, ModelRequestParameters())
+
+        async with asyncio.timeout(5), asyncio.TaskGroup() as tasks:
+            task = tasks.create_task(consume_request())
+            await read_blocked.wait()
+            task.cancel("run stopped")
+            with self.assertRaises(asyncio.CancelledError) as cancellation:
+                await task
+
+        self.assertEqual(cancellation.exception.args, ("run stopped",))
+        self.assertEqual(inflight_body.close_count, 1)
+        return adapter
 
     @asynccontextmanager
     async def mock_gateway_stream(self, handler: httpx.MockTransport):
@@ -564,6 +965,134 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(usage.time_to_first_token, 0.2)
         self.assertEqual(usage.time_to_generate, 0.6)
 
+    async def test_request_stream_records_usage_when_the_consumer_fails_after_stream_eof(self) -> None:
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return build_stream_response(*single_text_chunk("adapter response", prompt_tokens=11, completion_tokens=7))
+
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="openai",
+            )
+            with self.assertRaises(RuntimeError):
+                async with adapter.request_stream(
+                    [ModelRequest(parts=[UserPromptPart("hello")])],
+                    model_settings=None,
+                    model_request_parameters=ModelRequestParameters(),
+                ) as stream:
+                    events = [event async for event in stream]
+                    raise RuntimeError("the run was stopped")
+
+        self.assertTrue(events)
+        usage = adapter.accumulated_usage
+        self.assertIsNotNone(usage)
+        assert usage is not None
+        self.assertEqual(usage.prompt_tokens, 11)
+        self.assertEqual(usage.completion_tokens, 7)
+
+    async def test_request_records_usage_when_the_response_stream_aborts(self) -> None:
+        body = wrap_plugin_daemon_stream_item(single_text_chunk("partial", prompt_tokens=11, completion_tokens=7)[0])
+
+        async def byte_stream():
+            yield body.encode("utf-8")
+            raise httpx.ReadError("connection lost")
+
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                status_code=200,
+                headers={"content-type": "text/event-stream"},
+                content=byte_stream(),
+            )
+
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="openai",
+            )
+            with self.assertRaises(ModelHTTPError):
+                _ = await adapter.request(
+                    [ModelRequest(parts=[UserPromptPart("hello")])],
+                    model_settings=None,
+                    model_request_parameters=ModelRequestParameters(),
+                )
+
+        usage = adapter.accumulated_usage
+        self.assertIsNotNone(usage)
+        assert usage is not None
+        self.assertEqual(usage.prompt_tokens, 11)
+        self.assertEqual(usage.completion_tokens, 7)
+
+    async def test_request_accumulates_inflight_usage_on_cancellation_after_a_completed_round(self) -> None:
+        completed_chunk = LLMResultChunk(
+            model="demo-model",
+            delta=LLMResultChunkDelta(
+                index=0,
+                message=AssistantPromptMessage(content="done"),
+                usage=make_usage(
+                    prompt_tokens=10,
+                    completion_tokens=2,
+                    prompt_price=Decimal("0.000050"),
+                    completion_price=Decimal("0.000060"),
+                    total_price=Decimal("0.000110"),
+                ),
+            ),
+        )
+        inflight_chunk = LLMResultChunk(
+            model="demo-model",
+            delta=LLMResultChunkDelta(
+                index=0,
+                message=AssistantPromptMessage(content="partial"),
+                usage=make_usage(
+                    prompt_tokens=20,
+                    completion_tokens=3,
+                    prompt_price=Decimal("0.000100"),
+                    completion_price=Decimal("0.000090"),
+                    total_price=Decimal("0.000190"),
+                ),
+            ),
+        )
+
+        for stream in (False, True):
+            with self.subTest(stream=stream):
+                adapter = await self.cancel_request_after_first_chunk(
+                    inflight_chunk, stream=stream, completed_chunk=completed_chunk
+                )
+                usage = adapter.accumulated_usage
+                assert usage is not None
+                self.assertEqual(usage.prompt_tokens, 30)
+                self.assertEqual(usage.completion_tokens, 5)
+                self.assertEqual(usage.total_tokens, 35)
+                self.assertEqual(usage.prompt_price, Decimal("0.000150"))
+                self.assertEqual(usage.completion_price, Decimal("0.000150"))
+                self.assertEqual(usage.total_price, Decimal("0.000300"))
+
+    async def test_request_cancellation_before_usage_leaves_accumulated_usage_unchanged(self) -> None:
+        completed_usage = make_usage(prompt_tokens=10, completion_tokens=2, total_price=Decimal("0.000110"))
+        completed_chunk = LLMResultChunk(
+            model="demo-model",
+            delta=LLMResultChunkDelta(
+                index=0,
+                message=AssistantPromptMessage(content="done"),
+                usage=completed_usage,
+            ),
+        )
+        text_chunk = LLMResultChunk(
+            model="demo-model",
+            delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content="partial")),
+        )
+
+        for stream in (False, True):
+            for with_previous_usage in (False, True):
+                with self.subTest(stream=stream, with_previous_usage=with_previous_usage):
+                    adapter = await self.cancel_request_after_first_chunk(
+                        text_chunk,
+                        stream=stream,
+                        completed_chunk=completed_chunk if with_previous_usage else None,
+                    )
+                    self.assertEqual(adapter.accumulated_usage, completed_usage if with_previous_usage else None)
+
     async def test_request_falls_back_to_tool_name_when_description_is_missing(self) -> None:
         """Some providers (e.g. Bedrock's Converse API) reject an empty toolSpec description."""
         messages: list[ModelMessage] = [ModelRequest(parts=[UserPromptPart("hello")])]
@@ -914,7 +1443,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertIs(context.exception, original_error)
         self.assertEqual(body.close_count, 1)
         self.assertIn("gateway response close failed", "\n".join(original_error.__notes__))
-        self.assertIsNone(adapter.accumulated_usage)
+        self.assertEqual(adapter.accumulated_usage, make_usage(prompt_tokens=6, completion_tokens=4))
 
     async def test_request_stream_closes_gateway_body_when_cancelled(self) -> None:
         for close_error in (None, RuntimeError("gateway response close failed")):
@@ -953,27 +1482,32 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
                 self.assertTrue(task.cancelled())
                 self.assertTrue(held_streams)
                 self.assertEqual(body.close_count, 1)
-                self.assertIsNone(adapter.accumulated_usage)
+                self.assertEqual(adapter.accumulated_usage, make_usage(prompt_tokens=6, completion_tokens=4))
                 if close_error is not None:
                     self.assertIn(str(close_error), "\n".join(context.exception.__notes__))
 
     async def test_request_stream_closes_gateway_body_after_caller_breaks(self) -> None:
-        body = _TrackingResponseBody(_stream_lifecycle_payloads())
-        adapter = self.make_streaming_adapter(body)
-        event_count = 0
+        for usage_in_first_chunk in (False, True):
+            with self.subTest(usage_in_first_chunk=usage_in_first_chunk):
+                body = _TrackingResponseBody(_stream_lifecycle_payloads(usage_in_first_chunk=usage_in_first_chunk))
+                adapter = self.make_streaming_adapter(body)
+                event_count = 0
 
-        async with adapter.request_stream(
-            [ModelRequest(parts=[UserPromptPart("hello")])],
-            model_settings=None,
-            model_request_parameters=ModelRequestParameters(),
-        ) as stream:
-            async for _event in stream:
-                event_count += 1
-                break
+                async with adapter.request_stream(
+                    [ModelRequest(parts=[UserPromptPart("hello")])],
+                    model_settings=None,
+                    model_request_parameters=ModelRequestParameters(),
+                ) as stream:
+                    async for _event in stream:
+                        event_count += 1
+                        break
 
-        self.assertEqual(event_count, 1)
-        self.assertEqual(body.close_count, 1)
-        self.assertIsNone(adapter.accumulated_usage)
+                self.assertEqual(event_count, 1)
+                self.assertEqual(body.close_count, 1)
+                if usage_in_first_chunk:
+                    self.assertEqual(adapter.accumulated_usage, make_usage(prompt_tokens=6, completion_tokens=4))
+                else:
+                    self.assertIsNone(adapter.accumulated_usage)
 
     async def test_request_stream_propagates_gateway_close_error_after_caller_breaks(self) -> None:
         close_errors = [
@@ -1008,7 +1542,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
                 else:
                     self.assertIs(context.exception, close_error)
                 self.assertEqual(body.close_count, 1)
-                self.assertIsNone(adapter.accumulated_usage)
+                self.assertEqual(adapter.accumulated_usage, make_usage(prompt_tokens=6, completion_tokens=4))
 
     async def test_request_closes_gateway_body_after_mapping_error_without_masking_it(self) -> None:
         chunk = LLMResultChunk(
@@ -1040,7 +1574,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
                     )
 
                 self.assertEqual(body.close_count, 1)
-                self.assertIsNone(adapter.accumulated_usage)
+                self.assertEqual(adapter.accumulated_usage, make_usage())
                 if close_error is not None:
                     self.assertIn(str(close_error), "\n".join(context.exception.__notes__))
 
@@ -1083,7 +1617,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
 
                     self.assertTrue(task.cancelled())
                     self.assertEqual(body.close_count, 1)
-                    self.assertIsNone(adapter.accumulated_usage)
+                    self.assertEqual(adapter.accumulated_usage, make_usage(prompt_tokens=6, completion_tokens=4))
                     if close_error is not None:
                         self.assertIn(str(close_error), "\n".join(context.exception.__notes__))
 
@@ -1111,7 +1645,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
 
                 self.assertEqual(body.close_count, 1)
                 self.assertIn(str(close_error), "\n".join(context.exception.__notes__))
-                self.assertIsNone(adapter.accumulated_usage)
+                self.assertEqual(adapter.accumulated_usage, make_usage(prompt_tokens=6, completion_tokens=4))
 
     async def test_request_stream_propagates_cancellation_arriving_during_cleanup(self) -> None:
         for failure_source in ("consumer", "gateway"):
@@ -1151,7 +1685,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
                 self.assertTrue(task.cancelled())
                 self.assertTrue(held_streams)
                 self.assertEqual(body.close_count, 1)
-                self.assertIsNone(adapter.accumulated_usage)
+                self.assertEqual(adapter.accumulated_usage, make_usage(prompt_tokens=6, completion_tokens=4))
 
     async def test_request_stream_splits_embedded_thinking_tags_from_text_content_parts(self) -> None:
         def handler(_request: httpx.Request) -> httpx.Response:
