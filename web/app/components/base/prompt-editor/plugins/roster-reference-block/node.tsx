@@ -49,9 +49,9 @@ export class RosterReferenceBlockNode extends DecoratorNode<JSX.Element> {
 
   override exportJSON(): SerializedRosterReferenceBlockNode {
     return {
+      ...super.exportJSON(),
       text: this.getTextContent(),
       type: 'roster-reference-block',
-      version: 1,
     }
   }
 

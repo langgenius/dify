@@ -1,14 +1,12 @@
 from textwrap import dedent
 
-from flask import Flask
-
 from .test_utils import CodeExecutorTestMixin
 
 
 class TestPython3CodeExecutor(CodeExecutorTestMixin):
     """Test class for Python3 code executor functionality."""
 
-    def test_python3_plain(self, flask_app_with_containers: Flask):
+    def test_python3_plain(self):
         """Test basic Python3 code execution with print output"""
         code_executor, code_language = self.code_executor_imports
 
@@ -16,7 +14,7 @@ class TestPython3CodeExecutor(CodeExecutorTestMixin):
         result = code_executor.execute_code(language=code_language.PYTHON3, preload="", code=code)
         assert result == "Hello World\n"
 
-    def test_python3_json(self, flask_app_with_containers: Flask):
+    def test_python3_json(self):
         """Test Python3 code execution with JSON output"""
         code_executor, code_language = self.code_executor_imports
 
@@ -27,7 +25,7 @@ class TestPython3CodeExecutor(CodeExecutorTestMixin):
         result = code_executor.execute_code(language=code_language.PYTHON3, preload="", code=code)
         assert result == '{"Hello": "World"}\n'
 
-    def test_python3_with_code_template(self, flask_app_with_containers: Flask):
+    def test_python3_with_code_template(self):
         """Test Python3 workflow code template execution with inputs"""
         code_executor, code_language = self.code_executor_imports
         python3_code_provider, _ = self.python3_imports
@@ -39,7 +37,7 @@ class TestPython3CodeExecutor(CodeExecutorTestMixin):
         )
         assert result == {"result": "HelloWorld"}
 
-    def test_python3_get_runner_script(self, flask_app_with_containers: Flask):
+    def test_python3_get_runner_script(self):
         """Test Python3 template transformer runner script generation"""
         _, python3_template_transformer = self.python3_imports
 

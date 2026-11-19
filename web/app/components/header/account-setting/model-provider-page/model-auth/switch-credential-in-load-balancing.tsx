@@ -1,6 +1,7 @@
 import type { StatusDotStatus } from '@langgenius/dify-ui/status-dot'
 import type { ComponentPropsWithRef, Dispatch, SetStateAction } from 'react'
 import type { Credential, CustomModel, ModelProvider } from '../declarations'
+import type { CredentialSaved } from '@/app/components/header/account-setting/model-provider-page/model-modal/handle'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
@@ -21,7 +22,7 @@ type SwitchCredentialInLoadBalancingProps = {
   credentials?: Credential[]
   customModelCredential?: Credential
   setCustomModelCredential: Dispatch<SetStateAction<Credential | undefined>>
-  onUpdate?: (payload?: unknown, formValues?: Record<string, unknown>) => void
+  onUpdate?: CredentialSaved
   onRemove?: (credentialId: string) => void
 }
 const SwitchCredentialInLoadBalancing = ({

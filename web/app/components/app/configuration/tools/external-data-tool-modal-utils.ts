@@ -3,8 +3,6 @@ import type { TFunction } from 'i18next'
 import type { CodeBasedExtensionItem, ExternalDataTool } from '@/models/common'
 import { LanguagesSupported } from '@/i18n/language'
 
-const systemTypes = ['api'] as const
-
 type Provider = {
   key: string
   name: string
@@ -48,8 +46,7 @@ export const buildProviders = ({
 
 export const getProviderDefaultConfig = (type: string, providers: Provider[]) => {
   const currentProvider = providers.find((provider) => provider.key === type)
-  if (systemTypes.includes(type as (typeof systemTypes)[number]) || !currentProvider?.form_schema)
-    return undefined
+  if (type === 'api' || !currentProvider?.form_schema) return undefined
 
   return currentProvider.form_schema.reduce<Record<string, string>>((prev, next) => {
     if (next.default !== undefined) prev[next.variable] = next.default
@@ -58,7 +55,7 @@ export const getProviderDefaultConfig = (type: string, providers: Provider[]) =>
 }
 
 export const formatExternalDataTool = (
-  originData: ExternalDataTool,
+  originData: ExternalDataTool & Required<Pick<ExternalDataTool, 'label' | 'variable' | 'type'>>,
   currentProvider: Provider | undefined,
   isEdit: boolean,
 ) => {
@@ -68,7 +65,7 @@ export const formatExternalDataTool = (
   if (type === 'api' && config?.api_based_extension_id !== undefined)
     params.api_based_extension_id = config.api_based_extension_id
 
-  if (!systemTypes.includes(type as (typeof systemTypes)[number]) && currentProvider?.form_schema) {
+  if (type !== 'api' && currentProvider?.form_schema) {
     currentProvider.form_schema.forEach((form) => {
       const value = config?.[form.variable]
       if (value !== undefined) params[form.variable] = value
@@ -124,16 +121,12 @@ export const getValidationError = ({
     })
   }
 
-  if (
-    !systemTypes.includes(localeData.type as (typeof systemTypes)[number]) &&
-    currentProvider?.form_schema
-  ) {
-    for (let i = 0; i < currentProvider.form_schema.length; i++) {
-      const form = currentProvider.form_schema[i]
-      if (!localeData.config?.[form!.variable] && form!.required) {
+  if (localeData.type !== 'api' && currentProvider?.form_schema) {
+    for (const form of currentProvider.form_schema) {
+      if (!localeData.config?.[form.variable] && form.required) {
         return t(($) => $['errorMessage.valueOfVarRequired'], {
           ns: 'appDebug',
-          key: locale === LanguagesSupported[1] ? form!.label['zh-Hans'] : form!.label['en-US'],
+          key: locale === LanguagesSupported[1] ? form.label['zh-Hans'] : form.label['en-US'],
         })
       }
     }

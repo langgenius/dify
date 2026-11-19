@@ -47,7 +47,7 @@ const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
 
 const expectDescribedByLastError = (element: HTMLElement) => {
   const message = toastErrorSpy.mock.lastCall?.[0]
-  if (typeof message !== 'string') throw new Error('Expected an error message')
+  if (typeof message !== 'string') throw new TypeError('Expected an error message')
   expect(element).toHaveAccessibleDescription(message)
 }
 

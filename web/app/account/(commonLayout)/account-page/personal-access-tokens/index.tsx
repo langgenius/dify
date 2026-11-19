@@ -1,13 +1,8 @@
 'use client'
 
 import type { PersonalAccessTokenResponse } from '@dify/contracts/api/console/account/types.gen'
-import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { SavedTokenFormPayload } from './saved-token-form'
-import {
-  AlertDialog,
-  AlertDialogContent,
-  createAlertDialogHandle,
-} from '@langgenius/dify-ui/alert-dialog'
+import { createAlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   createDialogHandle,
@@ -25,7 +20,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { keepPreviousData, useIsMutating, useQuery } from '@tanstack/react-query'
 import { parseAsInteger, useQueryState } from 'nuqs'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
 import DeleteToken from './delete-token'
@@ -41,14 +36,11 @@ export default function PersonalAccessTokens() {
     'patPage',
     parseAsInteger.withDefault(1).withOptions({ history: 'push' }),
   )
-  const [deleteOpen, setDeleteOpen] = useState(false)
-  const [deleting, setDeleting] = useState<PersonalAccessTokenResponse | null>(null)
-  const deleteTriggerRef = useRef<HTMLButtonElement | null>(null)
   const createButtonRef = useRef<HTMLButtonElement | null>(null)
-  const formTriggerRef = useRef<HTMLButtonElement | null>(null)
-  const formDialogActionsRef = useRef<DialogActions>(null)
-  const formDialogHandle = useMemo(() => createDialogHandle<SavedTokenFormPayload>(), [])
-  const deleteDialogHandle = useMemo(() => createAlertDialogHandle(), [])
+  const [formDialogHandle] = useState(() => createDialogHandle<SavedTokenFormPayload>())
+  const [deleteDialogHandle] = useState(() =>
+    createAlertDialogHandle<PersonalAccessTokenResponse>(),
+  )
   const creating =
     useIsMutating({
       mutationKey: consoleQuery.account.personalAccessTokens.post.key({
@@ -238,15 +230,8 @@ export default function PersonalAccessTokens() {
                         <td className="px-2">
                           <TokenActions
                             token={token}
-                            onDelete={(target, trigger) => {
-                              setDeleting(target)
-                              deleteTriggerRef.current = trigger
-                            }}
                             deleteDialogHandle={deleteDialogHandle}
                             formDialogHandle={formDialogHandle}
-                            onFormOpen={(trigger) => {
-                              formTriggerRef.current = trigger
-                            }}
                           />
                         </td>
                       </tr>
@@ -300,7 +285,6 @@ export default function PersonalAccessTokens() {
       </section>
       <Dialog
         handle={formDialogHandle}
-        actionsRef={formDialogActionsRef}
         onOpenChange={(open, details) => {
           if (!open && (creating || updating) && details.reason !== 'imperative-action')
             details.cancel()
@@ -309,30 +293,23 @@ export default function PersonalAccessTokens() {
         {({ payload }) => (
           <DialogContent
             className="w-150 has-data-pat-created:w-130"
-            finalFocus={() =>
-              !query.isFetching && formTriggerRef.current?.isConnected
-                ? formTriggerRef.current
-                : createButtonRef.current
-            }
+            finalFocus={() => {
+              const source = query.data?.data.find((token) => token.id === payload?.tokenId)
+              if (
+                query.isPlaceholderData ||
+                (payload?.duplicate && query.isFetching) ||
+                !source ||
+                (!payload?.duplicate && source.status === 'expired')
+              )
+                return createButtonRef.current
+              return true
+            }}
           >
-            {payload && (
-              <SavedTokenForm {...payload} onSaved={() => formDialogActionsRef.current?.close()} />
-            )}
+            {payload && <SavedTokenForm {...payload} onSaved={() => formDialogHandle.close()} />}
           </DialogContent>
         )}
       </Dialog>
-      <AlertDialog handle={deleteDialogHandle} open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent
-          className="w-110"
-          finalFocus={() =>
-            deleteTriggerRef.current?.isConnected
-              ? deleteTriggerRef.current
-              : createButtonRef.current
-          }
-        >
-          {deleting && <DeleteToken token={deleting} onClose={() => setDeleteOpen(false)} />}
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteToken handle={deleteDialogHandle} fallbackFocus={createButtonRef} />
     </>
   )
 }

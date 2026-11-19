@@ -1,4 +1,3 @@
-import type { ComponentProps } from 'react'
 import type { InputVar } from '@/models/pipeline'
 import type { SnippetDetail } from '@/models/snippet'
 import { useState } from 'react'
@@ -21,9 +20,6 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn() }),
   useSelectedLayoutSegment: () => 'orchestrate',
 }))
-vi.mock('@/next/link', () => ({
-  default: ({ children, ...props }: ComponentProps<'a'>) => <a {...props}>{children}</a>,
-}))
 
 const MIB = 1024 * 1024
 const snippet: SnippetDetail = {
@@ -43,6 +39,7 @@ function EditableSnippetInputs() {
         snippet={snippet}
         fields={fields}
         readonly={false}
+        evaluationEnabled={false}
         onFieldsChange={setFields}
       />
     </aside>

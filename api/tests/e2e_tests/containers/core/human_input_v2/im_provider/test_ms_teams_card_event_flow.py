@@ -29,8 +29,8 @@ def _form(*, comment_input_name: str = "review_comment") -> ResolvedForm:
         title="Microsoft Teams card integration",
         parts=(
             MarkdownFragment(text="Review the encoded form."),
-            ParagraphInput(output_variable_name=comment_input_name, default_value="Initial review"),
-            SelectInput(output_variable_name="risk_level", options=("low", "high"), default_value="low"),
+            ParagraphInput(output_variable_name=comment_input_name, resolved_default_value="Initial review"),
+            SelectInput(output_variable_name="risk_level", options=("low", "high"), resolved_default_value="low"),
         ),
         actions=(
             UserAction(id="approve-✅", title="Approve", button_style=ButtonStyle.PRIMARY),

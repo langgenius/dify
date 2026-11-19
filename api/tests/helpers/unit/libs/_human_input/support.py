@@ -6,7 +6,7 @@ from typing import Any
 
 from enums.human_input import TimeoutUnit
 from libs.datetime_utils import naive_utc_now
-from models.human_input_entities import FormInputConfig
+from models.human_input_entities import FormInputConfig, UserActionConfig
 
 
 # Exceptions
@@ -93,7 +93,7 @@ class HumanInputForm:
             }
             for form_input in self.inputs
         ]
-        response = {
+        response: dict[str, object] = {
             "form_content": self.form_content,
             "inputs": inputs_response,
             "user_actions": self.user_actions,
@@ -166,8 +166,8 @@ class FormService:
         tenant_id: str,
         app_id: str | None,
         form_content: str,
-        inputs,
-        user_actions,
+        inputs: list[FormInputConfig],
+        user_actions: list[UserActionConfig],
         timeout: int,
         timeout_unit: TimeoutUnit,
         form_token: str | None = None,
@@ -201,14 +201,14 @@ class FormService:
             raise FormNotFoundError()
         return form
 
-    def get_form_definition(self, form_id: str, *, is_token: bool) -> dict:
+    def get_form_definition(self, form_id: str, *, is_token: bool) -> dict[str, object]:
         form = self.get_form_by_token(form_id) if is_token else self.get_form_by_id(form_id)
         if form.is_expired:
             raise FormExpiredError()
         if form.is_submitted:
             raise FormAlreadySubmittedError()
 
-        definition = {
+        definition: dict[str, object] = {
             "form_content": form.form_content,
             "inputs": form.inputs,
             "user_actions": form.user_actions,

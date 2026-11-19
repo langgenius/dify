@@ -48,7 +48,7 @@ class IMMessageType(StrEnum):
 
 
 class IMUserTargetSnapshot(BaseModel):
-    model_config = ConfigDict(frozen=True, strict=True, validate_default=True)
+    model_config = ConfigDict(extra="allow", frozen=True, strict=True, validate_default=True)
 
     type: Literal[DeliveryTargetType.IM_USER] = DeliveryTargetType.IM_USER
 
@@ -63,7 +63,7 @@ class IMUserTargetSnapshot(BaseModel):
 
 
 class EmailTargetSnapshot(BaseModel):
-    model_config = ConfigDict(frozen=True, strict=True, validate_default=True)
+    model_config = ConfigDict(extra="allow", frozen=True, strict=True, validate_default=True)
 
     type: Literal[DeliveryTargetType.EMAIL] = DeliveryTargetType.EMAIL
 
@@ -73,7 +73,7 @@ class EmailTargetSnapshot(BaseModel):
 class InitiatorSnapshot(BaseModel):
     """Delivery through the already-established initiator interaction surface."""
 
-    model_config = ConfigDict(frozen=True, strict=True, validate_default=True)
+    model_config = ConfigDict(extra="allow", frozen=True, strict=True, validate_default=True)
 
     type: Literal[DeliveryTargetType.INITIATOR] = DeliveryTargetType.INITIATOR
     # Store tenant-encrypted ciphertext, never plaintext.
@@ -140,6 +140,7 @@ class DeliveryRepository(Protocol):
         Return None for an absent or foreign-owned delivery. The same locator
         is idempotent. A different locator or a non-IM target raises ValueError.
         Subsequent failed attempts never clear the accepted message identity.
+        All other target fields, including unknown extensions, remain unchanged.
         """
         ...
 
