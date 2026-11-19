@@ -2,6 +2,12 @@ name: Web Tests
 
 on:
   workflow_call:
+    inputs:
+      openapi-sdk-changed:
+        description: Whether the OpenAPI SDK job's inputs changed; full runs ignore it.
+        required: false
+        default: true
+        type: boolean
     secrets:
       CODECOV_TOKEN:
         required: false
@@ -17,6 +23,8 @@ env:
 jobs:
   openapi-sdk-test:
     name: OpenAPI SDK and Next.js adapters
+    # Pull requests skip it unless its inputs changed; the merge queue always runs it.
+    if: ${{ inputs.openapi-sdk-changed || github.event_name != 'pull_request' }}
     runs-on: depot-ubuntu-24.04-4
     # Leave time for contract checks after a cold toolchain installation.
     timeout-minutes: 20
