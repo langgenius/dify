@@ -133,22 +133,61 @@ def test__get_chat_model_prompt_messages(mocker: MockerFixture) -> None:
         model_config=model_config,
     )
 
-    prompt_template = prompt_transform.get_prompt_template(
-        app_mode=AppMode.CHAT,
-        pre_prompt=pre_prompt,
-        has_context=True,
-        query_in_prompt=False,
-        with_memory_prompt=False,
-    )
-
-    full_inputs = {**inputs, "#context#": context}
-    real_system_prompt = prompt_template["prompt_template"].format(full_inputs)
-
+    prompt_rules = prompt_transform._get_prompt_rule(AppMode.CHAT)
     assert len(prompt_messages) == 4
-    assert prompt_messages[0].content == real_system_prompt
+    assert prompt_messages[0].content == (
+        "You are a helpful assistant John.\n" + prompt_rules["context_instruction_prompt"]
+    )
     assert prompt_messages[1].content == history_prompt_messages[0].content
     assert prompt_messages[2].content == history_prompt_messages[1].content
-    assert prompt_messages[3].content == query
+    assert prompt_messages[3].content == "<context>\nyes or no.\n</context>\n\nHow are you?"
+
+
+def _chat_system_prompt(context: str | None) -> str:
+    prompt_transform = SimplePromptTransform()
+    model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
+    prompt_messages, _ = prompt_transform._get_chat_model_prompt_messages(
+        app_mode=AppMode.CHAT,
+        pre_prompt="You are a helpful assistant.",
+        inputs={},
+        query="How are you?",
+        files=[],
+        context=context,
+        memory=None,
+        model_config=model_config,
+    )
+    content = prompt_messages[0].content
+    assert isinstance(content, str)
+    return content
+
+
+def test_chat_model_system_prompt_does_not_change_with_context() -> None:
+    assert _chat_system_prompt("first retrieved chunk") == _chat_system_prompt("second retrieved chunk")
+
+
+def test_chat_model_system_prompt_excludes_context() -> None:
+    system_prompt = _chat_system_prompt("first retrieved chunk")
+
+    assert "first retrieved chunk" not in system_prompt
+    assert "{{#context#}}" not in system_prompt
+
+
+def test_chat_model_prompt_messages_without_context_keep_query_as_last_message() -> None:
+    prompt_transform = SimplePromptTransform()
+    model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
+
+    prompt_messages, _ = prompt_transform._get_chat_model_prompt_messages(
+        app_mode=AppMode.CHAT,
+        pre_prompt="You are a helpful assistant.",
+        inputs={},
+        query="How are you?",
+        files=[],
+        context=None,
+        memory=None,
+        model_config=model_config,
+    )
+
+    assert [message.content for message in prompt_messages] == ["You are a helpful assistant.\n", "How are you?"]
 
 
 def test__get_completion_model_prompt_messages(mocker: MockerFixture) -> None:
