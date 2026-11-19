@@ -11,6 +11,7 @@ from werkzeug.exceptions import Forbidden, Unauthorized
 from configs import dify_config
 from controllers.common.rbac import RBAC_CHECKS_ATTR, RBACCheck, enforce_rbac_checks
 from controllers.console.admin import admin_required
+from controllers.console.workspace.error import AccountNotInitializedError
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
@@ -23,7 +24,12 @@ from core.logging.context import get_request_id, get_trace_id
 from enums import DeploymentEdition
 from enums.account import TenantAccountRole
 from extensions.ext_login import ACCOUNT_ONLY_ADMISSION_ATTR
-from libs.login import current_account_with_tenant, current_account_with_tenant_optional, login_required
+from libs.login import (
+    current_account,
+    current_account_with_tenant,
+    current_account_with_tenant_optional,
+    login_required,
+)
 from libs.oauth_bearer import bearer_feature_required
 from libs.token import extract_console_cookie_token, is_admin_api_key_request
 from machinery.context import AccountRequestContext, RequestContext
@@ -99,6 +105,7 @@ def console_account_admission[T, **P, R](
     require_oauth_bearer_enabled: bool = False,
     allowed_roles: frozenset[TenantAccountRole] | None = None,
     rbac_checks: Sequence[RBACCheck] | None = None,
+    require_active_workspace: bool = True,
 ) -> Callable[
     [Callable[Concatenate[T, RequestContext, P], R]],
     Callable[Concatenate[T, P], R | Response],
@@ -108,16 +115,27 @@ def console_account_admission[T, **P, R](
     Checks run in a fixed order: setup, login/CSRF, optional account
     initialization, edition, license, feature and billing checks, role/RBAC
     checks, then context construction.
+
+    With ``require_active_workspace=False`` an account without a current workspace is admitted
+    with an empty ``active_workspace_id``; role and RBAC checks cannot be combined with it.
     """
+    if not require_active_workspace and (allowed_roles is not None or rbac_checks is not None):
+        raise ValueError("Workspace role checks require an active workspace.")
 
     def decorator(
         view: Callable[Concatenate[T, RequestContext, P], R],
     ) -> Callable[Concatenate[T, P], R | Response]:
         @wraps(view)
         def inject_request_context(self: T, /, *args: P.args, **kwargs: P.kwargs) -> R:
-            account_with_tenant = current_account_with_tenant()
-            account = account_with_tenant.account
-            tenant_id = account_with_tenant.tenant_id
+            if require_active_workspace:
+                account_with_tenant = current_account_with_tenant()
+                account = account_with_tenant.account
+                tenant_id = account_with_tenant.tenant_id
+            else:
+                account = current_account()
+                if require_initialized and account.status == AccountStatus.UNINITIALIZED:
+                    raise AccountNotInitializedError()
+                tenant_id = account.current_tenant_id or ""
             if allowed_roles is not None and not dify_config.RBAC_ENABLED and account.role not in allowed_roles:
                 raise Forbidden()
             if rbac_checks is not None:
@@ -151,7 +169,7 @@ def console_account_admission[T, **P, R](
             admitted = enterprise_license_required(admitted)
         if editions is not None:
             admitted = enforce_edition(admitted)
-        if require_initialized:
+        if require_initialized and require_active_workspace:
             admitted = account_initialization_required(admitted)
         admitted = login_required(admitted)
         admitted = setup_required(admitted)

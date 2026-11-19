@@ -89,8 +89,8 @@ class _StoreInvitationLinks:
         self.locked.append(workspace_id)
         return nullcontext()
 
-    def revoke_pending(self, workspace_id: str, email: str, *, account_id: str | None) -> None:
-        self._tokens.revoke_pending(workspace_id, email, account_id=account_id)
+    def revoke_pending(self, workspace_id: str, email: str, *, account_id: str | None, keep_token: str | None) -> None:
+        self._tokens.revoke_pending(workspace_id, email, account_id=account_id, keep_token=keep_token)
 
     def can_join(self, workspace_id: str, account_id: str) -> bool:
         return bool(workspace_id and account_id)
@@ -357,7 +357,7 @@ class TestMemberServiceCases:
         account_domain.delivery.acquire.assert_called_once_with(workspace_id)
 
     @staticmethod
-    def test_reinvitation_invalidates_earlier_links_before_issuing_a_new_one(
+    def test_reinvitation_retires_earlier_links_after_the_new_one_is_sent(
         account_domain: AccountDomain, members: tuple[str, str, str]
     ) -> None:
         workspace_id, owner_id, _ = members
@@ -368,13 +368,45 @@ class TestMemberServiceCases:
         account_domain.invitations.invite(owner, "New@Example.com", None, "editor")
 
         names = [name for name, *_ in account_domain.delivery.mock_calls]
-        assert names.index("revoke_pending") < names.index("create") < names.index("send")
+        assert names.index("create") < names.index("send") < names.index("revoke_pending")
         invitee = account_domain.repository.find_by_email("new@example.com")
         assert invitee is not None
         account_domain.delivery.revoke_pending.assert_called_once_with(
-            workspace_id, "new@example.com", account_id=invitee.id
+            workspace_id, "new@example.com", account_id=invitee.id, keep_token="invitation-token"
         )
         assert account_domain.delivery.create.call_args.args[0].role == "editor"
+
+    @staticmethod
+    @pytest.mark.parametrize("failing_step", ["create", "send"])
+    def test_failed_resend_keeps_the_earlier_link(
+        account_domain: AccountDomain,
+        members: tuple[str, str, str],
+        redis_transport: tuple[RedisClientWrapper, Mock],
+        failing_step: str,
+    ) -> None:
+        workspace_id, owner_id, _ = members
+        redis = RedisCommandEmulator()
+        redis_transport[1].side_effect = redis
+        gateway = WorkspaceInvitationGateway(
+            tokens=RedisInvitationTokenStore(redis=redis_transport[0]), redis=redis_transport[0]
+        )
+        tokens = RedisInvitationTokenStore(redis=redis_transport[0])
+        account_domain.delivery.create.side_effect = gateway.create
+        account_domain.delivery.revoke_pending.side_effect = gateway.revoke_pending
+        account_domain.delivery.discard.side_effect = gateway.discard
+        owner = RequestContext("request", None, owner_id, workspace_id)
+        earlier = account_domain.invitations.invite(owner, "new@example.com", None, "normal").token
+        if failing_step == "create":
+            redis.failing.add("ZADD")
+        else:
+            account_domain.delivery.send.side_effect = RuntimeError("mail queue unavailable")
+
+        with pytest.raises((RedisError, RuntimeError)):
+            account_domain.invitations.invite(owner, "new@example.com", None, "editor")
+
+        live = tokens.find(InvitationLookup(workspace_id=None, email=None, token=earlier))
+        assert live is not None
+        assert [invitation.role for invitation in tokens.list_pending(workspace_id)] == [TenantAccountRole.NORMAL]
 
     @staticmethod
     def test_pending_invitations_include_new_email_invitations(
@@ -417,7 +449,7 @@ class TestMemberServiceCases:
 
         account_domain.invitations.revoke_pending(owner, "New@Example.com")
         account_domain.delivery.revoke_pending.assert_called_once_with(
-            workspace_id, "new@example.com", account_id=result.account_id
+            workspace_id, "new@example.com", account_id=result.account_id, keep_token=None
         )
 
     @staticmethod
@@ -650,7 +682,7 @@ class TestMemberServiceCases:
 
         account_domain.delivery.acquire.assert_called_once_with(workspace_id)
         account_domain.delivery.revoke_pending.assert_called_once_with(
-            workspace_id, "member@example.com", account_id=member_id
+            workspace_id, "member@example.com", account_id=member_id, keep_token=None
         )
         assert account_domain.members.get_role(workspace_id, member_id) is None
         assert account_domain.repository.get(member_id) is not None

@@ -174,7 +174,9 @@ class WorkspaceMemberAccessGateway(Protocol):
 class WorkspaceInvitationLinks(Protocol):
     def acquire(self, workspace_id: str) -> AbstractContextManager[object]: ...
 
-    def revoke_pending(self, workspace_id: str, email: str, *, account_id: str | None) -> None: ...
+    def revoke_pending(
+        self, workspace_id: str, email: str, *, account_id: str | None, keep_token: str | None
+    ) -> None: ...
 
 
 class WorkspaceMemberService:
@@ -290,7 +292,7 @@ class WorkspaceMemberService:
         )
         if owner_id is None:
             raise ValueError(f"Workspace owner not found for tenant {workspace_id}.")
-        self._invitation_links.revoke_pending(workspace_id, account.email, account_id=account_id)
+        self._invitation_links.revoke_pending(workspace_id, account.email, account_id=account_id, keep_token=None)
         removal = self._workspaces.remove_member(
             workspace_id=workspace_id,
             account_id=account_id,
@@ -391,7 +393,11 @@ class WorkspaceInvitationDelivery(Protocol):
 
     def list_pending(self, workspace_id: str) -> tuple[PendingWorkspaceInvitation, ...]: ...
 
-    def revoke_pending(self, workspace_id: str, email: str, *, account_id: str | None) -> None: ...
+    def revoke_pending(
+        self, workspace_id: str, email: str, *, account_id: str | None, keep_token: str | None
+    ) -> None: ...
+
+    def discard(self, workspace_id: str, token: str) -> None: ...
 
     def send(self, *, language: str, email: str, token: str, inviter_name: str, workspace_name: str) -> None: ...
 
@@ -459,7 +465,10 @@ class WorkspaceInvitationService:
                 self._members.remove_locked(workspace_id, account.id, context.account_id)
             else:
                 self._invitations.revoke_pending(
-                    workspace_id, normalized_email, account_id=account.id if account is not None else None
+                    workspace_id,
+                    normalized_email,
+                    account_id=account.id if account is not None else None,
+                    keep_token=None,
                 )
 
     def _live_pending(self, workspace_id: str) -> tuple[PendingWorkspaceInvitation, ...]:
@@ -559,8 +568,8 @@ class WorkspaceInvitationService:
         """Issue one invitation; the caller holds the workspace lock and has admitted the email.
 
         Postconditions on success: exactly one indexed link is live for the email in this
-        workspace and its mail is enqueued. When the link cannot be issued with its index entry,
-        nothing is sent and the error propagates.
+        workspace and its mail is enqueued. When the new link cannot be issued or its mail cannot
+        be enqueued, the new link is gone, earlier links stay valid, and the error propagates.
         """
         workspace_id = context.active_workspace_id
         inviter_id = context.account_id
@@ -615,19 +624,22 @@ class WorkspaceInvitationService:
                     self._members.assign_role(workspace_id, inviter_id, account.id, role)
                 if previous_role is not None or self._members.rbac_enabled:
                     raise AccountAlreadyInTenantError("Account already in tenant.")
-        if rbac_enabled:
-            if not already_member:
-                self._members.assign_role(workspace_id, inviter_id, account.id, role)
-        else:
-            self._invitations.revoke_pending(workspace_id, account.email, account_id=account.id)
+        if rbac_enabled and not already_member:
+            self._members.assign_role(workspace_id, inviter_id, account.id, role)
         token = self._invitations.create(InvitationToken(account.id, account.email, workspace_id, role, requires_setup))
-        self._invitations.send(
-            language=account.interface_language or "en-US",
-            email=account.email,
-            token=token,
-            inviter_name=inviter.name,
-            workspace_name=workspace.name,
-        )
+        try:
+            self._invitations.send(
+                language=account.interface_language or "en-US",
+                email=account.email,
+                token=token,
+                inviter_name=inviter.name,
+                workspace_name=workspace.name,
+            )
+        except Exception:
+            self._invitations.discard(workspace_id, token)
+            raise
+        if not rbac_enabled:
+            self._invitations.revoke_pending(workspace_id, account.email, account_id=account.id, keep_token=token)
         return WorkspaceInvitation(workspace_id, account.id, normalized_email, role, token)
 
 

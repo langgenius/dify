@@ -27,8 +27,6 @@ _PENDING_ACCOUNT_STATUS = "pending"
 
 
 class InvitationTokenStore(Protocol):
-    def consume_membership(self, invitation: InvitationLookup) -> bool: ...
-
     def is_membership_consumed(self, invitation: InvitationLookup) -> bool: ...
 
     def find(self, invitation: InvitationLookup) -> InvitationToken | None: ...
@@ -111,6 +109,9 @@ class AccountActivationService:
     def activate(self, command: ActivationCommand, *, authenticated_account_id: str | None) -> None:
         """Accept an invitation, creating the membership when the workspace still has room.
 
+        On success the membership exists and is the account's current workspace, then the link
+        is retired. A failed write leaves the link valid for a retry.
+
         Raises:
             InvalidInvitationError: The invitation is missing, stale, or lacks setup data.
             InvitationAccountMismatchError: The session belongs to another account.
@@ -145,6 +146,11 @@ class AccountActivationService:
                 raise InvalidInvitationError
             if not membership_consumed and not self._capacity.can_join(invitation.workspace_id, invitation.account_id):
                 raise InvitationWorkspaceFullError
+            result = self._accounts.activate(
+                invitation, role=role, setup=setup, create_membership=not membership_consumed
+            )
+            if result is None:
+                raise InvalidInvitationError
             self._tokens.revoke(
                 InvitationLookup(
                     workspace_id=command.invitation.workspace_id,
@@ -152,45 +158,9 @@ class AccountActivationService:
                     token=command.invitation.token,
                 )
             )
-            result = self._accounts.activate(
-                invitation, role=role, setup=setup, create_membership=not membership_consumed
-            )
-        if result is None:
-            raise InvalidInvitationError
         if result.membership_created:
             self._membership_cache.invalidate(invitation.workspace_id)
         self._member_access_sync.sync(invitation.workspace_id, invitation.account_id)
-
-    def ensure_membership(self, *, account_id: str, email: str, token: str) -> bool:
-        """Restore the invited membership at sign-in.
-
-        Returns whether the membership was created. A link that is missing, belongs to another
-        account, was already used at sign-in, or was revoked before the workspace lock was taken
-        grants nothing.
-
-        Raises:
-            InvitationWorkspaceFullError: The workspace reached its member limit; the link stays valid.
-        """
-        lookup = InvitationLookup(workspace_id=None, email=email, token=token)
-        invitation = self._resolve(lookup)
-        if invitation is None or invitation.account_id != account_id:
-            return False
-        if self._tokens.is_membership_consumed(lookup):
-            return False
-        with self._capacity.acquire(invitation.workspace_id):
-            if self._resolve(lookup) != invitation:
-                return False
-            if not self._capacity.can_join(invitation.workspace_id, invitation.account_id):
-                raise InvitationWorkspaceFullError
-            if not self._tokens.consume_membership(lookup):
-                return False
-            result = self._accounts.activate(invitation, role=self._membership_role(invitation.role), setup=None)
-        if result is None:
-            return False
-        if result.membership_created:
-            self._membership_cache.invalidate(invitation.workspace_id)
-            self._member_access_sync.sync(invitation.workspace_id, invitation.account_id)
-        return True
 
     def _resolve(self, invitation: InvitationLookup) -> AccountInvitation | None:
         token = self._tokens.find(invitation)

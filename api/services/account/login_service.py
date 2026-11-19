@@ -41,8 +41,6 @@ class ConsoleAuthWorkspaceQuery(Protocol):
 class ConsoleAuthInvitationGateway(Protocol):
     def resolve(self, *, email: str, token: str) -> LoginInvitation | None: ...
 
-    def ensure_membership(self, *, account_id: str, email: str, token: str) -> bool: ...
-
 
 class ConsoleAuthPolicyGateway(Protocol):
     def get_email_freeze_type(self, email: str) -> str | None: ...
@@ -176,6 +174,12 @@ class ConsoleAuthenticationService:
         self._turnstile_verify_required = turnstile_verify_required
 
     def login_with_password(self, command: PasswordLoginCommand) -> PasswordLoginResult:
+        """Sign in with a password.
+
+        With a live invitation for the email in ``command.invite_token``, the session is issued
+        whether or not the account has a workspace; joining happens only when the invitation is
+        accepted. Without one, an account without a workspace gets no session.
+        """
         normalized_email = command.email.lower()
         self._ensure_email_eligible(normalized_email, command.ip_address)
         if self._security.is_login_limited(normalized_email):
@@ -201,13 +205,10 @@ class ConsoleAuthenticationService:
         if account is None:
             self._invalid_credentials(normalized_email, command.ip_address)
 
-        if not self._workspaces.has_active_for_account(account.id):
-            if invitation_token is not None:
-                self._invitations.ensure_membership(account_id=account.id, email=command.email, token=invitation_token)
-            if not self._workspaces.has_active_for_account(account.id):
-                if self._policies.is_workspace_creation_allowed() and not self._policies.has_workspace_capacity():
-                    raise account_errors.LoginWorkspaceLimitError
-                return PasswordLoginResult(tokens=None, workspace_found=False)
+        if invitation_token is None and not self._workspaces.has_active_for_account(account.id):
+            if self._policies.is_workspace_creation_allowed() and not self._policies.has_workspace_capacity():
+                raise account_errors.LoginWorkspaceLimitError
+            return PasswordLoginResult(tokens=None, workspace_found=False)
 
         tokens = self._issue_session(
             account_id=account.id,
@@ -257,13 +258,13 @@ class ConsoleAuthenticationService:
     def login_with_email_code(self, command: EmailCodeLoginCommand) -> AccountSessionTokens:
         """Sign in with an email code, accepting the invitation in ``command.invite_token`` when given.
 
-        An existing account without a workspace first joins through a valid invitation for its
-        email; only when that yields no workspace is an owner workspace provisioned (or the
-        sign-in refused where creation is not allowed).
+        With a live invitation for an existing account's email, the session is issued without
+        joining or provisioning any workspace; joining happens only when the invitation is
+        accepted. Without one, an account without a workspace gets an owner workspace, or the
+        sign-in is refused where creation is not allowed.
 
         Raises:
             InvalidLoginInvitationEmailError: The invitation belongs to another email.
-            InvitationWorkspaceFullError: The invited workspace reached its member limit.
             LoginWorkspaceLimitError, LoginWorkspaceCreationNotAllowedError: No workspace can be provided.
         """
         normalized_email = command.email.lower()
@@ -289,15 +290,8 @@ class ConsoleAuthenticationService:
         account = self._preferred_account(command.email)
         self._ensure_account_not_banned(account, normalized_email, command.ip_address)
         if account is not None:
-            if not self._workspaces.has_active_for_account(account.id):
-                invitation_token = self._resolve_invitation_token(
-                    command.email, command.invite_token, command.ip_address
-                )
-                if invitation_token is not None:
-                    self._invitations.ensure_membership(
-                        account_id=account.id, email=command.email, token=invitation_token
-                    )
-            if not self._workspaces.has_active_for_account(account.id):
+            invitation_token = self._resolve_invitation_token(command.email, command.invite_token, command.ip_address)
+            if invitation_token is None and not self._workspaces.has_active_for_account(account.id):
                 if not self._policies.has_workspace_capacity():
                     raise account_errors.LoginWorkspaceLimitError
                 if not self._policies.is_workspace_creation_allowed():

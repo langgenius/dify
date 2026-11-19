@@ -51,11 +51,6 @@ export type LimitExceededError = ErrorResponse & {
   status: 400
 }
 
-export type WorkspaceMemberLimitReachedError = ErrorResponse & {
-  code: 'workspace_member_limit_reached'
-  status: 400
-}
-
 export type ErrorResponse = {
   code: string
   details?: {
@@ -92,7 +87,6 @@ export type PostLoginErrors = {
     | InvalidAccountPasswordError
     | InvalidEmailError
     | LimitExceededError
-    | WorkspaceMemberLimitReachedError
     | ErrorResponse
   401: AuthenticationFailedError | ErrorResponse
   429: EmailCodeLoginLimitError | ErrorResponse
