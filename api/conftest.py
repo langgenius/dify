@@ -23,6 +23,7 @@ from tests.pytest_dify import (
     ensure_compose_env_files,
     parse_services,
 )
+from tests.pytest_testmon import keep_untracked_tests
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _DIFY_COMPOSE_STACKS_KEY = pytest.StashKey[list[DockerComposeStack]]()
@@ -135,6 +136,8 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
 
 def pytest_sessionstart(session: pytest.Session) -> None:
     config = session.config
+    # xdist workers collect tests too, so they need the same testmon adjustment.
+    keep_untracked_tests(config)
     if hasattr(config, "workerinput"):
         return
 

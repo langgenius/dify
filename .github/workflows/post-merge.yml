@@ -17,6 +17,7 @@ jobs:
     name: Check Changed Files
     runs-on: depot-ubuntu-24.04
     outputs:
+      api-changed: ${{ steps.changes.outputs.api }}
       external-e2e-changed: ${{ steps.changes.outputs.external_e2e }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -24,6 +25,9 @@ jobs:
         id: changes
         with:
           filters: |
+            api:
+              - 'api/**'
+              - '.github/workflows/api-tests.yml'
             external_e2e:
               - 'e2e/features/agent-v2/**'
               - 'e2e/features/step-definitions/agent-v2/**'
@@ -123,6 +127,16 @@ jobs:
               - 'web/package.json'
               - 'pnpm-workspace.yaml'
               - 'patches/**'
+
+  # Pull requests restore this baseline to run only the API tests their changes affect.
+  # It restores the previous baseline, so only tests affected by this push run again.
+  api-testmon-baseline:
+    name: API testmon Baseline
+    needs: check-changes
+    if: github.event_name == 'workflow_dispatch' || needs.check-changes.outputs.api-changed == 'true'
+    uses: ./.github/workflows/api-tests.yml
+    with:
+      testmon-baseline: true
 
   external-e2e:
     name: External Runtime E2E

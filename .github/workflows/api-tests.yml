@@ -2,6 +2,12 @@ name: Run Pytest
 
 on:
   workflow_call:
+    inputs:
+      testmon-baseline:
+        description: Refresh the main pytest-testmon baseline that pull requests select tests from.
+        required: false
+        default: false
+        type: boolean
     secrets:
       CODECOV_TOKEN:
         required: false
@@ -13,15 +19,59 @@ concurrency:
   group: api-tests-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
+env:
+  # full: merge queue runs every test with coverage for Codecov.
+  # pull-request: no coverage; unit and controller tests run only what pytest-testmon selects
+  #   against the main baseline, or everything when there is no usable baseline.
+  # baseline: pushes to main update that baseline on one machine, without coverage.
+  API_TEST_MODE: ${{ inputs.testmon-baseline && 'baseline' || github.event_name == 'pull_request' && 'pull-request' || 'full' }}
+  TESTMON_VERSION: 2.3.0
+  # Overrides pytest.ini's addopts, which would enable coverage.
+  BASE_ADDOPTS: -p no:opik -p no:langsmith_plugin --import-mode=importlib
+
 jobs:
   api-unit-plan:
     name: Plan API unit shards
     runs-on: depot-ubuntu-24.04
+    outputs:
+      shard-indexes: ${{ steps.scope.outputs.shard-indexes }}
+      shard-total: ${{ steps.scope.outputs.shard-total }}
+      testmon-select: ${{ steps.scope.outputs.testmon-select }}
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # Pull requests diff the merge commit against its base-branch parent.
+          fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 1 }}
+      - name: Choose test scope
+        id: scope
+        run: |
+          set -euo pipefail
+          # The baseline is one testmon database, so it is written by a single shard.
+          shard_total=2
+          [[ "$API_TEST_MODE" == baseline ]] && shard_total=1
+          select=false
+          if [[ "$API_TEST_MODE" == pull-request ]]; then
+            select=true
+            # testmon follows the Python code a test runs. Any other input, such as the lockfile,
+            # pytest.ini, fixtures, Docker files, workflows or scripts, runs the full suites.
+            while IFS= read -r path; do
+              case "$path" in
+                api/*.py | *.md | web/* | packages/* | e2e/* | cli/* | sdks/* | skills/* | images/* | docs/*) ;;
+                *)
+                  select=false
+                  echo "Running every API unit and controller test: testmon does not track \`$path\`." >> "$GITHUB_STEP_SUMMARY"
+                  break
+                  ;;
+              esac
+            done < <(git diff --name-only HEAD^1 HEAD)
+          fi
+          {
+            echo "shard-total=$shard_total"
+            echo "shard-indexes=$(jq -cn --argjson total "$shard_total" '[range(1; $total + 1)]')"
+            echo "testmon-select=$select"
+          } >> "$GITHUB_OUTPUT"
       - name: Setup UV and Python
         uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
@@ -38,9 +88,11 @@ jobs:
             echo '::warning::Timing baseline unavailable; using round-robin file allocation.'
           fi
       - name: Freeze file assignments for every shard
+        env:
+          SHARD_TOTAL: ${{ steps.scope.outputs.shard-total }}
         run: |
           uv run --project api --no-sync python api/dev/pytest_sharding.py \
-            --shard-index 1 --shard-total 2 \
+            --shard-index 1 --shard-total "$SHARD_TOTAL" \
             --durations unit-test-durations.json \
             --write-plan unit-test-plan.json \
             --split-threshold 60 \
@@ -75,11 +127,8 @@ jobs:
       matrix:
         python-version:
           - '3.13'
-        shardIndex:
-          - 1
-          - 2
-        shardTotal:
-          - 2
+        shardIndex: ${{ fromJSON(needs.api-unit-plan.outputs.shard-indexes) }}
+        shardTotal: ${{ fromJSON(format('[{0}]', needs.api-unit-plan.outputs.shard-total)) }}
 
     steps:
       - name: Checkout code
@@ -116,7 +165,33 @@ jobs:
         with:
           name: api-unit-plan
 
+      # testmon discards its data when the interpreter or an installed package changes,
+      # so the key pins both. Restoring by prefix picks the newest baseline saved on main.
+      - name: Resolve testmon baseline key
+        id: testmon
+        if: ${{ env.API_TEST_MODE == 'baseline' || needs.api-unit-plan.outputs.testmon-select == 'true' }}
+        env:
+          LOCK_HASH: ${{ hashFiles('api/uv.lock') }}
+        run: |
+          python_version=$(uv run --project api --no-sync python -c 'import platform; print(platform.python_version())')
+          echo "key-prefix=api-testmon-v1-${TESTMON_VERSION}-unit-py${python_version}-${LOCK_HASH}-" >> "$GITHUB_OUTPUT"
+
+      - name: Restore testmon baseline
+        id: testmon-restore
+        if: ${{ steps.testmon.outcome == 'success' }}
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/testmon
+          key: ${{ steps.testmon.outputs.key-prefix }}
+          restore-keys: ${{ steps.testmon.outputs.key-prefix }}
+
       - name: Run Unit Tests
+        id: run-tests
+        env:
+          TESTMON_DATAFILE: ${{ runner.temp }}/testmon/unit.testmondata
+          # Baselines select and record; pull requests only select, and need a baseline to do so.
+          TESTMON_ARGS: ${{ env.API_TEST_MODE == 'baseline' && '--testmon' || steps.testmon-restore.outputs.cache-matched-key != '' && '--testmon-forceselect --testmon-nocollect' || '' }}
+          TESTMON_EXPECTED: ${{ steps.testmon.outcome == 'success' }}
         run: |
           uv run --project api --group evaluation python api/dev/pytest_sharding.py \
             --plan unit-test-plan.json \
@@ -128,18 +203,44 @@ jobs:
             api/tests/e2e_tests/contracts \
             api/providers/vdb/*/tests/unit_tests \
             api/providers/trace/*/tests/unit_tests > "$RUNNER_TEMP/unit-test-files.txt"
-          uv run --project api --group evaluation pytest \
-            -p no:benchmark \
-            --timeout "${PYTEST_TIMEOUT:-20}" \
-            -n auto \
-            -o 'addopts=-p no:opik -p no:langsmith_plugin --cov=./api --cov-branch --import-mode=importlib' \
-            --cov-report= \
-            --file-shard-plan unit-test-plan.json \
-            --shard-index "${{ matrix.shardIndex }}" \
-            --shard-total "${{ matrix.shardTotal }}" \
-            --write-test-durations "test-results/durations-${{ matrix.shardIndex }}.json" \
-            --junitxml=test-results/unit.xml \
-            "@$RUNNER_TEMP/unit-test-files.txt"
+          args=(
+            -p no:benchmark
+            --timeout "${PYTEST_TIMEOUT:-20}"
+            -n auto
+            --file-shard-plan unit-test-plan.json
+            --shard-index "${{ matrix.shardIndex }}"
+            --shard-total "${{ matrix.shardTotal }}"
+            --junitxml=test-results/unit.xml
+          )
+          if [[ "$API_TEST_MODE" == full ]]; then
+            # Only full runs feed Codecov and the shared timing history.
+            args+=(
+              -o "addopts=$BASE_ADDOPTS --cov=./api --cov-branch"
+              --cov-report=
+              --write-test-durations "test-results/durations-${{ matrix.shardIndex }}.json"
+            )
+          else
+            args+=(-o "addopts=$BASE_ADDOPTS")
+          fi
+          with_testmon=()
+          if [[ -n "$TESTMON_ARGS" ]]; then
+            mkdir -p "$(dirname "$TESTMON_DATAFILE")"
+            with_testmon=(--with "pytest-testmon==$TESTMON_VERSION")
+            read -r -a testmon_args <<< "$TESTMON_ARGS"
+            args+=("${testmon_args[@]}")
+          elif [[ "$TESTMON_EXPECTED" == true ]]; then
+            echo "Running every API unit test: no testmon baseline from main matches this environment." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          uv run --project api --group evaluation "${with_testmon[@]}" pytest "${args[@]}" "@$RUNNER_TEMP/unit-test-files.txt"
+
+      # Main is the only writer; pull requests read the baseline and discard their own data.
+      # testmon reruns a failed test until it passes, so a failing run still saves its data.
+      - name: Save testmon baseline
+        if: ${{ !cancelled() && env.API_TEST_MODE == 'baseline' && contains(fromJSON('["success", "failure"]'), steps.run-tests.outcome) }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/testmon
+          key: ${{ steps.testmon.outputs.key-prefix }}${{ github.sha }}-${{ github.run_attempt }}
 
       - name: Upload unit test reports
         if: ${{ !cancelled() }}
@@ -150,7 +251,10 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+      # dify-test-infra reads these from merge queue runs, or from pull request runs when a
+      # pull request had none. Partial runs would record partial file times, so skip them.
       - name: Upload successful timing observations
+        if: ${{ env.API_TEST_MODE == 'full' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: api-unit-durations-${{ matrix.shardIndex }}
@@ -159,10 +263,12 @@ jobs:
           if-no-files-found: error
 
       - name: Generate coverage report
+        if: ${{ env.API_TEST_MODE == 'full' }}
         run: uv run --project api coverage xml -o coverage.xml
 
       # Codecov combines all backend uploads under the same commit and api flag.
       - name: Report coverage
+        if: ${{ env.API_TEST_MODE == 'full' }}
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           files: ./coverage.xml
@@ -174,6 +280,8 @@ jobs:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   api-controllers:
+    # The plan job decides whether pull requests may select tests with testmon.
+    needs: api-unit-plan
     name: API Controller Tests (3.13)
     runs-on: depot-ubuntu-24.04-4
     env:
@@ -198,18 +306,63 @@ jobs:
       - name: Install dependencies
         run: uv sync --project api --dev
 
-      - name: Run Controller Tests
-        # Workers have separate Flask registries; keep collection separate from the other unit suites.
+      # The controller suite keeps its own baseline because it installs different dependency groups.
+      - name: Resolve testmon baseline key
+        id: testmon
+        if: ${{ env.API_TEST_MODE == 'baseline' || needs.api-unit-plan.outputs.testmon-select == 'true' }}
+        env:
+          LOCK_HASH: ${{ hashFiles('api/uv.lock') }}
         run: |
-          uv run --project api pytest \
-            -p no:benchmark \
-            --timeout "${PYTEST_TIMEOUT:-20}" \
-            -n auto \
-            -o 'addopts=-p no:opik -p no:langsmith_plugin --cov=./api --cov-branch --import-mode=importlib' \
-            --cov-report= \
-            --junitxml=test-results/controllers.xml \
+          python_version=$(uv run --project api --no-sync python -c 'import platform; print(platform.python_version())')
+          echo "key-prefix=api-testmon-v1-${TESTMON_VERSION}-controllers-py${python_version}-${LOCK_HASH}-" >> "$GITHUB_OUTPUT"
+
+      - name: Restore testmon baseline
+        id: testmon-restore
+        if: ${{ steps.testmon.outcome == 'success' }}
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/testmon
+          key: ${{ steps.testmon.outputs.key-prefix }}
+          restore-keys: ${{ steps.testmon.outputs.key-prefix }}
+
+      - name: Run Controller Tests
+        id: run-tests
+        # Workers have separate Flask registries; keep collection separate from the other unit suites.
+        env:
+          TESTMON_DATAFILE: ${{ runner.temp }}/testmon/controllers.testmondata
+          TESTMON_ARGS: ${{ env.API_TEST_MODE == 'baseline' && '--testmon' || steps.testmon-restore.outputs.cache-matched-key != '' && '--testmon-forceselect --testmon-nocollect' || '' }}
+          TESTMON_EXPECTED: ${{ steps.testmon.outcome == 'success' }}
+        run: |
+          args=(
+            -p no:benchmark
+            --timeout "${PYTEST_TIMEOUT:-20}"
+            -n auto
+            --junitxml=test-results/controllers.xml
+          )
+          if [[ "$API_TEST_MODE" == full ]]; then
+            args+=(-o "addopts=$BASE_ADDOPTS --cov=./api --cov-branch" --cov-report=)
+          else
+            args+=(-o "addopts=$BASE_ADDOPTS")
+          fi
+          with_testmon=()
+          if [[ -n "$TESTMON_ARGS" ]]; then
+            mkdir -p "$(dirname "$TESTMON_DATAFILE")"
+            with_testmon=(--with "pytest-testmon==$TESTMON_VERSION")
+            read -r -a testmon_args <<< "$TESTMON_ARGS"
+            args+=("${testmon_args[@]}")
+          elif [[ "$TESTMON_EXPECTED" == true ]]; then
+            echo "Running every API controller test: no testmon baseline from main matches this environment." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          uv run --project api "${with_testmon[@]}" pytest "${args[@]}" \
             api/tests/unit_tests/controllers \
             api/tests/e2e_tests/contracts/controllers
+
+      - name: Save testmon baseline
+        if: ${{ !cancelled() && env.API_TEST_MODE == 'baseline' && contains(fromJSON('["success", "failure"]'), steps.run-tests.outcome) }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/testmon
+          key: ${{ steps.testmon.outputs.key-prefix }}${{ github.sha }}-${{ github.run_attempt }}
 
       - name: Upload controller test reports
         if: ${{ !cancelled() }}
@@ -239,6 +392,8 @@ jobs:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   api-integration:
+    # Integration tests always run in full; testmon baselines cover only unit and controller tests.
+    if: ${{ !inputs.testmon-baseline }}
     name: API Integration Tests (${{ matrix.python-version }})
     runs-on: depot-ubuntu-24.04-4
     env:
@@ -276,13 +431,16 @@ jobs:
 
       - name: Run Integration Tests
         run: |
+          coverage_args=(-o "addopts=$BASE_ADDOPTS")
+          if [[ "$API_TEST_MODE" == full ]]; then
+            coverage_args=(-o "addopts=$BASE_ADDOPTS --cov=./api --cov-branch" --cov-report=)
+          fi
           uv run --project api pytest \
             -p no:benchmark \
             --start-middleware \
             --middleware-stop-timeout 2 \
             -n auto \
-            -o 'addopts=-p no:opik -p no:langsmith_plugin --cov=./api --cov-branch --import-mode=importlib' \
-            --cov-report= \
+            "${coverage_args[@]}" \
             --timeout "${PYTEST_TIMEOUT:-180}" \
             --durations=50 \
             --junitxml=test-results/integration.xml \

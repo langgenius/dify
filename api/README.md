@@ -89,6 +89,10 @@ make type-check
 
 `make test` includes provider unit tests and runs controller tests separately. Integration suites are CI-only and are not expected to run locally. Test environment defaults live in `api/pyproject.toml` under `tool.pytest_env`; see the backend [agent guide](AGENTS.md) for package conventions.
 
+Pull request CI runs API tests without coverage. For unit and controller tests it uses [pytest-testmon] to run only the tests whose executed Python code changed, compared with a baseline that pushes to `main` refresh. Pull requests that change anything other than Python under `api/`, such as `api/uv.lock`, test fixtures, Docker files, or workflows, run every unit and controller test. The merge queue runs every suite with coverage. testmon cannot see code that a test reads as source text or runs in a subprocess, so list such test files in `api/tests/pytest_testmon.py`; pull requests always run them. To select tests the same way locally, run `uv run --project api --with pytest-testmon pytest --testmon <paths>`. The first run records every test, and later runs repeat only affected ones.
+
+[pytest-testmon]: https://testmon.org
+
 ## API contracts
 
 The [API schema guide](controllers/API_SCHEMA_GUIDE.md) owns schema changes and verification. Generate the OpenAPI specifications and TypeScript/Zod contracts through the workspace script:
