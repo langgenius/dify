@@ -1,6 +1,7 @@
 import logging
 import time
 from collections.abc import Sequence
+from dataclasses import dataclass
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -18,12 +19,20 @@ from core.app.entities.task_entities import (
     PingStreamResponse,
 )
 from core.errors.error import QuotaExceededError
+from core.moderation.factory import get_app_moderation
 from core.moderation.output_moderation import ModerationRule, OutputModeration
+from extensions.application_services.moderation_policy import platform_owns_openai_moderation
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from models.enums import MessageStatus
 from models.model import Message
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class OutputModerationResult:
+    answer: str
+    flagged: bool
 
 
 class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
@@ -43,12 +52,14 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         stream: bool,
     ):
         self._application_generate_entity = application_generate_entity
+        self._moderation = get_app_moderation()
         self.queue_manager = queue_manager
         self.start_at = time.perf_counter()
         self.output_moderation_handler = self._init_output_moderation()
         self.stream = stream
 
     def handle_error(self, *, event: QueueErrorEvent, session: Session | None = None, message_id: str = ""):
+        """Retain error typing and mark an existing message failed in the caller's transaction."""
         logger.debug("error: %s", event.error)
         e = event.error
         err: Exception
@@ -109,46 +120,60 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         return PingStreamResponse(task_id=self._application_generate_entity.task_id)
 
     def _init_output_moderation(self) -> OutputModeration | None:
-        """
-        Init output moderation.
-        :return:
-        """
+        """Bind an enabled app output check unless the platform owns the rule's OpenAI checks."""
         app_config = self._application_generate_entity.app_config
-        sensitive_word_avoidance = app_config.sensitive_word_avoidance
+        rule = app_config.sensitive_word_avoidance
+        if rule is None:
+            return None
+        outputs_config = rule.config.get("outputs_config")
+        if isinstance(outputs_config, dict) and outputs_config.get("enabled") is False:
+            return None
 
-        if sensitive_word_avoidance:
-            return OutputModeration(
-                tenant_id=app_config.tenant_id,
-                app_id=app_config.app_id,
-                rule=ModerationRule(type=sensitive_word_avoidance.type, config=sensitive_word_avoidance.config),
-                queue_manager=self.queue_manager,
-            )
-        return None
+        platform_owned = rule.type == "openai_moderation" and platform_owns_openai_moderation(
+            self._application_generate_entity
+        )
+        moderation = self._moderation
+        if moderation is not None:
+            output_evaluator = moderation.output_evaluator(app_config, platform_owned=platform_owned)
+            if output_evaluator is None:
+                return None
+        elif platform_owned:
+            return None
+        else:
+            output_evaluator = None
+        return OutputModeration(
+            tenant_id=app_config.tenant_id,
+            app_id=app_config.app_id,
+            rule=ModerationRule(type=rule.type, config=rule.config),
+            output_evaluator=output_evaluator,
+        )
+
+    def moderation_replacement(self, error: Exception) -> tuple[str, str] | None:
+        """Render platform verdicts using a matching app preset or chat default; never hide backend failures."""
+        moderation = self._moderation
+        replacement = (
+            moderation.replacement(self._application_generate_entity.app_config, error)
+            if moderation is not None
+            else None
+        )
+        if replacement is not None and self.output_moderation_handler is not None:
+            self.output_moderation_handler = None
+        return replacement
 
     def handle_output_moderation_when_task_finished(
         self, completion: str, *, extra_texts: Sequence[str] = ()
-    ) -> str | None:
-        """Moderate the answer and independent content without mixing their output.
+    ) -> OutputModerationResult | None:
+        """Finish the active check and return a release or a flagged verdict for the caller to deliver.
 
-        A flagged extra text asks the caller to remove independent content. Only
-        moderated answer prose is returned, even when an external moderator
-        rewrites the extra text's syntax. None means nothing was flagged.
+        Check each independent source outside the prose buffer. A flagged source
+        requires dropping the blocks while retaining checked prose. On success
+        the handler is retired. None means the caller has nothing to deliver.
         """
-        # response moderation
-        if self.output_moderation_handler:
-            self.output_moderation_handler.stop_thread()
+        handler = self.output_moderation_handler
+        if handler is None:
+            return None
 
-            completion, flagged = self.output_moderation_handler.moderation_completion(
-                completion=completion, public_event=False
-            )
-            for text in extra_texts:
-                _, extra_flagged = self.output_moderation_handler.moderation_completion(
-                    completion=text, public_event=False
-                )
-                flagged = flagged or extra_flagged
-
-            self.output_moderation_handler = None
-            if flagged:
-                return completion
-
-        return None
+        answer, changed = handler.moderation_completion(completion=completion)
+        flagged = handler.flagged or any(handler.independent_output_is_flagged(text) for text in extra_texts)
+        self.output_moderation_handler = None
+        return OutputModerationResult(answer=answer, flagged=flagged) if changed or flagged else None

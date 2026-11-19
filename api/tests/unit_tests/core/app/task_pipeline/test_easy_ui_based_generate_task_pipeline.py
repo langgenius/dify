@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from collections.abc import Generator, Iterator, Sequence
+from collections.abc import Callable, Generator, Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -48,6 +48,7 @@ from core.app.entities.queue_entities import (
     QueuePingEvent,
     QueueRetrieverResourcesEvent,
     QueueStopEvent,
+    QueueTextChunkEvent,
     WorkflowQueueMessage,
 )
 from core.app.entities.task_entities import (
@@ -67,6 +68,7 @@ from core.app.entities.task_entities import (
     PingStreamResponse,
     StreamEvent,
 )
+from core.app.task_pipeline.based_generate_task_pipeline import OutputModerationResult
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.moderation.output_moderation import ModerationRule, OutputModeration
@@ -945,21 +947,16 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
                 stream=True,
             )
 
-            class _Moderation:
-                def should_direct_output(self):
-                    return True
-
-                def get_final_output(self):
-                    return "final"
-
-            _set_method(pipeline, "output_moderation_handler", _Moderation())
-
-            result = pipeline._handle_output_moderation_chunk("token")
-
-            assert result is True
+            pipeline.output_moderation_handler = OutputModeration(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                rule=ModerationRule(type="keywords", config={}),
+                final_output="final",
+            )
+            result = list(pipeline._handle_output_moderation_chunk("token"))
+            assert result == []
             events = cast(_FakeQueueManager, pipeline.queue_manager).published_events
-            assert any(isinstance(event, QueueLLMChunkEvent) for event in events)
-            assert any(isinstance(event, QueueStopEvent) for event in events)
+            assert events == []
 
         def test_handle_stop_updates_usage(self, monkeypatch: pytest.MonkeyPatch):
             conversation = _make_conversation(AppMode.CHAT)
@@ -1649,12 +1646,14 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             _set_queue_events(pipeline, [_queue_message(QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL))])
             pipeline._handle_stop = Mock()
             _set_method(
-                pipeline, "handle_output_moderation_when_task_finished", lambda answer, extra_texts: "moderated answer"
+                pipeline,
+                "handle_output_moderation_when_task_finished",
+                lambda answer, extra_texts: OutputModerationResult(answer="moderated answer", flagged=True),
             )
             _set_method(
                 pipeline._message_cycle_manager,
                 "message_replace_to_stream_response",
-                lambda answer, reason: MessageReplaceStreamResponse(task_id="task", answer=answer, reason=reason),
+                lambda answer, reason="": MessageReplaceStreamResponse(task_id="task", answer=answer, reason=reason),
             )
             _set_method(pipeline, "_save_message", lambda **kwargs: None)
             _set_method(
@@ -1739,7 +1738,12 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
                 prompt_messages=[],
                 delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content="x")),
             )
-            pipeline._handle_output_moderation_chunk = lambda text: True
+            pipeline.output_moderation_handler = OutputModeration(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                rule=ModerationRule(type="keywords", config={}),
+                final_output="final",
+            )
             _set_queue_events(pipeline, [_queue_message(QueueLLMChunkEvent(chunk=chunk))])
 
             responses = list(pipeline._process_stream_response(publisher=None))
@@ -2235,7 +2239,7 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
 
             assert response is None
 
-        def test_handle_output_moderation_chunk_appends_token_when_not_directing(self):
+        def test_handle_output_moderation_chunk_buffers_unchecked_token(self):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
             pipeline = EasyUIBasedGenerateTaskPipeline(
@@ -2245,21 +2249,13 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
                 message=message,
                 stream=True,
             )
-            appended_tokens: list[str] = []
-
-            class _Moderation:
-                def should_direct_output(self):
-                    return False
-
-                def append_new_token(self, text):
-                    appended_tokens.append(text)
-
-            _set_method(pipeline, "output_moderation_handler", _Moderation())
-
-            result = pipeline._handle_output_moderation_chunk("next-token")
-
-            assert result is False
-            assert appended_tokens == ["next-token"]
+            handler = OutputModeration(
+                tenant_id="tenant-1", app_id="app-1", rule=ModerationRule(type="keywords", config={})
+            )
+            pipeline.output_moderation_handler = handler
+            result = list(pipeline._handle_output_moderation_chunk("next-token"))
+            assert result == []
+            assert handler.buffer == "next-token"
 
 
 """Exercise message-end file serialization against persisted SQLite rows.
@@ -2827,25 +2823,36 @@ class TestAgentGenerativeUI:
             published.append(publisher._msg_queue.get_nowait())
         assert all(message is not None for message in published)
         speech = "".join(
-            message.event.chunk.delta.message.get_text_content()
+            message.event.text
             for message in published
-            if message is not None and isinstance(message.event, QueueLLMChunkEvent)
+            if message is not None and isinstance(message.event, QueueTextChunkEvent)
         )
         assert speech == "Summary.\nDone."
         assert [type(message.event) for message in published if message is not None] == [
             QueuePingEvent,
-            QueueLLMChunkEvent,
-            QueueLLMChunkEvent,
+            QueueTextChunkEvent,
+            QueueTextChunkEvent,
             QueueMessageEndEvent,
         ]
 
+    @pytest.mark.parametrize("moderated", [False, True])
     def test_final_replay_positions_ui_against_exact_persisted_unicode_prose(
         self,
         pipeline: EasyUIBasedGenerateTaskPipeline,
         agent_queue_manager: MessageBasedAppQueueManager,
         agent_records: tuple[Conversation, Message],
         sqlite_session: Session,
+        moderated: bool,
+        config_overrides: Callable[..., None],
     ) -> None:
+        if moderated:
+            config_overrides(MODERATION_BUFFER_SIZE=300)
+            pipeline.output_moderation_handler = OutputModeration(
+                tenant_id="tenant",
+                app_id="app1",
+                rule=ModerationRule(type="keywords", config={}),
+                output_evaluator=lambda _text: None,
+            )
         source = 'root = Stack([Text("Data")])\n'
         live_answer = f"Live\n```openui\n{source}"
         prefix = "  Summary \U00020000 {{name}}\n"
@@ -2867,6 +2874,9 @@ class TestAgentGenerativeUI:
             block for block in content if isinstance(block, OpenUIContentBlock) and block.status == "completed"
         ]
         assert [block.text_offset for block in snapshots] == [len(prefix), len(prefix + between)]
+        assert "".join(response.answer for response in responses if isinstance(response, MessageStreamResponse)) == (
+            prefix + between + "  "
+        )
         assert pipeline._task_state.llm_result.message.content == prefix + between + "  "
         sqlite_session.refresh(agent_records[1])
         assert agent_records[1].answer == prefix + between + "  "
@@ -2998,20 +3008,16 @@ class TestAgentGenerativeUI:
         assert agent_records[1].message_metadata_dict["content_blocks"] == expected_blocks
 
     @pytest.mark.parametrize("closing_fence", ["```\n", ""])
-    def test_direct_output_moderation_clears_ui_when_stop_precedes_replacement(
+    def test_direct_output_moderation_clears_ui_before_stopping(
         self,
         closing_fence: str,
         pipeline: EasyUIBasedGenerateTaskPipeline,
-        agent_queue_manager: MessageBasedAppQueueManager,
         agent_records: tuple[Conversation, Message],
         sqlite_session: Session,
+        config_overrides: Callable[..., None],
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        initial_responses = list(
-            pipeline._process_generative_ui_final_text(
-                f'Original forbidden prose.\n```openui\nroot = Card("Safe UI")\n{closing_fence}'
-            )
-        )
-        assert any(isinstance(response, MessageContentStreamResponse) for response in initial_responses)
+        config_overrides(MODERATION_BUFFER_SIZE=5)
         code_based_extension.init()
         pipeline.output_moderation_handler = OutputModeration(
             tenant_id="tenant",
@@ -3024,18 +3030,19 @@ class TestAgentGenerativeUI:
                     "outputs_config": {"enabled": True, "preset_response": "Blocked."},
                 },
             ),
-            queue_manager=agent_queue_manager,
-            final_output="Blocked.",
         )
+        initial_responses = list(
+            pipeline._process_generative_ui_final_text(
+                f'Original prose.\n```openui\nroot = Card("Safe UI")\n{closing_fence}'
+            )
+        )
+        assert any(isinstance(response, MessageContentStreamResponse) for response in initial_responses)
+        monkeypatch.setattr(pipeline, "_handle_stop", lambda _event: None)
 
-        assert pipeline._handle_output_moderation_chunk("More prose.") is True
-        agent_queue_manager.publish(
-            QueueMessageReplaceEvent(
-                text="Blocked.",
-                reason=QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION,
-            ),
-            PublishFrom.TASK_PIPELINE,
-        )
+        (replacement,) = list(pipeline._handle_output_moderation_chunk("forbidden"))
+        assert isinstance(replacement, MessageReplaceStreamResponse)
+        assert replacement.reason == "output_moderation"
+        assert replacement.answer == "Blocked."
         responses = list(pipeline._process_stream_response(publisher=None))
 
         assert not any(
@@ -3092,8 +3099,8 @@ class TestAgentGenerativeUI:
         speech = []
         while not publisher._msg_queue.empty():
             message = publisher._msg_queue.get_nowait()
-            if message is not None and isinstance(message.event, QueueLLMChunkEvent):
-                speech.append(message.event.chunk.delta.message.get_text_content())
+            if message is not None and isinstance(message.event, QueueTextChunkEvent):
+                speech.append(message.event.text)
         assert "".join(speech) == "Original.\nFollowing prose.\nDone."
 
     @pytest.mark.parametrize(("keyword", "expected_prose"), [("forbidden", "Summary."), ("Summary.", "Blocked.")])
@@ -3107,7 +3114,9 @@ class TestAgentGenerativeUI:
         agent_queue_manager: MessageBasedAppQueueManager,
         agent_records: tuple[Conversation, Message],
         sqlite_session: Session,
+        config_overrides: Callable[..., None],
     ) -> None:
+        config_overrides(MODERATION_BUFFER_SIZE=300)
         answer = 'Summary.\n```openui\nroot = Card("forbidden")\n```\n'
         chunk_event = (
             QueueAgentMessageEvent(chunk=llm_chunk(answer))
@@ -3119,15 +3128,6 @@ class TestAgentGenerativeUI:
             if cancelled
             else QueueMessageEndEvent(llm_result=llm_result(answer))
         )
-        agent_queue_manager.publish(chunk_event, PublishFrom.TASK_PIPELINE)
-        agent_queue_manager.publish(terminal_event, PublishFrom.TASK_PIPELINE)
-        responses = pipeline._process_stream_response(publisher=None)
-        if not cancelled:
-            boundary = next(responses)
-            assert isinstance(boundary, MessageReplaceStreamResponse)
-            assert boundary.reason == "generative_ui_final"
-        assert isinstance(next(responses), AgentMessageStreamResponse if cancelled else MessageStreamResponse)
-        assert isinstance(next(responses), MessageContentStreamResponse)
         code_based_extension.init()
         pipeline.output_moderation_handler = OutputModeration(
             tenant_id="tenant",
@@ -3143,16 +3143,18 @@ class TestAgentGenerativeUI:
                     },
                 },
             ),
-            queue_manager=agent_queue_manager,
         )
+        agent_queue_manager.publish(chunk_event, PublishFrom.TASK_PIPELINE)
+        agent_queue_manager.publish(terminal_event, PublishFrom.TASK_PIPELINE)
 
-        terminal_responses = list(responses)
+        responses = list(pipeline._process_stream_response(publisher=None))
 
-        replacement = terminal_responses[0]
+        assert any(isinstance(response, MessageContentStreamResponse) for response in responses[:-2])
+        replacement = responses[-2]
         assert isinstance(replacement, MessageReplaceStreamResponse)
         assert replacement.answer == expected_prose + "\n"
         assert replacement.reason == "output_moderation"
-        end = terminal_responses[-1]
+        end = responses[-1]
         assert isinstance(end, MessageEndStreamResponse)
         assert end.metadata["content_blocks"] == []
         assert "agent_response_is_partial" not in end.metadata

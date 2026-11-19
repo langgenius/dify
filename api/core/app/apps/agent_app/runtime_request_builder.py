@@ -38,7 +38,7 @@ from clients.agent_backend import (
 )
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
-from core.app.llm.model_access import resolve_model_context_window, resolve_model_supports_vision
+from core.app.llm import model_access
 from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
 from core.workflow.file_reference import build_file_reference, is_canonical_file_reference
 from core.workflow.nodes.agent_v2.dify_tools_builder import (
@@ -170,7 +170,7 @@ class AgentAppRuntimeRequestBuilder:
             knowledge_fs_config = build_knowledge_fs_layer_config(agent_soul, run_context=context.dify_context)
         except KnowledgeFsError as exc:
             raise AgentAppRuntimeRequestBuildError(exc.code, exc.message) from exc
-        context_window_tokens = resolve_model_context_window(
+        model_profile = model_access.resolve_model_runtime_profile(
             run_context=context.dify_context,
             provider_name=agent_soul.model.model_provider,
             model_name=agent_soul.model.model,
@@ -181,9 +181,7 @@ class AgentAppRuntimeRequestBuilder:
         )
         user_files = self._build_user_files(
             files=context.files,
-            run_context=context.dify_context,
-            provider_name=agent_soul.model.model_provider,
-            model_name=agent_soul.model.model,
+            supports_vision="vision" in model_profile.supported_modalities,
             image_detail_config=context.image_detail_config,
             include_image_references=knowledge_fs_config is not None,
         )
@@ -200,7 +198,8 @@ class AgentAppRuntimeRequestBuilder:
                     model_provider=model_provider,
                     model=agent_soul.model.model,
                     model_settings=agent_soul.model.model_settings.model_dump(mode="json", exclude_none=True),
-                    context_window_tokens=context_window_tokens,
+                    context_window_tokens=model_profile.context_window_tokens,
+                    supported_modalities=model_profile.supported_modalities,
                 ),
                 execution_context=DifyExecutionContextLayerConfig(
                     tenant_id=context.dify_context.tenant_id,
@@ -256,17 +255,15 @@ class AgentAppRuntimeRequestBuilder:
     def _build_user_files(
         *,
         files: tuple[File, ...],
-        run_context: DifyRunContext,
-        provider_name: str,
-        model_name: str,
+        supports_vision: bool,
         image_detail_config: ImagePromptMessageContent.DETAIL | None,
         include_image_references: bool,
     ) -> list[DifyUserPromptFileConfig]:
-        supports_vision = any(file.type == FileType.IMAGE for file in files) and resolve_model_supports_vision(
-            run_context=run_context,
-            provider_name=provider_name,
-            model_name=model_name,
-        )
+        """Use the resolved model capabilities for vision content and file locators.
+
+        Trusted File inputs retain download references; supported images also
+        become native vision content. No additional model schema is fetched.
+        """
         user_files: list[DifyUserPromptFileConfig] = []
         for file in files:
             if supports_vision and file.type == FileType.IMAGE:

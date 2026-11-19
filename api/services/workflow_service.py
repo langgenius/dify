@@ -39,6 +39,7 @@ from core.workflow.node_factory import (
 from core.workflow.node_runtime import (
     apply_dify_debug_email_recipient,
 )
+from core.workflow.nodes.agent_v2.workspace_retirement_layer import retire_standalone_node_execution_workspaces
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
     render_form_content_before_submission,
@@ -980,7 +981,8 @@ class WorkflowService:
 
         The caller supplies a valid target kind, app, account and session. Both
         conversion directions require Cloud paid billing; denied requests leave
-        the published workflow unchanged.
+        the published workflow unchanged. Publication receivers receive the same
+        session; receiver failures propagate without committing the conversion.
         """
         if target_kind not in {WorkflowKind.STANDARD, WorkflowKind.EVALUATION}:
             raise ValueError("target_kind must be either 'standard' or 'evaluation'")
@@ -1006,7 +1008,7 @@ class WorkflowService:
         workflow.kind = target_kind
         workflow.updated_by = account.id
         workflow.updated_at = naive_utc_now()
-        app_published_workflow_was_updated.send(app_model, published_workflow=workflow)
+        app_published_workflow_was_updated.send(app_model, published_workflow=workflow, session=session)
         return workflow
 
     def convert_published_workflow_kind_for_app(
@@ -1583,6 +1585,15 @@ class WorkflowService:
                         "Agent preview terminal persistence failed (%s)", type(persistence_error).__name__
                     )
             raise
+        finally:
+            if is_agent_preview and started_event is not None:
+                # Single-step previews bypass the Workflow Run retirement layer and
+                # cannot pause, so the sandbox is retired as soon as the node ends.
+                retire_standalone_node_execution_workspaces(
+                    tenant_id=app_model.tenant_id,
+                    app_id=app_model.id,
+                    node_execution_id=started_event.id,
+                )
 
         node_execution.workflow_id = draft_workflow.id
         if started_event is not None:

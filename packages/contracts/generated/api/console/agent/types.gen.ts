@@ -1520,8 +1520,8 @@ export type AppModelSelectionResponse = {
     [key: string]: JsonValue
   }
   mode?: LlmMode | ''
-  name?: string
-  provider?: string
+  name?: string | null
+  provider?: string | null
   [key: string]: unknown
 }
 

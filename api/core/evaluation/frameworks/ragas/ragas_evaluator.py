@@ -22,6 +22,7 @@ from core.evaluation.entities.evaluation_entity import (
     EvaluationMetric,
     EvaluationMetricName,
 )
+from core.evaluation.exceptions import EvaluationErrorCode, new_public_evaluation_error
 from graphon.model_runtime.errors.invoke import (
     InvokeConnectionError,
     InvokeRateLimitError,
@@ -178,15 +179,27 @@ class RagasEvaluator(BaseEvaluationInstance):
         items: list[AgentEvaluationItem],
         unsupported_metrics: list[str],
     ) -> list[EvaluationItemResult]:
-        """Evaluate the retained reference-based legacy Agent metric."""
+        """Evaluate the retained reference-based legacy Agent metric.
+
+        Precondition: items and requested metrics passed configuration validation.
+        Postcondition: unsupported or failed metrics return public diagnostics;
+        provider exceptions are available only in server logs.
+        """
 
         components = _load_ragas_agent_components()
         metric = components.ToolCallAccuracy(name=EvaluationMetricName.TOOL_CALL_ACCURACY.value)
         results: list[EvaluationItemResult] = []
         for item in items:
-            errors = [
-                f"Metric '{name}' is not supported by RAGAS for Agent evaluation." for name in unsupported_metrics
-            ]
+            errors: list[str] = []
+            for name in unsupported_metrics:
+                failure = new_public_evaluation_error(EvaluationErrorCode.UNSUPPORTED_METRIC)
+                logger.info(
+                    "RAGAS Agent metric %s is unsupported for item %d (error_id=%s)",
+                    name,
+                    item.index,
+                    failure.error_id,
+                )
+                errors.append(failure.text)
             evaluated_metrics: list[EvaluationMetric] = []
             if not item.expected_tool_calls:
                 errors.append("Metric 'tool_call_accuracy' requires non-empty expected_tool_calls.")
@@ -198,9 +211,12 @@ class RagasEvaluator(BaseEvaluationInstance):
                     evaluated_metrics.append(
                         EvaluationMetric(name=EvaluationMetricName.TOOL_CALL_ACCURACY.value, value=score)
                     )
-                except Exception as exc:
-                    logger.exception("RAGAS Agent metric failed for item %d", item.index)
-                    errors.append(f"Metric 'tool_call_accuracy' failed: {exc}")
+                except Exception:
+                    failure = new_public_evaluation_error(EvaluationErrorCode.METRIC_FAILED)
+                    logger.exception(
+                        "RAGAS Agent metric failed for item %d (error_id=%s)", item.index, failure.error_id
+                    )
+                    errors.append(failure.text)
 
             results.append(
                 EvaluationItemResult(

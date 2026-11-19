@@ -2,7 +2,7 @@ import type { DifyMock } from '@test/fixtures/dify-mock/server'
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { FORBIDDEN_HINT, startMock } from '@test/fixtures/dify-mock/server'
+import { FORBIDDEN_HINT, SLOW_STREAM_GAP_MS, startMock } from '@test/fixtures/dify-mock/server'
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
 import { Context } from '@/kernel/context'
 import { catalog, CATALOG_PATH } from '@/plugins/catalog'
@@ -10,6 +10,8 @@ import { CONFIG_FILE_NAME } from '@/plugins/config'
 import { http } from './index'
 
 const SHORT_TIMEOUT_MS = 50
+// Loose enough for headers (and the catalog fetch) on a loaded CI runner, still well under the stream gap.
+const STREAM_HEADER_TIMEOUT_MS = SLOW_STREAM_GAP_MS / 4
 
 let mock: DifyMock
 let dir: string
@@ -158,7 +160,7 @@ describe('http plugin', () => {
   })
 
   it('http.timeout bounds the headers, not the stream: a slow body still arrives whole', async () => {
-    writeTimeout(SHORT_TIMEOUT_MS)
+    writeTimeout(STREAM_HEADER_TIMEOUT_MS)
     mock.setScenario('slow-stream')
     const res = await (
       await new Context().get(http)

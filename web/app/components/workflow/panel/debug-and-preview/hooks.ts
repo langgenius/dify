@@ -57,6 +57,7 @@ export const useChat = (
   },
   prevChatTree?: ChatItemInTree[],
   stopChat?: (taskId: string) => void,
+  retireDebugWorkspaces?: () => void,
 ) => {
   const { t } = useTranslation(['appDebug'])
   const { handleRun } = useWorkflowRun()
@@ -74,6 +75,7 @@ export const useChat = (
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([])
   const cancelSuggestedQuestionsRef = useRef<(() => void) | null>(null)
+  const retireDebugWorkspacesRef = useRef(retireDebugWorkspaces)
   const { setIterTimes, setLoopTimes } = workflowStore.getState()
   const store = useStoreApi()
 
@@ -153,6 +155,19 @@ export const useChat = (
     }
   }, [])
 
+  useEffect(() => {
+    retireDebugWorkspacesRef.current = retireDebugWorkspaces
+  }, [retireDebugWorkspaces])
+
+  // Closing the panel unmounts this hook and ends the editor's debugging. A page
+  // refresh loses the Conversation id, so the server retires the editor's whole
+  // debug set on this app rather than only the id this mount knows about.
+  useEffect(() => {
+    return () => {
+      retireDebugWorkspacesRef.current?.()
+    }
+  }, [])
+
   /** Find the target node by bfs and then operate on it */
   const produceChatTreeNode = useCallback(
     (targetId: string, operation: (node: ChatItemInTree) => void) => {
@@ -216,6 +231,7 @@ export const useChat = (
   const handleRestart = useCallback(() => {
     conversationGenerationRef.current += 1
     handleStop()
+    retireDebugWorkspacesRef.current?.()
     conversationIdRef.current = ''
     taskIdRef.current = ''
     setIterTimes(DEFAULT_ITER_TIMES)

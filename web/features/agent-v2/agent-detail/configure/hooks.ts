@@ -82,3 +82,13 @@ export function useAgentPreviewSoulConfig(agentSoulConfig: AgentSoulConfig | und
     app_features: draftAppFeatures,
   }
 }
+
+export function useAgentPreviewEnabled() {
+  const { data } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.agent_preview_enabled,
+    }),
+  )
+
+  return data
+}

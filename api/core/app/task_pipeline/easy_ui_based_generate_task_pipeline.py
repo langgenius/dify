@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.exc import AppGenerateError
 from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,
     ChatAppGenerateEntity,
@@ -28,6 +29,7 @@ from core.app.entities.queue_entities import (
     QueuePingEvent,
     QueueRetrieverResourcesEvent,
     QueueStopEvent,
+    QueueTextChunkEvent,
 )
 from core.app.entities.task_entities import (
     AgentMessageStreamResponse,
@@ -56,7 +58,7 @@ from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from events.message_event import message_was_created
 from graphon.file import FileTransferMethod
-from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     TextPromptMessageContent,
@@ -289,64 +291,113 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                 publisher.cancel()
 
     def _process_stream_response(self, publisher: AppGeneratorTTSPublisher | None) -> Generator[StreamResponse]:
+        """Translate invocation failures into persisted error events for streaming and blocking consumers."""
+        try:
+            yield from self._process_stream_events(publisher)
+        except AppGenerateError as error:
+            yield from self._handle_error_event(QueueErrorEvent(error=error))
+
+    def _handle_error_event(self, event: QueueErrorEvent) -> Generator[StreamResponse]:
+        """Close partial UI and persist the message error before exposing its transport classification."""
+        if self._generative_ui_enabled:
+            yield from self._finish_generative_ui("error")
+        with session_factory.create_session() as session:
+            if self._generative_ui_enabled:
+                self._save_message(session=session)
+            err = self.handle_error(event=event, session=session, message_id=self._message_id)
+            session.commit()
+        self._emit_message_trace()
+        yield self.error_to_stream_response(err)
+
+    def _process_stream_events(self, publisher: AppGeneratorTTSPublisher | None) -> Generator[StreamResponse]:
         """
-        Process stream response.
-        :return:
+        Process response events, preserving moderation replies without another provider call.
+
+        A rendered moderation rejection is not a provider stop and does not
+        require token estimation or rebuilding already settled model usage.
         """
         for message in self.queue_manager.listen():
             event = message.event
-            if publisher and (
-                not self._generative_ui_enabled or not isinstance(event, QueueLLMChunkEvent | QueueAgentMessageEvent)
+            moderated = self.output_moderation_handler is not None
+            relay_prose = moderated or self._generative_ui_enabled
+            if publisher and not (
+                (relay_prose and isinstance(event, QueueLLMChunkEvent))
+                or (self._generative_ui_enabled and isinstance(event, QueueAgentMessageEvent))
             ):
                 publisher.publish(message)
+            moderation_reply = False
+
+            if isinstance(event, QueueErrorEvent):
+                replacement = self.moderation_replacement(event.error)
+                if replacement is not None:
+                    moderation_reply = True
+                    answer, phase = replacement
+                    yield self._render_moderation_replacement(answer)
+                    event = QueueStopEvent(
+                        stopped_by=QueueStopEvent.StopBy.INPUT_MODERATION
+                        if phase == "input"
+                        else QueueStopEvent.StopBy.OUTPUT_MODERATION
+                    )
 
             match event:
                 case QueueErrorEvent():
-                    if self._generative_ui_enabled:
-                        yield from self._finish_generative_ui("error")
-                    with session_factory.create_session() as session:
-                        if self._generative_ui_enabled:
-                            self._save_message(session=session)
-                        err = self.handle_error(event=event, session=session, message_id=self._message_id)
-                        session.commit()
-                    self._emit_message_trace()
-
-                    yield self.error_to_stream_response(err)
+                    yield from self._handle_error_event(event)
                     break
                 case QueueStopEvent() | QueueMessageEndEvent():
-                    if isinstance(event, QueueMessageEndEvent):
-                        if event.llm_result:
-                            if self._generative_ui_enabled and not self._openui_final_started:
-                                yield from self._process_generative_ui_final_text(
-                                    event.llm_result.message.get_text_content()
-                                )
-                            text_content = self._task_state.llm_result.message.get_text_content()
-                            self._task_state.llm_result = event.llm_result
-                            if self._generative_ui_enabled:
-                                self._task_state.llm_result.message.content = text_content
                     if self._generative_ui_enabled:
+                        if (
+                            isinstance(event, QueueMessageEndEvent)
+                            and event.llm_result is not None
+                            and not self._openui_final_started
+                        ):
+                            yield from self._process_generative_ui_final_text(
+                                event.llm_result.message.get_text_content()
+                            )
                         yield from self._finish_generative_ui(
                             "cancelled" if isinstance(event, QueueStopEvent) else "completed"
                         )
-                    if isinstance(event, QueueStopEvent):
+                    delivered_answer = self._task_state.llm_result.message.get_text_content()
+                    if isinstance(event, QueueMessageEndEvent):
+                        if event.llm_result is not None:
+                            self._task_state.llm_result = event.llm_result
+                            if self._generative_ui_enabled:
+                                self._task_state.llm_result.message.content = delivered_answer
+                    elif not moderation_reply:
                         self._handle_stop(event)
 
-                    # handle output moderation
-                    output_moderation_answer = self.handle_output_moderation_when_task_finished(
+                    result = self.handle_output_moderation_when_task_finished(
                         self._task_state.llm_result.message.get_text_content(),
                         extra_texts=[block.source for block in self._task_state.metadata.content_blocks],
                     )
-                    if output_moderation_answer is not None:
-                        self._task_state.metadata.content_blocks.clear()
-                        if self._generative_ui_enabled:
-                            self._generative_ui_suppressed = True
-                            self._openui_response_is_partial = False
-                            output_moderation_answer = extract_openui_prose(output_moderation_answer)
-                        self._task_state.llm_result.message.content = output_moderation_answer
-                        yield self._message_cycle_manager.message_replace_to_stream_response(
-                            answer=output_moderation_answer,
-                            reason=QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION,
-                        )
+                    if (
+                        result is not None
+                        and result.flagged
+                        and self._generative_ui_enabled
+                        and not self._generative_ui_suppressed
+                    ):
+                        yield self._render_moderation_replacement(result.answer)
+                    else:
+                        if result is not None:
+                            self._task_state.llm_result.message.content = (
+                                extract_openui_prose(result.answer)
+                                if result.flagged and self._generative_ui_enabled
+                                else result.answer
+                            )
+                        final_answer = self._task_state.llm_result.message.get_text_content()
+                        if (moderated or result is not None) and final_answer != delivered_answer:
+                            if final_answer.startswith(delivered_answer):
+                                tail = final_answer[len(delivered_answer) :]
+                                if publisher:
+                                    publisher.publish(
+                                        message.model_copy(update={"event": QueueTextChunkEvent(text=tail)})
+                                    )
+                                yield self._message_cycle_manager.message_to_stream_response(
+                                    answer=tail, message_id=self._message_id
+                                )
+                            else:
+                                yield self._message_cycle_manager.message_replace_to_stream_response(
+                                    answer=final_answer
+                                )
 
                     stopped_agent_message: Message | None = None
                     with session_factory.create_session() as session:
@@ -416,42 +467,24 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     if not self._task_state.llm_result.prompt_messages:
                         self._task_state.llm_result.prompt_messages = chunk.prompt_messages
 
-                    if self._generative_ui_enabled:
-                        for response in self._process_generative_ui_final_text(delta_text):
-                            if publisher and isinstance(response, MessageStreamResponse):
-                                text_chunk = chunk.model_copy(
-                                    update={
-                                        "delta": chunk.delta.model_copy(
-                                            update={"message": AssistantPromptMessage(content=response.answer)}
-                                        )
-                                    }
-                                )
-                                publisher.publish(
-                                    message.model_copy(update={"event": QueueLLMChunkEvent(chunk=text_chunk)})
-                                )
-                            yield response
-                        continue
-
-                    if self._handle_output_moderation_chunk(delta_text):
-                        continue
-                    current_content = cast(str, self._task_state.llm_result.message.content)
-                    current_content += delta_text
-                    self._task_state.llm_result.message.content = current_content
-
-                    yield self._message_cycle_manager.message_to_stream_response(
-                        answer=delta_text,
-                        message_id=self._message_id,
-                        event_type=StreamEvent.MESSAGE,
+                    responses = (
+                        self._process_generative_ui_final_text(delta_text)
+                        if self._generative_ui_enabled
+                        else self._handle_output_moderation_chunk(delta_text)
                     )
+                    for response in responses:
+                        if publisher and relay_prose and isinstance(response, MessageStreamResponse):
+                            publisher.publish(
+                                message.model_copy(update={"event": QueueTextChunkEvent(text=response.answer)})
+                            )
+                        yield response
                 case QueueMessageReplaceEvent():
                     replacement = event.text
                     if (
                         self._generative_ui_enabled
                         and event.reason == QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION
                     ):
-                        self._generative_ui_suppressed = True
-                        self._task_state.metadata.content_blocks.clear()
-                        replacement = extract_openui_prose(replacement)
+                        replacement = self._discard_generative_ui(replacement)
                         self._task_state.llm_result.message.content = replacement
                     yield self._message_cycle_manager.message_replace_to_stream_response(
                         answer=replacement, reason=event.reason
@@ -486,6 +519,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         boundary lets clients clear live parts and blocks before any rebased UI
         snapshot, while keeping their separate agent activity history intact.
         """
+        handler = self.output_moderation_handler
+        if handler is not None and handler.should_direct_output():
+            return
         if not self._openui_final_started:
             self._openui_final_started = True
             for part in self._openui_agent_parser.finish("completed"):
@@ -502,11 +538,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                 if not self._generative_ui_suppressed:
                     yield self._openui_to_stream_response(part)
             else:
-                if self._handle_output_moderation_chunk(part):
-                    continue
-                current = self._task_state.llm_result.message.get_text_content()
-                self._task_state.llm_result.message.content = current + part
-                yield self._message_cycle_manager.message_to_stream_response(answer=part, message_id=self._message_id)
+                yield from self._handle_output_moderation_chunk(part)
 
     def _finish_generative_ui(self, status: Literal["completed", "cancelled", "error"]) -> Generator[StreamResponse]:
         """Close content streams and retain live prose when no authoritative answer arrived.
@@ -526,10 +558,8 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
             if isinstance(part, OpenUIContentBlock):
                 if not self._generative_ui_suppressed:
                     yield self._openui_to_stream_response(part)
-            else:
-                current = self._task_state.llm_result.message.get_text_content()
-                self._task_state.llm_result.message.content = current + part
-                yield self._message_cycle_manager.message_to_stream_response(answer=part, message_id=self._message_id)
+            elif status != "error" or self.output_moderation_handler is None:
+                yield from self._handle_output_moderation_chunk(part)
         if status != "completed" and not self._openui_final_started and not self._generative_ui_suppressed:
             self._task_state.llm_result.message.content = self._openui_live_prose
             self._openui_response_is_partial = True
@@ -756,37 +786,47 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
 
         return None
 
-    def _handle_output_moderation_chunk(self, text: str) -> bool:
-        """
-        Handle output moderation chunk.
-        :param text: text
-        :return: True if output moderation should direct output, otherwise False
-        """
-        if self.output_moderation_handler:
-            if self.output_moderation_handler.should_direct_output():
-                self._generative_ui_suppressed = True
-                self._task_state.metadata.content_blocks.clear()
-                # stop subscribe new token when output moderation should direct output
-                self._task_state.llm_result.message.content = self.output_moderation_handler.get_final_output()
-                self.queue_manager.publish(
-                    QueueLLMChunkEvent(
-                        chunk=LLMResultChunk(
-                            model=self._task_state.llm_result.model,
-                            prompt_messages=self._task_state.llm_result.prompt_messages,
-                            delta=LLMResultChunkDelta(
-                                index=0,
-                                message=AssistantPromptMessage(content=self._task_state.llm_result.message.content),
-                            ),
-                        )
-                    ),
-                    PublishFrom.TASK_PIPELINE,
-                )
+    def _discard_generative_ui(self, answer: str) -> str:
+        """Clear stored UI and extract the plain text for a moderation replacement."""
+        self._generative_ui_suppressed = True
+        self._task_state.metadata.content_blocks.clear()
+        self._openui_response_is_partial = False
+        return extract_openui_prose(answer)
 
+    def _render_moderation_replacement(self, answer: str) -> StreamResponse:
+        """Set the checked answer and replace any prose or UI already delivered to the client."""
+        had_answer = bool(
+            self._task_state.llm_result.message.get_text_content()
+            or self._openui_live_prose
+            or self._task_state.metadata.content_blocks
+        )
+        reason = ""
+        if self._generative_ui_enabled:
+            answer = self._discard_generative_ui(answer)
+            reason = QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION
+        self._task_state.llm_result.message.content = answer
+        if had_answer:
+            return self._message_cycle_manager.message_replace_to_stream_response(answer=answer, reason=reason)
+        return self._message_cycle_manager.message_to_stream_response(answer=answer, message_id=self._message_id)
+
+    def _handle_output_moderation_chunk(self, text: str) -> Generator[StreamResponse]:
+        """Check new text on this consumer and render replacement before consuming another queued chunk."""
+        handler = self.output_moderation_handler
+        if handler is not None and handler.should_direct_output():
+            return
+        current_content = self._task_state.llm_result.message.get_text_content()
+        text, replacement = (
+            handler.append_new_token(text, prefix=current_content) if handler is not None else (text, None)
+        )
+        if replacement is None:
+            if text:
+                self._task_state.llm_result.message.content = current_content + text
+                yield self._message_cycle_manager.message_to_stream_response(
+                    answer=text, message_id=self._message_id, event_type=StreamEvent.MESSAGE
+                )
+        else:
+            yield self._render_moderation_replacement(replacement)
+            if handler is not None and handler.should_direct_output():
                 self.queue_manager.publish(
                     QueueStopEvent(stopped_by=QueueStopEvent.StopBy.OUTPUT_MODERATION), PublishFrom.TASK_PIPELINE
                 )
-                return True
-            else:
-                self.output_moderation_handler.append_new_token(text)
-
-        return False

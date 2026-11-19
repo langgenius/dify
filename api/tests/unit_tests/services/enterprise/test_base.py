@@ -6,47 +6,54 @@ generated and included in HTTP requests made by EnterpriseRequest.
 
 from collections.abc import Iterator
 from http.cookiejar import CookieJar
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import httpx
 import pytest
 
-from services.enterprise.base import EnterpriseRequest
+from services.enterprise.base import BaseRequest, EnterprisePluginManagerRequest, EnterpriseRequest
+
+type PooledTransport = tuple[list[httpx.Request], list[httpx.Client]]
+
+
+@pytest.fixture
+def send_request_transport(monkeypatch: pytest.MonkeyPatch) -> Iterator[PooledTransport]:
+    """Serve ``send_request`` calls from an in-process transport and record requests and built clients."""
+    from services.enterprise import base
+
+    BaseRequest._close_clients()
+    requests: list[httpx.Request] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if request.url.path == "/denied":
+            return httpx.Response(403, json={"message": "denied"})
+        return httpx.Response(200, json={"result": "success"}, headers={"set-cookie": "session=first; Path=/"})
+
+    real_client = httpx.Client
+    clients: list[httpx.Client] = []
+
+    def build(*, mounts: dict[str, httpx.BaseTransport] | None, cookies: CookieJar) -> httpx.Client:
+        client = real_client(transport=httpx.MockTransport(handle), mounts=mounts, cookies=cookies)
+        clients.append(client)
+        return client
+
+    monkeypatch.setattr(base.httpx, "Client", build)
+    monkeypatch.setattr(EnterpriseRequest, "base_url", "https://enterprise-api.example.com")
+    monkeypatch.setattr(EnterpriseRequest, "secret_key", "test-secret-key")
+    monkeypatch.setattr(EnterprisePluginManagerRequest, "base_url", "https://plugin-manager.example.com")
+    yield requests, clients
+    BaseRequest._close_clients()
+    for client in clients:
+        client.close()
 
 
 class TestTraceparentPropagation:
     """Unit tests for traceparent header propagation."""
 
-    @pytest.fixture
-    def mock_enterprise_config(self) -> Iterator[None]:
-        """Mock EnterpriseRequest configuration."""
-        with (
-            patch.object(EnterpriseRequest, "base_url", "https://enterprise-api.example.com"),
-            patch.object(EnterpriseRequest, "secret_key", "test-secret-key"),
-            patch.object(EnterpriseRequest, "secret_key_header", "Enterprise-Api-Secret-Key"),
-        ):
-            yield
-
-    @pytest.fixture
-    def mock_httpx_client(self) -> Iterator[MagicMock]:
-        """Mock httpx.Client for testing."""
-        with patch("services.enterprise.base.httpx.Client", autospec=True) as mock_client_class:
-            mock_client = MagicMock()
-            mock_client_class.return_value.__enter__.return_value = mock_client
-            mock_client_class.return_value.__exit__.return_value = None
-
-            # Setup default response
-            mock_response = MagicMock()
-            mock_response.json.return_value = {"result": "success"}
-            mock_client.request.return_value = mock_response
-
-            yield mock_client
-
-    def test_traceparent_header_included_when_generated(
-        self, mock_enterprise_config: None, mock_httpx_client: MagicMock
-    ) -> None:
+    def test_traceparent_header_included_when_generated(self, send_request_transport: PooledTransport) -> None:
         """Test that traceparent header is included when successfully generated."""
-        # Arrange
+        requests, _ = send_request_transport
         expected_traceparent = "00-5b8aa5a2d2c872e8321cf37308d69df2-051581bf3bb55c45-01"
 
         with patch(
@@ -54,21 +61,95 @@ class TestTraceparentPropagation:
             return_value=expected_traceparent,
             autospec=True,
         ):
-            # Act
-            EnterpriseRequest.send_request("GET", "/test")
+            assert EnterpriseRequest.send_request("GET", "/test") == {"result": "success"}
 
-            # Assert
-            mock_httpx_client.request.assert_called_once()
-            call_args = mock_httpx_client.request.call_args
-            headers = call_args[1]["headers"]
-
-            assert "traceparent" in headers
-            assert headers["traceparent"] == expected_traceparent
-            assert headers["Content-Type"] == "application/json"
-            assert headers["Enterprise-Api-Secret-Key"] == "test-secret-key"
+        assert len(requests) == 1
+        headers = requests[0].headers
+        assert headers["traceparent"] == expected_traceparent
+        assert headers["Content-Type"] == "application/json"
+        assert headers["Enterprise-Api-Secret-Key"] == "test-secret-key"
 
 
-type PooledTransport = tuple[list[httpx.Request], list[httpx.Client]]
+class TestSendRequestConnectionPooling:
+    """``send_request`` must reuse one client per request class instead of building one per call."""
+
+    @pytest.fixture(autouse=True)
+    def _no_traceparent(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from services.enterprise import base
+
+        monkeypatch.setattr(base, "generate_traceparent_header", lambda: None)
+
+    def test_reuses_client_without_sharing_cookies_or_timeouts(self, send_request_transport: PooledTransport) -> None:
+        requests, clients = send_request_transport
+
+        assert EnterpriseRequest.send_request("GET", "/info", timeout=3) == {"result": "success"}
+        assert EnterpriseRequest.send_request(
+            "POST", "/webapp/access-mode", json={"appId": "app-1"}, timeout=7, extra_headers={"X-Extra": "1"}
+        ) == {"result": "success"}
+
+        assert len(clients) == 1
+        assert not clients[0].is_closed
+        assert [request.url.path for request in requests] == ["/info", "/webapp/access-mode"]
+        assert "cookie" not in requests[1].headers
+        assert "X-Extra" not in requests[0].headers
+        assert requests[1].headers["X-Extra"] == "1"
+        assert requests[0].extensions["timeout"]["read"] == 3
+        assert requests[1].extensions["timeout"]["read"] == 7
+
+    def test_each_request_class_keeps_its_own_client(self, send_request_transport: PooledTransport) -> None:
+        requests, clients = send_request_transport
+
+        EnterpriseRequest.send_request("GET", "/info")
+        EnterprisePluginManagerRequest.send_request("GET", "/plugins")
+        EnterpriseRequest.send_request("GET", "/info")
+
+        assert len(clients) == 2
+        assert EnterpriseRequest._get_client() is clients[0]
+        assert EnterprisePluginManagerRequest._get_client() is clients[1]
+        assert [request.url.host for request in requests] == [
+            "enterprise-api.example.com",
+            "plugin-manager.example.com",
+            "enterprise-api.example.com",
+        ]
+
+    def test_concurrent_calls_share_one_client(self, send_request_transport: PooledTransport) -> None:
+        from concurrent.futures import ThreadPoolExecutor
+
+        requests, clients = send_request_transport
+
+        def send(index: int) -> object:
+            return EnterpriseRequest.send_request("GET", "/info", params={"index": index})
+
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            assert list(executor.map(send, range(12))) == [{"result": "success"}] * 12
+        assert len(clients) == 1
+        assert sorted(int(request.url.params["index"]) for request in requests) == list(range(12))
+
+    def test_error_response_does_not_close_shared_client(self, send_request_transport: PooledTransport) -> None:
+        from services.errors.enterprise import EnterpriseAPIForbiddenError
+
+        _, clients = send_request_transport
+
+        with pytest.raises(EnterpriseAPIForbiddenError):
+            EnterpriseRequest.send_request("GET", "/denied")
+
+        assert len(clients) == 1
+        assert not clients[0].is_closed
+        assert EnterpriseRequest.send_request("GET", "/info") == {"result": "success"}
+        assert len(clients) == 1
+
+    def test_close_releases_clients_and_next_call_builds_a_new_one(
+        self, send_request_transport: PooledTransport
+    ) -> None:
+        _, clients = send_request_transport
+
+        EnterpriseRequest.send_request("GET", "/info")
+        BaseRequest._close_clients()
+
+        assert clients[0].is_closed
+        assert EnterpriseRequest.send_request("GET", "/info") == {"result": "success"}
+        assert len(clients) == 2
+        assert not clients[1].is_closed
 
 
 class TestRBACConnectionPooling:

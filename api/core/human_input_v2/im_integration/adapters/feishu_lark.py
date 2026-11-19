@@ -864,7 +864,7 @@ class _MSFeishuLarkCardCodec(IMCardEventDecoder):
 
     class _ButtonMetadata(BaseModel):
         model_config = ConfigDict(
-            extra="forbid",
+            extra="ignore",
             frozen=True,
             hide_input_in_errors=True,
             strict=True,
@@ -883,7 +883,7 @@ class _MSFeishuLarkCardCodec(IMCardEventDecoder):
 
     class _ButtonValue(BaseModel):
         model_config = ConfigDict(
-            extra="forbid",
+            extra="ignore",
             frozen=True,
             hide_input_in_errors=True,
             strict=True,
@@ -1028,7 +1028,9 @@ class _MSFeishuLarkCardCodec(IMCardEventDecoder):
                     return "Feishu/Lark cards cannot represent file inputs."
                 case ParagraphInput(output_variable_name=input_name):
                     pass
-                case SelectInput(output_variable_name=input_name, options=options, default_value=default_value):
+                case SelectInput(
+                    output_variable_name=input_name, options=options, resolved_default_value=default_value
+                ):
                     if not options or any(not option for option in options):
                         return "Feishu/Lark cannot preserve one select option."
                     if len(options) != len(set(options)):
@@ -1071,8 +1073,8 @@ class _MSFeishuLarkCardCodec(IMCardEventDecoder):
                     "label": placeholder,
                     "placeholder": placeholder,
                 }
-                if block.default_value is not None:
-                    input_element["default_value"] = block.default_value
+                if block.resolved_default_value is not None:
+                    input_element["default_value"] = block.resolved_default_value
                 rendered_elements.append(input_element)
                 continue
             if isinstance(block, SelectInput):
@@ -1089,8 +1091,8 @@ class _MSFeishuLarkCardCodec(IMCardEventDecoder):
                         for option in block.options
                     ],
                 }
-                if block.default_value is not None:
-                    select_element["initial_option"] = block.default_value
+                if block.resolved_default_value is not None:
+                    select_element["initial_option"] = block.resolved_default_value
                 rendered_elements.append(select_element)
                 continue
             raise DynamicCardMessagingError("Feishu/Lark cards cannot represent file inputs.")
@@ -1175,7 +1177,7 @@ _MS_FEISHU_LARK_CARD_CODEC = _MSFeishuLarkCardCodec()
 
 
 class _FeishuLarkLocatorPayload(_Base64JSONLocatorPayload):
-    model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True, strict=True)
+    model_config = ConfigDict(extra="ignore", frozen=True, hide_input_in_errors=True, strict=True)
 
     # version of the locator
     v: Literal[1]

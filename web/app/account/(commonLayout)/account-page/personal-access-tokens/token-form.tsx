@@ -23,6 +23,7 @@ import {
 import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { v4 as uuid4 } from 'uuid'
 import { useDocLink } from '@/context/i18n'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
@@ -138,7 +139,7 @@ export default function TokenForm({
       return
     }
     if (attemptRef.current?.fingerprint !== fingerprint)
-      attemptRef.current = { fingerprint, key: crypto.randomUUID() }
+      attemptRef.current = { fingerprint, key: uuid4() }
     create.mutate({ body, headers: { 'Idempotency-Key': attemptRef.current.key } })
   }
   return (
@@ -207,7 +208,7 @@ export default function TokenForm({
           </p>
           <div className="mt-12 flex items-center justify-between gap-4">
             <a
-              href={docLink('/api-reference/guides/get-started')}
+              href={docLink('/cli/personal-access-tokens')}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex shrink-0 items-center gap-1 system-xs-medium text-text-accent hover:underline"

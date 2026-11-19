@@ -13,13 +13,7 @@ import type { EditorResource } from '@/app/components/workflow/editor-resource/r
 import type { AgentPreviewChatController } from '@/features/agent-v2/agent-detail/configure/components/preview/chat-conversation'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
-import {
-  skipToken,
-  useMutation,
-  useQuery,
-  useQueryClient,
-  useSuspenseQuery,
-} from '@tanstack/react-query'
+import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtom, useAtomValue, useStore as useJotaiStore, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
 import { useCallback, useRef, useState } from 'react'
@@ -50,6 +44,7 @@ import {
 } from '@/features/agent-v2/agent-detail/configure/components/preview/surface'
 import { invalidateAgentWorkingDirectoryFiles } from '@/features/agent-v2/agent-detail/configure/components/preview/working-directory-cache'
 import { AgentWorkingDirectoryPanel } from '@/features/agent-v2/agent-detail/configure/components/preview/working-directory-panel'
+import { useAgentPreviewEnabled } from '@/features/agent-v2/agent-detail/configure/hooks'
 import {
   agentConfigureConversationIdsAtom,
   agentConfigureRightPanelModeAtom,
@@ -67,7 +62,6 @@ import {
 } from '@/features/agent-v2/analytics'
 import { useAgentBuildDraftRefresh } from '@/features/agent-v2/build-draft-refresh'
 import { useCanCreateAgents } from '@/features/agent-v2/permissions'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
 import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
@@ -280,7 +274,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   const queryClient = useQueryClient()
   const jotaiStore = useJotaiStore()
   const setBuildDraftSoulSourceOverride = buildDraft.setSoulSourceOverride
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const agentPreviewEnabled = useAgentPreviewEnabled()
   const composerState = inlineComposerState
   const [clearPreviewChat, setClearPreviewChat] = useState(false)
   const [completedBuildConversationId, setCompletedBuildConversationId] = useState<string | null>(
@@ -290,7 +284,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   const appId = resource?.kind === 'app' ? resource.appId : undefined
   const conversationIds = useAtomValue(agentConfigureConversationIdsAtom)
   const [rightPanelMode, setRightPanelMode] = useAtom(agentConfigureRightPanelModeAtom)
-  const previewEnabled = systemFeatures.deployment_edition !== 'COMMUNITY'
+  const previewEnabled = agentPreviewEnabled === true
   const [showWorkingDirectory, setShowWorkingDirectory] = useState(false)
 
   const resetConversation = useSetAtom(resetAgentConfigureConversationAtom)
