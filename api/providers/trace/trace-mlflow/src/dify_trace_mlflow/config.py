@@ -1,3 +1,5 @@
+from urllib.parse import urlsplit
+
 from dify_trace_sdk.config import ProviderConfig, destination, http_url, integer_id, secret
 from pydantic import field_validator
 
@@ -17,7 +19,8 @@ class MLflowConfig(ProviderConfig):
             return DEFAULT_TRACKING_URI
         if value.strip().startswith("databricks"):
             raise ValueError("Use the Databricks provider for Databricks-managed MLflow")
-        return http_url(value, allowed_schemes=("https", "http"))
+        url = http_url(value, allowed_schemes=("https", "http"))
+        return url if url.endswith("//") else url.removesuffix("/")
 
     @field_validator("experiment_id")
     @classmethod
@@ -31,6 +34,13 @@ class DatabricksConfig(ProviderConfig):
     client_id: str | None = None
     client_secret: str | None = secret(default=None)
     personal_access_token: str | None = secret(default=None)
+
+    @field_validator("host")
+    @classmethod
+    def _host(cls, value: str) -> str:
+        """Normalize workspace origins; preserve invalid paths and queries for verification."""
+        url = value.strip()
+        return url.removesuffix("/") if urlsplit(url).path == "/" and "?" not in url and "#" not in url else url
 
     @field_validator("experiment_id")
     @classmethod

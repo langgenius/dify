@@ -17,7 +17,6 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.exceptions import HTTPException
 
-import models.workflow as workflow_models
 import services
 from controllers.common.errors import AccessDeniedError, InvalidRequestError, NotFoundError
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
@@ -996,7 +995,6 @@ class TestRagPipelineWorkflowApisCases:
         database_session = scoped_session(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
         database = SQLiteDatabase(engine=sqlite_engine, session=database_session)
         monkeypatch.setattr(workflow_controller, "db", database)
-        monkeypatch.setattr(workflow_models, "db", database)
 
         with database_session() as session:
             default_author = Account(name="Default Author", email="default-author@example.com")

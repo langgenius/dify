@@ -1,11 +1,12 @@
 from dataclasses import dataclass, field
 from decimal import Decimal
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, MagicMock, Mock, patch
 
 import pytest
 from dify_trace_sdk.emitter import TraceScope
 from dify_trace_sdk.events import TraceCorrelation, TraceEvent
+from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from core.app.apps.chat.app_config_manager import ChatAppConfig
@@ -577,15 +578,12 @@ class TestChatAppRunner:
         assert annotation_query.call_args.kwargs["app_id"] == "app-1"
         mock_direct.assert_called_once()
 
-    def test_run_returns_when_hosting_moderation_blocks(
-        self, sqlite_session: Session, annotation_replies, *, app_records, sqlite_session_factory
-    ):
+    def test_run_closes_explicit_session_before_stream_consumption(self, sqlite_session: Session):
+        from core.app.apps.chat.app_runner import ChatAppRunner as CoreChatAppRunner
+
         _, conversation, message = _persist_records(sqlite_session)
-        runner = ChatAppRunner(
-            retrieval=build_dataset_retrieval(sqlite_session_factory),
-            records=app_records,
-        )
-        app_config = ChatAppConfig.model_construct(
+        runner = CoreChatAppRunner()
+        app_config = SimpleNamespace(
             app_id="app-1",
             tenant_id="tenant-1",
             app_mode=AppMode.CHAT,
@@ -596,28 +594,57 @@ class TestChatAppRunner:
         )
         app_generate_entity = DummyGenerateEntity(
             app_config=app_config,
-            model_conf=SimpleNamespace(provider_model_bundle=None, model=None, parameters={}, app_model_config_dict={}),
+            model_conf=SimpleNamespace(provider_model_bundle=None, model="model-1", parameters={}),
             inputs={},
             query="hi",
             files=[],
             file_upload_config=None,
             conversation_id=None,
-            stream=False,
+            stream=True,
             user_id="user-1",
             invoke_from=InvokeFrom.SERVICE_API,
         )
 
-        with (
-            patch.object(ChatAppRunner, "organize_prompt_messages", return_value=([], [])),
-            patch.object(ChatAppRunner, "moderation_for_inputs", return_value=(None, {}, "hi")),
-            patch.object(annotation_replies, "query", return_value=None),
-            patch.object(ChatAppRunner, "check_hosting_moderation", return_value=True),
-        ):
-            runner.run(
-                app_generate_entity,
-                DummyQueueManager(),
-                conversation,
-                message,
-                app_record=sqlite_session.get(App, "app-1"),
-                annotations=annotation_replies,
-            )
+        events = []
+        queue_manager = DummyQueueManager()
+        model_instance = MagicMock()
+
+        def record_commit(_session: Session) -> None:
+            events.append("commit")
+
+        def invoke_stream():
+            events.append("first-chunk")
+            yield "chunk"
+
+        def invoke_llm(**kwargs):
+            events.append("invoke")
+            return invoke_stream()
+
+        event.listen(sqlite_session, "after_commit", record_commit)
+        try:
+            with (
+                patch.object(CoreChatAppRunner, "organize_prompt_messages", return_value=([], [])),
+                patch.object(CoreChatAppRunner, "moderation_for_inputs", return_value=(None, {}, "hi")),
+                patch.object(CoreChatAppRunner, "query_app_annotations_to_reply", return_value=None),
+                patch.object(CoreChatAppRunner, "recalc_llm_max_tokens"),
+                patch.object(
+                    CoreChatAppRunner,
+                    "_handle_invoke_result",
+                    side_effect=lambda invoke_result, **kwargs: list(invoke_result),
+                ) as mock_handle,
+                patch("core.app.apps.chat.app_runner.ModelInstance", return_value=model_instance),
+            ):
+                model_instance.invoke_llm.side_effect = invoke_llm
+                runner.run(app_generate_entity, queue_manager, conversation, message, sqlite_session)
+        finally:
+            event.remove(sqlite_session, "after_commit", record_commit)
+
+        assert events == ["commit", "commit", "invoke", "first-chunk"]
+        mock_handle.assert_called_once_with(
+            invoke_result=ANY,
+            queue_manager=queue_manager,
+            stream=True,
+            message_id="m1",
+            user_id="user-1",
+            tenant_id="tenant-1",
+        )

@@ -24,9 +24,9 @@ vi.mock('@/service/base', async () => {
   }
 })
 vi.mock('@/utils/client', () => ({ isClient: true, isServer: false }))
-vi.mock('@/context/i18n', async (original) => ({
-  ...(await original<typeof import('@/context/i18n')>()),
-  useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
+// boundary: documentation routing is covered separately from channel management requests.
+vi.mock('../use-channel-doc-link', () => ({
+  useChannelDocLink: () => () => 'https://docs.dify.ai',
 }))
 const clients: QueryClient[] = []
 function renderSurface(canManage = true, deploymentEdition: DeploymentEdition = 'CLOUD') {

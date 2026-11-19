@@ -244,7 +244,8 @@ const MessageTemplateSession = ({
           (!Array.isArray(value) || !value.every((item) => typeof item === 'string'))
         )
           throw new Error('invalid-array')
-        if (typeof value === 'number' && !Number.isFinite(value)) throw new Error('invalid-number')
+        if (typeof value === 'number' && !Number.isFinite(value))
+          throw new TypeError('invalid-number')
         inputs[variable.key] = value
       } catch {
         setTestInputError({

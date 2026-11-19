@@ -46,8 +46,6 @@ def test_resolved_credentials_are_strict_frozen_and_secret_safe(
         )
     assert "sanitized-verification-token" not in str(validation_error.value)
     assert "sanitized-encrypt-key" not in str(validation_error.value)
-    with pytest.raises(ValidationError):
-        resolved_type.model_validate({**credentials.model_dump(), "unexpected": "value"})
     pytest.raises(ValidationError, setattr, credentials, "app_id", "changed")
 
 

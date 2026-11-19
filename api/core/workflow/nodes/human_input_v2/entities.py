@@ -1,7 +1,7 @@
 import enum
 import typing
 from collections.abc import Sequence
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Self
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Discriminator, Field, field_validator
 
@@ -54,7 +54,7 @@ class AllWorkspaceContacts(BaseModel):
     than the node-data migration helper.
     """
 
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="ignore", frozen=True)
 
     type: Literal[RecipientType.ALL_WORKSPACE_CONTACTS] = RecipientType.ALL_WORKSPACE_CONTACTS
 
@@ -68,6 +68,17 @@ RecipientConfig = Annotated[
 class MessageTemplateConfig(BaseModel):
     subject: str
     body: str
+
+    @classmethod
+    def default_template(cls) -> Self:
+        """Return a fresh standard template for node creation and legacy migration."""
+        return cls(
+            subject="Action required",
+            body=(
+                "A request is waiting for your review. Please review the details and submit your decision to continue. "
+                "Review and respond: {{#url#}}"
+            ),
+        )
 
 
 class DebugModeConfig(BaseModel):

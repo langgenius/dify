@@ -7,6 +7,7 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
 from pydantic.json_schema import SkipJsonSchema
+from werkzeug.exceptions import BadRequest, NotFound, ServiceUnavailable
 
 import services.errors.conversation
 from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
@@ -18,6 +19,7 @@ from controllers.common.errors import (
     UnsupportedMediaTypeError,
 )
 from controllers.common.fields import GeneratedAppResponse, NewAppResponse, SimpleResultResponse
+from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import (
     query_params_from_model,
     register_response_schema_model,
@@ -27,8 +29,19 @@ from controllers.common.schema import (
 from controllers.console import console_ns
 from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.app.workflow_admission import console_workflow_admission
+from controllers.console.app.wraps import get_app_model
+from controllers.console.error import PaidPlanRequiredError
 from controllers.console.flask_admission import console_account_admission
-from controllers.console.wraps import RBACPermission, model_validate
+from controllers.console.wraps import (
+    RBACPermission,
+    account_initialization_required,
+    edit_permission_required,
+    evaluation_edition_required,
+    model_validate,
+    rbac_permission_required,
+    setup_required,
+    with_current_user,
+)
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.helper.trace_id_helper import get_external_trace_id
 from extensions.ext_application_services import application_services
@@ -50,10 +63,14 @@ from graphon.variables.exc import VariableError
 from libs import helper
 from libs.external_api import error_responses
 from libs.helper import TimestampField, dump_response, uuid_value
+from libs.login import login_required
 from machinery.context import RequestContext
+from models import Account, App
 from models.human_input_entities import FormInputConfig, UserActionConfig
 from models.model import AppMode
+from models.workflow import WorkflowKind
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
+from services.errors.evaluation import EvaluationEntitlementUnavailableError, EvaluationPlanRequiredError
 from services.errors.llm import InvokeRateLimitError
 from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from services.workflow.contracts import (
@@ -62,6 +79,7 @@ from services.workflow.contracts import (
     WorkflowOwner,
     WorkflowTriggerError,
 )
+from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
 LISTENING_RETRY_IN = 2000
@@ -149,6 +167,10 @@ class ConvertToWorkflowPayload(BaseModel):
     icon_background: str | None = None
 
 
+class WorkflowKindConvertQuery(BaseModel):
+    target_type: Literal["workflow", "evaluation"]
+
+
 class WorkflowFeatureTogglePayload(BaseModel):
     model_config = ConfigDict(extra="allow")
 
@@ -163,7 +185,7 @@ class WorkflowSuggestedQuestionsAfterAnswerPayload(WorkflowFeatureTogglePayload)
 class WorkflowTextToSpeechPayload(WorkflowFeatureTogglePayload):
     language: str | None = None
     voice: str | None = None
-    autoPlay: Literal["enabled", "disabled"] | None = None
+    autoPlay: Literal["enabled", "disabled"] | None = None  # noqa: N815  # Public field name.
 
 
 class WorkflowSensitiveWordAvoidancePayload(WorkflowFeatureTogglePayload):
@@ -196,7 +218,7 @@ class WorkflowFileUploadPayload(WorkflowFeatureTogglePayload):
     video: WorkflowFileUploadTransferPayload | None = None
     custom: WorkflowFileUploadTransferPayload | None = None
     preview_config: WorkflowFileUploadPreviewConfigPayload | None = None
-    fileUploadConfig: dict[str, Any] | None = None
+    fileUploadConfig: dict[str, Any] | None = None  # noqa: N815  # Public field name.
 
 
 class WorkflowFeaturesConfigPayload(BaseModel):
@@ -250,6 +272,14 @@ class WorkflowOnlineUsersResponse(ResponseModel):
     data: list[WorkflowOnlineUsersByApp]
 
 
+class WorkflowKindConvertResponse(ResponseModel):
+    result: str
+    workflow_id: str
+    type: str
+    kind: str
+    updated_at: int
+
+
 class SyncDraftWorkflowResponse(ResponseModel):
     result: str
     hash: str
@@ -296,6 +326,7 @@ register_schema_models(
     PublishWorkflowPayload,
     DefaultBlockConfigQuery,
     ConvertToWorkflowPayload,
+    WorkflowKindConvertQuery,
     WorkflowListQuery,
     WorkflowUpdatePayload,
     WorkflowFeatureTogglePayload,
@@ -329,6 +360,7 @@ register_response_schema_models(
     WorkflowOnlineUsersByApp,
     WorkflowOnlineUsersResponse,
     WorkflowPublishResponse,
+    WorkflowKindConvertResponse,
     SyncDraftWorkflowResponse,
     WorkflowRestoreResponse,
     DefaultBlockConfigsResponse,
@@ -804,17 +836,23 @@ class PublishedWorkflowApi(Resource):
         result = application_services().console_workflows.published(request_context, str(app_id))
         return dump_response(WorkflowResponse, result) if result is not None else None
 
+    @error_responses(PaidPlanRequiredError)
     @console_ns.expect(console_ns.models[PublishWorkflowPayload.__name__])
     @console_ns.response(200, "Workflow published successfully", console_ns.models[WorkflowPublishResponse.__name__])
     @console_workflow_admission(permission=RBACPermission.APP_RELEASE_AND_VERSION)
     @model_validate(PublishWorkflowPayload)
     def post(self, args: PublishWorkflowPayload, request_context: RequestContext, app_id: UUID):
-        publication, warning = application_services().console_workflows.publish(
-            request_context,
-            str(app_id),
-            marked_name=args.marked_name or "",
-            marked_comment=args.marked_comment or "",
-        )
+        try:
+            publication, warning = application_services().console_workflows.publish(
+                request_context,
+                str(app_id),
+                marked_name=args.marked_name or "",
+                marked_comment=args.marked_comment or "",
+            )
+        except EvaluationPlanRequiredError as exc:
+            raise PaidPlanRequiredError() from exc
+        except EvaluationEntitlementUnavailableError as exc:
+            raise ServiceUnavailable("Billing entitlement is temporarily unavailable.") from exc
         payload: dict[str, object] = {
             "result": "success",
             "created_at": TimestampField().format(publication.created_at),
@@ -822,6 +860,93 @@ class PublishedWorkflowApi(Resource):
         if warning:
             payload["warning"] = warning
         return payload
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflows/publish/evaluation")
+class EvaluationPublishedWorkflowApi(Resource):
+    @error_responses(PaidPlanRequiredError)
+    @console_ns.doc("publish_evaluation_workflow")
+    @console_ns.doc(description="Publish the draft as a reusable evaluation workflow")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.expect(console_ns.models[PublishWorkflowPayload.__name__])
+    @console_ns.response(
+        200,
+        "Evaluation workflow published successfully",
+        console_ns.models[WorkflowPublishResponse.__name__],
+    )
+    @evaluation_edition_required
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp()))
+    @get_app_model(mode=[AppMode.WORKFLOW])
+    @with_current_user
+    @edit_permission_required
+    @model_validate(PublishWorkflowPayload)
+    def post(self, args: PublishWorkflowPayload, current_user: Account, app_model: App):
+        workflow_service = WorkflowService()
+        try:
+            created_at = workflow_service.publish_evaluation_workflow_for_app(
+                app_model=app_model,
+                account=current_user,
+                marked_name=args.marked_name or "",
+                marked_comment=args.marked_comment or "",
+            )
+        except ValueError as exc:
+            raise BadRequest(str(exc)) from exc
+        except EvaluationPlanRequiredError as exc:
+            raise PaidPlanRequiredError() from exc
+        except EvaluationEntitlementUnavailableError as exc:
+            raise ServiceUnavailable("Billing entitlement is temporarily unavailable.") from exc
+
+        response = {"result": "success", "created_at": TimestampField().format(created_at)}
+        return dump_response(WorkflowPublishResponse, response)
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflows/convert-type")
+class WorkflowKindConvertApi(Resource):
+    @error_responses(PaidPlanRequiredError)
+    @console_ns.doc("convert_published_workflow_kind")
+    @console_ns.doc(description="Convert the active published workflow between standard and evaluation kinds")
+    @console_ns.doc(params=query_params_from_model(WorkflowKindConvertQuery))
+    @console_ns.response(
+        200,
+        "Workflow kind converted successfully",
+        console_ns.models[WorkflowKindConvertResponse.__name__],
+    )
+    @evaluation_edition_required
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp()))
+    @get_app_model(mode=[AppMode.WORKFLOW])
+    @with_current_user
+    @edit_permission_required
+    def post(self, current_user: Account, app_model: App):
+        query = WorkflowKindConvertQuery.model_validate(request.args.to_dict(flat=True))
+        target_kind = WorkflowKind.EVALUATION if query.target_type == "evaluation" else WorkflowKind.STANDARD
+
+        try:
+            workflow_id, workflow_type, kind, updated_at = WorkflowService().convert_published_workflow_kind_for_app(
+                app_model=app_model, target_kind=target_kind, account=current_user
+            )
+        except WorkflowNotFoundError as exc:
+            raise NotFound(str(exc)) from exc
+        except ValueError as exc:
+            raise BadRequest(str(exc)) from exc
+        except EvaluationPlanRequiredError as exc:
+            raise PaidPlanRequiredError() from exc
+        except EvaluationEntitlementUnavailableError as exc:
+            raise ServiceUnavailable("Billing entitlement is temporarily unavailable.") from exc
+
+        response = {
+            "result": "success",
+            "workflow_id": workflow_id,
+            "type": workflow_type,
+            "kind": kind,
+            "updated_at": TimestampField().format(updated_at),
+        }
+        return dump_response(WorkflowKindConvertResponse, response)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/default-workflow-block-configs")

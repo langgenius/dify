@@ -95,7 +95,7 @@ const setup = ({
 beforeEach(() => {
   upload.mockReset().mockImplementation(async ({ data }) => {
     const selected = data.get('file')
-    if (!(selected instanceof File)) throw new Error('Expected an uploaded file')
+    if (!(selected instanceof File)) throw new TypeError('Expected an uploaded file')
     return response(selected.name)
   })
 })

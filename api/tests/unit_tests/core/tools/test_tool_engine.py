@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from datetime import timedelta
-from typing import Any
+from decimal import Decimal
+from typing import Any, override
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -32,6 +33,8 @@ from core.tools.errors import (
     ToolInvokeError,
     ToolParameterValidationError,
 )
+from models.enums import ConversationFromSource
+from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import App, AppMode, Conversation, Message, MessageFile
 from services.tools.tool_engine import ToolEngine
 from tests.helpers.unit.model_factories import make_app, make_conversation
@@ -68,18 +71,18 @@ def _message() -> Message:
         query="query",
         message="",
         message_tokens=0,
-        message_unit_price=0,
-        message_price_unit=0,
+        message_unit_price=Decimal(0),
+        message_price_unit=Decimal(0),
         answer="",
         answer_tokens=0,
-        answer_unit_price=0,
-        answer_price_unit=0,
+        answer_unit_price=Decimal(0),
+        answer_price_unit=Decimal(0),
         parent_message_id=None,
         provider_response_latency=0,
-        total_price=0,
+        total_price=Decimal(0),
         currency="USD",
-        invoke_from="debugger",
-        from_source="console",
+        invoke_from=ModelInvokeFrom.DEBUGGER,
+        from_source=ConversationFromSource.CONSOLE,
         from_end_user_id=None,
         from_account_id=str(uuid4()),
         app_mode=AppMode.CHAT,
@@ -100,6 +103,7 @@ class _DummyTool(Tool):
     def tool_provider_type(self) -> ToolProviderType:
         return ToolProviderType.BUILT_IN
 
+    @override
     def _invoke(
         self,
         session: Session,
@@ -109,16 +113,17 @@ class _DummyTool(Tool):
         app_id: str | None = None,
         message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage]:
+        del session
         if self.raise_error:
             raise self.raise_error
-        if isinstance(self.result, list | Generator):
+        if isinstance(self.result, (list, Generator)):
             yield from self.result
         else:
             yield self.result
 
 
 def _build_tool(with_llm_parameter: bool = False) -> _DummyTool:
-    parameters = []
+    parameters: list[ToolParameter] = []
     if with_llm_parameter:
         parameters = [
             ToolParameter.get_simple_instance(
@@ -136,7 +141,7 @@ def _build_tool(with_llm_parameter: bool = False) -> _DummyTool:
     return _DummyTool(entity=entity, runtime=runtime)
 
 
-def test_convert_tool_response_to_str_and_extract_binary_messages():
+def test_convert_tool_response_to_str_and_extract_binary_messages() -> None:
     tool = _build_tool()
     messages = [
         tool.create_text_message("hello"),
@@ -201,7 +206,7 @@ def test_convert_tool_response_to_str_and_extract_binary_messages():
 )
 def test_convert_tool_response_deduplicates_equivalent_json(
     text: str, json_object: dict[str, Any] | list[Any], json_first: bool
-):
+) -> None:
     tool = _build_tool()
     messages = [
         ToolInvokeMessage(
@@ -234,7 +239,7 @@ def test_convert_tool_response_deduplicates_equivalent_json(
         pytest.param('{"a":"a b"}', {"a": "ab"}, '{"a": "ab"}', id="string-whitespace"),
     ],
 )
-def test_convert_tool_response_preserves_distinct_json(text: str, json_object: dict[str, Any], json_text: str):
+def test_convert_tool_response_preserves_distinct_json(text: str, json_object: dict[str, Any], json_text: str) -> None:
     tool = _build_tool()
     messages = [tool.create_json_message(json_object), tool.create_text_message(text)]
 
@@ -242,14 +247,14 @@ def test_convert_tool_response_preserves_distinct_json(text: str, json_object: d
 
 
 @pytest.mark.parametrize("suppress_output", [True, False])
-def test_convert_tool_response_preserves_json_only_output(suppress_output: bool):
+def test_convert_tool_response_preserves_json_only_output(suppress_output: bool) -> None:
     tool = _build_tool()
     messages = [tool.create_json_message({"b": 2, "a": "中文"}, suppress_output=suppress_output)]
 
     assert ToolEngine.tool_response_to_str(messages) == ("" if suppress_output else '{"b": 2, "a": "中文"}')
 
 
-def test_convert_tool_response_deduplicates_only_matching_json():
+def test_convert_tool_response_deduplicates_only_matching_json() -> None:
     tool = _build_tool()
     text = '{"b":2,"a":1}'
     messages = [
@@ -464,7 +469,7 @@ def test_agent_invoke_engine_meta_error(unbound_session: Session, app_records):
     assert error_meta.error == "meta failure"
 
 
-def test_convert_tool_response_excludes_variable_messages():
+def test_convert_tool_response_excludes_variable_messages() -> None:
     """Regression test for issue #34723.
 
     WorkflowTool._invoke yields VARIABLE, TEXT, and suppressed-JSON messages.

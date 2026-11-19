@@ -24,11 +24,12 @@ from collections.abc import Generator, Mapping, Sequence
 from dataclasses import replace
 from typing import Any, Protocol, cast
 
-from sqlalchemy.orm import make_transient
+from sqlalchemy.orm import Session, make_transient, sessionmaker
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.file_access import DatabaseFileAccessController
+from core.db.session_factory import session_factory
 from core.workflow.snippet_start import SNIPPET_VIRTUAL_START_NODE_ID
 from factories import file_factory
 from graphon.file.models import File
@@ -43,6 +44,7 @@ from services.workflow.execution.adapters.workflow.app_generator import Workflow
 from services.workflow.execution.ports import WorkflowRuntime
 from services.workflow.variable_contracts import WorkflowExecutionVariables
 from services.workflow_execution_identity import build_workflow_execution_identity
+from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
@@ -65,6 +67,7 @@ class _SnippetAsApp:
     - mode: hardcoded to AppMode.WORKFLOW since snippets always run as workflows
     - max_active_requests: defaults to 0 (no limit) for snippet debugging
     - app_model_config_id: None (snippets don't have app model configs)
+    - tracing: None (snippets have no app-level tracing configuration)
     """
 
     id: str
@@ -72,6 +75,7 @@ class _SnippetAsApp:
     mode: str
     max_active_requests: int
     app_model_config_id: str | None
+    tracing: str | None
 
     def __init__(self, snippet: CustomizedSnippet) -> None:
         self.id = snippet.id
@@ -79,6 +83,7 @@ class _SnippetAsApp:
         self.mode = AppMode.WORKFLOW.value
         self.max_active_requests = 0
         self.app_model_config_id = None
+        self.tracing = None
 
 
 class SnippetGenerateService:
@@ -204,6 +209,69 @@ class SnippetGenerateService:
         )
 
         return convert_to_event_stream(self._filter_virtual_start_events(response))
+
+    @classmethod
+    def run_published(
+        cls,
+        snippet: CustomizedSnippet,
+        user: Account | EndUser,
+        args: Mapping[str, Any],
+        invoke_from: InvokeFrom,
+        session_maker: sessionmaker[Session] | None = None,
+        workflow_id: str | None = None,
+        task_id: str | None = None,
+        capture_agent_evaluation_trace: bool = False,
+    ) -> Mapping[str, Any]:
+        """
+        Run a snippet's published workflow in non-streaming (blocking) mode.
+
+        Similar to :meth:`generate` but targets the published workflow instead
+        of the draft, and returns the raw blocking response without SSE
+        wrapping. Designed for programmatic callers that need direct workflow outputs.
+
+        :param snippet: CustomizedSnippet instance (must be published)
+        :param user: Account or EndUser initiating the run
+        :param args: Workflow inputs (must include "inputs" key)
+        :param invoke_from: Source of invocation
+        :return: Blocking response mapping with workflow outputs
+        :raises ValueError: If the snippet has no published workflow
+        """
+        from core.app.apps.workflow.app_generator import WorkflowAppGenerator as EvaluationWorkflowGenerator
+        from extensions.application_services.snippets import build_snippet_service
+
+        snippet_service = build_snippet_service(session_maker or session_factory.get_session_maker())
+        workflow = (
+            snippet_service.get_published_workflow_by_id(snippet, workflow_id)
+            if workflow_id
+            else snippet_service.get_published_workflow(snippet)
+        )
+        if not workflow:
+            raise ValueError("No published workflow found for snippet")
+
+        # Inject a virtual Start node when the graph doesn't have one.
+        workflow = cls.ensure_start_node_for_worker(workflow, snippet)
+
+        app_proxy = cast(App, _SnippetAsApp(snippet))
+
+        from extensions.application_services.workflow import build_workflow_execution_dependencies
+        from repositories.workflow.definition_repository import workflow_snapshot
+
+        response = EvaluationWorkflowGenerator(
+            runtime=build_workflow_execution_dependencies(session_maker or session_factory.get_session_maker()),
+            execution_driver=WorkflowRunAgg.run,
+        ).generate(
+            app_model=app_proxy,
+            workflow=workflow_snapshot(workflow),
+            user=user,
+            execution_identity=build_workflow_execution_identity(user),
+            args=args,
+            invoke_from=invoke_from,
+            streaming=False,
+            call_depth=0,
+            task_id=task_id,
+            capture_agent_evaluation_trace=capture_agent_evaluation_trace,
+        )
+        return response
 
     @classmethod
     def _ensure_start_node(cls, workflow: WorkflowSnapshot, snippet: CustomizedSnippet) -> WorkflowSnapshot:

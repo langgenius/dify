@@ -37,7 +37,7 @@ function parseSpec(content: string, fileName: string) {
     assertDocument(value)
     function validate(node: unknown): void {
       if (typeof node === 'number' && !Number.isFinite(node))
-        throw new Error('OpenAPI does not support non-finite numbers')
+        throw new TypeError('OpenAPI does not support non-finite numbers')
       if (node && typeof node === 'object') {
         for (const [key, child] of Object.entries(node)) {
           if (key === '$ref' && typeof child === 'string') pointer(value, child)
@@ -66,7 +66,7 @@ function parseSpec(content: string, fileName: string) {
     },
     Scalar(_key, node) {
       if (typeof node.value === 'number' && !Number.isFinite(node.value))
-        throw new Error('OpenAPI does not support non-finite numbers')
+        throw new TypeError('OpenAPI does not support non-finite numbers')
     },
   })
   const operations = describeOperations(value)

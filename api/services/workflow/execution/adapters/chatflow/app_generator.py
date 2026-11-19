@@ -541,6 +541,18 @@ class AdvancedChatAppGenerator(AppInputAdapter):
                 application_generate_entity.conversation_id = conversation.id
                 application_generate_entity.is_new_conversation = is_first_conversation
 
+            if (
+                is_first_conversation
+                and invoke_from == InvokeFrom.DEBUGGER
+                and application_generate_entity.single_iteration_run is None
+                and application_generate_entity.single_loop_run is None
+            ):
+                self._runtime.chat_records.retire_superseded_debug_conversations(
+                    tenant_id=application_generate_entity.app_config.tenant_id,
+                    app_id=application_generate_entity.app_config.app_id,
+                    account_id=application_generate_entity.user_id,
+                    current_conversation_id=conversation.id,
+                )
             self._dialogue_count = self._runtime.chat_records.dialogue_count(conversation.id)
 
             # The repositories return detached records; capture the scalar fields

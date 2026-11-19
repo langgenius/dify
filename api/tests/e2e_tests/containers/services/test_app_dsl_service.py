@@ -14,7 +14,7 @@ from flask import Flask
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from core.trigger.constants import (
+from constants.trigger import (
     TRIGGER_PLUGIN_NODE_TYPE,
     TRIGGER_SCHEDULE_NODE_TYPE,
     TRIGGER_WEBHOOK_NODE_TYPE,
