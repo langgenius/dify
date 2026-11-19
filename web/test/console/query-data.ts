@@ -150,8 +150,8 @@ export const createFeaturesFixture = (
 ): GetFeaturesResponse => zGetFeaturesResponse.parse(overrides)
 
 // Matches the default Community system features: plan quotas are unlimited outside Cloud.
-const unlimitedCount = { size: 0, limit: 0 }
-const unlimitedPeriodic = { usage: 0, limit: -1, reset_date: -1 }
+const unlimitedCount = { size: 0, limit: null }
+const unlimitedPeriodic = { usage: 0, limit: null, reset_date: -1 }
 const communityFeatures = {
   members: unlimitedCount,
   apps: unlimitedCount,

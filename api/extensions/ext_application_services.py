@@ -127,7 +127,7 @@ from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.agent.version_service import AgentVersionService
 from services.agent_tracing_config_service import AgentTracingConfigService
 from services.annotation_command_service import AnnotationCommandService
-from services.annotation_import_service import AnnotationImportLimits, AnnotationImportQuota, AnnotationImportService
+from services.annotation_import_service import AnnotationImportLimits, AnnotationImportService
 from services.annotation_query import AnnotationQuery
 from services.annotation_reply_service import AnnotationReplyService
 from services.api_based_extension_adapters import APIBasedExtensionPingProbe, WorkspaceTokenCipher
@@ -161,6 +161,7 @@ from services.conversation_variable_command_service import ConversationVariableC
 from services.conversation_variable_query import ConversationVariableQuery
 from services.credentials.query import CredentialQuery
 from services.enterprise.enterprise_service import EnterpriseService
+from services.entities.feature_entities import LimitationModel
 from services.entities.file_grant_entities import FileGrantLimits
 from services.errors.enterprise import EnterpriseServiceError
 from services.explore_banner_query_service import ExploreBannerQueryService
@@ -472,11 +473,10 @@ def _collect_agent_workspaces(*, tenant_id: str, agent_workspace_ids: tuple[str,
     enqueue_agent_resource_collection(tenant_id=tenant_id, workspace_ids=agent_workspace_ids)
 
 
-def _get_annotation_import_quota(*, tenant_id: str) -> AnnotationImportQuota | None:
+def _get_annotation_import_quota(*, tenant_id: str) -> LimitationModel | None:
     if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
         return None
-    quota = FeatureService.get_features(tenant_id, exclude_vector_space=True).annotation_quota_limit
-    return AnnotationImportQuota(limit=quota.limit, size=quota.size)
+    return FeatureService.get_features(tenant_id, exclude_vector_space=True).annotation_quota_limit
 
 
 def build_application_services(

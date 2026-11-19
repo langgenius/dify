@@ -187,7 +187,7 @@ const MembersPageContent = () => {
                           <span>{accounts.length}</span>
                           <span>/</span>
                           <span>
-                            {features.members.limit === 'unlimited'
+                            {features.members.limit === null
                               ? t(($) => $['plansCommon.unlimited'], { ns: 'billing' })
                               : features.members.limit}
                           </span>

@@ -58,6 +58,7 @@ from models.source import DataSourceOauthBinding
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
 from services.auth.resource_access_token_contracts import DatasetServiceApiGrant
 from services.enterprise import rbac_service
+from services.entities.feature_entities import FeatureModel, LimitationModel
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     IconInfo,
     RagPipelineDatasetCreateEntity,
@@ -4712,3 +4713,17 @@ class TestDatasetServiceSegmentCases:
                 segment_ids=[segment.id for segment in segments],
                 keywords_list=[["key"], None],
             )
+
+
+@pytest.mark.parametrize(
+    ("size", "limit", "count", "remaining"),
+    [(0, None, 500, None), (3, 5, 2, None), (3, 5, 3, 2), (0, 0, 1, 0), (6, 5, 1, 0)],
+)
+def test_check_documents_upload_quota(size: int, limit: int | None, count: int, remaining: int | None) -> None:
+    features = FeatureModel(documents_upload_quota=LimitationModel(size=size, limit=limit))
+
+    if remaining is None:
+        _dataset_service_document_DocumentService.check_documents_upload_quota(count, features)
+    else:
+        with pytest.raises(ValueError, match=f"Only {remaining} documents can be uploaded"):
+            _dataset_service_document_DocumentService.check_documents_upload_quota(count, features)

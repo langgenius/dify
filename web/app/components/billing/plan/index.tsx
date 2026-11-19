@@ -144,7 +144,7 @@ const PlanComp: FC<Props> = ({ loc }) => {
           name={t(($) => $['plansCommon.apiRateLimit'], { ns: 'billing' })}
           quota={appRunsQuota}
           tooltip={
-            appRunsQuota.limit === 'unlimited'
+            appRunsQuota.limit === null
               ? undefined
               : (t(($) => $['plansCommon.apiRateLimitTooltip'], { ns: 'billing' }) as string)
           }

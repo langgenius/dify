@@ -28,14 +28,20 @@ class EducationModel(FeatureResponseModel):
 
 class LimitationModel(FeatureResponseModel):
     size: int = Field(default=0, description="Number of resources already consumed")
-    limit: int = Field(default=0, description="Maximum number of resources allowed; 0 means unlimited")
+    limit: int | None = Field(
+        default=0, description="Maximum number of resources allowed; null means unlimited and 0 means none"
+    )
+
+    def is_available(self, required: int = 1) -> bool:
+        """Whether ``required`` more resources fit on top of ``size``."""
+        return self.limit is None or self.size + required <= self.limit
 
 
 class VectorSpaceLimitationModel(LimitationModel):
     model_config = ConfigDict(json_schema_serialization_defaults_required=False, protected_namespaces=())
 
     size: int = Field(description="Vector storage already consumed, in MB")
-    limit: int = Field(description="Vector storage allowed, in MB; -1 means unlimited")
+    limit: int | None = Field(description="Vector storage allowed, in MB; null means unlimited")
     usage_unknown: bool = Field(default=False, exclude_if=lambda value: not value)
 
 
@@ -67,7 +73,7 @@ class LicenseLimitationModel(FeatureResponseModel):
 
 class Quota(FeatureResponseModel):
     usage: int = 0
-    limit: int = Field(default=0, description="Quota limit; -1 means unlimited and 0 means no quota")
+    limit: int | None = Field(default=0, description="Quota limit; null means unlimited and 0 means no quota")
     reset_date: int = Field(
         default=-1, description="Next quota reset as a Unix timestamp in seconds; -1 means no reset"
     )

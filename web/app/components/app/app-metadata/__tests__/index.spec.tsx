@@ -28,7 +28,7 @@ function setup({
 }: {
   source?: ComponentProps<typeof AppMetadataForm>['appDetail']
   onConfirm?: Mock<(body: UpdateAppPayload) => Promise<void>>
-  quota?: { size: number; limit: number }
+  quota?: { size: number; limit: number | null }
 } = {}) {
   function Entry() {
     const [open, setOpen] = useState(true)
@@ -190,8 +190,9 @@ it.each([
 
 it.each([
   { quota: { size: 10, limit: 10 }, disabled: true },
-  { quota: { size: 10, limit: 0 }, disabled: false },
-])('applies creation quota without treating zero as a limit: %j', async ({ quota, disabled }) => {
+  { quota: { size: 10, limit: null }, disabled: false },
+  { quota: { size: 0, limit: 0 }, disabled: true },
+])('applies creation quota: %j', async ({ quota, disabled }) => {
   setup({ quota })
   const create = await screen.findByRole('button', { name: /common.operation.create/ })
   if (disabled) expect(create).toBeDisabled()

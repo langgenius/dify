@@ -14,6 +14,7 @@ from enums import CloudPlan, DeploymentEdition
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
+from services.entities.feature_entities import LimitationModel
 from services.knowledge.indexing.errors import DocumentIsPausedError
 from services.knowledge.resource_scope import DocumentRef
 from tasks.document_indexing_task import (
@@ -92,8 +93,7 @@ def patched_external_dependencies():
         mock_runner_instance = mock_indexing_runner.return_value
         mock_features = MagicMock()
         mock_features.billing.subscription.plan = CloudPlan.PROFESSIONAL
-        mock_features.vector_space.limit = 100
-        mock_features.vector_space.size = 0
+        mock_features.vector_space = LimitationModel(size=0, limit=100)
         mock_feature_service.get_features.return_value = mock_features
 
         yield {
@@ -263,8 +263,7 @@ class TestDatasetIndexingTaskIntegration:
         document_ids = [doc.id for doc in documents]
         features = patched_external_dependencies["features"]
         features.billing.subscription.plan = CloudPlan.PROFESSIONAL
-        features.vector_space.limit = 100
-        features.vector_space.size = 50
+        features.vector_space = LimitationModel(size=50, limit=100)
 
         # Act
         with patch("tasks.document_indexing_task.dify_config.BATCH_UPLOAD_LIMIT", "2"):
@@ -386,8 +385,7 @@ class TestDatasetIndexingTaskIntegration:
         document_ids = [doc.id for doc in documents]
         features = patched_external_dependencies["features"]
         features.billing.subscription.plan = CloudPlan.PROFESSIONAL
-        features.vector_space.limit = 100
-        features.vector_space.size = 100
+        features.vector_space = LimitationModel(size=100, limit=100)
 
         # Act
         _document_indexing(dataset.id, document_ids)
@@ -690,17 +688,16 @@ class TestDatasetIndexingTaskIntegration:
         self._assert_documents_parsing(db_session_with_containers, [special_document_id])
 
     @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-    def test_zero_vector_space_limit_allows_unlimited(
+    def test_unlimited_vector_space_allows_indexing(
         self, db_session_with_containers: Session, patched_external_dependencies
     ):
-        """Treat vector limit 0 as unlimited and continue indexing."""
+        """Continue indexing when the vector space limit is unlimited."""
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=3)
         document_ids = [doc.id for doc in documents]
         features = patched_external_dependencies["features"]
         features.billing.subscription.plan = CloudPlan.PROFESSIONAL
-        features.vector_space.limit = 0
-        features.vector_space.size = 1000
+        features.vector_space = LimitationModel(size=1000, limit=None)
 
         # Act
         _document_indexing(dataset.id, document_ids)
@@ -710,24 +707,23 @@ class TestDatasetIndexingTaskIntegration:
         self._assert_documents_parsing(db_session_with_containers, document_ids)
 
     @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-    def test_negative_vector_space_values_handled_gracefully(
+    def test_zero_vector_space_limit_blocks_indexing(
         self, db_session_with_containers: Session, patched_external_dependencies
     ):
-        """Treat negative vector limits as non-blocking and continue indexing."""
+        """Reject indexing when the plan has no vector space."""
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=3)
         document_ids = [doc.id for doc in documents]
         features = patched_external_dependencies["features"]
         features.billing.subscription.plan = CloudPlan.PROFESSIONAL
-        features.vector_space.limit = -1
-        features.vector_space.size = 100
+        features.vector_space = LimitationModel(size=0, limit=0)
 
         # Act
         _document_indexing(dataset.id, document_ids)
 
         # Assert
-        patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
-        self._assert_documents_parsing(db_session_with_containers, document_ids)
+        patched_external_dependencies["indexing_runner_instance"].run.assert_not_called()
+        self._assert_documents_error_contains(db_session_with_containers, document_ids, "over the limit")
 
     @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     def test_large_document_batch_processing(self, db_session_with_containers: Session, patched_external_dependencies):
@@ -744,8 +740,7 @@ class TestDatasetIndexingTaskIntegration:
         )
         features = patched_external_dependencies["features"]
         features.billing.subscription.plan = CloudPlan.PROFESSIONAL
-        features.vector_space.limit = 10000
-        features.vector_space.size = 0
+        features.vector_space = LimitationModel(size=0, limit=10000)
 
         # Act
         with patch("tasks.document_indexing_task.dify_config.BATCH_UPLOAD_LIMIT", str(batch_limit)):

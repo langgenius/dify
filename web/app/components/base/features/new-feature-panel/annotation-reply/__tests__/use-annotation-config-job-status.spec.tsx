@@ -26,7 +26,7 @@ const embeddingModel = {
   embedding_model_name: 'text-embedding-3-small',
 }
 
-const unlimitedAnnotationQuota = { annotation_quota_limit: { size: 0, limit: 0 } }
+const unlimitedAnnotationQuota = { annotation_quota_limit: { size: 0, limit: null } }
 
 const annotationConfig: AnnotationReplyConfig = {
   id: 'test-setting',

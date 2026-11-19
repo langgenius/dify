@@ -73,7 +73,7 @@ describe('Trigger events limit prompt', () => {
   it('does not show the prompt when the trigger event quota is unlimited', () => {
     renderProvider({
       billing: { subscription: { plan: 'sandbox' } },
-      trigger_event: { usage: 200, limit: -1 },
+      trigger_event: { usage: 200, limit: null },
     })
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()

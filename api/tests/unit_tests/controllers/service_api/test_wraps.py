@@ -43,6 +43,7 @@ from models.resource_access_token import (
     ResourceAccessTokenResourceType,
 )
 from services.api_token_service import ApiTokenCache, ApiTokenInvalidError
+from services.entities.feature_entities import LimitationModel
 from services.knowledge_fs.control_space_commands import KnowledgeFSControlSpaceCommandService
 from tests.helpers.unit.config_override import config_overrides_context
 
@@ -766,8 +767,7 @@ class TestCloudEditionBillingResourceCheck:
         mock_validate_token.return_value = Mock(tenant_id="tenant123")
 
         mock_features = Mock()
-        mock_features.members.limit = 10
-        mock_features.members.size = 10
+        mock_features.members = LimitationModel(size=10, limit=10)
         mock_get_features.return_value = mock_features
 
         @cloud_edition_billing_resource_check("members", "app")

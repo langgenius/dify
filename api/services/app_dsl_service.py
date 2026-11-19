@@ -182,7 +182,7 @@ class AppDslService:
         except Exception as error:
             # A failed lookup is a server failure, not an invalid DSL or exhausted quota.
             raise AppQuotaCheckError("Unable to check the app quota.") from error
-        if 0 < apps.limit < apps.size + new_apps:
+        if not apps.is_available(new_apps):
             raise NoPermissionError("The number of apps has reached the limit of your subscription.")
 
     def import_app(

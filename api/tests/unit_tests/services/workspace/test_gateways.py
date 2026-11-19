@@ -61,12 +61,12 @@ class TestGatewaysCases:
         assert requested == ["workspace"]
 
     @staticmethod
-    @pytest.mark.parametrize(("limit", "allowed"), [(0, True), (-1, True), (4, True), (5, True), (3, False)])
+    @pytest.mark.parametrize(("limit", "allowed"), [(None, True), (4, True), (5, True), (3, False), (0, False)])
     def test_cloud_invitation_member_limit(
         invitations: gateways.WorkspaceInvitationGateway,
         monkeypatch: pytest.MonkeyPatch,
         config_overrides: Callable[..., None],
-        limit: int,
+        limit: int | None,
         allowed: bool,
     ) -> None:
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
@@ -178,8 +178,8 @@ class TestGatewaysCases:
         [
             (DeploymentEdition.CLOUD, 2, LicenseLimitationModel(), WorkspaceInvitationQuotaError),
             (DeploymentEdition.CLOUD, 3, LicenseLimitationModel(), None),
-            (DeploymentEdition.CLOUD, 0, LicenseLimitationModel(), None),
-            (DeploymentEdition.CLOUD, -1, LicenseLimitationModel(), None),
+            (DeploymentEdition.CLOUD, None, LicenseLimitationModel(), None),
+            (DeploymentEdition.CLOUD, 0, LicenseLimitationModel(), WorkspaceInvitationQuotaError),
             (
                 DeploymentEdition.ENTERPRISE,
                 2,
@@ -202,7 +202,7 @@ class TestGatewaysCases:
         monkeypatch: pytest.MonkeyPatch,
         config_overrides: Callable[..., None],
         edition: DeploymentEdition,
-        plan_limit: int,
+        plan_limit: int | None,
         license_quota: LicenseLimitationModel,
         error: type[WorkspaceInvitationQuotaError] | None,
     ) -> None:

@@ -229,7 +229,7 @@ def cloud_edition_billing_resource_check[**P, R](resource: str) -> Callable[[Cal
 
             if resource == "vector_space":
                 vector_space = application_services().feature_queries.get_workspace_vector_space(current_tenant_id)
-                if 0 < vector_space.limit <= vector_space.size:
+                if not vector_space.is_available():
                     abort(
                         403,
                         "The capacity of the knowledge storage space has reached the limit of your subscription.",
@@ -241,11 +241,11 @@ def cloud_edition_billing_resource_check[**P, R](resource: str) -> Callable[[Cal
             apps = features.apps
             documents_upload_quota = features.documents_upload_quota
             annotation_quota_limit = features.annotation_quota_limit
-            if resource == "members" and 0 < members.limit <= members.size:
+            if resource == "members" and not members.is_available():
                 abort(403, "The number of members has reached the limit of your subscription.")
-            elif resource == "apps" and 0 < apps.limit <= apps.size:
+            elif resource == "apps" and not apps.is_available():
                 abort(403, "The number of apps has reached the limit of your subscription.")
-            elif resource == "documents" and 0 < documents_upload_quota.limit <= documents_upload_quota.size:
+            elif resource == "documents" and not documents_upload_quota.is_available():
                 # The api of file upload is used in the multiple places,
                 # so we need to check the source of the request from datasets
                 source = request.args.get("source") or request.form.get("source")
@@ -255,7 +255,7 @@ def cloud_edition_billing_resource_check[**P, R](resource: str) -> Callable[[Cal
                     return view(*args, **kwargs)
             elif resource == "workspace_custom" and not features.can_replace_logo:
                 abort(403, "The workspace custom feature has reached the limit of your subscription.")
-            elif resource == "annotation" and 0 < annotation_quota_limit.limit < annotation_quota_limit.size:
+            elif resource == "annotation" and not annotation_quota_limit.is_available(0):
                 abort(403, "The annotation quota has reached the limit of your subscription.")
             return view(*args, **kwargs)
 

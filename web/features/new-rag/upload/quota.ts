@@ -3,6 +3,9 @@ import type { KnowledgeFsTaskFailureMessageKey } from '../knowledge-fs-task-erro
 import { getCountQuota, getVectorSpaceQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { consoleQuery } from '@/service/console'
 
+const isValidLimit = (limit: number | null) =>
+  limit === null || (Number.isSafeInteger(limit) && limit >= 0)
+
 export async function getKnowledgeFsUploadQuotaFailure(
   queryClient: QueryClient,
 ): Promise<KnowledgeFsTaskFailureMessageKey | undefined> {
@@ -15,12 +18,7 @@ export async function getKnowledgeFsUploadQuotaFailure(
       }),
     )
     const quota = features.documents_upload_quota
-    if (
-      !Number.isSafeInteger(quota.size) ||
-      quota.size < 0 ||
-      !Number.isSafeInteger(quota.limit) ||
-      quota.limit < -1
-    )
+    if (!Number.isSafeInteger(quota.size) || quota.size < 0 || !isValidLimit(quota.limit))
       return 'taskFailure.documentCountQuotaUnavailable'
     if (isQuotaReached(getCountQuota(quota))) return 'taskFailure.documentCountQuotaExceeded'
   } catch {
@@ -38,8 +36,7 @@ export async function getKnowledgeFsUploadQuotaFailure(
     if (
       !Number.isFinite(quota.size) ||
       quota.size < 0 ||
-      !Number.isSafeInteger(quota.limit) ||
-      quota.limit < -1 ||
+      !isValidLimit(quota.limit) ||
       quota.usage_unknown
     )
       return 'taskFailure.vectorSpaceQuotaUnavailable'

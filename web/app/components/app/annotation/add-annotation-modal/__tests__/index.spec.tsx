@@ -34,7 +34,7 @@ const next = () => screen.getByRole('checkbox', { name: 'appAnnotation.addModal.
 const trigger = () =>
   screen.getByRole('button', { name: 'appAnnotation.table.header.addAnnotation' })
 
-async function setup(quota = { size: 0, limit: 10 }) {
+async function setup(quota: { size: number; limit: number | null } = { size: 0, limit: 10 }) {
   const user = userEvent.setup()
   const onAdded = vi.fn()
   const view = renderWithConsoleQuery(<AddAnnotationDialog appId="app-id" onAdded={onAdded} />, {
@@ -154,7 +154,8 @@ it('rechecks quota after creation before allowing the next annotation', async ()
 
 it.each([
   { quota: { size: 10, limit: 10 }, disabled: true },
-  { quota: { size: 10, limit: 0 }, disabled: false },
+  { quota: { size: 10, limit: null }, disabled: false },
+  { quota: { size: 0, limit: 0 }, disabled: true },
 ])('honors quota $quota.limit', async ({ quota, disabled }) => {
   await setup(quota)
   if (disabled) expect(submit()).toBeDisabled()

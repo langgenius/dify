@@ -220,7 +220,7 @@ class CheckAppQuota(Requirement):
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             return
         apps = FeatureService.get_features(load_workspace(ctx).id, exclude_vector_space=True).apps
-        if 0 < apps.limit <= apps.size:
+        if not apps.is_available():
             raise Forbidden("The number of apps has reached the limit of your subscription.")
 
 

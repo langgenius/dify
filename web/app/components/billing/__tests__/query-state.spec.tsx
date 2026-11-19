@@ -62,7 +62,7 @@ it('reveals the plan and all usage together when both billing queries have data'
   expect(screen.queryByRole('progressbar', { name: 'common.loading' })).not.toBeInTheDocument()
 })
 
-it('renders annotation usage only from returned data and preserves zero as an unlimited quota', async () => {
+it('renders annotation usage only from returned data and shows a null limit as unlimited', async () => {
   const queryClient = createConsoleQueryClient()
   const { wrapper } = createConsoleQueryWrapper({ queryClient, features: null })
   render(<AnnotationUsage />, { wrapper })
@@ -70,7 +70,7 @@ it('renders annotation usage only from returned data and preserves zero as an un
     screen.queryByRole('group', { name: 'billing.annotatedResponse.quotaTitle' }),
   ).not.toBeInTheDocument()
   await act(async () => {
-    seedFeatures(queryClient, { annotation_quota_limit: { size: 4, limit: 0 } })
+    seedFeatures(queryClient, { annotation_quota_limit: { size: 4, limit: null } })
   })
   const annotation = await screen.findByRole('group', {
     name: 'billing.annotatedResponse.quotaTitle',
@@ -81,7 +81,7 @@ it('renders annotation usage only from returned data and preserves zero as an un
 
 it.each([
   { limit: 0, usage: 0, percent: 100 },
-  { limit: -1, usage: 25, percent: 0 },
+  { limit: null, usage: 25, percent: 0 },
   { limit: 100, usage: 25, percent: 25 },
   { limit: 100, usage: 100, percent: 100 },
 ])(
@@ -92,7 +92,7 @@ it.each([
       features: {
         trigger_event: { limit, usage },
         api_rate_limit: { limit, usage },
-        apps: { size: 4, limit: 0 },
+        apps: { size: 4, limit: null },
       },
     })
     queryClient.setQueryData(consoleQuery.features.vectorSpace.get.queryKey(), {
@@ -105,10 +105,10 @@ it.each([
     for (const name of ['billing.usagePage.triggerEvents', 'billing.plansCommon.apiRateLimit']) {
       const quota = within(await screen.findByRole('group', { name }))
       expect(quota.getByTestId('billing-quota-value')).toHaveTextContent(
-        `${usage}/${limit === -1 ? 'billing.plansCommon.unlimited' : limit}`,
+        `${usage}/${limit === null ? 'billing.plansCommon.unlimited' : limit}`,
       )
       expect(quota.getByRole('meter', { name })).toHaveAttribute('aria-valuenow', String(percent))
-      if (limit !== -1)
+      if (limit !== null)
         expect(quota.queryByText('billing.plansCommon.unlimited')).not.toBeInTheDocument()
     }
 

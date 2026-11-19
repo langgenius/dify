@@ -1,5 +1,6 @@
 import type {
   CloudPlan,
+  LicenseLimitationModel,
   LimitationModel,
   Quota,
   VectorSpaceLimitationModel,
@@ -9,7 +10,8 @@ import { getDaysUntilEndOfMonth } from '@/utils/time'
 
 export type BillingQuota = {
   usage: number
-  limit: number | 'unlimited'
+  // null means unlimited; 0 means no capacity.
+  limit: number | null
   resetInDays?: number
 }
 
@@ -21,44 +23,45 @@ const getResetInDays = (resetDate: number) => {
   return diff >= 0 ? diff : undefined
 }
 
-// Normalize a quota with the getter for its field before checking it, so 0 and -1 keep their meaning.
-export const isQuotaReached = ({ usage, limit }: BillingQuota) =>
-  limit !== 'unlimited' && usage >= limit
+export const isQuotaReached = ({ usage, limit }: BillingQuota) => limit !== null && usage >= limit
 
-// Apps, members, document uploads and annotations use 0 for unlimited; the API enforces positive limits only.
 export const getCountQuota = ({ size, limit }: LimitationModel): BillingQuota => ({
   usage: size,
-  limit: limit <= 0 ? 'unlimited' : limit,
+  limit,
 })
 
 export const getVectorSpaceQuota = ({ size, limit }: VectorSpaceLimitationModel): BillingQuota => ({
   usage: size,
-  limit: limit === -1 ? 'unlimited' : limit,
+  limit,
 })
 
-// Trigger events and App Runs use -1 for unlimited; 0 is zero capacity.
-const getPeriodicQuota = ({ usage, limit }: Quota) => ({
-  usage,
-  limit: limit < 0 ? ('unlimited' as const) : limit,
+// License limits still use 0 for unlimited.
+export const getLicenseQuota = ({ size, limit }: LicenseLimitationModel): BillingQuota => ({
+  usage: size,
+  limit: limit === 0 ? null : limit,
 })
 
 // Only the Professional trigger event quota renews with the subscription period.
-export const getTriggerEventsQuota = (quota: Quota, plan: CloudPlan): BillingQuota => {
-  const periodicQuota = getPeriodicQuota(quota)
-  if (periodicQuota.limit === 'unlimited' || plan !== 'professional') return periodicQuota
+export const getTriggerEventsQuota = (
+  { usage, limit, reset_date }: Quota,
+  plan: CloudPlan,
+): BillingQuota => {
+  if (limit === null || plan !== 'professional') return { usage, limit }
 
-  return { ...periodicQuota, resetInDays: getResetInDays(quota.reset_date) }
+  return { usage, limit, resetInDays: getResetInDays(reset_date) }
 }
 
 // Billing counts every app run against `api_rate_limit`; the Sandbox quota renews monthly.
-export const getAppRunsQuota = (quota: Quota, plan: CloudPlan): BillingQuota => {
-  const periodicQuota = getPeriodicQuota(quota)
-  if (periodicQuota.limit === 'unlimited') return periodicQuota
+export const getAppRunsQuota = (
+  { usage, limit, reset_date }: Quota,
+  plan: CloudPlan,
+): BillingQuota => {
+  if (limit === null) return { usage, limit }
 
   return {
-    ...periodicQuota,
+    usage,
+    limit,
     resetInDays:
-      getResetInDays(quota.reset_date) ??
-      (plan === 'sandbox' ? getDaysUntilEndOfMonth() : undefined),
+      getResetInDays(reset_date) ?? (plan === 'sandbox' ? getDaysUntilEndOfMonth() : undefined),
   }
 }
