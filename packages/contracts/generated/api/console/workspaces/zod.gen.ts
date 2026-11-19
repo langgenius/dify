@@ -1956,6 +1956,25 @@ export const zMemberInviteResponse = z.object({
 })
 
 /**
+ * ModelBillingSource
+ */
+export const zModelBillingSource = z.enum(['legacy_message_credits', 'tokener'])
+
+/**
+ * TenantTokenerIntegrationStatus
+ *
+ * Durable non-secret stages of a new-registration bootstrap.
+ */
+export const zTenantTokenerIntegrationStatus = z.enum([
+  'configuring_provider',
+  'failed',
+  'installing_plugin',
+  'pending',
+  'provisioning',
+  'ready',
+])
+
+/**
  * LoadBalancingPayload
  */
 export const zLoadBalancingPayload = z.object({
@@ -3597,6 +3616,13 @@ export const zTokenerCurrentMonthUnavailableMeteringResponse = z.object({
 })
 
 /**
+ * TokenerEntitlementStatus
+ *
+ * Activity reported by the Tokener entitlement metering endpoint.
+ */
+export const zTokenerEntitlementStatus = z.enum(['active', 'failed', 'processing', 'retrying'])
+
+/**
  * TokenerMeteringResponse
  */
 export const zTokenerMeteringResponse = z.object({
@@ -3612,7 +3638,7 @@ export const zTokenerMeteringResponse = z.object({
     .string()
     .regex(/^[a-z0-9_]{1,100}$/)
     .nullish(),
-  entitlement_status: z.enum(['active', 'failed', 'processing', 'retrying']).nullish(),
+  entitlement_status: zTokenerEntitlementStatus.nullish(),
   tenant_id: z.string(),
   usage_generated_at: z.string().nullish(),
 })
@@ -3624,25 +3650,13 @@ export const zModelProviderCreditsResponse = z.object({
   exhausted_at: z.int().nullable(),
   is_exhausted: z.boolean(),
   is_unlimited: z.boolean(),
-  model_billing_source: z
-    .enum(['legacy_message_credits', 'tokener'])
-    .optional()
-    .default('legacy_message_credits'),
+  model_billing_source: zModelBillingSource.optional().default('legacy_message_credits'),
   next_credit_reset_date: z.int().nullable(),
   pool_type: z.enum(['paid', 'trial']).nullable(),
   quota_limit: z.int().nullable(),
   quota_used: z.int().nullable(),
   remaining_credits: z.int().nullable(),
-  tokener_bootstrap_status: z
-    .enum([
-      'configuring_provider',
-      'failed',
-      'installing_plugin',
-      'pending',
-      'provisioning',
-      'ready',
-    ])
-    .nullish(),
+  tokener_bootstrap_status: zTenantTokenerIntegrationStatus.nullish(),
   tokener_metering: zTokenerMeteringResponse.nullish(),
 })
 

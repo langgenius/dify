@@ -23,16 +23,9 @@ export type FeatureModel = {
   is_allow_transfer_workspace: boolean
   knowledge_pipeline: KnowledgePipeline
   members: LimitationModel
-  model_billing_source: 'legacy_message_credits' | 'tokener'
+  model_billing_source: ModelBillingSource
   model_load_balancing_enabled: boolean
-  tokener_bootstrap_status:
-    | 'configuring_provider'
-    | 'failed'
-    | 'installing_plugin'
-    | 'pending'
-    | 'provisioning'
-    | 'ready'
-    | null
+  tokener_bootstrap_status: TenantTokenerIntegrationStatus | null
   trigger_event: Quota
   webapp_copyright_enabled: boolean
   workflow_collaboration_enabled: boolean
@@ -79,6 +72,16 @@ export type EducationModel = {
 export type KnowledgePipeline = {
   publish_enabled: boolean
 }
+
+export type ModelBillingSource = 'legacy_message_credits' | 'tokener'
+
+export type TenantTokenerIntegrationStatus =
+  | 'configuring_provider'
+  | 'failed'
+  | 'installing_plugin'
+  | 'pending'
+  | 'provisioning'
+  | 'ready'
 
 export type LicenseLimitationModel = {
   enabled: boolean

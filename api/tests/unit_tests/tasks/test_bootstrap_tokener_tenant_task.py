@@ -24,7 +24,7 @@ from core.plugin.entities.plugin_daemon import (
     PluginInstallTaskStatus,
 )
 from core.tools.entities.common_entities import I18nObject
-from enums.model_billing import TenantTokenerIntegrationStatus
+from enums.model_billing import TenantTokenerIntegrationStatus, TokenerBootstrapStatus
 from extensions.ext_redis import RedisClientWrapper
 from models.account import Tenant
 from models.model import TenantCreditPool
@@ -90,7 +90,12 @@ def snapshot(integration: TenantTokenerIntegration) -> module._IntegrationSnapsh
 
 
 def ready_response(tenant_id: str) -> TokenerTenantBootstrapResponse:
-    return {"tenant_id": tenant_id, "status": "ready", "retryable": False, "data_plane_api_key": TEST_KEY}
+    return {
+        "tenant_id": tenant_id,
+        "status": TokenerBootstrapStatus.READY,
+        "retryable": False,
+        "data_plane_api_key": TEST_KEY,
+    }
 
 
 @dataclass
@@ -229,7 +234,7 @@ def test_pending_resources_retry_is_sanitized_and_persisted_without_any_key_or_p
         "bootstrap_tokener_tenant",
         return_value={
             "tenant_id": integration.tenant_id,
-            "status": "pending",
+            "status": TokenerBootstrapStatus.PENDING,
             "retryable": True,
             "error_code": "tokener_bootstrap_pending",
         },

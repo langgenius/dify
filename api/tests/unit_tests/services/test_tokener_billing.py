@@ -2,11 +2,11 @@
 
 import json
 from collections.abc import Callable, Iterator
-from typing import Literal
 
 import httpx
 import pytest
 
+from enums.model_billing import TokenerBootstrapStatus, TokenerEntitlementStatus
 from services.billing_client import transport
 from services.billing_service import BillingService, TokenerBootstrapUpstreamError
 from services.errors.billing import BillingUpstreamInvalidResponseError, BillingUpstreamUnavailableError
@@ -40,11 +40,15 @@ def mock_billing_http(
 
 @pytest.mark.parametrize(
     ("status", "error_code", "expected_code"),
-    [("ready", "", None), ("pending", "org_pending", "org_pending"), ("pending", "unsafe url?key", None)],
+    [
+        (TokenerBootstrapStatus.READY, "", None),
+        (TokenerBootstrapStatus.PENDING, "org_pending", "org_pending"),
+        (TokenerBootstrapStatus.PENDING, "unsafe url?key", None),
+    ],
 )
 def test_bootstrap_returns_credential_only_when_ready(
     mock_billing_http: Callable[[Callable[[httpx.Request], httpx.Response]], None],
-    status: Literal["ready", "pending"],
+    status: TokenerBootstrapStatus,
     error_code: str,
     expected_code: str | None,
 ) -> None:
@@ -56,7 +60,7 @@ def test_bootstrap_returns_credential_only_when_ready(
             200,
             json={
                 "tenant_id": TENANT,
-                "status": status,
+                "status": status.value,
                 "retryable": status == "pending",
                 "data_plane_api_key": TEST_KEY,
                 "error_code": error_code,
@@ -137,9 +141,14 @@ def test_native_billing_never_falls_back_when_unconfigured(config_overrides: Cal
         BillingService.get_tokener_metering(TENANT)
 
 
-@pytest.mark.parametrize("usage_available", [True, False])
+@pytest.mark.parametrize(
+    ("usage_available", "entitlement_status"),
+    [(True, TokenerEntitlementStatus.PROCESSING), (True, None), (False, None)],
+)
 def test_metering_keeps_zero_usage_distinct_from_unavailable(
-    mock_billing_http: Callable[[Callable[[httpx.Request], httpx.Response]], None], usage_available: bool
+    mock_billing_http: Callable[[Callable[[httpx.Request], httpx.Response]], None],
+    usage_available: bool,
+    entitlement_status: TokenerEntitlementStatus | None,
 ) -> None:
     month = {"start_date": "2026-11-01", "end_date": "2026-11-30"}
     month |= (
@@ -156,6 +165,7 @@ def test_metering_keeps_zero_usage_distinct_from_unavailable(
     }
     if usage_available:
         payload["usage_generated_at"] = NOW
+        payload["entitlement_status"] = entitlement_status.value if entitlement_status is not None else None
 
     def respond(request: httpx.Request) -> httpx.Response:
         assert request.method == "GET"
@@ -163,7 +173,11 @@ def test_metering_keeps_zero_usage_distinct_from_unavailable(
         return httpx.Response(200, json=payload)
 
     mock_billing_http(respond)
-    assert BillingService.get_tokener_metering(TENANT) == payload
+    result = BillingService.get_tokener_metering(TENANT)
+    assert result == payload
+    if usage_available:
+        assert result["entitlement_status"] is entitlement_status
+    assert json.loads(json.dumps(result)) == payload
 
 
 @pytest.mark.parametrize(

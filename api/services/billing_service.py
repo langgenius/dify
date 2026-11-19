@@ -7,6 +7,7 @@ from warnings import deprecated
 from pydantic import TypeAdapter, ValidationError
 
 from enums import CloudPlan
+from enums.model_billing import TokenerBootstrapStatus, TokenerEntitlementStatus
 from extensions.ext_redis import redis_client
 from services.billing_client import billing, saas, transport
 from services.entities.tokener_metering import TokenerTenantMeteringResponse
@@ -28,7 +29,7 @@ class TokenerBootstrapUpstreamError(RuntimeError):
 
 class TokenerTenantBootstrapResponse(TypedDict):
     tenant_id: str
-    status: Literal["pending", "ready"]
+    status: TokenerBootstrapStatus
     retryable: bool
     data_plane_api_key: NotRequired[str]
     error_code: NotRequired[str]
@@ -72,7 +73,7 @@ class BillingService:
                 raise TokenerBootstrapUpstreamError("tokener_bootstrap_invalid_response", retryable=False)
             result: TokenerTenantBootstrapResponse = {
                 "tenant_id": tenant_id,
-                "status": "ready" if reply.status == "ready" else "pending",
+                "status": TokenerBootstrapStatus(reply.status),
                 "retryable": reply.retryable,
             }
             if reply.error_code and re.fullmatch(r"[A-Za-z0-9_-]{1,100}", reply.error_code, flags=re.ASCII):
@@ -101,6 +102,9 @@ class BillingService:
             raise BillingUpstreamInvalidResponseError from None
         payload = reply.model_dump(mode="json", by_alias=True, exclude_unset=True)
         try:
+            entitlement_status = payload.get("entitlement_status")
+            if entitlement_status is not None:
+                payload["entitlement_status"] = TokenerEntitlementStatus(entitlement_status)
             metering = _tokener_tenant_metering_adapter.validate_python(payload, strict=True)
             if metering["tenant_id"] != tenant_id:
                 raise ValueError("tenant mismatch")

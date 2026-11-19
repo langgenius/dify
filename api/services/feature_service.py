@@ -86,10 +86,8 @@ class FeatureService:
     def get_features(cls, tenant_id: str, exclude_vector_space: bool = False) -> feature_entities.FeatureModel:
         features = feature_entities.FeatureModel()
         billing_profile = cls.get_model_billing_resolution(tenant_id)
-        features.model_billing_source = billing_profile.model_billing_source.value
-        features.tokener_bootstrap_status = (
-            billing_profile.tokener_bootstrap_status.value if billing_profile.tokener_bootstrap_status else None
-        )
+        features.model_billing_source = billing_profile.model_billing_source
+        features.tokener_bootstrap_status = billing_profile.tokener_bootstrap_status
         features.im_centrally_managed = cls.is_im_centrally_managed()
         features.agent_preview_enabled = cls.is_agent_preview_enabled()
         if exclude_vector_space:

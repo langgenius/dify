@@ -60,6 +60,25 @@ export const zKnowledgePipeline = z.object({
 })
 
 /**
+ * ModelBillingSource
+ */
+export const zModelBillingSource = z.enum(['legacy_message_credits', 'tokener'])
+
+/**
+ * TenantTokenerIntegrationStatus
+ *
+ * Durable non-secret stages of a new-registration bootstrap.
+ */
+export const zTenantTokenerIntegrationStatus = z.enum([
+  'configuring_provider',
+  'failed',
+  'installing_plugin',
+  'pending',
+  'provisioning',
+  'ready',
+])
+
+/**
  * LicenseLimitationModel
  *
  * - enabled: whether this limit is enforced
@@ -126,20 +145,9 @@ export const zFeatureModel = z.object({
   is_allow_transfer_workspace: z.boolean().default(true),
   knowledge_pipeline: zKnowledgePipeline.default({ publish_enabled: false }),
   members: zLimitationModel.default({ limit: 1, size: 0 }),
-  model_billing_source: z
-    .enum(['legacy_message_credits', 'tokener'])
-    .default('legacy_message_credits'),
+  model_billing_source: zModelBillingSource.default('legacy_message_credits'),
   model_load_balancing_enabled: z.boolean().default(false),
-  tokener_bootstrap_status: z
-    .enum([
-      'configuring_provider',
-      'failed',
-      'installing_plugin',
-      'pending',
-      'provisioning',
-      'ready',
-    ])
-    .nullable(),
+  tokener_bootstrap_status: zTenantTokenerIntegrationStatus.nullable(),
   trigger_event: zQuota.default({
     limit: 3000,
     reset_date: 0,

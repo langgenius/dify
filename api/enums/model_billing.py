@@ -17,3 +17,19 @@ class TenantTokenerIntegrationStatus(StrEnum):
     CONFIGURING_PROVIDER = "configuring_provider"
     READY = "ready"
     FAILED = "failed"
+
+
+class TokenerBootstrapStatus(StrEnum):
+    """Status of the private Billing bootstrap exchange."""
+
+    PENDING = "pending"
+    READY = "ready"
+
+
+class TokenerEntitlementStatus(StrEnum):
+    """Activity reported by the Tokener entitlement metering endpoint."""
+
+    ACTIVE = "active"
+    PROCESSING = "processing"
+    RETRYING = "retrying"
+    FAILED = "failed"

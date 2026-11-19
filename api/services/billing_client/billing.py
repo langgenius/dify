@@ -23,7 +23,7 @@ class AutocompleteEducationInstitutionReply(BillingModel):
 
 
 class SubscriptionPlanItem(BillingModel):
-    plan: Literal["sandbox", "professional", "team"]
+    plan: Literal["sandbox", "professional", "team"]  # guard-ignore: no-new-multi-string-literal -- raw JSON strings
     expiration_date: int
 
 
@@ -35,7 +35,7 @@ class BatchGetSubscriptionPlanReq(BillingModel):
     tenant_ids: list[str]
 
 
-type BillingComplianceErrorReason = Literal[
+type BillingComplianceErrorReason = Literal[  # guard-ignore: no-new-multi-string-literal -- raw JSON strings
     "",
     "CODEC",
     "VALIDATOR",
@@ -59,7 +59,7 @@ type BillingComplianceErrorReason = Literal[
 ]
 
 
-type BillingEducationErrorReason = Literal[
+type BillingEducationErrorReason = Literal[  # guard-ignore: no-new-multi-string-literal -- raw JSON strings
     "",
     "CODEC",
     "VALIDATOR",
@@ -79,7 +79,7 @@ type BillingEducationErrorReason = Literal[
 ]
 
 
-type BillingInvoiceErrorReason = Literal[
+type BillingInvoiceErrorReason = Literal[  # guard-ignore: no-new-multi-string-literal -- raw JSON strings
     "",
     "CODEC",
     "VALIDATOR",
@@ -98,7 +98,7 @@ type BillingInvoiceErrorReason = Literal[
 ]
 
 
-type BillingModelProviderErrorReason = Literal[
+type BillingModelProviderErrorReason = Literal[  # guard-ignore: no-new-multi-string-literal -- raw JSON strings
     "",
     "CODEC",
     "VALIDATOR",
@@ -120,7 +120,7 @@ type BillingModelProviderErrorReason = Literal[
 ]
 
 
-type BillingQuotaErrorReason = Literal[
+type BillingQuotaErrorReason = Literal[  # guard-ignore: no-new-multi-string-literal -- raw JSON strings
     "",
     "CODEC",
     "VALIDATOR",
@@ -138,7 +138,7 @@ type BillingQuotaErrorReason = Literal[
 ]
 
 
-type BillingSubscriptionErrorReason = Literal[
+type BillingSubscriptionErrorReason = Literal[  # guard-ignore: no-new-multi-string-literal -- raw JSON strings
     "",
     "CODEC",
     "VALIDATOR",
@@ -168,15 +168,15 @@ type BillingSubscriptionErrorReason = Literal[
 
 
 class BillingSubscriptionPlan(BillingModel):
-    plan: Literal["sandbox", "professional", "team"]
-    interval: Literal["", "month", "year"]
+    plan: Literal["sandbox", "professional", "team"]  # guard-ignore: no-new-multi-string-literal -- raw JSON strings
+    interval: Literal["", "month", "year"]  # guard-ignore: no-new-multi-string-literal -- raw JSON strings
     education: bool
     status: str
     cancel_at_period_end: bool
     paid_period_end: int
 
 
-type BillingTokenerErrorReason = Literal[
+type BillingTokenerErrorReason = Literal[  # guard-ignore: no-new-multi-string-literal -- raw JSON strings
     "",
     "CODEC",
     "VALIDATOR",
@@ -213,7 +213,7 @@ type BillingTokenerErrorReason = Literal[
 
 class BootstrapTokenerTenantReply(BillingModel):
     tenant_id: str
-    status: Literal["pending", "ready"]
+    status: Literal["pending", "ready"]  # guard-ignore: no-new-multi-string-literal -- raw JSON strings
     data_plane_api_key: str | None = Field(None, repr=False)
     retryable: bool
     error_code: str
@@ -256,7 +256,9 @@ class GetInvoicesReply(BillingModel):
 
 
 class GetKnowledgeRateLimitReply(BillingModel):
-    subscription_plan: Literal["sandbox", "professional", "team"]
+    subscription_plan: Literal[  # guard-ignore: no-new-multi-string-literal -- raw JSON strings
+        "sandbox", "professional", "team"
+    ]
     limit: int
 
 
@@ -289,7 +291,9 @@ class GetSubscriptionInfoReply(BillingModel):
     knowledge_rate_limit: KnowledgeRateLimit
     documents_upload_quota: SubscriptionQuota
     annotation_quota_limit: SubscriptionQuota
-    docs_processing: Literal["standard", "priority", "top-priority"]
+    docs_processing: Literal[  # guard-ignore: no-new-multi-string-literal -- raw JSON strings
+        "standard", "priority", "top-priority"
+    ]
     can_replace_logo: bool
     model_load_balancing_enabled: bool
     knowledge_pipeline_publish_enabled: bool
@@ -402,7 +406,7 @@ class TokenerAllowanceMetering(BillingModel):
 
 
 class TokenerCurrentMonthMetering(BillingModel):
-    status: Literal["available", "unavailable"]
+    status: Literal["available", "unavailable"]  # guard-ignore: no-new-multi-string-literal -- raw JSON strings
     start_date: str
     end_date: str
     billed_usd_micro: str | None = None
@@ -423,13 +427,18 @@ class TokenerTenantMeteringReply(BillingModel):
     balance_generated_at: str
     usage_generated_at: str | None = None
     allowance: TokenerAllowanceMetering | None = None
-    entitlement_status: Literal["active", "processing", "retrying", "failed"] | None = None
+    entitlement_status: (
+        Literal[  # guard-ignore: no-new-multi-string-literal -- raw JSON strings
+            "active", "processing", "retrying", "failed"
+        ]
+        | None
+    ) = None
     entitlement_error_code: str | None = None
 
 
 class VerifyEducationIdentityReply(BillingModel):
     token: str
-    status: Literal["eligible", "not_eligible"]
+    status: Literal["eligible", "not_eligible"]  # guard-ignore: no-new-multi-string-literal -- raw JSON strings
 
 
 def _is_billing_subscription_error_reason(value: str) -> TypeIs[BillingSubscriptionErrorReason]:

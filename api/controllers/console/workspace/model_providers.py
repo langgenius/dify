@@ -20,6 +20,7 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from enums.model_billing import ModelBillingSource, TenantTokenerIntegrationStatus, TokenerEntitlementStatus
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -142,15 +143,13 @@ class TokenerMeteringResponse(ResponseModel):
     balance_generated_at: str
     usage_generated_at: str | None = None
     allowance: TokenerAllowanceMeteringResponse | None = None
-    entitlement_status: Literal["active", "processing", "retrying", "failed"] | None = None
+    entitlement_status: TokenerEntitlementStatus | None = None
     entitlement_error_code: str | None = Field(default=None, pattern=r"^[a-z0-9_]{1,100}$")
 
 
 class ModelProviderCreditsResponse(ResponseModel):
-    model_billing_source: Literal["legacy_message_credits", "tokener"] = "legacy_message_credits"
-    tokener_bootstrap_status: (
-        Literal["pending", "installing_plugin", "provisioning", "configuring_provider", "ready", "failed"] | None
-    ) = None
+    model_billing_source: ModelBillingSource = ModelBillingSource.LEGACY_MESSAGE_CREDITS
+    tokener_bootstrap_status: TenantTokenerIntegrationStatus | None = None
     pool_type: Literal["paid", "trial"] | None
     quota_limit: int | None = Field(description="Credit limit for the effective pool; -1 means unlimited.")
     quota_used: int | None

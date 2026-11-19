@@ -1686,6 +1686,7 @@ def test_tokener_profile_reuses_hosted_catalog_without_legacy_credits(
     from core.errors.error import ModelCurrentlyNotSupportError
     from core.plugin.impl.model import PluginModelClient
     from core.plugin.plugin_service import PluginService
+    from enums.model_billing import ModelBillingSource
     from models.account import Tenant
     from models.model_billing import TenantModelBillingProfile
     from services.entities.feature_entities import FeatureModel
@@ -1727,7 +1728,7 @@ def test_tokener_profile_reuses_hosted_catalog_without_legacy_credits(
 
     def features(_cls: type[FeatureService], tenant_id: str, **_kwargs: object) -> FeatureModel:
         assert tenant_id == tenant.id
-        return FeatureModel(model_billing_source="tokener")
+        return FeatureModel(model_billing_source=ModelBillingSource.TOKENER)
 
     monkeypatch.setattr(PluginService, "fetch_plugin_model_providers", classmethod(installed))
     # Only the already-resolved plan/license feature boundary is isolated;

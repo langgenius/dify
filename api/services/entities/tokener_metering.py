@@ -4,6 +4,8 @@ from typing import Annotated, Literal, NotRequired, TypedDict
 
 from pydantic import Field
 
+from enums.model_billing import TokenerEntitlementStatus
+
 _UnsignedDecimalString = Annotated[str, Field(pattern=r"^\d+$")]
 _CanonicalUnsignedDecimalString = Annotated[str, Field(pattern=r"^(0|[1-9]\d*)$")]
 _SignedDecimalString = Annotated[str, Field(pattern=r"^-?\d+$")]
@@ -45,5 +47,5 @@ class TokenerTenantMeteringResponse(TypedDict):
     balance_generated_at: str
     usage_generated_at: NotRequired[str]
     allowance: NotRequired[TokenerAllowanceMetering | None]
-    entitlement_status: NotRequired[Literal["active", "processing", "retrying", "failed"]]
+    entitlement_status: NotRequired[TokenerEntitlementStatus | None]
     entitlement_error_code: NotRequired[Annotated[str, Field(pattern=r"^[a-z0-9_]{1,100}$")]]

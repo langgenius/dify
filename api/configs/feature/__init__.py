@@ -249,6 +249,13 @@ class AsyncWorkflowConfig(BaseSettings):
     )
 
 
+class TokenerPluginInstallSource(StrEnum):
+    """Supported sources for installing the managed Tokener plugin."""
+
+    MARKETPLACE = "marketplace"
+    PACKAGE = "package"
+
+
 class PluginConfig(BaseSettings):
     """
     Plugin configs
@@ -354,7 +361,7 @@ class PluginConfig(BaseSettings):
     TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED: bool = Field(default=False)
     TOKENER_BILLING_API_URL: str = Field(default="")
     TOKENER_PLUGIN_UNIQUE_IDENTIFIER: str = Field(default="")
-    TOKENER_PLUGIN_INSTALL_SOURCE: Literal["marketplace", "package"] = Field(default="marketplace")
+    TOKENER_PLUGIN_INSTALL_SOURCE: TokenerPluginInstallSource = Field(default=TokenerPluginInstallSource.MARKETPLACE)
     TOKENER_PROVIDER_NAME: str = Field(default="langgenius/tokener/tokener")
     TOKENER_ENDPOINT_URL: str = Field(default="")
     ENABLE_TOKENER_BOOTSTRAP_RECOVERY_TASK: bool = Field(default=False)

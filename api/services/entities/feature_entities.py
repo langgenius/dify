@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from enums import CloudPlan, DeploymentEdition
+from enums.model_billing import ModelBillingSource, TenantTokenerIntegrationStatus
 
 
 class FeatureResponseModel(BaseModel):
@@ -147,10 +148,8 @@ class PluginInstallationPermissionModel(FeatureResponseModel):
 class FeatureModel(FeatureResponseModel):
     """Effective feature availability and limits for the current workspace."""
 
-    model_billing_source: Literal["legacy_message_credits", "tokener"] = "legacy_message_credits"
-    tokener_bootstrap_status: (
-        Literal["pending", "installing_plugin", "provisioning", "configuring_provider", "ready", "failed"] | None
-    ) = None
+    model_billing_source: ModelBillingSource = ModelBillingSource.LEGACY_MESSAGE_CREDITS
+    tokener_bootstrap_status: TenantTokenerIntegrationStatus | None = None
     billing: BillingModel = BillingModel()
     education: EducationModel = EducationModel()
     enable_skill: bool = True

@@ -15,7 +15,9 @@ from services.errors.billing import (
     UpstreamErrorBody,
 )
 
-type AccountErrorReason = Literal["", "CODEC", "VALIDATOR", "UNKNOWN", "INVALID_SECRET_KEY"]
+type AccountErrorReason = Literal[  # guard-ignore: no-new-multi-string-literal -- raw JSON strings
+    "", "CODEC", "VALIDATOR", "UNKNOWN", "INVALID_SECRET_KEY"
+]
 
 
 class AddDeleteFeedbackReply(BillingModel):
@@ -42,7 +44,9 @@ class AppNetworkAccessGroupBinding(BillingModel):
 
 class CheckAccountInFreezeReply(BillingModel):
     data: bool
-    freeze_type: Literal["", "freeze", "email_domain_suspended"] = Field(alias="freezeType")
+    freeze_type: Literal[  # guard-ignore: no-new-multi-string-literal -- raw JSON strings
+        "", "freeze", "email_domain_suspended"
+    ] = Field(alias="freezeType")
 
 
 class CleanupAppNetworkAccessGroupBindingReply(BillingModel):
@@ -86,7 +90,7 @@ class LangContent(BillingModel):
 class NotificationPayload(BillingModel):
     notification_id: str = Field(alias="notificationId")
     contents: dict[str, LangContent]
-    frequency: Literal["once", "every_page_load"]
+    frequency: Literal["once", "every_page_load"]  # guard-ignore: no-new-multi-string-literal -- raw JSON strings
     is_global: bool = Field(alias="isGlobal")
 
 
@@ -151,7 +155,7 @@ class PutAppNetworkAccessGroupRequest(BillingModel):
     access_points: list[str] = Field(alias="accessPoints")
 
 
-type SaasNetworkAccessPolicyErrorReason = Literal[
+type SaasNetworkAccessPolicyErrorReason = Literal[  # guard-ignore: no-new-multi-string-literal -- raw JSON strings
     "",
     "CODEC",
     "VALIDATOR",
@@ -174,7 +178,9 @@ type SaasNetworkAccessPolicyErrorReason = Literal[
 ]
 
 
-type SaasNotificationErrorReason = Literal["", "CODEC", "VALIDATOR", "UNKNOWN", "INVALID_SECRET_KEY"]
+type SaasNotificationErrorReason = Literal[  # guard-ignore: no-new-multi-string-literal -- raw JSON strings
+    "", "CODEC", "VALIDATOR", "UNKNOWN", "INVALID_SECRET_KEY"
+]
 
 
 class TenantUtmReply(BillingModel):
@@ -201,7 +207,9 @@ class UpdateNetworkAccessGroupRequest(BillingModel):
     actor_account_id: str = Field(alias="actorAccountId")
 
 
-type UtmErrorReason = Literal["", "CODEC", "VALIDATOR", "UNKNOWN", "INVALID_SECRET_KEY"]
+type UtmErrorReason = Literal[  # guard-ignore: no-new-multi-string-literal -- raw JSON strings
+    "", "CODEC", "VALIDATOR", "UNKNOWN", "INVALID_SECRET_KEY"
+]
 
 
 def _is_account_error_reason(value: str) -> TypeIs[AccountErrorReason]:

@@ -28,6 +28,7 @@ Kratos serializes with protojson `EmitUnpopulated: true`, which the snapshot ste
 from __future__ import annotations
 
 import argparse
+import ast
 import difflib
 import json
 import keyword
@@ -37,6 +38,7 @@ import re
 import subprocess
 import sys
 from dataclasses import dataclass
+from enum import StrEnum, auto
 from pathlib import Path
 from typing import Any, Literal
 
@@ -51,8 +53,18 @@ GENERATOR = "api/dev/generate_billing_client.py"
 logger = logging.getLogger("generate_billing_client")
 
 type Service = Literal["billing", "saas"]
-type UpstreamName = Literal["BILLING", "BILLING_QUOTA", "TOKENER_BILLING", "SAAS", "NETWORK_ACCESS"]
 type JsonObject = dict[str, Any]
+
+
+class UpstreamName(StrEnum):
+    """Generator metadata naming the runtime Upstream members without importing HTTP transport."""
+
+    BILLING = auto()
+    BILLING_QUOTA = auto()
+    TOKENER_BILLING = auto()
+    SAAS = auto()
+    NETWORK_ACCESS = auto()
+
 
 SERVICES: tuple[Service, ...] = ("billing", "saas")
 SCHEMA_PREFIXES: dict[Service, str] = {"billing": "dify.saas.api.billing.", "saas": "dify.saas.api.saas."}
@@ -77,45 +89,53 @@ class AllowedOperation:
 # Endpoints dify API calls today. Add an entry here, then rerun this script, to call a new one.
 ALLOWED_OPERATIONS: dict[Service, tuple[AllowedOperation, ...]] = {
     "billing": (
-        AllowedOperation("GET", "/v1/subscription/info", "BILLING"),
-        AllowedOperation("GET", "/v1/subscription/vector-space", "BILLING"),
-        AllowedOperation("GET", "/v1/subscription/knowledge-rate-limit", "BILLING"),
-        AllowedOperation("GET", "/v1/subscription/payment-link", "BILLING"),
-        AllowedOperation("POST", "/v1/subscription/plan/batch", "BILLING"),
-        AllowedOperation("GET", "/v1/subscription/cleanup/whitelist", "BILLING"),
-        AllowedOperation("GET", "/v1/model-provider/payment-link", "BILLING"),
-        AllowedOperation("GET", "/v1/invoices", "BILLING"),
-        AllowedOperation("GET", "/v1/education/verify", "BILLING"),
-        AllowedOperation("GET", "/v1/education/status", "BILLING"),
-        AllowedOperation("POST", "/v1/education", "BILLING"),
-        AllowedOperation("GET", "/v1/education/autocomplete", "BILLING"),
-        AllowedOperation("POST", "/v1/compliance/download", "BILLING"),
-        AllowedOperation("GET", "/v1/quota/info", "BILLING_QUOTA"),
-        AllowedOperation("POST", "/v1/quota/reserve", "BILLING_QUOTA"),
-        AllowedOperation("POST", "/v1/quota/commit", "BILLING_QUOTA"),
-        AllowedOperation("POST", "/v1/quota/release", "BILLING_QUOTA"),
-        AllowedOperation("GET", "/v1/quota/balance", "BILLING_QUOTA"),
-        AllowedOperation("POST", "/v1/quota/consume-capped", "BILLING_QUOTA"),
-        AllowedOperation("POST", "/internal/v1/tokener/tenants/{tenant_id}/bootstrap", "TOKENER_BILLING"),
-        AllowedOperation("GET", "/internal/v1/tokener/tenants/{tenant_id}/metering", "TOKENER_BILLING"),
+        AllowedOperation("GET", "/v1/subscription/info", UpstreamName.BILLING),
+        AllowedOperation("GET", "/v1/subscription/vector-space", UpstreamName.BILLING),
+        AllowedOperation("GET", "/v1/subscription/knowledge-rate-limit", UpstreamName.BILLING),
+        AllowedOperation("GET", "/v1/subscription/payment-link", UpstreamName.BILLING),
+        AllowedOperation("POST", "/v1/subscription/plan/batch", UpstreamName.BILLING),
+        AllowedOperation("GET", "/v1/subscription/cleanup/whitelist", UpstreamName.BILLING),
+        AllowedOperation("GET", "/v1/model-provider/payment-link", UpstreamName.BILLING),
+        AllowedOperation("GET", "/v1/invoices", UpstreamName.BILLING),
+        AllowedOperation("GET", "/v1/education/verify", UpstreamName.BILLING),
+        AllowedOperation("GET", "/v1/education/status", UpstreamName.BILLING),
+        AllowedOperation("POST", "/v1/education", UpstreamName.BILLING),
+        AllowedOperation("GET", "/v1/education/autocomplete", UpstreamName.BILLING),
+        AllowedOperation("POST", "/v1/compliance/download", UpstreamName.BILLING),
+        AllowedOperation("GET", "/v1/quota/info", UpstreamName.BILLING_QUOTA),
+        AllowedOperation("POST", "/v1/quota/reserve", UpstreamName.BILLING_QUOTA),
+        AllowedOperation("POST", "/v1/quota/commit", UpstreamName.BILLING_QUOTA),
+        AllowedOperation("POST", "/v1/quota/release", UpstreamName.BILLING_QUOTA),
+        AllowedOperation("GET", "/v1/quota/balance", UpstreamName.BILLING_QUOTA),
+        AllowedOperation("POST", "/v1/quota/consume-capped", UpstreamName.BILLING_QUOTA),
+        AllowedOperation("POST", "/internal/v1/tokener/tenants/{tenant_id}/bootstrap", UpstreamName.TOKENER_BILLING),
+        AllowedOperation("GET", "/internal/v1/tokener/tenants/{tenant_id}/metering", UpstreamName.TOKENER_BILLING),
     ),
     "saas": (
-        AllowedOperation("DELETE", "/v1/account", "SAAS"),
-        AllowedOperation("GET", "/v1/account/in-freeze", "SAAS"),
-        AllowedOperation("POST", "/v1/account/delete-feedback", "SAAS"),
-        AllowedOperation("GET", "/v1/notifications/active", "SAAS"),
-        AllowedOperation("POST", "/v1/notifications/{notificationId}/dismiss", "SAAS"),
-        AllowedOperation("POST", "/v1/tenant_utms", "SAAS"),
-        AllowedOperation("GET", "/v1/tenants/{tenantId}/network-access-groups", "NETWORK_ACCESS"),
-        AllowedOperation("POST", "/v1/tenants/{tenantId}/network-access-groups", "NETWORK_ACCESS"),
-        AllowedOperation("GET", "/v1/tenants/{tenantId}/network-access-groups/{groupId}", "NETWORK_ACCESS"),
-        AllowedOperation("PUT", "/v1/tenants/{tenantId}/network-access-groups/{groupId}", "NETWORK_ACCESS"),
-        AllowedOperation("DELETE", "/v1/tenants/{tenantId}/network-access-groups/{groupId}", "NETWORK_ACCESS"),
-        AllowedOperation("GET", "/v1/tenants/{tenantId}/apps/{appId}/network-access-group", "NETWORK_ACCESS"),
-        AllowedOperation("PUT", "/v1/tenants/{tenantId}/apps/{appId}/network-access-group", "NETWORK_ACCESS"),
-        AllowedOperation("GET", "/v1/tenants/{tenantId}/apps/{appId}/network-access-group/status", "NETWORK_ACCESS"),
+        AllowedOperation("DELETE", "/v1/account", UpstreamName.SAAS),
+        AllowedOperation("GET", "/v1/account/in-freeze", UpstreamName.SAAS),
+        AllowedOperation("POST", "/v1/account/delete-feedback", UpstreamName.SAAS),
+        AllowedOperation("GET", "/v1/notifications/active", UpstreamName.SAAS),
+        AllowedOperation("POST", "/v1/notifications/{notificationId}/dismiss", UpstreamName.SAAS),
+        AllowedOperation("POST", "/v1/tenant_utms", UpstreamName.SAAS),
+        AllowedOperation("GET", "/v1/tenants/{tenantId}/network-access-groups", UpstreamName.NETWORK_ACCESS),
+        AllowedOperation("POST", "/v1/tenants/{tenantId}/network-access-groups", UpstreamName.NETWORK_ACCESS),
+        AllowedOperation("GET", "/v1/tenants/{tenantId}/network-access-groups/{groupId}", UpstreamName.NETWORK_ACCESS),
+        AllowedOperation("PUT", "/v1/tenants/{tenantId}/network-access-groups/{groupId}", UpstreamName.NETWORK_ACCESS),
         AllowedOperation(
-            "DELETE", "/v1/tenants/{tenantId}/apps/{appId}/network-access-group-binding", "NETWORK_ACCESS"
+            "DELETE", "/v1/tenants/{tenantId}/network-access-groups/{groupId}", UpstreamName.NETWORK_ACCESS
+        ),
+        AllowedOperation(
+            "GET", "/v1/tenants/{tenantId}/apps/{appId}/network-access-group", UpstreamName.NETWORK_ACCESS
+        ),
+        AllowedOperation(
+            "PUT", "/v1/tenants/{tenantId}/apps/{appId}/network-access-group", UpstreamName.NETWORK_ACCESS
+        ),
+        AllowedOperation(
+            "GET", "/v1/tenants/{tenantId}/apps/{appId}/network-access-group/status", UpstreamName.NETWORK_ACCESS
+        ),
+        AllowedOperation(
+            "DELETE", "/v1/tenants/{tenantId}/apps/{appId}/network-access-group-binding", UpstreamName.NETWORK_ACCESS
         ),
     ),
 }
@@ -320,6 +340,7 @@ def operation_function_name(operation_id: str, service: Service) -> str:
 
 
 def python_type(schema: JsonObject, context: str) -> str:
+    """Render a supported snapshot schema, keeping enumerated wire strings as plain strings."""
     if "allOf" in schema:
         parts = schema["allOf"]
         if len(parts) != 1:
@@ -472,7 +493,7 @@ def render_operation(service: Service, allowed: AllowedOperation, operation: Jso
         signature,
         docstring,
         "    return request(",
-        f"        Upstream.{allowed.upstream},",
+        f"        Upstream.{allowed.upstream.name},",
         f"        {json.dumps(allowed.method)},",
         f"        {json.dumps(template)},",
         f"        response_model={response},",
@@ -575,7 +596,39 @@ def render_module(service: Service, snapshot: JsonObject) -> str:
         "    UpstreamErrorBody,",
         ")",
     ]
-    return format_python("\n".join(header) + "\n\n\n" + body + "\n", module_path(service))
+    formatted = format_python("\n".join(header) + "\n\n\n" + body + "\n", module_path(service))
+    return format_python(annotate_wire_literals(formatted), module_path(service))
+
+
+def annotate_wire_literals(source: str) -> str:
+    """Mark generated multi-string Literal types without changing the Python AST.
+
+    The source must come from this module's snapshot renderer. Its validated
+    payloads and TypeIs error guards retain plain strings from upstream JSON.
+    """
+    wire_lines = {
+        node.lineno: node.col_offset + len("Literal[")
+        for node in ast.walk(ast.parse(source))
+        if isinstance(node, ast.Subscript)
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "Literal"
+        and isinstance(node.slice, ast.Tuple)
+        and len(node.slice.elts) > 1
+        and all(isinstance(value, ast.Constant) and isinstance(value.value, str) for value in node.slice.elts)
+    }
+    guard = "  # guard-ignore: no-new-multi-string-literal -- raw JSON strings"
+
+    def mark(line: str, column: int) -> str:
+        text = line.removesuffix("\n")
+        if len(text) + len(guard) <= LINE_LENGTH:
+            return text + guard + "\n"
+        indent = len(text) - len(text.lstrip()) + 4
+        return f"{text[:column]}{guard}\n{' ' * indent}{text[column:]}\n"
+
+    return "".join(
+        mark(line, wire_lines[number]) if number in wire_lines else line
+        for number, line in enumerate(source.splitlines(keepends=True), start=1)
+    )
 
 
 def format_python(source: str, path: Path) -> str:
