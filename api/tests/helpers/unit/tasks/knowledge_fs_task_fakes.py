@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
-from typing import TypeVar, cast
+from datetime import UTC, datetime
+from typing import Literal, TypeVar, cast
 
 from celery.exceptions import Retry
 
@@ -24,7 +25,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSourceSyncPolicyResponse,
     KnowledgeFSSourceWorkflowResponse,
 )
-from services.knowledge_fs.retrieval_contracts import KnowledgeFSPublicFailureResponse
+from services.knowledge_fs.retrieval_contracts import KnowledgeFSPublicErrorCode, KnowledgeFSPublicFailureResponse
 
 _PayloadT = TypeVar("_PayloadT")
 
@@ -157,21 +158,30 @@ class FacadeRuntime:
     facade: RecordingKnowledgeFSFacade
 
 
-# Response builders construct real DTOs with only the fields a test exercises.
-# ``model_construct`` keeps arbitrary remote error codes and messages verbatim.
+# Every response has all required fields. Failure text stays raw so callers
+# can test the downstream redaction boundary.
+_RESPONSE_TIME = datetime(2026, 1, 1, tzinfo=UTC)
 
 
 def source_response(
     *,
     metadata: dict[str, object],
-    status: str,
+    status: Literal["active", "disabled", "error", "syncing"],
     version: int,
     source_id: str = "source-1",
     connection_id: str | None = None,
 ) -> KnowledgeFSSourceResponse:
-    return KnowledgeFSSourceResponse.model_construct(
+    """Given typed source values, return a complete validated source without I/O."""
+    return KnowledgeFSSourceResponse(
         id=source_id,
         connection_id=connection_id,
+        created_at=_RESPONSE_TIME,
+        updated_at=_RESPONSE_TIME,
+        knowledge_space_id="knowledge-space-1",
+        name="Test source",
+        permission_scope=[],
+        type="web",
+        uri="https://example.com",
         metadata=metadata,
         status=status,
         version=version,
@@ -181,7 +191,8 @@ def source_response(
 def source_list_response(
     *sources: KnowledgeFSSourceResponse, next_cursor: str | None = None
 ) -> KnowledgeFSSourceListResponse:
-    return KnowledgeFSSourceListResponse.model_construct(data=list(sources), next_cursor=next_cursor)
+    """Given complete source DTOs, return their validated page without I/O."""
+    return KnowledgeFSSourceListResponse(data=list(sources), next_cursor=next_cursor)
 
 
 def source_workflow_response(
@@ -190,13 +201,35 @@ def source_workflow_response(
     state: str,
     source_id: str | None = None,
     failure_message: str | None = None,
-    last_error_code: str | None = None,
+    last_error_code: KnowledgeFSPublicErrorCode | None = None,
 ) -> KnowledgeFSSourceWorkflowResponse:
+    """Given workflow values, return a complete DTO with raw failure text and no I/O.
+
+    The caller supplies a public error code. Failure text is kept unchanged so
+    downstream redaction remains observable. All required fields are present.
+    """
     failure = (
-        None if failure_message is None else KnowledgeFSPublicFailureResponse.model_construct(message=failure_message)
+        None
+        if failure_message is None
+        else KnowledgeFSPublicFailureResponse.model_construct(
+            message=failure_message,
+            code=last_error_code or "SOURCE_WORKFLOW_FAILED",
+            category="dependency",
+            retry_policy="manual",
+        )
     )
     return KnowledgeFSSourceWorkflowResponse.model_construct(
         id=workflow_id,
+        checkpoint="pending",
+        created_at=_RESPONSE_TIME,
+        updated_at=_RESPONSE_TIME,
+        knowledge_space_id="knowledge-space-1",
+        kind="source-import",
+        execution_attempts=0,
+        max_execution_attempts=3,
+        progress_completed=0,
+        progress_failed=0,
+        progress_skipped=0,
         state=state,
         source_id=source_id,
         failure=failure,
@@ -205,13 +238,32 @@ def source_workflow_response(
 
 
 def sync_policy_response(*, revision: int) -> KnowledgeFSSourceSyncPolicyResponse:
-    return KnowledgeFSSourceSyncPolicyResponse.model_construct(revision=revision)
+    """Given a positive revision, return a complete manual sync policy without I/O."""
+    return KnowledgeFSSourceSyncPolicyResponse(
+        created_at=_RESPONSE_TIME,
+        updated_at=_RESPONSE_TIME,
+        enabled=False,
+        expected_source_version=1,
+        id="policy-1",
+        knowledge_space_id="knowledge-space-1",
+        mode="manual",
+        revision=revision,
+        source_id="source-1",
+    )
 
 
 def source_provider_list_response(*available_provider_ids: str) -> KnowledgeFSSourceProviderListResponse:
-    return KnowledgeFSSourceProviderListResponse.model_construct(
+    """Given provider IDs, return complete available provider DTOs without I/O."""
+    return KnowledgeFSSourceProviderListResponse(
         data=[
-            KnowledgeFSSourceProviderResponse.model_construct(id=provider_id, available=True)
+            KnowledgeFSSourceProviderResponse(
+                id=provider_id,
+                available=True,
+                auth_kinds=["api-key"],
+                capabilities=[],
+                configuration=[],
+                display_name=provider_id,
+            )
             for provider_id in available_provider_ids
         ]
     )
@@ -221,11 +273,19 @@ def source_connection_response(
     *,
     connection_id: str,
     provider_id: str,
-    status: str,
+    status: Literal["provisioning", "active", "expired", "error", "revoked"],
     configuration: dict[str, bool | int | str] | None = None,
 ) -> KnowledgeFSSourceConnectionResponse:
-    return KnowledgeFSSourceConnectionResponse.model_construct(
+    """Given typed connection values, return a complete validated connection without I/O."""
+    return KnowledgeFSSourceConnectionResponse(
         id=connection_id,
+        auth_kind="api-key",
+        created_at=_RESPONSE_TIME,
+        updated_at=_RESPONSE_TIME,
+        knowledge_space_id="knowledge-space-1",
+        name="Test connection",
+        scopes=[],
+        version=1,
         provider_id=provider_id,
         status=status,
         configuration=configuration or {},
@@ -235,4 +295,5 @@ def source_connection_response(
 def source_connection_list_response(
     *connections: KnowledgeFSSourceConnectionResponse, next_cursor: str | None = None
 ) -> KnowledgeFSSourceConnectionListResponse:
-    return KnowledgeFSSourceConnectionListResponse.model_construct(data=list(connections), next_cursor=next_cursor)
+    """Given complete connection DTOs, return their validated page without I/O."""
+    return KnowledgeFSSourceConnectionListResponse(data=list(connections), next_cursor=next_cursor)

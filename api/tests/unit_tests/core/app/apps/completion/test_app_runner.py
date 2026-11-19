@@ -5,6 +5,7 @@ from decimal import Decimal
 
 import pytest
 from redis import Redis
+from sqlalchemy import event
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import (
@@ -275,26 +276,6 @@ class TestCompletionAppRunner:
         assert len(direct_output.calls) == 1
         assert handle_invoke_result.calls == []
 
-    def test_run_hosting_moderation_stops(
-        self, runner: CompletionAppRunner, sqlite_session: Session, queue_manager: MessageBasedAppQueueManager
-    ) -> None:
-        app_record, message = _persist_records(sqlite_session)
-
-        app_config = _build_app_config()
-        app_generate_entity = _build_generate_entity(app_config)
-
-        runner.organize_prompt_messages = CallRecorder(result=([], None))  # type: ignore[method-assign]
-        runner.moderation_for_inputs = CallRecorder(  # type: ignore[method-assign]
-            result=(None, app_generate_entity.inputs, "query")
-        )
-        runner.check_hosting_moderation = CallRecorder(result=True)  # type: ignore[method-assign]
-        handle_invoke_result = CallRecorder()
-        runner._handle_invoke_result = handle_invoke_result  # type: ignore[method-assign]
-
-        runner.run(app_generate_entity, queue_manager, message, app_record=app_record)
-
-        assert handle_invoke_result.calls == []
-
     def test_run_dataset_and_external_tools_flow(
         self,
         runner: CompletionAppRunner,
@@ -359,7 +340,6 @@ class TestCompletionAppRunner:
         runner.fill_in_inputs_from_external_data_tools = CallRecorder(  # type: ignore[method-assign]
             result=app_generate_entity.inputs
         )
-        runner.check_hosting_moderation = CallRecorder(result=False)  # type: ignore[method-assign]
         runner.recalc_llm_max_tokens = CallRecorder()  # type: ignore[method-assign]
         handle_invoke_result = CallRecorder()
         runner._handle_invoke_result = handle_invoke_result  # type: ignore[method-assign]
@@ -388,6 +368,62 @@ class TestCompletionAppRunner:
         assert organize_prompt_messages.calls[-1].kwargs["context_files"] == []
         assert len(handle_invoke_result.calls) == 1
 
+    def test_run_closes_explicit_session_before_stream_consumption(
+        self,
+        runner: CompletionAppRunner,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        queue_manager: MessageBasedAppQueueManager,
+        model_runtime: tuple[ProviderModelBundle, list[RecordedCall], list[str]],
+    ) -> None:
+        from core.app.apps.completion.app_runner import CompletionAppRunner as CoreCompletionAppRunner
+
+        runner = CoreCompletionAppRunner()
+        _, message = _persist_records(sqlite_session)
+        app_config = _build_app_config()
+        app_generate_entity = _build_generate_entity(app_config)
+
+        _, _, events = model_runtime
+        session = sqlite_session
+        original_close = session.close
+
+        def record_commit(_session: Session) -> None:
+            events.append("commit")
+
+        def record_close() -> None:
+            events.append("close")
+            original_close()
+
+        runner.organize_prompt_messages = CallRecorder(result=([], None))  # type: ignore[method-assign]
+        runner.moderation_for_inputs = CallRecorder(  # type: ignore[method-assign]
+            result=(None, app_generate_entity.inputs, "query")
+        )
+        runner.recalc_llm_max_tokens = CallRecorder()  # type: ignore[method-assign]
+        handle_invoke_result = CallRecorder(implementation=lambda invoke_result, **kwargs: list(invoke_result))
+        runner._handle_invoke_result = handle_invoke_result  # type: ignore[method-assign]
+
+        monkeypatch.setattr(session, "close", record_close)
+
+        event.listen(session, "after_commit", record_commit)
+        try:
+            runner.run(app_generate_entity, queue_manager, message, session)
+        finally:
+            event.remove(session, "after_commit", record_commit)
+
+        assert events == ["commit", "close", "invoke", "first-chunk"]
+        assert len(handle_invoke_result.calls) == 1
+        handle_call = handle_invoke_result.calls[0]
+        assert handle_call.args == ()
+        assert handle_call.kwargs["queue_manager"] is queue_manager
+        assert handle_call.kwargs | {"invoke_result": None} == {
+            "invoke_result": None,
+            "queue_manager": queue_manager,
+            "stream": True,
+            "message_id": "msg",
+            "user_id": "user",
+            "tenant_id": TENANT_ID,
+        }
+
     @pytest.mark.parametrize("stream", [False, True])
     def test_run_invokes_model_resolved_by_model_manager(
         self,
@@ -408,7 +444,6 @@ class TestCompletionAppRunner:
         runner.moderation_for_inputs = CallRecorder(  # type: ignore[method-assign]
             result=(None, app_generate_entity.inputs, "query")
         )
-        runner.check_hosting_moderation = CallRecorder(result=False)  # type: ignore[method-assign]
         runner.recalc_llm_max_tokens = CallRecorder()  # type: ignore[method-assign]
         results: list[LLMResult | list[LLMResultChunk]] = []
 
@@ -467,20 +502,24 @@ class TestCompletionAppRunner:
             assert result.message.content == "answer"
 
     def test_run_uses_low_image_detail_default(
-        self, runner: CompletionAppRunner, sqlite_session: Session, queue_manager: MessageBasedAppQueueManager
+        self,
+        runner: CompletionAppRunner,
+        sqlite_session: Session,
+        queue_manager: MessageBasedAppQueueManager,
+        model_runtime: tuple[ProviderModelBundle, list[RecordedCall], list[str]],
     ) -> None:
         app_record, message = _persist_records(sqlite_session)
 
         app_config = _build_app_config()
         app_generate_entity = _build_generate_entity(app_config, file_upload_config=None)
+        runtime_bundle, _, _ = model_runtime
+        app_generate_entity.model_conf.provider_model_bundle = runtime_bundle
 
         organize_prompt_messages = CallRecorder(result=([], None))
         runner.organize_prompt_messages = organize_prompt_messages  # type: ignore[method-assign]
         runner.moderation_for_inputs = CallRecorder(  # type: ignore[method-assign]
             result=(None, app_generate_entity.inputs, "query")
         )
-        runner.check_hosting_moderation = CallRecorder(result=True)  # type: ignore[method-assign]
-
         runner.run(app_generate_entity, queue_manager, message, app_record=app_record)
 
         assert organize_prompt_messages.calls[-1].kwargs["image_detail_config"] == ImagePromptMessageContent.DETAIL.LOW

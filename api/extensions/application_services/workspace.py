@@ -15,6 +15,7 @@ from services.account.adapters import RedisInvitationTokenStore
 from services.file_service import FileService
 from services.plugin.plugin_parameter_gateway import DaemonPluginParameterGateway
 from services.plugin.plugin_parameter_service import PluginParameterService, PluginParameterSubscriptions
+from services.trigger.provider_loader import PluginTriggerProviderLoader
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderQuery
 from services.workspace.gateways import (
     DeploymentWorkspaceCreationPolicy,
@@ -58,12 +59,15 @@ def build_workspace_membership_services(
     *,
     workspaces: WorkspaceRepository,
     accounts: SQLAlchemyAccountRepository,
+    invitation_tokens: RedisInvitationTokenStore,
+    redis: RedisClientWrapper,
 ) -> tuple[WorkspaceMemberService, WorkspaceProvisioningService]:
     """Build the workspace prerequisites shared by account registration and invitations."""
     members = WorkspaceMemberService(
         workspaces=workspaces,
         accounts=accounts,
         access=DeploymentWorkspaceMemberAccessGateway(),
+        invitation_links=WorkspaceInvitationGateway(tokens=invitation_tokens, redis=redis),
     )
     provisioning = WorkspaceProvisioningService(
         owners=accounts,
@@ -90,6 +94,7 @@ def build_workspace_services(
     credentials: CredentialQueryRepository,
     trigger_subscriptions: PluginParameterSubscriptions,
     trigger_builders: TriggerSubscriptionBuilderQuery,
+    trigger_providers: PluginTriggerProviderLoader,
 ) -> WorkspaceServices:
     return WorkspaceServices(
         queries=WorkspaceQueryService(workspaces=workspaces, plans=DeploymentWorkspacePlanGateway()),
@@ -127,6 +132,6 @@ def build_workspace_services(
             credentials=credentials,
             subscriptions=trigger_subscriptions,
             builders=trigger_builders,
-            plugins=DaemonPluginParameterGateway(),
+            plugins=DaemonPluginParameterGateway(providers=trigger_providers),
         ),
     )

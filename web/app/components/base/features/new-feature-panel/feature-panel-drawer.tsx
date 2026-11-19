@@ -8,7 +8,6 @@ import {
   DrawerPortal,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
-import { useCallback } from 'react'
 
 type FeaturePanelDrawerProps = {
   className?: string
@@ -25,14 +24,12 @@ export function FeaturePanelDrawer({
   onClose,
   inWorkflow = true,
 }: FeaturePanelDrawerProps) {
-  const close = useCallback(() => onClose?.(), [onClose])
-
   return (
     <Drawer
       open={show}
       swipeDirection="right"
       onOpenChange={(open) => {
-        if (!open) close()
+        if (!open) onClose?.()
       }}
     >
       <DrawerPortal>

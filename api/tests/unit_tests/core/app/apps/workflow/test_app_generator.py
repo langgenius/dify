@@ -20,7 +20,7 @@ from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedA
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
-from core.app.entities.queue_entities import QueueWorkflowSucceededEvent
+from core.app.entities.queue_entities import QueueErrorEvent, QueueWorkflowSucceededEvent
 from core.app.file_access import DatabaseFileAccessController
 from core.app.layers.pause_state_persist_layer import (
     PauseStateLayerConfig,
@@ -44,6 +44,7 @@ from graphon.variables.segments import ArrayFileSegment, FileSegment
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
+from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionTriggeredFrom, WorkflowRun, WorkflowType
 from repositories.entities.workflow_execution import WorkflowExecutionIdentity
 from repositories.human_input_v2.form_repository import Form, FormCreateParams
@@ -55,6 +56,7 @@ from services.workflow.execution.adapters.workflow.app_generator import Workflow
 from services.workflow.execution.adapters.workflow.app_queue_manager import WorkflowAppQueueManager
 from services.workflow.execution.adapters.workflow.app_runner import WorkflowAppRunner
 from services.workflow.execution.ports import WorkflowRuntime
+from services.workflow_run_agg import WorkflowRunAgg
 from tests.helpers.unit.model_factories import make_account, make_upload_file, make_workflow
 
 """SQLite-backed tests for workflow app generation and worker reload behavior."""
@@ -407,6 +409,118 @@ class TestWorkflowAppGeneratorCases:
             WorkflowRunCompleted(workflow_run_id="worker-run", conversation_id=None, total_tokens=0)
         ]
         assert recorder.persisted_statuses == ["succeeded"]
+
+    @staticmethod
+    def test_worker_publishes_a_preparation_failure_to_the_waiting_caller(
+        app: Flask, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
+        """The caller blocks on the queue, so a failure before the run starts must reach it."""
+        from core.app.apps.workflow.app_generator import WorkflowAppGenerator as CoreWorkflowAppGenerator
+
+        app_model, workflow, end_user = _persist_generator_rows(sqlite_session)
+        recorder = _PersistedRunRecorder(sqlite_session_factory)
+        entity = WorkflowAppGenerateEntity(
+            user_from=UserFrom.END_USER,
+            task_id="worker-task",
+            app_config=_app_config(app_model, workflow),
+            inputs={},
+            files=[],
+            user_id=end_user.id,
+            stream=False,
+            invoke_from=InvokeFrom.SERVICE_API,
+            workflow_execution_id="worker-run",
+            trace_scope=_trace_scope(recorder, app=app_model, end_user=end_user),
+        )
+        # The workflow disappears after admission and before the worker loads it.
+        sqlite_session.delete(workflow)
+        sqlite_session.commit()
+        queue = WorkflowAppQueueManager(entity.task_id, end_user.id, entity.invoke_from, AppMode.WORKFLOW)
+        execution_repository, node_repository = _repositories(sqlite_session_factory, app_model, end_user)
+
+        CoreWorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)._generate_worker(
+            flask_app=app,
+            application_generate_entity=entity,
+            queue_manager=queue,
+            context=contextvars.copy_context(),
+            variable_loader=DUMMY_VARIABLE_LOADER,
+            workflow_execution_repository=execution_repository,
+            workflow_node_execution_repository=node_repository,
+        )
+
+        events = [message.event for message in queue.listen()]
+        assert isinstance(events[-1], QueueErrorEvent), events
+        assert isinstance(events[-1].error, ValueError)
+        assert str(events[-1].error) == "Workflow not found"
+        assert sqlite_session.get(WorkflowRun, entity.workflow_execution_id) is None
+        assert recorder.events == []
+
+    @staticmethod
+    def test_ensure_snippet_start_node_in_worker_returns_standard_workflow_without_lookup(
+        sqlite_session: Session,
+    ) -> None:
+        from core.app.apps.workflow.app_generator import WorkflowAppGenerator as CoreWorkflowAppGenerator
+
+        workflow = _workflow_app_generator_workflow()
+        sqlite_session.add(workflow)
+        sqlite_session.commit()
+
+        result = CoreWorkflowAppGenerator._ensure_snippet_start_node_in_worker(
+            session=sqlite_session, workflow=workflow
+        )
+
+        assert result is workflow
+
+    @staticmethod
+    def test_ensure_snippet_start_node_in_worker_returns_snippet_workflow_when_snippet_missing(
+        sqlite_session: Session,
+    ) -> None:
+        from core.app.apps.workflow.app_generator import WorkflowAppGenerator as CoreWorkflowAppGenerator
+
+        workflow = _workflow_app_generator_workflow(app_id="snippet-1", tenant_id="tenant-1", kind=WorkflowKind.SNIPPET)
+        other_tenant_snippet = CustomizedSnippet(
+            id="snippet-1",
+            tenant_id="tenant-2",
+            name="Other tenant snippet",
+            description="",
+            type="node",
+        )
+        sqlite_session.add_all([workflow, other_tenant_snippet])
+        sqlite_session.commit()
+
+        result = CoreWorkflowAppGenerator._ensure_snippet_start_node_in_worker(
+            session=sqlite_session, workflow=workflow
+        )
+
+        assert result is workflow
+
+    @staticmethod
+    def test_ensure_snippet_start_node_in_worker_applies_snippet_start_injection(
+        monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ) -> None:
+        from core.app.apps.workflow.app_generator import WorkflowAppGenerator as CoreWorkflowAppGenerator
+
+        workflow = _workflow_app_generator_workflow(app_id="snippet-1", tenant_id="tenant-1", kind=WorkflowKind.SNIPPET)
+        snippet = CustomizedSnippet(
+            id="snippet-1",
+            tenant_id="tenant-1",
+            name="Matching snippet",
+            description="",
+            type="node",
+        )
+        sqlite_session.add_all([workflow, snippet])
+        sqlite_session.commit()
+        ensure_start_node = MagicMock(return_value=workflow)
+        monkeypatch.setattr(
+            "services.snippet_generate_service.SnippetGenerateService.ensure_start_node_for_worker",
+            ensure_start_node,
+        )
+
+        result = CoreWorkflowAppGenerator._ensure_snippet_start_node_in_worker(
+            session=sqlite_session, workflow=workflow
+        )
+
+        assert result is workflow
+        ensure_start_node.assert_called_once_with(workflow, snippet)
 
     @staticmethod
     def test_generate_includes_parent_trace_context_in_extras(
@@ -1301,6 +1415,28 @@ class TestAppGeneratorExtraCases:
             execute = Mock(return_value={"ok": True})
             monkeypatch.setattr(generator, "_generate", execute)
             return generator, app, workflow, user, execute
+
+        def test_generate_marks_agent_evaluation_trace(self, generation):
+            generator, app, workflow, user, execute = generation
+            workflow.graph = json.dumps(
+                {"nodes": [{"id": "start", "data": {"type": "start", "title": "Start", "variables": []}}], "edges": []}
+            )
+
+            result = generator.generate(
+                app_model=app,
+                workflow=workflow,
+                user=user,
+                execution_identity=WorkflowExecutionIdentity(user_id=user.id, user_from=UserFrom.END_USER),
+                args={"inputs": {}},
+                invoke_from=InvokeFrom.SERVICE_API,
+                streaming=False,
+                capture_agent_evaluation_trace=True,
+            )
+
+            assert result == {"ok": True}
+            generated = execute.call_args.kwargs["application_generate_entity"]
+            assert isinstance(generated, WorkflowAppGenerateEntity)
+            assert generated.extras["capture_agent_evaluation_trace"] is True
 
         @pytest.mark.parametrize("node_type", ["trigger-webhook", "trigger-schedule", "trigger-plugin"])
         @pytest.mark.parametrize("root_node_id", [None, "selected-trigger"])

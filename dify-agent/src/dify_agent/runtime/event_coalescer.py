@@ -26,6 +26,8 @@ async def coalesce_agent_stream_events(
     timer starts with the first buffered delta instead of sliding on every token.
     Already-ready source events may continue to merge after the interval; the
     interval triggers a flush once reading the next source event would block.
+    Closing the stream retrieves a completed read-ahead result even if it was
+    never yielded to the consumer.
     """
     if flush_interval_seconds <= 0:
         raise ValueError("flush_interval_seconds must be positive")
@@ -98,10 +100,14 @@ async def coalesce_agent_stream_events(
                 buffered = None
                 flush_deadline = None
     finally:
-        if next_event_task is not None and not next_event_task.done():
-            next_event_task.cancel()
-            with suppress(asyncio.CancelledError, StopAsyncIteration):
-                _ = await next_event_task
+        if next_event_task is not None:
+            if not next_event_task.done():
+                next_event_task.cancel()
+                with suppress(asyncio.CancelledError, StopAsyncIteration):
+                    _ = await next_event_task
+            elif not next_event_task.cancelled():
+                # The consumer can close while a prefetched read has already failed.
+                _ = next_event_task.exception()
 
 
 def _text_delta(event: AgentStreamEvent) -> TextPartDelta | None:

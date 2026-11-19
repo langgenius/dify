@@ -56,7 +56,7 @@ export function describeOperations(spec: OpenApiDocument): Map<string, Operation
             (['path', 'header'].includes(location) && style !== 'simple')
           )
             throw new Error(`Unsupported ${location} style: ${style}`)
-          if (typeof parameter.name !== 'string') throw new Error('Parameters require a name')
+          if (typeof parameter.name !== 'string') throw new TypeError('Parameters require a name')
           parameters.set(`${location}:${parameter.name}`, {
             name: parameter.name,
             in: location,

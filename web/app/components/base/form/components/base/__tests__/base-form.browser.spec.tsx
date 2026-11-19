@@ -1,15 +1,18 @@
+import type { ReactElement } from 'react'
 import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
 import { useForm, useSelector } from '@tanstack/react-form'
 import { createRef } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
-import { render } from 'vitest-browser-react'
+import { render as renderBrowser } from 'vitest-browser-react'
 import { FormItemValidateStatusEnum, FormTypeEnum } from '@/app/components/base/form/types'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import BaseForm from '../base-form'
 
-vi.mock('@/service/use-triggers', () => ({
-  useTriggerPluginDynamicOptions: () => ({ data: undefined, isLoading: false, error: null }),
-}))
+const render = (ui: ReactElement) => {
+  const { wrapper: Providers } = createConsoleQueryWrapper()
+  return renderBrowser(<Providers>{ui}</Providers>)
+}
 
 const baseSchemas: FormSchema[] = [
   { type: FormTypeEnum.textInput, name: 'kind', label: 'Kind', required: false, default: 'show' },

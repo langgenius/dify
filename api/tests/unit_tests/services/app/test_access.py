@@ -7,7 +7,9 @@ import pytest
 from services.app.access import (
     APP_LIST_PERMISSION_KEYS,
     AppAccessFilter,
+    AppRunAccessFilter,
     app_access_filter_from_permissions,
+    app_run_access_filter_from_permissions,
     has_app_list_permission,
     resolve_app_access_filter,
 )
@@ -175,3 +177,45 @@ def test_restricted_whitelist_retains_maintainer_visibility(
     assert not access.is_app_accessible("unassigned", None, "account")
     if whitelist_ids:
         assert access.is_app_accessible("allowed", "someone", "account")
+
+
+def test_app_run_filter_honors_default_grant_and_explicit_denial() -> None:
+    access = app_run_access_filter_from_permissions(
+        "account-1",
+        _permissions(
+            app_default_keys=["app.acl.test_and_run"],
+            app_overrides=[ResourcePermissionKeys(resource_id="denied", permission_keys=["app.acl.preview"])],
+        ),
+        ResourceWhitelistResources(unrestricted=True),
+    )
+
+    assert access == AppRunAccessFilter("account-1", allowed_app_ids=None, denied_app_ids={"denied"})
+
+
+def test_app_run_filter_requires_both_run_grant_and_whitelist() -> None:
+    access = app_run_access_filter_from_permissions(
+        "account-1",
+        _permissions(
+            app_overrides=[
+                ResourcePermissionKeys(resource_id="allowed", permission_keys=["app.acl.test_and_run"]),
+                ResourcePermissionKeys(resource_id="preview-only", permission_keys=["app.acl.preview"]),
+                ResourcePermissionKeys(resource_id="outside-whitelist", permission_keys=["app.acl.test_and_run"]),
+            ]
+        ),
+        ResourceWhitelistResources(unrestricted=False, resource_ids=["allowed", "preview-only"]),
+    )
+
+    assert access == AppRunAccessFilter("account-1", allowed_app_ids={"allowed"}, denied_app_ids=set())
+
+
+def test_app_run_filter_restricted_whitelist_respects_override_denial() -> None:
+    access = app_run_access_filter_from_permissions(
+        "account-1",
+        _permissions(
+            workspace_keys=["app.full_access"],
+            app_overrides=[ResourcePermissionKeys(resource_id="denied", permission_keys=[])],
+        ),
+        ResourceWhitelistResources(unrestricted=False, resource_ids=["allowed", "denied"]),
+    )
+
+    assert access == AppRunAccessFilter("account-1", allowed_app_ids={"allowed"}, denied_app_ids=set())

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import base64
 import contextlib
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from decimal import Decimal
 from typing import Any
 from unittest.mock import patch
@@ -12,10 +12,12 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.entities.mcp_provider import IdentityMode
 from core.mcp.types import (
     AudioContent,
     BlobResourceContents,
     CallToolResult,
+    ContentBlock,
     EmbeddedResource,
     ImageContent,
     TextContent,
@@ -63,7 +65,7 @@ _STRING_LIST = {"type": "array", "items": {"type": "string"}}
 # ----- M2/M3 user-identity forwarding ---------------------------------------
 
 
-def _build_forwarding_tool(*, mode: str = "idp_token") -> MCPTool:
+def _build_forwarding_tool(*, mode: IdentityMode = IdentityMode.IDP_TOKEN) -> MCPTool:
     """Helper that builds an MCPTool with the identity_mode set."""
     entity = ToolEntity(
         identity=ToolIdentity(
@@ -385,7 +387,9 @@ class TestMcpToolCasesTools:
                 ),
             ],
         )
-        def test_invoke_image_or_audio_yields_blob(self, content_factory, mime_type, orm_session: Session) -> None:
+        def test_invoke_image_or_audio_yields_blob(
+            self, content_factory: Callable[[str, str], ContentBlock], mime_type: str, orm_session: Session
+        ) -> None:
             tool = _make_mcp_tool()
             raw = b"\x00\x01test-bytes\x02"
             b64 = base64.b64encode(raw).decode()
@@ -422,7 +426,7 @@ class TestMcpToolCasesTools:
             [("application/pdf", "application/pdf"), (None, "application/octet-stream")],
         )
         def test_invoke_embedded_blob_resource_yields_blob(
-            self, mime_type, expected_mime, orm_session: Session
+            self, mime_type: str | None, expected_mime: str, orm_session: Session
         ) -> None:
             tool = _make_mcp_tool()
             raw = b"binary-data"
@@ -450,10 +454,12 @@ class TestMcpToolCasesTools:
 
             # Expect two variable messages corresponding to keys a and b
             assert len(messages) == 2
-            var_msgs = [m for m in messages if isinstance(m.message, ToolInvokeMessage.VariableMessage)]
-            assert {m.message.variable_name for m in var_msgs} == {"a", "b"}
+            var_msgs = [
+                _variable_message(m) for m in messages if isinstance(m.message, ToolInvokeMessage.VariableMessage)
+            ]
+            assert {m.variable_name for m in var_msgs} == {"a", "b"}
             # Validate values
-            values = {m.message.variable_name: m.message.variable_value for m in var_msgs}
+            values = {m.variable_name: m.variable_value for m in var_msgs}
             assert values == {"a": 1, "b": "x"}
 
         def test_invoke_yields_json_when_structured_content_has_no_output_schema(self, orm_session: Session) -> None:
@@ -679,7 +685,7 @@ class TestMcpToolCasesTools:
                 {"level1": {"level2": {"usage": {"total_tokens": 200}}}},
             ],
         )
-        def test_various_meta_formats(self, meta_data) -> None:
+        def test_various_meta_formats(self, meta_data: dict[str, Any]) -> None:
             """Test that various meta formats are correctly parsed."""
             result = CallToolResult(content=[], _meta=meta_data)
             usage = MCPTool._derive_usage_from_result(result)
@@ -695,3 +701,15 @@ class TestMcpToolCasesTools:
                 )
                 if expected_total:
                     assert usage.total_tokens == expected_total
+
+
+def _text_message(message: ToolInvokeMessage) -> ToolInvokeMessage.TextMessage:
+    """Return the text payload, asserting the message really is a text message."""
+    assert isinstance(message.message, ToolInvokeMessage.TextMessage)
+    return message.message
+
+
+def _variable_message(message: ToolInvokeMessage) -> ToolInvokeMessage.VariableMessage:
+    """Return the variable payload, asserting the message really is a variable message."""
+    assert isinstance(message.message, ToolInvokeMessage.VariableMessage)
+    return message.message

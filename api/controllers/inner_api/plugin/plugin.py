@@ -489,6 +489,7 @@ class PluginInvokeAppApi(Resource):
     )
     @with_session
     def post(self, session: Session, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeApp):
+        """Invoke an app after the invocation owner verifies tenant ownership before model work."""
         response = PluginAppBackwardsInvocation.invoke_app(
             runtime=application_services().workflow_runtime,
             session=session,

@@ -445,6 +445,20 @@ export type KnowledgeFsExternalAccessPayload = {
   workflow_enabled: boolean
 }
 
+export type FileScanPolicyResponse = {
+  enabled: boolean
+  on_unavailable: string
+  on_unscannable: string
+  provider_id?: string | null
+}
+
+export type FileScanPolicyPayload = {
+  enabled: boolean
+  on_unavailable?: FileScanFallbackAction
+  on_unscannable?: FileScanFallbackAction
+  provider_id?: string | null
+}
+
 export type KnowledgeFsGoldenQuestionListResponse = {
   data: Array<KnowledgeFsGoldenQuestionResponse>
   next_cursor?: string | null
@@ -928,6 +942,8 @@ export type KnowledgeFsSourceWorkflowResponse = {
     | 'DOCUMENT_PARSER_UNAVAILABLE'
     | 'DOCUMENT_PARSER_UNSUPPORTED_TYPE'
     | 'DOCUMENT_PDF_RENDER_FAILED'
+    | 'DOCUMENT_SEMANTIC_GROUNDING_FAILED'
+    | 'DOCUMENT_SOURCE_NOT_FOUND'
     | 'DURABLE_DELETION_IDEMPOTENCY_CONFLICT'
     | 'EMBEDDING_DIMENSION_INVALID'
     | 'EMBEDDING_DIMENSION_UNSUPPORTED'
@@ -1193,6 +1209,8 @@ export type KnowledgeFsSourceCredentialTestResponse = {
     | 'DOCUMENT_PARSER_UNAVAILABLE'
     | 'DOCUMENT_PARSER_UNSUPPORTED_TYPE'
     | 'DOCUMENT_PDF_RENDER_FAILED'
+    | 'DOCUMENT_SEMANTIC_GROUNDING_FAILED'
+    | 'DOCUMENT_SOURCE_NOT_FOUND'
     | 'DURABLE_DELETION_IDEMPOTENCY_CONFLICT'
     | 'EMBEDDING_DIMENSION_INVALID'
     | 'EMBEDDING_DIMENSION_UNSUPPORTED'
@@ -1438,6 +1456,8 @@ export type KnowledgeFsPublicFailureResponse = {
     | 'DOCUMENT_PARSER_UNAVAILABLE'
     | 'DOCUMENT_PARSER_UNSUPPORTED_TYPE'
     | 'DOCUMENT_PDF_RENDER_FAILED'
+    | 'DOCUMENT_SEMANTIC_GROUNDING_FAILED'
+    | 'DOCUMENT_SOURCE_NOT_FOUND'
     | 'DURABLE_DELETION_IDEMPOTENCY_CONFLICT'
     | 'EMBEDDING_DIMENSION_INVALID'
     | 'EMBEDDING_DIMENSION_UNSUPPORTED'
@@ -1851,6 +1871,8 @@ export type KnowledgeFsDocumentOutlineNodeResponse = {
   toc_source: string
 }
 
+export type FileScanFallbackAction = 'allow' | 'block'
+
 export type KnowledgeFsGoldenQuestionBulkImportRowPayload = {
   evidence: string
   question: string
@@ -2241,6 +2263,8 @@ export type KnowledgeFsSourceImportFailureResponse = {
     | 'DOCUMENT_PARSER_UNAVAILABLE'
     | 'DOCUMENT_PARSER_UNSUPPORTED_TYPE'
     | 'DOCUMENT_PDF_RENDER_FAILED'
+    | 'DOCUMENT_SEMANTIC_GROUNDING_FAILED'
+    | 'DOCUMENT_SOURCE_NOT_FOUND'
     | 'DURABLE_DELETION_IDEMPOTENCY_CONFLICT'
     | 'EMBEDDING_DIMENSION_INVALID'
     | 'EMBEDDING_DIMENSION_UNSUPPORTED'
@@ -3673,6 +3697,52 @@ export type PutKnowledgeFsSpacesByControlSpaceIdExternalAccessResponses = {
 
 export type PutKnowledgeFsSpacesByControlSpaceIdExternalAccessResponse =
   PutKnowledgeFsSpacesByControlSpaceIdExternalAccessResponses[keyof PutKnowledgeFsSpacesByControlSpaceIdExternalAccessResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdFileScanPolicyData = {
+  body?: never
+  path: {
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/file-scan-policy'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdFileScanPolicyErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdFileScanPolicyError =
+  GetKnowledgeFsSpacesByControlSpaceIdFileScanPolicyErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdFileScanPolicyErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdFileScanPolicyResponses = {
+  200: FileScanPolicyResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdFileScanPolicyResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdFileScanPolicyResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdFileScanPolicyResponses]
+
+export type PutKnowledgeFsSpacesByControlSpaceIdFileScanPolicyData = {
+  body: FileScanPolicyPayload
+  path: {
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/file-scan-policy'
+}
+
+export type PutKnowledgeFsSpacesByControlSpaceIdFileScanPolicyErrors = {
+  default: ErrorResponse
+}
+
+export type PutKnowledgeFsSpacesByControlSpaceIdFileScanPolicyError =
+  PutKnowledgeFsSpacesByControlSpaceIdFileScanPolicyErrors[keyof PutKnowledgeFsSpacesByControlSpaceIdFileScanPolicyErrors]
+
+export type PutKnowledgeFsSpacesByControlSpaceIdFileScanPolicyResponses = {
+  200: FileScanPolicyResponse
+}
+
+export type PutKnowledgeFsSpacesByControlSpaceIdFileScanPolicyResponse =
+  PutKnowledgeFsSpacesByControlSpaceIdFileScanPolicyResponses[keyof PutKnowledgeFsSpacesByControlSpaceIdFileScanPolicyResponses]
 
 export type GetKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsData = {
   body?: never

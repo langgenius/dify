@@ -1,4 +1,5 @@
 import json
+from collections.abc import Generator
 from dataclasses import dataclass
 from typing import cast
 
@@ -88,8 +89,8 @@ def _end_user(
 
 
 class TestBaseBackwardsInvocation:
-    def test_convert_to_event_stream_with_generator_and_error(self):
-        def _stream():
+    def test_convert_to_event_stream_with_generator_and_error(self) -> None:
+        def _stream() -> Generator[_Chunk | dict[str, int] | str]:
             yield _Chunk(value=1)
             yield {"x": 2}
             yield "ignored"
@@ -105,7 +106,7 @@ class TestBaseBackwardsInvocation:
         assert second["data"]["x"] == 2
         assert error["error"] == "boom"
 
-    def test_convert_to_event_stream_with_non_generator(self):
+    def test_convert_to_event_stream_with_non_generator(self) -> None:
         chunks = list(BaseBackwardsInvocation.convert_to_event_stream({"ok": True}))
         payload = json.loads(chunks[0].decode())
         assert payload["data"] == {"ok": True}
