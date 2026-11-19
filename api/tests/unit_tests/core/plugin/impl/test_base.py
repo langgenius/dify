@@ -167,7 +167,7 @@ class TestBasePluginClientImpl:
             client._request_with_plugin_daemon_response("GET", "plugin/tenant/path", bool, transformer=transformer)
 
     def test_request_with_plugin_daemon_response_accepts_legacy_plugin_list_data_array(self) -> None:
-        envelope = PluginDaemonBasicResponse[list[object]](code=0, message="", data=[])
+        envelope = PluginDaemonBasicResponse[list[JsonValue]](code=0, message="", data=[])
         client = BasePluginClient(
             httpx_client=httpx.Client(transport=httpx.MockTransport(lambda _: _response(envelope)))
         )

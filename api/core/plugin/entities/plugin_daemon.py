@@ -38,13 +38,11 @@ class PluginDaemonRawResponse(BaseModel):
 
     The raw boundary accepts an omitted or null ``data`` field because legacy
     daemon responses can omit it; the final typed response still owns the
-    existing success/error semantics. Unknown fields are validated as JSON and
-    retained so transformation does not silently discard future daemon data.
+    existing success/error semantics. Unknown fields are retained so
+    transformation does not silently discard future daemon data.
     """
 
     model_config = ConfigDict(extra="allow")
-
-    __pydantic_extra__: dict[str, JsonValue] = Field(init=False)
 
     code: int
     message: str
