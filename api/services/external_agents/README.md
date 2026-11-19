@@ -152,6 +152,18 @@ Unsupported legacy metadata keys keep their previous omission behavior with a va
 block a terminal result or widen the graph runtime's closed metadata contract.
 Usage is committed before the runtime publishes the terminal wake; a usage-query failure affects statistics only.
 
+Trace exports include root inputs/outputs only when the dispatch-frozen destination permits content and pinned
+credential-redaction facts remain available. App and asset content permissions retain their intersection. No-auth
+is a known empty secret set; an unavailable Bearer secret produces metadata-only export. Inputs use this
+Invocation's frozen admitted parts, and outputs use its validated successful result. Files are summaries without
+bytes, storage or download authority. Content, including keys, is redacted before string truncation; the complete
+canonical Trace must fit its byte budget or falls back to metadata-only. Missing values stay null; zero, false and
+empty JSON values remain present. Child input uses only specified tool parameters or agent requests (including the
+supported Python-sample fields); Traceability v1 does not define child output, so none is invented. Existing frozen
+deliveries and retry payloads are never backfilled or re-exported just to add content.
+Known credentials in raw observation keys are masked before the ingestion key bound. Already-retained keys exactly
+at that old bound are ambiguous and exported with a de-identified key rather than exposing a possible token prefix.
+
 Traceability recognizes the exact declared A2A Traceability carrier. The v1 specification and Python sample dialect
 are normalized explicitly, including their different timestamp representations; neither is accepted as the private
 AgentTraceBatch or native OTLP. Parseable incomplete steps remain visible. Raw data is bounded and redacted before

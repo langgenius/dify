@@ -220,6 +220,8 @@ def build_external_agent_services(
         store=observations,
         access=observation_access,
         clock=clock.now,
+        secrets=ConnectionTraceSecretReader(sessions=sessions, codec=codec),
+        limits=trace_limits,
         sender=ExistingProviderTraceSender(
             providers=EntryPointTraceProviderCatalog(),
             codec=ProviderConfigCodec(WorkspaceTracingSecretCipher()),

@@ -81,7 +81,9 @@ def test_runtime_observe_before_terminal_commit_is_recovered_after_process_gap(
     observations = ExternalObservabilityService(
         store=store, access=access, normalizer=TraceabilityNormalizer(limits), secrets=Secrets()
     )
-    delivery = ExternalTraceDeliveryService(store=store, sender=UnexpectedIO(), access=access, clock=clock.now)
+    delivery = ExternalTraceDeliveryService(
+        secrets=Secrets(), limits=TraceLimits(), store=store, sender=UnexpectedIO(), access=access, clock=clock.now
+    )
     observer = ExternalOutputNormalizer(
         files=UnexpectedIO(), observations=observations, trace_delivery=delivery, now=clock.now
     )
