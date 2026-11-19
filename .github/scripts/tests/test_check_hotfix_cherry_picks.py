@@ -103,9 +103,7 @@ class CherryPickProvenanceTests(unittest.TestCase):
         self.assertIn("missing cherry-pick provenance", self.check(expected=1))
 
     def test_unavailable_source(self) -> None:
-        self.commit(
-            "unknown", "unknown source\n\n(cherry picked from commit " + "a" * 40 + ")"
-        )
+        self.commit("unknown", "unknown source\n\n(cherry picked from commit " + "a" * 40 + ")")
         self.assertIn("not available locally", self.check(expected=1))
 
     def test_source_not_reachable_from_main(self) -> None:
