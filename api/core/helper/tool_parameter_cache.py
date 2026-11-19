@@ -2,11 +2,13 @@ import json
 from enum import StrEnum
 from typing import Any
 
-from pydantic import TypeAdapter, ValidationError
+from pydantic import JsonValue, TypeAdapter, ValidationError
 
 from extensions.ext_redis import RedisClientWrapper, redis_client
 
-_parameters_adapter = TypeAdapter(dict[str, Any])
+# Plugins define their own keys; the cache owns only the JSON object shape.
+type CachedToolParameters = dict[str, JsonValue]
+_parameters_adapter = TypeAdapter(CachedToolParameters)
 
 
 class ToolParameterCacheType(StrEnum):

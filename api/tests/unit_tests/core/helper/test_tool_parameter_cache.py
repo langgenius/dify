@@ -2,11 +2,10 @@ import json
 from unittest.mock import MagicMock
 
 import pytest
-from pydantic import JsonValue
 from pytest_mock import MockerFixture
 from redis.exceptions import ConnectionError
 
-from core.helper.tool_parameter_cache import ToolParameterCache, ToolParameterCacheType
+from core.helper.tool_parameter_cache import CachedToolParameters, ToolParameterCache, ToolParameterCacheType
 from extensions.ext_redis import RedisClientWrapper
 
 
@@ -140,7 +139,7 @@ def test_get_treats_invalid_entries_as_cache_misses(
 )
 def test_get_preserves_json_object_values(
     serialized: bytes,
-    expected: dict[str, JsonValue],
+    expected: CachedToolParameters,
     redis_transport: tuple[RedisClientWrapper, MagicMock],
 ) -> None:
     """Given a JSON object, preserve its keys and arbitrary nested values."""

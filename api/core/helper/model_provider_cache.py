@@ -2,11 +2,13 @@ import json
 from enum import StrEnum
 from typing import Any
 
-from pydantic import TypeAdapter, ValidationError
+from pydantic import JsonValue, TypeAdapter, ValidationError
 
 from extensions.ext_redis import RedisClientWrapper, redis_client
 
-_credentials_adapter = TypeAdapter(dict[str, Any])
+# Plugins define their own keys; the cache owns only the JSON object shape.
+type CachedModelCredentials = dict[str, JsonValue]
+_credentials_adapter = TypeAdapter(CachedModelCredentials)
 
 
 class ProviderCredentialsCacheType(StrEnum):
