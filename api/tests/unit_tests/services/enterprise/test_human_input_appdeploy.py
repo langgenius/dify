@@ -22,10 +22,25 @@ from models.human_input_v2 import HumanInputForm
 from repositories.human_input_v2.form_repository import FormCreateParams, FormSubmission
 from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
 from services.enterprise.human_input_run_gateway import EnterpriseHumanInputRunGateway, drain_pending_run_effects
-from services.enterprise.human_input_service import project_prepared
+from services.enterprise.human_input_service import PreparePayload, project_prepared
 from services.errors.enterprise import EnterpriseAPIError
 from services.human_input_v2.form_service import handle_form_timeouts
 from services.human_input_v2.run_gateway import DifyHumanInputRunGateway, build_run_gateway
+
+
+def test_trigger_prepare_without_initiator() -> None:
+    payload = PreparePayload.model_validate(
+        {
+            "owner_ref": {"environment_id": "env", "deployment_id": "deploy", "revision_id": "rev"},
+            "node_execution_id": "execution",
+            "node_id": "review",
+            "form_version": "2",
+            "node_data": {},
+            "variables": {},
+            "run_created_at": "2026-11-19T00:00:00Z",
+        }
+    )
+    assert payload.initiator is None
 
 
 @pytest.mark.parametrize("version", ["1", "2"])

@@ -61,7 +61,7 @@ class PreparePayload(BaseModel):
     form_version: Literal["1", "2"]
     node_data: dict[str, JsonValue]
     variables: dict[str, JsonValue]
-    initiator: InitiatorPayload | None
+    initiator: InitiatorPayload | None = None
     run_created_at: datetime
 
 
