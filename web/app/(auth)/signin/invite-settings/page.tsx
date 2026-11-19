@@ -15,7 +15,6 @@ import {
   ComboboxPopup,
   ComboboxPortal,
   ComboboxPositioner,
-  ComboboxSelectTrigger,
   ComboboxValue,
   createComboboxItems,
 } from '@langgenius/dify-ui/combobox'
@@ -28,6 +27,7 @@ import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { PreferenceComboboxTrigger } from '@/features/account-profile/preference-combobox-trigger'
 import { TimezoneCombobox } from '@/features/account-profile/timezone-combobox'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { i18n } from '@/i18n'
@@ -238,9 +238,9 @@ export default function InviteSettingsPage() {
                 <ComboboxLabel>
                   <span id={languageLabelId}>{t(($) => $.interfaceLanguage, { ns: 'login' })}</span>
                 </ComboboxLabel>
-                <ComboboxSelectTrigger>
+                <PreferenceComboboxTrigger>
                   <ComboboxValue<Locale> />
-                </ComboboxSelectTrigger>
+                </PreferenceComboboxTrigger>
                 <ComboboxPortal>
                   <ComboboxPositioner>
                     <ComboboxPopup aria-labelledby={languageLabelId}>

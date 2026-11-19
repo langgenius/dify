@@ -13,6 +13,7 @@ import {
   ComboboxEmpty,
   ComboboxGroup,
   ComboboxGroupLabel,
+  ComboboxIcon,
   ComboboxInput,
   ComboboxInputGroup,
   ComboboxInputTrigger,
@@ -24,7 +25,6 @@ import {
   ComboboxPopup,
   ComboboxPortal,
   ComboboxPositioner,
-  ComboboxSelectTrigger,
   ComboboxSeparator,
   ComboboxStatus,
   ComboboxTrigger,
@@ -701,9 +701,12 @@ export const TriggerWithPopupInput: Story = {
     <div className={fieldWidth}>
       <Combobox items={dataSourceOptions} defaultValue={defaultPopupDataSource}>
         <ComboboxLabel>Data source</ComboboxLabel>
-        <ComboboxSelectTrigger>
-          <ComboboxValue placeholder="Choose source" />
-        </ComboboxSelectTrigger>
+        <ComboboxTrigger className="group/trigger flex h-8 w-full min-w-0 items-center gap-0.5 rounded-lg bg-components-input-bg-normal py-2 ps-3 pe-2 text-start system-sm-regular text-components-input-text-filled transition-colors hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-placeholder:text-components-input-text-placeholder data-popup-open:bg-state-base-hover-alt motion-reduce:transition-none">
+          <span className="min-w-0 grow truncate">
+            <ComboboxValue placeholder="Choose source" />
+          </span>
+          <ComboboxIcon className="text-text-quaternary transition-colors group-hover/trigger:text-text-secondary group-data-popup-open/trigger:text-text-secondary" />
+        </ComboboxTrigger>
         <ComboboxPortal>
           <ComboboxPositioner>
             <ComboboxPopup aria-label="Data source">

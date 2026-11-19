@@ -2,7 +2,6 @@
 
 import type { VariantProps } from 'class-variance-authority'
 import type * as React from 'react'
-import type { SelectSize } from '../internal/select-trigger-style'
 import { Combobox as BaseCombobox } from '@base-ui/react/combobox'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
@@ -16,7 +15,6 @@ import {
   positionerClassName,
 } from '../internal/overlay'
 import { resolveClassName } from '../internal/resolve-class-name'
-import { selectTriggerIconClassName, selectTriggerVariants } from '../internal/select-trigger-style'
 
 type ComboboxActions = BaseCombobox.Root.Actions
 
@@ -111,31 +109,6 @@ function ComboboxTrigger({ className, type = 'button', ...props }: ComboboxTrigg
       className={(state) => cn(focusRingClassName, resolveClassName(className, state))}
       {...props}
     />
-  )
-}
-
-type ComboboxSelectTriggerProps = BaseCombobox.Trigger.Props & { size?: SelectSize }
-
-function ComboboxSelectTrigger({
-  className,
-  children,
-  size,
-  type = 'button',
-  ...props
-}: ComboboxSelectTriggerProps) {
-  return (
-    <BaseCombobox.Trigger
-      type={type}
-      className={(state) =>
-        cn(selectTriggerVariants({ size, className: resolveClassName(className, state) }))
-      }
-      {...props}
-    >
-      <span className="min-w-0 grow truncate">{children}</span>
-      <BaseCombobox.Icon className={selectTriggerIconClassName}>
-        <span className="i-ri-arrow-down-s-line h-4 w-4" aria-hidden="true" />
-      </BaseCombobox.Icon>
-    </BaseCombobox.Trigger>
   )
 }
 
@@ -547,7 +520,6 @@ export {
   ComboboxPortal,
   ComboboxPositioner,
   ComboboxRow,
-  ComboboxSelectTrigger,
   ComboboxSeparator,
   ComboboxStatus,
   ComboboxTrigger,
@@ -586,7 +558,6 @@ export type {
   ComboboxPositionerProps,
   ComboboxProps,
   ComboboxRowProps,
-  ComboboxSelectTriggerProps,
   ComboboxSeparatorProps,
   ComboboxStatusProps,
   ComboboxTriggerProps,
