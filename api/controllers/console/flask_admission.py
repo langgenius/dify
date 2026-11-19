@@ -5,12 +5,13 @@ from functools import wraps
 from http import HTTPStatus
 from typing import Concatenate
 
-from flask import Response, abort, request
+from flask import Response, abort, g, request
 from werkzeug.exceptions import Forbidden, Unauthorized
 
 from configs import dify_config
 from controllers.common.rbac import RBAC_CHECKS_ATTR, RBACCheck, enforce_rbac_checks
 from controllers.console.admin import admin_required
+from controllers.console.error import NotAllowedCreateWorkspace, WorkspacesLimitExceeded
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
@@ -19,15 +20,22 @@ from controllers.console.wraps import (
     is_allow_transfer_owner,
     setup_required,
 )
-from core.logging.context import get_request_id, get_trace_id
+from core.logging.context import get_request_id, get_trace_id, set_identity_context
 from enums import DeploymentEdition
 from enums.account import TenantAccountRole
-from extensions.ext_login import ACCOUNT_ONLY_ADMISSION_ATTR
+from extensions.ext_application_services import application_services
+from extensions.ext_login import ACCOUNT_ONLY_ADMISSION_ATTR, load_account
 from libs.login import current_account_with_tenant, current_account_with_tenant_optional, login_required
 from libs.oauth_bearer import bearer_feature_required
 from libs.token import extract_console_cookie_token, is_admin_api_key_request
 from machinery.context import AccountRequestContext, RequestContext
 from models.account import AccountStatus
+from services.errors.workspace import (
+    WorkSpaceNotAllowedCreateError,
+    WorkspaceNotFoundError,
+    WorkspaceOwnerNotFoundError,
+    WorkspacesLimitExceededError,
+)
 from services.system_feature_service import SystemFeatureService
 
 
@@ -116,11 +124,62 @@ def console_account_identity_admission[T, **P, R](
     return setup_required(login_required(admit))
 
 
+def _bootstrap_console_workspace() -> None:
+    """Resolve a first workspace for a Cloud browser session on opted-in Console GETs.
+
+    Requires login and CSRF validation first. Only a workspace-less Account with
+    no recorded Builder origin may provision. Success reloads the admitted Account
+    with its committed membership before workspace admission. Provisioning denials
+    leave workspace state unchanged and become normal admission errors.
+    """
+    if (
+        dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD
+        or dify_config.LOGIN_DISABLED
+        or request.method != "GET"
+        or not extract_console_cookie_token(request)
+        or is_admin_api_key_request(request)
+    ):
+        return
+
+    account, workspace_id = current_account_with_tenant_optional()
+    if account is None:
+        return
+    if workspace_id is None:
+        if account.first_workspace_created_at is not None or account.status not in (
+            AccountStatus.ACTIVE,
+            AccountStatus.UNINITIALIZED,
+        ):
+            raise Forbidden("An active workspace is required.")
+        try:
+            application_services().workspaces.provisioning.activate(account.id)
+        except WorkspaceOwnerNotFoundError as error:
+            raise Unauthorized() from error
+        except WorkSpaceNotAllowedCreateError as error:
+            raise Forbidden(NotAllowedCreateWorkspace.description) from error
+        except WorkspacesLimitExceededError as error:
+            raise Forbidden(WorkspacesLimitExceeded.description) from error
+        except WorkspaceNotFoundError as error:
+            raise Forbidden("An active workspace is required.") from error
+    elif account.status != AccountStatus.UNINITIALIZED:
+        return
+
+    # Another bootstrap read can commit between loading the Account and its membership.
+    refreshed = load_account(account.id)
+    if refreshed is None:
+        raise Unauthorized()
+    active_workspace_id = refreshed.current_tenant_id
+    if active_workspace_id is None:
+        raise Forbidden("An active workspace is required.")
+    g._login_user = refreshed
+    set_identity_context(tenant_id=active_workspace_id, user_id=refreshed.id, user_type="account")
+
+
 def console_account_admission[T, **P, R](
     *,
     editions: frozenset[DeploymentEdition] | None = None,
     require_change_email_enabled: bool = False,
     require_initialized: bool = True,
+    bootstrap_workspace: bool = False,
     require_valid_enterprise_license: bool = False,
     require_owner_transfer_enabled: bool = False,
     billing_resource: str | None = None,
@@ -133,9 +192,10 @@ def console_account_admission[T, **P, R](
 ]:
     """Declare Console account admission and inject a stable RequestContext.
 
-    Checks run in a fixed order: setup, login/CSRF, optional account
-    initialization, edition, license, feature and billing checks, role/RBAC
-    checks, then context construction.
+    Checks run in a fixed order: setup, login/CSRF, optional Cloud workspace
+    bootstrap, optional account initialization, edition, license, feature and
+    billing checks, role/RBAC checks, then context construction. Only Console
+    bootstrap reads opt in to provisioning; other routes require existing context.
     """
 
     def decorator(
@@ -181,10 +241,21 @@ def console_account_admission[T, **P, R](
             admitted = enforce_edition(admitted)
         if require_initialized:
             admitted = account_initialization_required(admitted)
-        admitted = login_required(admitted)
-        admitted = setup_required(admitted)
+        if bootstrap_workspace:
+            admitted = with_workspace_bootstrap(admitted)
+        return setup_required(login_required(admitted))
 
-        return admitted
+    def with_workspace_bootstrap(
+        admitted: Callable[Concatenate[T, P], R | Response],
+    ) -> Callable[Concatenate[T, P], R | Response]:
+        """Bootstrap after authentication, then apply the unchanged workspace checks."""
+
+        @wraps(admitted)
+        def checked(self: T, /, *args: P.args, **kwargs: P.kwargs) -> R | Response:
+            _bootstrap_console_workspace()
+            return admitted(self, *args, **kwargs)
+
+        return checked
 
     def enforce_edition(
         admitted: Callable[Concatenate[T, P], R | Response],

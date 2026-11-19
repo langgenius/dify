@@ -69,16 +69,15 @@ class FeatureApi(Resource):
         "Success",
         console_ns.models[ConsoleFeatureResponse.__name__],
     )
-    @console_account_admission()
+    @console_account_admission(bootstrap_workspace=True)
     @cloud_utm_record
     def get(self, request_context: RequestContext):
         """Get workspace features and Console EndUser auth configuration availability.
 
-        Preconditions: an admitted Console account has an active workspace; the
-        Console feature flag comes only from trusted deployment configuration.
-        Postconditions: preserve workspace features and report the Console-only
-        configuration gate without changing WebApp login, Guest personal-Connection
-        policies, runtime authorization, or state. Feature-query failures propagate unchanged.
+        Admission supplies an active workspace, provisioning the first one for an
+        eligible Cloud browser session if necessary. The feature flag comes only
+        from trusted deployment configuration. The feature query changes no state
+        and its failures propagate unchanged.
         """
         return dump_response(
             ConsoleFeatureResponse,

@@ -293,8 +293,13 @@ class CurrentWorkspaceSummaryApi(Resource):
     @error_responses(CurrentWorkspaceArchivedError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[CurrentWorkspaceSummaryResponse.__name__])
     @console_ns.response(HTTPStatus.CONFLICT, "Current workspace is archived")
-    @console_account_admission()
+    @console_account_admission(bootstrap_workspace=True)
     def get(self, context: RequestContext):
+        """Return the admitted workspace summary, including after Cloud bootstrap.
+
+        Admission resolves the active membership first; missing or archived
+        workspaces at lookup keep their existing error responses.
+        """
         try:
             summary = application_services().workspaces.management.current_summary(context)
         except WorkspaceArchivedError as exc:
