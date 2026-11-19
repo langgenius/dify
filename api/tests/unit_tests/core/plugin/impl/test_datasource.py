@@ -2,6 +2,7 @@ from collections.abc import Callable
 from types import SimpleNamespace
 from typing import TypedDict, Unpack
 
+import httpx
 from pytest_mock import MockerFixture
 
 from core.datasource.entities.datasource_entities import (
@@ -12,13 +13,19 @@ from core.datasource.entities.datasource_entities import (
     OnlineDriveDownloadMessage,
 )
 from core.plugin.entities.plugin_daemon import PluginDatasourceProviderEntity
+from core.plugin.impl import base as plugin_client_module
 from core.plugin.impl.datasource import (
     PluginDatasourceListPayload,
     PluginDatasourceManager,
     PluginDatasourceSinglePayload,
 )
 from core.plugin.plugin_service import PluginService
-from tests.helpers.unit.core.datasource.factories import provider_entity as datasource_provider_entity
+from tests.helpers.unit.core.datasource.factories import (
+    datasource_entity,
+)
+from tests.helpers.unit.core.datasource.factories import (
+    provider_entity as datasource_provider_entity,
+)
 
 
 class PluginDatasourceListRequestKwargs(TypedDict):
@@ -161,21 +168,27 @@ class TestPluginDatasourceManager:
         assert result.declaration.identity.name == "org/plugin/provider"
         assert result.declaration.datasources[0].identity.provider == "org/plugin/provider"
 
-    def test_list_transformer_keeps_providers_without_declaration_or_identity(self, mocker: MockerFixture) -> None:
-        icon_url_calls: list[tuple[str, str]] = []
+    def test_list_transformers_keep_providers_without_declaration_or_identity(self, mocker: MockerFixture) -> None:
+        transformed_payloads: list[PluginDatasourceListPayload] = []
 
         def get_plugin_icon_url(tenant_id: str, filename: str) -> str:
-            icon_url_calls.append((tenant_id, filename))
             return f"https://custom-icon-resolver.example/{tenant_id}/{filename}"
 
-        manager = PluginDatasourceManager(get_plugin_icon_url=get_plugin_icon_url)
-        providers: list[PluginDatasourceProviderEntity] = []
+        def make_provider() -> PluginDatasourceProviderEntity:
+            declaration = datasource_provider_entity(DatasourceProviderType.ONLINE_DOCUMENT)
+            declaration.identity.name = "remote"
+            declaration.datasources = [datasource_entity("documents")]
+            return PluginDatasourceProviderEntity(
+                provider="remote",
+                plugin_unique_identifier="org/plugin@1.0.0",
+                plugin_id="org/plugin",
+                declaration=declaration,
+            )
 
         def fake_request(
             method: str, path: str, type_: object, **kwargs: Unpack[PluginDatasourceListRequestKwargs]
         ) -> list[PluginDatasourceProviderEntity]:
-            transformer = kwargs["transformer"]
-            transformed = transformer(
+            transformed = kwargs["transformer"](
                 {
                     "data": [
                         {},
@@ -190,37 +203,79 @@ class TestPluginDatasourceManager:
                     ]
                 }
             )
-            data = transformed.data
-            assert data is not None
-            assert data[0].declaration is None
-            declaration = data[1].declaration
-            assert declaration is not None
-            assert declaration.datasources is None
-            unnamed = data[2].declaration
-            assert unnamed is not None
-            assert unnamed.datasources is not None
-            assert unnamed.datasources[0].identity.provider is None
-            named = data[3].declaration
-            assert named is not None
-            assert named.datasources is not None
-            assert named.datasources[0].identity.provider == "remote"
-            assert "output_schema" not in named.datasources[0].model_dump(exclude_unset=True)
-            provider = PluginDatasourceProviderEntity(
-                provider="remote",
-                plugin_unique_identifier="org/plugin@1.0.0",
-                plugin_id="org/plugin",
-                declaration=datasource_provider_entity(DatasourceProviderType.ONLINE_DOCUMENT),
-            )
-            providers.append(provider)
-            return [provider]
+            transformed_payloads.append(transformed)
+            return [make_provider()]
 
-        mocker.patch.object(manager, "_request_with_plugin_daemon_response", side_effect=fake_request)
+        manager = PluginDatasourceManager(get_plugin_icon_url=get_plugin_icon_url)
+        request_mock = mocker.patch.object(manager, "_request_with_plugin_daemon_response", side_effect=fake_request)
 
         listed_providers = manager.fetch_datasource_providers("tenant-1")
         installed_providers = manager.fetch_installed_datasource_providers("tenant-1")
 
+        assert request_mock.call_count == 2
+        assert len(transformed_payloads) == 2
+        for transformed in transformed_payloads:
+            providers = transformed.data
+            assert providers is not None
+            assert providers[0].declaration is None
+            missing_identity = providers[1].declaration
+            assert missing_identity is not None
+            assert missing_identity.identity is None
+            assert missing_identity.datasources is None
+            unnamed = providers[2].declaration
+            assert unnamed is not None
+            assert unnamed.datasources is not None
+            assert unnamed.datasources[0].identity.provider is None
+            assert "output_schema" not in unnamed.datasources[0].model_dump(exclude_unset=True)
+            named = providers[3].declaration
+            assert named is not None
+            assert named.datasources is not None
+            assert named.datasources[0].identity.provider == "remote"
+            assert "output_schema" not in named.datasources[0].model_dump(exclude_unset=True)
+
+        assert listed_providers[1].declaration.identity.name == "org/plugin/remote"
+        assert installed_providers[0].declaration.identity.name == "org/plugin/remote"
+
+    def test_list_and_installed_provider_paths_use_custom_icon_resolver(self, mocker: MockerFixture) -> None:
+        icon_url_calls: list[tuple[str, str]] = []
+        requests: list[httpx.Request] = []
+
+        def get_plugin_icon_url(tenant_id: str, filename: str) -> str:
+            icon_url_calls.append((tenant_id, filename))
+            return f"https://custom-icon-resolver.example/{tenant_id}/{filename}"
+
+        declaration = datasource_provider_entity(DatasourceProviderType.ONLINE_DOCUMENT)
+        declaration.identity.name = "remote"
+        declaration.datasources = [datasource_entity("documents")]
+        provider = PluginDatasourceProviderEntity(
+            provider="remote",
+            plugin_unique_identifier="org/plugin@1.0.0",
+            plugin_id="org/plugin",
+            declaration=declaration,
+        )
+        daemon_response = {"code": 0, "message": "", "data": [provider.model_dump(mode="json")]}
+
+        def handle(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            return httpx.Response(200, json=daemon_response)
+
+        manager = PluginDatasourceManager(get_plugin_icon_url=get_plugin_icon_url)
+        with httpx.Client(transport=httpx.MockTransport(handle)) as http_client:
+            mocker.patch.object(plugin_client_module, "_httpx_client", http_client)
+            listed_providers = manager.fetch_datasource_providers("tenant-1")
+            installed_providers = manager.fetch_installed_datasource_providers("tenant-1")
+
         expected_icon_url = "https://custom-icon-resolver.example/tenant-1/icon.svg"
-        assert len(providers) == 2
+        assert len(requests) == 2
+        assert [request.url.path for request in requests] == ["/plugin/tenant-1/management/datasources"] * 2
+        assert [dict(request.url.params) for request in requests] == [{"page": "1", "page_size": "256"}] * 2
+        assert len(listed_providers) == 2
+        assert listed_providers[0].plugin_id == "langgenius/file"
+        assert listed_providers[1].declaration.identity.name == "org/plugin/remote"
+        assert listed_providers[1].declaration.datasources[0].identity.provider == "org/plugin/remote"
+        assert len(installed_providers) == 1
+        assert installed_providers[0].declaration.identity.name == "org/plugin/remote"
+        assert installed_providers[0].declaration.datasources[0].identity.provider == "org/plugin/remote"
         assert icon_url_calls == [("tenant-1", "icon.svg"), ("tenant-1", "icon.svg")]
         assert listed_providers[1].declaration.identity.icon == expected_icon_url
         assert installed_providers[0].declaration.identity.icon == expected_icon_url

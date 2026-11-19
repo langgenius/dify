@@ -74,30 +74,26 @@ class ToolTransformService:
     @staticmethod
     def repack_provider(
         tenant_id: str,
-        provider: dict[str, Any] | ToolProviderApiEntity | PluginDatasourceProviderEntity,
+        provider: ToolProviderApiEntity | PluginDatasourceProviderEntity,
         get_plugin_icon_url: Callable[[str, str], str] = PluginService.get_plugin_icon_url,
     ) -> None:
         """Rewrite applicable provider icon fields in place.
 
-        Inputs: ``provider`` is a dictionary or supported provider entity;
+        Inputs: ``provider`` is a supported provider entity and
         ``get_plugin_icon_url`` accepts a tenant ID and icon filename.
         Preconditions: The callback is callable with those two string arguments.
         Result and side effects: Only applicable icon fields are rewritten; all
         non-icon fields remain unchanged. Plugin-owned string icons use the
-        callback's URL, while dictionary and non-plugin handling stays unchanged.
+        callback's URL, while non-plugin handling stays unchanged.
         Failure behavior: URL resolver or formatter exceptions propagate. Because
         the provider is mutated in place, an earlier icon rewrite may remain if a
         later rewrite fails.
 
         :param tenant_id: the tenant id used for plugin icon URLs
-        :param provider: the provider entity or dictionary to repack
+        :param provider: the provider entity to repack
         :param get_plugin_icon_url: callback for plugin-owned icon URLs
         """
         match provider:
-            case dict() if "icon" in provider:
-                provider["icon"] = ToolTransformService.get_tool_provider_icon_url(
-                    provider_type=provider["type"], provider_name=provider["name"], icon=provider["icon"]
-                )
             case ToolProviderApiEntity():
                 if provider.plugin_id:
                     if isinstance(provider.icon, str):

@@ -849,14 +849,6 @@ class TestToolsTransformServiceCases:
             assert ToolTransformService.get_tool_provider_icon_url("unknown", "x", "i") == ""
 
     class TestRepackProvider:
-        def test_repacks_dict_provider_icon(self):
-            provider = {"type": "builtin", "name": "google", "icon": "old"}
-            with patch.object(ToolTransformService, "get_tool_provider_icon_url", return_value="/new-url") as mock_fn:
-                ToolTransformService.repack_provider("t1", provider)
-
-            assert provider["icon"] == "/new-url"
-            mock_fn.assert_called_once_with(provider_type="builtin", provider_name="google", icon="old")
-
         def test_repacks_tool_provider_api_entity_without_plugin(self):
             entity = ToolProviderApiEntity(
                 id="slack",

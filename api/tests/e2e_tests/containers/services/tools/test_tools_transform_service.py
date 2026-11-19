@@ -257,31 +257,44 @@ class TestToolTransformService:
         # Assert: Verify the expected outcomes
         assert result == ""
 
-    def test_repack_provider_dict_success(
+    def test_repack_provider_builtin_entity_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
-        Test successful provider repacking with dictionary input.
+        Test successful provider repacking with a built-in ToolProviderApiEntity.
 
         This test verifies:
-        - Proper icon URL generation for dictionary providers
-        - Correct provider type handling
-        - Icon transformation for different provider types
+        - Proper built-in icon URL generation for entity providers
+        - Correct built-in provider type handling
         """
         # Arrange: Setup test data
         fake = Faker()
         tenant_id = fake.uuid4()
-        provider = {"type": ToolProviderType.BUILT_IN, "name": fake.company(), "icon": "🔧"}
+        provider = ToolProviderApiEntity(
+            id=str(fake.uuid4()),
+            author=fake.name(),
+            name=fake.company(),
+            description=I18nObject(en_US=fake.text(max_nb_chars=100)),
+            icon="🔧",
+            icon_dark="",
+            label=I18nObject(en_US=fake.company()),
+            type=ToolProviderType.BUILT_IN,
+            masked_credentials={},
+            is_team_authorization=False,
+            plugin_id=None,
+            tools=[],
+            labels=[],
+        )
 
         # Act: Execute the method under test
         ToolTransformService.repack_provider(str(tenant_id), provider)
 
         # Assert: Verify the expected outcomes
-        assert "icon" in provider
-        assert isinstance(provider["icon"], str)
-        assert "console/api/workspaces/current/tool-provider/builtin" in provider["icon"]
+        assert provider.icon is not None
+        assert isinstance(provider.icon, str)
+        assert "console/api/workspaces/current/tool-provider/builtin" in provider.icon
         # Note: provider name may contain spaces that get URL encoded
-        assert provider["name"].replace(" ", "%20") in provider["icon"] or provider["name"] in provider["icon"]
+        assert provider.name.replace(" ", "%20") in provider.icon or provider.name in provider.icon
 
     def test_repack_provider_entity_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
