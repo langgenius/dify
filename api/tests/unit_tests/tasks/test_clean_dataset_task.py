@@ -476,9 +476,7 @@ class TestSegmentAttachmentCleanup:
             created_at=datetime.now(UTC),
             used=False,
         )
-        segment.content = (
-            f"![image](https://example.com/files/{image_file.id}/file-preview?timestamp=1&nonce=x&sign=y)"
-        )
+        segment.content = f"![image](https://example.com/files/{image_file.id}/file-preview?timestamp=1&nonce=x&sign=y)"
         with orm_session_maker.begin() as session:
             session.add_all([image_file, segment])
 
