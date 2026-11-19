@@ -186,6 +186,7 @@ class SystemConfiguration(BaseModel):
     """
 
     enabled: bool
+    tokener_funded: bool = False
     current_quota_type: ProviderQuotaType | None = None
     quota_configurations: list[QuotaConfiguration] = []
     credentials: dict[str, Any] | None = Field(default=None)

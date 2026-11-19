@@ -26,6 +26,11 @@ from models.account import Tenant
 from models.model_billing import TenantModelBillingProfile
 from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
 from repositories.tokener_bootstrap_repository import TokenerBootstrapRepository
+from repositories.tokener_signup_canary_repository import (
+    CANARY_STAGING_PLUGIN_PREFIX,
+    CANARY_STAGING_PROVIDER,
+    signup_used_staging_package,
+)
 from services.billing_service import BillingService, TokenerBootstrapUpstreamError
 from services.model_provider.service import ModelProviderService
 from services.plugin.installation_service import AdmittedPluginInstallationCaller
@@ -195,7 +200,9 @@ def _ensure_plugin_installed(snapshot: _IntegrationSnapshot) -> None:
         if _installed_plugin_matches(snapshot.tenant_id, plugin_unique_identifier):
             return
 
-    if dify_config.TOKENER_PLUGIN_INSTALL_SOURCE == "package":
+    if dify_config.TOKENER_PLUGIN_INSTALL_SOURCE == "package" and not (
+        plugin_unique_identifier.startswith(CANARY_STAGING_PLUGIN_PREFIX)
+    ):
         response = application_services().plugin_installations.install_from_local_pkg(
             AdmittedPluginInstallationCaller(snapshot.tenant_id), [plugin_unique_identifier]
         )
@@ -224,9 +231,14 @@ def _ensure_plugin_installed(snapshot: _IntegrationSnapshot) -> None:
     )
 
 
+def _bootstrap_provider(tenant_id: str) -> str:
+    """Resolve persisted canary provider; the original provider remains unchanged for other tenants."""
+    return CANARY_STAGING_PROVIDER if signup_used_staging_package(tenant_id) else dify_config.TOKENER_PROVIDER_NAME
+
+
 def _find_managed_credential(tenant_id: str) -> tuple[str | None, bool]:
     return TokenerBootstrapRepository(sessions=session_factory.create_session).bound_credential(
-        tenant_id, dify_config.TOKENER_PROVIDER_NAME
+        tenant_id, _bootstrap_provider(tenant_id)
     )
 
 
@@ -237,7 +249,7 @@ def _activate_managed_credential(tenant_id: str, credential_id: str) -> None:
             raise ValueError("Managed credential binding does not match.")
         ModelProviderService().activate_unselected_provider_credential(
             tenant_id=tenant_id,
-            provider=dify_config.TOKENER_PROVIDER_NAME,
+            provider=_bootstrap_provider(tenant_id),
             credential_id=credential_id,
         )
     except Exception:
@@ -256,17 +268,20 @@ def _consume_data_plane_api_key(tenant_id: str, data_plane_api_key: str) -> _Cre
     not an editable credential label; activation is outside the SQL transaction.
     """
     credentials = {"api_key": data_plane_api_key}
-    endpoint_url = dify_config.TOKENER_ENDPOINT_URL.strip()
-    if endpoint_url:
-        credentials["endpoint_url"] = endpoint_url
     encrypted: dict[str, JsonValue] = {}
     credential_id: str | None = None
     try:
-        configuration = ModelProviderService()._get_provider_configuration(tenant_id, dify_config.TOKENER_PROVIDER_NAME)
+        provider = _bootstrap_provider(tenant_id)
+        # The audited staging package owns its fixed API endpoint. Do not give
+        # it the original shared agent-dev URL inherited from older fixtures.
+        endpoint_url = dify_config.TOKENER_ENDPOINT_URL.strip()
+        if endpoint_url and provider != CANARY_STAGING_PROVIDER:
+            credentials["endpoint_url"] = endpoint_url
+        configuration = ModelProviderService()._get_provider_configuration(tenant_id, provider)
         validated = configuration.validate_provider_credentials(credentials)
         encrypted = _encrypted_credential_adapter.validate_python(validated, strict=True)
         credential_id = TokenerBootstrapRepository(sessions=session_factory.create_session).bind_encrypted_credential(
-            tenant_id, dify_config.TOKENER_PROVIDER_NAME, MANAGED_TOKENER_CREDENTIAL_NAME, encrypted
+            tenant_id, provider, MANAGED_TOKENER_CREDENTIAL_NAME, encrypted
         )
     except Exception:
         return _CredentialWriteResult(error_code="tokener_provider_credential_rejected")
@@ -289,7 +304,7 @@ def _consume_data_plane_api_key(tenant_id: str, data_plane_api_key: str) -> _Cre
 
 
 def _ensure_managed_credential(snapshot: _IntegrationSnapshot) -> str:
-    credential_id, active = _find_managed_credential(snapshot.tenant_id)
+    credential_id, _active = _find_managed_credential(snapshot.tenant_id)
     if credential_id is not None:
         # A previous SQL commit may have succeeded before cache eviction failed.
         # Unready retries replay idempotent activation/cache cleanup, not Billing.
@@ -369,7 +384,8 @@ def _run_bootstrap(tenant_id: str) -> None:
 
     _ensure_plugin_installed(snapshot)
     credential_id = _ensure_managed_credential(snapshot)
-    _set_default_llm(snapshot.tenant_id)
+    if not signup_used_staging_package(tenant_id):
+        _set_default_llm(snapshot.tenant_id)
     _update_integration(
         snapshot.tenant_id,
         status=TenantTokenerIntegrationStatus.READY,

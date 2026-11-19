@@ -54,6 +54,7 @@ from models.provider import (
     TenantPreferredModelProvider,
 )
 from models.provider_ids import ModelProviderID
+from services.entities.hosted_model_routing import TokenerHostedModelCredentials
 
 logger = logging.getLogger(__name__)
 
@@ -204,6 +205,29 @@ class ProviderConfiguration(BaseModel):
                         raise ValueError(f"Model {model} is disabled.")
 
         if self.using_provider_type == ProviderType.SYSTEM:
+            if self.system_configuration.tokener_funded:
+                quota = next(
+                    (
+                        quota
+                        for quota in self.system_configuration.quota_configurations
+                        if quota.quota_type == self.system_configuration.current_quota_type
+                    ),
+                    None,
+                )
+                if (
+                    model_type not in self.provider.supported_model_types
+                    or quota is None
+                    or (quota.restrict_models and not any(item.model == model for item in quota.restrict_models))
+                ):
+                    from core.errors.error import ModelCurrentlyNotSupportError
+
+                    raise ModelCurrentlyNotSupportError(f"System model {model_type.value}/{model} is not allowed.")
+                return TokenerHostedModelCredentials(
+                    tenant_id=self.tenant_id,
+                    provider=self.provider.provider,
+                    model_type=model_type.value,
+                    model=model,
+                )
             from core.model_invocation_routing import (
                 ModelRouteUnmapped,
                 bind_legacy_credentials,

@@ -52,7 +52,7 @@ class WorkspaceProvisioningStore(Protocol):
 class WorkspaceProvisioningEffects(Protocol):
     def prepare(self, name: str) -> WorkspaceCreation: ...
 
-    def signup_enrollment(self) -> TokenerSignupEnrollment | None: ...
+    def signup_enrollment(self, email: str) -> TokenerSignupEnrollment | None: ...
 
     def bind_owner(self, workspace_id: str, account_id: str) -> None: ...
 
@@ -161,7 +161,7 @@ class WorkspaceProvisioningService:
             timezone=timezone,
             ip_address=ip_address,
             check_normalized_email=True,
-            tokener_signup=self._effects.signup_enrollment(),
+            tokener_signup=self._effects.signup_enrollment(email),
         )
         self._create(name=f"{name}'s Workspace", owner_id=account.id, account=account)
         self._effects.join_default_workspace(account.id)

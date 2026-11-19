@@ -46,7 +46,7 @@ class AccountLifecycleStore(Protocol):
 
 
 class AccountLifecyclePolicy(Protocol):
-    def signup_enrollment(self) -> TokenerSignupEnrollment | None: ...
+    def signup_enrollment(self, email: str) -> TokenerSignupEnrollment | None: ...
     def is_registration_allowed(self) -> bool: ...
 
     def has_account_capacity(self) -> bool: ...
@@ -172,7 +172,7 @@ class AccountService:
                 check_normalized_email=check_normalized_email,
                 status=status,
                 initialized_at=self._now() if initialized else None,
-                tokener_signup=self._policies.signup_enrollment() if registration == "self_signup" else None,
+                tokener_signup=self._policies.signup_enrollment(email) if registration == "self_signup" else None,
             )
         )
 

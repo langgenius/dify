@@ -9,9 +9,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from libs.datetime_utils import naive_utc_now
-from models.account import Tenant
+from models.account import Account, Tenant
 from models.model_billing import TenantModelBillingProfile
-from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
+from models.provider import Provider, ProviderCredential, ProviderType
+from models.tokener import AccountTokenerSignupIntent, TenantTokenerIntegration, TenantTokenerIntegrationStatus
+from repositories.tokener_signup_canary_repository import CANARY_STAGING_PROVIDER
 from services.plugin.installation_service import AdmittedPluginInstallationCaller, PluginInstallationService
 from tasks import bootstrap_tokener_tenant_task as task_module
 from tests.helpers.unit.config_override import apply_config_overrides
@@ -420,14 +422,64 @@ def test_existing_managed_credential_skips_remote_bootstrap(
 ) -> None:
     integration = _persist_integration(sqlite_session)
     find_credential = MagicMock(return_value=("credential-1", True))
+    activate = MagicMock()
     remote_bootstrap = MagicMock()
     monkeypatch.setattr(task_module, "_find_managed_credential", find_credential)
+    monkeypatch.setattr(task_module, "_activate_managed_credential", activate)
     monkeypatch.setattr(task_module.BillingService, "bootstrap_tokener_tenant", remote_bootstrap)
 
     credential_id = task_module._ensure_managed_credential(_snapshot(integration))
 
     assert credential_id == "credential-1"
+    activate.assert_called_once_with(integration.tenant_id, credential_id)
     remote_bootstrap.assert_not_called()
+
+
+def test_staging_signup_does_not_make_native_tokener_the_default(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    integration = _persist_integration(sqlite_session)
+    snapshot = _snapshot(integration)
+    monkeypatch.setattr(task_module.ModelBillingProfileService, "resolve", lambda _: SimpleNamespace(uses_tokener=True))
+    monkeypatch.setattr(task_module, "_begin_attempt", lambda _: snapshot)
+    monkeypatch.setattr(task_module, "signup_used_staging_package", lambda _: True)
+    install = MagicMock()
+    ensure_credential = MagicMock(return_value="unit-managed-id")
+    set_default = MagicMock()
+    publish = MagicMock()
+    monkeypatch.setattr(task_module, "_ensure_plugin_installed", install)
+    monkeypatch.setattr(task_module, "_ensure_managed_credential", ensure_credential)
+    monkeypatch.setattr(task_module, "_set_default_llm", set_default)
+    monkeypatch.setattr(task_module, "_update_integration", publish)
+
+    task_module._run_bootstrap(integration.tenant_id)
+
+    install.assert_called_once_with(snapshot)
+    ensure_credential.assert_called_once_with(snapshot)
+    set_default.assert_not_called()
+    assert publish.call_args.kwargs["status"] == TenantTokenerIntegrationStatus.READY
+    assert publish.call_args.kwargs["provider_credential_id"] == "unit-managed-id"
+
+
+def test_canary_install_uses_marketplace_without_changing_shared_package_policy(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    integration = _persist_integration(sqlite_session)
+    integration.plugin_unique_identifier = "langgenius/tokener-staging:0.4.4@signup-test"
+    sqlite_session.commit()
+    apply_config_overrides(monkeypatch, TOKENER_PLUGIN_INSTALL_SOURCE="package")
+    monkeypatch.setattr(task_module.PluginService, "list", MagicMock(return_value=[]))
+    marketplace_install = MagicMock(return_value=SimpleNamespace(all_installed=True, task_id=None))
+    local_install = MagicMock()
+    monkeypatch.setattr(PluginInstallationService, "install_from_marketplace_pkg", marketplace_install)
+    monkeypatch.setattr(PluginInstallationService, "install_from_local_pkg", local_install)
+
+    task_module._ensure_plugin_installed(_snapshot(integration))
+
+    marketplace_install.assert_called_once_with(
+        AdmittedPluginInstallationCaller(integration.tenant_id), [integration.plugin_unique_identifier]
+    )
+    local_install.assert_not_called()
 
 
 def test_find_managed_credential_returns_none_when_no_managed_credentials(
@@ -442,7 +494,7 @@ def test_find_managed_credential_recognizes_valid_active_provider(
     sqlite_session: Session,
 ) -> None:
     integration = _persist_integration(sqlite_session)
-    credential = task_module.ProviderCredential(
+    credential = ProviderCredential(
         tenant_id=integration.tenant_id,
         provider_name=task_module.dify_config.TOKENER_PROVIDER_NAME,
         credential_name=task_module.MANAGED_TOKENER_CREDENTIAL_NAME,
@@ -450,11 +502,12 @@ def test_find_managed_credential_recognizes_valid_active_provider(
     )
     sqlite_session.add(credential)
     sqlite_session.flush()
+    integration.provider_credential_id = credential.id
     sqlite_session.add(
-        task_module.Provider(
+        Provider(
             tenant_id=integration.tenant_id,
             provider_name=task_module.dify_config.TOKENER_PROVIDER_NAME,
-            provider_type=task_module.ProviderType.CUSTOM,
+            provider_type=ProviderType.CUSTOM,
             is_valid=True,
             credential_id=credential.id,
         )
@@ -466,23 +519,25 @@ def test_find_managed_credential_recognizes_valid_active_provider(
 
 def test_find_managed_credential_is_inactive_without_provider_row(sqlite_session: Session) -> None:
     integration = _persist_integration(sqlite_session)
-    credential = task_module.ProviderCredential(
+    credential = ProviderCredential(
         tenant_id=integration.tenant_id,
         provider_name=task_module.dify_config.TOKENER_PROVIDER_NAME,
         credential_name=task_module.MANAGED_TOKENER_CREDENTIAL_NAME,
         encrypted_config="encrypted-secret",
     )
     sqlite_session.add(credential)
+    sqlite_session.flush()
+    integration.provider_credential_id = credential.id
     sqlite_session.commit()
 
     assert task_module._find_managed_credential(integration.tenant_id) == (credential.id, False)
 
 
-def test_find_managed_credential_returns_first_credential_when_provider_is_inactive(
+def test_find_managed_credential_does_not_adopt_unbound_label_when_provider_is_inactive(
     sqlite_session: Session,
 ) -> None:
     integration = _persist_integration(sqlite_session)
-    credential = task_module.ProviderCredential(
+    credential = ProviderCredential(
         tenant_id=integration.tenant_id,
         provider_name=task_module.dify_config.TOKENER_PROVIDER_NAME,
         credential_name=task_module.MANAGED_TOKENER_CREDENTIAL_NAME,
@@ -491,17 +546,17 @@ def test_find_managed_credential_returns_first_credential_when_provider_is_inact
     sqlite_session.add(credential)
     sqlite_session.flush()
     sqlite_session.add(
-        task_module.Provider(
+        Provider(
             tenant_id=integration.tenant_id,
             provider_name=task_module.dify_config.TOKENER_PROVIDER_NAME,
-            provider_type=task_module.ProviderType.CUSTOM,
+            provider_type=ProviderType.CUSTOM,
             is_valid=False,
             credential_id=credential.id,
         )
     )
     sqlite_session.commit()
 
-    assert task_module._find_managed_credential(integration.tenant_id) == (credential.id, False)
+    assert task_module._find_managed_credential(integration.tenant_id) == (None, False)
 
 
 def test_existing_inactive_managed_credential_is_activated(
@@ -615,42 +670,85 @@ def test_one_time_key_is_removed_from_response_after_credential_creation(
     assert "data_plane_api_key" not in response
 
 
-def test_consume_data_plane_api_key_includes_configured_endpoint(
+def _stub_encrypted_validation(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, str, dict[str, str]]]:
+    """Record the external plugin's validation input without exposing any real key."""
+    captured: list[tuple[str, str, dict[str, str]]] = []
+
+    class Validator:
+        def __init__(self, tenant_id: str, provider: str) -> None:
+            self.tenant_id = tenant_id
+            self.provider = provider
+
+        def validate_provider_credentials(self, credentials: dict[str, str]) -> dict[str, str]:
+            captured.append((self.tenant_id, self.provider, dict(credentials)))
+            return {**credentials, "api_key": "encrypted-unit-value"}
+
+    def owned(_service: task_module.ModelProviderService, tenant_id: str, provider: str) -> Validator:
+        return Validator(tenant_id, provider)
+
+    monkeypatch.setattr(task_module.ModelProviderService, "_get_provider_configuration", owned)
+    return captured
+
+
+@pytest.mark.parametrize("staging", [False, True])
+def test_consume_data_plane_api_key_uses_original_endpoint_only_for_original_provider(
+    staging: bool,
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
 ) -> None:
+    integration = _persist_integration(sqlite_session)
+    tenant_id = integration.tenant_id
+    original_provider = "langgenius/tokener/tokener"
+    original_endpoint = "https://api-dev.tokener.dev/v1"
     apply_config_overrides(
         monkeypatch,
-        TOKENER_PROVIDER_NAME="langgenius/tokener/tokener",
-        TOKENER_ENDPOINT_URL="https://api-staging.tokener.dev/v1",
+        TOKENER_PROVIDER_NAME=original_provider,
+        TOKENER_ENDPOINT_URL=original_endpoint,
     )
-    provider_service = MagicMock()
-    captured_credentials: list[dict[str, str]] = []
-    provider_service.create_provider_credential.side_effect = lambda **kwargs: captured_credentials.append(
-        dict(kwargs["credentials"])
-    )
-    monkeypatch.setattr(task_module, "ModelProviderService", MagicMock(return_value=provider_service))
-    monkeypatch.setattr(task_module, "_find_managed_credential", MagicMock(return_value=("credential-1", True)))
+    if staging:
+        owner = Account(name="staging signup", email="staging-bootstrap@example.invalid")
+        sqlite_session.add(owner)
+        sqlite_session.flush()
+        sqlite_session.add(
+            AccountTokenerSignupIntent(
+                account_id=owner.id,
+                consumed_tenant_id=tenant_id,
+                consumed_at=naive_utc_now(),
+                plugin_unique_identifier="langgenius/tokener-staging:0.4.4@signup-test",
+            )
+        )
+        sqlite_session.commit()
+    captured = _stub_encrypted_validation(monkeypatch)
+    activated = MagicMock()
+    monkeypatch.setattr(task_module, "_activate_managed_credential", activated)
 
-    result = task_module._consume_data_plane_api_key("tenant-1", "one-time-secret")
+    result = task_module._consume_data_plane_api_key(tenant_id, "one-time-secret")
 
-    assert result == task_module._CredentialWriteResult(credential_id="credential-1")
-    provider_service.create_provider_credential.assert_called_once()
-    assert captured_credentials == [
-        {
-            "api_key": "one-time-secret",
-            "endpoint_url": "https://api-staging.tokener.dev/v1",
-        }
-    ]
+    assert result.error_code is None
+    assert result.credential_id is not None
+    provider = CANARY_STAGING_PROVIDER if staging else original_provider
+    supplied = {"api_key": "one-time-secret"}
+    if not staging:
+        supplied["endpoint_url"] = original_endpoint
+    assert captured == [(tenant_id, provider, supplied)]
+    activated.assert_called_once_with(tenant_id, result.credential_id)
+    sqlite_session.expire_all()
+    stored = sqlite_session.get(ProviderCredential, result.credential_id)
+    assert stored is not None
+    assert (stored.tenant_id, stored.provider_name) == (tenant_id, provider)
+    assert "one-time-secret" not in stored.encrypted_config
+    assert integration.provider_credential_id == stored.id
 
 
 def test_consume_data_plane_api_key_reports_missing_persisted_credential(
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
 ) -> None:
-    provider_service = MagicMock()
-    monkeypatch.setattr(task_module, "ModelProviderService", MagicMock(return_value=provider_service))
+    integration = _persist_integration(sqlite_session)
+    _stub_encrypted_validation(monkeypatch)
     monkeypatch.setattr(task_module, "_find_managed_credential", MagicMock(return_value=(None, False)))
 
-    result = task_module._consume_data_plane_api_key("tenant-1", "one-time-secret")
+    result = task_module._consume_data_plane_api_key(integration.tenant_id, "one-time-secret")
 
     assert result.error_code == "tokener_provider_credential_not_persisted"
     assert result.credential_id is None
@@ -674,16 +772,16 @@ def test_consume_data_plane_api_key_sanitizes_credential_lookup_or_activation_fa
     failure: Exception,
     expected_error: str,
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
 ) -> None:
-    provider_service = MagicMock()
-    monkeypatch.setattr(task_module, "ModelProviderService", MagicMock(return_value=provider_service))
+    integration = _persist_integration(sqlite_session)
+    _stub_encrypted_validation(monkeypatch)
     if isinstance(failure, task_module._BootstrapStepError):
-        monkeypatch.setattr(task_module, "_find_managed_credential", MagicMock(return_value=("credential-1", False)))
         monkeypatch.setattr(task_module, "_activate_managed_credential", MagicMock(side_effect=failure))
     else:
         monkeypatch.setattr(task_module, "_find_managed_credential", MagicMock(side_effect=failure))
 
-    result = task_module._consume_data_plane_api_key("tenant-1", "one-time-secret")
+    result = task_module._consume_data_plane_api_key(integration.tenant_id, "one-time-secret")
 
     assert result == task_module._CredentialWriteResult(error_code=expected_error)
     assert "database details" not in repr(result)
@@ -873,7 +971,7 @@ def test_task_sanitizes_unexpected_failure_before_retry(
     sqlite_session.expire_all()
     persisted = sqlite_session.get(TenantTokenerIntegration, integration.id)
     assert persisted is not None
-    assert persisted.status == TenantTokenerIntegrationStatus.FAILED
+    assert persisted.status == TenantTokenerIntegrationStatus.PENDING
     assert persisted.last_error_code == "tokener_bootstrap_internal_error"
 
 

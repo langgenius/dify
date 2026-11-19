@@ -14,6 +14,7 @@ from core.entities.provider_entities import (
     QuotaConfiguration,
     QuotaUnit,
     RestrictModel,
+    SystemConfiguration,
 )
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError
 from core.model_billing_profile import ModelBillingSource, TenantModelBillingResolution
@@ -32,6 +33,7 @@ from models.provider import ProviderType
 from models.provider_ids import ModelProviderID
 from models.tokener import TenantTokenerIntegrationStatus
 from tests.helpers.unit.core.model_moderation_fixtures import make_tenant_moderation_provider
+from services.entities.hosted_model_routing import TokenerHostedModelCredentials
 
 
 @pytest.fixture(autouse=True)
@@ -203,17 +205,20 @@ def _build_model_manager_bundle(
     bundle.configuration.tenant_id = "tenant-1"
     bundle.configuration.model_settings = list[object]()
     bundle.configuration.using_provider_type = provider_type
-    bundle.configuration.system_configuration.current_quota_type = ProviderQuotaType.TRIAL
-    bundle.configuration.system_configuration.quota_configurations = [
-        QuotaConfiguration(
-            quota_type=ProviderQuotaType.TRIAL,
-            quota_unit=QuotaUnit.CREDITS,
-            quota_limit=200,
-            quota_used=0,
-            is_valid=True,
-            restrict_models=restrict_models,
-        )
-    ]
+    bundle.configuration.system_configuration = SystemConfiguration(
+        enabled=True,
+        current_quota_type=ProviderQuotaType.TRIAL,
+        quota_configurations=[
+            QuotaConfiguration(
+                quota_type=ProviderQuotaType.TRIAL,
+                quota_unit=QuotaUnit.CREDITS,
+                quota_limit=200,
+                quota_used=0,
+                is_valid=True,
+                restrict_models=restrict_models,
+            )
+        ],
+    )
     bundle.configuration.get_current_credentials.return_value = {"api_key": "hosted"}
     bundle.model_type_instance.model_type = model_type
     provider_manager.get_provider_model_bundle.return_value = bundle
@@ -229,6 +234,25 @@ def test_model_manager_wraps_allowlisted_system_llm() -> None:
     model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.LLM, "gpt-4")
 
     assert isinstance(model_instance, QuotaManagedModelInstance)
+
+
+def test_tokener_funded_system_model_does_not_use_legacy_quota_wrapper() -> None:
+    manager, bundle = _build_model_manager_bundle(
+        provider_type=ProviderType.SYSTEM,
+        restrict_models=[RestrictModel(model="gpt-4", model_type=ModelType.LLM)],
+    )
+    bundle.configuration.system_configuration.tokener_funded = True
+    managed = TokenerHostedModelCredentials(
+        tenant_id="tenant-1", provider="langgenius/openai/openai", model_type="llm", model="gpt-4"
+    )
+    bundle.configuration.get_current_credentials.return_value = managed
+    resolution = TenantModelBillingResolution(ModelBillingSource.TOKENER, TenantTokenerIntegrationStatus.READY)
+
+    with patch("core.model_manager.ModelBillingProfileService.resolve", return_value=resolution):
+        model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.LLM, "gpt-4")
+
+    assert type(model_instance) is ModelInstance
+    assert model_instance.credentials is managed
 
 
 @pytest.mark.parametrize("model_type", list(ModelType))

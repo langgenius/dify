@@ -63,6 +63,7 @@ from models.provider import (
     TenantPreferredModelProvider,
 )
 from models.provider_ids import ModelProviderID
+from repositories.tokener_signup_canary_repository import signup_used_staging_package
 from services.feature_service import FeatureService
 
 if TYPE_CHECKING:
@@ -729,6 +730,7 @@ class ProviderManager:
 
         routing_state = migration_routing_state(tenant_id)
         compatibility_route = has_compatibility_route(routing_state)
+        signup_route = model_billing.uses_tokener and not compatibility_route and signup_used_staging_package(tenant_id)
         stable_inventory = uses_stable_dependency_inventory(
             dify_config.TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON, routing_state
         )
@@ -772,11 +774,14 @@ class ProviderManager:
             )
 
             # Convert to system configuration
-            system_configuration = (
-                self._to_system_configuration(tenant_id, provider_entity, provider_records)
-                if model_billing.uses_legacy_message_credits or compatibility_route
-                else SystemConfiguration(enabled=False)
-            )
+            if signup_route:
+                system_configuration = self._to_system_configuration(
+                    tenant_id, provider_entity, provider_records, tokener_funded=True
+                )
+            elif model_billing.uses_legacy_message_credits or compatibility_route:
+                system_configuration = self._to_system_configuration(tenant_id, provider_entity, provider_records)
+            else:
+                system_configuration = SystemConfiguration(enabled=False)
 
             # Get preferred provider type
             preferred_provider_type_record = provider_name_to_preferred_model_provider_records_dict.get(provider_name)
@@ -805,7 +810,7 @@ class ProviderManager:
                     tenant_id, provider_entity.plugin_unique_identifier
                 )
 
-            if model_billing.uses_tokener and not compatibility_route:
+            if model_billing.uses_tokener and not compatibility_route and not signup_route:
                 preferred_provider_type = ProviderType.CUSTOM
             elif preferred_provider_type_record:
                 preferred_provider_type = preferred_provider_type_record.preferred_provider_type
@@ -1564,7 +1569,12 @@ class ProviderManager:
         return credentials
 
     def _to_system_configuration(
-        self, tenant_id: str, provider_entity: ProviderEntity, provider_records: list[Provider]
+        self,
+        tenant_id: str,
+        provider_entity: ProviderEntity,
+        provider_records: list[Provider],
+        *,
+        tokener_funded: bool = False,
     ) -> SystemConfiguration:
         """
         Convert to system configuration.
@@ -1621,6 +1631,42 @@ class ProviderManager:
 
         if not PluginService.is_plugin_verified(tenant_id, plugin_provider_entity.plugin_unique_identifier):
             return SystemConfiguration(enabled=False)
+
+        if tokener_funded:
+            quota_unit = provider_hosting_configuration.quota_unit
+            hosted_quotas = [
+                quota
+                for quota in provider_hosting_configuration.quotas
+                if quota.quota_type in {ProviderQuotaType.TRIAL, ProviderQuotaType.PAID}
+            ]
+            if quota_unit not in {QuotaUnit.CREDITS, QuotaUnit.TIMES} or not hosted_quotas:
+                return SystemConfiguration(enabled=False)
+            restrict_models = (
+                list(
+                    {
+                        (model.model_type, model.model): model
+                        for quota in hosted_quotas
+                        for model in quota.restrict_models
+                    }.values()
+                )
+                if all(quota.restrict_models for quota in hosted_quotas)
+                else []
+            )
+            return SystemConfiguration(
+                enabled=True,
+                tokener_funded=True,
+                current_quota_type=ProviderQuotaType.PAID,
+                quota_configurations=[
+                    QuotaConfiguration(
+                        quota_type=ProviderQuotaType.PAID,
+                        quota_unit=quota_unit,
+                        quota_used=0,
+                        quota_limit=-1,
+                        is_valid=True,
+                        restrict_models=restrict_models,
+                    )
+                ],
+            )
 
         # Convert provider_records to dict
         quota_type_to_provider_records_dict: dict[ProviderQuotaType, Provider] = {}

@@ -52,7 +52,7 @@ from graphon.model_runtime.model_providers.base.tts_model import TTSModel
 from graphon.model_runtime.protocols.tts_runtime import TTSChunk
 from models.account import Tenant
 from models.provider import ProviderType
-from services.billing_client import transport
+from services import billing_service as billing_service_module
 from tests.helpers.unit.knowledge_fs_core_fakes import Marker
 
 
@@ -664,10 +664,11 @@ def test_model_invocation_preserves_billing_origin(
     )
     requests: list[tuple[str, dict[str, object]]] = []
 
-    def billing_transport(method: str, url: str, *, json: dict[str, object], **_: object) -> httpx.Response:
-        assert method == "POST"
-        endpoint = url.removeprefix(transport._base_url(transport.Upstream.BILLING_QUOTA))
-        requests.append((endpoint, json))
+    def billing_transport(request: httpx.Request) -> httpx.Response:
+        assert request.method == "POST"
+        assert request.url.host == "billing.unit.invalid"
+        endpoint = request.url.path
+        requests.append((endpoint, json.loads(request.content)))
         if endpoint == "/quota/reserve":
             return httpx.Response(200, json={"reservation_id": "reservation-1", "available": 197, "reserved": 3})
         assert endpoint == "/quota/commit"
@@ -683,13 +684,15 @@ def test_model_invocation_preserves_billing_origin(
     provider_result = (item for item in [chunk]) if model_type == ModelType.LLM else Marker("provider-result")
     runtime_method = "_invoke_llm" if model_type == ModelType.LLM else provider_method
     with (
+        httpx.Client(transport=httpx.MockTransport(billing_transport)) as billing_client,
+        patch.object(billing_service_module.BillingService, "quota_base_url", "https://billing.unit.invalid"),
+        patch.object(billing_service_module, "_http_client", billing_client),
         patch("core.model_manager.create_plugin_provider_manager", return_value=provider_manager),
         patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
         patch.object(type(dify_config), "get_model_credits", return_value=3),
         patch.object(ProviderConfiguration, "get_current_credentials", return_value={"api_key": "local-test-only"}),
         patch.object(ProviderConfiguration, "get_provider_model", return_value=None),
         patch.object(ModelInstance, runtime_method, return_value=provider_result),
-        patch.object(transport, "_send", side_effect=billing_transport),
     ):
         response = invoke_method("synthetic-end-user", _model_billing_attribution_tenant(), payload)
         assert get_credit_usage_metadata() is None

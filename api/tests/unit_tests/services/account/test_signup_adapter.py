@@ -9,6 +9,7 @@ from enums import DeploymentEdition
 from models import TenantCreditPool
 from models.model_billing import TenantModelBillingProfile
 from models.tokener import AccountTokenerSignupIntent, TenantTokenerIntegration
+from repositories.tokener_signup_canary_repository import CANARY_BILLING_URL
 from services.account.adapters import DeploymentAccountLifecyclePolicy
 from services.account.contracts import TokenerSignupEnrollment
 from services.account.oauth_adapters import AccountLifecycleOAuthRegistrationGateway, WorkspaceProvisioningOAuthGateway
@@ -20,6 +21,7 @@ from tests.helpers.unit.account_domain import AccountDomain
 from tests.helpers.unit.config_override import apply_config_overrides
 
 UID = "langgenius/tokener:0.4.4@signup-test"
+CANARY_UID = "langgenius/tokener-staging:0.4.4@signup-test"
 
 
 @pytest.mark.parametrize(
@@ -44,6 +46,20 @@ def test_signup_enrollment_is_explicit_cloud_policy(
         TOKENER_PLUGIN_UNIQUE_IDENTIFIER=UID,
     )
     assert configured_signup_enrollment() == (TokenerSignupEnrollment(UID) if expected else None)
+
+
+def test_signup_canary_only_pins_the_exact_configured_account(monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(
+        monkeypatch,
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        TOKENER_NEW_TENANT_COHORT_ENABLED=True,
+        TOKENER_PLUGIN_UNIQUE_IDENTIFIER=UID,
+        TOKENER_SIGNUP_VALIDATION_EMAIL="stage-canary@example.invalid",
+        TOKENER_SIGNUP_VALIDATION_PLUGIN_UNIQUE_IDENTIFIER=CANARY_UID,
+        TOKENER_SIGNUP_VALIDATION_BILLING_API_URL=CANARY_BILLING_URL,
+    )
+    assert configured_signup_enrollment("Stage-Canary@example.invalid") == TokenerSignupEnrollment(CANARY_UID)
+    assert configured_signup_enrollment("another@example.invalid") == TokenerSignupEnrollment(UID)
 
 
 @pytest.fixture

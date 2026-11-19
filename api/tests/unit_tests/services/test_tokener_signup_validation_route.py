@@ -1,11 +1,13 @@
 from datetime import datetime
 
+import pytest
 from sqlalchemy.orm import Session
 
 from enums import DeploymentEdition
 from models.account import Account, Tenant
 from models.tokener import AccountTokenerSignupIntent
-from services.billing_service import BillingService
+from repositories.tokener_signup_canary_repository import CANARY_BILLING_URL
+from services.billing_service import BillingService, BillingUpstreamUnavailableError
 from tests.helpers.unit.config_override import config_overrides_context
 
 _CANDIDATE = "http://tokener-signup-billing-candidate:8081"
@@ -40,3 +42,45 @@ def test_candidate_requires_consumed_signup_intent(sqlite_session: Session) -> N
         TOKENER_SIGNUP_VALIDATION_BILLING_API_URL="",
     ):
         assert BillingService._tokener_signup_validation_base(admitted.id) == (_EXISTING, False)
+
+
+def test_hosted_candidate_does_not_move_existing_signup_or_fall_back_on_disable(sqlite_session: Session) -> None:
+    owner = Account(name="hosted signup", email="isolated-hosted@example.invalid")
+    native_owner = Account(name="older signup", email="older-signup@example.invalid")
+    hosted = Tenant(name="hosted signup")
+    native = Tenant(name="older native signup")
+    sqlite_session.add_all([owner, native_owner, hosted, native])
+    sqlite_session.flush()
+    now = datetime(2026, 11, 19, 4, 0)
+    sqlite_session.add_all(
+        [
+            AccountTokenerSignupIntent(
+                account_id=owner.id,
+                consumed_tenant_id=hosted.id,
+                consumed_at=now,
+                plugin_unique_identifier="langgenius/tokener-staging:0.4.4@signup-test",
+            ),
+            AccountTokenerSignupIntent(
+                account_id=native_owner.id,
+                consumed_tenant_id=native.id,
+                consumed_at=now,
+                plugin_unique_identifier="langgenius/tokener:0.4.3-dev21@signup-test",
+            ),
+        ]
+    )
+    sqlite_session.commit()
+
+    with config_overrides_context(
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        TOKENER_BILLING_API_URL=_EXISTING,
+        TOKENER_SIGNUP_VALIDATION_BILLING_API_URL=CANARY_BILLING_URL,
+    ):
+        assert BillingService._tokener_signup_validation_base(hosted.id) == (CANARY_BILLING_URL, True)
+        assert BillingService._tokener_signup_validation_base(native.id) == (_EXISTING, False)
+    with config_overrides_context(
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        TOKENER_BILLING_API_URL=_EXISTING,
+        TOKENER_SIGNUP_VALIDATION_BILLING_API_URL="",
+    ):
+        with pytest.raises(BillingUpstreamUnavailableError):
+            BillingService._tokener_signup_validation_base(hosted.id)

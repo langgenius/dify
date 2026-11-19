@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from models.account import Tenant
 from models.model_billing import TenantModelBillingProfile
 from models.provider import Provider, ProviderCredential, ProviderType
-from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
+from models.tokener import AccountTokenerSignupIntent, TenantTokenerIntegration, TenantTokenerIntegrationStatus
 
 
 class TokenerBootstrapRepository:
@@ -51,6 +51,40 @@ class TokenerBootstrapRepository:
                 )
             )
             return credential_id, active is not None
+
+    def ready_dispatch_binding(self, tenant_id: str, provider: str) -> tuple[str, str, str] | None:
+        """Return only the ready, tenant-owned binding pinned by self-signup."""
+        with self._sessions() as session:
+            row = session.execute(
+                select(
+                    TenantTokenerIntegration.plugin_unique_identifier,
+                    ProviderCredential.id,
+                    ProviderCredential.encrypted_config,
+                )
+                .join(ProviderCredential, ProviderCredential.id == TenantTokenerIntegration.provider_credential_id)
+                .join(
+                    TenantModelBillingProfile, TenantModelBillingProfile.tenant_id == TenantTokenerIntegration.tenant_id
+                )
+                .join(
+                    AccountTokenerSignupIntent,
+                    AccountTokenerSignupIntent.consumed_tenant_id == TenantTokenerIntegration.tenant_id,
+                )
+                .where(
+                    TenantTokenerIntegration.tenant_id == tenant_id,
+                    TenantTokenerIntegration.status == TenantTokenerIntegrationStatus.READY,
+                    TenantModelBillingProfile.model_billing_source == "tokener",
+                    ProviderCredential.tenant_id == tenant_id,
+                    ProviderCredential.provider_name == provider,
+                    AccountTokenerSignupIntent.plugin_unique_identifier
+                    == TenantTokenerIntegration.plugin_unique_identifier,
+                )
+            ).one_or_none()
+        if row is None:
+            return None
+        identifier, credential_id, encrypted = row
+        if not identifier or not encrypted:
+            return None
+        return identifier, credential_id, encrypted
 
     def bind_encrypted_credential(
         self, tenant_id: str, provider: str, credential_name: str, encrypted: Mapping[str, JsonValue]

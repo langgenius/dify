@@ -161,10 +161,10 @@ class AccountIdentityGateway:
 
 
 class DeploymentAccountLifecyclePolicy(DeploymentConsoleAuthPolicyGateway):
-    def signup_enrollment(self) -> "TokenerSignupEnrollment | None":
+    def signup_enrollment(self, email: str) -> "TokenerSignupEnrollment | None":
         from services.account.signup_adapter import configured_signup_enrollment
 
-        return configured_signup_enrollment()
+        return configured_signup_enrollment(email)
 
     def __init__(self) -> None:
         super().__init__(billing_enabled=dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD)

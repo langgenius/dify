@@ -323,13 +323,20 @@ class BillingService:
         """
         configured = dify_config.TOKENER_SIGNUP_VALIDATION_BILLING_API_URL
         default_base = dify_config.TOKENER_BILLING_API_URL.strip().rstrip("/")
-        if not configured or dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             return default_base, False
 
         from core.db.session_factory import session_factory
         from models.tokener import AccountTokenerSignupIntent
+        from repositories.tokener_signup_canary_repository import CANARY_BILLING_URL, signup_used_staging_package
 
         try:
+            if signup_used_staging_package(tenant_id):
+                if configured != CANARY_BILLING_URL:
+                    raise BillingUpstreamUnavailableError
+                return configured, True
+            if not configured or configured == CANARY_BILLING_URL:
+                return default_base, False
             with session_factory.create_session() as session:
                 enrolled = session.scalar(
                     select(exists().where(AccountTokenerSignupIntent.consumed_tenant_id == tenant_id))
