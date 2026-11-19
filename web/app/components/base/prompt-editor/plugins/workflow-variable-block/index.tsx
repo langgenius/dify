@@ -10,10 +10,10 @@ import {
 import { memo, useEffect } from 'react'
 import { $createWorkflowVariableBlockNode, WorkflowVariableBlockNode } from './node'
 
-export const INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND = createCommand(
+export const INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND = createCommand<string[]>(
   'INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND',
 )
-export const DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND = createCommand(
+export const DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND = createCommand<void>(
   'DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND',
 )
 export type UpdateWorkflowNodesMapPayload = {

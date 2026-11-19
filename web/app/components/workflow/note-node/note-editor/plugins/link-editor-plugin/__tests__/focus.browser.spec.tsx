@@ -1,10 +1,10 @@
 import { $createLinkNode, LinkNode } from '@lexical/link'
 import { ListItemNode, ListNode } from '@lexical/list'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { $createParagraphNode, $createTextNode, $getRoot } from 'lexical'
 import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { TestLexicalComposer } from '@/test/lexical'
 import NoteEditorContext from '../../../context'
 import Editor from '../../../editor'
 import { createNoteEditorStore } from '../../../store'
@@ -15,7 +15,7 @@ function Harness({ secondLinkUrl }: { secondLinkUrl?: string }) {
   const [container, setContainer] = useState<HTMLDivElement | null>(null)
 
   return (
-    <LexicalComposer
+    <TestLexicalComposer
       initialConfig={{
         namespace: 'link-focus-test',
         nodes: [LinkNode, ListNode, ListItemNode],
@@ -47,7 +47,7 @@ function Harness({ secondLinkUrl }: { secondLinkUrl?: string }) {
           </button>
         </div>
       </NoteEditorContext>
-    </LexicalComposer>
+    </TestLexicalComposer>
   )
 }
 

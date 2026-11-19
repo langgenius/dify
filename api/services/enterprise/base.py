@@ -55,6 +55,41 @@ class BaseRequest:
     secret_key = ""
     secret_key_header = ""
 
+    _clients: ClassVar[dict[type["BaseRequest"], httpx.Client]] = {}
+    _clients_lock: ClassVar[threading.Lock] = threading.Lock()
+
+    @classmethod
+    def _get_client(cls) -> httpx.Client:
+        """Return the process-local client for this request class.
+
+        Building an ``httpx.Client`` costs several milliseconds of CPU, mostly for its TLS
+        context, and a new client cannot reuse a connection. Enterprise calls sit on request
+        admission paths, so each class keeps one client for the life of the process.
+
+        Initialize only in workers after process startup, never before forking.
+        Postcondition: every call for the same class returns the same open client, built from
+        that class's proxy settings. Connections are shared; credentials, tenant headers and
+        timeouts remain request-local. Response cookies are rejected so one call cannot
+        affect another. The pool owns shutdown; callers must not close the returned client.
+        """
+        with BaseRequest._clients_lock:
+            client = BaseRequest._clients.get(cls)
+            if client is None:
+                client = httpx.Client(
+                    mounts=cls._build_mounts(),
+                    cookies=CookieJar(policy=DefaultCookiePolicy(allowed_domains=())),
+                )
+                BaseRequest._clients[cls] = client
+            return client
+
+    @classmethod
+    def _close_clients(cls) -> None:
+        """Close this process's pooled clients during shutdown."""
+        with BaseRequest._clients_lock:
+            for client in BaseRequest._clients.values():
+                client.close()
+            BaseRequest._clients.clear()
+
     @classmethod
     def _build_mounts(cls) -> dict[str, httpx.BaseTransport] | None:
         if not cls.proxies:
@@ -89,7 +124,6 @@ class BaseRequest:
                     continue
                 headers[key] = value
         url = f"{cls.base_url}{endpoint}"
-        mounts = cls._build_mounts()
 
         try:
             # ensure traceparent even when OTEL is disabled
@@ -99,21 +133,20 @@ class BaseRequest:
         except Exception:
             logger.debug("Failed to generate traceparent header", exc_info=True)
 
-        with httpx.Client(mounts=mounts) as client:
-            # Callers that pass an explicit timeout keep it; everyone else gets the
-            # configured budget rather than httpx's implicit 5s default.
-            request_kwargs: dict[str, Any] = {
-                "json": json,
-                "params": params,
-                "headers": headers,
-                "timeout": timeout if timeout is not None else dify_config.ENTERPRISE_REQUEST_TIMEOUT,
-            }
+        # Callers that pass an explicit timeout keep it; everyone else gets the
+        # configured budget rather than httpx's implicit 5s default.
+        request_kwargs: dict[str, Any] = {
+            "json": json,
+            "params": params,
+            "headers": headers,
+            "timeout": timeout if timeout is not None else dify_config.ENTERPRISE_REQUEST_TIMEOUT,
+        }
 
-            response = client.request(method, url, **request_kwargs)
+        response = cls._get_client().request(method, url, **request_kwargs)
 
-            # Validate HTTP status and raise domain-specific errors
-            if not response.is_success:
-                cls._handle_error_response(response)
+        # Validate HTTP status and raise domain-specific errors
+        if not response.is_success:
+            cls._handle_error_response(response)
         return response.json()
 
     @classmethod
@@ -154,6 +187,9 @@ class BaseRequest:
             raise EnterpriseAPINotFoundError(error_message)
         else:
             raise EnterpriseAPIError(error_message, status_code=response.status_code)
+
+
+atexit.register(BaseRequest._close_clients)
 
 
 class EnterpriseRequest(BaseRequest):

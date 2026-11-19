@@ -38,6 +38,7 @@ from controllers.openapi.auth.subjects import _SUBJECT_CLASSES, AccountSubject, 
 from enums import DeploymentEdition
 from libs.oauth_bearer import AuthContext, try_get_auth_ctx
 from machinery.context import AppRequestContext, RequestContext
+from machinery.scope import UNRESTRICTED
 from services.app_service import AppService
 from services.enterprise.enterprise_service import WebAppAccessMode
 from tests.helpers.unit.controllers.openapi.auth._world import (
@@ -386,8 +387,8 @@ def test_personal_access_check_skips_oauth_without_loading_resources(
     # No Flask request, account, or resource is needed for a non-PAT credential.
     CheckPersonalAccess().run(subject, ctx, sqlite_session)
 
-    assert ctx.personal_workspace_ids is None
-    assert ctx.personal_app_ids is None
+    assert ctx.personal_workspace_ids is UNRESTRICTED
+    assert ctx.personal_app_ids is UNRESTRICTED
 
 
 def test_account_pipeline_denies_pat_without_policy_before_loading_resources(

@@ -4,6 +4,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE, TRIGGER_SCHEDULE_NODE_TYPE, TRIGGER_WEBHOOK_NODE_TYPE
+
 from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig, TriggerScheduleNodeData, VisualConfig
 from core.workflow.nodes.trigger_schedule.exc import ScheduleConfigError
 from services.trigger.schedule_policy import visual_to_cron

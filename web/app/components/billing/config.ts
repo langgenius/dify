@@ -2,14 +2,6 @@ import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { PlanInfo } from '@/app/components/billing/type'
 
 export const contactSalesUrl = 'https://vikgc6bnu1s.typeform.com/dify-business'
-export const SELF_HOSTED_PLAN_URLS = {
-  community: 'https://github.com/langgenius/dify',
-  premium: 'https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6',
-  enterprise: contactSalesUrl,
-} as const
-
-export type SelfHostedPlan = keyof typeof SELF_HOSTED_PLAN_URLS
-
 export const ALL_PLANS = {
   sandbox: {
     level: 1,
@@ -21,7 +13,7 @@ export const ALL_PLANS = {
     vectorSpace: '50MB',
     documentsRequestQuota: 10,
     documentProcessingPriority: 'standard',
-    triggerEvents: { count: 3000, perMonth: false },
+    triggerEvents: { count: 1000, perMonth: false },
     startNodes: 2,
     workflowExecution: 'standard',
     annotatedResponse: 10,
@@ -51,7 +43,7 @@ export const ALL_PLANS = {
     messageRequest: { count: 10000, perMonth: true },
     teamMembers: 50,
     buildApps: 200,
-    documents: 1000,
+    documents: 5000,
     vectorSpace: '20GB',
     documentsRequestQuota: 1000,
     documentProcessingPriority: 'top-priority',

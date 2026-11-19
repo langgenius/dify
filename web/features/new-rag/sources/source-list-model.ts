@@ -1,5 +1,6 @@
 import type { KnowledgeFsSourceUpdatePayload } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { Source, SourceSyncPolicy } from './source-models'
+import { v4 as uuid4 } from 'uuid'
 import { normalizeSourceProviderName, sourceProviderPresentation } from './setup/provider-options'
 
 const MIN_CUSTOM_INTERVAL_HOURS = 1
@@ -86,7 +87,7 @@ export function syncPolicyConfiguration(
 export type SourceEditValues = Omit<KnowledgeFsSourceUpdatePayload, 'status' | 'syncAfterUpdate'>
 
 export function createIdempotencyKey() {
-  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+  return uuid4()
 }
 
 export function getOpenableSourceUri(uri: string) {

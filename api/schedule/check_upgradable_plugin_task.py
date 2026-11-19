@@ -1,48 +1,83 @@
 import logging
 import math
 import time
+from datetime import UTC, datetime
 
 import click
+from celery import Task, shared_task
+from kombu.exceptions import OperationalError
+from redis import RedisError
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-import app
 from core.helper.marketplace import fetch_global_plugin_manifest
 from extensions.ext_database import db
 from models.account import TenantPluginAutoUpgradeStrategy, TenantPluginAutoUpgradeStrategySetting
 from tasks import process_tenant_plugin_autoupgrade_check_task as check_task
+from tasks.plugin_autoupgrade_coordination import MAX_CONCURRENT_CHECK_TASKS, get_upgrade_check_coordinator
 
 logger = logging.getLogger(__name__)
 
 AUTO_UPGRADE_MINIMAL_CHECKING_INTERVAL = 15 * 60  # 15 minutes
-MAX_CONCURRENT_CHECK_TASKS = 20
+DISPATCH_BATCH_SIZE = MAX_CONCURRENT_CHECK_TASKS
+SCHEDULE_ANCHOR_HEADER = "plugin_autoupgrade_scheduled_at"
 
 # Import cache constants from the task module
 CACHE_REDIS_KEY_PREFIX = check_task.CACHE_REDIS_KEY_PREFIX
 CACHE_REDIS_TTL = check_task.CACHE_REDIS_TTL
 
 
-@app.celery.task(queue="plugin")
-def check_upgradable_plugin_task():
+@shared_task(
+    bind=True, queue="plugin", max_retries=3, default_retry_delay=30, acks_late=True, reject_on_worker_lost=True
+)
+def check_upgradable_plugin_task(self: Task) -> None:
+    """Dispatch the scheduled window once per strategy, preserving its original anchor on retry.
+
+    Preconditions: Beat supplies no arguments; retries retain their scheduling timestamp in a header.
+    Postconditions: one logical check executes once, even if ambiguous publication replays
+    the same reservation. Dispatch time is included in the interval budget. Redis/broker
+    failures retry the same window; other errors propagate. Child execution is globally bounded.
+    """
+    headers = dict(self.request.headers or {})
+    anchor = float(headers.get(SCHEDULE_ANCHOR_HEADER, time.time()))
+    try:
+        if self.request.id is not None:
+            anchor = get_upgrade_check_coordinator().schedule_anchor(self.request.id, anchor)
+        _dispatch_upgrade_checks(anchor, producer_id=self.request.id)
+    except (RedisError, OperationalError) as exc:
+        headers[SCHEDULE_ANCHOR_HEADER] = anchor
+        raise self.retry(exc=exc, headers=headers) from exc
+
+
+def _dispatch_upgrade_checks(scheduled_at: float, producer_id: str | None = None) -> None:
+    """Read one anchored window and publish its eligible checks at absolute deadlines.
+
+    Preconditions: scheduled_at is the original Unix timestamp of this Beat invocation.
+    Postconditions: no database transaction spans marketplace I/O or pacing sleeps.
+    A publish failure cancels only its own pending reservation and propagates, allowing
+    the caller to retry without redoing completed or already queued strategies.
+    """
     click.echo(click.style("Start check upgradable plugin.", fg="green"))
     start_at = time.perf_counter()
 
-    now_seconds_of_day = time.time() % 86400 - 30  # we assume the tz is UTC
+    now_seconds_of_day = scheduled_at % 86400 - 30  # we assume the tz is UTC
     click.echo(click.style(f"Now seconds of day: {now_seconds_of_day}", fg="green"))
 
-    strategies = db.session.scalars(
-        select(TenantPluginAutoUpgradeStrategy).where(
-            TenantPluginAutoUpgradeStrategy.upgrade_time_of_day >= now_seconds_of_day,
-            TenantPluginAutoUpgradeStrategy.upgrade_time_of_day
-            < now_seconds_of_day + AUTO_UPGRADE_MINIMAL_CHECKING_INTERVAL,
-            TenantPluginAutoUpgradeStrategy.strategy_setting != TenantPluginAutoUpgradeStrategySetting.DISABLED,
-        )
-    ).all()
+    with Session(db.engine) as session:
+        strategies = session.scalars(
+            select(TenantPluginAutoUpgradeStrategy).where(
+                TenantPluginAutoUpgradeStrategy.upgrade_time_of_day >= now_seconds_of_day,
+                TenantPluginAutoUpgradeStrategy.upgrade_time_of_day
+                < now_seconds_of_day + AUTO_UPGRADE_MINIMAL_CHECKING_INTERVAL,
+                TenantPluginAutoUpgradeStrategy.strategy_setting != TenantPluginAutoUpgradeStrategySetting.DISABLED,
+            )
+        ).all()
 
     total_strategies = len(strategies)
     click.echo(click.style(f"Total strategies: {total_strategies}", fg="green"))
 
     batch_chunk_count = math.ceil(
-        total_strategies / MAX_CONCURRENT_CHECK_TASKS
+        total_strategies / DISPATCH_BATCH_SIZE
     )  # make sure all strategies are checked in this interval
     batch_interval_time = (AUTO_UPGRADE_MINIMAL_CHECKING_INTERVAL / batch_chunk_count) if batch_chunk_count > 0 else 0
 
@@ -71,22 +106,45 @@ def check_upgradable_plugin_task():
     else:
         logger.info("successfully fetched and cached %d plugin manifests", cached_count)
 
-    for i in range(0, total_strategies, MAX_CONCURRENT_CHECK_TASKS):
-        batch_strategies = strategies[i : i + MAX_CONCURRENT_CHECK_TASKS]
+    coordinator = get_upgrade_check_coordinator()
+    for batch_index, i in enumerate(range(0, total_strategies, DISPATCH_BATCH_SIZE), start=1):
+        batch_strategies = strategies[i : i + DISPATCH_BATCH_SIZE]
         for strategy in batch_strategies:
-            check_task.process_tenant_plugin_autoupgrade_check_task.delay(
-                strategy.tenant_id,
-                strategy.strategy_setting,
-                strategy.upgrade_time_of_day,
-                strategy.upgrade_mode,
-                strategy.exclude_plugins,
-                strategy.include_plugins,
-                strategy.category,
+            reservation = coordinator.reserve(
+                tenant_id=strategy.tenant_id,
+                category=strategy.category.value,
+                upgrade_time_of_day=strategy.upgrade_time_of_day,
+                scheduled_at=scheduled_at,
+                producer_id=producer_id,
             )
+            if reservation is not None:
+                try:
+                    check_task.process_tenant_plugin_autoupgrade_check_task.apply_async(
+                        args=(
+                            strategy.tenant_id,
+                            strategy.strategy_setting,
+                            strategy.upgrade_time_of_day,
+                            strategy.upgrade_mode,
+                            strategy.exclude_plugins,
+                            strategy.include_plugins,
+                            strategy.category,
+                        ),
+                        headers={check_task.COORDINATION_HEADER: reservation.model_dump_json()},
+                        expires=datetime.fromtimestamp(reservation.deadline, UTC),
+                    )
+                except Exception:
+                    try:
+                        coordinator.cancel(reservation)
+                    except RedisError:
+                        logger.exception("failed to cancel plugin check reservation for tenant %s", strategy.tenant_id)
+                    raise
+                coordinator.mark_queued(reservation)
 
-        # Only sleep if batch_interval_time > 0.0001 AND current batch is not the last one
-        if batch_interval_time > 0.0001 and i + MAX_CONCURRENT_CHECK_TASKS < total_strategies:
-            time.sleep(batch_interval_time)
+        # Publishing time consumes the budget instead of being added to every sleep.
+        if batch_index < batch_chunk_count:
+            remaining = start_at + batch_index * batch_interval_time - time.perf_counter()
+            if remaining > 0:
+                time.sleep(remaining)
 
     end_at = time.perf_counter()
     click.echo(
