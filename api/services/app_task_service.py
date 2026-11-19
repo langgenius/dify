@@ -103,6 +103,12 @@ class AppTaskControlService:
         set_app_task_stop_flag(task_id, redis=self._redis_client)
         send_abort_command(task_id, redis=self._redis_client)
 
+    def stop_web_workflow_task(self, *, tenant_id: str, app_id: str, task_id: str) -> bool:
+        """Stop a task owned by the admitted WebApp, with no additional end-user ownership check."""
+        return self.stop_workflow_task(
+            tenant_id=tenant_id, app_id=app_id, task_id=task_id, app_mode=AppMode.WORKFLOW, owner=None
+        )
+
     def stop_workflow_task(
         self,
         *,

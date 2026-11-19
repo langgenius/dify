@@ -126,12 +126,12 @@ class WorkflowTaskStopApi(Resource):
     )
     @web_ns.response(200, "Success", web_ns.models[SimpleResultResponse.__name__])
     @web_app_admission
-    def post(self, _request_context: WebAppRequestContext, app_mode: str, task_id: str) -> dict[str, object]:
+    def post(self, request_context: WebAppRequestContext, app_mode: str, task_id: str) -> dict[str, object]:
         """
         Stop workflow task
         """
         try:
-            application_services().apps.web_workflows.stop(app_mode=app_mode, task_id=task_id)
+            application_services().apps.web_workflows.stop(request_context, app_mode=app_mode, task_id=task_id)
         except WebAppNotWorkflowError as caught_error:
             raise NotWorkflowAppError() from caught_error
 

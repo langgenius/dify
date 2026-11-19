@@ -84,10 +84,11 @@ class Runtime:
 
 @dataclass
 class Tasks:
-    stopped: list[str] = field(default_factory=list)
+    stopped: list[tuple[str, str, str]] = field(default_factory=list)
 
-    def stop_workflow_task_no_user_check(self, *, task_id: str) -> None:
-        self.stopped.append(task_id)
+    def stop_web_workflow_task(self, *, tenant_id: str, app_id: str, task_id: str) -> bool:
+        self.stopped.append((tenant_id, app_id, task_id))
+        return True
 
 
 @dataclass(frozen=True)
@@ -222,7 +223,7 @@ def test_stop_uses_existing_task_control_policy(app: Flask, boundary: Boundary) 
     with app.test_request_context("/workflows/tasks/task-1/stop", method="POST"):
         response = workflow.WorkflowTaskStopApi().post(task_id="task-1")
     assert response == {"result": "success"}
-    assert boundary.tasks.stopped == ["task-1"]
+    assert boundary.tasks.stopped == [("tenant-1", "app-1", "task-1")]
     assert boundary.runtime.calls == []
 
 
@@ -246,7 +247,7 @@ def test_shared_license_admission_runs_before_web_workflow(
             assert boundary.runtime.calls == []
             assert boundary.tasks.stopped == []
         elif stop:
-            assert boundary.tasks.stopped == ["task-1"]
+            assert boundary.tasks.stopped == [("tenant-1", "app-1", "task-1")]
         else:
             assert len(boundary.runtime.calls) == 1
     finally:

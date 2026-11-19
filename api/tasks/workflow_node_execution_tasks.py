@@ -88,14 +88,7 @@ def save_workflow_node_executions_task(
                         )
                     )
                     continue
-                inputs, process_data, outputs = existing.inputs, existing.process_data, existing.outputs
                 _update_node_execution_from_domain(existing, execution)
-                if existing.inputs_truncated:
-                    existing.inputs = inputs
-                if existing.process_data_truncated:
-                    existing.process_data = process_data
-                if existing.outputs_truncated:
-                    existing.outputs = outputs
         return True
     except Exception as error:
         logger.exception(
@@ -294,7 +287,7 @@ def _create_node_execution_from_domain(
 
 def _update_node_execution_from_domain(node_execution: WorkflowNodeExecutionModel, execution: WorkflowNodeExecution):
     """
-    Update a WorkflowNodeExecutionModel database model from a WorkflowNodeExecution domain entity.
+    Update mutable execution state, preserving each offloaded field on the preloaded row.
     """
     # Cleanup can insert the terminal row before its queued start is delivered.
     if (
@@ -316,14 +309,19 @@ def _update_node_execution_from_domain(node_execution: WorkflowNodeExecutionMode
 
     # Update serialized data
     json_converter = WorkflowRuntimeTypeConverter()
-    node_execution.inputs = json.dumps(json_converter.to_json_encodable(execution.inputs)) if execution.inputs else "{}"
-    process_data = keep_agent_and_tool_ids(node_execution.process_data_dict, execution.process_data)
-    node_execution.process_data = (
-        json.dumps(json_converter.to_json_encodable(process_data)) if process_data is not None else "{}"
-    )
-    node_execution.outputs = (
-        json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else "{}"
-    )
+    if not node_execution.inputs_truncated:
+        node_execution.inputs = (
+            json.dumps(json_converter.to_json_encodable(execution.inputs)) if execution.inputs else "{}"
+        )
+    if not node_execution.process_data_truncated:
+        process_data = keep_agent_and_tool_ids(node_execution.process_data_dict, execution.process_data)
+        node_execution.process_data = (
+            json.dumps(json_converter.to_json_encodable(process_data)) if process_data is not None else "{}"
+        )
+    if not node_execution.outputs_truncated:
+        node_execution.outputs = (
+            json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else "{}"
+        )
     # Convert metadata enum keys to strings for JSON serialization
     if execution.metadata:
         metadata_for_json = {

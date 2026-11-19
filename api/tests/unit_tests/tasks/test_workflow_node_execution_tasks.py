@@ -13,8 +13,13 @@ from graphon.entities import WorkflowNodeExecution
 from graphon.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
 from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus, WorkflowNodeExecutionStatus, WorkflowType
 from models import Account
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
-from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from models.enums import CreatorUserRole, ExecutionOffLoadType, WorkflowRunTriggeredFrom
+from models.workflow import (
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionOffload,
+    WorkflowNodeExecutionTriggeredFrom,
+    WorkflowRun,
+)
 from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.workflow.node_execution_writer import SQLAlchemyWorkflowNodeExecutionRepository
 from tasks.workflow_node_execution_tasks import (
@@ -269,6 +274,51 @@ def test_task_updates_only_mutable_execution_state(
         assert persisted.error == "provider failed"
         assert persisted.elapsed_time == 2.5
         assert persisted.finished_at == finished_at.replace(tzinfo=None)
+
+
+@pytest.mark.parametrize("offloaded", list(ExecutionOffLoadType))
+@pytest.mark.parametrize("batched", [False, True], ids=["single", "batch"])
+def test_task_preserves_only_the_offloaded_payload(
+    sqlite_session_factory: sessionmaker[Session], offloaded: ExecutionOffLoadType, batched: bool
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        stored = _stored_execution(process_data={"old": "process_data"})
+        stored.offload_data.append(
+            WorkflowNodeExecutionOffload(
+                tenant_id=TENANT_ID,
+                app_id=APP_ID,
+                node_execution_id=EXECUTION_ID,
+                type_=offloaded,
+                file_id="00000000-0000-0000-0000-000000000080",
+            )
+        )
+        session.add(stored)
+        original = getattr(stored, offloaded.value)
+
+    updated = {"attempt": 2}
+    execution = _execution(
+        status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=updated, process_data=updated, outputs=updated
+    )
+    context = _ExecutionTaskKwargs(
+        tenant_id=TENANT_ID,
+        app_id=APP_ID,
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
+        creator_user_id=ACCOUNT_ID,
+        creator_user_role=CreatorUserRole.ACCOUNT.value,
+    )
+    if batched:
+        assert save_workflow_node_executions_task.run(executions_data=[execution.model_dump()], **context)
+    else:
+        assert save_workflow_node_execution_task.run(execution_data=execution.model_dump(), **context)
+
+    with sqlite_session_factory() as session:
+        saved = session.get(WorkflowNodeExecutionModel, EXECUTION_ID)
+        assert saved is not None
+        assert saved.status == WorkflowNodeExecutionStatus.SUCCEEDED
+        assert getattr(saved, offloaded.value) == original
+        for field in ExecutionOffLoadType:
+            if field != offloaded:
+                assert json.loads(getattr(saved, field.value)) == updated
 
 
 def test_task_does_not_overwrite_same_id_from_another_tenant(

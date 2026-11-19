@@ -78,10 +78,11 @@ class Runtime:
 
 @dataclass
 class Tasks:
-    stopped: list[str] = field(default_factory=list)
+    stopped: list[tuple[str, str, str]] = field(default_factory=list)
 
-    def stop_workflow_task_no_user_check(self, *, task_id: str) -> None:
-        self.stopped.append(task_id)
+    def stop_web_workflow_task(self, *, tenant_id: str, app_id: str, task_id: str) -> bool:
+        self.stopped.append((tenant_id, app_id, task_id))
+        return True
 
 
 def test_run_keeps_stream_lazy_and_caller_can_close_it() -> None:
@@ -106,7 +107,7 @@ def test_wrong_mode_cannot_generate_or_stop(app_mode: str) -> None:
     with pytest.raises(WebAppNotWorkflowError):
         service.run(CONTEXT, app_mode=app_mode, args={"inputs": {}})
     with pytest.raises(WebAppNotWorkflowError):
-        service.stop(app_mode=app_mode, task_id="task-1")
+        service.stop(CONTEXT, app_mode=app_mode, task_id="task-1")
     assert runtime.calls == []
     assert tasks.stopped == []
     assert queries.contexts == []
@@ -115,8 +116,8 @@ def test_wrong_mode_cannot_generate_or_stop(app_mode: str) -> None:
 def test_stop_preserves_admitted_webapp_task_policy() -> None:
     queries, runtime, tasks = Queries(), Runtime(), Tasks()
     service = WebWorkflowService(queries=queries, runtime=runtime, tasks=tasks)
-    service.stop(app_mode="workflow", task_id="task-1")
-    assert tasks.stopped == ["task-1"]
+    service.stop(CONTEXT, app_mode="workflow", task_id="task-1")
+    assert tasks.stopped == [("tenant-1", "app-1", "task-1")]
     assert runtime.calls == []
     assert queries.contexts == []
 

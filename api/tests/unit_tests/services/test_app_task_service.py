@@ -769,6 +769,35 @@ class TestLegacyWorkflowTaskRecoveryCases:
         return AppTaskControlService(redis_client=recovery_redis)
 
     @staticmethod
+    @pytest.mark.parametrize(
+        ("tenant_id", "app_id", "expected"),
+        [
+            ("tenant-1", "app-1", True),
+            ("other-tenant", "app-1", False),
+            ("tenant-1", "other-app", False),
+        ],
+    )
+    def test_web_stop_only_transitions_the_admitted_apps_paused_run(
+        sqlite_session: Session,
+        recovery_service: AppTaskControlService,
+        pause_states: dict[str, bytes],
+        tenant_id: str,
+        app_id: str,
+        expected: bool,
+    ) -> None:
+        run, pause, context = _seed_pause(sqlite_session, pause_states)
+        task_id = context.get_generate_entity().task_id
+        pause_id = pause.id
+        run.task_id = task_id
+        sqlite_session.commit()
+
+        assert recovery_service.stop_web_workflow_task(tenant_id=tenant_id, app_id=app_id, task_id=task_id) is expected
+
+        sqlite_session.refresh(run)
+        assert run.status == (WorkflowExecutionStatus.STOPPED if expected else WorkflowExecutionStatus.PAUSED)
+        assert (sqlite_session.scalar(select(WorkflowPause.id).where(WorkflowPause.id == pause_id)) is None) is expected
+
+    @staticmethod
     @pytest.mark.parametrize("app_mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
     def test_stop_recovers_and_cancels_a_legacy_pause_without_prior_replay(
         sqlite_session: Session,

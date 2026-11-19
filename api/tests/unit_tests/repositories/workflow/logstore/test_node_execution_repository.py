@@ -1,16 +1,18 @@
 import datetime
 import time
 from collections.abc import Generator
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.workflow import WorkflowNodeExecutionModel
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from repositories.workflow.logstore.node_execution_repository import (
     LogstoreWorkflowNodeExecutionRepository,
 )
+from repositories.workflow.logstore.node_execution_writer import LogstoreWorkflowNodeExecutionWriter
 from repositories.workflow.logstore.records import node_execution_model_from_log
+from tests.helpers.unit.model_factories import make_account
 
 
 def test_load_full_process_data_returns_logstore_mapping(sqlite_session_factory: sessionmaker[Session]) -> None:
@@ -108,3 +110,33 @@ def test_run_queries_separate_top_level_and_workflow_tool_executions(
 
     assert [execution.id for execution in top_level] == ["parent-row", "top-level-row"]
     assert [execution.id for execution in children] == ["child-row"]
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        (None, "workflow-run"),
+        (WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN, "workflow-run"),
+        (WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL, "workflow-tool"),
+        (WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP, "single-step"),
+    ],
+)
+def test_writer_run_query_filters_by_configured_source(
+    sqlite_session_factory: sessionmaker[Session],
+    source: WorkflowNodeExecutionTriggeredFrom | None,
+    expected: str,
+) -> None:
+    with patch("repositories.workflow.logstore.node_execution_writer.AliyunLogStore") as client:
+        query = client.return_value.execute_sql
+        query.return_value = []
+        writer = LogstoreWorkflowNodeExecutionWriter(
+            session_factory=sqlite_session_factory,
+            tenant_id="tenant-1",
+            app_id="app-1",
+            user=make_account(),
+            triggered_from=source,
+            upload_file=Mock(),
+        )
+        assert writer.get_by_workflow_execution("run-1") == []
+        query.assert_called_once()
+        assert f"\"triggered_from\" = '{expected}'" in query.call_args.kwargs["sql"]

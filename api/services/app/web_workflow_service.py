@@ -35,7 +35,7 @@ class WebWorkflowRuntime[AppT, UserT, WorkflowT](Protocol):
 
 
 class WorkflowTaskControl(Protocol):
-    def stop_workflow_task_no_user_check(self, *, task_id: str) -> None: ...
+    def stop_web_workflow_task(self, *, tenant_id: str, app_id: str, task_id: str) -> bool: ...
 
 
 class WebWorkflowService[AppT, UserT, WorkflowT]:
@@ -66,11 +66,10 @@ class WebWorkflowService[AppT, UserT, WorkflowT]:
 
         return self._runtime(app_model=target.app, user=target.user, args=args, load_workflow=load_workflow)
 
-    def stop(self, *, app_mode: str, task_id: str) -> None:
+    def stop(self, context: WebAppRequestContext, *, app_mode: str, task_id: str) -> None:
+        """Request a stop scoped to the admitted WebApp, rejecting non-workflow apps before dispatch."""
         self._require_workflow(app_mode)
-        # WebApp admission is the existing stop authorization boundary. Preserve
-        # the stop-flag and graph-command mechanisms without adding a user-cache gate.
-        self._tasks.stop_workflow_task_no_user_check(task_id=task_id)
+        self._tasks.stop_web_workflow_task(tenant_id=context.tenant_id, app_id=context.app_id, task_id=task_id)
 
     @staticmethod
     def _require_workflow(app_mode: str) -> None:

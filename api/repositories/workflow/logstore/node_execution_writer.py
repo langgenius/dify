@@ -330,10 +330,11 @@ class LogstoreWorkflowNodeExecutionWriter(WorkflowNodeExecutionRepository):
         *,
         include_paused: bool = False,
     ) -> Sequence[WorkflowNodeExecution]:
+        """Read this run's nodes for the configured source, defaulting to workflow-run when omitted."""
         owner = {
             "tenant_id": self._tenant_id,
             "workflow_run_id": workflow_execution_id,
-            "triggered_from": WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
+            "triggered_from": (self._triggered_from or WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN).value,
         }
         if self._app_id:
             owner["app_id"] = self._app_id
