@@ -2348,12 +2348,21 @@ export const delete10 = oc
   )
   .output(zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse)
 
+/**
+ * Read tenant model credentials and initialize inherited configs when needed
+ *
+ * The caller and request are validated by the outer decorators. The session
+ * decorator finalizes and closes the session after response data is materialized.
+ */
 export const get33 = oc
   .route({
+    description:
+      'The caller and request are validated by the outer decorators. The session\ndecorator finalizes and closes the session after response data is materialized.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesCurrentModelProvidersByProviderModelsCredentials',
     path: '/workspaces/current/model-providers/{provider}/models/credentials',
+    summary: 'Read tenant model credentials and initialize inherited configs when needed',
     tags: ['console'],
   })
   .input(
@@ -2551,12 +2560,21 @@ export const get35 = oc
   .input(z.object({ params: zGetWorkspacesCurrentModelProvidersByProviderModelsPath }))
   .output(zGetWorkspacesCurrentModelProvidersByProviderModelsResponse)
 
+/**
+ * Save validated model settings for the current tenant in a request session
+ *
+ * Existing service commits are preserved; the session decorator commits the
+ * successful request and closes it on success or failure.
+ */
 export const post36 = oc
   .route({
+    description:
+      'Existing service commits are preserved; the session decorator commits the\nsuccessful request and closes it on success or failure.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postWorkspacesCurrentModelProvidersByProviderModels',
     path: '/workspaces/current/model-providers/{provider}/models',
+    summary: 'Save validated model settings for the current tenant in a request session',
     tags: ['console'],
   })
   .input(

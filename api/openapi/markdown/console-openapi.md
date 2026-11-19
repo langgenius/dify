@@ -16229,6 +16229,11 @@ Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/model-providers/{provider}/models
+**Save validated model settings for the current tenant in a request session**
+
+Existing service commits are preserved; the session decorator commits the
+successful request and closes it on success or failure.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -16266,6 +16271,11 @@ Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/model-providers/{provider}/models/credentials
+**Read tenant model credentials and initialize inherited configs when needed**
+
+The caller and request are validated by the outer decorators. The session
+decorator finalizes and closes the session after response data is materialized.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
