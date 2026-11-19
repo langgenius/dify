@@ -7,6 +7,7 @@ import type { FormOption } from '@/app/components/header/account-setting/model-p
 import type { Event, Tool } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
+import type { VarType } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
 import {
@@ -28,7 +29,6 @@ import { ToolDateRangePicker } from '@/app/components/tools/parameters/tool-date
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
-import { VarType } from '@/app/components/workflow/types'
 import { useFetchDynamicOptions } from '@/service/use-plugins'
 import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
 import { VarKindType } from '../types'
@@ -47,6 +47,7 @@ import {
 } from './form-input-item.helpers'
 import { JsonEditorField, MultiSelectField } from './form-input-item.sections'
 import FormInputTypeSwitch from './form-input-type-switch'
+import { TEXT_VAR_TYPES } from './variable/utils'
 
 type Props = Readonly<{
   readOnly: boolean
@@ -123,7 +124,7 @@ const FormInputItem: FC<Props> = ({
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
-      const textVariableTypes: readonly VarType[] = [VarType.string, VarType.number, VarType.secret]
+      const textVariableTypes: readonly VarType[] = TEXT_VAR_TYPES
 
       return textVariableTypes.includes(varPayload.type)
     },
@@ -400,7 +401,7 @@ const FormInputItem: FC<Props> = ({
           <SelectContent>
             {staticSelectItems.map((item) => (
               <SelectItem key={item.value} value={item.value}>
-                {item.icon && <img src={item.icon} alt="" className="mr-2 size-4 shrink-0" />}
+                {item.icon && <img src={item.icon} alt="" className="me-2 size-4 shrink-0" />}
                 <SelectItemText>{item.name}</SelectItemText>
                 <SelectItemIndicator />
               </SelectItem>
@@ -431,7 +432,7 @@ const FormInputItem: FC<Props> = ({
           <SelectContent>
             {dynamicSelectItems.map((item) => (
               <SelectItem key={item.value} value={item.value}>
-                {item.icon && <img src={item.icon} alt="" className="mr-2 size-4 shrink-0" />}
+                {item.icon && <img src={item.icon} alt="" className="me-2 size-4 shrink-0" />}
                 <SelectItemText>{item.name}</SelectItemText>
                 <SelectItemIndicator />
               </SelectItem>

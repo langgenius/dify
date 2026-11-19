@@ -117,6 +117,16 @@ const hasValidChildren = (children: any): boolean => {
   )
 }
 
+// Shared allow-lists for variable pickers. `VarType.integer` is a first-class
+// workflow type produced by MCP/OpenAPI tool outputs and Knowledge Retrieval v2
+// pagination fields; numeric-typed parameters must accept it alongside
+// `VarType.number` (issue #45894).
+export const NUMERIC_VAR_TYPES: readonly VarType[] = [VarType.number, VarType.integer]
+
+export const isNumericVarType = (varType: VarType) => NUMERIC_VAR_TYPES.includes(varType)
+
+export const TEXT_VAR_TYPES: readonly VarType[] = [VarType.string, VarType.number, VarType.secret]
+
 export const inputVarTypeToVarType = (type: InputVarType): VarType => {
   return (
     (

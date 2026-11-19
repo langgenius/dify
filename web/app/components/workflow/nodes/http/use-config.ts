@@ -1,11 +1,12 @@
 import type { Var } from '../../types'
+import type { VarType } from '../../types'
 import type { Authorization, Body, HttpNodeType, Method, Timeout } from './types'
 import { produce } from 'immer'
 import { useCallback, useEffect, useState } from 'react'
+import { TEXT_VAR_TYPES } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useNodesReadOnly } from '../../hooks/use-workflow'
 import { useStore } from '../../store'
-import { VarType } from '../../types'
 import useVarList from '../_base/hooks/use-var-list'
 import useKeyValueList from './hooks/use-key-value-list'
 import { BodyType } from './types'
@@ -131,7 +132,7 @@ const useConfig = (id: string, payload: HttpNodeType) => {
   )
 
   const filterVar = useCallback((varPayload: Var) => {
-    const textVariableTypes: readonly VarType[] = [VarType.string, VarType.number, VarType.secret]
+    const textVariableTypes: readonly VarType[] = TEXT_VAR_TYPES
 
     return textVariableTypes.includes(varPayload.type)
   }, [])
