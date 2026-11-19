@@ -15,6 +15,7 @@ from services.workflow.contracts import (
     WorkflowOwner,
     WorkflowSnapshot,
 )
+from services.workflow.snippet_policy import validate_snippet_graph_forbidden_nodes
 
 
 class DraftDefinitions[BindingStore](Protocol):
@@ -66,6 +67,13 @@ class WorkflowDraftService[BindingStore]:
         materialize: Callable[[WorkflowSnapshot], DraftImportResult] | None = None,
         environment: PreparedEnvironmentVariables | None = None,
     ) -> WorkflowSnapshot:
+        """Persist a prepared draft; reject forbidden Snippet nodes before committing.
+
+        For imported Snippets, validate the materialized graph that replaces the
+        command graph. A rejected graph leaves the draft transaction uncommitted.
+        """
+        if owner.kind == "snippet" and materialize is None:
+            validate_snippet_graph_forbidden_nodes(command.graph)
         prepared = self._lifecycle.prepare_sync(context, owner, command, environment)
         with self._definitions.draft_sync(context, owner, command, prepared) as transaction:
             agents = self._agent_services(repository=transaction.bindings)
@@ -75,6 +83,8 @@ class WorkflowDraftService[BindingStore]:
                 retired = agents.synchronize_draft(draft_workflow=transaction.workflow, account_id=context.account_id)
             else:
                 imported = materialize(transaction.workflow)
+                if owner.kind == "snippet":
+                    validate_snippet_graph_forbidden_nodes(imported.graph)
                 transaction.replace_graph(imported.graph)
                 retired = imported.retired_agents
                 agents.validate_agent_nodes_for_draft_sync(draft_workflow=transaction.workflow)
@@ -90,7 +100,13 @@ class WorkflowDraftService[BindingStore]:
         return workflow
 
     def restore(self, context: RequestContext, owner: WorkflowOwner, workflow_id: str) -> WorkflowSnapshot:
+        """Restore a published draft only if its Snippet graph is allowed.
+
+        A rejected source leaves the draft and its Agent bindings unchanged.
+        """
         source = self._lifecycle.validate_restore(context, owner, workflow_id)
+        if owner.kind == "snippet":
+            validate_snippet_graph_forbidden_nodes(source.graph_dict)
         with self._definitions.draft_restore(context, owner, source) as transaction:
             retired = (
                 self._agent_services(repository=transaction.bindings).restore_agent_node_bindings_to_draft(
