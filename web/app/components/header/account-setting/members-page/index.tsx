@@ -21,6 +21,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { safe } from '@orpc/client'
 import {
   useMutation,
+  usePrefetchQuery,
   useQueryClient,
   useSuspenseQueries,
   useSuspenseQuery,
@@ -34,7 +35,11 @@ import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { currentWorkspaceAtom, isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
+import {
+  currentWorkspaceAtom,
+  currentWorkspaceIdAtom,
+  isCurrentWorkspaceOwnerAtom,
+} from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { isContactsManagementEnabled } from '@/features/contacts/management/feature-flag'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -57,7 +62,27 @@ type RevocationOutcome =
 
 const revealRow = (row: HTMLTableRowElement | null) => row?.scrollIntoView({ block: 'nearest' })
 
-const MembersPageContent = () => {
+type MembersLanguage = ReturnType<typeof getAccessControlTemplateLanguage>
+
+const membersQueryOptions = (language: MembersLanguage) =>
+  consoleQuery.workspaces.current.members.get.queryOptions({ input: { query: { language } } })
+
+const pendingInvitationsQueryOptions = (workspaceId: string) =>
+  consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.get.queryOptions({
+    input: { params: { workspace_id: workspaceId } },
+  })
+
+const PendingInvitationsPrefetch = ({ workspaceId }: { workspaceId: string }) => {
+  usePrefetchQuery(pendingInvitationsQueryOptions(workspaceId))
+  return null
+}
+
+type MembersPageContentProps = {
+  language: MembersLanguage
+  canManageMembers: boolean
+}
+
+const MembersPageContent = ({ language, canManageMembers }: MembersPageContentProps) => {
   const { t } = useTranslation([
     'billing',
     'common',
@@ -68,7 +93,6 @@ const MembersPageContent = () => {
     'contacts',
   ])
   const locale = useLocale()
-  const language = getAccessControlTemplateLanguage(locale)
 
   const { data: userProfileEmail } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -76,12 +100,25 @@ const MembersPageContent = () => {
   })
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const {
-    data: { accounts },
-  } = useSuspenseQuery(
-    consoleQuery.workspaces.current.members.get.queryOptions({ input: { query: { language } } }),
-  )
+  const { accounts, features } = useSuspenseQueries({
+    queries: [membersQueryOptions(language), consoleQuery.features.get.queryOptions()],
+    combine: ([members, featureResult]) => ({
+      accounts: members.data.accounts,
+      features: {
+        plan: featureResult.data.billing.subscription.plan,
+        members: getCountQuota(featureResult.data.members),
+        is_allow_transfer_workspace: featureResult.data.is_allow_transfer_workspace,
+      },
+    }),
+  })
+  const invitationQueries: Array<ReturnType<typeof pendingInvitationsQueryOptions>> =
+    canManageMembers && currentWorkspace.id
+      ? [pendingInvitationsQueryOptions(currentWorkspace.id)]
+      : []
+  const invitations = useSuspenseQueries({
+    queries: invitationQueries,
+    combine: (results) => results.flatMap(({ data }) => data.invitations),
+  })
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const [invitedEmails, setInvitedEmails] = useState<ReadonlySet<string>>(() => new Set())
   const workspaceNameInputRef = useRef<HTMLInputElement>(null)
@@ -100,30 +137,10 @@ const MembersPageContent = () => {
   )
   const joinedAccounts = accounts.filter((account) => account.status !== 'pending')
   const deploymentEdition = systemFeatures.deployment_edition
-  const { data: features } = useSuspenseQuery(
-    consoleQuery.features.get.queryOptions({
-      select: (data) => ({
-        plan: data.billing.subscription.plan,
-        members: getCountQuota(data.members),
-        is_allow_transfer_workspace: data.is_allow_transfer_workspace,
-      }),
-    }),
-  )
 
   const isNotUnlimitedMemberPlan = deploymentEdition === 'CLOUD' && features.plan !== 'team'
   const detailsActionsRef = useRef<DialogActions>(null)
 
-  const canManageMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
-  const invitationQuery =
-    consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.get.queryOptions({
-      input: { params: { workspace_id: currentWorkspace.id } },
-    })
-  const invitationQueries: Array<typeof invitationQuery> =
-    canManageMembers && currentWorkspace.id ? [invitationQuery] : []
-  const invitations = useSuspenseQueries({
-    queries: invitationQueries,
-    combine: (results) => results.flatMap(({ data }) => data.invitations),
-  })
   const invitees: Invitee[] = [
     ...accounts
       .filter((account) => account.status === 'pending')
@@ -611,9 +628,21 @@ const MembersPageContent = () => {
 }
 
 export function MembersPage() {
+  const language = getAccessControlTemplateLanguage(useLocale())
+  const workspaceId = useAtomValue(currentWorkspaceIdAtom)
+  const canManageMembers = hasPermission(
+    useAtomValue(workspacePermissionKeysAtom),
+    'workspace.member.manage',
+  )
+  usePrefetchQuery(membersQueryOptions(language))
+  usePrefetchQuery(consoleQuery.features.get.queryOptions())
+
   return (
-    <Suspense fallback={<MembersPageSkeleton />}>
-      <MembersPageContent />
-    </Suspense>
+    <>
+      {canManageMembers && workspaceId && <PendingInvitationsPrefetch workspaceId={workspaceId} />}
+      <Suspense fallback={<MembersPageSkeleton />}>
+        <MembersPageContent language={language} canManageMembers={canManageMembers} />
+      </Suspense>
+    </>
   )
 }
