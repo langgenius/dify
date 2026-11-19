@@ -90,11 +90,15 @@ class ConversationLogExportFileNotFoundError(Exception):
 
 class ConversationLogExportTaskStore(Protocol):
     def save(self, task: ConversationLogExportTask) -> None:
-        """Persist a new task and its expiration before publishing it."""
+        """Persist a new task and remember it as its requester's latest for the app."""
         ...
 
     def get(self, *, tenant_id: str, app_id: str, task_id: str) -> ConversationLogExportTask | None:
         """Return a live task for the exact workspace and app, or None if absent or expired."""
+        ...
+
+    def get_latest(self, *, tenant_id: str, app_id: str, requested_by: str) -> ConversationLogExportTask | None:
+        """Return the requester's latest live task for this app, or None if unavailable."""
         ...
 
     def transition(self, task: ConversationLogExportTask, *, from_status: ConversationLogExportStatus) -> bool:
@@ -155,8 +159,8 @@ class ConversationLogExportService:
             created_at=created_at,
             expires_at=created_at + _LOG_EXPORT_TASK_TTL,
         )
-        self._tasks.save(task)
         try:
+            self._tasks.save(task)
             self._dispatch(task)
         except Exception:
             self._mark_failed(task)
@@ -169,6 +173,12 @@ class ConversationLogExportService:
         if task is None:
             raise ConversationLogExportTaskNotFoundError()
         return task
+
+    def get_latest_task(
+        self, *, scope: ConsoleConversationScope, requested_by: str
+    ) -> ConversationLogExportTask | None:
+        """Return the admitted caller's latest live task for the app, if one exists."""
+        return self._tasks.get_latest(tenant_id=scope.tenant_id, app_id=scope.app_id, requested_by=requested_by)
 
     def download_csv(self, *, scope: ConsoleConversationScope, task_id: str, filename: str) -> LogExportDownload:
         """Serve a live, ready export as a short-lived storage URL or an opened CSV stream."""

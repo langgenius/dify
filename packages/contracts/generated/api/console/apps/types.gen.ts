@@ -648,6 +648,10 @@ export type UnprocessableEntityError = ErrorResponse & {
   status: 422
 }
 
+export type ConversationLogExportLatestResponse = {
+  task: ConversationLogExportLatestTaskResponse | null
+}
+
 export type ConversationLogExportPreviewResponse = {
   counts: ConversationLogExportCountsResponse | null
 }
@@ -2132,6 +2136,12 @@ export type MessageDetail = {
   workflow_run_id?: string | null
 }
 
+export type ConversationLogExportLatestTaskResponse = {
+  filters: ConversationLogExportFiltersResponse
+  status: ConversationLogExportStatus
+  task_id: string
+}
+
 export type ConversationLogExportCountsResponse = {
   conversation_count: number
   message_count: number
@@ -3254,6 +3264,15 @@ export type SimpleMessageDetail = {
   query: string
 }
 
+export type ConversationLogExportFiltersResponse = {
+  account_ids: Array<string>
+  annotation_status: ConversationAnnotationStatus
+  end: string | null
+  end_user_ids: Array<string>
+  keyword: string | null
+  start: string | null
+}
+
 export type SimpleAccount = {
   email: string
   id: string
@@ -3989,6 +4008,8 @@ export type StringListSource = {
   type: ValueSourceType
   value?: Array<string>
 }
+
+export type ConversationAnnotationStatus = 'all' | 'annotated' | 'not_annotated'
 
 export type AppProviderAgentToolPayload = {
   credential_id?: string | null
@@ -6715,6 +6736,31 @@ export type PostAppsByAppIdConversationLogExportsResponses = {
 
 export type PostAppsByAppIdConversationLogExportsResponse =
   PostAppsByAppIdConversationLogExportsResponses[keyof PostAppsByAppIdConversationLogExportsResponses]
+
+export type GetAppsByAppIdConversationLogExportsLatestData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/conversation-log-exports/latest'
+}
+
+export type GetAppsByAppIdConversationLogExportsLatestErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdConversationLogExportsLatestError =
+  GetAppsByAppIdConversationLogExportsLatestErrors[keyof GetAppsByAppIdConversationLogExportsLatestErrors]
+
+export type GetAppsByAppIdConversationLogExportsLatestResponses = {
+  200: ConversationLogExportLatestResponse
+}
+
+export type GetAppsByAppIdConversationLogExportsLatestResponse =
+  GetAppsByAppIdConversationLogExportsLatestResponses[keyof GetAppsByAppIdConversationLogExportsLatestResponses]
 
 export type GetAppsByAppIdConversationLogExportsPreviewData = {
   body?: never

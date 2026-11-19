@@ -3314,6 +3314,26 @@ Create a pending CSV export task for one chat app
 | 422 | Unprocessable Entity | **application/json**: [UnprocessableEntityError](#unprocessableentityerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /apps/{app_id}/conversation-log-exports/latest
+**Return only the admitted account's latest task, or null if it is missing or expired**
+
+Read the caller's latest live CSV export and its submitted filters for this app
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Latest export | **application/json**: [ConversationLogExportLatestResponse](#conversationlogexportlatestresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /apps/{app_id}/conversation-log-exports/preview
 **Preview a conversation log export for a workspace Owner or Admin with application Logs access**
 
@@ -24883,6 +24903,12 @@ Query params for selecting contacts in workflow editors.
 | annotation_id | string |  | Yes |
 | created_at | integer |  | No |
 
+#### ConversationAnnotationStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConversationAnnotationStatus | string |  |  |
+
 #### ConversationCursorNotFoundError
 
 The conversation cursor is not in the current list. Refresh the list and try again.
@@ -24966,6 +24992,33 @@ Conversation log export file not found.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ConversationLogExportFileNotFoundError |  | Conversation log export file not found. |  |
+
+#### ConversationLogExportFiltersResponse
+
+Submitted filters for the export, with any date bounds in UTC.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_ids | [ string ] |  | Yes |
+| annotation_status | [ConversationAnnotationStatus](#conversationannotationstatus) |  | Yes |
+| end | string |  | Yes |
+| end_user_ids | [ string ] |  | Yes |
+| keyword | string |  | Yes |
+| start | string |  | Yes |
+
+#### ConversationLogExportLatestResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| task | [ConversationLogExportLatestTaskResponse](#conversationlogexportlatesttaskresponse) | Null if the caller has no live export task | Yes |
+
+#### ConversationLogExportLatestTaskResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| filters | [ConversationLogExportFiltersResponse](#conversationlogexportfiltersresponse) |  | Yes |
+| status | [ConversationLogExportStatus](#conversationlogexportstatus) |  | Yes |
+| task_id | string |  | Yes |
 
 #### ConversationLogExportPreviewResponse
 

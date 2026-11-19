@@ -1,4 +1,8 @@
-import type { ConversationWithSummary } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  ConversationLogExportCreatePayload,
+  ConversationLogExportLatestTaskResponse,
+  ConversationWithSummary,
+} from '@dify/contracts/api/console/apps/types.gen'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -32,6 +36,7 @@ vi.mock('@/next/navigation', () => ({
 
 const appId = '2015f4b7-90e7-4c04-a4a7-9ce976816d69'
 const taskId = 'bfb96e29-3cf9-4874-9c82-12a54749767a'
+const previousTaskId = '6b37bf24-2bfe-4b69-821c-3687c7b83bec'
 const endUserId = 'e0c627f9-78d3-4dce-86a0-a19e245f465b'
 const accountId = '3eb56edf-8a82-42b0-bca3-93128b83d64d'
 const olderEndUser = {
@@ -68,9 +73,23 @@ const conversations: ConversationWithSummary[] = [
   },
 ]
 
-async function openExport() {
+async function openExport(hasExistingTask = false) {
   const previews: URLSearchParams[] = []
-  const requests: unknown[] = []
+  const requests: ConversationLogExportCreatePayload[] = []
+  let task: ConversationLogExportLatestTaskResponse | null = hasExistingTask
+    ? {
+        task_id: previousTaskId,
+        status: 'processing',
+        filters: {
+          start: '2026-11-16T00:00:00Z',
+          end: '2026-11-19T23:59:59Z',
+          end_user_ids: [endUserId],
+          account_ids: [],
+          annotation_status: 'annotated',
+          keyword: 'invoice',
+        },
+      }
+    : null
   let statusReads = 0
   const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
     const request = input instanceof Request ? input : new Request(input)
@@ -95,15 +114,30 @@ async function openExport() {
           counts: { conversation_count: count, message_count: count * 2 },
         })
       }
-      case 'conversation-log-exports':
+      case 'conversation-log-exports': {
         expect(request.method).toBe('POST')
-        requests.push(await request.json())
-        return Response.json({ task_id: taskId, status: 'pending' }, { status: 202 })
-      case `conversation-log-exports/${taskId}`:
+        const filters: ConversationLogExportCreatePayload = await request.json()
+        requests.push(filters)
+        task = {
+          task_id: requests.length === 1 ? taskId : crypto.randomUUID(),
+          status: 'pending',
+          filters: {
+            start: filters.start ? `${filters.start.replace(' ', 'T')}:00Z` : null,
+            end: filters.end ? `${filters.end.replace(' ', 'T')}:59Z` : null,
+            end_user_ids: filters.end_user_ids ?? [],
+            account_ids: filters.account_ids ?? [],
+            annotation_status: filters.annotation_status ?? 'all',
+            keyword: filters.keyword ?? null,
+          },
+        }
+        statusReads = 0
+        return Response.json({ task_id: task.task_id, status: task.status }, { status: 202 })
+      }
+      case 'conversation-log-exports/latest':
+        if (!task) return Response.json({ task: null })
         statusReads++
         return Response.json({
-          task_id: taskId,
-          status: statusReads === 1 ? 'processing' : 'ready',
+          task: { ...task, status: statusReads === 1 ? 'processing' : 'ready' },
         })
       default:
         throw new Error(`Unexpected request ${url.pathname}`)
@@ -111,32 +145,36 @@ async function openExport() {
   })
   onTestFinished(() => fetch.mockRestore())
 
-  const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
-    currentWorkspace: { role: 'admin' },
-    systemFeatures: { deployment_edition: 'COMMUNITY' },
-  })
-  const { wrapper: UrlState } = createNuqsTestWrapper({ hasMemory: true })
-  const screen = await render(
-    <ConsoleProvider>
-      <UrlState>
-        <div className="min-h-dvh bg-background-body px-8 py-6">
-          <Logs
-            appDetail={createAppDetailFixture({
-              id: appId,
-              mode: 'advanced-chat',
-              name: 'Support Assistant',
-            })}
-          />
-        </div>
-      </UrlState>
-    </ConsoleProvider>,
-  )
-  const trigger = screen.getByRole('button', { name: 'appLog.export.title' })
   const dialog = page.getByRole('dialog', { name: 'appLog.export.title' })
-  return { screen, trigger, dialog, previews, requests }
+  const lastExport = dialog.getByRole('group', { name: 'appLog.export.last' })
+  const renderLogs = async () => {
+    const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
+      accountProfile: { timezone: 'UTC' },
+      currentWorkspace: { role: 'admin' },
+      systemFeatures: { deployment_edition: 'COMMUNITY' },
+    })
+    const { wrapper: UrlState } = createNuqsTestWrapper({ hasMemory: true })
+    const screen = await render(
+      <ConsoleProvider>
+        <UrlState>
+          <div className="min-h-dvh bg-background-body px-8 py-6">
+            <Logs
+              appDetail={createAppDetailFixture({
+                id: appId,
+                mode: 'advanced-chat',
+                name: 'Support Assistant',
+              })}
+            />
+          </div>
+        </UrlState>
+      </ConsoleProvider>,
+    )
+    return { screen, trigger: screen.getByRole('button', { name: 'appLog.export.title' }) }
+  }
+  return { ...(await renderLogs()), dialog, lastExport, previews, requests, renderLogs }
 }
 
-it('exports the current filters across pages and downloads when the task is ready', async () => {
+function observeDownloads() {
   const downloadPaths: string[] = []
   const followLink = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
     this: HTMLAnchorElement,
@@ -144,7 +182,12 @@ it('exports the current filters across pages and downloads when the task is read
     downloadPaths.push(new URL(this.href).pathname)
   })
   onTestFinished(() => followLink.mockRestore())
-  const { screen, trigger, dialog, previews, requests } = await openExport()
+  return downloadPaths
+}
+
+it('can export the same filters again after a CSV is ready', async () => {
+  const downloadPaths = observeDownloads()
+  const { screen, trigger, dialog, lastExport, previews, requests } = await openExport()
   await expect.element(screen.getByText(conversation.summary, { exact: true })).toBeVisible()
   await expect
     .element(screen.getByRole('button', { name: 'appLog.table.header.endUser' }))
@@ -164,7 +207,11 @@ it('exports the current filters across pages and downloads when the task is read
   await expect
     .element(dialog.getByRole('button', { name: 'common.operation.exporting' }))
     .toBeDisabled()
-  await expect.element(dialog).not.toBeInTheDocument()
+  const download = lastExport.getByRole('button', { name: 'common.operation.download' })
+  await expect.element(download).toBeEnabled()
+  await expect.element(lastExport.getByText(/refund/)).toBeVisible()
+  await expect.element(submit).toBeEnabled()
+  expect(downloadPaths).toEqual([])
   expect(requests).toEqual([
     {
       keyword: 'refund',
@@ -174,9 +221,72 @@ it('exports the current filters across pages and downloads when the task is read
       end: expect.any(String),
     },
   ])
+  await submit.click()
+  await expect
+    .element(lastExport.getByRole('status'))
+    .toHaveTextContent('appLog.archives.downloadHint.preparing')
+  expect(requests).toHaveLength(2)
+  expect(requests[1]).toEqual(requests[0])
+  expect(downloadPaths).toEqual([])
+})
+
+it('keeps the previous export and Download available while editing the form', async () => {
+  const downloadPaths = observeDownloads()
+  const { trigger, dialog, lastExport, requests } = await openExport(true)
+  await trigger.click()
+  await expect
+    .element(dialog.getByRole('button', { name: 'common.operation.exporting' }))
+    .toBeDisabled()
+  const download = lastExport.getByRole('button', { name: 'common.operation.download' })
+  await expect.element(download).toBeEnabled()
+  await expect.element(lastExport.getByText(/invoice/)).toBeVisible()
+  await expect.element(lastExport.getByText(/appLog\.export\.annotated/)).toBeVisible()
+  await expect.element(lastExport.getByText(/user-1024/)).toBeVisible()
+  await dialog.getByRole('combobox', { name: 'appLog.export.scope' }).click()
+  await page.getByRole('option', { name: 'appLog.export.all' }).click()
+  await expect.element(dialog.getByRole('button', { name: 'appLog.export.submit' })).toBeEnabled()
+  await download.click()
   expect(downloadPaths).toEqual([
-    `/console/api/apps/${appId}/conversation-log-exports/${taskId}/file`,
+    `/console/api/apps/${appId}/conversation-log-exports/${previousTaskId}/file`,
   ])
+  expect(requests).toEqual([])
+})
+
+it('shows the last export filters in its own row after the user leaves and returns', async () => {
+  const { screen, trigger, dialog, lastExport, renderLogs } = await openExport()
+  await trigger.click()
+  const scope = dialog.getByRole('combobox', { name: 'appLog.export.scope' })
+  await scope.click()
+  await page.getByRole('option', { name: 'appLog.export.all' }).click()
+  await dialog.getByRole('combobox', { name: 'appLog.table.header.endUser' }).click()
+  await page.getByRole('option', { name: 'appLog.export.identitiesSelected' }).click()
+  const user = dialog.getByRole('checkbox', { name: 'user-1024' })
+  await user.click()
+  const period = dialog.getByRole('combobox', { name: 'appLog.export.timeRange' })
+  await period.click()
+  await page.getByRole('option', { name: 'appLog.filter.period.custom' }).click()
+  const start = dialog.getByLabelText('time.picker.startDate')
+  const end = dialog.getByLabelText('time.picker.endDate')
+  await start.fill('2026-11-16')
+  await end.fill('2026-11-19')
+  await dialog.getByRole('button', { name: 'appLog.export.submit' }).click()
+
+  await expect
+    .element(lastExport.getByRole('status'))
+    .toHaveTextContent('appLog.archives.downloadHint.preparing')
+  await dialog.getByRole('button', { name: 'common.operation.close' }).last().click()
+  await expect.element(dialog).not.toBeInTheDocument()
+  await screen.unmount()
+  const reopened = await renderLogs()
+  await reopened.trigger.click()
+  await expect.element(scope).toHaveTextContent('appLog.export.current')
+  await expect.element(period).not.toBeInTheDocument()
+  await expect.element(start).not.toBeInTheDocument()
+  await expect.element(lastExport.getByText(/2026-11-16 00:00 – 2026-11-19 23:59/)).toBeVisible()
+  await expect.element(lastExport.getByText(/user-1024/)).toBeVisible()
+  await expect
+    .element(lastExport.getByRole('button', { name: 'common.operation.download' }))
+    .toBeEnabled()
 })
 
 it('shows an inline identity list and previews selections beyond the visible Logs page', async () => {

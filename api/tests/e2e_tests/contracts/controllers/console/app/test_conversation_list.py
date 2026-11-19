@@ -1,7 +1,7 @@
 """Console conversation lists through real account admission, services and SQLite."""
 
 from collections.abc import Callable, Generator, Iterator, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Literal
@@ -27,6 +27,7 @@ from controllers.console.app.conversation import (
     CompletionConversationApi,
     ConversationLogExportApi,
     ConversationLogExportFileApi,
+    ConversationLogExportLatestApi,
     ConversationLogExportPreviewApi,
     ConversationLogExportTaskApi,
 )
@@ -59,7 +60,7 @@ from services.retention.conversation.log_export_service import (
 )
 from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_end_user, make_message
 
-type _Kind = Literal["chat", "completion", "export-preview", "identity-options"]
+type _Kind = Literal["chat", "completion", "export-preview", "export-latest", "identity-options"]
 _CREATED_AT = datetime(2024, 1, 15, 6, 30, 0)
 
 
@@ -95,6 +96,7 @@ class _Harness:
             "chat": "chat-conversations",
             "completion": "completion-conversations",
             "export-preview": "conversation-log-exports/preview",
+            "export-latest": "conversation-log-exports/latest",
             "identity-options": "chat-conversations/identity-options",
         }[kind]
         response = client.get(f"/apps/{app_id or self.target.id}/{resource}", query_string=query, headers=headers)
@@ -217,6 +219,7 @@ def harness(
     api.add_resource(CompletionConversationApi, "/apps/<uuid:app_id>/completion-conversations")
     api.add_resource(ConversationLogExportPreviewApi, "/apps/<uuid:app_id>/conversation-log-exports/preview")
     api.add_resource(ConversationLogExportApi, "/apps/<uuid:app_id>/conversation-log-exports")
+    api.add_resource(ConversationLogExportLatestApi, "/apps/<uuid:app_id>/conversation-log-exports/latest")
     api.add_resource(ConversationLogExportTaskApi, "/apps/<uuid:app_id>/conversation-log-exports/<uuid:task_id>")
     api.add_resource(
         ConversationLogExportFileApi, "/console/api/apps/<uuid:app_id>/conversation-log-exports/<uuid:task_id>/file"
@@ -232,7 +235,7 @@ def created_export(harness: _Harness, monkeypatch: pytest.MonkeyPatch) -> tuple[
     """Create an admitted export and expose its persisted Redis key and task."""
     monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", lambda _: True)
     assert harness.post_export({"keyword": "internal filter"}).status_code == 202
-    key, _, raw = harness.redis.setex.call_args.args
+    key, _, raw = harness.redis.setex.call_args_list[0].args
     return key, ConversationLogExportTask.model_validate_json(raw)
 
 
@@ -528,7 +531,7 @@ def test_conversation_export_checks_paid_plan_only_in_cloud(
         harness.redis.setex.assert_not_called()
     elif create:
         assert response.status_code == 202
-        harness.redis.setex.assert_called_once()
+        harness.dispatch.assert_called_once()
     else:
         assert response.status_code == 200
         assert response.get_json() == {"counts": {"conversation_count": 0, "message_count": 0}}
@@ -542,8 +545,13 @@ def test_create_conversation_log_export_persists_normalized_filters(
     monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", lambda _: True)
 
     def assert_saved_before_publish(task: ConversationLogExportTask) -> None:
-        harness.redis.setex.assert_called_once()
-        assert harness.redis.setex.call_args.args[2] == task.model_dump_json()
+        stored, latest = harness.redis.setex.call_args_list
+        assert stored.args[2] == task.model_dump_json()
+        assert latest.args == (
+            f"conversation_log_export_latest:{task.tenant_id}:{task.app_id}:{task.requested_by}",
+            stored.args[1],
+            task.task_id,
+        )
 
     harness.dispatch.side_effect = assert_saved_before_publish
     end_user_id = str(uuid4())
@@ -560,8 +568,7 @@ def test_create_conversation_log_export_persists_normalized_filters(
     )
 
     assert response.status_code == 202
-    harness.redis.setex.assert_called_once()
-    key, ttl, raw = harness.redis.setex.call_args.args
+    key, ttl, raw = harness.redis.setex.call_args_list[0].args
     task = ConversationLogExportTask.model_validate_json(raw)
     harness.dispatch.assert_called_once_with(task)
     assert response.get_json() == {"task_id": str(UUID(task.task_id)), "status": "pending"}
@@ -592,7 +599,7 @@ def test_create_conversation_log_export_records_publish_failure(
     update = harness.redis.register_script.return_value
     update.assert_called_once()
     old_status, raw = update.call_args.kwargs["args"]
-    assert update.call_args.kwargs["keys"] == [harness.redis.setex.call_args.args[0]]
+    assert update.call_args.kwargs["keys"] == [harness.redis.setex.call_args_list[0].args[0]]
     assert old_status == "pending"
     assert ConversationLogExportTask.model_validate_json(raw).status == "failed"
 
@@ -616,8 +623,67 @@ def test_get_conversation_log_export_status(
     assert response.status_code == 200
     assert response.get_json() == {"task_id": task.task_id, "status": status.value}
     harness.redis.get.assert_called_once_with(key)
-    harness.redis.setex.assert_called_once()
+    assert harness.redis.setex.call_count == 2
     harness.dispatch.assert_called_once()
+
+
+def test_get_latest_export_is_scoped_to_the_authenticated_account_and_app(
+    harness: _Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Recover the caller's newest live task with its original filters."""
+    monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", lambda _: True)
+    objects: dict[str, str] = {}
+    harness.redis.setex.side_effect = lambda key, _ttl, payload: objects.__setitem__(key, payload)
+    harness.redis.get.side_effect = lambda key: objects[key].encode() if key in objects else None
+
+    assert harness.get("export-latest").get_json() == {"task": None}
+    assert harness.post_export({}).status_code == 202
+    end_user_id = str(uuid4())
+    second = harness.post_export(
+        {
+            "keyword": "invoice",
+            "start": "2024-01-15 14:30",
+            "end": "2024-01-15 15:00",
+            "annotation_status": "annotated",
+            "end_user_ids": [end_user_id],
+            "account_ids": [harness.account.id],
+        }
+    )
+    assert second.status_code == 202
+    latest = harness.get("export-latest")
+    assert latest.status_code == 200
+    assert latest.get_json() == {
+        "task": {
+            **second.get_json(),
+            "filters": {
+                "keyword": "invoice",
+                "start": "2024-01-15T06:30:00Z",
+                "end": "2024-01-15T07:00:59Z",
+                "annotation_status": "annotated",
+                "end_user_ids": [end_user_id],
+                "account_ids": [harness.account.id],
+            },
+        }
+    }
+    assert latest.cache_control.no_store
+
+    other_account = make_account(account_id=str(uuid4()), email="another-admin@example.com", timezone="UTC")
+    other_app = make_app(app_id=str(uuid4()), tenant_id=harness.tenant.id, mode=AppMode.CHAT)
+    with harness.factory.begin() as session:
+        session.add_all(
+            [
+                other_account,
+                other_app,
+                TenantAccountJoin(
+                    tenant_id=harness.tenant.id, account_id=other_account.id, role=TenantAccountRole.ADMIN
+                ),
+            ]
+        )
+    assert replace(harness, account=other_account).get("export-latest").get_json() == {"task": None}
+    assert harness.get("export-latest", app_id=other_app.id).get_json() == {"task": None}
+
+    del objects[harness.redis.setex.call_args_list[-2].args[0]]
+    assert harness.get("export-latest").get_json() == {"task": None}
 
 
 @pytest.mark.parametrize(

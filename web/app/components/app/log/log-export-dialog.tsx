@@ -1,4 +1,7 @@
-import type { GetAppsByAppIdConversationLogExportsPreviewData } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  ConversationLogExportLatestTaskResponse,
+  GetAppsByAppIdConversationLogExportsPreviewData,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { CloudSandboxPlanState } from './cloud-sandbox-retention'
 import type { LogIdentity } from './log-filters'
 import { Button } from '@langgenius/dify-ui/button'
@@ -25,18 +28,36 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
-import { isDefinedError } from '@orpc/client'
-import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { API_PREFIX } from '@/config'
+import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
 import { downloadUrl } from '@/utils/download'
 import { logDateRange, logIdentityFilters, TIME_PERIOD_MAPPING } from './log-filters'
 import { LogIdentityPicker } from './log-identity-picker'
 
 type LogExportFilters = NonNullable<GetAppsByAppIdConversationLogExportsPreviewData['query']>
+
+type LogExportSelection = {
+  scope: 'current' | 'all'
+  period: '9' | '2' | '3' | 'custom'
+  startDate: string
+  endDate: string
+  identityMode: 'all' | 'selected'
+  identities: LogIdentity[]
+}
+
+const defaultSelection: LogExportSelection = {
+  scope: 'current',
+  period: '9',
+  startDate: '',
+  endDate: '',
+  identityMode: 'all',
+  identities: [],
+}
 
 const exportsApi = consoleQuery.apps.byAppId.conversationLogExports
 
@@ -78,6 +99,90 @@ function ExportSelect<T extends string>({
   )
 }
 
+function LastLogExport({
+  appId,
+  task,
+  identityOptions,
+}: {
+  appId: string
+  task: ConversationLogExportLatestTaskResponse
+  identityOptions: LogIdentity[]
+}) {
+  const { t } = useTranslation(['appLog', 'common', 'time'])
+  const { formatDate } = useTimestamp()
+  const { filters, status, task_id: taskId } = task
+  const title = t(($) => $['export.last'], { ns: 'appLog' })
+  const identityLabel = (id: string, source: LogIdentity['source']) =>
+    identityOptions.find((identity) => identity.id === id && identity.source === source)?.label ??
+    id
+  const identities = [
+    ...filters.end_user_ids.map((id) => identityLabel(id, 'end-user')),
+    ...filters.account_ids.map((id) => identityLabel(id, 'account')),
+  ]
+
+  const start = filters.start && formatDate(filters.start, 'YYYY-MM-DD HH:mm')
+  const end = filters.end && formatDate(filters.end, 'YYYY-MM-DD HH:mm')
+  let range: string | undefined
+  if (start && end) range = `${start} – ${end}`
+  else if (start) range = `${t(($) => $['picker.startDate'], { ns: 'time' })} ${start}`
+  else if (end) range = `${t(($) => $['picker.endDate'], { ns: 'time' })} ${end}`
+
+  const summary = [
+    range,
+    filters.keyword && `${t(($) => $['operation.search'], { ns: 'common' })} “${filters.keyword}”`,
+    filters.annotation_status === 'annotated' && t(($) => $['export.annotated'], { ns: 'appLog' }),
+    filters.annotation_status === 'not_annotated' &&
+      t(($) => $['filter.annotation.not_annotated'], { ns: 'appLog' }),
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
+  return (
+    <div
+      role="group"
+      aria-label={title}
+      className="flex items-center justify-between gap-3 rounded-lg bg-background-section-burn px-3 py-2.5"
+    >
+      <div className="min-w-0 space-y-1">
+        <p className="system-sm-medium text-text-primary">{title}</p>
+        {(summary || identities.length === 0) && (
+          <p className="system-sm-regular wrap-anywhere text-text-secondary">
+            {summary || t(($) => $['export.all'], { ns: 'appLog' })}
+          </p>
+        )}
+        {identities.length > 0 && (
+          <p className="truncate system-sm-regular text-text-secondary">{identities.join(', ')}</p>
+        )}
+        {(status === 'pending' || status === 'processing') && (
+          <p role="status" className="system-sm-regular text-text-secondary">
+            {t(($) => $['archives.downloadHint.preparing'], { ns: 'appLog' })}
+          </p>
+        )}
+        {status === 'failed' && (
+          <p role="alert" className="system-sm-regular text-text-destructive">
+            {t(($) => $['export.failed'], { ns: 'appLog' })}
+          </p>
+        )}
+      </div>
+      {status === 'ready' && (
+        <Button
+          type="button"
+          size="small"
+          variant="secondary"
+          className="shrink-0"
+          onClick={() =>
+            downloadUrl({
+              url: `${API_PREFIX}/apps/${appId}/conversation-log-exports/${taskId}/file`,
+            })
+          }
+        >
+          {t(($) => $['operation.download'], { ns: 'common' })}
+        </Button>
+      )}
+    </div>
+  )
+}
+
 export function LogExportDialog({
   appId,
   appName,
@@ -92,15 +197,10 @@ export function LogExportDialog({
   planState: CloudSandboxPlanState
 }) {
   const { t } = useTranslation(['appLog', 'common', 'time'])
+  const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
-  const [scope, setScope] = useState<'current' | 'all'>('current')
-  const [period, setPeriod] = useState<'9' | '2' | '3' | 'custom'>('9')
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
-  const [identityMode, setIdentityMode] = useState<'all' | 'selected'>('all')
-  const [identities, setIdentities] = useState<LogIdentity[]>([])
-  const [taskId, setTaskId] = useState<string | null>(null)
-  const attemptedDownloadRef = useRef<string | null>(null)
+  const [selection, setSelection] = useState(defaultSelection)
+  const { scope, period, startDate, endDate, identityMode, identities } = selection
   const customDates = scope === 'all' && period === 'custom'
   const filterIdentities = scope === 'all' && identityMode === 'selected'
   const validDates = !customDates || Boolean(startDate && endDate && startDate <= endDate)
@@ -120,10 +220,38 @@ export function LogExportDialog({
           ...(filterIdentities ? logIdentityFilters(identities) : {}),
         }
 
+  const latestOptions = exportsApi.latest.get.queryOptions({
+    input: { params: { app_id: appId } },
+    enabled: open && planState === 'unrestricted',
+    staleTime: 0,
+    refetchInterval: ({ state }) => {
+      const phase = state.data?.task?.status
+      return state.status !== 'error' && (phase === 'pending' || phase === 'processing')
+        ? 1500
+        : false
+    },
+    context: { silent: true },
+    retry: 1,
+  })
+  const latest = useQuery(latestOptions)
+  const create = useMutation(
+    exportsApi.post.mutationOptions({
+      context: { silent: true },
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: latestOptions.queryKey }),
+    }),
+  )
+
+  const retryStatus = latest.isError
+  const task = retryStatus ? null : latest.data?.task
+  const taskInProgress = task?.status === 'pending' || task?.status === 'processing'
+  const exporting = create.isPending || taskInProgress
+  const busy = exporting || latest.isPending || (retryStatus && latest.isFetching)
+  const filtersLocked = busy || retryStatus
+
   const preview = useQuery(
     exportsApi.preview.get.queryOptions({
       input:
-        open && planState === 'unrestricted' && validFilters
+        open && planState === 'unrestricted' && validFilters && !filtersLocked
           ? { params: { app_id: appId }, query: filters }
           : skipToken,
       context: { silent: true },
@@ -131,51 +259,6 @@ export function LogExportDialog({
       refetchOnWindowFocus: false,
     }),
   )
-  const status = useQuery(
-    exportsApi.byTaskId.get.queryOptions({
-      input: open && taskId ? { params: { app_id: appId, task_id: taskId } } : skipToken,
-      refetchInterval: ({ state }) =>
-        state.status === 'error' ||
-        state.data?.status === 'ready' ||
-        state.data?.status === 'failed'
-          ? false
-          : 1500,
-      context: { silent: true },
-      retry: 1,
-    }),
-  )
-  const create = useMutation(
-    exportsApi.post.mutationOptions({
-      context: { silent: true },
-      onSuccess: ({ task_id }) => setTaskId(task_id),
-    }),
-  )
-  const download = useCallback(
-    (id: string) => {
-      downloadUrl({ url: `${API_PREFIX}/apps/${appId}/conversation-log-exports/${id}/file` })
-      setTaskId(null)
-      setOpen(false)
-    },
-    [appId],
-  )
-
-  const missingTask =
-    isDefinedError(status.error) && status.error.code === 'conversation_log_export_task_not_found'
-  const taskFailed = missingTask || status.data?.status === 'failed'
-  const retryStatus = status.isError && !taskFailed
-  const readyTaskId =
-    !status.isError && !taskFailed && status.data?.status === 'ready' ? status.data.task_id : null
-  useEffect(() => {
-    if (open && readyTaskId && attemptedDownloadRef.current !== readyTaskId) {
-      attemptedDownloadRef.current = readyTaskId
-      download(readyTaskId)
-    }
-  }, [download, open, readyTaskId])
-
-  const exporting =
-    create.isPending || Boolean(taskId && !taskFailed && !retryStatus && !readyTaskId)
-  const busy = exporting || (retryStatus && status.isFetching)
-  const filtersLocked = busy || Boolean(readyTaskId) || retryStatus
   const counts = preview.data?.counts
   const noMatches = counts?.message_count === 0
   const canExport = validFilters && !preview.isPending && !noMatches
@@ -186,12 +269,10 @@ export function LogExportDialog({
 
   let actionLabel: string = t(($) => $['export.submit'], { ns: 'appLog' })
   if (exporting) actionLabel = exportingLabel
-  else if (readyTaskId) actionLabel = t(($) => $['operation.download'], { ns: 'common' })
   else if (retryStatus) actionLabel = t(($) => $['operation.retry'], { ns: 'common' })
 
   let summary
   if (exporting) summary = actionLabel
-  else if (readyTaskId) summary = t(($) => $['archives.downloadHint.ready'], { ns: 'appLog' })
   else if (preview.isPending) summary = t(($) => $['detail.loading'], { ns: 'appLog' })
   else if (counts) {
     summary = t(($) => $['export.previewSize'], {
@@ -202,7 +283,7 @@ export function LogExportDialog({
   } else summary = t(($) => $['export.previewUnavailable'], { ns: 'appLog' })
 
   let error
-  if (taskFailed || create.isError) error = t(($) => $['export.failed'], { ns: 'appLog' })
+  if (create.isError) error = t(($) => $['export.failed'], { ns: 'appLog' })
   else if (retryStatus) error = t(($) => $['export.statusFailed'], { ns: 'appLog' })
   else if (!validDates) error = t(($) => $['export.dateError'], { ns: 'appLog' })
   else if (!validIdentities) error = t(($) => $['export.identityRequired'], { ns: 'appLog' })
@@ -214,13 +295,9 @@ export function LogExportDialog({
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        if (next && !taskId && !create.isPending) {
-          setScope('current')
-          setPeriod('9')
-          setStartDate('')
-          setEndDate('')
-          setIdentityMode('all')
-          setIdentities([])
+        if (!next && create.isPending) return
+        if (next) {
+          setSelection(defaultSelection)
           create.reset()
         }
         setOpen(next)
@@ -240,7 +317,7 @@ export function LogExportDialog({
               ? t(($) => $['export.upgradeDescription'], { ns: 'appLog' })
               : appName}
           </DialogDescription>
-          <DialogHeaderCloseButton aria-label={closeLabel} />
+          <DialogHeaderCloseButton aria-label={closeLabel} disabled={create.isPending} />
         </DialogHeader>
         {planState === 'sandbox' ? (
           <DialogFooter>
@@ -255,12 +332,9 @@ export function LogExportDialog({
             onSubmit={(event) => {
               event.preventDefault()
               if (busy) return
-              if (readyTaskId) {
-                download(readyTaskId)
-              } else if (retryStatus) {
-                void status.refetch()
+              if (retryStatus) {
+                void latest.refetch()
               } else if (canExport) {
-                setTaskId(null)
                 create.mutate({ params: { app_id: appId }, body: filters })
               }
             }}
@@ -274,7 +348,7 @@ export function LogExportDialog({
                     { value: 'current', label: t(($) => $['export.current'], { ns: 'appLog' }) },
                     { value: 'all', label: t(($) => $['export.all'], { ns: 'appLog' }) },
                   ]}
-                  onChange={setScope}
+                  onChange={(scope) => setSelection((previous) => ({ ...previous, scope }))}
                   disabled={filtersLocked}
                 />
                 {scope === 'all' && (
@@ -292,7 +366,9 @@ export function LogExportDialog({
                           label: t(($) => $['export.identitiesSelected'], { ns: 'appLog' }),
                         },
                       ]}
-                      onChange={setIdentityMode}
+                      onChange={(identityMode) =>
+                        setSelection((previous) => ({ ...previous, identityMode }))
+                      }
                       disabled={filtersLocked}
                     />
                     {filterIdentities && (
@@ -300,7 +376,9 @@ export function LogExportDialog({
                         appId={appId}
                         options={identityOptions}
                         value={identities}
-                        onChange={setIdentities}
+                        onChange={(identities) =>
+                          setSelection((previous) => ({ ...previous, identities }))
+                        }
                         disabled={filtersLocked}
                       />
                     )}
@@ -317,7 +395,7 @@ export function LogExportDialog({
                           { ns: 'appLog' },
                         ),
                       }))}
-                      onChange={setPeriod}
+                      onChange={(period) => setSelection((previous) => ({ ...previous, period }))}
                       disabled={filtersLocked}
                     />
                     {customDates && (
@@ -328,7 +406,9 @@ export function LogExportDialog({
                             type="date"
                             value={startDate}
                             max={endDate || undefined}
-                            onChange={(event) => setStartDate(event.target.value)}
+                            onChange={({ target: { value: startDate } }) =>
+                              setSelection((previous) => ({ ...previous, startDate }))
+                            }
                           />
                         </label>
                         <label className="flex min-w-0 flex-col gap-1.5 system-sm-medium text-text-secondary">
@@ -337,7 +417,9 @@ export function LogExportDialog({
                             type="date"
                             value={endDate}
                             min={startDate || undefined}
-                            onChange={(event) => setEndDate(event.target.value)}
+                            onChange={({ target: { value: endDate } }) =>
+                              setSelection((previous) => ({ ...previous, endDate }))
+                            }
                           />
                         </label>
                       </div>
@@ -345,7 +427,7 @@ export function LogExportDialog({
                   </>
                 )}
               </fieldset>
-              {validFilters && (
+              {!taskInProgress && (busy || (validFilters && !retryStatus)) && (
                 <p
                   role="status"
                   className="rounded-lg bg-background-section-burn px-3 py-2.5 system-sm-regular text-text-secondary"
@@ -358,15 +440,21 @@ export function LogExportDialog({
                   {error}
                 </p>
               )}
+              {task && (
+                <LastLogExport appId={appId} task={task} identityOptions={identityOptions} />
+              )}
             </DialogBody>
             <DialogFooter>
-              <DialogClose render={<Button type="button" variant="secondary" />}>
+              <DialogClose
+                disabled={create.isPending}
+                render={<Button type="button" variant="secondary" />}
+              >
                 {t(($) => $[busy ? 'operation.close' : 'operation.cancel'], { ns: 'common' })}
               </DialogClose>
               <Button
                 type="submit"
                 variant="primary"
-                disabled={busy || (!readyTaskId && !retryStatus && !canExport)}
+                disabled={busy || (!retryStatus && !canExport)}
                 loading={busy}
               >
                 {actionLabel}

@@ -93,11 +93,18 @@ class RedisConversationLogExportTasks:
         """Scope a task key to its owning workspace and app."""
         return f"conversation_log_export:{tenant_id}:{app_id}:{task_id}"
 
+    @staticmethod
+    def _latest_key(*, tenant_id: str, app_id: str, requested_by: str) -> str:
+        """Locate the latest task ID for one requester in the app."""
+        return f"conversation_log_export_latest:{tenant_id}:{app_id}:{requested_by}"
+
     def save(self, task: ConversationLogExportTask) -> None:
-        """Persist an admitted task with a single Redis write that sets its TTL."""
+        """Save a task before exposing it as the latest, with the same TTL for both keys."""
         key = self._key(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
         ttl_seconds = max(1, int((task.expires_at - utc_now()).total_seconds()))
         self._redis.setex(key, ttl_seconds, task.model_dump_json())
+        latest_key = self._latest_key(tenant_id=task.tenant_id, app_id=task.app_id, requested_by=task.requested_by)
+        self._redis.setex(latest_key, ttl_seconds, task.task_id)
 
     def get(self, *, tenant_id: str, app_id: str, task_id: str) -> ConversationLogExportTask | None:
         """Load the matching live task for the workspace and app."""
@@ -108,6 +115,15 @@ class RedisConversationLogExportTasks:
         if (task.tenant_id, task.app_id, task.task_id) != (tenant_id, app_id, task_id) or task.expires_at <= utc_now():
             return None
         return task
+
+    def get_latest(self, *, tenant_id: str, app_id: str, requested_by: str) -> ConversationLogExportTask | None:
+        """Follow the latest ID to a live task for the exact requester, app and workspace."""
+        raw = self._redis.get(self._latest_key(tenant_id=tenant_id, app_id=app_id, requested_by=requested_by))
+        if raw is None:
+            return None
+        task_id = raw.decode() if isinstance(raw, bytes) else raw
+        task = self.get(tenant_id=tenant_id, app_id=app_id, task_id=task_id)
+        return task if task is not None and task.requested_by == requested_by else None
 
     def transition(self, task: ConversationLogExportTask, *, from_status: "ConversationLogExportStatus") -> bool:
         """Update only a task in the expected state, preserving its remaining TTL."""

@@ -64,6 +64,7 @@ from services.entities.conversation_entities import (
     ConsoleConversationLogFilters,
     ConsoleConversationScope,
     ConsoleLogIdentitySource,
+    ConversationAnnotationStatus,
 )
 from services.errors.base import NoPermissionError
 from services.errors.conversation import ConversationNotExistsError
@@ -171,6 +172,27 @@ class ConversationLogExportStatusResponse(ResponseModel):
     status: ConversationLogExportStatus
 
 
+class ConversationLogExportFiltersResponse(ResponseModel):
+    """Submitted filters for the export, with any date bounds in UTC."""
+
+    keyword: str | None
+    start: datetime | None
+    end: datetime | None
+    annotation_status: ConversationAnnotationStatus
+    end_user_ids: tuple[str, ...]
+    account_ids: tuple[str, ...]
+
+
+class ConversationLogExportLatestTaskResponse(ConversationLogExportStatusResponse):
+    filters: ConversationLogExportFiltersResponse
+
+
+class ConversationLogExportLatestResponse(ResponseModel):
+    task: ConversationLogExportLatestTaskResponse | None = Field(
+        description="Null if the caller has no live export task"
+    )
+
+
 def _parse_log_time_range(query: ConversationLogFilterQuery, timezone: str) -> tuple[datetime | None, datetime | None]:
     """Normalize account-local Logs bounds, including the last second of the end minute."""
     try:
@@ -232,6 +254,7 @@ register_response_schema_models(
     ConversationLogExportPreviewResponse,
     ConversationLogExportTaskResponse,
     ConversationLogExportStatusResponse,
+    ConversationLogExportLatestResponse,
     BinaryFileResponse,
 )
 
@@ -469,6 +492,31 @@ class ConversationLogExportApi(Resource):
         except UnsupportedConversationLogExportModeError as exc:
             raise AppNotFoundError(str(exc)) from exc
         return dump_response(ConversationLogExportTaskResponse, task), HTTPStatus.ACCEPTED
+
+
+@console_ns.route("/apps/<uuid:app_id>/conversation-log-exports/latest")
+class ConversationLogExportLatestApi(Resource):
+    @error_responses(AppNotFoundError, ForbiddenError, PaidPlanRequiredError)
+    @console_ns.doc("get_latest_conversation_log_export")
+    @console_ns.doc(description="Read the caller's latest live CSV export and its submitted filters for this app")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.response(
+        HTTPStatus.OK, "Latest export", console_ns.models[ConversationLogExportLatestResponse.__name__]
+    )
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.APP_LOG_AND_ANNOTATION, PlainApp()),))
+    def get(
+        self, request_context: RequestContext, app_id: UUID
+    ) -> tuple[dict[str, object], HTTPStatus, dict[str, str]]:
+        """Return only the admitted account's latest task, or null if it is missing or expired."""
+        scope = _resolve_log_export_scope(request_context, app_id)
+        task = application_services().conversation_log_exports.get_latest_task(
+            scope=scope, requested_by=request_context.account_id
+        )
+        return (
+            dump_response(ConversationLogExportLatestResponse, {"task": task}),
+            HTTPStatus.OK,
+            {"Cache-Control": "no-store"},
+        )
 
 
 @console_ns.route("/apps/<uuid:app_id>/conversation-log-exports/<uuid:task_id>")

@@ -4685,6 +4685,38 @@ export const zAppJsonObjectFormResponse = z.object({
   json_object: zAppUserInputFormConfigResponse,
 })
 
+export const zConversationAnnotationStatus = z.enum(['all', 'annotated', 'not_annotated'])
+
+/**
+ * ConversationLogExportFiltersResponse
+ *
+ * Submitted filters for the export, with any date bounds in UTC.
+ */
+export const zConversationLogExportFiltersResponse = z.object({
+  account_ids: z.array(z.string()),
+  annotation_status: zConversationAnnotationStatus,
+  end: z.iso.datetime().nullable(),
+  end_user_ids: z.array(z.string()),
+  keyword: z.string().nullable(),
+  start: z.iso.datetime().nullable(),
+})
+
+/**
+ * ConversationLogExportLatestTaskResponse
+ */
+export const zConversationLogExportLatestTaskResponse = z.object({
+  filters: zConversationLogExportFiltersResponse,
+  status: zConversationLogExportStatus,
+  task_id: z.string(),
+})
+
+/**
+ * ConversationLogExportLatestResponse
+ */
+export const zConversationLogExportLatestResponse = z.object({
+  task: zConversationLogExportLatestTaskResponse.nullable(),
+})
+
 /**
  * AppLegacyGoogleSearchToolPayload
  */
@@ -7645,6 +7677,16 @@ export const zPostAppsByAppIdConversationLogExportsPath = z.object({
  * Export task accepted
  */
 export const zPostAppsByAppIdConversationLogExportsResponse = zConversationLogExportTaskResponse
+
+export const zGetAppsByAppIdConversationLogExportsLatestPath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * Latest export
+ */
+export const zGetAppsByAppIdConversationLogExportsLatestResponse =
+  zConversationLogExportLatestResponse
 
 export const zGetAppsByAppIdConversationLogExportsPreviewPath = z.object({
   app_id: z.uuid(),
