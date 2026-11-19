@@ -21,10 +21,10 @@ Review a proposed field against each question below before adding it:
    only in MainNav, settings, plugin management, or the Workflow editor does not qualify.
 2. **Is it safe to disclose anonymously?** Do not publish user permissions, workspace
    quotas, backend limits, or internal policy inputs merely to let the UI show a button.
-3. **Does it express a login or initialization action?** Return what the user can do,
-   such as whether password recovery or verification-code delivery is available.
-   Do not expose raw mail configuration or environment variables and make the frontend
-   infer the capability.
+3. **Does it directly drive login or initialization?** Return the effective capability
+   or bootstrap value the page needs. For example, report whether password recovery
+   or verification-code delivery is available, rather than exposing raw mail setup
+   or environment variables for the frontend to interpret.
 4. **Do Console and WebApp need the same value with the same meaning?** Evaluate
    each endpoint and its consumers separately. A field used by only one surface must
    not be returned to both just because they share a response model.
