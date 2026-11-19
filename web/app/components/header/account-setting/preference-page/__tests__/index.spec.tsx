@@ -126,7 +126,7 @@ describe('PreferencePage - Rendering', () => {
     expect(
       screen.getByRole('combobox', { name: 'common.language.displayLanguage' }),
     ).toHaveTextContent(english.name)
-    expect(screen.getByRole('combobox', { name: 'common.language.timezone' })).toHaveValue(
+    expect(screen.getByRole('combobox', { name: 'common.language.timezone' })).toHaveTextContent(
       niueTimezone.name,
     )
   })
@@ -143,9 +143,8 @@ describe('PreferencePage - Rendering', () => {
     expect(
       screen.getByRole('combobox', { name: 'common.language.displayLanguage' }),
     ).toHaveTextContent('common.placeholder.select')
-    expect(screen.getByRole('combobox', { name: 'common.language.timezone' })).toHaveAttribute(
-      'placeholder',
-      'accountSettings.account.timezoneSearchPlaceholder',
+    expect(screen.getByRole('combobox', { name: 'common.language.timezone' })).toHaveTextContent(
+      'common.placeholder.select',
     )
   })
 })
@@ -169,9 +168,11 @@ describe('PreferencePage - Interactions', () => {
       const user = userEvent.setup()
       renderPage()
 
-      const input = screen.getByRole('combobox', { name: 'common.language.timezone' })
-      await user.clear(input)
-      await user.type(input, query)
+      await user.click(screen.getByRole('combobox', { name: 'common.language.timezone' }))
+      await user.type(
+        screen.getByRole('combobox', { name: 'accountSettings.account.timezoneSearchPlaceholder' }),
+        query,
+      )
 
       expect(
         await screen.findByRole('option', { name: getTimezoneOption('Asia/Shanghai').name }),
@@ -188,15 +189,21 @@ describe('PreferencePage - Interactions', () => {
     renderPage()
     const trigger = screen.getByRole('combobox', { name: 'common.language.timezone' })
 
-    await user.clear(trigger)
-    await user.type(trigger, 'no-such-timezone')
+    await user.click(trigger)
+    await user.type(
+      screen.getByRole('combobox', { name: 'accountSettings.account.timezoneSearchPlaceholder' }),
+      'no-such-timezone',
+    )
     expect(await screen.findByText('accountSettings.account.timezoneNoResults')).toBeInTheDocument()
     expect(screen.queryByRole('option')).not.toBeInTheDocument()
     await user.keyboard('{Escape}')
 
-    await waitFor(() => expect(trigger).toHaveValue(getTimezoneOption('Pacific/Niue').name))
+    expect(trigger).toHaveTextContent(getTimezoneOption('Pacific/Niue').name)
     expect(mockRequest).not.toHaveBeenCalled()
     await user.click(trigger)
+    expect(
+      screen.getByRole('combobox', { name: 'accountSettings.account.timezoneSearchPlaceholder' }),
+    ).toHaveValue('')
     expect(
       await screen.findByRole('option', { name: getTimezoneOption('Pacific/Niue').name }),
     ).toBeInTheDocument()
@@ -307,8 +314,11 @@ describe('PreferencePage - Interactions', () => {
     renderPage()
 
     const trigger = screen.getByRole('combobox', { name: 'common.language.timezone' })
-    await user.clear(trigger)
-    await user.type(trigger, midwayTimezone.value)
+    await user.click(trigger)
+    await user.type(
+      screen.getByRole('combobox', { name: 'accountSettings.account.timezoneSearchPlaceholder' }),
+      midwayTimezone.value,
+    )
     await screen.findByRole('option', { name: midwayTimezone.name })
     await user.keyboard('{ArrowDown}')
     await user.keyboard('{Enter}')
@@ -320,7 +330,7 @@ describe('PreferencePage - Interactions', () => {
     const request = mockRequest.mock.calls[0]?.[2]?.request as Request
     expect(request.method).toBe('PATCH')
     await expect(request.json()).resolves.toEqual({ timezone: midwayTimezone.value })
-    await waitFor(() => expect(trigger).toHaveValue(midwayTimezone.name))
+    await waitFor(() => expect(trigger).toHaveTextContent(midwayTimezone.name))
   }, 15000)
 
   it('should show one request-layer error and preserve the saved timezone on failure', async () => {
@@ -337,7 +347,7 @@ describe('PreferencePage - Interactions', () => {
         screen.getByRole('combobox', { name: 'common.language.timezone' }),
       ).not.toHaveAttribute('aria-readonly'),
     )
-    expect(screen.getByRole('combobox', { name: 'common.language.timezone' })).toHaveValue(
+    expect(screen.getByRole('combobox', { name: 'common.language.timezone' })).toHaveTextContent(
       getTimezoneOption('Pacific/Niue').name,
     )
     expect(screen.getByRole('combobox', { name: 'common.language.timezone' })).not.toHaveAttribute(

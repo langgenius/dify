@@ -7,25 +7,27 @@ import {
   ComboboxEmpty,
   ComboboxInput,
   ComboboxInputGroup,
-  ComboboxInputTrigger,
   ComboboxItem,
   ComboboxItemIndicator,
   ComboboxItemText,
+  ComboboxLabel,
   ComboboxList,
   ComboboxPopup,
   ComboboxPortal,
   ComboboxPositioner,
+  ComboboxValue,
   createComboboxItems,
 } from '@langgenius/dify-ui/combobox'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { PreferenceComboboxTrigger } from '@/features/account-profile/preference-combobox-trigger'
 import { TimezoneCombobox } from '@/features/account-profile/timezone-combobox'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { i18n } from '@/i18n'
@@ -54,6 +56,7 @@ const getInitialLanguage = (locale: Locale): Locale => {
 
 export default function InviteSettingsPage() {
   const { t } = useTranslation(['common', 'login'])
+  const languageLabelId = useId()
   const router = useRouter()
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
@@ -224,25 +227,34 @@ export default function InviteSettingsPage() {
               />
               <FieldError>{t(($) => $.enterYourName, { ns: 'login' })}</FieldError>
             </Field>
-            <Field name="interface_language">
-              <FieldLabel>{t(($) => $.interfaceLanguage, { ns: 'login' })}</FieldLabel>
+            <div className="grid min-w-0 gap-1">
               <Combobox
                 items={languageItems}
                 value={language}
-                onValueChange={(value, details) => {
-                  if (value === null) details.cancel()
-                  else setLanguage(value)
+                onValueChange={(value) => {
+                  if (value !== null) setLanguage(value)
                 }}
               >
-                <ComboboxInputGroup>
-                  <ComboboxInput spellCheck={false} />
-                  <ComboboxInputTrigger
-                    aria-label={t(($) => $['placeholder.select'], { ns: 'common' })}
-                  />
-                </ComboboxInputGroup>
+                <ComboboxLabel>
+                  <span id={languageLabelId}>{t(($) => $.interfaceLanguage, { ns: 'login' })}</span>
+                </ComboboxLabel>
+                <PreferenceComboboxTrigger>
+                  <ComboboxValue<Locale> />
+                </PreferenceComboboxTrigger>
                 <ComboboxPortal>
                   <ComboboxPositioner>
-                    <ComboboxPopup>
+                    <ComboboxPopup aria-labelledby={languageLabelId}>
+                      <ComboboxInputGroup>
+                        <span
+                          className="i-ri-search-line size-4 shrink-0 text-text-quaternary"
+                          aria-hidden="true"
+                        />
+                        <ComboboxInput
+                          aria-label={t(($) => $['operation.search'], { ns: 'common' })}
+                          placeholder={t(($) => $['placeholder.search'], { ns: 'common' })}
+                          spellCheck={false}
+                        />
+                      </ComboboxInputGroup>
                       <ComboboxEmpty>
                         {t(($) => $['dynamicSelect.noData'], { ns: 'common' })}
                       </ComboboxEmpty>
@@ -258,7 +270,7 @@ export default function InviteSettingsPage() {
                   </ComboboxPositioner>
                 </ComboboxPortal>
               </Combobox>
-            </Field>
+            </div>
             <TimezoneCombobox
               label={t(($) => $.timezone, { ns: 'login' })}
               value={timezone}

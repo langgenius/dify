@@ -121,12 +121,13 @@ it.each(['Time Zone', 'Display Language'])(
     async function choosePreference(timezoneQuery = 'Niue') {
       await trigger.click()
       if (field === 'Time Zone') {
-        await timezone.fill(timezoneQuery)
+        const search = screen.getByRole('combobox', { name: 'Search cities or time zones...' })
+        await search.fill(timezoneQuery)
         await expect
           .element(screen.getByRole('option', { name: new RegExp(timezoneQuery) }))
           .toBeVisible()
         await userEvent.keyboard('{ArrowDown}')
-        await expect.element(timezone).toHaveAttribute('aria-activedescendant')
+        await expect.element(search).toHaveAttribute('aria-activedescendant')
       } else {
         await expect.element(screen.getByRole('listbox')).toBeVisible()
         await expect.element(screen.getByRole('option', { selected: true })).toHaveFocus()
@@ -139,9 +140,7 @@ it.each(['Time Zone', 'Display Language'])(
 
     try {
       const savedLanguage = language.element().textContent
-      const savedTimezone = profile.timezone
-        ? timezones.find((option) => option.value === profile.timezone)!.name
-        : ''
+      const savedTimezone = timezone.element().textContent
       await choosePreference()
       await expect.element(trigger).toHaveFocus()
       await expect.element(language).toHaveAttribute('aria-readonly', 'true')
@@ -162,11 +161,11 @@ it.each(['Time Zone', 'Display Language'])(
         await expect.element(option).toBeVisible()
         await option.click()
         expect(profileRequests.update).toHaveBeenCalledOnce()
+        expect(language.element().textContent).toBe(savedLanguage)
+        expect(timezone.element().textContent).toBe(savedTimezone)
         await userEvent.keyboard('{Escape}')
         await expect.element(picker).toHaveAttribute('aria-expanded', 'false')
         await expect.element(picker).toHaveFocus()
-        await expect.element(language).toHaveTextContent(savedLanguage)
-        await expect.element(timezone).toHaveValue(savedTimezone)
       }
 
       if (field === 'Time Zone') {
@@ -179,7 +178,7 @@ it.each(['Time Zone', 'Display Language'])(
         refetch.resolve(updatedProfile)
         await expect
           .element(timezone)
-          .toHaveValue(timezones.find((item) => item.value === 'Pacific/Niue')!.name)
+          .toHaveTextContent(timezones.find((item) => item.value === 'Pacific/Niue')!.name)
       } else {
         save.reject(new Error('Unable to save language'))
       }
@@ -226,7 +225,9 @@ it('keeps full timezone options readable at 320px without changing the saved sel
   })
   try {
     const trigger = screen.getByRole('combobox', { name: 'Time Zone', exact: true })
-    await expect.element(trigger).toHaveValue(timezone.name)
+    const savedValue = trigger.getByText(timezone.name, { exact: true })
+    await expect.element(savedValue).toBeVisible()
+
     await trigger.click()
     const selected = screen.getByRole('option', { name: timezone.name, selected: true })
     await expect.element(selected).toBeVisible()
@@ -235,7 +236,8 @@ it('keeps full timezone options readable at 320px without changing the saved sel
       selected.element(),
     )
 
-    await trigger.fill('Central European')
+    const search = screen.getByRole('combobox', { name: 'Search cities or time zones...' })
+    await search.fill('Central European')
     const matches = timezones.filter((item) => item.name.includes('Central European'))
     await expect.element(screen.getByRole('option', { name: matches[0]!.name })).toBeVisible()
     for (const item of matches) {
@@ -246,7 +248,7 @@ it('keeps full timezone options readable at 320px without changing the saved sel
     await userEvent.keyboard('{Escape}')
     await expect.element(trigger).toHaveAttribute('aria-expanded', 'false')
     await expect.element(trigger).toHaveFocus()
-    await expect.element(trigger).toHaveValue(timezone.name)
+    await expect.element(savedValue).toBeVisible()
     expect(profileRequests.update).not.toHaveBeenCalled()
   } finally {
     await screen.unmount()

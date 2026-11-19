@@ -3,20 +3,22 @@ import {
   ComboboxEmpty,
   ComboboxInput,
   ComboboxInputGroup,
-  ComboboxInputTrigger,
   ComboboxItem,
   ComboboxItemIndicator,
   ComboboxItemText,
+  ComboboxLabel,
   ComboboxList,
   ComboboxPopup,
   ComboboxPortal,
   ComboboxPositioner,
+  ComboboxValue,
   createComboboxItems,
   useComboboxFilter,
 } from '@langgenius/dify-ui/combobox'
-import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { timezones } from '@/utils/timezone'
+import { PreferenceComboboxTrigger } from './preference-combobox-trigger'
 
 type TimezoneOption = (typeof timezones)[number]
 type TimezoneValue = TimezoneOption['value']
@@ -35,11 +37,11 @@ type TimezoneComboboxProps = {
 
 export function TimezoneCombobox({ label, value, onValueChange, readOnly }: TimezoneComboboxProps) {
   const { t } = useTranslation(['common', 'accountSettings'])
+  const timezoneLabelId = useId()
   const { contains } = useComboboxFilter({ sensitivity: 'base' })
 
   return (
-    <Field name="timezone">
-      <FieldLabel>{label}</FieldLabel>
+    <div className="grid min-w-0 gap-1">
       <Combobox<TimezoneValue, false, TimezoneOption>
         items={timezoneItems}
         value={timezones.some((item) => item.value === value) ? value : null}
@@ -48,23 +50,36 @@ export function TimezoneCombobox({ label, value, onValueChange, readOnly }: Time
           const search = query.trim()
           return contains(item.name, search) || contains(item.value, search)
         }}
-        onValueChange={(nextValue, details) => {
-          if (nextValue === null) details.cancel()
-          else if (nextValue !== value) onValueChange(nextValue)
+        onValueChange={(nextValue) => {
+          if (nextValue !== null && nextValue !== value) onValueChange(nextValue)
         }}
       >
-        <ComboboxInputGroup>
-          <ComboboxInput
-            placeholder={t(($) => $['account.timezoneSearchPlaceholder'], {
-              ns: 'accountSettings',
-            })}
-            spellCheck={false}
+        <ComboboxLabel>
+          <span id={timezoneLabelId}>{label}</span>
+        </ComboboxLabel>
+        <PreferenceComboboxTrigger>
+          <ComboboxValue<TimezoneValue>
+            placeholder={t(($) => $['placeholder.select'], { ns: 'common' })}
           />
-          <ComboboxInputTrigger aria-label={t(($) => $['placeholder.select'], { ns: 'common' })} />
-        </ComboboxInputGroup>
+        </PreferenceComboboxTrigger>
         <ComboboxPortal>
           <ComboboxPositioner>
-            <ComboboxPopup>
+            <ComboboxPopup aria-labelledby={timezoneLabelId}>
+              <ComboboxInputGroup>
+                <span
+                  className="i-ri-search-line size-4 shrink-0 text-text-quaternary"
+                  aria-hidden="true"
+                />
+                <ComboboxInput
+                  spellCheck={false}
+                  aria-label={t(($) => $['account.timezoneSearchPlaceholder'], {
+                    ns: 'accountSettings',
+                  })}
+                  placeholder={t(($) => $['account.timezoneSearchPlaceholder'], {
+                    ns: 'accountSettings',
+                  })}
+                />
+              </ComboboxInputGroup>
               <ComboboxEmpty>
                 {t(($) => $['account.timezoneNoResults'], { ns: 'accountSettings' })}
               </ComboboxEmpty>
@@ -82,6 +97,6 @@ export function TimezoneCombobox({ label, value, onValueChange, readOnly }: Time
           </ComboboxPositioner>
         </ComboboxPortal>
       </Combobox>
-    </Field>
+    </div>
   )
 }
