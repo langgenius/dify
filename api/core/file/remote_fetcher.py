@@ -330,7 +330,8 @@ def _build_response(
     if content_length is not None and content_length >= 0:
         headers["Content-Length"] = str(content_length)
     if filename:
-        headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{urllib.parse.quote(filename)}"
+        encoded_filename = urllib.parse.quote(filename, safe="")
+        headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
     return httpx.Response(
         status_code=status_code,
         headers=headers,
