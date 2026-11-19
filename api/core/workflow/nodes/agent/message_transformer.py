@@ -24,7 +24,7 @@ from graphon.node_events import (
 )
 from graphon.variables.segments import ArrayFileSegment
 from models import ToolFile
-from services.tools.builtin_tools_manage_service import BuiltinToolManageService
+from services.tools.legacy_builtin_tools_manage_service import BuiltinToolManageService
 
 from .exceptions import AgentNodeError, AgentVariableTypeError, ToolFileNotFoundError
 from .think_tags import ThinkStreamState

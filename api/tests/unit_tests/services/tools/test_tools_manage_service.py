@@ -1,11 +1,11 @@
 from unittest.mock import MagicMock, patch
 
-from services.tools.tools_manage_service import ToolCommonService
+from services.tools.legacy_tools_manage_service import ToolCommonService
 
 
 class TestToolCommonService:
-    @patch("services.tools.tools_manage_service.ToolTransformService")
-    @patch("services.tools.tools_manage_service.ToolManager")
+    @patch("services.tools.legacy_tools_manage_service.ToolTransformService")
+    @patch("services.tools.legacy_tools_manage_service.ToolManager")
     def test_list_tool_providers_transforms_and_returns(
         self, mock_manager: MagicMock, mock_transform: MagicMock
     ) -> None:
@@ -21,8 +21,8 @@ class TestToolCommonService:
         assert mock_transform.repack_provider.call_count == 2
         assert result == [{"name": "provider1"}, {"name": "provider2"}]
 
-    @patch("services.tools.tools_manage_service.ToolTransformService")
-    @patch("services.tools.tools_manage_service.ToolManager")
+    @patch("services.tools.legacy_tools_manage_service.ToolTransformService")
+    @patch("services.tools.legacy_tools_manage_service.ToolManager")
     def test_list_tool_providers_with_type_filter(self, mock_manager: MagicMock, mock_transform: MagicMock) -> None:
         providers: list[object] = []
         mock_manager.list_providers_from_api.return_value = providers
@@ -32,8 +32,8 @@ class TestToolCommonService:
         mock_manager.list_providers_from_api.assert_called_once_with("user-1", "tenant-1", "builtin")
         assert result == []
 
-    @patch("services.tools.tools_manage_service.ToolTransformService")
-    @patch("services.tools.tools_manage_service.ToolManager")
+    @patch("services.tools.legacy_tools_manage_service.ToolTransformService")
+    @patch("services.tools.legacy_tools_manage_service.ToolManager")
     def test_list_tool_providers_empty(self, mock_manager: MagicMock, mock_transform: MagicMock) -> None:
         providers: list[object] = []
         mock_manager.list_providers_from_api.return_value = providers

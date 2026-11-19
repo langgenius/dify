@@ -73,13 +73,13 @@ from models.provider_ids import ToolProviderID
 
 # from models.provider_ids import ToolProviderID
 from services.plugin.oauth_service import OAuthProxyService
-from services.tools.api_tools_manage_service import ApiToolManageService, ApiToolPreviewResult
-from services.tools.builtin_tools_manage_service import BuiltinToolManageService
-from services.tools.mcp_tools_manage_service import MCPToolManageService, OAuthDataType
+from services.tools.legacy_api_tools_manage_service import ApiToolManageService, ApiToolPreviewResult
+from services.tools.legacy_builtin_tools_manage_service import BuiltinToolManageService
+from services.tools.legacy_mcp_tools_manage_service import MCPToolManageService, OAuthDataType
+from services.tools.legacy_tools_manage_service import ToolCommonService
+from services.tools.legacy_tools_transform_service import ToolTransformService
+from services.tools.legacy_workflow_tools_manage_service import WorkflowToolManageService
 from services.tools.tool_labels_service import ToolLabelsService
-from services.tools.tools_manage_service import ToolCommonService
-from services.tools.tools_transform_service import ToolTransformService
-from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 
 logger = logging.getLogger(__name__)
 
