@@ -162,7 +162,7 @@ async def _read_media(
         execution_context = DifyExecutionContextLayerConfig.model_validate(
             deps.layers[config.execution_context]["config"]
         )
-        metadata = await request_agent_file_download(deps.services, execution_context, mapping, for_frontend=False)
+        metadata = await request_agent_file_download(deps, execution_context, mapping, for_frontend=False)
         mime_type = normalize_media_mime(metadata.mime_type)
         if not mime_type or mime_type == "application/octet-stream":
             mime_type = normalize_media_mime(mimetypes.guess_type(metadata.filename)[0])

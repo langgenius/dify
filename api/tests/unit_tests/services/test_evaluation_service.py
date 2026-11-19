@@ -2432,7 +2432,7 @@ def test_start_agent_run_persists_and_dispatches_agent_snapshot(
 def test_run_single_app_target_loads_pinned_workflow_version(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
-    from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+    from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
 
     app, account = _persist_service_app(sqlite_session)
     workflow = make_workflow(workflow_id="workflow-version-7")
@@ -2481,7 +2481,7 @@ def test_run_single_app_target_fails_when_pinned_workflow_was_deleted(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
 ) -> None:
-    from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+    from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
 
     _persist_service_app(sqlite_session)
     monkeypatch.setattr(WorkflowService, "__init__", lambda _self: None)

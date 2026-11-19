@@ -10,12 +10,6 @@ from sqlalchemy.orm import Session
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.advanced_chat.generate_response_converter import AdvancedChatAppGenerateResponseConverter
-from core.app.apps.advanced_chat.generate_task_pipeline import (
-    AdvancedChatAppGenerateTaskPipeline,
-    ConversationSnapshot,
-    MessageSnapshot,
-    WorkflowSnapshot,
-)
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
@@ -55,6 +49,12 @@ from services.moderation_invocation_errors import (
     PlatformModerationRejectedInvocationError,
 )
 from services.moderation_service import ModerationPhase, ModerationRule, ModerationService
+from services.workflow_runtime.chatflow_pipeline import (
+    AdvancedChatAppGenerateTaskPipeline,
+    ConversationSnapshot,
+    MessageSnapshot,
+    WorkflowSnapshot,
+)
 from tasks.app_generate.workflow_execute_task import _publish_streaming_response
 from tests.helpers.unit.core.model_moderation_fixtures import RecordingHostedModerationClient, make_moderated_model
 from tests.helpers.unit.model_factories import make_app, make_conversation, make_message, make_workflow

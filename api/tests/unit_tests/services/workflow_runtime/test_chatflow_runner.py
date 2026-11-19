@@ -1,3 +1,5 @@
+"""SQLite-backed conversation-variable synchronization tests for AdvancedChatAppRunner."""
+
 import json
 from collections.abc import Generator, Iterator, Sequence
 from contextlib import AbstractContextManager, contextmanager
@@ -9,10 +11,8 @@ from sqlalchemy import event, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-import core.app.apps.advanced_chat.app_runner as module
+import services.workflow_runtime.chatflow_runner as module
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.apps.advanced_chat import app_runner as app_runner_module
-from core.app.apps.advanced_chat.app_runner import AdvancedChatAppRunner
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueStopEvent
 from core.moderation.base import ModerationError
@@ -27,14 +27,17 @@ from models.model import AppMode, IconType, MessageAnnotation
 from models.model import Conversation as _app_runner_input_moderation_Conversation
 from models.model import Message as _app_runner_input_moderation_Message
 from models.workflow import Workflow, WorkflowType
-
-"""SQLite-backed conversation-variable synchronization tests for AdvancedChatAppRunner."""
-
+from services.workflow_runtime import chatflow_runner as app_runner_module
+from services.workflow_runtime.chatflow_runner import AdvancedChatAppRunner
 
 APP_ID = "11111111-1111-1111-1111-111111111111"
+
 CONVERSATION_ID = "22222222-2222-2222-2222-222222222222"
+
 OTHER_CONVERSATION_ID = "22222222-2222-2222-2222-222222222223"
+
 VAR_1_ID = "33333333-3333-3333-3333-333333333333"
+
 VAR_2_ID = "33333333-3333-3333-3333-333333333334"
 
 
@@ -186,7 +189,7 @@ MINIMAL_GRAPH: dict[str, object] = {
 def _patch_common_run_deps(runner: AdvancedChatAppRunner) -> AbstractContextManager[None]:
     """Context manager that patches common heavy deps used by run()."""
     return patch.multiple(
-        "core.app.apps.advanced_chat.app_runner",
+        "services.workflow_runtime.chatflow_runner",
         RedisChannel=MagicMock(),
         redis_client=MagicMock(),
         WorkflowEntry=MagicMock(**{"return_value.run.return_value": iter([])}),
