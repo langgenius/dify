@@ -308,6 +308,8 @@ class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
     app_config: WorkflowUIBasedAppConfig = None  # type: ignore
 
     workflow_run_id: str | None = None
+    queue_wait_time: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    """Dispatch-to-worker seconds; None means this run was not measured."""
     workflow_execution_timing: WorkflowExecutionTiming = Field(
         default_factory=WorkflowExecutionTiming, exclude=True, repr=False
     )
@@ -344,6 +346,8 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
     # Every new execution supplies its actual role. Legacy snapshots are normalized when loaded.
     user_from: UserFrom
     workflow_execution_id: str
+    queue_wait_time: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    """Dispatch-to-worker seconds; None means this run was not measured."""
     workflow_execution_timing: WorkflowExecutionTiming = Field(
         default_factory=WorkflowExecutionTiming, exclude=True, repr=False
     )

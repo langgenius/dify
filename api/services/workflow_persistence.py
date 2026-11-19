@@ -518,6 +518,7 @@ class WorkflowPersistenceLayer(Layer):
         self._workflow_node_execution_repository.save_many(unfinished)
 
     def _emit_workflow_trace(self, execution: WorkflowExecution) -> None:
+        """Emit committed run facts, preserving optional queue timing separately."""
         if self._trace_scope is None:
             return
         conversation_id = self._system_variables().get(SystemVariableKey.CONVERSATION_ID.value)
@@ -526,6 +527,7 @@ class WorkflowPersistenceLayer(Layer):
                 workflow_run_id=execution.id_,
                 conversation_id=conversation_id if isinstance(conversation_id, str) and conversation_id else None,
                 total_tokens=execution.total_tokens,
+                queue_wait_time=self._application_generate_entity.queue_wait_time,
             )
         )
 

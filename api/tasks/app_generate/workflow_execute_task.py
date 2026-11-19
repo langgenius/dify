@@ -1,5 +1,6 @@
 import contextlib
 import logging
+import time
 import uuid
 from collections.abc import Generator, Mapping
 from enum import StrEnum
@@ -90,6 +91,8 @@ type User = Annotated[
 
 
 class AppExecutionParams(BaseModel):
+    dispatched_at: float | None = Field(default=None, allow_inf_nan=False)
+    """Unix seconds at dispatch; None for legacy payloads without queue timing."""
     app_id: str
     workflow_id: str
     tenant_id: str
@@ -140,11 +143,23 @@ class AppExecutionParams(BaseModel):
 
 
 class _AppRunner:
-    def __init__(self, session_factory: sessionmaker | Engine, exec_params: AppExecutionParams):
+    def __init__(
+        self,
+        session_factory: sessionmaker | Engine,
+        exec_params: AppExecutionParams,
+        *,
+        queue_wait_time: float | None = None,
+    ):
+        """Accept parsed execution inputs and optional dispatch-to-worker seconds.
+
+        None leaves synchronous and legacy runs unmeasured; run() forwards the
+        measured value independently of active workflow execution time.
+        """
         if isinstance(session_factory, Engine):
             session_factory = sessionmaker(bind=session_factory)
         self._session_factory = session_factory
         self._exec_params = exec_params
+        self._queue_wait_time = queue_wait_time
 
     @contextlib.contextmanager
     def _session(self):
@@ -226,6 +241,7 @@ class _AppRunner:
                 workflow=workflow,
                 user=user,
                 args=exec_params.args,
+                queue_wait_time=self._queue_wait_time,
                 invoke_from=exec_params.invoke_from,
                 streaming=exec_params.streaming,
                 workflow_run_id=exec_params.workflow_run_id,
@@ -239,6 +255,7 @@ class _AppRunner:
                 user=user,
                 execution_identity=build_workflow_execution_identity(user),
                 args=exec_params.args,
+                queue_wait_time=self._queue_wait_time,
                 invoke_from=exec_params.invoke_from,
                 streaming=exec_params.streaming,
                 call_depth=exec_params.call_depth,
@@ -501,11 +518,20 @@ def _publish_streaming_response(
 def workflow_based_app_execution_task(
     payload: str,
 ) -> Mapping[str, Any] | None:
+    """Execute a serialized request, measuring dispatch-to-entry seconds when known.
+
+    Legacy payloads omit queue timing. Clock skew is clamped to zero, and
+    workflow execution duration remains independent of this measurement.
+    """
+    worker_started_at = time.time()
     exec_params = AppExecutionParams.model_validate_json(payload)
+    queue_wait_time = (
+        max(worker_started_at - exec_params.dispatched_at, 0.0) if exec_params.dispatched_at is not None else None
+    )
 
     logger.info("workflow_based_app_execution_task run with params: %s", exec_params)
 
-    runner = _AppRunner(db.engine, exec_params=exec_params)
+    runner = _AppRunner(db.engine, exec_params=exec_params, queue_wait_time=queue_wait_time)
     return runner.run()
 
 

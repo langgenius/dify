@@ -296,6 +296,7 @@ class TraceRecordRepository(TraceRecordSource):
         )
 
     def _workflow(self, event: TraceEvent, payload: WorkflowRunCompleted) -> WorkflowTraceInfo:
+        """Assemble a terminal run, omitting queue timing when it was not measured."""
         if event.app_id is None:
             raise SourceNotFoundError
         with tracing_store_errors():
@@ -348,6 +349,8 @@ class TraceRecordRepository(TraceRecordSource):
             "app_name": app_name,
             "workspace_name": workspace_name,
         }
+        if payload.queue_wait_time is not None:
+            metadata["queue_wait_time"] = payload.queue_wait_time
         correlation = event.correlation
         if correlation.parent_workflow_run_id:
             metadata["parent_trace_context"] = {
