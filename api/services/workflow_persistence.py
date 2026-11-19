@@ -20,7 +20,11 @@ from core.workflow.node_execution_process_data import WORKFLOW_TOOL_ROOT_APP_ID_
 from core.workflow.system_variables import SystemVariableKey
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
-from domain.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
+from domain.workflow.retry_history import (
+    RETRY_HISTORY_PROCESS_DATA_KEY,
+    WorkflowNodeRetryAttempt,
+    read_retry_history,
+)
 from extensions.tracing import application_tracing_hooks
 from graphon.engine.layer import Layer
 from graphon.engine_events import (
@@ -406,8 +410,7 @@ class WorkflowPersistenceLayer(Layer):
             execution.process_data,
         )
         process_data = dict(process_data or {})
-        raw_history = process_data.get(RETRY_HISTORY_PROCESS_DATA_KEY)
-        history = list(raw_history) if isinstance(raw_history, list) else []
+        history = read_retry_history(process_data)
         projected_outputs = project_node_outputs_for_workflow_run(
             node_type=execution.node_type,
             inputs=event.node_run_result.inputs,
@@ -424,7 +427,7 @@ class WorkflowPersistenceLayer(Layer):
             created_at=to_utc_timestamp(event.start_at),
             finished_at=to_utc_timestamp(finished_at),
         )
-        history.append(attempt.model_dump(mode="json"))
+        history.append(attempt.to_payload())
         process_data[RETRY_HISTORY_PROCESS_DATA_KEY] = history
         execution.process_data = process_data
 
@@ -435,12 +438,12 @@ class WorkflowPersistenceLayer(Layer):
     ) -> Mapping[str, Any] | None:
         """Keep internal retry history while replacing node-specific Process Data."""
         merged_process_data = keep_agent_and_tool_ids(existing_process_data, next_process_data)
-        raw_history = (existing_process_data or {}).get(RETRY_HISTORY_PROCESS_DATA_KEY)
-        if not isinstance(raw_history, list) or not raw_history:
+        history = read_retry_history(existing_process_data)
+        if not history:
             return merged_process_data
 
         merged_process_data = dict(merged_process_data or {})
-        merged_process_data[RETRY_HISTORY_PROCESS_DATA_KEY] = raw_history
+        merged_process_data[RETRY_HISTORY_PROCESS_DATA_KEY] = history
         return merged_process_data
 
     def _populate_completion_statistics(self, execution: WorkflowExecution) -> None:
