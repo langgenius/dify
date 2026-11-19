@@ -4,6 +4,12 @@ from core.logging.context import get_request_id
 from libs.exception import BaseHTTPException
 
 
+class AgentVersionNotFoundHTTPError(BaseHTTPException):
+    error_code = "agent_version_not_found_error"
+    description = "Agent config version not found."
+    code = HTTPStatus.NOT_FOUND
+
+
 class InstalledAppHTTPError(BaseHTTPException):
     """A Console error with safe details and a request ID for troubleshooting."""
 
@@ -71,12 +77,6 @@ class MessageCursorNotFoundHTTPError(InstalledAppHTTPError):
     error_code = "message_cursor_not_found"
     description = "The message cursor is not in this conversation. Refresh the list and try again."
     code = HTTPStatus.NOT_FOUND
-
-
-class MessageFeedbackRatingRequiredHTTPError(InstalledAppHTTPError):
-    error_code = "message_feedback_rating_required"
-    description = "A rating is required when there is no existing feedback to remove."
-    code = HTTPStatus.BAD_REQUEST
 
 
 class NotCompletionAppError(BaseHTTPException):

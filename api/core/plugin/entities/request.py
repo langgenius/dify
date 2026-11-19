@@ -6,6 +6,17 @@ from typing import Any, Literal
 from flask import Response
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from core.credit_usage import (
+    CreditUsageAppType,
+    CreditUsageCreatedBy,
+    normalize_credit_usage_app_type,
+    normalize_credit_usage_created_by,
+)
+from core.datasource.entities.datasource_entities import (
+    DatasourceProviderType,
+    GetOnlineDocumentPageContentRequest,
+)
+from core.entities.embedding_type import EmbeddingInputType
 from core.entities.provider_entities import BasicProviderConfig
 from core.plugin.utils.http_parser import deserialize_response
 from core.workflow.file_reference import is_canonical_file_reference
@@ -54,12 +65,93 @@ class RequestInvokeTool(BaseModel):
     credential_id: str | None = None
 
 
+DatasourceInvocationOperation = Literal[
+    "get_online_document_page_content",
+    "get_online_document_pages",
+    "get_website_crawl",
+    "online_drive_browse_files",
+    "online_drive_download_file",
+    "validate_credentials",
+]
+
+
+class RequestInvokeDatasource(BaseModel):
+    """Invoke one installed datasource using a Dify-owned credential reference.
+
+    Raw credentials are intentionally not part of this contract. ``tenant_id`` and
+    ``user_id`` are consumed by the inner-API request context, while the remaining
+    fields select an installed provider declaration and an operation-specific input.
+    """
+
+    tenant_id: str = Field(min_length=1, max_length=512)
+    user_id: str = Field(min_length=1, max_length=512)
+    provider: str = Field(min_length=1, max_length=768)
+    datasource: str = Field(min_length=1, max_length=256)
+    datasource_type: DatasourceProviderType
+    credential_id: str = Field(min_length=1, max_length=512)
+    operation: DatasourceInvocationOperation
+    datasource_parameters: dict[str, Any] = Field(default_factory=dict)
+    page: GetOnlineDocumentPageContentRequest | None = None
+    request: dict[str, Any] | None = None
+
+    model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def validate_operation_payload(self) -> "RequestInvokeDatasource":
+        expected_type = {
+            "get_online_document_page_content": DatasourceProviderType.ONLINE_DOCUMENT,
+            "get_online_document_pages": DatasourceProviderType.ONLINE_DOCUMENT,
+            "get_website_crawl": DatasourceProviderType.WEBSITE_CRAWL,
+            "online_drive_browse_files": DatasourceProviderType.ONLINE_DRIVE,
+            "online_drive_download_file": DatasourceProviderType.ONLINE_DRIVE,
+            "validate_credentials": self.datasource_type,
+        }[self.operation]
+        if self.datasource_type != expected_type:
+            raise ValueError(f"{self.operation} requires datasource_type {expected_type.value}")
+
+        page_required = self.operation == "get_online_document_page_content"
+        if page_required != (self.page is not None):
+            raise ValueError("page is required only for get_online_document_page_content")
+
+        request_required = self.operation in {"online_drive_browse_files", "online_drive_download_file"}
+        if request_required != (self.request is not None):
+            raise ValueError("request is required only for online-drive operations")
+
+        return self
+
+
 class BaseRequestInvokeModel(BaseModel):
+    """Model selection and optional business attribution from an inner-API caller.
+
+    ``created_by`` identifies the consuming feature, not a user ID. Callers that
+    omit attribution retain the generic plugin API classification.
+    """
+
     provider: str
     model: str
     model_type: ModelType
+    app_type: CreditUsageAppType | None = None
+    created_by: CreditUsageCreatedBy | None = None
 
     model_config = ConfigDict(protected_namespaces=())
+
+    @field_validator("app_type", mode="before")
+    @classmethod
+    def normalize_app_type(cls, value: object) -> CreditUsageAppType | None:
+        return normalize_credit_usage_app_type(value) if value is not None else None
+
+    @field_validator("created_by", mode="before")
+    @classmethod
+    def normalize_created_by(cls, value: object) -> CreditUsageCreatedBy | None:
+        return normalize_credit_usage_created_by(value) if value is not None else None
+
+    @property
+    def credit_usage_metadata(self) -> dict[str, object]:
+        return {
+            key: value
+            for key, value in {"app_type": self.app_type, "created_by": self.created_by}.items()
+            if value is not None
+        }
 
 
 class RequestInvokeLLM(BaseRequestInvokeModel):
@@ -115,6 +207,25 @@ class RequestInvokeTextEmbedding(BaseRequestInvokeModel):
 
     model_type: ModelType = ModelType.TEXT_EMBEDDING
     texts: list[str]
+    input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT
+
+
+class MultimodalEmbeddingDocument(BaseModel):
+    """A document accepted by a multimodal text-embedding model."""
+
+    content: str
+    content_type: str
+    file_id: str | None = None
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class RequestInvokeMultimodalEmbedding(BaseRequestInvokeModel):
+    """Request to invoke a multimodal text-embedding model."""
+
+    model_type: ModelType = ModelType.TEXT_EMBEDDING
+    documents: list[MultimodalEmbeddingDocument] = Field(min_length=1)
+    input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT
 
 
 class RequestInvokeRerank(BaseRequestInvokeModel):
@@ -125,8 +236,49 @@ class RequestInvokeRerank(BaseRequestInvokeModel):
     model_type: ModelType = ModelType.RERANK
     query: str
     docs: list[str]
-    score_threshold: float
-    top_n: int
+    score_threshold: float | None = None
+    top_n: int | None = None
+
+
+class RequestListModels(BaseModel):
+    """Tenant-scoped query for models that Dify can invoke."""
+
+    model_type: Literal[ModelType.LLM, ModelType.TEXT_EMBEDDING, ModelType.RERANK]
+    provider: str | None = None
+    model: str | None = None
+    offset: int = Field(default=0, ge=0)
+    limit: int = Field(default=50, ge=1, le=100)
+
+    model_config = ConfigDict(protected_namespaces=())
+
+
+class InvokableModelTokenLimits(BaseModel):
+    """Provider-declared limits, not completion defaults or credentials."""
+
+    context_tokens: int | None = Field(default=None, gt=0, le=1_000_000_000)
+    max_output_tokens: int | None = Field(default=None, gt=0, le=1_000_000_000)
+    output_parameter: str | None = Field(default=None, min_length=1, max_length=128)
+
+
+class InvokableModelCatalogItem(BaseModel):
+    """Installed identity and active Dify capability metadata for one model."""
+
+    plugin_id: str
+    plugin_unique_identifier: str
+    provider: str
+    model: str
+    model_type: ModelType
+    capabilities: dict[str, Any] = Field(default_factory=dict)
+    token_limits: InvokableModelTokenLimits | None = None
+
+    model_config = ConfigDict(protected_namespaces=())
+
+
+class InvokableModelCatalogPage(BaseModel):
+    """Offset page returned by the internal model catalog endpoint."""
+
+    items: list[InvokableModelCatalogItem] = Field(default_factory=list)
+    next_offset: int | None = None
 
 
 class RequestInvokeTTS(BaseRequestInvokeModel):

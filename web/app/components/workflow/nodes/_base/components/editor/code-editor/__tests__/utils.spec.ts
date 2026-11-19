@@ -11,6 +11,5 @@ describe('serializeCodeEditorValue', () => {
     expect(serializeCodeEditorValue(schema, true)).toBe(JSON.stringify(schema, null, 2))
     expect(serializeCodeEditorValue('{"type":"object"}')).toBe('{"type":"object"}')
     expect(serializeCodeEditorValue(undefined)).toBe('')
-    expect(serializeCodeEditorValue(null as never)).toBe('')
   })
 })

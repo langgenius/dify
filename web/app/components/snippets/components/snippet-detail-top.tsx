@@ -13,8 +13,9 @@ import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
+import { useStudioListHref } from '@/app/components/apps/list-navigation-state'
 import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
-import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
+import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/handles'
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
@@ -27,6 +28,7 @@ type SnippetDetailTopProps = {
 export function SnippetDetailTop({ expand = true, onToggle }: SnippetDetailTopProps) {
   const { t } = useTranslation(['app', 'common', 'workflow', 'navigation'])
   const router = useRouter()
+  const snippetsHref = useStudioListHref('/snippets')
 
   if (!expand) {
     return (
@@ -45,10 +47,10 @@ export function SnippetDetailTop({ expand = true, onToggle }: SnippetDetailTopPr
   }
 
   return (
-    <div className="flex items-center py-2 pr-2 pl-1">
+    <div className="flex items-center py-2 ps-1 pe-2">
       <Breadcrumb aria-label={t(($) => $['tabs.snippets'], { ns: 'workflow' })} className="flex-1">
         <BreadcrumbList className="gap-px">
-          <BreadcrumbItem className="shrink-0 gap-0 rounded-lg py-2 pr-1.5 pl-0.5 transition-colors hover:bg-background-default-hover">
+          <BreadcrumbItem className="shrink-0 gap-0 rounded-lg py-2 ps-0.5 pe-1.5 transition-colors hover:bg-background-default-hover">
             <IconButton
               size="xs"
               aria-label={t(($) => $['operation.back'], { ns: 'common' })}
@@ -67,7 +69,7 @@ export function SnippetDetailTop({ expand = true, onToggle }: SnippetDetailTopPr
           <BreadcrumbSeparator className="system-md-regular" />
           <BreadcrumbItem className="shrink-0">
             <BreadcrumbLink
-              render={<Link href="/snippets" />}
+              render={<Link href={snippetsHref} />}
               className="rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary hover:bg-background-default-hover hover:text-text-primary"
             >
               {t(($) => $['tabs.snippets'], { ns: 'workflow' })}
@@ -84,7 +86,7 @@ export function SnippetDetailTop({ expand = true, onToggle }: SnippetDetailTopPr
                 <button
                   type="button"
                   aria-label={t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
-                  className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                  className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
                 >
                   <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
                 </button>
@@ -92,7 +94,7 @@ export function SnippetDetailTop({ expand = true, onToggle }: SnippetDetailTopPr
             />
           }
         />
-        <TooltipContent placement="bottom" className="flex items-center gap-1">
+        <TooltipContent side="bottom" className="flex items-center gap-1">
           <span className="px-0.5">{t(($) => $['gotoAnything.quickAction'], { ns: 'app' })}</span>
           <KbdGroup>
             {formatForDisplay(GOTO_ANYTHING_HOTKEY, { parts: true }).map((key) => (

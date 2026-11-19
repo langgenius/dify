@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'cli/**'
+      - 'skills/**'
       - 'packages/contracts/generated/api/openapi/**'
   workflow_dispatch:
 
@@ -56,7 +57,7 @@ jobs:
         run: CLI_VERSION="${{ steps.ver.outputs.version }}" scripts/release-write-checksums.sh
 
       - name: Smoke the runner-arch binary
-        run: ./dist/bin/difyctl-v${{ steps.ver.outputs.version }}-linux-x64 version
+        run: scripts/release-smoke.sh "./dist/bin/difyctl-v${{ steps.ver.outputs.version }}-linux-x64"
 
       - name: Publish to R2
         env:

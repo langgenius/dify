@@ -8,28 +8,31 @@ handoff. If the process crashes, currently active runs are lost until an externa
 operator marks or retries them.
 Create-run requests are accepted once the scheduler is not stopping and storage
 can persist the run record. Request-shaped execution failures are left to
-``AgentRunRunner`` so bad compositions, ``on_exit`` policies, prompts,
+``AgentRunRunner`` so bad compositions, prompts,
 structured-output schemas, or session snapshots become asynchronous
 ``run_failed`` outcomes instead of synchronous HTTP rejections.
+Keyed admission delegates atomic claim/replay to storage across processes;
+only newly created runs start a local task. Replays return the retained status.
 """
 
 import asyncio
+import hashlib
+import json
 import logging
 from collections.abc import Callable
 from typing import Protocol
 
-import httpx
 
-from agenton.compositor import CompositorSessionSnapshot, LayerProviderInput
+from dify_agent.protocol.snapshot import SessionSnapshot
+from dify_agent.runtime.context import Services
 from dify_agent.protocol.schemas import AgentRunUsage, CancelRunRequest, CancelRunResponse, CreateRunRequest, RunStatus
 from dify_agent.runtime.cancellation import RunCancellationIntent
-from dify_agent.runtime.compositor_factory import create_default_layer_providers
 from dify_agent.runtime.event_coalescer import (
     DEFAULT_TEXT_DELTA_FLUSH_INTERVAL_SECONDS,
     DEFAULT_TEXT_DELTA_MAX_CHARS,
 )
 from dify_agent.runtime.event_sink import RunEventSink, RunFinalizationResult, emit_run_failed
-from dify_agent.runtime.observability import AgentObservability
+from dify_agent.runtime.observability import AgentObservability, ApplicationAgentObservability
 from dify_agent.runtime.runner import DEFAULT_AGENT_RUN_TIMEOUT_SECONDS, AgentRunRunner
 from dify_agent.server.schemas import RunRecord
 
@@ -51,6 +54,16 @@ class RunStore(RunEventSink, Protocol):
         """Persist a new run record and return it with status ``running``."""
         ...
 
+    async def create_run_idempotent(self, *, idempotency_key: str, request_fingerprint: str) -> tuple[RunRecord, bool]:
+        """Atomically return ``(record, created)`` across clients sharing storage.
+
+        A retained matching request replays its current record without extending
+        retention. A different fingerprint raises ``IdempotencyConflictError``
+        from the storage adapter. Persist only digests and run metadata; active
+        writes refresh absent or same-run claims without overwriting a new owner.
+        """
+        ...
+
     async def request_cancellation(self, run_id: str, request: CancelRunRequest) -> RunStatus:
         """Persist the first cancellation intent and return the current status."""
         ...
@@ -68,7 +81,7 @@ class RunStore(RunEventSink, Protocol):
         run_id: str,
         intent: RunCancellationIntent,
         *,
-        session_snapshot: CompositorSessionSnapshot | None = None,
+        session_snapshot: SessionSnapshot | None = None,
         usage: AgentRunUsage | None = None,
     ) -> RunFinalizationResult:
         """Publish cancellation after the owner runner has exited."""
@@ -79,7 +92,7 @@ class RunnableRun(Protocol):
     """Executable unit for one scheduled run."""
 
     @property
-    def terminal_session_snapshot(self) -> CompositorSessionSnapshot | None:
+    def terminal_session_snapshot(self) -> SessionSnapshot | None:
         """Return the post-exit snapshot for the current invocation, if available."""
         ...
 
@@ -117,26 +130,24 @@ class RunScheduler:
     active_tasks: dict[str, asyncio.Task[None]]
     stopping: bool
     runner_factory: RunRunnerFactory | None
-    layer_providers: tuple[LayerProviderInput, ...]
-    plugin_daemon_http_client: httpx.AsyncClient
-    dify_api_http_client: httpx.AsyncClient
+    services: Services
     agent_observability: AgentObservability | None
+    application_observability: ApplicationAgentObservability | None
     _lifecycle_lock: asyncio.Lock
 
     def __init__(
         self,
         *,
         store: RunStore,
-        plugin_daemon_http_client: httpx.AsyncClient,
-        dify_api_http_client: httpx.AsyncClient,
+        services: Services,
         shutdown_grace_seconds: float = 30,
         run_timeout_seconds: float = DEFAULT_AGENT_RUN_TIMEOUT_SECONDS,
         stream_text_delta_coalescing_enabled: bool = True,
         stream_text_delta_flush_interval_seconds: float = DEFAULT_TEXT_DELTA_FLUSH_INTERVAL_SECONDS,
         stream_text_delta_max_chars: int = DEFAULT_TEXT_DELTA_MAX_CHARS,
-        layer_providers: tuple[LayerProviderInput, ...] | None = None,
         runner_factory: RunRunnerFactory | None = None,
         agent_observability: AgentObservability | None = None,
+        application_observability: ApplicationAgentObservability | None = None,
     ) -> None:
         self.store = store
         self.shutdown_grace_seconds = shutdown_grace_seconds
@@ -146,25 +157,36 @@ class RunScheduler:
         self.stream_text_delta_max_chars = stream_text_delta_max_chars
         self.active_tasks = {}
         self.stopping = False
-        self.plugin_daemon_http_client = plugin_daemon_http_client
-        self.dify_api_http_client = dify_api_http_client
-        self.layer_providers = layer_providers if layer_providers is not None else create_default_layer_providers()
+        self.services = services
         self.runner_factory = runner_factory
         self.agent_observability = agent_observability
+        self.application_observability = application_observability
         self._lifecycle_lock = asyncio.Lock()
 
     async def create_run(self, request: CreateRunRequest) -> RunRecord:
-        """Persist and schedule one run in the current process.
+        """Admit a new run or replay a retained run with its current status.
 
-        The returned record is already ``running``. The background task is removed
-        from ``active_tasks`` when it finishes, regardless of success or failure.
+        New records are ``running`` and scheduled locally. Their background task
+        is removed from ``active_tasks`` on completion, regardless of outcome.
         Request-shaped runtime failures are intentionally deferred to the runner so
-        callers can observe them through the normal event/status stream.
+        callers can observe them through the normal event/status stream. A request
+        with an idempotency key reuses the original record without scheduling a
+        second task or refreshing retention; a normalized payload mismatch raises
+        the store's ``IdempotencyConflictError``.
         """
         async with self._lifecycle_lock:
             if self.stopping:
                 raise SchedulerStoppingError("run scheduler is shutting down")
-            record = await self.store.create_run()
+            if request.idempotency_key is None:
+                record = await self.store.create_run()
+            else:
+                fingerprint = _create_run_fingerprint(request)
+                record, created = await self.store.create_run_idempotent(
+                    idempotency_key=request.idempotency_key,
+                    request_fingerprint=fingerprint,
+                )
+                if not created:
+                    return record
             task = asyncio.create_task(self._run_record(record, request), name=f"dify-agent-run-{record.run_id}")
             self.active_tasks[record.run_id] = task
             task.add_done_callback(lambda _task, run_id=record.run_id: self._discard_active_run(run_id))
@@ -316,15 +338,14 @@ class RunScheduler:
             sink=self.store,
             request=request,
             run_id=record.run_id,
-            plugin_daemon_http_client=self.plugin_daemon_http_client,
-            dify_api_http_client=self.dify_api_http_client,
-            layer_providers=self.layer_providers,
+            services=self.services,
             is_cancelled=is_cancelled,
             run_timeout_seconds=self.run_timeout_seconds,
             stream_text_delta_coalescing_enabled=self.stream_text_delta_coalescing_enabled,
             stream_text_delta_flush_interval_seconds=self.stream_text_delta_flush_interval_seconds,
             stream_text_delta_max_chars=self.stream_text_delta_max_chars,
             agent_observability=self.agent_observability,
+            application_observability=self.application_observability,
         )
 
     def _discard_active_run(self, run_id: str) -> None:
@@ -341,7 +362,7 @@ class RunScheduler:
         self,
         run_id: str,
         *,
-        session_snapshot: CompositorSessionSnapshot | None = None,
+        session_snapshot: SessionSnapshot | None = None,
         usage: AgentRunUsage | None = None,
     ) -> RunFinalizationResult | None:
         """Best-effort failure event/status for shutdown-cancelled runs."""
@@ -358,6 +379,13 @@ class RunScheduler:
         except Exception:
             logger.exception("failed to mark cancelled run failed", extra={"run_id": run_id})
             return None
+
+
+def _create_run_fingerprint(request: CreateRunRequest) -> str:
+    """Hash the normalized request body without its idempotency key."""
+    payload = request.model_dump(mode="json", exclude={"idempotency_key"})
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode()).hexdigest()
 
 
 __all__ = ["RunCancellationConflictError", "RunScheduler", "SchedulerStoppingError"]

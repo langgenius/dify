@@ -11,12 +11,12 @@ import { useTags } from '@/app/components/plugins/hooks'
 import { useOptionalPluginInstallPermission } from '@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import { useGetLanguage } from '@/context/i18n'
+import { getPluginDetailPath } from '@/features/marketplace/links'
 import { renderI18nObject } from '@/i18n/metadata'
 import Link from '@/next/link'
 import { trackMarketplaceSiteCardClick } from '@/utils/marketplace-site-track'
 import MarketplaceDetailDialog from '../detail-dialog'
 import { useMarketplaceDetailNavigation } from '../use-detail-navigation'
-import { getPluginDetailLinkInMarketplace } from '../utils'
 
 type CardWrapperProps = {
   plugin: Plugin
@@ -73,7 +73,7 @@ const CardWrapperContent = ({
 
     return (
       <Link
-        href={getPluginDetailLinkInMarketplace(plugin)}
+        href={getPluginDetailPath(plugin)}
         className="block rounded-xl focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
         onClick={() => {
           trackMarketplaceSiteCardClick({

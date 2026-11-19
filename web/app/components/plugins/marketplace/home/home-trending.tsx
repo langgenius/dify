@@ -8,6 +8,7 @@ import type {
 } from 'react'
 import type { MarketplaceBannerPage } from './banners'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useDirection } from '@langgenius/dify-ui/direction-provider'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from '#i18n'
 import { trackEvent } from '@/app/components/base/amplitude'
@@ -93,6 +94,8 @@ function HomeTrending({
   page: MarketplaceBannerPage
 }) {
   const { t } = useTranslation(['plugin'])
+  const direction = useDirection()
+  const directionMultiplier = direction === 'rtl' ? -1 : 1
   const carouselRootRef = useRef<HTMLDivElement>(null)
   const swipeGestureRef = useRef<SwipeGesture | null>(null)
   const suppressClickRef = useRef(false)
@@ -234,11 +237,12 @@ function HomeTrending({
 
       const viewportWidth = event.currentTarget.getBoundingClientRect().width
       const boundedOffset = Math.max(-viewportWidth, Math.min(viewportWidth, deltaX))
-      const isPastStart = gesture.selectedIndex === 0 && boundedOffset > 0
-      const isPastEnd = gesture.selectedIndex === banners.length - 1 && boundedOffset < 0
+      const isPastStart = gesture.selectedIndex === 0 && boundedOffset * directionMultiplier > 0
+      const isPastEnd =
+        gesture.selectedIndex === banners.length - 1 && boundedOffset * directionMultiplier < 0
       setDragOffset(isPastStart || isPastEnd ? boundedOffset * 0.35 : boundedOffset)
     },
-    [banners.length],
+    [banners.length, directionMultiplier],
   )
 
   const finishSwipe = useCallback(
@@ -274,11 +278,12 @@ function HomeTrending({
       )
       if (Math.abs(deltaX) < swipeThreshold) return
 
-      if (deltaX < 0 && gesture.selectedIndex < banners.length - 1)
+      if (deltaX * directionMultiplier < 0 && gesture.selectedIndex < banners.length - 1)
         selectSlide(gesture.selectedIndex + 1)
-      else if (deltaX > 0 && gesture.selectedIndex > 0) selectSlide(gesture.selectedIndex - 1)
+      else if (deltaX * directionMultiplier > 0 && gesture.selectedIndex > 0)
+        selectSlide(gesture.selectedIndex - 1)
     },
-    [banners.length, selectSlide],
+    [banners.length, directionMultiplier, selectSlide],
   )
 
   const handleClickCapture = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
@@ -346,8 +351,8 @@ function HomeTrending({
               style={{
                 transform:
                   dragOffset === 0
-                    ? `translate3d(-${trackIndex * 100}%, 0, 0)`
-                    : `translate3d(calc(-${trackIndex * 100}% + ${dragOffset}px), 0, 0)`,
+                    ? `translate3d(${-trackIndex * 100 * directionMultiplier}%, 0, 0)`
+                    : `translate3d(calc(${-trackIndex * 100 * directionMultiplier}% + ${dragOffset}px), 0, 0)`,
                 transition: loopPhase === 'resetting' || isDragging ? 'none' : undefined,
               }}
             >

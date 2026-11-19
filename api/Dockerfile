@@ -1,10 +1,13 @@
+# KnowledgeFS is released independently. Its release controller atomically mounts the tested
+# engine bundles and native dependencies at /app/knowledge-fs in the dedicated Celery workers.
+# Ordinary Dify API images do not rebuild or download a second copy of the private engine.
 # base image
-FROM python:3.12-slim-bookworm AS base
+FROM python:3.13-slim-bookworm AS base
 
 WORKDIR /app/api
 
 # Install uv
-ENV UV_VERSION=0.8.9
+ENV UV_VERSION=0.13.4
 
 RUN pip install --no-cache-dir uv==${UV_VERSION}
 
@@ -27,7 +30,7 @@ COPY api/providers ./providers
 COPY dify-agent/pyproject.toml dify-agent/README.md /app/dify-agent/
 COPY dify-agent/src /app/dify-agent/src
 # Trust the checked-in lock during image builds; local path sources are copied from the repository context.
-RUN uv sync --frozen --no-dev --no-editable
+RUN uv sync --frozen --no-dev --no-editable --group evaluation
 
 # production stage
 FROM base AS production
@@ -53,7 +56,7 @@ WORKDIR /app/api
 
 # Create non-root user
 ARG dify_uid=1001
-ARG NODE_PACKAGE_VERSION=24.20.0-1nodesource1
+ARG NODE_PACKAGE_VERSION=24.22.3-1nodesource1
 ARG NODESOURCE_KEY_FPR=6F71F525282841EEDAF851B42F59B5F99B1BE0B4
 RUN groupadd -r -g ${dify_uid} dify && \
     useradd -r -u ${dify_uid} -g ${dify_uid} -s /bin/bash dify && \
@@ -78,6 +81,7 @@ RUN NODE_MAJOR="${NODE_PACKAGE_VERSION%%.*}" \
     # Install dependencies
     && apt-get install -y --no-install-recommends \
         # basic environment
+        git \
         nodejs=${NODE_PACKAGE_VERSION} \
         # for gmpy2 \
         libgmp-dev libmpfr-dev libmpc-dev \
@@ -89,6 +93,8 @@ RUN NODE_MAJOR="${NODE_PACKAGE_VERSION%%.*}" \
         media-types \
         # install libmagic to support the use of python-magic guess MIMETYPE
         libmagic1 \
+        # Bounded PDF metadata/rasterization invoked by the local KnowledgeFS worker engine.
+        poppler-utils \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
@@ -96,6 +102,11 @@ RUN NODE_MAJOR="${NODE_PACKAGE_VERSION%%.*}" \
 ENV VIRTUAL_ENV=/app/api/.venv
 COPY --from=packages --chown=dify:dify ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
+
+# Ragas imports GitPython while loading metrics, so git must also be present in
+# the production image shared by API and Celery workers.
+RUN git --version \
+    && python -c "from ragas.metrics import answer_correctness"
 
 RUN mkdir -p /usr/local/share/nltk_data \
     && NLTK_DATA=/usr/local/share/nltk_data python -m nltk.downloader punkt_tab averaged_perceptron_tagger_eng stopwords \
@@ -106,6 +117,10 @@ ENV TIKTOKEN_CACHE_DIR=/app/api/.tiktoken_cache
 
 RUN python -c "import tiktoken; tiktoken.encoding_for_model('gpt2')" \
     && chown -R dify:dify ${TIKTOKEN_CACHE_DIR}
+
+# Pre-install the spaCy model unstructured needs, so document extraction works offline and as non-root
+RUN python -c "from unstructured.nlp.tokenize import sent_tokenize; sent_tokenize('Warm up.')" \
+    && python -c "import spacy; spacy.load('en_core_web_sm')"
 
 # Copy source code
 COPY --chown=dify:dify api /app/api/

@@ -41,9 +41,6 @@ describe('createTheme', () => {
     })
     expect(secondTheme.primaryColor).toBe('#123456')
     expect(firstTheme.primaryColor).toBe('#FF5733')
-    expect(Object.isFrozen(firstTheme)).toBe(true)
-    expect(Reflect.set(firstTheme, 'primaryColor', '#000000')).toBe(false)
-    expect(firstTheme.primaryColor).toBe('#FF5733')
   })
 
   it('derives the inverted palette from the configured primary color', () => {

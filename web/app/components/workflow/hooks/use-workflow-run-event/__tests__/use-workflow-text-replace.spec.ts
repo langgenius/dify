@@ -1,4 +1,3 @@
-import type { TextReplaceResponse } from '@/types/workflow'
 import { baseRunningData, renderWorkflowHook } from '../../../__tests__/workflow-test-env'
 import { useWorkflowTextReplace } from '../use-workflow-text-replace'
 
@@ -10,7 +9,12 @@ describe('useWorkflowTextReplace', () => {
       },
     })
 
-    result.current.handleWorkflowTextReplace({ data: { text: 'new text' } } as TextReplaceResponse)
+    result.current.handleWorkflowTextReplace({
+      task_id: 'task-1',
+      workflow_run_id: 'run-1',
+      event: 'text_replace',
+      data: { text: 'new text' },
+    })
 
     expect(store.getState().workflowRunningData!.resultText).toBe('new text')
   })

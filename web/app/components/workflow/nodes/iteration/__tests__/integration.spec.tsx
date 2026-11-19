@@ -1,17 +1,18 @@
 import type { IterationNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useNodes } from 'reactflow'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { ErrorHandleMode } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
+import { createNode } from '../../../__tests__/fixtures'
 import { BlockEnum, VarType } from '../../../types'
 import Node from '../node'
 import Panel from '../panel'
-import useConfig from '../use-config'
-
-const mockHandleNodeAdd = vi.fn()
-const mockHandleNodeIterationRerender = vi.fn()
-let mockNodesReadOnly = false
 
 vi.mock('@/app/notifications', () => ({
   toast: {
@@ -22,72 +23,12 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-vi.mock('reactflow', async () => {
-  const actual = await vi.importActual<typeof import('reactflow')>('reactflow')
-  return {
-    ...actual,
-    Background: ({ id }: { id: string }) => <div data-testid={id} />,
-    useViewport: () => ({ zoom: 1 }),
-    useNodesInitialized: () => true,
-  }
-})
-
 vi.mock('../../iteration-start', () => ({
   IterationStartNodeDumb: () => <div>iteration-start-node</div>,
 }))
 
-vi.mock('../use-interactions', () => ({
-  useNodeIterationInteractions: () => ({
-    handleNodeIterationRerender: mockHandleNodeIterationRerender,
-  }),
-}))
-
-vi.mock('../../../hooks/use-available-blocks', () => ({
-  useAvailableBlocks: () => ({
-    availableNextBlocks: [BlockEnum.Code],
-  }),
-}))
-
-vi.mock('../../../hooks/use-nodes-interactions', () => ({
-  useNodesInteractions: () => ({
-    handleNodeAdd: mockHandleNodeAdd,
-  }),
-}))
-
-vi.mock('../../../hooks/use-workflow', () => ({
-  useNodesReadOnly: () => ({
-    nodesReadOnly: mockNodesReadOnly,
-  }),
-}))
-
-vi.mock('../../_base/components/variable/var-reference-picker', () => ({
-  __esModule: true,
-  default: ({
-    onChange,
-    availableVars,
-  }: {
-    onChange: (value: string[], kindType?: string, varInfo?: { type: VarType }) => void
-    availableVars?: unknown[]
-  }) => (
-    <button
-      type="button"
-      onClick={() => {
-        if (availableVars) onChange(['child-node', 'text'], 'variable', { type: VarType.string })
-        else onChange(['node-1', 'items'], 'variable', { type: VarType.arrayString })
-      }}
-    >
-      {availableVars ? 'pick-output-var' : 'pick-input-var'}
-    </button>
-  ),
-}))
-
-vi.mock('../use-config', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}))
-
-const mockUseConfig = vi.mocked(useConfig)
-const mockToastWarning = vi.mocked(toast.warning)
+// Variable selection has its own canvas integration; these scenarios edit parallel execution controls.
+vi.mock('../../_base/components/variable/var-reference-picker', () => ({ default: () => null }))
 
 const createData = (overrides: Partial<IterationNodeType> = {}): IterationNodeType => ({
   title: 'Iteration',
@@ -107,23 +48,6 @@ const createData = (overrides: Partial<IterationNodeType> = {}): IterationNodeTy
   ...overrides,
 })
 
-const createConfigResult = (
-  overrides: Partial<ReturnType<typeof useConfig>> = {},
-): ReturnType<typeof useConfig> => ({
-  readOnly: false,
-  inputs: createData(),
-  filterInputVar: () => true,
-  handleInputChange: vi.fn(),
-  childrenNodeVars: [],
-  iterationChildrenNodes: [],
-  handleOutputVarChange: vi.fn(),
-  changeParallel: vi.fn(),
-  changeErrorResponseMode: vi.fn(),
-  changeParallelNums: vi.fn(),
-  changeFlattenOutput: vi.fn(),
-  ...overrides,
-})
-
 const panelProps: PanelProps = {
   getInputVars: vi.fn(() => []),
   toVarInputs: vi.fn(() => []),
@@ -133,128 +57,111 @@ const panelProps: PanelProps = {
   runResult: null,
 }
 
-describe('iteration path', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockNodesReadOnly = false
-    mockUseConfig.mockReturnValue(createConfigResult())
+function IterationPanel() {
+  const node = useNodes<IterationNodeType>().find((node) => node.id === 'iteration-node')
+  if (!node) return null
+  return (
+    <>
+      <Panel id={node.id} data={node.data} panelProps={panelProps} />
+      <output aria-label="Saved parallel configuration">
+        {JSON.stringify({ parallel: node.data.parallel_nums, policy: node.data.error_handle_mode })}
+      </output>
+    </>
+  )
+}
+
+function renderIteration(data = createData(), readOnly = false, candidate = false) {
+  const { queryClient } = createConsoleQueryWrapper({ appDslVersion: '0.6.0' })
+  seedModelProviderQueries(queryClient)
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
   })
+  return renderWorkflowFlowComponent(
+    candidate ? <Node id="iteration-node" data={data} /> : <IterationPanel />,
+    {
+      queryClient,
+      nodes: [
+        createNode({ id: 'iteration-node', data, width: 500, height: 400 }),
+        createNode({
+          id: 'start-node',
+          parentId: 'iteration-node',
+          data: {
+            type: BlockEnum.IterationStart,
+            isInIteration: true,
+            iteration_id: 'iteration-node',
+          },
+        }),
+      ],
+      initialStoreState: { canvasReadOnly: readOnly },
+      hooksStoreProps: { doSyncWorkflowDraft: async () => undefined },
+    },
+  )
+}
 
-  it('should render candidate iteration nodes and show the parallel warning once', () => {
-    render(
-      <Node
-        id="iteration-node"
-        data={createData({
-          _isCandidate: true,
-          _children: [{ nodeId: 'child-1', nodeType: BlockEnum.Iteration }],
-          is_parallel: true,
-          _isShowTips: true,
-        })}
-      />,
+const savedConfiguration = () =>
+  JSON.parse(screen.getByRole('status', { name: 'Saved parallel configuration' }).textContent!)
+
+describe('iteration path', () => {
+  it('renders a candidate iteration and shows its parallel warning once', () => {
+    renderIteration(
+      createData({
+        _isCandidate: true,
+        _children: [{ nodeId: 'start-node', nodeType: BlockEnum.IterationStart }],
+        is_parallel: true,
+        _isShowTips: true,
+      }),
+      false,
+      true,
     )
-
     expect(screen.getByText('iteration-start-node')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'workflow.common.addBlock' })).toBeInTheDocument()
-    expect(screen.getByTestId('iteration-background-iteration-node')).toBeInTheDocument()
-    expect(mockHandleNodeIterationRerender).toHaveBeenCalledWith('iteration-node')
-    expect(mockToastWarning).toHaveBeenCalledWith(
+    expect(toast.warning).toHaveBeenCalledExactlyOnceWith(
       'workflowLogic.nodes.iteration.answerNodeWarningDesc',
     )
   })
 
-  it('should wire panel input, output, numeric, and error mode actions', async () => {
+  it('saves numeric parallelism and the selected error policy on the canvas', async () => {
     const user = userEvent.setup()
-    const handleInputChange = vi.fn()
-    const handleOutputVarChange = vi.fn()
-    const changeParallelNums = vi.fn()
-    const changeErrorResponseMode = vi.fn()
-
-    mockUseConfig.mockReturnValueOnce(
-      createConfigResult({
-        inputs: createData({
-          is_parallel: true,
-          flatten_output: false,
-        }),
-        handleInputChange,
-        handleOutputVarChange,
-        changeParallelNums,
-        changeErrorResponseMode,
-      }),
-    )
-
-    render(<Panel id="iteration-node" data={createData()} panelProps={panelProps} />)
-
-    await user.click(screen.getByRole('button', { name: 'pick-input-var' }))
-    await user.click(screen.getByRole('button', { name: 'pick-output-var' }))
-    const parallelInput = screen.getByRole('textbox', {
+    renderIteration(createData({ is_parallel: true }))
+    const input = screen.getByRole('textbox', {
       name: 'workflowLogic.nodes.iteration.MaxParallelismTitle',
     })
-    await user.clear(parallelInput)
-    await user.type(parallelInput, '7')
+    await user.clear(input)
+    await user.type(input, '7')
     await user.click(screen.getByRole('combobox'))
     await user.click(
       screen.getByRole('option', {
         name: 'workflowLogic.nodes.iteration.ErrorMethod.continueOnError',
       }),
     )
-
-    expect(handleInputChange).toHaveBeenCalledWith(['node-1', 'items'], 'variable', {
-      type: VarType.arrayString,
-    })
-    expect(handleOutputVarChange).toHaveBeenCalledWith(['child-node', 'text'], 'variable', {
-      type: VarType.string,
-    })
-    expect(changeParallelNums).toHaveBeenCalledWith(7)
-    expect(changeErrorResponseMode).toHaveBeenCalledWith(
-      expect.objectContaining({
-        value: ErrorHandleMode.ContinueOnError,
-      }),
-    )
+    expect(savedConfiguration()).toEqual({ parallel: 7, policy: ErrorHandleMode.ContinueOnError })
+    expect(input).toHaveValue('7')
   })
 
-  it('should hide parallel controls when parallel mode is disabled', () => {
-    mockUseConfig.mockReturnValueOnce(
-      createConfigResult({
-        inputs: createData({
-          is_parallel: false,
-        }),
-      }),
-    )
-
-    render(<Panel id="iteration-node" data={createData()} panelProps={panelProps} />)
-
+  it('hides parallel controls when parallel mode is disabled', () => {
+    renderIteration()
     expect(
       screen.queryByRole('textbox', { name: 'workflowLogic.nodes.iteration.MaxParallelismTitle' }),
     ).not.toBeInTheDocument()
   })
 
-  it('does not save an empty parallel count and restores the configured value on blur', async () => {
+  it('preserves the saved parallel count and restores it on blur after clearing the input', async () => {
     const user = userEvent.setup()
-    const changeParallelNums = vi.fn()
-    mockUseConfig.mockReturnValue(
-      createConfigResult({
-        inputs: createData({ is_parallel: true }),
-        changeParallelNums,
-      }),
-    )
-    render(<Panel id="iteration-node" data={createData()} panelProps={panelProps} />)
+    renderIteration(createData({ is_parallel: true }))
     const input = screen.getByRole('textbox', {
       name: 'workflowLogic.nodes.iteration.MaxParallelismTitle',
     })
     await user.clear(input)
     await user.tab()
-    expect(changeParallelNums).not.toHaveBeenCalled()
+    expect(savedConfiguration()).toEqual({ parallel: 3, policy: ErrorHandleMode.Terminated })
     expect(input).toHaveValue('3')
   })
 
-  it('disables both parallel count controls in readonly mode', () => {
-    mockUseConfig.mockReturnValue(
-      createConfigResult({
-        inputs: createData({ is_parallel: true }),
-        readOnly: true,
-      }),
-    )
-    render(<Panel id="iteration-node" data={createData()} panelProps={panelProps} />)
+  it('disables parallel count controls on a readonly canvas', () => {
+    renderIteration(createData({ is_parallel: true }), true)
     expect(
       screen.getByRole('textbox', { name: 'workflowLogic.nodes.iteration.MaxParallelismTitle' }),
     ).toBeDisabled()

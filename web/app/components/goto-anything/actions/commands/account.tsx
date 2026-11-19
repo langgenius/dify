@@ -1,32 +1,26 @@
-import type { SlashCommandHandler } from './types'
-import { getI18n } from 'react-i18next'
-import { registerCommands, unregisterCommands } from './command-bus'
-
-// Account command dependency types - no external dependencies needed
-type AccountDeps = Record<string, never>
+import type { SlashCommand } from './types'
 
 /**
  * Account command - Navigates to account page
  */
-export const accountCommand: SlashCommandHandler<AccountDeps> = {
+export const accountCommand: SlashCommand = {
   name: 'account',
   description: 'Navigate to account page',
   mode: 'direct',
 
-  // Direct execution function
-  execute: () => {
-    window.location.href = '/account'
-  },
+  execute: (_args, context) => context.navigate('/account'),
 
-  search(args: string, locale: string = 'en') {
-    const i18n = getI18n()
+  search(args: string, context) {
     return [
       {
         id: 'account',
-        title: i18n.t(($) => $['account.account'], { ns: 'accountSettings', lng: locale }),
-        description: i18n.t(($) => $['gotoAnything.actions.accountDesc'], {
+        title: context.t(($) => $['account.account'], {
+          ns: 'accountSettings',
+          lng: context.locale,
+        }),
+        description: context.t(($) => $['gotoAnything.actions.accountDesc'], {
           ns: 'app',
-          lng: locale,
+          lng: context.locale,
         }),
         type: 'command' as const,
         icon: (
@@ -34,21 +28,8 @@ export const accountCommand: SlashCommandHandler<AccountDeps> = {
             <span aria-hidden className="i-ri-user-3-line size-4 text-text-tertiary" />
           </div>
         ),
-        data: { command: 'navigation.account', args: {} },
+        data: { command: 'account', args: {} },
       },
     ]
-  },
-
-  register(_deps: AccountDeps) {
-    registerCommands({
-      'navigation.account': async (_args) => {
-        // Navigate to account page
-        window.location.href = '/account'
-      },
-    })
-  },
-
-  unregister() {
-    unregisterCommands(['navigation.account'])
   },
 }

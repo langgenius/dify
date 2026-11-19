@@ -28,6 +28,8 @@
   "menus.plugins": "الإضافات",
   "menus.status": "بيتا",
   "menus.tools": "الأدوات",
+  "settings.accessToken": "رموز الوصول",
+  "settings.accessTokenDescription": "أنشئ رموز API للخدمة تتيح الوصول إلى التطبيقات وقواعد المعرفة المحددة فقط.",
   "settings.agentStrategy": "Agent strategy",
   "settings.billing": "الفوترة",
   "settings.customEndpoint": "نقطة نهاية مخصصة",

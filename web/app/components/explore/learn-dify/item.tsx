@@ -25,12 +25,7 @@ const LearnDifyItem = ({ canCreate, item, onCreate, onTry }: LearnDifyItemProps)
   const appBasicInfo = item.app
   const appName = appBasicInfo?.name ?? ''
   const appMode = appBasicInfo?.mode ?? ''
-  const appIconType =
-    appBasicInfo?.icon_type === 'image' ||
-    appBasicInfo?.icon_type === 'emoji' ||
-    appBasicInfo?.icon_type === 'link'
-      ? appBasicInfo.icon_type
-      : null
+
   const canViewApp = deploymentEdition === 'CLOUD'
   const canShowCreate = canCreate && !!onCreate
   const isClickable = canViewApp || canShowCreate
@@ -71,14 +66,7 @@ const LearnDifyItem = ({ canCreate, item, onCreate, onTry }: LearnDifyItemProps)
         />
       )}
       <div className="flex flex-col items-start gap-2 pb-1">
-        <AppIcon
-          decorative
-          size="large"
-          iconType={appIconType}
-          icon={appBasicInfo?.icon ?? ''}
-          background={appBasicInfo?.icon_background ?? ''}
-          imageUrl={appBasicInfo?.icon_url ?? ''}
-        />
+        <AppIcon size="large" icon={appBasicInfo} />
         <h3 id={appNameId} className="w-full truncate system-md-semibold text-text-secondary">
           {appName}
         </h3>

@@ -1,11 +1,13 @@
 import type { SelectorParam } from 'i18next'
 import type { HttpMethod, WebhookHeader, WebhookParameter, WebhookTriggerNodeType } from './types'
+import { useQueryClient } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { toast } from '@/app/notifications'
-import { fetchWebhookUrl } from '@/service/apps'
+import { consoleQuery } from '@/service/console'
 import { useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
 import {
   updateContentType,
@@ -34,7 +36,8 @@ export const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
   const { t } = useTranslation(['appDebug'])
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { inputs, setInputs } = useNodeCrud<WebhookTriggerNodeType>(id, payload)
-  const appId = useAppStore.getState().appDetail?.id
+  const appId = useAtomValue(editorAppIdAtom)
+  const queryClient = useQueryClient()
   const { isVarUsedInNodes, removeUsedVarInNodes } = useWorkflow()
 
   const notifyVarError = useCallback(
@@ -153,13 +156,19 @@ export const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
     if (!appId) return
 
     try {
-      const response = await fetchWebhookUrl({ appId, nodeId: id })
+      const response = await queryClient.query(
+        consoleQuery.apps.byAppId.workflows.triggers.webhook.get.queryOptions({
+          input: { params: { app_id: appId }, query: { node_id: id } },
+          staleTime: 0,
+          retry: false,
+        }),
+      )
       setInputs(updateWebhookUrls(inputs, response.webhook_url, response.webhook_debug_url))
     } catch (error: unknown) {
       console.error('Failed to generate webhook URL:', error)
       setInputs(updateWebhookUrls(inputs, ''))
     }
-  }, [appId, id, inputs, setInputs])
+  }, [appId, id, inputs, setInputs, queryClient])
 
   return {
     readOnly,

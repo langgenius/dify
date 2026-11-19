@@ -3,7 +3,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any, Literal, overload
+from typing import TYPE_CHECKING, Any, Literal, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -23,7 +23,7 @@ from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueMa
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, InvokeFrom
 from core.db.session_factory import session_factory
 from core.helper.trace_id_helper import extract_trace_session_id_from_args
-from core.ops.ops_trace_manager import TraceQueueManager
+from extensions.tracing import create_trace_scope
 from factories import file_factory
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from libs.flask_utils import preserve_flask_contexts
@@ -31,10 +31,16 @@ from models import Account, App, EndUser
 from models.model import load_annotation_reply_config
 from services.conversation_service import ConversationService
 
+if TYPE_CHECKING:
+    from core.app.apps.workflow_app_runner import WorkflowRunDriver
+
 logger = logging.getLogger(__name__)
 
 
 class AgentChatAppGenerator(MessageBasedAppGenerator):
+    def __init__(self, *, execution_driver: "WorkflowRunDriver") -> None:
+        self._execution_driver = execution_driver
+
     @overload
     def generate(
         self,
@@ -57,7 +63,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         invoke_from: InvokeFrom,
         streaming: Literal[True],
         session: Session,
-    ) -> Generator[Mapping | str, None, None]: ...
+    ) -> Generator[Mapping | str]: ...
 
     @overload
     def generate(
@@ -69,7 +75,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         invoke_from: InvokeFrom,
         streaming: bool,
         session: Session,
-    ) -> Mapping | Generator[Mapping | str, None, None]: ...
+    ) -> Mapping | Generator[Mapping | str]: ...
 
     def generate(
         self,
@@ -80,7 +86,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         invoke_from: InvokeFrom,
         streaming: bool = True,
         session: Session,
-    ) -> Mapping | Generator[Mapping | str, None, None]:
+    ) -> Mapping | Generator[Mapping | str]:
         """
         Generate App response.
 
@@ -173,8 +179,13 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                 annotation_reply=annotation_reply,
             )
 
-            # get tracing instance
-            trace_manager = TraceQueueManager(app_model.id, user.id if isinstance(user, Account) else user.session_id)
+            trace_scope = create_trace_scope(
+                tenant_id=app_model.tenant_id,
+                app_id=app_model.id,
+                app_tracing=app_model.tracing,
+                user_id=user.id if isinstance(user, Account) else user.session_id,
+                extras=extras,
+            )
 
             # init application generate entity
             application_generate_entity = AgentChatAppGenerateEntity(
@@ -198,7 +209,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                 invoke_from=invoke_from,
                 extras=extras,
                 call_depth=0,
-                trace_manager=trace_manager,
+                trace_scope=trace_scope,
             )
 
             # init generate records
@@ -241,7 +252,6 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                 queue_manager=queue_manager,
                 conversation=conversation,
                 message=message,
-                user=user,
                 stream=streaming,
             )
             return AgentChatAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
@@ -272,7 +282,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                 message = self._get_message(message_id)
 
                 # chatbot app
-                runner = AgentChatAppRunner()
+                runner = AgentChatAppRunner(execution_driver=self._execution_driver)
                 with session_factory.create_session() as session:
                     runner.run(
                         application_generate_entity=application_generate_entity,

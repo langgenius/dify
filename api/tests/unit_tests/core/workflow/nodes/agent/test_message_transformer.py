@@ -28,7 +28,7 @@ def _file() -> File:
     )
 
 
-def _message_stream(messages: list[ToolInvokeMessage]) -> Generator[ToolInvokeMessage, None, None]:
+def _message_stream(messages: list[ToolInvokeMessage]) -> Generator[ToolInvokeMessage]:
     yield from messages
 
 

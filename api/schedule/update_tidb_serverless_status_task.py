@@ -20,7 +20,7 @@ def update_tidb_serverless_status_task():
         # check the number of idle tidb serverless
         tidb_serverless_list = db.session.scalars(
             select(TidbAuthBinding).where(
-                TidbAuthBinding.active == False,
+                TidbAuthBinding.active.is_(False),
                 TidbAuthBinding.status == TidbAuthBindingStatus.CREATING,
             )
         ).all()

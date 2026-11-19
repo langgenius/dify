@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url'
+import { openapi } from '@dify/openapi-content-mapper/vite'
 import { configDefaults, defineConfig, lazyPlugins } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr.ts'
@@ -10,6 +11,30 @@ const projectRoot = fileURLToPath(new URL('.', import.meta.url))
 const isCI = !!process.env.CI
 const rootClientInjectTarget = getRootClientInjectTarget(projectRoot)
 const browserTestPattern = '{app,features}/**/*.browser.spec.{ts,tsx}'
+// `--changed` follows source imports, so inputs outside the module graph rerun every test.
+// Keep coverage-counted sources out of `?raw` imports: those report zero lines.
+const forceRerunTriggers = [
+  ...configDefaults.forceRerunTriggers,
+  '**/pnpm-lock.yaml',
+  '**/pnpm-workspace.yaml',
+  '**/patches/**',
+  // `tsconfigPaths` resolves aliases from these files.
+  '**/web/tsconfig.json',
+  '**/packages/tsconfig/**',
+  // Specs read these from disk or copy them into a temporary project.
+  '**/web/public/embed{,.min}.js',
+  '**/web/i18n/locales/*/{skill,deployments}.json',
+  '**/web/i18n/lib.{client,server}.ts',
+  '**/web/app/route-metadata.ts',
+  '**/web/scripts/check-i18n{.js,-values.ts}',
+  // Tests and the Vite plugin load this workspace package from its built `dist`.
+  '**/packages/openapi-content-mapper/src/**',
+  // Browser setup loads global styles through CSS imports, which the module graph does not track.
+  '**/web/app/styles/**',
+  '**/web/themes/**',
+  '**/web/app/components/base/{badge,premium-badge}/index.css',
+  '**/packages/dify-ui/src/{styles,themes,plugins}/**',
+]
 
 export default defineConfig(({ command, mode, isPreview }) => {
   const isTest = mode === 'test'
@@ -18,12 +43,16 @@ export default defineConfig(({ command, mode, isPreview }) => {
     process.argv.some((arg) => arg.toLowerCase().includes('storybook'))
 
   return {
+    build: {
+      // Match package.json's browserslist; these targets support native top-level await.
+      target: ['chrome111', 'edge111', 'firefox128', 'safari16.4', 'ios16.4'],
+    },
     plugins: lazyPlugins(async () => {
       const { default: react } = await import('@vitejs/plugin-react')
 
-      if (isTest) return [nextStaticImageTestPlugin({ projectRoot }), react()]
+      if (isTest) return [openapi(), nextStaticImageTestPlugin({ projectRoot }), react()]
 
-      if (isStorybook) return [react()]
+      if (isStorybook) return [openapi(), react()]
 
       const [{ default: tailwindcss }, { default: vinext }, { default: Inspect }] =
         await Promise.all([
@@ -36,10 +65,12 @@ export default defineConfig(({ command, mode, isPreview }) => {
         command === 'serve' && isPreview !== true
           ? (await import('code-inspector-plugin')).codeInspectorPlugin({
               bundler: 'vite',
+              behavior: { locate: true, defaultAction: 'locate' },
             })
           : undefined
 
       return [
+        openapi(),
         i18nAnalysisPlugin({
           adapters: [
             { module: 'i18n/lib.client.ts', exportName: 'useTranslation', namespaceArgument: 0 },
@@ -72,17 +103,15 @@ export default defineConfig(({ command, mode, isPreview }) => {
     }),
     resolve: {
       tsconfigPaths: true,
-      alias: [
-        { find: '~@', replacement: projectRoot },
-        // Use the base64 build in Vite-based pipelines (vinext/vitest) to avoid wasm loader incompatibilities.
-        { find: /^loro-crdt$/, replacement: 'loro-crdt/base64' },
-      ],
+      // Storybook's Next.js preset merges aliases as an object.
+      alias: { '~@': projectRoot },
     },
     // vinext related config
     ...(!isTest && !isStorybook
       ? {
           optimizeDeps: {
-            exclude: ['@tanstack/react-query'],
+            // Keep skipToken shared by the unbundled React Query and oRPC clients.
+            exclude: ['@tanstack/react-query', '@tanstack/query-core'],
           },
           server: {
             port: 3000,
@@ -92,10 +121,35 @@ export default defineConfig(({ command, mode, isPreview }) => {
 
     // Vitest config
     test: {
+      // Vitest 5 stores Browser Mode failure screenshots as attachments; CI uploads this directory on failure.
+      attachmentsDir: './.vitest-browser/attachments',
+      forceRerunTriggers,
       coverage: {
         provider: 'v8',
-        reporter: isCI ? ['json', 'json-summary'] : ['text', 'json', 'json-summary'],
-        exclude: ['**/__mocks__/**'],
+        // Unit uploads establish the full source denominator; browser uploads add executed code.
+        include:
+          process.env.DIFY_TEST_COVERAGE_ONLY_EXECUTED === 'true'
+            ? undefined
+            : ['**/*.{js,jsx,ts,tsx,mjs,mts,cjs,cts}'],
+        reporter: isCI ? ['json', 'json-summary'] : ['text', 'html', 'json', 'json-summary'],
+        exclude: [
+          // Test infrastructure and examples do not belong in the source denominator.
+          '**/{__tests__,__mocks__}/**',
+          '**/*.{spec,test,stories}.*',
+          'test/**',
+          'vitest*.setup.ts',
+          // Declarations, generated sources, tool configuration, and build output.
+          '**/*.d.{ts,mts,cts}',
+          '**/*.{generated,gen}.*',
+          'types/doc-paths.ts',
+          '*.config.*',
+          '.*/**',
+          '**/dist/**',
+          '{coverage,build,out,storybook-static}/**',
+          // Keep public/embed.js, but omit its minified copy and vendored workers/editor.
+          'public/**/*.min.{js,mjs}',
+          'public/vs/**',
+        ],
       },
       projects: [
         {
@@ -120,11 +174,18 @@ export default defineConfig(({ command, mode, isPreview }) => {
           }),
           optimizeDeps: {
             include: [
+              '@base-ui/react/collapsible',
               '@base-ui/react/fieldset',
               '@base-ui/react/number-field',
+              '@base-ui/react/popover',
               '@base-ui/react/slider',
+              '@lexical/react/LexicalExtensionComposer',
               'vite-plus/test/browser',
               'dayjs/plugin/relativeTime',
+              'dayjs/plugin/timezone',
+              'dayjs/plugin/utc',
+              'es-toolkit/function',
+              'next/script',
               'react-textarea-autosize',
             ],
           },
@@ -134,17 +195,18 @@ export default defineConfig(({ command, mode, isPreview }) => {
             setupFiles: ['./vitest.browser.setup.ts'],
             include: [browserTestPattern],
             browser: {
-              expect: {
-                toMatchScreenshot: { screenshotDirectory: './.vitest-browser/screenshots' },
-              },
               enabled: true,
               provider: playwright(),
               instances: [{ browser: 'chromium' }],
               headless: true,
-              screenshotDirectory: './.vitest-browser/screenshots',
+              // Keep application maps and mapped error stacks without sending dependency maps.
+              dependencySourcemaps: false,
               screenshotFailures: true,
               trace: {
-                mode: 'retain-on-failure',
+                // Recording zips every test on the Vitest main thread, even with
+                // retain-on-failure, and roughly doubles CI time. Failure screenshots remain.
+                mode: 'off',
+                screenshots: false,
                 tracesDir: './.vitest-browser/traces',
               },
             },

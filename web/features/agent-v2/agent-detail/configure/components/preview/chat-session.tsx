@@ -154,9 +154,9 @@ export function AgentPreviewChatSession({
     <ChatInputArea
       botName={agentName || 'Agent'}
       customPlaceholder={inputPlaceholder}
+      inputLabel={inputPlaceholder}
       disabled={disabled || (isEmptyChat && isResponding)}
-      // Build chat opts out so it does not steal focus from the configure editor.
-      // oxlint-disable-next-line jsx-a11y/no-autofocus
+      // oxlint-disable-next-line jsx-a11y/no-autofocus -- Build chat opts out so it does not steal focus from the configure editor.
       autoFocus={isEmptyChat ? inputAutoFocus : undefined}
       sendButtonLoading={sendButtonLoading}
       showFileUpload={false}
@@ -221,7 +221,7 @@ export function AgentPreviewChatSession({
         <div
           className={cn(
             isEmptyChat
-              ? cn('flex w-full flex-col items-start text-left', chatMaxWidthClassName)
+              ? cn('flex w-full flex-col items-start text-start', chatMaxWidthClassName)
               : 'pointer-events-none relative w-full',
           )}
         >

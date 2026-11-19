@@ -1,4 +1,8 @@
 {
+  "callback.error": "授權失敗",
+  "callback.errorHint": "請返回上一頁並重試。",
+  "callback.success": "授權完成",
+  "callback.successHint": "現在可以關閉此分頁並返回上一頁。",
   "connect": "連接到",
   "continue": "繼續",
   "error.authAppInfoFetchFailed": "無法獲取應用程式授權信息",

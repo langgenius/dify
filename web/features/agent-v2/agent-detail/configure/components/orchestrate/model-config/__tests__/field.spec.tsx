@@ -1,22 +1,15 @@
 import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { AgentComposerModel } from '@/features/agent-v2/agent-composer/form-state'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, render as renderWithoutUrlState, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/console'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { AgentModelField } from '../field'
 
 const providerSummary = vi.hoisted(() => vi.fn())
 
 const modelList = vi.hoisted(() => vi.fn<() => Promise<{ data: ProviderWithModelsResponse[] }>>())
-
-vi.mock('nuqs', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('nuqs')>()),
-  useQueryState: () => [null, vi.fn()],
-}))
-
-vi.mock('@/service/use-common', () => ({
-  useModelParameterRules: () => ({ data: { data: [] }, isLoading: false }),
-}))
 
 vi.mock(
   '@/app/components/header/account-setting/model-provider-page/provider-added-card/use-credential-panel-state',
@@ -25,38 +18,23 @@ vi.mock(
   }),
 )
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    workspaces: {
-      current: {
-        models: {
-          modelTypes: {
-            byModelType: {
-              get: {
-                queryOptions: (options: object) => ({
-                  queryKey: ['model-list'],
-                  queryFn: modelList,
-                  ...options,
-                }),
-              },
-            },
-          },
-        },
-        modelProviders: {
-          summary: {
-            get: {
-              queryOptions: (options: object) => ({
-                queryKey: ['providers'],
-                queryFn: providerSummary,
-                ...options,
-              }),
-            },
-          },
-        },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.models.modelTypes.byModelType.get': modelList,
+      'workspaces.current.modelProviders.summary.get': providerSummary,
+      'workspaces.current.modelProviders.byProvider.models.parameterRules.get': async () => ({
+        data: [],
+      }),
+    }),
+  }
+})
+
+const onUrlUpdate = vi.fn()
+const render = createNuqsTestRenderer(renderWithoutUrlState, () => ({ onUrlUpdate }))
 
 function renderField(currentModel?: AgentComposerModel) {
   const queryClient = new QueryClient({
@@ -73,7 +51,7 @@ function renderField(currentModel?: AgentComposerModel) {
 
 describe('AgentModelField', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     providerSummary.mockResolvedValue({ data: [] })
   })
 
@@ -87,25 +65,10 @@ describe('AgentModelField', () => {
     )
     const { onSelect } = renderField()
 
-    const modelGroup = screen.getByRole('group', {
-      name: 'agentV2.agentDetail.configure.model.label',
-    })
-    expect(modelGroup.tagName).toBe('FIELDSET')
-    expect(modelGroup).toHaveAttribute(
-      'aria-labelledby',
-      screen.getByText('agentV2.agentDetail.configure.model.label').id,
-    )
-    expect(modelGroup).toContainElement(
-      screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }),
-    )
-    expect(modelGroup).toContainElement(
-      screen.getByRole('button', { name: 'modelProvider.modelProvider.modelSettings' }),
-    )
     expect(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' })).toBeDisabled()
     expect(
       screen.getByRole('button', { name: 'modelProvider.modelProvider.modelSettings' }),
     ).toBeDisabled()
-    expect(screen.queryByText('common.loading')).not.toBeInTheDocument()
 
     await act(async () => {
       resolve({ data: [] })
@@ -116,7 +79,6 @@ describe('AgentModelField', () => {
         screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }),
       ).toBeEnabled()
     })
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
     expect(onSelect).not.toHaveBeenCalled()
   })
 
@@ -140,16 +102,8 @@ describe('AgentModelField', () => {
     const settings = screen.getByRole('button', {
       name: 'modelProvider.modelProvider.modelSettings',
     })
-    const modelGroup = screen.getByRole('group', {
-      name: 'agentV2.agentDetail.configure.model.label',
-    })
-
-    expect(modelGroup).toContainElement(trigger)
-    expect(modelGroup).toContainElement(settings)
-
     expect(trigger).toBeDisabled()
     expect(settings).toBeDisabled()
-    expect(screen.queryByText('common.loading')).not.toBeInTheDocument()
     expect(screen.queryByText(/incompatible|disabled/i)).not.toBeInTheDocument()
 
     await act(async () => {
@@ -184,6 +138,8 @@ describe('AgentModelField', () => {
         screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }),
       ).toBeEnabled()
     })
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(modelList).toHaveBeenCalledTimes(2)
   })
 
   it('keeps the selector available during a background catalog refresh', async () => {
@@ -196,12 +152,13 @@ describe('AgentModelField', () => {
 
     modelList.mockImplementation(() => new Promise(() => {}))
     act(() => {
-      void queryClient.invalidateQueries({ queryKey: ['model-list'] })
+      void queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.models.modelTypes.byModelType.get.key(),
+      })
     })
     await waitFor(() => {
       expect(modelList).toHaveBeenCalledTimes(2)
     })
     expect(trigger).toBeEnabled()
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 })

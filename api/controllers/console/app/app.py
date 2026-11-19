@@ -1,14 +1,12 @@
 import uuid
-from dataclasses import asdict
 from http import HTTPStatus
 from typing import Literal, Self, override
 
-from flask import request, send_file
+from flask import send_file
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator, model_validator
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
-from configs import dify_config
 from controllers.common.fields import RedirectUrlResponse, SimpleResultResponse
 from controllers.common.rbac import AgentBehindApp, PlainApp, RBACCheck, Workspace
 from controllers.common.schema import (
@@ -19,7 +17,16 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
-from controllers.console.app.error import AppNotFoundError, TracingProviderUnavailableError
+from controllers.console.app.error import (
+    AppNotFoundError,
+    InvalidTracingConfigError,
+    TracingConfigConflictError,
+    TracingConfigNotFoundError,
+    TracingConfigProcessingError,
+    TracingProviderUnavailableError,
+    UnsupportedTracingProviderError,
+)
+from controllers.console.app.response import app_detail_response
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.workspace.models import LoadBalancingPayload
 from controllers.console.wraps import (
@@ -32,7 +39,6 @@ from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_application_services import application_services
 from fields.app_fields import (
     AppDetail,
-    AppDetailSiteResponse,
     AppDetailWithSite,
     AppExportResponse,
     AppImportResponse,
@@ -41,20 +47,20 @@ from fields.app_fields import (
     AppPartial,
     AppTraceResponse,
     DeletedTool,
-    ModelConfigPartial,
     RecentAppListResponse,
     RecentAppResponse,
     Tag,
     WorkflowPartial,
 )
 from graphon.enums import WorkflowExecutionStatus
+from libs.external_api import error_responses
 from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 from libs.helper import dump_response
-from libs.url_utils import normalize_api_base_url
 from machinery.context import RequestContext
 from models import DatasetPermissionEnum
 from models.account import TenantAccountRole
 from models.model import IconType
+from services.agent.errors import RosterAgentPackageExportFailedError
 from services.app.console_service import (
     AppExportAgentNotFoundError,
     AppExportPaidPlanRequiredError,
@@ -64,22 +70,27 @@ from services.app.console_service import (
     InvalidAppExportError,
 )
 from services.app_tracing_config_service import (
+    AppTraceSettings,
+    AppTracingConfigAppNotFoundError,
+    AppTracingConfigConflictError,
+    AppTracingConfigInvalidConfigurationError,
     AppTracingConfigInvalidProviderError,
+    AppTracingConfigNotFoundError,
+    AppTracingConfigProcessingError,
     AppTracingConfigProviderUnavailableError,
 )
 from services.entities.app_entities import (
     AppExportOptions,
     AppListParams,
     AppListSortBy,
-    AppRecord,
-    AppTraceSettings,
     CopyAppParams,
     CreateAppParams,
     StarredAppListParams,
     UpdateAppParams,
 )
 from services.entities.dsl_entities import ImportStatus
-from services.entities.knowledge_entities.knowledge_entities import (
+from services.errors.base import NoPermissionError
+from services.knowledge.entities.knowledge_entities import (
     DataSource,
     InfoList,
     NotionIcon,
@@ -91,7 +102,6 @@ from services.entities.knowledge_entities.knowledge_entities import (
     WeightModel,
     WeightVectorSetting,
 )
-from services.errors.account import NoPermissionError
 
 register_enum_models(console_ns, IconType)
 
@@ -109,6 +119,7 @@ class AppListBaseQuery(BaseModel):
         description="Sort apps by last modified, recently created, or earliest created",
     )
     name: str | None = Field(default=None, description="Filter by app name")
+    openapi_visible: bool = Field(default=False, description="Only return apps with API access enabled")
     tag_ids: list[str] | None = Field(default=None, description="Filter by tag IDs")
     creator_ids: list[str] | None = Field(default=None, description="Filter by creator account IDs")
     is_created_by_me: bool | None = Field(default=None, description="Filter by creator")
@@ -231,13 +242,14 @@ class AppApiStatusPayload(BaseModel):
 class AppTracePayload(BaseModel):
     enabled: bool = Field(..., description="Enable or disable tracing")
     tracing_provider: str | None = Field(default=None, description="Tracing provider")
+    capture_content: bool = Field(default=False, description="Include prompt, output and tool content in new traces")
+    capture_agent: bool = Field(default=True, description="Capture Agent internals when deployment support is enabled")
 
-    @field_validator("tracing_provider")
-    @classmethod
-    def validate_tracing_provider(cls, value: str | None, info) -> str | None:
-        if info.data.get("enabled") and not value:
+    @model_validator(mode="after")
+    def validate_tracing_provider(self) -> "AppTracePayload":
+        if self.enabled and not self.tracing_provider:
             raise ValueError("tracing_provider is required when enabled is True")
-        return value
+        return self
 
 
 register_enum_models(console_ns, RetrievalMethod, WorkflowExecutionStatus, DatasetPermissionEnum)
@@ -266,8 +278,6 @@ register_schema_models(
     AppTracePayload,
     Tag,
     WorkflowPartial,
-    ModelConfigPartial,
-    AppDetailSiteResponse,
     DeletedTool,
     AppExportResponse,
     Segmentation,
@@ -300,16 +310,6 @@ register_response_schema_models(
 
 _EDIT_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR})
 _ADMIN_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})
-
-
-def _app_detail_response(app: AppRecord) -> AppDetailWithSite:
-    """Resolve transport URLs here so repositories work without a Flask request."""
-    data = asdict(app)
-    data["api_base_url"] = normalize_api_base_url(dify_config.SERVICE_API_URL or request.host_url.rstrip("/"))
-    data["app_id"] = None
-    if data["site"] is not None:
-        data["site"]["app_base_url"] = dify_config.APP_WEB_URL or request.url_root.rstrip("/")
-    return AppDetailWithSite.model_validate(data)
 
 
 class AppResource(Resource):
@@ -361,7 +361,7 @@ class AppListApi(AppResource):
     def post(self, context: RequestContext):
         payload = validate_request(CreateAppPayload)
         params = CreateAppParams.model_validate(payload.model_dump())
-        response = _app_detail_response(application_services().apps.console.create(context, params))
+        response = app_detail_response(application_services().apps.console.create(context, params))
         return dump_response(AppDetailWithSite, response), HTTPStatus.CREATED
 
 
@@ -425,7 +425,7 @@ class AppApi(AppResource):
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AppDetailWithSite.__name__])
     @console_account_admission(require_valid_enterprise_license=True)
     def get(self, context: RequestContext, app_id: uuid.UUID):
-        response = _app_detail_response(application_services().apps.console.get(context, str(app_id)))
+        response = app_detail_response(application_services().apps.console.get(context, str(app_id)))
         return dump_response(AppDetailWithSite, response)
 
     @console_ns.doc("update_app")
@@ -453,7 +453,7 @@ class AppApi(AppResource):
             use_icon_as_answer_icon=payload.use_icon_as_answer_icon or False,
             max_active_requests=payload.max_active_requests or 0,
         )
-        response = _app_detail_response(application_services().apps.console.update(context, str(app_id), params))
+        response = app_detail_response(application_services().apps.console.update(context, str(app_id), params))
         return dump_response(AppDetailWithSite, response)
 
     @console_ns.doc("delete_app")
@@ -483,6 +483,7 @@ class AppCopyApi(AppResource):
     @console_ns.response(
         HTTPStatus.ACCEPTED, "App copy requires confirmation", console_ns.models[AppImportResponse.__name__]
     )
+    @console_ns.response(HTTPStatus.BAD_REQUEST, "App copy failed", console_ns.models[AppImportResponse.__name__])
     @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
     @console_account_admission(
         allowed_roles=_EDIT_ROLES, rbac_checks=[RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, PlainApp())]
@@ -497,11 +498,12 @@ class AppCopyApi(AppResource):
         if result.status == ImportStatus.PENDING:
             return dump_response(AppImportResponse, result), HTTPStatus.ACCEPTED
         assert copied is not None
-        return dump_response(AppDetailWithSite, _app_detail_response(copied)), HTTPStatus.CREATED
+        return dump_response(AppDetailWithSite, app_detail_response(copied)), HTTPStatus.CREATED
 
 
 @console_ns.route("/apps/<uuid:app_id>/export")
 class AppExportApi(AppResource):
+    @error_responses(RosterAgentPackageExportFailedError)
     @console_ns.doc("export_app")
     @console_ns.doc(description="Export application configuration as DSL")
     @console_ns.doc(params={"app_id": "Application ID to export"})
@@ -656,6 +658,15 @@ class AppTraceApi(AppResource):
     def get(self, context: RequestContext, app_id: uuid.UUID):
         return dump_response(AppTraceResponse, application_services().apps.console.get_trace(context, str(app_id)))
 
+    @error_responses(
+        AppNotFoundError,
+        TracingProviderUnavailableError,
+        TracingConfigNotFoundError,
+        TracingConfigConflictError,
+        TracingConfigProcessingError,
+        InvalidTracingConfigError,
+        UnsupportedTracingProviderError,
+    )
     @console_ns.doc("update_app_trace")
     @console_ns.doc(description="Update app tracing configuration")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -677,6 +688,18 @@ class AppTraceApi(AppResource):
                 str(app_id),
                 AppTraceSettings(**payload.model_dump()),
             )
+        except AppTracingConfigAppNotFoundError as error:
+            raise AppNotFoundError() from error
+        except AppTracingConfigConflictError as error:
+            raise TracingConfigConflictError() from error
+        except AppTracingConfigNotFoundError as error:
+            raise TracingConfigNotFoundError() from error
+        except AppTracingConfigProcessingError as error:
+            raise TracingConfigProcessingError() from error
+        except AppTracingConfigInvalidConfigurationError as error:
+            raise InvalidTracingConfigError() from error
+        except AppTracingConfigInvalidProviderError as error:
+            raise UnsupportedTracingProviderError() from error
         except AppTracingConfigProviderUnavailableError as error:
             raise TracingProviderUnavailableError() from error
         return SimpleResultResponse(result="success").model_dump(mode="json")

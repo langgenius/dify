@@ -3,17 +3,12 @@ import type {
   RecommendedAppResponse,
 } from '@dify/contracts/api/console/explore/types.gen'
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
-import { AppModeEnum } from '@/types/app'
 import { TemplateCard } from '../template-card'
-
-vi.mock('@/app/components/app/type-selector', () => ({
-  AppTypeIcon: ({ type }: { type: string }) => <div data-testid="app-type-icon">{type}</div>,
-}))
 
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
@@ -37,7 +32,7 @@ const createApp = (overrides: TemplateFixtureOverrides = {}): TemplateFixture =>
   ...overrides,
   app: {
     id: 'id-1',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     icon_type: null,
     icon: '🤖',
     icon_background: '#fff',
@@ -80,23 +75,16 @@ describe('TemplateCard', () => {
     })
 
     it.each([
-      [AppModeEnum.CHAT, 'APP.TYPES.CHATBOT'],
-      [AppModeEnum.ADVANCED_CHAT, 'APP.TYPES.ADVANCED'],
-      [AppModeEnum.AGENT_CHAT, 'APP.TYPES.AGENT'],
-      [AppModeEnum.WORKFLOW, 'APP.TYPES.WORKFLOW'],
-      [AppModeEnum.COMPLETION, 'APP.TYPES.COMPLETION'],
-    ])('should render correct mode label for %s mode', (mode, label) => {
+      ['chat', 'APP.TYPES.CHATBOT'],
+      ['advanced-chat', 'APP.TYPES.ADVANCED'],
+      ['agent-chat', 'APP.TYPES.AGENT'],
+      ['agent', 'APP.TYPES.AGENT'],
+      ['workflow', 'APP.TYPES.WORKFLOW'],
+      ['completion', 'APP.TYPES.COMPLETION'],
+    ] as const)('should render correct mode label for %s mode', (mode, label) => {
       renderComponent({ app: createApp({ app: { ...createApp().app, mode } }) })
 
       expect(screen.getByText(label)).toBeInTheDocument()
-      expect(screen.getByTestId('app-type-icon')).toHaveTextContent(mode)
-    })
-
-    it('should render description in a truncatable container', () => {
-      renderComponent({ app: createApp({ description: 'Very long description text' }) })
-
-      const descWrapper = screen.getByText('Very long description text')
-      expect(descWrapper).toHaveClass('line-clamp-2')
     })
 
     it('should not render category badges', () => {
@@ -108,30 +96,38 @@ describe('TemplateCard', () => {
   })
 
   describe('User Interactions', () => {
-    it('should make the app card clickable on cloud edition', () => {
-      renderComponent({
-        app: createApp({ app: { ...createApp().app, mode: AppModeEnum.WORKFLOW } }),
-        canCreate: true,
-      })
+    it.each([
+      ['CLOUD', true, 'explore.appCard.try'],
+      ['CLOUD', false, 'explore.appCard.try'],
+      ['COMMUNITY', true, 'explore.tryApp.createFromSampleApp'],
+    ] as const)(
+      'describes the Agent card action on %s with canCreate=%s',
+      async (edition, canCreate, action) => {
+        const user = userEvent.setup()
+        deploymentEdition = edition
+        const templateName = 'An Agent template with a full descriptive name'
+        const app = createApp({
+          app: { mode: 'agent' as const, name: templateName },
+          description:
+            'A full template description that remains available when visually truncated.',
+        })
 
-      const cardButton = screen.getByRole('button', { name: 'Sample App' })
+        renderComponent({ app, canCreate })
 
-      expect(cardButton).toHaveAttribute('type', 'button')
-    })
+        const cardButton = screen.getByRole('button', { name: templateName })
+        expect(cardButton).toHaveAccessibleDescription(`${action} ${app.description}`)
 
-    it('should not render hover action buttons', () => {
-      renderComponent({ canCreate: true })
+        await user.click(cardButton)
 
-      expect(screen.queryByText('explore.appCard.addToWorkspace')).not.toBeInTheDocument()
-      expect(screen.queryByText('explore.appCard.try')).not.toBeInTheDocument()
-    })
-
-    it('should make the app card clickable outside cloud edition when create is allowed', () => {
-      deploymentEdition = 'COMMUNITY'
-      renderComponent({ canCreate: true })
-
-      expect(screen.getByRole('button', { name: 'Sample App' })).toHaveClass('cursor-pointer')
-    })
+        if (edition === 'CLOUD') {
+          expect(onTry).toHaveBeenCalledWith(app)
+          expect(onCreate).not.toHaveBeenCalled()
+        } else {
+          expect(onCreate).toHaveBeenCalledTimes(1)
+          expect(onTry).not.toHaveBeenCalled()
+        }
+      },
+    )
 
     it('should not make the app card clickable outside cloud edition when create is not allowed', () => {
       deploymentEdition = 'COMMUNITY'
@@ -141,72 +137,60 @@ describe('TemplateCard', () => {
     })
   })
 
-  describe('Props', () => {
-    it('should hide create button when canCreate is false', () => {
-      renderComponent({ canCreate: false })
-
-      expect(screen.queryByText('explore.appCard.addToWorkspace')).not.toBeInTheDocument()
-    })
-  })
-
   describe('Edge Cases', () => {
-    it('should truncate long app name with title attribute', () => {
-      const longName = 'A Very Long Application Name That Should Be Truncated'
-      renderComponent({ app: createApp({ app: { ...createApp().app, name: longName } }) })
+    it.each([
+      ['CLOUD', 'explore.appCard.try'],
+      ['COMMUNITY', 'explore.tryApp.createFromSampleApp'],
+    ] as const)(
+      'describes the card action without a template description on %s',
+      (edition, action) => {
+        deploymentEdition = edition
+        renderComponent({
+          app: createApp({ app: { mode: 'agent' as const }, description: '' }),
+          canCreate: true,
+        })
 
-      const nameElement = screen.getByText(longName)
-      expect(nameElement).toHaveAttribute('title', longName)
-      expect(nameElement).toHaveClass('truncate')
-    })
+        expect(screen.getByRole('button', { name: 'Sample App' })).toHaveAccessibleDescription(
+          action,
+        )
+      },
+    )
 
-    it('should render with empty description', () => {
-      renderComponent({ app: createApp({ description: '' }) })
-
-      expect(screen.getByText('Sample App')).toBeInTheDocument()
-    })
-
-    it('should call onTry when app card is clicked on cloud edition', () => {
-      const app = createApp()
-
-      renderComponent({ app, canCreate: true })
-
-      fireEvent.click(screen.getByRole('button', { name: 'Sample App' }))
-
-      expect(onTry).toHaveBeenCalledWith(app)
-      expect(onCreate).not.toHaveBeenCalled()
-    })
-
-    it('should call onCreate when app card is clicked outside cloud edition', () => {
+    it('should call onCreate when app card is clicked outside cloud edition', async () => {
+      const user = userEvent.setup()
       deploymentEdition = 'COMMUNITY'
 
       renderComponent({ canCreate: true })
 
-      fireEvent.click(screen.getByRole('button', { name: 'Sample App' }))
+      await user.click(screen.getByRole('button', { name: 'Sample App' }))
 
       expect(onCreate).toHaveBeenCalledTimes(1)
       expect(onTry).not.toHaveBeenCalled()
       expect(mockTrackEvent).not.toHaveBeenCalled()
     })
 
-    it('should call the card action when Enter is pressed on app card', async () => {
+    it.each(['{Enter}', ' '])('opens an Agent template with %s from the keyboard', async (key) => {
+      const user = userEvent.setup()
+      const app = createApp({ app: { mode: 'agent' as const } })
+
+      renderComponent({ app, canCreate: true })
+
+      await user.tab()
+      expect(screen.getByRole('button', { name: 'Sample App' })).toHaveFocus()
+      await user.keyboard(key)
+
+      expect(onTry).toHaveBeenCalledWith(app)
+    })
+
+    it('should track preview event when app card is clicked', async () => {
       const user = userEvent.setup()
       const app = createApp()
 
       renderComponent({ app, canCreate: true })
 
-      screen.getByRole('button', { name: 'Sample App' }).focus()
-      await user.keyboard('{Enter}')
+      await user.click(screen.getByRole('button', { name: 'Sample App' }))
 
-      expect(onTry).toHaveBeenCalledWith(app)
-    })
-
-    it('should track preview event when app card is clicked', () => {
-      const app = createApp()
-
-      renderComponent({ app, canCreate: true })
-
-      fireEvent.click(screen.getByRole('button', { name: 'Sample App' }))
-
+      expect(onTry).toHaveBeenCalledExactlyOnceWith(app)
       expect(mockTrackEvent).toHaveBeenCalledWith('preview_template', {
         template_id: app.app_id,
         template_name: app.app.name,

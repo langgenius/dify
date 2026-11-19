@@ -37,7 +37,7 @@ Then(
     if (reference.app_updated_at == null)
       await expect(row.getByText('N/A', { exact: true })).toBeVisible()
     else await expect(row.getByText('N/A', { exact: true })).not.toBeVisible()
-    await expect(row.getByRole('link', { name: `Open ${workflowName} in Studio` })).toBeVisible()
+    await expect(row.getByRole('link', { name: `Open in Studio ${workflowName}` })).toBeVisible()
   },
 )
 
@@ -45,7 +45,7 @@ When(
   'I open the Agent v2 Workflow access reference for {string}',
   async function (this: DifyWorld, workflowName: string) {
     const workflowLink = this.getPage().getByRole('link', {
-      name: `Open ${workflowName} in Studio`,
+      name: `Open in Studio ${workflowName}`,
     })
 
     const [workflowPage] = await Promise.all([

@@ -15,7 +15,7 @@ describe('ChunkingModeLabel', () => {
     },
     {
       isGeneralMode: false,
-      isQAMode: true,
+      isQAMode: false,
       label: 'dataset.chunkingMode.parentChild',
     },
   ])('displays $label for a supported chunking mode', ({ isGeneralMode, isQAMode, label }) => {

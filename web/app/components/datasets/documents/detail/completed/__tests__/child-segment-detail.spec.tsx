@@ -1,310 +1,68 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { act, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { ChunkingMode } from '@/models/datasets'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import ChildSegmentDetail from '../child-segment-detail'
 
 vi.mock('../../context', () => ({
-  useDocumentContext: (selector: (state: { canEdit: boolean }) => unknown) =>
-    selector({ canEdit: true }),
+  useDocumentContext: (select: (state: { canEdit: boolean }) => unknown) =>
+    select({ canEdit: true }),
 }))
-
-// Mock segment list context
-let mockFullScreen = false
-const mockToggleFullScreen = vi.fn()
 vi.mock('../index', () => ({
   useSegmentListContext: (
-    selector: (state: { fullScreen: boolean; toggleFullScreen: () => void }) => unknown,
-  ) => {
-    const state = {
-      fullScreen: mockFullScreen,
-      toggleFullScreen: mockToggleFullScreen,
-    }
-    return selector(state)
-  },
+    select: (state: { fullScreen: boolean; toggleFullScreen: () => void }) => unknown,
+  ) => select({ fullScreen: false, toggleFullScreen: vi.fn() }),
 }))
 
-// Mock event emitter context
-let mockSubscriptionCallback: ((v: string) => void) | null = null
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => ({
-    eventEmitter: {
-      useSubscription: (callback: (v: string) => void) => {
-        mockSubscriptionCallback = callback
-      },
-    },
-  }),
-}))
-
-vi.mock('../common/action-buttons', () => ({
-  ActionButtons: ({
-    handleCancel,
-    handleSave,
-    loading,
-    isChildChunk,
-  }: {
-    handleCancel: () => void
-    handleSave: () => void
-    loading: boolean
-    isChildChunk?: boolean
-  }) => (
-    <div data-testid="action-buttons">
-      <button onClick={handleCancel} data-testid="cancel-btn">
-        Cancel
-      </button>
-      <button onClick={handleSave} disabled={loading} data-testid="save-btn">
-        Save
-      </button>
-      <span data-testid="is-child-chunk">{isChildChunk ? 'true' : 'false'}</span>
-    </div>
-  ),
-}))
-
-vi.mock('../common/chunk-content', () => ({
-  default: ({
-    question,
-    onQuestionChange,
-    isEditMode,
-  }: {
-    question: string
-    onQuestionChange: (v: string) => void
-    isEditMode: boolean
-  }) => (
-    <div data-testid="chunk-content">
-      <input
-        data-testid="content-input"
-        value={question}
-        onChange={(e) => onQuestionChange(e.target.value)}
+function setup() {
+  let emit!: (event: string) => void
+  function CaptureEmitter() {
+    const { eventEmitter } = useEventEmitterContextContext()
+    emit = (event) => eventEmitter!.emit(event)
+    return null
+  }
+  const onUpdate = vi.fn()
+  const onCancel = vi.fn()
+  render(
+    <EventEmitterContextProvider>
+      <CaptureEmitter />
+      <ChildSegmentDetail
+        chunkId="parent-1"
+        childChunkInfo={{ id: 'child-1', content: 'Original', position: 1 }}
+        docForm={ChunkingMode.parentChild}
+        onUpdate={onUpdate}
+        onCancel={onCancel}
       />
-      <span data-testid="edit-mode">{isEditMode ? 'editing' : 'viewing'}</span>
-    </div>
-  ),
-}))
+    </EventEmitterContextProvider>,
+  )
+  return { onUpdate, onCancel, emit: (event: string) => act(() => emit(event)) }
+}
 
-vi.mock('../common/dot', () => ({
-  default: () => <span data-testid="dot">•</span>,
-}))
+it('saves edited content with parent and child identities and blocks duplicate saves while updating', async () => {
+  const user = userEvent.setup()
+  const { onUpdate, emit } = setup()
+  await user.type(
+    screen.getByRole('textbox', { name: 'datasetDocuments.segment.contentPlaceholder' }),
+    ' updated',
+  )
+  await user.click(screen.getByRole('button', { name: /common.operation.save/ }))
+  expect(onUpdate).toHaveBeenCalledWith('parent-1', 'child-1', 'Original updated')
+  emit('update-child-segment')
+  const save = screen.getByRole('button', { name: /common.operation.save/ })
+  expect(save).toBeDisabled()
+  await user.click(save)
+  expect(onUpdate).toHaveBeenCalledOnce()
+  emit('update-child-segment-done')
+  expect(save).toBeEnabled()
+})
 
-vi.mock('../common/segment-index-tag', () => ({
-  SegmentIndexTag: ({ positionId, labelPrefix }: { positionId?: string; labelPrefix?: string }) => (
-    <span data-testid="segment-index-tag">
-      {labelPrefix} {positionId}
-    </span>
-  ),
-}))
-
-describe('ChildSegmentDetail', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockFullScreen = false
-    mockSubscriptionCallback = null
-  })
-
-  const defaultChildChunkInfo = {
-    id: 'child-chunk-1',
-    content: 'Test content',
-    position: 1,
-    updated_at: 1609459200, // 2021-01-01
-  }
-
-  const defaultProps = {
-    chunkId: 'chunk-1',
-    childChunkInfo: defaultChildChunkInfo,
-    onUpdate: vi.fn(),
-    onCancel: vi.fn(),
-    docForm: ChunkingMode.text,
-  }
-
-  describe('Rendering', () => {
-    it('should render edit child chunk title', () => {
-      render(<ChildSegmentDetail {...defaultProps} />)
-
-      expect(screen.getByText(/segment\.editChildChunk/i))!.toBeInTheDocument()
-    })
-
-    it('should render chunk content component', () => {
-      render(<ChildSegmentDetail {...defaultProps} />)
-
-      expect(screen.getByTestId('chunk-content'))!.toBeInTheDocument()
-    })
-
-    it('should render segment index tag', () => {
-      render(<ChildSegmentDetail {...defaultProps} />)
-
-      expect(screen.getByTestId('segment-index-tag'))!.toBeInTheDocument()
-    })
-
-    it('should render word count', () => {
-      render(<ChildSegmentDetail {...defaultProps} />)
-
-      expect(screen.getByText(/segment\.characters/i))!.toBeInTheDocument()
-    })
-
-    it('should render edit time', () => {
-      render(<ChildSegmentDetail {...defaultProps} />)
-
-      expect(screen.getByText(/segment\.editedAt/i))!.toBeInTheDocument()
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should call onCancel when close button is clicked', () => {
-      const mockOnCancel = vi.fn()
-      render(<ChildSegmentDetail {...defaultProps} onCancel={mockOnCancel} />)
-
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
-
-      expect(mockOnCancel).toHaveBeenCalled()
-    })
-
-    it('should call toggleFullScreen when expand button is clicked', () => {
-      render(<ChildSegmentDetail {...defaultProps} />)
-
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.zoomIn' }))
-
-      expect(mockToggleFullScreen).toHaveBeenCalled()
-    })
-
-    it('should call onUpdate when save is clicked', () => {
-      const mockOnUpdate = vi.fn()
-      render(<ChildSegmentDetail {...defaultProps} onUpdate={mockOnUpdate} />)
-
-      fireEvent.click(screen.getByTestId('save-btn'))
-
-      expect(mockOnUpdate).toHaveBeenCalledWith('chunk-1', 'child-chunk-1', 'Test content')
-    })
-
-    it('should update content when input changes', () => {
-      render(<ChildSegmentDetail {...defaultProps} />)
-
-      fireEvent.change(screen.getByTestId('content-input'), {
-        target: { value: 'Updated content' },
-      })
-
-      expect(screen.getByTestId('content-input'))!.toHaveValue('Updated content')
-    })
-  })
-
-  // Full screen mode
-  describe('Full Screen Mode', () => {
-    it('should show action buttons in header when fullScreen is true', () => {
-      mockFullScreen = true
-
-      render(<ChildSegmentDetail {...defaultProps} />)
-
-      expect(screen.getByTestId('action-buttons'))!.toBeInTheDocument()
-    })
-
-    it('should not show footer action buttons when fullScreen is true', () => {
-      mockFullScreen = true
-
-      render(<ChildSegmentDetail {...defaultProps} />)
-
-      // Assert - footer with border-t-divider-subtle should not exist
-      const actionButtons = screen.getAllByTestId('action-buttons')
-      // Only one action buttons set should exist in fullScreen mode
-      expect(actionButtons.length).toBe(1)
-    })
-
-    it('should show footer action buttons when fullScreen is false', () => {
-      mockFullScreen = false
-
-      render(<ChildSegmentDetail {...defaultProps} />)
-
-      expect(screen.getByTestId('action-buttons'))!.toBeInTheDocument()
-    })
-  })
-
-  // Props
-  describe('Props', () => {
-    it('should pass isChildChunk true to ActionButtons', () => {
-      render(<ChildSegmentDetail {...defaultProps} />)
-
-      expect(screen.getByTestId('is-child-chunk'))!.toHaveTextContent('true')
-    })
-
-    it('should pass isEditMode true to ChunkContent', () => {
-      render(<ChildSegmentDetail {...defaultProps} />)
-
-      expect(screen.getByTestId('edit-mode'))!.toHaveTextContent('editing')
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle empty content', () => {
-      const emptyChildChunkInfo = { ...defaultChildChunkInfo, content: '' }
-
-      render(<ChildSegmentDetail {...defaultProps} childChunkInfo={emptyChildChunkInfo} />)
-
-      expect(screen.getByTestId('content-input'))!.toHaveValue('')
-    })
-
-    it('should maintain structure when rerendered', () => {
-      const { rerender } = render(<ChildSegmentDetail {...defaultProps} />)
-
-      const updatedInfo = { ...defaultChildChunkInfo, content: 'New content' }
-      rerender(<ChildSegmentDetail {...defaultProps} childChunkInfo={updatedInfo} />)
-
-      expect(screen.getByTestId('content-input'))!.toBeInTheDocument()
-    })
-  })
-
-  // Event subscription tests
-  describe('Event Subscription', () => {
-    it('should register event subscription', () => {
-      render(<ChildSegmentDetail {...defaultProps} />)
-
-      // Assert - subscription callback should be registered
-      expect(mockSubscriptionCallback).not.toBeNull()
-    })
-
-    it('should have save button enabled by default', () => {
-      render(<ChildSegmentDetail {...defaultProps} />)
-
-      // Assert - save button should be enabled initially
-      // Assert - save button should be enabled initially
-      // Assert - save button should be enabled initially
-      // Assert - save button should be enabled initially
-      // Assert - save button should be enabled initially
-      // Assert - save button should be enabled initially
-      // Assert - save button should be enabled initially
-      // Assert - save button should be enabled initially
-      // Assert - save button should be enabled initially
-      // Assert - save button should be enabled initially
-      // Assert - save button should be enabled initially
-      // Assert - save button should be enabled initially
-      // Assert - save button should be enabled initially
-      // Assert - save button should be enabled initially
-      // Assert - save button should be enabled initially
-      // Assert - save button should be enabled initially
-      // Assert - save button should be enabled initially
-      // Assert - save button should be enabled initially
-      // Assert - save button should be enabled initially
-      // Assert - save button should be enabled initially
-      // Assert - save button should be enabled initially
-      // Assert - save button should be enabled initially
-      // Assert - save button should be enabled initially
-      // Assert - save button should be enabled initially
-      // Assert - save button should be enabled initially
-      // Assert - save button should be enabled initially
-      // Assert - save button should be enabled initially
-      // Assert - save button should be enabled initially
-      // Assert - save button should be enabled initially
-      // Assert - save button should be enabled initially
-      // Assert - save button should be enabled initially
-      // Assert - save button should be enabled initially
-      expect(screen.getByTestId('save-btn')).not.toBeDisabled()
-    })
-  })
-
-  // Cancel behavior
-  describe('Cancel Behavior', () => {
-    it('should call onCancel when cancel button is clicked', () => {
-      const mockOnCancel = vi.fn()
-      render(<ChildSegmentDetail {...defaultProps} onCancel={mockOnCancel} />)
-
-      fireEvent.click(screen.getByTestId('cancel-btn'))
-
-      expect(mockOnCancel).toHaveBeenCalled()
-    })
-  })
+it('discards an edited draft when canceled', async () => {
+  const user = userEvent.setup()
+  const { onUpdate, onCancel } = setup()
+  await user.type(screen.getByRole('textbox'), ' draft')
+  await user.click(screen.getByRole('button', { name: /common.operation.cancel/ }))
+  expect(onCancel).toHaveBeenCalledOnce()
+  expect(onUpdate).not.toHaveBeenCalled()
 })

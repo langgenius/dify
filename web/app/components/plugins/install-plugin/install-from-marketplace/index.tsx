@@ -1,6 +1,5 @@
 'use client'
 import type { Dependency, Plugin, PluginCategoryEnum, PluginManifestInMarket } from '../../types'
-import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
@@ -40,13 +39,8 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const { refreshPluginList } = useRefreshPluginList()
 
-  const {
-    modalClassName,
-    foldAnimInto,
-    foldIntoTaskTrigger,
-    setIsInstalling,
-    handleStartToInstall,
-  } = useHideLogic(onClose)
+  const { popupRef, foldAnimInto, foldIntoTaskTrigger, setIsInstalling, handleStartToInstall } =
+    useHideLogic(onClose)
 
   const getTitle = useCallback(() => {
     if (isBundle && step === InstallStep.installed)
@@ -87,18 +81,11 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
     >
       <DialogContent
         backdropProps={{ forceRender: true }}
-        className={cn(
-          'w-140 overflow-hidden! text-left align-middle',
-          cn(
-            modalClassName,
-            'flex max-h-[calc(100dvh-48px)] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0',
-          ),
-        )}
+        ref={popupRef}
+        className="max-h-[calc(100dvh-3rem)] w-140"
       >
-        <div className="flex shrink-0 items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
-          <DialogTitle className="self-stretch title-2xl-semi-bold text-text-primary">
-            {getTitle()}
-          </DialogTitle>
+        <div className="flex shrink-0 items-start gap-2 self-stretch ps-6 pe-14 pt-6 pb-3">
+          <DialogTitle>{getTitle()}</DialogTitle>
         </div>
         {isBundle ? (
           <ReadyToInstallBundle

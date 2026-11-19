@@ -45,7 +45,6 @@
   "nodes.triggerSchedule.nextExecutionTimes": "अगली 5 निष्पादन समय",
   "nodes.triggerSchedule.onMinute": "एक मिनट पर",
   "nodes.triggerSchedule.selectFrequency": "आवृत्ति चुनें",
-  "nodes.triggerSchedule.selectTime": "समय चुनें",
   "nodes.triggerSchedule.title": "अनुसूची",
   "nodes.triggerSchedule.useCronExpression": "क्रोन एक्सप्रेशन का उपयोग करें",
   "nodes.triggerSchedule.useVisualPicker": "विज़ुअल पिकर का उपयोग करें",

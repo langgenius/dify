@@ -2,45 +2,96 @@ import type { NodeTracing } from '@/types/workflow'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createNodeTracing } from '../../__tests__/fixtures'
 import { BlockEnum, NodeRunningStatus } from '../../types'
 import NodePanel from '../node'
 
-const createNodeInfo = (overrides: Partial<NodeTracing> = {}): NodeTracing => ({
-  id: 'trace-node-1',
-  index: 0,
-  predecessor_node_id: '',
-  node_id: 'node-1',
-  node_type: BlockEnum.Code,
-  title: 'Code Node',
-  inputs: undefined,
-  inputs_truncated: false,
-  process_data: undefined,
-  process_data_truncated: false,
-  outputs_truncated: false,
-  status: NodeRunningStatus.Succeeded,
-  elapsed_time: 1.25,
-  execution_metadata: {
-    total_tokens: 64,
-    total_price: 0,
-    currency: 'USD',
-  },
-  metadata: {
-    iterator_length: 0,
-    iterator_index: 0,
-    loop_length: 0,
-    loop_index: 0,
-  },
-  created_at: 0,
-  created_by: {
-    id: 'user-1',
-    name: 'Alice',
-    email: 'alice@example.com',
-  },
-  finished_at: 1,
-  ...overrides,
-})
+const { request } = vi.hoisted(() => ({
+  request:
+    vi.fn<(url: string, init: RequestInit, options: { request: Request }) => Promise<Response>>(),
+}))
+
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request,
+}))
+
+const createNodeInfo = (overrides: Partial<NodeTracing> = {}) =>
+  createNodeTracing({
+    id: 'trace-node-1',
+    node_id: 'node-1',
+    node_type: BlockEnum.Code,
+    title: 'Code Node',
+    inputs: undefined,
+    process_data: undefined,
+    outputs: undefined,
+    elapsed_time: 1.25,
+    created_by: { id: 'user-1', name: 'Alice', email: 'alice@example.com' },
+    execution_metadata: { total_tokens: 64, total_price: 0, currency: 'USD' },
+    ...overrides,
+  })
 
 describe('Run NodePanel', () => {
+  it('opens the historical Agent V2 span even when process data was truncated', async () => {
+    const user = userEvent.setup()
+    const urls: URL[] = []
+    request.mockImplementation(async (_url, _init, { request: sent }) => {
+      urls.push(new URL(sent.url))
+      return Response.json({
+        status: 'accepted',
+        source_kind: 'workflow',
+        source_id: 'run-1',
+        provider: 'langfuse',
+        span_url: 'https://cloud.langfuse.com/trace/frozen?observation=agent',
+      })
+    })
+    render(
+      <NodePanel
+        nodeInfo={createNodeInfo({
+          node_type: BlockEnum.Agent,
+          title: 'Agent V2',
+          process_data: { workflow_agent_binding_id: 'binding-1' },
+          process_data_truncated: true,
+          extras: {},
+        })}
+        externalTraceRun={{ appId: 'app-1', workflowRunId: 'run-1' }}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /Agent V2/ }))
+
+    expect(
+      await screen.findByRole('link', { name: 'app.tracing.run.viewSpan Agent V2' }),
+    ).toHaveAttribute('href', 'https://cloud.langfuse.com/trace/frozen?observation=agent')
+    expect(urls).toHaveLength(1)
+    expect(urls[0]!.pathname).toMatch(/\/apps\/app-1\/trace-runs\/workflow\/run-1$/)
+    expect(urls[0]!.searchParams.get('node_execution_id')).toBe('trace-node-1')
+  })
+
+  it('does not query Agent V2 spans for a legacy Agent in the same workflow', async () => {
+    const user = userEvent.setup()
+    render(
+      <NodePanel
+        nodeInfo={createNodeInfo({
+          node_type: BlockEnum.Agent,
+          title: 'Legacy Agent',
+          process_data: {},
+          extras: {},
+        })}
+        externalTraceRun={{ appId: 'app-1', workflowRunId: 'run-1' }}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /Legacy Agent/ }))
+
+    expect(screen.getByRole('button', { name: /Legacy Agent/ })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+    expect(screen.queryByRole('link', { name: /app.tracing.run.view/ })).not.toBeInTheDocument()
+    expect(request).not.toHaveBeenCalled()
+  })
+
   it('expands and collapses trace details from the keyboard', async () => {
     const user = userEvent.setup()
     render(<NodePanel nodeInfo={createNodeInfo({ status: NodeRunningStatus.Stopped })} />)
@@ -110,7 +161,7 @@ describe('Run NodePanel', () => {
     expect(screen.queryByText('1.250 s')).not.toBeInTheDocument()
   })
 
-  it('shows the stopped reason when the panel is expanded from tracing state', async () => {
+  it('opens trace details when requested by tracing state', async () => {
     render(
       <NodePanel
         nodeInfo={createNodeInfo({
@@ -123,6 +174,25 @@ describe('Run NodePanel', () => {
     await waitFor(() => {
       expect(screen.getByText(/Alice/)).toBeInTheDocument()
     })
+  })
+
+  it('localizes a KnowledgeFS Workflow access rejection instead of exposing its backend fallback', () => {
+    render(
+      <NodePanel
+        nodeInfo={createNodeInfo({
+          error:
+            '[knowledge_fs_workflow_access_disabled] Workflow access is disabled for KnowledgeFS Space space-a',
+          expand: true,
+          node_type: BlockEnum.KnowledgeRetrievalV2,
+          status: NodeRunningStatus.Failed,
+        })}
+      />,
+    )
+
+    expect(
+      screen.getByText('workflow.nodes.knowledgeRetrievalV2.errors.workflowAccessDisabled'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/KnowledgeFS Space space-a/)).not.toBeInTheDocument()
   })
 
   it('forwards iteration details through the real iteration trigger', async () => {

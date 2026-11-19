@@ -3,6 +3,7 @@
 import type { EnvScope, EnvVariable } from '@/features/agent-v2/agent-composer/form-state'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,
@@ -16,6 +17,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { v4 as uuid4 } from 'uuid'
 import { toast } from '@/app/notifications'
 import {
   addEnvVariableAtom,
@@ -33,13 +35,13 @@ import { AgentConfigureTipContent } from '../common/tip-content'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { getEnvImportPlatform, parseEnvImport } from './env-utils'
 
-const scopeLabelKeys: Record<
-  EnvScope,
-  I18nKeysWithPrefix<'agentV2', 'agentDetail.configure.advancedSettings.envEditor.'>
-> = {
+const scopeLabelKeys = {
   plain: 'agentDetail.configure.advancedSettings.envEditor.scopePlain',
   secret: 'agentDetail.configure.advancedSettings.envEditor.scopeSecret',
-}
+} as const satisfies Record<
+  EnvScope,
+  I18nKeysWithPrefix<'agentV2', 'agentDetail.configure.advancedSettings.envEditor.'>
+>
 
 const envScopeOptions: EnvScope[] = ['secret', 'plain']
 
@@ -64,7 +66,7 @@ const getCurrentEnvImportPlatform = () => {
 }
 
 const createEnvVariable = (): EnvVariable => ({
-  id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
+  id: uuid4(),
   key: '',
   value: '',
   scope: 'plain',
@@ -116,7 +118,7 @@ function EnvEditorScope({
       >
         {t(($) => $[scopeLabelKeys[scope]])}
       </SelectTrigger>
-      <SelectContent placement="bottom-start" className="min-w-24">
+      <SelectContent className="min-w-24">
         {envScopeOptions.map((option) => (
           <SelectItem<EnvScope> key={option} value={option} className="h-7 system-xs-regular">
             <SelectItemText>{t(($) => $[scopeLabelKeys[option]])}</SelectItemText>
@@ -142,7 +144,7 @@ function EnvEditorCell({
   return (
     <Cell
       scope={header ? 'col' : undefined}
-      className="h-7 min-w-0 border-r border-divider-subtle p-0 text-left align-middle font-normal last:border-r-0"
+      className="h-7 min-w-0 border-e border-divider-subtle p-0 text-start align-middle font-normal last:border-e-0"
     >
       <div className={cn('flex h-full min-h-7 min-w-0 items-center', className)}>{children}</div>
     </Cell>
@@ -172,7 +174,7 @@ function EnvEditorInput({
     <Input
       ref={inputRef}
       aria-label={ariaLabel}
-      className="h-full rounded-none bg-transparent px-3 py-0 system-xs-regular text-text-secondary shadow-none hover:bg-state-base-hover focus-visible:bg-state-base-hover"
+      className="h-full rounded-none bg-transparent px-3 py-0 system-xs-regular text-text-secondary shadow-none ring-inset hover:bg-state-base-hover focus-visible:bg-state-base-hover"
       placeholder={placeholder}
       value={value}
       onValueChange={onValueChange}
@@ -202,9 +204,19 @@ function EnvEditorRow({
   showScope?: boolean
 }) {
   const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const [isValueRevealed, setIsValueRevealed] = useState(false)
   const shouldMaskValue = variable.masked && !isValueRevealed
   const displayedValue = shouldMaskValue ? maskedEnvValue : variable.value
+  const revealLabel = t(
+    ($) =>
+      $[
+        isValueRevealed
+          ? 'agentDetail.configure.advancedSettings.envEditor.hideValue'
+          : 'agentDetail.configure.advancedSettings.envEditor.revealValue'
+      ],
+    { key: variable.key },
+  )
   return (
     <tr
       className={cn(
@@ -251,25 +263,27 @@ function EnvEditorRow({
           </span>
         )}
         {variable.masked && (
-          <button
-            type="button"
-            aria-label={t(
-              ($) =>
-                $[
-                  isValueRevealed
-                    ? 'agentDetail.configure.advancedSettings.envEditor.hideValue'
-                    : 'agentDetail.configure.advancedSettings.envEditor.revealValue'
-                ],
-              { key: variable.key },
-            )}
-            onClick={() => setIsValueRevealed((revealed) => !revealed)}
-            className="mr-2 ml-auto flex size-5 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-          >
-            <span
-              aria-hidden
-              className={cn(isValueRevealed ? 'i-ri-eye-off-line' : 'i-ri-eye-line', 'size-4')}
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <IconButton
+                  aria-label={revealLabel}
+                  size="sm"
+                  className="ms-auto me-2 shrink-0"
+                  onClick={() => setIsValueRevealed((revealed) => !revealed)}
+                >
+                  <span
+                    aria-hidden
+                    className={cn(
+                      isValueRevealed ? 'i-ri-eye-off-line' : 'i-ri-eye-line',
+                      'size-4',
+                    )}
+                  />
+                </IconButton>
+              }
             />
-          </button>
+            <TooltipContent>{revealLabel}</TooltipContent>
+          </Tooltip>
         )}
       </EnvEditorCell>
       {showScope && (
@@ -279,21 +293,30 @@ function EnvEditorRow({
       )}
       <EnvEditorCell className="justify-center">
         {editable && (
-          <button
-            type="button"
-            aria-label={t(
-              ($) => $['agentDetail.configure.advancedSettings.envEditor.deleteVariable'],
-              {
-                key:
-                  variable.key ||
-                  t(($) => $['agentDetail.configure.advancedSettings.envEditor.keyPlaceholder']),
-              },
-            )}
-            onClick={onDelete}
-            className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-          >
-            <span aria-hidden className="i-ri-delete-bin-line size-4" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <IconButton
+                  aria-label={t(
+                    ($) => $['agentDetail.configure.advancedSettings.envEditor.deleteVariable'],
+                    {
+                      key:
+                        variable.key ||
+                        t(
+                          ($) =>
+                            $['agentDetail.configure.advancedSettings.envEditor.keyPlaceholder'],
+                        ),
+                    },
+                  )}
+                  tone="destructive"
+                  onClick={onDelete}
+                >
+                  <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                </IconButton>
+              }
+            />
+            <TooltipContent>{tCommon(($) => $['operation.delete'])}</TooltipContent>
+          </Tooltip>
         )}
       </EnvEditorCell>
     </tr>
@@ -328,7 +351,7 @@ function EnvEditorDraftRow({
         type="button"
         aria-label={t(($) => $['agentDetail.configure.advancedSettings.envEditor.add'])}
         onClick={() => onAdd({ focusField: 'value' })}
-        className="flex h-full w-full min-w-0 items-center px-3 text-left system-xs-regular text-components-input-text-placeholder hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+        className="flex h-full w-full min-w-0 items-center px-3 text-start system-xs-regular text-components-input-text-placeholder hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
       >
         {valuePlaceholder}
       </button>
@@ -434,14 +457,23 @@ export function EnvVariablesTable({
             )}
             <EnvEditorCell header className="justify-center">
               {onAdd && (
-                <button
-                  type="button"
-                  aria-label={t(($) => $['agentDetail.configure.advancedSettings.envEditor.add'])}
-                  onClick={() => onAdd()}
-                  className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                >
-                  <span aria-hidden className="i-ri-add-line size-4" />
-                </button>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <IconButton
+                        aria-label={t(
+                          ($) => $['agentDetail.configure.advancedSettings.envEditor.add'],
+                        )}
+                        onClick={() => onAdd()}
+                      >
+                        <span aria-hidden className="i-ri-add-line size-4" />
+                      </IconButton>
+                    }
+                  />
+                  <TooltipContent>
+                    {t(($) => $['agentDetail.configure.advancedSettings.envEditor.add'])}
+                  </TooltipContent>
+                </Tooltip>
               )}
             </EnvEditorCell>
           </tr>

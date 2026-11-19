@@ -48,15 +48,7 @@ export default function AgentAppPreview({ appDetail, composer }: Props) {
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2">
                   <div className="flex min-w-0 items-center gap-2">
-                    <AppIcon
-                      decorative
-                      size="tiny"
-                      rounded
-                      iconType={appDetail.site.icon_type}
-                      icon={appDetail.site.icon ?? undefined}
-                      background={appDetail.site.icon_background ?? undefined}
-                      imageUrl={appDetail.site.icon_url ?? undefined}
-                    />
+                    <AppIcon size="tiny" icon={appDetail.site} />
                     <h3 className="min-w-0 system-xl-semibold text-text-primary">
                       {appDetail.name}
                     </h3>

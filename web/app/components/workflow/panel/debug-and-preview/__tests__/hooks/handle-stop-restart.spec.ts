@@ -1,209 +1,156 @@
-import { act, renderHook } from '@testing-library/react'
+import type { useWorkflowRun } from '@/app/components/workflow/hooks/use-workflow-run'
+import { act } from '@testing-library/react'
+import { renderWorkflowFlowHook as renderHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { useChat } from '../../hooks'
 
-const mockHandleRun = vi.fn()
-const mockNotify = vi.fn()
-const mockFetchInspectVars = vi.fn()
-const mockInvalidAllLastRun = vi.fn()
-const mockSetIterTimes = vi.fn()
-const mockSetLoopTimes = vi.fn()
-const mockSubmitHumanInputForm = vi.fn()
-const mockSseGet = vi.fn()
-const mockStopChat = vi.fn()
-const mockGetNodes = vi.fn((): any[] => [])
-
-let mockWorkflowRunningData: any = null
-
-vi.mock('@/service/base', () => ({
-  sseGet: (...args: any[]) => mockSseGet(...args),
+type Callbacks = NonNullable<Parameters<ReturnType<typeof useWorkflowRun>['handleRun']>[1]>
+const mocks = vi.hoisted(() => ({ run: vi.fn(), invalidate: vi.fn(), inspect: vi.fn() }))
+vi.mock('@/service/use-workflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-workflow')>()),
+  useInvalidateAllLastRun: () => mocks.invalidate,
 }))
+beforeEach(() => vi.resetAllMocks())
 
-vi.mock('@/service/use-workflow', () => ({
-  useInvalidAllLastRun: () => mockInvalidAllLastRun,
-}))
-
-vi.mock('@/service/workflow', () => ({
-  submitHumanInputForm: (...args: any[]) => mockSubmitHumanInputForm(...args),
-}))
-
-vi.mock('@/app/notifications', () => ({
-  toast: {
-    success: vi.fn(),
-    error: vi.fn(),
-    warning: vi.fn(),
-    info: (...args: any[]) => mockNotify(...args),
-  },
-}))
-
-vi.mock('reactflow', () => ({
-  useStoreApi: () => ({
-    getState: () => ({
-      getNodes: mockGetNodes,
-    }),
-  }),
-}))
-
-vi.mock('../../../../hooks/use-workflow-run', () => ({
-  useWorkflowRun: () => ({ handleRun: mockHandleRun }),
-}))
-
-vi.mock('../../../../hooks/use-set-workflow-vars-with-value', () => ({
-  useSetWorkflowVarsWithValue: () => ({ fetchInspectVars: mockFetchInspectVars }),
-}))
-
-vi.mock('../../../../hooks-store', () => ({
-  useHooksStore: () => null,
-}))
-
-vi.mock('../../../../store', () => ({
-  useWorkflowStore: () => ({
-    getState: () => ({
-      setIterTimes: mockSetIterTimes,
-      setLoopTimes: mockSetLoopTimes,
-      inputs: {},
-      workflowRunningData: mockWorkflowRunningData,
-    }),
-  }),
-  useStore: () => vi.fn(),
-}))
-
-const resetMocksAndWorkflowState = () => {
-  vi.clearAllMocks()
-  mockWorkflowRunningData = null
+const hooksStoreProps = {
+  handleRun: mocks.run,
+  fetchInspectVars: mocks.inspect,
 }
 
-describe('useChat – handleStop', () => {
-  beforeEach(() => {
-    resetMocksAndWorkflowState()
-  })
-
-  it('should set isResponding to false', () => {
-    const { result } = renderHook(() => useChat({}))
-    act(() => {
-      result.current.handleStop()
-    })
-    expect(result.current.isResponding).toBe(false)
-  })
-
-  it('should not call stopChat when taskId is empty even if stopChat is provided', () => {
-    const { result } = renderHook(() => useChat({}, undefined, undefined, mockStopChat))
-    act(() => {
-      result.current.handleStop()
-    })
-    expect(mockStopChat).not.toHaveBeenCalled()
-  })
-
-  it('should reset iter/loop times to defaults', () => {
-    const { result } = renderHook(() => useChat({}))
-    act(() => {
-      result.current.handleStop()
-    })
-    expect(mockSetIterTimes).toHaveBeenCalledWith(1)
-    expect(mockSetLoopTimes).toHaveBeenCalledWith(1)
-  })
-
-  it('should abort workflowEventsAbortController when set', () => {
-    const mockWfAbort = vi.fn()
-    mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
-      callbacks.getAbortController({ abort: mockWfAbort } as any)
-    })
-
-    const { result } = renderHook(() => useChat({}))
-
-    act(() => {
-      result.current.handleSend({ query: 'test' }, {})
-    })
-
-    act(() => {
-      result.current.handleStop()
-    })
-
-    expect(mockWfAbort).toHaveBeenCalledTimes(1)
-  })
-
-  it('should abort suggestedQuestionsAbortController when set', async () => {
-    const mockSqAbort = vi.fn()
-    let capturedCb: any
-
-    mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
-      capturedCb = callbacks
-    })
-
-    const mockGetSuggested = vi.fn().mockImplementation((_id: string, getAbortCtrl: any) => {
-      getAbortCtrl({ abort: mockSqAbort } as any)
-      return Promise.resolve({ data: ['s'] })
-    })
-
-    const { result } = renderHook(() =>
-      useChat({ suggested_questions_after_answer: { enabled: true } }),
-    )
-
-    act(() => {
-      result.current.handleSend(
-        { query: 'test' },
-        {
-          onGetSuggestedQuestions: mockGetSuggested,
-        },
-      )
-    })
-
-    await act(async () => {
-      await capturedCb.onCompleted(false)
-    })
-
-    act(() => {
-      result.current.handleStop()
-    })
-
-    expect(mockSqAbort).toHaveBeenCalledTimes(1)
-  })
-
-  it('should call stopChat with taskId when both are available', () => {
-    mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
-      callbacks.onData('msg', true, {
-        conversationId: 'c1',
-        messageId: 'msg-1',
-        taskId: 'task-stop',
+it.each(['handleStop', 'handleRestart'] as const)(
+  '%s aborts an active run, stops its server task and resets iteration counters',
+  (operation) => {
+    const controller = new AbortController()
+    const stopChat = vi.fn()
+    mocks.run.mockImplementation((_params: unknown, callbacks: Callbacks) => {
+      callbacks.getAbortController!(controller)
+      callbacks.onData!('answer', true, {
+        conversationId: 'conversation',
+        messageId: 'message',
+        taskId: 'task-active',
       })
     })
-
-    const { result } = renderHook(() => useChat({}, undefined, undefined, mockStopChat))
-
+    const { result, store } = renderHook(() => useChat({}, undefined, undefined, stopChat), {
+      initialStoreState: { iterTimes: 4, loopTimes: 8 },
+      hooksStoreProps,
+    })
     act(() => {
       result.current.handleSend({ query: 'test' }, {})
     })
-
+    expect(result.current.isResponding).toBe(true)
     act(() => {
-      result.current.handleStop()
+      result.current[operation]()
     })
+    expect(controller.signal.aborted).toBe(true)
+    expect(stopChat).toHaveBeenCalledExactlyOnceWith('task-active')
+    expect(result.current.isResponding).toBe(false)
+    expect(store.getState()).toMatchObject({ iterTimes: 1, loopTimes: 1 })
+  },
+)
 
-    expect(mockStopChat).toHaveBeenCalledWith('task-stop')
+it('does not send an empty task id when stopped before any run', () => {
+  const stopChat = vi.fn()
+  const { result } = renderHook(() => useChat({}, undefined, undefined, stopChat), {
+    hooksStoreProps,
   })
+  act(() => {
+    result.current.handleStop()
+  })
+  expect(stopChat).not.toHaveBeenCalled()
 })
 
-describe('useChat – handleRestart', () => {
-  beforeEach(() => {
-    resetMocksAndWorkflowState()
-  })
-
-  it('should clear suggestedQuestions and set isResponding to false', () => {
-    const config = { opening_statement: 'Hello' }
-    const { result } = renderHook(() => useChat(config))
-
-    act(() => {
-      result.current.handleRestart()
+const startConversationRun = () => {
+  mocks.run.mockImplementation((_params: unknown, callbacks: Callbacks) => {
+    callbacks.onData!('answer', true, {
+      conversationId: 'conversation-1',
+      messageId: 'message-1',
+      taskId: 'task-1',
     })
-
-    expect(result.current.suggestedQuestions).toEqual([])
-    expect(result.current.isResponding).toBe(false)
   })
+}
 
-  it('should reset iter/loop times to defaults', () => {
-    const { result } = renderHook(() => useChat({}))
-    act(() => {
-      result.current.handleRestart()
-    })
-    expect(mockSetIterTimes).toHaveBeenCalledWith(1)
-    expect(mockSetLoopTimes).toHaveBeenCalledWith(1)
+it('retires the editor debug workspaces on restart after a conversation', () => {
+  const retireDebugWorkspaces = vi.fn()
+  startConversationRun()
+  const { result } = renderHook(
+    () => useChat({}, undefined, undefined, undefined, retireDebugWorkspaces),
+    { hooksStoreProps },
+  )
+  act(() => {
+    result.current.handleSend({ query: 'test' }, {})
   })
+  act(() => {
+    result.current.handleRestart()
+  })
+  expect(retireDebugWorkspaces).toHaveBeenCalledOnce()
+})
+
+it('retires the editor debug workspaces on restart even before any conversation in this mount', () => {
+  const retireDebugWorkspaces = vi.fn()
+  const { result } = renderHook(
+    () => useChat({}, undefined, undefined, undefined, retireDebugWorkspaces),
+    { hooksStoreProps },
+  )
+  act(() => {
+    result.current.handleRestart()
+  })
+  expect(retireDebugWorkspaces).toHaveBeenCalledOnce()
+})
+
+it('retires the editor debug workspaces once on unmount after a conversation', () => {
+  const retireDebugWorkspaces = vi.fn()
+  startConversationRun()
+  const { result, unmount } = renderHook(
+    () => useChat({}, undefined, undefined, undefined, retireDebugWorkspaces),
+    { hooksStoreProps },
+  )
+  act(() => {
+    result.current.handleSend({ query: 'test' }, {})
+  })
+  unmount()
+  expect(retireDebugWorkspaces).toHaveBeenCalledOnce()
+})
+
+// After a page refresh the panel no longer knows the earlier Conversation id,
+// yet closing it must still retire the sandbox that conversation left behind.
+it('retires the editor debug workspaces on unmount without a conversation in this mount', () => {
+  const retireDebugWorkspaces = vi.fn()
+  const { unmount } = renderHook(
+    () => useChat({}, undefined, undefined, undefined, retireDebugWorkspaces),
+    { hooksStoreProps },
+  )
+  expect(retireDebugWorkspaces).not.toHaveBeenCalled()
+  unmount()
+  expect(retireDebugWorkspaces).toHaveBeenCalledOnce()
+})
+
+it('cancels suggested questions on stop and removes loaded suggestions on restart', async () => {
+  let callbacks: Callbacks
+  mocks.run.mockImplementation((_params: unknown, value: Callbacks) => {
+    callbacks = value
+  })
+  const cancel = vi.fn()
+  const getSuggested = vi.fn((_id: string, onCancel: (cancel: () => void) => void) => {
+    onCancel(cancel)
+    return Promise.resolve({ data: ['Follow up'] })
+  })
+  const { result } = renderHook(
+    () => useChat({ suggested_questions_after_answer: { enabled: true } }),
+    { hooksStoreProps },
+  )
+  act(() => {
+    result.current.handleSend({ query: 'test' }, { onGetSuggestedQuestions: getSuggested })
+  })
+  await act(async () => {
+    await callbacks.onCompleted!(false)
+  })
+  expect(result.current.suggestedQuestions).toEqual(['Follow up'])
+  act(() => {
+    result.current.handleStop()
+  })
+  expect(cancel).toHaveBeenCalledOnce()
+  act(() => {
+    result.current.handleRestart()
+  })
+  expect(result.current.suggestedQuestions).toEqual([])
+  expect(result.current.isResponding).toBe(false)
 })

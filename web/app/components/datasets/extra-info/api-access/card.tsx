@@ -1,7 +1,7 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback } from 'react'
@@ -11,10 +11,7 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import Link from '@/next/link'
-import {
-  useDisableDatasetServiceApi,
-  useEnableDatasetServiceApi,
-} from '@/service/knowledge/use-dataset'
+import { consoleQuery } from '@/service/console'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 
 type CardProps = {
@@ -31,8 +28,9 @@ const Card = ({ apiEnabled }: CardProps) => {
     select: (data) => data.profile.id,
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const { mutateAsync: enableDatasetServiceApi } = useEnableDatasetServiceApi()
-  const { mutateAsync: disableDatasetServiceApi } = useDisableDatasetServiceApi()
+  const { mutateAsync: updateDatasetServiceApiStatus } = useMutation(
+    consoleQuery.datasets.byDatasetId.apiKeys.byStatus.post.mutationOptions(),
+  )
 
   const datasetACLCapabilities = React.useMemo(
     () =>
@@ -49,12 +47,12 @@ const Card = ({ apiEnabled }: CardProps) => {
 
   const onToggle = useCallback(
     async (state: boolean) => {
-      let result: 'success' | 'fail'
-      if (state) result = (await enableDatasetServiceApi(datasetId ?? '')).result
-      else result = (await disableDatasetServiceApi(datasetId ?? '')).result
+      const { result } = await updateDatasetServiceApiStatus({
+        params: { dataset_id: datasetId ?? '', status: state ? 'enable' : 'disable' },
+      })
       if (result === 'success') mutateDatasetRes?.()
     },
-    [datasetId, enableDatasetServiceApi, mutateDatasetRes, disableDatasetServiceApi],
+    [datasetId, updateDatasetServiceApiStatus, mutateDatasetRes],
   )
 
   return (

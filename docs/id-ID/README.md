@@ -74,7 +74,7 @@ Berikut daftar fitur utamanya:
 
 <br/>
 
-Cara termudah untuk menjalankan server Dify adalah menggunakan [Docker Compose](docker/docker-compose.yaml). Sebelum menjalankan perintah berikut, pastikan [Docker](https://docs.docker.com/get-docker/) dan Docker Compose versi v2.24.0 atau yang lebih baru telah terpasang:
+Cara termudah untuk menjalankan server Dify adalah menggunakan [Docker Compose](../../docker/docker-compose.yaml). Sebelum menjalankan perintah berikut, pastikan [Docker](https://docs.docker.com/get-docker/) dan Docker Compose versi v2.24.0 atau yang lebih baru telah terpasang:
 
 ```bash
 cd dify
@@ -85,7 +85,7 @@ docker compose up -d
 
 Setelah berjalan, Anda dapat mengakses dashboard Dify melalui peramban web di [http://localhost/install](http://localhost/install) untuk memulai proses inisialisasi awal.
 
-#### Bantuan & FAQ
+### Bantuan & FAQ
 
 Silakan merujuk ke [FAQ kami](https://docs.dify.ai/getting-started/install-self-hosted/faqs) jika menemui kendala saat pemasangan Dify. Hubungi [komunitas kami](#komunitas--kontak) jika Anda membutuhkan bantuan lebih lanjut.
 
@@ -119,7 +119,7 @@ Seluruh kapabilitas Dify disertai API yang lengkap dan terdokumentasi rapi, memu
 ## Pilihan Penerapan Dify
 
 - **Dify Cloud <br/>**
-  Layanan terkelola [Dify Cloud](https://dify.ai) yang dapat langsung dicoba tanpa proses konfigurasi server. Menyediakan seluruh kapabilitas versi mandiri dan mencakup 200 panggilan gratis GPT-4 pada paket *sandbox*. Jika ada kendala, [hubungi tim dukungan Cloud kami](mailto:cloud@dify.ai?subject=%5BGitHub%5DDify%20Cloud%20Support).
+  Coba [Dify Cloud](https://cloud.dify.ai) tanpa mengelola server. Lihat paket dan kuota penggunaan terkini di [halaman harga](https://dify.ai/pricing). Jika ada kendala, [hubungi tim dukungan Cloud kami](mailto:cloud@dify.ai?subject=%5BGitHub%5DDify%20Cloud%20Support).
 
 - **Self-hosting Dify Community Edition<br/>**
   Jalankan Dify langsung di infrastruktur server mandiri Anda dengan [panduan mulai cepat](#mulai-cepat-quick-start).
@@ -136,15 +136,15 @@ Berikan bintang (*star*) pada repositori Dify di GitHub untuk mendapatkan pember
 
 ## Konfigurasi Tingkat Lanjut
 
-Untuk konfigurasi kustom, observabilitas mendalam, dan opsi deployment tingkat lanjut, lihat [Advanced Setup](docs/ADVANCED_SETUP.md).
+Untuk konfigurasi kustom, observabilitas mendalam, dan opsi deployment tingkat lanjut, lihat [Advanced Setup](../../docs/ADVANCED_SETUP.md).
 
 ## Berkontribusi
 
 Dify menyambut segala bentuk kontribusi dari komunitas:
 
-- **Kode**: Pelajari [Panduan Kontribusi](CONTRIBUTING.md), lalu telusuri daftar [good first issues](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22).
+- **Kode**: Pelajari [Panduan Kontribusi](../../CONTRIBUTING.md), lalu telusuri daftar [good first issues](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22).
 - **Ide & Masukan**: Mulai diskusi di [GitHub Discussions](https://github.com/langgenius/dify/discussions).
-- **Terjemahan (i18n)**: Ikuti [panduan internasionalisasi](web/i18n/README.md) untuk memperbarui atau menambahkan bahasa baru.
+- **Terjemahan (i18n)**: Ikuti [panduan internasionalisasi](../../web/i18n/README.md) untuk memperbarui atau menambahkan bahasa baru.
 - **Komunitas**: Bagikan aplikasi yang Anda bangun, bantu sesama pengembang, dan sebarkan informasi tentang Dify.
 
 ### Kontributor
@@ -158,24 +158,18 @@ Dify menyambut segala bentuk kontribusi dari komunitas:
 Pilih saluran komunikasi resmi yang paling relevan:
 
 - [GitHub Discussions](https://github.com/langgenius/dify/discussions): Diskusi umum, masukan fitur, dan tanya jawab.
-- [GitHub Issues](https://github.com/langgenius/dify/issues): Laporan bug yang dapat direproduksi dan pelacakan fitur teknis. Baca [Panduan Kontribusi](CONTRIBUTING.md) sebelum membuka issue baru.
+- [GitHub Issues](https://github.com/langgenius/dify/issues): Laporan bug yang dapat direproduksi dan pelacakan fitur teknis. Baca [Panduan Kontribusi](../../CONTRIBUTING.md) sebelum membuka issue baru.
 - [Discord](https://discord.gg/FngNHpbcY7): Diskusi interaktif langsung, bertukar proyek aplikasi AI, dan berjejaring dengan pengguna Dify di seluruh dunia.
 - [X (Twitter)](https://x.com/dify_ai): Berita rilis fitur dan pengumuman resmi.
 
 ## Riwayat Bintang (Star History)
 
-<a href="https://star-history.dera.page/#langgenius/dify&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://star-history.dera.page/svg?repos=langgenius/dify&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://star-history.dera.page/svg?repos=langgenius/dify&type=date&legend=top-left" />
-   <img alt="Grafik Riwayat Bintang" src="https://star-history.dera.page/svg?repos=langgenius/dify&type=date&legend=top-left" />
- </picture>
-</a>
+[![Grafik Riwayat Bintang](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-light-mode-only) [![Grafik Riwayat Bintang](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&theme=dark&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-dark-mode-only)
 
 ## Kebijakan Pelaporan Kerentanan Keamanan
 
-Demi menjaga kerahasiaan dan privasi bersama, mohon tidak mempublikasikan laporan kerentanan keamanan secara terbuka di GitHub Issues. Sampaikan langsung melalui email resmi ke `security@dify.ai` agar tim kami dapat segera melakukan mitigasi teknis.
+Laporkan kerentanan secara privat melalui GitHub Security Advisories sesuai [kebijakan keamanan](../../SECURITY.md). Jangan mengungkapkannya dalam issue, diskusi, atau pull request publik.
 
 ## Lisensi
 
-Repositori ini dilisensikan di bawah [Dify Open Source License](LICENSE), berbasiskan Apache 2.0 dengan beberapa ketentuan tambahan.
+Repositori ini dilisensikan di bawah [Dify Open Source License](../../LICENSE), berbasiskan Apache 2.0 dengan beberapa ketentuan tambahan.

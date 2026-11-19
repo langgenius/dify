@@ -6,7 +6,7 @@ import type { AgentTool } from '@/types/app'
 import { useQuery } from '@tanstack/react-query'
 import { uniqBy } from 'es-toolkit/compat'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { MARKETPLACE_API_PREFIX } from '@/config'
+import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
 import { consoleQuery } from '@/service/console'
 
 type Params = {
@@ -64,9 +64,9 @@ const getIconUrl = (providerId: string, type: ProviderType) => {
   const parsed = parseProviderId(providerId)
   if (!parsed) return ''
 
-  const organization = encodeURIComponent(parsed.organization)
-  const pluginName = encodeURIComponent(getPluginName(parsed.providerName, type))
-  return `${MARKETPLACE_API_PREFIX}/plugins/${organization}/${pluginName}/icon`
+  return getMarketplacePluginIconUrl(
+    `${parsed.organization}/${getPluginName(parsed.providerName, type)}`,
+  )
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {

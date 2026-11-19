@@ -45,7 +45,6 @@
   "nodes.triggerSchedule.nextExecutionTimes": "Następne 5 terminów wykonania",
   "nodes.triggerSchedule.onMinute": "Za minutę",
   "nodes.triggerSchedule.selectFrequency": "Wybierz częstotliwość",
-  "nodes.triggerSchedule.selectTime": "Wybierz czas",
   "nodes.triggerSchedule.title": "Harmonogram",
   "nodes.triggerSchedule.useCronExpression": "Użyj wyrażenia cron",
   "nodes.triggerSchedule.useVisualPicker": "Użyj selektora wizualnego",

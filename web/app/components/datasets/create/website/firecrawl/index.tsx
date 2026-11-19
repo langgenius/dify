@@ -157,10 +157,9 @@ const FireCrawl: FC<Props> = ({
         return await waitForCrawlFinished(jobId)
       } catch (e: any) {
         if (!isMountedRef.current) return cancelledResult
-        const errorBody = typeof e?.json === 'function' ? await e.json() : undefined
         return {
           isError: true,
-          errorMessage: errorBody?.message,
+          errorMessage: e instanceof Error ? e.message : undefined,
           data: {
             data: [],
           },
@@ -238,7 +237,7 @@ const FireCrawl: FC<Props> = ({
             )}
             {showError && (
               <ErrorMessage
-                className="rounded-b-xl"
+                className="mx-4 mt-2 mb-4"
                 title={t(($) => $[`${I18N_PREFIX}.exceptionErrorTitle`], { ns: 'datasetCreation' })}
                 errorMsg={crawlErrorMessage}
               />

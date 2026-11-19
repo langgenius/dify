@@ -94,6 +94,7 @@
   "nodes.humanInput.userActions.buttonTextPlaceholder": "مقدار عملیات",
   "nodes.humanInput.userActions.buttonTextTooLong": "متن دکمه باید {{maxLength}} کاراکتر یا کمتر باشد",
   "nodes.humanInput.userActions.chooseStyle": "انتخاب سبک دکمه",
+  "nodes.humanInput.userActions.defaultTitle": "متن دکمه {{index}}",
   "nodes.humanInput.userActions.emptyTip": "برای افزودن عملیات کاربر روی '+' کلیک کنید",
   "nodes.humanInput.userActions.title": "عملیات کاربر",
   "nodes.humanInput.userActions.tooltip": "دکمه‌هایی تعریف کنید که کاربر برای پاسخ به فرم روی آن‌ها کلیک کند. شناسه عملیات انشعاب را کنترل می‌کند. مقدار عملیات به عنوان خروجی داخلی انتخاب‌شده در مرحله پایین‌تر نمایش داده می‌شود. شناسه عملیات باید با حرف یا زیرخط شروع شود، و سپس حروف، اعداد یا زیرخط بیاید.",

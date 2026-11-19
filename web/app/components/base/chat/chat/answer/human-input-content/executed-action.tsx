@@ -1,19 +1,22 @@
 import type { ExecutedAction as ExecutedActionType } from './type'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { memo } from 'react'
-import { Trans } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 
 type ExecutedActionProps = {
   executedAction: ExecutedActionType
 }
 
 const ExecutedAction = ({ executedAction }: ExecutedActionProps) => {
+  const { t } = useTranslation(['workflowHumanInput'])
+
   return (
     <div className="flex flex-col gap-y-1 py-1" data-testid="executed-action">
       <Separator className="mt-1 mb-2 h-[0.5px] w-7.5" />
       <div className="flex items-center gap-x-1 system-xs-regular text-text-tertiary">
         <div className="i-custom-vender-workflow-trigger-all size-3.5 shrink-0" />
         <Trans
+          t={t}
           i18nKey={($) => $['nodes.humanInput.userActions.triggered']}
           ns="workflowHumanInput"
           components={{ strong: <span className="system-xs-medium text-text-secondary"></span> }}

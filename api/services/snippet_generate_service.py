@@ -21,7 +21,7 @@ Supported execution modes:
 import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Union, cast
+from typing import Any, cast
 
 from sqlalchemy.orm import Session, make_transient, sessionmaker
 
@@ -32,11 +32,14 @@ from core.app.file_access import DatabaseFileAccessController
 from core.workflow.snippet_start import SNIPPET_VIRTUAL_START_NODE_ID
 from factories import file_factory
 from graphon.file.models import File
+from graphon.graph.scoping import resolve_container_id
 from models import Account
 from models.model import App, AppMode, EndUser
 from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowNodeExecutionModel
 from services.snippet_service import SnippetService
+from services.workflow_execution_identity import build_workflow_execution_identity
+from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
@@ -55,6 +58,7 @@ class _SnippetAsApp:
     - mode: hardcoded to AppMode.WORKFLOW since snippets always run as workflows
     - max_active_requests: defaults to 0 (no limit) for snippet debugging
     - app_model_config_id: None (snippets don't have app model configs)
+    - tracing: None (snippets have no app-level tracing configuration)
     """
 
     id: str
@@ -62,6 +66,7 @@ class _SnippetAsApp:
     mode: str
     max_active_requests: int
     app_model_config_id: str | None
+    tracing: str | None
 
     def __init__(self, snippet: CustomizedSnippet) -> None:
         self.id = snippet.id
@@ -69,6 +74,7 @@ class _SnippetAsApp:
         self.mode = AppMode.WORKFLOW.value
         self.max_active_requests = 0
         self.app_model_config_id = None
+        self.tracing = None
 
 
 class SnippetGenerateService:
@@ -108,8 +114,8 @@ class SnippetGenerateService:
     @classmethod
     def _filter_virtual_start_events(
         cls,
-        response: Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None],
-    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]:
+        response: Mapping[str, Any] | Generator[Mapping[str, Any] | str],
+    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]:
         """
         Drop snippet virtual Start node lifecycle events from stream responses.
 
@@ -119,7 +125,7 @@ class SnippetGenerateService:
         if isinstance(response, Mapping):
             return response
 
-        def _stream() -> Generator[Mapping[str, Any] | str, None, None]:
+        def _stream() -> Generator[Mapping[str, Any] | str]:
             for message in response:
                 if cls._is_virtual_start_event(message):
                     continue
@@ -131,12 +137,12 @@ class SnippetGenerateService:
     def generate(
         cls,
         snippet: CustomizedSnippet,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,
         session_maker: sessionmaker[Session] | None = None,
-    ) -> Mapping[str, Any] | Generator[str, None, None]:
+    ) -> Mapping[str, Any] | Generator[str]:
         """
         Run a snippet's draft workflow.
 
@@ -167,10 +173,11 @@ class SnippetGenerateService:
         # Adapt snippet to App-like interface for WorkflowAppGenerator
         app_proxy = cast(App, _SnippetAsApp(snippet))
 
-        response = WorkflowAppGenerator().generate(
+        response = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
             app_model=app_proxy,
             workflow=workflow,
             user=user,
+            execution_identity=build_workflow_execution_identity(user),
             args=args,
             invoke_from=invoke_from,
             streaming=streaming,
@@ -183,10 +190,13 @@ class SnippetGenerateService:
     def run_published(
         cls,
         snippet: CustomizedSnippet,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         session_maker: sessionmaker[Session] | None = None,
+        workflow_id: str | None = None,
+        task_id: str | None = None,
+        capture_agent_evaluation_trace: bool = False,
     ) -> Mapping[str, Any]:
         """
         Run a snippet's published workflow in non-streaming (blocking) mode.
@@ -203,7 +213,11 @@ class SnippetGenerateService:
         :raises ValueError: If the snippet has no published workflow
         """
         snippet_service = SnippetService(session_maker)
-        workflow = snippet_service.get_published_workflow(snippet)
+        workflow = (
+            snippet_service.get_published_workflow_by_id(snippet, workflow_id)
+            if workflow_id
+            else snippet_service.get_published_workflow(snippet)
+        )
         if not workflow:
             raise ValueError("No published workflow found for snippet")
 
@@ -212,14 +226,17 @@ class SnippetGenerateService:
 
         app_proxy = cast(App, _SnippetAsApp(snippet))
 
-        response = WorkflowAppGenerator().generate(
+        response = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
             app_model=app_proxy,
             workflow=workflow,
             user=user,
+            execution_identity=build_workflow_execution_identity(user),
             args=args,
             invoke_from=invoke_from,
             streaming=False,
             call_depth=0,
+            task_id=task_id,
+            capture_agent_evaluation_trace=capture_agent_evaluation_trace,
         )
         return response
 
@@ -265,8 +282,8 @@ class SnippetGenerateService:
         """
         Build a new graph dict with a virtual Start node prepended.
 
-        The virtual Start node is wired to every existing node that has no
-        incoming edges (i.e. the current root candidates).  This guarantees:
+        The virtual Start node is wired to top-level nodes with no incoming
+        edges. Container children retain their own entry points.
 
         :param graph_dict: Original graph configuration.
         :param input_fields: Snippet input field definitions from
@@ -276,13 +293,18 @@ class SnippetGenerateService:
         nodes: list[dict[str, Any]] = list(graph_dict.get("nodes", []))
         edges: list[dict[str, Any]] = list(graph_dict.get("edges", []))
 
-        # Identify nodes with no incoming edges.
+        nodes_by_id = {node["id"]: node for node in nodes}
+        # A container's entry node has no incoming edges, but is not a graph root.
         nodes_with_incoming: set[str] = set()
         for edge in edges:
             target = edge.get("target")
             if isinstance(target, str):
                 nodes_with_incoming.add(target)
-        root_candidate_ids = [n["id"] for n in nodes if n["id"] not in nodes_with_incoming]
+        root_candidate_ids = [
+            node["id"]
+            for node in nodes
+            if node["id"] not in nodes_with_incoming and not resolve_container_id(node, nodes_by_id=nodes_by_id)
+        ]
 
         # Build Start node ``variables`` from snippet input fields.
         start_variables: list[dict[str, Any]] = []
@@ -372,13 +394,13 @@ class SnippetGenerateService:
     def generate_single_iteration(
         cls,
         snippet: CustomizedSnippet,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         node_id: str,
         args: Mapping[str, Any],
         streaming: bool = True,
         *,
         session_maker: sessionmaker[Session],
-    ) -> Mapping[str, Any] | Generator[str, None, None]:
+    ) -> Mapping[str, Any] | Generator[str]:
         """
         Run a single iteration node in a snippet's draft workflow.
 
@@ -404,11 +426,12 @@ class SnippetGenerateService:
 
         with session_maker() as session:
             return WorkflowAppGenerator.convert_to_event_stream(
-                WorkflowAppGenerator().single_iteration_generate(
+                WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).single_iteration_generate(
                     app_model=app_proxy,
                     workflow=workflow,
                     node_id=node_id,
                     user=user,
+                    execution_identity=build_workflow_execution_identity(user),
                     args=args,
                     streaming=streaming,
                     session=session,
@@ -419,13 +442,13 @@ class SnippetGenerateService:
     def generate_single_loop(
         cls,
         snippet: CustomizedSnippet,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         node_id: str,
         args: Any,
         streaming: bool = True,
         *,
         session_maker: sessionmaker[Session],
-    ) -> Mapping[str, Any] | Generator[str, None, None]:
+    ) -> Mapping[str, Any] | Generator[str]:
         """
         Run a single loop node in a snippet's draft workflow.
 
@@ -451,11 +474,12 @@ class SnippetGenerateService:
 
         with session_maker() as session:
             return WorkflowAppGenerator.convert_to_event_stream(
-                WorkflowAppGenerator().single_loop_generate(
+                WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).single_loop_generate(
                     app_model=app_proxy,
                     workflow=workflow,
                     node_id=node_id,
                     user=user,
+                    execution_identity=build_workflow_execution_identity(user),
                     args=args,  # type: ignore[arg-type]
                     streaming=streaming,
                     session=session,

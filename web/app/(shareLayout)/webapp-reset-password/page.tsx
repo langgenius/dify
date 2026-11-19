@@ -12,7 +12,7 @@ import { emailRegex } from '@/config'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { sendResetPasswordCode } from '@/service/common'
+import { consoleClient } from '@/service/console'
 
 export default function CheckCode() {
   const { t } = useTranslation(['login'])
@@ -37,17 +37,13 @@ export default function CheckCode() {
         return
       }
       setIsLoading(true)
-      const res = await sendResetPasswordCode(email, locale)
+      const res = await consoleClient.forgotPassword.post({ body: { email, language: locale } })
       if (res.result === 'success') {
         setCountdownLeftTime(`${COUNT_DOWN_TIME_MS}`)
         const params = new URLSearchParams(searchParams)
-        params.set('token', encodeURIComponent(res.data))
+        params.set('token', encodeURIComponent(res.data ?? ''))
         params.set('email', encodeURIComponent(email))
         router.push(`/webapp-reset-password/check-code?${params.toString()}`)
-      } else if (res.code === 'account_not_found') {
-        toast.error(t(($) => $['error.registrationNotAllowed'], { ns: 'login' }))
-      } else {
-        toast.error(res.data)
       }
     } catch (error) {
       console.error(error)

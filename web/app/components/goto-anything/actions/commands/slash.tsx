@@ -1,28 +1,28 @@
 import type { ActionItem } from '../types'
-import { getI18n } from 'react-i18next'
-import { executeCommand } from './command-bus'
-import { slashCommandRegistry } from './registry'
+import type { CommandContext } from './types'
+import { slashCommandRegistry } from './catalog'
 
-export const slashAction: ActionItem = {
-  key: '/',
-  shortcut: '/',
-  get title() {
-    const i18n = getI18n()
-    return i18n.t(($) => $['gotoAnything.actions.slashTitle'], { ns: 'app' })
-  },
-  get description() {
-    const i18n = getI18n()
-    return i18n.t(($) => $['gotoAnything.actions.slashDesc'], { ns: 'app' })
-  },
-  source: 'local',
-  action: (result) => {
-    if (result.type !== 'command') return
-    const { command, args } = result.data
-    executeCommand(command, args)
-  },
-  search: (query, _searchTerm = '') => {
-    const i18n = getI18n()
-    // Delegate all search logic to the command registry system
-    return slashCommandRegistry.search(query, i18n.language)
-  },
+export function createSlashAction(context: CommandContext): ActionItem {
+  return {
+    key: '/',
+    shortcut: '/',
+    title: context.t(($) => $['gotoAnything.actions.slashTitle'], { ns: 'app' }),
+    description: context.t(($) => $['gotoAnything.actions.slashDesc'], { ns: 'app' }),
+    source: 'local',
+    matches: (query) =>
+      slashCommandRegistry
+        .getAvailableCommands(context)
+        .some(
+          (command) =>
+            command.mode !== 'direct' &&
+            [command.name, ...(command.aliases ?? [])].some((name) =>
+              query.startsWith(`/${name} `),
+            ),
+        ),
+    action: (result) => {
+      if (result.type === 'command')
+        void slashCommandRegistry.execute(result.data.command, result.data.args ?? {}, context)
+    },
+    search: (query) => slashCommandRegistry.search(query, context),
+  }
 }

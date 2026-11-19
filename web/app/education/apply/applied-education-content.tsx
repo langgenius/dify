@@ -8,7 +8,7 @@ import type {
 import type { ReactNode } from 'react'
 import { Select, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useTranslation } from 'react-i18next'
-import { WorkplaceSelectorContent } from '@/app/components/header/account-dropdown/workplace-selector'
+import { WorkplaceSelectorContent } from '@/app/components/header/account-menu/workplace-selector'
 import { PlanBadge } from '@/app/components/header/plan-badge'
 
 type AppliedEducationContentProps = {

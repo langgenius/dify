@@ -1,0 +1,168 @@
+{
+  "credential_test": {
+    "token": {
+      "request": {
+        "method": "GET",
+        "path": "/cgi-bin/gettoken",
+        "query": {
+          "corpid": "fake-corp-001",
+          "corpsecret": "fake-secret-001"
+        },
+        "headers": [],
+        "body": ""
+      },
+      "response": {
+        "status": 200,
+        "headers": [["content-type", "application/json"]],
+        "body": {
+          "errcode": 0,
+          "errmsg": "ok",
+          "access_token": "fake-access-token-credential-001",
+          "expires_in": 7200
+        }
+      }
+    },
+    "agent": {
+      "request": {
+        "method": "GET",
+        "path": "/cgi-bin/agent/get",
+        "query": {
+          "access_token": "fake-access-token-credential-001",
+          "agentid": "1000001"
+        },
+        "headers": [],
+        "body": ""
+      },
+      "response": {
+        "status": 200,
+        "headers": [["content-type", "application/json"]],
+        "body": {
+          "errcode": 0,
+          "errmsg": "ok",
+          "agentid": 1000001,
+          "name": "Fake Application",
+          "square_logo_url": "https://example.invalid/fake-application.png",
+          "description": "Fake fixture application",
+          "allow_userinfos": {"user": [{"userid": "fake-direct-user-001"}]},
+          "allow_partys": {"partyid": [1]},
+          "allow_tags": {"tagid": [7]},
+          "close": 0,
+          "redirect_domain": "example.invalid",
+          "report_location_flag": 0,
+          "isreportenter": 0,
+          "home_url": "https://example.invalid/fake-application"
+        }
+      }
+    }
+  },
+  "directory": {
+    "departments": {
+      "request": {
+        "method": "GET",
+        "path": "/cgi-bin/department/list",
+        "query": {
+          "access_token": "fake-access-token-directory-001",
+          "id": "1"
+        },
+        "headers": [],
+        "body": ""
+      },
+      "response": {
+        "status": 200,
+        "headers": [["content-type", "application/json"]],
+        "body": {
+          "errcode": 0,
+          "errmsg": "ok",
+          "department": [
+            {"id": 1, "name": "Fake Root", "parentid": 0, "order": 1},
+            {"id": 2, "name": "Fake Child", "parentid": 1, "order": 2}
+          ]
+        }
+      }
+    },
+    "users": {
+      "request": {
+        "method": "GET",
+        "path": "/cgi-bin/user/list",
+        "query": {
+          "access_token": "fake-access-token-directory-001",
+          "department_id": "1"
+        },
+        "headers": [],
+        "body": ""
+      },
+      "response": {
+        "status": 200,
+        "headers": [["content-type", "application/json"]],
+        "body": {
+          "errcode": 0,
+          "errmsg": "ok",
+          "userlist": [
+            {
+              "userid": "fake-user-001",
+              "name": "Fake User One",
+              "department": [1],
+              "order": [1],
+              "position": "Fake Engineer",
+              "email": "fake.user.one@example.invalid",
+              "is_leader_in_dept": [0],
+              "isleader": 0,
+              "enable": 1,
+              "status": 1,
+              "hide_mobile": 1,
+              "telephone": "",
+              "alias": "",
+              "main_department": 1,
+              "external_profile": {"external_corp_name": "Fake Corporation"}
+            },
+            {
+              "userid": "fake-user-002",
+              "name": "Fake User Two",
+              "department": [1],
+              "order": [2],
+              "position": "",
+              "is_leader_in_dept": [0],
+              "isleader": 0,
+              "enable": 1,
+              "status": 1,
+              "hide_mobile": 1,
+              "telephone": "",
+              "alias": "",
+              "main_department": 1,
+              "external_profile": {"external_corp_name": "Fake Corporation"}
+            }
+          ]
+        }
+      }
+    }
+  },
+  "message": {
+    "request": {
+      "method": "POST",
+      "path": "/cgi-bin/message/send",
+      "query": {"access_token": "fake-access-token-message-001"},
+      "headers": [["content-type", "application/json"]],
+      "body": {
+        "touser": "fake-user-001",
+        "toparty": "",
+        "totag": "",
+        "agentid": 1000001,
+        "msgtype": "text",
+        "text": {"content": "Fake exact text body"},
+        "safe": 0
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": [["content-type", "application/json"]],
+      "body": {
+        "errcode": 0,
+        "errmsg": "ok",
+        "invaliduser": "",
+        "invalidparty": "",
+        "invalidtag": "",
+        "msgid": "fake-message-id-001"
+      }
+    }
+  }
+}

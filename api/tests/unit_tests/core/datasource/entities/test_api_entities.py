@@ -3,7 +3,7 @@ from core.datasource.entities.datasource_entities import DatasourceParameter
 from core.tools.entities.common_entities import I18nObject
 
 
-def test_datasource_api_entity():
+def test_datasource_api_entity() -> None:
     label = I18nObject(en_US="label", zh_Hans="标签")
     description = I18nObject(en_US="desc", zh_Hans="描述")
 
@@ -20,7 +20,7 @@ def test_datasource_api_entity():
     assert entity.output_schema is None
 
 
-def test_datasource_provider_api_entity_defaults():
+def test_datasource_provider_api_entity_defaults() -> None:
     description = I18nObject(en_US="desc", zh_Hans="描述")
     label = I18nObject(en_US="label", zh_Hans="标签")
 
@@ -37,7 +37,7 @@ def test_datasource_provider_api_entity_defaults():
     assert entity.labels == []
 
 
-def test_datasource_provider_api_entity_convert_none_to_empty_list():
+def test_datasource_provider_api_entity_convert_none_to_empty_list() -> None:
     description = I18nObject(en_US="desc", zh_Hans="描述")
     label = I18nObject(en_US="label", zh_Hans="标签")
 
@@ -56,7 +56,7 @@ def test_datasource_provider_api_entity_convert_none_to_empty_list():
     assert entity.datasources == []
 
 
-def test_datasource_provider_api_entity_to_dict():
+def test_datasource_provider_api_entity_to_dict() -> None:
     description = I18nObject(en_US="desc", zh_Hans="描述")
     label = I18nObject(en_US="label", zh_Hans="标签")
 
@@ -100,7 +100,7 @@ def test_datasource_provider_api_entity_to_dict():
     assert result["datasources"][0]["parameters"][0]["type"] == "files"
 
 
-def test_datasource_provider_api_entity_to_dict_no_params():
+def test_datasource_provider_api_entity_to_dict_no_params() -> None:
     description = I18nObject(en_US="desc", zh_Hans="描述")
     label = I18nObject(en_US="label", zh_Hans="标签")
 
@@ -123,7 +123,7 @@ def test_datasource_provider_api_entity_to_dict_no_params():
     assert result["datasources"][0]["parameters"] is None
 
 
-def test_datasource_provider_api_entity_to_dict_other_param_type():
+def test_datasource_provider_api_entity_to_dict_other_param_type() -> None:
     description = I18nObject(en_US="desc", zh_Hans="描述")
     label = I18nObject(en_US="label", zh_Hans="标签")
 

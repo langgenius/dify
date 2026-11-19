@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 
-from services.entities.account_entities import AccountPasswordDigest
+from services.entities.account_entities import AccountPasswordDigest, AccountSessionTokens
 
 
 class EmailCodeChallengeStatus(StrEnum):
@@ -55,13 +55,6 @@ class AccountSessionPreparation:
 
 
 @dataclass(frozen=True, slots=True)
-class AuthTokenPair:
-    access_token: str
-    refresh_token: str
-    csrf_token: str
-
-
-@dataclass(frozen=True, slots=True)
 class PasswordLoginCommand:
     email: str
     password: str
@@ -79,6 +72,8 @@ class EmailCodeSendCommand:
 
 @dataclass(frozen=True, slots=True)
 class EmailCodeLoginCommand:
+    """Email-code sign-in; ``invite_token`` is the invitation link being accepted, or ``None``."""
+
     email: str
     code: str
     token: str
@@ -86,9 +81,10 @@ class EmailCodeLoginCommand:
     language: str | None
     timezone: str | None
     ip_address: str
+    invite_token: str | None
 
 
 @dataclass(frozen=True, slots=True)
 class PasswordLoginResult:
-    token_pair: AuthTokenPair | None
+    tokens: AccountSessionTokens | None
     workspace_found: bool

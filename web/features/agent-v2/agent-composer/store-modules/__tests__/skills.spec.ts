@@ -30,6 +30,15 @@ describe('agent composer skills store', () => {
       name: 'Invoice Helper',
       fileId: 'tool-file-2',
     })
+    expect(store.get(agentComposerDraftAtom).skills).toEqual([
+      {
+        id: 'Tender Analyzer',
+        name: 'Tender Analyzer',
+        description: 'Updated skill.',
+        fileId: 'tool-file-1',
+      },
+      { id: 'Invoice Helper', name: 'Invoice Helper', fileId: 'tool-file-2' },
+    ])
     store.set(removeAgentSkillAtom, 'Tender Analyzer')
 
     expect(store.get(agentComposerDraftAtom).skills).toEqual([

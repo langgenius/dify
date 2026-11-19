@@ -4,11 +4,12 @@ import type { AgentConfigSnapshotSummaryResponse } from '@dify/contracts/api/con
 import type { ReactNode } from 'react'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -20,6 +21,7 @@ import { toast } from '@/app/notifications'
 import { useAgentPermissions } from '@/features/agent-v2/permissions'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 
 type RestoreActions = {
   requestRestore: (version: AgentConfigSnapshotSummaryResponse) => void
@@ -58,6 +60,7 @@ export function AgentVersionRestore({
     externallyDisabled || !canRestore || (deploymentEdition === 'CLOUD' && plan === undefined)
   const mutation = useMutation(
     consoleQuery.agent.byAgentId.versions.byVersionId.restore.post.mutationOptions({
+      context: { silent: true },
       onMutate: async () => {
         await onBeforeRestore?.()
       },
@@ -81,8 +84,8 @@ export function AgentVersionRestore({
         setStage('closed')
         toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
       },
-      onError: () => {
-        toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
+      onError: (error) => {
+        toast.error(getErrorMessage(error) ?? t(($) => $['api.actionFailed'], { ns: 'common' }))
       },
     }),
   )
@@ -132,16 +135,16 @@ export function AgentVersionRestore({
         }}
       >
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 p-6 pb-4">
-            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {`${t(($) => $['agentDetail.versionHistory.restore'])} ${versionLabel}`}
             </AlertDialogTitle>
-            <AlertDialogDescription className="system-md-regular text-text-secondary">
+            <AlertDialogDescription>
               {t(($) => $['versionHistory.restorationTip'], { ns: 'workflowHistory' })}
             </AlertDialogDescription>
-          </div>
-          <AlertDialogActions>
-            <AlertDialogCancelButton variant="secondary" disabled={mutation.isPending}>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancelButton disabled={mutation.isPending}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
@@ -152,7 +155,7 @@ export function AgentVersionRestore({
             >
               {t(($) => $['agentDetail.versionHistory.restore'])}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

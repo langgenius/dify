@@ -1,13 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
 import { useState } from 'react'
@@ -42,8 +37,6 @@ const GetSchema: FC<Props> = ({ onChange }) => {
     }
   }
 
-  const [showExamples, setShowExamples] = useState(false)
-
   return (
     <div className="flex w-56 justify-end gap-1">
       <Popover open={showImportFromUrl} onOpenChange={setShowImportFromUrl}>
@@ -54,7 +47,7 @@ const GetSchema: FC<Props> = ({ onChange }) => {
           </span>
         </PopoverTrigger>
         <PopoverContent
-          placement="bottom-start"
+          align="start"
           sideOffset={2}
           className="w-75 p-2"
           aria-label={t(($) => $['createTool.importFromUrl'], { ns: 'tools' })}
@@ -90,28 +83,27 @@ const GetSchema: FC<Props> = ({ onChange }) => {
           </form>
         </PopoverContent>
       </Popover>
-      <DropdownMenu open={showExamples} onOpenChange={setShowExamples}>
-        <DropdownMenuTrigger render={<Button size="small" />}>
+      <Menu>
+        <MenuTrigger render={<Button size="small" />}>
           <span className="system-xs-medium text-text-secondary">
             {t(($) => $['createTool.examples'], { ns: 'tools' })}
           </span>
           <span className="i-ri-arrow-down-s-line size-3" aria-hidden />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={2} className="min-w-max">
+        </MenuTrigger>
+        <MenuContent align="end" sideOffset={2} className="min-w-max">
           {examples.map((item) => (
-            <DropdownMenuItem
+            <MenuItem
               key={item.key}
               onClick={() => {
                 onChange(item.content)
-                setShowExamples(false)
               }}
               className="system-sm-regular whitespace-nowrap text-text-secondary"
             >
               {t(($) => $[`createTool.exampleOptions.${item.key}`], { ns: 'tools' })}
-            </DropdownMenuItem>
+            </MenuItem>
           ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </MenuContent>
+      </Menu>
     </div>
   )
 }

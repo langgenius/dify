@@ -127,7 +127,8 @@ const renderInputCell = (
       disabled={readonly}
       className={cn(
         'h-6 min-w-0 rounded-none border-0 bg-transparent p-0 shadow-none',
-        'hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent',
+        // oxlint-disable-next-line shadcn/no-restyle -- The table cell paints an inset focus ring around its full editable area.
+        'hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent focus:ring-0',
         'system-sm-regular text-text-secondary placeholder:text-text-quaternary',
       )}
     />
@@ -152,7 +153,7 @@ const renderSelectCell = (
       <SelectTrigger
         size="small"
         className={cn(
-          'h-6 w-full min-w-0 rounded-none bg-transparent py-0 pr-6 pl-0 text-text-secondary',
+          'h-6 w-full min-w-0 rounded-none bg-transparent py-0 ps-0 pe-6 text-text-secondary',
           'hover:bg-transparent focus-visible:bg-transparent',
         )}
       >
@@ -317,7 +318,7 @@ const GenericTable: FC<GenericTableProps> = ({
                   <div
                     key={column.key}
                     className={cn(
-                      'shrink-0 pl-3',
+                      'shrink-0 pl-3 has-[input:focus]:ring-2 has-[input:focus]:ring-state-accent-solid has-[input:focus]:ring-inset',
                       column.width,
                       // Add right border except for last column
                       columnIndex < columns.length - 1 && 'border-r border-divider-regular',

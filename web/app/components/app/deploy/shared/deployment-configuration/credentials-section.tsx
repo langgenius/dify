@@ -13,19 +13,19 @@ const CredentialConfigurationField = memo(
     paths,
     slot,
     slotKey,
-    value,
+    defaultValue,
   }: {
     onChange: DeploymentConfigurationValuesController['setCredential']
     paths?: NonNullable<CredentialSlot['workflow_as_tool_dependency']>['paths']
     slot: CredentialSlot
     slotKey: string
-    value?: string
+    defaultValue?: string
   }) => {
     return (
       <CredentialField
         paths={paths}
         slot={slot}
-        value={value}
+        defaultValue={defaultValue}
         onChange={(value) => onChange(slotKey, value)}
       />
     )
@@ -36,12 +36,12 @@ CredentialConfigurationField.displayName = 'CredentialConfigurationField'
 export const CredentialsSection = memo(
   ({
     credentialSlots,
-    credentials,
+    getCredential,
     horizontalPaddingClassName,
     onChange,
   }: {
     credentialSlots: CredentialSlot[]
-    credentials: DeploymentConfigurationValuesController['credentials']
+    getCredential: DeploymentConfigurationValuesController['getCredential']
     horizontalPaddingClassName: string
     onChange: DeploymentConfigurationValuesController['setCredential']
   }) => {
@@ -68,7 +68,7 @@ export const CredentialsSection = memo(
               key={slotKey}
               slot={slot}
               slotKey={slotKey}
-              value={credentials[slotKey] ?? defaultCredentialId(slot)}
+              defaultValue={getCredential(slotKey) ?? defaultCredentialId(slot)}
               onChange={onChange}
             />
           )
@@ -94,7 +94,7 @@ export const CredentialsSection = memo(
                   paths={slot.workflow_as_tool_dependency?.paths}
                   slot={slot}
                   slotKey={slotKey}
-                  value={credentials[slotKey] ?? defaultCredentialId(slot)}
+                  defaultValue={getCredential(slotKey) ?? defaultCredentialId(slot)}
                   onChange={onChange}
                 />
               )

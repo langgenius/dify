@@ -1,6 +1,6 @@
 # Thiết lập nâng cao
 
-Nếu bạn cần tùy chỉnh cấu hình, vui lòng tham khảo các nhận xét trong tệp [.env.example](../../docker/.env.example) của chúng tôi và cập nhật các giá trị tương ứng trong tệp `.env` của bạn. Ngoài ra, bạn có thể cần điều chỉnh tệp `docker-compose.yaml`, chẳng hạn như thay đổi phiên bản hình ảnh, ánh xạ cổng hoặc gắn kết khối lượng, dựa trên môi trường triển khai cụ thể và yêu cầu của bạn. Sau khi thực hiện bất kỳ thay đổi nào, vui lòng chạy lại `docker-compose up -d`. Bạn có thể tìm thấy danh sách đầy đủ các biến môi trường có sẵn [tại đây](https://docs.dify.ai/getting-started/install-self-hosted/environments).
+Cấu hình cục bộ nằm trong `docker/.env`. [`.env.example`](../../docker/.env.example) chỉ chứa các giá trị cần cho triển khai mặc định; cấu hình tùy chọn và riêng cho từng dịch vụ nằm trong [`docker/envs/`](../../docker/envs/). Sao chép mẫu cần dùng và bỏ hậu tố `.example`. Giá trị trong `.env` được ưu tiên. Sau khi thay đổi, chạy `docker compose up -d` từ `docker/`. Xem [hướng dẫn Docker](../../docker/README.md).
 
 ## Giám sát Số liệu với Grafana
 

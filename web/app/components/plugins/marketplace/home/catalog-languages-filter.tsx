@@ -122,7 +122,7 @@ export default function CatalogLanguagesFilter() {
         )}
       </div>
       <PopoverContent
-        placement="bottom-end"
+        align="end"
         sideOffset={4}
         alignOffset={-6}
         className="border-none bg-transparent shadow-none"
@@ -135,13 +135,11 @@ export default function CatalogLanguagesFilter() {
                 name="language-query"
                 autoComplete="off"
                 enterKeyHint="search"
-                aria-label={t(($) => $['marketplace.searchFilterLanguage'], { ns: 'plugin' }) || ''}
+                aria-label={t(($) => $['marketplace.searchFilterLanguage'], { ns: 'plugin' })}
                 className="[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
                 value={searchText}
                 onValueChange={setSearchText}
-                placeholder={
-                  t(($) => $['marketplace.searchFilterLanguage'], { ns: 'plugin' }) || ''
-                }
+                placeholder={t(($) => $['marketplace.searchFilterLanguage'], { ns: 'plugin' })}
               />
               <InputGroupAddon className="ps-1.75 pe-0.75">
                 <span

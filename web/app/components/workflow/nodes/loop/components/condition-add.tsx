@@ -42,7 +42,7 @@ const ConditionAdd = ({ className, variables, onSelectVariable, disabled }: Cond
       />
       <PopoverContent
         initialFocus={searchInputRef}
-        placement="bottom-start"
+        align="start"
         sideOffset={4}
         className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >

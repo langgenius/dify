@@ -1,4 +1,5 @@
 'use client'
+import type { Dayjs } from 'dayjs'
 import type { FC } from 'react'
 import type { QueryParam } from './index'
 import type { I18nKeysByPrefix } from '@/types/i18n'
@@ -20,7 +21,12 @@ import {
 
 dayjs.extend(quarterOfYear)
 
-const today = dayjs()
+// Count the days when the value is read, so a page left open past midnight still uses the current date.
+// Round the result, because a daylight saving change makes some days 23 or 25 hours long.
+const daysSince = (getStart: (today: Dayjs) => Dayjs) => {
+  const today = dayjs().startOf('day')
+  return Math.round(today.diff(getStart(today).startOf('day'), 'day', true))
+}
 
 type TimePeriodName = I18nKeysByPrefix<'appLog', 'filter.period.'>
 
@@ -28,11 +34,36 @@ export const TIME_PERIOD_MAPPING: { [key: string]: { value: number; name: TimePe
   1: { value: 0, name: 'today' },
   2: { value: 7, name: 'last7days' },
   3: { value: 28, name: 'last4weeks' },
-  4: { value: today.diff(today.subtract(3, 'month'), 'day'), name: 'last3months' },
-  5: { value: today.diff(today.subtract(12, 'month'), 'day'), name: 'last12months' },
-  6: { value: today.diff(today.startOf('month'), 'day'), name: 'monthToDate' },
-  7: { value: today.diff(today.startOf('quarter'), 'day'), name: 'quarterToDate' },
-  8: { value: today.diff(today.startOf('year'), 'day'), name: 'yearToDate' },
+  4: {
+    get value() {
+      return daysSince((today) => today.subtract(3, 'month'))
+    },
+    name: 'last3months',
+  },
+  5: {
+    get value() {
+      return daysSince((today) => today.subtract(12, 'month'))
+    },
+    name: 'last12months',
+  },
+  6: {
+    get value() {
+      return daysSince((today) => today.startOf('month'))
+    },
+    name: 'monthToDate',
+  },
+  7: {
+    get value() {
+      return daysSince((today) => today.startOf('quarter'))
+    },
+    name: 'quarterToDate',
+  },
+  8: {
+    get value() {
+      return daysSince((today) => today.startOf('year'))
+    },
+    name: 'yearToDate',
+  },
   9: { value: -1, name: 'allTime' },
 }
 
@@ -54,7 +85,7 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps)
       <Chip
         value={queryParams.status || 'all'}
         onSelect={(item) => {
-          setQueryParams({ ...queryParams, status: item.value as string })
+          setQueryParams({ ...queryParams, status: item.value as QueryParam['status'] })
           trackEvent('workflow_log_filter_status_selected', {
             workflow_log_filter_status: item.value as string,
           })
