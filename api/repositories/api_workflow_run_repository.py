@@ -181,10 +181,13 @@ class APIWorkflowRunRepository(Protocol):
         error: str,
         finished_at: datetime,
     ) -> None:
-        """Persist STOPPED and invalidate the run's active pause together.
+        """Persist a durable stop and invalidate the run's active pause together.
 
         The caller owns the transaction, has locked the owner-scoped run in
         this Session, and has decided that execution must stop.
+        Persist STOPPED, stop_requested_at, error and finished_at atomically so
+        delayed execution history cannot revive the run or clear its stop details.
+        Database failures propagate for the caller to roll back the transaction.
         """
         ...
 

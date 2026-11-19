@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, NewType, TypedDict
 
+from constants.trigger import TRIGGER_PLUGIN_NODE_TYPE
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     NodeExecutionSnapshot,
@@ -45,9 +46,8 @@ from core.app.entities.task_entities import (
     WorkflowStartStreamResponse,
 )
 from core.plugin.impl.datasource import PluginDatasourceManager
+from core.plugin.impl.trigger import PluginTriggerClient
 from core.tools.entities.tool_entities import ToolProviderType
-from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
-from core.trigger.trigger_manager import TriggerManager
 from core.workflow.human_input_policy import (
     FormDisposition,
     HumanInputSurface,
@@ -74,6 +74,8 @@ from graphon.variables.variables import Variable
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.datetime_utils import naive_utc_now, to_utc_timestamp
 from models import Account, EndUser
+from models.provider_ids import TriggerProviderID
+from models.utils.trigger_endpoint import generate_trigger_plugin_icon_url
 from models.workflow import WorkflowRun
 from services.tools.provider_queries import ToolProviderIcons
 from services.tools.tool_manager import ToolManager
@@ -81,12 +83,17 @@ from services.variable_truncator import BaseTruncator, DummyVariableTruncator, V
 from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
 from services.workflow.execution.ports import ExecutionContexts
 
-# Maps the entry surface a workflow was invoked from to the HITL surface that
-# its resume tokens must be filtered for. Surfaces not in this map fall back to
-# the general priority ordering (typically CONSOLE > BACKSTAGE).
-_INVOKE_FROM_TO_HITL_SURFACE: Mapping[InvokeFrom, HumanInputSurface] = {
+# Live responses target the initiating entry. None explicitly means there is no
+# interactive form response surface; later access uses the endpoint's surface.
+_INVOKE_FROM_TO_HITL_SURFACE: Mapping[InvokeFrom, HumanInputSurface | None] = {
     InvokeFrom.SERVICE_API: HumanInputSurface.SERVICE_API,
     InvokeFrom.OPENAPI: HumanInputSurface.OPENAPI,
+    InvokeFrom.WEB_APP: HumanInputSurface.WEB_APP,
+    InvokeFrom.DEBUGGER: HumanInputSurface.CONSOLE,
+    InvokeFrom.EXPLORE: HumanInputSurface.CONSOLE,
+    InvokeFrom.TRIGGER: None,
+    InvokeFrom.VALIDATION: None,
+    InvokeFrom.PUBLISHED_PIPELINE: None,
 }
 
 NodeExecutionId = NewType("NodeExecutionId", str)
@@ -559,9 +566,10 @@ class WorkflowResponseConverter:
                     self._application_generate_entity.app_config.tenant_id
                 )
             elif event.node_type == TRIGGER_PLUGIN_NODE_TYPE:
-                response.data.extras["icon"] = TriggerManager.get_trigger_plugin_icon(
-                    self._application_generate_entity.app_config.tenant_id,
-                    event.provider_id,
+                tenant_id = self._application_generate_entity.app_config.tenant_id
+                provider = PluginTriggerClient().fetch_trigger_provider(tenant_id, TriggerProviderID(event.provider_id))
+                response.data.extras["icon"] = generate_trigger_plugin_icon_url(
+                    tenant_id, provider.declaration.identity.icon
                 )
         except Exception:
             # metadata fetch may fail, for example, the plugin daemon is down or plugin is uninstalled.
@@ -873,7 +881,7 @@ class WorkflowResponseConverter:
         display_in_ui: dict[str, bool] = {}
         dispositions: dict[str, FormDisposition] = {}
         config = self._application_generate_entity.app_config
-        surface = _INVOKE_FROM_TO_HITL_SURFACE.get(self._application_generate_entity.invoke_from)
+        surface = _INVOKE_FROM_TO_HITL_SURFACE[self._application_generate_entity.invoke_from]
         forms = self._contexts.pause_forms(
             tenant_id=config.tenant_id,
             app_id=config.app_id,
@@ -887,7 +895,7 @@ class WorkflowResponseConverter:
             except (TypeError, json.JSONDecodeError):
                 definition_payload = {}
             display_in_ui[form.id] = bool(definition_payload.get("display_in_ui"))
-            dispositions[form.id] = disposition_for_surface(form.recipients, surface=surface)
+            dispositions[form.id] = disposition_for_surface(form.recipients, surface=surface) if surface is not None else FormDisposition(None, [])
         # Preserve the legacy pause-reason fields, which differ from the
         # human_input_required data payload (notably display_in_ui).
         pause_reasons = enrich_human_input_pause_reasons(

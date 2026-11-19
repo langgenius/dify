@@ -437,6 +437,51 @@ def _workspace_member_account_id_batches(tenant_id: str, batch_size: int) -> Ite
         last_join_id = str(rows[-1].id)
 
 
+@click.command("rbac-retry-resource-access", help="Retry default RBAC access initialization for workspace resources.")
+@click.option("--tenant-id", required=True, help="Workspace to repair.")
+@click.option(
+    "--resource-type", type=click.Choice(["app", "dataset", "agent", "all"]), default="all", show_default=True
+)
+@click.option("--dry-run", is_flag=True, help="List resources without enqueueing tasks.")
+def retry_resource_access(tenant_id: str, resource_type: str, dry_run: bool) -> None:
+    """Queue default RBAC access initialization for each selected workspace resource.
+
+    Requires an existing workspace owner and a running ``app_rbac`` Celery consumer.
+    The task reads current workspace members, so rerunning it is safe for resources
+    whose default access has already been initialized.
+    """
+    from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
+
+    model_by_type = {"app": App, "dataset": Dataset, "agent": Agent}
+    selected_types = list(model_by_type) if resource_type == "all" else [resource_type]
+    with session_factory.create_session() as session:
+        owner_account_id = session.scalar(
+            select(TenantAccountJoin.account_id)
+            .where(TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.role == TenantAccountRole.OWNER)
+            .order_by(TenantAccountJoin.id.asc())
+            .limit(1)
+        )
+        if owner_account_id is None:
+            raise click.ClickException(f"Workspace owner not found: {tenant_id}")
+        resources = {
+            kind: list(session.scalars(select(model.id).where(model.tenant_id == tenant_id).order_by(model.id.asc())))
+            for kind, model in model_by_type.items()
+            if kind in selected_types
+        }
+
+    queued = 0
+    for kind, ids in resources.items():
+        click.echo(f"{kind}: {len(ids)} resource(s)")
+        for resource_id in ids:
+            click.echo(f"  {resource_id}")
+            if not dry_run:
+                initialize_created_app_rbac_access_task.apply_async(
+                    kwargs={"tenant_id": tenant_id, "account_id": str(owner_account_id), f"{kind}_id": str(resource_id)}
+                )
+                queued += 1
+    click.echo("Dry run complete." if dry_run else f"Queued {queued} RBAC initialization task(s).")
+
+
 def _workspace_non_admin_account_id_batches(
     tenant_id: str,
     operator_account_id: str,

@@ -11,7 +11,7 @@ Primary collaborators include ``PipelineRunner``,
 ``UserFrom``, and real ORM, graph, and runtime dependencies used by the runner.
 """
 
-from collections.abc import Generator
+from collections.abc import Generator, Mapping
 
 import pytest
 from pytest_mock import MockerFixture
@@ -59,7 +59,7 @@ def _dataset(*, tenant_id: str = "tenant", dataset_id: str = "ds", pipeline_id: 
 
 
 def _workflow(
-    *, tenant_id: str = "tenant", pipeline_id: str = "pipe", graph: dict[str, object] | None = None
+    *, tenant_id: str = "tenant", pipeline_id: str = "pipe", graph: Mapping[str, object] | None = None
 ) -> Workflow:
     return make_workflow(
         tenant_id=tenant_id,

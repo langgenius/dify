@@ -348,7 +348,7 @@ class TestHumanInputFormRepositoryImplCases:
             sqlite_session.refresh(form)
             assert form.status == HumanInputFormStatus.WAITING
 
-        def test_get_form_returns_entity_and_recipients(self, sqlite_session: Session):
+        def test_get_form_returns_entity_and_recipients(self, sqlite_session: Session) -> None:
             form = _make_form()
             recipient = _make_recipient(form.id)
             other_tenant_form = _make_form(form_id="form-2", tenant_id="other-tenant")
@@ -376,7 +376,7 @@ class TestHumanInputFormRepositoryImplCases:
 
             assert repo.get_form("node-1") is None
 
-        def test_get_form_returns_unsubmitted_state(self, sqlite_session: Session):
+        def test_get_form_returns_unsubmitted_state(self, sqlite_session: Session) -> None:
             form = _make_form()
             _human_input_form_repository_impl_persist_form(sqlite_session, form)
             repo = HumanInputFormRepositoryImpl(
@@ -392,7 +392,7 @@ class TestHumanInputFormRepositoryImplCases:
             assert entity.selected_action_id is None
             assert entity.submitted_data is None
 
-        def test_get_form_returns_submission_when_completed(self, sqlite_session: Session):
+        def test_get_form_returns_submission_when_completed(self, sqlite_session: Session) -> None:
             form = _make_form(
                 selected_action_id="approve",
                 submitted_data='{"field": "value"}',
@@ -413,7 +413,7 @@ class TestHumanInputFormRepositoryImplCases:
             assert entity.submitted_data == {"field": "value"}
 
     class TestHumanInputFormSubmissionRepository:
-        def test_get_by_token_returns_record(self, sqlite_session: Session):
+        def test_get_by_token_returns_record(self, sqlite_session: Session) -> None:
             form = _make_form(tenant_id="tenant-1")
             recipient = _make_recipient(form.id)
             _human_input_form_repository_impl_persist_form(sqlite_session, form, [recipient])
@@ -426,7 +426,7 @@ class TestHumanInputFormRepositoryImplCases:
             assert record.recipient_type == RecipientType.STANDALONE_WEB_APP
             assert record.submitted is False
 
-        def test_get_by_form_id_and_recipient_type_uses_recipient(self, sqlite_session: Session):
+        def test_get_by_form_id_and_recipient_type_uses_recipient(self, sqlite_session: Session) -> None:
             form = _make_form(tenant_id="tenant-1")
             recipient = _make_recipient(form.id)
             _human_input_form_repository_impl_persist_form(sqlite_session, form, [recipient])
@@ -445,7 +445,7 @@ class TestHumanInputFormRepositoryImplCases:
             self,
             monkeypatch: pytest.MonkeyPatch,
             sqlite_session: Session,
-        ):
+        ) -> None:
             fixed_now = datetime(2024, 1, 1, 0, 0, 0)
             monkeypatch.setattr("repositories.human_input.form_repository.naive_utc_now", lambda: fixed_now)
 
@@ -485,7 +485,7 @@ class TestHumanInputFormRepositoryImplCases:
             _human_input_form_repository_impl_persist_form(sqlite_session, form, [recipient])
             repo = HumanInputFormSubmissionRepository(sessions=_sessions(sqlite_session))
 
-            def fail_form_update(_connection, _cursor, statement, _parameters, _context, _executemany) -> None:
+            def fail_form_update(_connection, _cursor, statement: str, _parameters, _context, _executemany) -> None:
                 if statement.lstrip().upper().startswith("UPDATE HUMAN_INPUT_FORMS"):
                     raise SQLAlchemyError("forced update failure")
 
@@ -612,9 +612,9 @@ class TestHumanInputRepositoryCases:
             _ = entity.token
 
     @staticmethod
-    def test_recipient_entity_id_and_token_success(repository_session: Session) -> None:
-        form = _human_input_repository_persist_form(repository_session)
-        recipient = _persist_recipient(repository_session, form_id=form.id, recipient_id="r1", access_token="tok")
+    def test_recipient_entity_id_and_token_success(sqlite_session: Session) -> None:
+        form = _human_input_repository_persist_form(sqlite_session)
+        recipient = _persist_recipient(sqlite_session, form_id=form.id, recipient_id="r1", access_token="tok")
         entity = _HumanInputFormRecipientEntityImpl(recipient)
         assert entity.id == "r1"
         assert entity.token == "tok"
@@ -649,7 +649,7 @@ class TestHumanInputRepositoryCases:
     @staticmethod
     def test_create_email_recipients_from_resolved_dedupes_and_skips_blank() -> None:
         repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
-        recipients = repo._create_email_recipients_from_resolved(  # type: ignore[attr-defined]
+        recipients = repo._create_email_recipients_from_resolved(
             form_id="f",
             delivery_id="d",
             members=[
@@ -662,20 +662,20 @@ class TestHumanInputRepositoryCases:
         assert [r.recipient_type for r in recipients] == [RecipientType.EMAIL_MEMBER, RecipientType.EMAIL_EXTERNAL]
 
     @staticmethod
-    def test_query_workspace_members_by_ids_empty_returns_empty(repository_session: Session) -> None:
+    def test_query_workspace_members_by_ids_empty_returns_empty(sqlite_session: Session) -> None:
         repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
-        assert repo._query_workspace_members_by_ids(session=repository_session, restrict_to_user_ids=["", ""]) == []
+        assert repo._query_workspace_members_by_ids(session=sqlite_session, restrict_to_user_ids=["", ""]) == []
 
     @staticmethod
-    def test_query_workspace_members_by_ids_maps_rows_and_scopes_tenant(repository_session: Session) -> None:
+    def test_query_workspace_members_by_ids_maps_rows_and_scopes_tenant(sqlite_session: Session) -> None:
         accounts = [
             _human_input_repository_Account(name="One", email="a@example.com"),
             _human_input_repository_Account(name="Two", email="b@example.com"),
             _human_input_repository_Account(name="Other", email="other@example.com"),
         ]
-        repository_session.add_all(accounts)
-        repository_session.flush()
-        repository_session.add_all(
+        sqlite_session.add_all(accounts)
+        sqlite_session.flush()
+        sqlite_session.add_all(
             [
                 _human_input_repository_TenantAccountJoin(
                     tenant_id="tenant", account_id=accounts[0].id, role=TenantAccountRole.NORMAL
@@ -688,10 +688,10 @@ class TestHumanInputRepositoryCases:
                 ),
             ]
         )
-        repository_session.commit()
+        sqlite_session.commit()
         repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
         rows = repo._query_workspace_members_by_ids(
-            session=repository_session,
+            session=sqlite_session,
             restrict_to_user_ids=[accounts[0].id, accounts[1].id, accounts[2].id],
         )
         assert set(rows) == {
@@ -700,18 +700,18 @@ class TestHumanInputRepositoryCases:
         }
 
     @staticmethod
-    def test_query_all_workspace_members_maps_rows(repository_session: Session) -> None:
+    def test_query_all_workspace_members_maps_rows(sqlite_session: Session) -> None:
         account = _human_input_repository_Account(name="One", email="a@example.com")
-        repository_session.add(account)
-        repository_session.flush()
-        repository_session.add(
+        sqlite_session.add(account)
+        sqlite_session.flush()
+        sqlite_session.add(
             _human_input_repository_TenantAccountJoin(
                 tenant_id="tenant", account_id=account.id, role=TenantAccountRole.NORMAL
             )
         )
-        repository_session.commit()
+        sqlite_session.commit()
         repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
-        rows = repo._query_all_workspace_members(session=repository_session)
+        rows = repo._query_all_workspace_members(session=sqlite_session)
         assert rows == [_WorkspaceMemberInfo(user_id=account.id, email="a@example.com")]
 
     @staticmethod
@@ -735,7 +735,7 @@ class TestHumanInputRepositoryCases:
 
     @staticmethod
     def test_delivery_method_to_model_email_uses_build_email_recipients(
-        repository_session: Session, monkeypatch: pytest.MonkeyPatch
+        sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
         monkeypatch.setattr("repositories.human_input.form_repository.uuidv7", lambda: "del-1")
@@ -764,14 +764,14 @@ class TestHumanInputRepositoryCases:
                 body="b",
             )
         )
-        result = repo._delivery_method_to_model(session=repository_session, form_id="form-1", delivery_method=method)
+        result = repo._delivery_method_to_model(session=sqlite_session, form_id="form-1", delivery_method=method)
         assert result.recipients == ["r"]
-        assert called["session"] is repository_session
+        assert called["session"] is sqlite_session
         assert called["delivery_id"] == "del-1"
 
     @staticmethod
     def test_build_email_recipients_uses_all_members_when_whole_workspace(
-        repository_session: Session, monkeypatch: pytest.MonkeyPatch
+        sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
         monkeypatch.setattr(
@@ -781,7 +781,7 @@ class TestHumanInputRepositoryCases:
         )
         monkeypatch.setattr(repo, "_create_email_recipients_from_resolved", lambda **_: ["ok"])
         recipients = repo._build_email_recipients(
-            session=repository_session,
+            session=sqlite_session,
             form_id="f",
             delivery_id="d",
             recipients_config=EmailRecipients(
@@ -792,7 +792,7 @@ class TestHumanInputRepositoryCases:
 
     @staticmethod
     def test_build_email_recipients_uses_selected_members_when_not_whole_workspace(
-        repository_session: Session, monkeypatch: pytest.MonkeyPatch
+        sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
 
@@ -803,7 +803,7 @@ class TestHumanInputRepositoryCases:
         monkeypatch.setattr(repo, "_query_workspace_members_by_ids", fake_query)
         monkeypatch.setattr(repo, "_create_email_recipients_from_resolved", lambda **_: ["ok"])
         recipients = repo._build_email_recipients(
-            session=repository_session,
+            session=sqlite_session,
             form_id="f",
             delivery_id="d",
             recipients_config=EmailRecipients(
@@ -1149,7 +1149,7 @@ class TestHumanInputRepositoryCases:
         form = _human_input_repository_persist_form(repository_session, form_id="f", workflow_run_id=None)
         repo = HumanInputFormSubmissionRepository(sessions=_sessions(repository_session))
         with pytest.raises(_InvalidTimeoutStatusError, match="invalid timeout status"):
-            repo.mark_timeout(form_id=form.id, timeout_status=HumanInputFormStatus.SUBMITTED)  # type: ignore[arg-type]
+            repo.mark_timeout(form_id=form.id, timeout_status=HumanInputFormStatus.SUBMITTED)
         repository_session.expire_all()
         persisted = repository_session.get(HumanInputForm, form.id)
         assert persisted is not None
@@ -1209,7 +1209,7 @@ class TestHumanInputRepositoryCases:
 
 
 def test_delivery_method_to_model_instant_message_creates_recipients(
-    repository_session: Session, monkeypatch: pytest.MonkeyPatch
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
     monkeypatch.setattr("repositories.human_input.form_repository.uuidv7", lambda: "del-1")
@@ -1226,7 +1226,7 @@ def test_delivery_method_to_model_instant_message_creates_recipients(
         )
     )
 
-    result = repo._delivery_method_to_model(session=repository_session, form_id="form-1", delivery_method=method)
+    result = repo._delivery_method_to_model(session=sqlite_session, form_id="form-1", delivery_method=method)
 
     assert result.delivery.id == "del-1"
     assert result.delivery.delivery_method_type == method.type
@@ -1296,7 +1296,7 @@ def test_instant_message_recipient_payload_rejects_mismatched_targets(
 
 
 def test_build_email_recipients_uses_all_members_when_whole_workspace(
-    repository_session: Session, monkeypatch: pytest.MonkeyPatch
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
     monkeypatch.setattr(
@@ -1306,7 +1306,7 @@ def test_build_email_recipients_uses_all_members_when_whole_workspace(
     )
     monkeypatch.setattr(repo, "_create_email_recipients_from_resolved", lambda **_: ["ok"])
     recipients = repo._build_email_recipients(
-        session=repository_session,
+        session=sqlite_session,
         form_id="f",
         delivery_id="d",
         recipients_config=EmailRecipients(include_bound_group=True, items=[ExternalRecipient(email="e@example.com")]),

@@ -11,7 +11,6 @@
     "type-check": "tsrs --noEmit"
   },
   "dependencies": {
-    "@typescript/native": "catalog:",
     "tsrs": "catalog:",
     "typescript": "catalog:"
   },

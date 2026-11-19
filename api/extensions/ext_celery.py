@@ -169,6 +169,11 @@ def init_app(app: DifyApp) -> Celery:
     if dify_config.CELERY_BACKEND == "redis":
         celery_app.conf.update(
             result_backend_transport_options=broker_transport_options,
+            # Celery keeps the result backend per thread unless it is declared thread safe. The
+            # gevent pool runs every task in a new greenlet, so each task would build a new
+            # backend, and building one scans the entry points of every installed package.
+            # The Redis backend works through a connection pool and can be shared.
+            result_backend_thread_safe=True,
         )
 
     if "visibility_timeout" in broker_transport_options:
@@ -197,6 +202,8 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.async_workflow_tasks",  # trigger workers
         "tasks.collect_agent_resources_task",  # retired Agent resource collection
         "tasks.trigger_processing_tasks",  # async trigger processing
+        "tasks.trigger_subscription_refresh_tasks",  # trigger subscription refresh
+        "tasks.workflow_schedule_tasks",  # scheduled workflow execution
         "tasks.generate_summary_index_task",  # summary index generation
         "tasks.regenerate_summary_index_task",  # summary index regeneration
         "tasks.rag_pipeline.rag_pipeline_run_task",  # regular RAG pipeline execution
@@ -216,6 +223,7 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.workflow_run_archive_deletion_tasks",  # permanent monthly archive deletion
         "tasks.trace_delivery_task",  # trace delivery and provider export retries
         "tasks.ops_trace_task",  # retired endpoint; old workers must drain pre-upgrade tasks
+        "tasks.evaluation_task",  # evaluation run execution
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
@@ -226,6 +234,11 @@ def init_app(app: DifyApp) -> Celery:
         beat_schedule["workflow_draft_file_cleanup"] = {
             "task": "tasks.workflow_draft_var_tasks.recover_draft_variable_file_cleanup_task",
             "schedule": timedelta(minutes=5),
+        }
+    if dify_config.ENABLE_EVALUATION_RUN_RECONCILER:
+        beat_schedule["evaluation-run-reconciler"] = {
+            "task": "tasks.evaluation_task.reconcile_stale_evaluation_runs",
+            "schedule": timedelta(minutes=1),
         }
     if dify_config.KNOWLEDGE_FS_BACKGROUND_WORKER_ENABLED is True:
         from services.knowledge_fs.background_contract import OPERATION_QUEUES, OPERATION_TASK

@@ -98,8 +98,8 @@ export class KeychainTokenStore implements TokenStore {
   async remove(host: string, email: string): Promise<void> {
     try {
       await new AsyncEntry(this.service, this.entry(host, email)).deletePassword()
-    } catch {
-      /* missing entry is fine */
+    } catch (err) {
+      throw keyringUnavailableError(err)
     }
   }
 

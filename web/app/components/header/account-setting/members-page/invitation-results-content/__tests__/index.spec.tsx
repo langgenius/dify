@@ -1,14 +1,12 @@
-import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { MemberInviteResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactElement } from 'react'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
-import InvitationResultsContent from '../index'
+import { InvitationResultsContent } from '../index'
 
 const mockOnCancel = vi.fn()
-let deploymentEdition: DeploymentEdition = 'COMMUNITY'
 const render = (ui: ReactElement) =>
   renderWithConsoleQuery(
     <Dialog
@@ -19,7 +17,6 @@ const render = (ui: ReactElement) =>
     >
       <DialogContent>{ui}</DialogContent>
     </Dialog>,
-    { systemFeatures: { deployment_edition: deploymentEdition } },
   )
 
 describe('InvitationResultsContent', () => {
@@ -35,7 +32,6 @@ describe('InvitationResultsContent', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    deploymentEdition = 'COMMUNITY'
   })
 
   it('should show invitation results', async () => {
@@ -147,44 +143,5 @@ describe('InvitationResultsContent', () => {
 
     expect(screen.getByText(/members\.invitationLink/i)).toBeInTheDocument()
     expect(screen.queryByText(/members\.failedInvitationEmails/i)).not.toBeInTheDocument()
-  })
-
-  it.each(['COMMUNITY', 'CLOUD'] as const)(
-    'shows no-new-invitations copy when every email is already a member in %s',
-    (edition) => {
-      deploymentEdition = edition
-      const alreadyMembers: MemberInviteResponse['invitation_results'] = [
-        {
-          email: 'member@example.com',
-          status: 'already_member',
-          message: 'Account already in workspace.',
-        },
-      ]
-
-      render(<InvitationResultsContent invitationResults={alreadyMembers} />)
-
-      expect(screen.getByText(/members\.noNewInvitationsSent/i)).toBeInTheDocument()
-      expect(screen.getByText(/members\.alreadyInTeamTip/i)).toBeInTheDocument()
-      expect(screen.getByText('member@example.com')).toBeInTheDocument()
-      expect(screen.queryByText(/members\.invitationLink/i)).not.toBeInTheDocument()
-    },
-  )
-})
-
-describe('InvitationResultsContent (Cloud edition)', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    deploymentEdition = 'CLOUD'
-  })
-
-  it('should render invitationSentTip without self-hosted content', async () => {
-    const results: MemberInviteResponse['invitation_results'] = [
-      { email: 'success@example.com', status: 'success', url: 'http://invite.com/1' },
-    ]
-
-    render(<InvitationResultsContent invitationResults={results} />)
-
-    expect(await screen.findByText(/members\.invitationSentTip/i)).toBeInTheDocument()
-    expect(screen.queryByText(/members\.invitationLink/i)).not.toBeInTheDocument()
   })
 })

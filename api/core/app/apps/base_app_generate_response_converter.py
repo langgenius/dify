@@ -7,13 +7,42 @@ from dify_agent.protocol import RunFailureType
 from pydantic import JsonValue
 
 from clients.agent_backend.errors import AgentBackendError, AgentBackendRunFailedError
-from core.app.apps.exc import AppGenerateError
+from core.app.apps.exc import ModerationInvocationError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import AppBlockingResponse, AppStreamResponse
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError, InvokeRateLimitError
+from libs.exception import BaseHTTPException
 
 logger = logging.getLogger(__name__)
+
+
+class ModerationRejectedHTTPError(BaseHTTPException):
+    """Represent an unhandled rejection on a transport, never an app's successful preset reply."""
+
+    error_code = "moderation_rejected"
+    code = 400
+    description = "The content was rejected by moderation."
+
+
+class ModerationUnavailableHTTPError(BaseHTTPException):
+    """Expose a safe retryable transport error without provider diagnostics."""
+
+    error_code = "moderation_unavailable"
+    code = 503
+    description = "This message can’t be processed right now. Please try again later."
+
+
+def moderation_http_exception(
+    error: ModerationInvocationError,
+) -> ModerationRejectedHTTPError | ModerationUnavailableHTTPError:
+    """Convert a classified invocation failure only after app replacement handling; share HTTP/SSE semantics."""
+    error_type = (
+        ModerationUnavailableHTTPError
+        if error.error_code == ModerationUnavailableHTTPError.error_code
+        else ModerationRejectedHTTPError
+    )
+    return error_type(description=str(error))
 
 
 class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
@@ -130,11 +159,12 @@ class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
                 "message": str(e),
             }
 
-        if isinstance(e, AppGenerateError):
+        if isinstance(e, ModerationInvocationError):
+            http_error = moderation_http_exception(e)
             return {
-                "code": e.error_code,
-                "status": e.status_code,
-                "message": str(e),
+                "code": http_error.error_code,
+                "status": http_error.code,
+                "message": http_error.description,
             }
 
         error_responses: dict[type[Exception], dict[str, JsonValue]] = {

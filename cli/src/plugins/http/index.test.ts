@@ -2,7 +2,7 @@ import type { DifyMock } from '@test/fixtures/dify-mock/server'
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { FORBIDDEN_HINT, startMock } from '@test/fixtures/dify-mock/server'
+import { FORBIDDEN_HINT, SLOW_STREAM_GAP_MS, startMock } from '@test/fixtures/dify-mock/server'
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
 import { Context } from '@/kernel/context'
 import { catalog, CATALOG_PATH } from '@/plugins/catalog'
@@ -10,6 +10,8 @@ import { CONFIG_FILE_NAME } from '@/plugins/config'
 import { http } from './index'
 
 const SHORT_TIMEOUT_MS = 50
+// Loose enough for headers (and the catalog fetch) on a loaded CI runner, still well under the stream gap.
+const STREAM_HEADER_TIMEOUT_MS = SLOW_STREAM_GAP_MS / 4
 
 let mock: DifyMock
 let dir: string
@@ -158,7 +160,7 @@ describe('http plugin', () => {
   })
 
   it('http.timeout bounds the headers, not the stream: a slow body still arrives whole', async () => {
-    writeTimeout(SHORT_TIMEOUT_MS)
+    writeTimeout(STREAM_HEADER_TIMEOUT_MS)
     mock.setScenario('slow-stream')
     const res = await (
       await new Context().get(http)
@@ -172,6 +174,25 @@ describe('http plugin', () => {
     const body = await res.text()
     expect(body).toContain('"event":"message_end"')
     expect(body).toContain('"answer":"hi"')
+  })
+
+  it('cancels an active response stream when the caller aborts', async () => {
+    mock.setScenario('slow-stream')
+    const controller = new AbortController()
+    const res = await (
+      await new Context().get(http)
+    ).request(() => ({
+      method: 'POST',
+      path: '/openapi/v1/apps/app-1/chat:run',
+      json: { app_id: 'app-1', inputs: {}, query: 'hi' },
+      signal: controller.signal,
+    }))
+    const reader = res.body!.getReader()
+    expect((await reader.read()).done).toBe(false)
+
+    controller.abort()
+
+    await expect(reader.read()).rejects.toMatchObject({ name: 'AbortError' })
   })
 
   it('a server that never sends headers within the timeout is network_connection', async () => {

@@ -1,11 +1,15 @@
+"""Prevent user-controlled HTML and XML files, including SVG, from becoming executable documents."""
+
 import os
 from email.message import Message
 from urllib.parse import quote
 
 from flask import Response
 
-HTML_MIME_TYPES: frozenset[str] = frozenset(("text/html", "application/xhtml+xml"))
-HTML_EXTENSIONS: frozenset[str] = frozenset(("html", "htm"))
+ACTIVE_CONTENT_MIME_TYPES: frozenset[str] = frozenset(("text/html", "application/xml", "text/xml", "text/xsl"))
+ACTIVE_CONTENT_EXTENSIONS: frozenset[str] = frozenset(
+    ("html", "htm", "xhtml", "xht", "svg", "svgz", "xml", "xsl", "xslt")
+)
 
 
 def _normalize_mime_type(mime_type: str | None) -> str:
@@ -16,42 +20,62 @@ def _normalize_mime_type(mime_type: str | None) -> str:
     return message.get_content_type().strip().lower()
 
 
-def _is_html_extension(extension: str | None) -> bool:
-    if not extension:
-        return False
-    return extension.lstrip(".").lower() in HTML_EXTENSIONS
+def _file_extensions(filename: str | None, extension: str | None) -> frozenset[str]:
+    """Normalize filename and route extensions; absent values become empty strings."""
+    return frozenset(value.lstrip(".").lower() for value in (extension or "", os.path.splitext(filename or "")[1]))
 
 
-def is_html_content(mime_type: str | None, filename: str | None, extension: str | None = None) -> bool:
+def is_active_content(mime_type: str | None, filename: str | None, extension: str | None = None) -> bool:
+    """Recognize HTML/XML metadata, including any +xml MIME subtype; ignore missing metadata."""
     normalized_mime_type = _normalize_mime_type(mime_type)
-    if normalized_mime_type in HTML_MIME_TYPES:
+    # An XML document can contain an active SVG root regardless of its MIME subtype.
+    if normalized_mime_type in ACTIVE_CONTENT_MIME_TYPES or normalized_mime_type.endswith("+xml"):
         return True
 
-    if _is_html_extension(extension):
-        return True
-
-    if filename:
-        return _is_html_extension(os.path.splitext(filename)[1])
-
-    return False
+    return not ACTIVE_CONTENT_EXTENSIONS.isdisjoint(_file_extensions(filename, extension))
 
 
-def enforce_download_for_html(
+def harden_active_content_response(
     response: Response,
     *,
     mime_type: str | None,
     filename: str | None,
     extension: str | None = None,
+    inline_svg: bool = False,
 ) -> bool:
-    if not is_html_content(mime_type, filename, extension):
+    """Sandbox active content identified by file metadata, without consuming the stream.
+
+    Check both stored metadata and the actual response MIME. Missing types and
+    HTML/XML default to downloads. Preview endpoints may allow SVG inline under
+    a script-free sandbox; compressed SVGZ always downloads unchanged. Add
+    nosniff to every response and return whether content restrictions applied.
+    """
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response_mime_type = response.mimetype
+    missing_mime_type = not (mime_type or "").strip() or not (response_mime_type or "").strip()
+    if not (
+        missing_mime_type
+        or is_active_content(mime_type, filename, extension)
+        or is_active_content(response_mime_type, None)
+    ):
         return False
 
-    if filename:
-        encoded_filename = quote(filename)
-        response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
+    file_extensions = _file_extensions(filename, extension)
+    if (
+        inline_svg
+        and "svgz" not in file_extensions
+        and (_normalize_mime_type(mime_type) == "image/svg+xml" or "svg" in file_extensions)
+    ):
+        response.headers["Content-Type"] = "image/svg+xml"
+        response.headers["Content-Disposition"] = "inline"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'none'; style-src 'unsafe-inline'; img-src data:; sandbox"
+        )
     else:
-        response.headers["Content-Disposition"] = "attachment"
+        response.headers["Content-Disposition"] = (
+            f"attachment; filename*=UTF-8''{quote(filename)}" if filename else "attachment"
+        )
+        response.headers["Content-Type"] = "application/octet-stream"
+        response.headers["Content-Security-Policy"] = "default-src 'none'; sandbox"
 
-    response.headers["Content-Type"] = "application/octet-stream"
-    response.headers["X-Content-Type-Options"] = "nosniff"
     return True

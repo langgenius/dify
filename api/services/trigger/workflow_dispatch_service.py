@@ -5,9 +5,9 @@ import logging
 from collections.abc import Callable, Mapping
 from typing import Protocol
 
+from constants.trigger import TRIGGER_PLUGIN_NODE_TYPE
 from core.plugin.entities.request import TriggerInvokeEventResponse
 from core.plugin.impl.exc import PluginInvokeError
-from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from enums import QuotaType
 from models.enums import CreatorUserRole

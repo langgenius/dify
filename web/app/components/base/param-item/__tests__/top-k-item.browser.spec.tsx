@@ -3,6 +3,7 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import TopKItem from '../top-k-item'
 
+// boundary: pin the deployment-configured Top K limit.
 vi.mock('@/env', () => ({ env: { NEXT_PUBLIC_TOP_K_MAX_VALUE: 10 } }))
 
 beforeEach(async () => {
