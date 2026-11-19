@@ -448,6 +448,7 @@ export default function IpPoliciesPage() {
       {canMutate && (
         <Dialog
           handle={createDialog}
+          disablePointerDismissal
           onOpenChange={(open, details) =>
             handleDialogOpenChange(open, details, createGroup.isPending)
           }
@@ -465,6 +466,7 @@ export default function IpPoliciesPage() {
       )}
       <Dialog
         handle={policyDialog}
+        disablePointerDismissal={canMutate}
         onOpenChange={(open, details) =>
           handleDialogOpenChange(open, details, updateGroup.isPending)
         }

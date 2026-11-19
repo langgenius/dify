@@ -137,6 +137,7 @@ const EditMetadataBatchModal: FC<Props> = ({
   return (
     <Dialog
       open
+      disablePointerDismissal
       onOpenChange={(open) => {
         if (!open) onHide()
       }}
