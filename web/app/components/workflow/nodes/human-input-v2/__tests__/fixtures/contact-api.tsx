@@ -79,6 +79,7 @@ export function renderContactOwner(ui: ReactElement, role: 'owner' | 'editor' = 
     role,
     plan: null,
     credits: null,
+    max_active_requests: 0,
   } satisfies CurrentWorkspaceSummaryResponse)
   const store = createStore()
   store.set(queryClientAtom, client)

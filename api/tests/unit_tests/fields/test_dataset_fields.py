@@ -401,7 +401,11 @@ def _dump(dataset: Dataset, *, session: Session) -> dict[str, object]:
 
 @contextmanager
 def _count_selects(session: Session) -> Generator[list[str]]:
-    """Record every SELECT issued against the session's engine."""
+    """Record every SELECT issued against the session's engine.
+
+    Preconditions: session is bound to the test engine.
+    Postconditions: the yielded list contains observed SELECTs; the listener is always removed.
+    """
     statements: list[str] = []
     engine = session.get_bind()
 
