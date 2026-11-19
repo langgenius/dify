@@ -1481,3 +1481,58 @@ def test_knowledge_retrieval_grants_returned_segments_to_current_scope(
     assert results[0].metadata.segment_id == segment_id
     assert current_scope is not None
     assert segment_id in current_scope.granted_retriever_segment_ids
+
+
+@pytest.mark.parametrize(
+    ("hits", "expected_doc_ids", "expected_scores"),
+    [
+        # Summary hit + original hit for one segment collapse into one slot.
+        (
+            [
+                {"doc_id": "seg-1-summary", "is_summary": True, "original_chunk_id": "seg-1", "score": 0.9},
+                {"doc_id": "seg-1", "score": 0.8},
+                {"doc_id": "seg-2", "score": 0.5},
+            ],
+            ["seg-1", "seg-2"],
+            {"seg-1": 0.9, "seg-2": 0.5},
+        ),
+        # Lower summary score keeps the original's score.
+        (
+            [
+                {"doc_id": "seg-1-summary", "is_summary": True, "original_chunk_id": "seg-1", "score": 0.3},
+                {"doc_id": "seg-1", "score": 0.8},
+            ],
+            ["seg-1"],
+            {"seg-1": 0.8},
+        ),
+        # A summary whose original chunk is not among the hits stays as that chunk's hit.
+        (
+            [
+                {"doc_id": "seg-1-summary", "is_summary": True, "original_chunk_id": "seg-1", "score": 0.9},
+                {"doc_id": "seg-2", "score": 0.5},
+            ],
+            ["seg-2", "seg-1-summary"],
+            {"seg-2": 0.5, "seg-1-summary": 0.9},
+        ),
+    ],
+)
+def test_collapse_summary_hits_keeps_top_k_for_unique_chunks(
+    hits: list[dict[str, Any]], expected_doc_ids: list[str], expected_scores: dict[str, float]
+):
+    documents = [Document(page_content=f"content-{i}", metadata=meta, provider="dify") for i, meta in enumerate(hits)]
+    collapsed = RetrievalService._collapse_summary_hits(documents)
+    got_ids = [(doc.metadata or {}).get("doc_id") for doc in collapsed]
+    assert sorted(got_ids) == sorted(expected_doc_ids)
+    for doc in collapsed:
+        doc_id = (doc.metadata or {}).get("doc_id")
+        if doc_id in expected_scores:
+            assert float(doc.metadata["score"]) == pytest.approx(expected_scores[doc_id])
+
+
+def test_collapse_summary_hits_noop_without_summary():
+    documents = [
+        Document(page_content="a", metadata={"doc_id": "seg-1", "score": 0.8}, provider="dify"),
+        Document(page_content="b", metadata={"doc_id": "seg-2", "score": 0.5}, provider="dify"),
+    ]
+    collapsed = RetrievalService._collapse_summary_hits(documents)
+    assert collapsed is documents

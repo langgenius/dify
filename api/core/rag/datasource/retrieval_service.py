@@ -262,6 +262,63 @@ class RetrievalService:
         return [chosen[k] for k in order]
 
     @classmethod
+    def _collapse_summary_hits(cls, documents: list[Document]) -> list[Document]:
+        """Fold summary hits into their original chunks so Top K counts unique chunks.
+
+        A summary hit and the original-chunk hit for the same segment carry distinct
+        ``doc_id``s, so they survive ``_deduplicate_documents`` as separate records.
+        Collapsing them before reranking keeps ``top_n`` slots for unique chunks
+        instead of spending two on one segment and dropping one in the later
+        segment-level merge (#46584).
+        """
+        if not documents:
+            return documents
+
+        original_doc_ids: set[str] = set()
+        for doc in documents:
+            meta = doc.metadata or {}
+            if not meta.get("is_summary") and meta.get("doc_id"):
+                original_doc_ids.add(meta["doc_id"])
+
+        has_summary = False
+        collapsed: list[Document] = []
+        position_of: dict[str, int] = {}
+        pending_summaries: list[tuple[str, Document]] = []
+        for doc in documents:
+            meta = doc.metadata or {}
+            if not meta.get("is_summary"):
+                position_of[meta.get("doc_id") or ""] = len(collapsed)
+                collapsed.append(doc)
+                continue
+            has_summary = True
+            pending_summaries.append((meta.get("original_chunk_id") or "", doc))
+
+        if not has_summary:
+            return documents
+
+        for original_chunk_id, doc in pending_summaries:
+            if original_chunk_id and original_chunk_id in position_of:
+                target = collapsed[position_of[original_chunk_id]]
+                summary_score = float((doc.metadata or {}).get("score", 0.0) or 0.0)
+                original_score = float((target.metadata or {}).get("score", 0.0) or 0.0)
+                if summary_score > original_score:
+                    merged = dict(doc.metadata or {})
+                    merged.pop("is_summary", None)
+                    merged.pop("original_chunk_id", None)
+                    merged["doc_id"] = original_chunk_id
+                    target.metadata = merged
+            else:
+                # The original chunk is not among the hits; the summary still points
+                # at a real segment, so keep it as that segment's hit. Stripping the
+                # markers lets the segment-level merge read original_chunk_id from
+                # metadata (kept) while no longer counting it as a summary record.
+                meta = dict(doc.metadata or {})
+                meta.pop("is_summary", None)
+                doc.metadata = meta
+                collapsed.append(doc)
+        return collapsed
+
+    @classmethod
     def _get_dataset(cls, dataset_id: str) -> Dataset | None:
         with Session(db.engine) as session:
             return session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
@@ -892,7 +949,7 @@ class RetrievalService:
             if retrieval_method == RetrievalMethod.HYBRID_SEARCH:
                 if attachment_id and reranking_mode == RerankMode.WEIGHTED_SCORE:
                     all_documents.extend(all_documents_item)
-                all_documents_item = self._deduplicate_documents(all_documents_item)
+                all_documents_item = self._collapse_summary_hits(self._deduplicate_documents(all_documents_item))
 
                 if query:
                     rerank_query = query
