@@ -7,7 +7,6 @@ from core.agent.plugin_entities import AgentStrategyParameter
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.workflow.agent_log_events import AgentLogEvent, NodeRunAgentLogEvent
-from core.workflow.nodes.agent.agent_node import AgentNode
 from core.workflow.nodes.agent.entities import AgentNodeData
 from core.workflow.nodes.agent.message_transformer import AgentMessageTransformer
 from core.workflow.nodes.agent.runtime_support import AgentRuntimeSupport
@@ -15,6 +14,7 @@ from graphon.engine_events import NodeRunStreamChunkEvent
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from graphon.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 from graphon.runtime import InitParams, RuntimeState, VariablePool
+from services.workflow.execution.adapters.agent_node import AgentNode
 
 
 class _RecordingStrategy:

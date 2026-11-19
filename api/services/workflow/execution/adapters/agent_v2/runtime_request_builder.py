@@ -280,7 +280,8 @@ class WorkflowAgentRuntimeRequestBuilder:
                     trace_id=context.dify_context.trace_session_id,
                     tracing=(
                         tracing_hooks.prepare_workflow_agent(
-                            context, get_system_text(context.variable_pool, SystemVariableKey.CONVERSATION_ID)
+                            context,
+                            get_system_text(context.variable_pool, SystemVariableKey.CONVERSATION_ID),
                         )
                         if tracing_hooks is not None
                         else None
@@ -296,7 +297,9 @@ class WorkflowAgentRuntimeRequestBuilder:
                     supports_vision="vision" in model_profile.supported_modalities,
                 ),
                 output=self._build_output_config(
-                    node_job.declared_outputs, node_job.output_routes, context.variable_pool
+                    node_job.declared_outputs,
+                    node_job.output_routes,
+                    context.variable_pool,
                 ),
                 tools=tool_layers.plugin_tools,
                 core_tools=tool_layers.core_tools,
@@ -406,7 +409,9 @@ class WorkflowAgentRuntimeRequestBuilder:
         )
 
     @staticmethod
-    def _agent_backend_agent_mode(invoke_from: InvokeFrom) -> Literal["workflow_run", "single_step"]:
+    def _agent_backend_agent_mode(
+        invoke_from: InvokeFrom,
+    ) -> Literal["workflow_run", "single_step"]:
         if invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.VALIDATION}:
             return "single_step"
         return "workflow_run"
@@ -511,26 +516,32 @@ class WorkflowAgentRuntimeRequestBuilder:
     ) -> list[dict[str, Any]]:
         resolved: list[dict[str, Any]] = []
         for ref in refs:
-            selector = normalize_previous_node_output_selector(ref)
-            if not selector:
-                raise WorkflowAgentRuntimeRequestBuildError(
-                    "invalid_previous_node_output_ref",
-                    "Workflow Agent node has invalid previous node output ref.",
-                )
-            segment = variable_pool.get(selector)
-            if segment is None:
-                raise WorkflowAgentRuntimeRequestBuildError(
-                    "missing_previous_node_output",
-                    f"Workflow Agent node cannot resolve previous node output {'.'.join(selector)}.",
-                )
-            value = segment.value
-            resolved.append(
-                {
-                    "label": ".".join(selector),
-                    "value": self._summarize_value(value),
-                }
-            )
+            label, value = self._resolve_previous_node_output(variable_pool, ref)
+            resolved.append({"label": label, "value": self._summarize_value(value)})
         return resolved
+
+    @staticmethod
+    def _resolve_previous_node_output(
+        variable_pool: VariablePoolReader, ref: WorkflowPreviousNodeOutputRef
+    ) -> tuple[str, Any]:
+        """Resolve a canonical selector to its label and unmodified workflow value.
+
+        The pool must contain the referenced segment. Invalid or missing references
+        raise the existing request-build error; no pool state is changed.
+        """
+        selector = normalize_previous_node_output_selector(ref)
+        if not selector:
+            raise WorkflowAgentRuntimeRequestBuildError(
+                "invalid_previous_node_output_ref",
+                "Workflow Agent node has invalid previous node output ref.",
+            )
+        segment = variable_pool.get(selector)
+        if segment is None:
+            raise WorkflowAgentRuntimeRequestBuildError(
+                "missing_previous_node_output",
+                f"Workflow Agent node cannot resolve previous node output {'.'.join(selector)}.",
+            )
+        return ".".join(selector), segment.value
 
     @staticmethod
     def _summarize_value(value: Any) -> str:
@@ -778,7 +789,9 @@ class WorkflowAgentRuntimeRequestBuilder:
         }
 
     @staticmethod
-    def _build_output_description(declared_outputs: Sequence[DeclaredOutputConfig]) -> str | None:
+    def _build_output_description(
+        declared_outputs: Sequence[DeclaredOutputConfig],
+    ) -> str | None:
         file_output_lines: list[str] = []
         for output in declared_outputs:
             if output.type == DeclaredOutputType.FILE:
@@ -860,7 +873,9 @@ def _execution_context_user_from(user_from: UserFrom) -> DifyExecutionContextUse
             return "end-user"
 
 
-def _execution_context_invoke_from(invoke_from: InvokeFrom) -> DifyExecutionContextInvokeFrom:
+def _execution_context_invoke_from(
+    invoke_from: InvokeFrom,
+) -> DifyExecutionContextInvokeFrom:
     match invoke_from:
         case InvokeFrom.SERVICE_API:
             return "service-api"
@@ -880,7 +895,9 @@ def _execution_context_invoke_from(invoke_from: InvokeFrom) -> DifyExecutionCont
             return "trigger"
 
 
-def _knowledge_query_mode(mode: AgentKnowledgeQueryMode) -> Literal["user_query", "generated_query"]:
+def _knowledge_query_mode(
+    mode: AgentKnowledgeQueryMode,
+) -> Literal["user_query", "generated_query"]:
     match mode:
         case AgentKnowledgeQueryMode.USER_QUERY:
             return "user_query"
@@ -935,7 +952,9 @@ def build_knowledge_layer_config(
     )
 
 
-def _knowledge_retrieval_config(retrieval: AgentKnowledgeRetrievalConfig) -> DifyKnowledgeRetrievalConfig:
+def _knowledge_retrieval_config(
+    retrieval: AgentKnowledgeRetrievalConfig,
+) -> DifyKnowledgeRetrievalConfig:
     weights: dict[str, Any] | None = None
     if retrieval.weights is not None:
         # The dify-agent runtime payload only consumes the nested vector/keyword
@@ -1010,7 +1029,9 @@ def _knowledge_metadata_filtering_config(
     )
 
 
-def _knowledge_model_config(model: AgentKnowledgeModelConfig | None) -> DifyKnowledgeModelConfig | None:
+def _knowledge_model_config(
+    model: AgentKnowledgeModelConfig | None,
+) -> DifyKnowledgeModelConfig | None:
     if model is None:
         return None
     return DifyKnowledgeModelConfig(
@@ -1125,7 +1146,10 @@ def build_config_layer_config(
             "code": "config_asset_missing",
             "message": f"config {kind} '{item.name}' is unavailable and was excluded from runtime.",
         }
-        for kind, items in (("skill", agent_soul.config_skills), ("file", agent_soul.config_files))
+        for kind, items in (
+            ("skill", agent_soul.config_skills),
+            ("file", agent_soul.config_files),
+        )
         for item in items
         if item.is_missing
     ]

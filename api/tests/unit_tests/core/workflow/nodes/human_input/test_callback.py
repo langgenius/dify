@@ -7,13 +7,6 @@ import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.repositories.human_input_repository import (
-    FormCreateParams,
-    HumanInputFormEntity,
-    HumanInputFormRepositoryImpl,
-    HumanInputFormSubmissionRepository,
-)
-from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.session_binding import SessionBinding
 from enums.human_input import HumanInputFormStatus, ValueSourceType
 from graphon.nodes.human_input.entities import Completed, Expired, HITLContext, PauseRequested
@@ -22,6 +15,7 @@ from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables.factory import build_segment
 from libs.datetime_utils import naive_utc_now
 from models.human_input import HumanInputForm
+from models.human_input_contracts import FormCreateParams, HumanInputFormEntity
 from models.human_input_entities import (
     HumanInputNodeData,
     ParagraphInputConfig,
@@ -29,6 +23,11 @@ from models.human_input_entities import (
     StringListSource,
     UserActionConfig,
 )
+from repositories.human_input.form_repository import (
+    HumanInputFormRepositoryImpl,
+    HumanInputFormSubmissionRepository,
+)
+from services.workflow.execution.adapters.human_input import DifyHITLCallback
 
 
 def _ctx(
@@ -48,12 +47,13 @@ def _ctx(
 @pytest.fixture
 def repository(
     sqlite_session_factory: sessionmaker[Session],
-    mocker: MockerFixture,
 ) -> HumanInputFormRepositoryImpl:
-    mocker.patch(
-        "core.repositories.human_input_repository.session_factory.create_session", side_effect=sqlite_session_factory
+    return HumanInputFormRepositoryImpl(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_execution_id="run-1",
+        sessions=sqlite_session_factory,
     )
-    return HumanInputFormRepositoryImpl(tenant_id="tenant-1", app_id="app-1", workflow_execution_id="run-1")
 
 
 @pytest.mark.parametrize(
@@ -247,8 +247,14 @@ def test_dify_hitl_callback_returns_timeout_for_explicit_timeout_form(
 
 def _past_deadline_callback(
     session: Session,
+    sessions: sessionmaker[Session],
 ) -> tuple[DifyHITLCallback, HumanInputFormRepositoryImpl]:
-    repository = HumanInputFormRepositoryImpl(tenant_id="tenant-1", app_id="app-1", workflow_execution_id="run-1")
+    repository = HumanInputFormRepositoryImpl(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_execution_id="run-1",
+        sessions=sessions,
+    )
     callback = DifyHITLCallback(
         form_repository=repository,
         node_data=HumanInputNodeData(
@@ -267,8 +273,10 @@ def _past_deadline_callback(
     return callback, repository
 
 
-def test_dify_hitl_callback_persists_timeout_for_waiting_form_past_node_deadline(sqlite_session: Session) -> None:
-    callback, _ = _past_deadline_callback(sqlite_session)
+def test_dify_hitl_callback_persists_timeout_for_waiting_form_past_node_deadline(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    callback, _ = _past_deadline_callback(sqlite_session, sqlite_session_factory)
 
     decision = callback(_ctx("run-1", "node-1"))
 
@@ -287,16 +295,19 @@ def test_dify_hitl_callback_persists_timeout_for_waiting_form_past_node_deadline
 
 @pytest.mark.parametrize("terminal_status", [HumanInputFormStatus.SUBMITTED, HumanInputFormStatus.EXPIRED])
 def test_dify_hitl_callback_timeout_uses_concurrent_terminal_state(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, terminal_status: HumanInputFormStatus
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    terminal_status: HumanInputFormStatus,
 ) -> None:
-    callback, repository = _past_deadline_callback(sqlite_session)
+    callback, repository = _past_deadline_callback(sqlite_session, sqlite_session_factory)
     get_form = repository.get_form
 
     def finish_after_read(node_id: str, *, form_id: str | None = None) -> HumanInputFormEntity | None:
         waiting_form = get_form(node_id, form_id=form_id)
         monkeypatch.setattr(repository, "get_form", get_form)
         if terminal_status == HumanInputFormStatus.SUBMITTED:
-            HumanInputFormSubmissionRepository().mark_submitted(
+            HumanInputFormSubmissionRepository(sessions=sqlite_session_factory).mark_submitted(
                 form_id="form-1",
                 recipient_id=None,
                 selected_action_id="approve",

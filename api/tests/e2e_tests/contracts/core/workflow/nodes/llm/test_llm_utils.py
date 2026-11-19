@@ -4,7 +4,6 @@ from unittest import mock
 import pytest
 from pytest_mock import MockerFixture
 
-from core.workflow.node_runtime import DifyPreparedLLM
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities import (
     ImagePromptMessageContent,
@@ -39,6 +38,7 @@ from graphon.nodes.llm.exc import (
 from graphon.runtime import VariablePool
 from graphon.template_rendering import TemplateRenderError
 from graphon.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
+from services.workflow.execution.adapters.node_runtime import DifyPreparedLLM
 from tests.helpers.unit.core.model_fixtures import make_model_instance
 
 
