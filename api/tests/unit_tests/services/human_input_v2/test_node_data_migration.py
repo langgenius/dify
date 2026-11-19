@@ -1,9 +1,11 @@
 import ast
 import inspect
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import FrozenInstanceError
+from datetime import datetime
 from types import ModuleType
 from typing import Never, override
+from unittest.mock import create_autospec
 from uuid import uuid4
 
 import pytest
@@ -11,27 +13,34 @@ from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.common import human_input_v2_migration as migration_boundary
-from core.human_input_v2.shared.values import NormalizedEmail, TenantId
+from core.human_input_v2.shared.values import AccountId, ContactId, TenantId
 from core.workflow.nodes.human_input_v2 import migration as migration_module
 from core.workflow.nodes.human_input_v2.migration import (
     LegacyDeliveryParseIssue,
-    MemberEmailSnapshot,
+    MemberContactSnapshot,
     MigrationBlockerCode,
     NodeMigrationConversion,
-    ResolvedMemberEmail,
     convert_legacy_human_input_node_data,
 )
 from models.account import Account, AccountStatus, TenantAccountJoin
 from models.human_input_entities import HumanInputNodeDataFull
+from models.human_input_v2 import (
+    ContactSubjectType,
+    HumanInputContactIdentity,
+    HumanInputPlatformContactWorkspaceEntry,
+)
+from repositories.human_input_v2.contact import Contact, ContactRepository, ContactType
+from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from services.human_input_v2 import node_data_migration as service_module
 from services.human_input_v2.composition import build_human_input_node_data_migration_service
 from services.human_input_v2.node_data_migration import (
     HumanInputNodeDataMigrationService,
     MigrationNode,
+    NodeDataConverter,
     NodeDataMigrationFailure,
     NodeDataMigrationSuccess,
 )
-from services.human_input_v2.workspace_member_email_lookup import SQLAlchemyWorkspaceMemberEmailLookup
+from services.human_input_v2.workspace_member_contact_lookup import SQLAlchemyWorkspaceMemberContactLookup
 
 _EMAIL_METHOD_ID = "11111111-1111-4111-8111-111111111111"
 _WEBAPP_METHOD_ID = "22222222-2222-4222-8222-222222222222"
@@ -73,6 +82,57 @@ def _forbidden_infrastructure_imports(module: ModuleType) -> list[str]:
     return sorted(violations)
 
 
+def test_migration_preserves_member_contact_identity_and_same_email_external_recipient(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    tenant_id = TenantId(str(uuid4()))
+    contact_id = str(uuid4())
+    with sqlite_session_factory.begin() as session:
+        account = Account(name="Approver", email="approver@example.com")
+        session.add(account)
+        session.flush()
+        account_id = account.id
+        session.add(TenantAccountJoin(tenant_id=tenant_id, account_id=account_id))
+        identity = HumanInputContactIdentity(subject_type=ContactSubjectType.ACCOUNT, account_id=account_id)
+        identity.id = contact_id
+        session.add(identity)
+
+    transport = migration_boundary.LegacyHITLv1NodeData.model_validate(
+        {
+            "delivery_methods": [
+                {
+                    "type": "email",
+                    "config": {
+                        "subject": "Review",
+                        "body": "Open {{#url#}}",
+                        "recipients": {
+                            "whole_workspace": True,
+                            "items": [
+                                {"type": "member", "user_id": account_id},
+                                {"type": "external", "email": " APPROVER@Example.com "},
+                                {"type": "member", "reference_id": account_id},
+                            ],
+                        },
+                    },
+                }
+            ]
+        }
+    )
+    node_data = migration_boundary.preflight_legacy_human_input_node_data(transport).node_data
+    service = build_human_input_node_data_migration_service()
+
+    first = service.migrate(tenant_id=tenant_id, nodes=(MigrationNode("approval", node_data),))
+    repeated = service.migrate(tenant_id=tenant_id, nodes=(MigrationNode("approval", node_data),))
+
+    assert first == repeated
+    assert isinstance(first, NodeDataMigrationSuccess)
+    assert [recipient.model_dump(mode="json") for recipient in first.data[0].node_data.recipients_spec] == [
+        {"type": "contact", "contact_id": contact_id},
+        {"type": "onetime_email", "email": "approver@example.com"},
+        {"type": "all_workspace_contacts"},
+    ]
+
+
 def _member_node(title: str, *member_ids: str) -> HumanInputNodeDataFull:
     return HumanInputNodeDataFull.model_validate(
         {
@@ -99,15 +159,34 @@ class _LookupSpy:
         self.calls: list[tuple[TenantId, tuple[str, ...]]] = []
         self._unavailable_account_ids = unavailable_account_ids
 
-    def find_member_emails(self, tenant_id: TenantId, account_ids: Sequence[str]) -> MemberEmailSnapshot:
+    def find_member_contacts(
+        self, tenant_id: TenantId, account_ids: Sequence[AccountId]
+    ) -> Mapping[AccountId, Contact]:
         self.calls.append((tenant_id, tuple(account_ids)))
-        return MemberEmailSnapshot(
-            tuple(
-                ResolvedMemberEmail(account_id, NormalizedEmail(f"{account_id}@example.com"))
-                for account_id in account_ids
-                if account_id not in self._unavailable_account_ids
+        return {
+            account_id: Contact(
+                id=ContactId(f"contact-{account_id}"),
+                type=ContactType.WORKSPACE,
+                name=account_id,
+                email=f"{account_id}@example.com",
+                avatar_file_id=None,
+                created_at=datetime(2026, 11, 16),
             )
-        )
+            for account_id in account_ids
+            if account_id not in self._unavailable_account_ids
+        }
+
+
+def _migration_service(
+    lookup: _LookupSpy,
+    converter: NodeDataConverter = convert_legacy_human_input_node_data,
+) -> HumanInputNodeDataMigrationService:
+    repository = create_autospec(ContactRepository, instance=True)
+    repository.get_contacts_by_account_ids.side_effect = lookup.find_member_contacts
+    return HumanInputNodeDataMigrationService(
+        member_contact_lookup=SQLAlchemyWorkspaceMemberContactLookup(Session, lambda _session: repository),
+        converter=converter,
+    )
 
 
 class _ReadOnlyBoundarySpy(_LookupSpy):
@@ -127,18 +206,18 @@ class _ConverterSpy:
     def __call__(
         self,
         node_data: HumanInputNodeDataFull,
-        member_emails: MemberEmailSnapshot,
+        member_contacts: MemberContactSnapshot,
     ) -> NodeMigrationConversion:
-        self.snapshot_ids.append(id(member_emails))
+        self.snapshot_ids.append(id(member_contacts))
         with pytest.raises(FrozenInstanceError):
-            member_emails.__setattr__("entries", ())
-        return convert_legacy_human_input_node_data(node_data, member_emails)
+            member_contacts.__setattr__("entries", ())
+        return convert_legacy_human_input_node_data(node_data, member_contacts)
 
 
 def test_batch_uses_one_ordered_member_lookup_and_one_immutable_snapshot() -> None:
     lookup = _LookupSpy()
     converter = _ConverterSpy()
-    service = HumanInputNodeDataMigrationService(member_email_lookup=lookup, converter=converter)
+    service = _migration_service(lookup, converter=converter)
     nodes = (
         MigrationNode("node-1", _member_node("First", "member-2", "member-1")),
         MigrationNode("node-2", _member_node("Second", "member-1", "member-3")),
@@ -154,7 +233,7 @@ def test_batch_uses_one_ordered_member_lookup_and_one_immutable_snapshot() -> No
 
 def test_service_collects_real_frontend_user_id_member_references() -> None:
     lookup = _LookupSpy()
-    service = HumanInputNodeDataMigrationService(member_email_lookup=lookup)
+    service = _migration_service(lookup)
     node_data = HumanInputNodeDataFull.model_validate(
         {
             "title": "Approval",
@@ -180,14 +259,14 @@ def test_service_collects_real_frontend_user_id_member_references() -> None:
     assert lookup.calls == [("workspace-1", ("member-1",))]
     assert isinstance(outcome, NodeDataMigrationSuccess)
     assert outcome.data[0].node_data.recipients_spec[0].model_dump(mode="json") == {
-        "type": "onetime_email",
-        "email": "member-1@example.com",
+        "type": "contact",
+        "contact_id": "contact-member-1",
     }
 
 
 def test_service_merges_typed_preflight_issues_and_discards_converted_data() -> None:
     lookup = _LookupSpy()
-    service = HumanInputNodeDataMigrationService(member_email_lookup=lookup)
+    service = _migration_service(lookup)
     node_data = HumanInputNodeDataFull.model_validate(
         {
             "title": "Approval",
@@ -227,7 +306,7 @@ def test_service_merges_typed_preflight_issues_and_discards_converted_data() -> 
 
 
 def test_service_preserves_method_order_when_merging_preflight_and_conversion_blockers() -> None:
-    service = HumanInputNodeDataMigrationService(member_email_lookup=_LookupSpy())
+    service = _migration_service(_LookupSpy())
     node_data = HumanInputNodeDataFull.model_validate(
         {
             "title": "Approval",
@@ -295,7 +374,7 @@ def test_service_preserves_recipient_source_order_across_preflight_and_converter
             ],
         }
     )
-    service = HumanInputNodeDataMigrationService(member_email_lookup=_LookupSpy())
+    service = _migration_service(_LookupSpy())
 
     outcome = service.migrate(
         tenant_id=TenantId("workspace-1"),
@@ -335,7 +414,7 @@ def test_service_preserves_adversarial_preflight_and_conversion_order_without_pa
             ],
         }
     )
-    service = HumanInputNodeDataMigrationService(member_email_lookup=_LookupSpy())
+    service = _migration_service(_LookupSpy())
 
     outcome = service.migrate(
         tenant_id=TenantId("workspace-1"),
@@ -369,7 +448,7 @@ def test_service_orders_invalid_delivery_ids_without_partial_data_or_persistence
         }
     )
     lookup = _ReadOnlyBoundarySpy()
-    service = HumanInputNodeDataMigrationService(member_email_lookup=lookup)
+    service = _migration_service(lookup)
 
     outcome = service.migrate(
         tenant_id=TenantId("workspace-1"),
@@ -380,7 +459,7 @@ def test_service_orders_invalid_delivery_ids_without_partial_data_or_persistence
         ),
     )
 
-    assert lookup.calls == [("workspace-1", ())]
+    assert lookup.calls == []
     assert lookup.write_attempts == []
     assert isinstance(outcome, NodeDataMigrationFailure)
     assert not hasattr(outcome, "data")
@@ -410,7 +489,7 @@ def test_service_source_orders_disabled_unknown_methods_as_unsupported_without_p
             ],
         }
     )
-    service = HumanInputNodeDataMigrationService(member_email_lookup=_LookupSpy())
+    service = _migration_service(_LookupSpy())
 
     outcome = service.migrate(
         tenant_id=TenantId("workspace-1"),
@@ -463,7 +542,7 @@ def test_service_orders_duplicate_method_ids_by_canonical_index_not_id() -> None
         method_id="unsupported-between-duplicates",
         value="im",
     )
-    service = HumanInputNodeDataMigrationService(member_email_lookup=_LookupSpy())
+    service = _migration_service(_LookupSpy())
 
     outcome = service.migrate(
         tenant_id=TenantId("workspace-1"),
@@ -488,7 +567,7 @@ def test_service_orders_duplicate_method_ids_by_canonical_index_not_id() -> None
 
 def test_service_aggregates_real_im_and_disabled_unknown_method_blockers() -> None:
     lookup = _LookupSpy()
-    service = HumanInputNodeDataMigrationService(member_email_lookup=lookup)
+    service = _migration_service(lookup)
     node_data = HumanInputNodeDataFull.model_validate(
         {
             "title": "Approval",
@@ -525,7 +604,7 @@ def test_service_aggregates_real_im_and_disabled_unknown_method_blockers() -> No
 
 def test_batch_aggregates_blockers_discards_valid_results_and_retries_equivalently() -> None:
     lookup = _LookupSpy(frozenset({"missing-member"}))
-    service = HumanInputNodeDataMigrationService(member_email_lookup=lookup)
+    service = _migration_service(lookup)
     valid_node = HumanInputNodeDataFull.model_validate(
         {
             "title": "Valid",
@@ -580,7 +659,7 @@ def test_success_blocked_and_repeated_requests_have_no_persistence_write_boundar
         assert forbidden_write not in service_source
 
     lookup = _ReadOnlyBoundarySpy()
-    service = HumanInputNodeDataMigrationService(member_email_lookup=lookup)
+    service = _migration_service(lookup)
     successful_nodes = (
         MigrationNode(
             "node-success",
@@ -612,7 +691,7 @@ def test_success_blocked_and_repeated_requests_have_no_persistence_write_boundar
 
 def test_whole_workspace_does_not_enumerate_members() -> None:
     lookup = _LookupSpy()
-    service = HumanInputNodeDataMigrationService(member_email_lookup=lookup)
+    service = _migration_service(lookup)
     node_data = HumanInputNodeDataFull.model_validate(
         {
             "title": "Approval",
@@ -636,7 +715,7 @@ def test_whole_workspace_does_not_enumerate_members() -> None:
     )
 
     assert isinstance(outcome, NodeDataMigrationSuccess)
-    assert lookup.calls == [("workspace-1", ())]
+    assert lookup.calls == []
 
 
 class _TrackingReadSession(Session):
@@ -660,25 +739,49 @@ class _TrackingReadSession(Session):
         super().flush(objects)
 
 
-def test_sql_lookup_is_tenant_scoped_active_read_only_and_closes_session(
+@pytest.mark.parametrize(
+    "member_state",
+    ["workspace", "no-email", "banned", "missing-identity", "other-workspace", "platform", "missing-account"],
+)
+def test_migration_resolves_only_current_workspace_member_identities_without_writes(
     sqlite_session_factory: sessionmaker[Session],
+    member_state: str,
 ) -> None:
     tenant_id = TenantId(str(uuid4()))
-    other_tenant_id = TenantId(str(uuid4()))
-    with sqlite_session_factory.begin() as arrange_session:
-        active = Account(name="Active", email="  ACTIVE@Example.COM ")
-        banned = Account(name="Banned", email="banned@example.com", status=AccountStatus.BANNED)
-        invalid_email = Account(name="Invalid", email="invalid-email")
-        cross_workspace = Account(name="Cross", email="cross@example.com")
-        arrange_session.add_all([active, banned, invalid_email, cross_workspace])
-        arrange_session.flush()
-        arrange_session.add_all(
-            [
-                TenantAccountJoin(tenant_id=tenant_id, account_id=active.id),
-                TenantAccountJoin(tenant_id=tenant_id, account_id=banned.id),
-                TenantAccountJoin(tenant_id=tenant_id, account_id=invalid_email.id),
-                TenantAccountJoin(tenant_id=other_tenant_id, account_id=cross_workspace.id),
-            ]
+    with sqlite_session_factory.begin() as session:
+        account = Account(
+            name="Approver",
+            email="" if member_state == "no-email" else "approver@example.com",
+            status=AccountStatus.BANNED if member_state == "banned" else AccountStatus.ACTIVE,
+        )
+        session.add(account)
+        session.flush()
+        account_id = account.id
+        contact_id = str(uuid4())
+        if member_state != "missing-identity":
+            identity = HumanInputContactIdentity(subject_type=ContactSubjectType.ACCOUNT, account_id=account_id)
+            identity.id = contact_id
+            session.add(identity)
+        membership_tenant_id = str(uuid4()) if member_state in {"other-workspace", "platform"} else tenant_id
+        session.add(TenantAccountJoin(tenant_id=membership_tenant_id, account_id=account_id))
+        if member_state == "platform":
+            session.add(
+                HumanInputPlatformContactWorkspaceEntry(
+                    tenant_id=tenant_id,
+                    contact_id=contact_id,
+                    added_by_account_id=account_id,
+                )
+            )
+        # A different Account with the same Email must never supply the requested identity.
+        same_email_account = Account(name="Other approver", email=account.email)
+        session.add(same_email_account)
+        session.flush()
+        session.add(TenantAccountJoin(tenant_id=tenant_id, account_id=same_email_account.id))
+        session.add(
+            HumanInputContactIdentity(
+                subject_type=ContactSubjectType.ACCOUNT,
+                account_id=same_email_account.id,
+            )
         )
 
     _TrackingReadSession.close_count = 0
@@ -687,9 +790,9 @@ def test_sql_lookup_is_tenant_scoped_active_read_only_and_closes_session(
     engine = sqlite_session_factory.kw["bind"]
     assert isinstance(engine, Engine)
     read_factory = sessionmaker(bind=engine, class_=_TrackingReadSession, expire_on_commit=False)
-    select_count = 0
+    writes: list[str] = []
 
-    def count_selects(
+    def capture_writes(
         _connection: object,
         _cursor: object,
         statement: str,
@@ -697,25 +800,34 @@ def test_sql_lookup_is_tenant_scoped_active_read_only_and_closes_session(
         _context: object,
         _executemany: object,
     ) -> None:
-        nonlocal select_count
-        if statement.lstrip().upper().startswith("SELECT"):
-            select_count += 1
+        if statement.lstrip().upper().startswith(("INSERT", "UPDATE", "DELETE")):
+            writes.append(statement)
 
-    event.listen(engine, "before_cursor_execute", count_selects)
+    service = HumanInputNodeDataMigrationService(
+        member_contact_lookup=SQLAlchemyWorkspaceMemberContactLookup(read_factory, SQLAlchemyContactRepository),
+    )
+    requested_id = str(uuid4()) if member_state == "missing-account" else account_id
+    event.listen(engine, "before_cursor_execute", capture_writes)
     try:
-        lookup = SQLAlchemyWorkspaceMemberEmailLookup(read_factory)
-        member_emails = lookup.find_member_emails(
-            tenant_id,
-            (active.id, banned.id, invalid_email.id, cross_workspace.id, str(uuid4())),
+        outcome = service.migrate(
+            tenant_id=tenant_id,
+            nodes=(MigrationNode("approval", _member_node("Approval", requested_id)),),
         )
     finally:
-        event.remove(engine, "before_cursor_execute", count_selects)
+        event.remove(engine, "before_cursor_execute", capture_writes)
 
-    assert isinstance(member_emails, migration_module.MemberEmailSnapshot)
-    assert [(entry.member_id, str(entry.email)) for entry in member_emails.entries] == [
-        (active.id, "active@example.com")
-    ]
-    assert select_count == 1
+    if member_state in {"workspace", "no-email"}:
+        assert isinstance(outcome, NodeDataMigrationSuccess)
+        assert [recipient.model_dump(mode="json") for recipient in outcome.data[0].node_data.recipients_spec] == [
+            {"type": "contact", "contact_id": contact_id},
+        ]
+    else:
+        assert isinstance(outcome, NodeDataMigrationFailure)
+        assert [(blocker.code, blocker.value) for blocker in outcome.blockers] == [
+            ("unresolved-member", requested_id),
+            ("missing-recipients", None),
+        ]
+    assert writes == []
     assert _TrackingReadSession.close_count == 1
     assert _TrackingReadSession.commit_count == 0
     assert _TrackingReadSession.flush_count == 0
@@ -725,6 +837,6 @@ def test_composition_injects_sql_lookup_and_core_converter_has_no_infrastructure
     service = build_human_input_node_data_migration_service()
 
     assert isinstance(service, HumanInputNodeDataMigrationService)
-    assert isinstance(service._member_email_lookup, SQLAlchemyWorkspaceMemberEmailLookup)
+    assert isinstance(service._member_contact_lookup, SQLAlchemyWorkspaceMemberContactLookup)
 
     assert _forbidden_infrastructure_imports(migration_module) == []

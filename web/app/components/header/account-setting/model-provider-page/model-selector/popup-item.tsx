@@ -16,7 +16,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useModalContext } from '@/context/modal-context'
+import { modelCredentialDialog } from '@/app/components/header/account-setting/model-provider-page/model-modal/handle'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { renderI18nObject } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
@@ -65,7 +65,6 @@ function PopupItem({
   const language = useLanguage()
   const providerLabel = renderI18nObject(model.label, language)
   const suggestionTip = t(($) => $['modelProvider.selector.suggestionTip'], { ns: 'modelProvider' })
-  const { setShowModelModal } = useModalContext()
   const { data: currentProvider } = useQuery(
     consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions({
       select: (response) => response.data.find((provider) => provider.provider === model.provider),
@@ -88,12 +87,10 @@ function PopupItem({
 
     const detail = await loadProviderDetail()
     if (!detail) return
-    setShowModelModal({
-      payload: {
-        currentProvider: detail,
-        currentConfigurationMethod: ConfigurationMethodEnum.predefinedModel,
-      },
-      onSaveCallback: () => {
+    modelCredentialDialog.openWithPayload({
+      provider: detail,
+      configurateMethod: ConfigurationMethodEnum.predefinedModel,
+      onSave: () => {
         updateModelProviders()
 
         const modelType = model.models[0]!.model_type

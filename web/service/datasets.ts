@@ -1,12 +1,23 @@
 import type { DatasetUpdatePayload } from '@dify/contracts/api/console/datasets/types.gen'
-import type { CreateExternalAPIReq } from '@/app/components/datasets/external-api/declarations'
+import type { MutationFilters } from '@tanstack/react-query'
 import type { CreateKnowledgeBaseReq } from '@/app/components/datasets/external-knowledge-base/create/declarations'
 import type { FetchDatasetsParams } from '@/models/datasets'
 import type { ConsoleClientContext } from '@/service/console'
+import { isPlainObject } from 'es-toolkit/predicate'
 import { DataSourceProvider } from '@/models/common'
 // oxlint-disable-next-line no-restricted-imports -- the zip download needs the raw Blob response
 import { post } from './base'
-import { consoleClient } from './console'
+import { consoleClient, consoleQuery } from './console'
+
+export function documentRenameFilter(datasetId: string, documentId: string): MutationFilters {
+  return {
+    mutationKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.rename.post.mutationKey(),
+    predicate: ({ state: { variables } }) =>
+      isPlainObject(variables) &&
+      variables.params?.dataset_id === datasetId &&
+      variables.params?.document_id === documentId,
+  }
+}
 
 // apis for documents in a dataset
 
@@ -52,22 +63,10 @@ export const createEmptyDataset = ({ name }: { name: string }, context?: Console
 }
 
 export const fetchExternalAPI = ({ apiTemplateId }: { apiTemplateId: string }) => {
-  return consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.get({
-    params: { external_knowledge_api_id: apiTemplateId },
-  })
-}
-
-export const updateExternalAPI = ({
-  apiTemplateId,
-  body,
-}: {
-  apiTemplateId: string
-  body: CreateExternalAPIReq
-}) => {
-  return consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.patch({
-    params: { external_knowledge_api_id: apiTemplateId },
-    body,
-  })
+  return consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.get(
+    { params: { external_knowledge_api_id: apiTemplateId } },
+    { context: { silent: true } },
+  )
 }
 
 export const deleteExternalAPI = ({ apiTemplateId }: { apiTemplateId: string }) => {
@@ -80,10 +79,6 @@ export const checkUsageExternalAPI = ({ apiTemplateId }: { apiTemplateId: string
   return consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.useCheck.get({
     params: { external_knowledge_api_id: apiTemplateId },
   })
-}
-
-export const createExternalAPI = ({ body }: { body: CreateExternalAPIReq }) => {
-  return consoleClient.datasets.externalKnowledgeApi.post({ body }, { context: { silent: true } })
 }
 
 export const createExternalKnowledgeBase = (
@@ -103,19 +98,6 @@ export const fetchIndexingStatusBatch = ({ datasetId, batchId }: BatchReq) => {
   return consoleClient.datasets.byDatasetId.batch.byBatch.indexingStatus.get({
     params: { dataset_id: datasetId, batch: batchId },
   })
-}
-
-export const renameDocumentName = (
-  { datasetId, documentId, name }: CommonDocReq & { name: string },
-  context?: ConsoleClientContext,
-) => {
-  return consoleClient.datasets.byDatasetId.documents.byDocumentId.rename.post(
-    {
-      params: { dataset_id: datasetId, document_id: documentId },
-      body: { name },
-    },
-    { context },
-  )
 }
 
 export const pauseDocIndexing = (

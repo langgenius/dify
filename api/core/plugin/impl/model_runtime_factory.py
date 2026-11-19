@@ -17,7 +17,8 @@ from graphon.model_runtime.model_providers.model_provider_factory import ModelPr
 from graphon.model_runtime.protocols.runtime import ModelRuntime
 
 if TYPE_CHECKING:
-    from core.model_manager import ModelManager
+    from core.entities.provider_configuration import ProviderModelBundle
+    from core.model_manager import LLMModerationPolicy, ModelManager
     from core.plugin.impl.model_runtime import PluginModelRuntime
     from core.provider_manager import ProviderManager
 
@@ -29,6 +30,20 @@ _MODEL_CLASS_BY_TYPE: dict[ModelType, type[AIModel]] = {
     ModelType.MODERATION: ModerationModel,
     ModelType.TTS: TTSModel,
 }
+
+
+def bind_model_moderation_policy(
+    bundle: ProviderModelBundle, policy: LLMModerationPolicy | None
+) -> LLMModerationPolicy | None:
+    """Delegate policy composition while keeping application dependencies out of model invocation.
+
+    The composition root gates automatic moderation on the Cloud edition and its
+    switch, then selects AI-credit LLMs. Other models retain the explicit policy.
+    Binding never invokes a provider or reserves user credits.
+    """
+    from extensions.application_services.moderation import bind_hosted_llm_moderation
+
+    return bind_hosted_llm_moderation(bundle, policy=policy)
 
 
 def create_model_type_instance(
@@ -60,13 +75,24 @@ class PluginModelAssembly:
     _provider_manager: ProviderManager | None
     _model_manager: ModelManager | None
 
-    def __init__(self, *, tenant_id: str, user_id: str | None = None) -> None:
+    def __init__(
+        self, *, tenant_id: str, user_id: str | None = None, moderation: LLMModerationPolicy | None = None
+    ) -> None:
+        """Bind runtime identity and an optional LLM policy; reject cross-tenant policies before I/O.
+
+        None permits automatic platform moderation during model construction.
+        Every manager-created LLM inherits the explicit policy when supplied;
+        raw runtime capabilities remain infrastructure.
+        """
+        if moderation is not None and moderation.tenant_id != tenant_id:
+            raise ValueError("Moderation policy tenant does not match the model tenant.")
         self.tenant_id = tenant_id
         self.user_id = user_id
         self._model_runtime = None
         self._model_provider_factory = None
         self._provider_manager = None
         self._model_manager = None
+        self._moderation = moderation
 
     @property
     def model_runtime(self) -> PluginModelRuntime:
@@ -106,13 +132,19 @@ class PluginModelAssembly:
         if self._model_manager is None:
             from core.model_manager import ModelManager
 
-            self._model_manager = ModelManager(provider_manager=self.provider_manager)
+            self._model_manager = ModelManager(provider_manager=self.provider_manager, moderation=self._moderation)
         return self._model_manager
 
 
-def create_plugin_model_assembly(*, tenant_id: str, user_id: str | None = None) -> PluginModelAssembly:
-    """Create a request-scoped assembly that shares one plugin runtime across model views."""
-    return PluginModelAssembly(tenant_id=tenant_id, user_id=user_id)
+def create_plugin_model_assembly(
+    *, tenant_id: str, user_id: str | None = None, moderation: LLMModerationPolicy | None = None
+) -> PluginModelAssembly:
+    """Create a request-scoped runtime assembly with an optional tenant-matched LLM policy.
+
+    All manager-created LLMs inherit the explicit policy in addition to enabled
+    platform moderation. Tenant mismatches fail before runtime construction.
+    """
+    return PluginModelAssembly(tenant_id=tenant_id, user_id=user_id, moderation=moderation)
 
 
 def create_plugin_model_runtime(*, tenant_id: str, user_id: str | None = None) -> PluginModelRuntime:
@@ -137,6 +169,12 @@ def create_plugin_provider_manager(*, tenant_id: str, user_id: str | None = None
     return create_plugin_model_assembly(tenant_id=tenant_id, user_id=user_id).provider_manager
 
 
-def create_plugin_model_manager(*, tenant_id: str, user_id: str | None = None) -> ModelManager:
-    """Create a tenant-bound model manager for service flows."""
-    return create_plugin_model_assembly(tenant_id=tenant_id, user_id=user_id).model_manager
+def create_plugin_model_manager(
+    *, tenant_id: str, user_id: str | None = None, moderation: LLMModerationPolicy | None = None
+) -> ModelManager:
+    """Create a tenant-bound manager whose LLM instances inherit the supplied policy.
+
+    None permits automatic platform moderation; cross-tenant explicit
+    policies fail before runtime I/O.
+    """
+    return create_plugin_model_assembly(tenant_id=tenant_id, user_id=user_id, moderation=moderation).model_manager

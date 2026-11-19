@@ -1,9 +1,9 @@
 import type { LexicalEditor } from 'lexical'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { $createParagraphNode, $createTextNode, $getRoot, $isTextNode } from 'lexical'
+import { TestLexicalComposer } from '@/test/lexical'
 import FontSizeSelector from '../font-size-selector'
 
 describe('NoteEditor FontSizeSelector', () => {
@@ -15,7 +15,7 @@ describe('NoteEditor FontSizeSelector', () => {
       return null
     }
     render(
-      <LexicalComposer
+      <TestLexicalComposer
         initialConfig={{
           namespace: 'font-size-test',
           onError: (error) => {
@@ -30,7 +30,7 @@ describe('NoteEditor FontSizeSelector', () => {
       >
         <CaptureEditor />
         <FontSizeSelector />
-      </LexicalComposer>,
+      </TestLexicalComposer>,
     )
 
     await user.click(screen.getByRole('button', { name: 'workflow.nodes.note.editor.small' }))

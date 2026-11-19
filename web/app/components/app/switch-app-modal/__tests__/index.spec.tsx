@@ -108,17 +108,17 @@ vi.mock('@/app/notifications', () => ({
 }))
 
 const renderComponent = (overrides: Partial<React.ComponentProps<typeof SwitchAppModal>> = {}) => {
-  const onOpenChange = vi.fn()
+  const onClose = vi.fn()
   const appDetail = createMockApp()
 
   const utils = render(
-    <SwitchAppModal open sourceApp={appDetail} onOpenChange={onOpenChange} {...overrides} />,
+    <SwitchAppModal open sourceApp={appDetail} onClose={onClose} {...overrides} />,
   )
 
   return {
     ...utils,
     notify: toastMocks.notify,
-    onOpenChange,
+    onClose,
     appDetail,
   }
 }
@@ -205,29 +205,29 @@ describe('SwitchAppModal', () => {
 
   // User interactions that trigger navigation and API calls.
   describe('Interactions', () => {
-    it('should call onOpenChange when cancel is clicked', async () => {
+    it('should call onClose when cancel is clicked', async () => {
       const user = userEvent.setup()
 
-      const { onOpenChange } = renderComponent()
+      const { onClose } = renderComponent()
 
       await user.click(screen.getByRole('button', { name: 'app.newApp.Cancel' }))
 
-      expect(onOpenChange).toHaveBeenCalledTimes(1)
+      expect(onClose).toHaveBeenCalledTimes(1)
     })
 
-    it('should call onOpenChange when close button is clicked', async () => {
+    it('should call onClose when close button is clicked', async () => {
       const user = userEvent.setup()
-      const { onOpenChange } = renderComponent()
+      const { onClose } = renderComponent()
 
       await user.click(screen.getByRole('button', { name: /operation\.close$/ }))
 
-      expect(onOpenChange).toHaveBeenCalledTimes(1)
+      expect(onClose).toHaveBeenCalledTimes(1)
     })
 
     it('should switch app and navigate with push when keeping original', async () => {
       const user = userEvent.setup()
 
-      const { appDetail, onOpenChange } = renderComponent()
+      const { appDetail, onClose } = renderComponent()
       mockConvertToWorkflow.mockResolvedValueOnce({
         new_app_id: 'new-app-001',
         permission_keys: ['app.acl.view_layout'],
@@ -245,7 +245,7 @@ describe('SwitchAppModal', () => {
             icon_background: '#FFEAD5',
           },
         })
-        expect(onOpenChange).toHaveBeenCalledTimes(1)
+        expect(onClose).toHaveBeenCalledTimes(1)
         expect(mockPush).toHaveBeenCalledWith('/app/new-app-001/workflow')
         expect(mockReplace).not.toHaveBeenCalled()
       })
@@ -336,7 +336,7 @@ describe('SwitchAppModal', () => {
 
     it('keeps conversion pending until original deletion settles and navigates to the created app if deletion fails', async () => {
       const user = userEvent.setup()
-      const { onOpenChange, notify } = renderComponent()
+      const { onClose, notify } = renderComponent()
       mockConvertToWorkflow.mockResolvedValueOnce({
         new_app_id: 'converted-app',
         permission_keys: ['app.acl.view_layout'],
@@ -353,7 +353,7 @@ describe('SwitchAppModal', () => {
       await user.click(screen.getByRole('button', { name: 'app.switchStart' }))
       await waitFor(() => expect(mockDeleteOriginalApp).toHaveBeenCalledTimes(1))
       await user.keyboard('{Escape}')
-      expect(onOpenChange).not.toHaveBeenCalled()
+      expect(onClose).not.toHaveBeenCalled()
       expect(screen.getByRole('button', { name: 'app.switchStart' })).toHaveAttribute(
         'aria-disabled',
         'true',
@@ -369,7 +369,7 @@ describe('SwitchAppModal', () => {
     it('should notify error when switch app fails', async () => {
       const user = userEvent.setup()
 
-      const { notify, onOpenChange } = renderComponent()
+      const { notify, onClose } = renderComponent()
       mockConvertToWorkflow.mockRejectedValueOnce(new Error('fail'))
 
       await user.click(screen.getByRole('button', { name: 'app.switchStart' }))
@@ -380,7 +380,7 @@ describe('SwitchAppModal', () => {
           message: 'fail',
         })
       })
-      expect(onOpenChange).not.toHaveBeenCalled()
+      expect(onClose).not.toHaveBeenCalled()
     })
   })
 })

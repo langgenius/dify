@@ -20,11 +20,11 @@ from controllers.trigger.trigger import trigger_endpoint
 from core.helper.encrypter import encrypt_token
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.utils.http_parser import deserialize_request
-from core.trigger.utils.encryption import TriggerProviderCredentialsCache, TriggerProviderPropertiesCache
-from core.trigger.utils.endpoint import generate_plugin_trigger_endpoint_url
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from models.trigger import TriggerSubscription
+from models.utils.trigger_endpoint import generate_plugin_trigger_endpoint_url
+from services.trigger.credential_encryption import TriggerProviderCredentialsCache, TriggerProviderPropertiesCache
 from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
 from services.workflow.entities import PluginTriggerDispatchData
 from tasks.trigger_processing_tasks import TRIGGER_QUEUE, dispatch_triggered_workflows_async

@@ -55,4 +55,6 @@ export const appCreationQueryParsers = {
   mode: parseAsStringLiteral(APP_TYPES),
 }
 
+export const createWorkflowAppHref = '/apps?create=blank&mode=workflow'
+
 export type AppListUrlQuery = inferParserType<typeof appListQueryParsers>
