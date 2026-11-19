@@ -17,6 +17,7 @@ from pydantic_ai import RunContext
 from pydantic_ai.capabilities import AbstractCapability, CapabilityOrdering
 from pydantic_ai.messages import AudioUrl, DocumentUrl, ImageUrl, ToolReturn, VideoUrl
 from pydantic_ai.models import ModelRequestContext
+from pydantic_ai.tools import ToolDefinition
 from pydantic_ai.toolsets import FunctionToolset
 
 from dify_agent.agent_stub.protocol import AgentStubFileMapping
@@ -97,6 +98,11 @@ class Capability(AbstractCapability[Deps]):
 
     @override
     def get_toolset(self) -> FunctionToolset[Deps]:
+        async def hide_in_native_runs(ctx: RunContext[Deps], tool_def: ToolDefinition) -> ToolDefinition | None:
+            # Builder native test runs stop on any tool without a native boundary,
+            # and they refuse file inputs, so read_media is not offered there.
+            return None if ctx.deps.native_effects is not None else tool_def
+
         async def read_media(
             ctx: RunContext[Deps],
             *,
@@ -111,7 +117,9 @@ class Capability(AbstractCapability[Deps]):
             """
             return await _read_media(ctx.deps, self.name, file=file, path=path, detail=detail)
 
-        return FunctionToolset[Deps](tools=[read_media], id=self.name)
+        toolset = FunctionToolset[Deps](id=self.name)
+        toolset.add_function(read_media, prepare=hide_in_native_runs)
+        return toolset
 
     @override
     async def before_model_request(
