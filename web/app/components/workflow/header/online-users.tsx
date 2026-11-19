@@ -7,49 +7,19 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { queryOptions, skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
 import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { getAvatar } from '@/service/common'
 import { getAvatarInitial } from '@/utils/avatar'
+import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import { useCollaboration } from '../collaboration/hooks/use-collaboration'
 import { collaborationUpgradeDialogAtom } from '../collaboration/upgrade-state'
 import { getUserColor } from '../collaboration/utils/user-color'
 import { useHooksStore } from '../hooks-store'
-
-const useAvatarUrls = (users: OnlineUser[]) => {
-  const [avatarUrls, setAvatarUrls] = useState<Record<string, string>>({})
-
-  useEffect(() => {
-    const fetchAvatars = async () => {
-      const newAvatarUrls: Record<string, string> = {}
-
-      await Promise.all(
-        users.map(async (user) => {
-          if (user.avatar) {
-            try {
-              const response = await getAvatar({ avatar: user.avatar })
-              newAvatarUrls[user.sid] = response.avatar_url
-            } catch (error) {
-              console.error('Failed to fetch avatar:', error)
-              newAvatarUrls[user.sid] = user.avatar
-            }
-          }
-        }),
-      )
-
-      setAvatarUrls(newAvatarUrls)
-    }
-
-    if (users.length > 0) fetchAvatars()
-  }, [users])
-
-  return avatarUrls
-}
 
 const OnlineUsers = () => {
   const { t } = useTranslation(['billing', 'workspaceMembers', 'workflowComments'])
@@ -59,6 +29,7 @@ const OnlineUsers = () => {
   const {
     onlineUsers,
     cursors,
+    isConnected,
     isEnabled: isCollaborationEnabled,
   } = useCollaboration(appId, canEdit)
   const { data: currentUser } = useSuspenseQuery({
@@ -68,7 +39,31 @@ const OnlineUsers = () => {
   const currentUserId = currentUser.id
   const reactFlow = useReactFlow()
   const [dropdownOpen, setDropdownOpen] = useState(false)
-  const avatarUrls = useAvatarUrls(onlineUsers || [])
+  const avatarAppId =
+    isConnected &&
+    isCollaborationEnabled &&
+    !upgradeDialog &&
+    onlineUsers.some((user) => user.avatar)
+      ? appId
+      : undefined
+  const {
+    data: avatarUrls,
+    isFetching: isFetchingAvatars,
+    refetch: refetchAvatars,
+  } = useQuery(
+    queryOptions({
+      queryKey: [
+        'workflow-collaboration-avatars',
+        avatarAppId,
+        onlineUsers.map((user) => user.sid),
+      ],
+      queryFn: avatarAppId
+        ? () => collaborationManager.getOnlineUserAvatars(avatarAppId)
+        : skipToken,
+      gcTime: 0,
+      retry: false,
+    }),
+  )
 
   const fallbackUsername = t(($) => $['comments.fallback.user'], { ns: 'workflowComments' })
   const currentUserSuffix = t(($) => $['members.you'], { ns: 'workspaceMembers' })
@@ -134,10 +129,6 @@ const OnlineUsers = () => {
   const visibleUsers = onlineUsers.slice(0, maxVisible)
   const remainingCount = onlineUsers.length - maxVisible
 
-  const getAvatarUrl = (user: OnlineUser) => {
-    return avatarUrls[user.sid] || user.avatar
-  }
-
   const hasCounter = remainingCount > 0
 
   return (
@@ -153,7 +144,7 @@ const OnlineUsers = () => {
           {visibleUsers.map((user, index) => {
             const isCurrentUser = user.user_id === currentUserId
             const userColor = isCurrentUser ? undefined : getUserColor(user.user_id)
-            const avatarUrl = getAvatarUrl(user)
+            const avatarUrl = isConnected ? avatarUrls?.[user.sid] : undefined
             const displayName = user.username || fallbackUsername
             const avatar = (
               <Avatar size="sm" aria-hidden="true" className="ring-1 ring-components-panel-bg">
@@ -205,7 +196,13 @@ const OnlineUsers = () => {
             )
           })}
           {remainingCount > 0 && (
-            <Popover open={dropdownOpen} onOpenChange={setDropdownOpen}>
+            <Popover
+              open={dropdownOpen}
+              onOpenChange={(open) => {
+                if (open && avatarAppId) void refetchAvatars()
+                setDropdownOpen(open)
+              }}
+            >
               <PopoverTrigger
                 render={
                   <div className="flex items-center gap-1">
@@ -233,7 +230,8 @@ const OnlineUsers = () => {
                 {onlineUsers.map((user) => {
                   const isCurrentUser = user.user_id === currentUserId
                   const userColor = isCurrentUser ? undefined : getUserColor(user.user_id)
-                  const avatarUrl = getAvatarUrl(user)
+                  const avatarUrl =
+                    isConnected && !isFetchingAvatars ? avatarUrls?.[user.sid] : undefined
                   const displayName = user.username || fallbackUsername
                   return (
                     <button

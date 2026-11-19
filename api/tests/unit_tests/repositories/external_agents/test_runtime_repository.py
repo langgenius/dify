@@ -1343,6 +1343,13 @@ def test_external_result_consumption_mirrors_exact_caller_before_async_history_a
         def save(self, execution: WorkflowNodeExecution) -> None:
             self.appended.append(execution.id)
 
+        @override
+        def save_with_execution_data(self, execution: WorkflowNodeExecution) -> None:
+            with sessions() as session:
+                caller = stored(session, WorkflowNodeExecutionModel, execution.id)
+                assert caller.status == execution.status
+            self.save(execution)
+
     history = AppendOnlyHistory(
         session_factory=sessions,
         tenant_id=scope.tenant_id,
