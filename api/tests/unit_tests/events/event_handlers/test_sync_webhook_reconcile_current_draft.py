@@ -102,3 +102,27 @@ def test_reconcile_swallows_an_app_deleted_after_the_draft_re_read(
 
     with pytest.raises(WebhookNotFoundError):
         handle(app, synced_draft_workflow=draft)
+
+
+@pytest.mark.parametrize("current_nodes", [["hook"], []], ids=["all-bound", "no-webhook"])
+def test_reconcile_skips_the_locking_writer_when_no_binding_is_missing(
+    sqlite_session_factory: sessionmaker[Session],
+    webhook_seed: WebhookSeed,
+    monkeypatch: pytest.MonkeyPatch,
+    current_nodes: list[str],
+) -> None:
+    """An existing-draft save whose webhook nodes are all bound must not enter the App-locking writer."""
+    app, draft = _detached(sqlite_session_factory, webhook_seed)
+    with sqlite_session_factory.begin() as session:
+        session.execute(
+            update(Workflow).where(Workflow.id == webhook_seed.draft_id).values(graph=_graph(current_nodes))
+        )
+
+    def unexpected_application_services() -> object:
+        raise AssertionError("the binding writer locks the App row and must not run when nothing is missing")
+
+    monkeypatch.setattr(sync_webhook_when_app_created, "application_services", unexpected_application_services)
+
+    handle(app, synced_draft_workflow=draft, reconcile_current_draft=True)
+
+    assert _bindings(sqlite_session_factory, app.id) == {"hook": webhook_seed.webhook_id}

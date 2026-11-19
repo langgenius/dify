@@ -1,3 +1,5 @@
+from collections.abc import Sequence
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -6,6 +8,7 @@ from core.db.session_factory import session_factory
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_application_services import application_services
 from models.model import App, AppMode
+from models.trigger import WorkflowWebhookTrigger
 from models.workflow import Workflow
 from services.trigger.webhook_service import WebhookNotFoundError
 
@@ -30,6 +33,23 @@ def _current_draft_webhook_node_ids(app: App, workflow_id: str) -> list[str] | N
         return [node_id for node_id, _ in current.walk_nodes(TRIGGER_WEBHOOK_NODE_TYPE)]
 
 
+def _draft_webhook_nodes_are_bound(app: App, node_ids: Sequence[str]) -> bool:
+    """Return whether every draft webhook node already has a binding row, read without locks."""
+    if not node_ids:
+        return True
+    with session_factory.create_session() as session:
+        bound = set(
+            session.scalars(
+                select(WorkflowWebhookTrigger.node_id).where(
+                    WorkflowWebhookTrigger.tenant_id == app.tenant_id,
+                    WorkflowWebhookTrigger.app_id == app.id,
+                    WorkflowWebhookTrigger.node_id.in_(node_ids),
+                )
+            )
+        )
+    return bound.issuperset(node_ids)
+
+
 @app_draft_workflow_was_synced.connect
 def handle(sender: App, synced_draft_workflow: Workflow, **kwargs: object) -> None:
     if sender.mode != AppMode.WORKFLOW.value:
@@ -40,6 +60,12 @@ def handle(sender: App, synced_draft_workflow: Workflow, **kwargs: object) -> No
         # Sync the draft row as it is now; a vanished app or draft is already reconciled.
         node_ids = _current_draft_webhook_node_ids(sender, synced_draft_workflow.id)
         if node_ids is None:
+            return
+        # Draft sync only adds bindings (remove_stale=False). When none is missing there is
+        # nothing to write, so do not enter the binding writer: it locks the App row FOR UPDATE,
+        # and the inline post-commit kick of an existing-draft save must not wait on that lock.
+        # A missing binding still goes through the locked writer.
+        if _draft_webhook_nodes_are_bound(sender, node_ids):
             return
     else:
         node_ids = [node_id for node_id, _ in synced_draft_workflow.walk_nodes(TRIGGER_WEBHOOK_NODE_TYPE)]
