@@ -825,6 +825,7 @@ describe('useChat', () => {
     it('should restore responding state when a paused human input workflow resumes', async () => {
       let initialCallbacks: HookCallbacks
       let resumedCallbacks: HookCallbacks
+      const pauseReasons = [{ TYPE: 'human_input', node_id: 'n-1' }]
 
       vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
         initialCallbacks = options as HookCallbacks
@@ -840,19 +841,32 @@ describe('useChat', () => {
       })
       act(() => {
         initialCallbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
-        initialCallbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
+        initialCallbacks.onNodeStarted({ data: { node_id: 'n-1', id: 'n-1', title: 'Node 1' } })
+        initialCallbacks.onWorkflowPaused({
+          data: { workflow_run_id: 'wr-1', reasons: pauseReasons },
+        })
       })
       await act(async () => {
         await initialCallbacks.onCompleted()
       })
 
       expect(result.current.isResponding).toBe(false)
+      expect(result.current.chatList.at(-1)?.workflowProcess?.pauseReasons).toEqual(pauseReasons)
 
       act(() => {
         resumedCallbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
       })
 
       expect(result.current.isResponding).toBe(true)
+      expect(result.current.chatList.at(-1)?.workflowProcess?.pauseReasons).toBeUndefined()
+
+      act(() => {
+        resumedCallbacks.onWorkflowPaused({
+          data: { workflow_run_id: 'wr-1', reasons: pauseReasons },
+        })
+        resumedCallbacks.onWorkflowFinished({ data: { status: 'succeeded' } })
+      })
+      expect(result.current.chatList.at(-1)?.workflowProcess?.pauseReasons).toBeUndefined()
     })
 
     it('should only allow submission after the continuation stream observes the pause', async () => {
@@ -1773,6 +1787,7 @@ describe('useChat', () => {
     it('should call sseGet to resume a node and handle complex tracing', async () => {
       let callbacks: HookCallbacks
       const onNotifyError = vi.fn()
+      const pauseReasons = [{ TYPE: 'external_wait', node_id: 'n-1', wait_id: 'invocation-1' }]
 
       vi.mocked(sseGet).mockImplementation(async (url, params, options) => {
         callbacks = options as HookCallbacks
@@ -1874,8 +1889,10 @@ describe('useChat', () => {
         })
         callbacks.onMessageReplace({ answer: 'replaced resume' })
 
-        callbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
-        callbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
+        callbacks.onWorkflowPaused({
+          data: { workflow_run_id: 'wr-1', reasons: [{ TYPE: 'human_input', node_id: 'h-1' }] },
+        })
+        callbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-1', reasons: pauseReasons } })
 
         callbacks.onError()
 
@@ -1889,10 +1906,22 @@ describe('useChat', () => {
 
       expect(lastResponse!.workflowProcess?.tracing?.length).toBeGreaterThan(0)
       expect(lastResponse!.workflowProcess?.status).toBe('paused')
+      expect(lastResponse!.workflowProcess?.pauseReasons).toEqual(pauseReasons)
       expect(lastResponse!.humanInputFilledFormDataList).toHaveLength(1)
       expect(lastResponse!.humanInputFormDataList).toHaveLength(0)
       expect(lastResponse!.content).toBe('replaced resume')
       expect(sseGet).toHaveBeenCalledTimes(1)
+
+      act(() => {
+        callbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
+      })
+      expect(result.current.chatList.at(-1)?.workflowProcess?.pauseReasons).toBeUndefined()
+
+      act(() => {
+        callbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-1', reasons: pauseReasons } })
+        callbacks.onWorkflowFinished({ data: { status: 'succeeded' } })
+      })
+      expect(result.current.chatList.at(-1)?.workflowProcess?.pauseReasons).toBeUndefined()
     })
 
     it('should fold workflow agent tool logs into the resumed answer', async () => {

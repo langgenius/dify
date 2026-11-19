@@ -6,7 +6,9 @@ import { use, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
+import { isExternalWaitOnly } from '@/app/components/workflow/nodes/agent-v2/execution'
 import { localizeKnowledgeRetrievalV2Error } from '@/app/components/workflow/nodes/knowledge-retrieval-v2/error-message'
+import { WorkflowPauseReasonsContext } from '@/app/components/workflow/run/pause-reasons-context'
 import TracingPanel from '@/app/components/workflow/run/tracing-panel'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 
@@ -18,6 +20,7 @@ type WorkflowProcessProps = {
   hideProcessDetail?: boolean
   readonly?: boolean
 }
+const noActivePauseReasons: NonNullable<WorkflowProcess['pauseReasons']> = []
 const WorkflowProcessItem = ({
   data,
   item,
@@ -31,11 +34,13 @@ const WorkflowProcessItem = ({
   const atomStore = useAtomStore()
   const appId = workflowStore ? atomStore.get(editorAppIdAtom) : undefined
   const [collapse, setCollapse] = useState(!expand)
-  const running = data.status === WorkflowRunningStatus.Running
+  const running =
+    data.status === WorkflowRunningStatus.Running ||
+    (data.status === WorkflowRunningStatus.Paused && isExternalWaitOnly(data.pauseReasons))
   const succeeded = data.status === WorkflowRunningStatus.Succeeded
   const failed =
     data.status === WorkflowRunningStatus.Failed || data.status === WorkflowRunningStatus.Stopped
-  const paused = data.status === WorkflowRunningStatus.Paused
+  const paused = data.status === WorkflowRunningStatus.Paused && !running
   const latestNode = data.tracing[data.tracing.length - 1]
   const localizeError = (error?: string) =>
     localizeKnowledgeRetrievalV2Error(error, (key) => t(($) => $[key], { ns: 'workflow' }))
@@ -139,17 +144,21 @@ const WorkflowProcessItem = ({
             </Alert>
           )}
           {data.tracing.length > 0 && (
-            <TracingPanel
-              key={item?.workflow_run_id}
-              list={data.tracing}
-              workflowRun={
-                appId && item?.workflow_run_id
-                  ? { appId, runId: item.workflow_run_id, status: data.status }
-                  : undefined
-              }
-              hideNodeInfo={hideInfo}
-              hideNodeProcessDetail={hideProcessDetail}
-            />
+            <WorkflowPauseReasonsContext
+              value={running || paused ? data.pauseReasons : noActivePauseReasons}
+            >
+              <TracingPanel
+                key={item?.workflow_run_id}
+                list={data.tracing}
+                workflowRun={
+                  appId && item?.workflow_run_id
+                    ? { appId, runId: item.workflow_run_id, status: data.status }
+                    : undefined
+                }
+                hideNodeInfo={hideInfo}
+                hideNodeProcessDetail={hideProcessDetail}
+              />
+            </WorkflowPauseReasonsContext>
           )}
         </div>
       )}

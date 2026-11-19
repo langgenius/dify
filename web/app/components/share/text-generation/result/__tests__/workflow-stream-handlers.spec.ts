@@ -154,6 +154,7 @@ describe('workflow state transformations', () => {
 
   it('stops running and waiting descendants while retaining successful node status', () => {
     const process = createWorkflowProcess()
+    process.pauseReasons = [{ TYPE: 'external_wait', node_id: 'node-1' }]
     process.tracing = [
       createTrace({
         details: [
@@ -166,6 +167,7 @@ describe('workflow state transformations', () => {
     ]
     const stopped = applyWorkflowFinishedState(process, WorkflowRunningStatus.Stopped)
     expect(stopped.status).toBe(WorkflowRunningStatus.Stopped)
+    expect(stopped.pauseReasons).toBeUndefined()
     expect(stopped.tracing[0]?.status).toBe(NodeRunningStatus.Stopped)
     expect(stopped.tracing[0]?.details?.[0]?.map((node) => node.status)).toEqual([
       NodeRunningStatus.Stopped,
@@ -221,9 +223,11 @@ describe('workflow state transformations', () => {
           inputs: [],
         }),
       ])
-      const paused = applyWorkflowPaused(process)
+      const reasons = [{ TYPE: 'human_input', node_id: secondNodeId }]
+      const paused = applyWorkflowPaused(process, reasons)
       expect(paused.status).toBe(WorkflowRunningStatus.Paused)
       expect(paused.expand).toBe(false)
+      expect(paused.pauseReasons).toEqual(reasons)
     },
   )
 })
@@ -302,6 +306,10 @@ describe('createWorkflowStreamHandlers', () => {
 
   it('should process workflow success and paused events', () => {
     const setup = setupHandlers({ isPublicAPI: true })
+    const externalWaitReasons = [
+      { TYPE: 'external_wait', node_id: 'node-1', wait_id: 'invocation-1' },
+    ]
+    const humanInputReasons = [{ TYPE: 'human_input', node_id: 'node-2' }]
     const handlers = setup.handlers as Required<
       Pick<
         IOtherOptions,
@@ -443,10 +451,11 @@ describe('createWorkflowStreamHandlers', () => {
         data: {
           outputs: {},
           paused_nodes: [],
-          reasons: [],
+          reasons: externalWaitReasons,
           workflow_run_id: 'run-1',
         },
       })
+      expect(setup.workflowProcessData()?.pauseReasons).toEqual(externalWaitReasons)
       handlers.onWorkflowPaused({
         task_id: 'task-1',
         workflow_run_id: 'run-1',
@@ -454,10 +463,11 @@ describe('createWorkflowStreamHandlers', () => {
         data: {
           outputs: {},
           paused_nodes: [],
-          reasons: [],
+          reasons: humanInputReasons,
           workflow_run_id: 'run-1',
         },
       })
+      expect(setup.workflowProcessData()?.pauseReasons).toEqual(humanInputReasons)
       handlers.onWorkflowFinished({
         task_id: 'task-1',
         workflow_run_id: 'run-1',
@@ -492,6 +502,7 @@ describe('createWorkflowStreamHandlers', () => {
     ])
     expect(setup.currentTaskId()).toBe('task-1')
     expect(setup.isStopping()).toBe(false)
+    expect(setup.workflowProcessData()?.pauseReasons).toBeUndefined()
     expect(setup.workflowProcessData()).toEqual(
       expect.objectContaining({
         resultText: 'Hello',
@@ -678,6 +689,7 @@ describe('createWorkflowStreamHandlers', () => {
     const setup = setupHandlers()
     let existingProcess: WorkflowProcess = {
       status: WorkflowRunningStatus.Paused,
+      pauseReasons: [{ TYPE: 'external_wait', node_id: 'existing-node' }],
       tracing: [
         createTrace({
           node_id: 'existing-node',
@@ -733,6 +745,7 @@ describe('createWorkflowStreamHandlers', () => {
         resultText: 'Replaced text',
       }),
     )
+    expect(existingProcess.pauseReasons).toBeUndefined()
 
     act(() => {
       handlers.onWorkflowFinished({

@@ -1,6 +1,6 @@
 import { page, userEvent } from 'vite-plus/test/browser'
 import { createNodeTracing } from '@/app/components/workflow/__tests__/fixtures'
-import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { BlockEnum, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { createWorkflowProcessFixture } from '@/test/fixtures/workflow-process'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { renderChat as render } from '../../__tests__/chat-browser-test-env'
@@ -18,6 +18,23 @@ const data = createWorkflowProcessFixture({
     createNodeTracing({ node_id: 'start', title: 'Start' }),
     createNodeTracing({ node_id: 'end', title: 'End' }),
   ],
+})
+
+const externalWaitNode = createNodeTracing({
+  node_id: 'external-agent',
+  node_type: BlockEnum.Agent,
+  title: 'External agent',
+  status: 'paused',
+  process_data: null,
+  execution_metadata: undefined,
+  index: 1,
+})
+const humanWaitNode = createNodeTracing({
+  node_id: 'human-input',
+  node_type: BlockEnum.HumanInput,
+  title: 'Human approval',
+  status: 'paused',
+  index: 2,
 })
 
 it('opens real tracing details with the keyboard and collapses back to the latest node', async () => {
@@ -91,3 +108,168 @@ it.each([
   const screen = await render(<WorkflowProcessItem data={{ ...data, status }} />)
   await expect.element(screen.getByRole('img', { name: label })).toBeVisible()
 })
+
+it('shows an external-only wait as running and updates when the workflow pauses for a person', async () => {
+  const previousExecution = {
+    ...externalWaitNode,
+    id: 'previous-external-execution',
+    title: 'Earlier external agent',
+    index: 0,
+  }
+  const waiting = createWorkflowProcessFixture({
+    status: WorkflowRunningStatus.Paused,
+    pauseReasons: [
+      {
+        TYPE: 'external_wait',
+        node_id: externalWaitNode.node_id,
+        execution_id: externalWaitNode.id,
+      },
+    ],
+    tracing: [previousExecution, externalWaitNode],
+  })
+  const screen = await render(<WorkflowProcessItem data={waiting} />)
+  await expect
+    .element(screen.getByRole('img', { name: 'Workflow Process running', exact: true }))
+    .toBeVisible()
+  await screen.getByRole('button', { name: /External agent/ }).click()
+  await expect
+    .element(screen.getByRole('button', { name: 'External agent Running', exact: true }))
+    .toBeVisible()
+  await expect
+    .element(screen.getByRole('img', { name: 'Workflow Process paused', exact: true }))
+    .not.toBeInTheDocument()
+  await expect
+    .element(screen.getByRole('button', { name: 'Earlier external agent Paused', exact: true }))
+    .toBeVisible()
+  expect(waiting.status).toBe(WorkflowRunningStatus.Paused)
+  expect(waiting.tracing.map((node) => node.status)).toEqual(['paused', 'paused'])
+
+  await screen.rerender(
+    <WorkflowProcessItem
+      data={{
+        ...waiting,
+        pauseReasons: [
+          {
+            TYPE: 'human_input_required',
+            node_id: humanWaitNode.node_id,
+            execution_id: humanWaitNode.id,
+          },
+        ],
+        tracing: [{ ...externalWaitNode, status: 'succeeded' }, humanWaitNode],
+      }}
+    />,
+  )
+  await expect
+    .element(screen.getByRole('img', { name: 'Workflow Process paused', exact: true }))
+    .toBeVisible()
+  await expect
+    .element(screen.getByRole('button', { name: /External agent.*Success/ }))
+    .toBeVisible()
+  await expect
+    .element(screen.getByRole('button', { name: 'Human approval Paused', exact: true }))
+    .toBeVisible()
+  await expect
+    .element(screen.getByRole('img', { name: 'Workflow Process running', exact: true }))
+    .not.toBeInTheDocument()
+})
+
+it('keeps mixed external and human pauses paused while the external node displays running', async () => {
+  const screen = await render(
+    <WorkflowProcessItem
+      data={createWorkflowProcessFixture({
+        status: WorkflowRunningStatus.Paused,
+        pauseReasons: [
+          {
+            TYPE: 'external_wait',
+            node_id: externalWaitNode.node_id,
+            execution_id: externalWaitNode.id,
+          },
+          {
+            TYPE: 'hitl_required',
+            node_id: humanWaitNode.node_id,
+            execution_id: humanWaitNode.id,
+          },
+        ],
+        tracing: [externalWaitNode, humanWaitNode],
+      })}
+      expand
+    />,
+  )
+  await expect
+    .element(screen.getByRole('img', { name: 'Workflow Process paused', exact: true }))
+    .toBeVisible()
+  await expect
+    .element(screen.getByRole('button', { name: 'External agent Running', exact: true }))
+    .toBeVisible()
+  await expect
+    .element(screen.getByRole('button', { name: 'Human approval Paused', exact: true }))
+    .toBeVisible()
+})
+
+it.each([
+  ['missing', undefined],
+  ['empty', []],
+  ['unrecognized', [{ TYPE: 'future_pause_reason' }]],
+] as const)('keeps a workflow paused for %s pause reasons', async (_, pauseReasons) => {
+  const screen = await render(
+    <WorkflowProcessItem
+      data={createWorkflowProcessFixture({
+        status: WorkflowRunningStatus.Paused,
+        pauseReasons: pauseReasons ? [...pauseReasons] : undefined,
+        tracing: [
+          {
+            ...externalWaitNode,
+            process_data: { external_invocation_id: 'previous-invocation' },
+          },
+        ],
+      })}
+      expand
+    />,
+  )
+  await expect
+    .element(screen.getByRole('img', { name: 'Workflow Process paused', exact: true }))
+    .toBeVisible()
+  await expect
+    .element(screen.getByRole('img', { name: 'Workflow Process running', exact: true }))
+    .not.toBeInTheDocument()
+  await expect
+    .element(screen.getByRole('button', { name: 'External agent Paused', exact: true }))
+    .toBeVisible()
+})
+
+it.each([
+  [WorkflowRunningStatus.Succeeded, 'Workflow Process succeeded'],
+  [WorkflowRunningStatus.Failed, 'Workflow Process failed'],
+  [WorkflowRunningStatus.Stopped, 'Workflow Process failed'],
+] as const)(
+  'does not show a leftover paused external execution as running after workflow status %s',
+  async (status, workflowLabel) => {
+    const screen = await render(
+      <WorkflowProcessItem
+        data={createWorkflowProcessFixture({
+          status,
+          pauseReasons: undefined,
+          tracing: [
+            {
+              ...externalWaitNode,
+              process_data: { external_invocation_id: 'previous-invocation' },
+            },
+          ],
+        })}
+        expand
+      />,
+    )
+    await expect
+      .element(screen.getByRole('img', { name: workflowLabel, exact: true }))
+      .toBeVisible()
+    await expect
+      .element(screen.getByRole('button', { name: 'External agent Paused', exact: true }))
+      .toBeVisible()
+    await expect
+      .element(screen.getByRole('button', { name: 'External agent Running', exact: true }))
+      .not.toBeInTheDocument()
+    await expect
+      .element(screen.getByRole('img', { name: 'Workflow Process running', exact: true }))
+      .not.toBeInTheDocument()
+  },
+)

@@ -38,6 +38,24 @@ export function hasExternalWaitReason(reasons: readonly unknown[] | undefined): 
   return reasons?.some((reason) => record(reason)?.TYPE === 'external_wait') ?? false
 }
 
+export function isExternalWaitOnly(reasons: readonly unknown[] | undefined): boolean {
+  return Boolean(
+    reasons?.length && reasons.every((reason) => record(reason)?.TYPE === 'external_wait'),
+  )
+}
+
+export function isExternalWaitExecution(
+  reasons: readonly unknown[],
+  executionId: string,
+  alternateExecutionId?: string | null,
+): boolean {
+  const matchingReasons = reasons.filter((reason) => {
+    const id = record(reason)?.execution_id
+    return typeof id === 'string' && (id === executionId || id === alternateExecutionId)
+  })
+  return isExternalWaitOnly(matchingReasons)
+}
+
 export function hasHumanInputWaitReason(reasons: readonly unknown[] | undefined): boolean {
   return (
     reasons?.some((reason) =>

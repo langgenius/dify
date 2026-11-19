@@ -169,6 +169,7 @@ const applyWorkflowFinishedState = (
 
     draft.status = status
     draft.error = error
+    draft.pauseReasons = undefined
     if (errorStatuses.includes(status)) markNodesStopped(draft.tracing)
   })
 }
@@ -180,6 +181,7 @@ const applyWorkflowOutputs = (
   return updateWorkflowProcess(current, (draft) => {
     draft.status = WorkflowRunningStatus.Succeeded
     draft.error = undefined
+    draft.pauseReasons = undefined
     draft.files = getFilesInLogs(outputs || []) as unknown as WorkflowProcess['files']
   })
 }
@@ -226,10 +228,14 @@ const updateHumanInputTimeout = (
   })
 }
 
-const applyWorkflowPaused = (current: WorkflowProcess | undefined) => {
+const applyWorkflowPaused = (
+  current: WorkflowProcess | undefined,
+  reasons: WorkflowProcess['pauseReasons'],
+) => {
   return updateWorkflowProcess(current, (draft) => {
     draft.expand = false
     draft.status = WorkflowRunningStatus.Paused
+    draft.pauseReasons = reasons
   })
 }
 
@@ -292,6 +298,7 @@ export const createWorkflowStreamHandlers = ({
             draft.expand = true
             draft.status = WorkflowRunningStatus.Running
             draft.error = undefined
+            draft.pauseReasons = undefined
           }),
         )
         return
@@ -410,7 +417,7 @@ export const createWorkflowStreamHandlers = ({
     onWorkflowPaused: ({ data }) => {
       tempMessageId = data.workflow_run_id
       if (onPaused) {
-        setWorkflowProcessData(applyWorkflowPaused(getWorkflowProcessData()))
+        setWorkflowProcessData(applyWorkflowPaused(getWorkflowProcessData(), data.reasons))
         onPaused(data.workflow_run_id, otherOptions)
         return
       }
@@ -422,7 +429,7 @@ export const createWorkflowStreamHandlers = ({
           otherOptions,
         )
       }
-      setWorkflowProcessData(applyWorkflowPaused(getWorkflowProcessData()))
+      setWorkflowProcessData(applyWorkflowPaused(getWorkflowProcessData(), data.reasons))
     },
   }
 
