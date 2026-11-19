@@ -1,5 +1,5 @@
 import json
-from unittest.mock import MagicMock, Mock, call, patch
+from unittest.mock import MagicMock, Mock, patch
 
 from pytest_mock import MockerFixture
 
@@ -93,14 +93,22 @@ class TestDocumentIndexingTaskProxy:
         """Test _send_to_tenant_queue when task key exists."""
         # Arrange
         proxy = DocumentIndexingTaskProxyTestDataFactory.create_document_task_proxy()
-        tenant_queue_commands.return_value = "task_key"
+        tenant_queue_commands.return_value = None
         mock_task.delay = Mock()
 
         # Act
         proxy._send_to_tenant_queue(mock_task)
 
         # Assert
-        assert [entry.args[0] for entry in tenant_queue_commands.call_args_list] == ["GET", "LPUSH"]
+        assert [entry.args[0] for entry in tenant_queue_commands.call_args_list] == ["SET", "LPUSH"]
+        assert tenant_queue_commands.call_args_list[0].args == (
+            "SET",
+            "tenant_document_indexing_task:tenant-123",
+            1,
+            "NX",
+            "EX",
+            3600,
+        )
         push = tenant_queue_commands.call_args_list[1]
         assert push.args[1] == "tenant_self_document_indexing_task_queue:tenant-123"
         pushed_tasks = [json.loads(push.args[2])["data"]]
@@ -118,20 +126,15 @@ class TestDocumentIndexingTaskProxy:
         """Test _send_to_tenant_queue when no task key exists."""
         # Arrange
         proxy = DocumentIndexingTaskProxyTestDataFactory.create_document_task_proxy()
-        tenant_queue_commands.return_value = None
+        tenant_queue_commands.return_value = True
         mock_task.delay = Mock()
 
         # Act
         proxy._send_to_tenant_queue(mock_task)
 
         # Assert
-        tenant_queue_commands.assert_has_calls(
-            [
-                call(
-                    "GET", "tenant_document_indexing_task:tenant-123", keys=["tenant_document_indexing_task:tenant-123"]
-                ),
-                call("SETEX", "tenant_document_indexing_task:tenant-123", 3600, 1),
-            ]
+        tenant_queue_commands.assert_called_once_with(
+            "SET", "tenant_document_indexing_task:tenant-123", 1, "NX", "EX", 3600
         )
         mock_task.delay.assert_called_once_with(
             tenant_id="tenant-123", dataset_id="dataset-456", document_ids=["doc-1", "doc-2", "doc-3"]

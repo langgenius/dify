@@ -130,6 +130,28 @@ class TestTenantIsolatedTaskQueue:
         mock_redis.setex.assert_called_once_with("tenant_test-key_task:tenant-123", custom_ttl, 1)
 
     @patch("core.rag.pipeline.queue.redis_client")
+    def test_try_set_task_waiting_time_uses_atomic_set_if_absent(
+        self, mock_redis: MagicMock, sample_queue: TenantIsolatedTaskQueue
+    ) -> None:
+        mock_redis.set.return_value = True
+
+        result = sample_queue.try_set_task_waiting_time(ttl=1800)
+
+        assert result is True
+        mock_redis.set.assert_called_once_with("tenant_test-key_task:tenant-123", 1, ex=1800, nx=True)
+
+    @patch("core.rag.pipeline.queue.redis_client")
+    def test_try_set_task_waiting_time_returns_false_when_another_worker_owns_key(
+        self, mock_redis: MagicMock, sample_queue: TenantIsolatedTaskQueue
+    ) -> None:
+        mock_redis.set.return_value = None
+
+        result = sample_queue.try_set_task_waiting_time()
+
+        assert result is False
+        mock_redis.set.assert_called_once_with("tenant_test-key_task:tenant-123", 1, ex=3600, nx=True)
+
+    @patch("core.rag.pipeline.queue.redis_client")
     def test_delete_task_key(self, mock_redis: MagicMock, sample_queue: TenantIsolatedTaskQueue) -> None:
         """Test deleting task key."""
         sample_queue.delete_task_key()

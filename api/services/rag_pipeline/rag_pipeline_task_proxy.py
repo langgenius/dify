@@ -54,13 +54,12 @@ class RagPipelineTaskProxy:
 
     def _send_to_tenant_queue(self, upload_file_id: str, task_func: Signature):
         logger.info("tenant %s send file %s to tenant queue", self._dataset_tenant_id, upload_file_id)
-        if self._tenant_isolated_task_queue.get_task_key():
+        if not self._tenant_isolated_task_queue.try_set_task_waiting_time():
             # Add to waiting queue using List operations (lpush)
             self._tenant_isolated_task_queue.push_tasks([upload_file_id])
             logger.info("tenant %s push tasks: %s", self._dataset_tenant_id, upload_file_id)
         else:
-            # Set flag and execute task
-            self._tenant_isolated_task_queue.set_task_waiting_time()
+            # Atomically claim the tenant queue before executing the task.
             task_func.delay(
                 rag_pipeline_invoke_entities_file_id=upload_file_id,
                 tenant_id=self._dataset_tenant_id,
