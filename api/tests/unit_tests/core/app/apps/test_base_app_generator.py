@@ -17,6 +17,7 @@ from graphon.file import File
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from models import CreatorUserRole, UploadFile, Workflow, WorkflowRun, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowType as ModelWorkflowType
+from services.app.generation.input_adapter import AppInputAdapter
 from tests.helpers.unit.config_override import apply_config_overrides
 
 
@@ -708,6 +709,19 @@ def test_omitted_file_uses_author_default(
     assert (file.filename, file.size) == (default_upload_file.name, default_upload_file.size)
     assert variable.default == original_default
     assert get_current_file_access_scope() is None
+
+
+def test_app_input_adapter_uses_author_file_default(default_upload_file: UploadFile):
+    variable = _file_input_variable(default_upload_file)
+    with _file_access_scope():
+        result = AppInputAdapter()._prepare_user_inputs(
+            user_inputs={},
+            variables=[variable],
+            tenant_id=DEFAULT_FILE_TENANT_ID,
+            strict_type_validation=True,
+        )["file"]
+    assert isinstance(result, File)
+    assert resolve_file_record_id(result.reference) == default_upload_file.id
 
 
 @pytest.mark.parametrize("multiple", [False, True])
