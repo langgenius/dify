@@ -207,7 +207,13 @@ def test_get_url_head_non_200_returns_status(monkeypatch: pytest.MonkeyPatch, st
     assert out == "URL returned status code 500."
 
 
-def test_get_url_content_disposition_filename_detection(monkeypatch: pytest.MonkeyPatch, stub_support_types):
+@pytest.mark.parametrize(
+    "disposition",
+    ['attachment; filename="doc.pdf"', "attachment; filename*=UTF-8''doc%20name.pdf"],
+)
+def test_get_url_content_disposition_filename_detection(
+    monkeypatch: pytest.MonkeyPatch, stub_support_types, disposition: str
+):
     """
     If HEAD 200 with no Content-Type but Content-Disposition filename suggests a supported type,
     it should route to ExtractProcessor.load_from_url.
@@ -215,7 +221,7 @@ def test_get_url_content_disposition_filename_detection(monkeypatch: pytest.Monk
     calls = {"load": 0}
 
     def fake_head(url, headers=None, follow_redirects=True, timeout=None):
-        return FakeResponse(status_code=200, headers={"Content-Disposition": 'attachment; filename="doc.pdf"'})
+        return FakeResponse(status_code=200, headers={"Content-Disposition": disposition})
 
     def fake_load_from_url(url, return_text=False):
         calls["load"] += 1

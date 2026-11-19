@@ -117,6 +117,11 @@ class TestExtractProcessorLoaders:
             ),
             (
                 "https://example.com/no_suffix",
+                {"Content-Disposition": "attachment; filename*=UTF-8''report%20Q1.pdf"},
+                ".pdf",
+            ),
+            (
+                "https://example.com/no_suffix",
                 {"Content-Disposition": 'attachment; filename="report"'},
                 "",
             ),

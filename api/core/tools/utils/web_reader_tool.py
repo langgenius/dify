@@ -2,7 +2,6 @@ import mimetypes
 import re
 from dataclasses import dataclass
 from typing import Any
-from urllib.parse import unquote
 
 import charset_normalizer
 import cloudscraper
@@ -11,6 +10,7 @@ from readabilipy import simple_json_from_html_string
 from core.file import remote_fetcher
 from core.rag.extractor import extract_processor
 from core.rag.extractor.extract_processor import ExtractProcessor
+from libs.http_headers import content_disposition_filename
 
 FULL_TEMPLATE = """
 TITLE: {title}
@@ -45,10 +45,8 @@ def get_url(url: str, user_agent: str | None = None) -> str:
         if content_type:
             main_content_type = response.headers.get("Content-Type").split(";")[0].strip()
         else:
-            content_disposition = response.headers.get("Content-Disposition", "")
-            filename_match = re.search(r'filename="([^"]+)"', content_disposition)
-            if filename_match:
-                filename = unquote(filename_match.group(1))
+            filename = content_disposition_filename(response.headers.get("Content-Disposition"))
+            if filename:
                 extension = re.search(r"\.(\w+)$", filename)
                 if extension:
                     main_content_type = mimetypes.guess_type(filename)[0]

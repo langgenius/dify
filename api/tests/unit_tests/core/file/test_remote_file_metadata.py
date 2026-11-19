@@ -53,6 +53,38 @@ class TestGuessFileInfoFromResponse:
         assert info.mimetype == "text/csv"
 
     @pytest.mark.parametrize(
+        ("url", "disposition", "expected_filename"),
+        [
+            ("https://example.com/download", 'attachment; filename="report.pdf"', "report.pdf"),
+            ("https://example.com/old.txt", 'attachment; filename="report.pdf"', "report.pdf"),
+            ("https://example.com/", "attachment; filename*=UTF-8''report%20Q1.pdf", "report Q1.pdf"),
+            (
+                "https://example.com/download",
+                "attachment; filename=old.pdf; filename*=UTF-8''new%20report.pdf",
+                "new report.pdf",
+            ),
+            ("https://example.com/download", "attachment; filename=report.pdf; filename*=bad", "report.pdf"),
+            ("https://example.com/download", 'attachment; filename="dir/report.pdf"', "report.pdf"),
+        ],
+    )
+    def test_response_filename_takes_priority_over_url(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        url: str,
+        disposition: str,
+        expected_filename: str,
+    ) -> None:
+        monkeypatch.setattr(remote_file_metadata, "magic", None)
+        response = make_response(
+            url=url,
+            headers={"Content-Disposition": disposition, "Content-Type": "application/octet-stream"},
+        )
+
+        info = guess_file_info_from_response(response)
+
+        assert (info.filename, info.extension, info.mimetype) == (expected_filename, ".pdf", "application/pdf")
+
+    @pytest.mark.parametrize(
         ("magic_available", "expected_ext"),
         [
             (True, "txt"),

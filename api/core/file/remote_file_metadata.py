@@ -2,14 +2,13 @@ import contextlib
 import mimetypes
 import os
 import platform
-import re
 import urllib.parse
 import warnings
 from uuid import uuid4
 
 import httpx
 
-from libs.http_headers import content_type_media_type
+from libs.http_headers import content_disposition_filename, content_type_media_type
 
 try:
     import magic
@@ -44,21 +43,12 @@ class InvalidRemoteFileMetadataError(ValueError):
 
 def guess_file_info_from_response(response: httpx.Response) -> FileInfo:
     url = str(response.url)
-    # Try to extract filename from URL
+    # Prefer the response filename; download endpoints often have no file extension.
     parsed_url = urllib.parse.urlparse(url)
     url_path = parsed_url.path
-    # Decode percent-encoded characters in the path segment
-    filename = urllib.parse.unquote(os.path.basename(url_path))
-
-    # If filename couldn't be extracted, use Content-Disposition header
+    filename = content_disposition_filename(response.headers.get("Content-Disposition"))
     if not filename:
-        content_disposition = response.headers.get("Content-Disposition")
-        if content_disposition:
-            # A quoted filename may legitimately contain semicolons/spaces; an
-            # unquoted one stops at the first parameter separator or whitespace.
-            filename_match = re.search(r'filename="([^"]*)"|filename=([^;\s]+)', content_disposition)
-            if filename_match:
-                filename = filename_match.group(1) or filename_match.group(2) or ""
+        filename = urllib.parse.unquote(os.path.basename(url_path))
 
     # If still no filename, generate a unique one
     if not filename:

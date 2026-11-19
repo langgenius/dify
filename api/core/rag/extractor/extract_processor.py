@@ -1,8 +1,7 @@
-import re
 import tempfile
 from pathlib import Path
 from typing import Literal, overload
-from urllib.parse import unquote, urlsplit
+from urllib.parse import urlsplit
 
 from sqlalchemy.orm import Session
 
@@ -32,6 +31,7 @@ from core.rag.extractor.unstructured.unstructured_xml_extractor import Unstructu
 from core.rag.extractor.watercrawl.extractor import WaterCrawlWebExtractor
 from core.rag.extractor.word_extractor import WordExtractor
 from core.rag.models.document import Document
+from libs.http_headers import content_disposition_filename
 from extensions.ext_storage import storage
 from models.model import UploadFile
 
@@ -94,12 +94,9 @@ class ExtractProcessor:
                     # strip parameters such as "; charset=utf-8" before using the subtype as suffix
                     suffix = "." + content_type.split(";")[0].strip().split("/")[-1]
                 else:
-                    content_disposition = response.headers.get("Content-Disposition", "")
-                    filename_match = re.search(r'filename="([^"]+)"', content_disposition)
-                    if filename_match:
-                        filename = unquote(filename_match.group(1))
-                        match = re.search(r"\.(\w+)$", filename)
-                        suffix = "." + match.group(1) if match else ""
+                    filename = content_disposition_filename(response.headers.get("Content-Disposition"))
+                    if filename:
+                        suffix = Path(filename).suffix
             # https://stackoverflow.com/questions/26541416/generate-temporary-file-names-without-creating-actual-file-in-python#comment90414256_26541521
             # Generate a temporary filename under the created temp_dir and ensure the directory exists
             file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"  # type: ignore
