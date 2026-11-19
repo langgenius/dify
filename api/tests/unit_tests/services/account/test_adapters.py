@@ -69,7 +69,7 @@ def test_invitation_token_store_reads_workspace_invitation_key(
         workspace_id="workspace-1",
     )
     email_hash = sha256(b"invitee@example.com").hexdigest()
-    commands.assert_called_once_with(
+    assert commands.call_args_list[0] == call(
         "GET",
         f"member_invite_token:workspace-1, {email_hash}:token-1",
         keys=[f"member_invite_token:workspace-1, {email_hash}:token-1"],
@@ -245,6 +245,23 @@ def test_revoking_pending_invitations_invalidates_every_link_for_the_email(
 
     reissued = store.create(InvitationToken("account-1", "invitee@example.com", "workspace-1", "normal", True))
     assert live(reissued)
+
+
+def test_workspace_scoped_legacy_links_stop_working_after_revoke_or_resend(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    redis_commands: _RedisCommands,
+) -> None:
+    store = RedisInvitationTokenStore(redis=redis_transport[0])
+    lookup = InvitationLookup(workspace_id="workspace-1", email="invitee@example.com", token="legacy")
+    email_hash = sha256(b"invitee@example.com").hexdigest()
+    redis_commands.values[f"member_invite_token:workspace-1, {email_hash}:legacy"] = b"account-1"
+    assert store.find(lookup) is not None
+
+    store.revoke_pending("workspace-1", "invitee@example.com", account_id="account-1")
+
+    assert store.find(lookup) is None
+    reissued = store.create(InvitationToken("account-1", "invitee@example.com", "workspace-1", "normal", True))
+    assert store.find(InvitationLookup(workspace_id=None, email=None, token=reissued)) is not None
 
 
 def test_invitation_token_store_revokes_its_redis_key(redis_transport: tuple[RedisClientWrapper, MagicMock]) -> None:
