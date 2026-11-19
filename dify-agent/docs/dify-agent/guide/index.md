@@ -261,7 +261,8 @@ they do not create an intent when none exists. Late appends rejected after a
 terminal transition do not refresh retention.
 
 Idempotency claims share that TTL. Event appends, accepted cancellation intents,
-and terminal success/failure/cancellation writes refresh a claim only when it is
+native waiting/continuation/stop/recovery record writes, and terminal
+success/failure/cancellation writes refresh a claim only when it is
 unowned or still belongs to the writing run; an older run cannot overwrite a newer
 owner after claim expiry. Passive admission replays extend neither the claim nor
 the run record TTL. Redis stores only the key digest, normalized request

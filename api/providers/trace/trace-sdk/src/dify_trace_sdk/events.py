@@ -160,5 +160,7 @@ class TraceEvent(BaseModel):
     occurred_at: datetime
     correlation: TraceCorrelation
     payload: TracePayload
+    external_tracing_disabled: bool = Field(default=False, strict=True)
+    """Restricted executions may reach enterprise telemetry, but never external collectors or providers."""
 
     model_config = _EVENT_CONFIG

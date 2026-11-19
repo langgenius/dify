@@ -102,6 +102,11 @@ def test_ordinary_publish_route_maps_evaluation_plan_denial(
     def deny_publish(**_kwargs: object) -> None:
         raise EvaluationPlanRequiredError()
 
+    def skip_tool_setup(**_kwargs: object) -> None:
+        # The route admits Tool-setup declarations before the publish write; no draft is seeded here.
+        return None
+
+    monkeypatch.setattr(service, "prepare_draft_tool_publish", skip_tool_setup)
     monkeypatch.setattr(service, "publish_workflow", deny_publish)
     monkeypatch.setattr(
         workflow_module.session_factory,

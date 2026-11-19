@@ -161,8 +161,8 @@ def test_delete_stored_result_file_ignores_storage_failure(monkeypatch: pytest.M
 def test_customized_workflow_uses_pinned_version_and_keeps_row_errors(
     sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from core.app.apps.workflow.app_generator import WorkflowAppGenerator
     from models.model import AppMode
+    from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
     from services.workflow_service import WorkflowService
 
     account = make_account()
