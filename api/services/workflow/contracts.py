@@ -235,8 +235,8 @@ class WorkflowRecord:
     updated_by: dict[str, str] | None
     updated_at: datetime
     tool_published: bool
-    environment_variables: list[VariableBase]
-    conversation_variables: list[VariableBase]
+    environment_variables: Sequence[VariableBase]
+    conversation_variables: Sequence[VariableBase]
     rag_pipeline_variables: list[dict[str, Any]]
 
 
