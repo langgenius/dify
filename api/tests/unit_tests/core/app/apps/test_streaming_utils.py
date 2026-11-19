@@ -9,15 +9,9 @@ from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
-from core.app.apps.advanced_chat.generate_response_converter import AdvancedChatAppGenerateResponseConverter
-from core.app.apps.advanced_chat.generate_task_pipeline import (
-    AdvancedChatAppGenerateTaskPipeline,
-    ConversationSnapshot,
-    MessageSnapshot,
-    WorkflowSnapshot,
-)
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import PublishFrom
+from core.app.apps.draft_variable_saver import NoopDraftVariableSaver
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.apps.streaming_utils import STREAM_COMPLETE_SIGNAL, _normalize_terminal_events, stream_topic_events
@@ -41,6 +35,7 @@ from core.workflow.system_variables import build_system_variables
 from enums import DeploymentEdition
 from extensions.application_services.app_moderation import AppModeration
 from extensions.application_services.moderation import build_llm_moderation_guard
+from extensions.application_services.workflow import WorkflowExecutionDependencies
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowType
 from graphon.model_runtime.entities.message_entities import UserPromptMessage
@@ -49,12 +44,18 @@ from libs.broadcast_channel.channel import SupportsPreparedSubscription
 from machinery.context import AppRequestContext
 from models.enums import ConversationFromSource, MessageStatus
 from models.model import AppMode, EndUser, Message
+from services.app.generation.ports import ConversationSnapshot, MessageSnapshot, WorkflowSnapshot
 from services.moderation_adapters import HostedOpenAIModerationGateway
 from services.moderation_invocation_errors import (
     ModerationUnavailableInvocationError,
     PlatformModerationRejectedInvocationError,
 )
 from services.moderation_service import ModerationPhase, ModerationRule, ModerationService
+from services.workflow.execution.adapters.chatflow.generate_response_converter import (
+    AdvancedChatAppGenerateResponseConverter,
+)
+from services.workflow.execution.adapters.chatflow.generate_task_pipeline import AdvancedChatAppGenerateTaskPipeline
+from services.workflow.execution.adapters.response_stream import WorkflowEventStream
 from tasks.app_generate.workflow_execute_task import _publish_streaming_response
 from tests.helpers.unit.core.model_moderation_fixtures import RecordingHostedModerationClient, make_moderated_model
 from tests.helpers.unit.model_factories import make_app, make_conversation, make_message, make_workflow
@@ -160,14 +161,14 @@ def test_retrieve_events_falls_back_to_subscribe_and_invokes_hook_after_entry(mo
     def fake_get_response_topic(cls, app_mode, workflow_run_id):
         return topic
 
-    monkeypatch.setattr(MessageBasedAppGenerator, "get_response_topic", classmethod(fake_get_response_topic))
+    monkeypatch.setattr(WorkflowEventStream, "get_response_topic", classmethod(fake_get_response_topic))
 
     def on_subscribe() -> None:
         assert topic.subscribed is True
         event = {"event": StreamEvent.WORKFLOW_FINISHED.value}
         topic.publish(json.dumps(event).encode())
 
-    generator = MessageBasedAppGenerator.retrieve_events(
+    generator = WorkflowEventStream.retrieve_events(
         AppMode.WORKFLOW,
         "workflow-run-id",
         idle_timeout=0.5,
@@ -190,9 +191,9 @@ def test_retrieve_events_prepares_capable_topic_before_generator_iteration(monke
     def fake_get_response_topic(cls, app_mode, workflow_run_id):
         return topic
 
-    monkeypatch.setattr(MessageBasedAppGenerator, "get_response_topic", classmethod(fake_get_response_topic))
+    monkeypatch.setattr(WorkflowEventStream, "get_response_topic", classmethod(fake_get_response_topic))
 
-    generator = MessageBasedAppGenerator.retrieve_events(
+    generator = WorkflowEventStream.retrieve_events(
         AppMode.WORKFLOW,
         "workflow-run-id",
         idle_timeout=0.5,
@@ -214,10 +215,10 @@ def test_retrieve_events_propagates_preparation_error_before_generator_iteration
     def fake_get_response_topic(cls, app_mode, workflow_run_id):
         return topic
 
-    monkeypatch.setattr(MessageBasedAppGenerator, "get_response_topic", classmethod(fake_get_response_topic))
+    monkeypatch.setattr(WorkflowEventStream, "get_response_topic", classmethod(fake_get_response_topic))
 
     with pytest.raises(RuntimeError, match="prepare failed"):
-        MessageBasedAppGenerator.retrieve_events(
+        WorkflowEventStream.retrieve_events(
             AppMode.WORKFLOW,
             "workflow-run-id",
             idle_timeout=0.5,
@@ -376,6 +377,7 @@ def test_annotation_shaped_response_stream_completes_without_workflow_events(mon
 def test_input_moderation_direct_reply_completes_without_workflow_events(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
+    workflow_runtime: WorkflowExecutionDependencies,
 ):
     """A moderation text/stop queue saves the reply and reaches EOF without a workflow or annotation."""
     moderation_reply = "This request was blocked by input moderation."
@@ -392,7 +394,17 @@ def test_input_moderation_direct_reply_completes_without_workflow_events(
         invoke_from=InvokeFrom.WEB_APP,
         app_mode=AppMode.ADVANCED_CHAT,
     )
-    sqlite_session.add(message)
+    sqlite_session.add_all(
+        [
+            make_app(app_id=message.app_id, tenant_id=user.tenant_id, mode=AppMode.ADVANCED_CHAT),
+            make_conversation(
+                conversation_id=message.conversation_id,
+                app_id=message.app_id,
+                from_source=ConversationFromSource.API,
+            ),
+            message,
+        ]
+    )
     sqlite_session.commit()
     app_config = WorkflowUIBasedAppConfig(
         app_id=message.app_id,
@@ -421,6 +433,9 @@ def test_input_moderation_direct_reply_completes_without_workflow_events(
         message_id=message.id,
     )
     pipeline = AdvancedChatAppGenerateTaskPipeline(
+        contexts=workflow_runtime.contexts,
+        chat_records=workflow_runtime.chat_records,
+        tool_providers=workflow_runtime.tool_providers,
         application_generate_entity=generate_entity,
         workflow=WorkflowSnapshot(id=app_config.workflow_id, tenant_id=user.tenant_id, features_dict={}),
         queue_manager=queue_manager,
@@ -429,9 +444,7 @@ def test_input_moderation_direct_reply_completes_without_workflow_events(
         user=user,
         stream=True,
         dialogue_count=1,
-        draft_var_saver_factory=BaseAppGenerator._get_draft_var_saver_factory(
-            generate_entity.invoke_from, user, tenant_id=user.tenant_id
-        ),
+        draft_var_saver_factory=lambda *_args, **_kwargs: NoopDraftVariableSaver(),
     )
     # These are the events emitted by the runner when input moderation returns a direct reply.
     queue_manager.publish(QueueTextChunkEvent(text=moderation_reply), PublishFrom.APPLICATION_MANAGER)
@@ -492,6 +505,8 @@ def test_input_moderation_direct_reply_completes_without_workflow_events(
 )
 def test_chatflow_model_failures_do_not_override_graphon_results(
     monkeypatch: pytest.MonkeyPatch,
+    workflow_runtime,
+    app_records,
     sqlite_session: Session,
     config_overrides: Callable[..., None],
     phase: ModerationPhase,
@@ -536,7 +551,7 @@ def test_chatflow_model_failures_do_not_override_graphon_results(
         from_source=ConversationFromSource.API,
         from_end_user_id=user.id,
     )
-    sqlite_session.add_all([conversation, message])
+    sqlite_session.add_all([app, conversation, message])
     sqlite_session.commit()
     entity = AdvancedChatAppGenerateEntity(
         task_id="task-1",
@@ -567,6 +582,9 @@ def test_chatflow_model_failures_do_not_override_graphon_results(
         node_run_steps=2,
     )
     pipeline = AdvancedChatAppGenerateTaskPipeline(
+        contexts=workflow_runtime.contexts,
+        tool_providers=workflow_runtime.tool_providers,
+        chat_records=app_records,
         application_generate_entity=entity,
         workflow=WorkflowSnapshot.from_workflow(workflow),
         queue_manager=queue_manager,

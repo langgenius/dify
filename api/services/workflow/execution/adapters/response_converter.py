@@ -83,12 +83,17 @@ from services.variable_truncator import BaseTruncator, DummyVariableTruncator, V
 from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
 from services.workflow.execution.ports import ExecutionContexts
 
-# Maps the entry surface a workflow was invoked from to the HITL surface that
-# its resume tokens must be filtered for. Surfaces not in this map fall back to
-# the general priority ordering (typically CONSOLE > BACKSTAGE).
-_INVOKE_FROM_TO_HITL_SURFACE: Mapping[InvokeFrom, HumanInputSurface] = {
+# Live responses target the initiating entry. None explicitly means there is no
+# interactive form response surface; later access uses the endpoint's surface.
+_INVOKE_FROM_TO_HITL_SURFACE: Mapping[InvokeFrom, HumanInputSurface | None] = {
     InvokeFrom.SERVICE_API: HumanInputSurface.SERVICE_API,
     InvokeFrom.OPENAPI: HumanInputSurface.OPENAPI,
+    InvokeFrom.WEB_APP: HumanInputSurface.WEB_APP,
+    InvokeFrom.DEBUGGER: HumanInputSurface.CONSOLE,
+    InvokeFrom.EXPLORE: HumanInputSurface.CONSOLE,
+    InvokeFrom.TRIGGER: None,
+    InvokeFrom.VALIDATION: None,
+    InvokeFrom.PUBLISHED_PIPELINE: None,
 }
 
 NodeExecutionId = NewType("NodeExecutionId", str)
@@ -277,6 +282,7 @@ class WorkflowResponseConverter:
         run_id = self._ensure_workflow_run_id(workflow_run_id)
         started_at = naive_utc_now()
         self._workflow_started_at = started_at
+        self._application_generate_entity.workflow_execution_timing.start()
         if reason == WorkflowStartReason.RESUMPTION:
             self._node_snapshots.update(
                 (NodeExecutionId(snapshot.execution_id), snapshot) for snapshot in node_execution_snapshots
@@ -312,7 +318,7 @@ class WorkflowResponseConverter:
             )
 
         finished_at = naive_utc_now()
-        elapsed_time = (finished_at - started_at).total_seconds()
+        elapsed_time = self._application_generate_entity.workflow_execution_timing.finish()
 
         outputs_mapping = graph_runtime_state.outputs or {}
         encoded_outputs = WorkflowRuntimeTypeConverter().to_json_encodable(outputs_mapping)
@@ -365,8 +371,7 @@ class WorkflowResponseConverter:
             raise ValueError(
                 "workflow_pause_to_stream_response called before workflow_start_to_stream_response",
             )
-        paused_at = naive_utc_now()
-        elapsed_time = (paused_at - started_at).total_seconds()
+        elapsed_time = self._application_generate_entity.workflow_execution_timing.finish()
         encoded_outputs = self._encode_outputs(event.outputs) or {}
         if self._application_generate_entity.invoke_from == InvokeFrom.SERVICE_API:
             encoded_outputs = {}
@@ -876,7 +881,7 @@ class WorkflowResponseConverter:
         display_in_ui: dict[str, bool] = {}
         dispositions: dict[str, FormDisposition] = {}
         config = self._application_generate_entity.app_config
-        surface = _INVOKE_FROM_TO_HITL_SURFACE.get(self._application_generate_entity.invoke_from)
+        surface = _INVOKE_FROM_TO_HITL_SURFACE[self._application_generate_entity.invoke_from]
         forms = self._contexts.pause_forms(
             tenant_id=config.tenant_id,
             app_id=config.app_id,
@@ -890,7 +895,7 @@ class WorkflowResponseConverter:
             except (TypeError, json.JSONDecodeError):
                 definition_payload = {}
             display_in_ui[form.id] = bool(definition_payload.get("display_in_ui"))
-            dispositions[form.id] = disposition_for_surface(form.recipients, surface=surface)
+            dispositions[form.id] = disposition_for_surface(form.recipients, surface=surface) if surface is not None else FormDisposition(None, [])
         # Preserve the legacy pause-reason fields, which differ from the
         # human_input_required data payload (notably display_in_ui).
         pause_reasons = enrich_human_input_pause_reasons(

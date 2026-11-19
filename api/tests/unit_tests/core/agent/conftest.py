@@ -1,7 +1,10 @@
 from collections.abc import Callable
 from dataclasses import dataclass
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
+
+from services.agent.chat.ports import AgentToolInvoker
 
 
 @dataclass
@@ -91,3 +94,8 @@ def dummy_scratchpad_unit_factory() -> Callable[..., DummyScratchpadUnit]:
         )
 
     return _factory
+
+
+@pytest.fixture
+def agent_tool_invoker() -> MagicMock:
+    return create_autospec(AgentToolInvoker, instance=True, spec_set=True)

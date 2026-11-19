@@ -28,6 +28,10 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def noop_restore_file_access() -> None:
+    """Leave the current file-access scope unchanged when no restoration is needed."""
+
+
 @dataclass(kw_only=True)
 class AppInputAdapter:
     _file_access_controller: ClassVar[DatabaseFileAccessController] = DatabaseFileAccessController()
