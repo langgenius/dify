@@ -23,6 +23,7 @@ from controllers.console.app.error import (
 )
 from controllers.console.datasets.error import DatasetNotInitializedError
 from controllers.console.datasets.hit_testing import HitTestingApi
+from enums.knowledge import KnowledgeProviderFailure
 from fields.hit_testing_fields import HitTestingPayload
 from fields.hit_testing_fields import HitTestingResponse as HitTestingResponseModel
 from libs.external_api import ExternalApi
@@ -30,7 +31,7 @@ from libs.login import AccountWithTenant
 from machinery.context import RequestContext
 from models.account import Account
 from services.errors.index import IndexNotInitializedError
-from services.errors.knowledge_retrieval import KnowledgeRetrievalUnavailableError
+from services.errors.knowledge_retrieval import KnowledgeRetrievalUnavailableError, KnowledgeUnavailableReason
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.hit_testing.entities import HitTestingRequest, HitTestingResponse
 from services.knowledge.hit_testing.errors import (
@@ -307,7 +308,7 @@ def test_hit_testing_response_schema_requires_file_mime_type() -> None:
             InternalServerError.description,
         ),
         (
-            KnowledgeRetrievalUnavailableError("indexing"),
+            KnowledgeRetrievalUnavailableError(KnowledgeUnavailableReason.INDEXING),
             503,
             "service_unavailable",
             "The knowledge index is temporarily unavailable. Please retry later.",
@@ -375,10 +376,13 @@ def test_hit_testing_response_schema_accepts_internal_and_external_records() -> 
         (DatasetNotFoundError(), NotFoundError),
         (DatasetAccessDeniedError(), ForbiddenError),
         (IndexNotInitializedError(), DatasetNotInitializedError),
-        (KnowledgeRetrievalUnavailableError("indexing"), ServiceUnavailableError),
-        (HitTestingProviderError("missing", kind="uninitialized"), ProviderNotInitializeError),
-        (HitTestingProviderError("quota", kind="quota"), ProviderQuotaExceededError),
-        (HitTestingProviderError("unsupported", kind="unsupported"), ProviderModelCurrentlyNotSupportError),
+        (KnowledgeRetrievalUnavailableError(KnowledgeUnavailableReason.INDEXING), ServiceUnavailableError),
+        (HitTestingProviderError("missing", kind=KnowledgeProviderFailure.UNINITIALIZED), ProviderNotInitializeError),
+        (HitTestingProviderError("quota", kind=KnowledgeProviderFailure.QUOTA), ProviderQuotaExceededError),
+        (
+            HitTestingProviderError("unsupported", kind=KnowledgeProviderFailure.UNSUPPORTED),
+            ProviderModelCurrentlyNotSupportError,
+        ),
         (HitTestingInvocationError("invoke"), CompletionRequestError),
         (HitTestingUpstreamError("upstream"), InternalServerError),
         (HitTestingFailedError("failed"), InternalServerError),
@@ -399,7 +403,7 @@ def test_hit_testing_maps_application_errors(
 @pytest.mark.parametrize(
     "error",
     [
-        HitTestingProviderError("sensitive provider details", kind="uninitialized"),
+        HitTestingProviderError("sensitive provider details", kind=KnowledgeProviderFailure.UNINITIALIZED),
         HitTestingInvocationError("sensitive invocation details"),
         HitTestingUpstreamError("sensitive upstream details"),
         HitTestingFailedError("sensitive failure details"),

@@ -17,3 +17,9 @@ class DocumentCreatedFrom(StrEnum):
     WEB = "web"
     API = "api"
     RAG_PIPELINE = "rag-pipeline"
+
+
+class KnowledgeProviderFailure(StrEnum):
+    UNINITIALIZED = "uninitialized"
+    QUOTA = "quota"
+    UNSUPPORTED = "unsupported"

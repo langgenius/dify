@@ -4,7 +4,8 @@ import logging
 import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Literal, Protocol
+from enum import StrEnum
+from typing import Protocol
 
 from core.credit_usage import CreditUsageCreatedBy
 from core.model_context import with_credit_usage_created_by
@@ -86,6 +87,12 @@ class IndexingBackend(Protocol):
         ...
 
 
+class _IndexingPhase(StrEnum):
+    PARSING = "parsing"
+    SPLITTING = "splitting"
+    INDEXING = "indexing"
+
+
 class DocumentIndexingService:
     """Coordinate committed phases; no caller session is held across execution."""
 
@@ -116,7 +123,7 @@ class DocumentIndexingService:
         for ref in document_refs:
             self._run_guarded(
                 ref,
-                start="parsing",
+                start=_IndexingPhase.PARSING,
                 owned_lease=owned_leases.get(ref.document_id) if owned_leases is not None else None,
             )
 
@@ -127,7 +134,7 @@ class DocumentIndexingService:
         *,
         owned_lease: KnowledgeIndexingLease | None = None,
     ) -> None:
-        self._run_guarded(ref, start="splitting", owned_lease=owned_lease)
+        self._run_guarded(ref, start=_IndexingPhase.SPLITTING, owned_lease=owned_lease)
 
     @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
     def run_in_indexing_status(
@@ -136,13 +143,13 @@ class DocumentIndexingService:
         *,
         owned_lease: KnowledgeIndexingLease | None = None,
     ) -> None:
-        self._run_guarded(ref, start="indexing", owned_lease=owned_lease)
+        self._run_guarded(ref, start=_IndexingPhase.INDEXING, owned_lease=owned_lease)
 
     def _run_guarded(
         self,
         ref: DocumentRef,
         *,
-        start: Literal["parsing", "splitting", "indexing"],
+        start: _IndexingPhase,
         owned_lease: KnowledgeIndexingLease | None,
     ) -> None:
         if owned_lease is not None:
@@ -161,7 +168,7 @@ class DocumentIndexingService:
         self,
         ref: DocumentRef,
         *,
-        start: Literal["parsing", "splitting", "indexing"],
+        start: _IndexingPhase,
         lease: KnowledgeIndexingLease,
     ) -> None:
         document: IndexingDocument | None = None
@@ -177,7 +184,7 @@ class DocumentIndexingService:
                 logger.info("Document not found, skipping indexing: %s", ref)
                 return
             self._backend.check_paused(ref)
-            if start == "indexing":
+            if start == _IndexingPhase.INDEXING:
                 pending_upload_cleanup_ids = self._segments.get_pending_upload_cleanup_ids(document)
                 self._reconcile_pending_upload_cleanup(document, pending_upload_cleanup_ids, lease=lease)
                 chunks, total_tokens = self._segments.resume_indexing(document)
@@ -191,7 +198,7 @@ class DocumentIndexingService:
                 chunks = transformation.chunks
                 # Recovery retains its existing admission policy; only normal
                 # indexing callers that explicitly opt in reserve vector space.
-                if start == "parsing" and self._enforce_vector_space_admission:
+                if start == _IndexingPhase.PARSING and self._enforce_vector_space_admission:
                     self._backend.ensure_admission(document, chunks)
                 token_counts = self._backend.count_tokens(document, chunks)
                 total_tokens = sum(token_counts)

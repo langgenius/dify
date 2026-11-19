@@ -16,7 +16,7 @@ from graphon.nodes.llm.entities import ModelConfig
 from libs.datetime_utils import Timing
 from services.knowledge.admission.application import DatasetAdmissionLimits
 from services.knowledge.entities.metadata import Condition
-from services.knowledge.entities.retrieval import KnowledgeRetrievalRequest
+from services.knowledge.entities.retrieval import KnowledgeRetrievalRequest, RetrievalMode
 from services.knowledge.retrieval.application import KnowledgeRetrievalApplicationService
 from services.knowledge.retrieval.candidate_search import (
     CandidateReranker,
@@ -153,7 +153,7 @@ def _request(dataset: RetrievalDatasetSnapshot) -> KnowledgeRetrievalRequest:
         app_id=str(uuid4()),
         user_from="account",
         dataset_ids=[dataset.id],
-        retrieval_mode="multiple",
+        retrieval_mode=RetrievalMode.MULTIPLE,
         query="test query",
         reranking_enable=False,
     )
@@ -170,7 +170,7 @@ def test_knowledge_retrieval_creates_a_child_otel_span(
         app_id=str(uuid4()),
         user_from="account",
         dataset_ids=[str(uuid4())],
-        retrieval_mode="multiple",
+        retrieval_mode=RetrievalMode.MULTIPLE,
         query="test query",
     )
     retrieval, repository = _retrieval_application()

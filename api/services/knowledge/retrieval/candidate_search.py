@@ -6,7 +6,7 @@ import threading
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Literal, Protocol
+from typing import Protocol
 
 from flask import Flask, current_app
 from opentelemetry.trace import get_current_span
@@ -224,7 +224,7 @@ class CandidateSearch:
         model_schema = model_type_instance.get_model_schema(request.model_name, model_instance.credentials)
         if not model_schema:
             raise ModelNotExistError(f"Model {request.model_name} not exist.")
-        strategy: Literal["react", "function_call"] = "react"
+        tools = [self._dataset_tool(dataset) for dataset in datasets]
         if (
             request.routing_strategy == "auto"
             and model_schema.features
@@ -232,10 +232,6 @@ class CandidateSearch:
                 ModelFeature.TOOL_CALL in model_schema.features or ModelFeature.MULTI_TOOL_CALL in model_schema.features
             )
         ):
-            strategy = "function_call"
-
-        tools = [self._dataset_tool(dataset) for dataset in datasets]
-        if strategy == "function_call":
             dataset_id, usage = FunctionCallMultiDatasetRouter().invoke(request.query, tools, model_instance)
         else:
             dataset_id, usage = ReactMultiDatasetRouter().invoke(

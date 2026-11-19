@@ -12,7 +12,7 @@ from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from repositories.knowledge.external_repository import SQLAlchemyExternalKnowledgeRepository
 from repositories.knowledge.retrieval_source_repository import SQLAlchemyRetrievalRepository
 from services.knowledge.admission.application import DatasetAdmissionLimits
-from services.knowledge.entities.retrieval import KnowledgeRetrievalRequest
+from services.knowledge.entities.retrieval import KnowledgeRetrievalRequest, RetrievalMode
 from services.knowledge.external.adapters import ExternalKnowledgeGateway
 from services.knowledge.external.application import ExternalDatasetRetrievalService
 from services.knowledge.retrieval.adapters import DataPostProcessorReranker, DatasetCandidateRetriever
@@ -560,7 +560,7 @@ class TestKnowledgeRetrievalIntegration:
             user_from="web",
             dataset_ids=[dataset.id],
             query="test query",
-            retrieval_mode="multiple",
+            retrieval_mode=RetrievalMode.MULTIPLE,
             top_k=5,
         )
 
@@ -616,7 +616,7 @@ class TestKnowledgeRetrievalIntegration:
             user_from="web",
             dataset_ids=[dataset.id],
             query="test query",
-            retrieval_mode="multiple",
+            retrieval_mode=RetrievalMode.MULTIPLE,
             top_k=5,
         )
 
@@ -660,7 +660,7 @@ class TestKnowledgeRetrievalIntegration:
             user_from="web",
             dataset_ids=[dataset.id],
             query="test query",
-            retrieval_mode="multiple",
+            retrieval_mode=RetrievalMode.MULTIPLE,
             top_k=5,
         )
 

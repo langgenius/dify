@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime
+from enum import StrEnum
 
 from services.knowledge.dataset_access import DatasetAccessSnapshot
 from services.knowledge.entities.resource_scope import DatasetRef, DocumentRef
@@ -115,6 +116,11 @@ class SegmentIndexTarget:
     id: str
     index_node_id: str | None
     enabled: bool
+
+
+class SegmentStatusAction(StrEnum):
+    ENABLE = "enable"
+    DISABLE = "disable"
 
 
 @dataclass(frozen=True, slots=True)

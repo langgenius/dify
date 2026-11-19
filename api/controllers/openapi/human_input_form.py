@@ -249,7 +249,12 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
                 _ensure_form_belongs_to_app(v2_form, ctx.app)
                 if body.files:
                     end_read_transaction(ctx.session)
-                inputs = merge_files(body.inputs, body.files, ctx.caller)
+                inputs = merge_files(
+                    body.inputs,
+                    body.files,
+                    actor=FileUploadActor(id=ctx.caller.id, creator_role=ctx.subject.caller_role),
+                    tenant_id=ctx.workspace.id,
+                )
                 submitted_form = v2_service.submit_openapi_form(
                     actor=actor, form_token=form_token, action=body.action, inputs=inputs
                 )

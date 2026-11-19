@@ -1,7 +1,7 @@
 """MySQL locking regressions for document metadata projections and schema changes."""
 
+from enum import StrEnum
 from threading import Event, Thread, local
-from typing import Literal
 from uuid import uuid4
 
 import pytest
@@ -15,6 +15,17 @@ from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from repositories.knowledge.metadata_repository import SQLAlchemyMetadataRepository
 from services.knowledge.entities.resource_scope import DatasetRef
+
+
+class _SchemaOperation(StrEnum):
+    RENAME = "rename"
+    DELETE = "delete"
+    DISABLE_BUILTIN = "disable_builtin"
+
+
+class _Writer(StrEnum):
+    DOCUMENT = "document"
+    SCHEMA = "schema"
 
 
 class _WorkerRole(local):
@@ -40,12 +51,12 @@ def _is_dataset_update_lock(statement: str) -> bool:
     return " from datasets " in normalized and " for update" in normalized
 
 
-@pytest.mark.parametrize("schema_operation", ["rename", "delete", "disable_builtin"])
-@pytest.mark.parametrize("first_writer", ["document", "schema"])
+@pytest.mark.parametrize("schema_operation", list(_SchemaOperation))
+@pytest.mark.parametrize("first_writer", list(_Writer))
 def test_document_metadata_and_schema_writer_serialize_on_current_dataset_lock(
     mysql_session: Session,
-    schema_operation: Literal["rename", "delete", "disable_builtin"],
-    first_writer: Literal["document", "schema"],
+    schema_operation: _SchemaOperation,
+    first_writer: _Writer,
 ) -> None:
     """Either commit order must preserve the current binding and built-in ownership rules."""
 

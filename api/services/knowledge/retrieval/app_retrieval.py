@@ -17,7 +17,7 @@ from core.workflow.file_reference import build_file_reference
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.nodes.llm.entities import ModelConfig as RetrievalMetadataModelConfig
 from services.knowledge.entities.citation import to_retrieval_source_metadata
-from services.knowledge.entities.retrieval import KnowledgeRetrievalRequest, Source
+from services.knowledge.entities.retrieval import KnowledgeRetrievalRequest, RetrievalMode, RoutingStrategy, Source
 from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 
 
@@ -89,8 +89,10 @@ def retrieve_app_context(
         user_from="account" if invoke_from.runs_as_account() else "end_user",
         dataset_ids=dataset_config.dataset_ids,
         query=query,
-        retrieval_mode="single" if retrieve_config.retrieve_strategy == "single" else "multiple",
-        routing_strategy="auto",
+        retrieval_mode=RetrievalMode.SINGLE
+        if retrieve_config.retrieve_strategy == "single"
+        else RetrievalMode.MULTIPLE,
+        routing_strategy=RoutingStrategy.AUTO,
         model_provider=model_config.provider,
         completion_params=_completion_params(application_generate_entity),
         model_mode=model_config.mode,

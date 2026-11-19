@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any
 
 from pydantic import BaseModel, ConfigDict, Discriminator, Field, Tag, field_validator
 
@@ -148,7 +148,7 @@ class ExternalHitTestingResponse(ResponseModel):
     records: list[ExternalHitTestingRecordResponse]
 
 
-def _record_source(record: Any) -> Literal["internal", "external"]:
+def _record_source(record: Any) -> str:
     if isinstance(record, HitTestingRecord) or (isinstance(record, dict) and "segment" in record):
         return "internal"
     return "external"

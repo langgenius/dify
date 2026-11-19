@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
 from graphon.nodes.llm.entities import ModelConfig
-from services.knowledge.entities.retrieval import KnowledgeRetrievalRequest, RetrievableDataset
+from services.knowledge.entities.retrieval import KnowledgeRetrievalRequest, RetrievableDataset, RetrievalMode
 
 
 class DatasetRetrieverToolInput(BaseModel):
@@ -47,7 +47,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                 app_id=self.app_id,
                 dataset_ids=[self.dataset_id],
                 query=query,
-                retrieval_mode="direct",
+                retrieval_mode=RetrievalMode.DIRECT,
                 metadata_filtering_mode=self.retrieve_config.metadata_filtering_mode or "disabled",
                 metadata_model_config=(
                     ModelConfig.model_validate(metadata_model_config.model_dump()) if metadata_model_config else None

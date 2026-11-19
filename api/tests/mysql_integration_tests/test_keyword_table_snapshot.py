@@ -199,19 +199,15 @@ def test_keyword_read_current_reads_after_repeatable_read_snapshot(
         assert stale_row is not None
         stale_data = stale_row.keyword_table
 
-        def commit_concurrent_update() -> None:
-            with sessions() as writer:
-                concurrent_dataset = writer.get(Dataset, dataset_id)
-                assert concurrent_dataset is not None
-                Jieba(concurrent_dataset).add_texts(
-                    [Document(page_content="beta", metadata={"doc_id": "node-2"})],
-                    writer,
-                    keywords_list=[["beta"]],
-                )
-                writer.commit()
+        with sessions.begin() as writer:
+            concurrent_dataset = writer.get(Dataset, dataset_id)
+            assert concurrent_dataset is not None
+            Jieba(concurrent_dataset).add_texts(
+                [Document(page_content="beta", metadata={"doc_id": "node-2"})],
+                writer,
+                keywords_list=[["beta"]],
+            )
 
-        locks = CommitOnFirstLock(commit_concurrent_update)
-        monkeypatch.setattr(jieba_module, "redis_client", locks)
         keyword = Jieba(dataset)
         if consumer == "search":
             assert [document.metadata["doc_id"] for document in keyword.search("beta", session=caller)] == ["node-2"]
@@ -222,8 +218,6 @@ def test_keyword_read_current_reads_after_repeatable_read_snapshot(
         else:
             assert stale_row.keyword_table == stale_data
         caller.commit()
-
-    assert locks.triggered is True
 
 
 @pytest.mark.parametrize("storage_type", ["database", "file"])

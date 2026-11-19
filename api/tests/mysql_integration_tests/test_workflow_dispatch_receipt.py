@@ -7,7 +7,6 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from datetime import datetime
 from threading import Event
-from typing import Literal
 from uuid import uuid4
 
 import pytest
@@ -60,10 +59,8 @@ def _pending_log(sessions: sessionmaker[Session]) -> Generator[tuple[str, str]]:
             cleanup.execute(sa.delete(WorkflowTriggerLog).where(WorkflowTriggerLog.id == trigger_log.id))
 
 
-@pytest.mark.parametrize("producer_result", ["receipt", "failure"])
-def test_stale_producer_cannot_overwrite_worker_completion(
-    mysql_session: Session, producer_result: Literal["receipt", "failure"]
-) -> None:
+@pytest.mark.parametrize("receipt_recorded", [True, False], ids=["receipt", "failure"])
+def test_stale_producer_cannot_overwrite_worker_completion(mysql_session: Session, receipt_recorded: bool) -> None:
     sessions = _repeatable_read_sessions(mysql_session)
     worker_triggered_at = datetime(2026, 1, 1, 12, 0)
     worker_finished_at = datetime(2026, 1, 1, 12, 1)
@@ -97,7 +94,7 @@ def test_stale_producer_cannot_overwrite_worker_completion(
             worker_log.celery_task_id = "worker-task"
 
         repository = SQLAlchemyWorkflowTriggerLogRepository(producer_session)
-        if producer_result == "receipt":
+        if receipt_recorded:
             repository.record_dispatch(
                 trigger_log_id=trigger_log_id,
                 tenant_id=tenant_id,

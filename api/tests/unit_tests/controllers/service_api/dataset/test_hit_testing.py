@@ -25,6 +25,7 @@ from controllers.service_api.app.error import (
 )
 from controllers.service_api.dataset import hit_testing as controller
 from controllers.service_api.dataset.error import DatasetNotInitializedError
+from enums.knowledge import KnowledgeProviderFailure
 from fields.hit_testing_fields import HitTestingPayload
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
@@ -35,7 +36,7 @@ from repositories.knowledge.dataset_api_key_repository import DatasetApiKeyRepos
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.errors.index import IndexNotInitializedError
-from services.errors.knowledge_retrieval import KnowledgeRetrievalUnavailableError
+from services.errors.knowledge_retrieval import KnowledgeRetrievalUnavailableError, KnowledgeUnavailableReason
 from services.knowledge.admission.application import DatasetAdmissionService
 from services.knowledge.admission.limits import KnowledgeApiLimitsError, KnowledgeApiRateLimitExceededError
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
@@ -383,10 +384,13 @@ def test_invalid_internal_record_cannot_fall_back_to_external_schema(
         (DatasetNotFoundError(), NotFoundError),
         (DatasetAccessDeniedError(), ForbiddenError),
         (IndexNotInitializedError(), DatasetNotInitializedError),
-        (KnowledgeRetrievalUnavailableError("indexing"), ServiceUnavailableError),
-        (HitTestingProviderError("missing", kind="uninitialized"), ProviderNotInitializeError),
-        (HitTestingProviderError("quota", kind="quota"), ProviderQuotaExceededError),
-        (HitTestingProviderError("unsupported", kind="unsupported"), ProviderModelCurrentlyNotSupportError),
+        (KnowledgeRetrievalUnavailableError(KnowledgeUnavailableReason.INDEXING), ServiceUnavailableError),
+        (HitTestingProviderError("missing", kind=KnowledgeProviderFailure.UNINITIALIZED), ProviderNotInitializeError),
+        (HitTestingProviderError("quota", kind=KnowledgeProviderFailure.QUOTA), ProviderQuotaExceededError),
+        (
+            HitTestingProviderError("unsupported", kind=KnowledgeProviderFailure.UNSUPPORTED),
+            ProviderModelCurrentlyNotSupportError,
+        ),
         (HitTestingInvocationError("invoke"), CompletionRequestError),
         (HitTestingUpstreamError("upstream"), InternalServerError),
         (HitTestingFailedError("failed"), InternalServerError),
@@ -550,7 +554,7 @@ def test_billing_rate_limit_precedes_application(runtime: _Runtime) -> None:
         (DatasetNotFoundError(), 404, "not_found"),
         (DatasetAccessDeniedError(), 403, "forbidden"),
         (IndexNotInitializedError(), 400, "dataset_not_initialized"),
-        (KnowledgeRetrievalUnavailableError("indexing"), 503, "service_unavailable"),
+        (KnowledgeRetrievalUnavailableError(KnowledgeUnavailableReason.INDEXING), 503, "service_unavailable"),
         (HitTestingFailedError("failed"), 500, "internal_server_error"),
         (HitTestingUnsupportedInputError("unsupported input"), 400, "invalid_param"),
         (ValueError("invalid"), 400, "invalid_param"),
@@ -581,7 +585,7 @@ def test_external_attachment_only_error_is_a_clear_client_failure(runtime: _Runt
 
 
 def test_unavailable_index_uses_standard_safe_service_response(runtime: _Runtime) -> None:
-    failure = KnowledgeRetrievalUnavailableError("indexing")
+    failure = KnowledgeRetrievalUnavailableError(KnowledgeUnavailableReason.INDEXING)
     runtime.service.retrieve.side_effect = failure
 
     response = _request(runtime)

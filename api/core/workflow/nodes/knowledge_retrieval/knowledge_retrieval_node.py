@@ -27,7 +27,7 @@ from graphon.variables.segments import ArrayObjectSegment
 from graphon.variables.template_resolution import convert_template
 from services.errors.knowledge_retrieval import KnowledgeRetrievalError, RateLimitExceededError
 from services.knowledge.entities.metadata import Condition, MetadataFilteringCondition
-from services.knowledge.entities.retrieval import KnowledgeRetrievalRequest, KnowledgeRetrievalResult
+from services.knowledge.entities.retrieval import KnowledgeRetrievalRequest, KnowledgeRetrievalResult, RetrievalMode
 from services.knowledge.entities.retrieval_settings import RerankingModelDict, WeightsDict
 from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 
@@ -187,7 +187,7 @@ class KnowledgeRetrievalNode(Node[KnowledgeRetrievalNodeData]):
                 app_id=dify_ctx.app_id,
                 user_from=dify_ctx.user_from.value,
                 dataset_ids=dataset_ids,
-                retrieval_mode="single",
+                retrieval_mode=RetrievalMode.SINGLE,
                 completion_params=model.completion_params,
                 model_provider=model.provider,
                 model_mode=model.mode,
@@ -239,7 +239,7 @@ class KnowledgeRetrievalNode(Node[KnowledgeRetrievalNodeData]):
                 user_from=dify_ctx.user_from.value,
                 dataset_ids=dataset_ids,
                 query=query,
-                retrieval_mode="multiple",
+                retrieval_mode=RetrievalMode.MULTIPLE,
                 top_k=node_data.multiple_retrieval_config.top_k,
                 score_threshold=node_data.multiple_retrieval_config.score_threshold
                 if node_data.multiple_retrieval_config.score_threshold is not None

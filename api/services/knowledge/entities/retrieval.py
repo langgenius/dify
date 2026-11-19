@@ -2,6 +2,7 @@
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Literal, TypedDict
 
 from pydantic import BaseModel, Field, JsonValue
@@ -124,6 +125,17 @@ class KnowledgeRetrievalResult:
     trace: KnowledgeRetrievalTrace | None = None
 
 
+class RetrievalMode(StrEnum):
+    SINGLE = "single"
+    MULTIPLE = "multiple"
+    DIRECT = "direct"
+
+
+class RoutingStrategy(StrEnum):
+    REACT = "react"
+    AUTO = "auto"
+
+
 class KnowledgeRetrievalRequest(BaseModel):
     tenant_id: str = Field(description="Tenant unique identifier")
     user_id: str = Field(description="User unique identifier")
@@ -131,11 +143,12 @@ class KnowledgeRetrievalRequest(BaseModel):
     user_from: str = Field(description="User identity source for audit logging (e.g., 'account', 'end-user')")
     dataset_ids: list[str] = Field(description="List of dataset IDs to retrieve from")
     query: str | None = Field(default=None, description="Query text for knowledge retrieval")
-    retrieval_mode: Literal["single", "multiple", "direct"] = Field(
+    retrieval_mode: RetrievalMode = Field(
         description="Single routes with a model; multiple queries datasets together; direct queries one dataset."
     )
-    routing_strategy: Literal["react", "auto"] = Field(
-        default="react", description="Single-mode routing policy; auto chooses from the model's supported capabilities."
+    routing_strategy: RoutingStrategy = Field(
+        default=RoutingStrategy.REACT,
+        description="Single-mode routing policy; auto chooses from the model's supported capabilities.",
     )
     model_provider: str | None = Field(default=None, description="Model provider name (e.g., 'openai', 'anthropic')")
     completion_params: dict[str, JsonValue] | None = Field(

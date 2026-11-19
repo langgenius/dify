@@ -8,7 +8,7 @@ import time
 import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
-from typing import Any, Literal
+from typing import Any
 
 import sqlalchemy as sa
 from pydantic import TypeAdapter
@@ -88,6 +88,8 @@ from services.knowledge.documents.contracts import (
     DocumentStatusRollback,
     DocumentSummaryConfiguration,
     DocumentWriteConfig,
+    NotionCleanupOutcome,
+    NotionPreflightFailureOutcome,
     UnchangedNotionSyncOutcome,
     build_initial_retrieval_model,
     build_initialized_dataset_identity,
@@ -1345,25 +1347,25 @@ class SQLAlchemyDocumentRepository:
             # A stale or duplicate task must not overwrite a newer indexing
             # attempt or a replacement Notion source with the same timestamp.
             if document.indexing_status != IndexingStatus.WAITING:
-                return "stale"
+                return UnchangedNotionSyncOutcome.STALE
             source_info = dict(_mapping(document.data_source_info) or {})
             if source_info != dict(expected_source_info):
-                return "stale"
+                return UnchangedNotionSyncOutcome.STALE
             if document.completed_at is None or source_info.get(_NOTION_SYNC_RECOVERABLE_INDEX_KEY) is not True:
-                return "requires_indexing"
+                return UnchangedNotionSyncOutcome.REQUIRES_INDEXING
             source_info.pop(_NOTION_SYNC_RECOVERABLE_INDEX_KEY, None)
             document.data_source_info = json.dumps(source_info, ensure_ascii=False)
             document.indexing_status = IndexingStatus.COMPLETED
             document.completed_at = naive_utc_now()
             document.error = None
-            return "completed"
+            return UnchangedNotionSyncOutcome.COMPLETED
 
     def begin_notion_sync_cleanup(
         self,
         ref: DocumentRef,
         *,
         expected_source_info: Mapping[str, object],
-    ) -> Literal["cleaning", "stale"]:
+    ) -> NotionCleanupOutcome:
         """Persist the point after which a previous Notion index is not recoverable.
 
         The caller must still own the indexing lease and invoke this method
@@ -1375,7 +1377,7 @@ class SQLAlchemyDocumentRepository:
         with self._session_factory.begin() as session:
             document = _lock_document(session, ref)
             if document is None:
-                return "stale"
+                return NotionCleanupOutcome.STALE
             if (
                 document.data_source_type != DataSourceType.NOTION_IMPORT
                 or document.archived
@@ -1383,16 +1385,16 @@ class SQLAlchemyDocumentRepository:
                 or document.is_paused
                 or document.indexing_status != IndexingStatus.WAITING
             ):
-                return "stale"
+                return NotionCleanupOutcome.STALE
             source_info = dict(_mapping(document.data_source_info) or {})
             if source_info != dict(expected_source_info):
-                return "stale"
+                return NotionCleanupOutcome.STALE
             source_info.pop(_NOTION_SYNC_RECOVERABLE_INDEX_KEY, None)
             document.data_source_info = json.dumps(source_info, ensure_ascii=False)
             document.indexing_status = IndexingStatus.CLEANING
             document.completed_at = None
             document.error = None
-            return "cleaning"
+            return NotionCleanupOutcome.CLEANING
 
     def resolve_notion_sync_preflight_failure(
         self,
@@ -1400,7 +1402,7 @@ class SQLAlchemyDocumentRepository:
         *,
         expected_source_info: Mapping[str, object],
         error: str,
-    ) -> Literal["restored", "failed", "stale"]:
+    ) -> NotionPreflightFailureOutcome:
         """Conditionally finish a Notion sync that failed before index cleanup.
 
         Preconditions: the caller still owns the document indexing lease and no
@@ -1414,7 +1416,7 @@ class SQLAlchemyDocumentRepository:
         with self._session_factory.begin() as session:
             document = _lock_document(session, ref)
             if document is None:
-                return "stale"
+                return NotionPreflightFailureOutcome.STALE
             if (
                 document.data_source_type != DataSourceType.NOTION_IMPORT
                 or document.archived
@@ -1422,21 +1424,21 @@ class SQLAlchemyDocumentRepository:
                 or document.is_paused
                 or document.indexing_status != IndexingStatus.WAITING
             ):
-                return "stale"
+                return NotionPreflightFailureOutcome.STALE
             source_info = dict(_mapping(document.data_source_info) or {})
             if source_info != dict(expected_source_info):
-                return "stale"
+                return NotionPreflightFailureOutcome.STALE
             had_recoverable_index = source_info.pop(_NOTION_SYNC_RECOVERABLE_INDEX_KEY, None) is True
             recoverable_index = document.completed_at is not None and had_recoverable_index
             document.data_source_info = json.dumps(source_info, ensure_ascii=False)
             if recoverable_index:
                 document.indexing_status = IndexingStatus.COMPLETED
                 document.error = None
-                return "restored"
+                return NotionPreflightFailureOutcome.RESTORED
             document.indexing_status = IndexingStatus.ERROR
             document.error = error
             document.stopped_at = naive_utc_now()
-            return "failed"
+            return NotionPreflightFailureOutcome.FAILED
 
     def enable_summary(self, ref: DatasetRef, document_ids: Sequence[str]) -> int:
         unique_ids = tuple(dict.fromkeys(document_ids))

@@ -4,10 +4,11 @@ import logging
 from collections.abc import Mapping, Sequence
 from contextlib import AbstractContextManager, ExitStack, nullcontext
 from datetime import datetime
+from enum import StrEnum
 from typing import Any, Literal, Protocol
 from uuid import uuid4
 
-from enums.knowledge import DocumentCreatedFrom
+from enums.knowledge import DocumentCreatedFrom, KnowledgeProviderFailure
 from libs.datetime_utils import naive_utc_now
 from machinery.context import RequestContext
 from services.errors.file import FileNotExistsError
@@ -82,13 +83,18 @@ class DocumentTaskDispatchError(DocumentApplicationError):
 
 
 class DocumentProviderError(DocumentApplicationError):
-    def __init__(self, description: str, *, kind: Literal["uninitialized", "quota", "unsupported"]) -> None:
+    def __init__(self, description: str, *, kind: KnowledgeProviderFailure) -> None:
         super().__init__(description)
         self.kind = kind
 
 
+class DocumentUploadFailure(StrEnum):
+    TOO_LARGE = "too_large"
+    UNSUPPORTED = "unsupported"
+
+
 class DocumentUploadError(DocumentApplicationError):
-    def __init__(self, description: str, *, kind: Literal["too_large", "unsupported"]) -> None:
+    def __init__(self, description: str, *, kind: DocumentUploadFailure) -> None:
         super().__init__(description)
         self.description = description
         self.kind = kind

@@ -60,7 +60,7 @@ from services.knowledge.segments.application import (
     SegmentStatusUpdateError,
     SegmentUploadFileNotFoundError,
 )
-from services.knowledge.segments.contracts import ChildChunkListFilter, SegmentListFilter
+from services.knowledge.segments.contracts import ChildChunkListFilter, SegmentListFilter, SegmentStatusAction
 
 _DATASET_EDIT_ROLES = frozenset(
     {
@@ -305,7 +305,7 @@ class DatasetDocumentSegmentApi(Resource):
                 dataset_id=str(dataset_id),
                 document_id=str(document_id),
                 segment_ids=args.segment_id,
-                action=action,
+                action=SegmentStatusAction(action),
             )
         except Exception as error:
             _raise_segment_status_error(error)

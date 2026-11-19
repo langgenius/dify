@@ -32,6 +32,7 @@ from services.knowledge.entities.retrieval import (
     KnowledgeRetrievalResult,
     KnowledgeRetrievalTrace,
     RetrievableDataset,
+    RetrievalMode,
 )
 from services.knowledge.retrieval.candidate_search import CandidateSearch, CandidateSearchResult, DatasetDocumentFilter
 from services.knowledge.retrieval.metadata_filtering import MetadataFilterPlan, MetadataFilterPlanner
@@ -317,7 +318,7 @@ class InnerKnowledgeRetrievalService:
             user_from=request.caller.user_from,
             dataset_ids=request.dataset_ids,
             query=request.query,
-            retrieval_mode=request.retrieval.mode,
+            retrieval_mode=RetrievalMode(request.retrieval.mode),
             model_provider=request.retrieval.model.provider if request.retrieval.model else None,
             completion_params=request.retrieval.model.completion_params if request.retrieval.model else None,
             model_mode=request.retrieval.model.mode if request.retrieval.model else None,

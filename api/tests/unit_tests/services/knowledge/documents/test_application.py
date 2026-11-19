@@ -7,6 +7,7 @@ from unittest.mock import Mock, create_autospec
 
 import pytest
 
+from enums.knowledge import KnowledgeProviderFailure
 from machinery.context import RequestContext
 from models.enums import DocumentCreatedFrom
 from services.knowledge.dataset_access import AccessibleDataset, DatasetAccess, DatasetAccessDeniedError
@@ -1288,7 +1289,7 @@ def test_change_status_does_not_restore_index_when_model_validation_fails(
     documents.get_states.return_value = [replace(STATE, enabled=False, archived=False)]
     model_configuration.validate_dataset_model.side_effect = DocumentProviderError(
         "embedding credential is unavailable",
-        kind="uninitialized",
+        kind=KnowledgeProviderFailure.UNINITIALIZED,
     )
 
     with pytest.raises(DocumentProviderError, match="embedding credential is unavailable"):

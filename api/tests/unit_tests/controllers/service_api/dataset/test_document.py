@@ -4,7 +4,6 @@ import io
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Literal
 from uuid import uuid4
 
 import pytest
@@ -31,6 +30,7 @@ from controllers.service_api.dataset.document import (
 )
 from controllers.service_api.dataset.error import ArchivedDocumentImmutableError
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from enums.knowledge import KnowledgeProviderFailure
 from fields.service_api.document import DocumentListQuery, DocumentTextCreatePayload, DocumentTextUpdate
 from libs.exception import BaseHTTPException
 from machinery.context import RequestContext
@@ -39,6 +39,7 @@ from services.knowledge.documents.application import (
     DocumentNotFoundError,
     DocumentProviderError,
     DocumentUploadError,
+    DocumentUploadFailure,
 )
 from services.knowledge.documents.contracts import DocumentListFilter
 
@@ -394,7 +395,9 @@ class TestDocumentControllerDelegation:
     def test_create_by_file_preserves_invalid_param_for_unsupported_type(
         self, app: Flask, documents: RecordingDocuments, request_context: RequestContext
     ) -> None:
-        documents.errors["create_by_file"] = DocumentUploadError("File type not allowed.", kind="unsupported")
+        documents.errors["create_by_file"] = DocumentUploadError(
+            "File type not allowed.", kind=DocumentUploadFailure.UNSUPPORTED
+        )
 
         with app.test_request_context(
             method="POST",
@@ -407,9 +410,13 @@ class TestDocumentControllerDelegation:
     @pytest.mark.parametrize(
         ("kind", "error_type", "error_code"),
         [
-            ("uninitialized", ProviderNotInitializeError, "provider_not_initialize"),
-            ("quota", ProviderQuotaExceededError, "provider_quota_exceeded"),
-            ("unsupported", ProviderModelCurrentlyNotSupportError, "model_currently_not_support"),
+            (KnowledgeProviderFailure.UNINITIALIZED, ProviderNotInitializeError, "provider_not_initialize"),
+            (KnowledgeProviderFailure.QUOTA, ProviderQuotaExceededError, "provider_quota_exceeded"),
+            (
+                KnowledgeProviderFailure.UNSUPPORTED,
+                ProviderModelCurrentlyNotSupportError,
+                "model_currently_not_support",
+            ),
         ],
     )
     def test_create_maps_provider_failures_to_stable_400_contract(
@@ -417,7 +424,7 @@ class TestDocumentControllerDelegation:
         app: Flask,
         documents: RecordingDocuments,
         request_context: RequestContext,
-        kind: Literal["uninitialized", "quota", "unsupported"],
+        kind: KnowledgeProviderFailure,
         error_type: type[BaseHTTPException],
         error_code: str,
     ) -> None:

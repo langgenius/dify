@@ -3,6 +3,7 @@
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
+from enum import StrEnum
 from typing import Literal, Protocol
 
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -488,7 +489,23 @@ class DocumentPersistenceArchivedError(DocumentPersistenceInvalidStateError):
 
 
 DocumentStatusAction = Literal["enable", "disable", "archive", "un_archive"]
-UnchangedNotionSyncOutcome = Literal["completed", "requires_indexing", "stale"]
+
+
+class UnchangedNotionSyncOutcome(StrEnum):
+    COMPLETED = "completed"
+    REQUIRES_INDEXING = "requires_indexing"
+    STALE = "stale"
+
+
+class NotionCleanupOutcome(StrEnum):
+    CLEANING = "cleaning"
+    STALE = "stale"
+
+
+class NotionPreflightFailureOutcome(StrEnum):
+    RESTORED = "restored"
+    FAILED = "failed"
+    STALE = "stale"
 
 
 @dataclass(frozen=True)

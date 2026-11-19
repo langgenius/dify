@@ -38,6 +38,7 @@ from services.knowledge.segments.contracts import (
     SegmentPage,
     SegmentPageData,
     SegmentScope,
+    SegmentStatusAction,
     SegmentStatusTransition,
     SegmentUpdateState,
 )
@@ -81,7 +82,7 @@ class SegmentStore(Protocol):
         document_ref: DocumentRef,
         segment_ids: Sequence[str],
         *,
-        action: Literal["enable", "disable"],
+        action: SegmentStatusAction,
         actor_id: str,
     ) -> tuple[SegmentStatusTransition, ...]: ...
     def restore_segment_status(
@@ -141,7 +142,7 @@ class SegmentIndex(Protocol):
         self, document_ref: DocumentRef, segments: Sequence[SegmentIndexTarget], children: Sequence[ChildChunkState]
     ) -> None: ...
     def change_status(
-        self, document_ref: DocumentRef, segment_ids: Sequence[str], action: Literal["enable", "disable"]
+        self, document_ref: DocumentRef, segment_ids: Sequence[str], action: SegmentStatusAction
     ) -> None: ...
 
 
@@ -434,7 +435,7 @@ class DatasetSegmentApplicationService:
         dataset_id: str,
         document_id: str,
         segment_ids: Sequence[str],
-        action: Literal["enable", "disable"],
+        action: SegmentStatusAction,
     ) -> None:
         scope = self._require_scope(context, dataset_id=dataset_id, document_id=document_id)
         if action == "enable":
@@ -830,7 +831,7 @@ class SegmentMutationService:
         *,
         actor_id: str,
         segment_ids: Sequence[str],
-        action: Literal["enable", "disable"],
+        action: SegmentStatusAction,
     ) -> tuple[str, ...]:
         with self._hold_document(scope.document.id):
             return self._change_status_locked(
@@ -846,7 +847,7 @@ class SegmentMutationService:
         *,
         actor_id: str,
         segment_ids: Sequence[str],
-        action: Literal["enable", "disable"],
+        action: SegmentStatusAction,
     ) -> tuple[str, ...]:
         try:
             transitions = self._store.stage_segment_status(
@@ -976,7 +977,7 @@ class SegmentMutationService:
                 scope.document.ref,
                 actor_id=actor_id,
                 segment_ids=(segment_id,),
-                action="enable",
+                action=SegmentStatusAction.ENABLE,
             )
             return
         if args.enabled is False and previous.enabled:
@@ -984,7 +985,7 @@ class SegmentMutationService:
                 scope.document.ref,
                 actor_id=actor_id,
                 segment_ids=(segment_id,),
-                action="disable",
+                action=SegmentStatusAction.DISABLE,
             )
             self._indexing_state.mark_segment_indexing(segment_id)
             return

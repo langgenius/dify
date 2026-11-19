@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import inspect
 from dataclasses import dataclass, field
-from typing import Literal
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -31,6 +30,7 @@ from services.entities.message_entities import MessageActor
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.message import MessageNotExistsError
 from services.message_more_like_this_service import MoreLikeThisResponse
+from services.message_suggested_questions_service import SuggestedQuestionsInvokeFrom
 from tests.helpers.unit.model_factories import make_end_user
 
 
@@ -88,7 +88,7 @@ class _MessageSuggestedQuestionsFake:
         app_owner_tenant_id: str,
         expected_app_mode: str,
         actor: MessageActor,
-        invoke_from: Literal["explore", "debugger", "web-app", "service-api"],
+        invoke_from: SuggestedQuestionsInvokeFrom,
         message_id: str,
     ) -> list[str]:
         self.calls.append(message_id)

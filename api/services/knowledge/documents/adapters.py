@@ -16,6 +16,7 @@ from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotIni
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from enums import DeploymentEdition
 from enums.creator import CreatorUserRole
+from enums.knowledge import KnowledgeProviderFailure
 from extensions.ext_redis import RedisClientWrapper
 from graphon.file import helpers as file_helpers
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
@@ -60,6 +61,7 @@ from services.knowledge.documents.application import (
     DocumentSourceAuthorization,
     DocumentTaskDispatcher,
     DocumentUploadError,
+    DocumentUploadFailure,
 )
 from services.knowledge.documents.contracts import (
     DocumentBatchCleanupJob,
@@ -198,7 +200,7 @@ class DocumentSourceAuthorizationAdapter(DocumentSourceAuthorization):
                         plugin_id="langgenius/notion_datasource",
                     )
             except DatasourceCredentialError as error:
-                raise DocumentProviderError(str(error), kind="uninitialized") from error
+                raise DocumentProviderError(str(error), kind=KnowledgeProviderFailure.UNINITIALIZED) from error
 
         command = build_document_write_config(config)
         if data_source is None or data_source.info_list.data_source_type != "website_crawl":
@@ -436,11 +438,11 @@ def _translate_model_errors() -> Generator[None]:
     try:
         yield
     except (ProviderTokenNotInitError, InvokeAuthorizationError) as error:
-        raise DocumentProviderError(str(error), kind="uninitialized") from error
+        raise DocumentProviderError(str(error), kind=KnowledgeProviderFailure.UNINITIALIZED) from error
     except QuotaExceededError as error:
-        raise DocumentProviderError(str(error), kind="quota") from error
+        raise DocumentProviderError(str(error), kind=KnowledgeProviderFailure.QUOTA) from error
     except ModelCurrentlyNotSupportError as error:
-        raise DocumentProviderError(str(error), kind="unsupported") from error
+        raise DocumentProviderError(str(error), kind=KnowledgeProviderFailure.UNSUPPORTED) from error
 
 
 @contextmanager
@@ -450,9 +452,9 @@ def _translate_upload_errors() -> Generator[None]:
     except NoPermissionError as error:
         raise DatasetAccessDeniedError() from error
     except FileTooLargeError as error:
-        raise DocumentUploadError(error.description, kind="too_large") from error
+        raise DocumentUploadError(error.description, kind=DocumentUploadFailure.TOO_LARGE) from error
     except UnsupportedFileTypeError as error:
-        raise DocumentUploadError(error.description, kind="unsupported") from error
+        raise DocumentUploadError(error.description, kind=DocumentUploadFailure.UNSUPPORTED) from error
 
 
 def _require_dataset(session: Session, ref: DatasetRef) -> Dataset:

@@ -1,7 +1,6 @@
 """Metadata operations persist through scoped, independently owned transactions."""
 
 from datetime import datetime
-from typing import Literal
 from unittest.mock import create_autospec
 
 import pytest
@@ -12,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.sql import Select
 
 from core.rag.index_processor.constant.built_in_field import BuiltInField
+from fields.dataset_fields import MetadataValueType
 from models.dataset import Dataset, DatasetMetadataBinding, Document, build_built_in_field_values
 from models.enums import DocumentCreatedFrom, IndexingStatus
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
@@ -181,7 +181,7 @@ def test_update_uses_canonical_names_and_preserves_partial_values(
 def test_update_accepts_values_matching_the_persisted_field_type(
     metadata_service: MetadataService,
     sqlite_session_factory: sessionmaker[Session],
-    field_type: Literal["string", "number", "time"],
+    field_type: MetadataValueType,
     value: str | int | float | None,
 ) -> None:
     field = metadata_service.create_metadata(
@@ -212,7 +212,7 @@ def test_update_accepts_values_matching_the_persisted_field_type(
 def test_update_rejects_values_that_do_not_match_the_persisted_field_type(
     metadata_service: MetadataService,
     sqlite_session_factory: sessionmaker[Session],
-    field_type: Literal["string", "number", "time"],
+    field_type: MetadataValueType,
     value: object,
     bypass_input_validation: bool,
 ) -> None:

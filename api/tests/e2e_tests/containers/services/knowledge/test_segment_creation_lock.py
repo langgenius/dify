@@ -4,7 +4,6 @@ from collections.abc import Generator, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from threading import Event
-from typing import Literal
 from uuid import uuid4
 
 import pytest
@@ -39,6 +38,7 @@ from services.knowledge.segments.contracts import (
     SegmentDocumentRecord,
     SegmentIndexTarget,
     SegmentMutationScope,
+    SegmentStatusAction,
 )
 
 
@@ -139,7 +139,7 @@ class _RecordingIndex:
         self,
         document_ref: DocumentRef,
         segment_ids: Sequence[str],
-        action: Literal["enable", "disable"],
+        action: SegmentStatusAction,
     ) -> None:
         del document_ref, segment_ids, action
         raise AssertionError("This test does not change segment status")

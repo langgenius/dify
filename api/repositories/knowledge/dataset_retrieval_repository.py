@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from models.dataset import Dataset
-from services.errors.knowledge_retrieval import KnowledgeRetrievalUnavailableError
+from services.errors.knowledge_retrieval import KnowledgeRetrievalUnavailableError, KnowledgeUnavailableReason
 
 
 @dataclass(frozen=True)
@@ -36,4 +36,4 @@ def verify_dataset_retrieval_target(session: Session, target: DatasetRetrievalTa
         select(Dataset).where(Dataset.id == target.dataset_id, Dataset.tenant_id == target.tenant_id)
     )
     if dataset is None or get_dataset_retrieval_target(dataset) != target:
-        raise KnowledgeRetrievalUnavailableError("indexing")
+        raise KnowledgeRetrievalUnavailableError(KnowledgeUnavailableReason.INDEXING)

@@ -72,6 +72,7 @@ from services.knowledge.segments.contracts import (
     SegmentDetail,
     SegmentDocumentMutationBusyError,
     SegmentListFilter,
+    SegmentStatusAction,
 )
 from services.knowledge.segments.indexing import SegmentIndexingGateway
 
@@ -769,7 +770,9 @@ def test_idle_document_keeps_segment_writes_available_at_the_store(
 
     repository.create_segments(document_ref, (_segment_create_record("segment-2"),))
     repository.save_segment(segment_ref, {"content": "edited"})
-    transitions = repository.stage_segment_status(document_ref, ("segment-1",), action="disable", actor_id="account-1")
+    transitions = repository.stage_segment_status(
+        document_ref, ("segment-1",), action=SegmentStatusAction.DISABLE, actor_id="account-1"
+    )
     with repository.child_mutation(segment_ref):
         pass
     repository.delete_segments(document_ref, ("segment-2",))
@@ -811,7 +814,9 @@ def test_active_document_rejects_every_segment_write_at_the_store(
     with pytest.raises(SegmentDocumentMutationBusyError, match="being indexed"):
         repository.delete_segments(document_ref, ("segment-1",))
     with pytest.raises(SegmentDocumentMutationBusyError, match="being indexed"):
-        repository.stage_segment_status(document_ref, ("segment-1",), action="disable", actor_id="account-1")
+        repository.stage_segment_status(
+            document_ref, ("segment-1",), action=SegmentStatusAction.DISABLE, actor_id="account-1"
+        )
     with pytest.raises(SegmentDocumentMutationBusyError, match="being indexed"):
         with repository.child_mutation(document_ref.segment("segment-1")):
             raise AssertionError("child mutation must not start while the document is indexing")
@@ -1592,7 +1597,11 @@ def test_batch_status_and_delete_only_modify_scoped_segments(
         session.add(_segment("foreign", "workspace-2", "dataset-1", "document-1"))
     segment_ids = [first.data.id, second.data.id, "foreign"]
     app.change_segment_status(
-        context, dataset_id="dataset-1", document_id="document-1", segment_ids=segment_ids, action="disable"
+        context,
+        dataset_id="dataset-1",
+        document_id="document-1",
+        segment_ids=segment_ids,
+        action=SegmentStatusAction.DISABLE,
     )
     kind, task_args = probe.tasks[-1]
     assert kind == "disable"
@@ -1650,7 +1659,7 @@ def test_status_publish_accepted_then_error_restores_state_and_same_action_retri
             dataset_id="dataset-1",
             document_id="document-1",
             segment_ids=("segment-1",),
-            action="disable",
+            action=SegmentStatusAction.DISABLE,
         )
 
     with sqlite_session_factory() as session:
@@ -1665,7 +1674,7 @@ def test_status_publish_accepted_then_error_restores_state_and_same_action_retri
         dataset_id="dataset-1",
         document_id="document-1",
         segment_ids=("segment-1",),
-        action="disable",
+        action=SegmentStatusAction.DISABLE,
     )
 
     with sqlite_session_factory() as session:

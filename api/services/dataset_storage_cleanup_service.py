@@ -2,7 +2,7 @@
 
 import datetime
 import logging
-from typing import Literal
+from enum import StrEnum
 
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
@@ -24,8 +24,14 @@ WEBSITE_CRAWL_RECEIPT_RETENTION = datetime.timedelta(hours=48)
 _RECEIPT_CLEANUP_BATCH_SIZE = 100
 
 
+class WebsiteCrawlProvider(StrEnum):
+    FIRECRAWL = "firecrawl"
+    WATERCRAWL = "watercrawl"
+    JINAREADER = "jinareader"
+
+
 class WebsiteCrawlDataSourceInfo(BaseModel):
-    provider: Literal["firecrawl", "watercrawl", "jinareader"]
+    provider: WebsiteCrawlProvider
     job_id: str
     provider_instance_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
 

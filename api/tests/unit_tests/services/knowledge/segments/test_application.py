@@ -44,6 +44,7 @@ from services.knowledge.segments.contracts import (
     SegmentMutationScope,
     SegmentPageData,
     SegmentScope,
+    SegmentStatusAction,
     SegmentStatusState,
     SegmentStatusTransition,
     SegmentUpdateState,
@@ -356,13 +357,13 @@ def test_change_status_filters_already_matching_and_indexing_segments(fixture: _
         dataset_id="dataset-1",
         document_id="document-1",
         segment_ids=("enabled", "disabled", "busy"),
-        action="disable",
+        action=SegmentStatusAction.DISABLE,
     )
 
     fixture.store.stage_segment_status.assert_called_once_with(
         _document().ref,
         ("enabled", "disabled"),
-        action="disable",
+        action=SegmentStatusAction.DISABLE,
         actor_id="account-1",
     )
     fixture.index.change_status.assert_called_once_with(_document().ref, ("enabled",), "disable")
@@ -608,7 +609,7 @@ def test_change_segment_status_reports_a_busy_document_lock_as_status_error(fixt
             dataset_id="dataset-1",
             document_id="document-1",
             segment_ids=("segment-1",),
-            action="disable",
+            action=SegmentStatusAction.DISABLE,
         )
 
     fixture.indexing_state.lock.assert_called_once_with(

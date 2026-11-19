@@ -1,7 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
+from enum import StrEnum
 from threading import Event, local
-from typing import Literal
 from uuid import uuid4
 
 import pytest
@@ -15,7 +15,10 @@ from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInput
 from models.human_input import HumanInputForm
 from services.errors.human_input import FormAlreadyHandledError
 
-_Action = Literal["submit", "timeout"]
+
+class _Action(StrEnum):
+    SUBMIT = "submit"
+    TIMEOUT = "timeout"
 
 
 class _WorkerState(local):
@@ -26,8 +29,8 @@ class _WorkerState(local):
 @pytest.mark.parametrize(
     ("first_action", "second_action", "winning_status"),
     [
-        ("submit", "timeout", HumanInputFormStatus.SUBMITTED),
-        ("timeout", "submit", HumanInputFormStatus.TIMEOUT),
+        (_Action.SUBMIT, _Action.TIMEOUT, HumanInputFormStatus.SUBMITTED),
+        (_Action.TIMEOUT, _Action.SUBMIT, HumanInputFormStatus.TIMEOUT),
     ],
 )
 def test_submit_and_timeout_serialize_on_the_form_row(

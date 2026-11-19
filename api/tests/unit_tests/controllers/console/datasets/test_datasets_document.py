@@ -48,6 +48,7 @@ from controllers.console.datasets.error import (
     InvalidActionError,
     InvalidMetadataError,
 )
+from enums.knowledge import KnowledgeProviderFailure
 from machinery.context import RequestContext
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.documents.application import (
@@ -435,7 +436,7 @@ def test_indexing_status_keeps_timestamps_counts_and_error_fields(app, documents
         (controller._raise_document_indexing_error, DocumentIndexingStateError("indexing"), DocumentIndexingError),
         (
             controller._raise_document_indexing_error,
-            DocumentProviderError("provider", kind="uninitialized"),
+            DocumentProviderError("provider", kind=KnowledgeProviderFailure.UNINITIALIZED),
             ProviderNotInitializeError,
         ),
         (controller._raise_document_indexing_error, DocumentInvalidActionError("invalid"), InvalidActionError),

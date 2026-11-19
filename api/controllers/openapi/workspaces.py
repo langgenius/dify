@@ -219,10 +219,6 @@ class WorkspaceMembersApi(Resource):
             raise BadRequest(str(exc)) from exc
         except NoPermissionError as exc:
             raise BadRequest(str(exc)) from exc
-        except WorkspaceMemberLicenseQuotaError as exc:
-            raise MemberLicenseExceeded() from exc
-        except WorkspaceInvitationQuotaError as exc:
-            raise MemberLimitExceeded() from exc
         except SeatsLimitExceededError as caught_error:
             raise BadRequest("licensed seats limit exceeded") from caught_error
         except WorkspaceMemberLicenseQuotaError as caught_error:

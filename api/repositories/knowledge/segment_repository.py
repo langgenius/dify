@@ -6,7 +6,6 @@ import json
 from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
-from typing import Literal
 
 from sqlalchemy import String, case, delete, func, literal, or_, select, tuple_, update
 from sqlalchemy import cast as sql_cast
@@ -77,6 +76,7 @@ from services.knowledge.segments.contracts import (
     SegmentIndexTarget,
     SegmentListFilter,
     SegmentPageData,
+    SegmentStatusAction,
     SegmentStatusState,
     SegmentStatusTransition,
     SegmentUpdateState,
@@ -603,7 +603,7 @@ class SQLAlchemySegmentRepository:
         document_ref: DocumentRef,
         segment_ids: Sequence[str],
         *,
-        action: Literal["enable", "disable"],
+        action: SegmentStatusAction,
         actor_id: str,
     ) -> tuple[SegmentStatusTransition, ...]:
         if not segment_ids:

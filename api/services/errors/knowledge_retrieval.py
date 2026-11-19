@@ -1,6 +1,6 @@
 """Shared errors for internal and external knowledge retrieval."""
 
-from typing import Literal
+from enum import StrEnum
 
 from services.errors.base import BaseServiceError
 
@@ -33,10 +33,15 @@ class RateLimitExceededError(KnowledgeRetrievalError):
     """Raised when the knowledge retrieval rate limit is exceeded."""
 
 
+class KnowledgeUnavailableReason(StrEnum):
+    INDEXING = "indexing"
+    FAILED = "failed"
+
+
 class KnowledgeRetrievalUnavailableError(KnowledgeRetrievalError):
     """Raised when the current vector target cannot serve a consistent result."""
 
-    def __init__(self, reason: Literal["indexing", "failed"]):
+    def __init__(self, reason: KnowledgeUnavailableReason):
         self.reason = reason
         message = (
             "Knowledge index is unavailable while indexing." if reason == "indexing" else "Knowledge indexing failed."

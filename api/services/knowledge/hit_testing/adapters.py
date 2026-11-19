@@ -26,6 +26,7 @@ from core.rag.models.document import Document
 from core.rag.rerank.rerank_type import RerankMode
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.signature import sign_upload_file_preview_url
+from enums.knowledge import KnowledgeProviderFailure
 from graphon.model_runtime.errors.invoke import InvokeError
 from machinery.context import RequestContext
 from repositories.knowledge.retrieval_source_repository import expand_attachment_document_filter
@@ -294,13 +295,15 @@ class DatasetHitTestingGateway:
                 record_query=has_metadata_matches,
             )
         except ProviderTokenNotInitError as error:
-            raise HitTestingProviderError(error.description, kind="uninitialized") from error
+            raise HitTestingProviderError(error.description, kind=KnowledgeProviderFailure.UNINITIALIZED) from error
         except QuotaExceededError as error:
-            raise HitTestingProviderError(str(error), kind="quota") from error
+            raise HitTestingProviderError(str(error), kind=KnowledgeProviderFailure.QUOTA) from error
         except ModelCurrentlyNotSupportError as error:
-            raise HitTestingProviderError(str(error), kind="unsupported") from error
+            raise HitTestingProviderError(str(error), kind=KnowledgeProviderFailure.UNSUPPORTED) from error
         except LLMBadRequestError as error:
-            raise HitTestingProviderError(_MISSING_PROVIDER_MESSAGE, kind="uninitialized") from error
+            raise HitTestingProviderError(
+                _MISSING_PROVIDER_MESSAGE, kind=KnowledgeProviderFailure.UNINITIALIZED
+            ) from error
         except InvokeError as error:
             raise HitTestingInvocationError(error.description) from error
 

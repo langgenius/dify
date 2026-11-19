@@ -1,6 +1,6 @@
 """Framework-neutral knowledge hit-testing failures."""
 
-from typing import Literal
+from enums.knowledge import KnowledgeProviderFailure
 
 
 class HitTestingError(Exception):
@@ -12,7 +12,7 @@ class HitTestingProviderError(HitTestingError):
         self,
         description: str,
         *,
-        kind: Literal["uninitialized", "quota", "unsupported"],
+        kind: KnowledgeProviderFailure,
     ) -> None:
         super().__init__(description)
         self.description = description
