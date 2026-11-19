@@ -2,19 +2,24 @@
 import type { Locale } from '@/i18n'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Combobox,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxInputGroup,
+  ComboboxInputTrigger,
+  ComboboxItem,
+  ComboboxItemIndicator,
+  ComboboxItemText,
+  ComboboxList,
+  ComboboxPopup,
+  ComboboxPortal,
+  ComboboxPositioner,
+  createComboboxItems,
+} from '@langgenius/dify-ui/combobox'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectItemIndicator,
-  SelectItemText,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from '@langgenius/dify-ui/select'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -35,12 +40,14 @@ import { basePath } from '@/utils/var'
 import { isInvitationForAccount } from '../utils/invitation-account'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
-const languageItems = languages
-  .filter((item) => item.supported)
-  .map((item) => ({ value: item.value, label: item.name }))
+const supportedLanguages = languages.filter((item) => item.supported)
+const languageItems = createComboboxItems(supportedLanguages, {
+  getValue: (item) => item.value,
+  getLabel: (item) => item.name,
+})
 
 const getInitialLanguage = (locale: Locale): Locale => {
-  if (languageItems.some((item) => item.value === locale)) return locale
+  if (supportedLanguages.some((item) => item.value === locale)) return locale
 
   return i18n.defaultLocale
 }
@@ -185,13 +192,11 @@ export default function InviteSettingsPage() {
           aria-hidden="true"
         />
       </div>
-      <div className="pt-2 pb-4">
-        <h1 className="title-4xl-semi-bold wrap-anywhere text-text-primary">
-          {requiresAccountSetup
-            ? t(($) => $.setYourAccount, { ns: 'login' })
-            : workspaceInvitationTitle}
-        </h1>
-      </div>
+      <h1 className="pt-2 pb-4 title-4xl-semi-bold wrap-anywhere text-text-primary">
+        {requiresAccountSetup
+          ? t(($) => $.setYourAccount, { ns: 'login' })
+          : workspaceInvitationTitle}
+      </h1>
       <Form
         className="grid min-w-0 gap-5"
         onFormSubmit={() => {
@@ -220,26 +225,49 @@ export default function InviteSettingsPage() {
               <FieldError>{t(($) => $.enterYourName, { ns: 'login' })}</FieldError>
             </Field>
             <Field name="interface_language">
-              <Select<Locale>
+              <FieldLabel>{t(($) => $.interfaceLanguage, { ns: 'login' })}</FieldLabel>
+              <Combobox
                 items={languageItems}
                 value={language}
-                onValueChange={(value) => {
-                  if (value !== null) setLanguage(value)
+                onValueChange={(value, details) => {
+                  if (value === null) details.cancel()
+                  else setLanguage(value)
                 }}
               >
-                <SelectLabel>{t(($) => $.interfaceLanguage, { ns: 'login' })}</SelectLabel>
-                <SelectTrigger>
-                  <SelectValue<Locale> />
-                </SelectTrigger>
-                <SelectContent>
-                  {languageItems.map((item) => (
-                    <SelectItem<Locale> key={item.value} value={item.value}>
-                      <SelectItemText>{item.label}</SelectItemText>
-                      <SelectItemIndicator />
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <ComboboxInputGroup>
+                  <ComboboxInput
+                    spellCheck={false}
+                    onKeyDown={(event) => {
+                      if (
+                        event.key === 'Enter' &&
+                        !event.nativeEvent.isComposing &&
+                        event.currentTarget.getAttribute('aria-expanded') === 'true'
+                      )
+                        event.preventDefault()
+                    }}
+                  />
+                  <ComboboxInputTrigger
+                    aria-label={t(($) => $['placeholder.select'], { ns: 'common' })}
+                  />
+                </ComboboxInputGroup>
+                <ComboboxPortal>
+                  <ComboboxPositioner>
+                    <ComboboxPopup>
+                      <ComboboxEmpty>
+                        {t(($) => $['dynamicSelect.noData'], { ns: 'common' })}
+                      </ComboboxEmpty>
+                      <ComboboxList<(typeof supportedLanguages)[number]>>
+                        {(item) => (
+                          <ComboboxItem<Locale> key={item.value} value={item.value}>
+                            <ComboboxItemText>{item.name}</ComboboxItemText>
+                            <ComboboxItemIndicator />
+                          </ComboboxItem>
+                        )}
+                      </ComboboxList>
+                    </ComboboxPopup>
+                  </ComboboxPositioner>
+                </ComboboxPortal>
+              </Combobox>
             </Field>
             <TimezoneCombobox
               label={t(($) => $.timezone, { ns: 'login' })}
@@ -251,10 +279,10 @@ export default function InviteSettingsPage() {
         <Button
           type="submit"
           variant="primary"
-          className="h-auto min-h-8 w-full py-2 whitespace-normal"
+          className="h-auto min-h-8 w-full py-2 wrap-anywhere whitespace-normal"
           loading={isActivating}
         >
-          <span className="min-w-0 wrap-anywhere">{workspaceInvitationTitle}</span>
+          {workspaceInvitationTitle}
         </Button>
       </Form>
     </div>

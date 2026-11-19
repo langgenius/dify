@@ -43,7 +43,7 @@ vi.mock('@/utils/timezone', async (importOriginal) => ({
   getBrowserTimezone: () => 'Asia/Taipei',
 }))
 
-it('chooses a time zone by keyboard without submitting the invitation prematurely', async () => {
+it('submits only the language and time zone confirmed in the pickers', async () => {
   await page.viewport(320, 740)
   mocks.activate.mockResolvedValue({ result: 'success' })
   const i18n = createInstance()
@@ -81,6 +81,7 @@ it('chooses a time zone by keyboard without submitting the invitation prematurel
 
   try {
     const name = screen.getByRole('textbox', { name: login.name })
+    const language = screen.getByRole('combobox', { name: login.interfaceLanguage })
     const timezone = screen.getByRole('combobox', { name: login.timezone, exact: true })
     const submit = screen.getByRole('button', {
       name: login.joinWorkspace.replace('{{workspaceName}}', workspaceName),
@@ -90,6 +91,28 @@ it('chooses a time zone by keyboard without submitting the invitation prematurel
     await expect
       .element(screen.getByRole('link', { name: login['license.link'] }))
       .not.toBeInTheDocument()
+
+    await expect.element(language).toHaveValue('简体中文')
+    await language.fill('unknown language')
+    await expect.element(screen.getByText(common['dynamicSelect.noData'])).toBeVisible()
+    await userEvent.keyboard('{Escape}')
+    await expect.element(language).toHaveValue('简体中文')
+
+    await language.fill('unknown language')
+    await expect.element(screen.getByText(common['dynamicSelect.noData'])).toBeVisible()
+    await userEvent.keyboard('{Enter}')
+    await expect.element(language).toHaveValue('简体中文')
+    expect(mocks.activate).not.toHaveBeenCalled()
+
+    await language.fill('United States')
+    await expect
+      .element(screen.getByRole('option', { name: 'English (United States)' }))
+      .toBeVisible()
+    await userEvent.keyboard('{ArrowDown}')
+    await expect.element(language).toHaveAttribute('aria-activedescendant')
+    await userEvent.keyboard('{Enter}')
+    await expect.element(language).toHaveValue('English (United States)')
+    expect(mocks.activate).not.toHaveBeenCalled()
 
     await timezone.click()
     const search = screen.getByRole('combobox', {
@@ -111,7 +134,7 @@ it('chooses a time zone by keyboard without submitting the invitation prematurel
       body: {
         token: 'invite-token',
         name: '邀请测试',
-        interface_language: 'zh-Hans',
+        interface_language: 'en-US',
         timezone: 'Pacific/Niue',
       },
     })
