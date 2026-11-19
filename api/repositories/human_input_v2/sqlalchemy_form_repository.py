@@ -269,7 +269,7 @@ class SQLAlchemyFormRepository(FormRepository):
             raise ValueError("Delivery-test forms must not have execution IDs")
 
         form_id = str(uuidv7())
-        now = naive_utc_now()
+        now = params.created_at if params.created_at is not None else naive_utc_now()
         values = {
             "id": form_id,
             "tenant_id": self._tenant_id,

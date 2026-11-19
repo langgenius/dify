@@ -307,7 +307,12 @@ class HumanInputFormService:
                         node_execution_id=node_execution_id,
                         resolved_form=compile_resolved_form(node_data, variable_pool),
                         expiration_time=now + duration,
-                        global_timeout_deadline=self._context.global_timeout_deadline,
+                        # Legacy forms start their global budget at form creation;
+                        # v2 uses the run-wide deadline supplied by execution.
+                        global_timeout_deadline=now + timedelta(seconds=dify_config.HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS)
+                        if self._context.form_version == "1"
+                        else self._context.global_timeout_deadline,
+                        created_at=now,
                         run_gateway=self._context.run_gateway,
                         form_version=self._context.form_version,
                         owner_ref=self._context.owner_ref,

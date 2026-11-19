@@ -4,9 +4,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from models.account import Account, TenantAccountJoin
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, EndUserType
 from models.model import App, EndUser
 from repositories.human_input_v2.file_upload_repository import FileUploadOwner, FileUploadRepository
+from services.file_grant_service import FileGrantService
 
 
 class SQLAlchemyFileUploadRepository(FileUploadRepository):
@@ -39,3 +40,18 @@ class SQLAlchemyFileUploadRepository(FileUploadRepository):
         return self.get_owner(
             tenant_id=tenant_id, app_id=app_id, owner_id=creator_id, owner_role=CreatorUserRole.ACCOUNT
         )
+
+    def get_file_grant_owner(self, *, tenant_id: str, app_id: str, subject: str) -> FileUploadOwner | None:
+        """Resolve an already minted run subject; never provision or substitute an identity."""
+        identity = self._session.scalar(
+            select(EndUser.id)
+            .join(App, App.id == EndUser.app_id)
+            .where(
+                EndUser.tenant_id == tenant_id,
+                EndUser.app_id == app_id,
+                App.tenant_id == tenant_id,
+                EndUser.type == EndUserType.APP_DEPLOY,
+                EndUser.session_id == FileGrantService.session_id_for_subject(subject),
+            )
+        )
+        return FileUploadOwner(id=identity, creator_role=CreatorUserRole.END_USER) if identity is not None else None

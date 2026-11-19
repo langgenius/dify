@@ -68,6 +68,7 @@ class FormCreateParams:
     run_gateway: Literal["dify", "enterprise"] = "dify"
     form_version: Literal["1", "2"] = "2"
     owner_ref: Mapping[str, str] | None = None
+    created_at: NaiveDatetime | None = None
 
 
 @dataclass(frozen=True, slots=True)

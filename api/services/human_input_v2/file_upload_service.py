@@ -103,6 +103,15 @@ class HumanInputV2FileUploadService:
     def _resolve_owner(self, form: Form) -> FileUploadActor:
         if form.run_gateway == "enterprise":
             reference = form.owner_ref or {}
+            subject = reference.get("file_owner_subject")
+            if subject is not None:
+                with self._sessions() as session:
+                    owner = SQLAlchemyFileUploadRepository(session).get_file_grant_owner(
+                        tenant_id=str(form.tenant_id), app_id=form.app_id, subject=subject
+                    )
+                if owner is None:
+                    raise InvalidUploadTokenError()
+                return FileUploadActor(id=owner.id, creator_role=owner.creator_role)
             role = {
                 "end_user": CreatorUserRole.END_USER,
                 "account": CreatorUserRole.ACCOUNT,

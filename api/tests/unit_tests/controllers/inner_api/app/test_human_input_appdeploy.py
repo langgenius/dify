@@ -1,5 +1,6 @@
 """Exercise the served AppDeploy contract over the existing v2 services."""
 
+from datetime import datetime, timedelta
 from uuid import uuid4
 
 import pytest
@@ -10,10 +11,14 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from controllers.inner_api import bp
 from core.helper import encrypter
+from core.human_input_v2.shared.values import TenantId
 from enums import DeploymentEdition
 from libs.datetime_utils import naive_utc_now
 from models.enums import EndUserType
 from models.model import AppMode, EndUser
+from repositories.file_grant_repository import FileGrantRepository
+from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
+from services.file_grant_service import FileGrantService
 from tests.helpers.unit.model_factories import make_app, make_tenant
 
 
@@ -72,14 +77,33 @@ def test_prepare_replay_submit_and_expire(
         "node_data": node,
         "variables": {},
         "initiator": {"type": "end_user", "id": end_user.id},
-        "run_created_at": naive_utc_now().isoformat(),
+        "run_created_at": (naive_utc_now() - timedelta(hours=1)).isoformat(),
     }
     raw_user = "customer/email@example.com:原始用户"
     if caller == "service_api":
         payload["initiator"] = {"type": "end_user", "id": raw_user, "source": "service_api"}
+    payload["file_owner_subject"] = "unminted-subject"
+    assert client.post(base + ":prepare", json=payload, headers=headers).status_code == 400
+    subject = "minted-run-subject"
+    FileGrantRepository(session_factory=sqlite_session_factory).get_or_create_subject(
+        tenant_id=tenant.id,
+        app_id=app.id,
+        session_id=FileGrantService.session_id_for_subject(subject),
+        external_user_id=subject,
+        is_anonymous=False,
+    )
+    payload["file_owner_subject"] = subject
     response = client.post(base + ":prepare", json=payload, headers=headers)
     assert response.status_code == 200, response.json
     prepared = response.json
+    with sqlite_session_factory() as session:
+        persisted = SQLAlchemyFormRepository(session, TenantId(tenant.id), app.id).get_form_by_id(prepared["form_id"])
+    assert persisted is not None
+    assert persisted.owner_ref["file_owner_subject"] == subject
+    origin = persisted.created_at if version == "1" else datetime.fromisoformat(payload["run_created_at"])
+    assert persisted.global_timeout_deadline == origin + timedelta(
+        seconds=dify_config.HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS
+    )
     assert prepared["event"]["node_id"] == "approval"
     assert prepared["event"]["node_title"] == "Approve"
     assert prepared["event"]["form_version"] == version

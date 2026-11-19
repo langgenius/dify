@@ -4,7 +4,7 @@ import json
 from datetime import datetime, timedelta
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, JsonValue, TypeAdapter
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter
 from sqlalchemy import select
 
 from configs import dify_config
@@ -22,6 +22,7 @@ from libs.helper import to_timestamp
 from models.model import App, EndUser
 from models.utils.file_input_compat import restore_input_files
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
+from repositories.human_input_v2.sqlalchemy_file_upload_repository import SQLAlchemyFileUploadRepository
 from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
 from services.app_scoped_end_user_service import AppScopedEndUserService
 from services.human_input_v2.composition import (
@@ -62,6 +63,7 @@ class PreparePayload(BaseModel):
     node_data: dict[str, JsonValue]
     variables: dict[str, JsonValue]
     initiator: InitiatorPayload | None = None
+    file_owner_subject: str | None = Field(default=None, min_length=1)
     run_created_at: datetime
 
 
@@ -99,6 +101,14 @@ class AppDeployHumanInputService:
                 }
             )
         owner_ref = {**payload.owner_ref.model_dump(), "node_id": payload.node_id}
+        if payload.file_owner_subject is not None:
+            with session_factory.create_session() as session:
+                file_owner = SQLAlchemyFileUploadRepository(session).get_file_grant_owner(
+                    tenant_id=str(tenant_id), app_id=app_id, subject=payload.file_owner_subject
+                )
+            if file_owner is None:
+                raise ValueError("Execution file owner subject has no App-scoped file grant owner")
+            owner_ref["file_owner_subject"] = payload.file_owner_subject
         if payload.initiator is not None:
             owner_ref.update(initiator_type=payload.initiator.type, initiator_id=payload.initiator.id)
         with session_factory.create_session() as session:

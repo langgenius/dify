@@ -28,10 +28,11 @@ from graphon.variables.segments import FileSegment
 from libs.datetime_utils import naive_utc_now
 from libs.external_api import ExternalApi
 from models.account import TenantAccountJoin, TenantAccountRole
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.human_input_v2 import HumanInputAuditEvent, HumanInputDelivery, HumanInputForm
-from models.model import UploadFile
+from models.model import EndUser, UploadFile
 from models.workflow import WorkflowPause, WorkflowRun, WorkflowType
+from repositories.file_grant_repository import FileGrantRepository
 from repositories.human_input_v2.delivery_repository import (
     DeliveryCreateParams,
     EmailTargetSnapshot,
@@ -45,6 +46,7 @@ from repositories.human_input_v2.recipient_repository import (
 from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchemyDeliveryRepository
 from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
 from repositories.human_input_v2.sqlalchemy_recipient_repository import SQLAlchemyRecipientRepository
+from services.file_grant_service import FileGrantService
 from services.file_service import FileService
 from services.human_input_file_upload_service import HumanInputUploadToken, InvalidUploadTokenError
 from services.human_input_v2.file_upload_service import V2_UPLOAD_TOKEN_PREFIX, HumanInputV2FileUploadService
@@ -325,3 +327,59 @@ def test_upload_authorization_does_not_record_a_form_view(approval: Approval) ->
     approval.service.validate_upload_token(grant.upload_token)
     with approval.sessions() as session:
         assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputAuditEvent)) == 0
+
+
+def test_enterprise_trigger_upload_uses_existing_execution_file_grant_owner(approval: Approval) -> None:
+    """No initiator is needed; recipient uploads retain the run's APP_DEPLOY subject."""
+    subject = "existing-enterprise-run-subject"
+    owner_id = FileGrantRepository(session_factory=approval.sessions).get_or_create_subject(
+        tenant_id=str(approval.tenant_id),
+        app_id=approval.app_id,
+        session_id=FileGrantService.session_id_for_subject(subject),
+        external_user_id=subject,
+        is_anonymous=False,
+    )
+    with approval.sessions.begin() as session:
+        form = session.get_one(HumanInputForm, approval.form_id)
+        form.run_gateway = "enterprise"
+        form.owner_ref = {"file_owner_subject": subject}
+    grant = approval.issue()
+    context = approval.service.validate_upload_token(grant.upload_token)
+    uploaded = approval.service.upload_local_file(
+        context=context, filename="review.txt", content=b"OK", mimetype="text/plain"
+    )
+    assert context.owner.id == owner_id
+    with approval.sessions() as session:
+        stored = session.get_one(UploadFile, uploaded.id)
+        assert stored.created_by == owner_id
+        assert stored.created_by_role == CreatorUserRole.END_USER
+    # Removing or retyping the run owner must invalidate the existing upload grant.
+    with approval.sessions.begin() as session:
+        session.get_one(EndUser, owner_id).type = EndUserType.TRIGGER
+    with pytest.raises(InvalidUploadTokenError):
+        approval.service.validate_upload_token(grant.upload_token)
+
+
+@pytest.mark.parametrize("mismatch", ["app", "tenant", "missing"])
+def test_enterprise_execution_file_owner_is_scoped_and_never_created(approval: Approval, mismatch: str) -> None:
+    subject = "execution-subject"
+    with approval.sessions.begin() as session:
+        form = session.get_one(HumanInputForm, approval.form_id)
+        form.run_gateway = "enterprise"
+        form.owner_ref = {"file_owner_subject": subject}
+        if mismatch != "missing":
+            session.add(
+                make_end_user(
+                    end_user_id=str(uuid4()),
+                    tenant_id=str(uuid4()) if mismatch == "tenant" else str(approval.tenant_id),
+                    app_id=str(uuid4()) if mismatch == "app" else approval.app_id,
+                    end_user_type=EndUserType.APP_DEPLOY,
+                    session_id=FileGrantService.session_id_for_subject(subject),
+                )
+            )
+    with approval.sessions() as session:
+        count = session.scalar(sa.select(sa.func.count()).select_from(EndUser))
+    with pytest.raises(InvalidUploadTokenError):
+        approval.issue()
+    with approval.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(EndUser)) == count
