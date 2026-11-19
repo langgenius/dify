@@ -555,7 +555,12 @@ class WorkflowDefinitionStore:
         marked_name: str,
         marked_comment: str,
     ) -> Workflow:
-        """Stage a validated version; the caller owns binding writes and the commit."""
+        """Stage a validated version in the caller's transaction.
+
+        The draft must exist. An active evaluator publication keeps its kind;
+        every other App publishes a standard version, matching the legacy path.
+        The caller owns binding writes and commit, and failures stage no version.
+        """
         draft_workflow = WorkflowDefinitionStore.get_draft_workflow(app_model, session=session, for_update=True)
         if draft_workflow is None:
             raise ValueError("No valid workflow found.")
