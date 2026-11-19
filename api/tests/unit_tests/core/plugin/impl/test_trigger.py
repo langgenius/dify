@@ -1,11 +1,13 @@
+from collections.abc import Callable
 from io import BytesIO
 from types import SimpleNamespace
+from typing import Literal
 
 import pytest
 from pytest_mock import MockerFixture
 from werkzeug import Request
 
-from core.plugin.entities.plugin_daemon import CredentialType
+from core.plugin.entities.plugin_daemon import CredentialType, PluginDaemonRawResponse
 from core.plugin.impl.trigger import PluginTriggerClient
 from core.trigger.entities.entities import Subscription
 from models.provider_ids import TriggerProviderID
@@ -40,7 +42,7 @@ def _trigger_provider(name: str = "provider") -> SimpleNamespace:
     )
 
 
-def _subscription_call_kwargs(method_name: str) -> dict:
+def _subscription_call_kwargs(method_name: str) -> dict[str, object]:
     if method_name == "subscribe":
         return {
             "tenant_id": "tenant-1",
@@ -62,24 +64,38 @@ def _subscription_call_kwargs(method_name: str) -> dict:
     }
 
 
+_Transformer = Callable[[PluginDaemonRawResponse], PluginDaemonRawResponse]
+
+
 class TestPluginTriggerClient:
-    def test_fetch_trigger_providers(self, mocker: MockerFixture):
+    def test_fetch_trigger_providers(self, mocker: MockerFixture) -> None:
         client = PluginTriggerClient()
         provider = _trigger_provider("remote")
 
-        def fake_request[**P](*args: P.args, **kwargs: P.kwargs):
-            transformer = kwargs["transformer"]
-            payload = {
-                "data": [
-                    {
-                        "plugin_id": "org/plugin",
-                        "provider": "remote",
-                        "declaration": {"events": [{"identity": {"provider": "old"}}]},
-                    }
-                ]
-            }
+        def fake_request(
+            method: str, path: str, type_: object, *, transformer: _Transformer, **kwargs: object
+        ) -> list[SimpleNamespace]:
+            payload = PluginDaemonRawResponse.model_validate(
+                {
+                    "code": 0,
+                    "message": "",
+                    "data": [
+                        {
+                            "plugin_id": "org/plugin",
+                            "provider": "remote",
+                            "declaration": {"events": [{"identity": {"provider": "old"}}]},
+                        }
+                    ],
+                }
+            )
             transformed = transformer(payload)
-            assert transformed["data"][0]["declaration"]["events"][0]["identity"]["provider"] == "org/plugin/remote"
+            assert transformed.data == [
+                {
+                    "plugin_id": "org/plugin",
+                    "provider": "remote",
+                    "declaration": {"events": [{"identity": {"provider": "org/plugin/remote"}}]},
+                }
+            ]
             return [provider]
 
         request_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response", side_effect=fake_request)
@@ -90,15 +106,22 @@ class TestPluginTriggerClient:
         assert result[0].declaration.identity.name == "org/plugin/remote"
         assert result[0].declaration.events[0].identity.provider == "org/plugin/remote"
 
-    def test_fetch_trigger_provider(self, mocker: MockerFixture):
+    def test_fetch_trigger_provider(self, mocker: MockerFixture) -> None:
         client = PluginTriggerClient()
         provider = _trigger_provider("provider")
 
-        def fake_request[**P](*args: P.args, **kwargs: P.kwargs):
-            transformer = kwargs["transformer"]
-            payload = {"data": {"declaration": {"events": [{"identity": {"provider": "old"}}]}}}
+        def fake_request(
+            method: str, path: str, type_: object, *, transformer: _Transformer, **kwargs: object
+        ) -> SimpleNamespace:
+            payload = PluginDaemonRawResponse.model_validate(
+                {
+                    "code": 0,
+                    "message": "",
+                    "data": {"declaration": {"events": [{"identity": {"provider": "old"}}]}},
+                }
+            )
             transformed = transformer(payload)
-            assert transformed["data"]["declaration"]["events"][0]["identity"]["provider"] == "org/plugin/provider"
+            assert transformed.data == {"declaration": {"events": [{"identity": {"provider": "org/plugin/provider"}}]}}
             return provider
 
         request_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response", side_effect=fake_request)
@@ -109,7 +132,7 @@ class TestPluginTriggerClient:
         assert result.declaration.identity.name == "org/plugin/provider"
         assert result.declaration.events[0].identity.provider == "org/plugin/provider"
 
-    def test_invoke_trigger_event(self, mocker: MockerFixture):
+    def test_invoke_trigger_event(self, mocker: MockerFixture) -> None:
         client = PluginTriggerClient()
         stream_mock = mocker.patch.object(
             client,
@@ -133,7 +156,7 @@ class TestPluginTriggerClient:
         assert result.variables == {"ok": True}
         assert stream_mock.call_count == 1
 
-    def test_invoke_trigger_event_no_response_raises(self, mocker: MockerFixture):
+    def test_invoke_trigger_event_no_response_raises(self, mocker: MockerFixture) -> None:
         client = PluginTriggerClient()
         mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
@@ -151,7 +174,7 @@ class TestPluginTriggerClient:
                 payload={"payload": 1},
             )
 
-    def test_validate_provider_credentials(self, mocker: MockerFixture):
+    def test_validate_provider_credentials(self, mocker: MockerFixture) -> None:
         client = PluginTriggerClient()
         stream_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response_stream")
 
@@ -164,7 +187,7 @@ class TestPluginTriggerClient:
         ):
             client.validate_provider_credentials("tenant-1", "user-1", "org/plugin/provider", {"k": "v"})
 
-    def test_dispatch_event(self, mocker: MockerFixture):
+    def test_dispatch_event(self, mocker: MockerFixture) -> None:
         client = PluginTriggerClient()
         stream_mock = mocker.patch.object(
             client,
@@ -196,7 +219,9 @@ class TestPluginTriggerClient:
             )
 
     @pytest.mark.parametrize("method_name", ["subscribe", "unsubscribe", "refresh"])
-    def test_subscription_operations_success(self, mocker: MockerFixture, method_name):
+    def test_subscription_operations_success(
+        self, mocker: MockerFixture, method_name: Literal["subscribe", "unsubscribe", "refresh"]
+    ) -> None:
         client = PluginTriggerClient()
         stream_mock = mocker.patch.object(
             client,
@@ -218,7 +243,12 @@ class TestPluginTriggerClient:
             ("refresh", "No response received from plugin daemon for refresh"),
         ],
     )
-    def test_subscription_operations_no_response(self, mocker: MockerFixture, method_name, expected):
+    def test_subscription_operations_no_response(
+        self,
+        mocker: MockerFixture,
+        method_name: Literal["subscribe", "unsubscribe", "refresh"],
+        expected: str,
+    ) -> None:
         client = PluginTriggerClient()
         mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
         method = getattr(client, method_name)

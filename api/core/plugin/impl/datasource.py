@@ -13,7 +13,11 @@ from core.datasource.entities.datasource_entities import (
 )
 from core.plugin.entities.plugin_daemon import (
     PluginBasicBooleanResponse,
+    PluginDaemonRawResponse,
     PluginDatasourceProviderEntity,
+    as_plugin_daemon_json_array,
+    as_plugin_daemon_json_object,
+    validate_plugin_daemon_json_value,
 )
 from core.plugin.impl.base import BasePluginClient
 from core.schemas.resolver import resolve_dify_schema_refs
@@ -28,16 +32,35 @@ class PluginDatasourceManager(BasePluginClient):
         Fetch datasource providers for the given tenant.
         """
 
-        def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
-            if json_response.get("data"):
-                for provider in json_response.get("data", []):
-                    declaration = provider.get("declaration", {}) or {}
-                    provider_name = declaration.get("identity", {}).get("name")
-                    for datasource in declaration.get("datasources", []):
-                        datasource["identity"]["provider"] = provider_name
-                        # resolve refs
-                        if datasource.get("output_schema"):
-                            datasource["output_schema"] = resolve_dify_schema_refs(datasource["output_schema"])
+        def transformer(json_response: PluginDaemonRawResponse) -> PluginDaemonRawResponse:
+            """Enrich parsed datasource-provider data and resolve valid output schemas.
+
+            Precondition: the daemon envelope has passed Pydantic validation.
+            Postcondition: valid nested identities and schemas are updated and the same response is returned on success;
+            malformed branches are skipped and schema-resolution errors propagate.
+            """
+            providers = as_plugin_daemon_json_array(json_response.data)
+            if providers:
+                for provider_value in providers:
+                    provider = as_plugin_daemon_json_object(provider_value)
+                    if provider is not None:
+                        declaration = as_plugin_daemon_json_object(provider.get("declaration"))
+                        if declaration is not None:
+                            identity = as_plugin_daemon_json_object(declaration.get("identity"))
+                            provider_name = identity.get("name") if identity is not None else None
+                            datasources = as_plugin_daemon_json_array(declaration.get("datasources"))
+                            if datasources is not None:
+                                for datasource_value in datasources:
+                                    datasource = as_plugin_daemon_json_object(datasource_value)
+                                    if datasource is not None:
+                                        datasource_identity = as_plugin_daemon_json_object(datasource.get("identity"))
+                                        if datasource_identity is not None:
+                                            datasource_identity["provider"] = provider_name
+                                        output_schema = as_plugin_daemon_json_object(datasource.get("output_schema"))
+                                        if output_schema:
+                                            datasource["output_schema"] = validate_plugin_daemon_json_value(
+                                                resolve_dify_schema_refs(output_schema)
+                                            )
 
             return json_response
 
@@ -70,16 +93,35 @@ class PluginDatasourceManager(BasePluginClient):
         Fetch datasource providers for the given tenant.
         """
 
-        def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
-            if json_response.get("data"):
-                for provider in json_response.get("data", []):
-                    declaration = provider.get("declaration", {}) or {}
-                    provider_name = declaration.get("identity", {}).get("name")
-                    for datasource in declaration.get("datasources", []):
-                        datasource["identity"]["provider"] = provider_name
-                        # resolve refs
-                        if datasource.get("output_schema"):
-                            datasource["output_schema"] = resolve_dify_schema_refs(datasource["output_schema"])
+        def transformer(json_response: PluginDaemonRawResponse) -> PluginDaemonRawResponse:
+            """Enrich parsed datasource-provider data and resolve valid output schemas.
+
+            Precondition: the daemon envelope has passed Pydantic validation.
+            Postcondition: valid nested identities and schemas are updated and the same response is returned on success;
+            malformed branches are skipped and schema-resolution errors propagate.
+            """
+            providers = as_plugin_daemon_json_array(json_response.data)
+            if providers:
+                for provider_value in providers:
+                    provider = as_plugin_daemon_json_object(provider_value)
+                    if provider is not None:
+                        declaration = as_plugin_daemon_json_object(provider.get("declaration"))
+                        if declaration is not None:
+                            identity = as_plugin_daemon_json_object(declaration.get("identity"))
+                            provider_name = identity.get("name") if identity is not None else None
+                            datasources = as_plugin_daemon_json_array(declaration.get("datasources"))
+                            if datasources is not None:
+                                for datasource_value in datasources:
+                                    datasource = as_plugin_daemon_json_object(datasource_value)
+                                    if datasource is not None:
+                                        datasource_identity = as_plugin_daemon_json_object(datasource.get("identity"))
+                                        if datasource_identity is not None:
+                                            datasource_identity["provider"] = provider_name
+                                        output_schema = as_plugin_daemon_json_object(datasource.get("output_schema"))
+                                        if output_schema:
+                                            datasource["output_schema"] = validate_plugin_daemon_json_value(
+                                                resolve_dify_schema_refs(output_schema)
+                                            )
 
             return json_response
 
@@ -112,13 +154,30 @@ class PluginDatasourceManager(BasePluginClient):
 
         tool_provider_id = DatasourceProviderID(provider_id)
 
-        def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
-            data = json_response.get("data")
-            if data:
-                for datasource in data.get("declaration", {}).get("datasources", []):
-                    datasource["identity"]["provider"] = tool_provider_id.provider_name
-                    if datasource.get("output_schema"):
-                        datasource["output_schema"] = resolve_dify_schema_refs(datasource["output_schema"])
+        def transformer(json_response: PluginDaemonRawResponse) -> PluginDaemonRawResponse:
+            """Enrich parsed datasource-provider data and resolve valid output schemas.
+
+            Precondition: the daemon envelope has passed Pydantic validation.
+            Postcondition: valid nested identities and schemas are updated and the same response is returned on success;
+            malformed branches are skipped and schema-resolution errors propagate.
+            """
+            data = as_plugin_daemon_json_object(json_response.data)
+            declaration = as_plugin_daemon_json_object(data.get("declaration")) if data is not None else None
+            datasources = (
+                as_plugin_daemon_json_array(declaration.get("datasources")) if declaration is not None else None
+            )
+            if datasources is not None:
+                for datasource_value in datasources:
+                    datasource = as_plugin_daemon_json_object(datasource_value)
+                    if datasource is not None:
+                        datasource_identity = as_plugin_daemon_json_object(datasource.get("identity"))
+                        if datasource_identity is not None:
+                            datasource_identity["provider"] = tool_provider_id.provider_name
+                        output_schema = as_plugin_daemon_json_object(datasource.get("output_schema"))
+                        if output_schema:
+                            datasource["output_schema"] = validate_plugin_daemon_json_value(
+                                resolve_dify_schema_refs(output_schema)
+                            )
             return json_response
 
         response = self._request_with_plugin_daemon_response(

@@ -18,6 +18,7 @@ from core.plugin.entities.plugin_daemon import (
     PluginDaemonBasicResponse,
     PluginDaemonError,
     PluginDaemonInnerError,
+    PluginDaemonRawResponse,
     PluginListResponse,
 )
 from core.plugin.impl.exc import (
@@ -326,10 +327,16 @@ class BasePluginClient:
         data: bytes | dict[str, Any] | None = None,
         params: dict[str, Any] | None = None,
         files: dict[str, Any] | None = None,
-        transformer: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
+        transformer: Callable[[PluginDaemonRawResponse], PluginDaemonRawResponse] | None = None,
     ) -> T:
-        """
-        Make a request to the plugin daemon inner API and return the response as a model.
+        """Request and validate a plugin-daemon response.
+
+        Preconditions: ``type_`` is the expected final payload type; when a transformer
+        is supplied, the response body is a JSON object with a plugin-daemon envelope.
+        Postconditions: responses with transformers are parsed into
+        ``PluginDaemonRawResponse`` once before mutation, then validated as the requested
+        final response; extra JSON fields and the existing data-null error behavior are
+        preserved. Without a transformer, legacy normalization is unchanged.
         """
         try:
             response = self._request(method, path, headers, data, params, files)
@@ -347,8 +354,10 @@ class BasePluginClient:
 
         try:
             json_response = response.json()
-            if transformer:
-                json_response = transformer(json_response)
+            if transformer is not None:
+                parsed_response = PluginDaemonRawResponse.model_validate(json_response)
+                transformed_response = transformer(parsed_response)
+                json_response = transformed_response.model_dump(mode="json")
             json_response = _normalize_plugin_daemon_response_for_type(json_response, type_)
             # https://stackoverflow.com/questions/59634937/variable-foo-class-is-not-valid-as-type-but-why
             rep = PluginDaemonBasicResponse[type_].model_validate(json_response)  # type: ignore

@@ -6,7 +6,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter
 
 from core.agent.plugin_entities import AgentProviderEntityWithPlugin
 from core.datasource.entities.datasource_entities import DatasourceProviderEntityWithPlugin
@@ -28,6 +28,61 @@ class PluginDaemonBasicResponse[T: BaseModel | dict | list | bool | str](BaseMod
     code: int
     message: str
     data: T | None = None
+
+
+_PLUGIN_DAEMON_JSON_VALUE_ADAPTER: TypeAdapter[JsonValue] = TypeAdapter(JsonValue)
+
+
+class PluginDaemonRawResponse(BaseModel):
+    """Parsed JSON envelope passed to plugin-daemon response transformers.
+
+    The raw boundary accepts an omitted or null ``data`` field because legacy
+    daemon responses can omit it; the final typed response still owns the
+    existing success/error semantics. Unknown fields are validated as JSON and
+    retained so transformation does not silently discard future daemon data.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    __pydantic_extra__: dict[str, JsonValue] = Field(init=False)
+
+    code: int
+    message: str
+    data: JsonValue | None = None
+
+
+def validate_plugin_daemon_json_value(value: object) -> JsonValue:
+    """Validate a transformed plugin-daemon JSON value at its Pydantic boundary.
+
+    Preconditions: ``value`` is a schema produced by the plugin-schema resolver.
+    Postcondition: the result is a JSON-compatible value suitable for a JSON
+    field in the raw response model; invalid resolver output raises Pydantic's validation error.
+    """
+    return _PLUGIN_DAEMON_JSON_VALUE_ADAPTER.validate_python(value)
+
+
+def as_plugin_daemon_json_object(value: JsonValue) -> dict[str, JsonValue] | None:
+    """Narrow a parsed JSON value to a mutable object, or return None.
+
+    Preconditions: ``value`` is JSON data parsed by the raw response model.
+    Postcondition: a non-None result has string keys and only JSON values; the
+    original object is returned so transformer mutations affect the envelope.
+    """
+    if isinstance(value, dict):
+        return value
+    return None
+
+
+def as_plugin_daemon_json_array(value: JsonValue) -> list[JsonValue] | None:
+    """Narrow a parsed JSON value to an array, or return None.
+
+    Preconditions: ``value`` is JSON data parsed by the raw response model.
+    Postcondition: a non-None result contains only JSON values and is the
+    original mutable array, so transformer mutations remain in the envelope.
+    """
+    if isinstance(value, list):
+        return value
+    return None
 
 
 class InstallPluginMessage(BaseModel):

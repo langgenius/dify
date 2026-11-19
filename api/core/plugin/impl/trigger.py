@@ -4,7 +4,13 @@ from typing import Any
 
 from flask import Request
 
-from core.plugin.entities.plugin_daemon import CredentialType, PluginTriggerProviderEntity
+from core.plugin.entities.plugin_daemon import (
+    CredentialType,
+    PluginDaemonRawResponse,
+    PluginTriggerProviderEntity,
+    as_plugin_daemon_json_array,
+    as_plugin_daemon_json_object,
+)
 from core.plugin.entities.request import (
     TriggerDispatchResponse,
     TriggerInvokeEventResponse,
@@ -23,12 +29,32 @@ class PluginTriggerClient(BasePluginClient):
         Fetch trigger providers for the given tenant.
         """
 
-        def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
-            for provider in json_response.get("data", []):
-                declaration = provider.get("declaration", {}) or {}
-                provider_id = provider.get("plugin_id") + "/" + provider.get("provider")
-                for event in declaration.get("events", []):
-                    event["identity"]["provider"] = provider_id
+        def transformer(json_response: PluginDaemonRawResponse) -> PluginDaemonRawResponse:
+            """Enrich parsed trigger-event identities in place.
+
+            Precondition: the daemon envelope has passed Pydantic validation.
+            Postcondition: valid nested identities are updated; malformed branches are untouched;
+            the same response is returned.
+            """
+            providers = as_plugin_daemon_json_array(json_response.data)
+            if providers is not None:
+                for provider_value in providers:
+                    provider = as_plugin_daemon_json_object(provider_value)
+                    if provider is not None:
+                        plugin_id = provider.get("plugin_id")
+                        provider_name = provider.get("provider")
+                        declaration = as_plugin_daemon_json_object(provider.get("declaration"))
+                        events = (
+                            as_plugin_daemon_json_array(declaration.get("events")) if declaration is not None else None
+                        )
+                        if isinstance(plugin_id, str) and isinstance(provider_name, str) and events is not None:
+                            provider_id = f"{plugin_id}/{provider_name}"
+                            for event_value in events:
+                                event = as_plugin_daemon_json_object(event_value)
+                                if event is not None:
+                                    identity = as_plugin_daemon_json_object(event.get("identity"))
+                                    if identity is not None:
+                                        identity["provider"] = provider_id
 
             return json_response
 
@@ -54,11 +80,23 @@ class PluginTriggerClient(BasePluginClient):
         Fetch trigger provider for the given tenant and plugin.
         """
 
-        def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
-            data = json_response.get("data")
-            if data:
-                for event in data.get("declaration", {}).get("events", []):
-                    event["identity"]["provider"] = str(provider_id)
+        def transformer(json_response: PluginDaemonRawResponse) -> PluginDaemonRawResponse:
+            """Enrich parsed trigger-event identities in place.
+
+            Precondition: the daemon envelope has passed Pydantic validation.
+            Postcondition: valid nested identities are updated; malformed branches are untouched;
+            the same response is returned.
+            """
+            data = as_plugin_daemon_json_object(json_response.data)
+            declaration = as_plugin_daemon_json_object(data.get("declaration")) if data is not None else None
+            events = as_plugin_daemon_json_array(declaration.get("events")) if declaration is not None else None
+            if events is not None:
+                for event_value in events:
+                    event = as_plugin_daemon_json_object(event_value)
+                    if event is not None:
+                        identity = as_plugin_daemon_json_object(event.get("identity"))
+                        if identity is not None:
+                            identity["provider"] = str(provider_id)
 
             return json_response
 

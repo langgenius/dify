@@ -4,13 +4,14 @@ from urllib.parse import quote
 
 import httpx
 import pytest
-from pydantic import BaseModel
+from pydantic import BaseModel, JsonValue
 from pytest_mock import MockerFixture
 
 from core.plugin.endpoint.exc import EndpointSetupFailedError
 from core.plugin.entities.plugin_daemon import (
     PluginDaemonBasicResponse,
     PluginDaemonInnerError,
+    PluginDaemonRawResponse,
     PluginListResponse,
 )
 from core.plugin.impl.base import PLUGIN_DAEMON_MAX_PATH_LENGTH, BasePluginClient
@@ -23,7 +24,7 @@ from core.trigger.errors import (
 )
 
 
-def _response[T: BaseModel | dict[str, object] | list[object] | bool | str](
+def _response[T: BaseModel | dict[str, JsonValue] | list[JsonValue] | bool | str](
     payload: PluginDaemonBasicResponse[T],
 ) -> httpx.Response:
     """Serve the real daemon envelope through the real response class the client consumes."""
@@ -35,7 +36,7 @@ def _response[T: BaseModel | dict[str, object] | list[object] | bool | str](
     )
 
 
-def _legacy_array_response(payload: list[object]) -> httpx.Response:
+def _legacy_array_response(payload: list[JsonValue]) -> httpx.Response:
     """Serve a bare JSON array, the shape older daemons returned for plugin lists."""
 
     return httpx.Response(200, json=payload, request=httpx.Request("GET", "http://plugin-daemon/test"))
@@ -116,21 +117,54 @@ class TestBasePluginClientImpl:
         with pytest.raises(ValueError, match="Failed to request plugin daemon"):
             client._request_with_plugin_daemon_response("GET", "plugin/tenant/path", bool)
 
-    def test_request_with_plugin_daemon_response_applies_transformer(self) -> None:
-        envelope = PluginDaemonBasicResponse[bool](code=0, message="", data=True)
-        transport = httpx.MockTransport(lambda _: _response(envelope))
+    def test_request_with_plugin_daemon_response_applies_typed_transformer_and_preserves_unknown_keys(self) -> None:
+        payload = {
+            "code": 0,
+            "message": "",
+            "data": {"nested": ["keep", {"future": True}]},
+            "future_envelope_key": {"also": "keep"},
+        }
+        transport = httpx.MockTransport(
+            lambda _: httpx.Response(200, json=payload, request=httpx.Request("GET", "http://plugin-daemon/test"))
+        )
         client = BasePluginClient(httpx_client=httpx.Client(transport=transport))
-        transformed: list[PluginDaemonBasicResponse[bool]] = []
+        transformed: list[PluginDaemonRawResponse] = []
 
-        def transformer(json_response: dict[str, object]) -> dict[str, object]:
-            parsed = PluginDaemonBasicResponse[bool].model_validate(json_response)
-            transformed.append(parsed)
+        def transformer(json_response: PluginDaemonRawResponse) -> PluginDaemonRawResponse:
+            transformed.append(json_response)
             return json_response
 
-        result = client._request_with_plugin_daemon_response("GET", "plugin/tenant/path", bool, transformer=transformer)
+        result = client._request_with_plugin_daemon_response(
+            "GET", "plugin/tenant/path", dict[str, JsonValue], transformer=transformer
+        )
 
-        assert result is True
-        assert transformed == [envelope]
+        assert result == payload["data"]
+        assert [response.model_dump(mode="json") for response in transformed] == [payload]
+
+    @pytest.mark.parametrize("include_data", [False, True])
+    def test_request_with_plugin_daemon_response_transformer_accepts_missing_or_null_data(
+        self, include_data: bool
+    ) -> None:
+        payload: dict[str, JsonValue] = {"code": 0, "message": ""}
+        if include_data:
+            payload["data"] = None
+        client = BasePluginClient(
+            httpx_client=httpx.Client(
+                transport=httpx.MockTransport(
+                    lambda _: httpx.Response(
+                        200,
+                        json=payload,
+                        request=httpx.Request("GET", "http://plugin-daemon/test"),
+                    )
+                )
+            )
+        )
+
+        def transformer(json_response: PluginDaemonRawResponse) -> PluginDaemonRawResponse:
+            return json_response
+
+        with pytest.raises(ValueError, match="got empty data from plugin daemon"):
+            client._request_with_plugin_daemon_response("GET", "plugin/tenant/path", bool, transformer=transformer)
 
     def test_request_with_plugin_daemon_response_accepts_legacy_plugin_list_data_array(self) -> None:
         envelope = PluginDaemonBasicResponse[list[object]](code=0, message="", data=[])
