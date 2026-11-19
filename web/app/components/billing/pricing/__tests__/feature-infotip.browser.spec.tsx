@@ -39,11 +39,12 @@ async function outlastHoverCloseDelay() {
   await vi.advanceTimersByTimeAsync(300)
 }
 
-// Skipped: with fake timers the hovered popup intermittently stays open after the pointer moves to
-// the plan title (failed in Web Browser Tests on langgenius/dify#46695, ~1 in 5 local runs). The
-// earlier fixed-sleep version was stable. Re-enable once the hover-close delay can be driven
-// deterministically without fixed sleeps.
-it.skip('reanchors a pinned explanation to a hovered feature in the same or another plan', async () => {
+// Base UI keeps a hover-opened popup open on clicks within 500 ms, so pin and unpin after that window.
+async function outlastPatientClickThreshold() {
+  await vi.advanceTimersByTimeAsync(500)
+}
+
+it('reanchors a pinned explanation to a hovered feature in the same or another plan', async () => {
   // boundary: advance only the hover delays; pointer events and positioning stay real.
   vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout'] })
   onTestFinished(() => {
@@ -83,9 +84,11 @@ it.skip('reanchors a pinned explanation to a hovered feature in the same or anot
     await outlastHoverCloseDelay()
     await expect.element(popup).toBeVisible()
     await title.hover()
+    await outlastHoverCloseDelay()
     await expect.element(popup).not.toBeInTheDocument()
     await next.hover()
     await expect.element(popup).toBeVisible()
+    await outlastPatientClickThreshold()
     await next.click()
     await title.hover()
     await outlastHoverCloseDelay()
