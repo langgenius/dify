@@ -8,7 +8,6 @@ import { useTranslation } from 'react-i18next'
 import { downloadUrl } from '@/utils/download'
 import { getEvaluationFile, useEvaluationRunDetailQuery } from '../../queries'
 import { useEvaluationResource } from '../../store'
-import { decodeModelSelection } from '../../utils'
 import PipelineResultsTable from './pipeline-results-table'
 import { getMetricColumns, getRunDate } from './pipeline-results-utils'
 
@@ -26,7 +25,6 @@ const PipelineResultsPreview = ({
   const { t } = useTranslation(['evaluation'])
   const [page, setPage] = useState(1)
   const resource = useEvaluationResource(resourceType, resourceId)
-  const selectedModel = decodeModelSelection(resource.judgeModelId)
   const runDetailQuery = useEvaluationRunDetailQuery(
     { resourceType, resourceId },
     { runId, page, pageSize: PAGE_SIZE },
@@ -42,6 +40,7 @@ const PipelineResultsPreview = ({
       ? runDetailQuery.data
       : undefined
   const items = runDetail?.items.data ?? []
+  const evaluationModel = runDetail?.run.evaluation_model
   const metricColumns = getMetricColumns(resource, items)
   const isLoading = runDetailQuery.isPending || (!runDetail && runDetailQuery.isFetching)
   const totalPages = Math.ceil((runDetail?.items.total ?? 0) / PAGE_SIZE)
@@ -65,7 +64,7 @@ const PipelineResultsPreview = ({
               count: runDetail?.run.total_items ?? runDetail?.items.total ?? items.length,
             })}
           </span>
-          {selectedModel && (
+          {evaluationModel && (
             <>
               <span aria-hidden="true">·</span>
               <span className="inline-flex min-w-0 items-center gap-1.5 rounded-lg bg-background-section-burn px-2 py-1">
@@ -73,7 +72,7 @@ const PipelineResultsPreview = ({
                   aria-hidden="true"
                   className="i-ri-robot-2-line h-4 w-4 shrink-0 text-text-accent"
                 />
-                <span className="truncate">{selectedModel.model}</span>
+                <span className="truncate">{evaluationModel}</span>
               </span>
             </>
           )}

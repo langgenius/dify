@@ -551,10 +551,29 @@ class WorkflowDefinitionStore:
         marked_name: str,
         marked_comment: str,
     ) -> Workflow:
-        """Stage a validated version; the caller owns binding writes and the commit."""
+        """Stage a validated version in the caller's transaction.
+
+        The draft must exist. An active evaluator publication keeps its kind;
+        every other App publishes a standard version, matching the legacy path.
+        The caller owns binding writes and commit, and failures stage no version.
+        """
         draft_workflow = WorkflowDefinitionStore.get_draft_workflow(app_model, session=session, for_update=True)
         if draft_workflow is None:
             raise ValueError("No valid workflow found.")
+
+        active_kind = (
+            session.scalar(
+                select(Workflow.kind).where(
+                    Workflow.tenant_id == app_model.tenant_id,
+                    Workflow.app_id == app_model.id,
+                    Workflow.id == app_model.workflow_id,
+                    Workflow.version != Workflow.VERSION_DRAFT,
+                )
+            )
+            if app_model.workflow_id
+            else None
+        )
+        publication_kind = WorkflowKind.EVALUATION if active_kind == WorkflowKind.EVALUATION else WorkflowKind.STANDARD
 
         # create new workflow
         workflow = Workflow.new(
@@ -571,6 +590,7 @@ class WorkflowDefinitionStore:
             marked_comment=marked_comment,
             rag_pipeline_variables=draft_workflow.rag_pipeline_variables,
             features=draft_workflow.features,
+            kind=publication_kind.value,
         )
 
         # Same tenant and revision: preserve ciphertext without a remote key

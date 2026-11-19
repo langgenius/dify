@@ -14,6 +14,7 @@ from repositories.agent.workflow_binding_repository import WorkflowAgentBindingR
 from repositories.workflow.definition_repository import workflow_snapshot
 from services.errors.app import WorkflowHashNotEqualError
 from services.workflow.contracts import WorkflowSnapshot
+from services.workflow.snippet_policy import validate_snippet_graph_forbidden_nodes
 
 
 @dataclass
@@ -76,6 +77,11 @@ class SnippetPublicationRepository:
 
     @contextmanager
     def publication(self, source: WorkflowSnapshot) -> Generator[SnippetPublicationTransaction]:
+        """Yield a locked, unchanged Snippet draft that satisfies node restrictions.
+
+        The context commits publication on success and rolls back on a stale or
+        forbidden draft, so no invalid published version can be staged here.
+        """
         with self._sessions(expire_on_commit=False) as session, session.begin():
             snippet = session.scalar(
                 select(CustomizedSnippet)
@@ -85,6 +91,7 @@ class SnippetPublicationRepository:
             draft = session.scalar(self._draft(source.tenant_id, source.app_id).with_for_update())
             if snippet is None or draft is None or workflow_snapshot(draft) != source:
                 raise WorkflowHashNotEqualError()
+            validate_snippet_graph_forbidden_nodes(draft.graph_dict)
             yield SnippetPublicationTransaction(
                 session, snippet, workflow_snapshot(draft), WorkflowAgentBindingRepository(session)
             )
