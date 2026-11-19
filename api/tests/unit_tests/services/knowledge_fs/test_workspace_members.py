@@ -100,7 +100,6 @@ def test_remove_member_reassigns_owned_control_space_before_deleting_membership(
         account_id=member.id,
         owner_id=owner.id,
         actor_account_id=owner.id,
-        delete_orphaned_pending_account=True,
     )
     sqlite_session.expire_all()
 
@@ -145,7 +144,6 @@ def test_remove_member_with_only_greenfield_audit_anchor(
         account_id=member.id,
         owner_id=owner.id,
         actor_account_id=owner.id,
-        delete_orphaned_pending_account=True,
     )
     sqlite_session.expire_all()
 

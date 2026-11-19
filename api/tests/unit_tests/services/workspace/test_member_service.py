@@ -18,10 +18,16 @@ from models.account import TenantAccountRole as _member_service_TenantAccountRol
 from models.dataset import Dataset
 from models.human_input_v2 import HumanInputContactIdentity
 from models.model import App, AppMode
+from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from services.account.adapters import RedisInvitationTokenStore
 from services.account_errors import AccountNotFoundError
 from services.enterprise.rbac_service import RBACService
-from services.entities.account_activation_entities import PendingWorkspaceInvitation
+from services.entities.account_activation_entities import (
+    AccountSetup,
+    InvitationLookup,
+    InvitationToken,
+    PendingWorkspaceInvitation,
+)
 from services.entities.account_entities import AccountSnapshot
 from services.entities.feature_entities import FeatureModel, LicenseLimitationModel, LicenseModel, LimitationModel
 from services.errors.base import NoPermissionError
@@ -61,6 +67,7 @@ from services.workspace.member_service import (
     WorkspaceOwnerTransferService,
 )
 from tests.helpers.unit.account_domain import AccountDomain
+from tests.helpers.unit.redis_commands import RedisCommandEmulator
 
 """Membership and invitation behavior across the application/persistence boundary."""
 
@@ -121,39 +128,62 @@ class TestMemberServiceCases:
         account_domain.access.membership_changed.assert_not_called()
 
     @staticmethod
-    @pytest.mark.parametrize(
-        ("status", "other_workspace", "deleted"),
-        [("pending", False, True), ("pending", True, False), ("active", False, False)],
-    )
-    def test_removal_deletes_only_orphaned_pending_accounts(
+    @pytest.mark.parametrize("status", ["pending", "active"])
+    def test_removal_keeps_the_account(
         account_domain: AccountDomain,
         sqlite_session: Session,
         members: tuple[str, str, str],
         status: str,
-        other_workspace: bool,
-        deleted: bool,
     ) -> None:
         workspace_id, owner_id, member_id = members
         member = sqlite_session.get(Account, member_id)
         assert member is not None
         member.status = AccountStatus(status)
-        if other_workspace:
-            tenant = Tenant(name="Other")
-            sqlite_session.add_all(
-                [
-                    tenant,
-                    TenantAccountJoin(
-                        account_id=member_id, tenant_id=tenant.id, role=_member_service_TenantAccountRole.NORMAL
-                    ),
-                ]
-            )
         sqlite_session.commit()
         sqlite_session.expunge_all()
+
         account_domain.members.remove(workspace_id, member_id, owner_id)
-        assert (sqlite_session.get(Account, member_id) is None) == deleted
+
+        assert sqlite_session.get(Account, member_id) is not None
         assert account_domain.members.get_role(workspace_id, member_id) is None
         account_domain.access.member_removed.assert_called_once()
-        assert account_domain.access.member_removed.call_args.args[1].account_deleted == deleted
+
+    @staticmethod
+    def test_removing_a_pending_member_keeps_another_workspaces_invitation_acceptable(
+        account_domain: AccountDomain,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        members: tuple[str, str, str],
+        redis_transport: tuple[RedisClientWrapper, Mock],
+    ) -> None:
+        workspace_id, owner_id, member_id = members
+        member = sqlite_session.get(Account, member_id)
+        assert member is not None
+        member.status = AccountStatus.PENDING
+        other = Tenant(name="Other workspace")
+        sqlite_session.add(other)
+        sqlite_session.commit()
+        other_id, email = other.id, member.email
+        redis_transport[1].side_effect = RedisCommandEmulator()
+        tokens = RedisInvitationTokenStore(redis=redis_transport[0])
+        link = tokens.create(InvitationToken(member_id, email, other_id, "editor", True))
+
+        account_domain.members.remove(workspace_id, member_id, owner_id)
+
+        assert [invitation.email for invitation in tokens.list_pending(other_id)] == [email]
+        accepted = tokens.find(InvitationLookup(workspace_id=None, email=None, token=link))
+        assert accepted is not None
+        activation = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
+        invitation = activation.resolve(accepted)
+        assert invitation is not None
+        result = activation.activate(
+            invitation,
+            role="editor",
+            setup=AccountSetup(name="Member", interface_language="en-US", timezone="UTC"),
+        )
+        assert result is not None
+        assert result.membership_created
+        assert account_domain.members.get_role(other_id, member_id) == TenantAccountRole.EDITOR
 
     @staticmethod
     @pytest.mark.parametrize("action", ["add", "remove", "update"])
@@ -544,7 +574,6 @@ class TestMemberServiceCases:
         account_domain.delivery.requires_capacity_check = True
         owner = RequestContext("request", None, owner_id, workspace_id)
 
-        # 2 members + 2 live invitations fill the plan; resending one of them takes no new seat.
         results = account_domain.invitations.invite_many(
             owner, emails=["Reinvited@example.com"], language=None, role="normal"
         )
@@ -578,7 +607,6 @@ class TestMemberServiceCases:
             workspace_id, "member@example.com", account_id=member_id
         )
         assert account_domain.members.get_role(workspace_id, member_id) is None
-        # Another workspace may still invite this account, so it outlives its last membership.
         assert account_domain.repository.get(member_id) is not None
 
     @staticmethod
@@ -888,7 +916,6 @@ class TestMemberServiceCases:
         assert invited is not None
         assert member_service.get_role(workspace_id, invited.id) == _member_service_TenantAccountRole.NORMAL
         if already_joined:
-            # A member keeps every role it holds; resending only reissues the link.
             assert replace.calls == []
         else:
             assignments = [item for item in replace.calls if item.tenant_id == workspace_id]

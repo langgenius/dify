@@ -1,7 +1,6 @@
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
-from operator import itemgetter
 from unittest.mock import MagicMock, call, create_autospec, patch
 
 import httpx
@@ -52,6 +51,7 @@ from services.errors.billing import (
     UnknownErrorReason,
 )
 from tests.helpers.unit.account_domain import AccountDomain
+from tests.helpers.unit.redis_commands import RedisCommandEmulator
 
 
 def test_invitation_token_store_reads_workspace_invitation_key(
@@ -100,52 +100,6 @@ def test_invitation_token_store_reads_global_invitation_payload(
     )
 
 
-class _RedisCommands:
-    """In-memory stand-in for the Redis commands the invitation token store sends."""
-
-    def __init__(self) -> None:
-        self.values: dict[str, bytes] = {}
-        self.sorted_sets: dict[str, dict[str, float]] = {}
-        self.failing: set[str] = set()
-
-    def __call__(self, command: str, *args: object, **_kwargs: object) -> object:
-        if command in self.failing:
-            raise RedisError(f"{command} unavailable")
-        key = str(args[0]) if args else ""
-        if command == "GET":
-            return self.values.get(key)
-        if command in {"SETEX", "SET"}:
-            value = args[2] if command == "SETEX" else args[1]
-            self.values[key] = _as_bytes(value)
-            return b"OK"
-        if command == "DEL":
-            return int(self.values.pop(key, None) is not None)
-        if command == "PTTL":
-            return 3_600_000 if key in self.values else -2
-        if command == "ZADD":
-            members = self.sorted_sets.setdefault(key, {})
-            pairs = args[1:]
-            members.update({str(pairs[i + 1]): float(str(pairs[i])) for i in range(0, len(pairs), 2)})
-            return 1
-        if command == "ZREM":
-            return int(self.sorted_sets.get(key, {}).pop(str(args[1]), None) is not None)
-        if command == "ZREMRANGEBYSCORE":
-            members = self.sorted_sets.get(key, {})
-            maximum = float(str(args[2]))
-            self.sorted_sets[key] = {member: score for member, score in members.items() if score > maximum}
-            return 0
-        if command == "ZRANGEBYSCORE":
-            minimum = str(args[1])
-            members = self.sorted_sets.get(key, {})
-            entries = sorted(members.items(), key=itemgetter(1))
-            if minimum.startswith("("):
-                entries = [(member, score) for member, score in entries if score > float(minimum[1:])]
-            return [(member.encode(), score) for member, score in entries]
-        if command == "EXPIRE":
-            return 1
-        raise AssertionError(f"unexpected Redis command {command}")
-
-
 def _payload(email: str, role: str = "normal", *, requires_setup: bool = False) -> bytes:
     return (
         f'{{"account_id":"account-1","email":"{email}","workspace_id":"workspace-1",'
@@ -153,20 +107,16 @@ def _payload(email: str, role: str = "normal", *, requires_setup: bool = False) 
     ).encode()
 
 
-def _as_bytes(value: object) -> bytes:
-    return value if isinstance(value, bytes) else str(value).encode()
-
-
 @pytest.fixture
-def redis_commands(redis_transport: tuple[RedisClientWrapper, MagicMock]) -> _RedisCommands:
-    commands = _RedisCommands()
+def redis_commands(redis_transport: tuple[RedisClientWrapper, MagicMock]) -> RedisCommandEmulator:
+    commands = RedisCommandEmulator()
     redis_transport[1].side_effect = commands
     return commands
 
 
 def test_pending_invitations_show_latest_live_unconsumed_link(
     redis_transport: tuple[RedisClientWrapper, MagicMock],
-    redis_commands: _RedisCommands,
+    redis_commands: RedisCommandEmulator,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr("services.account.adapters.time", lambda: 100.0)
@@ -210,7 +160,7 @@ def test_pending_invitations_include_new_email_invitations(
 
 def test_issuing_a_link_fails_and_leaves_nothing_live_when_it_cannot_be_indexed(
     redis_transport: tuple[RedisClientWrapper, MagicMock],
-    redis_commands: _RedisCommands,
+    redis_commands: RedisCommandEmulator,
 ) -> None:
     redis_commands.failing.add("ZADD")
     store = RedisInvitationTokenStore(redis=redis_transport[0])
@@ -223,13 +173,12 @@ def test_issuing_a_link_fails_and_leaves_nothing_live_when_it_cannot_be_indexed(
 
 def test_revoking_pending_invitations_invalidates_every_link_for_the_email(
     redis_transport: tuple[RedisClientWrapper, MagicMock],
-    redis_commands: _RedisCommands,
+    redis_commands: RedisCommandEmulator,
 ) -> None:
     store = RedisInvitationTokenStore(redis=redis_transport[0])
     first = store.create(InvitationToken("account-1", "Invitee@example.com", "workspace-1", "normal", True))
     second = store.create(InvitationToken("account-1", "invitee@example.com", "workspace-1", "editor", True))
     other = store.create(InvitationToken("account-2", "other@example.com", "workspace-1", "normal", True))
-    # A link issued before links were indexed cannot be found by email.
     redis_commands.values["member_invite:token:legacy"] = _payload("invitee@example.com", requires_setup=True)
 
     store.revoke_pending("workspace-1", "INVITEE@example.com", account_id="account-1")
@@ -249,7 +198,7 @@ def test_revoking_pending_invitations_invalidates_every_link_for_the_email(
 
 def test_workspace_scoped_legacy_links_stop_working_after_revoke_or_resend(
     redis_transport: tuple[RedisClientWrapper, MagicMock],
-    redis_commands: _RedisCommands,
+    redis_commands: RedisCommandEmulator,
 ) -> None:
     store = RedisInvitationTokenStore(redis=redis_transport[0])
     lookup = InvitationLookup(workspace_id="workspace-1", email="invitee@example.com", token="legacy")
