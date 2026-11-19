@@ -109,6 +109,7 @@ const submitShortcut = () => userEvent.keyboard(`{${mod}>}{Enter}{/${mod}}`)
 
 beforeEach(async () => {
   await page.viewport(1440, 1000)
+  mocks.push.mockReset()
   mocks.track.mockReset().mockReturnValue({ promise: Promise.resolve() })
   mocks.flush.mockReset().mockReturnValue({ promise: Promise.resolve() })
   setAnalyticsConsent('granted')
@@ -298,6 +299,8 @@ it('submits the final selected app type after switching between advanced and beg
         }),
       ],
     ])
+  // Wait for the post-create navigation so it cannot land in the next test.
+  await expect.poll(() => mocks.push.mock.calls).toEqual([['/app/created-app/workflow']])
 })
 
 it('keeps an in-flight create request single-submission until it succeeds', async () => {
