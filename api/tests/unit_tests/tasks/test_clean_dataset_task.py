@@ -449,6 +449,51 @@ class TestPipelineAndWorkflowDeletion:
 class TestSegmentAttachmentCleanup:
     """Test cases for segment attachment cleanup."""
 
+    def test_signed_inline_image_without_other_references_is_deleted(
+        self,
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
+        orm_session_maker: sessionmaker[Session],
+        mock_storage: MagicMock,
+        mock_index_processor_factory: dict[str, MagicMock],
+    ) -> None:
+        """A signed inline preview alone must keep its upload file in the cleanup set."""
+        document = _persist_document(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
+        segment = _persist_segment(
+            orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id, document_id=document.id
+        )
+        image_file = UploadFile(
+            tenant_id=tenant_id,
+            storage_type=StorageType.LOCAL,
+            key=f"inline-images/{uuid.uuid4()}.png",
+            name="inline.png",
+            size=10,
+            extension="png",
+            mime_type="image/png",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by=str(uuid.uuid4()),
+            created_at=datetime.now(UTC),
+            used=False,
+        )
+        segment.content = (
+            f"![image](https://example.com/files/{image_file.id}/file-preview?timestamp=1&nonce=x&sign=y)"
+        )
+        with orm_session_maker.begin() as session:
+            session.add_all([image_file, segment])
+
+        _run_clean_dataset(
+            dataset_id=dataset_id,
+            tenant_id=tenant_id,
+            collection_binding_id=collection_binding_id,
+        )
+
+        mock_storage.delete.assert_called_once_with(image_file.key)
+        mock_index_processor_factory["processor"].clean.assert_called_once()
+        with orm_session_maker() as session:
+            assert session.get(DocumentSegment, segment.id) is None
+            assert session.get(UploadFile, image_file.id) is None
+
     @pytest.mark.parametrize("storage_fails", [False, True])
     def test_inline_image_attachment_binding_is_deleted_after_its_file(
         self,

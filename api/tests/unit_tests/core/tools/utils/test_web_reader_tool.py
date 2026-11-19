@@ -352,3 +352,11 @@ def test_get_image_upload_file_ids():
     end
     """
     assert get_image_upload_file_ids(content) == ["id1", "id2"]
+
+
+@pytest.mark.parametrize("preview_route", ["file-preview", "image-preview"])
+@pytest.mark.parametrize("suffix", ["?timestamp=1&nonce=x&sign=y", "#section", "?sign=y#section"])
+def test_get_image_upload_file_ids_with_signed_url_or_fragment(preview_route: str, suffix: str) -> None:
+    content = f"![image](https://example.com/files/abc123/{preview_route}{suffix})"
+
+    assert get_image_upload_file_ids(content) == ["abc123"]

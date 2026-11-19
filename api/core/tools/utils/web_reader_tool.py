@@ -120,17 +120,11 @@ def extract_using_readabilipy(html: str):
     return article
 
 
-def get_image_upload_file_ids(content):
-    pattern = r"!\[image\]\((https?://.*?(file-preview|image-preview))\)"
-    matches = re.findall(pattern, content)
-    image_upload_file_ids = []
-    for match in matches:
-        if match[1] == "file-preview":
-            content_pattern = r"files/([^/]+)/file-preview"
-        else:
-            content_pattern = r"files/([^/]+)/image-preview"
-        content_match = re.search(content_pattern, match[0])
-        if content_match:
-            image_upload_file_id = content_match.group(1)
-            image_upload_file_ids.append(image_upload_file_id)
-    return image_upload_file_ids
+def get_image_upload_file_ids(content: str) -> list[str]:
+    """Return inline preview file IDs, including URLs with query strings or fragments.
+
+    Only HTTP(S) Markdown image links to the two preview routes are accepted.
+    Unrelated links yield no IDs, so cleanup never targets them.
+    """
+    pattern = r"!\[image\]\(https?://[^)\s]*/files/([^/?#)]+)/(?:file-preview|image-preview)(?:[?#][^)]*)?\)"
+    return re.findall(pattern, content)
