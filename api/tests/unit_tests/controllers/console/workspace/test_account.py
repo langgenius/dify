@@ -867,7 +867,11 @@ class TestAccountsCases:
             self, app: Flask, account_services: AccountServices
         ) -> None:
             user = make_account()
-            get_profile = MagicMock(return_value=user)
+            contexts: list[RequestContext] = []
+
+            def get_profile(context: RequestContext) -> Account:
+                contexts.append(context)
+                return user
 
             with (
                 app.test_request_context("/account/profile"),
@@ -882,8 +886,9 @@ class TestAccountsCases:
             ):
                 result = AccountProfileApi().get()
 
+            assert isinstance(result, dict)
             assert result["id"] == user.id
-            assert get_profile.call_args.args[0].active_workspace_id == ""
+            assert [context.active_workspace_id for context in contexts] == [""]
 
     class TestAccountProfilePatchApi:
         def test_json_schema_matches_runtime_patch_rules(self) -> None:
