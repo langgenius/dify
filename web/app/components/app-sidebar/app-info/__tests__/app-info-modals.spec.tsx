@@ -50,9 +50,7 @@ function MetadataEntry({ operation = 'edit' }: { operation?: 'edit' | 'duplicate
       <AppInfoModals
         appDetail={app}
         activeModal={open ? operation : null}
-        onOpenChange={setOpen}
-        exportOpen={false}
-        onExportOpenChange={() => {}}
+        onClose={() => setOpen(false)}
       />
     </>
   )
@@ -63,15 +61,13 @@ function DeleteEntry() {
     <AppInfoModals
       appDetail={app}
       activeModal={open ? 'delete' : null}
-      onOpenChange={setOpen}
-      exportOpen={false}
-      onExportOpenChange={() => {}}
+      onClose={() => setOpen(false)}
     />
   )
 }
 function ExportEntry() {
   const [open, setOpen] = useState(true)
-  return <ExportAppDialog appDetail={app} open={open} onOpenChange={setOpen} />
+  return <ExportAppDialog appDetail={app} open={open} onClose={() => setOpen(false)} />
 }
 const render = (ui: React.ReactElement) =>
   renderWithConsoleQuery(ui, {
@@ -218,11 +214,7 @@ function OperationsEntry({ operation }: { operation: AppInfoOperation }) {
       <AppInfoModals
         appDetail={app}
         activeModal={activeModal}
-        onOpenChange={(open) => {
-          if (!open) setActiveModal(null)
-        }}
-        exportOpen={false}
-        onExportOpenChange={() => {}}
+        onClose={() => setActiveModal(null)}
       />
     </>
   )

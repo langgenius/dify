@@ -5,7 +5,6 @@ import type {
   NodeKey,
   SerializedTextNode,
 } from 'lexical'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -25,6 +24,7 @@ import {
   TextNode,
 } from 'lexical'
 import { useEffect } from 'react'
+import { TestLexicalComposer } from '@/test/lexical'
 import {
   useBasicTypeaheadTriggerMatch,
   useLexicalTextEntity,
@@ -70,7 +70,7 @@ function SelectionHarness({
   command,
 }: {
   nodeKey: NodeKey
-  command?: LexicalCommand<undefined>
+  command?: LexicalCommand<void>
 }) {
   const [ref, selected] = useSelectOrDelete(nodeKey, command)
   return (
@@ -95,7 +95,7 @@ function TriggerHarness({ onBubble }: { onBubble: () => void }) {
   )
 }
 
-function renderEditor(makeNode: () => LexicalNode, command?: LexicalCommand<undefined>) {
+function renderEditor(makeNode: () => LexicalNode, command?: LexicalCommand<void>) {
   let editor: LexicalEditor
   let nodeKey: NodeKey
   const deleted = vi.fn(() => false)
@@ -122,9 +122,9 @@ function renderEditor(makeNode: () => LexicalNode, command?: LexicalCommand<unde
     },
   }
   const view = render(
-    <LexicalComposer initialConfig={initialConfig}>
+    <TestLexicalComposer initialConfig={initialConfig}>
       <Harness showHook />
-    </LexicalComposer>,
+    </TestLexicalComposer>,
   )
   return {
     ...view,
@@ -133,9 +133,9 @@ function renderEditor(makeNode: () => LexicalNode, command?: LexicalCommand<unde
     deleted,
     detachHook: () =>
       view.rerender(
-        <LexicalComposer initialConfig={initialConfig}>
+        <TestLexicalComposer initialConfig={initialConfig}>
           <Harness showHook={false} />
-        </LexicalComposer>,
+        </TestLexicalComposer>,
       ),
   }
 }
@@ -282,10 +282,10 @@ describe('prompt-editor/hooks', () => {
       },
     }
     const { rerender } = render(
-      <LexicalComposer initialConfig={config}>
+      <TestLexicalComposer initialConfig={config}>
         <Capture />
         <EntityPlugin />
-      </LexicalComposer>,
+      </TestLexicalComposer>,
     )
     act(() =>
       editor.update(
@@ -319,9 +319,9 @@ describe('prompt-editor/hooks', () => {
       expect($getRoot().getTextContent()).toBe('plain')
     })
     rerender(
-      <LexicalComposer initialConfig={config}>
+      <TestLexicalComposer initialConfig={config}>
         <Capture />
-      </LexicalComposer>,
+      </TestLexicalComposer>,
     )
     act(() =>
       editor.update(

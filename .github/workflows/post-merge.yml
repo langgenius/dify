@@ -39,6 +39,7 @@ jobs:
               - 'e2e/tsconfig.json'
               - 'package.json'
               - 'pnpm-lock.yaml'
+              - 'patches/**'
               - '.github/workflows/post-merge.yml'
               - '.github/workflows/web-e2e.yml'
               - '.github/actions/setup-web/**'
@@ -121,6 +122,7 @@ jobs:
               - 'web/service/webapp-address.ts'
               - 'web/package.json'
               - 'pnpm-workspace.yaml'
+              - 'patches/**'
 
   external-e2e:
     name: External Runtime E2E

@@ -1,5 +1,5 @@
 import { QueryClient } from '@tanstack/react-query'
-import { describe, expect, it } from 'vite-plus/test'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
 import {
   createUploadItemId,
@@ -47,19 +47,14 @@ describe('skill detail shared utilities', () => {
   })
 
   it('keeps simultaneous uploads distinct when randomUUID is unavailable', () => {
-    const originalCrypto = globalThis.crypto
-    Object.defineProperty(globalThis, 'crypto', {
-      configurable: true,
-      value: {},
+    // boundary: non-secure contexts expose getRandomValues but not randomUUID.
+    vi.stubGlobal('crypto', {
+      getRandomValues: globalThis.crypto.getRandomValues.bind(globalThis.crypto),
     })
     try {
-      const file = new File(['guide'], 'guide.md', { type: 'text/markdown' })
-      expect(new Set([createUploadItemId(file, 1), createUploadItemId(file, 2)]).size).toBe(2)
+      expect(new Set([createUploadItemId(), createUploadItemId()]).size).toBe(2)
     } finally {
-      Object.defineProperty(globalThis, 'crypto', {
-        configurable: true,
-        value: originalCrypto,
-      })
+      vi.unstubAllGlobals()
     }
   })
 

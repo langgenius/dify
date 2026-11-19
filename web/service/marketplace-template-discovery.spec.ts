@@ -99,16 +99,37 @@ describe('marketplace template discovery', () => {
       data: { templates: [{ id: 'template-1' }] },
     })
 
-    const [first, second] = await Promise.all([
-      getMarketplaceTemplateCollectionsAndTemplates(),
-      getMarketplaceTemplateCollectionsAndTemplates(),
-    ])
+    const first = await getMarketplaceTemplateCollectionsAndTemplates()
+    const second = await getMarketplaceTemplateCollectionsAndTemplates()
     const third = await getMarketplaceTemplateCollectionsAndTemplates()
 
     expect(mocks.templateCollections).toHaveBeenCalledOnce()
     expect(mocks.templateCollectionTemplates).toHaveBeenCalledOnce()
     expect(second).toBe(first)
     expect(third).toBe(first)
+  })
+
+  // Cloudflare Workers never settle a promise in a request other than the one that
+  // created it. A pending fetch kept at module level would hang every later render
+  // once its own request ended, so only settled results are shared across requests.
+  it('does not keep a pending fetch at module level for other requests to await', async () => {
+    const { getMarketplaceTemplateCollectionsAndTemplates } = await importDiscovery()
+    mocks.templateCollections.mockResolvedValue({
+      data: {
+        collections: [{ name: 'featured', label: {}, description: {}, priority: 1 }],
+      },
+    })
+    mocks.templateCollectionTemplates.mockResolvedValue({
+      data: { templates: [{ id: 'template-1' }] },
+    })
+
+    const [first, second] = await Promise.all([
+      getMarketplaceTemplateCollectionsAndTemplates(),
+      getMarketplaceTemplateCollectionsAndTemplates(),
+    ])
+
+    expect(mocks.templateCollections).toHaveBeenCalledTimes(2)
+    expect(second).toEqual(first)
   })
 
   it('does not cache a failed collections fetch', async () => {

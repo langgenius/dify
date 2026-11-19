@@ -35,6 +35,7 @@ from core.repositories.factory import (
     WorkflowExecutionRepository,
     WorkflowNodeExecutionRepository,
 )
+from core.workflow.file_reference import resolve_file_record_id
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from libs.flask_utils import preserve_flask_contexts
@@ -46,6 +47,7 @@ from models.pipeline_execution import PipelineDocumentStore
 from services.app.generation.input_adapter import AppInputAdapter
 from services.data_source.provider_service import DatasourceProviderService
 from services.errors.app import WorkflowNotFoundError
+from services.file_scan.admission import reject_dataset_upload_file
 from services.rag_pipeline.document_preparation import prepare_pipeline_document
 from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
 from services.workflow.contracts import WorkflowSnapshot
@@ -77,6 +79,19 @@ class _OnlineDriveBrowseRuntime(Protocol):
     ) -> Generator[OnlineDriveBrowseFilesResponse]: ...
 
 
+class PipelineFileAdmission(Protocol):
+    """Decides whether an uploaded file may enter a pipeline run (for example, a malware scan).
+
+    Returns ``None`` to admit the file, otherwise the reason to record on the document.
+    """
+
+    def __call__(self, *, tenant_id: str, dataset_id: str, upload_file_id: str) -> str | None: ...
+
+
+class PipelineFileRejectedError(ValueError):
+    """The uploaded file of this pipeline run was not admitted; the message is the stored document error."""
+
+
 class PipelineGenerator(AppInputAdapter):
     def __init__(
         self,
@@ -85,6 +100,7 @@ class PipelineGenerator(AppInputAdapter):
         execution_driver: WorkflowRunDriver,
         documents: PipelineDocumentStore,
         datasource_providers: DatasourceProviderService,
+        file_admission: PipelineFileAdmission = reject_dataset_upload_file,
         draft_variable_loader: Callable[[WorkflowSnapshot, str], VariableLoader] | None = None,
         draft_variable_saver: Callable[[str, Account], DraftVariableSaverFactory] | None = None,
     ) -> None:
@@ -94,8 +110,36 @@ class PipelineGenerator(AppInputAdapter):
             draft_variable_loader=draft_variable_loader,
             draft_variable_saver=draft_variable_saver,
         )
+        self._file_admission = file_admission
         self._documents = documents
         self._datasource_providers = datasource_providers
+
+    def _scan_local_file(self, *, pipeline: Pipeline, application_generate_entity: RagPipelineGenerateEntity) -> None:
+        """Reject an uploaded file the dataset's malware scan does not allow, before any node reads it.
+
+        Each pipeline run handles one datasource item, so a rejected file fails only its own document.
+        """
+        if application_generate_entity.datasource_type != DatasourceProviderType.LOCAL_FILE:
+            return
+        datasource_info = application_generate_entity.datasource_info
+        upload_file_id = resolve_file_record_id(datasource_info.get("reference") or datasource_info.get("related_id"))
+        if not upload_file_id:
+            return
+        rejection = self._file_admission(
+            tenant_id=pipeline.tenant_id,
+            dataset_id=application_generate_entity.dataset_id,
+            upload_file_id=upload_file_id,
+        )
+        if rejection is None:
+            return
+        if application_generate_entity.document_id:
+            self._documents.mark_failed(
+                workspace_id=pipeline.tenant_id,
+                dataset_id=application_generate_entity.dataset_id,
+                document_id=application_generate_entity.document_id,
+                error=rejection,
+            )
+        raise PipelineFileRejectedError(rejection)
 
     def load_workflow(self, pipeline: Pipeline, invoke_from: InvokeFrom) -> WorkflowSnapshot:
         """Load the requested workflow while preserving the pipeline generation error contract.
@@ -186,6 +230,12 @@ class PipelineGenerator(AppInputAdapter):
         pipeline_config = PipelineConfigManager.get_pipeline_config(
             pipeline=pipeline, workflow=workflow, start_node_id=start_node_id
         )
+        prepared_inputs = self._prepare_user_inputs(
+            user_inputs=inputs,
+            variables=pipeline_config.rag_pipeline_variables,
+            tenant_id=pipeline.tenant_id,
+            strict_type_validation=invoke_from == InvokeFrom.SERVICE_API,
+        )
         documents: list[Document] = []
         if invoke_from == InvokeFrom.PUBLISHED_PIPELINE and not is_retry and not args.get("original_document_id"):
             from services.feature_service import FeatureService
@@ -227,12 +277,7 @@ class PipelineGenerator(AppInputAdapter):
                 start_node_id=start_node_id,
                 batch=batch,
                 document_id=document_id,
-                inputs=self._prepare_user_inputs(
-                    user_inputs=inputs,
-                    variables=pipeline_config.rag_pipeline_variables,
-                    tenant_id=pipeline.tenant_id,
-                    strict_type_validation=invoke_from == InvokeFrom.SERVICE_API,
-                ),
+                inputs=prepared_inputs,
                 files=[],
                 user_id=user.id,
                 stream=streaming,
@@ -357,6 +402,7 @@ class PipelineGenerator(AppInputAdapter):
         :param workflow_thread_pool_id: workflow thread pool id
         """
         with preserve_flask_contexts(flask_app, context_vars=context):
+            self._scan_local_file(pipeline=pipeline, application_generate_entity=application_generate_entity)
             # init queue manager
             workflow = self._runtime.contexts.workflow(
                 tenant_id=pipeline.tenant_id, app_id=pipeline.id, workflow_id=workflow_id
@@ -750,6 +796,7 @@ class PipelineGenerator(AppInputAdapter):
                             "id": datasource_info.get("id", ""),
                             "name": datasource_info.get("name", "untitled"),
                             "bucket": datasource_info.get("bucket", None),
+                            "credential_id": datasource_info.get("credential_id"),
                         }
                     )
             return all_files
@@ -821,6 +868,7 @@ class PipelineGenerator(AppInputAdapter):
                                 "id": file.id,
                                 "name": file.name,
                                 "bucket": bucket,
+                                "credential_id": datasource_info.get("credential_id"),
                             }
                         )
                 is_truncated = files.is_truncated
