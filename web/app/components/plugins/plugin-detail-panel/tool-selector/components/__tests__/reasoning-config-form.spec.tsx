@@ -103,6 +103,7 @@ const createSchema = (overrides: Partial<ToolFormSchema> = {}): ToolFormSchema =
   _type: 'string',
   form: 'llm',
   show_on: [],
+  reset_on_change: [],
   variable: 'field',
   type: FormTypeEnum.textInput,
   default: '',
@@ -655,5 +656,41 @@ describe('ReasoningConfigForm', () => {
         },
       }),
     )
+  })
+
+  it('should reset a dependent reasoning field in the source field change', async () => {
+    const onChange = vi.fn()
+    const schemas = [
+      createSchema({ variable: 'source', type: FormTypeEnum.checkbox, default: 'false' }),
+      createSchema({
+        variable: 'dependent',
+        type: FormTypeEnum.textNumber,
+        default: '0.7',
+        reset_on_change: ['source'],
+      }),
+    ]
+    const initialValue = {
+      source: { auto: 0 as const, value: { type: VarKindType.constant, value: false } },
+      dependent: { auto: 0 as const, value: { type: VarKindType.constant, value: '1' } },
+    }
+    render(
+      <ReasoningConfigForm
+        value={initialValue}
+        onChange={onChange}
+        schemas={schemas}
+        nodeOutputVars={[]}
+        availableNodes={[]}
+        nodeId="node-1"
+      />,
+    )
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'True' }))
+
+    expect(onChange).toHaveBeenCalledOnce()
+    expect(onChange).toHaveBeenCalledWith({
+      source: { auto: 0, value: { type: VarKindType.constant, value: true } },
+      dependent: { auto: 0, value: { type: VarKindType.constant, value: 0.7 } },
+    })
   })
 })

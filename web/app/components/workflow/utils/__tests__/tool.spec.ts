@@ -63,7 +63,13 @@ describe('getToolCheckParams', () => {
     const result = getToolCheckParams(createToolData(), [createToolCollection()], [], [], 'en_US')
 
     expect(result.toolInputsSchema).toEqual([
-      { label: 'Query', variable: 'query', type: 'text-input', required: true },
+      {
+        label: 'Query',
+        variable: 'query',
+        type: 'text-input',
+        required: true,
+        reset_on_change: [],
+      },
     ])
     expect(result.notAuthed).toBe(true)
     expect(result.toolSettingSchema).toHaveLength(1)
@@ -93,7 +99,13 @@ describe('getToolCheckParams', () => {
     )
 
     expect(result.toolInputsSchema).toEqual([
-      { label: 'Query', variable: 'query', type: 'text-input', required: true },
+      {
+        label: 'Query',
+        variable: 'query',
+        type: 'text-input',
+        required: true,
+        reset_on_change: [],
+      },
     ])
   })
 
@@ -121,7 +133,13 @@ describe('getToolCheckParams', () => {
     )
 
     expect(result.toolInputsSchema).toEqual([
-      { label: 'Query', variable: 'query', type: 'text-input', required: true },
+      {
+        label: 'Query',
+        variable: 'query',
+        type: 'text-input',
+        required: true,
+        reset_on_change: [],
+      },
     ])
   })
 
