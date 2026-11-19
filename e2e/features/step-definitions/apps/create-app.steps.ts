@@ -39,34 +39,48 @@ When('I create the {string} app from Studio', async function (this: DifyWorld, a
   )
 
   await page.getByRole('button', { name: 'Create', exact: true }).click()
-  if (appType === 'Agent' || appType === 'Text Generator' || appType === 'Chatbot')
-    await page.getByRole('menuitem', { name: 'More app types' }).click()
 
-  await page.getByRole('menuitem', { name: appType, exact: true }).click()
+  const isBasicType = appType === 'Agent' || appType === 'Text Generator' || appType === 'Chatbot'
+  // The Studio Create menu depends on the Dify Builder flag (off by default). With it off the
+  // menu offers "Create from Blank", which opens the named create-app dialog. With it on the
+  // menu lists app types and creates the app directly.
+  const legacyBlank = page.getByRole('menuitem', { name: 'Create from Blank' })
+  const builderEntry = page.getByRole('menuitem', {
+    name: isBasicType ? 'More app types' : appType,
+    exact: true,
+  })
+  const menuKind = await Promise.race([
+    legacyBlank.waitFor({ state: 'visible' }).then(() => 'legacy' as const, neverSettles),
+    builderEntry.waitFor({ state: 'visible' }).then(() => 'builder' as const, neverSettles),
+  ])
 
-  // With the Dify Builder enabled the menu creates the app directly (or shows a starter
-  // dialog for Workflow/Chatflow). With it disabled (the default) the menu opens the named
-  // "create app" dialog, which needs a name before the POST is sent.
-  const nameInput = page.getByRole('dialog').getByPlaceholder('Give your app a name')
-  const starterTitle =
-    appType === 'Workflow' ? 'Build your next workflow' : 'Build your next chatflow'
-  const starter = page.getByRole('dialog', { name: starterTitle })
-  const outcomes: Promise<'created' | 'starter' | 'named'>[] = [
-    responsePromise.then(() => 'created' as const),
-    nameInput.waitFor({ state: 'visible' }).then(() => 'named' as const, neverSettles),
-  ]
-  if (appType === 'Workflow' || appType === 'Chatflow')
-    outcomes.push(
-      starter.waitFor({ state: 'visible' }).then(() => 'starter' as const, neverSettles),
-    )
-  const firstOutcome = await Promise.race(outcomes)
-  if (firstOutcome === 'starter')
-    await starter.getByRole('button', { name: 'Open a blank canvas' }).click()
-  if (firstOutcome === 'named') {
-    await nameInput.fill(createE2EResourceName('App'))
-    const createButton = page.getByRole('dialog').getByRole('button', { name: /^Create(?:\s|$)/ })
+  if (menuKind === 'legacy') {
+    await legacyBlank.click()
+    const dialog = page.getByRole('dialog')
+    if (isBasicType) await dialog.getByRole('button', { name: 'More basic app types' }).click()
+    const appTypeCard = dialog.getByRole('button', {
+      name: new RegExp(`^${appType.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`),
+    })
+    await appTypeCard.click()
+    await dialog.getByPlaceholder('Give your app a name').fill(createE2EResourceName('App'))
+    const createButton = dialog.getByRole('button', { name: /^Create(?:\s|$)/ })
     await expect(createButton).toBeEnabled()
     await createButton.click()
+  } else {
+    if (isBasicType) await builderEntry.click()
+    await page.getByRole('menuitem', { name: appType, exact: true }).click()
+
+    if (appType === 'Workflow' || appType === 'Chatflow') {
+      const starterTitle =
+        appType === 'Workflow' ? 'Build your next workflow' : 'Build your next chatflow'
+      const starter = page.getByRole('dialog', { name: starterTitle })
+      const firstOutcome = await Promise.race([
+        responsePromise.then(() => 'created' as const),
+        starter.waitFor({ state: 'visible' }).then(() => 'starter' as const, neverSettles),
+      ])
+      if (firstOutcome === 'starter')
+        await starter.getByRole('button', { name: 'Open a blank canvas' }).click()
+    }
   }
 
   const response = await responsePromise
