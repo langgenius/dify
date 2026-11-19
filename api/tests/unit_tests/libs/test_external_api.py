@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from enum import StrEnum
 from functools import wraps
 from typing import Literal
 
@@ -712,8 +713,13 @@ class _EnumConflictError(BaseHTTPException):
     details_model = _EnumConflictDetails
 
 
+class _StringConflictState(StrEnum):
+    RETRY = "retry"
+    CONFIGURE = "configure"
+
+
 class _StringEnumConflictDetails(BaseModel):
-    state: Literal["retry", "configure"]
+    state: _StringConflictState
 
 
 class _StringEnumConflictError(BaseHTTPException):
@@ -727,7 +733,10 @@ def test_details_added_by_document_finisher_have_deterministic_enum_order() -> N
     document = _documented_operation(ExternalApi(Blueprint("enum_details", __name__)), _StringEnumConflictError)
 
     details = _Schema.model_validate(document.components.schemas["_StringEnumConflictDetails"])
-    assert details.properties["state"].enum == ["configure", "retry"]
+    state = details.properties["state"]
+    assert state.ref is not None
+    state_schema = _Schema.model_validate(document.components.schemas[state.ref.rsplit("/", 1)[-1]])
+    assert state_schema.enum == ["configure", "retry"]
     assert _error_options(document, "409") == ["StringEnumConflictError"]
 
 

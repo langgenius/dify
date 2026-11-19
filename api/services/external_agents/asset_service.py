@@ -6,7 +6,7 @@ import re
 from collections.abc import Callable, Sequence
 from dataclasses import asdict, replace
 from datetime import datetime, timedelta
-from typing import Any, Literal
+from typing import Any
 
 from machinery.context import RequestContext
 
@@ -20,6 +20,8 @@ from .contracts import (
     ExternalAsset,
     ExternalAssetAccess,
     ExternalAssetReferences,
+    ExternalAssetSortBy,
+    ExternalAssetSortOrder,
     ExternalAssetStore,
     ExternalIconURLs,
     ExternalReferenceAccess,
@@ -137,8 +139,8 @@ class ExternalAssetService:
         keyword: str | None,
         enabled: bool | None,
         connected_by_me: bool,
-        sort_by: Literal["created_at", "updated_at"] = "updated_at",
-        sort_order: Literal["asc", "desc"] = "desc",
+        sort_by: ExternalAssetSortBy = ExternalAssetSortBy.UPDATED_AT,
+        sort_order: ExternalAssetSortOrder = ExternalAssetSortOrder.DESC,
     ) -> AssetPage:
         if self._access.role(context) not in {"owner", "admin", "editor", "normal"}:
             raise ExternalAgentForbiddenError("Workspace membership is required.")
@@ -300,10 +302,10 @@ class ExternalAssetService:
                 "invalid_credential",
                 "credential_unavailable",
             }:
-                reason = "authentication_failed"
+                reason = VerificationFailureReason.AUTHENTICATION_FAILED
                 message = "The external Agent rejected the authentication configuration."
             elif error.code in {"profile_unsupported", "required_extension_unsupported", "extension_unsupported"}:
-                reason = "unsupported_protocol"
+                reason = VerificationFailureReason.UNSUPPORTED_PROTOCOL
                 message = "The external Agent does not support the required A2A 1.0 HTTP+JSON profile."
             elif error.code in {
                 "invalid_agent_card",
@@ -312,10 +314,10 @@ class ExternalAssetService:
                 "unsupported_content_encoding",
                 "credential_reflection",
             }:
-                reason = "invalid_agent_card"
+                reason = VerificationFailureReason.INVALID_AGENT_CARD
                 message = "The external Agent Card is invalid."
             else:
-                reason = "connection_failed"
+                reason = VerificationFailureReason.CONNECTION_FAILED
                 message = "Could not connect to the external Agent."
             raise ExternalAgentVerificationFailedError(message, reason=reason) from error
         declaration = result.card.get("capabilities")

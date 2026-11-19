@@ -12,7 +12,6 @@ import json
 import time
 from contextlib import suppress
 from dataclasses import dataclass, replace
-from typing import Literal
 from urllib.parse import quote, urlsplit, urlunsplit
 
 from pydantic import ValidationError
@@ -25,14 +24,17 @@ from services.external_agents.protocol import (
     CredentialDecoderPort,
     GatewayError,
     GatewayReceipt,
+    GatewayReceiptKind,
     GatewayUsageCarrier,
+    GatewayUsageSource,
     SealedBearerAuth,
     SendRequest,
+    VerificationAuthCheck,
     VerificationResult,
 )
 
 from .transport import BoundedTransport, HTTPReply, TransportError
-from .types import AgentCardV1, MessageV1, ResponseV1, SecurityRequirementV1, TaskV1, strict_json
+from .types import AgentCardV1, MessageRoleV1, MessageV1, ResponseV1, SecurityRequirementV1, TaskV1, strict_json
 
 _TERMINAL = frozenset({"TASK_STATE_COMPLETED", "TASK_STATE_FAILED", "TASK_STATE_CANCELED", "TASK_STATE_REJECTED"})
 
@@ -271,7 +273,7 @@ class A2AGateway:
             connection, enabled_extensions=tuple(dict.fromkeys((*connection.enabled_extensions, *required)))
         )
         self._validate_auth(card, connection)
-        auth_check: LiteralAuthCheck = "not_exercised"
+        auth_check = VerificationAuthCheck.NOT_EXERCISED
         if card.capabilities.extendedAgentCard:
             extended_url = self._operation_url(interface.url, interface.tenant, "extendedAgentCard")
             protected = self._request(
@@ -282,7 +284,7 @@ class A2AGateway:
             except ValueError:
                 raise GatewayError("invalid_agent_card", "The protected Agent Card is invalid.") from None
             if isinstance(connection.authentication, BearerAuth | SealedBearerAuth):
-                auth_check = "passed_for_read_endpoint"
+                auth_check = VerificationAuthCheck.PASSED_FOR_READ_ENDPOINT
         value = card.model_dump(mode="json", exclude_unset=True)
         digest = hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
         secret = self._secret(connection)
@@ -351,7 +353,7 @@ class A2AGateway:
         """Dispatch one new message; never retry POST on transport/protocol uncertainty."""
         message: dict[str, object] = {
             "messageId": request.message_id,
-            "role": "ROLE_USER",
+            "role": MessageRoleV1.USER,
             "parts": list(request.parts),
         }
         if request.context_id:
@@ -513,26 +515,26 @@ class A2AGateway:
         if response.task is not None:
             task = response.task
             return GatewayReceipt(
-                kind="task",
+                kind=GatewayReceiptKind.TASK,
                 payload=task.model_dump(mode="json", exclude_unset=True),
                 task_id=task.id,
                 context_id=task.contextId,
                 state=task.status.state,
-                usage_carrier=GatewayUsageCarrier(source="task", value=task.metadata["usage"])
+                usage_carrier=GatewayUsageCarrier(source=GatewayUsageSource.TASK, value=task.metadata["usage"])
                 if "usage" in task.metadata
                 else None,
             )
         if response.message is not None:
             message = response.message
-            if message.role != "ROLE_AGENT" or not message.contextId:
+            if message.role != MessageRoleV1.AGENT or not message.contextId:
                 raise GatewayError(
                     "invalid_message", "Server Message context and role are required.", submission_unknown=True
                 )
             return GatewayReceipt(
-                kind="message",
+                kind=GatewayReceiptKind.MESSAGE,
                 payload=message.model_dump(mode="json", exclude_unset=True),
                 context_id=message.contextId,
-                usage_carrier=GatewayUsageCarrier(source="message", value=message.metadata["usage"])
+                usage_carrier=GatewayUsageCarrier(source=GatewayUsageSource.MESSAGE, value=message.metadata["usage"])
                 if "usage" in message.metadata
                 else None,
             )
@@ -629,11 +631,8 @@ class A2AGateway:
         # current correlated status event can establish a final usage carrier.
         # Missing event usage clears any partial initial/intermediate counter.
         usage_carrier = (
-            GatewayUsageCarrier(source="statusUpdate", value=response.statusUpdate.metadata["usage"])
+            GatewayUsageCarrier(source=GatewayUsageSource.STATUS_UPDATE, value=response.statusUpdate.metadata["usage"])
             if response.statusUpdate is not None and "usage" in response.statusUpdate.metadata
             else None
         )
         return replace(A2AGateway._receipt(ResponseV1(task=task)), usage_carrier=usage_carrier)
-
-
-type LiteralAuthCheck = Literal["passed_for_read_endpoint", "not_exercised"]

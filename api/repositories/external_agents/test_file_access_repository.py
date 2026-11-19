@@ -11,7 +11,7 @@ from models.external_agent import ExternalAgentFileLease, ExternalAgentInvocatio
 from models.model import UploadFile
 from services.external_agents.contracts import ExternalAgentConflictError, ExternalAgentNotFoundError
 from services.external_agents.io_contracts import ExternalIOError, FileScope
-from services.external_agents.test_file_access import AuthorizedTestFile, TestFileGrant
+from services.external_agents.test_file_access import AuthorizedTestFile, TestFileGrant, TestFileGrantKind
 
 from .asset_repository import ExternalAssetRepository, utc_time
 from .file_lifecycle_repository import ExternalFileLifecycleRepository
@@ -117,7 +117,7 @@ class ExternalTestFileAccessRepository:
             self._upload(session, context, lease.file_id)
             return AuthorizedTestFile(
                 grant=TestFileGrant(
-                    kind="input",
+                    kind=TestFileGrantKind.INPUT,
                     tenant_id=context.active_workspace_id,
                     actor_id=context.account_id,
                     agent_id=agent_id,
@@ -194,7 +194,7 @@ class ExternalTestFileAccessRepository:
             )
             return AuthorizedTestFile(
                 grant=TestFileGrant(
-                    kind="output",
+                    kind=TestFileGrantKind.OUTPUT,
                     tenant_id=context.active_workspace_id,
                     actor_id=context.account_id,
                     agent_id=agent_id,

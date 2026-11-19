@@ -55,6 +55,7 @@ from models.workflow import (
 from repositories.factory import DifyAPIRepositoryFactory
 from services.api_token_service import ApiTokenCache
 from services.app_storage_cleanup_service import cleanup_app_storage
+from services.external_agents.retention import ExternalDeletionKind
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +114,7 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
     try:
         from extensions.application_services.external_agent_lifecycle import fence_external_parent
 
-        fence_external_parent(tenant_id, "app", app_id)
+        fence_external_parent(tenant_id, ExternalDeletionKind.APP, app_id)
         # AppService publishes this task after the App transaction commits.
         # Schedule the independent high-retry SaaS cleanup before legacy local
         # cleanup so a later local failure cannot strand the binding.

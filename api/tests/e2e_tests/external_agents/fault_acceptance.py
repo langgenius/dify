@@ -12,16 +12,27 @@ import argparse
 import json
 import os
 import time
+from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 from tests.e2e_tests.external_agents.acceptance import AcceptanceError, ConsoleAcceptance, require
 
 Identifier = Annotated[str, Field(min_length=1, max_length=512, pattern=r"^[A-Za-z0-9_-]+$")]
-FaultKind = Literal["known", "unknown"]
-Phase = Literal["known_prepare", "known_assert", "unknown_prepare", "unknown_assert"]
+
+
+class FaultKind(StrEnum):
+    KNOWN = "known"
+    UNKNOWN = "unknown"
+
+
+class Phase(StrEnum):
+    KNOWN_PREPARE = "known_prepare"
+    KNOWN_ASSERT = "known_assert"
+    UNKNOWN_PREPARE = "unknown_prepare"
+    UNKNOWN_ASSERT = "unknown_assert"
 
 
 class CaseIds(BaseModel):
@@ -273,7 +284,7 @@ def main() -> None:
     runner = FaultAcceptance()
     try:
         runner.login()
-        kind: FaultKind = "known" if args.phase.startswith("known_") else "unknown"
+        kind = FaultKind.KNOWN if args.phase.startswith("known_") else FaultKind.UNKNOWN
         result = runner.prepare(kind) if args.phase.endswith("_prepare") else runner.assert_recovery(kind)
     except Exception as error:
         result = {

@@ -8,7 +8,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Literal, Protocol
+from typing import Any, Protocol
 
 from machinery.context import RequestContext
 
@@ -33,9 +33,11 @@ class ExternalAgentInvalidInputError(ExternalAgentError):
     code = "invalid_external_agent_configuration"
 
 
-type VerificationFailureReason = Literal[
-    "connection_failed", "authentication_failed", "unsupported_protocol", "invalid_agent_card"
-]
+class VerificationFailureReason(StrEnum):
+    CONNECTION_FAILED = "connection_failed"
+    AUTHENTICATION_FAILED = "authentication_failed"
+    UNSUPPORTED_PROTOCOL = "unsupported_protocol"
+    INVALID_AGENT_CARD = "invalid_agent_card"
 
 
 class ExternalAgentVerificationFailedError(ExternalAgentError):
@@ -54,6 +56,22 @@ class ExternalAgentIdempotencyConflictError(ExternalAgentConflictError):
 class ExternalAuthType(StrEnum):
     NONE = "none"
     BEARER = "bearer"
+
+
+class ExternalCredentialAction(StrEnum):
+    KEEP = "keep"
+    REPLACE = "replace"
+    REMOVE = "remove"
+
+
+class ExternalAssetSortBy(StrEnum):
+    CREATED_AT = "created_at"
+    UPDATED_AT = "updated_at"
+
+
+class ExternalAssetSortOrder(StrEnum):
+    ASC = "asc"
+    DESC = "desc"
 
 
 class ExternalOrigin(StrEnum):
@@ -259,8 +277,8 @@ class ExternalAssetStore(Protocol):
         created_by: str | None,
         visible_ids: frozenset[str] | None,
         reference_app_ids: frozenset[str] | None,
-        sort_by: Literal["created_at", "updated_at"],
-        sort_order: Literal["asc", "desc"],
+        sort_by: ExternalAssetSortBy,
+        sort_order: ExternalAssetSortOrder,
     ) -> AssetPage: ...
 
     def owned_icon_file_ids(self, *, tenant_id: str, file_ids: Sequence[str]) -> frozenset[str]:

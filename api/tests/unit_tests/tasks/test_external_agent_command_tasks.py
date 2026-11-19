@@ -14,6 +14,7 @@ from sqlalchemy import select
 from configs import dify_config
 from models.external_agent import ExternalAgentCommand, ExternalAgentInvocation
 from models.external_agent_trace import ExternalAgentTraceDelivery
+from services.external_agents.contracts import ExternalOrigin
 from services.external_agents.runtime_contracts import (
     ExecutionIdentity,
     InvocationDraft,
@@ -36,7 +37,10 @@ __all__ = ["endpoint_domain", "test_transport"]
 def scope(test_transport: TestTransport) -> RuntimeScope:
     _, context, _, _, _ = test_transport[0]
     return RuntimeScope(
-        tenant_id=context.active_workspace_id, initiator_id=context.account_id, app_id=None, origin="overview_test"
+        tenant_id=context.active_workspace_id,
+        initiator_id=context.account_id,
+        app_id=None,
+        origin=ExternalOrigin.OVERVIEW_TEST,
     )
 
 

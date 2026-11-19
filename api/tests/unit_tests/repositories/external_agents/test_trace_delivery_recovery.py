@@ -23,9 +23,9 @@ from repositories.external_agents.observability_repository import (
 )
 from repositories.external_agents.runtime_repository import ExternalRuntimeRepository
 from services.external_agents.invocation_service import ExternalInvocationService
-from services.external_agents.io_contracts import OutputField
+from services.external_agents.io_contracts import OutputField, OutputFieldKind
 from services.external_agents.observability import ExternalObservabilityService
-from services.external_agents.protocol import GatewayReceipt
+from services.external_agents.protocol import GatewayReceipt, GatewayReceiptKind
 from services.external_agents.runtime_contracts import RuntimeScope, RuntimeSettings
 from services.external_agents.traceability import (
     TRACEABILITY_METADATA_KEY,
@@ -109,14 +109,16 @@ def test_runtime_observe_before_terminal_commit_is_recovered_after_process_gap(
                 enabled=True,
             )
         )
-    value = runtime.start(scope, draft(agent, declared_outputs=(OutputField(name="text", kind="string"),)))
+    value = runtime.start(
+        scope, draft(agent, declared_outputs=(OutputField(name="text", kind=OutputFieldKind.STRING),))
+    )
     permit = runtime_store.acquire_dispatch(scope, value.id, now=clock.now())
     assert permit is not None
     delivery.freeze(tenant_id=scope.tenant_id, invocation_id=value.id, now=clock.now())
     dispatched = runtime_store.begin_send(scope, permit, now=clock.now())
     assert dispatched is not None
     receipt = GatewayReceipt(
-        kind="message",
+        kind=GatewayReceiptKind.MESSAGE,
         context_id="context",
         payload={
             "parts": [{"text": "result"}],

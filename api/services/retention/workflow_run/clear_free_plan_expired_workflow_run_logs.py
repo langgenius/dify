@@ -26,6 +26,7 @@ from repositories.api_workflow_run_repository import (
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from services.billing_service import BillingService, SubscriptionPlan
+from services.external_agents.retention import ExternalDeletionKind
 
 logger = logging.getLogger(__name__)
 
@@ -393,7 +394,7 @@ class WorkflowRunCleanup:
                     from extensions.application_services.external_agent_lifecycle import fence_external_parent
 
                     for target_ref in target_refs:
-                        fence_external_parent(target_ref.tenant_id, "workflow_run", target_ref.id)
+                        fence_external_parent(target_ref.tenant_id, ExternalDeletionKind.WORKFLOW_RUN, target_ref.id)
                     delete_start = time.monotonic()
                     counts = self.workflow_run_repo.delete_runs_with_related_by_ids(
                         target_run_ids,

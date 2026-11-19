@@ -19,6 +19,7 @@ from providers.a2a.gateway import A2AGateway
 from providers.a2a.transport import BoundedTransport, HTTPReply, SSRFRequester
 from providers.a2a.types import ResponseV1, TaskStateV1
 from repositories.external_agents.observability_repository import ExternalObservabilityRepository
+from services.external_agents.contracts import ExternalOrigin
 from services.external_agents.io_contracts import JsonObject, JsonValue
 from services.external_agents.protocol import BearerAuth, ConnectionSpec, GatewayError, GatewayReceipt
 from services.external_agents.runtime_contracts import ExecutionIdentity, Invocation, RuntimeScope, WaitPolicy
@@ -28,7 +29,7 @@ from tests.helpers.unit.model_factories import make_account, make_tenant
 NOW = datetime.now(UTC)
 
 
-def _task(metadata: JsonObject, state: TaskStateV1 = "TASK_STATE_COMPLETED") -> GatewayReceipt:
+def _task(metadata: JsonObject, state: TaskStateV1 = TaskStateV1.COMPLETED) -> GatewayReceipt:
     """Parse a real v1 Task envelope and retain its gateway carrier provenance."""
     return A2AGateway._receipt(
         ResponseV1.model_validate(
@@ -274,7 +275,10 @@ def _attempt(
     return Invocation(
         id=identifier,
         scope=RuntimeScope(
-            tenant_id=context.active_workspace_id, initiator_id=context.account_id, app_id=None, origin="overview_test"
+            tenant_id=context.active_workspace_id,
+            initiator_id=context.account_id,
+            app_id=None,
+            origin=ExternalOrigin.OVERVIEW_TEST,
         ),
         agent_id=agent,
         identity=ExecutionIdentity(execution_id=execution_key, node_id="agent", frame_id="root"),
@@ -299,7 +303,7 @@ def test_composed_gateway_usage_persists_once_and_statistics_keeps_real_zero(
 ) -> None:
     value = _attempt(sqlite_session_factory, usage_owner, execution_key=str(uuid4()), sequence=1)
     observer = account_application_services.external_agents.runtime._observer
-    observer.observe(value, _task({"usage": {"totalTokens": 10}}, "TASK_STATE_WORKING"))
+    observer.observe(value, _task({"usage": {"totalTokens": 10}}, TaskStateV1.WORKING))
     with sqlite_session_factory() as session:
         assert session.get(ExternalAgentTraceUsageSummary, value.id) is None
     receipt = (
@@ -353,7 +357,7 @@ def test_retry_attempt_sql_statistics_never_sum_poll_or_trace_step_counters(
     metadata: JsonObject = {"steps": [{"total_tokens": 999999}]}
     if first_total is not None:
         metadata["usage"] = {"totalTokens": first_total}
-    canceled = _task(metadata, "TASK_STATE_CANCELED")
+    canceled = _task(metadata, TaskStateV1.CANCELED)
     observer.observe(first, canceled)
     observer.observe(first, canceled)
     context, agent, _ = usage_owner

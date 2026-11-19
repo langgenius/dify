@@ -1,11 +1,17 @@
 """Application service for delivering uploaded files through public file endpoints."""
 
 from collections.abc import Iterator
-from typing import Literal, NamedTuple, Protocol
+from enum import StrEnum
+from typing import NamedTuple, Protocol
 
 from constants import IMAGE_EXTENSIONS
 from graphon.file import helpers as file_helpers
 from services.errors.file import UnsupportedFileTypeError
+
+
+class UploadPreviewKind(StrEnum):
+    FILE_PREVIEW = "file-preview"
+    IMAGE_PREVIEW = "image-preview"
 
 
 class UploadFileDeliveryNotFoundError(LookupError):
@@ -49,7 +55,7 @@ class SignedUploadFileAccess(Protocol):
         timestamp: str,
         nonce: str,
         sign: str,
-        preview_kind: Literal["file-preview", "image-preview"],
+        preview_kind: UploadPreviewKind,
     ) -> bool:
         """Validate the isolated scoped MAC and TTL without trusting nonce claims."""
         ...
@@ -87,7 +93,7 @@ class UploadFileDeliveryService:
         timestamp: str,
         nonce: str,
         sign: str,
-        preview_kind: Literal["file-preview", "image-preview"],
+        preview_kind: UploadPreviewKind,
     ) -> None:
         """Validate the selected MAC scheme before rechecking live scope or reading storage.
 
@@ -121,7 +127,7 @@ class UploadFileDeliveryService:
         sign: str,
     ) -> UploadFileDelivery:
         self.verify_and_authorize_preview(
-            file_id=file_id, timestamp=timestamp, nonce=nonce, sign=sign, preview_kind="image-preview"
+            file_id=file_id, timestamp=timestamp, nonce=nonce, sign=sign, preview_kind=UploadPreviewKind.IMAGE_PREVIEW
         )
         file = self._get_file(file_id=file_id)
         self._ensure_image(file=file)
@@ -139,7 +145,7 @@ class UploadFileDeliveryService:
         sign: str,
     ) -> UploadFileDelivery:
         self.verify_and_authorize_preview(
-            file_id=file_id, timestamp=timestamp, nonce=nonce, sign=sign, preview_kind="file-preview"
+            file_id=file_id, timestamp=timestamp, nonce=nonce, sign=sign, preview_kind=UploadPreviewKind.FILE_PREVIEW
         )
         file = self._get_file(file_id=file_id)
         return UploadFileDelivery(

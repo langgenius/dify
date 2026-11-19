@@ -8,6 +8,7 @@ from typing import Protocol
 from uuid import NAMESPACE_URL, uuid5
 
 from machinery.context import RequestContext
+from services.external_agents.contracts import ExternalOrigin
 
 from .contracts import (
     ExternalAgentConflictError,
@@ -139,7 +140,10 @@ class ExternalTestService:
     @staticmethod
     def _scope(context: RequestContext) -> RuntimeScope:
         return RuntimeScope(
-            tenant_id=context.active_workspace_id, initiator_id=context.account_id, app_id=None, origin="overview_test"
+            tenant_id=context.active_workspace_id,
+            initiator_id=context.account_id,
+            app_id=None,
+            origin=ExternalOrigin.OVERVIEW_TEST,
         )
 
     def upload(self, context: RequestContext, *, agent_id: str, page_session_id: str, blob: FileBlob) -> TestFile:

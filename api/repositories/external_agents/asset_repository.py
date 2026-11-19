@@ -4,7 +4,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from datetime import UTC, datetime
 from itertools import starmap
-from typing import Any, Literal
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import case, func, or_, select
@@ -41,6 +41,8 @@ from services.external_agents.contracts import (
     ExternalAsset,
     ExternalAssetAppReference,
     ExternalAssetReferences,
+    ExternalAssetSortBy,
+    ExternalAssetSortOrder,
     OperationResult,
     VerificationEvidence,
 )
@@ -155,8 +157,8 @@ class ExternalAssetRepository:
         created_by: str | None,
         visible_ids: frozenset[str] | None,
         reference_app_ids: frozenset[str] | None,
-        sort_by: Literal["created_at", "updated_at"],
-        sort_order: Literal["asc", "desc"],
+        sort_by: ExternalAssetSortBy,
+        sort_order: ExternalAssetSortOrder,
     ) -> AssetPage:
         """Read one authorized cohort; tabs do not alter availability counts.
 

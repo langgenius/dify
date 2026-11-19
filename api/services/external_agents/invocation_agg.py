@@ -10,6 +10,8 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from typing import Any
 
+from services.external_agents.runtime_contracts import CancelTrigger
+
 from .io_contracts import JsonObject
 from .protocol import GatewayReceipt
 from .runtime_contracts import (
@@ -128,7 +130,7 @@ class ExternalInvocationAgg:
         return self._transition(
             commands=(self.command(CommandKind.CANCEL, now), self.command(CommandKind.DEADLINE, deadline)),
             cancel_state=CancelState.REQUESTED,
-            cancel_trigger="timeout",
+            cancel_trigger=CancelTrigger.TIMEOUT,
             cancellation_deadline=deadline,
         )
 

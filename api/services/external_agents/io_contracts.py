@@ -6,10 +6,45 @@ IDs, URLs and dictionaries never become Dify file references by themselves.
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Literal, Protocol
+from enum import StrEnum
+from typing import Protocol
 
 type JsonValue = None | bool | int | float | str | list[JsonValue] | dict[str, JsonValue]
 type JsonObject = dict[str, JsonValue]
+
+
+class ExternalActorRole(StrEnum):
+    ACCOUNT = "account"
+    END_USER = "end_user"
+
+
+class FileReferenceKind(StrEnum):
+    UPLOAD = "upload"
+    TOOL = "tool"
+    DATASOURCE = "datasource"
+
+
+class OutputFieldKind(StrEnum):
+    """Internal output kinds include the JSON-schema integer validation alias."""
+
+    STRING = "string"
+    NUMBER = "number"
+    INTEGER = "integer"
+    BOOLEAN = "boolean"
+    OBJECT = "object"
+    ARRAY = "array"
+    FILE = "file"
+
+
+class ExternalOutputType(StrEnum):
+    """Frozen public output types deliberately exclude the internal integer alias."""
+
+    STRING = "string"
+    NUMBER = "number"
+    BOOLEAN = "boolean"
+    OBJECT = "object"
+    ARRAY = "array"
+    FILE = "file"
 
 
 class ExternalIOError(ValueError):
@@ -28,7 +63,7 @@ class FileScope:
     app_id: str | None
     actor_id: str
     invocation_id: str
-    actor_role: Literal["account", "end_user"] = "account"
+    actor_role: ExternalActorRole = ExternalActorRole.ACCOUNT
     lease_id: str | None = None
     granted_upload_file_ids: frozenset[str] = frozenset()
     granted_tool_file_ids: frozenset[str] = frozenset()
@@ -40,7 +75,7 @@ class FileReference:
     """Reference requiring owner authorization; never contains an external URL."""
 
     file_id: str
-    kind: Literal["upload", "tool", "datasource"] = "upload"
+    kind: FileReferenceKind = FileReferenceKind.UPLOAD
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -139,7 +174,7 @@ class OutputField:
     """
 
     name: str
-    kind: Literal["string", "number", "integer", "boolean", "object", "array", "file"]
+    kind: OutputFieldKind
     required: bool = True
     children: tuple["OutputField", ...] = ()
     item: "OutputField | None" = None

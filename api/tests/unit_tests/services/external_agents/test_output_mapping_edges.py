@@ -8,9 +8,16 @@ from sqlalchemy import select
 
 from models.model import UploadFile
 from services.external_agents.file_profile import FileLimits
-from services.external_agents.io_contracts import ExternalIOError, FileReference, JsonObject, JsonValue, OutputField
+from services.external_agents.io_contracts import (
+    ExternalIOError,
+    FileReference,
+    JsonObject,
+    JsonValue,
+    OutputField,
+    OutputFieldKind,
+)
 from services.external_agents.output_mapping import map_output, validate_output_fields
-from services.external_agents.protocol import GatewayReceipt
+from services.external_agents.protocol import GatewayReceipt, GatewayReceiptKind
 from tests.unit_tests.providers.a2a import test_files as file_fixtures
 from tests.unit_tests.providers.a2a.test_files import FileDomain
 from tests.unit_tests.services.external_agents.test_output_mapping import SCOPE, receipt
@@ -20,7 +27,7 @@ file_domain = file_fixtures.file_domain
 
 def completed(artifacts: list[JsonValue], *, state: str = "TASK_STATE_COMPLETED") -> GatewayReceipt:
     return GatewayReceipt(
-        kind="task",
+        kind=GatewayReceiptKind.TASK,
         task_id="task",
         state=state,
         payload={"id": "task", "status": {"state": state}, "artifacts": artifacts},
@@ -34,9 +41,9 @@ def mapped(parts: Sequence[JsonObject], fields: Sequence[OutputField]) -> JsonOb
 @pytest.mark.parametrize(
     "fields",
     [
-        (OutputField(name="", kind="string"),),
-        (OutputField(name="same", kind="string"), OutputField(name="same", kind="number")),
-        (OutputField(name="values", kind="array"),),
+        (OutputField(name="", kind=OutputFieldKind.STRING),),
+        (OutputField(name="same", kind=OutputFieldKind.STRING), OutputField(name="same", kind=OutputFieldKind.NUMBER)),
+        (OutputField(name="values", kind=OutputFieldKind.ARRAY),),
     ],
 )
 def test_invalid_declarations_fail_before_consuming_remote_output(fields: tuple[OutputField, ...]) -> None:
@@ -58,16 +65,16 @@ def test_explicit_json_errors_are_not_hidden_by_field_defaults(text: str, code: 
     with pytest.raises(ExternalIOError) as failure:
         mapped(
             [{"text": text, "mediaType": "application/json"}],
-            [OutputField(name="count", kind="number", has_default=True, default=0)],
+            [OutputField(name="count", kind=OutputFieldKind.NUMBER, has_default=True, default=0)],
         )
     assert failure.value.code == code
 
 
 def test_explicit_json_preserves_finite_numbers_and_unconstrained_objects() -> None:
     fields = [
-        OutputField(name="count", kind="integer"),
-        OutputField(name="ratio", kind="number"),
-        OutputField(name="record", kind="object"),
+        OutputField(name="count", kind=OutputFieldKind.INTEGER),
+        OutputField(name="ratio", kind=OutputFieldKind.NUMBER),
+        OutputField(name="record", kind=OutputFieldKind.OBJECT),
     ]
     assert mapped(
         [
@@ -87,7 +94,7 @@ def test_explicit_json_preserves_finite_numbers_and_unconstrained_objects() -> N
 def test_noncompleted_tasks_never_publish_their_partial_artifacts(state: str) -> None:
     remote = completed([{"artifactId": "progress", "parts": [{"text": "partial"}]}], state=state)
     with pytest.raises(ExternalIOError) as failure:
-        map_output(remote, [OutputField(name="text", kind="string")], scope=SCOPE, materializer=None)
+        map_output(remote, [OutputField(name="text", kind=OutputFieldKind.STRING)], scope=SCOPE, materializer=None)
     assert failure.value.code == "task_not_completed"
 
 
@@ -98,7 +105,7 @@ def test_duplicate_completed_artifact_identity_is_ambiguous_even_with_distinct_t
     with pytest.raises(ExternalIOError) as failure:
         map_output(
             remote,
-            [OutputField(name="text", kind="string", has_default=True, default="fallback")],
+            [OutputField(name="text", kind=OutputFieldKind.STRING, has_default=True, default="fallback")],
             scope=SCOPE,
             materializer=None,
         )
@@ -112,10 +119,10 @@ def test_empty_text_is_valid_and_multiple_artifacts_follow_wire_order() -> None:
             {"artifactId": "second", "parts": [{"text": "second"}, {"text": "!"}]},
         ]
     )
-    assert map_output(remote, [OutputField(name="text", kind="string")], scope=SCOPE, materializer=None).values == {
-        "text": "second!"
-    }
-    assert mapped([{"text": ""}], [OutputField(name="text", kind="string")]) == {"text": ""}
+    assert map_output(
+        remote, [OutputField(name="text", kind=OutputFieldKind.STRING)], scope=SCOPE, materializer=None
+    ).values == {"text": "second!"}
+    assert mapped([{"text": ""}], [OutputField(name="text", kind=OutputFieldKind.STRING)]) == {"text": ""}
 
 
 @pytest.mark.parametrize(
@@ -132,12 +139,14 @@ def test_empty_text_is_valid_and_multiple_artifacts_follow_wire_order() -> None:
 def test_invalid_plain_receipts_fail_closed_before_output_publication(kind: str, payload: JsonObject) -> None:
     """Rehydrating a malformed response cannot create guessed downstream values."""
     remote = GatewayReceipt(
-        kind="message" if kind == "message" else "task", state="TASK_STATE_COMPLETED", payload=payload
+        kind=GatewayReceiptKind.MESSAGE if kind == "message" else GatewayReceiptKind.TASK,
+        state="TASK_STATE_COMPLETED",
+        payload=payload,
     )
     with pytest.raises(ExternalIOError) as failure:
         map_output(
             remote,
-            [OutputField(name="text", kind="string", has_default=True, default="fallback")],
+            [OutputField(name="text", kind=OutputFieldKind.STRING, has_default=True, default="fallback")],
             scope=SCOPE,
             materializer=None,
         )
@@ -147,7 +156,10 @@ def test_invalid_plain_receipts_fail_closed_before_output_publication(kind: str,
 @pytest.mark.parametrize("data", [None, [1, 2], "record"])
 def test_data_part_requires_exact_top_level_field_names(data: JsonValue) -> None:
     with pytest.raises(ExternalIOError) as failure:
-        mapped([{"data": data}], [OutputField(name="text", kind="string", has_default=True, default="fallback")])
+        mapped(
+            [{"data": data}],
+            [OutputField(name="text", kind=OutputFieldKind.STRING, has_default=True, default="fallback")],
+        )
     assert failure.value.code == "invalid_structured_output"
 
 
@@ -169,7 +181,7 @@ def test_file_mapping_failure_cannot_guess_a_target_or_publish_a_partial_result(
     with pytest.raises(ExternalIOError) as failure:
         map_output(
             remote,
-            [OutputField(name="report", kind="file")],
+            [OutputField(name="report", kind=OutputFieldKind.FILE)],
             scope=SCOPE,
             materializer=None,
             limits=FileLimits(max_files=1),
@@ -194,7 +206,11 @@ def test_array_file_output_materializes_in_artifact_order_at_exact_total_budget(
             {"artifactId": "b", "name": "reports", "parts": [raw_part(b"two", "second.txt")]},
         ]
     )
-    fields = [OutputField(name="reports", kind="array", item=OutputField(name="item", kind="file"))]
+    fields = [
+        OutputField(
+            name="reports", kind=OutputFieldKind.ARRAY, item=OutputField(name="item", kind=OutputFieldKind.FILE)
+        )
+    ]
     result = map_output(remote, fields, scope=owner, materializer=adapter, limits=FileLimits(max_total_bytes=6))
     outputs = result.values["reports"]
     assert isinstance(outputs, list)
@@ -216,7 +232,11 @@ def test_second_file_over_budget_leaves_only_owned_storage_for_cleanup(file_doma
     with pytest.raises(ExternalIOError) as failure:
         map_output(
             remote,
-            [OutputField(name="reports", kind="array", item=OutputField(name="item", kind="file"))],
+            [
+                OutputField(
+                    name="reports", kind=OutputFieldKind.ARRAY, item=OutputField(name="item", kind=OutputFieldKind.FILE)
+                )
+            ],
             scope=owner,
             materializer=adapter,
             limits=FileLimits(max_total_bytes=6),
@@ -231,7 +251,7 @@ def test_a_default_must_fit_the_same_variable_budget_as_the_failed_value() -> No
     with pytest.raises(ExternalIOError) as failure:
         map_output(
             receipt([{"text": "long remote value"}]),
-            [OutputField(name="text", kind="string", has_default=True, default="long fallback")],
+            [OutputField(name="text", kind=OutputFieldKind.STRING, has_default=True, default="long fallback")],
             scope=SCOPE,
             materializer=None,
             max_variable_bytes=3,

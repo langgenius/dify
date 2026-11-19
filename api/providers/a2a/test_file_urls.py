@@ -7,22 +7,34 @@ import json
 from collections.abc import Callable
 from dataclasses import asdict
 from datetime import UTC, datetime
-from typing import Literal
+from typing import Annotated
 from urllib.parse import urlencode
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 from services.external_agents.contracts import ExternalAgentNotFoundError
-from services.external_agents.test_file_access import AuthorizedTestFile, TestFileGrant, TestFileURL
-from services.upload_file_delivery_service import is_scoped_upload_preview_nonce
+from services.external_agents.test_file_access import AuthorizedTestFile, TestFileGrant, TestFileGrantKind, TestFileURL
+from services.upload_file_delivery_service import UploadPreviewKind, is_scoped_upload_preview_nonce
 
 _PREFIX = "byoa.v1."
+
+
+def _grant_kind_from_wire(value: object) -> TestFileGrantKind:
+    """Accept a signed grant kind string; return its member or reject coercion.
+
+    Preconditions: value is an untrusted claim or an authorized grant member.
+    Postconditions: only the existing input/output strings succeed; non-string
+    values fail before signing or admitting a decoded grant.
+    """
+    if not isinstance(value, str):
+        raise ValueError("A Test file grant kind must be a string.")
+    return TestFileGrantKind(value)
 
 
 class _GrantClaims(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True, frozen=True, hide_input_in_errors=True)
 
-    kind: Literal["input", "output"]
+    kind: Annotated[TestFileGrantKind, BeforeValidator(_grant_kind_from_wire)]
     tenant_id: str = Field(min_length=1, max_length=255)
     actor_id: str = Field(min_length=1, max_length=255)
     agent_id: str = Field(min_length=1, max_length=255)
@@ -63,7 +75,10 @@ class DifyTestFileURLSigner:
         if expires <= now:
             raise ExternalAgentNotFoundError("The Test file lease expired.")
         signature = self._signature(
-            file_id=file.grant.file_id, timestamp=str(timestamp), nonce=nonce, preview_kind="file-preview"
+            file_id=file.grant.file_id,
+            timestamp=str(timestamp),
+            nonce=nonce,
+            preview_kind=UploadPreviewKind.FILE_PREVIEW,
         )
         query = urlencode({"timestamp": str(timestamp), "nonce": nonce, "sign": signature})
         return TestFileURL(
@@ -72,9 +87,7 @@ class DifyTestFileURLSigner:
             url_expires_at=expires,
         )
 
-    def _signature(
-        self, *, file_id: str, timestamp: str, nonce: str, preview_kind: Literal["file-preview", "image-preview"]
-    ) -> str:
+    def _signature(self, *, file_id: str, timestamp: str, nonce: str, preview_kind: UploadPreviewKind) -> str:
         value = f"byoa-preview:v1|{preview_kind}|{file_id}|{timestamp}|{nonce}".encode()
         return base64.urlsafe_b64encode(hmac.new(self._key, value, hashlib.sha256).digest()).decode()
 
@@ -85,7 +98,7 @@ class DifyTestFileURLSigner:
         timestamp: str,
         nonce: str,
         sign: str,
-        preview_kind: Literal["file-preview", "image-preview"],
+        preview_kind: UploadPreviewKind,
     ) -> bool:
         """Accept only a fresh isolated MAC; no unverified scope claim is decoded.
 

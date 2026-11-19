@@ -7,18 +7,24 @@ re-admit its actor and reread the current page/generation/lease before storage I
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Literal, Protocol
+from enum import StrEnum
+from typing import Protocol
 
 from machinery.context import RequestContext
-from services.upload_file_delivery_service import UploadFileDeliveryNotFoundError
+from services.upload_file_delivery_service import UploadFileDeliveryNotFoundError, UploadPreviewKind
 
 from .contracts import ExternalAgentError, ExternalAgentForbiddenError, ExternalAssetAccess
 from .io_contracts import JsonObject, JsonValue
 
 
+class TestFileGrantKind(StrEnum):
+    INPUT = "input"
+    OUTPUT = "output"
+
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class TestFileGrant:
-    kind: Literal["input", "output"]
+    kind: TestFileGrantKind
     tenant_id: str
     actor_id: str
     agent_id: str
@@ -94,7 +100,7 @@ class TestFileURLSigner(Protocol):
         timestamp: str,
         nonce: str,
         sign: str,
-        preview_kind: Literal["file-preview", "image-preview"],
+        preview_kind: UploadPreviewKind,
     ) -> bool:
         """Verify the isolated MAC and TTL before any claims are decoded."""
         ...
@@ -167,7 +173,7 @@ class ExternalTestFileAccessService:
         timestamp: str,
         nonce: str,
         sign: str,
-        preview_kind: Literal["file-preview", "image-preview"],
+        preview_kind: UploadPreviewKind,
     ) -> bool:
         """Authenticate scoped delivery without querying claims or source state."""
         return self._signer.verify(

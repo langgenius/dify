@@ -5,8 +5,8 @@ import json
 import os
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
+from enum import StrEnum
 from pathlib import Path
-from typing import Literal
 from urllib.parse import parse_qs, urlsplit
 
 import httpx
@@ -23,6 +23,11 @@ from services.file_service import FileUploadActor
 from tests.unit_tests.services.external_agents.test_scoped_file_urls import FileURLs, input_link, urls
 
 __all__ = ["urls"]
+
+
+class FetchMethod(StrEnum):
+    GET = "GET"
+    HEAD = "HEAD"
 
 
 def native_without_app_context(url: str) -> httpx.Response | None:
@@ -111,7 +116,7 @@ def test_scoped_upload_mac_is_not_accepted_by_ordinary_preview_verifiers(urls: F
 def test_scoped_mac_defers_native_reads_and_public_reader_rechecks_lifecycle(
     urls: FileURLs,
     monkeypatch: pytest.MonkeyPatch,
-    method: Literal["GET", "HEAD"],
+    method: FetchMethod,
     boundary: str,
     path_kind: str,
 ) -> None:
@@ -140,7 +145,7 @@ def test_scoped_mac_defers_native_reads_and_public_reader_rechecks_lifecycle(
     with urls.app.app_context(), bind_file_access_scope(scope):
         public_before_status, public_before_bytes = urls.read(link)
         assert (public_before_status, public_before_bytes) == (200, b"input owned bytes")
-        before = remote_fetcher._resolve_dify_signed_file_url(method, fetch_url)
+        before = remote_fetcher._resolve_dify_signed_file_url("GET" if method == FetchMethod.GET else "HEAD", fetch_url)
         # The independent MAC domain prevents every legacy shortcut/alias from
         # authenticating scoped claims. No kernel-to-service dependency is needed.
         assert before is None
@@ -158,7 +163,7 @@ def test_scoped_mac_defers_native_reads_and_public_reader_rechecks_lifecycle(
             )
         public_status, _ = urls.read(link)
         assert public_status == 404
-        after = remote_fetcher._resolve_dify_signed_file_url(method, fetch_url)
+        after = remote_fetcher._resolve_dify_signed_file_url("GET" if method == FetchMethod.GET else "HEAD", fetch_url)
         assert after is None
         assert calls == []
         evidence = {

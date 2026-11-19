@@ -27,6 +27,7 @@ from models import (
 )
 from models.human_input import HumanInputDelivery, HumanInputFormRecipient
 from models.tools import ToolConversationVariables, ToolFile
+from services.external_agents.retention import ExternalDeletionKind
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +64,7 @@ def _cleanup_conversation_related_data(conversation_id: str) -> bool:
     if tenant_id is not None:
         from extensions.application_services.external_agent_lifecycle import fence_external_parent
 
-        fence_external_parent(tenant_id, "conversation", conversation_id)
+        fence_external_parent(tenant_id, ExternalDeletionKind.CONVERSATION, conversation_id)
     with session_factory.create_session() as session:
         conversation = session.scalar(select(Conversation).where(Conversation.id == conversation_id).with_for_update())
         if conversation is not None and not conversation.is_deleted:

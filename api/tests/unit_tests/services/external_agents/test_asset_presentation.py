@@ -13,7 +13,12 @@ from models.external_agent import ExternalAgentFileLease
 from models.model import App, AppMode, UploadFile
 from models.workflow import Workflow, WorkflowType
 from repositories.external_agents.observability_repository import DatabaseExternalObservationAccess
-from services.external_agents.contracts import AssetPage, ExternalAgentInvalidInputError
+from services.external_agents.contracts import (
+    AssetPage,
+    ExternalAgentInvalidInputError,
+    ExternalAssetSortBy,
+    ExternalAssetSortOrder,
+)
 from tests.helpers.unit.model_factories import make_upload_file
 from tests.unit_tests.repositories.external_agents.test_runtime_repository import bound_engine, stored, uid
 from tests.unit_tests.services.external_agents import test_control_plane_applications as control_fixtures
@@ -38,8 +43,8 @@ def page(
         keyword=keyword,
         enabled=enabled,
         connected_by_me=mine,
-        sort_by="created_at",
-        sort_order="asc" if order == "asc" else "desc",
+        sort_by=ExternalAssetSortBy.CREATED_AT,
+        sort_order=ExternalAssetSortOrder.ASC if order == "asc" else ExternalAssetSortOrder.DESC,
     )
 
 

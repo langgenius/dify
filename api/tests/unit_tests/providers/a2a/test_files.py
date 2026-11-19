@@ -6,7 +6,7 @@ from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from pathlib import Path
-from typing import Literal, override
+from typing import override
 from uuid import uuid4
 
 import httpx
@@ -29,9 +29,11 @@ from providers.a2a.transport import BoundedTransport
 from repositories.external_agents.file_lifecycle_repository import ExternalFileLifecycleRepository
 from services.external_agents.file_profile import FileLimits
 from services.external_agents.io_contracts import (
+    ExternalActorRole,
     ExternalIOError,
     FileBlob,
     FileReference,
+    FileReferenceKind,
     FileScope,
     FileWriteReservation,
     JsonObject,
@@ -139,7 +141,7 @@ def file_domain(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Generator[Fi
 
 
 def scope(
-    *, tenant: str = "tenant-a", actor: str = "actor-a", role: Literal["account", "end_user"] = "end_user"
+    *, tenant: str = "tenant-a", actor: str = "actor-a", role: ExternalActorRole = ExternalActorRole.END_USER
 ) -> FileScope:
     return FileScope(
         tenant_id=tenant,
@@ -295,7 +297,9 @@ def test_tool_generated_file_uses_its_owned_record_and_bytes(file_domain: FileDo
         session.flush()
         identifier = tool.id
     adapter._storage.save(key, b"abc")
-    reference = FileReference(file_id=identifier, kind="tool" if kind == "tool" else "datasource")
+    reference = FileReference(
+        file_id=identifier, kind=FileReferenceKind.TOOL if kind == "tool" else FileReferenceKind.DATASOURCE
+    )
     assert adapter.read_authorized(scope(), reference, max_bytes=3).data == b"abc"
     with pytest.raises(ExternalIOError) as error:
         adapter.read_authorized(scope(actor="actor-b"), reference, max_bytes=3)
@@ -528,7 +532,11 @@ def source_lifecycle_domain(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
                 )
             )
     scope = FileScope(
-        tenant_id=tenant, app_id=consumer_app, actor_id=actor, actor_role="account", invocation_id=consumer
+        tenant_id=tenant,
+        app_id=consumer_app,
+        actor_id=actor,
+        actor_role=ExternalActorRole.ACCOUNT,
+        invocation_id=consumer,
     )
     adapter = DifyFileAdapter(
         sessions=sessions,

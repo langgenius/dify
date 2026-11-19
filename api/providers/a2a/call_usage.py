@@ -6,9 +6,10 @@ final cumulative total. Working snapshots, arbitrary nested metadata and Trace
 steps never establish call usage. Observations cannot submit business work.
 """
 
-from typing import Literal
+from enum import StrEnum
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, ValidationError
 
 from services.external_agents.protocol import GatewayReceipt
 from services.external_agents.traceability import ReportedCallUsage
@@ -17,6 +18,25 @@ METADATA_USAGE_PROFILE = "dify.metadata-usage-total-tokens.v1"
 _TERMINAL_TASK_STATES = frozenset(
     {"TASK_STATE_COMPLETED", "TASK_STATE_FAILED", "TASK_STATE_CANCELED", "TASK_STATE_REJECTED"}
 )
+
+
+class MetadataUsageScope(StrEnum):
+    CALL = "call"
+    INVOCATION = "invocation"
+    TASK = "task"
+    MESSAGE = "message"
+
+
+def _metadata_usage_scope_from_wire(value: object) -> MetadataUsageScope:
+    """Accept a supported scope string; return its member or reject coercion.
+
+    Preconditions: value is untrusted metadata or an existing scope member.
+    Postconditions: only the four frozen scope strings succeed; bytes and
+    non-string values cannot establish call usage or relax token validation.
+    """
+    if not isinstance(value, str):
+        raise ValueError("A usage scope must be a string.")
+    return MetadataUsageScope(value)
 
 
 class _MetadataUsage(BaseModel):
@@ -29,7 +49,7 @@ class _MetadataUsage(BaseModel):
     model_config = ConfigDict(strict=True, extra="ignore", populate_by_name=False)
 
     total_tokens: int = Field(alias="totalTokens", ge=0, le=2**63 - 1)
-    scope: Literal["call", "invocation", "task", "message"] = "call"
+    scope: Annotated[MetadataUsageScope, BeforeValidator(_metadata_usage_scope_from_wire)] = MetadataUsageScope.CALL
 
 
 class MetadataCallUsageProof:

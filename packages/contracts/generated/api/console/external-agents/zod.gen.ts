@@ -38,18 +38,6 @@ export const zExternalAgentOperationResponse = z.object({
 })
 
 /**
- * ExternalAgentVerifyPayload
- */
-export const zExternalAgentVerifyPayload = z.object({
-  agent_id: z.uuid().nullish(),
-  auth_type: z.enum(['bearer', 'none']),
-  credential: z.string().max(8192).nullish(),
-  credential_action: z.enum(['keep', 'remove', 'replace']).optional().default('remove'),
-  endpoint: z.string().min(1).max(4096),
-  expected_connection_revision_id: z.uuid().nullish(),
-})
-
-/**
  * ExternalAgentConnectionPayload
  */
 export const zExternalAgentConnectionPayload = z.object({
@@ -203,6 +191,28 @@ export const zExternalAgentCapabilitiesResponse = z.object({
 })
 
 /**
+ * ExternalAuthType
+ */
+export const zExternalAuthType = z.enum(['bearer', 'none'])
+
+/**
+ * ExternalCredentialAction
+ */
+export const zExternalCredentialAction = z.enum(['keep', 'remove', 'replace'])
+
+/**
+ * ExternalAgentVerifyPayload
+ */
+export const zExternalAgentVerifyPayload = z.object({
+  agent_id: z.uuid().nullish(),
+  auth_type: zExternalAuthType,
+  credential: z.string().max(8192).nullish(),
+  credential_action: zExternalCredentialAction.optional().default('remove'),
+  endpoint: z.string().min(1).max(4096),
+  expected_connection_revision_id: z.uuid().nullish(),
+})
+
+/**
  * ExternalAgentConnectionWarningsResponse
  */
 export const zExternalAgentConnectionWarningsResponse = z.object({
@@ -312,6 +322,9 @@ export const zExternalTracingProviderOverviewResponse = z.object({
   providers: z.array(zExternalTracingProviderStateResponse),
 })
 
+/**
+ * VerificationFailureReason
+ */
 export const zVerificationFailureReason = z.enum([
   'authentication_failed',
   'connection_failed',
@@ -388,6 +401,20 @@ export const zExternalAgentJsonValue = z
   .nullable()
 
 /**
+ * ExternalOutputType
+ *
+ * Frozen public output types deliberately exclude the internal integer alias.
+ */
+export const zExternalOutputType = z.enum([
+  'array',
+  'boolean',
+  'file',
+  'number',
+  'object',
+  'string',
+])
+
+/**
  * ExternalTestOutputField
  *
  * Public six-type profile; internal JSON-schema aliases are not wire types.
@@ -400,7 +427,7 @@ export const zExternalTestOutputField = z.object({
   default: zExternalAgentJsonValue.optional(),
   has_default: z.boolean().optional().default(false),
   item: z.lazy((): any => zExternalTestOutputField).nullish(),
-  kind: z.enum(['array', 'boolean', 'file', 'number', 'object', 'string']),
+  kind: zExternalOutputType,
   name: z.string().min(1).max(255),
   required: z.boolean().optional().default(true),
 })

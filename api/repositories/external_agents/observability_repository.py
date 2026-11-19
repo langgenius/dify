@@ -90,6 +90,7 @@ from services.external_agents.traceability import (
 from services.external_agents.tracing_config import (
     ExternalTraceDelivery,
     ExternalTraceDeliveryStatus,
+    ExternalTraceTargetKind,
     ExternalTracingProviderState,
     FrozenExternalTraceTarget,
     StoredExternalTracingConfig,
@@ -944,7 +945,7 @@ class ExternalObservabilityRepository:
         return FrozenExternalTraceTarget(
             row.tenant_id,
             row.invocation_id,
-            "asset" if row.target_kind == "asset" else "app",
+            ExternalTraceTargetKind(row.target_kind),
             row.target_id,
             row.provider,
             row.config_revision,

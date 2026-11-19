@@ -11,7 +11,8 @@ import hashlib
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Literal, Protocol
+from enum import StrEnum
+from typing import Any, Protocol
 
 from dify_trace_sdk.errors import ExportOutcomeUnknownError, ExportRejectedError, ExportRetryableError
 from dify_trace_sdk.ids import span_id_for, trace_id_for
@@ -29,6 +30,11 @@ from services.external_agents.observability import (
     TraceSnapshot,
     aware_utc,
 )
+
+
+class ExternalTraceTargetKind(StrEnum):
+    ASSET = "asset"
+    APP = "app"
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,7 +76,7 @@ class ExternalTracingProviderOverview:
 class FrozenExternalTraceTarget:
     tenant_id: str
     invocation_id: str
-    kind: Literal["asset", "app"]
+    kind: ExternalTraceTargetKind
     owner_id: str
     provider: str
     config_revision: str
