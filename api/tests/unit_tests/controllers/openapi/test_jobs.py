@@ -37,7 +37,12 @@ from services.run_job_service import (
     RunResult,
 )
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
-from tests.unit_tests.services.run_job_fakes import InMemoryRedis, InMemoryRunResults, RecordingTaskControl
+from tests.unit_tests.services.run_job_fakes import (
+    RUN_TIME_LIMIT,
+    InMemoryRedis,
+    InMemoryRunResults,
+    RecordingTaskControl,
+)
 
 WAIT_ROUTE = "/openapi/v1/apps/{app_id}/jobs/{job_id}:wait"
 STOP_ROUTE = "/openapi/v1/apps/{app_id}/jobs/{job_id}:stop"
@@ -119,6 +124,7 @@ def world(
         tasks=tasks,
         max_background_runs=10,
         max_waiters=4,
+        run_time_limit=RUN_TIME_LIMIT,
         sleep=lambda _seconds: time.sleep(0.01),
     )
     services = dataclasses.replace(account_application_services, run_jobs=service)
