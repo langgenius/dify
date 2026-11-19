@@ -1153,7 +1153,10 @@ def test_trigger_consumption_and_real_execution_share_detached_revision(
         variables = session.scalars(
             select(WorkflowDraftVariable).where(WorkflowDraftVariable.node_id == "trigger")
         ).all()
-        assert any(variable.name == "payload" and variable.get_value().value == "from-A" for variable in variables)
+        assert any(
+            variable.name == "payload" and variable.get_value(session=session).value == "from-A"
+            for variable in variables
+        )
 
 
 def test_single_node_reads_offloaded_outputs_after_repository_session_closes(
@@ -1204,7 +1207,7 @@ def test_single_node_reads_offloaded_outputs_after_repository_session_closes(
             super().save(execution)
             # Keep the real persistence and offload implementation. The reader must
             # support a writer that stores the execution payload out of line.
-            self.save_execution_data(execution)
+            self._save_execution_data(execution)
 
     runtime_dependencies = gateway._workflows._runtime
     assert isinstance(runtime_dependencies, WorkflowExecutionDependencies)
@@ -1268,7 +1271,7 @@ def test_single_node_reads_offloaded_outputs_after_repository_session_closes(
             )
         )
         assert variable is not None
-        assert variable.get_value().value == content
+        assert variable.get_value(session=session).value == content
 
 
 def test_real_start_and_branch_execution_share_injected_variable_and_execution_storage(
