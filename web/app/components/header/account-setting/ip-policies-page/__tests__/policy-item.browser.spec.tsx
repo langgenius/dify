@@ -1,34 +1,63 @@
+import type { DeletePolicyPayload, PolicyDialogPayload } from '../policy-dialog-payload'
+import { createAlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
+import {
+  createDialogHandle,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createNetworkAccessGroupFixture } from '@/test/console/network-access'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { DeletePolicyDialog } from '../delete-policy-dialog'
 import { PolicyItem } from '../policy-item'
 
 async function renderPolicy(canMutate = true) {
   onTestFinished(guardUnexpectedFetch())
   const group = createNetworkAccessGroupFixture()
-  const onView = vi.fn()
-  const onEdit = vi.fn()
+  const deleteDialog = createAlertDialogHandle<DeletePolicyPayload>()
+  const policyDialog = createDialogHandle<PolicyDialogPayload>()
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper()
   const screen = await render(
     <ConsoleProvider>
       <button type="button">Before policy</button>
       <section aria-label="IP policy row" style={{ width: 800 }}>
         <div role="table" aria-label="IP policies">
-          <PolicyItem group={group} canMutate={canMutate} onView={onView} onEdit={onEdit} />
+          <PolicyItem
+            group={group}
+            canMutate={canMutate}
+            policyDialog={policyDialog}
+            deleteDialog={deleteDialog}
+            onFormOpen={() => {}}
+          />
         </div>
       </section>
+      {canMutate && (
+        <DeletePolicyDialog
+          dialog={deleteDialog}
+          groups={[group]}
+          fallbackFocus={{ current: null }}
+        />
+      )}
+      <Dialog handle={policyDialog}>
+        <DialogContent>
+          <DialogTitle>Open policy</DialogTitle>
+          <DialogClose>Close</DialogClose>
+        </DialogContent>
+      </Dialog>
     </ConsoleProvider>,
   )
-  return { screen, group, onView, onEdit }
+  return { screen, group }
 }
 
 // Real hit testing catches the row padding that unit clicks on the name button do not reach.
 it.each([true, false])(
   'opens the policy from padding on every side of the row (can manage: %s)',
   async (canMutate) => {
-    const { screen, group, onView, onEdit } = await renderPolicy(canMutate)
+    const { screen } = await renderPolicy(canMutate)
     const row = screen.getByRole('region', { name: 'IP policy row' })
     const { width, height } = row.element().getBoundingClientRect()
     const positions = [
@@ -39,30 +68,32 @@ it.each([true, false])(
     ]
     if (!canMutate) positions.push({ x: width - 20, y: height / 2 })
 
-    for (const [index, position] of positions.entries()) {
+    const editor = screen.getByRole('dialog', { name: 'Open policy' })
+    for (const position of positions) {
       await row.click({ position })
-      expect(onView).toHaveBeenCalledTimes(index + 1)
-      expect(onView).toHaveBeenLastCalledWith(group)
+      await expect.element(editor).toBeVisible()
+      await editor.getByRole('button', { name: 'Close' }).click()
+      await expect.element(editor).not.toBeInTheDocument()
     }
-    expect(onEdit).not.toHaveBeenCalled()
   },
 )
 
 it('keeps the row and its separate actions reachable with pointer and keyboard', async () => {
-  const { screen, group, onView, onEdit } = await renderPolicy()
+  const { screen, group } = await renderPolicy()
   const policy = screen.getByRole('button', { name: group.name })
   const more = screen.getByRole('button', { name: /common.operation.moreActionsFor/ })
 
   await more.click()
   await screen.getByRole('menuitem', { name: 'common.operation.edit' }).click()
-  expect(onEdit).toHaveBeenCalledExactlyOnceWith(group)
-  expect(onView).not.toHaveBeenCalled()
+  const menuEditor = screen.getByRole('dialog', { name: 'Open policy' })
+  await expect.element(menuEditor).toBeVisible()
+  await menuEditor.getByRole('button', { name: 'Close' }).click()
+  await expect.element(menuEditor).not.toBeInTheDocument()
 
   await more.click()
   await screen.getByRole('menuitem', { name: 'common.operation.delete' }).click()
   const confirmation = screen.getByRole('alertdialog')
   await expect.element(confirmation).toBeVisible()
-  expect(onView).not.toHaveBeenCalled()
   await confirmation.getByRole('button', { name: 'common.operation.cancel' }).click()
   await expect.element(confirmation).not.toBeInTheDocument()
 
@@ -71,10 +102,14 @@ it('keeps the row and its separate actions reachable with pointer and keyboard',
   await expect.element(policy).toHaveFocus()
   expect(policy.element().matches(':focus-visible')).toBe(true)
   await userEvent.keyboard('{Enter}')
-  expect(onView).toHaveBeenCalledExactlyOnceWith(group)
+  const rowEditor = screen.getByRole('dialog', { name: 'Open policy' })
+  await expect.element(rowEditor).toBeVisible()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(rowEditor).not.toBeInTheDocument()
+  await expect.element(policy).toHaveFocus()
   await userEvent.tab()
   await expect.element(more).toHaveFocus()
   await userEvent.keyboard('{Enter}')
   await expect.element(screen.getByRole('menu')).toBeVisible()
-  expect(onView).toHaveBeenCalledTimes(1)
+  await expect.element(rowEditor).not.toBeInTheDocument()
 })
