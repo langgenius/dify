@@ -6,6 +6,7 @@ import type { ExternalAgentOverview } from '../../model'
 import { hashKey, skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { v4 as uuid4 } from 'uuid'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
 
@@ -30,7 +31,7 @@ const message = (error: unknown, fallback: string) =>
   error instanceof Error && error.message ? error.message : fallback
 
 export function useTestAgentPageSession(overview: ExternalAgentOverview) {
-  const [pageSessionId, setPageSessionId] = useState(() => crypto.randomUUID())
+  const [pageSessionId, setPageSessionId] = useState(() => uuid4())
   const mountedRef = useRef(false)
   useEffect(() => {
     mountedRef.current = true
@@ -48,7 +49,7 @@ export function useTestAgentPageSession(overview: ExternalAgentOverview) {
         })
     }
     const restorePage = (event: PageTransitionEvent) => {
-      if (event.persisted) setPageSessionId(crypto.randomUUID())
+      if (event.persisted) setPageSessionId(uuid4())
     }
     window.addEventListener('pagehide', leavePage)
     window.addEventListener('pageshow', restorePage)
@@ -249,7 +250,7 @@ export function useTestAgentRun({
       body: {
         page_session_id: pageSessionId,
         expected_generation: generation,
-        idempotency_key: crypto.randomUUID(),
+        idempotency_key: uuid4(),
         task_text: task,
         input_lease_ids: leaseIds,
       },

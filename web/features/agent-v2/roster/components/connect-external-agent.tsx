@@ -19,6 +19,7 @@ import {
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { v4 as uuid4 } from 'uuid'
 import { stringValue } from '@/features/agent-v2/external-agent/model'
 import { getExternalAgentOverviewPath } from '@/features/agent-v2/external-agent/routes'
 import { useRouter } from '@/next/navigation'
@@ -97,7 +98,7 @@ export function ConnectExternalAgent() {
       body = {
         verification_id: evidence.verification_id,
         metadata: { name: fields.name, role: fields.role, description: fields.description },
-        idempotency_key: crypto.randomUUID(),
+        idempotency_key: uuid4(),
       }
     }
     setSubmitted(body)

@@ -173,6 +173,7 @@ it('explains why pending and failed uploads block running, and releases a remove
   upload.reject(new Error('Upload failed.'))
   await expect.element(panel().getByRole('alert')).toHaveTextContent('Upload failed.')
   await expect.element(run).toHaveAttribute('aria-disabled', 'true')
+  await run.hover()
   await expect
     .element(
       page.getByText('Retry or remove failed files before running the test.', { exact: true }),

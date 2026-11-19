@@ -3,6 +3,7 @@ import type { TestFileRules } from './file-limits'
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { v4 as uuid4 } from 'uuid'
 import { consoleQuery } from '@/service/console'
 import { localFileMime } from './file-limits'
 
@@ -175,7 +176,7 @@ export function useTestAgentFiles({
       return false
     }
     setFailure(null)
-    const id = crypto.randomUUID()
+    const id = uuid4()
     const preparation: FilePreparation = {
       scope,
       mediaType,
@@ -212,7 +213,7 @@ export function useTestAgentFiles({
     }
     setFailure(null)
     for (const file of files) {
-      const id = crypto.randomUUID()
+      const id = uuid4()
       const mime = localFileMime(file, rules?.fileTypes ?? [])
       const uploadFile =
         file.type === mime
