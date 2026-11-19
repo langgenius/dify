@@ -1,16 +1,22 @@
 """Exercise Agent App creation and listing through real Console HTTP and SQLite."""
 
 import json
+from concurrent.futures import ThreadPoolExecutor
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from threading import Thread
+from threading import Barrier, Thread
 from typing import override
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import Engine, select
+from sqlalchemy import Engine, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.sql import Executable
+from werkzeug.test import TestResponse
 
+from constants import HEADER_NAME_CSRF_TOKEN
+from libs.token import _real_cookie_name
 from machinery.context import RequestContext
 from models.account import TenantAccountJoin, TenantAccountRole
 from models.agent import (
@@ -28,8 +34,9 @@ from models.model import App, AppMode, AppModelConfig, Conversation, Tag, TagBin
 from repositories.agent_roster_repository import SQLAlchemyAgentRosterRepository
 from repositories.app.agent_app_repository import AgentAppRepository
 from services.agent.invite_options_store import AgentInviteOptionsPage
+from services.app.agent_app_contracts import AgentAppListPage
 from services.enterprise.base import EnterpriseRequest
-from services.entities.app_entities import AppListParams
+from services.entities.app_entities import AgentAppPublicationCounts, AppListParams
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.helpers.unit.model_factories import make_workflow
 from tests.unit_tests.controllers.console.agent.test_api_access import Harness
@@ -119,6 +126,99 @@ def test_list_rolls_back_build_conversation_if_app_projection_fails(harness: Har
             session.scalar(select(AgentDebugConversation.id).where(AgentDebugConversation.agent_id == agent_id)) is None
         )
         assert session.scalar(select(Conversation.id).where(Conversation.app_id == app_id)) is None
+
+
+def test_concurrent_first_lists_reuse_the_same_build_conversation(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _, app_id = harness.create_agent()
+    barrier = Barrier(2)
+    original_scalar = Session.scalar
+
+    def synchronize_missing_mapping(self: Session, statement: Executable) -> object | None:
+        value = original_scalar(self, statement)
+        if "agent_debug_conversations" in str(statement).lower() and value is None:
+            barrier.wait(timeout=10)
+        return value
+
+    monkeypatch.setattr(Session, "scalar", synchronize_missing_mapping)
+
+    def list_apps() -> TestResponse:
+        with harness.client.application.test_client() as client:
+            client.set_cookie(_real_cookie_name("csrf_token"), harness.headers[HEADER_NAME_CSRF_TOKEN])
+            return client.get("/console/api/agent?limit=10", headers=harness.headers)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        responses = list(pool.map(lambda _: list_apps(), range(2)))
+
+    assert [response.status_code for response in responses] == [HTTPStatus.OK, HTTPStatus.OK]
+    conversation_ids = [response.get_json()["data"][0]["debug_conversation_id"] for response in responses]
+    assert conversation_ids[0] is not None
+    assert conversation_ids[0] == conversation_ids[1]
+    with harness.sessions() as session:
+        assert session.scalar(select(func.count()).select_from(AgentDebugConversation)) == 1
+        assert session.scalar(select(func.count()).select_from(Conversation).where(Conversation.app_id == app_id)) == 1
+
+
+def test_list_retries_named_build_mapping_constraint_conflict(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repository = AgentAppRepository(session_factory=harness.sessions)
+    context = RequestContext("test", None, harness.account_id, harness.tenant_id)
+    params = AppListParams(mode="agent")
+    page = AgentAppListPage(
+        page=1,
+        limit=20,
+        total=0,
+        has_more=False,
+        publication_counts=AgentAppPublicationCounts(published=0, drafts=0),
+        data=[],
+    )
+    attempts = 0
+
+    def conflict_once(
+        _context: RequestContext, _params: AppListParams, *, accessible_agent_ids: set[str] | None
+    ) -> AgentAppListPage:
+        del accessible_agent_ids
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise IntegrityError(
+                "INSERT INTO agent_debug_conversations ...",
+                {},
+                Exception(
+                    "duplicate key violates unique constraint agent_debug_conversation_agent_account_draft_type_unique"
+                ),
+            )
+        return page
+
+    monkeypatch.setattr(repository, "_list_apps_once", conflict_once)
+    assert repository.list_apps(context, params, accessible_agent_ids=None) is page
+    assert attempts == 2
+
+
+def test_list_reraises_unrelated_integrity_error_without_retrying(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repository = AgentAppRepository(session_factory=harness.sessions)
+    context = RequestContext("test", None, harness.account_id, harness.tenant_id)
+    params = AppListParams(mode="agent")
+    error = IntegrityError("INSERT", {}, Exception("foreign key constraint failed"))
+    attempts = 0
+
+    def fail_unrelated(
+        _context: RequestContext, _params: AppListParams, *, accessible_agent_ids: set[str] | None
+    ) -> AgentAppListPage:
+        del accessible_agent_ids
+        nonlocal attempts
+        attempts += 1
+        raise error
+
+    monkeypatch.setattr(repository, "_list_apps_once", fail_unrelated)
+    with pytest.raises(IntegrityError) as caught:
+        repository.list_apps(context, params, accessible_agent_ids=None)
+    assert caught.value is error
+    assert attempts == 1
 
 
 def test_list_resolves_rbac_visibility_through_enterprise_gateway(harness: Harness) -> None:
