@@ -87,6 +87,7 @@ export async function proxy(request: NextRequest) {
   const whiteList = `${env.NEXT_PUBLIC_CSP_WHITELIST} ${NECESSARY_DOMAIN}${turnstileOrigin}`
   const marketplaceFrameOrigin = getHttpOrigin(env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX)
   const marketplaceFrameSrc = marketplaceFrameOrigin ? ` ${marketplaceFrameOrigin}` : ''
+  // oxlint-disable-next-line no-restricted-properties -- Runs on the server, where crypto.randomUUID is always available.
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   const csp = `'nonce-${nonce}'`
 

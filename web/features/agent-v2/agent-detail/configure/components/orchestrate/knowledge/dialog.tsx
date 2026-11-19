@@ -35,6 +35,7 @@ import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { v4 as uuid4 } from 'uuid'
 import {
   useKnowledgeValidationMessage,
   validateKnowledgeRetrievals,
@@ -85,7 +86,7 @@ const withConditionIds = (item: AgentKnowledgeRetrievalItem): AgentKnowledgeRetr
           ...item.metadataFilteringConditions,
           conditions: item.metadataFilteringConditions.conditions.map((condition) => ({
             ...condition,
-            id: condition.id || crypto.randomUUID(),
+            id: condition.id || uuid4(),
           })),
         },
       }
@@ -389,7 +390,7 @@ function AgentKnowledgeRetrievalForm({
           ? `${title.slice(0, 109)} (${id.slice(0, 8)})`
           : title.slice(0, 120)
         next.push({
-          id: crypto.randomUUID(),
+          id: uuid4(),
           controlSpaceId: id,
           name,
           description: space.technical_summary?.description?.slice(0, 2000) ?? '',
