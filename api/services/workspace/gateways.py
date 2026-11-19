@@ -7,7 +7,6 @@ from contextlib import AbstractContextManager
 from typing import Literal, override
 from uuid import uuid4
 
-from redis import RedisError
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -197,21 +196,19 @@ class WorkspaceInvitationGateway:
             raise NoPermissionError(error.description) from error
 
     def create(self, invitation: InvitationToken) -> str:
-        return self._tokens.create(invitation)
+        """Issue an indexed invitation link.
 
-    def track_pending(self, workspace_id: str, token: str) -> None:
-        """Index an issued invitation for display without misreporting a successful mail enqueue."""
-        try:
-            self._tokens.track_pending(workspace_id, token)
-        except RedisError:
-            logger.warning("Could not index an issued workspace invitation for %s", workspace_id, exc_info=True)
+        Raises:
+            RedisError: The link could not be issued together with its index entry.
+        """
+        return self._tokens.create(invitation)
 
     def list_pending(self, workspace_id: str) -> tuple[PendingWorkspaceInvitation, ...]:
         """List the outstanding invitation links indexed for this workspace."""
         return self._tokens.list_pending(workspace_id)
 
-    def revoke_pending(self, workspace_id: str, email: str) -> None:
-        self._tokens.revoke_pending(workspace_id, email)
+    def revoke_pending(self, workspace_id: str, email: str, *, account_id: str | None) -> None:
+        self._tokens.revoke_pending(workspace_id, email, account_id=account_id)
 
     def send(self, *, language: str, email: str, token: str, inviter_name: str, workspace_name: str) -> None:
         send_invite_member_mail_task.delay(

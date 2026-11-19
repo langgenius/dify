@@ -18,6 +18,7 @@ import {
   zNotAllowedCreateWorkspaceError,
   zTurnstileServiceUnavailableError,
   zTurnstileVerificationFailedError,
+  zWorkspaceMemberLimitReachedError,
 } from './zod.gen.ts'
 import {
   zPostEmailCodeLoginBody,
@@ -53,6 +54,7 @@ export const post = oc
     not_allowed_create_workspace: { status: 400, data: zNotAllowedCreateWorkspaceError },
     turnstile_service_unavailable: { status: 503, data: zTurnstileServiceUnavailableError },
     turnstile_verification_failed: { status: 400, data: zTurnstileVerificationFailedError },
+    workspace_member_limit_reached: { status: 400, data: zWorkspaceMemberLimitReachedError },
   })
 
 export const validity = {

@@ -117,6 +117,9 @@ class AccountActivationService:
             AccountEmailDomainSuspendedError: The email domain is suspended.
             FrozenAccountError: The email is frozen after a recent deletion.
             InvitationWorkspaceFullError: The workspace reached its member limit; the link stays valid.
+
+        The link is resolved again under the workspace lock, so a link revoked or replaced by a
+        resend after the first read never grants membership.
         """
         invitation = self._resolve(command.invitation)
         if invitation is None:
@@ -138,6 +141,8 @@ class AccountActivationService:
 
         normalized_email = command.invitation.email.lower() if command.invitation.email else None
         with self._capacity.acquire(invitation.workspace_id):
+            if self._resolve(command.invitation) != invitation:
+                raise InvalidInvitationError
             if not membership_consumed and not self._capacity.can_join(invitation.workspace_id, invitation.account_id):
                 raise InvitationWorkspaceFullError
             self._tokens.revoke(
@@ -159,6 +164,10 @@ class AccountActivationService:
     def ensure_membership(self, *, account_id: str, email: str, token: str) -> bool:
         """Restore the invited membership at sign-in.
 
+        Returns whether the membership was created. A link that is missing, belongs to another
+        account, was already used at sign-in, or was revoked before the workspace lock was taken
+        grants nothing.
+
         Raises:
             InvitationWorkspaceFullError: The workspace reached its member limit; the link stays valid.
         """
@@ -169,6 +178,8 @@ class AccountActivationService:
         if self._tokens.is_membership_consumed(lookup):
             return False
         with self._capacity.acquire(invitation.workspace_id):
+            if self._resolve(lookup) != invitation:
+                return False
             if not self._capacity.can_join(invitation.workspace_id, invitation.account_id):
                 raise InvitationWorkspaceFullError
             if not self._tokens.consume_membership(lookup):

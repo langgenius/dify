@@ -342,6 +342,7 @@ def _email_code_command(**changes: str | None) -> EmailCodeLoginCommand:
         "language": "zh-Hans",
         "timezone": "Asia/Singapore",
         "ip_address": "127.0.0.1",
+        "invite_token": None,
     }
     values.update(changes)
     return EmailCodeLoginCommand(**values)  # type: ignore[arg-type]
@@ -876,6 +877,63 @@ def test_email_code_login_creates_workspace_for_existing_account() -> None:
 
     assert result == TOKENS
     assert dependencies.workspaces_provisioning.account_ids == ["account-1"]
+
+
+@pytest.mark.parametrize(
+    ("workspace_creation_allowed", "workspace_capacity"),
+    [(False, True), (True, True), (True, False)],
+    ids=["no-self-serve", "self-serve", "workspace-limit-reached"],
+)
+def test_email_code_login_with_invitation_joins_instead_of_provisioning(
+    workspace_creation_allowed: bool, workspace_capacity: bool
+) -> None:
+    dependencies = Dependencies()
+    dependencies.accounts.candidates = [_account(status="pending", password=False)]
+    dependencies.policies.workspace_creation_allowed = workspace_creation_allowed
+    dependencies.policies.workspace_capacity = workspace_capacity
+    dependencies.invitations.invitation = LoginInvitation(email="user@example.com")
+    dependencies.invitations.restored_workspace = dependencies.workspaces
+
+    result = dependencies.service().login_with_email_code(_email_code_command(invite_token="invite-token"))
+
+    assert result == TOKENS
+    assert dependencies.invitations.ensured == [("account-1", "User@Example.com", "invite-token")]
+    assert dependencies.workspaces_provisioning.account_ids == []
+    assert dependencies.sessions.issued == ["account-1"]
+
+
+def test_email_code_login_ignores_invitation_when_account_already_has_a_workspace() -> None:
+    dependencies = Dependencies()
+    dependencies.accounts.candidates = [_account()]
+    dependencies.workspaces.active = True
+    dependencies.invitations.invitation = LoginInvitation(email="user@example.com")
+
+    dependencies.service().login_with_email_code(_email_code_command(invite_token="invite-token"))
+
+    assert dependencies.invitations.ensured == []
+    assert dependencies.workspaces_provisioning.account_ids == []
+
+
+def test_email_code_login_falls_back_to_provisioning_when_invitation_is_stale() -> None:
+    dependencies = Dependencies()
+    dependencies.accounts.candidates = [_account(status="pending", password=False)]
+
+    dependencies.service().login_with_email_code(_email_code_command(invite_token="stale-token"))
+
+    assert dependencies.invitations.ensured == []
+    assert dependencies.workspaces_provisioning.account_ids == ["account-1"]
+
+
+def test_email_code_login_rejects_invitation_for_another_email() -> None:
+    dependencies = Dependencies()
+    dependencies.accounts.candidates = [_account()]
+    dependencies.invitations.invitation = LoginInvitation(email="other@example.com")
+
+    with pytest.raises(account_errors.InvalidLoginInvitationEmailError):
+        dependencies.service().login_with_email_code(_email_code_command(invite_token="invite-token"))
+
+    assert dependencies.invitations.ensured == []
+    assert dependencies.workspaces_provisioning.account_ids == []
 
 
 def test_email_code_login_provisions_new_account() -> None:

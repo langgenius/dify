@@ -228,7 +228,7 @@ class PendingWorkspaceInvitationRevokeApi(Resource):
     @error_responses(ForbiddenError, PendingInvitationNotFoundError)
     @console_account_admission()
     def post(self, request_context: RequestContext, workspace_id: UUID):
-        """Revoke the live invitation for an email so its link stops working and its seat is released."""
+        """Revoke an email's invitation: links stop working, a pending member is removed, the seat is freed."""
         if str(workspace_id) != request_context.active_workspace_id:
             raise ForbiddenError()
         args = PendingInvitationRevokePayload.model_validate(console_ns.payload or {})

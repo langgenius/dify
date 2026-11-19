@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from contextlib import AbstractContextManager, nullcontext
 from unittest.mock import MagicMock, call
 
@@ -57,9 +58,12 @@ class _Capacity:
         self.full = False
         self.checked: list[tuple[str, str]] = []
         self.locked: list[str] = []
+        self.while_waiting_for_lock: Callable[[], None] | None = None
 
     def acquire(self, workspace_id: str) -> AbstractContextManager[object]:
         self.locked.append(workspace_id)
+        if self.while_waiting_for_lock is not None:
+            self.while_waiting_for_lock()
         return nullcontext()
 
     def can_join(self, workspace_id: str, account_id: str) -> bool:
@@ -336,8 +340,60 @@ class TestActivateInvitation:
             assert account is not None
             assert account.status == AccountStatus.PENDING
 
+    def test_link_revoked_while_waiting_for_the_lock_grants_nothing(
+        self,
+        service: AccountActivationService,
+        boundaries: dict[str, MagicMock],
+        capacity: _Capacity,
+        redis_transport: tuple[RedisClientWrapper, MagicMock],
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        def revoke_by_resend() -> None:
+            redis_transport[1].return_value = None
+
+        capacity.while_waiting_for_lock = revoke_by_resend
+
+        with pytest.raises(InvalidInvitationError):
+            service.activate(
+                ActivationCommand(invitation=_lookup(), name="John Doe", interface_language="en-US", timezone="UTC"),
+                authenticated_account_id=None,
+            )
+
+        assert capacity.checked == []
+        boundaries["revoke"].assert_not_called()
+        boundaries["activate"].assert_not_called()
+        with sqlite_session_factory() as session:
+            assert session.scalar(select(TenantAccountJoin)) is None
+
 
 class TestEnsureMembership:
+    def test_link_revoked_while_waiting_for_the_lock_restores_nothing(
+        self,
+        service: AccountActivationService,
+        boundaries: dict[str, MagicMock],
+        capacity: _Capacity,
+        redis_transport: tuple[RedisClientWrapper, MagicMock],
+        sqlite_session_factory: sessionmaker[Session],
+        mocker: MockerFixture,
+    ) -> None:
+        redis_transport[1].return_value = (
+            b'{"account_id":"account-1","email":"invitee@example.com","workspace_id":"workspace-1",'
+            b'"role":"editor","requires_setup":false}'
+        )
+        consume = mocker.patch.object(service._tokens, "consume_membership", return_value=True)
+
+        def revoke_by_resend() -> None:
+            redis_transport[1].return_value = None
+
+        capacity.while_waiting_for_lock = revoke_by_resend
+
+        assert service.ensure_membership(account_id="account-1", email="invitee@example.com", token="token-1") is False
+
+        consume.assert_not_called()
+        boundaries["activate"].assert_not_called()
+        with sqlite_session_factory() as session:
+            assert session.scalar(select(TenantAccountJoin)) is None
+
     def test_full_workspace_rejects_sign_in_restore_without_consuming_the_link(
         self,
         service: AccountActivationService,

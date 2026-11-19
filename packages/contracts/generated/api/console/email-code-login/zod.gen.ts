@@ -137,6 +137,7 @@ export const zTurnstileServiceUnavailableError = zErrorResponse.and(
 export const zEmailCodeLoginPayload = z.object({
   code: z.string(),
   email: z.string(),
+  invite_token: z.string().nullish(),
   language: z.string().nullish(),
   timezone: z.string().nullish(),
   token: z.uuid(),
@@ -230,6 +231,18 @@ export const zNormalizedEmailAlreadyInUseError = zErrorResponse.and(
 export const zNotAllowedCreateWorkspaceError = zErrorResponse.and(
   z.object({
     code: z.literal('not_allowed_create_workspace'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * WorkspaceMemberLimitReachedError
+ *
+ * The workspace has reached its member limit, so this invitation cannot be accepted right now.
+ */
+export const zWorkspaceMemberLimitReachedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('workspace_member_limit_reached'),
     status: z.literal(400),
   }),
 )
