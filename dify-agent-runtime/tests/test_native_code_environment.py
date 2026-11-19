@@ -63,7 +63,7 @@ class EnvironmentProbeTests(unittest.TestCase):
             "architecture": "x86_64",
             "platform": "linux",
             "gil_disabled": False,
-            "node": "v24.22.1",
+            "node": "v24.22.3",
             "packages": {"Jinja2": "3.1.6", "MarkupSafe": "3.0.3"},
         }
         profile.update(changes)
@@ -113,6 +113,7 @@ class EnvironmentProbeTests(unittest.TestCase):
             self.profile(gil_disabled=True),
             self.profile(node="v24.19.0"),
             self.profile(node="v24.20.0"),
+            self.profile(node="v24.22.1"),
             self.profile(packages={"Jinja2": "3.1.5", "MarkupSafe": "3.0.3"}),
             self.profile(packages={"Jinja2": "3.1.6"}),
             self.profile(node=None),
@@ -268,7 +269,7 @@ class EnvironmentProbeTests(unittest.TestCase):
         def node_version(_binary):
             if node_hook is not None:
                 node_hook(self.root / "bin")
-            return "v24.22.1"
+            return "v24.22.3"
 
         with (
             patch.dict(
@@ -408,14 +409,14 @@ class EnvironmentProbeTests(unittest.TestCase):
     def test_node_bounded_timeout_output_and_environment(self):
         node_version = self.probe["node_version"]
         path = self.fake_node(
-            "import os; print('v24.22.1' if 'SECRET_SENTINEL' not in os.environ and 'NODE_OPTIONS' not in os.environ else 'leak')\n"
+            "import os; print('v24.22.3' if 'SECRET_SENTINEL' not in os.environ and 'NODE_OPTIONS' not in os.environ else 'leak')\n"
         )
         with patch.dict(
             os.environ,
             SECRET_SENTINEL="never-output-this-value",
             NODE_OPTIONS="--bad-option",
         ):
-            self.assertEqual(node_version(path), "v24.22.1")
+            self.assertEqual(node_version(path), "v24.22.3")
         with (
             patch.dict(node_version.__globals__, NODE_TIMEOUT_SECONDS=0.1),
             self.assertRaises(self.probe["Refusal"]),
