@@ -61,8 +61,11 @@ def protected_application_logs(monkeypatch: pytest.MonkeyPatch) -> Generator[Non
     from libs.sensitive_http_telemetry import _HTTP_LOGGERS
 
     root = logging.getLogger()
+    # init_app also sets sqlalchemy.engine's level and propagation; restore both afterwards.
+    engine = logging.getLogger("sqlalchemy.engine")
     protect_existing_log_routes(monkeypatch, emitters=_HTTP_LOGGERS)
     old_handlers, old_level = root.handlers[:], root.level
+    engine_level, engine_propagation = engine.level, engine.propagate
     old_filters = {handler: handler.filters[:] for handler in old_handlers}
     for handler in old_handlers:
         handler.addFilter(SensitiveHttpLogFilter())
@@ -79,6 +82,8 @@ def protected_application_logs(monkeypatch: pytest.MonkeyPatch) -> Generator[Non
             handler.filters = filters
         root.handlers = old_handlers
         root.setLevel(old_level)
+        engine.setLevel(engine_level)
+        engine.propagate = engine_propagation
 
 
 class IntentProducer:
