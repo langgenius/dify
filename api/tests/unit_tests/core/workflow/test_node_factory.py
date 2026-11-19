@@ -28,6 +28,7 @@ from core.workflow.nodes.decision.exc import DecisionNodeDisabledError
 from core.workflow.nodes.decision.node import DecisionNode
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from graphon.entities.base_node_data import BaseNodeData
+from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.enums import BuiltinNodeTypes, NodeExecutionType, NodeType
 from graphon.graph import Graph
 from graphon.graph.validation import GraphValidationError
@@ -1606,7 +1607,7 @@ class TestDecisionNodeSwitch:
         config_overrides(ENABLE_DECISION_NODE=False)
 
         with pytest.raises(DecisionNodeDisabledError, match="ENABLE_DECISION_NODE"):
-            self._factory().validate_node(dict(self._NODE_CONFIG))
+            self._factory().validate_node(NodeConfigDictAdapter.validate_python(dict(self._NODE_CONFIG)))
 
     def test_builds_a_decision_node_while_the_switch_is_on(self, config_overrides: Callable[..., None]) -> None:
         config_overrides(ENABLE_DECISION_NODE=True)
@@ -1615,7 +1616,10 @@ class TestDecisionNodeSwitch:
         node = factory.create_node(dict(self._NODE_CONFIG))
 
         assert isinstance(node, DecisionNode)
-        assert factory.validate_node(dict(self._NODE_CONFIG)) == NodeExecutionType.BRANCH
+        assert (
+            factory.validate_node(NodeConfigDictAdapter.validate_python(dict(self._NODE_CONFIG)))
+            == NodeExecutionType.BRANCH
+        )
 
 
 class _RecordingDecisionStream:
