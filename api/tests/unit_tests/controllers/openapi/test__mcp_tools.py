@@ -294,6 +294,18 @@ def test_every_op_the_instructions_and_job_hints_name_is_in_the_catalog(openapi_
     assert set(START_MODES) <= named
 
 
+IDEMPOTENCY_KEY_FIELD = "idempotency_key"
+
+
+def test_the_instructions_say_a_repeated_idempotency_key_returns_the_same_job_even_failed(openapi_app: Flask) -> None:
+    ops = build_catalog(openapi_app)["ops"]
+
+    assert "Repeating an idempotency_key returns the same job, also when it failed" in MCP_INSTRUCTIONS
+    assert "use a new key" in MCP_INSTRUCTIONS
+    for op in START_MODES:
+        assert IDEMPOTENCY_KEY_FIELD in ops[op]["input"]["properties"], op
+
+
 def test_the_call_tool_enum_carries_its_effect() -> None:
     assert [(tool.value, tool.effect) for tool in CallTool] == [
         ("dify_read", Effect.READ),
