@@ -1,3 +1,7 @@
+import type {
+  NetworkAccessGroupListResponse,
+  NetworkAccessGroupMutationResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Resource } from 'i18next'
 import type { AccountSettingTab } from '../constants'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
@@ -5,17 +9,20 @@ import { Suspense, useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { I18nClientProvider } from '@/app/components/provider/i18n'
-import {
-  createNetworkAccessGroupFixture,
-  seedNetworkAccessGroups,
-} from '@/test/console/network-access'
+import commonTranslations from '@/i18n/locales/en-US/common.json'
+import { createNetworkAccessGroupFixture } from '@/test/console/network-access'
 import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { ACCOUNT_SETTING_TAB } from '../constants'
 import AccountSetting from '../index'
 
 vi.unmock('react-i18next')
-const mocks = vi.hoisted(() => ({ loadResource: vi.fn() }))
+const mocks = vi.hoisted(() => ({
+  loadResource: vi.fn(),
+  loadGroups: vi.fn<() => Promise<NetworkAccessGroupListResponse>>(),
+  createPolicy: vi.fn<() => Promise<NetworkAccessGroupMutationResponse>>(),
+}))
 // boundary: defer the external translation load while keeping i18next and its consumers real.
 vi.mock('@/i18n/load-resource', () => ({ loadI18nResource: mocks.loadResource }))
 
@@ -25,6 +32,11 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.networkAccessGroups.get': () => mocks.loadGroups(),
+      'workspaces.current.networkAccessGroups.post': () => mocks.createPolicy(),
+      'workspaces.current.networkAccessGroups.currentIp.get': async () => ({
+        client_ip: '203.0.113.42',
+      }),
       'workspaces.byWorkspaceId.members.pendingInvitations.get': async () => ({ invitations: [] }),
       'workspaces.current.members.get': async () => ({
         accounts: [
@@ -57,11 +69,7 @@ const resources: Resource = {
     custom: {},
     accountSettings: {},
     contacts: {},
-    common: {
-      loading: 'Loading',
-      'operation.close': 'Close',
-      'settings.ipPolicies': 'IP Policies',
-    },
+    common: commonTranslations,
     navigation: {
       'settings.settings': 'Settings',
       'settings.members': 'Members',
@@ -78,8 +86,8 @@ const resources: Resource = {
   },
 }
 
-function Settings() {
-  const [activeTab, setActiveTab] = useState<AccountSettingTab>(ACCOUNT_SETTING_TAB.MEMBERS)
+function Settings({ initialTab }: { initialTab: AccountSettingTab }) {
+  const [activeTab, setActiveTab] = useState(initialTab)
   return (
     <AccountSetting
       activeTab={activeTab}
@@ -89,12 +97,8 @@ function Settings() {
   )
 }
 
-function renderSettings() {
+function renderSettings(initialTab: AccountSettingTab = ACCOUNT_SETTING_TAB.MEMBERS) {
   const queryClient = createConsoleQueryClient()
-  seedNetworkAccessGroups(queryClient, {
-    entitled: true,
-    groups: [createNetworkAccessGroupFixture()],
-  })
   const { wrapper: Wrapper } = createConsoleQueryWrapper({
     queryClient,
     currentWorkspace: { id: 'workspace-1', name: 'Workspace', role: 'owner' },
@@ -107,7 +111,7 @@ function renderSettings() {
       <I18nClientProvider locale="en-US" resource={structuredClone(resources)}>
         <NuqsTestingAdapter>
           <Suspense fallback={<span>Loading settings</span>}>
-            <Settings />
+            <Settings initialTab={initialTab} />
           </Suspense>
         </NuqsTestingAdapter>
       </I18nClientProvider>
@@ -137,20 +141,68 @@ function deferNamespace(namespace: string) {
 describe('Settings content loading', () => {
   beforeEach(() => {
     mocks.loadResource.mockReset()
+    mocks.loadGroups.mockReset()
+    mocks.createPolicy.mockReset()
   })
 
-  it('keeps navigation operable while a tab loads its translations', async () => {
-    const { started, finishLoading } = deferNamespace('deployments')
-    await renderSettings()
-    await page.getByRole('button', { name: 'IP Policies' }).click()
-    await started
-    await expect.element(page.getByRole('dialog', { name: 'Settings' })).toBeVisible()
-    await expect.element(page.getByText('Loading settings')).not.toBeInTheDocument()
-    await page.getByRole('button', { name: 'Members', exact: true }).click()
-    await expect.element(page.getByRole('button', { name: 'Ada', exact: true })).toBeVisible()
-    finishLoading()
-    await page.getByRole('button', { name: 'IP Policies' }).click()
-    await expect.element(page.getByRole('cell', { name: 'Internal Network' })).toBeVisible()
+  it('keeps the IP Policies deep link stable through loading, dismissal and first creation', async () => {
+    vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
+    const { finishLoading } = deferNamespace('deployments')
+    const groups = createDeferred<NetworkAccessGroupListResponse>()
+    mocks.loadGroups.mockReturnValue(groups.promise)
+    try {
+      await renderSettings(ACCOUNT_SETTING_TAB.IP_POLICIES)
+      const settings = page.getByRole('dialog', { name: 'Settings' })
+      await expect.element(settings.getByRole('heading', { name: 'IP Policies' })).toBeVisible()
+      await expect.poll(() => mocks.loadGroups.mock.calls.length).toBe(1)
+      await expect.element(settings.getByRole('progressbar', { name: 'Loading' })).toBeVisible()
+      await expect
+        .element(settings.getByRole('button', { name: 'Add', exact: true }))
+        .not.toBeInTheDocument()
+      const create = settings.getByRole('button', { name: 'Create an IP policy' })
+      await expect.element(create).not.toBeInTheDocument()
+
+      groups.resolve({ tenant_id: 'workspace-1', entitled: true, groups: [] })
+      await expect.element(create).toBeVisible()
+      await expect
+        .element(settings.getByRole('progressbar', { name: 'Loading' }))
+        .not.toBeInTheDocument()
+      await expect
+        .element(settings.getByRole('button', { name: 'Add', exact: true }))
+        .not.toBeInTheDocument()
+
+      await create.click()
+      const editor = page.getByRole('dialog', { name: 'New IP Policy' })
+      const name = editor.getByRole('textbox', { name: 'Name', exact: true })
+      await editor.getByPlaceholder('10.0.0.0/8').fill('10.0.0.0/8')
+      await name.fill('Unsaved office network')
+      await expect
+        .element(editor.getByRole('button', { name: 'Create', exact: true }))
+        .toBeEnabled()
+      await userEvent.keyboard('{Escape}{Enter}')
+      await expect.element(editor).not.toBeInTheDocument()
+      await expect.element(create).toHaveFocus()
+      expect(mocks.createPolicy).not.toHaveBeenCalled()
+      await userEvent.keyboard('{Enter}')
+      await expect.element(name).toHaveValue('')
+
+      const group = createNetworkAccessGroupFixture({ name: 'Office network' })
+      mocks.createPolicy.mockResolvedValue({ group })
+      mocks.loadGroups.mockResolvedValue({
+        tenant_id: 'workspace-1',
+        entitled: true,
+        groups: [group],
+      })
+      await name.fill(group.name)
+      await editor.getByPlaceholder('10.0.0.0/8').fill('10.0.0.0/8')
+      await editor.getByRole('button', { name: 'Create', exact: true }).click()
+      await expect.element(editor).not.toBeInTheDocument()
+      await expect.element(settings.getByRole('button', { name: 'Add', exact: true })).toHaveFocus()
+      expect(mocks.createPolicy).toHaveBeenCalledTimes(1)
+      expect(mocks.loadResource).not.toHaveBeenCalledWith('en-US', 'deployments')
+    } finally {
+      finishLoading()
+    }
   })
 
   it('exposes working member actions after shared form translations load', async () => {
