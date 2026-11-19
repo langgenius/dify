@@ -357,8 +357,15 @@ class ExternalAgentNode(Node[ExternalAgentNodeData]):
     def _extract_variable_selector_to_variable_mapping(
         cls, *, graph_config: Mapping[str, Any], node_id: str, node_data: ExternalAgentNodeData
     ) -> Mapping[str, Sequence[str]]:
+        """Expose Task references using Graphon's single-step editor key contract.
+
+        Preconditions: node_data contains the validated external Task template.
+        Postconditions: keys are ``node_id.#selector#`` and selector paths stay
+        unchanged, preserving editor input lookup and variable-loading policies.
+        Extraction performs no I/O and does not mutate variable state.
+        """
         task = node_data.get("agent_task", "")
-        return {f"{node_id}.{'.'.join(selector)}": selector for selector in extract_workflow_variable_selectors(task)}
+        return {f"{node_id}.#{'.'.join(selector)}#": selector for selector in extract_workflow_variable_selectors(task)}
 
 
 class DifyExternalWorkflowWake:
