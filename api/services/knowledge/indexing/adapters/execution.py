@@ -1,23 +1,13 @@
 """Adapt legacy processors to committed document-indexing phases."""
 
 from concurrent.futures import ThreadPoolExecutor
-from typing import cast
+from typing import Protocol, cast, runtime_checkable
 
 from flask import Flask, current_app
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.exceptions import HTTPException
 from werkzeug.local import LocalProxy
 
-from core.errors.error import (
-    AppInvokeQuotaExceededError,
-    InvokeRateLimitError,
-    LLMError,
-    ModelCurrentlyNotSupportError,
-    ProviderTokenNotInitError,
-    QuotaExceededError,
-)
 from core.model_manager import ModelManager
-from core.plugin.impl.exc import PluginDaemonError
 from core.rag.datasource.keyword.jieba.jieba import Jieba
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.embedding.token_counter import calculate_segment_token_counts
@@ -33,6 +23,7 @@ from models.enums import DataSourceType
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
 from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
+from repositories.knowledge.vector_configuration_repository import resolve_vector_configuration
 from services.file_scan import FileScanBlockedError, FileScanService, ScanScope
 from services.file_scan.entities import SCOPE_DATASET
 from services.knowledge.indexing.adapters.cleanup import delete_index_entries
@@ -46,6 +37,12 @@ from services.knowledge.indexing.errors import DocumentIsPausedError
 from services.knowledge.indexing.execution import DocumentIndexingService, IndexingDocument
 from services.knowledge.resource_scope import DocumentRef
 from services.vector_space_admission_service import VectorSpaceAdmissionService
+
+
+@runtime_checkable
+class _DescribedError(Protocol):
+    @property
+    def description(self) -> object: ...
 
 
 class IndexingExecutionAdapter:
@@ -66,21 +63,8 @@ class IndexingExecutionAdapter:
 
     def describe_error(self, error: Exception) -> str:
         """Preserve provider and extractor descriptions without their transport prefixes."""
-        if isinstance(
-            error,
-            (
-                LLMError,
-                ProviderTokenNotInitError,
-                QuotaExceededError,
-                AppInvokeQuotaExceededError,
-                ModelCurrentlyNotSupportError,
-                InvokeRateLimitError,
-                PluginDaemonError,
-                HTTPException,
-            ),
-        ):
-            return str(error.description)
-        return str(error)
+        description = error.description if isinstance(error, _DescribedError) else None
+        return description if isinstance(description, str) else str(error)
 
     def check_paused(self, ref: DocumentRef) -> None:
         if redis_client.get(f"document_{ref.document_id}_is_paused"):
@@ -214,10 +198,10 @@ class IndexingExecutionAdapter:
             node_ids = [chunk.metadata["doc_id"] for chunk in chunks]
         if not node_ids:
             return
-        vector_type = None
+        vector_configuration = None
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             with self._session_factory() as session:
-                vector_type = Vector.resolve_vector_type(dataset, session=session)
+                vector_configuration = resolve_vector_configuration(dataset, session=session)
         writes_keywords = (
             dataset.indexing_technique == IndexTechniqueType.ECONOMY
             and document.doc_form != IndexStructureType.PARENT_CHILD_INDEX
@@ -225,7 +209,7 @@ class IndexingExecutionAdapter:
         delete_index_entries(
             dataset,
             vector_node_ids=node_ids,
-            vector_type=vector_type,
+            vector_configuration=vector_configuration,
             keyword_node_ids=node_ids if writes_keywords else [],
             new_session=self._session_factory,
         )
@@ -249,7 +233,7 @@ class IndexingExecutionAdapter:
                 )
             elif dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                 with self._session_factory() as session:
-                    vector_type = Vector.resolve_vector_type(dataset, session=session)
+                    vector_configuration = resolve_vector_configuration(dataset, session=session)
                 attachments = (
                     [attachment for chunk in chunks for attachment in chunk.attachments or []]
                     if dataset.is_multimodal
@@ -261,7 +245,7 @@ class IndexingExecutionAdapter:
                 )
                 # All database inputs are materialized before initializing the
                 # vector backend, embedding text/images, or reading object storage.
-                vector = Vector(dataset, session=None, vector_type=vector_type)
+                vector = Vector(dataset, session=None, configuration=vector_configuration)
                 if document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
                     for chunk in chunks:
                         if chunk.children:

@@ -8,7 +8,6 @@ from typing import Any, override
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from configs import dify_config
 from core.model_manager import ModelManager
 from core.rag.datasource.vdb.vector_backend_registry import get_vector_factory_class
 from core.rag.datasource.vdb.vector_base import BaseVector, VectorIndexStructDict
@@ -21,23 +20,27 @@ from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from extensions.otel import trace_span
 from graphon.model_runtime.entities.model_entities import ModelType
-from models.dataset import Dataset, Whitelist
+from models.dataset import Dataset
 from models.model import UploadFile
+from models.vector import VectorConfiguration
+from repositories.knowledge.vector_configuration_repository import resolve_vector_configuration
 
 logger = logging.getLogger(__name__)
 
 
 class AbstractVectorFactory(ABC):
+    def __init__(self, *, collection_name: str | None = None):
+        self._collection_name = collection_name
+
     @abstractmethod
     def init_vector(
         self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
     ) -> BaseVector:
-        """Initialize the backend using the caller's session for metadata reads.
+        """Initialize with resolved configuration and the caller's metadata session.
 
-        ``None`` is used by callers that initialize a resolved vector backend
-        outside their database transaction; backend-specific legacy reads may
-        still use their own session in that case. A supplied session belongs to
-        the caller and must not be committed, rolled back, or closed here.
+        ``None`` is used after metadata has been resolved outside the backend's
+        external I/O. A supplied session belongs to the caller and must not be
+        committed, rolled back, or closed here.
         """
         raise NotImplementedError
 
@@ -121,7 +124,7 @@ class Vector:
         attributes: list | None = None,
         *,
         session: Session | None,
-        vector_type: str | None = None,
+        configuration: VectorConfiguration | None = None,
     ):
         if attributes is None:
             # `is_summary` and `original_chunk_id` are stored on summary vectors
@@ -149,39 +152,13 @@ class Vector:
         self._embeddings: Embeddings = _LazyEmbeddings(dataset)
         self._attributes = attributes
         self._session = session
-        if vector_type is not None:
-            self._vector_processor = self.get_vector_factory(vector_type)().init_vector(
-                dataset, self._attributes, self._embeddings, session=session
-            )
-        else:
+        if configuration is None:
             if session is None:
-                raise ValueError("A resolved vector type is required without a database session")
-            self._vector_processor = self._init_vector(session=session)
-
-    @staticmethod
-    def resolve_vector_type(dataset: Dataset, *, session: Session) -> str:
-        vector_type = dify_config.VECTOR_STORE
-
-        if dataset.index_struct_dict:
-            vector_type = dataset.index_struct_dict["type"]
-        else:
-            if dify_config.VECTOR_STORE_WHITELIST_ENABLE:
-                stmt = select(Whitelist).where(
-                    Whitelist.tenant_id == dataset.tenant_id, Whitelist.category == "vector_db"
-                )
-                whitelist = session.scalars(stmt).one_or_none()
-                if whitelist:
-                    vector_type = VectorType.TIDB_ON_QDRANT
-
-        if not vector_type:
-            raise ValueError("Vector store must be specified.")
-
-        return vector_type
-
-    def _init_vector(self, *, session: Session) -> BaseVector:
-        vector_type = self.resolve_vector_type(self._dataset, session=session)
-        vector_factory_cls = self.get_vector_factory(vector_type)
-        return vector_factory_cls().init_vector(self._dataset, self._attributes, self._embeddings, session=session)
+                raise ValueError("A resolved vector configuration is required without a database session")
+            configuration = resolve_vector_configuration(dataset, session=session)
+        self._vector_processor = self.get_vector_factory(configuration.vector_type)(
+            collection_name=configuration.collection_name
+        ).init_vector(dataset, self._attributes, self._embeddings, session=session)
 
     @staticmethod
     def get_vector_factory(vector_type: str) -> type[AbstractVectorFactory]:

@@ -1,7 +1,5 @@
 from unittest.mock import MagicMock, patch
 
-from sqlalchemy.orm import Session
-
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor
 from core.rag.data_post_processor.reorder import ReorderRunner
 from core.rag.index_processor.constant.query_type import QueryType
@@ -11,12 +9,16 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 
 
+def _unexpected_upload(file_id):
+    raise AssertionError(f"unexpected upload query: {file_id}")
+
+
 def _doc(content: str) -> Document:
     return Document(page_content=content)
 
 
 class TestDataPostProcessor:
-    def test_init_sets_rerank_and_reorder_runners(self, unbound_session: Session):
+    def test_init_sets_rerank_and_reorder_runners(self):
         rerank_runner = object()
         reorder_runner = object()
 
@@ -28,7 +30,7 @@ class TestDataPostProcessor:
                     reranking_model={"config": "value"},
                     weights={"weight": "value"},
                     reorder_enabled=True,
-                    session=unbound_session,
+                    load_upload=_unexpected_upload,
                 )
 
         assert processor.rerank_runner is rerank_runner
@@ -38,7 +40,7 @@ class TestDataPostProcessor:
             "tenant-1",
             {"config": "value"},
             {"weight": "value"},
-            session=unbound_session,
+            load_upload=_unexpected_upload,
         )
         reorder_mock.assert_called_once_with(True)
 
@@ -80,7 +82,7 @@ class TestDataPostProcessor:
 
         assert processor.invoke(query="query", documents=documents) == documents
 
-    def test_get_rerank_runner_for_weighted_score(self, unbound_session: Session):
+    def test_get_rerank_runner_for_weighted_score(self):
         weights_config = {
             "vector_setting": {
                 "vector_weight": 0.7,
@@ -101,7 +103,7 @@ class TestDataPostProcessor:
                 tenant_id="tenant-1",
                 reranking_model=None,
                 weights=weights_config,
-                session=unbound_session,
+                load_upload=_unexpected_upload,
             )
 
         assert result is expected_runner
@@ -113,7 +115,7 @@ class TestDataPostProcessor:
         assert kwargs["weights"].vector_setting.embedding_model_name == "embedding-y"
         assert kwargs["weights"].keyword_setting.keyword_weight == 0.3
 
-    def test_get_rerank_runner_for_reranking_model_returns_none_without_model_instance(self, unbound_session: Session):
+    def test_get_rerank_runner_for_reranking_model_returns_none_without_model_instance(self):
         processor = DataPostProcessor.__new__(DataPostProcessor)
         reranking_model = {
             "reranking_provider_name": "provider-x",
@@ -129,14 +131,14 @@ class TestDataPostProcessor:
                     tenant_id="tenant-1",
                     reranking_model=reranking_model,
                     weights=None,
-                    session=unbound_session,
+                    load_upload=_unexpected_upload,
                 )
 
         assert result is None
         model_mock.assert_called_once_with("tenant-1", reranking_model)
         factory_mock.assert_not_called()
 
-    def test_get_rerank_runner_for_reranking_model_creates_runner_with_model_instance(self, unbound_session: Session):
+    def test_get_rerank_runner_for_reranking_model_creates_runner_with_model_instance(self):
         processor = DataPostProcessor.__new__(DataPostProcessor)
         model_instance = object()
         expected_runner = object()
@@ -154,22 +156,26 @@ class TestDataPostProcessor:
                         "reranking_model_name": "model-y",
                     },
                     weights=None,
-                    session=unbound_session,
+                    load_upload=_unexpected_upload,
                 )
 
         assert result is expected_runner
         factory_mock.assert_called_once_with(
             runner_type=RerankMode.RERANKING_MODEL,
             rerank_model_instance=model_instance,
-            session=unbound_session,
+            load_upload=_unexpected_upload,
         )
 
-    def test_get_rerank_runner_returns_none_for_unsupported_mode(self, unbound_session: Session):
+    def test_get_rerank_runner_returns_none_for_unsupported_mode(self):
         processor = DataPostProcessor.__new__(DataPostProcessor)
 
-        assert processor._get_rerank_runner("unsupported", "tenant-1", None, None, session=unbound_session) is None
         assert (
-            processor._get_rerank_runner(RerankMode.WEIGHTED_SCORE, "tenant-1", None, None, session=unbound_session)
+            processor._get_rerank_runner("unsupported", "tenant-1", None, None, load_upload=_unexpected_upload) is None
+        )
+        assert (
+            processor._get_rerank_runner(
+                RerankMode.WEIGHTED_SCORE, "tenant-1", None, None, load_upload=_unexpected_upload
+            )
             is None
         )
 
