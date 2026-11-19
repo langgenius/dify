@@ -56,10 +56,29 @@ def test_real_redis_keyed_claim_lookup_conflict_expiry_and_corrupt_state():
             await redis.set(run_record_key(prefix, run_id), "corrupt", ex=60)
             with pytest.raises(IdempotencyConflictError):
                 await restarted.lookup_run(selection)
+            # Create on an unreadable retained record fails closed as a typed conflict.
+            with pytest.raises(IdempotencyConflictError):
+                await restarted.create_run_idempotent(
+                    idempotency_key=selection.idempotency_key, request_fingerprint=selection.request_digest
+                )
+            assert await redis.get(run_record_key(prefix, run_id)) == b"corrupt"
+            # Decodable JSON with the matching fingerprint that is not a run record.
+            unreadable = '{"idempotency_fingerprint": "' + selection.request_digest + '"}'
+            await redis.set(run_record_key(prefix, run_id), unreadable, ex=60)
+            with pytest.raises(IdempotencyConflictError):
+                await restarted.create_run_idempotent(
+                    idempotency_key=selection.idempotency_key, request_fingerprint=selection.request_digest
+                )
             await redis.delete(run_record_key(prefix, run_id))
             await redis.rpush(run_record_key(prefix, run_id), "wrong Redis type")
             with pytest.raises(IdempotencyConflictError):
                 await restarted.lookup_run(selection)
+            with pytest.raises(IdempotencyConflictError):
+                await restarted.create_run_idempotent(
+                    idempotency_key=selection.idempotency_key, request_fingerprint=selection.request_digest
+                )
+            assert await redis.type(run_record_key(prefix, run_id)) == b"list"
+            assert await redis.get(claim_key) == run_id.encode()
             await redis.pexpire(run_record_key(prefix, run_id), 1)
             await asyncio.sleep(0.02)
             with pytest.raises(RunNotFoundError):

@@ -439,7 +439,9 @@ For a new admission, `POST /runs` persists a `running` run record and starts an
 `asyncio` task in the same process. An optional `idempotency_key` makes admission
 atomic across concurrent callers and server processes sharing the Redis prefix.
 The fingerprint includes the validated request with defaults and normalized
-snapshots, excluding `idempotency_key`. JSON object key order does not matter;
+snapshots, excluding `idempotency_key`; ordinary requests also leave out the
+native-test fields, so their fingerprints match those stored by earlier
+releases. JSON object key order does not matter;
 list order, including `composition.layers`, is preserved. A matching retained
 request returns the original run and its current status without scheduling
 another task. Omitting the key or passing `null` creates a new run each time.
@@ -591,7 +593,8 @@ progress:
   the original `run_id` and current `RunStatus` (`running`, `succeeded`, `failed`,
   or `cancelled`) on an exact keyed replay within retention. Reusing the same
   `idempotency_key` with a different normalized payload while its claimed run
-  record remains live returns HTTP `409 Conflict`. Empty or whitespace-only
+  record remains live returns HTTP `409 Conflict`; so does a key whose retained
+  record is corrupt or has the wrong Redis type. Empty or whitespace-only
   keys return HTTP `422` referencing `idempotency_key`; nonblank keys are used
   verbatim, including surrounding whitespace.
 - `GET /runs/{run_id}` returns `running`, `succeeded`, `failed`, or `cancelled`.
