@@ -20,10 +20,7 @@ const mocks = vi.hoisted(() => ({
   replace: vi.fn(),
 }))
 
-vi.mock('#i18n', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('#i18n')>()),
-  useLocale: () => 'zh-Hans',
-}))
+// boundary: the browser fixture owns its locale and skips persisting a locale cookie.
 vi.mock('@/i18n/client', () => ({ setLocaleOnClient: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ replace: mocks.replace }),
