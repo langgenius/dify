@@ -193,6 +193,10 @@ directly from the runtime to Dify's existing ToolFile endpoint. Dify Agent
 returns only the canonical ToolFile reference and releases the lease before
 Dify API signs a browser URL.
 
+File previews accept regular files only. The inspection script opens paths in
+nonblocking mode before checking their type, so a FIFO without a writer returns
+`400 invalid_binding_path` instead of waiting for the browse timeout.
+
 The default Binding-download deadline chain leaves each caller time to receive
 and normalize the lower layer's result: the sandbox CLI upload is 180 seconds,
 `DIFY_AGENT_BINDING_FILE_DOWNLOAD_COMMAND_TIMEOUT_SECONDS` is 210 seconds,
