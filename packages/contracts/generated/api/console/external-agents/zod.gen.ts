@@ -105,14 +105,6 @@ export const zExternalAgentListResponse = z.object({
 })
 
 /**
- * ExternalAgentDetailResponse
- */
-export const zExternalAgentDetailResponse = z.object({
-  asset: zExternalAgentAssetResponse,
-  connection: z.record(z.string(), z.unknown()),
-})
-
-/**
  * ExternalAgentInfoPayload
  */
 export const zExternalAgentInfoPayload = z.object({
@@ -346,6 +338,40 @@ export const zVerificationFailedError = zErrorResponse.and(
     status: z.literal(400),
   }),
 )
+
+/**
+ * ExternalConnectionSaverResponse
+ */
+export const zExternalConnectionSaverResponse = z.object({
+  id: z.string(),
+  name: z.string().nullable(),
+})
+
+/**
+ * ExternalAgentConnectionResponse
+ */
+export const zExternalAgentConnectionResponse = z.object({
+  auth_check: z.string(),
+  auth_type: z.string(),
+  capabilities: z.record(z.string(), z.unknown()),
+  card: z.record(z.string(), z.unknown()),
+  endpoint: z.string(),
+  has_credential: z.boolean(),
+  interface_url: z.string(),
+  profile: z.string(),
+  revision_id: z.string(),
+  saved_at: z.iso.datetime(),
+  saved_by: zExternalConnectionSaverResponse,
+  verified_at: z.iso.datetime(),
+})
+
+/**
+ * ExternalAgentDetailResponse
+ */
+export const zExternalAgentDetailResponse = z.object({
+  asset: zExternalAgentAssetResponse,
+  connection: zExternalAgentConnectionResponse,
+})
 
 export const zExternalAgentJsonValue = z
   .union([

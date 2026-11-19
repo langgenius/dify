@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from libs.helper import escape_like_pattern
 from libs.uuid_utils import uuidv7
 from machinery.context import RequestContext
-from models.account import Tenant, TenantAccountJoin
+from models.account import Account, Tenant, TenantAccountJoin
 from models.agent import Agent, AgentIconType, AgentKind, AgentScope, AgentSource, AgentStatus, WorkflowAgentNodeBinding
 from models.enums import AppStatus
 from models.external_agent import (
@@ -32,6 +32,7 @@ from models.workflow import Workflow
 from services.external_agents.contracts import (
     AssetPage,
     ConnectionRevision,
+    ConnectionSaver,
     ExternalAgentConflictError,
     ExternalAgentForbiddenError,
     ExternalAgentIdempotencyConflictError,
@@ -308,16 +309,26 @@ class ExternalAssetRepository:
             return self._asset(*self._rows(session, tenant_id, agent_id))
 
     def get_connection(self, *, tenant_id: str, agent_id: str, revision_id: str) -> ConnectionRevision:
+        """Read one owner-scoped immutable revision and its stored author's display name.
+
+        Preconditions: the caller supplies its admitted tenant and Agent scope.
+        Postconditions: save identity/time come only from this revision, including
+        when its author left the workspace or no longer has an Account row.
+        Account lookup is anchored to the scoped revision, never a client user ID.
+        """
         with self._sessions() as session:
-            row = session.scalar(
-                select(ExternalAgentConnectionRevision).where(
+            result = session.execute(
+                select(ExternalAgentConnectionRevision, Account.name)
+                .outerjoin(Account, Account.id == ExternalAgentConnectionRevision.created_by)
+                .where(
                     ExternalAgentConnectionRevision.tenant_id == tenant_id,
                     ExternalAgentConnectionRevision.agent_id == agent_id,
                     ExternalAgentConnectionRevision.id == revision_id,
                 )
-            )
-            if row is None:
+            ).one_or_none()
+            if result is None:
                 raise ExternalAgentNotFoundError("Saved connection not found.")
+            row, saver_name = result
             return ConnectionRevision(
                 id=row.id,
                 tenant_id=row.tenant_id,
@@ -330,6 +341,10 @@ class ExternalAssetRepository:
                 capabilities=dict(row.capabilities),
                 auth_check=row.auth_check,
                 verified_at=utc_time(row.verified_at),
+                saved_by=ConnectionSaver(
+                    id=row.created_by, name=saver_name if saver_name and saver_name.strip() else None
+                ),
+                saved_at=utc_time(row.created_at),
                 profile=row.profile,
                 secret_cleared_at=utc_time(row.secret_cleared_at) if row.secret_cleared_at else None,
             )

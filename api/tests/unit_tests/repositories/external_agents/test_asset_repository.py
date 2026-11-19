@@ -10,7 +10,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from machinery.context import RequestContext
-from models.account import Tenant, TenantAccountJoin, TenantAccountRole
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.agent import Agent, WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.agent_config_entities import WorkflowNodeJobConfig
 from models.base import TypeBase
@@ -53,6 +53,7 @@ def domain() -> Iterator[AssetDomain]:
             TypeBase.metadata.tables[model.__tablename__]
             for model in (
                 TenantAccountJoin,
+                Account,
                 Tenant,
                 Agent,
                 ExternalAgentConnectionRevision,
@@ -74,6 +75,9 @@ def domain() -> Iterator[AssetDomain]:
         tenant = Tenant(name="Asset control test")
         tenant.id = context.active_workspace_id
         session.add(tenant)
+        account = Account(name="Original saver", email="original-saver@example.test")
+        account.id = context.account_id
+        session.add(account)
         session.add(
             TenantAccountJoin(
                 tenant_id=context.active_workspace_id, account_id=context.account_id, role=TenantAccountRole.OWNER
@@ -121,6 +125,167 @@ def create(
         context=context, evidence_id=proof.id, metadata={}, operation_key="create", fingerprint="fp"
     )
     return repo.get_asset(tenant_id=context.active_workspace_id, agent_id=result.resource_id), proof, result
+
+
+def test_connection_audit_uses_revision_save_time_instead_of_verification_time(domain: AssetDomain) -> None:
+    repo, sessions, context = domain
+    proof = evidence(context)
+    proof = replace(proof, created_at=proof.created_at - timedelta(minutes=2))
+    before_save = datetime.now(UTC)
+    asset, _, _ = create(repo, context, proof)
+    after_save = datetime.now(UTC)
+    connection = repo.get_connection(
+        tenant_id=context.active_workspace_id, agent_id=asset.id, revision_id=asset.active_connection_revision_id
+    )
+    assert connection.saved_by.id == context.account_id
+    assert connection.saved_by.name == "Original saver"
+    assert connection.verified_at == proof.created_at
+    assert before_save <= connection.saved_at <= after_save
+    assert connection.saved_at > connection.verified_at
+    with sessions() as session:
+        revision = session.get(ExternalAgentConnectionRevision, connection.id)
+        assert revision is not None
+        assert revision.created_at.replace(tzinfo=UTC) == connection.saved_at
+
+
+def test_connection_audit_tracks_the_new_saver_and_ignores_unrelated_asset_edits(domain: AssetDomain) -> None:
+    repo, sessions, original = domain
+    asset, _, _ = create(repo, original)
+    with sessions.begin() as session:
+        member = Account(name="Connection editor", email="connection-editor@example.test")
+        session.add(member)
+        session.flush()
+        editor = original._replace(account_id=member.id)
+        session.add(
+            TenantAccountJoin(
+                tenant_id=original.active_workspace_id, account_id=member.id, role=TenantAccountRole.ADMIN
+            )
+        )
+    proof = evidence(
+        editor,
+        agent_id=asset.id,
+        expected_connection_revision_id=asset.active_connection_revision_id,
+        fingerprint="b" * 64,
+    )
+    proof = replace(
+        proof, capabilities={"traceability_supported": True}, created_at=proof.created_at - timedelta(minutes=1)
+    )
+    repo.save_verification(proof)
+    saved = repo.update_connection(
+        context=editor,
+        agent_id=asset.id,
+        evidence_id=proof.id,
+        expected_revision_id=asset.active_connection_revision_id,
+        operation_key="editor-save",
+        fingerprint="editor-save",
+    )
+    current = repo.get_asset(tenant_id=original.active_workspace_id, agent_id=asset.id)
+    connection = repo.get_connection(
+        tenant_id=original.active_workspace_id, agent_id=asset.id, revision_id=current.active_connection_revision_id
+    )
+    assert saved.result["changed"] is True
+    assert current.created_by == original.account_id
+    assert connection.saved_by.id == editor.account_id
+    assert connection.saved_by.name == "Connection editor"
+    assert connection.saved_at > connection.verified_at
+    repo.update_info(
+        context=original,
+        agent_id=asset.id,
+        expected_revision=current.metadata_revision,
+        changes={
+            "description": "Edited after saving",
+            "icon_type": "emoji",
+            "icon": "robot",
+            "icon_background": "#fff",
+        },
+    )
+    repo.set_enabled(context=original, agent_id=asset.id, enabled=False)
+    repo.set_tracing(context=original, agent_id=asset.id, enabled=True)
+    reloaded = repo.get_connection(
+        tenant_id=original.active_workspace_id, agent_id=asset.id, revision_id=current.active_connection_revision_id
+    )
+    assert reloaded.saved_by == connection.saved_by
+    assert reloaded.saved_at == connection.saved_at
+    with sessions() as session:
+        edited_asset = session.get(Agent, asset.id)
+        assert edited_asset is not None
+        assert edited_asset.updated_by == original.account_id
+        assert edited_asset.created_by == original.account_id
+
+
+@pytest.mark.parametrize("author_state", ["left_workspace", "deleted_account", "empty_name", "blank_name"])
+def test_connection_saver_identity_survives_missing_membership_or_name(domain: AssetDomain, author_state: str) -> None:
+    repo, sessions, context = domain
+    asset, _, _ = create(repo, context)
+    before = repo.get_connection(
+        tenant_id=context.active_workspace_id, agent_id=asset.id, revision_id=asset.active_connection_revision_id
+    )
+    with sessions.begin() as session:
+        account = session.get(Account, context.account_id)
+        assert account is not None
+        if author_state == "left_workspace":
+            membership = session.scalars(
+                select(TenantAccountJoin).where(TenantAccountJoin.account_id == context.account_id)
+            ).one()
+            session.delete(membership)
+        elif author_state == "deleted_account":
+            session.delete(account)
+        else:
+            account.name = "" if author_state == "empty_name" else "   "
+    after = repo.get_connection(
+        tenant_id=context.active_workspace_id, agent_id=asset.id, revision_id=asset.active_connection_revision_id
+    )
+    assert after.saved_by.id == context.account_id
+    assert after.saved_by.name == ("Original saver" if author_state == "left_workspace" else None)
+    assert after.saved_at == before.saved_at
+
+
+def test_noop_connection_save_by_another_member_keeps_original_audit(domain: AssetDomain) -> None:
+    repo, sessions, original = domain
+    asset, _, _ = create(repo, original)
+    before = repo.get_connection(
+        tenant_id=original.active_workspace_id, agent_id=asset.id, revision_id=asset.active_connection_revision_id
+    )
+    with sessions.begin() as session:
+        member = Account(name="No-op editor", email="noop-editor@example.test")
+        session.add(member)
+        session.flush()
+        editor = original._replace(account_id=member.id)
+        session.add(
+            TenantAccountJoin(
+                tenant_id=original.active_workspace_id, account_id=member.id, role=TenantAccountRole.ADMIN
+            )
+        )
+    proof = evidence(editor, agent_id=asset.id, expected_connection_revision_id=asset.active_connection_revision_id)
+    repo.save_verification(proof)
+    result = repo.update_connection(
+        context=editor,
+        agent_id=asset.id,
+        evidence_id=proof.id,
+        expected_revision_id=asset.active_connection_revision_id,
+        operation_key="noop-editor-save",
+        fingerprint="noop-editor-save",
+    )
+    assert result.result["changed"] is False
+    after = repo.get_connection(
+        tenant_id=original.active_workspace_id, agent_id=asset.id, revision_id=asset.active_connection_revision_id
+    )
+    assert after.saved_by == before.saved_by
+    assert after.saved_at == before.saved_at
+
+
+@pytest.mark.parametrize("wrong_owner", ["tenant", "agent", "revision"])
+def test_connection_saver_lookup_remains_bound_to_the_complete_revision_owner(
+    domain: AssetDomain, wrong_owner: str
+) -> None:
+    repo, _, context = domain
+    asset, _, _ = create(repo, context)
+    with pytest.raises(ExternalAgentNotFoundError):
+        repo.get_connection(
+            tenant_id=uid() if wrong_owner == "tenant" else context.active_workspace_id,
+            agent_id=uid() if wrong_owner == "agent" else asset.id,
+            revision_id=uid() if wrong_owner == "revision" else asset.active_connection_revision_id,
+        )
 
 
 def test_references_are_current_graphs_under_the_complete_readable_app_scope(domain: AssetDomain) -> None:

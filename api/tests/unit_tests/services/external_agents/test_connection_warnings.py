@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 import pytest
 
 from services.external_agents.asset_service import connection_change_warnings
-from services.external_agents.contracts import ConnectionRevision
+from services.external_agents.contracts import ConnectionRevision, ConnectionSaver
 from services.external_agents.protocol import TRACEABILITY_URI
 
 
@@ -34,6 +34,8 @@ def previous(card: dict[str, object]) -> ConnectionRevision:
         capabilities={"streaming": True},
         auth_check="not_exercised",
         verified_at=datetime.now(UTC),
+        saved_by=ConnectionSaver(id="actor", name="Owner"),
+        saved_at=datetime.now(UTC),
     )
 
 

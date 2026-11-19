@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import inspect
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Protocol, runtime_checkable
 from uuid import UUID, uuid4
 
@@ -45,6 +45,8 @@ from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.agent import Agent, AgentKind, AgentScope, AgentSource
 from models.external_agent import ExternalAgentConnectionRevision, ExternalAgentHead, ExternalAgentInvocation
+from repositories.external_agents.asset_repository import ExternalAssetRepository
+from services.external_agents.contracts import VerificationEvidence
 
 
 @runtime_checkable
@@ -77,6 +79,8 @@ def endpoint_domain(
             scope=AgentScope.ROSTER,
             source=AgentSource.ROSTER,
             agent_kind=AgentKind.EXTERNAL_A2A,
+            created_by=account.id,
+            updated_by=account.id,
         )
         session.add(agent)
         session.flush()
@@ -142,6 +146,90 @@ def test_roster_detail_and_reference_wire_projection_never_exposes_ciphertext(en
     assert "metadata" not in wire(wire(detail["connection"])["card"])
     references = invoke(endpoint_domain, ExternalAgentReferencesApi, "get", agent_id=UUID(identifier))
     assert references == {"apps": [], "may_have_in_flight": False}
+
+
+def test_connection_conflict_reload_exposes_the_current_saver_and_save_time(endpoint_domain: EndpointDomain) -> None:
+    """Actual Save/CAS/detail serialization distinguish editor, verifier and unrelated asset changes."""
+    _, original, identifier, _, sessions = endpoint_domain
+    before = wire(invoke(endpoint_domain, ExternalAgentApi, "get", agent_id=UUID(identifier)))
+    original_connection = wire(before["connection"])
+    assert wire(original_connection["saved_by"]) == {"id": original.account_id, "name": "Owner"}
+    with sessions.begin() as session:
+        member = Account(name="Latest connection saver", email="latest-saver@example.test")
+        session.add(member)
+        session.flush()
+        editor = original._replace(account_id=member.id)
+        session.add(
+            TenantAccountJoin(
+                tenant_id=original.active_workspace_id, account_id=member.id, role=TenantAccountRole.ADMIN
+            )
+        )
+    previous = original_connection["revision_id"]
+    assert isinstance(previous, str)
+    verified_at = datetime.now(UTC) - timedelta(minutes=2)
+    repo = ExternalAssetRepository(session_factory=sessions)
+    proof = VerificationEvidence(
+        id=str(uuid4()),
+        tenant_id=original.active_workspace_id,
+        actor_id=editor.account_id,
+        agent_id=identifier,
+        endpoint="https://new-connection.example.test",
+        interface_url="https://new-connection.example.test/a2a",
+        auth_type="none",
+        credential_ciphertext=None,
+        auth_check="not_exercised",
+        card={"name": "Service", "description": "Declared"},
+        capabilities={"streaming": False},
+        fingerprint="b" * 64,
+        expected_connection_revision_id=previous,
+        created_at=verified_at,
+        expires_at=datetime.now(UTC) + timedelta(minutes=5),
+    )
+    stale_proof = replace(proof, id=str(uuid4()), actor_id=original.account_id, fingerprint="c" * 64)
+    repo.save_verification(proof)
+    repo.save_verification(stale_proof)
+    invoke(
+        endpoint_domain,
+        ExternalAgentConnectionApi,
+        "put",
+        context=editor,
+        agent_id=UUID(identifier),
+        body={"verification_id": proof.id, "expected_revision_id": previous, "idempotency_key": "new-save"},
+    )
+    with pytest.raises(Conflict):
+        invoke(
+            endpoint_domain,
+            ExternalAgentConnectionApi,
+            "put",
+            agent_id=UUID(identifier),
+            body={
+                "verification_id": stale_proof.id,
+                "expected_revision_id": previous,
+                "idempotency_key": "stale-save",
+            },
+        )
+    detail = wire(invoke(endpoint_domain, ExternalAgentApi, "get", agent_id=UUID(identifier)))
+    connection = wire(detail["connection"])
+    assert connection["revision_id"] != previous
+    assert wire(connection["saved_by"]) == {"id": editor.account_id, "name": "Latest connection saver"}
+    assert "email" not in wire(connection["saved_by"])
+    assert TypeAdapter(datetime).validate_python(connection["verified_at"]) == verified_at
+    assert TypeAdapter(datetime).validate_python(connection["saved_at"]) > verified_at
+    assert wire(detail["asset"])["created_by"] == original.account_id
+    invoke(
+        endpoint_domain,
+        ExternalAgentInfoApi,
+        "patch",
+        agent_id=UUID(identifier),
+        body={
+            "expected_revision": wire(detail["asset"])["metadata_revision"],
+            "changes": {"description": "Later profile edit", "icon_type": "emoji", "icon": "robot"},
+        },
+    )
+    invoke(endpoint_domain, ExternalAgentEnabledApi, "put", agent_id=UUID(identifier), body={"enabled": False})
+    reloaded = wire(wire(invoke(endpoint_domain, ExternalAgentApi, "get", agent_id=UUID(identifier)))["connection"])
+    assert reloaded["saved_by"] == connection["saved_by"]
+    assert reloaded["saved_at"] == connection["saved_at"]
 
 
 def test_display_edit_switch_and_delete_keep_real_domain_statuses(endpoint_domain: EndpointDomain) -> None:

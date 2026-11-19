@@ -134,6 +134,13 @@ Editors can use Overview/Test. Normal members receive only the permitted aggrega
 | `/external-agents/{id}/tracing-config/{provider}` | Asset-owned existing-provider configuration, without a hidden App. |
 | `/external-agent-invocations/{id}/trace-deliveries`, `/{delivery}/retry` | Separate export acknowledgement and explicit retry. |
 
+Detail exposes `connection.saved_by: {id, name}` and `connection.saved_at` from the active immutable connection
+revision. The stored author ID always remains; the current Account name is null if unavailable, and removing
+workspace membership does not erase the historical saver. `saved_at` is the revision's actual save time,
+independent of `verified_at` and asset creation/profile/availability/Tracing edit times. A no-op connection save
+keeps the same revision and save metadata. After a stale-revision conflict, reload the existing detail endpoint
+to display the latest connection saver/time and verify against its current revision before saving again.
+
 Traceability recognizes the exact declared A2A Traceability carrier. The v1 specification and Python sample dialect
 are normalized explicitly, including their different timestamp representations; neither is accepted as the private
 AgentTraceBatch or native OTLP. Parseable incomplete steps remain visible. Raw data is bounded and redacted before

@@ -90,6 +90,14 @@ class ExternalAgentLimits:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class ConnectionSaver:
+    """Stored connection author; a missing current display name remains unknown."""
+
+    id: str
+    name: str | None
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class ConnectionRevision:
     id: str
     tenant_id: str
@@ -102,6 +110,8 @@ class ConnectionRevision:
     capabilities: dict[str, Any]
     auth_check: str
     verified_at: datetime
+    saved_by: ConnectionSaver
+    saved_at: datetime
     profile: str = "a2a-1.0-http-json.v1"
     secret_cleared_at: datetime | None = None
 
