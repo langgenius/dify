@@ -6,6 +6,7 @@ import oss2 as aliyun_s3
 
 from configs import dify_config
 from extensions.storage.base_storage import BaseStorage
+from libs.stream import close_stream
 
 
 class AliyunOssStorage(BaseStorage):
@@ -37,16 +38,22 @@ class AliyunOssStorage(BaseStorage):
     @override
     def load_once(self, filename: str) -> bytes:
         obj = self.client.get_object(self.__wrapper_folder_filename(filename))
-        data = obj.read()
-        if not isinstance(data, bytes):
-            return b""
-        return data
+        try:
+            data = obj.read()
+            if not isinstance(data, bytes):
+                return b""
+            return data
+        finally:
+            close_stream(obj)
 
     @override
     def load_stream(self, filename: str) -> Generator:
         obj = self.client.get_object(self.__wrapper_folder_filename(filename))
-        while chunk := obj.read(4096):
-            yield chunk
+        try:
+            while chunk := obj.read(4096):
+                yield chunk
+        finally:
+            close_stream(obj)
 
     @override
     def download(self, filename: str, target_filepath):
