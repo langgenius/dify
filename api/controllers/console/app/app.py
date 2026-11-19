@@ -339,9 +339,8 @@ class AppListApi(AppResource):
     @console_ns.doc(description="Get list of applications with pagination and filtering")
     @console_ns.doc(params=query_params_from_model(AppListQuery))
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AppPagination.__name__])
-    @console_account_admission(bootstrap_workspace=True, require_valid_enterprise_license=True)
+    @console_account_admission(require_valid_enterprise_license=True)
     def get(self, context: RequestContext):
-        """List apps in the admitted workspace, even when this is the first Console read."""
         args = query_params_from_request(AppListQuery, list_fields=APP_LIST_QUERY_ARRAY_FIELDS)
         params = AppListParams.model_validate(args.model_dump())
         return dump_response(

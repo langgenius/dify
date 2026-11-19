@@ -74,6 +74,14 @@ const zLimitExceededError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zNotAllowedCreateWorkspaceError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('not_allowed_create_workspace'),
+      status: z.literal(400),
+    }),
+  ))()
+
 const zAuthenticationFailedError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -102,4 +110,5 @@ export const postErrors = {
   invalid_account_password: { status: 400, data: zInvalidAccountPasswordError },
   invalid_email: { status: 400, data: zInvalidEmailError },
   limit_exceeded: { status: 400, data: zLimitExceededError },
+  not_allowed_create_workspace: { status: 400, data: zNotAllowedCreateWorkspaceError },
 }

@@ -62,6 +62,8 @@ class OAuthAccountRegistrationGateway(Protocol):
 class OAuthWorkspaceGateway(Protocol):
     def create_owner_workspace(self, account_id: str) -> None: ...
 
+    def activate_default_workspace(self, account_id: str) -> None: ...
+
     def try_join_default_workspace(self, account_id: str) -> None: ...
 
 
@@ -136,6 +138,7 @@ class AccountOAuthService:
         identity: OAuthIdentity,
         identity_claim: OAuthAccountClaimLease,
     ) -> OAuthCallbackResult:
+        """Bind the verified identity and prepare Console membership before issuing a session."""
         if command.invite_token is not None:
             return self._complete_invitation(command, identity, identity_claim)
 
@@ -151,8 +154,13 @@ class AccountOAuthService:
         self._integrations.link(account.id, provider=command.provider, open_id=identity.id)
         identity_claim.ensure_owned()
         with self._account_claims.acquire_account(account.id) as account_claim:
-            if command.mode == LoginMode.CONSOLE and not self._defer_workspace_creation:
-                if oauth_new_user:
+            if command.mode == LoginMode.CONSOLE:
+                if self._defer_workspace_creation:
+                    if not self._memberships.has_active_membership(account.id):
+                        account_claim.ensure_owned()
+                        self._workspaces.activate_default_workspace(account.id)
+                        account_claim.ensure_owned()
+                elif oauth_new_user:
                     self._provision_new_account_workspaces(account.id, account_claim)
                 else:
                     self._provision_owner_workspace_if_required(account.id, account_claim)

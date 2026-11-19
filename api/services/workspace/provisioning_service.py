@@ -95,16 +95,19 @@ class WorkspaceProvisioningService:
     def activate(self, account_id: str, *, name: str | None = None) -> WorkspaceActivation:
         """Create a workspace only if the admitted Account has no usable membership.
 
-        A supplied name is already validated by the caller. Console bootstrap
-        omits the name and uses the same Account-based name as sign-in provisioning.
-        The store locks the Account through the existence check, preparation and
-        commit. Retries reuse membership and preserve the first creation time.
-        A missing Account or denied creation leaves workspace rows unchanged.
+        A supplied name is already validated by the caller. Automatic Console
+        provisioning omits the name and uses the Account's default workspace name;
+        a closed Account cannot provision automatically. The store locks the
+        Account through the existence check, preparation and commit. Retries reuse
+        membership and preserve the first creation time. A missing Account or denied
+        creation leaves workspace rows unchanged.
         """
         if name is None:
             owner = self._owners.get(account_id)
             if owner is None:
                 raise WorkspaceOwnerNotFoundError()
+            if owner.status == "closed":
+                raise WorkSpaceNotAllowedCreateError()
             suffix = "'s Workspace"
             name = f"{owner.name[: 255 - len(suffix)]}{suffix}"
 

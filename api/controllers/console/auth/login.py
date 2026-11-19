@@ -134,7 +134,8 @@ class EmailCodeLoginPayload(BaseModel):
 
 class RefreshTokenPayload(BaseModel):
     mode: LoginMode = Field(
-        default=LoginMode.CONSOLE, description="End User mode refreshes the Account session without workspace admission"
+        default=LoginMode.CONSOLE,
+        description="Console mode requires an active workspace; End User mode refreshes only the Account session.",
     )
 
 
@@ -281,6 +282,7 @@ class LoginApi(Resource):
         EmailPasswordLoginLimitError,
         InvalidAccountPasswordRequestError,
         InvalidEmailError,
+        NotAllowedCreateWorkspace,
         WorkspacesLimitExceeded,
     )
     @setup_required
@@ -492,6 +494,8 @@ def _raise_password_login_error(error: account_errors.AccountApplicationError) -
         raise InvalidEmailError() from error
     if isinstance(error, account_errors.LoginWorkspaceLimitError):
         raise WorkspacesLimitExceeded() from error
+    if isinstance(error, account_errors.LoginWorkspaceCreationNotAllowedError):
+        raise NotAllowedCreateWorkspace() from error
     if isinstance(error, account_errors.AccountNotFoundError):
         raise AccountNotFound() from error
     _raise_account_state_error(error)

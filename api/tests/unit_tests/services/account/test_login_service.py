@@ -21,6 +21,8 @@ from services.entities.account_login_entities import (
     RefreshAccountStatus,
 )
 from services.entities.auth_audit_entities import LoginFailureReason
+from services.errors.workspace import WorkSpaceNotAllowedCreateError
+from services.workspace.contracts import WorkspaceActivation
 
 TOKENS = AccountSessionTokens(access_token="access", refresh_token="refresh", csrf_token="csrf")
 LOGIN_TIME = datetime(2026, 8, 24, 12, 0, 0)
@@ -243,9 +245,16 @@ class FakeAccountProvisioning:
 @dataclass
 class FakeWorkspaceProvisioning:
     account_ids: list[str] = field(default_factory=list)
+    activation_error: Exception | None = None
 
     def ensure_owner_workspace(self, account_id: str) -> None:
         self.account_ids.append(account_id)
+
+    def activate(self, account_id: str) -> WorkspaceActivation:
+        if self.activation_error is not None:
+            raise self.activation_error
+        self.account_ids.append(account_id)
+        return WorkspaceActivation("workspace-1", LOGIN_TIME)
 
 
 @dataclass
@@ -383,32 +392,27 @@ def _email_code_command(**changes: str | None) -> EmailCodeLoginCommand:
     return EmailCodeLoginCommand(**values)  # type: ignore[arg-type]
 
 
-def test_cloud_password_login_allows_accounts_without_a_workspace() -> None:
+def test_cloud_password_login_does_not_issue_a_session_if_workspace_activation_is_denied() -> None:
     dependencies = Dependencies()
     dependencies.accounts.candidates = [_account(status="uninitialized")]
-    dependencies.policies.workspace_creation_allowed = False
-    dependencies.policies.workspace_capacity = False
+    dependencies.workspaces_provisioning.activation_error = WorkSpaceNotAllowedCreateError()
 
-    result = dependencies.service(defer_workspace_creation=True).login_with_password(_password_command())
+    with pytest.raises(account_errors.LoginWorkspaceCreationNotAllowedError):
+        dependencies.service(defer_workspace_creation=True).login_with_password(_password_command())
 
-    assert result.tokens == TOKENS
-    assert result.workspace_found is False
-    assert dependencies.accounts.completions[0].initialized_at is None
-    assert dependencies.workspaces_provisioning.account_ids == []
+    assert dependencies.sessions.issued == []
 
 
 @pytest.mark.parametrize("existing_account", [False, True])
-def test_cloud_email_login_defers_workspace_creation_until_explicit_activation(existing_account: bool) -> None:
+def test_cloud_email_login_prepares_a_workspace_for_the_console_session(existing_account: bool) -> None:
     dependencies = Dependencies()
     if existing_account:
         dependencies.accounts.candidates = [_account(status="uninitialized")]
-    dependencies.policies.workspace_creation_allowed = False
-    dependencies.policies.workspace_capacity = False
 
     result = dependencies.service(defer_workspace_creation=True).login_with_email_code(_email_code_command())
 
     assert result == TOKENS
-    assert dependencies.workspaces_provisioning.account_ids == []
+    assert dependencies.workspaces_provisioning.account_ids == ["account-1" if existing_account else "end-user-account"]
     assert dependencies.accounts_provisioning.calls == []
     if not existing_account:
         assert dependencies.accounts_provisioning.account_only_calls[0]["status"] == "uninitialized"

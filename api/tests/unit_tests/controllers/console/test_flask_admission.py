@@ -1,5 +1,6 @@
-"""Cloud Console bootstrap through authenticated HTTP requests and persisted memberships."""
+"""Cloud Console and End User admission through real sessions and workspace memberships."""
 
+from base64 import b64encode
 from collections.abc import Callable
 from datetime import datetime
 from unittest.mock import MagicMock
@@ -7,6 +8,7 @@ from unittest.mock import MagicMock
 import pytest
 from flask.testing import FlaskClient
 from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.test import TestResponse
 
 from controllers.console import bp
 from dify_app import DifyApp
@@ -17,49 +19,39 @@ from extensions.ext_redis import RedisClientWrapper
 from libs.passport import PassportService
 from libs.token import generate_csrf_token
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
-from services.billing_client import billing
-from tests.helpers.billing_builders import subscription_info
+from services.billing_client import saas
+from services.entities.account_login_entities import LoginMode
 from tests.helpers.unit.account_domain import AccountDomain
 
-SUMMARY_PATH = "/console/api/workspaces/current/summary"
-APPS_PATH = "/console/api/apps"
-BOOTSTRAP_PATHS = (
-    SUMMARY_PATH,
-    APPS_PATH,
-    "/console/api/features",
-    "/console/api/workspaces/current/rbac/my-permissions",
-)
+PROFILE_PATH = "/console/api/account/profile"
+END_USER_PROFILE_PATH = "/console/api/account/end_user_profile"
+PASSWORD = "Example-password-2026"
 
 
 @pytest.fixture
-def console_bootstrap(
+def cloud_console(
     account_domain: AccountDomain,
     sqlite_session_factory: sessionmaker[Session],
     config_overrides: Callable[..., None],
     redis_transport: tuple[RedisClientWrapper, MagicMock],
     monkeypatch: pytest.MonkeyPatch,
 ) -> tuple[DifyApp, AccountDomain]:
-    """Bind real Cloud services to SQLite, substituting the external billing and storage edges."""
+    """Bind real Cloud services to SQLite without calling the external account policy API."""
+    monkeypatch.setattr(
+        saas,
+        "account_check_account_in_freeze",
+        lambda **_: saas.CheckAccountInFreezeReply(data=False, freezeType=""),
+    )
     config_overrides(
         DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
-        SECRET_KEY="workspace-bootstrap-test-key-with-32-bytes",
+        SECRET_KEY="console-admission-test-key-with-32-bytes",
         CONSOLE_WEB_URL="http://localhost",
         CONSOLE_API_URL="http://localhost",
         COOKIE_DOMAIN="",
         LOGIN_DISABLED=False,
         ALLOW_CREATE_WORKSPACE=True,
-    )
-    default_quota = billing.QuotaFeatureInfo(usage=0, limit=10, reset_date=0)
-    monkeypatch.setattr(billing, "subscription_get_subscription_info", lambda **_: subscription_info())
-    monkeypatch.setattr(
-        billing,
-        "quota_get_quota_info",
-        lambda **_: billing.QuotaGetInfoReply(trigger_event=default_quota, api_rate_limit=default_quota),
-    )
-    monkeypatch.setattr(
-        billing,
-        "quota_get_balance",
-        lambda **_: billing.QuotaGetBalanceReply(available=200, quota=200, reserved=0, usage=0, exhausted_at=0),
+        ENABLE_EMAIL_PASSWORD_LOGIN=True,
+        WEBAPP_ACCOUNT_PASSPORT_ENABLED=True,
     )
     services = build_application_services(
         database_client=sqlite_session_factory,
@@ -85,139 +77,193 @@ def _browser_session(app: DifyApp, account_id: str) -> FlaskClient:
     return client
 
 
-@pytest.mark.parametrize("first_path", BOOTSTRAP_PATHS)
-def test_first_console_bootstrap_request_activates_workspace(
-    console_bootstrap: tuple[DifyApp, AccountDomain], first_path: str
+def _password_login(client: FlaskClient, email: str, *, mode: LoginMode = LoginMode.CONSOLE) -> TestResponse:
+    """Sign in using the test account's password and keep any issued CSRF cookie in sync for subsequent reads."""
+    response = client.post(
+        "/console/api/login",
+        json={"email": email, "password": b64encode(PASSWORD.encode()).decode(), "mode": mode},
+    )
+    if (csrf_cookie := client.get_cookie("csrf_token")) is not None:
+        client.environ_base["HTTP_X_CSRF_TOKEN"] = csrf_cookie.value
+    return response
+
+
+def test_end_user_profile_requires_a_valid_session_and_csrf(cloud_console: tuple[DifyApp, AccountDomain]) -> None:
+    """Neither anonymous nor CSRF-less requests may read the private account-only profile."""
+    app, account_domain = cloud_console
+    anonymous = app.test_client()
+    assert anonymous.get(END_USER_PROFILE_PATH).status_code == 401
+
+    account = account_domain.accounts.create_account("end-user@example.com", "End User", "en-US")
+    browser = _browser_session(app, account.id)
+    del browser.environ_base["HTTP_X_CSRF_TOKEN"]
+    assert browser.get(END_USER_PROFILE_PATH).status_code == 401
+    assert account_domain.workspaces.list_ids_for_account(account.id) == ()
+
+
+def test_cloud_refresh_cannot_return_an_end_user_to_an_inadmissible_console(
+    cloud_console: tuple[DifyApp, AccountDomain],
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
 ) -> None:
-    """An existing End User session bootstraps once, regardless of which Console read arrives first."""
-    app, account_domain = console_bootstrap
+    """A valid refresh token still works for End User mode but cannot loop back to a 401 Console probe."""
+    app, account_domain = cloud_console
+    account = account_domain.accounts.create_account("end-user@example.com", "End User", "en-US")
+    _, commands = redis_transport
+    commands.side_effect = lambda command, *args, **_: (
+        account.id.encode() if command == "GET" and args == ("refresh_token:known-token",) else None
+    )
+    browser = _browser_session(app, account.id)
+    browser.set_cookie("refresh_token", "known-token")
+
+    console_refresh = browser.post("/console/api/refresh-token")
+    assert console_refresh.status_code == 401
+    assert not console_refresh.headers.getlist("Set-Cookie")
+    assert browser.get(END_USER_PROFILE_PATH).status_code == 200
+    end_user_refresh = browser.post("/console/api/refresh-token", json={"mode": "end_user"})
+    assert end_user_refresh.status_code == 200, end_user_refresh.json
+    assert account_domain.workspaces.list_ids_for_account(account.id) == ()
+
+
+@pytest.mark.parametrize(
+    ("mode", "account_status", "profile_status"),
+    [
+        (LoginMode.CONSOLE, AccountStatus.UNINITIALIZED, 200),
+        (LoginMode.CONSOLE, AccountStatus.PENDING, 200),
+        (LoginMode.END_USER, AccountStatus.UNINITIALIZED, 401),
+    ],
+)
+def test_password_login_prepares_workspace_only_for_console(
+    cloud_console: tuple[DifyApp, AccountDomain], mode: LoginMode, account_status: AccountStatus, profile_status: int
+) -> None:
+    """The first profile probe after explicit Console login does not depend on other Console GETs."""
+    app, account_domain = cloud_console
+    account = account_domain.accounts.create_account(
+        "end-user@example.com", "End User", "en-US", password=PASSWORD, status=account_status.value
+    )
+    browser = app.test_client()
+
+    login = _password_login(browser, account.email, mode=mode)
+
+    assert login.status_code == 200, login.json
+    workspaces = account_domain.workspaces.list_for_account(account.id)
+    expected_names = ["End User's Workspace"] if mode == LoginMode.CONSOLE else []
+    assert [workspace.name for workspace in workspaces] == expected_names
+    assert browser.get(PROFILE_PATH).status_code == profile_status
+    assert browser.get(END_USER_PROFILE_PATH).status_code == 200
+
+
+def test_workspace_less_session_uses_end_user_profile(cloud_console: tuple[DifyApp, AccountDomain]) -> None:
+    """The Console profile probe returns 401 without revoking or upgrading the account-only session."""
+    app, account_domain = cloud_console
     account = account_domain.accounts.create_account(
         "end-user@example.com", "End User", "en-US", status="uninitialized"
     )
     browser = _browser_session(app, account.id)
 
-    profile = browser.get("/console/api/account/profile")
+    console_profile = browser.get(PROFILE_PATH)
+    assert console_profile.status_code == 401
+    assert console_profile.get_json() == {
+        "code": "unauthorized",
+        "message": "An active workspace is required.",
+        "status": 401,
+    }
+    assert not console_profile.headers.getlist("Set-Cookie")
+    profile = browser.get(END_USER_PROFILE_PATH)
     assert profile.status_code == 200
+    assert profile.headers["Cache-Control"] == "no-store"
     profile_data = profile.get_json()
     assert isinstance(profile_data, dict)
+    assert profile_data["id"] == account.id
     assert profile_data["has_tenant"] is False
     assert account_domain.workspaces.list_ids_for_account(account.id) == ()
 
-    first_response = browser.get(first_path)
-    assert first_response.status_code == 200, first_response.json
-    (workspace_id,) = account_domain.workspaces.list_ids_for_account(account.id)
-    summary = browser.get(SUMMARY_PATH)
-    assert summary.status_code == 200
-    summary_data = summary.get_json()
-    assert isinstance(summary_data, dict)
-    assert summary_data["id"] == workspace_id
-    assert summary_data["name"] == "End User's Workspace"
-    assert summary_data["role"] == "owner"
-    apps = browser.get(APPS_PATH)
-    assert apps.status_code == 200, apps.json
-    assert account_domain.workspaces.list_ids_for_account(account.id) == (workspace_id,)
-    activated = account_domain.repository.get(account.id)
-    assert activated is not None
-    assert activated.status == AccountStatus.ACTIVE
-    assert activated.first_workspace_created_at is not None
-    assert activated.initialized_at == activated.first_workspace_created_at
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/console/api/apps",
+        "/console/api/features",
+        "/console/api/workspaces/current/summary",
+        "/console/api/workspaces/current/rbac/my-permissions",
+    ],
+)
+def test_workspace_required_reads_do_not_provision(cloud_console: tuple[DifyApp, AccountDomain], path: str) -> None:
+    """Parallel Console reads must not upgrade a workspace-less session while the profile probe rejects it."""
+    app, account_domain = cloud_console
+    account = account_domain.accounts.create_account("end-user@example.com", "End User", "en-US")
+
+    response = _browser_session(app, account.id).get(path)
+
+    assert response.status_code == 403, response.json
+    assert response.get_json()["code"] == "active_workspace_required"
+    assert account_domain.workspaces.list_ids_for_account(account.id) == ()
 
 
-def test_console_bootstrap_preserves_existing_member_workspace(
-    console_bootstrap: tuple[DifyApp, AccountDomain], sqlite_session_factory: sessionmaker[Session]
-) -> None:
-    """An invitee with an active membership keeps that workspace rather than becoming a new owner."""
-    app, account_domain = console_bootstrap
-    with sqlite_session_factory.begin() as session:
-        account = Account(name="Invitee", email="invitee@example.com")
-        workspace = Tenant(name="Joined workspace")
-        session.add_all([account, workspace])
-        session.add(TenantAccountJoin(account_id=account.id, tenant_id=workspace.id, role=TenantAccountRole.NORMAL))
-
-    response = _browser_session(app, account.id).get(SUMMARY_PATH)
-
-    assert response.status_code == 200
-    data = response.get_json()
-    assert isinstance(data, dict)
-    assert data["id"] == workspace.id
-    assert data["role"] == "normal"
-    assert account_domain.workspaces.list_ids_for_account(account.id) == (workspace.id,)
-
-
-@pytest.mark.parametrize("has_archived_workspace", [False, True], ids=["removed", "archived"])
-def test_returning_builder_bootstraps_without_resetting_origin(
-    console_bootstrap: tuple[DifyApp, AccountDomain],
+@pytest.mark.parametrize(
+    "workspace_status", [TenantStatus.NORMAL, None, TenantStatus.ARCHIVE], ids=["active", "removed", "archived"]
+)
+def test_console_login_reuses_or_replaces_workspace_without_resetting_origin(
+    cloud_console: tuple[DifyApp, AccountDomain],
     sqlite_session_factory: sessionmaker[Session],
-    has_archived_workspace: bool,
+    workspace_status: TenantStatus | None,
 ) -> None:
-    """Direct Console entry recreates a usable workspace without rewriting Builder history."""
-    app, account_domain = console_bootstrap
+    """Console login reuses active membership or restores a workspace without changing Builder history."""
+    app, account_domain = cloud_console
+    account = account_domain.accounts.create_account("builder@example.com", "Builder", "en-US", password=PASSWORD)
     origin = datetime(2020, 1, 1)
     with sqlite_session_factory.begin() as session:
-        account = Account(name="Builder", email="builder@example.com", first_workspace_created_at=origin)
-        session.add(account)
-        if has_archived_workspace:
-            workspace = Tenant(name="Old workspace", status=TenantStatus.ARCHIVE)
+        builder = session.get(Account, account.id)
+        assert builder is not None
+        builder.first_workspace_created_at = origin
+        if workspace_status is not None:
+            workspace = Tenant(name="Existing workspace", status=workspace_status)
             session.add(workspace)
             session.add(
                 TenantAccountJoin(
-                    account_id=account.id, tenant_id=workspace.id, role=TenantAccountRole.OWNER, current=True
+                    account_id=account.id, tenant_id=workspace.id, role=TenantAccountRole.NORMAL, current=True
                 )
             )
-    previous_memberships = account_domain.workspaces.list_ids_for_account(account.id)
+    previous_ids = set(account_domain.workspaces.list_ids_for_account(account.id))
     browser = _browser_session(app, account.id)
 
-    apps = browser.get(APPS_PATH)
-    assert apps.status_code == 200, apps.json
+    login = _password_login(browser, account.email)
+
+    assert login.status_code == 200, login.json
+    assert browser.get(PROFILE_PATH).status_code == 200
     activation = account_domain.workspaces.get_activation(account.id)
     assert activation.workspace_id is not None
-    assert activation.workspace_id not in previous_memberships
     assert activation.first_workspace_created_at == origin
-    summary = browser.get(SUMMARY_PATH)
-    assert summary.status_code == 200, summary.json
-    data = summary.get_json()
-    assert isinstance(data, dict)
-    assert data["id"] == activation.workspace_id
-    assert set(account_domain.workspaces.list_ids_for_account(account.id)) == {
-        *previous_memberships,
-        activation.workspace_id,
-    }
+    if workspace_status != TenantStatus.NORMAL:
+        assert activation.workspace_id not in previous_ids
+        previous_ids.add(activation.workspace_id)
+    assert set(account_domain.workspaces.list_ids_for_account(account.id)) == previous_ids
 
 
-@pytest.mark.parametrize(("case", "status"), [("missing_csrf", 401), ("creation_disabled", 403)])
-def test_console_bootstrap_denial_does_not_provision(
-    console_bootstrap: tuple[DifyApp, AccountDomain],
-    sqlite_session_factory: sessionmaker[Session],
+@pytest.mark.parametrize(
+    ("account_status", "creation_allowed", "error_code"),
+    [
+        (AccountStatus.ACTIVE, False, "not_allowed_create_workspace"),
+        (AccountStatus.CLOSED, True, "not_allowed_create_workspace"),
+        (AccountStatus.BANNED, True, "account_banned"),
+    ],
+)
+def test_console_login_denial_does_not_provision_or_issue_session(
+    cloud_console: tuple[DifyApp, AccountDomain],
     config_overrides: Callable[..., None],
-    case: str,
-    status: int,
+    account_status: AccountStatus,
+    creation_allowed: bool,
+    error_code: str,
 ) -> None:
-    """Reject workspace-less access without allocating membership, including before bootstrap."""
-    app, account_domain = console_bootstrap
-    with sqlite_session_factory.begin() as session:
-        origin = datetime(2020, 1, 1) if case == "creation_disabled" else None
-        account = Account(name="End User", email="end-user@example.com", first_workspace_created_at=origin)
-        session.add(account)
-    browser = _browser_session(app, account.id)
-    if case == "missing_csrf":
-        del browser.environ_base["HTTP_X_CSRF_TOKEN"]
-    if case == "creation_disabled":
-        config_overrides(ALLOW_CREATE_WORKSPACE=False)
+    """Account and workspace-creation policies must be respected before issuing Console cookies."""
+    app, account_domain = cloud_console
+    config_overrides(ALLOW_CREATE_WORKSPACE=creation_allowed)
+    account = account_domain.accounts.create_account(
+        "end-user@example.com", "End User", "en-US", password=PASSWORD, status=account_status.value
+    )
 
-    create_app = browser.post(APPS_PATH, json={})
-    apps = browser.get(APPS_PATH)
-    summary = browser.get(SUMMARY_PATH)
+    response = _password_login(app.test_client(), account.email)
 
-    assert summary.status_code == status, summary.json
-    assert apps.status_code == status, apps.json
-    assert create_app.status_code == status, create_app.json
-    if status == 403:
-        assert create_app.get_json() == {
-            "code": "active_workspace_required",
-            "message": "An active workspace is required.",
-            "status": 403,
-        }
+    assert response.status_code == 400, response.json
+    assert response.get_json()["code"] == error_code
+    assert not response.headers.getlist("Set-Cookie")
     assert account_domain.workspaces.list_ids_for_account(account.id) == ()
-    persisted = account_domain.repository.get(account.id)
-    assert persisted is not None
-    assert persisted.first_workspace_created_at == origin

@@ -261,6 +261,9 @@ class FakeRuntime:
         self.workspace_operations.append(("owner", account_id))
         self.memberships.workspace_ids = (*self.memberships.workspace_ids, f"owner-{account_id}")
 
+    def activate_default_workspace(self, account_id: str) -> None:
+        self.create_owner_workspace(account_id)
+
     def try_join_default_workspace(self, account_id: str) -> None:
         self._assert_identity_linked(account_id)
         self.default_workspace_accounts.append(account_id)
@@ -386,20 +389,23 @@ def _command(**overrides: object) -> OAuthCallbackCommand:
 
 
 @pytest.mark.parametrize("new_account", [False, True])
-def test_cloud_oauth_login_defers_workspace_creation(new_account: bool) -> None:
+def test_cloud_oauth_login_prepares_a_workspace_for_the_console_session(new_account: bool) -> None:
     harness = _harness(defer_workspace_creation=True)
+    harness.memberships.workspace_ids = ()
+    account_id = "new-account" if new_account else "account-1"
+    account = _account(account_id=account_id, status="uninitialized")
     if new_account:
-        harness.accounts.stored["new-account"] = _account(account_id="new-account", status="uninitialized")
+        harness.accounts.stored[account_id] = account
     else:
-        _bind_identity(harness, _account(status="uninitialized"))
-    harness.policy.creation_allowed = False
+        _bind_identity(harness, account)
 
     result = harness.service.complete_authorization(_command())
 
     assert isinstance(result, OAuthSignInResult)
     assert result.oauth_new_user is new_account
     assert harness.accounts.activations == []
-    assert harness.runtime.created_accounts == []
+    assert harness.runtime.created_accounts == [account_id]
+    assert harness.runtime.logins == [(account_id, "203.0.113.10")]
 
 
 def test_start_authorization_delegates_to_configured_provider() -> None:

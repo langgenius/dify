@@ -22,6 +22,13 @@ from services.entities.account_login_entities import (
     RefreshAccountStatus,
 )
 from services.entities.auth_audit_entities import LoginFailureReason
+from services.errors.workspace import (
+    WorkSpaceNotAllowedCreateError,
+    WorkspaceNotFoundError,
+    WorkspaceOwnerNotFoundError,
+    WorkspacesLimitExceededError,
+)
+from services.workspace.contracts import WorkspaceActivation
 
 _BANNED_ACCOUNT_STATUS = "banned"
 _EMAIL_DOMAIN_SUSPENDED = "email_domain_suspended"
@@ -115,6 +122,8 @@ class AccountOnlyRegistrationGateway(Protocol):
 class WorkspaceProvisioningGateway(Protocol):
     def ensure_owner_workspace(self, account_id: str) -> None: ...
 
+    def activate(self, account_id: str) -> WorkspaceActivation: ...
+
 
 class EmailCodeGateway(Protocol):
     def send(
@@ -196,6 +205,7 @@ class ConsoleAuthenticationService:
         self._defer_workspace_creation = defer_workspace_creation
 
     def login_with_password(self, command: PasswordLoginCommand) -> PasswordLoginResult:
+        """Verify credentials before issuing a session; Cloud Console also requires a usable workspace."""
         if command.mode == LoginMode.END_USER and command.invite_token is not None:
             raise ValueError("End User login cannot accept a workspace invitation.")
         normalized_email = command.email.lower()
@@ -232,10 +242,15 @@ class ConsoleAuthenticationService:
                         account_id=account.id, email=command.email, token=invitation_token
                     )
                 workspace_found = self._workspaces.has_active_for_account(account.id)
-                if not workspace_found and not self._defer_workspace_creation:
-                    if self._policies.is_workspace_creation_allowed() and not self._policies.has_workspace_capacity():
-                        raise account_errors.LoginWorkspaceLimitError
-                    return PasswordLoginResult(tokens=None, workspace_found=False)
+                if not workspace_found:
+                    if self._defer_workspace_creation:
+                        self._activate_console_workspace(account.id)
+                        workspace_found = True
+                    else:
+                        creation_allowed = self._policies.is_workspace_creation_allowed()
+                        if creation_allowed and not self._policies.has_workspace_capacity():
+                            raise account_errors.LoginWorkspaceLimitError
+                        return PasswordLoginResult(tokens=None, workspace_found=False)
 
         tokens = self._issue_session(
             account_id=account.id,
@@ -283,6 +298,7 @@ class ConsoleAuthenticationService:
         )
 
     def login_with_email_code(self, command: EmailCodeLoginCommand) -> AccountSessionTokens:
+        """Verify the challenge, provision for Console mode, and issue no session if admission fails."""
         normalized_email = command.email.lower()
         if not self._is_valid_email_code(command.code):
             self._fail(
@@ -352,6 +368,13 @@ class ConsoleAuthenticationService:
                     ip_address=command.ip_address,
                 )
 
+        if (
+            command.mode == LoginMode.CONSOLE
+            and self._defer_workspace_creation
+            and not self._workspaces.has_active_for_account(account_id)
+        ):
+            self._activate_console_workspace(account_id)
+
         tokens = self._issue_session(
             account_id=account_id,
             ip_address=command.ip_address,
@@ -408,6 +431,21 @@ class ConsoleAuthenticationService:
 
     def _preferred_account(self, email: str) -> LoginAccountSnapshot | None:
         return next(iter(self._accounts.list_for_login(email)), None)
+
+    def _activate_console_workspace(self, account_id: str) -> None:
+        """Prepare a workspace for a verified Console account before issuing credentials.
+
+        Concurrent attempts reuse the committed membership. A denied or unavailable
+        workspace raises the existing login error without issuing a session.
+        """
+        try:
+            self._workspace_provisioning.activate(account_id)
+        except WorkSpaceNotAllowedCreateError as error:
+            raise account_errors.LoginWorkspaceCreationNotAllowedError from error
+        except WorkspacesLimitExceededError as error:
+            raise account_errors.LoginWorkspaceLimitError from error
+        except (WorkspaceOwnerNotFoundError, WorkspaceNotFoundError) as error:
+            raise account_errors.AccountNotFoundError from error
 
     def _issue_session(
         self,

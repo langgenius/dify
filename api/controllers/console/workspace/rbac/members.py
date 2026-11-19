@@ -30,14 +30,9 @@ from services.rbac import contracts as dto
 
 @console_ns.route("/workspaces/current/rbac/my-permissions")
 class RBACMyPermissionsApi(Resource):
-    @console_account_admission(bootstrap_workspace=True)
+    @console_account_admission()
     @console_ns.response(200, "Success", console_ns.models[dto.MyPermissionsResponse.__name__])
     def get(self, context: RequestContext):
-        """Return permissions for the admitted active workspace after any Cloud bootstrap.
-
-        Permission lookup remains read-only and uses only the admitted Account
-        and workspace; lookup failures propagate unchanged.
-        """
         return dump_response(
             dto.MyPermissionsResponse,
             application_services().rbac.members.permissions(
