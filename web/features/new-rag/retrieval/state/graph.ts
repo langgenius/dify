@@ -1,5 +1,5 @@
 import type { RetrievalTestMode, RetrievalTestRecord } from '../model'
-import type { RetrievalComposerImage } from './scoped'
+import type { RetrievalComposerImage, RetrievalImageUpload } from './scoped'
 import { skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithInfiniteQuery, atomWithQuery } from 'jotai-tanstack-query'
@@ -24,7 +24,7 @@ import {
   retrievalAdmittedResearchTasksAtom,
   retrievalComposerDraftAtom,
   retrievalComposerImagesAtom,
-  retrievalComposerUploadPendingAtom,
+  retrievalComposerUploadsAtom,
   retrievalFrozenFallbackSelectionAtom,
   retrievalHistorySourceFilterAtom,
   retrievalLocalRunAtom,
@@ -411,11 +411,22 @@ export const retrievalComposerQueryImagesAtom = atom((get) => {
   return get(retrievalSelectedQueryImagesAtom)
 })
 
+export const retrievalActiveComposerUploadsAtom = atom((get) => {
+  const key = selectionKey(get(retrievalSelectedAtom))
+  return get(retrievalComposerUploadsAtom).filter((upload) => upload.selectionKey === key)
+})
+
+/** Failed images must be retried or removed, so no selected image is silently omitted. */
+export const retrievalComposerUploadPendingAtom = atom(
+  (get) => get(retrievalActiveComposerUploadsAtom).length > 0,
+)
+
 /** Every object URL still referenced by the composer or by a run started in this session. */
 export const retrievalRetainedImagesAtom = atom((get) => {
-  const retained = new Map<string, RetrievalComposerImage>()
+  const retained = new Map<string, { previewUrl?: string }>()
   for (const image of [
     ...get(retrievalComposerImagesAtom).images,
+    ...get(retrievalActiveComposerUploadsAtom),
     ...get(localRunImagesAtom),
     ...Object.values(get(retrievalRecordImagesAtom)).flat(),
   ]) {
@@ -448,6 +459,7 @@ export const retrievalComposerFactsAtom = atom((get) => {
       localRun?.status !== 'running',
     selectionKey: selectionKey(get(retrievalSelectedAtom)),
     uploading,
+    uploads: get(retrievalActiveComposerUploadsAtom),
   }
 })
 
@@ -596,43 +608,61 @@ export const updateRetrievalComposerImagesAtom = atom(
   },
 )
 
-/**
- * Attaches uploaded images to the composer of the record the upload started on. If the user has
- * since selected another record or edited that record's images, the result is dropped instead of
- * landing in the wrong draft.
- */
-export const commitRetrievalComposerUploadAtom = atom(
+/** Freeze the draft as soon as the files are selected, before any network response. */
+export const startRetrievalComposerUploadsAtom = atom(null, (get, set, files: File[]) => {
+  if (!files.length) return []
+  set(freezeFallbackSelectionAtom)
+  const uploads: RetrievalImageUpload[] = files.map((file) => ({
+    id: crypto.randomUUID(),
+    file,
+    previewUrl: URL.createObjectURL(file),
+    progress: 0,
+    status: 'uploading',
+    selectionKey: selectionKey(get(retrievalSelectedAtom)),
+  }))
+  set(retrievalComposerUploadsAtom, [...get(retrievalActiveComposerUploadsAtom), ...uploads])
+  return uploads
+})
+
+export const updateRetrievalComposerUploadAtom = atom(
   null,
   (
-    get,
+    _get,
     set,
-    upload: {
-      baseImages: RetrievalComposerImage[]
-      selectionKey: string | undefined
-      uploaded: Array<{ file: File; uploadFileId: string }>
-    },
+    update: Pick<RetrievalImageUpload, 'id'> &
+      Partial<Pick<RetrievalImageUpload, 'progress' | 'status'>>,
   ) => {
-    const current = get(retrievalComposerQueryImagesAtom)
-    if (
-      selectionKey(get(retrievalSelectedAtom)) !== upload.selectionKey ||
-      current.length !== upload.baseImages.length ||
-      current.some((image, index) => image.uploadFileId !== upload.baseImages[index]?.uploadFileId)
+    set(retrievalComposerUploadsAtom, (current) =>
+      current.map((item) => (item.id === update.id ? { ...item, ...update } : item)),
     )
-      return false
+  },
+)
+
+export const removeRetrievalComposerUploadAtom = atom(null, (_get, set, id: string) => {
+  set(retrievalComposerUploadsAtom, (current) => current.filter((item) => item.id !== id))
+})
+
+/** A removed upload (including one from a previous record) can never attach to the draft. */
+export const commitRetrievalComposerUploadAtom = atom(
+  null,
+  (get, set, result: { id: string; uploadFileId: string }) => {
+    const upload = get(retrievalActiveComposerUploadsAtom).find((item) => item.id === result.id)
+    if (!upload) return
     set(updateRetrievalComposerImagesAtom, [
-      ...current,
-      ...upload.uploaded.map(({ file, uploadFileId }) => ({
-        name: file.name,
-        previewUrl: URL.createObjectURL(file),
-        sizeBytes: file.size,
-        uploadFileId,
-      })),
+      ...get(retrievalComposerQueryImagesAtom),
+      {
+        name: upload.file.name,
+        previewUrl: upload.previewUrl,
+        sizeBytes: upload.file.size,
+        uploadFileId: result.uploadFileId,
+      },
     ])
-    return true
+    set(removeRetrievalComposerUploadAtom, upload.id)
   },
 )
 
 export const selectRetrievalRecordAtom = atom(null, (get, set, record: RetrievalTestRecord) => {
+  set(retrievalComposerUploadsAtom, [])
   set(retrievalFrozenFallbackSelectionAtom, undefined)
   if (record.kind === 'local') {
     set(retrievalLocalSelectedAtom, { id: record.id, kind: record.kind })
