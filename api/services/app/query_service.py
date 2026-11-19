@@ -7,6 +7,7 @@ from uuid import UUID
 
 from libs.pagination import PaginatedResult
 from machinery.context import AppRequestContext, RequestContext
+from machinery.scope import UNRESTRICTED, scope_admits
 from models.enums import AppStatus
 from services.app.access import AppAccessFilter
 from services.app_definition_query_service import AppParameterConfig
@@ -79,7 +80,7 @@ class AppDiscoveryService:
                 app is None
                 or (context.resource_app_ids is not None and app.id not in context.resource_app_ids)
                 or app.mode not in SUPPORTED_APP_TYPES
-                or (context.personal_app_ids is not None and app.id not in context.personal_app_ids)
+                or not scope_admits(context.personal_app_ids, app.id)
                 or not access.is_app_accessible(app.id, app.maintainer, context.account_id)
             ):
                 return PaginatedResult(items=[], total=0, page=query.page, per_page=query.limit)
@@ -93,7 +94,7 @@ class AppDiscoveryService:
                 "name": query.name,
                 "status": AppStatus.NORMAL,
                 "openapi_visible": True,
-                "resource_ids": list(context.personal_app_ids) if context.personal_app_ids is not None else None,
+                "resource_ids": None if context.personal_app_ids is UNRESTRICTED else list(context.personal_app_ids),
             }
         )
         access.apply_to_params(params)

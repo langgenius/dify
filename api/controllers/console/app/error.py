@@ -32,6 +32,12 @@ class WebhookTriggerNotFoundError(BaseHTTPException):
     code = HTTPStatus.NOT_FOUND
 
 
+class AgentPreviewUnavailableError(BaseHTTPException):
+    error_code = "agent_preview_unavailable"
+    description = "Agent preview is not available in this edition."
+    code = HTTPStatus.FORBIDDEN
+
+
 class ProviderNotInitializeError(BaseHTTPException):
     error_code = "provider_not_initialize"
     description = (
