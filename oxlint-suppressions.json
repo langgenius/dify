@@ -5528,7 +5528,7 @@
   },
   "web/app/components/workflow/utils/workflow-init.ts": {
     "typescript/no-explicit-any": {
-      "count": 12
+      "count": 3
     }
   },
   "web/app/components/workflow/utils/workflow.ts": {
