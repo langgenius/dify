@@ -650,6 +650,7 @@ type HumanInputFormRemoteFileUploadResponse = {
 
 type HumanInputFormLocalFileUploadParams = {
   formToken: string
+  formVersion?: WorkflowHumanInputFormData['form_version']
   file: File
   onProgressCallback: (progress: number) => void
   onSuccessCallback: (res: HumanInputFormLocalFileUploadResponse) => void
@@ -659,17 +660,23 @@ type HumanInputFormLocalFileUploadParams = {
 const humanInputFormUploadTokenCache = new Map<string, HumanInputFormUploadTokenResponse>()
 const UPLOAD_TOKEN_REFRESH_BUFFER_SECONDS = 30
 
-const getHumanInputFormUploadToken = async (formToken: string) => {
-  const cachedToken = humanInputFormUploadTokenCache.get(formToken)
+const getHumanInputFormUploadToken = async (
+  formToken: string,
+  formVersion?: WorkflowHumanInputFormData['form_version'],
+) => {
+  const tokenPath = formVersion === '2'
+    ? `/form/human-input/v2/${encodeURIComponent(formToken)}/upload-token`
+    : `/form/human_input/${encodeURIComponent(formToken)}/upload-token`
+  const cachedToken = humanInputFormUploadTokenCache.get(tokenPath)
   const now = Math.floor(Date.now() / 1000)
 
   if (cachedToken && cachedToken.expires_at > now + UPLOAD_TOKEN_REFRESH_BUFFER_SECONDS)
     return cachedToken.upload_token
 
   const tokenResponse = await post<HumanInputFormUploadTokenResponse>(
-    `/form/human_input/${formToken}/upload-token`,
+    tokenPath,
   )
-  humanInputFormUploadTokenCache.set(formToken, tokenResponse)
+  humanInputFormUploadTokenCache.set(tokenPath, tokenResponse)
   return tokenResponse.upload_token
 }
 
@@ -677,6 +684,7 @@ const uploadHumanInputFormFile = async (
   formToken: string,
   formData: FormData,
   onProgress?: (e: ProgressEvent) => void,
+  formVersion?: WorkflowHumanInputFormData['form_version'],
 ) => {
   const scope = captureAppAccessScope()
   const ensureCanUpload = () => {
@@ -687,29 +695,32 @@ const uploadHumanInputFormFile = async (
 
   let uploadToken: string
   try {
-    uploadToken = await getHumanInputFormUploadToken(formToken)
+    uploadToken = await getHumanInputFormUploadToken(formToken, formVersion)
   } catch (error) {
     if (!isAppAccessError(error)) ensureCanUpload()
     throw error
   }
   ensureCanUpload()
+  const isV2Grant = uploadToken.startsWith('hitl_v2_upload_')
 
   return upload(
     {
       xhr: new XMLHttpRequest(),
       data: formData,
+      ...(isV2Grant ? { url: `${PUBLIC_API_PREFIX}/human-input/v2/files` } : {}),
       headers: {
         Authorization: `bearer ${uploadToken}`,
       },
       onprogress: onProgress,
     },
     true,
-    '/human-input-forms/files',
+    isV2Grant ? '/human-input/v2/files' : '/human-input-forms/files',
   )
 }
 
 export const uploadHumanInputFormLocalFile = async ({
   formToken,
+  formVersion,
   file,
   onProgressCallback,
   onSuccessCallback,
@@ -730,6 +741,7 @@ export const uploadHumanInputFormLocalFile = async ({
       formToken,
       formData,
       onProgress,
+      formVersion,
     )) as HumanInputFormLocalFileUploadResponse
 
     onSuccessCallback(response)
@@ -741,6 +753,7 @@ export const uploadHumanInputFormLocalFile = async ({
 export const uploadHumanInputFormRemoteFileInfo = async (
   formToken: string,
   url: string,
+  formVersion?: WorkflowHumanInputFormData['form_version'],
 ): Promise<HumanInputFormRemoteFileUploadResponse> => {
   const formData = new FormData()
   formData.append('url', url)
@@ -748,6 +761,8 @@ export const uploadHumanInputFormRemoteFileInfo = async (
   return uploadHumanInputFormFile(
     formToken,
     formData,
+    undefined,
+    formVersion,
   ) as Promise<HumanInputFormRemoteFileUploadResponse>
 }
 

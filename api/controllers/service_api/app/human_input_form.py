@@ -21,10 +21,13 @@ from controllers.console.wraps import model_validate
 from controllers.service_api import service_api_ns
 from controllers.service_api.schema import expect_with_user
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from controllers.web.human_input_file_upload import InvalidUploadTokenForbiddenError
+from controllers.web.human_input_form import HumanInputUploadTokenResponse
 from core.db.session_factory import session_factory
 from core.human_input_v2.shared.values import TenantId
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
 from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from factories.human_input_v2_form_presentation import build_form_presentation
 from fields.base import ResponseModel
@@ -32,6 +35,7 @@ from libs.external_api import error_responses
 from libs.helper import extract_remote_ip, to_timestamp
 from models.model import App, EndUser
 from repositories.human_input_v2.form_repository import Form as V2Form
+from services.human_input_file_upload_service import InvalidUploadTokenError
 from services.human_input_service import (
     Form,
     FormExpiredError,
@@ -40,6 +44,7 @@ from services.human_input_service import (
     InvalidFormDataError,
     ServiceAPIHumanInputService,
 )
+from services.human_input_v2.file_upload_service import build_file_upload_service
 from services.human_input_v2.submission_service import (
     HumanInputFormError,
     HumanInputFormErrorCode,
@@ -70,6 +75,7 @@ register_response_schema_models(
     service_api_ns,
     HumanInputFormDefinitionResponse,
     HumanInputFormSubmitResponse,
+    HumanInputUploadTokenResponse,
 )
 
 
@@ -126,6 +132,34 @@ def _raise_form_error(error: HumanInputFormError) -> NoReturn:
             raise InvalidFormDataError(description) from error
         case HumanInputFormErrorCode.WORKFLOW_NOT_ACTIVE:
             raise BadRequest("The workflow is not paused with an active checkpoint.") from error
+
+
+@service_api_ns.route("/form/human_input/<string:form_token>/upload-token")
+class WorkflowHumanInputUploadTokenApi(Resource):
+    @error_responses(FormExpiredError, FormSubmittedError, InvalidUploadTokenForbiddenError)
+    @service_api_ns.response(200, "Upload grant issued", service_api_ns.models[HumanInputUploadTokenResponse.__name__])
+    @validate_app_token
+    def post(self, app_model: App, form_token: str):
+        """Require the read/submit app key; issue the grant for the actual storage version and original owner."""
+        service = ServiceAPIHumanInputService(db.engine)
+        form = service.get_form_by_token(form_token)
+        try:
+            if form is None:
+                grant = build_file_upload_service().issue_service_api_upload_token(
+                    actor=ServiceAPIFormActor(TenantId(app_model.tenant_id), app_model.id), form_token=form_token
+                )
+            else:
+                _ensure_form_belongs_to_app(form, app_model)
+                _ensure_form_is_allowed_for_service_api(form)
+                service.ensure_form_active(form)
+                grant = application_services().human_input_file_uploads.issue_upload_token(form_token)
+        except HumanInputFormError as error:
+            _raise_form_error(error)
+        except InvalidUploadTokenError as error:
+            raise InvalidUploadTokenForbiddenError() from error
+        return HumanInputUploadTokenResponse(
+            upload_token=grant.upload_token, expires_at=to_timestamp(grant.expires_at)
+        ).model_dump(mode="json")
 
 
 @service_api_ns.route("/form/human_input/<string:form_token>")

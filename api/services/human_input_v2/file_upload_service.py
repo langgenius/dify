@@ -5,24 +5,32 @@ recipient authorization and both form deadlines for every upload. Storage and
 remote fetching take place after closing all authorization/owner read sessions.
 """
 
+import hashlib
 from dataclasses import dataclass
-from typing import Literal
+from typing import Annotated, Literal
 
 import jwt
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from core.human_input_v2.shared.values import TenantId
 from core.workflow.nodes.human_input.enums import HumanInputFormKind
 from graphon.file import helpers as file_helpers
-from libs.datetime_utils import to_utc_timestamp
+from libs.datetime_utils import naive_utc_now, to_utc_timestamp
 from models.enums import CreatorUserRole
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.human_input_v2.form_repository import Form
 from repositories.human_input_v2.sqlalchemy_file_upload_repository import SQLAlchemyFileUploadRepository
 from services.file_service import FileService, FileUploadActor
 from services.human_input_file_upload_service import HumanInputUploadToken, InvalidUploadTokenError
-from services.human_input_v2.submission_service import HumanInputSubmissionService
+from services.human_input_v2.submission_service import (
+    HumanInputFormError,
+    HumanInputFormErrorCode,
+    HumanInputSubmissionService,
+    ServiceAPIFormActor,
+    WebAppFormActor,
+)
 from services.remote_file_service import RemoteFileService, RemoteFileUploadResult
 
 V2_UPLOAD_TOKEN_PREFIX = "hitl_v2_upload_"
@@ -33,6 +41,27 @@ class _PublicGrant(BaseModel):
     model_config = ConfigDict(strict=True, frozen=True)
     surface: Literal["public"] = "public"
     form_token: str
+
+
+class _WebAppGrant(BaseModel):
+    model_config = ConfigDict(strict=True, frozen=True)
+    surface: Literal["web_app"] = "web_app"
+    form_token: str
+    tenant_id: str
+    app_id: str
+    end_user_id: str
+
+
+class _ServiceAPIGrant(BaseModel):
+    model_config = ConfigDict(strict=True, frozen=True)
+    surface: Literal["service_api"] = "service_api"
+    form_token: str
+    tenant_id: str
+    app_id: str
+
+
+_Grant = _PublicGrant | _WebAppGrant | _ServiceAPIGrant
+_GRANT_ADAPTER = TypeAdapter(Annotated[_Grant, Field(discriminator="surface")])
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,8 +80,46 @@ class HumanInputV2FileUploadService:
         self._remote_files = remote_files
 
     def issue_public_upload_token(self, form_token: str) -> HumanInputUploadToken:
-        grant = _PublicGrant(form_token=form_token)
-        form = self._forms.authorize_public_form(form_token=form_token)
+        return self._issue_upload_token(_PublicGrant(form_token=form_token))
+
+    def issue_web_app_upload_token(self, *, actor: WebAppFormActor, form_token: str) -> HumanInputUploadToken:
+        """Require the read/submit passport actor; issue only an upload grant for its active delivery."""
+        return self._issue_upload_token(
+            _WebAppGrant(
+                form_token=form_token, tenant_id=actor.tenant_id, app_id=actor.app_id, end_user_id=actor.end_user_id
+            )
+        )
+
+    def issue_service_api_upload_token(self, *, actor: ServiceAPIFormActor, form_token: str) -> HumanInputUploadToken:
+        """Require the read/submit app actor; issue an upload grant preserving the original file owner."""
+        return self._issue_upload_token(
+            _ServiceAPIGrant(form_token=form_token, tenant_id=actor.tenant_id, app_id=actor.app_id)
+        )
+
+    def _authorize_grant(self, grant: _Grant) -> Form:
+        """Recheck the signed actor's current delivery and deadlines without recording a form view."""
+        if isinstance(grant, _PublicGrant):
+            return self._forms.authorize_public_form(form_token=grant.form_token)
+        token_hash = hashlib.sha256(grant.form_token.encode()).hexdigest()
+        with self._sessions() as session:
+            if isinstance(grant, _WebAppGrant):
+                form = self._forms._authorize_web_app(
+                    session,
+                    actor=WebAppFormActor(TenantId(grant.tenant_id), grant.app_id, grant.end_user_id),
+                    token_hash=token_hash,
+                ).form
+            else:
+                form = self._forms._authorize_service_api(
+                    session,
+                    actor=ServiceAPIFormActor(TenantId(grant.tenant_id), grant.app_id),
+                    token_hash=token_hash,
+                ).form
+        if naive_utc_now() >= min(form.expiration_time, form.global_timeout_deadline):
+            raise HumanInputFormError(HumanInputFormErrorCode.EXPIRED, form_id=form.id)
+        return form
+
+    def _issue_upload_token(self, grant: _Grant) -> HumanInputUploadToken:
+        form = self._authorize_grant(grant)
         self._resolve_owner(form)
         expires_at = min(form.expiration_time, form.global_timeout_deadline)
         claims = {**grant.model_dump(), "aud": _UPLOAD_AUDIENCE, "exp": to_utc_timestamp(expires_at)}
@@ -70,10 +137,10 @@ class HumanInputV2FileUploadService:
                 audience=_UPLOAD_AUDIENCE,
                 options={"require": ["exp", "aud"]},
             )
-            grant = _PublicGrant.model_validate(claims)
+            grant = _GRANT_ADAPTER.validate_python(claims)
         except (jwt.PyJWTError, ValidationError) as exc:
             raise InvalidUploadTokenError() from exc
-        form = self._forms.authorize_public_form(form_token=grant.form_token)
+        form = self._authorize_grant(grant)
         return HumanInputV2UploadContext(form=form, owner=self._resolve_owner(form))
 
     def upload_local_file(

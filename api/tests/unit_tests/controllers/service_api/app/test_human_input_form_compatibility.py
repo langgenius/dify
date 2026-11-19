@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.exceptions import Unauthorized
 from werkzeug.test import TestResponse
 
+from configs import dify_config
 from controllers.service_api import wraps
 from controllers.service_api.app import human_input_form as controller
 from core.human_input import ButtonStyle
@@ -62,6 +63,9 @@ from repositories.human_input_v2.recipient_repository import EndUserRecipientSub
 from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchemyDeliveryRepository
 from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
 from repositories.human_input_v2.sqlalchemy_recipient_repository import SQLAlchemyRecipientRepository
+from services.file_service import FileService
+from services.human_input_v2.file_upload_service import V2_UPLOAD_TOKEN_PREFIX, HumanInputV2FileUploadService
+from services.remote_file_service import RemoteFileService
 from tasks.app_generate.workflow_execute_task import resume_app_execution
 from tests.helpers.unit.model_factories import make_account, make_app, make_tenant
 
@@ -297,6 +301,26 @@ def approval(
         published,
     )
     database_sessions.remove()
+
+
+def test_upload_grant_requires_app_key_and_supports_v2_storage(
+    approval: Approval, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = _PATH + "/upload-token"
+    assert approval.client.post(path).status_code == 401
+    if approval.version == "2":
+        monkeypatch.setattr(dify_config, "SECRET_KEY", "service-api-upload-contract-signing-key")
+        files = FileService(approval.sessions)
+        uploads = HumanInputV2FileUploadService(
+            session_factory=approval.sessions, files=files, remote_files=RemoteFileService(files=files)
+        )
+        monkeypatch.setattr(controller, "build_file_upload_service", lambda: uploads)
+        response = approval.client.post(path, headers=_HEADERS)
+        assert response.status_code == 200, response.json
+        assert response.json["upload_token"].startswith(V2_UPLOAD_TOKEN_PREFIX)
+        context = uploads.validate_upload_token(response.json["upload_token"])
+        assert context.form.id == approval.form_id
+        assert context.owner.id != approval.submitter_id
 
 
 @pytest.mark.parametrize(("remote_address", "expected_ip"), [("127.0.0.1", "127.0.0.1"), (None, None), ("", None)])

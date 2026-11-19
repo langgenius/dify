@@ -29,13 +29,14 @@ from libs.datetime_utils import naive_utc_now
 from libs.external_api import ExternalApi
 from models.account import TenantAccountJoin, TenantAccountRole
 from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
-from models.human_input_v2 import HumanInputAuditEvent, HumanInputDelivery, HumanInputForm
+from models.human_input_v2 import HumanInputAuditEvent, HumanInputDelivery, HumanInputForm, HumanInputRecipient
 from models.model import EndUser, UploadFile
 from models.workflow import WorkflowPause, WorkflowRun, WorkflowType
 from repositories.file_grant_repository import FileGrantRepository
 from repositories.human_input_v2.delivery_repository import (
     DeliveryCreateParams,
     EmailTargetSnapshot,
+    InitiatorSnapshot,
     SubmissionAuthType,
 )
 from repositories.human_input_v2.form_repository import FormCreateParams
@@ -54,6 +55,8 @@ from services.human_input_v2.submission_service import (
     HumanInputFormError,
     HumanInputFormErrorCode,
     HumanInputSubmissionService,
+    ServiceAPIFormActor,
+    WebAppFormActor,
 )
 from services.remote_file_service import RemoteFileService
 from tests.helpers.unit.model_factories import make_account, make_app, make_end_user, make_tenant
@@ -327,6 +330,73 @@ def test_upload_authorization_does_not_record_a_form_view(approval: Approval) ->
     approval.service.validate_upload_token(grant.upload_token)
     with approval.sessions() as session:
         assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputAuditEvent)) == 0
+
+
+@pytest.mark.parametrize("surface", ["web_app", "service_api"])
+def test_initiator_grant_rechecks_identity_deadlines_and_current_owner(approval: Approval, surface: str) -> None:
+    from models.human_input_v2 import RecipientSubjectType
+
+    with approval.sessions.begin() as session:
+        delivery = session.get_one(HumanInputDelivery, approval.delivery_id)
+        delivery.auth_type = SubmissionAuthType.WEB_APP
+        delivery.target_snapshot = InitiatorSnapshot(protected_form_token="encrypted")
+        recipient = session.get_one(HumanInputRecipient, delivery.recipient_id)
+        recipient.subject_type = RecipientSubjectType.END_USER
+        recipient.subject_value = approval.end_user_id
+    web_actor = WebAppFormActor(approval.tenant_id, approval.app_id, approval.end_user_id)
+    api_actor = ServiceAPIFormActor(approval.tenant_id, approval.app_id)
+    with pytest.raises(HumanInputFormError):
+        approval.issue()
+    with pytest.raises(HumanInputFormError):
+        approval.service.issue_web_app_upload_token(
+            actor=WebAppFormActor(approval.tenant_id, approval.app_id, str(uuid4())), form_token=approval.token
+        )
+    with pytest.raises(HumanInputFormError):
+        approval.service.issue_service_api_upload_token(
+            actor=ServiceAPIFormActor(approval.tenant_id, str(uuid4())), form_token=approval.token
+        )
+    grant = (
+        approval.service.issue_web_app_upload_token(actor=web_actor, form_token=approval.token)
+        if surface == "web_app"
+        else approval.service.issue_service_api_upload_token(actor=api_actor, form_token=approval.token)
+    )
+    context = approval.service.validate_upload_token(grant.upload_token)
+    assert context.owner.id == (
+        approval.end_user_id if approval.owner_role == CreatorUserRole.END_USER else approval.account_id
+    )
+    with approval.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputAuditEvent)) == 0
+    with approval.sessions.begin() as session:
+        form = session.get_one(HumanInputForm, approval.form_id)
+        form.global_timeout_deadline = naive_utc_now() - timedelta(seconds=1)
+    with pytest.raises(HumanInputFormError) as caught:
+        approval.service.validate_upload_token(grant.upload_token)
+    assert caught.value.code == HumanInputFormErrorCode.EXPIRED
+
+
+def test_passport_upload_controller_checks_app_end_user_ownership(
+    approval: Approval, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from werkzeug.exceptions import NotFound
+
+    from controllers.web import human_input_v2 as passport_controller
+
+    with approval.sessions() as session:
+        end_user = session.get_one(EndUser, approval.end_user_id)
+    app_model = make_app(app_id=approval.app_id, tenant_id=str(approval.tenant_id))
+    monkeypatch.setattr(passport_controller, "build_file_upload_service", lambda: approval.service)
+    end_user.app_id = str(uuid4())
+    with pytest.raises(NotFound):
+        passport_controller.WebAppHumanInputV2UploadTokenApi().post(app_model, end_user, approval.token)
+
+
+def test_passport_upload_route_requires_a_passport(approval: Approval) -> None:
+    from controllers.web import human_input_v2 as passport_controller
+
+    app = Flask(__name__)
+    ExternalApi(app).add_namespace(passport_controller.web_ns)
+    response = app.test_client().post(f"/form/human-input/v2/{approval.token}/upload-token")
+    assert response.status_code == 401
 
 
 def test_enterprise_trigger_upload_uses_existing_execution_file_grant_owner(approval: Approval) -> None:

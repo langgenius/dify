@@ -18,6 +18,8 @@ from controllers.common.human_input_v2_errors import (
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.wraps import model_validate
 from controllers.web import web_ns
+from controllers.web.human_input_file_upload import InvalidUploadTokenForbiddenError
+from controllers.web.human_input_form import HumanInputUploadTokenResponse
 from controllers.web.wraps import WebApiResource
 from core.db.session_factory import session_factory
 from core.human_input_v2.resolved_form import ResolvedForm
@@ -26,6 +28,8 @@ from fields.base import ResponseModel
 from libs.external_api import error_responses
 from libs.helper import dump_response, extract_remote_ip, to_timestamp
 from models.model import App, EndUser
+from services.human_input_file_upload_service import InvalidUploadTokenError
+from services.human_input_v2.file_upload_service import build_file_upload_service
 from services.human_input_v2.submission_service import (
     HumanInputFormError,
     HumanInputSubmissionService,
@@ -118,3 +122,21 @@ class WebAppHumanInputV2FormApi(WebApiResource):
         except HumanInputFormError as exc:
             raise form_http_error(exc, message="The approval could not be accepted.") from exc
         return WebAppHumanInputV2SubmitResponse().model_dump(mode="json")
+
+
+@web_ns.route("/form/human-input/v2/<string:form_token>/upload-token")
+class WebAppHumanInputV2UploadTokenApi(WebApiResource):
+    @error_responses(HumanInputV2AlreadySubmittedError, HumanInputV2ExpiredError, InvalidUploadTokenForbiddenError)
+    @web_ns.response(200, "Upload grant issued", web_ns.models[HumanInputUploadTokenResponse.__name__])
+    def post(self, app_model: App, end_user: EndUser, form_token: str):
+        """Require the same passport identity as read/submit; return an upload-only grant or the same form error."""
+        actor = _web_app_actor(app_model, end_user)
+        try:
+            grant = build_file_upload_service().issue_web_app_upload_token(actor=actor, form_token=form_token)
+        except HumanInputFormError as exc:
+            raise form_http_error(exc, message="The approval could not be accepted.") from exc
+        except InvalidUploadTokenError as exc:
+            raise InvalidUploadTokenForbiddenError() from exc
+        return HumanInputUploadTokenResponse(
+            upload_token=grant.upload_token, expires_at=to_timestamp(grant.expires_at)
+        ).model_dump(mode="json")

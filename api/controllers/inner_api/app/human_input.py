@@ -18,6 +18,7 @@ from controllers.common.human_input_v2_errors import (
 from controllers.common.schema import register_schema_models
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import enterprise_inner_api_only
+from controllers.web.human_input_file_upload import InvalidUploadTokenForbiddenError
 from core.db.session_factory import session_factory
 from enums import DeploymentEdition
 from factories.human_input_v2_form_presentation import build_form_presentation
@@ -30,7 +31,9 @@ from services.enterprise.human_input_service import (
     project_prepared,
     resolve_service_api_end_user_id,
 )
+from services.human_input_file_upload_service import InvalidUploadTokenError
 from services.human_input_service import FormExpiredError, FormSubmittedError, InvalidFormDataError
+from services.human_input_v2.file_upload_service import build_file_upload_service
 from services.human_input_v2.form_service import recover_initiator_prepared_form
 from services.human_input_v2.submission_service import (
     HumanInputFormError,
@@ -52,7 +55,7 @@ class SubmitPayload(FormQuery):
     inputs: dict[str, JsonValue]
 
 
-register_schema_models(inner_api_ns, PreparePayload, SubmitPayload)
+register_schema_models(inner_api_ns, PreparePayload, SubmitPayload, FormQuery)
 
 
 def _tenant_id(app_id: str):
@@ -206,6 +209,40 @@ class GetHumanInputForm(Resource):
             "user_actions": [value.model_dump(mode="json") for value in presentation.user_actions],
             "expiration_time": to_timestamp(min(form.expiration_time, form.global_timeout_deadline)),
         }
+
+
+@inner_api_ns.route("/enterprise/apps/<string:app_id>/human-input-forms/<string:form_token>:uploadToken")
+class CreateHumanInputUploadToken(Resource):
+    @enterprise_inner_api_only
+    @error_responses(
+        FormSubmittedError,
+        FormExpiredError,
+        HumanInputV2AlreadySubmittedError,
+        HumanInputV2ExpiredError,
+        InvalidUploadTokenForbiddenError,
+    )
+    @inner_api_ns.expect(inner_api_ns.models[FormQuery.__name__])
+    def post(self, app_id: str, form_token: str):
+        """Authorize the Enterprise caller for either projected version and issue an upload-only v2 grant."""
+        _require_enterprise()
+        try:
+            query = FormQuery.model_validate(request.get_json())
+        except ValidationError as error:
+            raise BadRequest(str(error)) from error
+        version = "2"
+        try:
+            _, actor, form = _form_service(app_id, form_token, query)
+            version = form.form_version
+            uploads = build_file_upload_service()
+            if isinstance(actor, ServiceAPIFormActor):
+                grant = uploads.issue_service_api_upload_token(actor=actor, form_token=form_token)
+            else:
+                grant = uploads.issue_web_app_upload_token(actor=actor, form_token=form_token)
+        except HumanInputFormError as error:
+            _raise_form_error(error, query, version, app_id)
+        except InvalidUploadTokenError as error:
+            raise InvalidUploadTokenForbiddenError() from error
+        return {"upload_token": grant.upload_token, "expires_at": to_timestamp(grant.expires_at)}
 
 
 @inner_api_ns.route("/enterprise/apps/<string:app_id>/human-input-forms/<string:form_token>:submit")

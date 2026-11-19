@@ -19,6 +19,11 @@ from models.model import AppMode, EndUser
 from repositories.file_grant_repository import FileGrantRepository
 from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
 from services.file_grant_service import FileGrantService
+from services.file_service import FileService
+from services.human_input_file_upload_service import InvalidUploadTokenError
+from services.human_input_v2.file_upload_service import V2_UPLOAD_TOKEN_PREFIX, HumanInputV2FileUploadService
+from services.human_input_v2.submission_service import HumanInputFormError
+from services.remote_file_service import RemoteFileService
 from tests.helpers.unit.model_factories import make_app, make_tenant
 
 
@@ -39,6 +44,7 @@ def test_prepare_replay_submit_and_expire(
     monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE)
     monkeypatch.setattr(dify_config, "INNER_API", True)
     monkeypatch.setattr(dify_config, "INNER_API_KEY", "hitl-contract-key")
+    monkeypatch.setattr(dify_config, "SECRET_KEY", "upload-contract-signing-key-long-enough")
     monkeypatch.setattr(
         "services.enterprise.human_input_run_gateway.EnterpriseRequest.send_request",
         lambda *_args, **_kwargs: {"state": "paused", "has_checkpoint": True},
@@ -119,6 +125,37 @@ def test_prepare_replay_submit_and_expire(
     form_base = f"/inner/api/enterprise/apps/{app.id}/human-input-forms/{token}"
     query = f"?caller={caller}&end_user_id={end_user.id if caller == 'web_app' else raw_user}"
     assert client.get(form_base + query, headers=headers).status_code == 200
+    files = FileService(sqlite_session_factory)
+    uploads = HumanInputV2FileUploadService(
+        session_factory=sqlite_session_factory, files=files, remote_files=RemoteFileService(files=files)
+    )
+    monkeypatch.setattr("controllers.inner_api.app.human_input.build_file_upload_service", lambda: uploads)
+    upload_body = {"caller": caller, "end_user_id": end_user.id if caller == "web_app" else raw_user}
+    upload_path = form_base + ":uploadToken"
+    assert client.post(upload_path, json=upload_body).status_code == 401
+    assert client.post(upload_path, json={"caller": "unknown"}, headers=headers).status_code == 400
+    if caller == "web_app":
+        assert (
+            client.post(upload_path, json={"caller": caller, "end_user_id": str(uuid4())}, headers=headers).status_code
+            == 404
+        )
+    upload_response = client.post(upload_path, json=upload_body, headers=headers)
+    assert upload_response.status_code == 200, upload_response.json
+    grant = upload_response.json["upload_token"]
+    assert grant.startswith(V2_UPLOAD_TOKEN_PREFIX)
+    assert upload_response.json["expires_at"] == int(
+        min(persisted.expiration_time, persisted.global_timeout_deadline).timestamp()
+    )
+    context = uploads.validate_upload_token(grant)
+    assert context.owner.id != end_user.id
+    assert context.form.id == persisted.id
+    with sqlite_session_factory.begin() as session:
+        session.get_one(EndUser, context.owner.id).type = EndUserType.TRIGGER
+    with pytest.raises(InvalidUploadTokenError):
+        uploads.validate_upload_token(grant)
+    assert client.post(upload_path, json=upload_body, headers=headers).status_code == 403
+    with sqlite_session_factory.begin() as session:
+        session.get_one(EndUser, context.owner.id).type = EndUserType.APP_DEPLOY
     submit = {
         "caller": caller,
         "end_user_id": end_user.id if caller == "web_app" else raw_user,
@@ -128,6 +165,11 @@ def test_prepare_replay_submit_and_expire(
     response = client.post(form_base + ":submit", json=submit, headers=headers)
     assert response.status_code == 200, response.json
     assert response.json == {"workflow_run_id": run_id}
+    assert client.post(upload_path, json=upload_body, headers=headers).status_code == (
+        412 if version == "1" or caller == "service_api" else 409
+    )
+    with pytest.raises(HumanInputFormError):
+        uploads.validate_upload_token(grant)
     result = client.post(base + ":prepare", json=payload, headers=headers)
     assert result.json["outputs"]["note"] == "OK"
     assert result.json["edge_source_handle"] == "approve"
