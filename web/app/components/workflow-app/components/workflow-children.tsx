@@ -15,6 +15,7 @@ import {
 import { isExportSecretEnvironmentEvent } from '@/app/components/workflow/export-secret-env-event'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useAutoGenerateWebhookUrl } from '@/app/components/workflow/hooks/use-auto-generate-webhook-url'
+import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { useDSL } from '@/app/components/workflow/hooks/use-DSL'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { usePanelInteractions } from '@/app/components/workflow/hooks/use-panel-interactions'
@@ -77,10 +78,12 @@ const WorkflowChildren = () => {
   const showOnboarding = useStore((s) => s.showOnboarding)
   const canImportExportDSL = useHooksStore((s) => s.accessControl.canImportExportDSL)
   const canEdit = useHooksStore((s) => s.accessControl.canEdit)
+  const loroDraft = useStore((s) => s.loroDraft)
   const setShowOnboarding = useStore((s) => s.setShowOnboarding)
   const setHasSelectedStartNode = useStore((s) => s.setHasSelectedStartNode)
   const setShouldAutoOpenStartNodeSelector = useStore((s) => s.setShouldAutoOpenStartNodeSelector)
   const reactFlowStore = useStoreApi()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
   const availableNodesMetaData = useWorkflowNodeCatalog()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { handleOnboardingClose } = useAutoOnboarding()
@@ -137,7 +140,7 @@ const WorkflowChildren = () => {
         position: START_INITIAL_POSITION,
       })
 
-      const { setNodes, setEdges } = reactFlowStore.getState()
+      const { setNodes, setEdges } = loroDraft ? collaborativeWorkflow : reactFlowStore.getState()
       setNodes([newNode])
       setEdges([])
 
@@ -158,7 +161,9 @@ const WorkflowChildren = () => {
       availableNodesMetaData,
       autoGenerateWebhookUrl,
       canEdit,
+      collaborativeWorkflow,
       handleSyncWorkflowDraft,
+      loroDraft,
       reactFlowStore,
       setHasSelectedStartNode,
       setShouldAutoOpenStartNodeSelector,

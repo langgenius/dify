@@ -11,6 +11,7 @@ function EditingTitle() {
   const draftUpdatedAt = useStore((state) => state.draftUpdatedAt)
   const publishedAt = useStore((state) => state.publishedAt)
   const isSyncingWorkflowDraft = useStore((s) => s.isSyncingWorkflowDraft)
+  const hasPendingLoroDraftChanges = useStore((s) => s.hasPendingLoroDraftChanges)
 
   return (
     <div
@@ -39,7 +40,7 @@ function EditingTitle() {
       ) : (
         <span>{t(($) => $['common.unpublished'], { ns: 'workflow' })}</span>
       )}
-      {isSyncingWorkflowDraft && (
+      {(isSyncingWorkflowDraft || hasPendingLoroDraftChanges) && (
         <>
           <span aria-hidden="true" className="mx-1 flex items-center">
             ·

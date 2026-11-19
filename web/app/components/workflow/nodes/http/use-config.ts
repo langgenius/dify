@@ -2,6 +2,7 @@ import type { Var } from '../../types'
 import type { Authorization, Body, HttpNodeType, Method, Timeout } from './types'
 import { produce } from 'immer'
 import { useCallback, useEffect, useState } from 'react'
+import { runDraftInitialization } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useNodesReadOnly } from '../../hooks/use-workflow'
 import { useStore } from '../../store'
@@ -47,7 +48,7 @@ const useConfig = (id: string, payload: HttpNodeType) => {
       }
       newInputs.body = normalizeBody(newInputs.body)
 
-      setInputs(newInputs)
+      runDraftInitialization(() => setInputs(newInputs))
       setIsDataReady(true)
     }
   }, [defaultConfig])

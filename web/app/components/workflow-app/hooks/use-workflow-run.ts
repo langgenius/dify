@@ -8,6 +8,7 @@ import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
 import { useCallback, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useReactFlow, useStoreApi } from 'reactflow'
 import { v4 as uuidV4 } from 'uuid'
 import { trackEvent } from '@/app/components/base/amplitude'
@@ -22,6 +23,7 @@ import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { toast } from '@/app/notifications'
 import { usePathname } from '@/next/navigation'
 import { ssePost } from '@/service/base'
 import { consoleQuery } from '@/service/console'
@@ -114,6 +116,7 @@ const getWorkflowTracingCount = (workflowData: unknown) => {
 type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
 
 const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
+  const { t } = useTranslation(['workflow'])
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
@@ -205,7 +208,11 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         })
       })
       setNodes(newNodes)
-      await doSyncWorkflowDraft()
+      const saved = await doSyncWorkflowDraft()
+      if (!saved && workflowStore.getState().loroDraft) {
+        toast.error(t(($) => $['common.draftSaveFailed'], { ns: 'workflow' }))
+        return
+      }
 
       const {
         onWorkflowStarted,
@@ -449,6 +456,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
     [
       store,
       doSyncWorkflowDraft,
+      t,
       workflowStore,
       pathname,
       appDetail,

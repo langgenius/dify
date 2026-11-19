@@ -21,7 +21,9 @@ from configs import dify_config
 
 logger = logging.getLogger(__name__)
 
-type SocketEvent = Literal["connect", "user_connect", "disconnect", "collaboration_event", "graph_event"]
+type SocketEvent = Literal[
+    "connect", "user_connect", "disconnect", "collaboration_event", "graph_event", "loro_draft_sync"
+]
 type Outcome = Literal["success", "rejected", "error"]
 
 _EVENT_TYPES = frozenset(

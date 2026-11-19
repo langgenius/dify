@@ -11,6 +11,7 @@ import { createConsoleQueryWrapper, seedAppDslVersion } from '@/test/console/que
 import { createDeferred } from '@/test/deferred'
 import { createEdge, createNode } from '../../__tests__/fixtures'
 import { renderWorkflowFlowHook } from '../../__tests__/workflow-test-env'
+import { collaborationManager } from '../../collaboration/core/collaboration-manager'
 import { WORKFLOW_COMMON_NODES } from '../../constants/node'
 import { HooksStoreContext } from '../../hooks-store'
 import { useWorkflowNodeCatalog } from '../../node-catalog'
@@ -85,11 +86,13 @@ function setup({
   nodes = [codeNode('a'), codeNode('b'), codeNode('c')],
   edges = [],
   chatflow = false,
+  collaboration = false,
   readonly = false,
 }: {
   nodes?: Node[]
   edges?: Edge[]
   chatflow?: boolean
+  collaboration?: boolean
   readonly?: boolean
 } = {}) {
   const { queryClient } = createConsoleQueryWrapper()
@@ -100,7 +103,12 @@ function setup({
     nodes,
     edges,
     queryClient,
-    resource: { kind: 'app', appId: 'app-1', mode: chatflow ? 'advanced-chat' : 'workflow' },
+    resource: {
+      kind: 'app',
+      appId: 'app-1',
+      mode: chatflow ? 'advanced-chat' : 'workflow',
+      collaborationEnabled: collaboration,
+    },
     historyStore: { nodes, edges },
     initialStoreState: { canvasReadOnly: readonly },
     hooksStoreProps: { doSyncWorkflowDraft: sync },
@@ -670,4 +678,38 @@ it('remaps iteration children and their internal references while the HITL gate 
     source: copiedSource.id,
     target: copiedTarget.id,
   })
+})
+
+it('uses only the active peer history when offline and blocks canvas history while a replacement draft loads', () => {
+  const { result, store } = setup({ collaboration: true, nodes: [codeNode('remote')] })
+  const identity = { epoch: 'loaded', accountId: 'editor' }
+  act(() => {
+    store.getState().setWorkflowHistory({
+      nodes: [codeNode('outdated')],
+      edges: [],
+      workflowHistoryEvent: 'NodeChange',
+    })
+    store.setState({ loroDraft: identity })
+  })
+  vi.spyOn(collaborationManager, 'isConnected').mockReturnValue(false)
+  vi.spyOn(collaborationManager, 'isDraftHistoryReady').mockImplementation(
+    (_appId, draft) => draft.epoch === 'loaded',
+  )
+  const undo = vi.spyOn(collaborationManager, 'undo').mockReturnValue(true)
+  const redo = vi.spyOn(collaborationManager, 'redo').mockReturnValue(true)
+  act(() => {
+    result.current.handleHistoryBack()
+    result.current.handleHistoryForward()
+  })
+  expect(undo).toHaveBeenCalledOnce()
+  expect(redo).toHaveBeenCalledOnce()
+  expect(result.current.nodes.map((node) => node.id)).toEqual(['remote'])
+  act(() => {
+    store.setState({ loroDraft: { ...identity, epoch: 'loading' } })
+    result.current.handleHistoryBack()
+    result.current.handleHistoryForward()
+  })
+  expect(undo).toHaveBeenCalledOnce()
+  expect(redo).toHaveBeenCalledOnce()
+  expect(result.current.nodes.map((node) => node.id)).toEqual(['remote'])
 })

@@ -2,6 +2,8 @@
 
 import type { LoroDoc, LoroList, LoroMap, UndoManager, Value } from 'loro-crdt'
 import type { Socket } from 'socket.io-client'
+import type { WorkflowHistoryEventT } from '../../hooks/use-workflow-history'
+import type { LLMNodeType } from '../../nodes/llm/types'
 import type { CommonNodeType, Edge, Node } from '../../types'
 import type {
   CollaborationState,
@@ -19,15 +21,39 @@ import type {
   WorkflowSyncResult,
 } from '../types/collaboration'
 import type { CRDTProvider } from './crdt-provider'
+import type { DraftPatch } from './loro-draft-edits'
+import type {
+  LoroDraftConfirmation,
+  LoroDraftIdentity,
+  LoroDraftProvider,
+} from './loro-draft-provider'
+import type { LoroDraftRetirement } from './loro-draft-storage'
 import { cloneDeep } from 'es-toolkit/object'
 import { isEqual } from 'es-toolkit/predicate'
+import { isAgentV2NodeData, needsInlineAgentBindingCreation } from '../../nodes/agent-v2/types'
+import { BlockEnum } from '../../types'
 import { EventEmitter } from './event-emitter'
+import {
+  appendDraftEdit,
+  diffDraftEntities,
+  diffDraftValue,
+  inheritDraftRowIds,
+  initializeDraftFields,
+  projectDraftGraph,
+} from './loro-draft-edits'
 import {
   emitWithAuthGuard,
   isDefaultSocketUrl,
   isUnauthorizedAck,
   webSocketClient,
 } from './websocket-manager'
+
+type DraftHistory = Readonly<{
+  undo: readonly WorkflowHistoryEventT[]
+  redo: readonly WorkflowHistoryEventT[]
+}>
+type DraftAction = { label: WorkflowHistoryEventT; step?: string }
+type Prompt = LLMNodeType['prompt_template']
 
 type CrdtRuntime = (typeof import('./crdt-runtime'))['crdtRuntime']
 
@@ -40,6 +66,7 @@ type NodePanelPresenceEventData = {
 }
 
 type ReactFlowStore = {
+  hydrateGraph?: (graph: { nodes: Node[]; edges: Edge[] }) => { nodes: Node[]; edges: Edge[] }
   getState: () => {
     getNodes: () => Node[]
     setNodes: (nodes: Node[]) => void
@@ -146,6 +173,11 @@ const toLoroValue = (value: unknown): Value => cloneDeep(value) as Value
 const toLoroRecord = (value: unknown): Record<string, Value> =>
   cloneDeep(value) as Record<string, Value>
 
+const isDraftNode = (node: Node) =>
+  node.data?.type !== BlockEnum.StartPlaceholder &&
+  (!node.data?._isTempNode ||
+    (isAgentV2NodeData(node.data) && needsInlineAgentBindingCreation(node.data)))
+
 const toUint8Array = (value: unknown): Uint8Array | null => {
   if (value instanceof Uint8Array) return value
   if (value instanceof ArrayBuffer) return new Uint8Array(value)
@@ -160,14 +192,33 @@ const toUint8Array = (value: unknown): Uint8Array | null => {
   return null
 }
 
+function draftEditLabel(patch: DraftPatch): WorkflowHistoryEventT {
+  if (patch.kind === 'edges')
+    return !patch.path.length && patch.op === 'remove' ? 'EdgeDelete' : 'NodeConnect'
+  if (!patch.path.length) return patch.op === 'remove' ? 'NodeDelete' : 'NodeAdd'
+  if (patch.path[0] === 'position') return 'NodeDragStop'
+  if (patch.path[1] === 'title') return 'NodeTitleChange'
+  if (patch.path[1] === 'desc') return 'NodeDescriptionChange'
+  return 'NodeChange'
+}
+
 export class CollaborationManager {
   private crdtRuntime: CrdtRuntime | null = null
   private crdtRuntimePromise: Promise<CrdtRuntime> | null = null
   private targetAppId: string | null = null
+  private targetLoroDraft?: LoroDraftIdentity
+  private initialLlmPrompts?: Map<string, { before: Prompt; prompt: Prompt }>
+  private draftHistory: DraftHistory = { undo: [], redo: [] }
+  private draftInitialization?: { before?: Record<string, unknown> }
+  private draftAction?: DraftAction
+  private canvasStep?: string
+  private lastDraftInput?: { key: string; time: number; step: string }
   private connectGeneration = 0
   private doc: LoroDoc | null = null
   private undoManager: UndoManager | null = null
   private provider: CRDTProvider | null = null
+  private loroProvider?: LoroDraftProvider
+  private loroDraft?: LoroDraftIdentity
   private nodesMap: LoroMap<Record<string, Value>> | null = null
   private edgesMap: LoroMap<Record<string, Value>> | null = null
   private eventEmitter = new EventEmitter()
@@ -234,7 +285,9 @@ export class CollaborationManager {
     const message = body && typeof body === 'object' && 'msg' in body ? body.msg : undefined
     if (message === 'connected') {
       this.joinPending = false
+      if (this.loroProvider?.isUnavailable) return
       this.joinFailure = null
+      this.loroProvider?.join()
       this.eventEmitter.emit('joinFailure', null)
       this.emitGraphReadyState()
       return
@@ -246,6 +299,7 @@ export class CollaborationManager {
     else return
 
     this.joinPending = false
+    this.initialLlmPrompts = undefined
     this.crdtTrusted = false
     this.eventEmitter.emit('joinFailure', this.joinFailure)
     this.emitGraphReadyState()
@@ -399,22 +453,15 @@ export class CollaborationManager {
 
   private populateNodeContainer(container: LoroMap<Record<string, Value>>, node: Node): void {
     const listFields = new Set(['variables', 'parameters'])
-    container.set('id', node.id)
-    container.set('type', node.type)
-    container.set('position', toLoroValue(node.position))
-    container.set('sourcePosition', node.sourcePosition)
-    container.set('targetPosition', node.targetPosition)
-
-    if (node.width === undefined) container.delete('width')
-    else container.set('width', node.width)
-
-    if (node.height === undefined) container.delete('height')
-    else container.set('height', node.height)
-
-    if (node.selected === undefined) container.delete('selected')
-    else container.set('selected', node.selected)
-
-    const optionalProps: Array<keyof Node> = [
+    const properties: Array<keyof Node> = [
+      'id',
+      'type',
+      'position',
+      'sourcePosition',
+      'targetPosition',
+      'width',
+      'height',
+      'selected',
       'parentId',
       'positionAbsolute',
       'extent',
@@ -434,7 +481,7 @@ export class CollaborationManager {
       'deletable',
     ]
 
-    optionalProps.forEach((prop) => {
+    properties.forEach((prop) => {
       const value = node[prop]
       if (value === undefined) container.delete(prop as string)
       else container.set(prop as string, toLoroValue(value))
@@ -452,8 +499,7 @@ export class CollaborationManager {
       else dataContainer.set(key, toLoroValue(value))
     })
 
-    const existingData = dataContainer.toJSON() || {}
-    Object.keys(existingData).forEach((key) => {
+    Object.keys(dataContainer.toJSON()).forEach((key) => {
       if (!this.shouldSyncDataKey(key)) return
       if (handledKeys.has(key)) return
 
@@ -573,7 +619,15 @@ export class CollaborationManager {
     if (this.isUndoRedoInProgress) return
 
     this.seedCrdtGraphFromReactFlowIfNeeded()
+    if (this.loroDraft) {
+      oldNodes = oldNodes.filter(isDraftNode)
+      newNodes = newNodes.filter(isDraftNode)
+    }
     this.captureSetNodesAnomaly(oldNodes, newNodes, source)
+    if (this.loroDraft) {
+      this.recordDraftEdits(diffDraftEntities('nodes', oldNodes, newNodes, this.getNodes()), true)
+      return
+    }
     this.syncNodes(oldNodes, newNodes)
     this.doc.commit()
   }
@@ -585,6 +639,21 @@ export class CollaborationManager {
     if (this.isUndoRedoInProgress) return
 
     this.seedCrdtGraphFromReactFlowIfNeeded()
+    if (this.loroDraft) {
+      const skipped = new Set(
+        this.reactFlowStore
+          ?.getState()
+          .getNodes()
+          .filter((node) => !isDraftNode(node))
+          .map((node) => node.id),
+      )
+      const isDraftEdge = (edge: Edge) =>
+        !edge.data?._isTemp && !skipped.has(edge.source) && !skipped.has(edge.target)
+      oldEdges = oldEdges.filter(isDraftEdge)
+      newEdges = newEdges.filter(isDraftEdge)
+      this.recordDraftEdits(diffDraftEntities('edges', oldEdges, newEdges, this.getEdges()), true)
+      return
+    }
     this.syncEdges(oldEdges, newEdges)
     this.doc.commit()
   }
@@ -617,8 +686,8 @@ export class CollaborationManager {
     return this.crdtRuntime
   }
 
-  private initializeCrdt(socket: Socket): void {
-    const { CRDTProvider, LoroDoc, UndoManager } = this.getCrdtRuntime()
+  private initializeCrdt(socket: Socket, retirements?: readonly LoroDraftRetirement[]): void {
+    const { CRDTProvider, LoroDoc, LoroDraftProvider, UndoManager } = this.getCrdtRuntime()
     this.provider?.destroy()
     this.undoManager = null
     this.doc = new LoroDoc()
@@ -629,60 +698,109 @@ export class CollaborationManager {
     this.pendingGraphResyncBroadcast = false
     this.pendingImportLog = null
 
-    this.undoManager = new UndoManager(this.doc, {
-      maxUndoSteps: 100,
-      mergeInterval: 500,
-      excludeOriginPrefixes: [],
-      onPush: (_isUndo, _range, _event) => {
-        const selectedNode = this.reactFlowStore
-          ?.getState()
-          .getNodes()
-          .find((n: Node) => n.data?.selected)
+    this.resetDraftHistory()
+    this.undoManager = this.loroDraft
+      ? new UndoManager(this.doc, {
+          maxUndoSteps: 100,
+          mergeInterval: 0,
+          excludeOriginPrefixes: ['draft-system'],
+        })
+      : new UndoManager(this.doc, {
+          maxUndoSteps: 100,
+          mergeInterval: 500,
+          excludeOriginPrefixes: [],
+          onPush: (_isUndo, _range, _event) => {
+            const selectedNode = this.reactFlowStore
+              ?.getState()
+              .getNodes()
+              .find((n: Node) => n.data?.selected)
 
-        setTimeout(() => {
-          this.eventEmitter.emit('undoRedoStateChange', {
-            canUndo: this.undoManager?.canUndo() || false,
-            canRedo: this.undoManager?.canRedo() || false,
-          })
-        }, 0)
+            setTimeout(() => {
+              this.eventEmitter.emit('undoRedoStateChange', {
+                canUndo: this.undoManager?.canUndo() || false,
+                canRedo: this.undoManager?.canRedo() || false,
+              })
+            }, 0)
 
-        return {
-          value: {
-            selectedNodeId: selectedNode?.id || null,
-            timestamp: Date.now(),
-          },
-          cursors: [],
-        }
-      },
-      onPop: (_isUndo, value, _counterRange) => {
-        if (
-          value?.value &&
-          typeof value.value === 'object' &&
-          'selectedNodeId' in value.value &&
-          this.reactFlowStore
-        ) {
-          const selectedNodeId = (value.value as { selectedNodeId?: string | null }).selectedNodeId
-          if (selectedNodeId) {
-            const state = this.reactFlowStore.getState()
-            const { setNodes } = state
-            const nodes = state.getNodes()
-            const newNodes = nodes.map((n: Node) => ({
-              ...n,
-              data: {
-                ...n.data,
-                selected: n.id === selectedNodeId,
+            return {
+              value: {
+                selectedNodeId: selectedNode?.id || null,
+                timestamp: Date.now(),
               },
-            }))
-            this.captureSetNodesAnomaly(
-              nodes,
-              newNodes,
-              'reactflow-native:undo-redo-selection-restore',
-            )
-            setNodes(newNodes)
-          }
+              cursors: [],
+            }
+          },
+          onPop: (_isUndo, value, _counterRange) => {
+            if (
+              value?.value &&
+              typeof value.value === 'object' &&
+              'selectedNodeId' in value.value &&
+              this.reactFlowStore
+            ) {
+              const selectedNodeId = (value.value as { selectedNodeId?: string | null })
+                .selectedNodeId
+              if (selectedNodeId) {
+                const state = this.reactFlowStore.getState()
+                const { setNodes } = state
+                const nodes = state.getNodes()
+                const newNodes = nodes.map((n: Node) => ({
+                  ...n,
+                  data: {
+                    ...n.data,
+                    selected: n.id === selectedNodeId,
+                  },
+                }))
+                this.captureSetNodesAnomaly(
+                  nodes,
+                  newNodes,
+                  'reactflow-native:undo-redo-selection-restore',
+                )
+                setNodes(newNodes)
+              }
+            }
+          },
+        })
+
+    if (this.loroDraft && this.currentAppId) {
+      const appId = this.currentAppId
+      const generation = this.crdtGeneration
+      this.loroProvider = new LoroDraftProvider({
+        appId,
+        identity: this.loroDraft,
+        retirements,
+        doc: this.doc,
+        socket,
+        onReady: () => {
+          this.applyInitialLlmPrompts()
+          this.crdtTrusted = true
+          this.refreshGraphSynchronously()
+          this.emitGraphReadyState()
+        },
+        onConfirmed: (result) => this.eventEmitter.emit('loroDraftConfirmed', result),
+        onPendingChange: (pending) => this.eventEmitter.emit('loroDraftPendingChange', pending),
+        onEpochChanged: () => {
+          this.initialLlmPrompts = undefined
+          this.crdtTrusted = false
+          this.emitGraphReadyState()
+          this.eventEmitter.emit('workflowUpdate', { appId, timestamp: Date.now() })
+        },
+        onUnavailable: () => {
+          this.initialLlmPrompts = undefined
+          this.joinFailure = 'session_unavailable'
+          this.crdtTrusted = false
+          this.eventEmitter.emit('joinFailure', this.joinFailure)
+          this.emitGraphReadyState()
+        },
+        onUnauthorized: this.handleSessionUnauthorized,
+      })
+      this.doc.subscribe((event) => {
+        if (generation === this.crdtGeneration && event.by === 'import' && this.crdtTrusted) {
+          this.lastDraftInput = undefined
+          this.scheduleGraphImportEmit()
         }
-      },
-    })
+      })
+      return
+    }
 
     this.provider = new CRDTProvider(
       socket,
@@ -712,10 +830,16 @@ export class CollaborationManager {
     return !this.isLeader || this.awaitingSnapshotImport
   }
 
-  async connect(appId: string, reactFlowStore?: ReactFlowStore): Promise<string> {
+  async connect(
+    appId: string,
+    reactFlowStore?: ReactFlowStore,
+    loroDraft?: LoroDraftIdentity,
+  ): Promise<string> {
     const connectionId = Math.random().toString(36).substring(2, 11)
-    if (this.targetAppId !== appId) {
+    if (this.targetAppId !== appId || !isEqual(this.targetLoroDraft, loroDraft)) {
+      this.initialLlmPrompts = loroDraft && this.targetAppId !== appId ? new Map() : undefined
       this.targetAppId = appId
+      this.targetLoroDraft = loroDraft
       this.connectGeneration += 1
     }
     const connectGeneration = this.connectGeneration
@@ -725,22 +849,25 @@ export class CollaborationManager {
     if (connectGeneration !== this.connectGeneration || this.targetAppId !== appId)
       return connectionId
 
-    if (this.currentAppId === appId && this.doc) {
+    if (this.currentAppId === appId && this.doc && isEqual(this.loroDraft, loroDraft)) {
       // Already connected to the same app, only update store if provided and we don't have one
-      if (reactFlowStore && !this.reactFlowStore) this.reactFlowStore = reactFlowStore
+      if (reactFlowStore && !this.reactFlowStore) {
+        this.reactFlowStore = reactFlowStore
+        if (this.loroDraft && this.crdtTrusted) this.refreshGraphSynchronously()
+      }
       this.activeConnections.add(connectionId)
 
       return connectionId
     }
 
     // Only disconnect if switching to a different app
-    if (this.currentAppId && this.currentAppId !== appId)
-      this.forceDisconnect({ preserveConnectIntent: true })
+    if (this.currentAppId) this.forceDisconnect({ preserveConnectIntent: true })
 
     this.activeConnections.add(connectionId)
 
     this.hasEstablishedConnection = false
     this.currentAppId = appId
+    this.loroDraft = loroDraft
     // Only set store if provided
     if (reactFlowStore) this.reactFlowStore = reactFlowStore
 
@@ -805,6 +932,10 @@ export class CollaborationManager {
     this.crdtGeneration += 1
     this.rejectPendingWorkflowSyncRequests(new Error('Collaboration connection closed.'))
     this.provider?.destroy()
+    this.loroProvider?.destroy()
+    this.loroProvider = undefined
+    this.resetDraftHistory()
+    this.loroDraft = undefined
     this.undoManager = null
     this.doc = null
     this.provider = null
@@ -828,7 +959,9 @@ export class CollaborationManager {
 
     this.activeConnections.clear()
     if (!preserveConnectIntent) {
+      this.initialLlmPrompts = undefined
       this.targetAppId = null
+      this.targetLoroDraft = undefined
       this.connectGeneration += 1
     }
     this.eventEmitter.removeAllListeners()
@@ -836,6 +969,10 @@ export class CollaborationManager {
 
   isConnected(): boolean {
     return this.currentAppId ? webSocketClient.isConnected(this.currentAppId) : false
+  }
+
+  isLocalDraftFallback(appId: string): boolean {
+    return this.currentAppId === appId && this.localDraftFallbackActive
   }
 
   async getOnlineUserAvatars(appId: string): Promise<Record<string, string>> {
@@ -851,6 +988,7 @@ export class CollaborationManager {
   }
 
   canUseLocalDraftFallback(): boolean {
+    if (this.loroDraft) return false
     // A graph from a previously connected session must recover through collaboration before saving.
     return (
       this.localDraftFallbackActive ||
@@ -859,11 +997,13 @@ export class CollaborationManager {
   }
 
   getNodes(): Node[] {
+    if (this.loroDraft && this.doc) return projectDraftGraph(this.doc).nodes
     if (!this.nodesMap) return []
     return Array.from(this.nodesMap.keys()).map((id) => this.exportNode(id as string))
   }
 
   getEdges(): Edge[] {
+    if (this.loroDraft && this.doc) return projectDraftGraph(this.doc).edges
     return this.edgesMap ? (Array.from(this.edgesMap.values()) as Edge[]) : []
   }
 
@@ -879,10 +1019,12 @@ export class CollaborationManager {
 
   canApplyLocalGraphMutation(): boolean {
     if (this.localDraftFallbackActive || !this.currentAppId) return true
+    if (this.loroDraft) return this.canPersistLocalGraph()
     return this.canPersistLocalGraph() && this.getActiveSocket()?.connected === true
   }
 
   private activateLocalDraftFallback(socket: Socket): void {
+    if (this.loroDraft) return
     // Before the first connection, ReactFlow still holds the HTTP draft baseline. Once a
     // collaboration session has existed, that graph may be stale and must recover through CRDT.
     if (!isDefaultSocketUrl() || this.localDraftFallbackActive || this.hasEstablishedConnection)
@@ -908,6 +1050,7 @@ export class CollaborationManager {
   }
 
   canFlushGraphOnPageClose(): boolean {
+    if (this.loroDraft) return false
     if (!this.crdtTrusted || this.graphReloadRequired || !this.isLeader) return false
     if (this.graphViewActive !== false) return true
 
@@ -968,6 +1111,10 @@ export class CollaborationManager {
   }
 
   replaceGraphFromCommittedDraft(appId: string, nodes: Node[], edges: Edge[]): boolean {
+    if (this.usesLoroDraft(appId)) {
+      this.loroProvider?.pull()
+      return true
+    }
     if (this.currentAppId !== appId || !this.doc || !this.canApplyLocalGraphMutation()) return false
 
     // A server-side import or restore replaces the whole draft. Its graph must also replace
@@ -1072,6 +1219,7 @@ export class CollaborationManager {
     this.graphViewActive = active
     this.graphViewSequence += 1
     this.emitGraphReadyState()
+    if (active) this.loroProvider?.pull()
 
     if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
 
@@ -1102,6 +1250,11 @@ export class CollaborationManager {
   }
 
   emitWorkflowUpdate(appId: string): void {
+    if (this.usesLoroDraft(appId)) {
+      this.loroProvider?.pull()
+      this.clearUndoStack()
+      this.eventEmitter.emit('workflowUpdate', { appId })
+    }
     if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
 
     this.sendCollaborationEvent({
@@ -1109,6 +1262,90 @@ export class CollaborationManager {
       data: { appId, timestamp: Date.now() },
       timestamp: Date.now(),
     })
+  }
+
+  usesLoroDraft(appId: string): boolean {
+    return this.currentAppId === appId && this.loroDraft !== undefined
+  }
+
+  queueInitialLlmPrompt(
+    appId: string,
+    identity: LoroDraftIdentity,
+    nodeId: string,
+    prompt: Prompt,
+    previousPrompt: Prompt,
+  ): boolean {
+    if (
+      !this.initialLlmPrompts ||
+      this.targetAppId !== appId ||
+      !isEqual(this.targetLoroDraft, identity) ||
+      this.graphViewActive === false ||
+      (typeof document !== 'undefined' && document.visibilityState === 'hidden')
+    )
+      return false
+
+    this.initialLlmPrompts.set(nodeId, {
+      before: this.initialLlmPrompts.get(nodeId)?.before ?? previousPrompt,
+      prompt,
+    })
+    return true
+  }
+
+  private applyInitialLlmPrompts(): void {
+    const prompts = this.initialLlmPrompts
+    this.initialLlmPrompts = undefined
+    if (!prompts?.size) return
+
+    for (const [nodeId, { before, prompt }] of prompts) {
+      const node = this.getNodes().find((item) => item.id === nodeId)
+      if (node?.data.type !== BlockEnum.LLM) continue
+      const current = (node.data as LLMNodeType).prompt_template
+      if (current !== undefined && Array.isArray(current) !== Array.isArray(prompt)) continue
+      this.recordDraftEdits(
+        diffDraftValue('nodes', nodeId, ['data', 'prompt_template'], before, prompt, current),
+      )
+    }
+  }
+
+  replaceLoroDraft(appId: string, identity: LoroDraftIdentity): boolean {
+    const socket = this.getActiveSocket()
+    if (!this.usesLoroDraft(appId) || !socket) return false
+
+    const retirements = this.loroProvider?.retirementCandidates
+    this.initialLlmPrompts = undefined
+    this.crdtTrusted = false
+    this.loroProvider?.destroy()
+    this.loroDraft = identity
+    this.targetLoroDraft = identity
+    this.initializeCrdt(socket, retirements)
+    this.emitGraphReadyState()
+    this.eventEmitter.emit('undoRedoStateChange', { canUndo: false, canRedo: false })
+
+    if (socket.connected && this.hasJoinedRoom && !this.joinPending && !this.joinFailure)
+      this.loroProvider?.join()
+    return true
+  }
+
+  syncLoroDraft(appId: string, allowEmpty = false): Promise<WorkflowSyncResult> {
+    if (!this.usesLoroDraft(appId) || !this.loroProvider)
+      return Promise.reject(new Error('Loro draft is not ready.'))
+    return this.loroProvider.flush(allowEmpty)
+  }
+
+  setLoroDraftViewport(viewport: { x: number; y: number; zoom: number }): void {
+    if (!this.loroDraft || !this.doc || !this.canApplyLocalGraphMutation()) return
+    const graph = this.doc.getMap('graph')
+    if (isEqual(graph.get('viewport'), viewport)) return
+    graph.set('viewport', viewport)
+    this.doc.commit({ origin: 'draft-system:viewport' })
+  }
+
+  onLoroDraftConfirmed(callback: (result: LoroDraftConfirmation) => void): () => void {
+    return this.eventEmitter.on('loroDraftConfirmed', callback)
+  }
+
+  onLoroDraftPendingChange(callback: (pending: boolean) => void): () => void {
+    return this.eventEmitter.on('loroDraftPendingChange', callback)
   }
 
   emitNodePanelPresence(nodeId: string, isOpen: boolean, user: NodePanelPresenceUser): void {
@@ -1252,8 +1489,162 @@ export class CollaborationManager {
     return this.isLeader
   }
 
+  getDraftHistory(): DraftHistory {
+    return this.draftHistory
+  }
+
+  isDraftHistoryReady(appId: string, identity: LoroDraftIdentity): boolean {
+    return (
+      this.currentAppId === appId &&
+      isEqual(identity, this.loroDraft) &&
+      this.canPersistLocalGraph()
+    )
+  }
+
+  beginDraftHistoryAction(label: WorkflowHistoryEventT): () => void {
+    this.canvasStep = undefined
+    const previous = this.draftAction
+    const action = previous ?? { label }
+    this.draftAction = action
+    this.lastDraftInput = undefined
+    return () => {
+      if (this.draftAction === action) this.draftAction = previous
+    }
+  }
+
+  runDraftHistoryAction<T>(label: WorkflowHistoryEventT, apply: () => T): T {
+    const end = this.beginDraftHistoryAction(label)
+    try {
+      return apply()
+    } finally {
+      end()
+    }
+  }
+
+  private resetDraftHistory() {
+    this.draftAction = undefined
+    this.canvasStep = undefined
+    this.lastDraftInput = undefined
+    this.draftHistory = { undo: [], redo: [] }
+  }
+
+  private publishDraftHistory() {
+    this.eventEmitter.emit('undoRedoStateChange', {
+      canUndo: this.draftHistory.undo.length > 0,
+      canRedo: this.draftHistory.redo.length > 0,
+    })
+  }
+
+  private recordDraftEdits(patches: DraftPatch[], canvas = false) {
+    if (!this.doc || !patches.length) return false
+    if (!canvas) this.canvasStep = undefined
+    const first = patches[0]!
+    const label = this.draftAction?.label ?? draftEditLabel(first)
+    const inputKey =
+      !canvas &&
+      !this.draftAction &&
+      patches.length === 1 &&
+      first.op === 'set' &&
+      typeof first.value === 'string'
+        ? JSON.stringify([first.kind, first.id, first.path])
+        : undefined
+    const now = Date.now()
+    const previous =
+      this.draftAction?.step ??
+      this.canvasStep ??
+      (inputKey && this.lastDraftInput?.key === inputKey && now - this.lastDraftInput.time < 500
+        ? this.lastDraftInput.step
+        : undefined)
+    const step = appendDraftEdit(this.doc, patches, previous)
+    if (this.draftAction) this.draftAction.step = step
+    else if (canvas && !this.canvasStep) {
+      this.canvasStep = step
+      queueMicrotask(() => {
+        if (this.canvasStep === step) this.canvasStep = undefined
+      })
+    }
+    this.lastDraftInput = inputKey ? { key: inputKey, step, time: now } : undefined
+    if (!previous) {
+      this.draftHistory = { redo: [], undo: [...this.draftHistory.undo.slice(-99), label] }
+      this.publishDraftHistory()
+    }
+    return true
+  }
+
+  runDraftInitialization(apply: () => void, before?: Record<string, unknown>): void {
+    const previous = this.draftInitialization
+    this.draftInitialization = { before }
+    try {
+      apply()
+    } finally {
+      this.draftInitialization = previous
+    }
+  }
+
+  updateDraftNodeData(
+    id: string,
+    before: Record<string, unknown>,
+    after: Record<string, unknown>,
+  ): boolean {
+    if (!this.loroDraft || !this.canPersistLocalGraph()) return false
+    const local = this.reactFlowStore
+      ?.getState()
+      .getNodes()
+      .find((node) => node.id === id)
+    if (
+      local &&
+      (!isDraftNode(local) || !isDraftNode({ ...local, data: { ...local.data, ...after } }))
+    )
+      return false
+    const current = this.getNodes().find((node) => node.id === id)
+    const initial = this.draftInitialization
+    const edits = diffDraftValue(
+      'nodes',
+      id,
+      ['data'],
+      initial?.before ?? before,
+      after,
+      current?.data,
+      !!initial,
+    )
+    const changed =
+      initial && this.doc
+        ? initializeDraftFields(this.doc, id, edits)
+        : this.recordDraftEdits(edits)
+    const viewChanges = Object.fromEntries(
+      [...new Set([...Object.keys(before), ...Object.keys(after)])]
+        .filter(
+          (key) => (key === 'selected' || key.startsWith('_')) && !isEqual(before[key], after[key]),
+        )
+        .map((key) => [key, after[key]]),
+    )
+    if (changed || Object.keys(viewChanges).length)
+      this.refreshGraphSynchronously({ id, fields: viewChanges })
+    return true
+  }
+
+  private applyDraftHistory(action: 'undo' | 'redo'): boolean {
+    if (!this.canPersistLocalGraph() || !this.undoManager) return false
+    const from = this.draftHistory[action]
+    const label = from.at(-1)
+    if (!label || !this.undoManager[action]()) return false
+    const to = action === 'undo' ? 'redo' : 'undo'
+    this.draftHistory = {
+      ...this.draftHistory,
+      [action]: from.slice(0, -1),
+      [to]: [...this.draftHistory[to], label],
+    }
+    this.draftAction = undefined
+    this.canvasStep = undefined
+    this.lastDraftInput = undefined
+    this.refreshGraphSynchronously()
+    this.publishDraftHistory()
+    return true
+  }
+
   // Collaborative undo/redo methods
   undo(): boolean {
+    if (this.loroDraft) return this.applyDraftHistory('undo')
     if (!this.undoManager) return false
 
     const canUndo = this.undoManager.canUndo()
@@ -1294,6 +1685,7 @@ export class CollaborationManager {
   }
 
   redo(): boolean {
+    if (this.loroDraft) return this.applyDraftHistory('redo')
     if (!this.undoManager) return false
 
     const canRedo = this.undoManager.canRedo()
@@ -1346,6 +1738,10 @@ export class CollaborationManager {
   clearUndoStack(): void {
     if (!this.undoManager) return
     this.undoManager.clear()
+    if (this.loroDraft) {
+      this.resetDraftHistory()
+      this.publishDraftHistory()
+    }
   }
 
   private syncNodes(oldNodes: Node[], newNodes: Node[]): void {
@@ -1559,19 +1955,67 @@ export class CollaborationManager {
         crdtNodeCountBeforeFinalize: beforeFinalizeNodes,
         crdtEdgeCountBeforeFinalize: beforeFinalizeEdges,
       })
-      this.eventEmitter.emit('graphImport', {
-        nodes: mergedNodes,
-        edges: mergedEdges,
-      })
+      this.emitImportedGraph({ nodes: mergedNodes, edges: mergedEdges })
     })
   }
 
-  refreshGraphSynchronously(): void {
-    const mergedNodes = this.mergeLocalNodeState(this.getNodes())
-    this.eventEmitter.emit('graphImport', {
+  refreshGraphSynchronously(localUpdate?: { id: string; fields: Record<string, unknown> }): void {
+    const mergedNodes = this.mergeLocalNodeState(this.getNodes()).map((node) =>
+      node.id === localUpdate?.id
+        ? { ...node, data: { ...node.data, ...localUpdate.fields } }
+        : node,
+    )
+    this.emitImportedGraph({
       nodes: mergedNodes,
       edges: this.getEdges(),
     })
+  }
+
+  private emitImportedGraph(graph: { nodes: Node[]; edges: Edge[] }): void {
+    const local = this.reactFlowStore?.getState()
+    if (this.loroDraft && local) {
+      const transient = local
+        .getNodes()
+        .filter((node) => !isDraftNode(node) && node.data.type !== BlockEnum.StartPlaceholder)
+      const transientIds = new Set(transient.map((node) => node.id))
+      const localEdges = new Map(local.getEdges().map((edge) => [edge.id, edge]))
+      const edges = graph.edges.map((edge) => {
+        const previous = localEdges.get(edge.id)
+        if (!previous) return edge
+        localEdges.delete(edge.id)
+        const view = Object.fromEntries(
+          Object.entries(previous.data ?? {}).filter(([key]) => key.startsWith('_')),
+        )
+        return {
+          ...edge,
+          ...(previous.selected !== undefined ? { selected: previous.selected } : {}),
+          ...(edge.data ? { data: { ...edge.data, ...view } } : {}),
+        }
+      })
+      for (const edge of localEdges.values()) {
+        if (edge.data?._isTemp || transientIds.has(edge.source) || transientIds.has(edge.target))
+          edges.push(edge)
+      }
+      graph = {
+        nodes: [
+          ...graph.nodes,
+          ...transient.filter((node) => !graph.nodes.some((item) => item.id === node.id)),
+        ],
+        edges,
+      }
+    }
+    const hydrated = (this.loroDraft && this.reactFlowStore?.hydrateGraph?.(graph)) || graph
+    if (this.loroDraft) {
+      const source = new Map(this.getNodes().map((node) => [node.id, node.data]))
+      const localData = new Map(local?.getNodes().map((node) => [node.id, node.data]))
+      for (const node of hydrated.nodes) {
+        const original = source.get(node.id)
+        inheritDraftRowIds(original, node.data)
+        const displayed = localData.get(node.id)
+        if (isEqual(displayed, node.data)) inheritDraftRowIds(original, displayed)
+      }
+    }
+    this.eventEmitter.emit('graphImport', hydrated)
   }
 
   private mergeLocalNodeState(nodes: Node[]): Node[] {
@@ -1603,6 +2047,7 @@ export class CollaborationManager {
       )
         nextDataRecord.selected = localNode.selected
 
+      if (this.loroDraft && localNode.selected !== undefined) nextNode.selected = localNode.selected
       nextNode.data = nextData
       return nextNode
     })
@@ -1860,12 +2305,20 @@ export class CollaborationManager {
         } else if (update.type === 'app_publish_update') {
           this.eventEmitter.emit('appPublishUpdate', update)
         } else if (update.type === 'workflow_update') {
+          this.loroProvider?.pull()
           this.eventEmitter.emit('workflowUpdate', update.data)
         } else if (update.type === 'comments_update') {
           this.eventEmitter.emit('commentsUpdate', update.data)
         } else if (update.type === 'node_panel_presence') {
           this.applyNodePanelPresenceUpdate(update.data as NodePanelPresenceEventData)
         } else if (update.type === 'sync_request') {
+          if (this.loroDraft) {
+            socketAcknowledgement?.({
+              success: false,
+              error: 'Draft saves use Loro synchronization.',
+            })
+            return
+          }
           const requestId =
             typeof update.data.requestId === 'string' ? update.data.requestId : undefined
           let acknowledged = false
@@ -1904,6 +2357,10 @@ export class CollaborationManager {
         }
       },
     )
+
+    socket.on('loro_draft_changed', () => {
+      this.loroProvider?.pull()
+    })
 
     socket.on('online_users', (data: { users: OnlineUser[]; leader?: string }) => {
       try {
@@ -1952,7 +2409,10 @@ export class CollaborationManager {
         const wasAwaitingSnapshotImport = this.awaitingSnapshotImport
         this.isLeader = data.isLeader
 
-        if (
+        if (this.loroDraft) {
+          this.pendingInitialSync = false
+          this.loroProvider?.join()
+        } else if (
           this.isLeader &&
           (this.reconnectedWithFreshDoc || this.awaitingSnapshotImport || this.graphReloadRequired)
         ) {
@@ -2001,7 +2461,7 @@ export class CollaborationManager {
         this.awaitingSnapshotImport = false
         this.crdtTrusted = false
       }
-      this.pendingInitialSync = true
+      this.pendingInitialSync = !this.loroDraft
       this.joinWorkflow(socket)
       this.emitGraphReadyState()
       this.eventEmitter.emit('stateChange', { isConnected: true })
@@ -2017,8 +2477,11 @@ export class CollaborationManager {
       this.onlineUsers = []
       this.isLeader = false
       this.leaderId = null
-      this.crdtTrusted = false
-      this.rebuildCrdtOnNextConnect = true
+      this.loroProvider?.leave()
+      if (!this.loroDraft) {
+        this.crdtTrusted = false
+        this.rebuildCrdtOnNextConnect = true
+      }
       this.reconnectedWithFreshDoc = false
       this.awaitingSnapshotImport = false
       this.graphReloadRequired = false
@@ -2098,6 +2561,7 @@ export class CollaborationManager {
   }
 
   private seedCrdtGraphFromReactFlowIfNeeded(): void {
+    if (this.loroDraft) return
     if (!this.doc) return
     if (!this.reactFlowStore) return
 
@@ -2118,6 +2582,7 @@ export class CollaborationManager {
   }
 
   private broadcastCurrentGraph(): void {
+    if (this.loroDraft) return
     if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
     if (!this.doc) return
 
@@ -2142,3 +2607,6 @@ export class CollaborationManager {
 }
 
 export const collaborationManager = new CollaborationManager()
+
+export const runDraftInitialization = (apply: () => void, before?: Record<string, unknown>) =>
+  collaborationManager.runDraftInitialization(apply, before)

@@ -35,9 +35,10 @@ export const useWorkflowRefreshDraft = () => {
         setIsWorkflowDataLoaded,
         isWorkflowDataLoaded,
         debouncedSyncWorkflowDraft,
+        loroDraft,
       } = workflowStore.getState()
 
-      debouncedSyncWorkflowDraft?.cancel?.()
+      if (!loroDraft) debouncedSyncWorkflowDraft?.cancel?.()
 
       const wasLoaded = isWorkflowDataLoaded
       if (wasLoaded && !options?.shouldApply) setIsWorkflowDataLoaded(false)
@@ -48,7 +49,7 @@ export const useWorkflowRefreshDraft = () => {
           if (options?.shouldApply && !options.shouldApply()) return false
 
           // Ensure we have a valid workflow structure with viewport
-          if (!notUpdateCanvas)
+          if (!notUpdateCanvas && !loroDraft)
             handleUpdateWorkflowCanvas(getWorkflowDraftGraphForCanvas(response.graph))
           setSyncWorkflowDraftHash(response.hash, response.graph)
           setEnvSecrets(

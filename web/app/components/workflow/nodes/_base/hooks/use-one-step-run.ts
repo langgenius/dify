@@ -19,6 +19,7 @@ import { useStoreApi } from 'reactflow'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
 import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { getEditorResourceId, isChatflow } from '@/app/components/workflow/editor-resource/resource'
 import {
   getNodeInfoById,
@@ -745,6 +746,15 @@ const useOneStepRun = <T>({
     runningStatus === NodeRunningStatus.Succeeded || runningStatus === NodeRunningStatus.Failed
 
   const handleRun = async (submitData: Record<string, any>) => {
+    if (resource.kind === 'app' && workflowStore.getState().loroDraft) {
+      try {
+        await collaborationManager.syncLoroDraft(resource.appId)
+      } catch {
+        toast.error(t(($) => $['common.draftSaveFailed'], { ns: 'workflow' }))
+        return false
+      }
+    }
+
     if (isWebhookTriggerNode) cancelWebhookSingleRun()
     if (isPluginTriggerNode) cancelPluginSingleRun()
 

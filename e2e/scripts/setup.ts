@@ -2,6 +2,7 @@ import { createHash, randomBytes } from 'node:crypto'
 import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { waitForUrl } from '../support/process.ts'
+import { workflowCollaborationEnabled } from '../test-env.ts'
 import {
   apiDir,
   apiEnvExampleFile,
@@ -88,6 +89,7 @@ const getApiEnvironment = async (): Promise<Record<string, string>> => {
     ...(agentBackendBaseUrl ? { AGENT_BACKEND_BASE_URL: agentBackendBaseUrl } : {}),
     ...(marketplaceApiUrl ? { MARKETPLACE_API_URL: marketplaceApiUrl } : {}),
     FLASK_APP: 'app.py',
+    ENABLE_COLLABORATION_MODE: String(workflowCollaborationEnabled),
     HTTP_PROXY: process.env.HTTP_PROXY || '',
     HTTPS_PROXY: process.env.HTTPS_PROXY || '',
   }
@@ -362,12 +364,9 @@ export const startApi = async () => {
       '--project',
       '.',
       '--no-sync',
-      'flask',
-      'run',
-      '--host',
-      apiBindHost,
-      '--port',
-      String(apiPort),
+      ...(workflowCollaborationEnabled
+        ? ['python', '-m', 'app']
+        : ['flask', 'run', '--host', apiBindHost, '--port', String(apiPort)]),
     ],
     cwd: apiDir,
     env,

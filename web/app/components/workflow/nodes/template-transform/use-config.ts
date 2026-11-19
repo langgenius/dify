@@ -2,6 +2,7 @@ import type { Var, Variable } from '../../types'
 import type { TemplateTransformNodeType } from './types'
 import { produce } from 'immer'
 import { useCallback, useEffect, useRef } from 'react'
+import { runDraftInitialization } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useNodesReadOnly } from '../../hooks/use-workflow'
@@ -69,10 +70,7 @@ const useConfig = (id: string, payload: TemplateTransformNodeType) => {
 
     const isReady = defaultConfig && Object.keys(defaultConfig).length > 0
     if (isReady) {
-      setInputs({
-        ...inputs,
-        ...defaultConfig,
-      })
+      runDraftInitialization(() => setInputs({ ...inputs, ...defaultConfig }))
     }
   }, [defaultConfig])
 

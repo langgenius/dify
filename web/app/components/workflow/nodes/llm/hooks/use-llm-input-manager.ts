@@ -2,6 +2,7 @@ import type { LLMNodeType } from '../types'
 import type { PromptItem, RolePrefix } from '@/app/components/workflow/types'
 import { produce } from 'immer'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { runDraftInitialization } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 
 type CompletionPromptTemplate = {
   prompt: PromptItem
@@ -81,7 +82,7 @@ const useLLMInputManager = ({ inputs, doSetInputs, defaultConfig, isChatModel }:
     const nextInputs = produce(inputs, (draft) => {
       appendDefaultPromptConfig(draft, defaultConfig)
     })
-    setInputs(nextInputs)
+    runDraftInitialization(() => setInputs(nextInputs))
   }, [appendDefaultPromptConfig, defaultConfig, inputs, setInputs])
 
   return {

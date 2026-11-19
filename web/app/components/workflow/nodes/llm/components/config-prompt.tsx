@@ -12,7 +12,8 @@ import { v4 as uuid4 } from 'uuid'
 import { useKeyboardSortable } from '@/app/components/base/keyboard-sortable/use-keyboard-sortable'
 import AddButton from '@/app/components/workflow/nodes/_base/components/add-button'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
-import { useWorkflowStore } from '../../../store'
+import { getDraftRowId } from '../../../collaboration/core/loro-draft-edits'
+import { useStore, useWorkflowStore } from '../../../store'
 import { EditionType, PromptRole } from '../../../types'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
 import ConfigPromptItem from './config-prompt-item'
@@ -55,13 +56,11 @@ const ConfigPrompt: FC<Props> = ({
   const { t } = useTranslation(['workflow', 'workflowModels'])
   const workflowStore = useWorkflowStore()
   const { setControlPromptEditorRerenderKey } = workflowStore.getState()
-  const prompts = useMemo(
-    () =>
-      isChatModel && Array.isArray(payload)
-        ? payload.map((item) => ({ ...item, id: item.id || uuid4() }))
-        : [],
-    [isChatModel, payload],
-  )
+  const hasLoroDraft = useStore((s) => !!s.loroDraft)
+  const prompts = useMemo(() => {
+    if (!isChatModel || !Array.isArray(payload)) return []
+    return hasLoroDraft ? payload : payload.map((item) => ({ ...item, id: item.id || uuid4() }))
+  }, [isChatModel, payload, hasLoroDraft])
   const keyboardSort = useKeyboardSortable({
     items: prompts,
     onChange,
@@ -69,10 +68,13 @@ const ConfigPrompt: FC<Props> = ({
     minIndex: prompts[0]?.role === PromptRole.system ? 1 : 0,
     getItemLabel: (item) => item.role || '',
   })
-  const payloadWithIds = useMemo(
-    () => keyboardSort.items.map((item) => ({ id: item.id, p: item })),
-    [keyboardSort.items],
-  )
+  const payloadWithIds = keyboardSort.items.map((p, index) => ({
+    id:
+      p.id ??
+      getDraftRowId(prompts, keyboardSort.getItemKey(index)) ??
+      `i:${keyboardSort.getItemKey(index)}`,
+    p,
+  }))
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar,
@@ -217,7 +219,7 @@ const ConfigPrompt: FC<Props> = ({
                   return true
                 })()
                 return (
-                  <div key={item.id || keyboardSort.getItemKey(index)} className="group relative">
+                  <div key={payloadWithIds[index]!.id} className="group relative">
                     {canDrag && (
                       <IconButton
                         {...keyboardSort.getHandleProps(index)}
@@ -242,7 +244,7 @@ const ConfigPrompt: FC<Props> = ({
                         payload.length > 1 && !(index === 0 && item.role === PromptRole.system)
                       }
                       readOnly={readOnly}
-                      id={item.id!}
+                      id={payloadWithIds[index]!.id}
                       nodeId={nodeId}
                       handleChatModeMessageRoleChange={handleChatModeMessageRoleChange(
                         keyboardSort.getItemKey(index),

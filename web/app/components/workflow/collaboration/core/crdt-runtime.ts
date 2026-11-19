@@ -2,6 +2,7 @@
 
 import { LoroDoc, LoroList, LoroMap, UndoManager } from 'loro-crdt'
 import { CRDTProvider } from './crdt-provider'
+import { LoroDraftProvider } from './loro-draft-provider'
 
 /**
  * Production code must load this module only through CollaborationManager.connect().
@@ -14,6 +15,7 @@ import { CRDTProvider } from './crdt-provider'
  */
 export const crdtRuntime = {
   CRDTProvider,
+  LoroDraftProvider,
   LoroDoc,
   LoroList,
   LoroMap,

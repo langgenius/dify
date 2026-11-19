@@ -981,3 +981,56 @@ it('imports a DSL file and replaces the graph through the real update event', as
     body: { mode: 'yaml-content', yaml_content: yaml, app_id: 'app-1' },
   })
 })
+
+it('switches to the replacement draft’s history and ignores an older pending refresh', async () => {
+  const previous = { accountId: 'editor', epoch: 'original' }
+  const replace = vi.spyOn(collaborationManager, 'replaceLoroDraft').mockReturnValue(true)
+  const { store } = await renderMain({
+    initialStoreState: { loroDraft: previous, hasPendingLoroDraftChanges: true },
+  })
+  const slow = createDeferred<FetchWorkflowDraftResponse>()
+  api.fetchDraft.mockReturnValueOnce(slow.promise).mockResolvedValueOnce(
+    draft({
+      hash: 'replacement-hash',
+      loro_draft_epoch: 'new-epoch',
+    }),
+  )
+  const oldRefresh = updateWorkflow()
+  await act(async () => {
+    await updateWorkflow()
+  })
+  await act(async () => {
+    slow.resolve(draft({ hash: 'stale-hash', loro_draft_epoch: previous.epoch }))
+    await oldRefresh
+  })
+  const identity = { ...previous, epoch: 'new-epoch' }
+  expect(replace).toHaveBeenCalledExactlyOnceWith('app-1', identity)
+  expect(store.getState()).toMatchObject({
+    loroDraft: identity,
+    syncWorkflowDraftHash: 'replacement-hash',
+    hasPendingLoroDraftChanges: false,
+  })
+})
+
+it('uses the confirmed graph and revision for an empty draft after local undo', async () => {
+  const confirmed = vi.spyOn(collaborationManager, 'onLoroDraftConfirmed')
+  const pending = vi.spyOn(collaborationManager, 'onLoroDraftPendingChange')
+  const { store } = await renderMain({
+    initialStoreState: { loroDraft: { accountId: 'editor', epoch: 'shared' } },
+  })
+  const hydrate = vi.mocked(collaborationManager.connect).mock.lastCall?.[1]?.hydrateGraph
+  expect(hydrate?.({ nodes: [], edges: [] }).nodes.map((node) => node.data.type)).toEqual([
+    BlockEnum.StartPlaceholder,
+  ])
+  act(() => {
+    pending.mock.lastCall![0](true)
+    confirmed.mock.lastCall![0]({ hash: 'saved-after-undo', updatedAt: 123, isEmpty: true })
+    pending.mock.lastCall![0](false)
+  })
+  expect(store.getState()).toMatchObject({
+    draftUpdatedAt: 123,
+    syncWorkflowDraftHash: 'saved-after-undo',
+    syncWorkflowDraftIsEmpty: true,
+    hasPendingLoroDraftChanges: false,
+  })
+})

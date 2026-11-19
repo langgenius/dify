@@ -13,6 +13,7 @@ import UpdateDSLModal from '../update-dsl-modal'
 const mockEmit = vi.fn()
 const mockEmitWorkflowUpdate = vi.hoisted(() => vi.fn())
 const mockIsCollaborationConnected = vi.hoisted(() => vi.fn(() => true))
+const mockUsesLoroDraft = vi.hoisted(() => vi.fn(() => false))
 const mockReplaceGraphFromCommittedDraft = vi.hoisted(() => vi.fn((..._args: unknown[]) => true))
 
 vi.mock('@/app/notifications', () => ({
@@ -48,6 +49,7 @@ vi.mock('../collaboration/core/collaboration-manager', () => ({
   collaborationManager: {
     emitWorkflowUpdate: mockEmitWorkflowUpdate,
     isConnected: mockIsCollaborationConnected,
+    usesLoroDraft: mockUsesLoroDraft,
     replaceGraphFromCommittedDraft: mockReplaceGraphFromCommittedDraft,
   },
 }))
@@ -105,6 +107,7 @@ describe('UpdateDSLModal', () => {
       app_id: 'app-1',
     })
     mockIsCollaborationConnected.mockReturnValue(true)
+    mockUsesLoroDraft.mockReturnValue(false)
     mockReplaceGraphFromCommittedDraft.mockReturnValue(true)
     mockHandleCheckPluginDependencies.mockResolvedValue(undefined)
   })

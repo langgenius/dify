@@ -5,6 +5,7 @@ import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { exportAppDslFile } from '@/app/components/app/use-export-app-dsl'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
@@ -33,12 +34,12 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
 
       if (!workflowId) {
         let syncFailed = false
-        await doSyncWorkflowDraft(undefined, {
+        const saved = await doSyncWorkflowDraft(undefined, {
           onError: () => {
             syncFailed = true
           },
         })
-        if (syncFailed) {
+        if (syncFailed || (!saved && collaborationManager.usesLoroDraft(appDetail.id))) {
           toast.error(t(($) => $.exportFailed, { ns: 'app' }))
           return false
         }
