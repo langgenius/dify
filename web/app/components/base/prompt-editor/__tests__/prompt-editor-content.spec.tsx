@@ -2,8 +2,7 @@ import type { EventEmitter } from 'ahooks/lib/useEventEmitter'
 import type { LexicalEditor } from 'lexical'
 import type { ComponentProps } from 'react'
 import type { EventEmitterValue } from '@/context/event-emitter'
-import { CodeNode } from '@lexical/code'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
+import { CodeNode } from '@lexical/code-core'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -21,6 +20,7 @@ import { useEffect } from 'react'
 import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
+import { TestLexicalComposer } from '@/test/lexical'
 import { AgentOutputBlockNode } from '../plugins/agent-output-block/node'
 import { ContextBlockNode } from '../plugins/context-block'
 import { CurrentBlockNode } from '../plugins/current-block'
@@ -95,7 +95,7 @@ const PromptEditorContentHarness = ({
   ...props
 }: ComponentProps<typeof PromptEditorContent> & { captures: Captures; initialText?: string }) => (
   <EventEmitterContextProvider>
-    <LexicalComposer
+    <TestLexicalComposer
       initialConfig={{
         namespace: 'prompt-editor-content-test',
         editable: true,
@@ -128,7 +128,7 @@ const PromptEditorContentHarness = ({
     >
       <CaptureEditorAndEmitter captures={captures} />
       <PromptEditorContent {...props} />
-    </LexicalComposer>
+    </TestLexicalComposer>
   </EventEmitterContextProvider>
 )
 
@@ -414,6 +414,7 @@ describe('PromptEditorContent', () => {
     })
 
     it('should render optional blocks and open shortcut popups with the real editor runtime', async () => {
+      const user = userEvent.setup()
       const captures: Captures = { editor: null, eventEmitter: null }
       const onEditorChange = vi.fn()
       const insertCommand = createCommand<string[]>('prompt-editor-shortcut-insert')
@@ -483,7 +484,7 @@ describe('PromptEditorContent', () => {
       fireEvent.keyDown(editable, { key: '/', ctrlKey: true })
 
       const insertButton = await screen.findByRole('button', { name: 'Insert shortcut' })
-      await userEvent.setup().click(insertButton)
+      await user.click(insertButton)
 
       expect(insertSpy).toHaveBeenCalledWith(['from-shortcut'])
       await waitFor(() => expect(editable).toHaveTextContent('from-shortcut'))

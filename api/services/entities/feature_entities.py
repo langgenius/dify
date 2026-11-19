@@ -1,6 +1,7 @@
 """Feature query results and policy values shared by their consumers."""
 
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -13,7 +14,7 @@ class FeatureResponseModel(BaseModel):
 
 class SubscriptionModel(FeatureResponseModel):
     plan: CloudPlan = CloudPlan.SANDBOX
-    interval: str = ""
+    interval: Literal["", "month", "year"] = ""
 
 
 class BillingModel(FeatureResponseModel):
@@ -26,15 +27,15 @@ class EducationModel(FeatureResponseModel):
 
 
 class LimitationModel(FeatureResponseModel):
-    size: int = 0
-    limit: int = 0
+    size: int = Field(default=0, description="Number of resources already consumed")
+    limit: int = Field(default=0, description="Maximum number of resources allowed; 0 means unlimited")
 
 
 class VectorSpaceLimitationModel(LimitationModel):
     model_config = ConfigDict(json_schema_serialization_defaults_required=False, protected_namespaces=())
 
-    size: int
-    limit: int
+    size: int = Field(description="Vector storage already consumed, in MB")
+    limit: int = Field(description="Vector storage allowed, in MB; -1 means unlimited")
     usage_unknown: bool = Field(default=False, exclude_if=lambda value: not value)
 
 
@@ -149,6 +150,13 @@ class FeatureModel(FeatureResponseModel):
     billing: BillingModel = BillingModel()
     education: EducationModel = EducationModel()
     enable_skill: bool = True
+    enable_knowledge_fs: bool = False
+    enable_file_scan: bool = False
+    workflow_collaboration_enabled: bool = False
+    workflow_collaboration_upgrade_available: bool = False
+    # Evaluation (including Snippet evaluation) is usable now; the upgrade flag marks Cloud Sandbox.
+    evaluation_enabled: bool = False
+    evaluation_upgrade_available: bool = False
     members: LimitationModel = LimitationModel(size=0, limit=1)
     apps: LimitationModel = LimitationModel(size=0, limit=10)
     # Indexing tasks still consume this internally; Console queries vector usage separately.
@@ -164,6 +172,11 @@ class FeatureModel(FeatureResponseModel):
     api_rate_limit: Quota = Quota(usage=0, limit=5000, reset_date=0)
     # Controls whether email delivery is allowed for HumanInput nodes.
     human_input_email_delivery_enabled: bool = False
+    # Centrally managed IM channels and default bindings cannot be edited in Console.
+    # Workspaces may override bindings without changing the shared channel credentials.
+    im_centrally_managed: bool = False
+    # Agent App preview (draft) chat runs; Build chat is not gated by this flag.
+    agent_preview_enabled: bool = False
     knowledge_pipeline: KnowledgePipeline = KnowledgePipeline()
     # Workspace and model-provider credit responses own the public reset-date contract.
     next_credit_reset_date: int = Field(default=0, exclude=True)
@@ -172,13 +185,17 @@ class FeatureModel(FeatureResponseModel):
 class KnowledgeRateLimitModel(FeatureResponseModel):
     enabled: bool = False
     limit: int = 10
-    subscription_plan: str = ""
+    subscription_plan: Literal["", "sandbox", "professional", "team"] = ""
 
 
 class SystemFeatureModel(FeatureResponseModel):
     """Non-sensitive bootstrap snapshot exposed before Console or Web authentication."""
 
     deployment_edition: DeploymentEdition
+    agent_tracing_api_collection_enabled: bool = Field(
+        description="Deployment-level API gate for Agent trace collection, independent of workspace and provider "
+        "configuration. Does not indicate Agent runtime, worker, or provider health or confirm trace delivery.",
+    )
     enable_app_deploy: bool = False
     sso_enforced_for_signin: bool = False
     sso_enforced_for_signin_protocol: SSOProtocol | None = None
@@ -186,7 +203,6 @@ class SystemFeatureModel(FeatureResponseModel):
     enable_email_code_login: bool = False
     enable_email_password_login: bool = True
     enable_social_oauth_login: bool = False
-    enable_collaboration_mode: bool = True
     is_allow_register: bool = False
     is_email_setup: bool = False
     license: LicenseStatusModel = LicenseStatusModel()

@@ -1,15 +1,15 @@
 'use client'
 
 import type { AppImportPayload, AppMode, Import } from '@dify/contracts/api/console/apps/types.gen'
-import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
@@ -23,6 +23,7 @@ import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
+import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -62,7 +63,7 @@ type ImportSource =
   | { type: (typeof CreateFromDSLModalTab)['FROM_FILE']; file: File }
   | { type: (typeof CreateFromDSLModalTab)['FROM_URL']; url: string }
 
-const CREATE_FROM_DSL_HOTKEY = 'Mod+Enter' satisfies Hotkey
+const CREATE_FROM_DSL_HOTKEY = 'Mod+Enter' satisfies HotkeyChord
 
 function getImportedAppMode(mode?: string | null): AppMode | undefined {
   switch (mode) {
@@ -134,11 +135,9 @@ function CreateFromDSLModal({
     select: (data) => data.profile.id,
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const deploymentEdition = systemFeatures.deployment_edition
   const { data: appQuota } = useQuery(
     consoleQuery.features.get.queryOptions({
-      enabled: deploymentEdition === 'CLOUD',
-      select: (data) => data.apps,
+      select: (data) => getCountQuota(data.apps),
     }),
   )
   const isPackageImport =
@@ -146,15 +145,8 @@ function CreateFromDSLModal({
     currentFile?.name.toLowerCase().endsWith('.ifpkg') === true
   // URL imports are classified by the server before applying the appropriate quota.
   const requiresAppQuota = currentTab === CreateFromDSLModalTab.FROM_FILE && !isPackageImport
-  const isAppQuotaUnavailable =
-    requiresAppQuota && deploymentEdition === 'CLOUD' && appQuota === undefined
-  // A limit of 0 means unlimited.
-  const isAppsFull =
-    requiresAppQuota &&
-    deploymentEdition === 'CLOUD' &&
-    appQuota !== undefined &&
-    appQuota.limit > 0 &&
-    appQuota.size >= appQuota.limit
+  const isAppQuotaUnavailable = requiresAppQuota && appQuota === undefined
+  const isAppsFull = requiresAppQuota && appQuota !== undefined && isQuotaReached(appQuota)
   const isImporting = importMutation.isPending
   const isConfirming = confirmImportMutation.isPending
 
@@ -325,7 +317,7 @@ function CreateFromDSLModal({
         >
           <DialogHeader>
             <DialogTitle>{t(($) => $.importApp, { ns: 'app' })}</DialogTitle>
-            <DialogCloseButton
+            <DialogHeaderCloseButton
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
               disabled={isImporting}
             />
@@ -370,7 +362,7 @@ function CreateFromDSLModal({
                   autoComplete="off"
                   required
                   disabled={isImporting}
-                  placeholder={t(($) => $.importAppUrlPlaceholder, { ns: 'app' }) || ''}
+                  placeholder={t(($) => $.importAppUrlPlaceholder, { ns: 'app' })}
                   defaultValue={dslUrl}
                 />
                 <FieldError />

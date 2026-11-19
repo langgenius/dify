@@ -5,6 +5,7 @@ import type {
 import type { RenderOptions } from '@testing-library/react'
 import type { ReactElement } from 'react'
 import type { DeepPartial } from '@/test/console/system-features'
+import { Dialog } from '@langgenius/dify-ui/dialog'
 import { render as renderUI, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import dayjs from 'dayjs'
@@ -14,7 +15,6 @@ import AnnotationFull from '@/app/components/billing/annotation-full'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import Billing from '@/app/components/billing/billing-page'
-import { NUM_INFINITE } from '@/app/components/billing/config'
 import PlanComp from '@/app/components/billing/plan'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import PriorityLabel from '@/app/components/billing/priority-label'
@@ -64,11 +64,6 @@ const renderWithoutPricing = (
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en-US',
-}))
-
-vi.mock('#i18n', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('#i18n')>()),
-  useLocale: () => 'en-US',
 }))
 
 const mockRouterPush = vi.fn()
@@ -163,7 +158,7 @@ describe('Billing Page + Plan Integration', () => {
     it('should show "unlimited" for infinite quotas (professional API rate limit)', () => {
       setupBilling({
         billing: { subscription: { plan: 'professional' } },
-        api_rate_limit: { limit: NUM_INFINITE },
+        api_rate_limit: { limit: -1 },
       })
 
       render(<PlanComp loc="test" />)
@@ -468,9 +463,7 @@ describe('Capacity Full Components Integration', () => {
         <TriggerEventsLimitModal
           show={true}
           onClose={vi.fn()}
-          usage={18000}
-          total={20000}
-          resetInDays={5}
+          quota={{ usage: 18000, limit: 20000, resetInDays: 5 }}
         />,
       )
 
@@ -489,7 +482,13 @@ describe('Capacity Full Components Integration', () => {
       const onClose = vi.fn()
       setupBilling({ billing: { subscription: { plan: 'professional' } } })
 
-      render(<TriggerEventsLimitModal show={true} onClose={onClose} usage={20000} total={20000} />)
+      render(
+        <TriggerEventsLimitModal
+          show={true}
+          onClose={onClose}
+          quota={{ usage: 20000, limit: 20000 }}
+        />,
+      )
 
       const upgradeBtn = screen.getByText(/triggerLimitModal\.upgrade/i)
       await user.click(upgradeBtn)
@@ -662,7 +661,11 @@ describe('Cross-Component Upgrade Flow', () => {
       annotation_quota_limit: { size: 10, limit: 10 },
     })
 
-    render(<AnnotationFullModal show={true} onHide={vi.fn()} />)
+    render(
+      <Dialog defaultOpen>
+        <AnnotationFullModal />
+      </Dialog>,
+    )
 
     const upgradeText = screen.getByText(/upgradeBtn\.encourage$/i)
     await user.click(upgradeText)

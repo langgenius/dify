@@ -45,6 +45,21 @@ const refs = (stdin: string, files: Record<string, string> = {}) => ({
   },
 })
 
+it('ignores a leading BOM in JSON input without changing string values', async () => {
+  expect(await loadInput(src('\uFEFF{"a":1}'))).toEqual({ a: 1 })
+  expect(await loadInput(src('@input.json', '', { 'input.json': '\uFEFF{"b":2}' }))).toEqual({
+    b: 2,
+  })
+  expect(await loadInput(src('@-', '\uFEFF{"c":3}'))).toEqual({ c: 3 })
+  expect(
+    await resolveFileRefs(
+      { inputs: '@inputs.json' },
+      REF_SCHEMA,
+      refs('', { 'inputs.json': '\uFEFF{"value":"inside\\uFEFF"}' }),
+    ),
+  ).toEqual({ inputs: { value: 'inside\uFEFF' } })
+})
+
 it('resolves @file and @- only on non-scalar declared fields', async () => {
   expect(
     await resolveFileRefs(

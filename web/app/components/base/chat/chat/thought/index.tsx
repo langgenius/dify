@@ -6,7 +6,7 @@ import { useLocale } from '#i18n'
 import ToolDetail from '@/app/components/base/chat/chat/answer/tool-detail'
 import { getPluginLanguage, renderI18nObject } from '@/i18n/metadata'
 
-export type IThoughtProps = {
+type IThoughtProps = {
   thought: ThoughtItem
   isFinished: boolean
 }

@@ -18,7 +18,7 @@ def _draft(*, saved_at: datetime, graph: str = _GRAPH) -> Workflow:
         type=WorkflowType.WORKFLOW,
         version=Workflow.VERSION_DRAFT,
         graph=graph,
-        features="{}",
+        _features="{}",
         created_by="account-1",
     )
     draft.updated_at = saved_at
@@ -26,7 +26,9 @@ def _draft(*, saved_at: datetime, graph: str = _GRAPH) -> Workflow:
 
 
 def _run(*, status: WorkflowExecutionStatus = WorkflowExecutionStatus.SUCCEEDED, graph: str = _GRAPH) -> WorkflowRun:
-    return WorkflowRun(status=status, graph=graph, created_at=_RUN_STARTED)
+    run = WorkflowRun(status=status, graph=graph)
+    run.created_at = _RUN_STARTED
+    return run
 
 
 def test_a_passing_run_on_the_unchanged_draft_counts() -> None:

@@ -2,9 +2,14 @@
 name = "dify-trace-mlflow"
 version = "0.0.1"
 dependencies = [
+    "dify-trace-sdk",
     "mlflow-skinny>=3.11.1,<4.0.0",
 ]
 description = "Dify ops tracing provider (MLflow / Databricks)."
+
+[project.entry-points."dify.trace_providers"]
+mlflow = "dify_trace_mlflow.provider:MLflowProvider"
+databricks = "dify_trace_mlflow.provider:DatabricksProvider"
 
 [tool.setuptools.packages.find]
 where = ["src"]

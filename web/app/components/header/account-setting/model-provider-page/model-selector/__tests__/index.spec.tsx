@@ -4,14 +4,12 @@ import type {
   ProviderWithModelsResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
-import type { DefaultModelResponse } from '../../declarations'
 import { render as renderWithoutUrlState, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { ConfigurationMethodEnum, ModelStatusEnum, ModelTypeEnum } from '../../declarations'
-import { useSystemDefaultModelAndModelList } from '../../hooks'
 import { ModelSelector, SplitModelSelector } from '../index'
 
 const makeModelItem = (
@@ -96,6 +94,36 @@ describe('ModelSelector', () => {
     vi.clearAllMocks()
   })
 
+  it('uses the visible field label as its accessible name', () => {
+    renderWithQueryClient(
+      <>
+        <span id="reasoning-model-label">System reasoning model</span>
+        <ModelSelector ariaLabelledBy="reasoning-model-label" models={[makeModel()]} />
+      </>,
+    )
+
+    expect(screen.getByRole('button', { name: /System reasoning model/ })).toBeInTheDocument()
+  })
+
+  it('exposes required and invalid field guidance on the popover trigger', () => {
+    renderWithQueryClient(
+      <>
+        <span id="embedding-model-label">Embedding model</span>
+        <span id="embedding-model-error">Select an embedding model.</span>
+        <ModelSelector
+          ariaDescribedBy="embedding-model-error"
+          ariaInvalid
+          ariaLabelledBy="embedding-model-label"
+          ariaRequired
+          models={[makeModel()]}
+        />
+      </>,
+    )
+
+    const trigger = screen.getByRole('button', { name: /Embedding model/ })
+    expect(trigger).toHaveAccessibleDescription('Select an embedding model.')
+    expect(trigger).toHaveAccessibleName(/common\.errorMsg\.fieldRequired/)
+  })
   it.each([
     { value: { provider: 'openai', model: 'gpt-4' }, name: 'Embedding Model GPT-4' },
     { value: undefined, name: 'Embedding Model plugin.detailPanel.configureModel' },
@@ -118,13 +146,12 @@ describe('ModelSelector', () => {
   )
 
   it('should call onValueChange when provided', async () => {
+    const user = userEvent.setup()
     const onValueChange = vi.fn()
     renderWithQueryClient(<ModelSelector models={[makeModel()]} onValueChange={onValueChange} />)
 
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }))
-    await userEvent.setup().click(screen.getByRole('button', { name: /GPT-4/ }))
+    await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }))
+    await user.click(screen.getByRole('button', { name: /GPT-4/ }))
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(onValueChange).toHaveBeenCalledWith({
@@ -135,28 +162,30 @@ describe('ModelSelector', () => {
   })
 
   it('should close popup with Escape', async () => {
+    const user = userEvent.setup()
     renderWithQueryClient(<ModelSelector models={[makeModel()]} />)
 
     const triggerButton = screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' })
-    await userEvent.setup().click(triggerButton)
+    await user.click(triggerButton)
     expect(triggerButton).toHaveAttribute('aria-expanded', 'true')
-    await userEvent.setup().keyboard('{Escape}')
+    await user.keyboard('{Escape}')
     expect(triggerButton).toHaveAttribute('aria-expanded', 'false')
   })
 
   it('should close popup before running the empty-state configure action', async () => {
+    const user = userEvent.setup()
     const onConfigureEmptyState = vi.fn()
     renderWithQueryClient(
       <ModelSelector models={[]} onConfigureEmptyState={onConfigureEmptyState} />,
     )
 
     const triggerButton = screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' })
-    await userEvent.setup().click(triggerButton)
+    await user.click(triggerButton)
     expect(triggerButton).toHaveAttribute('aria-expanded', 'true')
 
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'modelProvider.modelProvider.selector.configure' }))
+    await user.click(
+      screen.getByRole('button', { name: 'modelProvider.modelProvider.selector.configure' }),
+    )
 
     expect(triggerButton).toHaveAttribute('aria-expanded', 'false')
     expect(onConfigureEmptyState).toHaveBeenCalledTimes(1)
@@ -183,15 +212,15 @@ describe('ModelSelector', () => {
   })
 
   it('should not open popup when disabled', async () => {
+    const user = userEvent.setup()
     renderWithQueryClient(<ModelSelector models={[makeModel()]} disabled />)
 
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }))
+    await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('should open and select a model from the split trigger with the keyboard', async () => {
+    const user = userEvent.setup()
     const onValueChange = vi.fn()
     renderWithQueryClient(
       <SplitModelSelector models={[makeModel()]} onValueChange={onValueChange} />,
@@ -199,10 +228,10 @@ describe('ModelSelector', () => {
 
     const trigger = screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' })
     trigger.focus()
-    await userEvent.setup().keyboard('{Enter}')
+    await user.keyboard('{Enter}')
     const model = screen.getByRole('button', { name: /GPT-4/ })
     model.focus()
-    await userEvent.setup().keyboard('{Enter}')
+    await user.keyboard('{Enter}')
     expect(onValueChange).toHaveBeenCalledWith({
       provider: 'openai',
       model: 'gpt-4',
@@ -215,31 +244,13 @@ describe('ModelSelector', () => {
     'should display a loaded default model as incompatible when missing from the list (%s)',
     (provider) => {
       const models = [makeModel()]
-      function SystemDefaultSelector({ defaultModel }: { defaultModel?: DefaultModelResponse }) {
-        const [value] = useSystemDefaultModelAndModelList(defaultModel, models)
-        return <ModelSelector value={value} models={models} />
-      }
-      const { rerender } = renderWithQueryClient(<SystemDefaultSelector />)
+      const { rerender } = renderWithQueryClient(<ModelSelector models={models} />)
 
       expect(
         screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }),
       ).toBeInTheDocument()
 
-      rerender(
-        <SystemDefaultSelector
-          defaultModel={{
-            model: 'missing-model',
-            model_type: ModelTypeEnum.textGeneration,
-            provider: {
-              provider,
-              icon_small: { en_US: '', zh_Hans: '' },
-              label: { en_US: provider, zh_Hans: provider },
-              supported_model_types: [],
-              tenant_id: 'tenant-1',
-            },
-          }}
-        />,
-      )
+      rerender(<ModelSelector models={models} value={{ provider, model: 'missing-model' }} />)
 
       expect(
         screen.getByRole('button', {

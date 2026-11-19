@@ -38,6 +38,7 @@ describe('TestRunMenu', () => {
   })
 
   it('selects Run All through the public toggle and menu shortcut', async () => {
+    const user = userEvent.setup()
     const onSelect = vi.fn()
 
     const Harness = () => {
@@ -69,7 +70,7 @@ describe('TestRunMenu', () => {
 
     render(<Harness />)
 
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Toggle via ref' }))
+    await user.click(screen.getByRole('button', { name: 'Toggle via ref' }))
     expect(screen.getByRole('menu')).toBeInTheDocument()
 
     fireEvent.keyDown(screen.getByRole('menu'), { key: '0' })

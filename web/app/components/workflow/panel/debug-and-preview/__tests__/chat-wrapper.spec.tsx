@@ -9,10 +9,18 @@ import { createStartNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { InputVarType } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import ChatWrapper from '../chat-wrapper'
 
 const mockUseChat = vi.hoisted(() => vi.fn())
-const mockUseSubscription = vi.hoisted(() => vi.fn())
+
+let emitWorkflowEvent: ((event: { type: string }) => void) | undefined
+const EmitterProbe = () => {
+  const { eventEmitter } = useEventEmitterContextContext()
+  emitWorkflowEvent = (event) => eventEmitter?.emit(event as never)
+  return null
+}
 
 const mockRequest = vi.hoisted(() => vi.fn())
 
@@ -130,14 +138,6 @@ vi.mock('@/app/components/base/features/hooks', () => ({
     }),
 }))
 
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => ({
-    eventEmitter: {
-      useSubscription: mockUseSubscription,
-    },
-  }),
-}))
-
 const createChatState = (overrides: Record<string, unknown> = {}) => ({
   conversationId: 'conversation-1',
   chatList: [],
@@ -163,6 +163,7 @@ describe('ChatWrapper', () => {
   })
 
   it('seeds start defaults into workflow inputs and exposes restart through the ref handle', async () => {
+    const user = userEvent.setup()
     const chatState = createChatState()
     mockUseChat.mockReturnValue(chatState)
     const chatRef = createChatWrapperRef()
@@ -206,7 +207,7 @@ describe('ChatWrapper', () => {
       })
     })
 
-    await userEvent.click(screen.getByRole('button', { name: 'open-log' }))
+    await user.click(screen.getByRole('button', { name: 'open-log' }))
     expect(store.getState().messageLogItem?.workflow_run_id).toBe('run-1')
 
     act(() => {
@@ -260,13 +261,16 @@ describe('ChatWrapper', () => {
     )
 
     const { store } = renderWorkflowFlowComponent(
-      <ChatWrapper
-        ref={createChatWrapperRef()}
-        showConversationVariableModal={false}
-        onConversationModalHide={vi.fn()}
-        showInputsFieldsPanel={false}
-        onHide={vi.fn()}
-      />,
+      <EventEmitterContextProvider>
+        <EmitterProbe />
+        <ChatWrapper
+          ref={createChatWrapperRef()}
+          showConversationVariableModal={false}
+          onConversationModalHide={vi.fn()}
+          showInputsFieldsPanel={false}
+          onHide={vi.fn()}
+        />
+      </EventEmitterContextProvider>,
       {
         nodes: [
           createStartNode({
@@ -360,17 +364,13 @@ describe('ChatWrapper', () => {
       })
     })
 
-    const subscription = mockUseSubscription.mock.calls[0]?.[0] as (payload: {
-      type: string
-    }) => void
-    act(() => {
-      subscription({ type: EVENT_WORKFLOW_STOP })
-    })
+    act(() => emitWorkflowEvent?.({ type: EVENT_WORKFLOW_STOP }))
 
     expect(handleStop).toHaveBeenCalledTimes(1)
   })
 
   it('disables sending while the latest workflow run is paused', async () => {
+    const user = userEvent.setup()
     const chatState = createChatState({
       chatList: [
         { id: 'answer-1', isAnswer: true, content: '', workflowProcess: { status: 'paused' } },
@@ -389,7 +389,7 @@ describe('ChatWrapper', () => {
     )
     const send = screen.getByRole('button', { name: 'send-chat' })
     expect(send).toBeDisabled()
-    await userEvent.setup().click(send)
+    await user.click(send)
     expect(chatState.handleSend).not.toHaveBeenCalled()
   })
 

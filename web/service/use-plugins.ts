@@ -31,7 +31,6 @@ import type {
   PluginTask,
   ReferenceSetting,
   VersionInfo,
-  VersionListResponse,
 } from '@/app/components/plugins/types'
 import type { Collection } from '@/app/components/tools/types'
 import {
@@ -826,21 +825,23 @@ export const useInstallPackageFromMarketPlace = (
   })
 }
 
+export async function startMarketplacePluginUpgrade(
+  queryClient: QueryClient,
+  body: ParserMarketplaceUpgrade,
+) {
+  const response = await consoleClient.workspaces.current.plugin.upgrade.marketplace.post({ body })
+  upsertStartedPluginTask(queryClient, response)
+  return response
+}
+
 export const useUpdatePackageFromMarketPlace = (
   options?: MutateOptions<PluginInstallTaskStartResponse, Error, ParserMarketplaceUpgrade>,
 ) => {
   const queryClient = useQueryClient()
   return useMutation({
     ...options,
-    mutationFn: (body: ParserMarketplaceUpgrade) => {
-      return consoleClient.workspaces.current.plugin.upgrade.marketplace.post({
-        body,
-      })
-    },
-    onSuccess: (data, variables, context, mutation) => {
-      upsertStartedPluginTask(queryClient, data)
-      options?.onSuccess?.(data, variables, context, mutation)
-    },
+    mutationFn: (body: ParserMarketplaceUpgrade) =>
+      startMarketplacePluginUpgrade(queryClient, body),
   })
 }
 
@@ -852,17 +853,6 @@ export const usePluginDeclarationFromMarketPlace = (pluginUniqueIdentifier: stri
         query: { plugin_unique_identifier: pluginUniqueIdentifier },
       }),
     enabled: !!pluginUniqueIdentifier,
-  })
-}
-
-export const useVersionListOfPlugin = (pluginID: string, enabled = true) => {
-  return useQuery<{ data: VersionListResponse }>({
-    enabled: enabled && !!pluginID,
-    queryKey: [NAME_SPACE, 'versions', pluginID],
-    queryFn: () =>
-      getMarketplace<{ data: VersionListResponse }>(`/plugins/${pluginID}/versions`, {
-        params: { page: 1, page_size: 100 },
-      }),
   })
 }
 

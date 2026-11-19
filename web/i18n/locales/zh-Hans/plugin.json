@@ -301,9 +301,7 @@
   "task.runningPlugins": "正在安装的集成",
   "task.successPlugins": "安装成功的集成",
   "templatePublishingGuide": "模板发布指南",
-  "upgrade.close": "关闭",
   "upgrade.description": "即将安装以下集成",
-  "upgrade.successfulTitle": "安装成功",
   "upgrade.title": "安装集成",
   "upgrade.upgrade": "安装",
   "upgrade.upgrading": "安装中..."

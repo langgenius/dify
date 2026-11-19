@@ -52,6 +52,11 @@ it.each([false, true])(
       />,
       { queryClient },
     )
+    expect(
+      screen.getByRole('dialog', {
+        name: edit ? 'tools.mcp.server.modal.editTitle' : 'tools.mcp.server.modal.addTitle',
+      }),
+    ).toBeVisible()
     const description = screen.getByRole('textbox', { name: 'tools.mcp.server.modal.description' })
     const query = screen.getByRole('textbox', { name: 'Query' })
     expect(description).toHaveValue(edit ? 'Saved description' : 'App description')
@@ -69,7 +74,7 @@ it.each([false, true])(
     await user.clear(query)
     await user.type(query, 'updated query')
     await user.click(submit)
-    await waitFor(() => expect(submit).toBeDisabled())
+    await waitFor(() => expect(submit).toHaveAttribute('aria-disabled', 'true'))
     await user.click(submit)
     expect(edit ? updateServer : createServer).toHaveBeenCalledExactlyOnceWith({
       params: { app_id: 'app-123' },
@@ -91,6 +96,25 @@ it.each([false, true])(
     })
   },
 )
+
+it('focuses description and parameter fields through their visible labels', async () => {
+  const user = userEvent.setup()
+  renderWithConsoleQuery(
+    <MCPServerModal
+      appID="app-123"
+      show
+      onHide={vi.fn()}
+      latestParams={[{ variable: 'query', label: 'Query', type: 'string' }]}
+    />,
+  )
+
+  await user.click(screen.getByText('tools.mcp.server.modal.description'))
+  const description = screen.getByRole('textbox', { name: 'tools.mcp.server.modal.description' })
+  expect(description).toHaveFocus()
+  expect(description).toBeRequired()
+  await user.click(screen.getByText('Query'))
+  expect(screen.getByRole('textbox', { name: 'Query' })).toHaveFocus()
+})
 
 it.each(['tools.mcp.modal.cancel', 'common.operation.close'])(
   'dismisses via %s without sending a request',

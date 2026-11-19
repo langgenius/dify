@@ -26,9 +26,8 @@ function renderHeader({
     <AgentPreviewHeader
       mode={mode}
       previewEnabled={previewEnabled}
-      isChatFeaturesOpen={false}
       onModeChange={onModeChange}
-      onToggleChatFeatures={onToggleChatFeatures}
+      chatFeatures={{ open: false, onToggle: onToggleChatFeatures }}
       onOpenWorkingDirectory={onOpenWorkingDirectory}
       onRefresh={onRefresh}
       refreshDisabled={refreshDisabled}

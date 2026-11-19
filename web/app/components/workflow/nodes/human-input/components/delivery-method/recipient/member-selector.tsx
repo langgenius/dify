@@ -7,7 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { RiContactsBookLine } from '@remixicon/react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import MemberList from './member-list'
+import { MemberList } from './member-list'
 
 const i18nPrefix = 'nodes.humanInput'
 
@@ -49,7 +49,7 @@ const MemberSelector: FC<Props> = ({ value, email, onSelect, list = [] }) => {
         }
       />
       <PopoverContent
-        placement="bottom-end"
+        align="end"
         sideOffset={4}
         alignOffset={35}
         className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"

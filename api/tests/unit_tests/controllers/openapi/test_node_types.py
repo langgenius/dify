@@ -64,8 +64,10 @@ def test_http_request_default_body_carries_an_empty_data_list(
     assert response.default_config["retry_config"] == graphon_default["retry_config"]
 
 
-def test_keys_the_default_already_has_are_kept(describe: Callable[[str], NodeTypeDetailResponse]) -> None:
-    graphon_default = HttpRequestNode.get_default_config()
+def test_keys_the_default_already_has_are_kept(
+    describe: Callable[[str], NodeTypeDetailResponse], sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    graphon_default = WorkflowService(sqlite_session_factory).get_default_block_config(BuiltinNodeTypes.HTTP_REQUEST)
     graphon_timeout = cast(Mapping[str, object], cast(Mapping[str, object], graphon_default["config"])["timeout"])
 
     response = describe(BuiltinNodeTypes.HTTP_REQUEST)
@@ -80,3 +82,24 @@ def test_sub_objects_that_fail_their_model_pass_through(describe: Callable[[str]
     response = describe(BuiltinNodeTypes.CODE)
 
     assert response.default_config == dict(graphon_default)
+
+
+def test_human_input_description_matches_version_two(describe: Callable[[str], NodeTypeDetailResponse]) -> None:
+    response = describe(BuiltinNodeTypes.HUMAN_INPUT)
+
+    assert response.version == "2"
+    properties = response.schema_["properties"]
+    assert {"recipients_spec", "message_template", "debug_mode"} <= properties.keys()
+    assert "delivery_methods" not in properties
+    config = response.default_config["config"]
+    assert config["version"] == "2"
+    assert config["recipients_spec"] == []
+    assert config["message_template"] == {
+        "subject": "Action required",
+        "body": (
+            "A request is waiting for your review. Please review the details and submit your decision to continue. "
+            "Review and respond: {{#url#}}"
+        ),
+    }
+    assert config["debug_mode"] == {"enabled": False, "channels": []}
+    assert "delivery_methods" not in config

@@ -3,7 +3,10 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { toast } from '@/app/notifications'
-import { baseRunningData, renderWorkflowComponent } from '../../__tests__/workflow-test-env'
+import {
+  baseRunningData,
+  renderWorkflowComponent as renderWithStores,
+} from '../../__tests__/workflow-test-env'
 import { fullWorkflowAccessControl } from '../../hooks-store/store'
 import RunMode from '../run-mode'
 import { TriggerType } from '../test-run-menu'
@@ -28,32 +31,22 @@ vi.mock('../../hooks/use-checklist', async (importOriginal) => {
   }
 })
 
-vi.mock('../../hooks/use-workflow-run', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../hooks/use-workflow-run')>()
-
-  return {
-    ...actual,
-    useWorkflowRun: () => ({
-      handleStopRun: mockHandleStopRun,
-    }),
-  }
-})
-
-vi.mock('../../hooks/use-workflow-start-run', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../hooks/use-workflow-start-run')>()
-
-  return {
-    ...actual,
-    useWorkflowStartRun: () => ({
+// Start and stop handlers reach RunMode through the hooks store, exactly as the app wires them.
+const renderWorkflowComponent = (...[ui, options]: Parameters<typeof renderWithStores>) =>
+  renderWithStores(ui, {
+    ...options,
+    hooksStoreProps: {
       handleWorkflowStartRunInWorkflow: mockHandleWorkflowStartRunInWorkflow,
       handleWorkflowTriggerScheduleRunInWorkflow: mockHandleWorkflowTriggerScheduleRunInWorkflow,
       handleWorkflowTriggerWebhookRunInWorkflow: mockHandleWorkflowTriggerWebhookRunInWorkflow,
       handleWorkflowTriggerPluginRunInWorkflow: mockHandleWorkflowTriggerPluginRunInWorkflow,
       handleWorkflowRunAllTriggersInWorkflow: mockHandleWorkflowRunAllTriggersInWorkflow,
-    }),
-  }
-})
+      handleStopRun: mockHandleStopRun,
+      ...options?.hooksStoreProps,
+    },
+  })
 
+// Checklist validation and trigger discovery derive from the graph and have their own suites.
 vi.mock('../../hooks/use-dynamic-test-run-options', () => ({
   useDynamicTestRunOptions: () => mockDynamicOptions,
 }))

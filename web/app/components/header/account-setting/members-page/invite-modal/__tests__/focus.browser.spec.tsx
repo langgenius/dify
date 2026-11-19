@@ -5,26 +5,9 @@ import { render } from 'vitest-browser-react'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
-import MembersPage from '../../index'
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.rbac.roles.get': () => ({
-      data: {
-        pages: [{ data: [{ id: 'admin', name: 'Admin', description: 'Manage members' }] }],
-      },
-      isLoading: false,
-      error: null,
-      hasNextPage: false,
-      isFetchingNextPage: false,
-      fetchNextPage: vi.fn(),
-    }),
-  })
-})
+import { MembersPage } from '../../index'
 
 const { inviteMember } = vi.hoisted(() => ({ inviteMember: vi.fn() }))
-vi.mock('#i18n', () => ({ useLocale: () => 'en-US' }))
 
 let queryClient: QueryClient
 
@@ -49,9 +32,16 @@ beforeEach(() => {
       if (pathname.endsWith('/workspaces/current/members/invite-email'))
         return Response.json(await inviteMember())
       // A successful invitation refreshes seats and members in the background.
+      if (pathname.endsWith('/workspaces/current/rbac/roles'))
+        return Response.json({
+          data: [{ id: 'admin', name: 'Admin', description: 'Manage members' }],
+          pagination: { total_count: 1, per_page: 20, current_page: 1, total_pages: 1 },
+        })
       if (pathname.endsWith('/features'))
         return Response.json(queryClient.getQueryData(consoleQuery.features.get.queryKey()))
       if (pathname.endsWith('/workspaces/current/members')) return Response.json({ accounts: [] })
+      if (pathname.endsWith('/members/pending-invitations'))
+        return Response.json({ invitations: [] })
       throw new Error(`Unexpected request: ${pathname}`)
     }),
   )
@@ -59,7 +49,7 @@ beforeEach(() => {
 
 afterEach(() => vi.unstubAllGlobals())
 
-it('holds focus through Enter submission, hands it to the results dialog and returns it to Invite', async () => {
+it('holds focus through Enter submission and returns it to Invite after a successful invitation', async () => {
   let resolveInvite!: (value: MemberInviteResponse) => void
   inviteMember.mockReturnValue(
     new Promise<MemberInviteResponse>((resolve) => {
@@ -92,15 +82,14 @@ it('holds focus through Enter submission, hands it to the results dialog and ret
   await expect.element(submit).toHaveFocus()
   await expect.element(inviteDialog).toBeVisible()
 
-  resolveInvite({ result: 'success', tenant_id: 'tenant-id', invitation_results: [] })
-  const result = screen.getByRole('dialog', { name: /members\.invitationSent$/ })
-  await expect.element(result).toBeVisible()
-  await expect.element(result.getByRole('button', { name: /operation\.close/ })).toHaveFocus()
-  // The closing invitation dialog must not take focus back while it exits.
+  resolveInvite({
+    result: 'success',
+    tenant_id: 'tenant-id',
+    invitation_results: [
+      { status: 'success', email: 'person@example.com', url: 'https://example.com/invite' },
+    ],
+  })
+  // A fully successful Cloud invitation needs no result step; the new row is the feedback.
   await expect.element(inviteDialog).not.toBeInTheDocument()
-  expect(result.element().contains(document.activeElement)).toBe(true)
-
-  await result.getByRole('button', { name: /members\.ok$/ }).click()
-  await expect.element(result).not.toBeInTheDocument()
   await expect.element(trigger).toHaveFocus()
 })

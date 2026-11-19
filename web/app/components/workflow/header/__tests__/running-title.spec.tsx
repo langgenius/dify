@@ -24,4 +24,18 @@ describe('RunningTitle', () => {
 
     expect(screen.getByText('Test Chat (Running)')).toBeInTheDocument()
   })
+
+  it.each(['workflow', 'advanced-chat'] as const)(
+    'shows paused history in %s mode without a completion time',
+    (mode) => {
+      renderWorkflowComponent(<RunningTitle />, {
+        resource: { kind: 'app', appId: 'app-1', mode },
+        initialStoreState: { historyWorkflowData: { id: 'history-paused', status: 'paused' } },
+      })
+
+      expect(
+        screen.getByText(`Test ${mode === 'advanced-chat' ? 'Chat' : 'Run'} (Paused)`),
+      ).toBeInTheDocument()
+    },
+  )
 })

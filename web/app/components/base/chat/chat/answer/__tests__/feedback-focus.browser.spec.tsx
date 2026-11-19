@@ -7,15 +7,6 @@ import Operation from '../operation'
 
 const feedback = vi.hoisted(() => ({ onFeedback: vi.fn() }))
 
-// These independently owned features do not participate in feedback focus restoration.
-vi.mock('@/app/components/app/annotation/edit-annotation-modal', () => ({ default: () => null }))
-vi.mock(
-  '@/app/components/base/features/new-feature-panel/annotation-reply/annotation-ctrl-button',
-  () => ({ default: () => null }),
-)
-vi.mock('@/app/components/base/new-audio-button', () => ({ default: () => null }))
-vi.mock('@/app/components/base/chat/chat/log', () => ({ default: () => null }))
-
 const item: ChatItem = { id: 'answer', content: 'An answer', isAnswer: true }
 
 function FeedbackAnswer({ admin = false }: { admin?: boolean }) {

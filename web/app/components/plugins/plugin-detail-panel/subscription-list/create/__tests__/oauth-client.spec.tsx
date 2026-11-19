@@ -142,9 +142,7 @@ it('shows authorization failure and allows retry without closing the settings', 
   requests.authorize.mockRejectedValueOnce(new Error('Authorization failed'))
   const { onOpenChange } = renderModal()
   await user.click(screen.getByRole('button', { name: 'plugin.auth.saveAndAuth' }))
-  await waitFor(() =>
-    expect(toast.error).toHaveBeenCalledWith('pluginTrigger.modal.oauth.authorization.authFailed'),
-  )
+  await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Authorization failed'))
   expect(onOpenChange).not.toHaveBeenCalled()
   await user.click(screen.getByRole('button', { name: 'plugin.auth.saveAndAuth' }))
   await waitFor(() => expect(openOAuthPopup).toHaveBeenCalledOnce())
@@ -159,7 +157,10 @@ it('reports removal errors and closes only when the retry succeeds', async () =>
   expect(onOpenChange).not.toHaveBeenCalled()
   await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
   await waitFor(() => expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false))
-  expect(requests.remove).toHaveBeenLastCalledWith({ params: { provider: 'provider-a' } })
+  expect(requests.remove).toHaveBeenLastCalledWith(
+    { params: { provider: 'provider-a' } },
+    { context: { silent: true } },
+  )
 })
 
 it('continues authorization polling after errors and stops when verification succeeds', async () => {

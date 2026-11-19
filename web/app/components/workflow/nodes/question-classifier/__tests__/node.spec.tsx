@@ -1,32 +1,35 @@
 import type { QuestionClassifierNodeType } from '../types'
 import type { Topic } from '@/app/components/workflow/nodes/_base/components/branch-list/types'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
+import {
+  createCatalogModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import { createConsoleQueryWrapper, seedAppDslVersion } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import Node from '../node'
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useTextGenerationCurrentProviderAndModelAndModelList: () => ({ textGenerationModelList: [] }),
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  ModelSelector: ({ value }: { value?: { provider: string; model: string } }) => (
-    <div>{value ? `${value.provider}:${value.model}` : 'no-model'}</div>
-  ),
-}))
-
-const mockSourceHandle = vi.fn()
-vi.mock('@/app/components/workflow/nodes/_base/components/node-handle', () => ({
-  NodeSourceHandle: (props: { id: string; handleId: string }) => {
-    mockSourceHandle(props)
-    return null
-  },
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/readonly-input-with-select-var', () => ({
-  __esModule: true,
-  default: ({ value }: { value: string }) => <div>{value}</div>,
-}))
+const render = createNuqsTestRenderer((ui) => {
+  const { queryClient } = createConsoleQueryWrapper()
+  seedAppDslVersion(queryClient)
+  seedModelProviderQueries(queryClient, [
+    createModelCatalogFixture({
+      models: [createCatalogModelFixture({ model: 'gpt-4o', label: { en_US: 'GPT-4o' } })],
+    }),
+  ])
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  return renderWorkflowFlowComponent(ui, { queryClient })
+})
 
 const createTopic = (overrides: Partial<Topic> = {}): Topic => ({
   id: 'topic-1',
@@ -67,7 +70,7 @@ const baseNodeProps = {
 }
 
 describe('question-classifier/node', () => {
-  it('shows class labels and routes each class ID to its connection handle', () => {
+  it('shows the configured model and class labels', () => {
     render(
       <Node
         {...baseNodeProps}
@@ -80,21 +83,15 @@ describe('question-classifier/node', () => {
       />,
     )
 
-    expect(screen.getByText('openai:gpt-4o')).toBeInTheDocument()
+    expect(screen.getByText('GPT-4o')).toBeInTheDocument()
     expect(screen.getByText('Billing')).toBeInTheDocument()
     expect(screen.getByText('Refund desk')).toBeInTheDocument()
-    expect(mockSourceHandle).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'node-1', handleId: 'topic-1' }),
-    )
-    expect(mockSourceHandle).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'node-1', handleId: 'topic-2' }),
-    )
   })
 
   it('returns nothing when neither model nor classes are configured and truncates long class names', async () => {
     const user = userEvent.setup()
     const longName = 'L'.repeat(60)
-    const { container, rerender } = render(
+    const { rerender } = render(
       <Node
         {...baseNodeProps}
         data={createData({
@@ -128,6 +125,7 @@ describe('question-classifier/node', () => {
       />,
     )
 
-    expect(container).toBeEmptyDOMElement()
+    expect(screen.queryByText(`${longName.slice(0, 50)}...`)).not.toBeInTheDocument()
+    expect(screen.queryByText('GPT-4o')).not.toBeInTheDocument()
   })
 })

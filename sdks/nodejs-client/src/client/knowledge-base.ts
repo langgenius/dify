@@ -209,11 +209,12 @@ export class KnowledgeBaseClient extends DifyClient {
   ): Promise<DifyResponse<KnowledgeBaseResponse>> {
     ensureNonEmptyString(datasetId, 'datasetId')
     ensureNonEmptyString(request.name, 'name')
-    ensureNonEmptyString(request.text, 'text')
+    ensureNonEmptyString(request.text, 'text', Infinity)
     return this.http.request({
       method: 'POST',
       path: `/datasets/${datasetId}/document/create_by_text`,
       data: request,
+      unboundedBodyStringFields: ['text'],
     })
   }
 
@@ -231,6 +232,7 @@ export class KnowledgeBaseClient extends DifyClient {
       method: 'POST',
       path: `/datasets/${datasetId}/documents/${documentId}/update_by_text`,
       data: request,
+      unboundedBodyStringFields: ['text'],
     })
   }
 

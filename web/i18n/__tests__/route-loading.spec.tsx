@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useDirection } from '@langgenius/dify-ui/direction-provider'
 import { createToast, createToastManager } from '@langgenius/dify-ui/toast'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -7,7 +8,7 @@ import { renderToString } from 'react-dom/server'
 import { useTranslation } from 'react-i18next'
 import { I18nClientProvider } from '@/app/components/provider/i18n'
 import { I18nServerProvider } from '@/app/components/provider/i18n-server'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { changeLanguage } from '../client'
 import { useLocale } from '../lib.client'
 
@@ -55,7 +56,7 @@ describe('on-demand translation loading', () => {
 
   it('reads and updates the locale without loading any translation namespace', async () => {
     function LocaleLabel() {
-      return <span>{useLocale()}</span>
+      return <span dir={useDirection()}>{useLocale()}</span>
     }
     render(
       <I18nClientProvider locale="en-US" resource={{}}>
@@ -63,8 +64,16 @@ describe('on-demand translation loading', () => {
       </I18nClientProvider>,
     )
     expect(await screen.findByText('en-US')).toBeVisible()
+    expect(document.documentElement.lang).toBe('en-US')
+    expect(document.documentElement.dir).toBe('ltr')
+    await act(() => changeLanguage('ar-TN'))
+    expect(await screen.findByText('ar-TN')).toHaveAttribute('dir', 'rtl')
+    expect(document.documentElement.lang).toBe('ar-TN')
+    expect(document.documentElement.dir).toBe('rtl')
     await act(() => changeLanguage('zh-Hans'))
-    expect(await screen.findByText('zh-Hans')).toBeVisible()
+    expect(await screen.findByText('zh-Hans')).toHaveAttribute('dir', 'ltr')
+    expect(document.documentElement.lang).toBe('zh-Hans')
+    expect(document.documentElement.dir).toBe('ltr')
     expect(mocks.loadResource).not.toHaveBeenCalled()
   })
 
@@ -183,7 +192,7 @@ describe('on-demand translation loading', () => {
     const toast = createToast(manager)
     const content = () => (
       <I18nClientProvider locale="en-US" resource={{ 'en-US': resources['en-US'] }}>
-        <AppToastHost manager={manager} timeout={0} />
+        <AppToaster manager={manager} timeout={0} />
         <input aria-label="Shared draft" />
         {mocks.pathname === '/signin' ? <Label /> : <Destination />}
       </I18nClientProvider>

@@ -21,7 +21,7 @@ import { trackEvent } from '@/app/components/base/amplitude'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { toast } from '@/app/notifications'
 import { DataSourceProvider } from '@/models/common'
-import { DataSourceType } from '@/models/datasets'
+import { DataSourceType, ProcessMode } from '@/models/datasets'
 import { consoleQuery } from '@/service/console'
 import { getNotionInfo, getWebsiteInfo } from '../creation-params'
 import { IndexingType } from './use-indexing-config'
@@ -49,7 +49,7 @@ type UseDocumentCreationOptions = {
   mutateDatasetRes?: () => void
 }
 type ValidationParams = {
-  segmentationType: string
+  segmentationType: ProcessMode
   maxChunkLength: number
   limitMaxChunkLength: number
   overlap: number
@@ -104,11 +104,11 @@ export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
         rerankModelList,
         retrievalConfig,
       } = params
-      if (segmentationType === 'general' && overlap > maxChunkLength) {
+      if (segmentationType === ProcessMode.general && overlap > maxChunkLength) {
         toast.error(t(($) => $['stepTwo.overlapCheck'], { ns: 'datasetCreation' }))
         return false
       }
-      if (segmentationType === 'general' && maxChunkLength > limitMaxChunkLength) {
+      if (segmentationType === ProcessMode.general && maxChunkLength > limitMaxChunkLength) {
         toast.error(
           t(($) => $['stepTwo.maxLengthCheck'], {
             ns: 'datasetCreation',

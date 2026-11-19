@@ -4,10 +4,10 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
@@ -88,7 +88,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
               ? t(($) => $['versionHistory.editVersionInfo'], { ns: 'workflowHistory' })
               : t(($) => $['versionHistory.nameThisVersion'], { ns: 'workflowHistory' })}
           </DialogTitle>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <DialogBody className="flex flex-col gap-y-4">
           <Field name="title" invalid={titleError}>

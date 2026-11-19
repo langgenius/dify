@@ -23,6 +23,22 @@ describe('ChatRecord', () => {
     mockRequest.mockReset()
   })
 
+  it('renders paused history without a finished timestamp', async () => {
+    mockRequest.mockResolvedValue({ data: [] })
+
+    renderWorkflowComponent(<ChatRecord />, {
+      initialStoreState: {
+        historyWorkflowData: {
+          ...historyWorkflowData,
+          status: 'paused',
+          finished_at: undefined,
+        },
+      },
+    })
+
+    expect(await screen.findByText('TEST CHAT (Paused)')).toBeInTheDocument()
+  })
+
   it('renders chat history and keeps sibling selection within its conversation', async () => {
     const user = userEvent.setup()
 
@@ -111,7 +127,9 @@ describe('ChatRecord', () => {
       limit: 20,
     })
     const view = (appId: string) => (
-      <EditorResourceScope resource={{ kind: 'app', appId, mode: 'workflow' }}>
+      <EditorResourceScope
+        resource={{ kind: 'app', collaborationEnabled: false, appId, mode: 'workflow' }}
+      >
         <ChatRecord />
       </EditorResourceScope>
     )

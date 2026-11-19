@@ -26,43 +26,6 @@ export const zErrorResponse = z.object({
 })
 
 /**
- * AccountAvatarPayload
- */
-export const zAccountAvatarPayload = z.object({
-  avatar: z.string(),
-})
-
-/**
- * AccountResponse
- */
-export const zAccountResponse = z.object({
-  avatar: z.string().nullish(),
-  avatar_url: z.string().nullable(),
-  created_at: z.int().nullish(),
-  email: z.string(),
-  id: z.string(),
-  interface_language: z.string().nullish(),
-  interface_theme: z.string().nullish(),
-  is_password_set: z.boolean(),
-  last_login_at: z.int().nullish(),
-  last_login_ip: z.string().nullish(),
-  name: z.string(),
-  timezone: z.string().nullish(),
-})
-
-/**
- * AccountNotFoundError
- *
- * Account not found.
- */
-export const zAccountNotFoundError = zErrorResponse.and(
-  z.object({
-    code: z.literal('account_not_found'),
-    status: z.literal(400),
-  }),
-)
-
-/**
  * ChangeEmailSendPayload
  */
 export const zChangeEmailSendPayload = z.object({
@@ -79,6 +42,18 @@ export const zSimpleResultDataResponse = z.object({
   data: z.string(),
   result: z.string(),
 })
+
+/**
+ * AccountNotFoundError
+ *
+ * Account not found.
+ */
+export const zAccountNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_not_found'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * InvalidEmailError
@@ -187,6 +162,24 @@ export const zChangeEmailResetPayload = z.object({
 })
 
 /**
+ * AccountResponse
+ */
+export const zAccountResponse = z.object({
+  avatar: z.string().nullish(),
+  avatar_url: z.string().nullable(),
+  created_at: z.int().nullish(),
+  email: z.string(),
+  id: z.string(),
+  interface_language: z.string().nullish(),
+  interface_theme: z.string().nullish(),
+  is_password_set: z.boolean(),
+  last_login_at: z.int().nullish(),
+  last_login_ip: z.string().nullish(),
+  name: z.string(),
+  timezone: z.string().nullish(),
+})
+
+/**
  * ChangeEmailValidityPayload
  */
 export const zChangeEmailValidityPayload = z.object({
@@ -272,11 +265,48 @@ export const zEmailCodeAccountDeletionRateLimitExceededError = zErrorResponse.an
  * EducationStatusResponse
  */
 export const zEducationStatusResponse = z.object({
-  allow_refresh: z.boolean().nullish(),
-  expire_at: z.int().nullish(),
-  is_student: z.boolean().nullish(),
-  result: z.boolean().nullish(),
+  allow_refresh: z.boolean(),
+  can_redeem_discount: z.boolean(),
+  expire_at: z.int().nullable(),
+  is_student: z.boolean(),
+  result: z.boolean(),
 })
+
+/**
+ * BillingRequestInProgressError
+ *
+ * A previous request is still being processed. Please try again shortly.
+ */
+export const zBillingRequestInProgressError = zErrorResponse.and(
+  z.object({
+    code: z.literal('billing_request_in_progress'),
+    status: z.literal(429),
+  }),
+)
+
+/**
+ * BillingOperationFailedError
+ *
+ * We couldn't complete this request. Please try again. If the problem persists, contact support.
+ */
+export const zBillingOperationFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('billing_operation_failed'),
+    status: z.literal(502),
+  }),
+)
+
+/**
+ * BillingUnavailableError
+ *
+ * This operation is temporarily unavailable. Please try again later.
+ */
+export const zBillingUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('billing_unavailable'),
+    status: z.literal(503),
+  }),
+)
 
 /**
  * EducationActivatePayload
@@ -295,6 +325,18 @@ export const zEducationActivateResponse = z.object({
 })
 
 /**
+ * EducationActivateFailedError
+ *
+ * We couldn't activate your education discount.
+ */
+export const zEducationActivateFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('education_activate_failed'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * EducationActivateLimitError
  *
  * Rate limit exceeded
@@ -310,17 +352,22 @@ export const zEducationActivateLimitError = zErrorResponse.and(
  * EducationAutocompleteResponse
  */
 export const zEducationAutocompleteResponse = z.object({
-  curr_page: z.int().nullish(),
-  data: z.array(z.string()).optional(),
-  has_next: z.boolean().nullish(),
+  curr_page: z.int(),
+  data: z.array(z.string()),
+  has_next: z.boolean(),
 })
 
 /**
- * EducationVerifyResponse
+ * EducationVerifyFailedError
+ *
+ * We couldn't verify your education status.
  */
-export const zEducationVerifyResponse = z.object({
-  token: z.string().nullish(),
-})
+export const zEducationVerifyFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('education_verify_failed'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * EducationVerifyLimitError
@@ -380,27 +427,6 @@ export const zMissingInvitationCodeError = zErrorResponse.and(
 )
 
 /**
- * AccountInterfaceLanguagePayload
- */
-export const zAccountInterfaceLanguagePayload = z.object({
-  interface_language: z.string(),
-})
-
-/**
- * AccountInterfaceThemePayload
- */
-export const zAccountInterfaceThemePayload = z.object({
-  interface_theme: z.enum(['dark', 'light']),
-})
-
-/**
- * AccountNamePayload
- */
-export const zAccountNamePayload = z.object({
-  name: z.string().min(3).max(30),
-})
-
-/**
  * AccountPasswordPayload
  */
 export const zAccountPasswordPayload = z.object({
@@ -434,6 +460,26 @@ export const zInvalidAccountPasswordError = zErrorResponse.and(
 )
 
 /**
+ * PersonalAccessTokenCreatedResponse
+ */
+export const zPersonalAccessTokenCreatedResponse = z.object({
+  created_at: z.iso.datetime(),
+  expires_at: z.iso.datetime().nullable(),
+  id: z.string(),
+  last_used_at: z.iso.datetime().nullable(),
+  name: z.string(),
+  resource_count: z.int(),
+  resource_scope_mode: z.enum(['all', 'none', 'selected']),
+  secret: z.string().nullable(),
+  secret_last_four: z.string(),
+  status: z.enum(['access_issue', 'active', 'expired']),
+  unavailable_count: z.int(),
+  version: z.int(),
+  workspace_count: z.int(),
+  workspace_scope_mode: z.enum(['all', 'none', 'selected']),
+})
+
+/**
  * AccountProfilePatchPayload
  */
 export const zAccountProfilePatchPayload = z
@@ -447,11 +493,29 @@ export const zAccountProfilePatchPayload = z
   .strict()
 
 /**
- * AccountTimezonePayload
+ * EducationVerifyEligibleResponse
  */
-export const zAccountTimezonePayload = z.object({
-  timezone: z.string(),
+export const zEducationVerifyEligibleResponse = z.object({
+  status: z.literal('eligible'),
+  token: z.string(),
 })
+
+/**
+ * EducationVerifyNotEligibleResponse
+ */
+export const zEducationVerifyNotEligibleResponse = z.object({
+  status: z.literal('not_eligible'),
+})
+
+/**
+ * EducationVerifyResponse
+ *
+ * Education verification result: a token for an eligible account, none for an ineligible one.
+ */
+export const zEducationVerifyResponse = z.discriminatedUnion('status', [
+  zEducationVerifyEligibleResponse,
+  zEducationVerifyNotEligibleResponse,
+])
 
 /**
  * AccountIntegrateResponse
@@ -468,6 +532,136 @@ export const zAccountIntegrateResponse = z.object({
  */
 export const zAccountIntegrateListResponse = z.object({
   data: z.array(zAccountIntegrateResponse),
+})
+
+/**
+ * PersonalAccessTokenResourceResponse
+ */
+export const zPersonalAccessTokenResourceResponse = z.object({
+  app_deployments: z.array(z.lazy((): any => zPersonalAccessTokenResourceResponse)).optional(),
+  available: z.boolean(),
+  display_name: z.string(),
+  parent_app_id: z.string().nullish(),
+  reason: z.string().nullable(),
+  resource_id: z.string(),
+  resource_type: z.enum(['app', 'app_deployment', 'dataset']),
+  workspace_id: z.string(),
+  workspace_name: z.string(),
+})
+
+/**
+ * PersonalAccessTokenResourceCandidateResponse
+ */
+export const zPersonalAccessTokenResourceCandidateResponse = z.object({
+  data: z.array(zPersonalAccessTokenResourceResponse),
+  has_more: z.boolean(),
+  next_cursor: z.int().nullable(),
+})
+
+/**
+ * PersonalAccessTokenWorkspaceResponse
+ */
+export const zPersonalAccessTokenWorkspaceResponse = z.object({
+  available: z.boolean(),
+  display_name: z.string(),
+  reason: z.string().nullable(),
+  role: z.string().nullable(),
+  workspace_id: z.string(),
+})
+
+/**
+ * PersonalAccessTokenWorkspaceCandidateResponse
+ */
+export const zPersonalAccessTokenWorkspaceCandidateResponse = z.object({
+  data: z.array(zPersonalAccessTokenWorkspaceResponse),
+  has_more: z.boolean(),
+  next_cursor: z.int().nullable(),
+})
+
+/**
+ * PersonalAccessTokenResponse
+ */
+export const zPersonalAccessTokenResponse = z.object({
+  created_at: z.iso.datetime(),
+  expires_at: z.iso.datetime().nullable(),
+  id: z.string(),
+  last_used_at: z.iso.datetime().nullable(),
+  name: z.string(),
+  resource_count: z.int(),
+  resource_scope_mode: z.enum(['all', 'none', 'selected']),
+  secret_last_four: z.string(),
+  status: z.enum(['access_issue', 'active', 'expired']),
+  unavailable_count: z.int(),
+  version: z.int(),
+  workspace_count: z.int(),
+  workspace_scope_mode: z.enum(['all', 'none', 'selected']),
+})
+
+/**
+ * PersonalAccessTokenListResponse
+ */
+export const zPersonalAccessTokenListResponse = z.object({
+  data: z.array(zPersonalAccessTokenResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
+/**
+ * PersonalAccessTokenDetailResponse
+ */
+export const zPersonalAccessTokenDetailResponse = z.object({
+  resources: z.array(zPersonalAccessTokenResourceResponse),
+  token: zPersonalAccessTokenResponse,
+  workspaces: z.array(zPersonalAccessTokenWorkspaceResponse),
+})
+
+/**
+ * PersonalAccessTokenWorkspaceScopePayload
+ */
+export const zPersonalAccessTokenWorkspaceScopePayload = z.object({
+  mode: z.enum(['all', 'none', 'selected']).optional().default('all'),
+  workspace_ids: z.array(z.uuid()).optional(),
+})
+
+/**
+ * PersonalAccessTokenResourcePayload
+ */
+export const zPersonalAccessTokenResourcePayload = z.object({
+  resource_id: z.uuid(),
+  resource_type: z.enum(['app', 'app_deployment', 'dataset']),
+})
+
+/**
+ * PersonalAccessTokenResourceScopePayload
+ */
+export const zPersonalAccessTokenResourceScopePayload = z.object({
+  mode: z.enum(['all', 'none', 'selected']).optional().default('all'),
+  resources: z.array(zPersonalAccessTokenResourcePayload).optional(),
+})
+
+/**
+ * PersonalAccessTokenCreatePayload
+ */
+export const zPersonalAccessTokenCreatePayload = z.object({
+  expiration: z
+    .enum(['180_days', '30_days', '365_days', '90_days', 'never'])
+    .optional()
+    .default('90_days'),
+  name: z.string().min(1).max(255),
+  resource_scope: zPersonalAccessTokenResourceScopePayload.optional(),
+  workspace_scope: zPersonalAccessTokenWorkspaceScopePayload.optional(),
+})
+
+/**
+ * PersonalAccessTokenUpdatePayload
+ */
+export const zPersonalAccessTokenUpdatePayload = z.object({
+  name: z.string().min(1).max(255),
+  resource_scope: zPersonalAccessTokenResourceScopePayload.nullish(),
+  version: z.int().gte(1),
+  workspace_scope: zPersonalAccessTokenWorkspaceScopePayload.nullish(),
 })
 
 /**
@@ -495,13 +689,6 @@ export const zGetAccountAvatarQuery = z.object({
  * Success
  */
 export const zGetAccountAvatarResponse = zAvatarUrlResponse
-
-export const zPostAccountAvatarBody = zAccountAvatarPayload
-
-/**
- * Success
- */
-export const zPostAccountAvatarResponse = zAccountResponse
 
 export const zPostAccountChangeEmailBody = zChangeEmailSendPayload
 
@@ -590,33 +777,87 @@ export const zPostAccountInitResponse = zSimpleResultResponse
  */
 export const zGetAccountIntegratesResponse = zAccountIntegrateListResponse
 
-export const zPostAccountInterfaceLanguageBody = zAccountInterfaceLanguagePayload
-
-/**
- * Success
- */
-export const zPostAccountInterfaceLanguageResponse = zAccountResponse
-
-export const zPostAccountInterfaceThemeBody = zAccountInterfaceThemePayload
-
-/**
- * Success
- */
-export const zPostAccountInterfaceThemeResponse = zAccountResponse
-
-export const zPostAccountNameBody = zAccountNamePayload
-
-/**
- * Success
- */
-export const zPostAccountNameResponse = zAccountResponse
-
 export const zPostAccountPasswordBody = zAccountPasswordPayload
 
 /**
  * Success
  */
 export const zPostAccountPasswordResponse = zAccountResponse
+
+export const zGetAccountPersonalAccessTokenResourcesQuery = z.object({
+  cursor: z.int().gte(0).optional().default(0),
+  keyword: z.string().max(100).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  resource_type: z.enum(['app', 'dataset']).optional(),
+})
+
+/**
+ * Available resources
+ */
+export const zGetAccountPersonalAccessTokenResourcesResponse =
+  zPersonalAccessTokenResourceCandidateResponse
+
+export const zGetAccountPersonalAccessTokenWorkspacesQuery = z.object({
+  cursor: z.int().gte(0).optional().default(0),
+  keyword: z.string().max(100).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+})
+
+/**
+ * Available workspaces
+ */
+export const zGetAccountPersonalAccessTokenWorkspacesResponse =
+  zPersonalAccessTokenWorkspaceCandidateResponse
+
+export const zGetAccountPersonalAccessTokensQuery = z.object({
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
+})
+
+/**
+ * Personal access tokens
+ */
+export const zGetAccountPersonalAccessTokensResponse = zPersonalAccessTokenListResponse
+
+export const zPostAccountPersonalAccessTokensBody = zPersonalAccessTokenCreatePayload
+
+export const zPostAccountPersonalAccessTokensHeaders = z.object({
+  'Idempotency-Key': z.string().max(128).optional(),
+})
+
+/**
+ * Personal access token created
+ */
+export const zPostAccountPersonalAccessTokensResponse = zPersonalAccessTokenCreatedResponse
+
+export const zDeleteAccountPersonalAccessTokensByTokenIdPath = z.object({
+  token_id: z.uuid(),
+})
+
+/**
+ * Personal access token revoked
+ */
+export const zDeleteAccountPersonalAccessTokensByTokenIdResponse = z.void()
+
+export const zGetAccountPersonalAccessTokensByTokenIdPath = z.object({
+  token_id: z.uuid(),
+})
+
+/**
+ * Saved scopes
+ */
+export const zGetAccountPersonalAccessTokensByTokenIdResponse = zPersonalAccessTokenDetailResponse
+
+export const zPatchAccountPersonalAccessTokensByTokenIdBody = zPersonalAccessTokenUpdatePayload
+
+export const zPatchAccountPersonalAccessTokensByTokenIdPath = z.object({
+  token_id: z.uuid(),
+})
+
+/**
+ * Updated scopes
+ */
+export const zPatchAccountPersonalAccessTokensByTokenIdResponse = zPersonalAccessTokenDetailResponse
 
 /**
  * Success
@@ -629,10 +870,3 @@ export const zPatchAccountProfileBody = zAccountProfilePatchPayload
  * Success
  */
 export const zPatchAccountProfileResponse = zAccountResponse
-
-export const zPostAccountTimezoneBody = zAccountTimezonePayload
-
-/**
- * Success
- */
-export const zPostAccountTimezoneResponse = zAccountResponse

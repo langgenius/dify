@@ -1,9 +1,9 @@
 import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { OperationKey } from '@orpc/tanstack-query'
 import type { RetrievalConfig } from '@/types/app'
+import { zProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { QueryClient } from '@tanstack/react-query'
 import { act } from '@testing-library/react'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   ChunkingMode,
   DataSourceType,
@@ -13,7 +13,8 @@ import {
 import { PermissionLevel } from '@/models/permission'
 import { consoleQuery } from '@/service/console'
 import { updateDatasetSetting } from '@/service/datasets'
-import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { createCatalogModelFixture, createModelCatalogFixture } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderHook as renderHookWithConsoleState } from '@/test/console/render'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
@@ -32,10 +33,59 @@ const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
 // Mock contexts
 const mockMutateDatasets = vi.fn()
 
-const renderHook = (callback: () => ReturnType<typeof useFormState>) =>
-  renderHookWithConsoleState(callback, {
-    wrapper: createAccountProfileQueryWrapper({ id: 'user-1' }),
+const renderHook = (callback: () => ReturnType<typeof useFormState>) => {
+  const { queryClient, wrapper } = createConsoleQueryWrapper({ accountProfile: { id: 'user-1' } })
+  for (const modelType of [ModelTypeEnum.rerank, ModelTypeEnum.textEmbedding]) {
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+        input: { params: { model_type: modelType } },
+      }),
+      {
+        data: [
+          zProviderWithModelsResponse.parse(
+            createModelCatalogFixture({
+              provider: 'langgenius/xinference/xinference',
+              models: [
+                createCatalogModelFixture({
+                  model: 'bge-reranker-v2-m3',
+                  model_type: modelType,
+                  features: [],
+                }),
+              ],
+            }),
+          ),
+        ],
+      },
+    )
+  }
+  queryClient.setQueryData(consoleQuery.workspaces.current.members.get.queryKey({ input: {} }), {
+    accounts: [
+      {
+        id: 'user-1',
+        name: 'User 1',
+        email: 'user1@example.com',
+        role: 'owner',
+        avatar: '',
+        avatar_url: '',
+        last_login_at: 0,
+        created_at: 0,
+        status: 'active',
+      },
+      {
+        id: 'user-2',
+        name: 'User 2',
+        email: 'user2@example.com',
+        role: 'admin',
+        avatar: '',
+        avatar_url: '',
+        last_login_at: 0,
+        created_at: 0,
+        status: 'active',
+      },
+    ],
   })
+  return renderHookWithConsoleState(callback, { wrapper })
+}
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -168,17 +218,20 @@ describe('useFormState', () => {
       })
 
       await act(async () => result.current.handleSave())
-      expect(updateDatasetSetting).toHaveBeenCalledWith({
-        datasetId: 'dataset-1',
-        body: expect.objectContaining({
-          icon_info: {
-            icon_type: 'emoji',
-            icon: '🎉',
-            icon_background: '#FF0000',
-            icon_url: undefined,
-          },
-        }),
-      })
+      expect(updateDatasetSetting).toHaveBeenCalledWith(
+        {
+          datasetId: 'dataset-1',
+          body: expect.objectContaining({
+            icon_info: {
+              icon_type: 'emoji',
+              icon: '🎉',
+              icon_background: '#FF0000',
+              icon_url: undefined,
+            },
+          }),
+        },
+        { silent: true },
+      )
     })
 
     it('persists the uploaded image icon', async () => {
@@ -193,17 +246,20 @@ describe('useFormState', () => {
       })
 
       await act(async () => result.current.handleSave())
-      expect(updateDatasetSetting).toHaveBeenCalledWith({
-        datasetId: 'dataset-1',
-        body: expect.objectContaining({
-          icon_info: {
-            icon_type: 'image',
-            icon: 'file-123',
-            icon_background: undefined,
-            icon_url: 'https://example.com/icon.png',
-          },
-        }),
-      })
+      expect(updateDatasetSetting).toHaveBeenCalledWith(
+        {
+          datasetId: 'dataset-1',
+          body: expect.objectContaining({
+            icon_info: {
+              icon_type: 'image',
+              icon: 'file-123',
+              icon_background: undefined,
+              icon_url: 'https://example.com/icon.png',
+            },
+          }),
+        },
+        { silent: true },
+      )
     })
   })
 
@@ -225,16 +281,19 @@ describe('useFormState', () => {
       })
 
       await act(async () => result.current.handleSave())
-      expect(updateDatasetSetting).toHaveBeenCalledWith({
-        datasetId: 'dataset-1',
-        body: expect.objectContaining({
-          summary_index_setting: expect.objectContaining({
-            enable: true,
-            model_provider_name: 'openai',
-            model_name: 'gpt-4',
+      expect(updateDatasetSetting).toHaveBeenCalledWith(
+        {
+          datasetId: 'dataset-1',
+          body: expect.objectContaining({
+            summary_index_setting: expect.objectContaining({
+              enable: true,
+              model_provider_name: 'openai',
+              model_name: 'gpt-4',
+            }),
           }),
-        }),
-      })
+        },
+        { silent: true },
+      )
     })
   })
 
@@ -277,14 +336,17 @@ describe('useFormState', () => {
         await result.current.handleSave()
       })
 
-      expect(updateDatasetSetting).toHaveBeenCalledWith({
-        datasetId: 'dataset-1',
-        body: expect.objectContaining({
-          name: 'Test Dataset',
-          description: 'Test description',
-          permission: PermissionLevel.onlyMe,
-        }),
-      })
+      expect(updateDatasetSetting).toHaveBeenCalledWith(
+        {
+          datasetId: 'dataset-1',
+          body: expect.objectContaining({
+            name: 'Test Dataset',
+            description: 'Test description',
+            permission: PermissionLevel.onlyMe,
+          }),
+        },
+        { silent: true },
+      )
       expect(mockMutateDatasets).toHaveBeenCalledTimes(1)
       expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: datasetListKey })
     })
@@ -331,15 +393,18 @@ describe('useFormState', () => {
         await result.current.handleSave()
       })
 
-      expect(updateDatasetSetting).toHaveBeenCalledWith({
-        datasetId: 'dataset-1',
-        body: expect.objectContaining({
-          partial_member_list: expect.arrayContaining([
-            expect.objectContaining({ user_id: 'user-1' }),
-            expect.objectContaining({ user_id: 'user-2' }),
-          ]),
-        }),
-      })
+      expect(updateDatasetSetting).toHaveBeenCalledWith(
+        {
+          datasetId: 'dataset-1',
+          body: expect.objectContaining({
+            partial_member_list: expect.arrayContaining([
+              expect.objectContaining({ user_id: 'user-1' }),
+              expect.objectContaining({ user_id: 'user-2' }),
+            ]),
+          }),
+        },
+        { silent: true },
+      )
     })
   })
 
@@ -375,19 +440,22 @@ describe('useFormState', () => {
       })
 
       // Verify that weights were included and embedding model info was added
-      expect(updateDatasetSetting).toHaveBeenCalledWith({
-        datasetId: 'dataset-1',
-        body: expect.objectContaining({
-          retrieval_model: expect.objectContaining({
-            weights: expect.objectContaining({
-              vector_setting: expect.objectContaining({
-                embedding_provider_name: 'openai',
-                embedding_model_name: 'text-embedding-ada-002',
+      expect(updateDatasetSetting).toHaveBeenCalledWith(
+        {
+          datasetId: 'dataset-1',
+          body: expect.objectContaining({
+            retrieval_model: expect.objectContaining({
+              weights: expect.objectContaining({
+                vector_setting: expect.objectContaining({
+                  embedding_provider_name: 'openai',
+                  embedding_model_name: 'text-embedding-ada-002',
+                }),
               }),
             }),
           }),
-        }),
-      })
+        },
+        { silent: true },
+      )
     })
 
     it('should send the configured score threshold when score_threshold_enabled is true', async () => {
@@ -406,15 +474,18 @@ describe('useFormState', () => {
         await result.current.handleSave()
       })
 
-      expect(updateDatasetSetting).toHaveBeenCalledWith({
-        datasetId: 'dataset-1',
-        body: expect.objectContaining({
-          retrieval_model: expect.objectContaining({
-            score_threshold_enabled: true,
-            score_threshold: 0.62,
+      expect(updateDatasetSetting).toHaveBeenCalledWith(
+        {
+          datasetId: 'dataset-1',
+          body: expect.objectContaining({
+            retrieval_model: expect.objectContaining({
+              score_threshold_enabled: true,
+              score_threshold: 0.62,
+            }),
           }),
-        }),
-      })
+        },
+        { silent: true },
+      )
     })
   })
 
@@ -449,15 +520,18 @@ describe('useFormState', () => {
         await result.current.handleSave()
       })
 
-      expect(updateDatasetSetting).toHaveBeenCalledWith({
-        datasetId: 'dataset-1',
-        body: expect.objectContaining({
-          retrieval_model: expect.objectContaining({
-            search_method: RETRIEVE_METHOD.hybrid,
-            reranking_enable: true,
+      expect(updateDatasetSetting).toHaveBeenCalledWith(
+        {
+          datasetId: 'dataset-1',
+          body: expect.objectContaining({
+            retrieval_model: expect.objectContaining({
+              search_method: RETRIEVE_METHOD.hybrid,
+              reranking_enable: true,
+            }),
           }),
-        }),
-      })
+        },
+        { silent: true },
+      )
     })
 
     it('should leave reranking_enable untouched when Hybrid Search uses weighted score', async () => {
@@ -475,14 +549,17 @@ describe('useFormState', () => {
         await result.current.handleSave()
       })
 
-      expect(updateDatasetSetting).toHaveBeenCalledWith({
-        datasetId: 'dataset-1',
-        body: expect.objectContaining({
-          retrieval_model: expect.objectContaining({
-            reranking_enable: false,
+      expect(updateDatasetSetting).toHaveBeenCalledWith(
+        {
+          datasetId: 'dataset-1',
+          body: expect.objectContaining({
+            retrieval_model: expect.objectContaining({
+              reranking_enable: false,
+            }),
           }),
-        }),
-      })
+        },
+        { silent: true },
+      )
     })
 
     it('should leave reranking_enable untouched for semantic search', async () => {
@@ -500,14 +577,17 @@ describe('useFormState', () => {
         await result.current.handleSave()
       })
 
-      expect(updateDatasetSetting).toHaveBeenCalledWith({
-        datasetId: 'dataset-1',
-        body: expect.objectContaining({
-          retrieval_model: expect.objectContaining({
-            reranking_enable: false,
+      expect(updateDatasetSetting).toHaveBeenCalledWith(
+        {
+          datasetId: 'dataset-1',
+          body: expect.objectContaining({
+            retrieval_model: expect.objectContaining({
+              reranking_enable: false,
+            }),
           }),
-        }),
-      })
+        },
+        { silent: true },
+      )
     })
   })
 
@@ -539,18 +619,21 @@ describe('useFormState', () => {
         await result.current.handleSave()
       })
 
-      expect(updateDatasetSetting).toHaveBeenCalledWith({
-        datasetId: 'dataset-1',
-        body: expect.objectContaining({
-          external_knowledge_id: 'ext-123',
-          external_knowledge_api_id: 'api-456',
-          external_retrieval_model: expect.objectContaining({
-            top_k: expect.any(Number),
-            score_threshold: expect.any(Number),
-            score_threshold_enabled: expect.any(Boolean),
+      expect(updateDatasetSetting).toHaveBeenCalledWith(
+        {
+          datasetId: 'dataset-1',
+          body: expect.objectContaining({
+            external_knowledge_id: 'ext-123',
+            external_knowledge_api_id: 'api-456',
+            external_retrieval_model: expect.objectContaining({
+              top_k: expect.any(Number),
+              score_threshold: expect.any(Number),
+              score_threshold_enabled: expect.any(Boolean),
+            }),
           }),
-        }),
-      })
+        },
+        { silent: true },
+      )
     })
 
     it('should use correct external retrieval settings', async () => {
@@ -570,68 +653,19 @@ describe('useFormState', () => {
         await result.current.handleSave()
       })
 
-      expect(updateDatasetSetting).toHaveBeenCalledWith({
-        datasetId: 'dataset-1',
-        body: expect.objectContaining({
-          external_retrieval_model: {
-            top_k: 10,
-            score_threshold: 0.9,
-            score_threshold_enabled: false,
-          },
-        }),
-      })
+      expect(updateDatasetSetting).toHaveBeenCalledWith(
+        {
+          datasetId: 'dataset-1',
+          body: expect.objectContaining({
+            external_retrieval_model: {
+              top_k: 10,
+              score_threshold: 0.9,
+              score_threshold_enabled: false,
+            },
+          }),
+        },
+        { silent: true },
+      )
     })
   })
-})
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useQuery: (options: {
-      queryKey: OperationKey<
-        'query',
-        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
-      >
-    }) => {
-      if (options.queryKey[0].join('.') === 'console.workspaces.current.members.get')
-        return (() => ({
-          data: {
-            accounts: [
-              {
-                id: 'user-1',
-                name: 'User 1',
-                email: 'user1@example.com',
-                role: 'owner',
-                avatar: '',
-                avatar_url: '',
-                last_login_at: '',
-                created_at: '',
-                status: 'active',
-              },
-              {
-                id: 'user-2',
-                name: 'User 2',
-                email: 'user2@example.com',
-                role: 'admin',
-                avatar: '',
-                avatar_url: '',
-                last_login_at: '',
-                created_at: '',
-                status: 'active',
-              },
-            ],
-          },
-        }))()
-      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
-      return {
-        data: [
-          {
-            provider: 'langgenius/xinference/xinference',
-            models: [{ model: 'bge-reranker-v2-m3', features: [] }],
-          },
-        ],
-      }
-    },
-  }
 })

@@ -19,14 +19,14 @@ const SortHeader: FC<SortHeaderProps> = React.memo(
     return (
       <button
         type="button"
-        className="flex items-center bg-transparent p-0 text-left hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
+        className="flex items-center bg-transparent p-0 text-start hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
         onClick={() => onSort(field)}
       >
         {label}
         <span
           aria-hidden="true"
           className={cn(
-            'ml-0.5 i-ri-arrow-down-line size-3 transition-all',
+            'ms-0.5 i-ri-arrow-down-line size-3 transition-all',
             isActive ? 'text-text-tertiary' : 'text-text-disabled',
             isActive && !isDesc ? 'rotate-180' : '',
           )}

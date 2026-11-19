@@ -20,6 +20,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.model_manager import ModelManager
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.utils.model_invocation_utils import InvokeModelError, ModelInvocationUtils
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 from graphon.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
@@ -29,7 +31,7 @@ from graphon.model_runtime.errors.invoke import (
     InvokeServerUnavailableError,
 )
 from models.tools import ToolModelInvoke
-from tests.unit_tests.core.model_fixtures import make_model_config, make_model_instance
+from tests.helpers.unit.core.model_fixtures import make_model_config, make_model_instance
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 USER_ID = "22222222-2222-2222-2222-222222222222"
@@ -51,7 +53,12 @@ CALLER_ID = "33333333-3333-3333-3333-333333333333"
         "schema-context-size",
     ],
 )
-def test_get_max_llm_context_tokens_branches(model_exists, properties, expected, error_match):
+def test_get_max_llm_context_tokens_branches(
+    model_exists: bool,
+    properties: dict[ModelPropertyKey, object] | None,
+    expected: int | None,
+    error_match: str | None,
+) -> None:
     manager = ModelManager.for_tenant("tenant", user_id="user-1")
     model_instance = make_model_instance(provider="provider", model="model-a")
     schema = make_model_config(provider="provider", model="model-a", mode="chat").model_schema
@@ -76,7 +83,7 @@ def test_get_max_llm_context_tokens_branches(model_exists, properties, expected,
     mock_factory.assert_called_once_with(tenant_id="tenant", user_id="user-1")
 
 
-def test_calculate_tokens_handles_missing_model():
+def test_calculate_tokens_handles_missing_model() -> None:
     manager = ModelManager.for_tenant("tenant")
     with (
         patch("core.tools.utils.model_invocation_utils.ModelManager.for_tenant", return_value=manager) as mock_factory,
@@ -87,7 +94,9 @@ def test_calculate_tokens_handles_missing_model():
     mock_factory.assert_called_once_with(tenant_id="tenant", user_id=None)
 
 
-def test_invoke_success_and_error_mappings(sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]):
+def test_invoke_success_and_error_mappings(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
     model_instance = make_model_instance(provider="provider", model="model-a")
     result = LLMResult(
         model="model-a",
@@ -176,7 +185,7 @@ def test_invoke_success_and_error_mappings(sqlite_session: Session, sqlite_sessi
         "generic-error",
     ],
 )
-def test_invoke_error_mappings(exc, expected, sqlite_session: Session):
+def test_invoke_error_mappings(exc: Exception, expected: str, sqlite_session: Session) -> None:
     model_instance = make_model_instance(provider="provider", model="model-a")
     manager = ModelManager.for_tenant(TENANT_ID, user_id=USER_ID)
 
@@ -204,7 +213,3 @@ def test_invoke_error_mappings(exc, expected, sqlite_session: Session):
     assert persisted.prompt_tokens == 5
     assert persisted.answer_tokens == 0
     mock_factory.assert_called_once_with(tenant_id=TENANT_ID, user_id=USER_ID)
-
-
-from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from graphon.model_runtime.entities.message_entities import AssistantPromptMessage

@@ -7,6 +7,7 @@ from uuid import UUID
 
 from libs.pagination import PaginatedResult
 from machinery.context import AppRequestContext, RequestContext
+from machinery.scope import UNRESTRICTED, scope_admits
 from models.enums import AppStatus
 from services.app.access import AppAccessFilter
 from services.app_definition_query_service import AppParameterConfig
@@ -66,9 +67,7 @@ class AppDiscoveryService:
 
     def list_apps(self, context: RequestContext, query: AppDiscoveryQuery) -> PaginatedResult[AppDiscoveryEntry]:
         access = (
-            AppAccessFilter(set(context.resource_app_ids), can_manage_own_apps=False)
-            if context.resource_app_ids is not None
-            else self._access.visibility(context)
+            AppAccessFilter.unrestricted() if context.resource_app_ids is not None else self._access.visibility(context)
         )
         try:
             app_id = str(UUID(query.name)) if query.name else None
@@ -79,7 +78,9 @@ class AppDiscoveryService:
             app = self._apps.find_visible_app(app_id, context.active_workspace_id)
             if (
                 app is None
+                or (context.resource_app_ids is not None and app.id not in context.resource_app_ids)
                 or app.mode not in SUPPORTED_APP_TYPES
+                or not scope_admits(context.personal_app_ids, app.id)
                 or not access.is_app_accessible(app.id, app.maintainer, context.account_id)
             ):
                 return PaginatedResult(items=[], total=0, page=query.page, per_page=query.limit)
@@ -93,9 +94,12 @@ class AppDiscoveryService:
                 "name": query.name,
                 "status": AppStatus.NORMAL,
                 "openapi_visible": True,
+                "resource_ids": None if context.personal_app_ids is UNRESTRICTED else list(context.personal_app_ids),
             }
         )
         access.apply_to_params(params)
+        if context.resource_app_ids is not None:
+            params.resource_app_ids = sorted(context.resource_app_ids)
         result = self._apps.query_apps(context.account_id, context.active_workspace_id, params)
         return self._page(
             [app for app in result.items if app.mode in SUPPORTED_APP_TYPES] if result else [],

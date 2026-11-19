@@ -15,7 +15,7 @@ import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { RiArrowRightUpLine, RiPlayCircleLine, RiTerminalBoxLine } from '@remixicon/react'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
-import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
@@ -43,7 +43,7 @@ import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { usePublishWorkflow } from '@/service/use-workflow'
+import { getErrorMessage } from '@/utils/error-message'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import { RAG_PIPELINE_PUBLISH_HOTKEY } from '../hotkeys'
 
@@ -85,7 +85,11 @@ export function Popup({
   const [published, setPublished] = useState(false)
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
-  const { mutateAsync: publishWorkflow } = usePublishWorkflow()
+  const { mutateAsync: publishWorkflow } = useMutation(
+    consoleQuery.rag.pipelines.byPipelineId.workflows.publish.post.mutationOptions({
+      context: { silent: true },
+    }),
+  )
   const workflowStore = useWorkflowStore()
   const { data: isAllowPublishAsCustomKnowledgePipelineTemplate } = useQuery(
     consoleQuery.features.get.queryOptions({
@@ -107,10 +111,6 @@ export function Popup({
   const showConfirm = onShowConfirm ?? showLocalConfirm
   const hideConfirm = onHideConfirm ?? hideLocalConfirm
   const [publishing, { setFalse: hidePublishing, setTrue: showPublishing }] = useBoolean(false)
-  const queryClient = useQueryClient()
-  const invalidDatasetList = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
-  }, [queryClient])
   const handleHideConfirm = useCallback(() => {
     hideConfirm()
     onRequestClose?.()
@@ -129,9 +129,7 @@ export function Popup({
           startedPublishing = true
           showPublishing()
           const res = await publishWorkflow({
-            url: `/rag/pipelines/${pipelineId}/workflows/publish`,
-            title: params?.title || '',
-            releaseNotes: params?.releaseNotes || '',
+            params: { pipeline_id: pipelineId },
           })
           setPublished(true)
           trackEvent('app_published_time', {
@@ -163,16 +161,13 @@ export function Popup({
             )
             workflowStore.getState().setPublishedAt(res.created_at)
             mutateDatasetRes?.()
-            queryClient.invalidateQueries({
-              queryKey: consoleQuery.rag.pipelines.byPipelineId.workflows.publish.get.queryKey({
-                input: { params: { pipeline_id: pipelineId || '' } },
-              }),
-            })
-            invalidDatasetList()
           }
         }
-      } catch {
-        toast.error(t(($) => $['publishPipeline.error.message'], { ns: 'datasetPipeline' }))
+      } catch (error) {
+        toast.error(
+          getErrorMessage(error) ??
+            t(($) => $['publishPipeline.error.message'], { ns: 'datasetPipeline' }),
+        )
       } finally {
         if (startedPublishing) hidePublishing()
         if (confirmVisible) handleHideConfirm()
@@ -191,8 +186,6 @@ export function Popup({
       t,
       workflowStore,
       mutateDatasetRes,
-      queryClient,
-      invalidDatasetList,
       hidePublishing,
       handleHideConfirm,
     ],

@@ -21,7 +21,7 @@ from services.plugin_file_upload_service import (
     PluginFileUploadService,
     PluginUploadUserFrom,
 )
-from tests.unit_tests.model_factories import make_account, make_end_user, make_tenant
+from tests.helpers.unit.model_factories import make_account, make_end_user, make_tenant
 
 
 @pytest.fixture

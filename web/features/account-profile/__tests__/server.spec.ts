@@ -1,3 +1,5 @@
+// @vitest-environment node
+
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import { QueryClient } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -65,13 +67,10 @@ describe('serverUserProfileQueryOptions', () => {
         currentEnv: 'DEVELOPMENT',
       },
     })
-    expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:5001/console/api/account/profile',
-      expect.objectContaining({
-        method: 'GET',
-        cache: 'no-store',
-        headers: expect.any(Headers),
-      }),
-    )
+    const [request, init] = fetchMock.mock.calls[0]!
+    expect(request.url).toBe('http://localhost:5001/console/api/account/profile')
+    expect(request.method).toBe('GET')
+    expect(request.headers.get('cookie')).toBe('session=abc')
+    expect(init).toMatchObject({ cache: 'no-store' })
   })
 })

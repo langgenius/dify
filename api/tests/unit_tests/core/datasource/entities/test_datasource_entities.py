@@ -1,5 +1,9 @@
-import pytest
+from collections.abc import Callable, Generator
 
+import pytest
+from pytest_mock import MockerFixture
+
+from core.datasource.datasource_manager import DatasourceManager
 from core.datasource.entities.datasource_entities import (
     DatasourceEntity,
     DatasourceIdentity,
@@ -21,6 +25,7 @@ from core.datasource.entities.datasource_entities import (
     OnlineDriveBrowseFilesRequest,
     OnlineDriveBrowseFilesResponse,
     OnlineDriveDownloadFileRequest,
+    OnlineDriveDownloadMessage,
     OnlineDriveFile,
     OnlineDriveFileBucket,
     WebsiteCrawlMessage,
@@ -28,10 +33,135 @@ from core.datasource.entities.datasource_entities import (
     WebSiteInfoDetail,
 )
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_entities import ToolLabelEnum
+from core.tools.entities.tool_entities import ToolInvokeMessage, ToolLabelEnum
+from graphon.node_events import StreamCompletedEvent
+from graphon.runtime import VariablePool
 
 
-def test_datasource_provider_type():
+def test_online_drive_remote_metadata_survives_runtime_serialization() -> None:
+    response = OnlineDriveBrowseFilesResponse.model_validate(
+        {
+            "result": [
+                {
+                    "files": [
+                        {
+                            "id": "file-1",
+                            "name": "a.pdf",
+                            "size": 10,
+                            "type": "file",
+                            "remote_metadata": {
+                                "version_id": "900719925474099312345",
+                                "etag": '"opaque-2"',
+                                "checksum": {"algorithm": "sha256", "value": "A" * 64},
+                                "modified_time": "2026-09-09T00:00:00Z",
+                                "credentials": "must not pass through",
+                            },
+                        }
+                    ]
+                }
+            ]
+        }
+    )
+    remote = response.model_dump()["result"][0]["files"][0]["remote_metadata"]
+    assert remote == {
+        "version_id": "900719925474099312345",
+        "etag": '"opaque-2"',
+        "checksum": {"algorithm": "sha256", "value": "a" * 64},
+        "modified_time": "2026-09-09T00:00:00Z",
+    }
+
+
+@pytest.mark.parametrize(
+    "metadata",
+    [
+        None,
+        [],
+        "bad",
+        {"version_id": "null"},
+        {"etag": 'W/"weak"'},
+        {"etag": "bad\nheader"},
+        {"etag": "x" * 1025},
+        {"checksum": []},
+        {"checksum": {"algorithm": "md5", "value": "a" * 31}},
+        {"checksum": {"algorithm": "sha256", "value": "not-hex".ljust(64, "x")}},
+        {"modified_time": "2026-13-09T00:00:00Z"},
+    ],
+)
+def test_online_drive_optional_metadata_does_not_break_legacy_files(metadata: dict[str, object] | None) -> None:
+    file = OnlineDriveFile.model_validate(
+        {
+            "id": "f1",
+            "name": "a.pdf",
+            "size": 10,
+            "type": "file",
+            "remote_metadata": metadata,
+        }
+    )
+    assert file.remote_metadata is None
+    assert file.id == "f1"
+
+
+def test_online_drive_remote_metadata_keeps_valid_hints_when_siblings_are_invalid() -> None:
+    file = OnlineDriveFile.model_validate(
+        {
+            "id": "f1",
+            "name": "a.pdf",
+            "size": 10,
+            "type": "file",
+            "remote_metadata": {
+                "version_id": "v2",
+                "etag": 'W/"weak"',
+                "checksum": {"algorithm": "sha256", "value": "bad"},
+                "modified_time": "not-a-time",
+            },
+        }
+    )
+
+    assert file.remote_metadata == {"version_id": "v2"}
+
+
+def test_online_drive_download_receipt_uses_the_same_bounded_wire_contract() -> None:
+    message = OnlineDriveDownloadMessage.model_validate(
+        {
+            "type": "blob",
+            "message": {"blob": "YQ=="},
+            "meta": {
+                "file_name": "a.pdf",
+                "remote_metadata": {
+                    "version_id": "download-v2",
+                    "etag": '"opaque"',
+                    "checksum": {"algorithm": "md5", "value": "A" * 32},
+                    "modified_time": "invalid",
+                    "credentials": "must not pass through",
+                },
+            },
+        }
+    )
+
+    assert message.meta == {
+        "file_name": "a.pdf",
+        "remote_metadata": {
+            "version_id": "download-v2",
+            "etag": '"opaque"',
+            "checksum": {"algorithm": "md5", "value": "a" * 32},
+        },
+    }
+
+
+def test_generic_datasource_message_does_not_apply_online_drive_metadata_contract() -> None:
+    metadata = {"custom": "online-document-value", "credentials": "opaque-to-the-generic-model"}
+    message = DatasourceMessage.model_validate(
+        {
+            "type": "text",
+            "message": {"text": "online document content"},
+            "meta": {"remote_metadata": metadata},
+        }
+    )
+
+    assert message.meta == {"remote_metadata": metadata}
+
+
+def test_datasource_provider_type() -> None:
     assert DatasourceProviderType.value_of("online_document") == DatasourceProviderType.ONLINE_DOCUMENT
     assert DatasourceProviderType.value_of("local_file") == DatasourceProviderType.LOCAL_FILE
 
@@ -39,7 +169,7 @@ def test_datasource_provider_type():
         DatasourceProviderType.value_of("invalid")
 
 
-def test_datasource_parameter_type():
+def test_datasource_parameter_type() -> None:
     param_type = DatasourceParameter.DatasourceParameterType.STRING
     assert param_type.as_normal_type() == "string"
     assert param_type.cast_value("test") == "test"
@@ -48,7 +178,7 @@ def test_datasource_parameter_type():
     assert param_type.cast_value("123") == 123
 
 
-def test_datasource_parameter():
+def test_datasource_parameter() -> None:
     param = DatasourceParameter.get_simple_instance(
         name="test_param",
         typ=DatasourceParameter.DatasourceParameterType.STRING,
@@ -81,7 +211,7 @@ def test_datasource_parameter():
     assert DatasourceParameter.DatasourceParameterType.FILES.cast_value(["f1", "f2"]) == ["f1", "f2"]
 
 
-def test_datasource_identity():
+def test_datasource_identity() -> None:
     label = I18nObject(en_US="label", zh_Hans="标签")
     identity = DatasourceIdentity(author="author", name="name", label=label, provider="provider", icon="icon")
     assert identity.author == "author"
@@ -91,7 +221,7 @@ def test_datasource_identity():
     assert identity.icon == "icon"
 
 
-def test_datasource_entity():
+def test_datasource_entity() -> None:
     label = I18nObject(en_US="label", zh_Hans="标签")
     identity = DatasourceIdentity(author="author", name="name", label=label, provider="provider")
     description = I18nObject(en_US="desc", zh_Hans="描述")
@@ -108,7 +238,7 @@ def test_datasource_entity():
     assert entity_with_params.parameters == [param]
 
 
-def test_datasource_provider_identity(config_overrides):
+def test_datasource_provider_identity(config_overrides: Callable[..., None]) -> None:
     label = I18nObject(en_US="label", zh_Hans="标签")
     description = I18nObject(en_US="desc", zh_Hans="描述")
     identity = DatasourceProviderIdentity(
@@ -140,7 +270,7 @@ def test_datasource_provider_identity(config_overrides):
     assert url.startswith("/console/api/workspaces/current/plugin/icon")
 
 
-def test_datasource_provider_entity():
+def test_datasource_provider_entity() -> None:
     label = I18nObject(en_US="label", zh_Hans="标签")
     description = I18nObject(en_US="desc", zh_Hans="描述")
     identity = DatasourceProviderIdentity(
@@ -158,7 +288,7 @@ def test_datasource_provider_entity():
     assert entity.credentials_schema == []
 
 
-def test_datasource_provider_entity_with_plugin():
+def test_datasource_provider_entity_with_plugin() -> None:
     label = I18nObject(en_US="label", zh_Hans="标签")
     description = I18nObject(en_US="desc", zh_Hans="描述")
     identity = DatasourceProviderIdentity(
@@ -171,7 +301,7 @@ def test_datasource_provider_entity_with_plugin():
     assert entity.datasources == []
 
 
-def test_datasource_invoke_meta():
+def test_datasource_invoke_meta() -> None:
     meta = DatasourceInvokeMeta(time_cost=1.5, error="some error", tool_config={"k": "v"})
     assert meta.time_cost == 1.5
     assert meta.error == "some error"
@@ -191,7 +321,7 @@ def test_datasource_invoke_meta():
     assert error_meta.tool_config == {}
 
 
-def test_datasource_label():
+def test_datasource_label() -> None:
     label_obj = I18nObject(en_US="label", zh_Hans="标签")
     ds_label = DatasourceLabel(name="name", label=label_obj, icon="icon")
     assert ds_label.name == "name"
@@ -199,7 +329,7 @@ def test_datasource_label():
     assert ds_label.icon == "icon"
 
 
-def test_online_document_models():
+def test_online_document_models() -> None:
     page = OnlineDocumentPage(
         page_id="p1",
         page_name="name",
@@ -226,7 +356,7 @@ def test_online_document_models():
     assert resp.result == content
 
 
-def test_website_crawl_models():
+def test_website_crawl_models() -> None:
     req = GetWebsiteCrawlRequest(crawl_parameters={"url": "http://test.com"})
     assert req.crawl_parameters == {"url": "http://test.com"}
 
@@ -245,12 +375,18 @@ def test_website_crawl_models():
     assert msg_default.result.web_info_list == []
 
 
-def test_online_drive_models():
+def test_online_drive_models() -> None:
     file = OnlineDriveFile(id="f1", name="file.txt", size=100, type="file")
     assert file.name == "file.txt"
 
     bucket = OnlineDriveFileBucket(bucket="b1", files=[file], is_truncated=False, next_page_parameters=None)
     assert bucket.bucket == "b1"
+
+    req_default = OnlineDriveBrowseFilesRequest()
+    assert req_default.bucket is None
+    assert req_default.prefix == ""
+    assert req_default.max_keys == 20
+    assert req_default.next_page_parameters is None
 
     req = OnlineDriveBrowseFilesRequest(bucket="b1", prefix="folder1", max_keys=10, next_page_parameters=None)
     assert req.prefix == "folder1"
@@ -262,10 +398,51 @@ def test_online_drive_models():
     assert dl_req.id == "f1"
 
 
-def test_datasource_message():
+def test_datasource_message() -> None:
     # Use proper dict for message to avoid Pydantic Union validation ambiguity/crashes
     msg = DatasourceMessage(type="text", message={"text": "hello"})
+    assert isinstance(msg.message, ToolInvokeMessage.TextMessage)
     assert msg.message.text == "hello"
 
     msg_json = DatasourceMessage(type="json", message={"json_object": {"k": "v"}})
+    assert isinstance(msg_json.message, ToolInvokeMessage.JsonMessage)
     assert msg_json.message.json_object == {"k": "v"}
+
+
+"""Unit coverage for datasource event-stream accumulation."""
+
+
+def _gen_var_stream() -> Generator[DatasourceMessage]:
+    # produce a streamed variable "a"="xy"
+    yield DatasourceMessage(
+        type=DatasourceMessage.MessageType.VARIABLE,
+        message=DatasourceMessage.VariableMessage(variable_name="a", variable_value="x", stream=True),
+        meta=None,
+    )
+    yield DatasourceMessage(
+        type=DatasourceMessage.MessageType.VARIABLE,
+        message=DatasourceMessage.VariableMessage(variable_name="a", variable_value="y", stream=True),
+        meta=None,
+    )
+
+
+def test_stream_node_events_accumulates_variables(mocker: MockerFixture) -> None:
+    mocker.patch.object(DatasourceManager, "stream_online_results", return_value=_gen_var_stream())
+    events = list(
+        DatasourceManager.stream_node_events(
+            node_id="A",
+            user_id="u",
+            datasource_name="ds",
+            datasource_type="online_document",
+            provider_id="p/x",
+            tenant_id="t",
+            parameters_for_log={},
+            datasource_info={"user_id": "u"},
+            variable_pool=VariablePool(),
+            datasource_param=None,
+            online_drive_request=None,
+            credentials={},
+        )
+    )
+    assert isinstance(events[-1], StreamCompletedEvent)
+    assert events[-1].node_run_result.outputs["a"] == "xy"

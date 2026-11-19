@@ -1,6 +1,7 @@
 name: Post-Merge Checks
 
 on:
+  workflow_dispatch:
   push:
     branches: ['main']
 
@@ -38,6 +39,7 @@ jobs:
               - 'e2e/tsconfig.json'
               - 'package.json'
               - 'pnpm-lock.yaml'
+              - 'patches/**'
               - '.github/workflows/post-merge.yml'
               - '.github/workflows/web-e2e.yml'
               - '.github/actions/setup-web/**'
@@ -49,9 +51,15 @@ jobs:
               - 'dify-agent-runtime/**'
               - 'api/pyproject.toml'
               - 'api/uv.lock'
-              - 'api/tests/integration_tests/.env.example'
+              - 'api/tests/e2e_tests/middleware/.env.example'
               - 'api/clients/agent_backend/**'
               - 'api/core/app/apps/agent_app/**'
+              - 'api/core/model_manager.py'
+              - 'api/core/provider_manager.py'
+              - 'api/controllers/console/workspace/models.py'
+              - 'api/controllers/console/workspace/model_providers.py'
+              - 'api/services/model_provider/**'
+              - 'api/tasks/install_default_plugins_task.py'
               - 'api/core/workflow/nodes/agent_v2/**'
               - 'api/controllers/console/agent/**'
               - 'api/controllers/console/app/agent*.py'
@@ -70,6 +78,12 @@ jobs:
               - 'api/services/entities/agent_tool_inner.py'
               - 'api/services/errors/agent_tool_inner.py'
               - 'api/services/agent/**'
+              - 'api/services/app/agent_*.py'
+              - 'api/repositories/app/agent_*.py'
+              - 'api/extensions/application_services/agent.py'
+              - 'api/models/agent.py'
+              - 'api/models/agent_config_entities.py'
+              - 'api/services/entities/agent_entities.py'
               - 'api/core/plugin/**'
               - 'api/services/plugin/**'
               - 'api/core/tools/**'
@@ -108,11 +122,12 @@ jobs:
               - 'web/service/webapp-address.ts'
               - 'web/package.json'
               - 'pnpm-workspace.yaml'
+              - 'patches/**'
 
   external-e2e:
     name: External Runtime E2E
     needs: check-changes
-    if: needs.check-changes.outputs.external-e2e-changed == 'true'
+    if: github.event_name == 'workflow_dispatch' || needs.check-changes.outputs.external-e2e-changed == 'true'
     permissions:
       actions: read
       contents: read

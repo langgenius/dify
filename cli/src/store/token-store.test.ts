@@ -1,32 +1,45 @@
+import type { BufferStreams } from '@/sys/io/streams'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
-import { FileTokenStore } from './token-store'
+import { ioService } from '@/plugins/io'
+import { TOKENS_FILE_NAME } from '@/plugins/token'
+import { bufferStreams } from '@/sys/io/streams'
+import { localFile } from './local-file'
+import { FileTokenStore, TOKENS_SCHEMA } from './token-store'
 
 describe('FileTokenStore', () => {
   let dir: string
   let file: string
+  let streams: BufferStreams
 
   beforeEach(() => {
+    streams = bufferStreams()
     dir = mkdtempSync(join(tmpdir(), 'difyctl-tok-'))
-    file = join(dir, 'tokens.yml')
+    file = join(dir, TOKENS_FILE_NAME)
   })
-  afterEach(() => rmSync(dir, { recursive: true, force: true }))
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  function open(): FileTokenStore {
+    return new FileTokenStore(localFile(file, TOKENS_SCHEMA, ioService(streams).notice))
+  }
 
   it('returns empty string for a missing credential', async () => {
-    const s = new FileTokenStore(file)
+    const s = open()
     expect(await s.read('https://cloud.dify.ai', 'a@x.com')).toBe('')
   })
 
   it('round-trips a bearer with dots and @ kept literal', async () => {
-    const s = new FileTokenStore(file)
+    const s = open()
     await s.write('https://cloud.dify.ai', 'a.b@x.com', 'dfoa_secret')
     expect(await s.read('https://cloud.dify.ai', 'a.b@x.com')).toBe('dfoa_secret')
   })
 
   it('keeps multiple accounts under one host and isolates hosts', async () => {
-    const s = new FileTokenStore(file)
+    const s = open()
     await s.write('https://cloud.dify.ai', 'a@x.com', 'A')
     await s.write('https://cloud.dify.ai', 'b@x.com', 'B')
     await s.write('https://self.example.com', 'a@x.com', 'C')
@@ -35,38 +48,60 @@ describe('FileTokenStore', () => {
     expect(await s.read('https://self.example.com', 'a@x.com')).toBe('C')
   })
 
-  it('persists the versioned nested shape on disk', async () => {
-    const s = new FileTokenStore(file)
+  it('preserves parallel writes from separate stores', async () => {
+    const hosts = Array.from({ length: 8 }, (_, n) => `https://h${n}.example.com`)
+    await Promise.all(hosts.map((host) => open().write(host, 'a@x.com', host)))
+    const result = open()
+    for (const host of hosts) expect(await result.read(host, 'a@x.com')).toBe(host)
+  })
+
+  it('persists the nested shape on disk', async () => {
+    const s = open()
     await s.write('https://cloud.dify.ai', 'a@x.com', 'A')
-    const raw = readFileSync(file, 'utf8')
-    expect(raw).toContain('version: 1')
-    expect(raw).toContain('https://cloud.dify.ai')
-    expect(raw).toContain('a@x.com')
+    expect(readFileSync(file, 'utf8')).toBe('tokens:\n  https://cloud.dify.ai:\n    a@x.com: A\n')
   })
 
-  it('reads empty when the document version is an unknown future version', async () => {
-    writeFileSync(file, 'version: 999\ntokens:\n  "h":\n    "e": "x"\n')
-    const s = new FileTokenStore(file)
-    expect(await s.read('h', 'e')).toBe('')
+  it('reads a difyctl v1 file in place and drops its version on the next write', async () => {
+    writeFileSync(file, 'version: 1\ntokens:\n  h:\n    e: dfoa_v1\n')
+    const s = open()
+    expect(await s.read('h', 'e')).toBe('dfoa_v1')
+    await s.write('h', 'f', 'dfoa_v2')
+    expect(readFileSync(file, 'utf8')).toBe('tokens:\n  h:\n    e: dfoa_v1\n    f: dfoa_v2\n')
+    expect(streams.errBuf()).toBe('')
   })
 
-  it('reads tokens from legacy format (no version field) for transparent migration', async () => {
-    writeFileSync(file, 'tokens:\n  "h":\n    "e": "dfoa_legacy"\n')
-    const s = new FileTokenStore(file)
-    expect(await s.read('h', 'e')).toBe('dfoa_legacy')
+  it('ignores unknown and future keys without a notice', async () => {
+    writeFileSync(file, 'schema_version: 99\nfuture_key: x\ntokens:\n  h:\n    e: dfoa_x\n')
+    expect(await open().read('h', 'e')).toBe('dfoa_x')
+    expect(streams.errBuf()).toBe('')
   })
 
-  it('preserves existing tokens and stamps version when writing to a legacy file', async () => {
-    writeFileSync(file, 'tokens:\n  "h":\n    "existing@x": "dfoa_existing"\n')
-    const s = new FileTokenStore(file)
-    await s.write('h', 'new@x', 'dfoa_new')
-    expect(await s.read('h', 'existing@x')).toBe('dfoa_existing')
-    expect(await s.read('h', 'new@x')).toBe('dfoa_new')
-    expect(readFileSync(file, 'utf8')).toContain('version: 1')
+  it('drops a bad entry with a notice and keeps the rest', async () => {
+    writeFileSync(file, 'tokens:\n  h:\n    e: dfoa_x\n    bad: 7\n  g: nope\n')
+    const s = open()
+    expect(await s.read('h', 'e')).toBe('dfoa_x')
+    expect(streams.errBuf()).toBe(
+      `${file}: ignoring the invalid value of tokens.h.bad\n${file}: ignoring the invalid value of tokens.g\n`,
+    )
   })
+
+  it.each([
+    ['not valid YAML', 'tokens: [unclosed\n', /is not valid YAML/],
+    ['not a mapping', 'just text\n', /is not a YAML mapping/],
+  ])(
+    'reads a file that is %s as empty and replaces it on the next write',
+    async (_l, raw, note) => {
+      writeFileSync(file, raw)
+      const s = open()
+      expect(await s.read('h', 'e')).toBe('')
+      expect(streams.errBuf()).toMatch(note)
+      await s.write('h', 'e', 'dfoa_y')
+      expect(readFileSync(file, 'utf8')).toBe('tokens:\n  h:\n    e: dfoa_y\n')
+    },
+  )
 
   it('remove deletes the credential and prunes the empty host map', async () => {
-    const s = new FileTokenStore(file)
+    const s = open()
     await s.write('https://cloud.dify.ai', 'a@x.com', 'A')
     await s.remove('https://cloud.dify.ai', 'a@x.com')
     expect(await s.read('https://cloud.dify.ai', 'a@x.com')).toBe('')
@@ -75,7 +110,7 @@ describe('FileTokenStore', () => {
   })
 
   it('remove is a no-op for an absent credential', async () => {
-    const s = new FileTokenStore(file)
+    const s = open()
     await expect(s.remove('h', 'e')).resolves.not.toThrow()
   })
 })

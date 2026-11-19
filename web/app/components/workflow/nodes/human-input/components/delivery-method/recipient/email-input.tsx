@@ -11,7 +11,7 @@ import * as React from 'react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EmailItem from './email-item'
-import MemberList from './member-list'
+import { MemberList } from './member-list'
 
 const i18nPrefix = 'nodes.humanInput'
 
@@ -152,12 +152,7 @@ const EmailInput = ({ email, value, list, onDelete, onSelect, onAdd, disabled = 
               onKeyDown={handleKeyDown}
             />
             <PopoverPortal>
-              <PopoverPositioner
-                placement="bottom-start"
-                sideOffset={4}
-                alignOffset={-40}
-                anchor={inputRef}
-              >
+              <PopoverPositioner align="start" sideOffset={4} alignOffset={-40} anchor={inputRef}>
                 <PopoverPopup
                   className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
                   initialFocus={false}

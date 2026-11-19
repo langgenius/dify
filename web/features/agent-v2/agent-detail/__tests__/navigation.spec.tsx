@@ -1,9 +1,10 @@
 import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentPermission } from '@/features/agent-v2/acl'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { AgentDetailSection, AgentDetailTop } from '../navigation'
 
@@ -11,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   deleteAgent: vi.fn(),
   exportAppDsl: vi.fn(),
   pathname: '/agents/agent-1/configure',
+  evaluation: { evaluation_enabled: true, evaluation_upgrade_available: false },
   queryData: undefined as ReturnType<typeof createAgentFixture> | undefined,
   replace: vi.fn(),
 }))
@@ -33,6 +35,11 @@ vi.mock('@/next/navigation', () => ({
     back: vi.fn(),
     replace: mocks.replace,
   }),
+}))
+
+vi.mock('@/app/components/app-sidebar/nav-link', () => ({
+  default: ({ disabled, href, name }: { disabled?: boolean; href: string; name: string }) =>
+    disabled ? <button disabled>{name}</button> : <a href={href}>{name}</a>,
 }))
 
 vi.mock('@/service/console', async (importOriginal) => {
@@ -68,6 +75,7 @@ const createAgent = (overrides: Partial<AgentAppDetailWithSite> = {}) =>
 function renderAgentDetailSection(expand = true) {
   const { queryClient, wrapper } = createConsoleQueryWrapper({
     systemFeatures: { rbac_enabled: true },
+    features: mocks.evaluation,
   })
   queryClient.setQueryData(
     consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
@@ -85,6 +93,7 @@ describe('AgentDetailSection', () => {
     mocks.exportAppDsl.mockResolvedValue(undefined)
     mocks.pathname = '/agents/agent-1/configure'
     mocks.queryData = createAgent()
+    mocks.evaluation = { evaluation_enabled: true, evaluation_upgrade_available: false }
   })
 
   afterEach(() => vi.restoreAllMocks())
@@ -162,8 +171,10 @@ describe('AgentDetailSection', () => {
     })
   })
 
-  it('returns to the roster after deleting the current agent', async () => {
+  it('keeps confirmation open while deleting and returns to the roster only after success', async () => {
     const user = userEvent.setup()
+    const pending = createDeferred<void>()
+    mocks.deleteAgent.mockReturnValueOnce(pending.promise)
     renderAgentDetailSection()
 
     await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.moreActions/ }))
@@ -172,8 +183,14 @@ describe('AgentDetailSection', () => {
     const dialog = await screen.findByRole('alertdialog', {
       name: /agentRoster\.roster\.deleteDialog\.title/,
     })
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.delete' }))
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.fill' }))
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
 
+    await waitFor(() => expect(mocks.deleteAgent).toHaveBeenCalledOnce())
+    await user.keyboard('{Escape}')
+    expect(dialog).toBeInTheDocument()
+    expect(mocks.replace).not.toHaveBeenCalled()
+    await act(async () => pending.resolve())
     await waitFor(() => {
       expect(mocks.replace).toHaveBeenCalledWith('/agents')
     })
@@ -195,11 +212,12 @@ describe('AgentDetailSection', () => {
     const dialog = await screen.findByRole('alertdialog', {
       name: /agentRoster\.roster\.deleteDialog\.title/,
     })
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.delete' }))
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.fill' }))
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
 
-    await waitFor(() => {
-      expect(mocks.deleteAgent).toHaveBeenCalled()
-    })
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'agentRoster.roster.deleteFailed',
+    )
     expect(mocks.replace).not.toHaveBeenCalled()
     expect(dialog).toBeInTheDocument()
   })
@@ -210,6 +228,51 @@ describe('AgentDetailSection', () => {
     expect(
       screen.queryByRole('button', { name: /agentRoster\.roster\.moreActions/ }),
     ).not.toBeInTheDocument()
+  })
+
+  it('links published Agents with test-and-run access to evaluation', () => {
+    renderAgentDetailSection()
+
+    expect(
+      screen.getByRole('link', { name: 'agentV2.agentDetail.sections.evaluation' }),
+    ).toHaveAttribute('href', '/agents/agent-1/evaluation')
+  })
+
+  it('disables evaluation until the Agent has a published snapshot', () => {
+    mocks.queryData = createAgent({ access_ready: false })
+    renderAgentDetailSection()
+
+    expect(
+      screen.getByRole('button', { name: 'agentV2.agentDetail.sections.evaluation' }),
+    ).toBeDisabled()
+    expect(
+      screen.queryByRole('link', { name: 'agentV2.agentDetail.sections.evaluation' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('hides evaluation without test-and-run permission', () => {
+    mocks.queryData = createAgent({ permission_keys: [AgentPermission.Preview] })
+    renderAgentDetailSection()
+
+    expect(screen.queryByText('agentV2.agentDetail.sections.evaluation')).not.toBeInTheDocument()
+  })
+
+  it('disables evaluation when the workspace can upgrade into it instead of redirecting', async () => {
+    mocks.evaluation = { evaluation_enabled: false, evaluation_upgrade_available: true }
+
+    renderAgentDetailSection()
+
+    expect(
+      await screen.findByRole('button', { name: 'agentV2.agentDetail.sections.evaluation' }),
+    ).toBeDisabled()
+  })
+
+  it('hides evaluation when the workspace cannot use or upgrade into it', () => {
+    mocks.evaluation = { evaluation_enabled: false, evaluation_upgrade_available: false }
+
+    renderAgentDetailSection()
+
+    expect(screen.queryByText('agentV2.agentDetail.sections.evaluation')).not.toBeInTheDocument()
   })
 })
 

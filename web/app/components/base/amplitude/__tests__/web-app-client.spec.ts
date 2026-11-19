@@ -87,8 +87,7 @@ describe('WebApp Amplitude client', () => {
     expect(mockWebAppClient.init).toHaveBeenCalledTimes(1)
     expect(mockWebAppClient.init).toHaveBeenCalledWith('test-api-key', {
       autocapture: false,
-      defaultTracking: false,
-      fetchRemoteConfig: false,
+      remoteConfig: { fetchRemoteConfig: false },
       flushQueueSize: 1,
       identityStorage: 'none',
       instanceName: 'webapp',

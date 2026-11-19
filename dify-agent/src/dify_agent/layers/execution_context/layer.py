@@ -24,7 +24,12 @@ class Capability(AbstractCapability[Deps]):
 
     @staticmethod
     def create_tool_client(
-        deps: Deps, name: str, *, plugin_id: str, http_client: httpx.AsyncClient
+        deps: Deps,
+        name: str,
+        *,
+        plugin_id: str,
+        http_client: httpx.AsyncClient,
+        plugin_unique_identifier: str | None = None,
     ) -> DifyPluginDaemonToolClient:
         if http_client.is_closed:
             raise RuntimeError("Plugin tool invocation requires an open shared HTTP client.")
@@ -32,6 +37,7 @@ class Capability(AbstractCapability[Deps]):
         return DifyPluginDaemonToolClient(
             tenant_id=config.tenant_id,
             plugin_id=plugin_id,
+            plugin_unique_identifier=plugin_unique_identifier,
             plugin_daemon_url=deps.services.plugin_daemon_url,
             plugin_daemon_api_key=deps.services.plugin_daemon_api_key,
             user_id=config.user_id,

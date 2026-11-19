@@ -147,8 +147,14 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
       times.push(execution)
     }
   } else if (data.frequency === 'weekly') {
-    const selectedDays = data.visual_config?.weekdays || ['sun']
     const dayMap = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 }
+    const selectedDays = new Set(
+      (data.visual_config?.weekdays || ['sun'])
+        .map((day) => dayMap[day as keyof typeof dayMap])
+        .filter((day): day is number => day !== undefined),
+    )
+
+    if (selectedDays.size === 0) return times
 
     const [time, period] = defaultTime.split(' ')
     const [hour, minute] = time!.split(':')
@@ -159,46 +165,16 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
     // Get current time completely in user timezone
     const userCurrentTime = getUserTimezoneCurrentTime(timezone)
 
-    let executionCount = 0
-    let weekOffset = 0
+    let dayOffset = 0
+    while (times.length < count) {
+      const execution = new Date(userToday)
+      execution.setDate(userToday.getDate() + dayOffset)
+      execution.setHours(displayHour, Number.parseInt(minute!), 0, 0)
 
-    while (executionCount < count) {
-      let hasValidDays = false
+      if (selectedDays.has(execution.getDay()) && execution > userCurrentTime) times.push(execution)
 
-      for (const selectedDay of selectedDays) {
-        if (executionCount >= count) break
-
-        const targetDay = dayMap[selectedDay as keyof typeof dayMap]
-        if (targetDay === undefined) continue
-
-        hasValidDays = true
-
-        const currentDayOfWeek = userToday.getDay()
-        const daysUntilTarget = (targetDay - currentDayOfWeek + 7) % 7
-
-        // Check if today's configured time has already passed
-        const todayAtTargetTime = new Date(userToday)
-        todayAtTargetTime.setHours(displayHour, Number.parseInt(minute!), 0, 0)
-
-        let adjustedDays = daysUntilTarget
-        if (daysUntilTarget === 0 && todayAtTargetTime <= userCurrentTime) adjustedDays = 7
-
-        const execution = new Date(userToday)
-        execution.setDate(userToday.getDate() + adjustedDays + weekOffset * 7)
-        execution.setHours(displayHour, Number.parseInt(minute!), 0, 0)
-
-        // Only add if execution time is in the future
-        if (execution > userCurrentTime) {
-          times.push(execution)
-          executionCount++
-        }
-      }
-
-      if (!hasValidDays) break
-      weekOffset++
+      dayOffset++
     }
-
-    times.sort((a, b) => a.getTime() - b.getTime())
   } else if (data.frequency === 'monthly') {
     const getSelectedDays = (): (number | 'last')[] => {
       if (data.visual_config?.monthly_days && data.visual_config.monthly_days.length > 0)

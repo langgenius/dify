@@ -1,41 +1,35 @@
 import type { ModelItem } from '../../declarations'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { consoleClient } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { createProviderResponseFixture } from '@/test/console/model-provider'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { renderWithConsoleQuery as renderWithQuery } from '@/test/console/query-data'
 import { ConfigurationMethodEnum, ModelStatusEnum, ModelTypeEnum } from '../../declarations'
 import { modelProviderDetailsQueryOptions } from '../../utils'
 import ModelListItem from '../model-list-item'
 
-const { permissions, updateModelList } = vi.hoisted(() => ({
-  permissions: { value: ['plugin.model_config'] as string[] },
-  updateModelList: vi.fn(),
-}))
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({ workspacePermissionKeys: permissions.value }))
-})
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
-  const { zGetFeaturesResponse } = await import('@dify/contracts/api/console/features/zod.gen')
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'features.get': () => zGetFeaturesResponse.parse({}),
-    }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.modelProviders.byProvider.models.enable.patch': vi.fn(),
-      'workspaces.current.modelProviders.byProvider.models.disable.patch': vi.fn(),
+      'workspaces.current.modelProviders.byProvider.models.enable.patch': vi
+        .fn()
+        .mockResolvedValue({ result: 'success' }),
+      'workspaces.current.modelProviders.byProvider.models.disable.patch': vi
+        .fn()
+        .mockResolvedValue({ result: 'success' }),
     }),
   }
 })
-vi.mock('../../hooks', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../hooks')>()),
-  useUpdateModelList: () => updateModelList,
-}))
+
+const renderWithConsoleQuery: typeof renderWithQuery = (ui, options) =>
+  renderWithQuery(ui, {
+    workspacePermissionKeys: ['plugin.model_config'],
+    features: {},
+    ...options,
+  })
 
 const provider = modelProviderDetailsQueryOptions().select!({
   data: [createProviderResponseFixture({ provider: 'test-provider' })],
@@ -54,12 +48,6 @@ const model: ModelItem = {
 const mutations = consoleClient.workspaces.current.modelProviders.byProvider.models
 const configName = 'common.operation.config'
 
-beforeEach(() => {
-  vi.clearAllMocks()
-  permissions.value = ['plugin.model_config']
-})
-afterEach(() => vi.useRealTimers())
-
 it.each([
   { status: ModelStatusEnum.active, action: 'disable' as const },
   { status: ModelStatusEnum.disabled, action: 'enable' as const },
@@ -68,7 +56,7 @@ it.each([
   async ({ status, action }) => {
     const user = userEvent.setup()
     const onChange = vi.fn()
-    renderWithConsoleQuery(
+    const { queryClient } = renderWithConsoleQuery(
       <ModelListItem
         model={{ ...model, status }}
         provider={provider}
@@ -77,6 +65,15 @@ it.each([
       />,
     )
 
+    const catalogKey = consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+      input: { params: { model_type: ModelTypeEnum.textGeneration } },
+    })
+    const providerKey =
+      consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryKey({
+        input: { params: { provider: provider.provider } },
+      })
+    queryClient.setQueryData(catalogKey, { data: [] })
+    queryClient.setQueryData(providerKey, { data: [] })
     await user.click(screen.getByRole('switch', { name: 'GPT-4' }))
     expect(mutations[action].patch).not.toHaveBeenCalled()
 
@@ -86,7 +83,8 @@ it.each([
         body: { model: 'gpt-4', model_type: 'llm' },
       }),
     )
-    expect(updateModelList).toHaveBeenCalledWith(ModelTypeEnum.textGeneration)
+    expect(queryClient.getQueryState(catalogKey)?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(providerKey)?.isInvalidated).toBe(true)
     expect(onChange).toHaveBeenCalledWith('test-provider')
   },
 )
@@ -133,9 +131,9 @@ it.each([
 )
 
 it('hides model controls without model configuration permission', () => {
-  permissions.value = []
   renderWithConsoleQuery(<ModelListItem model={model} provider={provider} isConfigurable />, {
     features: { model_load_balancing_enabled: true },
+    workspacePermissionKeys: [],
   })
   expect(screen.getByText('GPT-4')).toBeInTheDocument()
   expect(screen.queryByRole('switch')).not.toBeInTheDocument()

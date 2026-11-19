@@ -1,18 +1,9 @@
+import type { ModelType } from '@dify/contracts/api/console/workspaces/types.gen'
 import type {
-  ModelType,
-  ProviderWithModelsResponse,
-} from '@dify/contracts/api/console/workspaces/types.gen'
-import type {
-  ConfigurationMethodEnum,
-  Credential,
   CustomConfigurationModelFixedFields,
-  CustomModel,
   DefaultModel,
-  DefaultModelResponse,
-  ModelModalModeEnum,
   ModelProvider,
 } from './declarations'
-import type { ModelModalType } from '@/context/modal-context'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocale } from '#i18n'
@@ -21,65 +12,11 @@ import {
   useMarketplacePluginsByCollectionId,
 } from '@/app/components/plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { useModalContextSelector } from '@/context/modal-context'
 import { getModelLanguage } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
 import { useExpandModelProviderList } from './atoms'
 import { CustomConfigurationStatusEnum, ModelStatusEnum, ModelTypeEnum } from './declarations'
 import { modelProviderDetailsQueryOptions } from './utils'
-
-type UseDefaultModelAndModelList = (
-  defaultModel: DefaultModelResponse | undefined,
-  modelList: ProviderWithModelsResponse[],
-) => [DefaultModel | undefined, (model: DefaultModel | undefined) => void, () => void]
-export const useSystemDefaultModelAndModelList: UseDefaultModelAndModelList = (
-  defaultModel,
-  modelList,
-) => {
-  const currentDefaultModel = useMemo(() => {
-    const currentProvider = modelList.find(
-      (provider) => provider.provider === defaultModel?.provider.provider,
-    )
-    const currentModel = currentProvider?.models.find(
-      (model) => model.model === defaultModel?.model,
-    )
-    const currentDefaultModel = currentProvider &&
-      currentModel && {
-        model: currentModel.model,
-        provider: currentProvider.provider,
-      }
-
-    return (
-      currentDefaultModel ??
-      (defaultModel
-        ? { model: defaultModel.model, provider: defaultModel.provider.provider }
-        : undefined)
-    )
-  }, [defaultModel, modelList])
-  const currentDefaultModelKey = currentDefaultModel
-    ? `${currentDefaultModel.provider}:${currentDefaultModel.model}`
-    : ''
-  const [defaultModelState, setDefaultModelState] = useState<DefaultModel | undefined>(
-    currentDefaultModel,
-  )
-  const [defaultModelSourceKey, setDefaultModelSourceKey] = useState(currentDefaultModelKey)
-  const selectedDefaultModel =
-    defaultModelSourceKey === currentDefaultModelKey ? defaultModelState : currentDefaultModel
-
-  const handleDefaultModelChange = useCallback(
-    (model: DefaultModel | undefined) => {
-      setDefaultModelSourceKey(currentDefaultModelKey)
-      setDefaultModelState(model)
-    },
-    [currentDefaultModelKey],
-  )
-
-  return [
-    selectedDefaultModel,
-    handleDefaultModelChange,
-    () => handleDefaultModelChange(currentDefaultModel),
-  ]
-}
 
 export const useLanguage = () => {
   const locale = useLocale()
@@ -395,37 +332,5 @@ export const useRefreshModel = () => {
 
   return {
     handleRefreshModel,
-  }
-}
-
-export const useModelModalHandler = () => {
-  const setShowModelModal = useModalContextSelector((state) => state.setShowModelModal)
-
-  return (
-    provider: ModelProvider,
-    configurationMethod: ConfigurationMethodEnum,
-    CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
-    extra: {
-      isModelCredential?: boolean
-      credential?: Credential
-      model?: CustomModel
-      onUpdate?: (newPayload?: ModelModalType, formValues?: Record<string, unknown>) => void
-      mode?: ModelModalModeEnum
-    } = {},
-  ) => {
-    setShowModelModal({
-      payload: {
-        currentProvider: provider,
-        currentConfigurationMethod: configurationMethod,
-        currentCustomConfigurationModelFixedFields: CustomConfigurationModelFixedFields,
-        isModelCredential: extra.isModelCredential,
-        credential: extra.credential,
-        model: extra.model,
-        mode: extra.mode,
-      },
-      onSaveCallback: (newPayload, formValues) => {
-        extra.onUpdate?.(newPayload, formValues)
-      },
-    })
   }
 }

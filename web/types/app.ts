@@ -1,5 +1,6 @@
 import type { ToolProviderType } from '@dify/contracts/api/console/agent/types.gen'
 import type { FileTransferMethod } from '@dify/contracts/api/console/apps/types.gen'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { UploadFileSetting } from '@/app/components/workflow/types'
 import type { LanguagesSupported } from '@/i18n/language'
 import type { ExternalDataTool } from '@/models/common'
@@ -11,13 +12,6 @@ import type {
   DatasetConfigs,
   PromptMode,
 } from '@/models/debug'
-
-export type Theme = 'light' | 'dark' | 'system'
-export const Theme = {
-  light: 'light' as Theme,
-  dark: 'dark' as Theme,
-  system: 'system' as Theme,
-} as const
 
 export type ModelModeType = 'chat' | 'completion' | ''
 export const ModelModeType = {
@@ -92,8 +86,9 @@ type CheckboxTypeFormItem = Omit<TextTypeFormItem, 'default' | 'max_length'> & {
   default?: string | boolean
 }
 
-type FileTypeFormItem = Omit<TextTypeFormItem, 'max_length'> &
+type FileTypeFormItem = Omit<TextTypeFormItem, 'max_length' | 'default'> &
   Partial<UploadFileSetting> & {
+    default?: string | FileEntity | FileEntity[]
     max_length?: number
   }
 
@@ -153,7 +148,7 @@ export type AgentTool = {
   credential_id?: string
 }
 
-export type ToolItem =
+type ToolItem =
   | {
       dataset: {
         enabled: boolean
@@ -259,6 +254,9 @@ export type ModelConfig = {
     language?: string
     autoPlay?: TtsAutoPlay
   }
+  show_thoughts?: {
+    enabled: boolean
+  }
   retriever_resource: {
     enabled: boolean
   }
@@ -275,6 +273,7 @@ export type ModelConfig = {
   model: Model
   dataset_configs: DatasetConfigs
   file_upload?: {
+    enabled?: boolean
     image: VisionSettings
   } & UploadFileSetting
   files?: VisionFile[]

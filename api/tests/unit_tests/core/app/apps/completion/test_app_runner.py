@@ -26,9 +26,10 @@ from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.entities.provider_configuration import ProviderModelBundle
 from core.entities.provider_entities import CustomProviderConfiguration
 from core.moderation.base import ModerationError
+from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import PluginModelRuntime
-from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
+from core.plugin.impl.model_runtime_factory import create_model_type_instance, create_plugin_model_runtime
 from core.provider_manager import ProviderManager
 from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper
@@ -41,12 +42,12 @@ from graphon.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from models.dataset import Dataset
 from models.enums import ConversationFromSource
+from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import App, AppMode, Conversation, IconType, Message
 from services.knowledge.external.service import ExternalDatasetService
-from tests.unit_tests.core.model_fixtures import make_model_config
+from tests.helpers.unit.core.model_fixtures import make_model_config
 
 APP_ID = "00000000-0000-0000-0000-000000000001"
 TENANT_ID = "00000000-0000-0000-0000-000000000002"
@@ -113,9 +114,17 @@ def model_runtime(monkeypatch: pytest.MonkeyPatch) -> tuple[ProviderModelBundle,
     bundle = config.provider_model_bundle
     bundle.configuration.tenant_id = TENANT_ID
     bundle.configuration.custom_configuration.provider = CustomProviderConfiguration(credentials={"api_key": "token"})
-    bundle.model_type_instance = LargeLanguageModel(
-        provider_schema=bundle.configuration.provider,
-        model_runtime=create_plugin_model_runtime(tenant_id=TENANT_ID),
+    provider_declaration = PluginModelProviderDeclaration.model_validate(
+        {
+            **bundle.configuration.provider.model_dump(),
+            "plugin_unique_identifier": "langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "installation_source": None,
+        }
+    )
+    bundle.model_type_instance = create_model_type_instance(
+        runtime=create_plugin_model_runtime(tenant_id=TENANT_ID),
+        provider_schema=provider_declaration,
+        model_type=ModelType.LLM,
     )
     calls: list[RecordedCall] = []
     events: list[str] = []
@@ -210,7 +219,7 @@ def _message() -> Message:
         id="msg",
         app_id=APP_ID,
         conversation_id="conv",
-        inputs={},
+        _inputs={},
         query="query",
         message={},
         message_unit_price=Decimal(0),
@@ -218,7 +227,7 @@ def _message() -> Message:
         answer_unit_price=Decimal(0),
         total_price=Decimal(0),
         currency="USD",
-        invoke_from=InvokeFrom.SERVICE_API,
+        invoke_from=ModelInvokeFrom.SERVICE_API,
         from_source=ConversationFromSource.API,
         from_account_id="user",
         app_mode=AppMode.COMPLETION,
@@ -242,8 +251,8 @@ def _persist_records(session: Session) -> tuple[App, Message]:
         app_id=APP_ID,
         mode=AppMode.COMPLETION,
         name="Conversation",
-        inputs={},
-        invoke_from=InvokeFrom.SERVICE_API,
+        _inputs={},
+        invoke_from=ModelInvokeFrom.SERVICE_API,
         from_source=ConversationFromSource.API,
         from_account_id="user",
     )
@@ -260,7 +269,7 @@ class TestCompletionAppRunner:
         app_config = _build_app_config()
         app_generate_entity = _build_generate_entity(app_config)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="App not found"):
             runner.run(app_generate_entity, queue_manager, _message(), sqlite_session)
 
     def test_run_moderation_error_outputs_direct(
@@ -281,26 +290,6 @@ class TestCompletionAppRunner:
         runner.run(app_generate_entity, queue_manager, message, sqlite_session)
 
         assert len(direct_output.calls) == 1
-        assert handle_invoke_result.calls == []
-
-    def test_run_hosting_moderation_stops(
-        self, runner: CompletionAppRunner, sqlite_session: Session, queue_manager: MessageBasedAppQueueManager
-    ) -> None:
-        _, message = _persist_records(sqlite_session)
-
-        app_config = _build_app_config()
-        app_generate_entity = _build_generate_entity(app_config)
-
-        runner.organize_prompt_messages = CallRecorder(result=([], None))  # type: ignore[method-assign]
-        runner.moderation_for_inputs = CallRecorder(  # type: ignore[method-assign]
-            result=(None, app_generate_entity.inputs, "query")
-        )
-        runner.check_hosting_moderation = CallRecorder(result=True)  # type: ignore[method-assign]
-        handle_invoke_result = CallRecorder()
-        runner._handle_invoke_result = handle_invoke_result  # type: ignore[method-assign]
-
-        runner.run(app_generate_entity, queue_manager, message, sqlite_session)
-
         assert handle_invoke_result.calls == []
 
     def test_run_dataset_and_external_tools_flow(
@@ -345,7 +334,6 @@ class TestCompletionAppRunner:
         runner.fill_in_inputs_from_external_data_tools = CallRecorder(  # type: ignore[method-assign]
             result=app_generate_entity.inputs
         )
-        runner.check_hosting_moderation = CallRecorder(result=False)  # type: ignore[method-assign]
         runner.recalc_llm_max_tokens = CallRecorder()  # type: ignore[method-assign]
         handle_invoke_result = CallRecorder()
         runner._handle_invoke_result = handle_invoke_result  # type: ignore[method-assign]
@@ -395,7 +383,6 @@ class TestCompletionAppRunner:
         runner.moderation_for_inputs = CallRecorder(  # type: ignore[method-assign]
             result=(None, app_generate_entity.inputs, "query")
         )
-        runner.check_hosting_moderation = CallRecorder(result=False)  # type: ignore[method-assign]
         runner.recalc_llm_max_tokens = CallRecorder()  # type: ignore[method-assign]
         handle_invoke_result = CallRecorder(implementation=lambda invoke_result, **kwargs: list(invoke_result))
         runner._handle_invoke_result = handle_invoke_result  # type: ignore[method-assign]
@@ -442,7 +429,6 @@ class TestCompletionAppRunner:
         runner.moderation_for_inputs = CallRecorder(  # type: ignore[method-assign]
             result=(None, app_generate_entity.inputs, "query")
         )
-        runner.check_hosting_moderation = CallRecorder(result=False)  # type: ignore[method-assign]
         runner.recalc_llm_max_tokens = CallRecorder()  # type: ignore[method-assign]
         results: list[LLMResult | list[LLMResultChunk]] = []
 
@@ -469,7 +455,11 @@ class TestCompletionAppRunner:
                     "method": "POST",
                     "path": f"plugin/{TENANT_ID}/dispatch/llm/invoke",
                     "type_": LLMResultChunk,
-                    "headers": {"X-Plugin-ID": "langgenius/openai", "Content-Type": "application/json"},
+                    "headers": {
+                        "X-Plugin-ID": "langgenius/openai",
+                        "X-Plugin-Unique-Identifier": "langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                        "Content-Type": "application/json",
+                    },
                     "data": {
                         "app_id": APP_ID,
                         "data": {
@@ -497,20 +487,24 @@ class TestCompletionAppRunner:
             assert result.message.content == "answer"
 
     def test_run_uses_low_image_detail_default(
-        self, runner: CompletionAppRunner, sqlite_session: Session, queue_manager: MessageBasedAppQueueManager
+        self,
+        runner: CompletionAppRunner,
+        sqlite_session: Session,
+        queue_manager: MessageBasedAppQueueManager,
+        model_runtime: tuple[ProviderModelBundle, list[RecordedCall], list[str]],
     ) -> None:
         _, message = _persist_records(sqlite_session)
 
         app_config = _build_app_config()
         app_generate_entity = _build_generate_entity(app_config, file_upload_config=None)
+        runtime_bundle, _, _ = model_runtime
+        app_generate_entity.model_conf.provider_model_bundle = runtime_bundle
 
         organize_prompt_messages = CallRecorder(result=([], None))
         runner.organize_prompt_messages = organize_prompt_messages  # type: ignore[method-assign]
         runner.moderation_for_inputs = CallRecorder(  # type: ignore[method-assign]
             result=(None, app_generate_entity.inputs, "query")
         )
-        runner.check_hosting_moderation = CallRecorder(result=True)  # type: ignore[method-assign]
-
         runner.run(app_generate_entity, queue_manager, message, sqlite_session)
 
         assert organize_prompt_messages.calls[-1].kwargs["image_detail_config"] == ImagePromptMessageContent.DETAIL.LOW

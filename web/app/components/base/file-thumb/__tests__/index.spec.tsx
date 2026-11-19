@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import FileThumb from '../index'
 
@@ -24,5 +24,19 @@ describe('FileThumb', () => {
 
     expect(onClick).toHaveBeenCalledExactlyOnceWith(file)
     expect(onParentClick).not.toHaveBeenCalled()
+  })
+
+  it('reports the file when its image fails to load', () => {
+    const onError = vi.fn()
+    const file = {
+      name: 'photo.png',
+      mimeType: 'image/png',
+      extension: '.png',
+      size: 2048,
+      sourceUrl: 'https://example.com/photo.png',
+    }
+    render(<FileThumb file={file} onError={onError} />)
+    fireEvent.error(screen.getByAltText('photo.png'))
+    expect(onError).toHaveBeenCalledExactlyOnceWith(file)
   })
 })

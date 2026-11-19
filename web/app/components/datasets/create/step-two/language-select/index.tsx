@@ -41,7 +41,7 @@ const LanguageSelect: FC<ILanguageSelectProps> = ({ currentLanguage, onSelect, d
       >
         <SelectValue placeholder={<span>&nbsp;</span>} />
       </SelectTrigger>
-      <SelectContent placement="bottom-start" sideOffset={4} className="w-max">
+      <SelectContent className="w-max">
         {supportedLanguages.map(({ prompt_name }) => (
           <SelectItem key={prompt_name} value={prompt_name}>
             <SelectItemText>{prompt_name}</SelectItemText>

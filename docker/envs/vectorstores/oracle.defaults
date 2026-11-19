@@ -1,0 +1,13 @@
+# Defaults for oracle. Copy this file to oracle.env to customize it.
+# Edit the settings below in the copy; docker/.env takes precedence.
+# Optional application settings are commented to retain their application defaults.
+
+ORACLE_PASSWORD=${ORACLE_PASSWORD-dify}
+ORACLE_DSN=${ORACLE_DSN-oracle:1521/FREEPDB1}
+# ORACLE_CONFIG_DIR=/app/api/storage/wallet
+# ORACLE_WALLET_LOCATION=/app/api/storage/wallet
+# ORACLE_WALLET_PASSWORD=dify
+# ORACLE_IS_AUTONOMOUS=false
+ORACLE_USER=${ORACLE_USER-dify}
+ORACLE_PWD=${ORACLE_PWD:-Dify123456}
+ORACLE_CHARACTERSET=${ORACLE_CHARACTERSET:-AL32UTF8}

@@ -4,11 +4,11 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
@@ -43,6 +43,7 @@ const EmailConfigureModal = ({
 }: EmailConfigureModalProps) => {
   const { t } = useTranslation(['common', 'workflow', 'workflowHumanInput'])
   const subjectId = useId()
+  const bodyLabelId = useId()
   const debugModeId = useId()
   const debugDescriptionId = useId()
   const { data: email } = useSuspenseQuery({
@@ -105,7 +106,7 @@ const EmailConfigureModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100dvh-64px)] w-180">
+      <DialogContent className="max-h-[calc(100dvh-4rem)] w-180">
         <DialogHeader>
           <DialogTitle>
             {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.title`], {
@@ -117,7 +118,7 @@ const EmailConfigureModal = ({
               ns: 'workflowHumanInput',
             })}
           </DialogDescription>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <DialogBody className="space-y-5">
           <div>
@@ -141,12 +142,16 @@ const EmailConfigureModal = ({
             />
           </div>
           <div>
-            <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
+            <div
+              id={bodyLabelId}
+              className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
+            >
               {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.body`], {
                 ns: 'workflowHumanInput',
               })}
             </div>
             <MailBodyInput
+              aria-labelledby={bodyLabelId}
               value={body}
               onChange={setBody}
               nodesOutputVars={nodesOutputVars}
@@ -161,7 +166,7 @@ const EmailConfigureModal = ({
             </div>
             <Recipient data={recipients} onChange={setRecipients} />
           </div>
-          <div className="flex items-start justify-between gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-3 pl-2.5 shadow-xs">
+          <div className="flex items-start justify-between gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-3 ps-2.5 shadow-xs">
             <div className="rounded-sm border border-divider-regular bg-components-icon-bg-orange-dark-solid p-0.5">
               <RiBugLine className="size-3.5 text-text-primary-on-surface" />
             </div>

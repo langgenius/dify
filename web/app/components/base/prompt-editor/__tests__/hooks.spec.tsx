@@ -5,7 +5,6 @@ import type {
   NodeKey,
   SerializedTextNode,
 } from 'lexical'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -16,6 +15,7 @@ import {
   $getRoot,
   $getSelection,
   $isNodeSelection,
+  $isTextNode,
   $setSelection,
   COMMAND_PRIORITY_LOW,
   createEditor,
@@ -24,6 +24,7 @@ import {
   TextNode,
 } from 'lexical'
 import { useEffect } from 'react'
+import { TestLexicalComposer } from '@/test/lexical'
 import {
   useBasicTypeaheadTriggerMatch,
   useLexicalTextEntity,
@@ -69,7 +70,7 @@ function SelectionHarness({
   command,
 }: {
   nodeKey: NodeKey
-  command?: LexicalCommand<undefined>
+  command?: LexicalCommand<void>
 }) {
   const [ref, selected] = useSelectOrDelete(nodeKey, command)
   return (
@@ -94,7 +95,7 @@ function TriggerHarness({ onBubble }: { onBubble: () => void }) {
   )
 }
 
-function renderEditor(makeNode: () => LexicalNode, command?: LexicalCommand<undefined>) {
+function renderEditor(makeNode: () => LexicalNode, command?: LexicalCommand<void>) {
   let editor: LexicalEditor
   let nodeKey: NodeKey
   const deleted = vi.fn(() => false)
@@ -121,9 +122,9 @@ function renderEditor(makeNode: () => LexicalNode, command?: LexicalCommand<unde
     },
   }
   const view = render(
-    <LexicalComposer initialConfig={initialConfig}>
+    <TestLexicalComposer initialConfig={initialConfig}>
       <Harness showHook />
-    </LexicalComposer>,
+    </TestLexicalComposer>,
   )
   return {
     ...view,
@@ -132,9 +133,9 @@ function renderEditor(makeNode: () => LexicalNode, command?: LexicalCommand<unde
     deleted,
     detachHook: () =>
       view.rerender(
-        <LexicalComposer initialConfig={initialConfig}>
+        <TestLexicalComposer initialConfig={initialConfig}>
           <Harness showHook={false} />
-        </LexicalComposer>,
+        </TestLexicalComposer>,
       ),
   }
 }
@@ -158,11 +159,12 @@ describe('prompt-editor/hooks', () => {
     it.each([KEY_DELETE_COMMAND, KEY_BACKSPACE_COMMAND])(
       'selects and deletes the real decorator for keyboard command %s',
       async (keyCommand) => {
+        const user = userEvent.setup()
         const { editor, nodeKey, deleted } = renderEditor(
           () => new QueryBlockNode(),
           DELETE_QUERY_BLOCK_COMMAND,
         )
-        await userEvent.setup().click(screen.getByTestId('block'))
+        await user.click(screen.getByTestId('block'))
         await waitFor(() =>
           expect(screen.getByTestId('block')).toHaveAttribute('data-selected', 'true'),
         )
@@ -184,8 +186,9 @@ describe('prompt-editor/hooks', () => {
     )
 
     it('deletes a selected decorator without an optional domain command', async () => {
+      const user = userEvent.setup()
       const { editor, nodeKey } = renderEditor(() => new QueryBlockNode())
-      await userEvent.setup().click(screen.getByTestId('block'))
+      await user.click(screen.getByTestId('block'))
       await waitFor(() =>
         expect(screen.getByTestId('block')).toHaveAttribute('data-selected', 'true'),
       )
@@ -233,11 +236,12 @@ describe('prompt-editor/hooks', () => {
     })
 
     it('unregisters deletion when the hook is removed', async () => {
+      const user = userEvent.setup()
       const { editor, nodeKey, deleted, detachHook } = renderEditor(
         () => new QueryBlockNode(),
         DELETE_QUERY_BLOCK_COMMAND,
       )
-      await userEvent.setup().click(screen.getByTestId('block'))
+      await user.click(screen.getByTestId('block'))
       await waitFor(() =>
         expect(screen.getByTestId('block')).toHaveAttribute('data-selected', 'true'),
       )
@@ -278,10 +282,10 @@ describe('prompt-editor/hooks', () => {
       },
     }
     const { rerender } = render(
-      <LexicalComposer initialConfig={config}>
+      <TestLexicalComposer initialConfig={config}>
         <Capture />
         <EntityPlugin />
-      </LexicalComposer>,
+      </TestLexicalComposer>,
     )
     act(() =>
       editor.update(
@@ -302,7 +306,9 @@ describe('prompt-editor/hooks', () => {
     act(() =>
       editor.update(
         () => {
-          $getNodeByKey<TextNode>(entityKey)!.setTextContent('plain')
+          const node = $getNodeByKey(entityKey)
+          if (!$isTextNode(node)) throw new Error('Expected a text node')
+          node.setTextContent('plain')
         },
         { discrete: true },
       ),
@@ -313,9 +319,9 @@ describe('prompt-editor/hooks', () => {
       expect($getRoot().getTextContent()).toBe('plain')
     })
     rerender(
-      <LexicalComposer initialConfig={config}>
+      <TestLexicalComposer initialConfig={config}>
         <Capture />
-      </LexicalComposer>,
+      </TestLexicalComposer>,
     )
     act(() =>
       editor.update(

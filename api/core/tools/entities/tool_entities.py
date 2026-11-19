@@ -261,7 +261,6 @@ class ToolInvokeMessage(BaseModel):
     @field_validator("message", mode="before")
     @classmethod
     def decode_blob_message(cls, v, info: ValidationInfo):
-        # 处理 blob 解码
         if isinstance(v, dict) and "blob" in v:
             with contextlib.suppress(Exception):
                 v["blob"] = base64.b64decode(v["blob"])
@@ -402,6 +401,10 @@ class ToolParameter(PluginParameter):
         parameter_value = self.default if value is None else value
         if parameter_value is None:
             parameter_value = []
+        if isinstance(parameter_value, str):
+            # Historical workflows and older frontends stored a multiple-select
+            # value as a comma-separated string; normalize it before the checks.
+            parameter_value = [item.strip() for item in parameter_value.split(",") if item.strip()]
         if not isinstance(parameter_value, list):
             raise ValueError(f"tool parameter {self.name} must be a list when multiple is true")
         if not all(isinstance(item, str) for item in parameter_value):

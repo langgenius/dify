@@ -35,6 +35,16 @@ vi.mock('@/service/console', async (importOriginal) => {
       'agent.byAgentId.logs.get': mocks.logsQueryFn,
       'agent.byAgentId.logSources.get': mocks.logSourcesQueryFn,
       'agent.byAgentId.logs.byConversationId.messages.get': mocks.messagesQueryFn,
+      'agent.byAgentId.traceRuns.byMessageId.get': async () => ({
+        status: 'not_collected',
+        source_kind: 'message',
+        source_id: 'message-1',
+      }),
+      'apps.byAppId.traceRuns.bySourceKind.bySourceId.get': async () => ({
+        status: 'not_collected',
+        source_kind: 'workflow',
+        source_id: 'message-1',
+      }),
       'agent.byAgentId.feedbacks.post': mocks.feedbackMutationFn,
     }),
   }
@@ -286,7 +296,7 @@ describe('AgentLogsPage', () => {
       expect(createdHeader).toHaveAttribute('aria-sort', 'descending')
       expect(updatedHeader).not.toHaveAttribute('aria-sort')
 
-      await user.click(screen.getByRole('button', { name: /appLog\.filter\.sortBy/ }))
+      await user.click(screen.getByRole('button', { name: /common\.sorting\.sortBy/ }))
       await user.click(
         await screen.findByRole('menuitemradio', {
           name: 'agentV2.agentDetail.logs.filters.sort.lastUpdatedTime',
@@ -305,7 +315,7 @@ describe('AgentLogsPage', () => {
       expect(createdHeader).not.toHaveAttribute('aria-sort')
       expect(updatedHeader).toHaveAttribute('aria-sort', 'descending')
 
-      await user.click(screen.getByRole('button', { name: 'appLog.filter.ascending' }))
+      await user.click(screen.getByRole('button', { name: 'common.sorting.ascending' }))
 
       await waitFor(() => {
         expect(getLatestLogsQueryInput().query).toEqual(

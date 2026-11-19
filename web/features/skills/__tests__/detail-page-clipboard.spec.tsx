@@ -1,9 +1,4 @@
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -73,12 +68,12 @@ describe('SkillDetailPage clipboard', () => {
     renderSkillDetailPage()
     await waitFor(() => expect(getFileTreeItem('SKILL.md')).toBeInTheDocument())
     render(
-      <DropdownMenu>
-        <DropdownMenuTrigger>Other actions</DropdownMenuTrigger>
-        <DropdownMenuContent>
-          <DropdownMenuItem>Other copy</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>,
+      <Menu>
+        <MenuTrigger>Other actions</MenuTrigger>
+        <MenuContent>
+          <MenuItem>Other copy</MenuItem>
+        </MenuContent>
+      </Menu>,
     )
     await user.click(screen.getByRole('button', { name: 'Other actions' }))
     const menuItem = await screen.findByRole('menuitem', { name: 'Other copy' })
@@ -326,9 +321,8 @@ describe('SkillDetailPage clipboard', () => {
       })
       return mocks.skillDetail
     })
-    mocks.skillDetailKey.mockReturnValue(['skill-detail'])
+
     mocks.skillDetailQueryOptions.mockImplementation(() => ({
-      queryKey: ['skill-detail'],
       queryFn: async () => mocks.skillDetail,
     }))
     renderSkillDetailPage()
@@ -390,9 +384,8 @@ describe('SkillDetailPage clipboard', () => {
         return copiedDetail
       })
     mocks.skillDetailGetFn.mockResolvedValueOnce(latestDetail)
-    mocks.skillDetailKey.mockReturnValue(['skill-detail'])
+
     mocks.skillDetailQueryOptions.mockImplementation(() => ({
-      queryKey: ['skill-detail'],
       queryFn: async () => mocks.skillDetail,
     }))
     renderSkillDetailPage()
@@ -472,9 +465,8 @@ describe('SkillDetailPage clipboard', () => {
       .mockRejectedValueOnce(conflict)
       .mockResolvedValueOnce(afterBetaCopy)
     mocks.skillDetailGetFn.mockResolvedValueOnce(refreshedDetail)
-    mocks.skillDetailKey.mockReturnValue(['skill-detail'])
+
     mocks.skillDetailQueryOptions.mockImplementation(() => ({
-      queryKey: ['skill-detail'],
       queryFn: async () => mocks.skillDetail,
     }))
     renderSkillDetailPage()
@@ -528,7 +520,7 @@ describe('SkillDetailPage clipboard', () => {
     fireEvent.cut(getFileTreeButton('scripts/example.ts'))
     const contextRegion = document.querySelector('[data-skill-file-tree-context-region]')
     if (!(contextRegion instanceof HTMLElement))
-      throw new Error('file tree context region not found')
+      throw new TypeError('file tree context region not found')
     fireEvent.contextMenu(contextRegion, {
       button: 2,
       clientX: 160,
@@ -537,7 +529,7 @@ describe('SkillDetailPage clipboard', () => {
     const rootMenuItem = (
       await screen.findByText('skill.skillManagement.detail.createFileMenu')
     ).closest('[role="menuitem"]')
-    if (!(rootMenuItem instanceof HTMLElement)) throw new Error('root menu item not found')
+    if (!(rootMenuItem instanceof HTMLElement)) throw new TypeError('root menu item not found')
     fireEvent.keyDown(rootMenuItem, {
       code: 'KeyV',
       key: 'v',

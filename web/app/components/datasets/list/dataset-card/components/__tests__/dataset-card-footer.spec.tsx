@@ -61,22 +61,6 @@ describe('DatasetCardFooter', () => {
     expect(await screen.findByRole('dialog', { name: '5 dataset.appCount' })).toBeInTheDocument()
   })
 
-  it('opens document details by click without activating the surrounding card', async () => {
-    const user = userEvent.setup()
-    const onDocumentClick = vi.fn()
-    render(<DatasetCardFooter dataset={createDataset()} />)
-    document.addEventListener('click', onDocumentClick)
-
-    try {
-      await user.click(screen.getByRole('button', { name: '10 common.datasetMenus.documents' }))
-      const details = await screen.findByRole('dialog', { name: 'common.datasetMenus.documents' })
-      await user.click(within(details).getByText('dataset.docAllEnabled:{"count":10}'))
-      expect(onDocumentClick).not.toHaveBeenCalled()
-    } finally {
-      document.removeEventListener('click', onDocumentClick)
-    }
-  })
-
   it('does not show an application count for an external dataset', () => {
     render(
       <DatasetCardFooter

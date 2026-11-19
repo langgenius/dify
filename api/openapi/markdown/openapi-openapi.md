@@ -39,6 +39,13 @@ Machine-readable catalog of every op on this surface
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /account
+**Return account details with workspace visibility bounded by PAT scope**
+
+The account snapshot supplies current memberships and the default workspace.
+A PAT's admitted workspace IDs narrow that snapshot; the returned default is
+present only when its workspace remains visible. Non-PAT requests have no
+workspace filter. This handler is read-only and does not change membership.
+
 #### Responses
 
 | Code | Description | Schema |
@@ -600,6 +607,8 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Form definition | **application/json**: [HumanInputFormDefinitionResponse](#humaninputformdefinitionresponse)<br> |
+| 409 | Conflict | **application/json**: [AlreadySubmittedError](#alreadysubmittederror)<br>[ErrorBody](#errorbody)<br> |
+| 410 | Gone | **application/json**: [ExpiredError](#expirederror)<br>[ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /apps/{app_id}/human-input-forms/{form_token}:submit
@@ -621,6 +630,9 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Form submitted | **application/json**: [FormSubmitResponse](#formsubmitresponse)<br> |
+| 400 | Bad Request | **application/json**: [InvalidInputError](#invalidinputerror)<br>[ErrorBody](#errorbody)<br> |
+| 409 | Conflict | **application/json**: [AlreadySubmittedError](#alreadysubmittederror)<br>[WorkflowNotActiveError](#workflownotactiveerror)<br>[ErrorBody](#errorbody)<br> |
+| 410 | Gone | **application/json**: [ExpiredError](#expirederror)<br>[ErrorBody](#errorbody)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -672,6 +684,24 @@ Upload a file to use as an input variable when running the app
 | 200 | Run detail | **application/json**: [WorkflowRunDetailResponse](#workflowrundetailresponse)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [GET] /apps/{app_id}/runs/{run_id}/events
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| continue_on_pause | query | Whether to keep the event stream open on pause | No | boolean |
+| include_state_snapshot | query | Whether to include workflow state snapshots | No | boolean |
+| app_id | path |  | Yes | string |
+| run_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | SSE event stream | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [GET] /apps/{app_id}/runs/{run_id}/nodes
 #### Parameters
 
@@ -685,6 +715,21 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Node steps | **application/json**: [WorkflowRunNodeExecutionListResponse](#workflowrunnodeexecutionlistresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}/runs/{run_id}:stop
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| run_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Run stopped | **application/json**: [TaskStopResponse](#taskstopresponse)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /apps/{app_id}/service-api
@@ -754,24 +799,6 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Service API | **application/json**: [AgentServiceApi](#agentserviceapi)<br> |
-| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
-### [GET] /apps/{app_id}/tasks/{task_id}/events
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| continue_on_pause | query | Whether to keep the event stream open on pause | No | boolean |
-| include_state_snapshot | query | Whether to include workflow state snapshots | No | boolean |
-| app_id | path |  | Yes | string |
-| task_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | SSE event stream | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -1170,6 +1197,7 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published | **application/json**: [PublishResponse](#publishresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ServiceApiDisabledError](#serviceapidisablederror)<br>[ErrorBody](#errorbody)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -1455,6 +1483,230 @@ Upload a file to use as an input variable when running the app
 | ---- | ----------- | ------ |
 | 200 | Knowledge bases | **application/json**: [KnowledgeBaseListResponse](#knowledgebaselistresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:cat
+**Read Agent Knowledge Base entry content (cat)**
+
+Reads a bounded text portion of one entry, equivalent to difyctl fs cat. Content follows stable source order. When next_page_token is present, reuse it with the same path and consistency_class. total is not returned because this response is a bounded content stream, not a collection. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| knowledge_space_id | path | Stable Dify Agent Knowledge Base resource ID; treat it as opaque. | Yes | string |
+| workspace_id | path | Dify workspace ID that owns the Agent Knowledge Base. | Yes | string |
+| consistency_class | query | Optional Agent Knowledge Base read-consistency policy. | No | string, <br>**Available values:** "cache-consistent", "eventual-preview", "path-consistent", "snapshot-consistent" |
+| page_size | query | Maximum source segments to read (1-100); ignored when the selected entry has one bounded content value. | No | integer, <br>**Default:** 100 |
+| page_token | query | Opaque continuation token returned as next_page_token. Repeat the same query without inspecting the token. | No | string |
+| path | query | Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces. | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base entry content | **application/json**: [KnowledgeFSEntryReadContentResponse](#knowledgefsentryreadcontentresponse)<br> |
+| 400 | Invalid Agent Knowledge Base request | **application/json**: [ErrorBody](#errorbody)<br> |
+| 401 | Missing or invalid OAuth account bearer | **application/json**: [ErrorBody](#errorbody)<br> |
+| 403 | Caller lacks workspace or Agent Knowledge Base read access | **application/json**: [ErrorBody](#errorbody)<br> |
+| 404 | Agent Knowledge Base or entry is missing or hidden | **application/json**: [ErrorBody](#errorbody)<br> |
+| 409 | Requested consistency conflicts with current state | **application/json**: [ErrorBody](#errorbody)<br> |
+| 413 | Request exceeds an Agent Knowledge Base operational bound | **application/json**: [ErrorBody](#errorbody)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| 503 | Agent Knowledge Base is temporarily unavailable | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:diff
+**Compare two Agent Knowledge Base entries (diff)**
+
+Performs a side-effect-free comparison, equivalent to difyctl fs diff. POST is used because this is a structured query and an optional semantic summary can consume model quota. Automatic retries are not safe when include_semantic_summary=true because each retry can consume quota again. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| knowledge_space_id | path | Stable Dify Agent Knowledge Base resource ID; treat it as opaque. | Yes | string |
+| workspace_id | path | Dify workspace ID that owns the Agent Knowledge Base. | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSEntryComparePayload](#knowledgefsentrycomparepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base entry comparison | **application/json**: [KnowledgeFSEntryComparisonResponse](#knowledgefsentrycomparisonresponse)<br> |
+| 400 | Invalid Agent Knowledge Base request | **application/json**: [ErrorBody](#errorbody)<br> |
+| 401 | Missing or invalid OAuth account bearer | **application/json**: [ErrorBody](#errorbody)<br> |
+| 403 | Caller lacks workspace or Agent Knowledge Base read access | **application/json**: [ErrorBody](#errorbody)<br> |
+| 404 | Agent Knowledge Base or entry is missing or hidden | **application/json**: [ErrorBody](#errorbody)<br> |
+| 409 | Requested consistency conflicts with current state | **application/json**: [ErrorBody](#errorbody)<br> |
+| 413 | Request exceeds an Agent Knowledge Base operational bound | **application/json**: [ErrorBody](#errorbody)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| 503 | Agent Knowledge Base is temporarily unavailable | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:find
+**Find Agent Knowledge Base entries (find)**
+
+Searches entries beneath path by name, resource type, or an exact metadata key/value pair, equivalent to difyctl fs find. Results use the canonical, stable Agent Knowledge Base traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| knowledge_space_id | path | Stable Dify Agent Knowledge Base resource ID; treat it as opaque. | Yes | string |
+| workspace_id | path | Dify workspace ID that owns the Agent Knowledge Base. | Yes | string |
+| consistency_class | query | Optional Agent Knowledge Base read-consistency policy. | No | string, <br>**Available values:** "cache-consistent", "eventual-preview", "path-consistent", "snapshot-consistent" |
+| metadata_key | query | Exact metadata key; metadata_value must be supplied with it. | No | string |
+| metadata_value | query | Exact metadata value; metadata_key must be supplied with it. | No | string |
+| name_contains | query |  | No | string |
+| page_size | query | Maximum number of results to return (1-100). | No | integer, <br>**Default:** 20 |
+| page_token | query | Opaque continuation token returned as next_page_token. Repeat the same query without inspecting the token. | No | string |
+| path | query | Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces. | Yes | string |
+| resource_type | query |  | No | string, <br>**Available values:** "artifact", "document", "evidence", "node", "source", "workspace" |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base entry search results | **application/json**: [KnowledgeFSEntryListResponse](#knowledgefsentrylistresponse)<br> |
+| 400 | Invalid Agent Knowledge Base request | **application/json**: [ErrorBody](#errorbody)<br> |
+| 401 | Missing or invalid OAuth account bearer | **application/json**: [ErrorBody](#errorbody)<br> |
+| 403 | Caller lacks workspace or Agent Knowledge Base read access | **application/json**: [ErrorBody](#errorbody)<br> |
+| 404 | Agent Knowledge Base or entry is missing or hidden | **application/json**: [ErrorBody](#errorbody)<br> |
+| 409 | Requested consistency conflicts with current state | **application/json**: [ErrorBody](#errorbody)<br> |
+| 413 | Request exceeds an Agent Knowledge Base operational bound | **application/json**: [ErrorBody](#errorbody)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| 503 | Agent Knowledge Base is temporarily unavailable | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:grep
+**Search Agent Knowledge Base content (grep)**
+
+Searches readable content beneath path, equivalent to difyctl fs grep. Matches follow canonical entry traversal order and source-offset order within each entry. Results use the canonical, stable Agent Knowledge Base traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| knowledge_space_id | path | Stable Dify Agent Knowledge Base resource ID; treat it as opaque. | Yes | string |
+| workspace_id | path | Dify workspace ID that owns the Agent Knowledge Base. | Yes | string |
+| consistency_class | query | Optional Agent Knowledge Base read-consistency policy. | No | string, <br>**Available values:** "cache-consistent", "eventual-preview", "path-consistent", "snapshot-consistent" |
+| page_size | query | Maximum number of results to return (1-100). | No | integer, <br>**Default:** 20 |
+| page_token | query | Opaque continuation token returned as next_page_token. Repeat the same query without inspecting the token. | No | string |
+| path | query | Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces. | Yes | string |
+| text | query | Text to find in readable entry content. | Yes | string |
+| timeout_ms | query | Optional search time budget in milliseconds (1-10000). | No | integer |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base content matches | **application/json**: [KnowledgeFSEntryContentSearchResponse](#knowledgefsentrycontentsearchresponse)<br> |
+| 400 | Invalid Agent Knowledge Base request | **application/json**: [ErrorBody](#errorbody)<br> |
+| 401 | Missing or invalid OAuth account bearer | **application/json**: [ErrorBody](#errorbody)<br> |
+| 403 | Caller lacks workspace or Agent Knowledge Base read access | **application/json**: [ErrorBody](#errorbody)<br> |
+| 404 | Agent Knowledge Base or entry is missing or hidden | **application/json**: [ErrorBody](#errorbody)<br> |
+| 409 | Requested consistency conflicts with current state | **application/json**: [ErrorBody](#errorbody)<br> |
+| 413 | Request exceeds an Agent Knowledge Base operational bound | **application/json**: [ErrorBody](#errorbody)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| 503 | Agent Knowledge Base is temporarily unavailable | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:ls
+**List an Agent Knowledge Base directory (ls)**
+
+Lists direct child entries under path, equivalent to difyctl fs ls. Results use the canonical, stable Agent Knowledge Base traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| knowledge_space_id | path | Stable Dify Agent Knowledge Base resource ID; treat it as opaque. | Yes | string |
+| workspace_id | path | Dify workspace ID that owns the Agent Knowledge Base. | Yes | string |
+| consistency_class | query | Optional Agent Knowledge Base read-consistency policy. | No | string, <br>**Available values:** "cache-consistent", "eventual-preview", "path-consistent", "snapshot-consistent" |
+| page_size | query | Maximum number of results to return (1-100). | No | integer, <br>**Default:** 20 |
+| page_token | query | Opaque continuation token returned as next_page_token. Repeat the same query without inspecting the token. | No | string |
+| path | query | Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces. | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base entry page | **application/json**: [KnowledgeFSEntryListResponse](#knowledgefsentrylistresponse)<br> |
+| 400 | Invalid Agent Knowledge Base request | **application/json**: [ErrorBody](#errorbody)<br> |
+| 401 | Missing or invalid OAuth account bearer | **application/json**: [ErrorBody](#errorbody)<br> |
+| 403 | Caller lacks workspace or Agent Knowledge Base read access | **application/json**: [ErrorBody](#errorbody)<br> |
+| 404 | Agent Knowledge Base or entry is missing or hidden | **application/json**: [ErrorBody](#errorbody)<br> |
+| 409 | Requested consistency conflicts with current state | **application/json**: [ErrorBody](#errorbody)<br> |
+| 413 | Request exceeds an Agent Knowledge Base operational bound | **application/json**: [ErrorBody](#errorbody)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| 503 | Agent Knowledge Base is temporarily unavailable | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:stat
+**Inspect an Agent Knowledge Base entry (stat)**
+
+Returns stable metadata for one entry selected by canonical virtual path without reading content, equivalent to difyctl fs stat. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| knowledge_space_id | path | Stable Dify Agent Knowledge Base resource ID; treat it as opaque. | Yes | string |
+| workspace_id | path | Dify workspace ID that owns the Agent Knowledge Base. | Yes | string |
+| consistency_class | query | Optional Agent Knowledge Base read-consistency policy. | No | string, <br>**Available values:** "cache-consistent", "eventual-preview", "path-consistent", "snapshot-consistent" |
+| path | query | Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces. | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base entry metadata | **application/json**: [KnowledgeFSEntryMetadataResponse](#knowledgefsentrymetadataresponse)<br> |
+| 400 | Invalid Agent Knowledge Base request | **application/json**: [ErrorBody](#errorbody)<br> |
+| 401 | Missing or invalid OAuth account bearer | **application/json**: [ErrorBody](#errorbody)<br> |
+| 403 | Caller lacks workspace or Agent Knowledge Base read access | **application/json**: [ErrorBody](#errorbody)<br> |
+| 404 | Agent Knowledge Base or entry is missing or hidden | **application/json**: [ErrorBody](#errorbody)<br> |
+| 409 | Requested consistency conflicts with current state | **application/json**: [ErrorBody](#errorbody)<br> |
+| 413 | Request exceeds an Agent Knowledge Base operational bound | **application/json**: [ErrorBody](#errorbody)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| 503 | Agent Knowledge Base is temporarily unavailable | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:tree
+**Traverse an Agent Knowledge Base directory (tree)**
+
+Returns a depth- and page-size-bounded tree rooted at path, equivalent to difyctl fs tree. Results use the canonical, stable Agent Knowledge Base traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| knowledge_space_id | path | Stable Dify Agent Knowledge Base resource ID; treat it as opaque. | Yes | string |
+| workspace_id | path | Dify workspace ID that owns the Agent Knowledge Base. | Yes | string |
+| consistency_class | query | Optional Agent Knowledge Base read-consistency policy. | No | string, <br>**Available values:** "cache-consistent", "eventual-preview", "path-consistent", "snapshot-consistent" |
+| depth | query | Maximum tree depth (1-8). | No | integer |
+| page_size | query | Maximum number of results to return (1-100). | No | integer, <br>**Default:** 20 |
+| page_token | query | Opaque continuation token returned as next_page_token. Repeat the same query without inspecting the token. | No | string |
+| path | query | Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces. | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base entry tree | **application/json**: [KnowledgeFSEntryTreeResponse](#knowledgefsentrytreeresponse)<br> |
+| 400 | Invalid Agent Knowledge Base request | **application/json**: [ErrorBody](#errorbody)<br> |
+| 401 | Missing or invalid OAuth account bearer | **application/json**: [ErrorBody](#errorbody)<br> |
+| 403 | Caller lacks workspace or Agent Knowledge Base read access | **application/json**: [ErrorBody](#errorbody)<br> |
+| 404 | Agent Knowledge Base or entry is missing or hidden | **application/json**: [ErrorBody](#errorbody)<br> |
+| 409 | Requested consistency conflicts with current state | **application/json**: [ErrorBody](#errorbody)<br> |
+| 413 | Request exceeds an Agent Knowledge Base operational bound | **application/json**: [ErrorBody](#errorbody)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| 503 | Agent Knowledge Base is temporarily unavailable | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /workspaces/{workspace_id}/marketplace/plugins
@@ -1743,6 +1995,125 @@ Upload a file to use as an input variable when running the app
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [GET] /workspaces/{workspace_id}/skills
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| keyword | query | Words to match in the name, display name or description | No | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| tag | query | Only skills with every one of these tags; repeat to give several | No | [ string ] |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skills | **application/json**: [SkillListResponse](#skilllistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/skills/imports
+**Import an admitted editor's validated folder, returning a count of file entries only**
+
+Creates a draft (201) or overwrites it (200), relaying archive and service errors.
+Import never publishes. ``draft_hash`` is the draft's ``updated_at`` in whole seconds,
+so an edit made in the same second as the export is not detected.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+| Yes | **application/json**: [SkillImportPayload](#skillimportpayload)<br>**multipart/form-data**: [SkillImportPayload](#skillimportpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Overwritten | **application/json**: [SkillImportResponse](#skillimportresponse)<br> |
+| 201 | Created | **application/json**: [SkillImportResponse](#skillimportresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/skills/{skill_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skill | **application/json**: [SkillDescribeResponse](#skilldescriberesponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/skills/{skill_id}/archive
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| version_id | query | Export this published version instead of the draft | No | string (uuid) |
+| skill_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Zip archive | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/skills/{skill_id}/versions
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| skill_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Versions | **application/json**: [SkillVersionListResponse](#skillversionlistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/skills/{skill_id}:publish
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SkillPublishPayload](#skillpublishpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published | **application/json**: [SkillPublishResponse](#skillpublishresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [GET] /workspaces/{workspace_id}/tool-providers/{provider}
 #### Parameters
 
@@ -1821,6 +2192,20 @@ Upload a file to use as an input variable when running the app
 | ---- | ----------- | ------ |
 | 200 | Tools | **application/json**: [ToolListResponse](#toollistresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}:switch
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workspace detail | **application/json**: [WorkspaceDetailResponse](#workspacedetailresponse)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ---
@@ -1969,6 +2354,12 @@ A chat run against an advanced-chat (chatflow) app, which can also pin a workflo
 | title | string |  | No |
 | url | string |  | No |
 | use_icon_as_answer_icon | boolean |  | No |
+
+#### AlreadySubmittedError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AlreadySubmittedError |  |  |  |
 
 #### AppDescribeInfo
 
@@ -2124,6 +2515,20 @@ mode is a closed enum of listable app types.
 | icon_type | string |  | No |
 | max_active_requests | integer |  | No |
 | name | string |  | Yes |
+
+#### BinaryFileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| BinaryFileResponse | string |  |  |
+
+#### ButtonStyle
+
+Button styles for user actions.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ButtonStyle | string | Button styles for user actions. |  |
 
 #### ChatAppInfo
 
@@ -2471,6 +2876,33 @@ future server adds a code. Formatter tests pin emitted values to the enum.
 | ---- | ---- | ----------- | -------- |
 | EventStreamResponse | string |  |  |
 
+#### ExpiredError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ExpiredError |  |  |  |
+
+#### FileInputConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | No |
+| allowed_file_types | [ [FileType](#filetype) ] |  | No |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
+#### FileListInputConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | No |
+| allowed_file_types | [ [FileType](#filetype) ] |  | No |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
+| number_limits | integer |  | No |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
 #### FileResponse
 
 | Name | Type | Description | Required |
@@ -2491,11 +2923,29 @@ future server adds a code. Formatter tests pin emitted values to the enum.
 | tenant_id | string |  | No |
 | user_id | string |  | No |
 
+#### FileTransferMethod
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FileTransferMethod | string |  |  |
+
+#### FileType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FileType | string |  |  |
+
 #### FileUploadPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | file | binary | The file to upload; its id can then be used in an app run's file variables | Yes |
+
+#### FormInputConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FormInputConfig | [ParagraphInputConfig](#paragraphinputconfig)<br>[SelectInputConfig](#selectinputconfig)<br>[FileInputConfig](#fileinputconfig)<br>[FileListInputConfig](#filelistinputconfig) |  |  |
 
 #### FormSubmitResponse
 
@@ -2532,9 +2982,9 @@ A next step: the op id to call and its ready input.
 | ---- | ---- | ----------- | -------- |
 | expiration_time | integer |  | No |
 | form_content | string |  | Yes |
-| inputs | [ object ] |  | No |
+| inputs | [ [FormInputConfig](#forminputconfig) ] |  | No |
 | resolved_default_values | object |  | Yes |
-| user_actions | [ object ] |  | No |
+| user_actions | [ [UserActionConfig](#useractionconfig) ] |  | No |
 
 #### Import
 
@@ -2555,6 +3005,12 @@ A next step: the op id to call and its ready input.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ImportStatus | string |  |  |
+
+#### InvalidInputError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| InvalidInputError |  |  |  |
 
 #### JsonValue
 
@@ -2593,6 +3049,235 @@ A next step: the op id to call and its ready input.
 | node_data | [KnowledgeRetrievalFragment](#knowledgeretrievalfragment) | Merge into a knowledge-retrieval node's data and set query_variable_selector; to search several bases, join their dataset_ids. For rerank or weights read describe node_type | Yes |
 | provider | string | vendor: indexed in Dify; external: an external knowledge API | Yes |
 | usable | boolean | false when its embedding model isn't available in this workspace | Yes |
+
+#### KnowledgeFSConsistencyClass
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFSConsistencyClass | string |  |  |
+
+#### KnowledgeFSEntryComparePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| consistency_class | [KnowledgeFSConsistencyClass](#knowledgefsconsistencyclass) | Optional Agent Knowledge Base read-consistency policy. | No |
+| include_semantic_summary | boolean | Whether to generate a bounded semantic change summary. This can consume model quota. | No |
+| mode | string, <br>**Available values:** "line", "word" | Comparison granularity. | No |
+| new_path | string | Canonical path of the entry to compare. | Yes |
+| old_path | string | Canonical path of the baseline entry. | Yes |
+
+#### KnowledgeFSEntryComparisonOperationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| kind | string, <br>**Available values:** "delete", "equal", "insert" | *Enum:* `"delete"`, `"equal"`, `"insert"` | Yes |
+| new_end | integer |  | No |
+| new_start | integer |  | No |
+| old_end | integer |  | No |
+| old_start | integer |  | No |
+| text | string |  | Yes |
+
+#### KnowledgeFSEntryComparisonResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| mode | string, <br>**Available values:** "line", "word" | *Enum:* `"line"`, `"word"` | Yes |
+| new_path | string |  | Yes |
+| old_path | string |  | Yes |
+| operations | [ [KnowledgeFSEntryComparisonOperationResponse](#knowledgefsentrycomparisonoperationresponse) ] |  | Yes |
+| semantic | [KnowledgeFSEntrySemanticSummaryResponse](#knowledgefsentrysemanticsummaryresponse) |  | No |
+| stats | [KnowledgeFSEntryComparisonStatsResponse](#knowledgefsentrycomparisonstatsresponse) |  | Yes |
+
+#### KnowledgeFSEntryComparisonStatsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| delete | integer |  | Yes |
+| equal | integer |  | Yes |
+| insert | integer |  | Yes |
+
+#### KnowledgeFSEntryContentMatchResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| end_offset | integer |  | Yes |
+| kind | string, <br>**Available values:** "node", "segment" | *Enum:* `"node"`, `"segment"` | Yes |
+| metadata | object |  | Yes |
+| node_id | string |  | No |
+| path | string |  | Yes |
+| segment_id | string |  | No |
+| snippet | string |  | Yes |
+| start_offset | integer |  | Yes |
+
+#### KnowledgeFSEntryContentSearchQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| consistency_class | [KnowledgeFSConsistencyClass](#knowledgefsconsistencyclass) | Optional Agent Knowledge Base read-consistency policy. | No |
+| page_size | integer, <br>**Default:** 20 | Maximum number of results to return (1-100). | No |
+| page_token | string | Opaque continuation token returned as next_page_token. Repeat the same query without inspecting the token. | No |
+| path | string | Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces. | Yes |
+| text | string | Text to find in readable entry content. | Yes |
+| timeout_ms | integer | Optional search time budget in milliseconds (1-10000). | No |
+
+#### KnowledgeFSEntryContentSearchResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSEntryContentMatchResponse](#knowledgefsentrycontentmatchresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| next_page_token | string | Opaque continuation token for the next page; null when no continuation is available. | No |
+| path | string |  | Yes |
+| truncated | boolean | Whether operational bounds made the result incomplete, even when no continuation is available. | Yes |
+
+#### KnowledgeFSEntryInspectQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| consistency_class | [KnowledgeFSConsistencyClass](#knowledgefsconsistencyclass) | Optional Agent Knowledge Base read-consistency policy. | No |
+| path | string | Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces. | Yes |
+
+#### KnowledgeFSEntryListQuery
+
+List direct children in stable Agent Knowledge Base traversal order.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| consistency_class | [KnowledgeFSConsistencyClass](#knowledgefsconsistencyclass) | Optional Agent Knowledge Base read-consistency policy. | No |
+| page_size | integer, <br>**Default:** 20 | Maximum number of results to return (1-100). | No |
+| page_token | string | Opaque continuation token returned as next_page_token. Repeat the same query without inspecting the token. | No |
+| path | string | Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces. | Yes |
+
+#### KnowledgeFSEntryListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| consistency_class | string | Open response value. Clients must tolerate unknown future values and fall back to generic display behavior. | No |
+| data | [ [KnowledgeFSEntryResponse](#knowledgefsentryresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| next_page_token | string | Opaque continuation token for the next page; null when no continuation is available. | No |
+| path | string |  | Yes |
+| preview | boolean |  | No |
+| truncated | boolean | Whether operational bounds made the result incomplete, even when no continuation is available. | Yes |
+
+#### KnowledgeFSEntryMetadataResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| consistency_class | string | Open response value. Clients must tolerate unknown future values and fall back to generic display behavior. | No |
+| content_type | string |  | No |
+| metadata | object |  | Yes |
+| parser_status | string | Open response value. Clients must tolerate unknown future values and fall back to generic display behavior. | No |
+| path | string |  | Yes |
+| preview | boolean |  | No |
+| resource_type | string | Open response value. Clients must tolerate unknown future values and fall back to generic display behavior. | Yes |
+| sha256 | string |  | No |
+| size_bytes | integer |  | No |
+| target_id | string |  | Yes |
+| version | integer |  | No |
+
+#### KnowledgeFSEntryReadContentQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| consistency_class | [KnowledgeFSConsistencyClass](#knowledgefsconsistencyclass) | Optional Agent Knowledge Base read-consistency policy. | No |
+| page_size | integer, <br>**Default:** 100 | Maximum source segments to read (1-100); ignored when the selected entry has one bounded content value. | No |
+| page_token | string | Opaque continuation token returned as next_page_token. Repeat the same query without inspecting the token. | No |
+| path | string | Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces. | Yes |
+
+#### KnowledgeFSEntryReadContentResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content_type | string |  | Yes |
+| has_more | boolean |  | Yes |
+| next_page_token | string | Opaque continuation token for the next page; null when no continuation is available. | No |
+| path | string |  | Yes |
+| text | string |  | Yes |
+| truncated | boolean | Whether operational bounds made the content incomplete, even when no continuation is available. | Yes |
+
+#### KnowledgeFSEntryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| kind | string, <br>**Available values:** "directory", "resource" | *Enum:* `"directory"`, `"resource"` | Yes |
+| metadata | object |  | Yes |
+| name | string |  | Yes |
+| path | string |  | Yes |
+| resource_type | string | Open response value. Clients must tolerate unknown future values and fall back to generic display behavior. | No |
+| target_id | string |  | No |
+| version | integer |  | No |
+
+#### KnowledgeFSEntrySearchQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| consistency_class | [KnowledgeFSConsistencyClass](#knowledgefsconsistencyclass) | Optional Agent Knowledge Base read-consistency policy. | No |
+| metadata_key | string | Exact metadata key; metadata_value must be supplied with it. | No |
+| metadata_value | string | Exact metadata value; metadata_key must be supplied with it. | No |
+| name_contains | string |  | No |
+| page_size | integer, <br>**Default:** 20 | Maximum number of results to return (1-100). | No |
+| page_token | string | Opaque continuation token returned as next_page_token. Repeat the same query without inspecting the token. | No |
+| path | string | Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces. | Yes |
+| resource_type | [KnowledgeFSResourceType](#knowledgefsresourcetype) |  | No |
+
+#### KnowledgeFSEntrySemanticChangeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| category | string |  | Yes |
+| evidence | [ string ] |  | Yes |
+| summary | string |  | Yes |
+
+#### KnowledgeFSEntrySemanticSummaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| changes | [ [KnowledgeFSEntrySemanticChangeResponse](#knowledgefsentrysemanticchangeresponse) ] |  | Yes |
+| metadata | object |  | Yes |
+| model | string |  | No |
+| summary | string |  | Yes |
+
+#### KnowledgeFSEntryTreeNodeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| children | [ [KnowledgeFSEntryTreeNodeResponse](#knowledgefsentrytreenoderesponse) ] |  | No |
+| kind | string, <br>**Available values:** "directory", "resource" | *Enum:* `"directory"`, `"resource"` | Yes |
+| metadata | object |  | Yes |
+| name | string |  | Yes |
+| path | string |  | Yes |
+| resource_type | string | Open response value. Clients must tolerate unknown future values and fall back to generic display behavior. | No |
+| target_id | string |  | No |
+| version | integer |  | No |
+
+#### KnowledgeFSEntryTreeQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| consistency_class | [KnowledgeFSConsistencyClass](#knowledgefsconsistencyclass) | Optional Agent Knowledge Base read-consistency policy. | No |
+| depth | integer | Maximum tree depth (1-8). | No |
+| page_size | integer, <br>**Default:** 20 | Maximum number of results to return (1-100). | No |
+| page_token | string | Opaque continuation token returned as next_page_token. Repeat the same query without inspecting the token. | No |
+| path | string | Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces. | Yes |
+
+#### KnowledgeFSEntryTreeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| consistency_class | string | Open response value. Clients must tolerate unknown future values and fall back to generic display behavior. | No |
+| has_more | boolean |  | Yes |
+| next_page_token | string | Opaque continuation token for the next page; null when no continuation is available. | No |
+| path | string |  | Yes |
+| preview | boolean |  | No |
+| root | [KnowledgeFSEntryTreeNodeResponse](#knowledgefsentrytreenoderesponse) |  | Yes |
+| truncated | boolean | Whether operational bounds made the result incomplete, even when no continuation is available. | Yes |
+
+#### KnowledgeFSResourceType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFSResourceType | string |  |  |
 
 #### KnowledgeRetrievalFragment
 
@@ -2867,6 +3552,24 @@ The console payload plus local file parts; `_files.merge_files` sets them on `in
 | files | object | Local file paths keyed by the form's file input name, same convention as the run ops' `files` | No |
 | inputs | object | Submitted human input values keyed by output variable name. Use a string for paragraph or select input values, a file mapping for file inputs, and a list of file mappings for file-list inputs. Local file mappings use `transfer_method=local_file` with `upload_file_id`; remote file mappings use `transfer_method=remote_url` with `url` or `remote_url`. | Yes |
 
+#### PaidPlanRequiredError
+
+This feature requires a paid plan.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PaidPlanRequiredError |  | This feature requires a paid plan. |  |
+
+#### ParagraphInputConfig
+
+Form input definition.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default | [StringSource](#stringsource) | Raw default-value configuration for the paragraph input. Runtime-resolved values are exposed in the surrounding `resolved_default_values` mapping. | No |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
 #### PermittedExternalAppsListQuery
 
 Strict (extra='forbid').
@@ -3104,6 +3807,14 @@ Cursor page of runs; `hints` carries the next page.
 | hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
 | limit | integer |  | Yes |
 
+#### SelectInputConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| option_source | [StringListSource](#stringlistsource) | Source of options for `select` inputs. Present only when `type` is `select`. | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
 #### ServerVersionResponse
 
 Meta endpoint payload for `GET /openapi/v1/_version` — no auth required.
@@ -3119,6 +3830,14 @@ Meta endpoint payload for `GET /openapi/v1/_version` — no auth required.
 | ---- | ---- | ----------- | -------- |
 | base_url | string |  | Yes |
 | enabled | boolean |  | Yes |
+
+#### ServiceApiDisabledError
+
+This app's Service API is turned off.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ServiceApiDisabledError |  | This app's Service API is turned off. |  |
 
 #### ServiceApiPatch
 
@@ -3181,6 +3900,145 @@ Pagination for GET /account/sessions. Strict (extra='forbid').
 | ---- | ---- | ----------- | -------- |
 | result | string | Operation result. | Yes |
 
+#### SkillDescribeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | Yes |
+| display_name | string |  | Yes |
+| draft_hash | string | Opaque; names the draft this was read from | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| icon | string |  | Yes |
+| id | string |  | Yes |
+| latest_published_version_id | string | Null while the skill has never been published | Yes |
+| latest_version | [SkillVersionRow](#skillversionrow) | Null while the skill has never been published | Yes |
+| name | string |  | Yes |
+| tags | [ string ] |  | Yes |
+| updated_at | integer |  | Yes |
+
+#### SkillExportQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| version_id | string | Export this published version instead of the draft | No |
+
+#### SkillImportPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| draft_hash | string | From describe.skill; rejects the overwrite if the draft changed since | No |
+| files | object | The skill folder, one part per file; SKILL.md at its root | Yes |
+| skill_id | string | Overwrite this skill's draft; omit to create a new skill | No |
+
+#### SkillImportResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| draft_hash | string | Opaque; names the draft this wrote | Yes |
+| file_count | integer |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| id | string |  | Yes |
+| name | string |  | Yes |
+
+#### SkillListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| keyword | string | Words to match in the name, display name or description | No |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
+| tag | [ string ] | Only skills with every one of these tags; repeat to give several | No |
+
+#### SkillListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [SkillRow](#skillrow) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### SkillPublishPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| publish_note | string | Note for the new version | No |
+| version_name | string | Name for the new version | No |
+
+#### SkillPublishResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | Yes |
+| created_by | string | Account id that published it | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| id | string |  | Yes |
+| publish_note | string |  | Yes |
+| version_name | string |  | Yes |
+| version_number | integer |  | Yes |
+
+#### SkillRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | Yes |
+| display_name | string |  | Yes |
+| icon | string |  | Yes |
+| id | string |  | Yes |
+| latest_published_version_id | string | Null while the skill has never been published | Yes |
+| name | string |  | Yes |
+| tags | [ string ] |  | Yes |
+| updated_at | integer |  | Yes |
+
+#### SkillVersionListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
+
+#### SkillVersionListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [SkillVersionRow](#skillversionrow) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### SkillVersionRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | Yes |
+| created_by | string | Account id that published it | Yes |
+| id | string |  | Yes |
+| publish_note | string |  | Yes |
+| version_name | string |  | Yes |
+| version_number | integer |  | Yes |
+
+#### StringListSource
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| selector | [ string ] | Variable reference path when `type` is `variable`. | No |
+| type | [ValueSourceType](#valuesourcetype) | Origin of the options. `constant` means `value` lists the options literally; `variable` means `selector` points to an `array[string]` workflow variable that provides them. | Yes |
+| value | [ string ] | Literal option list when `type` is `constant`. | No |
+
+#### StringSource
+
+Default configuration for form inputs.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| selector | [ string ] |  | No |
+| type | [ValueSourceType](#valuesourcetype) |  | Yes |
+| value | string |  | No |
+
 #### SubjectType
 
 | Name | Type | Description | Required |
@@ -3207,8 +4065,8 @@ generated CLI whitelist all derive from it.
 
 #### TaskStopResponse
 
-200 body for POST /apps/<id>/tasks/<task_id>:stop. The handler always returns
-{"result": "success"}, so `result` is required (no default) — the generated contract
+200 body for POST /apps/<id>/runs/<run_id>:stop and POST /apps/<id>/tasks/<task_id>:stop.
+The handlers always return {"result": "success"}, so `result` is required (no default) — the generated contract
 types it as a required `'success'` rather than an optional field.
 
 | Name | Type | Description | Required |
@@ -3351,6 +4209,25 @@ Tool provider types a workflow tool node can call; values match the node's provi
 | prompt_tokens | integer |  | No |
 | total_tokens | integer |  | No |
 
+#### UserActionConfig
+
+User action configuration.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| button_style | [ButtonStyle](#buttonstyle) |  | No |
+| id | string |  | Yes |
+| title | string |  | Yes |
+
+#### ValueSourceType
+
+ValueSourceType records whether the value comes from a static setting
+in form definition, or a variable while the workflow is running.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ValueSourceType | string | ValueSourceType records whether the value comes from a static setting in form definition, or a variable while the workflow is running. |  |
+
 #### VersionListQuery
 
 | Name | Type | Description | Required |
@@ -3454,6 +4331,12 @@ Page of published versions, newest first; there is no total, `hints` carries the
 | nodes_changed | [ [NodeChange](#nodechange) ] |  | Yes |
 | nodes_removed | [ [NodeChange](#nodechange) ] |  | Yes |
 | published | boolean | false when the app was never published; then everything counts as added | Yes |
+
+#### WorkflowNotActiveError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WorkflowNotActiveError |  |  |  |
 
 #### WorkflowRunData
 

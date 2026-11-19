@@ -157,11 +157,12 @@ describe('TemplateCard', () => {
     )
 
     it('should call onCreate when app card is clicked outside cloud edition', async () => {
+      const user = userEvent.setup()
       deploymentEdition = 'COMMUNITY'
 
       renderComponent({ canCreate: true })
 
-      await userEvent.setup().click(screen.getByRole('button', { name: 'Sample App' }))
+      await user.click(screen.getByRole('button', { name: 'Sample App' }))
 
       expect(onCreate).toHaveBeenCalledTimes(1)
       expect(onTry).not.toHaveBeenCalled()
@@ -182,11 +183,12 @@ describe('TemplateCard', () => {
     })
 
     it('should track preview event when app card is clicked', async () => {
+      const user = userEvent.setup()
       const app = createApp()
 
       renderComponent({ app, canCreate: true })
 
-      await userEvent.setup().click(screen.getByRole('button', { name: 'Sample App' }))
+      await user.click(screen.getByRole('button', { name: 'Sample App' }))
 
       expect(onTry).toHaveBeenCalledExactlyOnceWith(app)
       expect(mockTrackEvent).toHaveBeenCalledWith('preview_template', {

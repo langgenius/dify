@@ -219,12 +219,12 @@ class SegmentApi(DatasetApiResource):
                     model_type=ModelType.TEXT_EMBEDDING,
                     model=dataset.embedding_model,
                 )
-            except LLMBadRequestError:
+            except LLMBadRequestError as caught_error:
                 raise ProviderNotInitializeError(
                     "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
-                )
+                ) from caught_error
             except ProviderTokenNotInitError as ex:
-                raise ProviderNotInitializeError(ex.description)
+                raise ProviderNotInitializeError(ex.description) from ex
         # validate args
         try:
             payload = SegmentCreatePayload.model_validate(service_api_ns.payload or {})
@@ -294,7 +294,6 @@ class SegmentApi(DatasetApiResource):
         args = query_params_from_request(
             SegmentListQuery,
             list_fields=("status",),
-            use_defaults_for_malformed_ints=True,
         )
         page = args.page
         limit = min(args.limit, 100)
@@ -319,12 +318,12 @@ class SegmentApi(DatasetApiResource):
                     model_type=ModelType.TEXT_EMBEDDING,
                     model=dataset.embedding_model,
                 )
-            except LLMBadRequestError:
+            except LLMBadRequestError as caught_error:
                 raise ProviderNotInitializeError(
                     "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
-                )
+                ) from caught_error
             except ProviderTokenNotInitError as ex:
-                raise ProviderNotInitializeError(ex.description)
+                raise ProviderNotInitializeError(ex.description) from ex
 
         segments, total = SegmentService.get_segments(
             session=session,
@@ -461,12 +460,12 @@ class DatasetSegmentApi(DatasetApiResource):
                     model_type=ModelType.TEXT_EMBEDDING,
                     model=dataset.embedding_model,
                 )
-            except LLMBadRequestError:
+            except LLMBadRequestError as caught_error:
                 raise ProviderNotInitializeError(
                     "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
-                )
+                ) from caught_error
             except ProviderTokenNotInitError as ex:
-                raise ProviderNotInitializeError(ex.description)
+                raise ProviderNotInitializeError(ex.description) from ex
         segment_id_str = str(segment_id)
         _, segment = _get_segment_for_document(session, dataset, document, segment_id_str)
 
@@ -620,12 +619,12 @@ class ChildChunkApi(DatasetApiResource):
                     model_type=ModelType.TEXT_EMBEDDING,
                     model=dataset.embedding_model,
                 )
-            except LLMBadRequestError:
+            except LLMBadRequestError as caught_error:
                 raise ProviderNotInitializeError(
                     "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
-                )
+                ) from caught_error
             except ProviderTokenNotInitError as ex:
-                raise ProviderNotInitializeError(ex.description)
+                raise ProviderNotInitializeError(ex.description) from ex
 
         try:
             child_chunk = SegmentService.create_child_chunk(
@@ -638,7 +637,7 @@ class ChildChunkApi(DatasetApiResource):
                 mutations=application_services().knowledge.segments.mutations,
             )
         except ChildChunkIndexingServiceError as e:
-            raise ChildChunkIndexingError(str(e))
+            raise ChildChunkIndexingError(str(e)) from e
 
         return dump_response(ChildChunkDetailResponse, {"data": child_chunk}), 200
 
@@ -687,7 +686,7 @@ class ChildChunkApi(DatasetApiResource):
         segment_id_str = str(segment_id)
         _get_segment_for_document(session, dataset, document, segment_id_str)
 
-        args = query_params_from_request(ChildChunkListQuery, use_defaults_for_malformed_ints=True)
+        args = query_params_from_request(ChildChunkListQuery)
 
         page = args.page
         limit = min(args.limit, 100)
@@ -780,7 +779,7 @@ class DatasetChildChunkApi(DatasetApiResource):
                 child_chunk, dataset, session, mutations=application_services().knowledge.segments.mutations
             )
         except ChildChunkDeleteIndexServiceError as e:
-            raise ChildChunkDeleteIndexError(str(e))
+            raise ChildChunkDeleteIndexError(str(e)) from e
 
         return "", 204
 
@@ -861,6 +860,6 @@ class DatasetChildChunkApi(DatasetApiResource):
                 mutations=application_services().knowledge.segments.mutations,
             )
         except ChildChunkIndexingServiceError as e:
-            raise ChildChunkIndexingError(str(e))
+            raise ChildChunkIndexingError(str(e)) from e
 
         return dump_response(ChildChunkDetailResponse, {"data": child_chunk}), 200

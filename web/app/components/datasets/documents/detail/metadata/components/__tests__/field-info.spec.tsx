@@ -2,8 +2,6 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import FieldInfo from '../field-info'
 
-vi.mock('@/utils', () => ({ getTextWidthWithCanvas: (text: string) => text.length * 8 }))
-
 it.each(['input', 'textarea'] as const)('edits a named metadata %s', async (inputType) => {
   const user = userEvent.setup()
   const onUpdate = vi.fn()

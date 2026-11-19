@@ -1,325 +1,95 @@
 'use client'
-import type { Annotation, AnnotationHitHistory } from '@dify/contracts/api/console/apps/types.gen'
-import type { AlertDialogActions } from '@langgenius/dify-ui/alert-dialog'
-import type { FC } from 'react'
+import type { Annotation } from '@dify/contracts/api/console/apps/types.gen'
+import type { AnnotationEditorProps } from '../edit-annotation-modal/annotation-editor'
 import {
-  AlertDialog,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@langgenius/dify-ui/alert-dialog'
-import { cn } from '@langgenius/dify-ui/cn'
-import {
-  Drawer,
-  DrawerBackdrop,
-  DrawerClose,
-  DrawerContent,
-  DrawerPopup,
-  DrawerPortal,
-  DrawerTitle,
-  DrawerViewport,
-} from '@langgenius/dify-ui/drawer'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { Pagination } from '@langgenius/dify-ui/pagination'
+  DialogBody,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
-import * as React from 'react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { APP_PAGE_LIMIT } from '@/config'
 import useTimestamp from '@/hooks/use-timestamp'
-import { consoleClient } from '@/service/console'
-import EditItem, { EditItemType } from '../edit-annotation-modal/edit-item'
-import HitHistoryNoData from './hit-history-no-data'
+import { AnnotationEditor } from '../edit-annotation-modal/annotation-editor'
+import { RemoveAnnotationDialog } from '../edit-annotation-modal/remove-annotation-dialog'
+import { AnnotationHitHistory } from './hit-history'
 
-type Props = Readonly<{
+type AnnotationDetailsProps = {
   appId: string
-  isShow: boolean
-  onHide: () => void
   item: Annotation
-  onSave: (editedQuery: string, editedAnswer: string) => Promise<void>
-  onRemove: () => void
-}>
+  isPending: boolean
+  isError: boolean
+  onSave: AnnotationEditorProps['onSave']
+  onRemoved: () => void
+}
 
-const TabType = {
-  annotation: 'annotation',
-  hitHistory: 'hitHistory',
-} as const
-
-type TabType = (typeof TabType)[keyof typeof TabType]
-
-const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, onRemove }) => {
-  const { id, created_at: createdAt } = item
-  const question = item.question ?? ''
-  const answer = item.answer ?? ''
-  const [newQuestion, setNewQuery] = useState(question)
-  const [newAnswer, setNewAnswer] = useState(answer)
-  const { t } = useTranslation(['appAnnotation', 'appDebug', 'appLog', 'common'])
+export default function AnnotationDetails({
+  appId,
+  item,
+  isPending,
+  isError,
+  onSave,
+  onRemoved,
+}: AnnotationDetailsProps) {
+  const { t } = useTranslation(['appAnnotation', 'appLog', 'common'])
   const { formatTime } = useTimestamp()
-  const [currPage, setCurrPage] = React.useState<number>(0)
-  const [total, setTotal] = useState(0)
-  const totalPages = total ? Math.max(Math.ceil(total / APP_PAGE_LIMIT), 1) : 1
-  const [hitHistoryList, setHitHistoryList] = useState<AnnotationHitHistory[]>([])
-
-  // Update local state when item prop changes (e.g., when modal is reopened with updated data)
-  useEffect(() => {
-    setNewQuery(question)
-    setNewAnswer(answer)
-    setCurrPage(0)
-    setTotal(0)
-    setHitHistoryList([])
-  }, [question, answer, id])
-
-  const fetchHitHistory = async (page = 1) => {
-    try {
-      const { data, total } =
-        await consoleClient.apps.byAppId.annotations.byAnnotationId.hitHistories.get({
-          params: { app_id: appId, annotation_id: id },
-          query: { page, limit: 10 },
-        })
-      setHitHistoryList(data)
-      setTotal(total)
-    } catch {}
-  }
-
-  useEffect(() => {
-    fetchHitHistory(currPage + 1)
-  }, [currPage])
-
-  // Fetch hit history when item changes
-  useEffect(() => {
-    if (isShow && id) fetchHitHistory(1)
-  }, [id, isShow])
-
-  const [activeTab, setActiveTab] = useState<TabType>(TabType.annotation)
-  const handleSave = async (type: EditItemType, editedContent: string) => {
-    try {
-      if (type === EditItemType.Query) {
-        await onSave(editedContent, newAnswer)
-        setNewQuery(editedContent)
-      } else {
-        await onSave(newQuestion, editedContent)
-        setNewAnswer(editedContent)
-      }
-    } catch (error) {
-      // If save fails, don't update local state
-      console.error('Failed to save annotation:', error)
-    }
-  }
-  const removeActionsRef = React.useRef<AlertDialogActions>(null)
-
-  const annotationTab = (
+  const [tab, setTab] = useState('annotation')
+  return (
     <>
-      <EditItem
-        type={EditItemType.Query}
-        content={question}
-        onSave={(editedContent) => handleSave(EditItemType.Query, editedContent)}
-      />
-      <EditItem
-        type={EditItemType.Answer}
-        content={answer}
-        onSave={(editedContent) => handleSave(EditItemType.Answer, editedContent)}
-      />
+      <DialogHeader>
+        <DialogTitle>
+          {t(($) => $['viewModal.annotatedResponse'], { ns: 'appAnnotation' })}
+        </DialogTitle>
+        <DialogHeaderCloseButton
+          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+          disabled={isPending}
+        />
+      </DialogHeader>
+      <Tabs value={tab} onValueChange={setTab} className="flex min-h-0 flex-1 flex-col">
+        <TabsList className="mx-6 shrink-0">
+          <TabsTab value="annotation">
+            {t(($) => $['viewModal.annotatedResponse'], { ns: 'appAnnotation' })}
+          </TabsTab>
+          <TabsTab value="history" disabled={isPending}>
+            {t(($) => $['viewModal.hitHistory'], { ns: 'appAnnotation' })}
+          </TabsTab>
+        </TabsList>
+        <DialogBody>
+          <TabsPanel value="annotation" keepMounted>
+            <AnnotationEditor
+              question={item.question ?? ''}
+              answer={item.answer ?? ''}
+              isPending={isPending}
+              isError={isError}
+              onSave={onSave}
+            />
+          </TabsPanel>
+          <TabsPanel value="history">
+            <AnnotationHitHistory appId={appId} annotationId={item.id} />
+          </TabsPanel>
+        </DialogBody>
+      </Tabs>
+      {tab === 'annotation' && (
+        <DialogFooter>
+          <RemoveAnnotationDialog
+            appId={appId}
+            annotationId={item.id}
+            disabled={isPending}
+            onRemoved={onRemoved}
+          />
+          <span className="ms-auto system-xs-regular text-text-tertiary">
+            {t(($) => $['editModal.createdAt'], { ns: 'appAnnotation' })}{' '}
+            {item.created_at != null
+              ? formatTime(
+                  item.created_at,
+                  t(($) => $.dateTimeFormat, { ns: 'appLog' }),
+                )
+              : '-'}
+          </span>
+        </DialogFooter>
+      )}
     </>
   )
-
-  const hitHistoryTab =
-    total === 0 ? (
-      <HitHistoryNoData />
-    ) : (
-      <div>
-        <table className={cn('w-full min-w-110 border-collapse border-0')}>
-          <thead className="system-xs-medium-uppercase text-text-tertiary">
-            <tr>
-              <th className="w-5 rounded-l-lg bg-background-section-burn pr-1 pl-2 text-left font-[weight:inherit] whitespace-nowrap">
-                {t(($) => $['hitHistoryTable.query'], { ns: 'appAnnotation' })}
-              </th>
-              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
-                {t(($) => $['hitHistoryTable.match'], { ns: 'appAnnotation' })}
-              </th>
-              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
-                {t(($) => $['hitHistoryTable.response'], { ns: 'appAnnotation' })}
-              </th>
-              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
-                {t(($) => $['hitHistoryTable.source'], { ns: 'appAnnotation' })}
-              </th>
-              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
-                {t(($) => $['hitHistoryTable.score'], { ns: 'appAnnotation' })}
-              </th>
-              <th className="w-40 rounded-r-lg bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
-                {t(($) => $['hitHistoryTable.time'], { ns: 'appAnnotation' })}
-              </th>
-            </tr>
-          </thead>
-          <tbody className="system-sm-regular text-text-secondary">
-            {hitHistoryList.map((item) => (
-              <tr
-                key={item.id}
-                className="cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover"
-              >
-                <td
-                  className="max-w-62.5 overflow-hidden p-3 pr-2 text-ellipsis whitespace-nowrap"
-                  title={item.question ?? undefined}
-                >
-                  {item.question}
-                </td>
-                <td
-                  className="max-w-62.5 overflow-hidden p-3 pr-2 text-ellipsis whitespace-nowrap"
-                  title={item.match ?? undefined}
-                >
-                  {item.match}
-                </td>
-                <td
-                  className="max-w-62.5 overflow-hidden p-3 pr-2 text-ellipsis whitespace-nowrap"
-                  title={item.response ?? undefined}
-                >
-                  {item.response}
-                </td>
-                <td className="p-3 pr-2">{item.source}</td>
-                <td className="p-3 pr-2">{item.score ? item.score.toFixed(2) : '-'}</td>
-                <td className="p-3 pr-2">
-                  {item.created_at
-                    ? formatTime(
-                        item.created_at,
-                        t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
-                      )
-                    : '-'}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {total && total > APP_PAGE_LIMIT ? (
-          <Pagination
-            page={currPage + 1}
-            totalPages={totalPages}
-            onPageChange={(page) => setCurrPage(page - 1)}
-            labels={{
-              previous: t(($) => $['pagination.previous'], { ns: 'common' }),
-              next: t(($) => $['pagination.next'], { ns: 'common' }),
-              editPageNumber: (page, totalPages) =>
-                t(($) => $['pagination.editPageNumber'], { ns: 'common', page, totalPages }),
-              pageNumberInput: t(($) => $['pagination.pageNumber'], { ns: 'common' }),
-            }}
-          />
-        ) : null}
-      </div>
-    )
-  if (!isShow) return null
-
-  return (
-    <div>
-      <Drawer
-        open
-        modal
-        disablePointerDismissal
-        swipeDirection="right"
-        onOpenChange={(open) => {
-          if (!open) onHide()
-        }}
-      >
-        <DrawerPortal>
-          <DrawerBackdrop />
-          <DrawerViewport>
-            <DrawerPopup className="data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-3 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-200 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:border-r-[0.5px] data-[swipe-direction=right]:border-divider-subtle">
-              <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
-                <DrawerTitle className="sr-only">
-                  {t(($) => $['viewModal.annotatedResponse'], { ns: 'appAnnotation' })}
-                </DrawerTitle>
-                <Tabs
-                  value={activeTab}
-                  onValueChange={setActiveTab}
-                  className="flex min-h-0 flex-1 flex-col"
-                >
-                  <div className="flex shrink-0 items-center justify-between gap-4 border-b border-divider-subtle pr-5 pl-6">
-                    <TabsList>
-                      <TabsTab value={TabType.annotation}>
-                        {t(($) => $['viewModal.annotatedResponse'], { ns: 'appAnnotation' })}
-                      </TabsTab>
-                      <TabsTab value={TabType.hitHistory}>
-                        {t(($) => $['viewModal.hitHistory'], { ns: 'appAnnotation' })}
-                        {hitHistoryList.length > 0 && (
-                          <span className="ml-1 system-xs-medium text-text-tertiary">
-                            {`${total} ${t(($) => $[`viewModal.hit${hitHistoryList.length > 1 ? 's' : ''}`], { ns: 'appAnnotation' })}`}
-                          </span>
-                        )}
-                      </TabsTab>
-                    </TabsList>
-                    <DrawerClose
-                      render={
-                        <IconButton
-                          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                          size="md"
-                        >
-                          <span aria-hidden="true" className="i-ri-close-line size-4" />
-                        </IconButton>
-                      }
-                    />
-                  </div>
-                  <div className="min-h-0 flex-1 overflow-y-auto">
-                    <TabsPanel value={TabType.annotation} className="space-y-6 p-6 pb-4">
-                      {annotationTab}
-                    </TabsPanel>
-                    <TabsPanel value={TabType.hitHistory} className="p-6 pb-4">
-                      {hitHistoryTab}
-                    </TabsPanel>
-                  </div>
-                </Tabs>
-                {id && (
-                  <div className="flex h-16 shrink-0 items-center justify-between rounded-b-xl border-t border-divider-subtle bg-background-section-burn px-4 system-sm-medium text-text-tertiary">
-                    <AlertDialog actionsRef={removeActionsRef}>
-                      <AlertDialogTrigger className="flex cursor-pointer appearance-none items-center space-x-2 border-0 bg-transparent py-0 pr-0 pl-3 text-left">
-                        <span
-                          aria-hidden
-                          className="i-custom-vender-line-communication-message-check-remove h-6 w-6"
-                        />
-                        <span>
-                          {t(($) => $['editModal.removeThisCache'], { ns: 'appAnnotation' })}
-                        </span>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>
-                            {t(($) => $['feature.annotation.removeConfirm'], { ns: 'appDebug' })}
-                          </AlertDialogTitle>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancelButton>
-                            {t(($) => $['operation.cancel'], { ns: 'common' })}
-                          </AlertDialogCancelButton>
-                          <AlertDialogConfirmButton
-                            onClick={async () => {
-                              await onRemove()
-                              removeActionsRef.current?.close()
-                              onHide()
-                            }}
-                          >
-                            {t(($) => $['operation.confirm'], { ns: 'common' })}
-                          </AlertDialogConfirmButton>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                    <div>
-                      {t(($) => $['editModal.createdAt'], { ns: 'appAnnotation' })}
-                      &nbsp;
-                      {createdAt
-                        ? formatTime(
-                            createdAt,
-                            t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
-                          )
-                        : '-'}
-                    </div>
-                  </div>
-                )}
-              </DrawerContent>
-            </DrawerPopup>
-          </DrawerViewport>
-        </DrawerPortal>
-      </Drawer>
-    </div>
-  )
 }
-export default React.memo(ViewAnnotationModal)

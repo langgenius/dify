@@ -5,18 +5,17 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import FileUploaderInAttachmentWrapper from '@/app/components/base/file-uploader/file-uploader-in-attachment'
 import FileUploaderInChatInput from '@/app/components/base/file-uploader/file-uploader-in-chat-input'
 import { FileContextProvider } from '@/app/components/base/file-uploader/store'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { TransferMethod } from '@/types/app'
 
-const mockUploadRemoteFileInfo = vi.fn()
+const request = vi.hoisted(() => vi.fn<typeof import('@/service/base').request>())
 
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({}),
   usePathname: () => '/',
 }))
 
-vi.mock('@/service/common', () => ({
-  uploadRemoteFileInfo: (...args: unknown[]) => mockUploadRemoteFileInfo(...args),
-}))
+vi.mock('@/service/base', () => ({ request }))
 
 const createFileConfig = (overrides: Partial<FileUpload> = {}): FileUpload =>
   ({
@@ -38,19 +37,22 @@ const renderChatInput = (fileConfig: FileUpload, readonly = false) => {
     <FileContextProvider>
       <FileUploaderInChatInput fileConfig={fileConfig} readonly={readonly} />
     </FileContextProvider>,
+    { wrapper: createConsoleQueryWrapper().wrapper },
   )
 }
 
 describe('Base File Uploader Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUploadRemoteFileInfo.mockResolvedValue({
-      id: 'remote-file-1',
-      mime_type: 'application/pdf',
-      size: 2048,
-      name: 'guide.pdf',
-      url: 'https://cdn.example.com/guide.pdf',
-    })
+    request.mockImplementation(async () =>
+      Response.json({
+        id: 'remote-file-1',
+        mime_type: 'application/pdf',
+        size: 2048,
+        name: 'guide.pdf',
+        url: 'https://cdn.example.com/guide.pdf',
+      }),
+    )
   })
 
   it('uploads a remote file from the attachment wrapper and pushes the updated file list to consumers', async () => {
@@ -63,6 +65,7 @@ describe('Base File Uploader Flow', () => {
         onChange={onChange}
         fileConfig={createFileConfig()}
       />,
+      { wrapper: createConsoleQueryWrapper().wrapper },
     )
 
     await user.click(screen.getByRole('button', { name: /fileUploader\.pasteFileLink/i }))
@@ -73,9 +76,12 @@ describe('Base File Uploader Flow', () => {
     await user.click(screen.getByRole('button', { name: /operation\.ok/i }))
 
     await waitFor(() => {
-      expect(mockUploadRemoteFileInfo).toHaveBeenCalledWith('https://example.com/guide.pdf', false)
+      expect(request).toHaveBeenCalled()
     })
 
+    expect(await request.mock.calls[0]?.[2]?.request?.json()).toEqual({
+      url: 'https://example.com/guide.pdf',
+    })
     await waitFor(() => {
       expect(onChange).toHaveBeenLastCalledWith([
         expect.objectContaining({

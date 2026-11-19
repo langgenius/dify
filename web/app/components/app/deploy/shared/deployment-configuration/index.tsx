@@ -1,9 +1,11 @@
 'use client'
+import type { RefObject } from 'react'
 import type { DeploymentDialogRequest } from '../../types'
 import type { DeploymentVersion } from '../../utils/version'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogClose, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
 import { DeploymentConfigurationContent } from './content'
@@ -13,6 +15,7 @@ import { useDeploymentConfigurationValues } from './use-deployment-configuration
 
 export function DeploymentConfiguration({
   appId,
+  titleRef,
   disabled = false,
   embedded = false,
   invalidateAppEnvironmentsOnSuccess = true,
@@ -23,6 +26,7 @@ export function DeploymentConfiguration({
   onDeploymentStarted,
 }: {
   appId?: string
+  titleRef?: RefObject<HTMLHeadingElement | null>
   disabled?: boolean
   embedded?: boolean
   invalidateAppEnvironmentsOnSuccess?: boolean
@@ -40,20 +44,26 @@ export function DeploymentConfiguration({
     environmentId: request.environmentId,
     workflowId: version.id,
   })
-  const { canDeploy, handleSubmit, isDeploying } = useDeploymentConfigurationForm({
-    appId,
-    configurationValues,
-    disabled,
-    environmentId: request.environmentId,
-    invalidateAppEnvironmentsOnSuccess,
-    queryState,
-    workflowId: version.id,
-    onClose,
-    onDeploymentStarted,
-  })
+  const { canDeploy, clearFieldError, fieldErrors, formRef, handleSubmit, isDeploying } =
+    useDeploymentConfigurationForm({
+      appId,
+      configurationValues,
+      disabled,
+      environmentId: request.environmentId,
+      invalidateAppEnvironmentsOnSuccess,
+      queryState,
+      workflowId: version.id,
+      onClose,
+      onDeploymentStarted,
+    })
 
   return (
-    <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
+    <Form
+      ref={formRef}
+      className="flex min-h-0 flex-1 flex-col"
+      errors={fieldErrors}
+      onSubmit={handleSubmit}
+    >
       {!embedded && (
         <DialogClose
           render={
@@ -86,15 +96,18 @@ export function DeploymentConfiguration({
             {t(($) => $['studio.deployConfiguration'])}
           </h2>
         ) : (
-          <DialogTitle className="mt-0.5 px-1">
-            {t(($) => $['studio.deployConfiguration'])}
-          </DialogTitle>
+          <div className="mt-0.5 px-1">
+            <DialogTitle ref={titleRef} tabIndex={-1}>
+              {t(($) => $['studio.deployConfiguration'])}
+            </DialogTitle>
+          </div>
         )}
       </header>
 
       <DeploymentConfigurationContent
         compact={embedded}
         configurationValues={configurationValues}
+        onConfigurationChange={clearFieldError}
         queryState={queryState}
         request={request}
         version={version}
@@ -106,13 +119,19 @@ export function DeploymentConfiguration({
           embedded ? 'px-4 pt-2 pb-4' : 'px-6 pt-5 pb-6',
         )}
       >
-        <Button type="button" variant="secondary" onClick={onClose}>
-          {tCommon(($) => $['operation.cancel'])}
-        </Button>
+        {embedded ? (
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {tCommon(($) => $['operation.cancel'])}
+          </Button>
+        ) : (
+          <DialogClose render={<Button type="button" variant="secondary" />}>
+            {tCommon(($) => $['operation.cancel'])}
+          </DialogClose>
+        )}
         <Button type="submit" variant="primary" disabled={!canDeploy} loading={isDeploying}>
           {tCommon(($) => $['appMenus.deploy'])}
         </Button>
       </footer>
-    </form>
+    </Form>
   )
 }

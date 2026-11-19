@@ -8,11 +8,11 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
@@ -20,6 +20,7 @@ import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { v4 as uuid4 } from 'uuid'
 import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import { EnvVariablesTable } from '../../advanced/env'
@@ -29,11 +30,10 @@ type CliToolFormValues = {
   name?: string
 }
 
-const createCliToolId = () =>
-  `cli-tool-${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`}`
+const createCliToolId = () => `cli-tool-${uuid4()}`
 
 const createCliEnvVariable = (): EnvVariable => ({
-  id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
+  id: uuid4(),
   key: '',
   value: '',
   scope: 'plain',
@@ -178,7 +178,7 @@ export function CliToolDialog({
           <DialogDescription>
             {t(($) => $['agentDetail.configure.tools.cliDialog.description'])}
           </DialogDescription>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <Form<CliToolFormValues> className="contents" onFormSubmit={handleSubmit}>
           <DialogBody className="flex flex-col gap-4">

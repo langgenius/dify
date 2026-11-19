@@ -1,0 +1,187 @@
+import pytest
+
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.nodes.list_operator.entities import (
+    ExtractConfig,
+    FilterBy,
+    FilterCondition,
+    Limit,
+    ListOperatorNodeData,
+    Order,
+    OrderByConfig,
+)
+from graphon.nodes.list_operator.exc import InvalidKeyError
+from graphon.nodes.list_operator.node import ListOperatorNode, _get_file_extract_string_func
+from graphon.runtime import InitParams, RuntimeState, VariablePool
+from graphon.variables import ArrayFileSegment
+
+SOURCE_NODE_ID = "test_source_node"
+SOURCE_VARIABLE_NAME = "test_variable"
+
+
+def _build_list_operator_node(
+    node_data: ListOperatorNodeData,
+    graph_init_params: InitParams,
+    runtime_state: RuntimeState,
+) -> ListOperatorNode:
+    return ListOperatorNode(
+        node_id="test_node_id",
+        data=node_data,
+        init_params=graph_init_params,
+        runtime_state=runtime_state,
+    )
+
+
+@pytest.fixture
+def list_operator_node() -> ListOperatorNode:
+    config = {
+        "variable": [SOURCE_NODE_ID, SOURCE_VARIABLE_NAME],
+        "filter_by": FilterBy(
+            enabled=True,
+            conditions=[
+                FilterCondition(key="type", comparison_operator="in", value=[FileType.IMAGE, FileType.DOCUMENT])
+            ],
+        ),
+        "order_by": OrderByConfig(enabled=False, value=Order.ASC),
+        "limit": Limit(enabled=False, size=0),
+        "extract_by": ExtractConfig(enabled=False, serial="1"),
+        "title": "Test Title",
+    }
+    node_data = ListOperatorNodeData.model_validate(config)
+    run_context: dict[str, dict[str, str | UserFrom | InvokeFrom]] = {
+        DIFY_RUN_CONTEXT_KEY: {
+            "tenant_id": "test_tenant",
+            "app_id": "test_app",
+            "user_id": "test_user",
+            "user_from": UserFrom.ACCOUNT,
+            "invoke_from": InvokeFrom.SERVICE_API,
+        }
+    }
+    graph_init_params = InitParams(
+        workflow_id="test_workflow",
+        graph_config={},
+        call_depth=0,
+        run_context=run_context,
+    )
+    runtime_state = RuntimeState(
+        workflow_id="test_workflow",
+        variable_pool=VariablePool(),
+        start_at=0.0,
+    )
+
+    return _build_list_operator_node(node_data, graph_init_params, runtime_state)
+
+
+def test_filter_files_by_type(list_operator_node: ListOperatorNode) -> None:
+    # Setup test data
+    files = [
+        File(
+            filename="image1.jpg",
+            file_type=FileType.IMAGE,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            related_id="related1",
+            storage_key="",
+        ),
+        File(
+            filename="document1.pdf",
+            file_type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            related_id="related2",
+            storage_key="",
+        ),
+        File(
+            filename="image2.png",
+            file_type=FileType.IMAGE,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            related_id="related3",
+            storage_key="",
+        ),
+        File(
+            filename="audio1.mp3",
+            file_type=FileType.AUDIO,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            related_id="related4",
+            storage_key="",
+        ),
+    ]
+    list_operator_node.runtime_state.variable_pool.add(
+        [SOURCE_NODE_ID, SOURCE_VARIABLE_NAME],
+        ArrayFileSegment(value=files),
+    )
+
+    # Run the node
+    result = list_operator_node._run()
+
+    # Verify the result
+    expected_files = [
+        {
+            "filename": "image1.jpg",
+            "type": FileType.IMAGE,
+            "tenant_id": "tenant1",
+            "transfer_method": FileTransferMethod.LOCAL_FILE,
+            "related_id": "related1",
+        },
+        {
+            "filename": "document1.pdf",
+            "type": FileType.DOCUMENT,
+            "transfer_method": FileTransferMethod.LOCAL_FILE,
+            "related_id": "related2",
+        },
+        {
+            "filename": "image2.png",
+            "type": FileType.IMAGE,
+            "transfer_method": FileTransferMethod.LOCAL_FILE,
+            "related_id": "related3",
+        },
+    ]
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    for expected_file, result_file in zip(expected_files, result.outputs["result"].value, strict=False):
+        assert expected_file["filename"] == result_file.filename
+        assert expected_file["type"] == result_file.type
+        assert expected_file["transfer_method"] == result_file.transfer_method
+        assert expected_file["related_id"] == result_file.related_id
+
+
+def test_get_file_extract_string_func() -> None:
+    # Create a File object
+    file = File(
+        file_type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        filename="test_file.txt",
+        extension=".txt",
+        mime_type="text/plain",
+        remote_url="https://example.com/test_file.txt",
+        related_id="test_related_id",
+        storage_key="",
+    )
+
+    # Test each case
+    assert _get_file_extract_string_func(key="name")(file) == "test_file.txt"
+    assert _get_file_extract_string_func(key="type")(file) == "document"
+    assert _get_file_extract_string_func(key="extension")(file) == ".txt"
+    assert _get_file_extract_string_func(key="mime_type")(file) == "text/plain"
+    assert _get_file_extract_string_func(key="transfer_method")(file) == "local_file"
+    assert _get_file_extract_string_func(key="url")(file) == "https://example.com/test_file.txt"
+
+    # Test with empty values
+    empty_file = File(
+        file_type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        filename=None,
+        extension=None,
+        mime_type=None,
+        remote_url=None,
+        related_id="test_related_id",
+        storage_key="",
+    )
+
+    assert _get_file_extract_string_func(key="name")(empty_file) == ""
+    assert _get_file_extract_string_func(key="extension")(empty_file) == ""
+    assert _get_file_extract_string_func(key="mime_type")(empty_file) == ""
+    assert _get_file_extract_string_func(key="url")(empty_file) == ""
+
+    # Test invalid key
+    with pytest.raises(InvalidKeyError):
+        _get_file_extract_string_func(key="invalid_key")

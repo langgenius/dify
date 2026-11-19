@@ -52,7 +52,7 @@ const DocumentSourceIcon: FC<DocumentSourceIconProps> = React.memo(({ doc, fileT
   if (isOnlineDocument(doc.data_source_type)) {
     return (
       <NotionIcon
-        className="mr-1.5"
+        className="me-1.5"
         type="page"
         src={getNotionPageIcon(doc.data_source_info, isCreateFromRAGPipeline(doc.created_from))}
       />
@@ -67,7 +67,7 @@ const DocumentSourceIcon: FC<DocumentSourceIconProps> = React.memo(({ doc, fileT
             ? (getLocalFileExtension(doc.data_source_info) ?? '')
             : (getUploadFileExtension(doc.data_source_info) ?? fileType ?? ''),
         )}
-        className="mr-1.5"
+        className="me-1.5"
       />
     )
   }
@@ -78,13 +78,13 @@ const DocumentSourceIcon: FC<DocumentSourceIconProps> = React.memo(({ doc, fileT
         type={extensionToFileType(
           getFileExtension(getOnlineDriveFileName(doc.data_source_info) ?? ''),
         )}
-        className="mr-1.5"
+        className="me-1.5"
       />
     )
   }
 
   if (isWebsiteCrawl(doc.data_source_type)) {
-    return <RiGlobalLine className="mr-1.5 size-4" />
+    return <RiGlobalLine className="me-1.5 size-4" />
   }
 
   return null

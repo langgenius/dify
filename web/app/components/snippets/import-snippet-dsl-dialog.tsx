@@ -16,15 +16,14 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
-import { ORPCError } from '@orpc/client'
 import { useAtomValue } from 'jotai'
 import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -118,8 +117,8 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
   const { push } = useRouter()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canCreateAndModifySnippet = canCreateAndModifySnippets(workspacePermissionKeys)
-  const importSnippetMutation = useImportSnippetDSLMutation()
-  const confirmSnippetImportMutation = useConfirmSnippetImportMutation()
+  const importSnippetMutation = useImportSnippetDSLMutation({ silent: true })
+  const confirmSnippetImportMutation = useConfirmSnippetImportMutation({ silent: true })
   const [currentTab, setCurrentTab] = useState<ImportSnippetDSLDialogTab>(
     ImportSnippetDSLDialogTab.FromFile,
   )
@@ -195,11 +194,12 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
 
       handleImportResponse(response)
     } catch (error) {
-      // HTTP error notifications are owned by the request layer.
-      if (!(error instanceof ORPCError) && error instanceof Error && error.message)
-        toast.error(error.message)
+      toast.error(
+        error instanceof Error ? error.message : t(($) => $['api.actionFailed'], { ns: 'common' }),
+      )
     }
   }, [
+    t,
     canCreateAndModifySnippet,
     currentTab,
     dslUrl,
@@ -215,11 +215,11 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
       const response = await confirmSnippetImportMutation.mutateAsync({ importId })
       handleImportResponse(response)
     } catch (error) {
-      // HTTP error notifications are owned by the request layer.
-      if (!(error instanceof ORPCError) && error instanceof Error && error.message)
-        toast.error(error.message)
+      toast.error(
+        error instanceof Error ? error.message : t(($) => $['api.actionFailed'], { ns: 'common' }),
+      )
     }
-  }, [canCreateAndModifySnippet, confirmSnippetImportMutation, handleImportResponse, importId])
+  }, [canCreateAndModifySnippet, confirmSnippetImportMutation, handleImportResponse, importId, t])
 
   const handleTabChange = (value: string | number) => {
     if (value === ImportSnippetDSLDialogTab.FromFile)
@@ -240,7 +240,9 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
         <DialogContent className="w-120">
           <DialogHeader>
             <DialogTitle>{t(($) => $.importDialogTitle, { ns: 'snippet' })}</DialogTitle>
-            <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+            <DialogHeaderCloseButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            />
           </DialogHeader>
           <Tabs className="contents" value={currentTab} onValueChange={handleTabChange}>
             <TabsList
@@ -282,7 +284,7 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
               </label>
               <Input
                 id={dslUrlInputId}
-                placeholder={t(($) => $.importFromDSLUrlPlaceholder, { ns: 'snippet' }) || ''}
+                placeholder={t(($) => $.importFromDSLUrlPlaceholder, { ns: 'snippet' })}
                 value={dslUrl}
                 onChange={(event) => setDslUrl(event.target.value)}
               />

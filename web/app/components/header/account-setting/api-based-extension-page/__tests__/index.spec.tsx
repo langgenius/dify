@@ -178,6 +178,7 @@ describe('ApiBasedExtensionPage', () => {
 
   describe('User Interactions', () => {
     it('should close add modal when create mutation succeeds', async () => {
+      const user = userEvent.setup()
       mockCreateApiBasedExtension.mockResolvedValue({
         id: 'new-id',
         name: 'New Ext',
@@ -187,7 +188,7 @@ describe('ApiBasedExtensionPage', () => {
       listExtensions.mockResolvedValue([])
 
       render(<ApiBasedExtensionPage />)
-      await userEvent.setup().click(screen.getByText('common.apiBasedExtension.add'))
+      await user.click(screen.getByText('common.apiBasedExtension.add'))
       fireEvent.change(
         screen.getByPlaceholderText('common.apiBasedExtension.modal.name.placeholder'),
         { target: { value: 'New Ext' } },
@@ -200,7 +201,7 @@ describe('ApiBasedExtensionPage', () => {
         screen.getByPlaceholderText('common.apiBasedExtension.modal.apiKey.placeholder'),
         { target: { value: 'secret-key' } },
       )
-      await userEvent.setup().click(screen.getByText('common.operation.save'))
+      await user.click(screen.getByText('common.operation.save'))
 
       await waitFor(() => {
         expect(mockCreateApiBasedExtension).toHaveBeenCalledWith({
@@ -217,6 +218,7 @@ describe('ApiBasedExtensionPage', () => {
     })
 
     it('should close edit modal when update mutation succeeds', async () => {
+      const user = userEvent.setup()
       const extension: ApiBasedExtensionResponse = {
         id: '1',
         name: 'Extension 1',
@@ -228,11 +230,11 @@ describe('ApiBasedExtensionPage', () => {
 
       render(<ApiBasedExtensionPage />)
 
-      await userEvent.setup().click(await screen.findByText('common.operation.edit'))
+      await user.click(await screen.findByText('common.operation.edit'))
       const name = screen.getByPlaceholderText('common.apiBasedExtension.modal.name.placeholder')
-      await userEvent.setup().clear(name)
-      await userEvent.setup().type(name, 'Updated')
-      await userEvent.setup().click(screen.getByText('common.operation.save'))
+      await user.clear(name)
+      await user.type(name, 'Updated')
+      await user.click(screen.getByText('common.operation.save'))
 
       await waitFor(() => {
         expect(mockUpdateApiBasedExtension).toHaveBeenCalledWith({

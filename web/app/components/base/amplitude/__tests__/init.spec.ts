@@ -61,6 +61,15 @@ describe('amplitude init helper', () => {
       ])
 
       expect(amplitude.init).toHaveBeenCalledTimes(1)
+      expect(amplitude.init).toHaveBeenCalledWith('test-api-key', {
+        autocapture: {
+          sessions: true,
+          pageViews: true,
+          formInteractions: true,
+          fileDownloads: true,
+          attribution: true,
+        },
+      })
       expect(sessionReplayPlugin).toHaveBeenCalledTimes(1)
       expect(sessionReplayPlugin).toHaveBeenCalledWith({ sampleRate: 0.8 })
       expect(listener).toHaveBeenCalledTimes(1)

@@ -195,7 +195,7 @@ export const isDebuggableTriggerType = (runMode: TriggerType): runMode is Debugg
   )
 }
 
-export const buildListeningTriggerNodeIds = (
+const buildListeningTriggerNodeIds = (
   runMode: DebuggableTriggerType,
   options?: HandleRunOptions,
 ) => {
@@ -365,6 +365,7 @@ export const runTriggerDebug = async ({
         },
         {
           needAllResponseContent: true,
+          silent: true,
         },
       )
 

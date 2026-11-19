@@ -1,25 +1,14 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CollectionType } from '@/app/components/tools/types'
-import { useGetLanguage } from '@/context/i18n'
-import useTheme from '@/hooks/use-theme'
-import { Theme } from '@/types/app'
 import { BlockEnum } from '../../../types'
 import { createPlugin, createToolProvider } from '../../__tests__/factories'
 import { ViewType } from '../../types'
 import List from '../list'
 
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: vi.fn(),
-}))
-
 vi.mock('#i18n', async (importOriginal) => ({
   ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => 'en_US',
-}))
-
-vi.mock('@/hooks/use-theme', () => ({
-  default: vi.fn(),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/mcp-tool-availability', () => ({
@@ -50,14 +39,9 @@ vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () =
   ),
 }))
 
-const mockUseGetLanguage = vi.mocked(useGetLanguage)
-const mockUseTheme = vi.mocked(useTheme)
-
 describe('RAG tool recommendations list', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseGetLanguage.mockReturnValue('en_US')
-    mockUseTheme.mockReturnValue({ theme: Theme.light } as ReturnType<typeof useTheme>)
   })
 
   it('should render installed tools in flat view and delegate selection', async () => {

@@ -7,6 +7,7 @@ import type { EndNodeType } from '../../../end/types'
 import type { HttpNodeType } from '../../../http/types'
 import type { IfElseNodeType } from '../../../if-else/types'
 import type { IterationNodeType } from '../../../iteration/types'
+import type { KnowledgeRetrievalV2NodeType } from '../../../knowledge-retrieval-v2/types'
 import type { KnowledgeRetrievalNodeType } from '../../../knowledge-retrieval/types'
 import type { ListFilterNodeType } from '../../../list-operator/types'
 import type { LLMNodeType, StructuredOutput } from '../../../llm/types'
@@ -18,6 +19,7 @@ import type { ToolNodeType } from '../../../tool/types'
 import type { AgentV2NodeType } from '@/app/components/workflow/nodes/agent-v2/types'
 import type { AgentNodeType } from '@/app/components/workflow/nodes/agent/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
+import type { HumanInputV2NodeType } from '@/app/components/workflow/nodes/human-input-v2/types'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { CaseItem, Condition } from '@/app/components/workflow/nodes/if-else/types'
 import type { Field as StructField } from '@/app/components/workflow/nodes/llm/types'
@@ -57,14 +59,22 @@ import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { getAgentV2OutputVars } from '@/app/components/workflow/nodes/agent-v2/output-variables'
 import { isAgentV2NodeData } from '@/app/components/workflow/nodes/agent-v2/types'
 import DataSourceNodeDefault from '@/app/components/workflow/nodes/data-source/default'
+import HumanInputV2NodeDefault from '@/app/components/workflow/nodes/human-input-v2/default'
+import { isHumanInputV2NodeData } from '@/app/components/workflow/nodes/human-input-v2/types'
 import HumanInputNodeDefault from '@/app/components/workflow/nodes/human-input/default'
 import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
+import { comparisonOperatorNotRequireValue } from '@/app/components/workflow/nodes/if-else/utils'
 import ToolNodeDefault from '@/app/components/workflow/nodes/tool/default'
 import { resolveVarType } from '@/app/components/workflow/nodes/tool/output-schema-utils'
 import PluginTriggerNodeDefault from '@/app/components/workflow/nodes/trigger-plugin/default'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import { VAR_REGEX } from '@/config'
 import { OUTPUT_FILE_SUB_VARIABLES } from '../../../constants'
+import { KNOWLEDGE_RETRIEVAL_V2_OUTPUT_STRUCT } from '../../../knowledge-retrieval-v2/constants'
+import {
+  getKnowledgeRetrievalV2MetadataValueTexts,
+  replaceKnowledgeRetrievalV2MetadataVar,
+} from '../../../knowledge-retrieval-v2/metadata-filtering'
 import { Type } from '../../../llm/types'
 
 type WorkflowTranslate = TFunction<['workflow']>
@@ -388,6 +398,10 @@ const formatItem = (
       res.vars = KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT
       break
     }
+    case BlockEnum.KnowledgeRetrievalV2: {
+      res.vars = KNOWLEDGE_RETRIEVAL_V2_OUTPUT_STRUCT
+      break
+    }
 
     case BlockEnum.Code: {
       const { outputs } = data as CodeNodeType
@@ -597,10 +611,13 @@ const formatItem = (
     }
 
     case BlockEnum.HumanInput: {
-      const outputSchema =
-        HumanInputNodeDefault.getOutputVars?.(data as HumanInputNodeType, allPluginInfoList, [], {
-          schemaTypeDefinitions,
-        }) || []
+      const outputSchema = isHumanInputV2NodeData(data)
+        ? HumanInputV2NodeDefault.getOutputVars?.(data, allPluginInfoList, [], {
+            schemaTypeDefinitions,
+          }) || []
+        : HumanInputNodeDefault.getOutputVars?.(data as HumanInputNodeType, allPluginInfoList, [], {
+            schemaTypeDefinitions,
+          }) || []
       res.vars = [...outputSchema, ...HUMAN_INPUT_OUTPUT_STRUCT]
       break
     }
@@ -1213,7 +1230,7 @@ const replaceOldVarInPromptItem = (
     : {}),
 })
 
-/** Include saved references for rename/delete/copy; execution excludes inactive route conditions. */
+/** Include saved references for rename/delete/copy; execution excludes inactive settings. */
 export const getNodeUsedVars = (node: Node, { forExecution = false } = {}): ValueSelector[] => {
   const { data } = node
   const { type } = data
@@ -1253,6 +1270,16 @@ export const getNodeUsedVars = (node: Node, { forExecution = false } = {}): Valu
       const { query_variable_selector, query_attachment_selector = [] } =
         data as KnowledgeRetrievalNodeType
       res = [query_variable_selector, query_attachment_selector]
+      break
+    }
+    case BlockEnum.KnowledgeRetrievalV2: {
+      const payload = data as KnowledgeRetrievalV2NodeType
+      const { query_variable_selector, query_attachment_selector = [] } = payload
+      res = [
+        query_variable_selector,
+        query_attachment_selector,
+        ...matchNotSystemVars(getKnowledgeRetrievalV2MetadataValueTexts(payload)),
+      ]
       break
     }
     case BlockEnum.IfElse: {
@@ -1405,11 +1432,49 @@ export const getNodeUsedVars = (node: Node, { forExecution = false } = {}): Valu
     }
 
     case BlockEnum.ListFilter: {
-      res = [(data as ListFilterNodeType).variable]
+      const payload = data as ListFilterNodeType
+      const templates: string[] = []
+      if (!forExecution || payload.filter_by?.enabled) {
+        templates.push(
+          ...(payload.filter_by?.conditions || []).flatMap((condition) =>
+            typeof condition.value === 'string' &&
+            (!forExecution || !comparisonOperatorNotRequireValue(condition.comparison_operator))
+              ? [condition.value]
+              : [],
+          ),
+        )
+      }
+      if ((!forExecution || payload.extract_by?.enabled) && payload.extract_by?.serial)
+        templates.push(payload.extract_by.serial)
+      res = [payload.variable, ...matchNotSystemVars(templates)]
       break
     }
 
     case BlockEnum.HumanInput: {
+      if (isHumanInputV2NodeData(data)) {
+        const payload = data
+        const dynamicRecipientSelectors = payload.recipients_spec.flatMap((recipient) =>
+          recipient.type === 'dynamic_email' ? [recipient.selector] : [],
+        )
+        const inputSelectors = payload.inputs.flatMap((input) => {
+          if (input.type === InputVarType.paragraph && input.default.type === 'variable')
+            return [input.default.selector]
+          if (input.type === InputVarType.select && input.option_source.type === 'variable')
+            return [input.option_source.selector]
+          return []
+        })
+        res = [
+          ...matchNotSystemVars([
+            payload.form_content,
+            payload.message_template.subject,
+            payload.message_template.body,
+          ]),
+          ...dynamicRecipientSelectors,
+          ...inputSelectors,
+        ]
+        break
+      }
+
       const payload = data as HumanInputNodeType
       const formContent = payload.form_content
       const mailTemplates = payload.delivery_methods.flatMap((method) => {
@@ -1449,6 +1514,14 @@ export const getNodeUsedVarPassToServerKey = (
     }
     case BlockEnum.KnowledgeRetrieval: {
       res = 'query'
+      break
+    }
+    case BlockEnum.KnowledgeRetrievalV2: {
+      const payload = data as KnowledgeRetrievalV2NodeType
+      const selectorKey = valueSelector.join('.')
+      if (payload.query_variable_selector.join('.') === selectorKey) res = 'query'
+      else if (payload.query_attachment_selector?.join('.') === selectorKey) res = 'queryAttachment'
+      else res = `#${selectorKey}#`
       break
     }
     case BlockEnum.IfElse: {
@@ -1508,7 +1581,8 @@ export const getNodeUsedVarPassToServerKey = (
       break
     }
 
-    case BlockEnum.VariableAggregator: {
+    case BlockEnum.VariableAggregator:
+    case BlockEnum.ListFilter: {
       res = `#${valueSelector.join('.')}#`
       break
     }
@@ -1606,6 +1680,15 @@ export const updateNodeVars = (
           payload.query_variable_selector = newVarSelector
         if (payload.query_attachment_selector?.join('.') === oldVarSelector.join('.'))
           payload.query_attachment_selector = newVarSelector
+        break
+      }
+      case BlockEnum.KnowledgeRetrievalV2: {
+        const payload = data as KnowledgeRetrievalV2NodeType
+        if (payload.query_variable_selector.join('.') === oldVarSelector.join('.'))
+          payload.query_variable_selector = newVarSelector
+        if (payload.query_attachment_selector?.join('.') === oldVarSelector.join('.'))
+          payload.query_attachment_selector = newVarSelector
+        replaceKnowledgeRetrievalV2MetadataVar(payload, oldVarSelector, newVarSelector)
         break
       }
       case BlockEnum.IfElse: {
@@ -1869,9 +1952,65 @@ export const updateNodeVars = (
         const payload = data as ListFilterNodeType
         if (payload.variable.join('.') === oldVarSelector.join('.'))
           payload.variable = newVarSelector
+        payload.filter_by.conditions = payload.filter_by.conditions.map((condition) => ({
+          ...condition,
+          value:
+            typeof condition.value === 'string'
+              ? replaceOldVarInText(condition.value, oldVarSelector, newVarSelector)
+              : condition.value,
+        }))
+        if (payload.extract_by.serial)
+          payload.extract_by.serial = replaceOldVarInText(
+            payload.extract_by.serial,
+            oldVarSelector,
+            newVarSelector,
+          )
         break
       }
       case BlockEnum.HumanInput: {
+        if (isHumanInputV2NodeData(data)) {
+          const payload = data as HumanInputV2NodeType
+          payload.form_content = replaceOldVarInText(
+            payload.form_content,
+            oldVarSelector,
+            newVarSelector,
+          )
+          payload.message_template.subject = replaceOldVarInText(
+            payload.message_template.subject,
+            oldVarSelector,
+            newVarSelector,
+          )
+          payload.message_template.body = replaceOldVarInText(
+            payload.message_template.body,
+            oldVarSelector,
+            newVarSelector,
+          )
+          payload.recipients_spec = payload.recipients_spec.map((recipient) => {
+            if (
+              recipient.type === 'dynamic_email' &&
+              recipient.selector.join('.') === oldVarSelector.join('.')
+            )
+              return { ...recipient, selector: newVarSelector }
+            return recipient
+          })
+          payload.inputs = payload.inputs.map((input) => {
+            if (
+              input.type === InputVarType.paragraph &&
+              input.default.type === 'variable' &&
+              input.default.selector.join('.') === oldVarSelector.join('.')
+            )
+              input.default.selector = newVarSelector
+            if (
+              input.type === InputVarType.select &&
+              input.option_source.type === 'variable' &&
+              input.option_source.selector.join('.') === oldVarSelector.join('.')
+            )
+              input.option_source.selector = newVarSelector
+            return input
+          })
+          break
+        }
+
         const payload = data as HumanInputNodeType
         payload.form_content = replaceOldVarInText(
           payload.form_content,
@@ -1997,6 +2136,10 @@ export const getNodeOutputVars = (node: Node, isChatflow: boolean): ValueSelecto
 
     case BlockEnum.KnowledgeRetrieval: {
       varsToValueSelectorList(KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT, [id], res)
+      break
+    }
+    case BlockEnum.KnowledgeRetrievalV2: {
+      varsToValueSelectorList(KNOWLEDGE_RETRIEVAL_V2_OUTPUT_STRUCT, [id], res)
       break
     }
 

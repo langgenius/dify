@@ -5,11 +5,11 @@ import type { AgentFormSource, AgentFormValues, AgentIconSelection } from './age
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Form } from '@langgenius/dify-ui/form'
@@ -71,7 +71,10 @@ function DuplicateAgentFormSession({
             name: initialValues.sourceName,
           })}
         </DialogDescription>
-        <DialogCloseButton aria-label={tCommon(($) => $['operation.close'])} disabled={pending} />
+        <DialogHeaderCloseButton
+          aria-label={tCommon(($) => $['operation.close'])}
+          disabled={pending}
+        />
       </DialogHeader>
       <Form<AgentFormValues>
         className="contents"

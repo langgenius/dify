@@ -1,0 +1,5 @@
+# Client defaults for the elasticsearch-ja selector, which uses the elasticsearch service.
+# Customize envs/vectorstores/elasticsearch.env (copied from elasticsearch.defaults).
+# docker/.env takes precedence; the same overrides apply to both Elasticsearch variants.
+ELASTICSEARCH_HOST=${ELASTICSEARCH_HOST-elasticsearch}
+ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD-elastic}

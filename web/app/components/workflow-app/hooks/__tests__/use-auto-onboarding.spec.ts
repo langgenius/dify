@@ -1,34 +1,21 @@
-import type { ReactNode } from 'react'
 import type { InjectWorkflowStoreSliceFn, Shape } from '@/app/components/workflow/store'
-import { act, renderHook } from '@testing-library/react'
-import { createElement } from 'react'
-import { createTestWorkflowStore } from '@/app/components/workflow/__tests__/workflow-test-env'
-import { WorkflowContext } from '@/app/components/workflow/context'
+import type { Node } from '@/app/components/workflow/types'
+import { act } from '@testing-library/react'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowFlowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { createWorkflowSlice } from '../../store/workflow/workflow-slice'
 import { useAutoOnboarding } from '../use-auto-onboarding'
 
-const getNodes = vi.hoisted(() => vi.fn())
-vi.mock('reactflow', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('reactflow')>()),
-  useStoreApi: () => ({ getState: () => ({ getNodes }) }),
-}))
-
-const setup = (initialState: Partial<Shape> = {}) => {
-  const store = createTestWorkflowStore(
-    { isWorkflowDataLoaded: true, ...initialState },
-    createWorkflowSlice as InjectWorkflowStoreSliceFn,
-  )
-  const hook = renderHook(() => useAutoOnboarding(), {
-    wrapper: ({ children }: { children: ReactNode }) =>
-      createElement(WorkflowContext, { value: store }, children),
+const setup = (initialState: Partial<Shape> = {}, nodes: Node[] = []) =>
+  renderWorkflowFlowHook(() => useAutoOnboarding(), {
+    nodes,
+    initialStoreState: { isWorkflowDataLoaded: true, ...initialState },
+    injectWorkflowStoreSliceFn: createWorkflowSlice as InjectWorkflowStoreSliceFn,
   })
-  return { ...hook, store }
-}
 
 describe('useAutoOnboarding', () => {
   beforeEach(() => {
     vi.useFakeTimers()
-    getNodes.mockReset().mockReturnValue([])
   })
   afterEach(() => {
     vi.useRealTimers()
@@ -64,8 +51,7 @@ describe('useAutoOnboarding', () => {
   })
 
   it('preserves an existing canvas instead of opening onboarding over it', () => {
-    getNodes.mockReturnValue([{ id: 'existing-node' }])
-    const { store } = setup()
+    const { store } = setup({}, [createNode({ id: 'existing-node', type: 'default' })])
     act(() => {
       vi.advanceTimersByTime(500)
     })

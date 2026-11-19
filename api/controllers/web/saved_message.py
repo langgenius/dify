@@ -80,8 +80,8 @@ class SavedMessageListApi(WebApiResource):
                 actor=SavedMessageActor.end_user(end_user.id),
                 message_id=payload.message_id,
             )
-        except MessageNotExistsError:
-            raise NotFound("Message Not Exists.")
+        except MessageNotExistsError as caught_error:
+            raise NotFound("Message Not Exists.") from caught_error
 
         return ResultResponse(result="success").model_dump(mode="json")
 

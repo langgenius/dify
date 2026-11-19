@@ -102,8 +102,8 @@ class DatasourceFileManager:
             response = remote_fetcher.make_request("GET", file_url)
             response.raise_for_status()
             blob = response.content
-        except httpx.TimeoutException:
-            raise ValueError(f"timeout when downloading file from {file_url}")
+        except httpx.TimeoutException as caught_error:
+            raise ValueError(f"timeout when downloading file from {file_url}") from caught_error
 
         mimetype = (
             guess_type(file_url)[0]

@@ -122,6 +122,7 @@ describe('JinaReader', () => {
 
   describe('State Management', () => {
     it('should transition from init to running state when run is clicked', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       const mockCreateTask = createJinaReaderTask as Mock
       let resolvePromise: () => void
       const taskPromise = new Promise((resolve) => {
@@ -136,10 +137,10 @@ describe('JinaReader', () => {
 
       render(<JinaReader {...props} />)
       const urlInput = screen.getAllByRole('textbox')[0]
-      await userEvent.type(urlInput!, 'https://example.com')
+      await user.type(urlInput!, 'https://example.com')
 
       const runButton = screen.getByRole('button', { name: /run/i })
-      await userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(runButton)
+      await user.click(runButton)
 
       // Assert - crawling indicator should appear
       await waitFor(() => {
@@ -154,6 +155,7 @@ describe('JinaReader', () => {
     })
 
     it('should fold options when step changes from init', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createJinaReaderTask as Mock
       mockCreateTask.mockResolvedValueOnce({
         data: {
@@ -172,8 +174,8 @@ describe('JinaReader', () => {
       expect(screen.getByText('datasetCreation.stepOne.website.crawlSubPage'))!.toBeInTheDocument()
 
       const input = screen.getByRole('textbox')
-      await userEvent.type(input, 'https://example.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://example.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       // Assert - options should be folded after crawl starts
       await waitFor(() => {
@@ -191,11 +193,12 @@ describe('JinaReader', () => {
   // User Interactions and Event Handlers Tests
   describe('User Interactions', () => {
     it('should open account settings when configuration button is clicked', async () => {
+      const user = userEvent.setup()
       const props = createDefaultProps()
 
       render(<JinaReader {...props} />)
       const configButton = screen.getByText('datasetCreation.stepOne.website.configureJinaReader')
-      await userEvent.click(configButton)
+      await user.click(configButton)
 
       await waitFor(() =>
         expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('data-source'),
@@ -204,6 +207,7 @@ describe('JinaReader', () => {
     })
 
     it('should handle preview action on crawled result', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createJinaReaderTask as Mock
       const onPreview = vi.fn()
       const crawlResultData = {
@@ -219,8 +223,8 @@ describe('JinaReader', () => {
 
       render(<JinaReader {...props} />)
       const input = screen.getByRole('textbox')
-      await userEvent.type(input, 'https://preview.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://preview.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       // Assert - result should be displayed
       await waitFor(() => {
@@ -228,12 +232,13 @@ describe('JinaReader', () => {
       })
 
       const previewButton = screen.getByText('datasetCreation.stepOne.website.preview')
-      await userEvent.click(previewButton)
+      await user.click(previewButton)
 
       expect(onPreview).toHaveBeenCalled()
     })
 
     it('should handle checkbox changes in options', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       const onCrawlOptionsChange = vi.fn()
       const props = createDefaultProps({
         onCrawlOptionsChange,
@@ -243,12 +248,13 @@ describe('JinaReader', () => {
       render(<JinaReader {...props} />)
 
       const checkbox = screen.getByRole('checkbox', { name: /crawlSubPage/ })
-      await userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(checkbox)
+      await user.click(checkbox)
 
       expect(onCrawlOptionsChange).toHaveBeenCalled()
     })
 
     it('should toggle options visibility when clicking options header', async () => {
+      const user = userEvent.setup()
       const props = createDefaultProps()
 
       render(<JinaReader {...props} />)
@@ -257,14 +263,14 @@ describe('JinaReader', () => {
       expect(screen.getByText('datasetCreation.stepOne.website.crawlSubPage'))!.toBeInTheDocument()
 
       const optionsHeader = screen.getByText('datasetCreation.stepOne.website.options')
-      await userEvent.click(optionsHeader)
+      await user.click(optionsHeader)
 
       // Assert - options should be hidden
       expect(
         screen.queryByText('datasetCreation.stepOne.website.crawlSubPage'),
       ).not.toBeInTheDocument()
 
-      await userEvent.click(optionsHeader)
+      await user.click(optionsHeader)
 
       // Options should be visible again
       expect(screen.getByText('datasetCreation.stepOne.website.crawlSubPage'))!.toBeInTheDocument()
@@ -274,6 +280,7 @@ describe('JinaReader', () => {
   // API Calls Tests
   describe('API Calls', () => {
     it('should call createJinaReaderTask with correct parameters', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createJinaReaderTask as Mock
       mockCreateTask.mockResolvedValueOnce({
         data: { title: 'T', content: 'C', description: 'D', url: 'https://api-test.com' },
@@ -291,8 +298,8 @@ describe('JinaReader', () => {
 
       render(<JinaReader {...props} />)
       const input = screen.getByRole('textbox')
-      await userEvent.type(input, 'https://api-test.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://api-test.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
         expect(mockCreateTask).toHaveBeenCalledWith({
@@ -303,6 +310,7 @@ describe('JinaReader', () => {
     })
 
     it('should handle failed status from polling', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createJinaReaderTask as Mock
       const mockCheckStatus = checkJinaReaderTaskStatus as Mock
 
@@ -316,8 +324,8 @@ describe('JinaReader', () => {
 
       render(<JinaReader {...props} />)
       const input = screen.getByRole('textbox')
-      await userEvent.type(input, 'https://fail-test.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://fail-test.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
         expect(
@@ -329,6 +337,7 @@ describe('JinaReader', () => {
     })
 
     it('should handle API error during status check', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createJinaReaderTask as Mock
       const mockCheckStatus = checkJinaReaderTaskStatus as Mock
 
@@ -341,8 +350,8 @@ describe('JinaReader', () => {
 
       render(<JinaReader {...props} />)
       const input = screen.getByRole('textbox')
-      await userEvent.type(input, 'https://error-test.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://error-test.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
         expect(
@@ -385,10 +394,11 @@ describe('JinaReader', () => {
   // Edge Cases and Error Handling Tests
   describe('Edge Cases and Error Handling', () => {
     it('should show error for empty URL', async () => {
+      const user = userEvent.setup()
       const props = createDefaultProps()
 
       render(<JinaReader {...props} />)
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       // Assert - Toast should be shown (mocked via Toast component)
       await waitFor(() => {
@@ -397,12 +407,13 @@ describe('JinaReader', () => {
     })
 
     it('should show error for invalid URL format', async () => {
+      const user = userEvent.setup()
       const props = createDefaultProps()
 
       render(<JinaReader {...props} />)
       const input = screen.getByRole('textbox')
-      await userEvent.type(input, 'invalid-url')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'invalid-url')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
         expect(createJinaReaderTask).not.toHaveBeenCalled()
@@ -410,12 +421,13 @@ describe('JinaReader', () => {
     })
 
     it('should show error for URL without protocol', async () => {
+      const user = userEvent.setup()
       const props = createDefaultProps()
 
       render(<JinaReader {...props} />)
       const input = screen.getByRole('textbox')
-      await userEvent.type(input, 'example.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'example.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
         expect(createJinaReaderTask).not.toHaveBeenCalled()
@@ -423,6 +435,7 @@ describe('JinaReader', () => {
     })
 
     it('should accept URL with http:// protocol', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createJinaReaderTask as Mock
       mockCreateTask.mockResolvedValueOnce({
         data: { title: 'T', content: 'C', description: 'D', url: 'http://example.com' },
@@ -432,8 +445,8 @@ describe('JinaReader', () => {
 
       render(<JinaReader {...props} />)
       const input = screen.getByRole('textbox')
-      await userEvent.type(input, 'http://example.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'http://example.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
         expect(mockCreateTask).toHaveBeenCalled()
@@ -441,14 +454,15 @@ describe('JinaReader', () => {
     })
 
     it('should show error when limit is empty', async () => {
+      const user = userEvent.setup()
       const props = createDefaultProps({
         crawlOptions: createDefaultCrawlOptions({ limit: '' }),
       })
 
       render(<JinaReader {...props} />)
       const input = screen.getByRole('textbox')
-      await userEvent.type(input, 'https://example.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://example.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
         expect(createJinaReaderTask).not.toHaveBeenCalled()
@@ -456,6 +470,7 @@ describe('JinaReader', () => {
     })
 
     it('should handle API throwing an exception', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createJinaReaderTask as Mock
       mockCreateTask.mockRejectedValueOnce(new Error('Network error'))
       // Suppress console output during test to avoid noisy logs
@@ -465,8 +480,8 @@ describe('JinaReader', () => {
 
       render(<JinaReader {...props} />)
       const input = screen.getByRole('textbox')
-      await userEvent.type(input, 'https://exception-test.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://exception-test.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
         expect(
@@ -478,6 +493,7 @@ describe('JinaReader', () => {
     })
 
     it('should handle status response without status field', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createJinaReaderTask as Mock
       const mockCheckStatus = checkJinaReaderTaskStatus as Mock
 
@@ -491,8 +507,8 @@ describe('JinaReader', () => {
 
       render(<JinaReader {...props} />)
       const input = screen.getByRole('textbox')
-      await userEvent.type(input, 'https://no-status-test.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://no-status-test.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
         expect(
@@ -502,6 +518,7 @@ describe('JinaReader', () => {
     })
 
     it('should show unknown error when error message is empty', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createJinaReaderTask as Mock
       const mockCheckStatus = checkJinaReaderTaskStatus as Mock
 
@@ -515,8 +532,8 @@ describe('JinaReader', () => {
 
       render(<JinaReader {...props} />)
       const input = screen.getByRole('textbox')
-      await userEvent.type(input, 'https://empty-error-test.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://empty-error-test.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
         expect(
@@ -526,6 +543,7 @@ describe('JinaReader', () => {
     })
 
     it('should handle empty data array from API', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createJinaReaderTask as Mock
       const mockCheckStatus = checkJinaReaderTaskStatus as Mock
       const onCheckedCrawlResultChange = vi.fn()
@@ -542,8 +560,8 @@ describe('JinaReader', () => {
 
       render(<JinaReader {...props} />)
       const input = screen.getByRole('textbox')
-      await userEvent.type(input, 'https://empty-data-test.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://empty-data-test.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
         expect(onCheckedCrawlResultChange).toHaveBeenCalledWith([])
@@ -551,6 +569,7 @@ describe('JinaReader', () => {
     })
 
     it('should handle null data from running status', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createJinaReaderTask as Mock
       const mockCheckStatus = checkJinaReaderTaskStatus as Mock
       const onCheckedCrawlResultChange = vi.fn()
@@ -574,8 +593,8 @@ describe('JinaReader', () => {
 
       render(<JinaReader {...props} />)
       const input = screen.getByRole('textbox')
-      await userEvent.type(input, 'https://null-data-test.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://null-data-test.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
         expect(onCheckedCrawlResultChange).toHaveBeenCalledWith([])
@@ -583,6 +602,7 @@ describe('JinaReader', () => {
     })
 
     it('should return empty array when completed job has undefined data', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createJinaReaderTask as Mock
       const mockCheckStatus = checkJinaReaderTaskStatus as Mock
       const onCheckedCrawlResultChange = vi.fn()
@@ -599,8 +619,8 @@ describe('JinaReader', () => {
 
       render(<JinaReader {...props} />)
       const input = screen.getByRole('textbox')
-      await userEvent.type(input, 'https://undefined-data-test.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://undefined-data-test.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
         expect(onCheckedCrawlResultChange).toHaveBeenCalledWith([])
@@ -608,6 +628,7 @@ describe('JinaReader', () => {
     })
 
     it('should show zero current progress when crawlResult is not yet available', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createJinaReaderTask as Mock
       const mockCheckStatus = checkJinaReaderTaskStatus as Mock
       let resolveCheckStatus: () => void
@@ -624,8 +645,8 @@ describe('JinaReader', () => {
 
       render(<JinaReader {...props} />)
       const input = screen.getByRole('textbox')
-      await userEvent.type(input, 'https://zero-current-test.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://zero-current-test.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       // Assert - should show 0/10 when crawlResult is undefined
       await waitFor(() => {
@@ -640,6 +661,7 @@ describe('JinaReader', () => {
     })
 
     it('should show 0/0 progress when limit is zero string', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createJinaReaderTask as Mock
       const mockCheckStatus = checkJinaReaderTaskStatus as Mock
       let resolveCheckStatus: () => void
@@ -656,8 +678,8 @@ describe('JinaReader', () => {
 
       render(<JinaReader {...props} />)
       const input = screen.getByRole('textbox')
-      await userEvent.type(input, 'https://zero-total-test.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://zero-total-test.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       // Assert - should show 0/0 when limit parses to 0
       await waitFor(() => {
@@ -672,6 +694,7 @@ describe('JinaReader', () => {
     })
 
     it('should fallback to limit when crawlResult has zero total', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createJinaReaderTask as Mock
       const mockCheckStatus = checkJinaReaderTaskStatus as Mock
       let resolveCheckStatus: () => void
@@ -695,8 +718,8 @@ describe('JinaReader', () => {
 
       render(<JinaReader {...props} />)
       const input = screen.getByRole('textbox')
-      await userEvent.type(input, 'https://both-zero-test.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://both-zero-test.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       // Assert - should show progress indicator
       await waitFor(() => {
@@ -711,6 +734,7 @@ describe('JinaReader', () => {
     })
 
     it('should construct result item from direct data response', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createJinaReaderTask as Mock
       const onCheckedCrawlResultChange = vi.fn()
 
@@ -727,8 +751,8 @@ describe('JinaReader', () => {
 
       render(<JinaReader {...props} />)
       const input = screen.getByRole('textbox')
-      await userEvent.type(input, 'https://direct-array.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://direct-array.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       // Assert - should construct result item from direct response
       await waitFor(() => {
@@ -747,6 +771,7 @@ describe('JinaReader', () => {
   // Display and UI State Tests
   describe('Display and UI States', () => {
     it('should display time consumed after crawl completion', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createJinaReaderTask as Mock
 
       mockCreateTask.mockResolvedValueOnce({
@@ -757,8 +782,8 @@ describe('JinaReader', () => {
 
       render(<JinaReader {...props} />)
       const input = screen.getByRole('textbox')
-      await userEvent.type(input, 'https://time.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://time.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
         expect(screen.getByText(/scrapTimeInfo/i))!.toBeInTheDocument()
@@ -768,6 +793,7 @@ describe('JinaReader', () => {
 
   describe('Integration', () => {
     it('should complete full crawl workflow with job polling', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createJinaReaderTask as Mock
       const mockCheckStatus = checkJinaReaderTaskStatus as Mock
       const onCheckedCrawlResultChange = vi.fn()
@@ -807,8 +833,8 @@ describe('JinaReader', () => {
 
       render(<JinaReader {...props} />)
       const input = screen.getByRole('textbox')
-      await userEvent.type(input, 'https://full-workflow.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://full-workflow.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       // Assert - job id should be set
       await waitFor(() => {

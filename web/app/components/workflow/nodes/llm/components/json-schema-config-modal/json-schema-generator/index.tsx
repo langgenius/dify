@@ -1,3 +1,4 @@
+import type { PopoverContentProps } from '@langgenius/dify-ui/popover'
 import type { SchemaRoot } from '../../../types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CompletionParams, Model } from '@/types/app'
@@ -10,18 +11,16 @@ import { useAutoGenModel } from '@/app/components/app/configuration/config/auto-
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { toast } from '@/app/notifications'
-import useTheme from '@/hooks/use-theme'
 import { consoleQuery } from '@/service/console'
-import { ModelModeType, Theme } from '@/types/app'
+import { ModelModeType } from '@/types/app'
 import { useMittContext } from '../visual-editor/context'
 import { useVisualEditorStore } from '../visual-editor/store'
 import { SchemaGeneratorDark, SchemaGeneratorLight } from './assets'
 import GeneratedResult from './generated-result'
 import PromptEditor from './prompt-editor'
 
-type JsonSchemaGeneratorProps = {
+type JsonSchemaGeneratorProps = Pick<PopoverContentProps, 'alignOffset'> & {
   onApply: (schema: SchemaRoot) => void
-  crossAxisOffset?: number
 }
 
 const GENERATOR_VIEWS = {
@@ -38,14 +37,13 @@ const createEmptyModel = (): Model => ({
   completion_params: {} as CompletionParams,
 })
 
-export function JsonSchemaGenerator({ onApply, crossAxisOffset }: JsonSchemaGeneratorProps) {
+export function JsonSchemaGenerator({ onApply, alignOffset }: JsonSchemaGeneratorProps) {
   const { t } = useTranslation(['workflowModels'])
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<GeneratorView>(GENERATOR_VIEWS.promptEditor)
   const [model, setModel] = useAutoGenModel()
   const [instruction, setInstruction] = useState('')
   const [schema, setSchema] = useState<SchemaRoot | null>(null)
-  const { theme } = useTheme()
   const { defaultModel } = useModelListAndDefaultModelAndCurrentProviderAndModel(
     ModelTypeEnum.textGeneration,
   )
@@ -63,7 +61,6 @@ export function JsonSchemaGenerator({ onApply, crossAxisOffset }: JsonSchemaGene
   const advancedEditing = useVisualEditorStore((state) => state.advancedEditing)
   const isAddingNewField = useVisualEditorStore((state) => state.isAddingNewField)
   const { emit } = useMittContext()
-  const SchemaGenerator = theme === Theme.light ? SchemaGeneratorLight : SchemaGeneratorDark
 
   const handleTrigger = useCallback(
     (e: React.MouseEvent<HTMLElement, MouseEvent>) => {
@@ -156,14 +153,15 @@ export function JsonSchemaGenerator({ onApply, crossAxisOffset }: JsonSchemaGene
             onClick={handleTrigger}
             className="flex size-6 items-center justify-center rounded-md p-0.5 hover:bg-state-accent-hover data-popup-open:bg-state-accent-active data-popup-open:hover:bg-state-accent-hover"
           >
-            <SchemaGenerator />
+            <SchemaGeneratorLight className="dark:hidden" />
+            <SchemaGeneratorDark className="not-dark:hidden" />
           </button>
         }
       />
       <PopoverContent
-        placement="bottom-end"
+        align="end"
         sideOffset={4}
-        alignOffset={crossAxisOffset ?? 0}
+        alignOffset={alignOffset}
         className="border-none bg-transparent shadow-none"
       >
         {view === GENERATOR_VIEWS.promptEditor && (

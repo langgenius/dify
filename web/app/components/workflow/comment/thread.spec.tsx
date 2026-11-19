@@ -61,6 +61,7 @@ describe('CommentThread', () => {
   })
 
   it('triggers header actions and closes on Escape', async () => {
+    const user = userEvent.setup()
     const onClose = vi.fn()
     const onDelete = vi.fn()
     const onResolve = vi.fn()
@@ -80,21 +81,11 @@ describe('CommentThread', () => {
       />,
     )
 
-    await userEvent
-      .setup()
-      .click(screen.getByLabelText('workflowComments.comments.aria.deleteComment'))
-    await userEvent
-      .setup()
-      .click(screen.getByLabelText('workflowComments.comments.aria.resolveComment'))
-    await userEvent
-      .setup()
-      .click(screen.getByLabelText('workflowComments.comments.aria.previousComment'))
-    await userEvent
-      .setup()
-      .click(screen.getByLabelText('workflowComments.comments.aria.nextComment'))
-    await userEvent
-      .setup()
-      .click(screen.getByLabelText('workflowComments.comments.aria.closeComment'))
+    await user.click(screen.getByLabelText('workflowComments.comments.aria.deleteComment'))
+    await user.click(screen.getByLabelText('workflowComments.comments.aria.resolveComment'))
+    await user.click(screen.getByLabelText('workflowComments.comments.aria.previousComment'))
+    await user.click(screen.getByLabelText('workflowComments.comments.aria.nextComment'))
+    await user.click(screen.getByLabelText('workflowComments.comments.aria.closeComment'))
 
     fireEvent.keyDown(document.body, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(1)
@@ -115,10 +106,8 @@ describe('CommentThread', () => {
       <CommentThread comment={createComment()} onClose={vi.fn()} onCommentEdit={onCommentEdit} />,
     )
 
-    await userEvent
-      .setup()
-      .click(screen.getByLabelText('workflowComments.comments.aria.commentActions'))
-    await userEvent.setup().click(screen.getByText('workflowComments.comments.actions.editComment'))
+    await user.click(screen.getByLabelText('workflowComments.comments.aria.commentActions'))
+    await user.click(screen.getByText('workflowComments.comments.actions.editComment'))
     const editor = screen.getByPlaceholderText('workflowComments.comments.placeholder.editComment')
     await user.clear(editor)
     await user.type(editor, 'Updated root comment')
@@ -154,14 +143,14 @@ describe('CommentThread', () => {
   it('supports editing and direct deleting an existing reply', async () => {
     const user = userEvent.setup()
     const onReplyEdit = vi.fn()
-    const onReplyDeleteDirect = vi.fn()
+    const onReplyDelete = vi.fn()
 
     render(
       <CommentThread
         comment={createComment()}
         onClose={vi.fn()}
         onReplyEdit={onReplyEdit}
-        onReplyDeleteDirect={onReplyDeleteDirect}
+        onReplyDelete={onReplyDelete}
       />,
     )
 
@@ -185,6 +174,6 @@ describe('CommentThread', () => {
     await user.click(await screen.findByText('workflowComments.comments.actions.deleteReply'))
     await user.click(await screen.findByRole('button', { name: 'common.operation.delete' }))
 
-    expect(onReplyDeleteDirect).toHaveBeenCalledWith('reply-1')
+    expect(onReplyDelete).toHaveBeenCalledWith('reply-1')
   })
 })

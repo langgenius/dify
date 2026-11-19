@@ -4,29 +4,10 @@ import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
-import { ModalContextProvider } from '@/context/modal-context-provider'
 import { agentComposerAppFeaturesAtom } from '@/features/agent-v2/agent-composer/store-modules/app-features'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { AgentChatFeaturesPanel } from '../chat-features-panel'
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useDefaultModel: () => ({ data: undefined }),
-}))
-
-vi.mock('@/context/hooks/use-trigger-events-limit-modal', () => ({
-  useTriggerEventsLimitModal: () => ({ triggerEventsLimitModal: null }),
-}))
-
-// Lexical's browser editing engine is outside the feature configuration contract.
-vi.mock('@/app/components/base/prompt-editor', () => ({
-  default: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => (
-    <textarea
-      aria-label="Opening statement"
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-    />
-  ),
-}))
 
 function PanelHarness({
   snapshot,
@@ -55,13 +36,13 @@ function renderPanel(snapshot: AgentSoulAppFeaturesConfig, draft = snapshot, dis
   const ui = (currentSnapshot: AgentSoulAppFeaturesConfig) => (
     <Provider store={store}>
       <NuqsTestingAdapter>
-        <ModalContextProvider>
-          <PanelHarness snapshot={currentSnapshot} disabled={disabled} />
-        </ModalContextProvider>
+        <PanelHarness snapshot={currentSnapshot} disabled={disabled} />
       </NuqsTestingAdapter>
     </Provider>
   )
-  const rendered = renderWithConsoleQuery(ui(snapshot))
+  const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient)
+  const rendered = renderWithConsoleQuery(ui(snapshot), { queryClient })
   return {
     ...rendered,
     store,
@@ -70,6 +51,36 @@ function renderPanel(snapshot: AgentSoulAppFeaturesConfig, draft = snapshot, dis
 }
 
 describe('AgentChatFeaturesPanel', () => {
+  it('defaults thinking display off and saves toggles without changing citations', async () => {
+    const user = userEvent.setup()
+    const { store } = renderPanel({ retriever_resource: { enabled: true } })
+    const toggle = screen.getByRole('switch', { name: 'appDebug.feature.showThoughts.title' })
+
+    expect(toggle).not.toBeChecked()
+    await user.click(toggle)
+    expect(toggle).toBeChecked()
+    expect(store.get(agentComposerAppFeaturesAtom)?.show_thoughts).toEqual({ enabled: true })
+    expect(store.get(agentComposerAppFeaturesAtom)?.retriever_resource).toEqual({ enabled: true })
+    await user.click(toggle)
+    expect(toggle).not.toBeChecked()
+    expect(store.get(agentComposerAppFeaturesAtom)?.show_thoughts).toEqual({ enabled: false })
+  })
+
+  it('shows the published thinking setting read-only without changing the draft', async () => {
+    const user = userEvent.setup()
+    const { store } = renderPanel(
+      { show_thoughts: { enabled: true } },
+      { show_thoughts: { enabled: false } },
+      true,
+    )
+    const toggle = screen.getByRole('switch', { name: 'appDebug.feature.showThoughts.title' })
+
+    expect(toggle).toBeChecked()
+    expect(toggle).toHaveAttribute('aria-disabled', 'true')
+    await user.click(toggle)
+    expect(store.get(agentComposerAppFeaturesAtom)?.show_thoughts).toEqual({ enabled: false })
+  })
+
   it('keeps a newly saved opener enabled before the server snapshot catches up', async () => {
     const user = userEvent.setup({ skipHover: true })
     const { updateSnapshot, store } = renderPanel({ opening_statement: '' })
@@ -80,7 +91,8 @@ describe('AgentChatFeaturesPanel', () => {
     await user.hover(screen.getByText('appDebug.feature.conversationOpener.title'))
     await user.click(screen.getByRole('button', { name: 'appDebug.openingStatement.writeOpener' }))
     const editor = await screen.findByRole('textbox')
-    await user.type(editor, 'Hello from the unsaved draft')
+    await user.click(editor)
+    await user.paste('Hello from the unsaved draft')
     updateSnapshot({ opening_statement: '', suggested_questions: [] })
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 

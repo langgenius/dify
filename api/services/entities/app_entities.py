@@ -62,10 +62,14 @@ class AppListBaseParams(BaseModel):
     creator_ids: list[str] | None = None
     is_created_by_me: bool | None = None
     accessible_app_ids: list[str] | None = None
-    include_own_apps: bool = False
+    # Credential resource bindings are a strict scope; None means no binding restriction.
+    resource_app_ids: list[str] | None = None
 
 
 class AppListParams(AppListBaseParams):
+    # Internal selection projection; Console HTTP list schemas do not expose these fields.
+    for_selection: bool = False
+    resource_ids: list[str] | None = None
     status: str | None = None
     openapi_visible: bool = False
     agent_is_published: bool | None = None
@@ -160,6 +164,8 @@ class AppRecord:
     author_name: str | None = None
     app_model_config: dict[str, Any] | None = None
     workflow: dict[str, Any] | None = None
+    workflow_type: str | None = None
+    workflow_kind: str | None = None
     site: dict[str, Any] | None = None
     tracing: str | None = None
     bound_agent_id: str | None = None
@@ -223,12 +229,6 @@ class AppReference:
     name: str
     mode: str
     bound_agent_id: str | None
-
-
-@dataclass(frozen=True, slots=True)
-class AppTraceSettings:
-    enabled: bool = False
-    tracing_provider: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

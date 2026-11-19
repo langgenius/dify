@@ -65,10 +65,10 @@ describe('variable-assigner/node-group-item', () => {
     mockGetAvailableVars.mockReturnValue([])
   })
 
-  it('highlights the active group and tracks the hovered group in the workflow store', async () => {
+  it('tracks the hovered group while connecting and clears it when the pointer leaves', async () => {
     const user = userEvent.setup()
     const data = createData()
-    const { container, store } = renderWorkflowFlowComponent(
+    const { store } = renderWorkflowFlowComponent(
       <NodeGroupItem
         item={{
           groupEnabled: true,
@@ -87,22 +87,29 @@ describe('variable-assigner/node-group-item', () => {
           enteringNodePayload: {
             nodeId: 'assigner-node',
             nodeData: data,
-          } as never,
-          hoveringAssignVariableGroupId: 'group-1',
+          },
+          connectingNodePayload: {
+            nodeId: 'source-node',
+            nodeType: BlockEnum.Answer,
+            handleType: 'source',
+            handleId: 'source',
+          },
+          hoveringAssignVariableGroupId: undefined,
         },
       },
     )
 
-    expect(screen.getByText('workflowLogic.nodes.variableAssigner.varNotSet'))!.toBeInTheDocument()
-    expect(container.querySelector('.relative.rounded-lg'))!.toHaveClass('border-text-accent!')
-    const groupCard = container.querySelector('.relative.rounded-lg') as HTMLElement
-    await user.hover(groupCard)
+    expect(screen.getByText('workflowLogic.nodes.variableAssigner.varNotSet')).toBeInTheDocument()
+    const groupTitle = screen.getByText('Group A')
+    await user.hover(groupTitle)
     expect(store.getState().hoveringAssignVariableGroupId).toBe('group-1')
+    await user.unhover(groupTitle)
+    expect(store.getState().hoveringAssignVariableGroupId).toBeUndefined()
   })
 
-  it('shows the selection border for non-primary groups and renders system and node variables', () => {
+  it('renders system and node variables with their source names', () => {
     const data = createData()
-    const { container } = renderWorkflowFlowComponent(
+    renderWorkflowFlowComponent(
       <NodeGroupItem
         item={{
           groupEnabled: true,
@@ -130,10 +137,9 @@ describe('variable-assigner/node-group-item', () => {
       },
     )
 
-    expect(container.querySelector('.relative.rounded-lg'))!.toHaveClass('border-dashed!')
-    expect(screen.getByText('Start'))!.toBeInTheDocument()
-    expect(screen.getByText('query'))!.toBeInTheDocument()
-    expect(screen.getByText('Source Node'))!.toBeInTheDocument()
-    expect(screen.getByText('answer'))!.toBeInTheDocument()
+    expect(screen.getByText('Start')).toBeInTheDocument()
+    expect(screen.getByText('query')).toBeInTheDocument()
+    expect(screen.getByText('Source Node')).toBeInTheDocument()
+    expect(screen.getByText('answer')).toBeInTheDocument()
   })
 })

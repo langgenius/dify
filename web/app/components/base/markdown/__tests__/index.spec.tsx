@@ -17,7 +17,7 @@ vi.mock('next/dynamic', () => ({
   },
 }))
 
-type CapturedProps = { latexContent: string }
+type CapturedProps = { latexContent: string; renderSoftBreaks?: boolean }
 
 const getLastWrapperProps = (): CapturedProps => {
   const calls = mockReactMarkdownWrapper.mock.calls
@@ -74,5 +74,10 @@ describe('Markdown', () => {
     render(<Markdown content={'```\n$E = mc^2$\n```'} />)
     const props = getLastWrapperProps()
     expect(props.latexContent).toContain('$E = mc^2$')
+  })
+
+  it('should pass renderSoftBreaks through', () => {
+    render(<Markdown content={'first line\nsecond line'} renderSoftBreaks={false} />)
+    expect(getLastWrapperProps().renderSoftBreaks).toBe(false)
   })
 })

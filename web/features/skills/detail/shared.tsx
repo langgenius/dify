@@ -6,13 +6,14 @@ import type {
   SkillResponse,
   SkillVersionResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { InfiniteData, useQueryClient } from '@tanstack/react-query'
 import type {
   DefaultModel,
   FormValue,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { cn } from '@langgenius/dify-ui/cn'
+import { v4 as uuid4 } from 'uuid'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { toast } from '@/app/notifications'
 import { getFileIconType } from '@/features/agent-v2/file-icon'
@@ -82,12 +83,12 @@ export function runSkillFileMutation(
 
 export const skillFileHotkeys = {
   copy: {
-    command: 'Mod+C' satisfies Hotkey,
+    command: 'Mod+C' satisfies HotkeyChord,
   },
   cut: {
-    command: 'Mod+X' satisfies Hotkey,
+    command: 'Mod+X' satisfies HotkeyChord,
   },
-  paste: { command: 'Mod+V' satisfies Hotkey },
+  paste: { command: 'Mod+V' satisfies HotkeyChord },
 } as const
 
 export const skillFileMenuPopupClassName = 'w-[168px] data-ending-style:transition-none'
@@ -1485,11 +1486,14 @@ function updateSkillListCache(
 }
 
 function refetchSkillDetail(skillId: string) {
-  return consoleClient.workspaces.current.skills.bySkillId.get({
-    params: {
-      skill_id: skillId,
+  return consoleClient.workspaces.current.skills.bySkillId.get(
+    {
+      params: {
+        skill_id: skillId,
+      },
     },
-  })
+    { context: { silent: true } },
+  )
 }
 
 export async function refreshSkillDetailAfterConflict(
@@ -1525,11 +1529,8 @@ export function isEditableKeyboardTarget(target: EventTarget | null) {
   )
 }
 
-export function createUploadItemId(file: File, index: number) {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
-    return crypto.randomUUID()
-
-  return `${file.name}-${file.size}-${file.lastModified}-${index}`
+export function createUploadItemId() {
+  return uuid4()
 }
 
 export function getUploadFileName(file: File) {

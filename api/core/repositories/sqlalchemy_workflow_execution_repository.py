@@ -200,12 +200,21 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
 
         # Create a new database session
         with self._session_factory() as session:
-            existing_model = session.get(WorkflowRun, db_model.id)
+            existing_model = session.get(WorkflowRun, db_model.id, with_for_update=True)
             if existing_model:
                 if existing_model.tenant_id != self._tenant_id:
                     raise ValueError("Unauthorized access to workflow run")
+                # A delayed persistence task must not resurrect a durably stopped run.
+                if (
+                    existing_model.stop_requested_at is not None
+                    and existing_model.status == WorkflowExecutionStatus.STOPPED
+                ):
+                    return
                 # Preserve the original start time for pause/resume flows.
                 db_model.created_at = existing_model.created_at
+                # The control repository owns these fields. Dataclass defaults must not clear them on merge.
+                db_model.task_id = existing_model.task_id
+                db_model.stop_requested_at = existing_model.stop_requested_at
 
             # SQLAlchemy merge intelligently handles both insert and update operations
             # based on the presence of the primary key
@@ -214,3 +223,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
 
             # Update the in-memory cache for faster subsequent lookups
             self._execution_cache[db_model.id] = db_model
+
+    @override
+    def save_synchronously(self, execution: WorkflowExecution) -> None:
+        self.save(execution)

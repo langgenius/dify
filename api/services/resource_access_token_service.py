@@ -5,6 +5,7 @@ from typing import Protocol
 from constants.resource_access_token import ResourceAccessTokenResourceType
 from machinery.context import RequestContext
 from services.auth.resource_access_token_contracts import (
+    DatasetServiceApiGrant,
     ResourceAccessTokenAccess,
     ResourceAccessTokenCreateResult,
     ResourceAccessTokenForbiddenError,
@@ -116,18 +117,34 @@ class ResourceAccessTokenService:
         self._tokens.record_usage(access.tenant_id, access.token_id)
         return ResourceAccessTokenGrant(access.token_id, access.tenant_id, frozenset({apps[0].id}))
 
-    def resolve_tenant_for_dataset_service_api(self, *, token: str, dataset_id: str | None) -> str:
-        """With no dataset id, authorize the collection route using any knowledge binding."""
+    def resolve_datasets_for_service_api(self, *, token: str, dataset_id: str | None) -> DatasetServiceApiGrant:
+        """Resolve the enabled knowledge bases a resource token may reach.
+
+        Collection routes receive every live knowledge binding so their queries can
+        stay within the token's resource scope. Resource routes receive exactly the
+        requested binding.
+        """
         access = self._tokens.access_by_secret(token)
-        if not any(
-            r.type == ResourceAccessTokenResourceType.KNOWLEDGE and (not dataset_id or r.id == dataset_id)
+        if not access.workspace_active:
+            raise ResourceAccessTokenForbiddenError("workspace unavailable")
+        datasets = tuple(
+            r
             for r in access.resources
-        ):
+            if r.type == ResourceAccessTokenResourceType.KNOWLEDGE
+            and r.exists
+            and r.enabled
+            and (not dataset_id or r.id == dataset_id)
+        )
+        if not datasets:
             raise ResourceAccessTokenForbiddenError(
                 "Resource access token is not allowed to access this knowledge base."
             )
         self._tokens.record_usage(access.tenant_id, access.token_id)
-        return access.tenant_id
+        return DatasetServiceApiGrant(
+            token_id=access.token_id,
+            tenant_id=access.tenant_id,
+            dataset_ids=frozenset(dataset.id for dataset in datasets),
+        )
 
     @staticmethod
     def _normalize_name(name: str) -> str:

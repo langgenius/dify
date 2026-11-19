@@ -1,7 +1,7 @@
 import type { Viewport } from 'reactflow'
 import type { Edge, Node } from '@/app/components/workflow/types'
 
-export type LogAnnotation = {
+type LogAnnotation = {
   id: string
   content: string
   account: {

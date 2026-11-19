@@ -5,11 +5,10 @@ import type {
   ParagraphFormInput,
 } from '@/app/components/workflow/nodes/human-input/types'
 import type { ValueSelector } from '@/app/components/workflow/types'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useEffect, useState } from 'react'
 import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { TestLexicalComposer } from '@/test/lexical'
 import { TransferMethod } from '@/types/app'
 import HITLInputComponentUI from '../component-ui'
 import { HITLInputNode } from '../node'
@@ -50,25 +49,26 @@ const renderComponent = (props: Partial<ComponentProps<typeof HITLInputComponent
     ...props,
   }
 
-  const utils = render(
-    <LexicalComposer
-      initialConfig={{
-        namespace: `hitl-input-test-${crypto.randomUUID()}`,
-        onError: (error: Error) => {
-          throw error
-        },
-        nodes: [HITLInputNode],
-      }}
-    >
-      <HITLInputComponentUI {...defaultProps} />
-    </LexicalComposer>,
+  const initialConfig = {
+    namespace: `hitl-input-test-${crypto.randomUUID()}`,
+    onError: (error: Error) => {
+      throw error
+    },
+    nodes: [HITLInputNode],
+  }
+  const subject = (readonly = defaultProps.readonly) => (
+    <TestLexicalComposer initialConfig={initialConfig}>
+      <HITLInputComponentUI {...defaultProps} readonly={readonly} />
+    </TestLexicalComposer>
   )
+  const utils = render(subject())
 
   return {
     ...utils,
     onChange,
     onRename,
     onRemove,
+    rerenderReadonly: (readonly: boolean) => utils.rerender(subject(readonly)),
   }
 }
 
@@ -113,57 +113,41 @@ describe('HITLInputComponentUI', () => {
       ).not.toBeInTheDocument()
     })
 
-    it('should close the edit modal when readonly becomes true', async () => {
-      let setReadonlyValue: ((readonly: boolean) => void) | undefined
-      const Harness = () => {
-        const [readonly, setReadonly] = useState(false)
-        const [namespace] = useState(() => `hitl-input-test-${crypto.randomUUID()}`)
+    it('should close the edit modal while readonly and allow reopening when editing resumes', async () => {
+      const user = userEvent.setup()
+      const { rerenderReadonly } = renderComponent()
 
-        useEffect(() => {
-          setReadonlyValue = setReadonly
-          return () => {
-            setReadonlyValue = undefined
-          }
-        }, [])
-
-        return (
-          <LexicalComposer
-            initialConfig={{
-              namespace,
-              onError: (error: Error) => {
-                throw error
-              },
-              nodes: [HITLInputNode],
-            }}
-          >
-            <HITLInputComponentUI
-              nodeId="node-1"
-              varName="customer_name"
-              workflowNodesMap={createWorkflowNodesMap()}
-              onChange={vi.fn()}
-              onRename={vi.fn()}
-              onRemove={vi.fn()}
-              readonly={readonly}
-            />
-          </LexicalComposer>
-        )
-      }
-
-      render(<Harness />)
-
-      await userEvent
-        .setup()
-        .click(await screen.findByRole('button', { name: 'common.operation.edit' }))
+      await user.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
 
       expect(await screen.findByRole('textbox')).toBeInTheDocument()
 
-      act(() => {
-        setReadonlyValue?.(true)
-      })
+      rerenderReadonly(true)
 
       await waitFor(() => {
         expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
       })
+
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.edit' }),
+      ).not.toBeInTheDocument()
+      rerenderReadonly(false)
+      await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+
+      expect(await screen.findByRole('textbox')).toBeInTheDocument()
+    })
+
+    it('should enable edit and remove actions when an initially readonly field becomes editable', async () => {
+      const user = userEvent.setup()
+      const { onRemove, rerenderReadonly } = renderComponent({ readonly: true })
+
+      rerenderReadonly(false)
+      await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+      expect(await screen.findByRole('textbox')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+      await waitFor(() => expect(screen.queryByRole('textbox')).not.toBeInTheDocument())
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+      expect(onRemove).toHaveBeenCalledExactlyOnceWith(varName)
     })
 
     it('should render select option summary for constant options', () => {
@@ -217,28 +201,46 @@ describe('HITLInputComponentUI', () => {
 
   describe('Remove action', () => {
     it('should call onRemove when remove button is clicked', async () => {
+      const user = userEvent.setup()
       const { onRemove } = renderComponent()
 
-      await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.remove' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
 
       expect(onRemove).toHaveBeenCalledWith(varName)
       expect(onRemove).toHaveBeenCalledTimes(1)
+    })
+
+    it('should remove exactly once per click after repeated readonly transitions', async () => {
+      const user = userEvent.setup()
+      const { onRemove, rerenderReadonly } = renderComponent()
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+      expect(onRemove).toHaveBeenCalledExactlyOnceWith(varName)
+
+      for (const expectedCalls of [2, 3]) {
+        rerenderReadonly(true)
+        expect(
+          screen.queryByRole('button', { name: 'common.operation.remove' }),
+        ).not.toBeInTheDocument()
+        rerenderReadonly(false)
+        await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+
+        expect(onRemove).toHaveBeenCalledTimes(expectedCalls)
+        expect(onRemove).toHaveBeenLastCalledWith(varName)
+      }
     })
   })
 
   describe('Edit flow', () => {
     it('should close modal without update when cancel is clicked', async () => {
+      const user = userEvent.setup()
       const { findByRole, queryByRole, onChange, onRename } = renderComponent()
 
-      await userEvent
-        .setup()
-        .click(await screen.findByRole('button', { name: 'common.operation.edit' }))
+      await user.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
 
       await findByRole('textbox')
 
-      await userEvent
-        .setup()
-        .click(await screen.findByRole('button', { name: 'common.operation.cancel' }))
+      await user.click(await screen.findByRole('button', { name: 'common.operation.cancel' }))
 
       expect(onChange).not.toHaveBeenCalled()
       expect(onRename).not.toHaveBeenCalled()
@@ -247,17 +249,16 @@ describe('HITLInputComponentUI', () => {
     })
 
     it('should prevent renaming to an existing variable name', async () => {
+      const user = userEvent.setup()
       const { findByRole, onChange, onRename } = renderComponent({
         unavailableVariableNames: ['existing_name'],
       })
 
-      await userEvent
-        .setup()
-        .click(await screen.findByRole('button', { name: 'common.operation.edit' }))
+      await user.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
 
       const textbox = await findByRole('textbox')
-      await userEvent.setup().clear(textbox)
-      await userEvent.setup().type(textbox, 'existing_name')
+      await user.clear(textbox)
+      await user.type(textbox, 'existing_name')
 
       expect(
         screen.getByText(
@@ -266,7 +267,7 @@ describe('HITLInputComponentUI', () => {
       ).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
 
-      await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.save' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       expect(onChange).not.toHaveBeenCalled()
       expect(onRename).not.toHaveBeenCalled()
@@ -275,13 +276,12 @@ describe('HITLInputComponentUI', () => {
 
   describe('Default formInput', () => {
     it('should open an empty default editor when formInput is undefined', async () => {
+      const user = userEvent.setup()
       const { findByRole } = renderComponent({
         formInput: undefined,
       })
 
-      await userEvent
-        .setup()
-        .click(await screen.findByRole('button', { name: 'common.operation.edit' }))
+      await user.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
 
       const textbox = await findByRole('textbox')
       const saveButton = await screen.findByRole('button', { name: 'common.operation.save' })

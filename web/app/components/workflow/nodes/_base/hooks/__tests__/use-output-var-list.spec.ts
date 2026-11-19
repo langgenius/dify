@@ -1,46 +1,35 @@
 import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
-import { act, renderHook } from '@testing-library/react'
+import type { VarInInspect } from '@/types/workflow'
+import { act } from '@testing-library/react'
+import { useState } from 'react'
+import { useNodes, useStoreApi } from 'reactflow'
+import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { InspectVarsProvider } from '@/app/components/workflow/__tests__/inspect-vars-provider'
+import { renderWorkflowCanvasHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import useNodeCrud from '../use-node-crud'
 import useOutputVarList from '../use-output-var-list'
 
-const mockSetInputs = vi.hoisted(() => vi.fn())
-const mockOnOutputKeyOrdersChange = vi.hoisted(() => vi.fn())
-const mockHandleOutVarRenameChange = vi.hoisted(() => vi.fn())
-const mockIsVarUsedInNodes = vi.hoisted(() => vi.fn())
-const mockRemoveUsedVarInNodes = vi.hoisted(() => vi.fn())
-const mockDeleteInspectVar = vi.hoisted(() => vi.fn())
-const mockRenameInspectVarName = vi.hoisted(() => vi.fn())
-const inspectState = vi.hoisted(() => ({
-  nodesWithInspectVars: [] as Array<{
-    nodeId: string
-    vars: Array<{ id: string; name: string }>
-  }>,
-}))
-
-vi.mock('@/app/components/workflow/hooks/use-workflow', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/hooks/use-workflow')>()
-
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
-    useWorkflow: () => ({
-      handleOutVarRenameChange: (...args: unknown[]) => mockHandleOutVarRenameChange(...args),
-      isVarUsedInNodes: (...args: unknown[]) => mockIsVarUsedInNodes(...args),
-      removeUsedVarInNodes: (...args: unknown[]) => mockRemoveUsedVarInNodes(...args),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.workflows.draft.variables.byVariableId.delete': async () => ({}),
+      'apps.byAppId.workflows.draft.variables.byVariableId.patch': async () => ({}),
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.builtin.get': async () => [],
+      'workspaces.current.tools.api.get': async () => [],
+      'workspaces.current.tools.workflow.get': async () => [],
+      'workspaces.current.tools.mcp.get': async () => [],
     }),
   }
 })
-
-vi.mock('@/app/components/workflow/hooks/use-inspect-vars-crud', () => ({
-  __esModule: true,
-  default: () => ({
-    deleteInspectVar: (...args: unknown[]) => mockDeleteInspectVar(...args),
-    renameInspectVarName: (...args: unknown[]) => mockRenameInspectVarName(...args),
-    nodesWithInspectVars: inspectState.nodesWithInspectVars,
-  }),
-}))
 
 const createPayload = (overrides: Partial<CodeNodeType> = {}): CodeNodeType => ({
   title: 'Code',
@@ -56,287 +45,245 @@ const createPayload = (overrides: Partial<CodeNodeType> = {}): CodeNodeType => (
   ...overrides,
 })
 
-const renderUseOutputVarList = (
-  payload: CodeNodeType = createPayload(),
-  outputKeyOrders: string[] = Object.keys(payload.outputs),
-) =>
-  renderHook(() =>
-    useOutputVarList<CodeNodeType>({
-      id: 'code-node',
-      inputs: payload,
-      setInputs: mockSetInputs,
-      outputKeyOrders,
-      onOutputKeyOrdersChange: mockOnOutputKeyOrdersChange,
-    }),
-  )
+const inspected = (name: string, type: VarType): VarInInspect => ({
+  id: `inspect-${name}`,
+  type: 'node',
+  name,
+  description: '',
+  selector: ['code-node', name],
+  value_type: type,
+  value: type === VarType.string ? 'cached' : 7,
+  edited: false,
+  visible: true,
+  is_truncated: false,
+  full_content: { size_bytes: 0, download_url: '' },
+})
 
-describe('useOutputVarList', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockIsVarUsedInNodes.mockReturnValue(false)
-    inspectState.nodesWithInspectVars = [
-      {
-        nodeId: 'code-node',
-        vars: [
-          { id: 'inspect-primary', name: 'primary' },
-          { id: 'inspect-secondary', name: 'secondary' },
+function setup(payload = createPayload(), referenced = '', orders = Object.keys(payload.outputs)) {
+  return renderWorkflowCanvasHook(
+    () => {
+      const inputs = useNodes<CodeNodeType>().find((node) => node.id === 'code-node')!.data
+      const { setInputs } = useNodeCrud('code-node', inputs)
+      const [outputKeyOrders, setOutputKeyOrders] = useState(orders)
+      return {
+        ...useOutputVarList({
+          id: 'code-node',
+          inputs,
+          setInputs,
+          outputKeyOrders,
+          onOutputKeyOrdersChange: setOutputKeyOrders,
+        }),
+        inputs,
+        outputKeyOrders,
+        flow: useStoreApi(),
+      }
+    },
+    {
+      wrapper: InspectVarsProvider,
+      nodes: [
+        createNode({ id: 'code-node', data: payload }),
+        createNode({
+          id: 'consumer',
+          data: createPayload({
+            variables: referenced
+              ? [{ variable: 'input', value_selector: ['code-node', referenced] }]
+              : [],
+          }),
+        }),
+      ],
+      edges: [createEdge({ source: 'code-node', target: 'consumer' })],
+      initialStoreState: {
+        nodesWithInspectVars: [
+          {
+            nodeId: 'code-node',
+            nodeType: BlockEnum.Code,
+            title: 'Code',
+            nodePayload: payload,
+            vars: [inspected('primary', VarType.string), inspected('secondary', VarType.number)],
+          },
         ],
       },
-    ]
-  })
-
-  it('removes the row right away when no other node uses the variable', () => {
-    const { result } = renderUseOutputVarList()
-
-    act(() => {
-      result.current.handleRemoveVariable(0)
-    })
-
-    expect(result.current.isShowRemoveVarConfirm).toBe(false)
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        outputs: { secondary: { type: VarType.number, children: null } },
-      }),
-    )
-    expect(mockOnOutputKeyOrdersChange).toHaveBeenCalledWith(['secondary'])
-    expect(mockRemoveUsedVarInNodes).not.toHaveBeenCalled()
-    expect(mockDeleteInspectVar).toHaveBeenCalledWith('code-node', 'inspect-primary')
-  })
-
-  it('removes the row after the confirmation when other nodes use the variable', () => {
-    mockIsVarUsedInNodes.mockReturnValue(true)
-    const { result } = renderUseOutputVarList()
-
-    act(() => {
-      result.current.handleRemoveVariable(0)
-    })
-
-    expect(result.current.isShowRemoveVarConfirm).toBe(true)
-    expect(mockSetInputs).not.toHaveBeenCalled()
-    expect(mockDeleteInspectVar).not.toHaveBeenCalled()
-
-    act(() => {
-      result.current.onRemoveVarConfirm()
-    })
-
-    expect(mockRemoveUsedVarInNodes).toHaveBeenCalledWith(['code-node', 'primary'])
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        outputs: { secondary: { type: VarType.number, children: null } },
-      }),
-    )
-    expect(mockOnOutputKeyOrdersChange).toHaveBeenCalledWith(['secondary'])
-    expect(mockDeleteInspectVar).toHaveBeenCalledWith('code-node', 'inspect-primary')
-    expect(result.current.isShowRemoveVarConfirm).toBe(false)
-  })
-
-  it('removes the confirmed row by its own index, not by the shared name', () => {
-    mockIsVarUsedInNodes.mockReturnValue(true)
-    const { result } = renderUseOutputVarList()
-
-    act(() => {
-      result.current.handleRemoveVariable(1)
-    })
-    act(() => {
-      result.current.onRemoveVarConfirm()
-    })
-
-    expect(mockRemoveUsedVarInNodes).toHaveBeenCalledWith(['code-node', 'secondary'])
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        outputs: { primary: { type: VarType.string, children: null } },
-      }),
-    )
-    expect(mockOnOutputKeyOrdersChange).toHaveBeenCalledWith(['primary'])
-  })
-
-  it('keeps the row when the confirmation is cancelled', () => {
-    mockIsVarUsedInNodes.mockReturnValue(true)
-    const { result } = renderUseOutputVarList()
-
-    act(() => {
-      result.current.handleRemoveVariable(0)
-    })
-    act(() => {
-      result.current.hideRemoveVarConfirm()
-    })
-
-    expect(result.current.isShowRemoveVarConfirm).toBe(false)
-    expect(mockSetInputs).not.toHaveBeenCalled()
-    expect(mockDeleteInspectVar).not.toHaveBeenCalled()
-    expect(mockOnOutputKeyOrdersChange).not.toHaveBeenCalled()
-    expect(mockRemoveUsedVarInNodes).not.toHaveBeenCalled()
-  })
-
-  it('keeps the output entry when another row still shares the removed name', () => {
-    mockIsVarUsedInNodes.mockReturnValue(true)
-    const payload = createPayload({
-      outputs: { primary: { type: VarType.string, children: null } },
-    })
-    const { result } = renderUseOutputVarList(payload, ['primary', 'primary'])
-
-    act(() => {
-      result.current.handleRemoveVariable(0)
-    })
-    act(() => {
-      result.current.onRemoveVarConfirm()
-    })
-
-    expect(mockOnOutputKeyOrdersChange).toHaveBeenCalledWith(['primary'])
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        outputs: { primary: { type: VarType.string, children: null } },
-      }),
-    )
-    expect(mockDeleteInspectVar).not.toHaveBeenCalled()
-  })
-
-  it('recomputes the default value after a confirmed removal', () => {
-    mockIsVarUsedInNodes.mockReturnValue(true)
-    const payload = createPayload({ error_strategy: ErrorHandleTypeEnum.defaultValue })
-    const { result } = renderUseOutputVarList(payload)
-
-    act(() => {
-      result.current.handleRemoveVariable(1)
-    })
-    act(() => {
-      result.current.onRemoveVarConfirm()
-    })
-
-    const lastInputs = mockSetInputs.mock.calls.at(-1)![0] as CodeNodeType
-    expect(lastInputs.default_value).toEqual([{ key: 'primary', type: VarType.string, value: '' }])
-  })
-
-  it.each([true, false])(
-    'keeps the remaining fallbacks when removing an output (confirmation: %s)',
-    (requiresConfirmation) => {
-      mockIsVarUsedInNodes.mockReturnValue(requiresConfirmation)
-      const payload = createPayload({
-        error_strategy: ErrorHandleTypeEnum.defaultValue,
-        default_value: [
-          { key: 'primary', type: VarType.string, value: 'sentinel' },
-          { key: 'secondary', type: VarType.number, value: 7 },
-        ],
-      })
-      const { result } = renderUseOutputVarList(payload)
-
-      act(() => {
-        result.current.handleRemoveVariable(1)
-      })
-      if (requiresConfirmation) act(() => result.current.onRemoveVarConfirm())
-
-      const lastInputs = mockSetInputs.mock.calls.at(-1)![0] as CodeNodeType
-      expect(lastInputs.default_value).toEqual([
-        { key: 'primary', type: VarType.string, value: 'sentinel' },
-      ])
     },
   )
+}
+const fallbacks: CodeNodeType['default_value'] = [
+  { key: 'primary', type: VarType.string, value: 'sentinel' },
+  { key: 'secondary', type: VarType.number, value: 7 },
+]
+afterEach(() => vi.useRealTimers())
 
-  it('keeps the configured fallbacks when another output is added', () => {
-    const payload = createPayload({
-      error_strategy: ErrorHandleTypeEnum.defaultValue,
-      default_value: [
-        { key: 'primary', type: VarType.string, value: 'sentinel' },
-        { key: 'secondary', type: VarType.number, value: 7 },
-      ],
-    })
-    const { result } = renderUseOutputVarList(payload)
+it.each([
+  { index: 0, name: 'primary', remaining: 'secondary' },
+  { index: 1, name: 'secondary', remaining: 'primary' },
+])('removes referenced $name only after confirmation', async ({ index, name, remaining }) => {
+  const { result, store } = setup(createPayload(), name)
+  await act(async () => result.current.handleRemoveVariable(index))
+  expect(result.current.isShowRemoveVarConfirm).toBe(true)
+  expect(result.current.inputs.outputs).toEqual(createPayload().outputs)
+  expect(store.getState().nodesWithInspectVars[0]?.vars).toHaveLength(2)
+  await act(async () => result.current.onRemoveVarConfirm())
+  expect(result.current.isShowRemoveVarConfirm).toBe(false)
+  expect(Object.keys(result.current.inputs.outputs)).toEqual([remaining])
+  expect(result.current.outputKeyOrders).toEqual([remaining])
+  expect(
+    result.current.flow
+      .getState()
+      .getNodes()
+      .find((node) => node.id === 'consumer')?.data.variables,
+  ).toEqual([{ variable: 'input', value_selector: [] }])
+  expect(store.getState().nodesWithInspectVars[0]?.vars.map((variable) => variable.name)).toEqual([
+    remaining,
+  ])
+})
 
-    act(() => {
-      result.current.handleAddVariable()
-    })
-
-    const lastInputs = mockSetInputs.mock.calls.at(-1)![0] as CodeNodeType
-    expect(lastInputs.default_value).toEqual([
-      { key: 'primary', type: VarType.string, value: 'sentinel' },
-      { key: 'secondary', type: VarType.number, value: 7 },
-      { key: 'var_3', type: VarType.string, value: '' },
-    ])
+it('removes an unused output and its inspected value immediately', async () => {
+  const { result, store } = setup()
+  await act(async () => result.current.handleRemoveVariable(0))
+  expect(result.current.isShowRemoveVarConfirm).toBe(false)
+  expect(result.current.inputs.outputs).toEqual({
+    secondary: { type: VarType.number, children: null },
   })
+  expect(result.current.outputKeyOrders).toEqual(['secondary'])
+  expect(store.getState().nodesWithInspectVars[0]?.vars).toEqual([
+    inspected('secondary', VarType.number),
+  ])
+})
 
-  it('carries the configured fallback over to the new name of a renamed output', () => {
-    const payload = createPayload({
-      error_strategy: ErrorHandleTypeEnum.defaultValue,
-      default_value: [
-        { key: 'primary', type: VarType.string, value: 'sentinel' },
-        { key: 'secondary', type: VarType.number, value: 7 },
-      ],
-    })
-    const { result } = renderUseOutputVarList(payload)
+it('preserves the output, inspected values and downstream reference on cancellation', async () => {
+  const { result, store } = setup(createPayload(), 'primary')
+  await act(async () => result.current.handleRemoveVariable(0))
+  act(() => result.current.hideRemoveVarConfirm())
+  expect(result.current.isShowRemoveVarConfirm).toBe(false)
+  expect(result.current.inputs.outputs).toEqual(createPayload().outputs)
+  expect(result.current.outputKeyOrders).toEqual(['primary', 'secondary'])
+  expect(store.getState().nodesWithInspectVars[0]?.vars).toHaveLength(2)
+  expect(
+    result.current.flow
+      .getState()
+      .getNodes()
+      .find((node) => node.id === 'consumer')?.data.variables,
+  ).toEqual([{ variable: 'input', value_selector: ['code-node', 'primary'] }])
+})
 
-    act(() => {
-      result.current.handleVarsChange(
-        {
-          renamed: { type: VarType.string, children: null },
-          secondary: { type: VarType.number, children: null },
-        },
-        0,
-        'renamed',
-      )
-    })
+it('keeps the output and inspected value while another row has the same name', async () => {
+  const { result, store } = setup(
+    createPayload({ outputs: { primary: { type: VarType.string, children: null } } }),
+    'primary',
+    ['primary', 'primary'],
+  )
+  await act(async () => result.current.handleRemoveVariable(0))
+  await act(async () => result.current.onRemoveVarConfirm())
+  expect(result.current.outputKeyOrders).toEqual(['primary'])
+  expect(result.current.inputs.outputs).toEqual({
+    primary: { type: VarType.string, children: null },
+  })
+  expect(store.getState().nodesWithInspectVars[0]?.vars).toContainEqual(
+    inspected('primary', VarType.string),
+  )
+})
 
-    expect(mockOnOutputKeyOrdersChange).toHaveBeenCalledWith(['renamed', 'secondary'])
-    expect(mockHandleOutVarRenameChange).toHaveBeenCalledWith(
-      'code-node',
-      ['code-node', 'primary'],
-      ['code-node', 'renamed'],
+it.each([true, false])(
+  'retains configured fallbacks after removal (referenced: %s)',
+  async (referenced) => {
+    const { result } = setup(
+      createPayload({ error_strategy: ErrorHandleTypeEnum.defaultValue, default_value: fallbacks }),
+      referenced ? 'secondary' : '',
     )
-    const lastInputs = mockSetInputs.mock.calls.at(-1)![0] as CodeNodeType
-    expect(lastInputs.default_value).toEqual([
-      { key: 'renamed', type: VarType.string, value: 'sentinel' },
-      { key: 'secondary', type: VarType.number, value: 7 },
-    ])
-  })
+    await act(async () => result.current.handleRemoveVariable(1))
+    if (referenced) await act(async () => result.current.onRemoveVarConfirm())
+    expect(result.current.inputs.default_value).toEqual([fallbacks[0]])
+  },
+)
 
-  it('only resets the fallback of the output whose type changed', () => {
-    const payload = createPayload({
-      error_strategy: ErrorHandleTypeEnum.defaultValue,
-      default_value: [
-        { key: 'primary', type: VarType.string, value: 'sentinel' },
-        { key: 'secondary', type: VarType.number, value: 7 },
-      ],
-    })
-    const { result } = renderUseOutputVarList(payload)
+it('creates the remaining fallback when none was configured', async () => {
+  const { result } = setup(
+    createPayload({ error_strategy: ErrorHandleTypeEnum.defaultValue }),
+    'secondary',
+  )
+  await act(async () => result.current.handleRemoveVariable(1))
+  await act(async () => result.current.onRemoveVarConfirm())
+  expect(result.current.inputs.default_value).toEqual([
+    { key: 'primary', type: VarType.string, value: '' },
+  ])
+})
 
-    act(() => {
-      result.current.handleVarsChange({
-        primary: { type: VarType.string, children: null },
-        secondary: { type: VarType.string, children: null },
-      })
-    })
+it('preserves existing fallbacks when adding an output', () => {
+  const { result } = setup(
+    createPayload({ error_strategy: ErrorHandleTypeEnum.defaultValue, default_value: fallbacks }),
+  )
+  act(() => result.current.handleAddVariable())
+  expect(result.current.outputKeyOrders).toEqual(['primary', 'secondary', 'var_3'])
+  expect(result.current.inputs.default_value).toEqual([
+    ...fallbacks,
+    { key: 'var_3', type: VarType.string, value: '' },
+  ])
+})
 
-    expect(mockDeleteInspectVar).toHaveBeenCalledExactlyOnceWith('code-node', 'inspect-secondary')
-    const lastInputs = mockSetInputs.mock.calls.at(-1)![0] as CodeNodeType
-    expect(lastInputs.default_value).toEqual([
-      { key: 'primary', type: VarType.string, value: 'sentinel' },
-      { key: 'secondary', type: VarType.string, value: '' },
-    ])
-  })
-
-  it('does not touch the fallbacks when the error strategy is not default-value', () => {
-    const payload = createPayload({
-      error_strategy: ErrorHandleTypeEnum.failBranch,
-      default_value: [{ key: 'primary', type: VarType.string, value: 'sentinel' }],
-    })
-    const { result } = renderUseOutputVarList(payload)
-
-    act(() => {
-      result.current.handleRemoveVariable(1)
-    })
-
-    const lastInputs = mockSetInputs.mock.calls.at(-1)![0] as CodeNodeType
-    expect(lastInputs.default_value).toEqual([
-      { key: 'primary', type: VarType.string, value: 'sentinel' },
-    ])
-  })
-  it('keeps inspected values when an output schema is unchanged', () => {
-    const { result } = renderUseOutputVarList()
-    act(() =>
-      result.current.handleVarsChange({
-        primary: { type: VarType.string, children: null },
+it('renames the output, fallback and downstream reference together', async () => {
+  vi.useFakeTimers()
+  const { result } = setup(
+    createPayload({ error_strategy: ErrorHandleTypeEnum.defaultValue, default_value: fallbacks }),
+    'primary',
+  )
+  act(() =>
+    result.current.handleVarsChange(
+      {
+        renamed: { type: VarType.string, children: null },
         secondary: { type: VarType.number, children: null },
-      }),
-    )
-    expect(mockDeleteInspectVar).not.toHaveBeenCalled()
-  })
+      },
+      0,
+      'renamed',
+    ),
+  )
+  expect(result.current.outputKeyOrders).toEqual(['renamed', 'secondary'])
+  expect(result.current.inputs.default_value).toEqual([
+    { ...fallbacks[0], key: 'renamed' },
+    fallbacks[1],
+  ])
+  expect(
+    result.current.flow
+      .getState()
+      .getNodes()
+      .find((node) => node.id === 'consumer')?.data.variables,
+  ).toEqual([{ variable: 'input', value_selector: ['code-node', 'renamed'] }])
+  await act(async () => vi.advanceTimersByTimeAsync(501))
+})
+
+it('resets only the changed output fallback and stale inspected value', async () => {
+  const { result, store } = setup(
+    createPayload({ error_strategy: ErrorHandleTypeEnum.defaultValue, default_value: fallbacks }),
+  )
+  await act(async () =>
+    result.current.handleVarsChange({
+      primary: { type: VarType.string, children: null },
+      secondary: { type: VarType.string, children: null },
+    }),
+  )
+  expect(result.current.inputs.default_value).toEqual([
+    fallbacks[0],
+    { key: 'secondary', type: VarType.string, value: '' },
+  ])
+  expect(store.getState().nodesWithInspectVars[0]?.vars).toEqual([
+    inspected('primary', VarType.string),
+  ])
+})
+
+it('leaves fallbacks alone under the failure-branch strategy', async () => {
+  const { result } = setup(
+    createPayload({
+      error_strategy: ErrorHandleTypeEnum.failBranch,
+      default_value: [fallbacks[0]!],
+    }),
+  )
+  await act(async () => result.current.handleRemoveVariable(1))
+  expect(result.current.inputs.default_value).toEqual([fallbacks[0]])
+})
+
+it('preserves inspected values when the output schema is unchanged', async () => {
+  const { result, store } = setup()
+  await act(async () => result.current.handleVarsChange(createPayload().outputs))
+  expect(store.getState().nodesWithInspectVars[0]?.vars).toEqual([
+    inspected('primary', VarType.string),
+    inspected('secondary', VarType.number),
+  ])
 })

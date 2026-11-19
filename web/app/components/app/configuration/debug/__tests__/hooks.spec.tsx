@@ -1,10 +1,17 @@
-import { act, renderHook } from '@testing-library/react'
+import type { PropsWithChildren } from 'react'
+import { act, render, renderHook, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import DebugConfigurationContext from '@/context/debug-configuration'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
+import { PromptMode } from '@/models/debug'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import {
   createDatasetConfigsFixture,
+  createDebugConfigurationFixture,
   createModelConfigFixture,
 } from '@/test/fixtures/debug-configuration'
-import { AgentStrategy } from '@/types/app'
+import { AgentStrategy, RETRIEVE_TYPE } from '@/types/app'
 import {
   useConfigFromDebugContext,
   useDebugWithSingleOrMultipleModel,
@@ -12,15 +19,8 @@ import {
   useFormattingChangedSubscription,
 } from '../hooks'
 
-const mockUseDebugConfigurationContext = vi.fn()
-
-vi.mock('@/context/debug-configuration', () => ({
-  useDebugConfigurationContext: () => mockUseDebugConfigurationContext(),
-}))
-
 describe('configuration debug hooks', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     localStorage.clear()
   })
 
@@ -66,7 +66,7 @@ describe('configuration debug hooks', () => {
   })
 
   it('should derive chat config data from the debug context', () => {
-    mockUseDebugConfigurationContext.mockReturnValue({
+    const configuration = createDebugConfigurationFixture({
       isAdvancedMode: false,
       modelConfig: createModelConfigFixture({
         agentConfig: {
@@ -82,24 +82,26 @@ describe('configuration debug hooks', () => {
         more_like_this: { enabled: true },
       }),
       appId: 'app-1',
-      promptMode: 'simple',
+      promptMode: PromptMode.simple,
       speechToTextConfig: { enabled: false },
       introduction: 'hello',
       suggestedQuestions: ['how are you?'],
       suggestedQuestionsAfterAnswerConfig: { enabled: false },
       citationConfig: { enabled: true },
       moderationConfig: { enabled: false },
-      chatPromptConfig: { prompt: [] },
-      completionPromptConfig: { prompt: { text: 'completion' } },
-      dataSets: [{ id: 'dataset-1' }],
-      datasetConfigs: createDatasetConfigsFixture({ retrieval_model: 'multiple' }),
-      visionConfig: { transfer_methods: ['local_file'], number_limits: 2 },
-      annotationConfig: { enabled: false },
+      dataSets: [createDatasetFixture({ id: 'dataset-1' })],
+      datasetConfigs: createDatasetConfigsFixture({ retrieval_model: RETRIEVE_TYPE.multiWay }),
       textToSpeechConfig: { enabled: false, voice: '', language: '' },
       isFunctionCall: true,
     })
 
-    const { result } = renderHook(() => useConfigFromDebugContext())
+    const { result } = renderHook(() => useConfigFromDebugContext(), {
+      wrapper: ({ children }: PropsWithChildren) => (
+        <DebugConfigurationContext.Provider value={configuration}>
+          {children}
+        </DebugConfigurationContext.Provider>
+      ),
+    })
 
     expect(result.current).toEqual(
       expect.objectContaining({
@@ -117,26 +119,41 @@ describe('configuration debug hooks', () => {
   })
 
   it.each([
-    { hasAnswer: true, formattingChanged: false, calls: 1 },
-    { hasAnswer: false, formattingChanged: false, calls: 0 },
-    { hasAnswer: true, formattingChanged: true, calls: 0 },
+    { hasAnswer: true, initiallyChanged: false, expected: 'Refresh required' },
+    { hasAnswer: false, initiallyChanged: false, expected: 'Up to date' },
+    { hasAnswer: true, initiallyChanged: true, expected: 'Refresh required' },
   ])(
-    'dispatches formatting changes only for existing answers requiring refresh: %j',
-    ({ hasAnswer, formattingChanged, calls }) => {
-      const setFormattingChanged = vi.fn()
-      mockUseDebugConfigurationContext.mockReturnValue({ formattingChanged, setFormattingChanged })
-      const { result } = renderHook(
-        () => {
-          useFormattingChangedSubscription([
-            { id: 'message-1', content: 'Hello', isAnswer: hasAnswer },
-          ])
-          return useFormattingChangedDispatcher()
-        },
-        { wrapper: EventEmitterContextProvider },
+    'updates formatting state for the current conversation: %j',
+    async ({ hasAnswer, initiallyChanged, expected }) => {
+      function Conversation() {
+        const dispatch = useFormattingChangedDispatcher()
+        useFormattingChangedSubscription([
+          { id: 'message-1', content: 'Hello', isAnswer: hasAnswer },
+        ])
+        return <button onClick={dispatch}>Change configuration</button>
+      }
+      function Session() {
+        const [formattingChanged, setFormattingChanged] = useState(initiallyChanged)
+        return (
+          <DebugConfigurationContext.Provider
+            value={createDebugConfigurationFixture({ formattingChanged, setFormattingChanged })}
+          >
+            <Conversation />
+            <output>{formattingChanged ? 'Refresh required' : 'Up to date'}</output>
+          </DebugConfigurationContext.Provider>
+        )
+      }
+      const user = userEvent.setup()
+      render(
+        <EventEmitterContextProvider>
+          <Session />
+        </EventEmitterContextProvider>,
       )
-      act(() => result.current())
-      expect(setFormattingChanged).toHaveBeenCalledTimes(calls)
-      if (calls) expect(setFormattingChanged).toHaveBeenCalledWith(true)
+      expect(screen.getByRole('status')).toHaveTextContent(
+        initiallyChanged ? 'Refresh required' : 'Up to date',
+      )
+      await user.click(screen.getByRole('button', { name: 'Change configuration' }))
+      expect(screen.getByRole('status')).toHaveTextContent(expected)
     },
   )
 })

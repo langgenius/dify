@@ -330,7 +330,7 @@ export const Workflow: FC<WorkflowProps> = memo(
 
         if (payload.viewport) reactflow.setViewport(payload.viewport)
 
-        if (payload.hash) setSyncWorkflowDraftHash(payload.hash)
+        if (payload.hash) setSyncWorkflowDraftHash(payload.hash, payload)
 
         onWorkflowDataUpdate?.(payload)
 
@@ -444,22 +444,6 @@ export const Workflow: FC<WorkflowProps> = memo(
         }
       },
       [showConfirm, setShowConfirm, handleCommentDelete, t],
-    )
-
-    const handleCommentReplyDeleteClick = useCallback(
-      (commentId: string, replyId: string) => {
-        if (!showConfirm) {
-          setShowConfirm({
-            title: t(($) => $['comments.confirm.deleteReplyTitle'], { ns: 'workflowComments' }),
-            desc: t(($) => $['comments.confirm.deleteReplyDesc'], { ns: 'workflowComments' }),
-            onConfirm: async () => {
-              await handleCommentReplyDelete(commentId, replyId)
-              setShowConfirm(undefined)
-            },
-          })
-        }
-      },
-      [showConfirm, setShowConfirm, handleCommentReplyDelete, t],
     )
 
     useEffect(() => {
@@ -648,7 +632,7 @@ export const Workflow: FC<WorkflowProps> = memo(
         <CandidateNode />
         <CommentManager />
         <div
-          className="pointer-events-none absolute top-0 left-0 z-10 flex w-12 items-center justify-center p-1 pl-2"
+          className="pointer-events-none absolute inset-s-0 top-0 z-10 flex w-12 items-center justify-center p-1 ps-2"
           style={{ height: controlHeight }}
         >
           <Control />
@@ -730,8 +714,7 @@ export const Workflow: FC<WorkflowProps> = memo(
                   onReplyEdit={(replyId, content, ids) =>
                     handleCommentReplyUpdate(comment.id, replyId, content, ids ?? [])
                   }
-                  onReplyDelete={(replyId) => handleCommentReplyDeleteClick(comment.id, replyId)}
-                  onReplyDeleteDirect={(replyId) => handleCommentReplyDelete(comment.id, replyId)}
+                  onReplyDelete={(replyId) => handleCommentReplyDelete(comment.id, replyId)}
                   canGoPrev={canGoPrev}
                   canGoNext={canGoNext}
                 />

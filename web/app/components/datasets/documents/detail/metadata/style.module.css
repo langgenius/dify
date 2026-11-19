@@ -79,7 +79,7 @@
   @apply mr-1 h-3 w-3 stroke-current stroke-2;
 }
 .select {
-  @apply !h-7 rounded-md !bg-gray-50 !py-0 !pl-2 !text-xs !shadow-none hover:!bg-gray-100;
+  @apply !h-7 rounded-md !bg-gray-50 !py-0 !ps-2 !text-xs !shadow-none hover:!bg-gray-100;
 }
 .selectWrapper {
   @apply !h-7 w-full;

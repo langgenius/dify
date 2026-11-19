@@ -349,7 +349,8 @@ function AddToolMenu({
         }
       />
       <PopoverContent
-        placement="top-end"
+        side="top"
+        align="end"
         sideOffset={4}
         className={
           view === 'menu'
@@ -506,7 +507,7 @@ export function AgentTools() {
     (tool: AgentCliTool) => {
       handleCliDialogSave(tool)
       if (!editingCliTool) {
-        promptAddCallbackRef.current?.(tool)
+        promptAddCallbackRef.current?.([tool])
         promptAddCallbackRef.current = undefined
       }
     },

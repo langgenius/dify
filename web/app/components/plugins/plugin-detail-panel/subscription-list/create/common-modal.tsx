@@ -5,10 +5,10 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { useTranslation } from 'react-i18next'
@@ -34,7 +34,7 @@ export const CommonCreateModal = ({ open = true, onClose, createType, builder }:
       <DialogContent
         backdropProps={{ forceRender: true }}
         className={cn(
-          'max-h-[80%] min-h-90',
+          'max-h-[80dvh] min-h-[min(22.5rem,calc(100dvh-2rem))]',
           createType === SupportedCreationMethods.MANUAL && 'w-160',
         )}
       >
@@ -79,7 +79,7 @@ function CommonCreateModalContent({ onClose, createType, builder }: Omit<Props, 
         <DialogTitle>
           {t(($) => $[MODAL_TITLE_KEY_MAP[createType]], { ns: 'pluginTrigger' })}
         </DialogTitle>
-        <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
       </DialogHeader>
 
       <DialogBody>

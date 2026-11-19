@@ -1,7 +1,9 @@
-import json
+import contextlib
 import logging
-from typing import Any, TypedDict, cast
+from collections.abc import Callable, Mapping
+from typing import Protocol, TypedDict
 
+from pydantic import ConfigDict, RootModel, ValidationError
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
@@ -13,10 +15,15 @@ from core.helper.model_provider_cache import (
     ProviderCredentialsCacheType,
 )
 from core.model_manager import LBModelManager
-from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
+from core.plugin.impl.model_runtime_factory import (
+    PluginModelAssembly,
+    create_plugin_model_assembly,
+    create_plugin_provider_manager,
+)
 from core.provider_manager import ProviderConfigurationCacheSource, ProviderManager
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import (
+    CredentialFormSchema,
     ModelCredentialSchema,
     ProviderCredentialSchema,
 )
@@ -28,17 +35,117 @@ from models.provider import LoadBalancingModelConfig, ProviderCredential, Provid
 logger = logging.getLogger(__name__)
 
 
+class LoadBalancingCredentials(RootModel[dict[str, str | bool]]):
+    """Provider-defined credentials for one load-balancing config.
+
+    Keys come from the provider or model credential schema, not from this service.
+    Text, secret, select, and radio fields are strings. Switch fields are booleans.
+    That is the mapping graphon's credential validator produces (``dict[str, str | bool]``).
+    Strict mode keeps JSON numbers from being coerced into booleans.
+    """
+
+    model_config = ConfigDict(strict=True)
+
+    def string_value(self, key: str) -> str | None:
+        """Return a text or secret field. Switch booleans are not strings."""
+        value = self.root.get(key)
+        if isinstance(value, str):
+            return value
+        return None
+
+    def set(self, key: str, value: str | bool) -> None:
+        self.root[key] = value
+
+
+def _decode_encrypted_config(encrypted_config: str | None) -> LoadBalancingCredentials:
+    """Decode a stored load balancing ``encrypted_config``.
+
+    Missing, malformed, non-object, and non ``str | bool`` payloads all decode to empty
+    credentials so that one corrupted row cannot break listing or editing the other configs.
+    """
+    if not encrypted_config:
+        return LoadBalancingCredentials({})
+    try:
+        return LoadBalancingCredentials.model_validate_json(encrypted_config)
+    except ValidationError:
+        return LoadBalancingCredentials({})
+
+
+type LoadBalancingCredentialInput = LoadBalancingCredentials | Mapping[str, str | bool]
+
+
+class LoadBalancingTokenCipher(Protocol):
+    """Encrypts and decrypts secret credential values for one tenant."""
+
+    def encrypt_token(self, tenant_id: str, token: str) -> str: ...
+
+    def decrypt_token(self, tenant_id: str, token: str) -> str: ...
+
+
+class _EncrypterTokenCipher:
+    def __init__(
+        self,
+        encrypt_token: Callable[[str, str], str] = encrypter.encrypt_token,
+        decrypt_token: Callable[[str, str], str] = encrypter.decrypt_token,
+    ) -> None:
+        self._encrypt_token = encrypt_token
+        self._decrypt_token = decrypt_token
+
+    def encrypt_token(self, tenant_id: str, token: str) -> str:
+        return self._encrypt_token(tenant_id, token)
+
+    def decrypt_token(self, tenant_id: str, token: str) -> str:
+        return self._decrypt_token(tenant_id, token)
+
+
+def encrypter_token_cipher(
+    encrypt_token: Callable[[str, str], str] = encrypter.encrypt_token,
+    decrypt_token: Callable[[str, str], str] = encrypter.decrypt_token,
+) -> LoadBalancingTokenCipher:
+    """Build the production cipher, optionally with different encrypt and decrypt functions."""
+    return _EncrypterTokenCipher(encrypt_token=encrypt_token, decrypt_token=decrypt_token)
+
+
+_DEFAULT_TOKEN_CIPHER = encrypter_token_cipher()
+
+
+def _parse_submitted_credentials(raw: LoadBalancingCredentialInput) -> LoadBalancingCredentials:
+    """Parse credentials submitted by a caller into :class:`LoadBalancingCredentials`.
+
+    Already-parsed values are copied. Anything that is not a ``str | bool`` mapping is rejected.
+    """
+    if isinstance(raw, LoadBalancingCredentials):
+        return LoadBalancingCredentials.model_validate(dict(raw.root))
+    try:
+        return LoadBalancingCredentials.model_validate(raw)
+    except ValidationError as exc:
+        raise ValueError("Invalid load balancing config credentials") from exc
+
+
+def _obfuscated_credentials(
+    provider_configuration: ProviderConfiguration,
+    credentials: LoadBalancingCredentials,
+    credential_form_schemas: list[CredentialFormSchema],
+) -> dict[str, str | bool]:
+    """Mask secret fields and parse the obfuscated mapping back into the credential shape."""
+    obfuscated = provider_configuration.obfuscated_credentials(
+        credentials=dict(credentials.root),
+        credential_form_schemas=credential_form_schemas,
+    )
+    return LoadBalancingCredentials.model_validate(obfuscated).root
+
+
 class LoadBalancingConfigDetailDict(TypedDict):
     id: str
     name: str
-    credentials: dict[str, Any]
+    credentials: dict[str, str | bool]
     enabled: bool
 
 
 class LoadBalancingConfigSummaryDict(TypedDict):
     id: str
     name: str
-    credentials: dict[str, Any]
+    credentials: dict[str, str | bool]
     credential_id: str | None
     enabled: bool
     in_cooldown: bool
@@ -192,42 +299,35 @@ class ModelLoadBalancingService:
                 config_id=load_balancing_config.id,
             )
 
-            try:
-                if load_balancing_config.encrypted_config:
-                    credentials: dict[str, Any] = json.loads(load_balancing_config.encrypted_config)
-                else:
-                    credentials = {}
-            except (json.JSONDecodeError, ValueError):
-                credentials = {}
+            credentials = _decode_encrypted_config(load_balancing_config.encrypted_config)
 
             # Get provider credential secret variables
             credential_secret_variables = provider_configuration.extract_secret_variables(
                 credential_schemas.credential_form_schemas
             )
 
-            # decrypt credentials
+            # decrypt secret strings; switch booleans are not tokens
             for variable in credential_secret_variables:
-                if variable in credentials:
-                    try:
-                        token_value = credentials.get(variable)
-                        if isinstance(token_value, str):
-                            credentials[variable] = encrypter.decrypt_token_with_decoding(
-                                token_value,
-                                decoding_context,
-                            )
-                    except ValueError:
-                        pass
+                token_value = credentials.string_value(variable)
+                if token_value is None:
+                    continue
+                with contextlib.suppress(ValueError):
+                    credentials.set(
+                        variable,
+                        encrypter.decrypt_token_with_decoding(token_value, decoding_context),
+                    )
 
-            # Obfuscate credentials
-            credentials = provider_configuration.obfuscated_credentials(
-                credentials=credentials, credential_form_schemas=credential_schemas.credential_form_schemas
+            revealed = _obfuscated_credentials(
+                provider_configuration,
+                credentials,
+                credential_schemas.credential_form_schemas,
             )
 
             datas.append(
                 {
                     "id": load_balancing_config.id,
                     "name": load_balancing_config.name,
-                    "credentials": credentials,
+                    "credentials": revealed,
                     "credential_id": load_balancing_config.credential_id,
                     "enabled": load_balancing_config.enabled,
                     "in_cooldown": in_cooldown,
@@ -282,26 +382,21 @@ class ModelLoadBalancingService:
         if not load_balancing_model_config:
             return None
 
-        try:
-            if load_balancing_model_config.encrypted_config:
-                credentials = json.loads(load_balancing_model_config.encrypted_config)
-            else:
-                credentials = {}
-        except (json.JSONDecodeError, ValueError):
-            credentials = {}
+        credentials = _decode_encrypted_config(load_balancing_model_config.encrypted_config)
 
         # Get credential form schemas from model credential schema or provider credential schema
         credential_schemas = self._get_credential_schema(provider_configuration)
 
-        # Obfuscate credentials
-        credentials = provider_configuration.obfuscated_credentials(
-            credentials=credentials, credential_form_schemas=credential_schemas.credential_form_schemas
+        revealed = _obfuscated_credentials(
+            provider_configuration,
+            credentials,
+            credential_schemas.credential_form_schemas,
         )
 
         result: LoadBalancingConfigDetailDict = {
             "id": load_balancing_model_config.id,
             "name": load_balancing_model_config.name,
-            "credentials": credentials,
+            "credentials": revealed,
             "enabled": load_balancing_model_config.enabled,
         }
         return result
@@ -348,6 +443,7 @@ class ModelLoadBalancingService:
         configs: list[dict],
         config_from: str,
         session: Session,
+        token_cipher: LoadBalancingTokenCipher = _DEFAULT_TOKEN_CIPHER,
     ):
         """
         Update load balancing configurations.
@@ -442,23 +538,22 @@ class ModelLoadBalancingService:
 
                 load_balancing_config = current_load_balancing_configs_dict[config_id]
 
-                if credentials:
-                    if not isinstance(credentials, dict):
-                        raise ValueError("Invalid load balancing config credentials")
-
+                parsed_credentials = _parse_submitted_credentials(credentials) if credentials else None
+                if parsed_credentials is not None and parsed_credentials.root:
                     # validate custom provider config
-                    credentials = self._custom_credentials_validate(
+                    parsed_credentials = self._custom_credentials_validate(
                         tenant_id=tenant_id,
                         provider_configuration=provider_configuration,
                         model_type=model_type_enum,
                         model=model,
-                        credentials=credentials,
+                        credentials=parsed_credentials,
                         load_balancing_model_config=load_balancing_config,
                         validate=False,
+                        token_cipher=token_cipher,
                     )
 
                     # update load balancing config
-                    load_balancing_config.encrypted_config = json.dumps(credentials)
+                    load_balancing_config.encrypted_config = parsed_credentials.model_dump_json()
 
                 load_balancing_config.name = name
                 load_balancing_config.enabled = enabled
@@ -493,20 +588,19 @@ class ModelLoadBalancingService:
                         credential_source_type=credential_source,
                     )
                 else:
-                    if not credentials:
-                        raise ValueError("Invalid load balancing config credentials")
-
-                    if not isinstance(credentials, dict):
+                    parsed_credentials = _parse_submitted_credentials(credentials) if credentials else None
+                    if parsed_credentials is None or not parsed_credentials.root:
                         raise ValueError("Invalid load balancing config credentials")
 
                     # validate custom provider config
-                    credentials = self._custom_credentials_validate(
+                    parsed_credentials = self._custom_credentials_validate(
                         tenant_id=tenant_id,
                         provider_configuration=provider_configuration,
                         model_type=model_type_enum,
                         model=model,
-                        credentials=credentials,
+                        credentials=parsed_credentials,
                         validate=False,
+                        token_cipher=token_cipher,
                     )
 
                     # create load balancing config
@@ -516,7 +610,7 @@ class ModelLoadBalancingService:
                         model_type=model_type_enum,
                         model_name=model,
                         name=name,
-                        encrypted_config=json.dumps(credentials),
+                        encrypted_config=parsed_credentials.model_dump_json(),
                     )
 
                 session.add(load_balancing_model_config)
@@ -544,9 +638,11 @@ class ModelLoadBalancingService:
         provider: str,
         model: str,
         model_type: str,
-        credentials: dict[str, Any],
+        credentials: LoadBalancingCredentialInput,
         session: Session,
         config_id: str | None = None,
+        token_cipher: LoadBalancingTokenCipher = _DEFAULT_TOKEN_CIPHER,
+        model_assembly: PluginModelAssembly | None = None,
     ):
         """
         Validate load balancing credentials.
@@ -558,7 +654,7 @@ class ModelLoadBalancingService:
         :param config_id: load balancing config id
         :return:
         """
-        assembly = create_plugin_model_assembly(tenant_id=tenant_id)
+        assembly = model_assembly if model_assembly is not None else create_plugin_model_assembly(tenant_id=tenant_id)
         provider_configurations = assembly.provider_manager.get_configurations(tenant_id)
 
         # Get provider configuration
@@ -593,9 +689,10 @@ class ModelLoadBalancingService:
             provider_configuration=provider_configuration,
             model_type=model_type_enum,
             model=model,
-            credentials=credentials,
+            credentials=_parse_submitted_credentials(credentials),
             load_balancing_model_config=load_balancing_model_config,
             model_provider_factory=assembly.model_provider_factory,
+            token_cipher=token_cipher,
         )
 
     def _custom_credentials_validate(
@@ -604,11 +701,12 @@ class ModelLoadBalancingService:
         provider_configuration: ProviderConfiguration,
         model_type: ModelType,
         model: str,
-        credentials: dict[str, Any],
+        credentials: LoadBalancingCredentials,
         load_balancing_model_config: LoadBalancingModelConfig | None = None,
         model_provider_factory: ModelProviderFactory | None = None,
         validate: bool = True,
-    ):
+        token_cipher: LoadBalancingTokenCipher = _DEFAULT_TOKEN_CIPHER,
+    ) -> LoadBalancingCredentials:
         """
         Validate custom credentials.
         :param tenant_id: workspace id
@@ -629,41 +727,42 @@ class ModelLoadBalancingService:
             credential_schemas.credential_form_schemas
         )
 
-        if load_balancing_model_config:
-            try:
-                # fix origin data
-                if load_balancing_model_config.encrypted_config:
-                    original_credentials = json.loads(load_balancing_model_config.encrypted_config)
-                else:
-                    original_credentials = {}
-            except (json.JSONDecodeError, ValueError):
-                original_credentials = {}
+        credentials = LoadBalancingCredentials.model_validate(dict(credentials.root))
 
-            # encrypt credentials
-            for key, value in credentials.items():
-                if key in provider_credential_secret_variables:
-                    # if send [__HIDDEN__] in secret input, it will be same as original value
-                    if value == HIDDEN_VALUE and key in original_credentials:
-                        credentials[key] = encrypter.decrypt_token(tenant_id, original_credentials[key])
+        if load_balancing_model_config:
+            # fix origin data
+            original_credentials = _decode_encrypted_config(load_balancing_model_config.encrypted_config)
+
+            for key, value in credentials.root.items():
+                if key not in provider_credential_secret_variables or value != HIDDEN_VALUE:
+                    continue
+                # A hidden secret is replaced with the previously stored token.
+                original = original_credentials.string_value(key)
+                if original is None:
+                    continue
+                credentials.set(key, token_cipher.decrypt_token(tenant_id, original))
 
         if validate:
-            if model_provider_factory is None:
-                model_provider_factory = provider_configuration.get_model_provider_factory()
+            assert model_provider_factory is not None
             if isinstance(credential_schemas, ModelCredentialSchema):
-                credentials = model_provider_factory.model_credentials_validate(
+                validated = model_provider_factory.model_credentials_validate(
                     provider=provider_configuration.provider.provider,
                     model_type=model_type,
                     model=model,
-                    credentials=credentials,
+                    credentials=credentials.root,
                 )
             else:
-                credentials = model_provider_factory.provider_credentials_validate(
-                    provider=provider_configuration.provider.provider, credentials=credentials
+                validated = model_provider_factory.provider_credentials_validate(
+                    provider=provider_configuration.provider.provider,
+                    credentials=credentials.root,
                 )
+            credentials = LoadBalancingCredentials.model_validate(validated)
 
-        for key, value in credentials.items():
-            if key in provider_credential_secret_variables:
-                credentials[key] = encrypter.encrypt_token(tenant_id, cast(str, value))
+        for key in provider_credential_secret_variables:
+            token = credentials.string_value(key)
+            if token is None:
+                continue
+            credentials.set(key, token_cipher.encrypt_token(tenant_id, token))
 
         return credentials
 

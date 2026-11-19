@@ -37,10 +37,18 @@ Feature: Agent v2 files
     Then I should see the special-name Agent v2 file in the Files section
 
   @core @files-limits
-  Scenario: Dropping multiple Agent v2 files at once is rejected
+  Scenario: Dropping multiple Agent v2 files uploads and preserves every file
     Given I am signed in as the default E2E admin
     And a basic configured Agent v2 test agent has been created via API
     When I open the Agent v2 configure page
     And I drop multiple Agent v2 files into the Files upload dialog
-    Then the Agent v2 Files upload dialog should reject the multiple-file drop
-    And I should not see the dropped Agent v2 files in the Files section
+    Then the Agent v2 Files upload dialog should queue every dropped file
+    When I upload the dropped Agent v2 files
+    Then I should see the small Agent v2 file in the Files section
+    And I should see the empty Agent v2 file in the Files section
+    And the small Agent v2 file should be saved in the Agent v2 draft
+    And the empty Agent v2 file should be saved as a zero-byte file in the Agent v2 draft
+    And the Agent v2 configuration should be saved automatically
+    When I refresh the current page
+    Then I should see the small Agent v2 file in the Files section
+    And I should see the empty Agent v2 file in the Files section

@@ -256,7 +256,7 @@ const useWorkflowStartRunBase = (
         allNodeIds: nodeIds,
       })
     },
-    [store, workflowStore, handleRun, doSyncWorkflowDraft],
+    [workflowStore, handleRun, doSyncWorkflowDraft],
   )
 
   const handleWorkflowStartRunInChatflow = useCallback(async () => {

@@ -85,7 +85,6 @@ export function PanelContextmenu({ onClose }: { onClose: () => void }) {
   return (
     <ContextMenuContent
       className="w-50 rounded-lg"
-      sideOffset={4}
       onKeyDown={(event) =>
         handleWorkflowMenuKeyDown(event, [
           ['workflow.paste', canEditWorkflow && clipboardElements.length ? pasteNodes : undefined],

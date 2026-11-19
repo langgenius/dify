@@ -5,16 +5,16 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Input } from '@langgenius/dify-ui/input'
 import { useQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -25,8 +25,8 @@ import {
   IconPickerTrigger,
 } from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
+import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { toast } from '@/app/notifications'
-import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 
 export type DuplicateAppModalProps = {
@@ -72,21 +72,13 @@ const DuplicateAppModal = ({
         icon_url: selectedIcon.type === 'image' ? selectedIcon.url : undefined,
       }
     : { icon_type, icon, icon_background, icon_url }
-
-  const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: appQuota } = useQuery(
     consoleQuery.features.get.queryOptions({
-      enabled: deploymentEdition === 'CLOUD',
-      select: (data) => data.apps,
+      select: (data) => getCountQuota(data.apps),
     }),
   )
-  const isAppQuotaUnavailable = deploymentEdition === 'CLOUD' && appQuota === undefined
-  // A limit of 0 means unlimited.
-  const isAppsFull =
-    deploymentEdition === 'CLOUD' &&
-    appQuota !== undefined &&
-    appQuota.limit > 0 &&
-    appQuota.size >= appQuota.limit
+  const isAppQuotaUnavailable = appQuota === undefined
+  const isAppsFull = appQuota !== undefined && isQuotaReached(appQuota)
 
   const submit = () => {
     if (isAppQuotaUnavailable || isAppsFull) return
@@ -115,7 +107,9 @@ const DuplicateAppModal = ({
         <DialogContent className="w-120">
           <DialogHeader>
             <DialogTitle>{t(($) => $.duplicateTitle, { ns: 'app' })}</DialogTitle>
-            <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+            <DialogHeaderCloseButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            />
           </DialogHeader>
           <form
             className="contents"
@@ -125,29 +119,32 @@ const DuplicateAppModal = ({
             }}
           >
             <DialogBody>
-              <IconPicker value={pickerValue} onValueChange={setSelectedIcon}>
-                <Field name="name">
-                  <FieldLabel className="system-md-medium">
-                    {t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}
-                  </FieldLabel>
-                  <div className="flex items-center justify-between space-x-2">
+              <Fieldset>
+                <FieldsetLegend className="system-md-medium">
+                  {t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}
+                </FieldsetLegend>
+                <div className="flex items-center justify-between space-x-2">
+                  <IconPicker value={pickerValue} onValueChange={setSelectedIcon}>
                     <IconPickerTrigger
-                      aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}`}
+                      aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
                       className="shrink-0 cursor-pointer rounded-[10px]"
                     >
                       <IconPickerIcon size="large" />
                     </IconPickerTrigger>
+                    <IconPickerContent />
+                  </IconPicker>
+                  <Field name="name" className="grow">
                     <Input
+                      aria-label={t(($) => $['newApp.name'], { ns: 'app' })}
                       autoComplete="off"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       className="h-10"
-                      placeholder={t(($) => $['placeholder.input'], { ns: 'common' }) || ''}
+                      placeholder={t(($) => $['placeholder.input'], { ns: 'common' })}
                     />
-                  </div>
-                </Field>
-                <IconPickerContent />
-              </IconPicker>
+                  </Field>
+                </div>
+              </Fieldset>
               {isAppsFull && <AppsFull className="mt-4" loc="app-duplicate-create" />}
             </DialogBody>
             <DialogFooter>

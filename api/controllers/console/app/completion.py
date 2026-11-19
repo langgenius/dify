@@ -17,6 +17,7 @@ from controllers.common.schema import register_response_schema_models, register_
 from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
 from controllers.console.app.error import (
+    AgentPreviewUnavailableError,
     AppUnavailableError,
     CompletionRequestError,
     ConversationCompletedError,
@@ -58,6 +59,7 @@ from services.agent.roster_service import AgentRosterService
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
+from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
 
@@ -188,26 +190,26 @@ class CompletionMessageApi(Resource):
 
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
-        except services.errors.app_model_config.AppModelConfigBrokenError:
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
+        except services.errors.conversation.ConversationCompletedError as caught_error:
+            raise ConversationCompletedError() from caught_error
+        except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:
             logger.exception("App model config broken.")
-            raise AppUnavailableError()
+            raise AppUnavailableError() from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
         except ValueError as e:
             raise e
         except Exception as e:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from e
 
 
 @console_ns.route("/apps/<uuid:app_id>/completion-messages/<string:task_id>/stop")
@@ -222,8 +224,9 @@ class CompletionMessageStopApi(Resource):
     @with_current_user_id
     @get_app_model(mode=AppMode.COMPLETION)
     def post(self, current_user_id: str, app_model: App, task_id: str):
-
         AppTaskService.stop_task(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
             task_id=task_id,
             invoke_from=InvokeFrom.DEBUGGER,
             user_id=current_user_id,
@@ -237,6 +240,7 @@ class CompletionMessageStopApi(Resource):
 class ChatMessageApi(Resource):
     @error_responses(
         AgentNotFoundError,
+        AgentPreviewUnavailableError,
         AppUnavailableError,
         CompletionRequestError,
         InvokeRateLimitHttpError,
@@ -270,6 +274,7 @@ class ChatMessageApi(Resource):
 class AgentChatMessageApi(Resource):
     @error_responses(
         AgentNotFoundError,
+        AgentPreviewUnavailableError,
         AppUnavailableError,
         CompletionRequestError,
         InvokeRateLimitHttpError,
@@ -437,6 +442,8 @@ def _create_chat_message(
 
     if AppMode.value_of(app_model.mode) == AppMode.AGENT:
         draft_type = AgentConfigDraftType(args_model.draft_type)
+        if draft_type == AgentConfigDraftType.DRAFT and not FeatureService.is_agent_preview_enabled():
+            raise AgentPreviewUnavailableError()
         # Preview follows the normal chat contract: an omitted/empty conversation ID starts a new
         # conversation. Build chat keeps its stable mapping so build drafts and finalization stay continuous.
         debug_conversation_id = _resolve_current_user_agent_debug_conversation_id(
@@ -568,30 +575,30 @@ def _generate_chat_message(
             invoke_from=InvokeFrom.DEBUGGER,
             streaming=streaming,
         )
-    except services.errors.conversation.ConversationNotExistsError:
-        raise NotFound("Conversation Not Exists.")
-    except services.errors.conversation.ConversationCompletedError:
-        raise ConversationCompletedError()
-    except services.errors.app_model_config.AppModelConfigBrokenError:
+    except services.errors.conversation.ConversationNotExistsError as caught_error:
+        raise NotFound("Conversation Not Exists.") from caught_error
+    except services.errors.conversation.ConversationCompletedError as caught_error:
+        raise ConversationCompletedError() from caught_error
+    except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:
         logger.exception("App model config broken.")
-        raise AppUnavailableError()
+        raise AppUnavailableError() from caught_error
     except ProviderTokenNotInitError as ex:
-        raise ProviderNotInitializeError(ex.description)
-    except QuotaExceededError:
-        raise ProviderQuotaExceededError()
-    except ModelCurrentlyNotSupportError:
-        raise ProviderModelCurrentlyNotSupportError()
+        raise ProviderNotInitializeError(ex.description) from ex
+    except QuotaExceededError as caught_error:
+        raise ProviderQuotaExceededError() from caught_error
+    except ModelCurrentlyNotSupportError as caught_error:
+        raise ProviderModelCurrentlyNotSupportError() from caught_error
     except InvokeRateLimitError as ex:
-        raise InvokeRateLimitHttpError(ex.description)
+        raise InvokeRateLimitHttpError(ex.description) from ex
     except CompletionRequestError:
         raise
     except InvokeError as e:
-        raise CompletionRequestError(e.description)
+        raise CompletionRequestError(e.description) from e
     except ValueError as e:
         raise e
     except Exception as e:
         logger.exception("internal server error.")
-        raise InternalServerError()
+        raise InternalServerError() from e
 
 
 def _generate_chat_message_response(
@@ -616,6 +623,8 @@ def _generate_chat_message_response(
 
 def _stop_chat_message(*, current_user_id: str, app_model: App, task_id: str):
     AppTaskService.stop_task(
+        tenant_id=app_model.tenant_id,
+        app_id=app_model.id,
         task_id=task_id,
         invoke_from=InvokeFrom.DEBUGGER,
         user_id=current_user_id,

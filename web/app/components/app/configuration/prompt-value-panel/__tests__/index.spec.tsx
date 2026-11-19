@@ -1,61 +1,24 @@
 import type { IPromptValuePanelProps } from '../index'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { FeaturesContext } from '@/app/components/base/features/context'
+import { useFeatures } from '@/app/components/base/features/hooks'
+import { createFeaturesStore } from '@/app/components/base/features/store'
+import { imageUpload } from '@/app/components/base/image-uploader/utils'
 import ConfigContext from '@/context/debug-configuration'
 import {
   createDebugConfigurationFixture,
   createModelConfigFixture,
 } from '@/test/fixtures/debug-configuration'
-import { ModelModeType, Resolution } from '@/types/app'
+import { ModelModeType, Resolution, TransferMethod } from '@/types/app'
 import PromptValuePanel from '../index'
 
-const mockOnOpenFeatures = vi.fn()
-
-// Use real store - global zustand mock will auto-reset between tests
-vi.mock('@/app/components/base/features/new-feature-panel/feature-bar', () => ({
-  default: ({
-    onFeatureBarClick,
-    disabled,
-    hideEditEntrance,
-  }: {
-    onFeatureBarClick: () => void
-    disabled?: boolean
-    hideEditEntrance?: boolean
-  }) => (
-    <button
-      type="button"
-      disabled={disabled}
-      data-hide-edit-entrance={hideEditEntrance ? 'true' : 'false'}
-      onClick={onFeatureBarClick}
-    >
-      feature bar
-    </button>
-  ),
+vi.mock('@/app/components/base/image-uploader/utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/app/components/base/image-uploader/utils')>()),
+  imageUpload: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/image-uploader/text-generation-image-uploader', () => ({
-  default: ({
-    onFilesChange,
-  }: {
-    onFilesChange: (files: Array<Record<string, unknown>>) => void
-  }) => (
-    <button
-      type="button"
-      onClick={() =>
-        onFilesChange([
-          { progress: 100, type: 'local_file', url: 'https://example.com/a.png', fileId: 'file-1' },
-          { progress: -1, type: 'remote_url', url: 'https://example.com/b.png', fileId: 'file-2' },
-        ])
-      }
-    >
-      image-uploader
-    </button>
-  ),
-}))
-
-const mockSetInputs = vi.fn()
 const mockOnSend = vi.fn()
 
 const promptVariables = [
@@ -64,7 +27,6 @@ const promptVariables = [
 ]
 
 const baseContextValue = createDebugConfigurationFixture({
-  onOpenFeatures: mockOnOpenFeatures,
   modelModeType: ModelModeType.completion,
   modelConfig: createModelConfigFixture({
     configs: {
@@ -72,7 +34,6 @@ const baseContextValue = createDebugConfigurationFixture({
       prompt_variables: promptVariables,
     },
   }),
-  setInputs: mockSetInputs,
   canTestAndRun: true,
   mode: 'completion' as const,
   isAdvancedMode: false,
@@ -91,6 +52,11 @@ const defaultProps: IPromptValuePanelProps = {
   onVisionFilesChange: vi.fn(),
 }
 
+function FeaturesModalProbe() {
+  const showFeaturesModal = useFeatures((state) => state.showFeaturesModal)
+  return showFeaturesModal ? <div role="dialog" aria-label="workflow.common.features" /> : null
+}
+
 const renderPanel = (
   options: {
     context?: Partial<typeof baseContextValue>
@@ -99,30 +65,30 @@ const renderPanel = (
 ) => {
   const contextValue = { ...baseContextValue, ...options.context }
   const props = { ...defaultProps, ...options.props }
+  const featuresStore = createFeaturesStore()
   function ControlledPanel() {
     const [inputs, setInputs] = React.useState(props.inputs)
     return (
       <ConfigContext.Provider
         value={{
           ...contextValue,
-          setInputs: (next) => {
-            setInputs(next)
-            mockSetInputs(next)
-          },
+          setInputs,
+          onOpenFeatures: () => featuresStore.getState().setShowFeaturesModal(true),
         }}
       >
-        <PromptValuePanel {...props} inputs={inputs} />
+        <PromptValuePanel {...props} inputs={inputs} onSend={() => mockOnSend(inputs)} />
       </ConfigContext.Provider>
     )
   }
-  return render(<ControlledPanel />)
+  return render(
+    <FeaturesContext value={featuresStore}>
+      <ControlledPanel />
+      <FeaturesModalProbe />
+    </FeaturesContext>,
+  )
 }
 
 describe('PromptValuePanel', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('updates inputs, clears values, and triggers run when ready', async () => {
     const user = userEvent.setup()
     renderPanel()
@@ -130,20 +96,20 @@ describe('PromptValuePanel', () => {
     const textInput = screen.getByRole('textbox', { name: 'Text Var' })
     await user.clear(textInput)
     await user.paste('updated')
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({ textVar: 'updated' }))
+    expect(textInput).toHaveValue('updated')
 
     const clearButton = screen.getByRole('button', { name: 'common.operation.clear' })
     await user.click(clearButton)
 
-    expect(mockSetInputs).toHaveBeenLastCalledWith({
-      textVar: '',
-      boolVar: '',
-    })
+    expect(textInput).toHaveValue('')
+    expect(screen.getByRole('checkbox', { name: /Boolean Var/ })).not.toBeChecked()
 
     const runButton = screen.getByRole('button', { name: 'appDebug.inputs.run' })
     expect(runButton).toBeEnabled()
     await user.click(runButton)
-    await waitFor(() => expect(mockOnSend).toHaveBeenCalledTimes(1))
+    await waitFor(() =>
+      expect(mockOnSend).toHaveBeenCalledExactlyOnceWith({ textVar: '', boolVar: '' }),
+    )
   })
 
   it('disables run when mode is not completion', () => {
@@ -187,11 +153,14 @@ describe('PromptValuePanel', () => {
       },
     })
 
-    expect(mockSetInputs).toHaveBeenCalledWith({ textVar: 'default text' })
+    expect(screen.getByRole('textbox', { name: 'Text Var' })).toHaveValue('default text')
     expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toBeDisabled()
 
-    await user.click(screen.getByText('feature bar'))
-    expect(mockOnOpenFeatures).toHaveBeenCalled()
+    expect(
+      screen.queryByRole('dialog', { name: 'workflow.common.features' }),
+    ).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'appDebug.feature.bar.empty' }))
+    expect(await screen.findByRole('dialog', { name: 'workflow.common.features' })).toBeVisible()
   })
 
   it('disables run for advanced completion mode when the completion prompt is empty', () => {
@@ -250,7 +219,8 @@ describe('PromptValuePanel', () => {
           enabled: true,
           number_limits: 2,
           detail: Resolution.high,
-          transfer_methods: [],
+          transfer_methods: [TransferMethod.local_file, TransferMethod.remote_url],
+          image_file_size_limit: 10,
         },
       },
     })
@@ -262,19 +232,50 @@ describe('PromptValuePanel', () => {
     await user.clear(screen.getByRole('spinbutton', { name: 'Number Var' }))
     await user.type(screen.getByRole('spinbutton', { name: 'Number Var' }), '2')
     await user.click(screen.getByRole('checkbox', { name: /Boolean Var/ }))
-    await user.click(screen.getByText('image-uploader'))
+    expect(screen.getByRole('textbox', { name: 'Paragraph Var' })).toHaveValue('updated paragraph')
+    expect(screen.getByRole('combobox', { name: 'Select Var' })).toHaveTextContent('b')
+    expect(screen.getByRole('spinbutton', { name: 'Number Var' })).toHaveValue(2)
+    expect(screen.getByRole('checkbox', { name: /Boolean Var/ })).toBeChecked()
+    await user.click(screen.getByRole('button', { name: 'appDebug.inputs.run' }))
+    expect(mockOnSend).toHaveBeenCalledExactlyOnceWith({
+      paragraphVar: 'updated paragraph',
+      selectVar: 'b',
+      numberVar: '2',
+      boolVar: true,
+    })
 
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({ paragraphVar: 'updated paragraph' }),
+    const file = new File(['image'], 'sample.png', { type: 'image/png' })
+    await user.upload(screen.getByTestId('local-file-input'), file)
+    await waitFor(() => expect(imageUpload).toHaveBeenCalledOnce())
+    expect(vi.mocked(imageUpload).mock.calls[0]![0].file).toBe(file)
+    act(() => vi.mocked(imageUpload).mock.calls[0]![0].onSuccessCallback({ id: 'file-1' }))
+    await waitFor(() =>
+      expect(onVisionFilesChange).toHaveBeenLastCalledWith([
+        {
+          type: 'image',
+          transfer_method: 'local_file',
+          url: expect.stringMatching(/^data:image\/png;base64,/),
+          upload_file_id: 'file-1',
+        },
+      ]),
     )
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({ selectVar: 'b' }))
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({ numberVar: '2' }))
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({ boolVar: true }))
-    expect(onVisionFilesChange).toHaveBeenCalledWith([
+    // The browser reports remote image failure; failed images must not enter the run payload.
+    await user.click(screen.getByRole('button', { name: 'common.imageUploader.pasteImageLink' }))
+    await user.type(
+      screen.getByPlaceholderText('common.imageUploader.pasteImageLinkInputPlaceholder'),
+      'https://example.com/b.png',
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.ok' }))
+    fireEvent.error(
+      screen
+        .getAllByRole('presentation')
+        .find((image) => image.getAttribute('src') === 'https://example.com/b.png')!,
+    )
+    expect(onVisionFilesChange).toHaveBeenLastCalledWith([
       {
         type: 'image',
         transfer_method: 'local_file',
-        url: 'https://example.com/a.png',
+        url: expect.stringMatching(/^data:image\/png;base64,/),
         upload_file_id: 'file-1',
       },
     ])
@@ -290,11 +291,7 @@ describe('PromptValuePanel', () => {
 
     expect(screen.getByRole('button', { name: 'common.operation.clear' })).toBeEnabled()
     expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toBeEnabled()
-    expect(screen.getByRole('button', { name: 'feature bar' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'feature bar' })).toHaveAttribute(
-      'data-hide-edit-entrance',
-      'true',
-    )
+    expect(screen.getByRole('button', { name: 'appDebug.feature.bar.empty' })).toBeDisabled()
   })
 
   it('marks debug inputs and actions as disabled when test/run permission is missing even if configuration is editable', () => {

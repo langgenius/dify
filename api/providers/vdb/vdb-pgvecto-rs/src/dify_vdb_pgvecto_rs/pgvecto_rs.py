@@ -116,7 +116,7 @@ class PGVectoRS(BaseVector):
 
     @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
-        pks = []
+        pks: list[str] = []
         with sessionmaker(bind=self._client).begin() as session:
             for document, embedding in zip(documents, embeddings, strict=False):
                 pk = uuid4()
@@ -128,7 +128,7 @@ class PGVectoRS(BaseVector):
                         vector=embedding,
                     ),
                 )
-                pks.append(pk)
+                pks.append(str(pk))
 
         return pks
 

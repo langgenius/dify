@@ -1,22 +1,27 @@
 import json
-import unittest.mock
+from copy import deepcopy
 
 import pytest
+from sqlalchemy import inspect
 from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.console.app.workflow import LoopNodeRunPayload
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.snippet_start import SNIPPET_VIRTUAL_START_NODE_ID
 from graphon.file import FileUploadConfig
 from graphon.file.models import File
+from graphon.graph import Graph
+from graphon.runtime import RuntimeState, VariablePool
 from models.account import Account
 from models.snippet import CustomizedSnippet, SnippetType
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionModel
-from services.snippet_generate_service import SnippetGenerateService
+from services.snippet_generate_service import SnippetGenerateService, _SnippetAsApp
 from services.snippet_service import SnippetService
 from services.workflow_service import WorkflowService
-from tests.unit_tests.model_factories import make_account, make_workflow
+from tests.helpers.unit.model_factories import make_account, make_workflow
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
 def _workflow(graph: dict) -> Workflow:
@@ -55,6 +60,14 @@ def _set_published_workflow(
     workflow: Workflow | None,
 ) -> None:
     monkeypatch.setattr(SnippetService, "get_published_workflow", lambda _self, _snippet: workflow)
+
+
+def test_snippet_as_app_has_no_app_tracing() -> None:
+    # WorkflowAppGenerator reads app_model.tracing to build the trace scope.
+    app = _SnippetAsApp(_snippet())
+
+    assert app.id == "snippet-1"
+    assert app.tracing is None
 
 
 def test_filter_virtual_start_events_keeps_blocking_response_unchanged():
@@ -99,7 +112,7 @@ def test_ensure_start_node_returns_workflow_when_start_already_exists():
     assert result is workflow
 
 
-def test_ensure_start_node_injects_virtual_start_for_root_candidates(monkeypatch: pytest.MonkeyPatch):
+def test_ensure_start_node_injects_virtual_start_for_root_candidates(sqlite_session: Session):
     graph = {
         "nodes": [
             {"id": "llm-1", "data": {"type": "llm"}},
@@ -119,8 +132,9 @@ def test_ensure_start_node_injects_virtual_start_for_root_candidates(monkeypatch
             }
         ]
     )
-    make_transient = unittest.mock.Mock()
-    monkeypatch.setattr("services.snippet_generate_service.make_transient", make_transient)
+    sqlite_session.add(workflow)
+    sqlite_session.flush()
+    assert inspect(workflow).persistent
 
     result = SnippetGenerateService._ensure_start_node(workflow, snippet)
 
@@ -130,7 +144,130 @@ def test_ensure_start_node_injects_virtual_start_for_root_candidates(monkeypatch
     assert updated_graph["nodes"][0]["data"]["variables"][0]["max_length"] == 128
     assert updated_graph["edges"][-1]["source"] == SNIPPET_VIRTUAL_START_NODE_ID
     assert updated_graph["edges"][-1]["target"] == "llm-1"
-    make_transient.assert_called_once_with(workflow)
+    assert inspect(workflow).transient
+
+
+def _nested_snippet_graph(ownership: str, outer_type: str) -> dict:
+    inner_type = "iteration" if outer_type == "loop" else "loop"
+    nodes = []
+    for node_id, node_type in (("outer", outer_type), ("inner", inner_type)):
+        data = {"type": node_type, "title": node_id, "start_node_id": f"{node_id}-start"}
+        if node_type == "loop":
+            data.update(loop_count=1, break_conditions=[], logical_operator="and")
+        else:
+            data.update(iterator_selector=["input", "items"], output_selector=[node_id, "item"])
+        nodes.extend(
+            [
+                {"id": node_id, "data": data},
+                {"id": f"{node_id}-start", "data": {"type": f"{node_type}-start", "title": "Container start"}},
+            ]
+        )
+    nodes.append({"id": "output", "data": {"type": "end", "title": "Output", "outputs": []}})
+    owners = {"outer-start": "outer", "inner": "outer", "inner-start": "inner"}
+    for node in nodes:
+        owner = owners.get(node["id"], "")
+        if ownership == "canonical":
+            node["data"]["container_id"] = owner
+            node["parentId"] = "stale-parent"
+            node["data"].update(iteration_id="stale-iteration", loop_id="stale-loop")
+        elif ownership == "parent":
+            if owner:
+                node["parentId"] = owner
+        elif owner:
+            node["data"][f"{outer_type}_id"] = "outer"
+            if owner == "inner":
+                node["data"][f"{inner_type}_id"] = "inner"
+    return {
+        "nodes": nodes,
+        "edges": [{"source": "outer", "target": "output"}, {"source": "outer-start", "target": "inner"}],
+    }
+
+
+@pytest.mark.parametrize("ownership", ["canonical", "parent", "legacy"])
+@pytest.mark.parametrize("outer_type", ["iteration", "loop"])
+def test_virtual_start_preserves_nested_container_graphs(ownership: str, outer_type: str) -> None:
+    graph_config = _nested_snippet_graph(ownership, outer_type)
+    original = deepcopy(graph_config)
+
+    injected = SnippetGenerateService._inject_virtual_start_node(graph_config, [])
+
+    assert [edge["target"] for edge in injected["edges"] if edge["source"] == SNIPPET_VIRTUAL_START_NODE_ID] == [
+        "outer"
+    ]
+    factory = DifyNodeFactory(
+        init_params=build_test_graph_init_params(graph_config=injected),
+        runtime_state=RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0.0),
+    )
+    graph = Graph.init(graph_config=injected, node_factory=factory, root_node_id=SNIPPET_VIRTUAL_START_NODE_ID)
+    assert set(graph.nodes) == {SNIPPET_VIRTUAL_START_NODE_ID, "outer", "output"}
+    for container_id, expected in (("outer", {"outer-start", "inner"}), ("inner", {"inner-start"})):
+        graph = Graph.init(
+            graph_config=graph.graph_config,
+            node_factory=graph.node_factory,
+            root_node_id=f"{container_id}-start",
+            container_id=container_id,
+        )
+        assert set(graph.nodes) == expected
+    assert graph_config == original
+
+
+def test_virtual_start_connects_all_flat_roots_without_changing_the_input() -> None:
+    graph_config = {
+        "nodes": [{"id": node_id, "data": {"type": "end"}} for node_id in ("first", "second", "downstream")],
+        "edges": [{"source": "first", "target": "downstream"}],
+    }
+    original = deepcopy(graph_config)
+
+    injected = SnippetGenerateService._inject_virtual_start_node(graph_config, [])
+
+    assert [edge["target"] for edge in injected["edges"] if edge["source"] == SNIPPET_VIRTUAL_START_NODE_ID] == [
+        "first",
+        "second",
+    ]
+    assert graph_config == original
+
+
+def test_virtual_start_does_not_promote_disconnected_owned_nodes() -> None:
+    graph_config = _nested_snippet_graph("canonical", "loop")
+    graph_config["nodes"].append({"id": "detached", "data": {"type": "end", "container_id": "inner"}})
+
+    injected = SnippetGenerateService._inject_virtual_start_node(graph_config, [])
+
+    assert [edge["target"] for edge in injected["edges"] if edge["source"] == SNIPPET_VIRTUAL_START_NODE_ID] == [
+        "outer"
+    ]
+
+
+def test_virtual_start_keeps_missing_container_ownership_invalid() -> None:
+    graph_config = _nested_snippet_graph("legacy", "loop")
+    nodes = {node["id"]: node for node in graph_config["nodes"]}
+    nodes["inner-start"]["data"]["container_id"] = "missing-container"
+    original = deepcopy(graph_config)
+
+    injected = SnippetGenerateService._inject_virtual_start_node(graph_config, [])
+
+    assert not any(
+        edge["source"] == SNIPPET_VIRTUAL_START_NODE_ID and edge["target"] == "inner-start"
+        for edge in injected["edges"]
+    )
+    factory = DifyNodeFactory(
+        init_params=build_test_graph_init_params(graph_config=injected),
+        runtime_state=RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0.0),
+    )
+    with pytest.raises(ValueError, match="unknown or cyclic containers"):
+        Graph.init(graph_config=injected, node_factory=factory, root_node_id=SNIPPET_VIRTUAL_START_NODE_ID)
+    assert graph_config == original
+
+
+def test_virtual_start_rejects_ambiguous_legacy_container_ownership() -> None:
+    graph_config = _nested_snippet_graph("legacy", "loop")
+    nodes = {node["id"]: node for node in graph_config["nodes"]}
+    del nodes["inner"]["data"]["loop_id"]
+    original = deepcopy(graph_config)
+
+    with pytest.raises(ValueError, match="ambiguous legacy container owners"):
+        SnippetGenerateService._inject_virtual_start_node(graph_config, [])
+    assert graph_config == original
 
 
 def test_parse_files_returns_empty_when_upload_config_disabled(monkeypatch: pytest.MonkeyPatch):
@@ -274,6 +411,50 @@ def test_run_published_delegates_to_workflow_generator_non_streaming(
     assert kwargs["app_model"].id == "snippet-1"
     assert kwargs["streaming"] is False
     assert kwargs["call_depth"] == 0
+    assert kwargs["capture_agent_evaluation_trace"] is False
+
+
+def test_run_published_loads_requested_workflow_snapshot(
+    monkeypatch: pytest.MonkeyPatch, unbound_session_factory: sessionmaker[Session]
+):
+    workflow = _workflow({"nodes": [{"id": "llm-1", "data": {"type": "llm"}}], "edges": []})
+    snippet = _snippet()
+    user = _account()
+    snapshot_calls: list[tuple[CustomizedSnippet, str]] = []
+    generate_kwargs: dict[str, object] = {}
+
+    def get_published_workflow_by_id(_self: SnippetService, current_snippet: CustomizedSnippet, workflow_id: str):
+        snapshot_calls.append((current_snippet, workflow_id))
+        return workflow
+
+    def unexpected_published_workflow(_self: SnippetService, _snippet: CustomizedSnippet):
+        raise AssertionError("A pinned run must not load the latest published workflow")
+
+    def generate(_self: WorkflowAppGenerator, **kwargs: object):
+        generate_kwargs.update(kwargs)
+        return {"data": {"outputs": {"answer": "ok"}}}
+
+    monkeypatch.setattr(SnippetService, "get_published_workflow_by_id", get_published_workflow_by_id)
+    monkeypatch.setattr(SnippetService, "get_published_workflow", unexpected_published_workflow)
+    monkeypatch.setattr(
+        SnippetGenerateService, "_ensure_start_node", classmethod(lambda _cls, current, _snippet: current)
+    )
+    monkeypatch.setattr(WorkflowAppGenerator, "generate", generate)
+
+    SnippetGenerateService.run_published(
+        snippet=snippet,
+        user=user,
+        args={"inputs": {"query": "hello"}},
+        invoke_from="service-api",
+        workflow_id="workflow-version-7",
+        task_id="evaluation-task-1",
+        capture_agent_evaluation_trace=True,
+        session_maker=unbound_session_factory,
+    )
+
+    assert snapshot_calls == [(snippet, "workflow-version-7")]
+    assert generate_kwargs["task_id"] == "evaluation-task-1"
+    assert generate_kwargs["capture_agent_evaluation_trace"] is True
 
 
 def test_ensure_start_node_for_worker_delegates(monkeypatch: pytest.MonkeyPatch):

@@ -1,13 +1,14 @@
 {
+  "activateFailed": "教育割引を有効にできませんでした。現在の教育認証がまだ有効であるか、このメールアドレスが対象外になっている可能性があります。",
   "applied.activeSubscription.description": "現在有効なサブスクリプションがあります。サブスクリプションの有効期限が切れた後、教育割引を使用できます。<stripeLink>Stripe</stripeLink> でサブスクリプションを確認してください。",
   "applied.noPaymentPermission.description": "このワークスペースでは支払い権限がありません。教育割引を使用するには、請求を管理できるワークスペースに切り替えてください。",
   "applied.noPaymentPermission.returnHome": "Dify に戻る",
   "applied.step1.description": "教育割引の申請が成功しました。",
   "applied.step2.description": "教育割引を使用するワークスペースを選択してください。",
   "currentSigned": "現在ログイン中のアカウントは",
-  "educationPricingConfirm.cancel": "現在のプランを維持",
+  "educationPricingConfirm.cancel": "割引を適用せずに続ける",
   "educationPricingConfirm.continue": "Professional 年間プランに切り替える",
-  "educationPricingConfirm.description": "教育割引は Professional 年間プランにのみ適用されます。現在のプランを維持すると、割引は適用されません。",
+  "educationPricingConfirm.description": "{{selected_plan_name}}（{{selected_billing_cycle}}）を選択しました。教育割引を利用するには Professional の年払いを選択してください。割引なしで選択したプランに進むこともできます。",
   "educationPricingConfirm.title": "選択したプランは教育割引に対応していません",
   "emailLabel": "現在のメールアドレス",
   "form.schoolName.noResults": "一致する学校が見つかりませんでした。正式な学校名をそのまま入力できます。",
@@ -42,7 +43,7 @@
   "notice.stillInEducation.expired": "今すぐ再認証して、次の学年度向けの教育クーポンを取得してください。クーポンはあなたのアカウントに追加され、次回のアップグレード時にご利用いただけます。",
   "notice.stillInEducation.isAboutToExpire": "今すぐ再認証して、次の学年度向けの教育クーポンを取得してください。クーポンは個人のアカウントに保存され、次回の更新時に使用できます。",
   "notice.stillInEducation.title": "まだ在学中ですか？",
-  "planNotSupportEducationDiscount": "教育価格の対象外",
+  "planNotSupportEducationDiscount": "このプランは教育割引の対象外です",
   "rejectContent": "申し訳ございませんが、このメールアドレスでは 教育認証 の資格を取得できず、Dify プロフェッショナルプランの 100％割引クーポン を受け取ることはできません。",
   "rejectTitle": "Dify 教育認証が拒否されました",
   "submit": "送信",
@@ -51,5 +52,7 @@
   "toVerifiedTip.coupon": "100％割引クーポン",
   "toVerifiedTip.end": "を受け取ることができます。",
   "toVerifiedTip.front": "現在、教育認証ステータスを取得する資格があります。以下に教育情報を入力し、認証プロセスを完了すると、Dify プロフェッショナルプランの",
-  "useEducationDiscount": "教育割引を使用"
+  "tooManyAttempts": "試行回数が多すぎます。しばらくしてからもう一度お試しください。",
+  "useEducationDiscount": "教育割引を使用",
+  "verifyFailed": "教育認証を確認できませんでした。最近認証した場合は、現在の教育認証がまだ有効である可能性があります。それ以外の場合は、しばらくしてからもう一度お試しください。"
 }

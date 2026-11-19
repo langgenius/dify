@@ -66,7 +66,9 @@ describe('CustomPage', () => {
 
       render(<CustomPage />)
 
-      expect(screen.getByText('custom.upgradeTip.title')).toBeInTheDocument()
+      expect(
+        screen.getByRole('heading', { level: 4, name: 'custom.upgradeTip.title' }),
+      ).toBeInTheDocument()
       expect(screen.queryByText('custom.customize.contactUs')).not.toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'billing.upgradeBtn.encourageShort' }))

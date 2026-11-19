@@ -52,7 +52,7 @@ def _configure_service(
     sqlite_engine: Engine,
 ) -> None:
     workflow_module = sys.modules["controllers.service_api.app.human_input_form"]
-    monkeypatch.setattr(workflow_module, "HumanInputService", lambda _engine: service_mock)
+    monkeypatch.setattr(workflow_module, "ServiceAPIHumanInputService", lambda _engine: service_mock)
     monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=sqlite_engine))
 
 

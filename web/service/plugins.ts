@@ -1,6 +1,6 @@
-import type { ParserMarketplaceUpgrade } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { PluginInfoFromMarketPlace } from '@dify/contracts/marketplace'
 import type { Dependency, PluginManifestInMarket } from '@/app/components/plugins/types'
+import type { ConsoleClientContext } from '@/service/console'
 import { consoleClient } from '@/service/console'
 import { getMarketplace, upload } from './base'
 
@@ -15,10 +15,6 @@ export const uploadFile = async (file: File, isBundle: boolean) => {
     false,
     `/workspaces/current/plugin/upload/${isBundle ? 'bundle' : 'pkg'}`,
   )
-}
-
-export const updateFromMarketPlace = async (body: ParserMarketplaceUpgrade) => {
-  return consoleClient.workspaces.current.plugin.upgrade.marketplace.post({ body })
 }
 
 export const updateFromGitHub = async (
@@ -43,14 +39,18 @@ export const uploadGitHub = async (
   repoUrl: string,
   selectedVersion: string,
   selectedPackage: string,
+  context?: ConsoleClientContext,
 ) => {
-  return consoleClient.workspaces.current.plugin.upload.github.post({
-    body: {
-      repo: repoUrl,
-      version: selectedVersion,
-      package: selectedPackage,
+  return consoleClient.workspaces.current.plugin.upload.github.post(
+    {
+      body: {
+        repo: repoUrl,
+        version: selectedVersion,
+        package: selectedPackage,
+      },
     },
-  })
+    { context },
+  )
 }
 
 export const fetchManifestFromMarketPlace = async (uniqueIdentifier: string) => {

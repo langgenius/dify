@@ -3,8 +3,6 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import FileListItem from '../file-list-item'
 
-vi.mock('@/hooks/use-theme', () => ({ default: () => ({ theme: 'light' }) }))
-
 it('previews the uploaded file selected by name', async () => {
   const user = userEvent.setup()
   const onPreview = vi.fn()

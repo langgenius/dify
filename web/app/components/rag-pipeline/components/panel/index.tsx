@@ -62,10 +62,6 @@ const RagPipelinePanel = () => {
   const versionHistoryPanelProps = useMemo(() => {
     return {
       getVersionListUrl: `/rag/pipelines/${pipelineId}/workflows`,
-      deleteVersionUrl: (versionId: string) =>
-        `/rag/pipelines/${pipelineId}/workflows/${versionId}`,
-      updateVersionUrl: (versionId: string) =>
-        `/rag/pipelines/${pipelineId}/workflows/${versionId}`,
       latestVersionId: '',
     }
   }, [pipelineId])

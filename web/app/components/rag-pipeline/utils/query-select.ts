@@ -10,9 +10,9 @@ import type {
   PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponse,
   RagPipelineImportCheckDependenciesResponse,
   RagPipelinePublishedRunResponse,
+  RagPipelinePublishedWorkflowResponse,
   RagPipelineStepParametersResponse,
   WorkflowAppBlockingResponse,
-  WorkflowResponse,
   WorkflowRunNodeExecutionResponse,
 } from '@dify/contracts/api/console/rag/types.gen'
 import type { Viewport } from 'reactflow'
@@ -120,8 +120,8 @@ export const selectPipelineTemplate = (
   },
 })
 
-export const selectPublishedPipelineNodes = (workflow: WorkflowResponse) =>
-  toGraphNodes(workflow.graph)
+export const selectPublishedPipelineNodes = (workflow: RagPipelinePublishedWorkflowResponse) =>
+  workflow ? toGraphNodes(workflow.graph) : []
 
 const toDefaultValue = (value: unknown) =>
   typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'

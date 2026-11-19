@@ -156,7 +156,8 @@ describe('QuotaPanel', () => {
     credits = undefined
 
     renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
-    expect(screen.getByRole('progressbar')).toBeInTheDocument()
+    expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
+    expect(screen.queryByText(/modelProvider\.used/)).not.toBeInTheDocument()
   })
 
   it('should show used credits, total credits, and reset date', () => {
@@ -223,9 +224,10 @@ describe('QuotaPanel', () => {
   })
 
   it('should open install modal when clicking an unsupported trial provider', async () => {
+    const user = userEvent.setup()
     renderQuotaPanel(<QuotaPanel providers={[]} />)
 
-    await userEvent.setup().click(screen.getByRole('button', { name: /modelNotSupported/ }))
+    await user.click(screen.getByRole('button', { name: /modelNotSupported/ }))
 
     await waitFor(() => expect(screen.getByText('install modal')).toBeInTheDocument())
     expect(mockFetchManifestFromMarketPlace).toHaveBeenCalledWith('openai@1.0.0')
@@ -244,12 +246,13 @@ describe('QuotaPanel', () => {
   })
 
   it('should prevent duplicate marketplace requests while a provider is loading', async () => {
+    const user = userEvent.setup()
     mockFetchPluginInfoFromMarketPlace.mockImplementation(() => new Promise(() => {}))
     renderQuotaPanel(<QuotaPanel providers={[]} />)
     const providerButton = screen.getByLabelText(/modelNotSupported/)
 
-    await userEvent.setup().click(providerButton)
-    await userEvent.setup().click(providerButton)
+    await user.click(providerButton)
+    await user.click(providerButton)
 
     await waitFor(() => {
       expect(mockFetchPluginInfoFromMarketPlace).toHaveBeenCalledTimes(1)
@@ -259,25 +262,27 @@ describe('QuotaPanel', () => {
   })
 
   it('should allow retrying marketplace installation after a request failure', async () => {
+    const user = userEvent.setup()
     mockFetchPluginInfoFromMarketPlace.mockRejectedValueOnce(new Error('Marketplace unavailable'))
     renderQuotaPanel(<QuotaPanel providers={[]} />)
     const providerButton = screen.getByLabelText(/modelNotSupported/)
 
-    await userEvent.setup().click(providerButton)
+    await user.click(providerButton)
 
     await waitFor(() => expect(providerButton).toHaveAttribute('aria-busy', 'false'))
     expect(screen.queryByText('install modal')).not.toBeInTheDocument()
 
-    await userEvent.setup().click(providerButton)
+    await user.click(providerButton)
 
     await waitFor(() => expect(screen.getByText('install modal')).toBeInTheDocument())
     expect(mockFetchPluginInfoFromMarketPlace).toHaveBeenCalledTimes(2)
   })
 
   it('should close install modal when provider becomes installed', async () => {
+    const user = userEvent.setup()
     const { rerender } = renderQuotaPanel(<QuotaPanel providers={[]} />)
 
-    await userEvent.setup().click(screen.getByRole('button', { name: /modelNotSupported/ }))
+    await user.click(screen.getByRole('button', { name: /modelNotSupported/ }))
     await waitFor(() => expect(screen.getByText('install modal')).toBeInTheDocument())
 
     rerender(<QuotaPanel providers={mockProviders} />)
@@ -298,11 +303,12 @@ describe('QuotaPanel', () => {
   })
 
   it('should render installed custom providers without opening the install modal', async () => {
+    const user = userEvent.setup()
     renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
 
     expect(screen.getByLabelText(/modelAPI/)).toBeInTheDocument()
 
-    await userEvent.setup().click(screen.getByRole('button', { name: /modelAPI/ }))
+    await user.click(screen.getByRole('button', { name: /modelAPI/ }))
 
     expect(screen.queryByText('install modal')).not.toBeInTheDocument()
   })

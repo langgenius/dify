@@ -3,8 +3,14 @@ const { access } = require('node:fs/promises')
 const { test } = require('node:test')
 const downloadWebBuild = require('./download.cjs')
 
-function fixture({ downloadFails = false, producerFails = false } = {}) {
+function fixture({
+  downloadFails = false,
+  producerFails = false,
+  artifactMissingOnce = false,
+} = {}) {
   const calls = []
+  const sleeps = []
+  let artifactLookups = 0
   const env = {
     GITHUB_REPOSITORY: 'owner/repo',
     GITHUB_RUN_ID: '123',
@@ -59,9 +65,14 @@ function fixture({ downloadFails = false, producerFails = false } = {}) {
       }
     }
     assert.equal(args[1], 'repos/owner/repo/actions/artifacts/42')
+    artifactLookups++
+    if (artifactMissingOnce && artifactLookups === 1) throw new Error('gh: Not Found (HTTP 404)')
     return { stdout: JSON.stringify({ name: 'core-e2e-web-build-2' }) }
   }
-  return { calls, options: { env, execute, webDir: '/test/web' } }
+  const sleep = async (ms) => {
+    sleeps.push(ms)
+  }
+  return { calls, sleeps, options: { env, execute, webDir: '/test/web', sleep } }
 }
 
 test('downloads the producer-selected artifact on consumer-only reruns, including paginated results', async () => {
@@ -84,9 +95,18 @@ test('downloads the producer-selected artifact on consumer-only reruns, includin
   await assert.rejects(access(download.args.at(-1)), { code: 'ENOENT' })
 })
 
+test('retries an artifact that is listed before its endpoint is readable', async () => {
+  const { calls, sleeps, options } = fixture({ artifactMissingOnce: true })
+  await downloadWebBuild(options)
+  assert.deepEqual(sleeps, [5_000])
+  assert.equal(calls.at(-1).command, 'tar')
+})
+
 test('does not extract a failed download and removes its temporary directory', async () => {
-  const { calls, options } = fixture({ downloadFails: true })
+  const { calls, sleeps, options } = fixture({ downloadFails: true })
   await assert.rejects(downloadWebBuild(options), /artifact download failed/)
+  assert.deepEqual(sleeps, [5_000, 10_000])
+  assert.equal(calls.filter(({ args }) => args[0] === 'run').length, 3)
   assert.equal(
     calls.some(({ command }) => command === 'tar'),
     false,

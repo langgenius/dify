@@ -1,40 +1,10 @@
 import type { ModelParameterRule } from '../../declarations'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { renderWorkflowEditor as render } from '@/test/workflow-editor'
 import ParameterItem from '../parameter-item'
-
-vi.mock('../../hooks', () => ({
-  useLanguage: () => 'en_US',
-}))
-
-let capturedWorkflowNodesMap: Record<string, { title: string; type: string }> | undefined
-
-vi.mock('@/app/components/base/prompt-editor', () => ({
-  default: ({
-    value,
-    onChange,
-    workflowVariableBlock,
-  }: {
-    value: string
-    onChange: (text: string) => void
-    workflowVariableBlock?: {
-      show: boolean
-      variables: NodeOutPutVar[]
-      workflowNodesMap?: Record<string, { title: string; type: string }>
-    }
-  }) => {
-    capturedWorkflowNodesMap = workflowVariableBlock?.workflowNodesMap
-    return (
-      <textarea
-        aria-label="Workflow parameter"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      />
-    )
-  },
-}))
 
 describe('ParameterItem', () => {
   const createRule = (overrides: Partial<ModelParameterRule> = {}): ModelParameterRule => ({
@@ -48,7 +18,6 @@ describe('ParameterItem', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    capturedWorkflowNodesMap = undefined
   })
 
   it.each([
@@ -74,7 +43,8 @@ describe('ParameterItem', () => {
     },
   )
 
-  it('should render float controls and clamp numeric input to max', () => {
+  it('should render float controls and clamp numeric input to max', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
     render(
       <ParameterItem
@@ -84,12 +54,15 @@ describe('ParameterItem', () => {
       />,
     )
     const input = screen.getByRole('spinbutton')
-    fireEvent.change(input, { target: { value: '1.4' } })
+    await user.clear(input)
+    await user.type(input, '1.4')
+    await user.tab()
     expect(onChange).toHaveBeenCalledWith(1)
     expect(screen.getByRole('slider'))!.toBeInTheDocument()
   })
 
-  it('should clamp float numeric input to min', () => {
+  it('should clamp float numeric input to min', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
     render(
       <ParameterItem
@@ -99,11 +72,14 @@ describe('ParameterItem', () => {
       />,
     )
     const input = screen.getByRole('spinbutton')
-    fireEvent.change(input, { target: { value: '0.05' } })
+    await user.clear(input)
+    await user.type(input, '0.05')
+    await user.tab()
     expect(onChange).toHaveBeenCalledWith(0.1)
   })
 
-  it('should render int controls and clamp numeric input', () => {
+  it('should render int controls and clamp numeric input', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
     render(
       <ParameterItem
@@ -113,9 +89,13 @@ describe('ParameterItem', () => {
       />,
     )
     const input = screen.getByRole('spinbutton')
-    fireEvent.change(input, { target: { value: '15' } })
+    await user.clear(input)
+    await user.type(input, '15')
+    await user.tab()
     expect(onChange).toHaveBeenCalledWith(10)
-    fireEvent.change(input, { target: { value: '-5' } })
+    await user.clear(input)
+    await user.type(input, '-5')
+    await user.tab()
     expect(onChange).toHaveBeenCalledWith(0)
   })
 
@@ -136,13 +116,21 @@ describe('ParameterItem', () => {
     expect(screen.getByRole('spinbutton'))!.toHaveAttribute('step', '100')
   })
 
-  it('should render int input without slider if min or max is missing', () => {
-    render(<ParameterItem parameterRule={createRule({ type: 'int', min: 0 })} value={5} />)
+  it('allows values above a configured minimum when no upper bound is supplied', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(
+      <ParameterItem
+        parameterRule={createRule({ type: 'int', min: 0 })}
+        value={5}
+        onChange={onChange}
+      />,
+    )
     expect(screen.queryByRole('slider')).not.toBeInTheDocument()
-    const input = screen.getByRole<HTMLInputElement>('spinbutton')
-    input.stepUp()
-    fireEvent.change(input)
-    expect(input).toHaveValue(6)
+    const input = screen.getByRole('spinbutton')
+    await user.clear(input)
+    await user.type(input, '60')
+    expect(onChange).toHaveBeenLastCalledWith(60)
   })
 
   it('selects an allowed string option', async () => {
@@ -230,11 +218,13 @@ describe('ParameterItem', () => {
     expect(screen.getByRole('spinbutton'))!.toHaveValue(0)
   })
 
-  it('should reset input to actual bound value on blur-sm', () => {
+  it('should reset input to actual bound value on blur', async () => {
+    const user = userEvent.setup()
     render(<ParameterItem parameterRule={createRule({ type: 'float', min: 0, max: 1 })} />)
     const input = screen.getByRole('spinbutton')
-    fireEvent.change(input, { target: { value: '5' } })
-    fireEvent.blur(input)
+    await user.clear(input)
+    await user.type(input, '5')
+    await user.tab()
     expect(input)!.toHaveValue(1)
   })
 
@@ -263,7 +253,7 @@ describe('ParameterItem', () => {
         render(
           <ParameterItem
             parameterRule={createRule({ type, name: 'system_prompt' })}
-            value="hello {{#node1.output#}}"
+            value="hello {{#node1.output#}} {{#sys.query#}} "
             onChange={onChange}
             isInWorkflow
             nodesOutputVars={mockNodesOutputVars}
@@ -271,14 +261,15 @@ describe('ParameterItem', () => {
           />,
         )
 
-        const editor = screen.getByRole('textbox', { name: 'Workflow parameter' })
-        expect(capturedWorkflowNodesMap).toBeDefined()
-        expect(capturedWorkflowNodesMap!.node1!.title).toBe('LLM Node')
-        expect(capturedWorkflowNodesMap!.sys!.title).toBe('workflow.blocks.start')
-        expect(capturedWorkflowNodesMap!.sys!.type).toBe(BlockEnum.Start)
+        const editor = screen.getByRole('textbox')
+        expect(await within(editor).findByText('LLM Node')).toBeVisible()
+        expect(within(editor).getByText('output')).toBeVisible()
+        expect(within(editor).getByText('workflow.blocks.start')).toBeVisible()
 
         await user.type(editor, '!')
-        expect(onChange).toHaveBeenCalledWith('hello {{#node1.output#}}!')
+        await waitFor(() =>
+          expect(onChange).toHaveBeenCalledWith('hello {{#node1.output#}} {{#sys.query#}} !'),
+        )
       },
     )
   })

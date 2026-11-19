@@ -152,6 +152,17 @@ When('I open the Agent v2 API Reference', async function (this: DifyWorld) {
   await expect(apiReferenceLink).toHaveAttribute('href', /\/api-reference\/guides\/agent/)
   await expect(apiReferenceLink).toHaveAttribute('target', '_blank')
 
+  const apiReferenceURL = await apiReferenceLink.getAttribute('href')
+  if (!apiReferenceURL) throw new Error('The Agent v2 API Reference link has no destination.')
+
+  // The new-tab behavior must not depend on the external documentation server responding.
+  await page.context().route(apiReferenceURL, (route) =>
+    route.fulfill({
+      contentType: 'text/html',
+      body: '<!doctype html><title>API Reference</title>',
+    }),
+  )
+
   const [apiReferencePage] = await Promise.all([
     page.waitForEvent('popup'),
     apiReferenceLink.click(),

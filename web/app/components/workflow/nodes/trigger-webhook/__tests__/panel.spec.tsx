@@ -1,78 +1,34 @@
 import type { WebhookTriggerNodeType } from '../types'
-import type { NodePanelProps } from '@/app/components/workflow/types'
-import type { PanelProps } from '@/types/workflow'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import { renderNodePanel } from '../../__tests__/render-node-panel'
 import Panel from '../panel'
 
-const {
-  mockHandleStatusCodeChange,
-  mockGenerateWebhookUrl,
-  mockHandleMethodChange,
-  mockHandleContentTypeChange,
-  mockHandleHeadersChange,
-  mockHandleParamsChange,
-  mockHandleBodyChange,
-  mockHandleResponseBodyChange,
-} = vi.hoisted(() => ({
-  mockHandleStatusCodeChange: vi.fn(),
-  mockGenerateWebhookUrl: vi.fn(),
-  mockHandleMethodChange: vi.fn(),
-  mockHandleContentTypeChange: vi.fn(),
-  mockHandleHeadersChange: vi.fn(),
-  mockHandleParamsChange: vi.fn(),
-  mockHandleBodyChange: vi.fn(),
-  mockHandleResponseBodyChange: vi.fn(),
-}))
-
-const mockConfigState: {
-  readOnly: boolean
-  inputs: Pick<
-    WebhookTriggerNodeType,
-    | 'method'
-    | 'webhook_url'
-    | 'webhook_debug_url'
-    | 'content_type'
-    | 'headers'
-    | 'params'
-    | 'body'
-    | 'status_code'
-    | 'response_body'
-    | 'variables'
-  >
-} = {
-  readOnly: false,
-  inputs: {
-    method: 'POST',
-    webhook_url: 'https://example.com/webhook',
-    webhook_debug_url: '',
-    content_type: 'application/json',
-    headers: [],
-    params: [],
-    body: [],
-    status_code: 200,
-    response_body: 'ok',
-    variables: [],
-  },
-}
-
-vi.mock('../use-config', () => ({
-  DEFAULT_STATUS_CODE: 200,
-  MAX_STATUS_CODE: 399,
-  useConfig: () => ({
-    readOnly: mockConfigState.readOnly,
-    inputs: mockConfigState.inputs,
-    handleMethodChange: mockHandleMethodChange,
-    handleContentTypeChange: mockHandleContentTypeChange,
-    handleHeadersChange: mockHandleHeadersChange,
-    handleParamsChange: mockHandleParamsChange,
-    handleBodyChange: mockHandleBodyChange,
-    handleStatusCodeChange: mockHandleStatusCodeChange,
-    handleResponseBodyChange: mockHandleResponseBodyChange,
-    generateWebhookUrl: mockGenerateWebhookUrl,
-  }),
-}))
+const request = vi.hoisted(() => vi.fn())
+vi.mock('@/service/console/browser', () => ({ consoleBrowserLink: { call: request } }))
+const createData = (overrides: Partial<WebhookTriggerNodeType> = {}): WebhookTriggerNodeType => ({
+  title: 'Webhook',
+  desc: 'Webhook',
+  type: BlockEnum.TriggerWebhook,
+  method: 'POST',
+  webhook_url: 'https://example.com/webhook',
+  webhook_debug_url: '',
+  content_type: 'application/json',
+  headers: [],
+  params: [],
+  body: [],
+  async_mode: false,
+  status_code: 200,
+  response_body: 'ok',
+  variables: [],
+  ...overrides,
+})
+const renderPanel = (data = createData(), readOnly = false) =>
+  renderNodePanel(Panel, data, {
+    resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    initialStoreState: { canvasReadOnly: readOnly },
+  })
 
 const getStatusCodeInput = () =>
   screen.getByRole('textbox', {
@@ -80,93 +36,59 @@ const getStatusCodeInput = () =>
   })
 
 describe('WebhookTriggerPanel', () => {
-  const panelProps: NodePanelProps<WebhookTriggerNodeType> = {
-    id: 'node-1',
-    data: {
-      title: 'Webhook',
-      desc: 'Webhook',
-      type: BlockEnum.TriggerWebhook,
-      method: 'POST',
-      content_type: 'application/json',
-      headers: [],
-      params: [],
-      body: [],
-      async_mode: false,
-      status_code: 200,
-      response_body: 'ok',
-      variables: [],
-    },
-    panelProps: {} as PanelProps,
-  }
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockConfigState.readOnly = false
-    mockConfigState.inputs = {
-      method: 'POST',
-      webhook_url: 'https://example.com/webhook',
-      webhook_debug_url: '',
-      content_type: 'application/json',
-      headers: [],
-      params: [],
-      body: [],
-      status_code: 200,
-      response_body: 'ok',
-      variables: [],
-    }
-  })
+  beforeEach(() => request.mockReset())
 
   describe('Rendering', () => {
     it('should render the real panel fields without generating a new webhook url when one already exists', () => {
-      render(<Panel {...panelProps} />)
+      renderPanel()
 
       expect(screen.getByDisplayValue('https://example.com/webhook')).toBeInTheDocument()
       expect(screen.getAllByText('application/json')[0]).toBeInTheDocument()
       expect(screen.getByDisplayValue('ok')).toBeInTheDocument()
-      expect(mockGenerateWebhookUrl).not.toHaveBeenCalled()
+      expect(request).not.toHaveBeenCalled()
     })
 
     it('should request a webhook url when the node is writable and missing one', async () => {
-      mockConfigState.inputs = {
-        ...mockConfigState.inputs,
-        webhook_url: '',
-      }
-
-      render(<Panel {...panelProps} />)
-
-      await waitFor(() => {
-        expect(mockGenerateWebhookUrl).toHaveBeenCalledTimes(1)
+      request.mockResolvedValue({
+        webhook_url: 'https://example.com/generated',
+        webhook_debug_url: 'https://example.com/debug',
       })
+      const { data } = renderPanel(createData({ webhook_url: '' }))
+      expect(await screen.findByDisplayValue('https://example.com/generated')).toBeInTheDocument()
+      expect(data().webhook_url).toBe('https://example.com/generated')
+      expect(request).toHaveBeenCalledWith(
+        ['apps', 'byAppId', 'workflows', 'triggers', 'webhook', 'get'],
+        { params: { app_id: 'app-1' }, query: { node_id: 'node' } },
+        expect.any(Object),
+      )
     })
   })
 
   describe('Status Code Input', () => {
-    it('should update the status code when users enter a parseable value', () => {
-      render(<Panel {...panelProps} />)
-
-      fireEvent.change(getStatusCodeInput(), { target: { value: '201' } })
-
-      expect(mockHandleStatusCodeChange).toHaveBeenCalledWith(201)
+    it('saves a parseable status code', async () => {
+      const user = userEvent.setup()
+      const { data } = renderPanel()
+      await user.clear(getStatusCodeInput())
+      await user.type(getStatusCodeInput(), '201')
+      expect(data().status_code).toBe(201)
     })
 
-    it('should ignore clear changes until the value is committed', () => {
-      render(<Panel {...panelProps} />)
-
+    it('keeps the saved code while empty and restores the default on blur', async () => {
+      const user = userEvent.setup()
+      const { data } = renderPanel(createData({ status_code: 201 }))
       const input = getStatusCodeInput()
-      fireEvent.change(input, { target: { value: '' } })
-
-      expect(mockHandleStatusCodeChange).not.toHaveBeenCalled()
-
-      fireEvent.blur(input)
-
-      expect(mockHandleStatusCodeChange).toHaveBeenCalledWith(200)
+      await user.clear(input)
+      expect(data().status_code).toBe(201)
+      await user.tab()
+      expect(data().status_code).toBe(200)
+      expect(input).toHaveValue('200')
     })
   })
 
   describe('Interactions', () => {
     it('copies the labeled readonly webhook URL without editing it', async () => {
       const user = userEvent.setup()
-      render(<Panel {...panelProps} />)
+      renderPanel()
       const input = screen.getByRole('textbox', {
         name: 'workflowIntegrations.nodes.triggerWebhook.webhookUrl',
       })
@@ -184,18 +106,12 @@ describe('WebhookTriggerPanel', () => {
 
     it('should handle method, content type, table, and response actions', async () => {
       const user = userEvent.setup()
-      render(<Panel {...panelProps} />)
+      const { data } = renderPanel()
 
       await user.click(
         screen.getByRole('combobox', { name: 'workflowIntegrations.nodes.triggerWebhook.method' }),
       )
       await user.click(await screen.findByRole('option', { name: 'GET' }))
-      await user.click(
-        screen.getByRole('combobox', {
-          name: 'workflowIntegrations.nodes.triggerWebhook.contentType',
-        }),
-      )
-      await user.click(await screen.findByRole('option', { name: 'text/plain' }))
       const [query, header, body] = screen.getAllByRole('textbox', {
         name: 'workflowIntegrations.nodes.triggerWebhook.varName',
       })
@@ -210,31 +126,35 @@ describe('WebhookTriggerPanel', () => {
       responseBody.select()
       await user.paste('updated body')
 
-      expect(mockHandleMethodChange).toHaveBeenCalledWith('GET')
-      expect(mockHandleContentTypeChange).toHaveBeenCalledWith('text/plain')
-      expect(mockHandleParamsChange).toHaveBeenCalledWith([
-        { name: 'search', type: VarType.string, required: false },
-      ])
-      expect(mockHandleHeadersChange).toHaveBeenCalledWith([
-        { name: 'Authorization', required: false },
-      ])
-      expect(mockHandleBodyChange).toHaveBeenCalledWith([
-        { name: 'message', type: VarType.string, required: false },
-      ])
-      expect(mockHandleResponseBodyChange).toHaveBeenCalledWith('updated body')
+      expect(data()).toMatchObject({
+        method: 'GET',
+        params: [{ name: 'search', type: VarType.string, required: false }],
+        headers: [{ name: 'Authorization', required: false }],
+        body: [{ name: 'message', type: VarType.string, required: false }],
+        response_body: 'updated body',
+      })
+      await user.click(
+        screen.getByRole('combobox', {
+          name: 'workflowIntegrations.nodes.triggerWebhook.contentType',
+        }),
+      )
+      await user.click(await screen.findByRole('option', { name: 'text/plain' }))
+      expect(data()).toMatchObject({
+        content_type: 'text/plain',
+        body: [],
+        response_body: 'updated body',
+      })
     })
 
     it('prevents configuration changes and URL generation in readonly mode', async () => {
       const user = userEvent.setup()
-      mockConfigState.readOnly = true
-      mockConfigState.inputs = {
-        ...mockConfigState.inputs,
+      const initial = createData({
         webhook_url: '',
         headers: [{ name: 'Authorization', required: true }],
         params: [{ name: 'search', type: VarType.string, required: false }],
         body: [{ name: 'message', type: VarType.string, required: false }],
-      }
-      render(<Panel {...panelProps} />)
+      })
+      const { data } = renderPanel(initial, true)
 
       for (const input of screen.getAllByRole('textbox', {
         name: 'workflowIntegrations.nodes.triggerWebhook.varName',
@@ -246,20 +166,13 @@ describe('WebhookTriggerPanel', () => {
       expect(getStatusCodeInput()).toBeDisabled()
       expect(screen.getByDisplayValue('ok')).toBeDisabled()
       expect(screen.queryByRole('button', { name: 'Delete row' })).not.toBeInTheDocument()
-      expect(mockGenerateWebhookUrl).not.toHaveBeenCalled()
-      expect(mockHandleHeadersChange).not.toHaveBeenCalled()
-      expect(mockHandleParamsChange).not.toHaveBeenCalled()
-      expect(mockHandleBodyChange).not.toHaveBeenCalled()
+      expect(request).not.toHaveBeenCalled()
+      expect(data()).toMatchObject(initial)
     })
 
     it('copies the debug URL from the keyboard and announces success while keeping its visible name', async () => {
       const user = userEvent.setup()
-      mockConfigState.inputs = {
-        ...mockConfigState.inputs,
-        webhook_debug_url: 'http://127.0.0.1:8000/debug',
-      }
-
-      render(<Panel {...panelProps} />)
+      renderPanel(createData({ webhook_debug_url: 'http://127.0.0.1:8000/debug' }))
 
       const button = screen.getByRole('button', {
         name: 'workflowIntegrations.nodes.triggerWebhook.debugUrlTitle http://127.0.0.1:8000/debug workflowIntegrations.nodes.triggerWebhook.debugUrlCopy',

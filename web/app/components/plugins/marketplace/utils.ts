@@ -1,15 +1,13 @@
 import type {
   CollectionsAndPluginsSearchParams,
   MarketplacePlugin,
-  MarketplaceTemplate,
   PluginsSearchParams,
 } from '@dify/contracts/marketplace'
 import type { ActivePluginType } from './constants'
 import type { Plugin } from '@/app/components/plugins/types'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { MARKETPLACE_API_PREFIX } from '@/config'
+import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
 import { marketplaceClient } from '@/service/marketplace'
-import { getMarketplaceUrl } from '@/utils/var'
 import { PLUGIN_TYPE_SEARCH_MAP } from './constants'
 
 type MarketplaceFetchOptions = {
@@ -64,11 +62,7 @@ type MarketplacePluginPayload = MarketplacePlugin | (Plugin & { labels?: Plugin[
 
 export const getPluginIconInMarketplace = (
   plugin: Pick<MarketplacePluginPayload, 'name' | 'org' | 'type'>,
-) => {
-  if (plugin.type === 'bundle')
-    return `${MARKETPLACE_API_PREFIX}/bundles/${plugin.org}/${plugin.name}/icon`
-  return `${MARKETPLACE_API_PREFIX}/plugins/${plugin.org}/${plugin.name}/icon`
-}
+) => getMarketplacePluginIconUrl(`${plugin.org}/${plugin.name}`, plugin.type)
 
 export const getFormattedPlugin = (payload: MarketplacePluginPayload): Plugin => {
   const plugin = payload as Plugin
@@ -87,53 +81,6 @@ export const getFormattedPlugin = (payload: MarketplacePluginPayload): Plugin =>
   }
 }
 
-export const getPluginLinkInMarketplace = (
-  plugin: Pick<MarketplacePluginPayload, 'name' | 'org' | 'type'>,
-  params?: Record<string, string | undefined>,
-) => {
-  if (plugin.type === 'bundle')
-    return getMarketplaceUrl(`/bundles/${plugin.org}/${plugin.name}`, params)
-  return getMarketplaceUrl(`/plugins/${plugin.org}/${plugin.name}`, params)
-}
-
-export const getPluginDetailLinkInMarketplace = (
-  plugin: Pick<MarketplacePluginPayload, 'name' | 'org' | 'type'>,
-) => {
-  const org = encodeURIComponent(plugin.org)
-  const name = encodeURIComponent(plugin.name)
-
-  if (plugin.type === 'bundle') return `/bundles/${org}/${name}`
-  return `/plugin/${org}/${name}`
-}
-
-export const getTemplateDetailLinkInMarketplace = (
-  template: Pick<MarketplaceTemplate, 'id' | 'publisher_handle' | 'publisher_unique_handle'>,
-) => {
-  const publisher = template.publisher_unique_handle || template.publisher_handle || 'template'
-
-  return `/template/${encodeURIComponent(publisher)}/${encodeURIComponent(template.id)}`
-}
-
-export const getTemplateLinkInMarketplace = (
-  template: Pick<MarketplaceTemplate, 'id' | 'publisher_handle' | 'publisher_unique_handle'>,
-  params?: Record<string, string | undefined>,
-) => {
-  const {
-    tid: _tid,
-    templateId: _templateId,
-    creationType: _creationType,
-    ...detailParams
-  } = params ?? {}
-
-  return getMarketplaceUrl(getTemplateDetailLinkInMarketplace(template), detailParams)
-}
-
-export const getMarketplaceCategoryUrl = (
-  category?: string,
-  params?: Record<string, string | undefined>,
-) => {
-  return getMarketplaceUrl(category ? `/plugins/${category}` : '/plugins', params)
-}
 // One collections response lists every catalog carousel and each needs its own
 // plugins request. Firing them all at once head-of-line blocks on the browser's
 // per-origin connection cap, so the whole catalog waits on the slowest tail

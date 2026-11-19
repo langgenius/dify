@@ -12,7 +12,6 @@ vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
   upload,
 }))
-vi.mock('@/hooks/use-theme', () => ({ default: () => ({ theme: 'light' }) }))
 
 const render = (props: React.ComponentProps<typeof BatchModal>) => {
   const queryClient = createConsoleQueryClient()

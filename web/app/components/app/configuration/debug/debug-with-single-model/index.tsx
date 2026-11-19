@@ -35,7 +35,7 @@ const DebugWithSingleModel = ({
   onOpenLog,
   chatContainerRef,
 }: DebugWithSingleModelProps & {
-  ref: React.RefObject<DebugWithSingleModelRefType>
+  ref: Ref<DebugWithSingleModelRefType>
 }) => {
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),

@@ -1,9 +1,10 @@
+import type { HotkeyRegistrationHandle } from '@tanstack/react-hotkeys'
 import { Dialog, DialogBackdrop, DialogPopup, DialogPortal } from '@langgenius/dify-ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useHotkey } from '@tanstack/react-hotkeys'
+import { getHotkeyManager } from '@tanstack/react-hotkeys'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { downloadBlob } from '@/utils/download'
@@ -165,8 +166,9 @@ function ImagePreviewContent({ url, title, onCancel, onPrev, onNext }: ImagePrev
         const containerRect = imgRef.current?.parentElement?.getBoundingClientRect()
 
         if (imgRect && containerRect) {
-          const maxX = (imgRect.width * scale - containerRect.width) / 2
-          const maxY = (imgRect.height * scale - containerRect.height) / 2
+          // The image rectangle already includes its scale; position uses viewport pixels.
+          const maxX = Math.max(0, (imgRect.width - containerRect.width) / 2)
+          const maxY = Math.max(0, (imgRect.height - containerRect.height) / 2)
 
           setPosition({
             x: Math.max(-maxX, Math.min(maxX, deltaX)),
@@ -189,18 +191,46 @@ function ImagePreviewContent({ url, title, onCancel, onPrev, onNext }: ImagePrev
     }
   }, [handleMouseUp])
 
-  useHotkey('ArrowUp', zoomIn, { target: previewRef })
-  useHotkey('ArrowDown', zoomOut, { target: previewRef })
-  useHotkey('ArrowLeft', () => onPrev?.(), {
-    target: previewRef,
-    enabled: !!onPrev,
-    requireReset: true,
-  })
-  useHotkey('ArrowRight', () => onNext?.(), {
-    target: previewRef,
-    enabled: !!onNext,
-    requireReset: true,
-  })
+  const previousHotkeyRef = useRef<HotkeyRegistrationHandle | null>(null)
+  const nextHotkeyRef = useRef<HotkeyRegistrationHandle | null>(null)
+  const handleZoomIn = useEffectEvent(zoomIn)
+  const handleZoomOut = useEffectEvent(zoomOut)
+  const handlePrevious = useEffectEvent(() => onPrev?.())
+  const handleNext = useEffectEvent(() => onNext?.())
+
+  useEffect(() => {
+    const target = previewRef.current
+    if (!target) return
+    // React hotkeys run at document, beyond DialogPopup's arrow propagation boundary.
+    const manager = getHotkeyManager()
+    const zoomInHotkey = manager.register('ArrowUp', () => handleZoomIn(), { target })
+    const zoomOutHotkey = manager.register('ArrowDown', () => handleZoomOut(), { target })
+    const previousHotkey = manager.register('ArrowLeft', () => handlePrevious(), {
+      target,
+      enabled: false,
+      requireReset: true,
+    })
+    const nextHotkey = manager.register('ArrowRight', () => handleNext(), {
+      target,
+      enabled: false,
+      requireReset: true,
+    })
+    previousHotkeyRef.current = previousHotkey
+    nextHotkeyRef.current = nextHotkey
+    return () => {
+      zoomInHotkey.unregister()
+      zoomOutHotkey.unregister()
+      previousHotkey.unregister()
+      nextHotkey.unregister()
+      previousHotkeyRef.current = null
+      nextHotkeyRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    previousHotkeyRef.current?.setOptions({ enabled: !!onPrev })
+    nextHotkeyRef.current?.setOptions({ enabled: !!onNext })
+  }, [onPrev, onNext])
 
   const copyImageLabel = t(($) => $['operation.copyImage'], { ns: 'common' })
   const zoomOutLabel = t(($) => $['operation.zoomOut'], { ns: 'common' })
@@ -229,11 +259,12 @@ function ImagePreviewContent({ url, title, onCancel, onPrev, onNext }: ImagePrev
         >
           <img
             ref={imgRef}
+            draggable={false}
             alt={title}
             src={isBase64(url) ? `data:image/png;base64,${url}` : url}
             className="max-h-full max-w-full"
             style={{
-              transform: `scale(${scale}) translate(${position.x}px, ${position.y}px)`,
+              transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
               transition: isDragging ? 'none' : 'transform 0.2s ease-in-out',
             }}
             data-testid="image-preview-image"

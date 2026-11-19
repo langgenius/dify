@@ -3,7 +3,7 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import NewChildSegmentModal from '../new-child-segment'
 
@@ -124,7 +124,7 @@ it('refreshes a full document after creation and opens the new child from the to
   mockFullScreen = true
   render(
     <>
-      <AppToastHost timeout={0} />
+      <AppToaster timeout={0} />
       <NewChildSegmentModal {...props} />
     </>,
   )

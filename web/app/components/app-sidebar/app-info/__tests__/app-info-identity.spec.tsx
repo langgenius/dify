@@ -55,11 +55,12 @@ describe('AppInfoView identity in the app detail sidebar', () => {
     const view = renderWithConsoleQuery(<AppDetailSection />, {
       queryClient,
       systemFeatures: { rbac_enabled: false, enable_app_deploy: false },
+      features: {},
     })
 
     await user.click(screen.getByRole('button', { name: /moreActionsFor/ }))
     await user.click(await screen.findByRole('menuitem', { name: 'app.editApp' }))
-    const name = await screen.findByRole('textbox', { name: 'app.newApp.captionName' })
+    const name = await screen.findByRole('textbox', { name: 'app.newApp.name' })
     await user.clear(name)
     await user.type(name, 'Unsaved draft')
 

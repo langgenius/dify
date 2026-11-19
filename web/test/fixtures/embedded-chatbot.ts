@@ -21,7 +21,7 @@ export const createEmbeddedChatbotContextFixture = (
   handleChangeConversation: noop,
   handleNewConversationCompleted: noop,
   chatShouldReloadKey: '',
-  isMobile: false,
+  isBelowSm: false,
   appSourceType: AppSourceType.webApp,
   isInstalledApp: false,
   allowResetChat: true,

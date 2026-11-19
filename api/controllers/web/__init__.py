@@ -1,7 +1,15 @@
+from types import ModuleType
+
 from flask import Blueprint
 from flask_restx import Namespace
 
-from controllers.common.errors import InternalServerError, NotFoundError, UnauthorizedError
+from controllers.common.app_access_error import register_app_access_error_metadata
+from controllers.common.errors import (
+    InternalServerError,
+    NotFoundError,
+    UnauthorizedError,
+    register_moderation_error_handlers,
+)
 from controllers.console.error import NotInitValidateError, NotSetupError
 from controllers.web.error import (
     WebAppAccessServiceUnavailableError,
@@ -12,6 +20,7 @@ from controllers.web.error import (
 from libs.external_api import ExternalApi
 
 bp = Blueprint("web", __name__, url_prefix="/api")
+register_app_access_error_metadata(bp, surface="web")
 
 api = ExternalApi(
     bp,
@@ -19,6 +28,7 @@ api = ExternalApi(
     title="Web API",
     description="Public APIs for web applications including file uploads, chat interactions, and app management",
 )
+register_moderation_error_handlers(api)
 # The passport guard on every Web API resource raises these; the web client answers them
 # centrally (sign-in redirect, access-denied and not-found pages), so no operation lists them.
 # ``not_found``, ``unauthorized`` and ``internal_server_error`` are the codes Werkzeug's own
@@ -38,7 +48,58 @@ api.document_generic_errors(
 # Create namespace
 web_ns = Namespace("web", description="Web application API operations", path="/")
 
-from . import (
+
+def _register_controllers() -> tuple[ModuleType, ...]:
+    """Load route modules after their namespaces and schema models exist."""
+
+    from . import (
+        app,
+        audio,
+        completion,
+        conversation,
+        feature,
+        files,
+        forgot_password,
+        human_input_file_upload,
+        human_input_form,
+        human_input_form_access_request,
+        human_input_v2,
+        human_input_v2_file_upload,
+        login,
+        message,
+        passport,
+        remote_files,
+        saved_message,
+        site,
+        workflow,
+        workflow_events,
+    )
+
+    return (
+        app,
+        audio,
+        completion,
+        conversation,
+        feature,
+        files,
+        forgot_password,
+        human_input_file_upload,
+        human_input_form,
+        human_input_form_access_request,
+        human_input_v2,
+        human_input_v2_file_upload,
+        login,
+        message,
+        passport,
+        remote_files,
+        saved_message,
+        site,
+        workflow,
+        workflow_events,
+    )
+
+
+(
     app,
     audio,
     completion,
@@ -48,6 +109,9 @@ from . import (
     forgot_password,
     human_input_file_upload,
     human_input_form,
+    human_input_form_access_request,
+    human_input_v2,
+    human_input_v2_file_upload,
     login,
     message,
     passport,
@@ -56,7 +120,7 @@ from . import (
     site,
     workflow,
     workflow_events,
-)
+) = _register_controllers()
 
 api.add_namespace(web_ns)
 
@@ -72,6 +136,9 @@ __all__ = [
     "forgot_password",
     "human_input_file_upload",
     "human_input_form",
+    "human_input_form_access_request",
+    "human_input_v2",
+    "human_input_v2_file_upload",
     "login",
     "message",
     "passport",

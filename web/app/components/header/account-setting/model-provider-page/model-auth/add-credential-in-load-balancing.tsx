@@ -6,6 +6,7 @@ import type {
   ModelCredential,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { CredentialSaved } from '@/app/components/header/account-setting/model-provider-page/model-modal/handle'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -23,7 +24,7 @@ type AddCredentialInLoadBalancingProps = {
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
   modelCredential: ModelCredential
   onSelectCredential: (credential: Credential) => void
-  onUpdate?: (payload?: unknown, formValues?: Record<string, unknown>) => void
+  onUpdate?: CredentialSaved
   onRemove?: (credentialId: string) => void
 }
 const AddCredentialInLoadBalancing = ({
@@ -45,12 +46,6 @@ const AddCredentialInLoadBalancing = ({
     (canManageCredential && !!available_credentials?.length)
   const isCustomModel = configurationMethod === ConfigurationMethodEnum.customizableModel
   const notAllowCustomCredential = provider.allow_custom_token === false
-  const handleUpdate = useCallback(
-    (payload?: unknown, formValues?: Record<string, unknown>) => {
-      onUpdate?.(payload, formValues)
-    },
-    [onUpdate],
-  )
 
   const renderTrigger = useCallback(
     (open: boolean, triggerProps: ComponentPropsWithRef<'button'>) => {
@@ -63,7 +58,7 @@ const AddCredentialInLoadBalancing = ({
             open && 'bg-state-base-hover',
           )}
         >
-          <span className="mr-2 i-ri-add-line size-4" />
+          <span className="me-2 i-ri-add-line size-4" />
           {t(($) => $['modelProvider.auth.addCredential'], { ns: 'modelProvider' })}
         </button>
       )
@@ -82,7 +77,7 @@ const AddCredentialInLoadBalancing = ({
       authParams={{
         isModelCredential: isCustomModel,
         mode: ModelModalModeEnum.configModelCredential,
-        onUpdate: handleUpdate,
+        onUpdate,
         onRemove,
       }}
       triggerOnlyOpenModal={
@@ -102,7 +97,7 @@ const AddCredentialInLoadBalancing = ({
       currentCustomConfigurationModelFixedFields={currentCustomConfigurationModelFixedFields}
       onItemClick={onSelectCredential}
       hideAddAction={!canCreateCredential}
-      placement="bottom-start"
+      align="start"
       popupTitle={
         isCustomModel
           ? t(($) => $['modelProvider.auth.modelCredentials'], { ns: 'modelProvider' })
