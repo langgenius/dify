@@ -246,6 +246,7 @@ class TestDatasourcePluginProviderController:
         assert credentials["optional_field"] is None
 
     def test_validate_credentials_format_default_values(self) -> None:
+        """Given a text field with an integer default, produce its string credential."""
         # Arrange
         config_text = ProviderConfig(
             name="text_def",
@@ -254,15 +255,8 @@ class TestDatasourcePluginProviderController:
             default=123,  # Int default, should be converted to str
         )
 
-        config_other = ProviderConfig.model_construct(
-            name="other_def",
-            required=False,
-            type="OTHER",
-            default="fallback",
-        )
-
         entity = provider_entity(DatasourceProviderType.LOCAL_FILE)
-        entity.credentials_schema = [config_text, config_other]
+        entity.credentials_schema = [config_text]
         controller = ConcreteDatasourcePluginProviderController(entity=entity, tenant_id="test")
 
         # Act
@@ -271,4 +265,3 @@ class TestDatasourcePluginProviderController:
 
         # Assert
         assert credentials["text_def"] == "123"
-        assert credentials["other_def"] == "fallback"

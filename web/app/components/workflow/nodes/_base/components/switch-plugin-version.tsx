@@ -3,10 +3,10 @@
 import type { PluginVersionsResponse } from '@dify/contracts/marketplace'
 import type { FC, ReactNode } from 'react'
 import type { PluginDetail } from '@/app/components/plugins/types'
-import type { MarketplaceLinks } from '@/features/marketplace/links'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  createDialogHandle,
   Dialog,
   DialogBody,
   DialogClose,
@@ -25,22 +25,26 @@ import {
   MenuTrigger,
 } from '@langgenius/dify-ui/menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { skipToken, useQuery } from '@tanstack/react-query'
-import { useId, useRef, useState } from 'react'
+import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import { Badge as Badge2 } from '@/app/components/base/badge/index'
+import { Badge as VersionBadge } from '@/app/components/base/badge/index'
 import Card from '@/app/components/plugins/card'
+import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import { pluginManifestToCardPluginProps } from '@/app/components/plugins/install-plugin/utils'
+import { PluginCategoryEnum, TaskStatus } from '@/app/components/plugins/types'
 import { useMarketplace, useMarketplacePluginVersions } from '@/features/marketplace/client'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import {
   normalizeInstalledPluginDetail,
-  useUpdatePackageFromMarketPlace,
+  startMarketplacePluginUpgrade,
+  useInvalidateCheckInstalled,
+  useInvalidateInstalledPluginList,
 } from '@/service/use-plugins'
 
 type PluginVersionSelection = {
@@ -51,18 +55,20 @@ type PluginVersionSelection = {
 type SwitchPluginVersionProps = {
   uniqueIdentifier: string
   tooltip?: ReactNode
-  onChange?: (version: string) => void
   className?: string
 }
 
 export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
-  const { uniqueIdentifier, tooltip, onChange, className } = props
+  const { uniqueIdentifier, tooltip, className } = props
 
   const [pluginId] = uniqueIdentifier.split(':')
-  const triggerRef = useRef<HTMLButtonElement>(null)
   const [requestedOpen, setRequestedOpen] = useState(false)
-  const [installOpen, setInstallOpen] = useState(false)
-  const [selection, setSelection] = useState<PluginVersionSelection>()
+  const [acceptedTaskId, setAcceptedTaskId] = useState<string | null>(null)
+  const [installDialog] = useState(() => createDialogHandle<PluginVersionSelection>())
+  const { getIconUrl } = useGetIcon()
+  const queryClient = useQueryClient()
+  const invalidatePluginList = useInvalidateInstalledPluginList()
+  const invalidateInstalled = useInvalidateCheckInstalled()
   const { canUpdatePlugin } = useWorkspacePluginInstallPermission()
   const marketplace = useMarketplace()
   const pluginDetails = useQuery(
@@ -77,6 +83,46 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
   const pluginDetail = pluginDetails.data
 
   const { t } = useTranslation(['workflowAgent', 'plugin', 'common', 'appLog'])
+  const upgrade = useMutation({
+    mutationFn: async ({ plugin, target }: PluginVersionSelection) => {
+      let taskId = acceptedTaskId
+      if (!taskId) {
+        const response = await startMarketplacePluginUpgrade(queryClient, {
+          new_plugin_unique_identifier: target.unique_identifier,
+          original_plugin_unique_identifier: plugin.plugin_unique_identifier,
+        })
+        if (response.all_installed || response.task?.status === TaskStatus.success) return
+        if (response.task?.status === TaskStatus.failed) {
+          const failed = response.task.plugins.find(
+            (item) => item.plugin_unique_identifier === target.unique_identifier,
+          )
+          throw new Error(failed?.message || t(($) => $.error, { ns: 'common' }))
+        }
+        if (!response.task_id) throw new Error(t(($) => $.error, { ns: 'common' }))
+        taskId = response.task_id
+        setAcceptedTaskId(taskId)
+      }
+      const result = await checkTaskStatus().check({
+        taskId,
+        pluginUniqueIdentifier: target.unique_identifier,
+      })
+      setAcceptedTaskId(null)
+      if (result.status === TaskStatus.failed)
+        throw new Error(result.error || t(($) => $.error, { ns: 'common' }))
+    },
+    onSuccess: (_data, { plugin }) => {
+      const category = plugin.declaration.category
+      void invalidateInstalled()
+      void invalidatePluginList(category)
+      if (category === PluginCategoryEnum.agent) {
+        const workspace = consoleQuery.workspaces.current
+        void queryClient.invalidateQueries({ queryKey: workspace.agentProviders.get.key() })
+        void queryClient.invalidateQueries({
+          queryKey: workspace.agentProvider.byProviderName.get.key(),
+        })
+      }
+    },
+  })
   const versionMenuLabelId = useId()
   const { formatDate } = useTimestamp()
   const dateFormat = t(($) => $.dateTimeFormat, { ns: 'appLog' }).split(' ')[0]!
@@ -90,20 +136,91 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
       className={cn('flex w-fit items-center justify-center', className)}
       onClick={(e) => e.stopPropagation()}
     >
-      <Dialog open={installOpen} onOpenChange={setInstallOpen}>
-        <DialogContent className="w-140" finalFocus={triggerRef}>
-          {selection && (
-            <PluginVersionInstallConfirmation
-              marketplace={marketplace}
-              selection={selection}
-              onInstalled={(version) => {
-                void pluginDetails.refetch()
-                onChange?.(version)
-                setInstallOpen(false)
-              }}
-            />
-          )}
-        </DialogContent>
+      <Dialog
+        handle={installDialog}
+        onOpenChange={(open, details) => {
+          if (open) {
+            setAcceptedTaskId(null)
+            upgrade.reset()
+          } else if (upgrade.isPending && details.reason !== 'imperative-action') details.cancel()
+        }}
+      >
+        {({ payload: selection }) =>
+          selection && (
+            <DialogContent className="w-140">
+              <DialogHeader>
+                <DialogTitle>
+                  {t(($) => $['nodes.agent.installPlugin.title'], { ns: 'workflowAgent' })}
+                </DialogTitle>
+                <DialogHeaderCloseButton
+                  disabled={upgrade.isPending}
+                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                />
+              </DialogHeader>
+              <DialogBody>
+                <div className="mb-2 system-md-regular text-text-secondary">
+                  {t(($) => $['nodes.agent.installPlugin.desc'], { ns: 'workflowAgent' })}
+                </div>
+                <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">
+                  <Card
+                    installed={upgrade.isSuccess}
+                    payload={pluginManifestToCardPluginProps({
+                      ...selection.plugin.declaration,
+                      icon: getIconUrl(selection.plugin.declaration.icon),
+                    })}
+                    className="w-full"
+                    titleLeft={
+                      <VersionBadge className="mx-1" size="s" variant="warning">
+                        {`${selection.plugin.version} -> ${selection.target.version}`}
+                      </VersionBadge>
+                    }
+                  />
+                </div>
+                {upgrade.isError && (
+                  <p role="alert" className="mt-2 text-text-destructive">
+                    {upgrade.error.message}
+                  </p>
+                )}
+              </DialogBody>
+              <DialogFooter>
+                {marketplace && (
+                  <Link
+                    className="me-auto flex items-center justify-center gap-1"
+                    href={marketplace.plugin({
+                      org: selection.plugin.declaration.author,
+                      name: selection.plugin.declaration.name,
+                    })}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <span className="system-xs-regular text-xs text-text-accent">
+                      {t(($) => $['nodes.agent.installPlugin.changelog'], { ns: 'workflowAgent' })}
+                    </span>
+                    <span className="i-ri-external-link-line size-3 text-text-accent" />
+                  </Link>
+                )}
+                <DialogClose render={<Button disabled={upgrade.isPending} />}>
+                  {t(($) => $['nodes.agent.installPlugin.cancel'], { ns: 'workflowAgent' })}
+                </DialogClose>
+                <Button
+                  variant="primary"
+                  loading={upgrade.isPending}
+                  disabled={!canUpdatePlugin}
+                  onClick={() => {
+                    if (!canUpdatePlugin || upgrade.isPending) return
+                    upgrade.mutate(selection, {
+                      onSuccess: () => installDialog.close(),
+                    })
+                  }}
+                >
+                  {acceptedTaskId && upgrade.isError
+                    ? t(($) => $['operation.retry'], { ns: 'common' })
+                    : t(($) => $['nodes.agent.installPlugin.install'], { ns: 'workflowAgent' })}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          )
+        }
       </Dialog>
       <Menu
         open={requestedOpen && !!pluginDetail && canSwitchVersion && !loadingVersions}
@@ -114,7 +231,6 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
             <TooltipTrigger
               render={
                 <MenuTrigger
-                  ref={triggerRef}
                   render={
                     <Button
                       variant="ghost"
@@ -124,7 +240,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
                       loading={loadingVersions}
                       className="relative mx-1 h-5 overflow-visible rounded-[5px] border border-divider-deep px-1.25 system-2xs-medium-uppercase text-text-tertiary"
                     >
-                      <span className="absolute -top-0.5 -right-0.5 size-1.5 rounded-xs border border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg shadow-sm" />
+                      <span className="absolute -inset-e-0.5 -top-0.5 size-1.5 rounded-xs border border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg shadow-sm" />
                       <span className="sr-only">
                         {t(($) => $['detailPanel.switchVersion'], { ns: 'plugin' })}{' '}
                       </span>
@@ -154,10 +270,9 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
                 <MenuItem
                   key={item.unique_identifier}
                   disabled={pluginDetail.version === item.version}
-                  onClick={() => {
-                    setSelection({ plugin: pluginDetail, target: item })
-                    setInstallOpen(true)
-                  }}
+                  onClick={() =>
+                    installDialog.openWithPayload({ plugin: pluginDetail, target: item })
+                  }
                 >
                   <span>{item.version}</span>
                   {pluginDetail.version === item.version && (
@@ -177,94 +292,5 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
         </MenuContent>
       </Menu>
     </div>
-  )
-}
-
-function PluginVersionInstallConfirmation({
-  marketplace,
-  selection,
-  onInstalled,
-}: {
-  marketplace: MarketplaceLinks | null
-  selection: PluginVersionSelection
-  onInstalled: (version: PluginVersionSelection['target']['version']) => void
-}) {
-  const { t } = useTranslation(['workflowAgent', 'common'])
-  const { canUpdatePlugin } = useWorkspacePluginInstallPermission()
-  const { getIconUrl } = useGetIcon()
-  const mutation = useUpdatePackageFromMarketPlace()
-  return (
-    <>
-      <DialogHeader>
-        <DialogTitle>
-          {t(($) => $['nodes.agent.installPlugin.title'], { ns: 'workflowAgent' })}
-        </DialogTitle>
-        <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
-      </DialogHeader>
-      <DialogBody>
-        <div className="mb-2 system-md-regular text-text-secondary">
-          {t(($) => $['nodes.agent.installPlugin.desc'], { ns: 'workflowAgent' })}
-        </div>
-        <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">
-          <Card
-            installed={mutation.isSuccess}
-            payload={pluginManifestToCardPluginProps({
-              ...selection.plugin.declaration,
-              icon: getIconUrl(selection.plugin.declaration.icon),
-            })}
-            className="w-full"
-            titleLeft={
-              <Badge2 className="mx-1" size="s" variant="warning">
-                {`${selection.plugin.version} -> ${selection.target.version}`}
-              </Badge2>
-            }
-          />
-        </div>
-      </DialogBody>
-      <DialogFooter>
-        {marketplace && (
-          <Link
-            className="me-auto flex items-center justify-center gap-1"
-            href={marketplace.plugin({
-              org: selection.plugin.declaration.author,
-              name: selection.plugin.declaration.name,
-            })}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <span className="system-xs-regular text-xs text-text-accent">
-              {t(($) => $['nodes.agent.installPlugin.changelog'], { ns: 'workflowAgent' })}
-            </span>
-            <span className="i-ri-external-link-line size-3 text-text-accent" />
-          </Link>
-        )}
-        {!mutation.isPending && (
-          <DialogClose render={<Button />}>
-            {t(($) => $['nodes.agent.installPlugin.cancel'], { ns: 'workflowAgent' })}
-          </DialogClose>
-        )}
-        <Button
-          variant="primary"
-          loading={mutation.isPending}
-          disabled={!canUpdatePlugin}
-          onClick={() => {
-            if (!canUpdatePlugin) return
-            mutation.mutate(
-              {
-                new_plugin_unique_identifier: selection.target.unique_identifier,
-                original_plugin_unique_identifier: selection.plugin.plugin_unique_identifier,
-              },
-              {
-                onSuccess: () => {
-                  onInstalled(selection.target.version)
-                },
-              },
-            )
-          }}
-        >
-          {t(($) => $['nodes.agent.installPlugin.install'], { ns: 'workflowAgent' })}
-        </Button>
-      </DialogFooter>
-    </>
   )
 }

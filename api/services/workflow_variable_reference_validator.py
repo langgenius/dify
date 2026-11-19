@@ -8,7 +8,7 @@ from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Final
 
-from core.trigger.constants import TRIGGER_NODE_TYPES
+from constants.trigger import TRIGGER_NODE_TYPES
 from core.workflow.nodes.human_input.constants import TIMEOUT_HANDLE
 from graphon.enums import BuiltinNodeTypes, ErrorStrategy
 

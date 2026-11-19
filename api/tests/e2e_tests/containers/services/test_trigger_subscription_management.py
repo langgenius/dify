@@ -19,13 +19,15 @@ from sqlalchemy.orm import Session
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
 from core.helper.encrypter import decrypt_token, encrypt_token
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.trigger.utils.encryption import TriggerProviderCredentialsCache, TriggerProviderPropertiesCache
-from core.trigger.utils.endpoint import generate_plugin_trigger_endpoint_url
+from core.plugin.impl.trigger import PluginTriggerClient
 from extensions.ext_application_services import application_services
 from extensions.ext_redis import redis_client
 from models.account import TenantAccountRole
 from models.trigger import TriggerSubscription, WorkflowPluginTrigger
+from models.utils.trigger_endpoint import generate_plugin_trigger_endpoint_url
 from repositories.trigger.subscription_repository import RedisTriggerSubscriptionLocks, TriggerSubscriptionRepository
+from services.trigger.credential_encryption import TriggerProviderCredentialsCache, TriggerProviderPropertiesCache
+from services.trigger.provider_loader import PluginTriggerProviderLoader
 from services.trigger.subscription_codec import ProviderTriggerSubscriptionCodec
 from services.trigger.subscription_gateway import PluginTriggerSubscriptionGateway
 from services.trigger.subscription_service import TriggerSubscriptionLeaseLostError, TriggerSubscriptionService
@@ -264,7 +266,9 @@ def test_committed_changes_succeed_when_redis_cache_invalidation_is_unavailable(
 
             management = TriggerSubscriptionService(
                 subscriptions=TriggerSubscriptionRepository(session_factory=harness.session_factory),
-                providers=PluginTriggerSubscriptionGateway(),
+                providers=PluginTriggerSubscriptionGateway(
+                    providers=PluginTriggerProviderLoader(client=PluginTriggerClient())
+                ),
                 locks=RedisTriggerSubscriptionLocks(redis=redis_client),
                 codec=ProviderTriggerSubscriptionCodec(),
                 invalidate_cache=invalidate_cache,
