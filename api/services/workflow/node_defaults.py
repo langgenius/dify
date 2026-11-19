@@ -14,6 +14,7 @@ from pydantic_core import PydanticCustomError
 from core.human_input_v2.entities import DebugChannel
 from core.workflow.human_input_adapter import DeliveryChannelConfig, EmailDeliveryConfig
 from core.workflow.node_factory import resolve_workflow_node_class
+from core.workflow.nodes.decision.entities import DECISION_NODE_TYPE
 from core.workflow.nodes.human_input.entities import HumanInputNodeData
 from core.workflow.nodes.human_input_v2.entities import (
     HUMAN_INPUT_V2_VERSION,
@@ -37,6 +38,7 @@ EDITOR_EMPTY: Final[Mapping[str, Mapping[str, object]]] = {
     BuiltinNodeTypes.LOOP: {"break_conditions": []},
     BuiltinNodeTypes.HUMAN_INPUT: {"delivery_methods": [], "user_actions": [], "inputs": []},
     BuiltinNodeTypes.DATASOURCE: {"datasource_parameters": {}},
+    DECISION_NODE_TYPE: {"outcomes": [], "extras": []},
 }
 
 

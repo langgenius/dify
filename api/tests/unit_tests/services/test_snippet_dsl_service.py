@@ -867,6 +867,32 @@ def test_extract_dependencies_from_workflow_graph_covers_model_variants(service:
     ]
 
 
+def test_extract_dependencies_from_workflow_graph_ignores_a_rules_decision_model(
+    service: SnippetDslService,
+) -> None:
+    """F6: only an llm-mode decision node uses its model; rules mode keeps a leftover one."""
+    graph = {
+        "nodes": [
+            {
+                "data": {
+                    "type": "decision",
+                    "decide_by": "rules",
+                    "model": {"provider": "acme/leftover/leftover"},
+                }
+            },
+            {
+                "data": {
+                    "type": "decision",
+                    "decide_by": "llm",
+                    "model": {"provider": "acme/used/used"},
+                }
+            },
+        ]
+    }
+
+    assert service._extract_dependencies_from_workflow_graph(graph) == ["acme/used"]
+
+
 @pytest.mark.usefixtures("plugin_catalog")
 def test_append_workflow_export_data_filters_credentials_and_extracts_dependencies(service: SnippetDslService):
     workflow_dict = {
