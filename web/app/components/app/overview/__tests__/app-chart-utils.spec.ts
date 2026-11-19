@@ -110,6 +110,23 @@ describe('app-chart-utils', () => {
   })
 
   describe('buildChartOptions', () => {
+    it('should keep axis labels inside the chart bounds instead of legacy containLabel', () => {
+      const options = buildChartOptions({
+        statistics: [
+          { date: 'Jan 1, 2024', count: 5 },
+          { date: 'Jan 2, 2024', count: 10 },
+        ],
+        chartType: 'messages',
+        yField: 'count',
+      })
+
+      const grid = options.grid as Record<string, unknown>
+
+      expect(grid.containLabel).toBeUndefined()
+      expect(grid.outerBoundsMode).toBe('same')
+      expect(grid.outerBoundsContain).toBe('axisLabel')
+    })
+
     it('should build line chart options with dataset and y-axis max', () => {
       const options = buildChartOptions({
         statistics: [
