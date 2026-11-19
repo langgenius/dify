@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
-from typing import ClassVar, Literal
+from typing import ClassVar, Literal, cast
 
 from dify_agent.layers.config import DifyConfigLayerConfig
 from dify_agent.layers.dify_core_tools import DifyCoreToolsLayerConfig
@@ -46,6 +46,7 @@ from dify_agent.protocol import (
 )
 from dify_agent.protocol.snapshot import SessionSnapshot
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
+from pydantic_ai.settings import ModelSettings
 
 AGENT_SOUL_PROMPT_LAYER_ID = "agent_soul_prompt"
 WORKFLOW_NODE_JOB_PROMPT_LAYER_ID = "workflow_node_job_prompt"
@@ -158,7 +159,7 @@ _AGENT_MODEL_SETTINGS_PASSTHROUGH_KEYS = (
 _AGENT_MODEL_SETTINGS_KNOWN_KEYS = frozenset({*_AGENT_MODEL_SETTINGS_PASSTHROUGH_KEYS, "stop"})
 
 
-def _agent_model_settings(settings: Mapping[str, JsonValue]) -> dict[str, JsonValue] | None:
+def _agent_model_settings(settings: Mapping[str, JsonValue]) -> ModelSettings | None:
     sanitized: dict[str, JsonValue] = {
         key: settings[key] for key in _AGENT_MODEL_SETTINGS_PASSTHROUGH_KEYS if settings.get(key) is not None
     }
@@ -174,7 +175,7 @@ def _agent_model_settings(settings: Mapping[str, JsonValue]) -> dict[str, JsonVa
     if extra_body:
         sanitized["extra_body"] = extra_body
 
-    return sanitized or None
+    return cast(ModelSettings, sanitized) if sanitized else None
 
 
 class AgentBackendOutputConfig(BaseModel):
