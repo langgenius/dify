@@ -8,7 +8,7 @@ import pytest
 from extensions.ext_redis import redis_client
 from services.enterprise.account_deletion_sync import _queue_task
 
-pytestmark = pytest.mark.usefixtures("set_up_containers_and_env")
+pytestmark = pytest.mark.usefixtures("application_redis")
 
 
 def test_queue_task_success() -> None:

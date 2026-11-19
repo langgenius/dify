@@ -10,12 +10,16 @@ from uuid import UUID
 
 import pytest
 from flask import Flask, g
-from werkzeug.exceptions import Forbidden
+from flask_login import LoginManager
 
+from configs import dify_config
+from controllers.console import bp as console_bp
+from controllers.console.human_input_v2 import channel as channel_controller
 from controllers.console.human_input_v2.config_version import encode_email_config_version
 from controllers.console.wraps import _is_setup_completed
 from core.human_input_v2.entities import EmailProviderType, IMProvider
 from core.human_input_v2.shared import AccountId, DirectoryScope, EmailProviderId, WorkspaceScope
+from enums import DeploymentEdition
 from libs.exception import BaseHTTPException
 from models.account import Account, AccountStatus, TenantAccountRole
 from repositories.human_input_v2.email_channel import EmailChannelView, EmailConfigurationSnapshot, ResendCandidate
@@ -96,7 +100,12 @@ def test_channel_transport_models_match_the_canonical_schema() -> None:
         "invalid_credentials",
         "connection_failure",
     }
-    assert set(module.ChannelTestResponse.model_fields) == {"status", "status_description"}
+    assert set(module.ChannelTestResponse.model_fields) == {
+        "status",
+        "status_description",
+        "provider_error_code",
+        "provider_request_id",
+    }
     assert set(module.ListChannelProvidersResponse.model_fields) == {"email_providers", "im_providers"}
     assert set(module.ChannelProvider.model_fields) == {"provider", "connection_mode"}
     assert set(module.ChannelDeleteResponse.model_fields) == {"channel_id"}
@@ -257,11 +266,14 @@ def test_email_create_translates_expected_errors_with_cause(
 
     assert error_info.value.code == expected_status
     assert error_info.value.description == expected_description
-    assert error_info.value.data == {
+    expected_body: dict[str, object] = {
         "code": expected_error_code,
         "message": expected_description,
         "status": expected_status,
     }
+    if isinstance(service_error, ChannelProviderError):
+        expected_body.update({"provider_error_code": None, "provider_request_id": None})
+    assert error_info.value.data == expected_body
     assert error_info.value.__cause__ is service_error
 
 
@@ -507,12 +519,18 @@ def test_email_candidate_test_delegates_the_submitted_candidate_without_a_recipi
             "workspace-1",
         )
 
-    assert response == {"status": "connected", "status_description": ""}
+    assert response == {
+        "status": "connected",
+        "status_description": "",
+        "provider_error_code": None,
+        "provider_request_id": None,
+    }
 
 
 def test_channel_collection_aggregates_configured_owner_snapshots(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr("configs.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     module = importlib.import_module("controllers.console.human_input_v2.channel")
     email_snapshot = EmailChannelView(
         id=EmailProviderId("email-1"),
@@ -563,6 +581,7 @@ def test_channel_collection_aggregates_configured_owner_snapshots(
 def test_channel_collection_omits_unconfigured_owner_snapshots(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr("configs.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     module = importlib.import_module("controllers.console.human_input_v2.channel")
 
     class EmailOwner:
@@ -583,43 +602,68 @@ def test_channel_collection_omits_unconfigured_owner_snapshots(
     assert response == {"channels": []}
 
 
+@pytest.mark.parametrize("rbac_enabled", [False, True])
+@pytest.mark.parametrize(
+    ("method", "path"),
+    [
+        ("GET", "/channel-providers"),
+        ("GET", "/channels"),
+        ("GET", "/channels/im/00000000-0000-0000-0000-000000000001"),
+        ("PUT", "/channels/im/00000000-0000-0000-0000-000000000001"),
+        ("DELETE", "/channels/im/00000000-0000-0000-0000-000000000001"),
+        ("POST", "/channels/im"),
+    ],
+)
 def test_composite_guard_rejects_a_non_admin_workspace_member(
-    app: Flask,
     monkeypatch: pytest.MonkeyPatch,
+    rbac_enabled: bool,
+    method: str,
+    path: str,
 ) -> None:
-    module = importlib.import_module("controllers.console.human_input_v2.channel")
+    """Reject Editor HTTP requests before channel work, with or without RBAC."""
     account = Account(name="Editor", email="editor@example.com", status=AccountStatus.ACTIVE)
     account._current_tenant = make_tenant(tenant_id="workspace-1", name="Workspace")
     account.role = TenantAccountRole.EDITOR
     _is_setup_completed.mark_success()
 
-    build_calls: list[str] = []
-    monkeypatch.setattr(
-        module,
-        "build_human_input_email_channel_management_service",
-        lambda: build_calls.append("email"),
-    )
-    monkeypatch.setattr(
-        module,
-        "_workspace_im_channel_service",
-        lambda *_args: build_calls.append("im"),
-    )
+    def reject_channel_work(*_args: object, **_kwargs: object) -> Never:
+        raise AssertionError("Unauthorized requests must not enter channel business operations")
 
-    with (
-        app.test_request_context(method="GET"),
-        patch("controllers.console.wraps.dify_config.RBAC_ENABLED", True),
-        patch("libs.login.check_csrf_token", return_value=None),
-    ):
+    monkeypatch.setattr(
+        channel_controller,
+        "build_human_input_email_channel_management_service",
+        reject_channel_work,
+    )
+    monkeypatch.setattr(
+        channel_controller,
+        "_workspace_im_channel_service",
+        reject_channel_work,
+    )
+    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    monkeypatch.setattr(dify_config, "LOGIN_DISABLED", False)
+    monkeypatch.setattr(dify_config, "RBAC_ENABLED", rbac_enabled)
+
+    application = Flask(__name__)
+    LoginManager(application)
+    application.register_blueprint(console_bp)
+
+    @application.before_request
+    def authenticate() -> None:
         g._login_user = account
-        with pytest.raises(Forbidden):
-            module.ListChannelProvidersApi().get()
-    assert build_calls == []
+
+    with patch("libs.login.check_csrf_token", return_value=None):
+        response = application.test_client().open(
+            f"/console/api/workspaces/current/human-input/v2{path}", method=method, json={}
+        )
+
+    assert response.status_code == HTTPStatus.FORBIDDEN, response.get_json()
 
 
 def test_composite_guard_allows_a_workspace_owner(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr("configs.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     module = importlib.import_module("controllers.console.human_input_v2.channel")
     account = Account(name="Owner", email="owner@example.com", status=AccountStatus.ACTIVE)
     account._current_tenant = make_tenant(tenant_id="workspace-1", name="Workspace")

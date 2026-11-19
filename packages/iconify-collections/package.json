@@ -29,7 +29,6 @@
   "devDependencies": {
     "@dify/tsconfig": "workspace:*",
     "@types/node": "catalog:",
-    "@typescript/native": "catalog:",
     "iconify-import-svg": "catalog:",
     "tsrs": "catalog:"
   }

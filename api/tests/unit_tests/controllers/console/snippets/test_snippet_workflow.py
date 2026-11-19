@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from inspect import unwrap
 from typing import NoReturn, TypedDict, Unpack
 from unittest.mock import Mock
@@ -640,3 +641,27 @@ def test_workflow_task_stop_uses_snippet_owner_scope(app: Flask, monkeypatch: py
         app_mode=snippet_workflow_module.AppMode.WORKFLOW,
         owner=None,
     )
+
+
+class SnippetFactoryOverrides(TypedDict, total=False):
+    id: str
+    tenant_id: str
+    name: str
+    description: str | None
+    type: str
+    workflow_id: str | None
+    is_published: bool
+    input_fields: str | None
+    icon_info: dict[str, object] | None
+    created_by: str | None
+    updated_by: str | None
+    version: int
+    use_count: int
+
+
+class WorkflowFactoryOverrides(TypedDict, total=False):
+    updated_by: str | None
+    updated_at: datetime | None
+    marked_name: str
+    marked_comment: str
+    version: str

@@ -13,6 +13,7 @@ from controllers.common.fields import EventStreamResponse
 from controllers.common.schema import register_response_schema_model
 from controllers.web import api, web_ns
 from controllers.web.wraps import WebApiResource
+from core.workflow.human_input_policy import HumanInputSurface
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from libs.external_api import error_responses
@@ -39,6 +40,9 @@ class WorkflowEventsApi(WebApiResource):
         GET /api/workflow/<task_id>/events
 
         Returns Server-Sent Events stream.
+
+        Requires a run owned by the current app and end user. Pending V1 forms
+        expose only Web App recipient tokens; invalid ownership returns 404.
         """
         workflow_run_id = task_id
         session_maker = sessionmaker(db.engine)
@@ -93,6 +97,7 @@ class WorkflowEventsApi(WebApiResource):
                             app_id=app_model.id,
                             session_maker=session_maker,
                             tool_providers=application_services().tools.tool_providers,
+                            human_input_surface=HumanInputSurface.WEB_APP,
                             close_on_pause=not continue_on_pause,
                         )
                     )

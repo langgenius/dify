@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from core.app.apps.exc import ModerationInvocationError
 from core.credit_usage import CreditUsageCreatedBy
 from core.entities.knowledge_entities import IndexingEstimate, PreviewDetail, QAPreviewDetail
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
@@ -82,13 +83,14 @@ class IndexingEstimateAdapter:
         dataset_id: str | None = None,
         indexing_technique: str = "economy",
     ) -> IndexingEstimate:
+        """Run an estimate, preserving terminal moderation errors and translating ordinary infrastructure failures."""
         try:
             return self._estimate(
                 tenant_id, extract_settings, tmp_processing_rule, doc_form, doc_language, dataset_id, indexing_technique
             )
         except (LLMBadRequestError, ProviderTokenNotInitError, PluginDaemonClientSideError) as error:
             raise IndexingEstimateProviderUnavailableError(error.description) from error
-        except CredentialRefreshUnavailableError:
+        except (CredentialRefreshUnavailableError, ModerationInvocationError):
             raise
         except Exception as error:
             raise IndexingEstimateExecutionError(str(error)) from error

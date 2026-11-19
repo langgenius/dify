@@ -16,6 +16,7 @@ from werkzeug.exceptions import HTTPException
 from controllers.common.errors import InvalidArgumentError, InvalidRequestError, NotFoundError
 from controllers.console.app import workflow as controller
 from controllers.console.app.error import DraftWorkflowNotSync
+from controllers.console.app.workflow import EvaluationPublishedWorkflowApi, WorkflowKindConvertApi
 from graphon.variables.exc import VariableError
 from libs.external_api import ExternalApi
 from machinery.context import RequestContext
@@ -314,3 +315,28 @@ def test_online_users_normalization_and_response(workflows: Mock) -> None:
     result = inspect.unwrap(api.post)(api, payload, CONTEXT)
     assert result == {"data": workflows.online_users.return_value}
     workflows.online_users.assert_called_once_with(CONTEXT, ["a"])
+
+
+@pytest.mark.parametrize("resource_class", [EvaluationPublishedWorkflowApi, WorkflowKindConvertApi])
+def test_evaluation_workflow_mutations_reject_community(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    resource_class: type[EvaluationPublishedWorkflowApi] | type[WorkflowKindConvertApi],
+) -> None:
+    monkeypatch.setattr("controllers.console.wraps.FeatureService.is_evaluation_supported", lambda: False)
+
+    with app.test_request_context(), pytest.raises(HTTPException) as exc_info:
+        resource_class().post()
+
+    assert exc_info.value.code == 404
+
+
+def test_ordinary_publish_route_maps_evaluation_plan_denial(app: Flask, workflows: Mock) -> None:
+    workflows.publish.side_effect = controller.EvaluationPlanRequiredError()
+    with app.test_request_context("/apps/app-1/workflows/publish", method="POST"):
+        with pytest.raises(controller.PaidPlanRequiredError):
+            invoke(
+                controller.PublishedWorkflowApi,
+                controller.PublishedWorkflowApi.post,
+                controller.PublishWorkflowPayload(),
+            )

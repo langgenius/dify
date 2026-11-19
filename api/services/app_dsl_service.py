@@ -18,6 +18,11 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
+from constants.trigger import (
+    TRIGGER_PLUGIN_NODE_TYPE,
+    TRIGGER_SCHEDULE_NODE_TYPE,
+    TRIGGER_WEBHOOK_NODE_TYPE,
+)
 from core.app.app_config.features.suggested_questions_after_answer.manager import (
     SuggestedQuestionsAfterAnswerConfigManager,
 )
@@ -25,11 +30,6 @@ from core.app.app_config.features.text_to_speech.manager import TextToSpeechConf
 from core.file import remote_fetcher
 from core.plugin.entities.plugin import PluginDependency
 from core.rbac import RBACPermission, RBACResourceScope
-from core.trigger.constants import (
-    TRIGGER_PLUGIN_NODE_TYPE,
-    TRIGGER_SCHEDULE_NODE_TYPE,
-    TRIGGER_WEBHOOK_NODE_TYPE,
-)
 from core.workflow.llm_environment_variable import (
     LLMEnvironmentVariable,
     parse_llm_model_selector,
@@ -627,9 +627,14 @@ class AppDslService:
     def _load_app_for_overwrite(self, account: Account, app_id: str) -> App | None:
         allowed = self._check_overwrite_access(account, app_id)
         assert account.current_tenant_id is not None
-        return self._overwrites.load(
+        target = self._overwrites.load(
             tenant_id=account.current_tenant_id, account_id=account.id, app_id=app_id, rbac_allowed=allowed
         )
+        if target is None:
+            return None
+        from repositories.app.console_repository import find_normal_app
+
+        return find_normal_app(self._session, workspace_id=account.current_tenant_id, app_id=app_id, refresh=True)
 
     def _ensure_agent_import_permission(self, account: Account, *, app: App | None) -> None:
         if not dify_config.RBAC_ENABLED:

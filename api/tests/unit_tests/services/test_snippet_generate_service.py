@@ -16,9 +16,11 @@ from models.account import Account
 from models.snippet import CustomizedSnippet, SnippetType
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionModel
 from repositories.workflow.definition_repository import workflow_snapshot
-from services.snippet_generate_service import SnippetGenerateService
+from services.snippet_generate_service import SnippetGenerateService, _SnippetAsApp
+from services.snippet_service import SnippetService
 from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.adapters.node_factory import DifyNodeFactory
+from services.workflow.execution.adapters.workflow.app_generator import WorkflowAppGenerator
 from services.workflow.execution.ports import WorkflowRuntime
 from services.workflow.variable_contracts import WorkflowExecutionVariables
 from services.workflow_service import WorkflowService
@@ -589,3 +591,54 @@ def test_generate_single_loop_raises_when_draft_workflow_missing(
             node_id="loop-1",
             args={"inputs": {}},
         )
+
+
+def test_snippet_as_app_has_no_app_tracing() -> None:
+    # WorkflowAppGenerator reads app_model.tracing to build the trace scope.
+    app = _SnippetAsApp(_snippet())
+
+    assert app.id == "snippet-1"
+    assert app.tracing is None
+
+
+def test_run_published_loads_requested_workflow_snapshot(
+    monkeypatch: pytest.MonkeyPatch, unbound_session_factory: sessionmaker[Session]
+):
+    workflow = _workflow({"nodes": [{"id": "llm-1", "data": {"type": "llm"}}], "edges": []})
+    snippet = _snippet()
+    user = _account()
+    snapshot_calls: list[tuple[CustomizedSnippet, str]] = []
+    generate_kwargs: dict[str, object] = {}
+
+    def get_published_workflow_by_id(_self: SnippetService, current_snippet: CustomizedSnippet, workflow_id: str):
+        snapshot_calls.append((current_snippet, workflow_id))
+        return workflow
+
+    def unexpected_published_workflow(_self: SnippetService, _snippet: CustomizedSnippet):
+        raise AssertionError("A pinned run must not load the latest published workflow")
+
+    def generate(_self: WorkflowAppGenerator, **kwargs: object):
+        generate_kwargs.update(kwargs)
+        return {"data": {"outputs": {"answer": "ok"}}}
+
+    monkeypatch.setattr(SnippetService, "get_published_workflow_by_id", get_published_workflow_by_id)
+    monkeypatch.setattr(SnippetService, "get_published_workflow", unexpected_published_workflow)
+    monkeypatch.setattr(
+        SnippetGenerateService, "_ensure_start_node", classmethod(lambda _cls, current, _snippet: current)
+    )
+    monkeypatch.setattr(WorkflowAppGenerator, "generate", generate)
+
+    SnippetGenerateService.run_published(
+        snippet=snippet,
+        user=user,
+        args={"inputs": {"query": "hello"}},
+        invoke_from="service-api",
+        workflow_id="workflow-version-7",
+        task_id="evaluation-task-1",
+        capture_agent_evaluation_trace=True,
+        session_maker=unbound_session_factory,
+    )
+
+    assert snapshot_calls == [(snippet, "workflow-version-7")]
+    assert generate_kwargs["task_id"] == "evaluation-task-1"
+    assert generate_kwargs["capture_agent_evaluation_trace"] is True

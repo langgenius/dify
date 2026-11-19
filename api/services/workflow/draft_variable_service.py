@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any, ClassVar, Protocol, override
 
 from configs import dify_config
-from core.trigger.constants import is_trigger_node_type
+from constants.trigger import is_trigger_node_type
 from core.workflow.system_variables import SystemVariableKey
 from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,

@@ -20,7 +20,7 @@ from models.api_based_extension import APIBasedExtensionPoint
 from models.model import App, AppMode
 from models.workflow_conversion import ConversionExtension
 from services.workflow import workflow_converter as converter_module
-from services.workflow.workflow_converter import WorkflowConverter
+from services.workflow.workflow_converter import WorkflowConverter, WorkflowGraph
 
 try:
     from graphon.enums import BuiltinNodeTypes
@@ -54,7 +54,7 @@ def _app_model(**kwargs: Any) -> App:
     return App(**defaults)
 
 
-def _build_start_graph() -> dict[str, Any]:
+def _build_start_graph() -> WorkflowGraph:
     return {
         "nodes": [
             {

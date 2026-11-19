@@ -7,6 +7,7 @@ from flask import request
 from pydantic import BaseModel, Field, RootModel, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import HTTPException
 
 import services
 from controllers.common.errors import (
@@ -330,6 +331,11 @@ class PipelineRunApi(DatasetApiResource):
 
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
+        except (ValueError, HTTPException):
+            # Invalid caller input (missing or malformed pipeline variables, unknown start node,
+            # plan limits) and already-mapped HTTP errors keep their own status code. The shared
+            # error handler turns ValueError into a 400 carrying the original message.
+            raise
         except Exception as ex:
             raise PipelineRunError(description=str(ex)) from ex
 

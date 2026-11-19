@@ -20,11 +20,13 @@ def prepare_pipeline_document(
         case DatasourceProviderType.LOCAL_FILE | DatasourceProviderType.ONLINE_DRIVE:
             name = datasource_info.get("name", "untitled")
         case DatasourceProviderType.ONLINE_DOCUMENT:
-            name = datasource_info.get("page", {}).get("page_name", "untitled")
+            name = (datasource_info.get("page") or {}).get("page_name", "untitled")
         case DatasourceProviderType.WEBSITE_CRAWL:
-            name = datasource_info.get("title", "untitled")
+            name = datasource_info.get("title") or datasource_info.get("source_url")
         case _:
             raise ValueError(f"Unsupported datasource type: {datasource_type}")
+    name = name.strip()[:255] if isinstance(name, str) else ""
+    name = name or "untitled"
     metadata: dict[str, Any] = {}
     if built_in_field_enabled:
         now = naive_utc_now()
