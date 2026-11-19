@@ -37,7 +37,6 @@ export type IpPolicyDialogSubmit = {
 }
 
 type IpPolicyFormProps = {
-  analyticsSession?: IpPolicyFormSession
   mode: 'create' | 'edit' | 'view'
   currentIp?: string
   initialName?: string
@@ -45,23 +44,32 @@ type IpPolicyFormProps = {
   usedByCount?: number
   referencedApps?: NetworkAccessGroupResponse['apps']
   isPending?: boolean
+  dismissDisabled?: boolean
   recoveryError?: boolean
   onRetryRecovery?: () => void
+  onValidateEntries?: (entries: readonly string[]) => void
   onSubmit?: (payload: IpPolicyDialogSubmit) => void
 }
 
 export function IpPolicyDialog({
   open,
   onOpenChange,
+  analyticsSession,
   ...formProps
-}: IpPolicyFormProps & {
+}: Omit<IpPolicyFormProps, 'onValidateEntries'> & {
+  analyticsSession?: IpPolicyFormSession
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <IpPolicyDialogContent>
-        <IpPolicyForm {...formProps} />
+        <IpPolicyForm
+          {...formProps}
+          onValidateEntries={(entries) => {
+            if (analyticsSession) recordPolicyValidation(analyticsSession, entries)
+          }}
+        />
       </IpPolicyDialogContent>
     </Dialog>
   )
@@ -88,7 +96,6 @@ function RecoveryErrorMessage() {
 }
 
 export function IpPolicyForm({
-  analyticsSession,
   mode,
   currentIp,
   initialName = '',
@@ -96,8 +103,10 @@ export function IpPolicyForm({
   usedByCount = 0,
   referencedApps = [],
   isPending = false,
+  dismissDisabled = false,
   recoveryError = false,
   onRetryRecovery,
+  onValidateEntries,
   onSubmit,
 }: IpPolicyFormProps) {
   const { t } = useTranslation(['common'])
@@ -143,7 +152,10 @@ export function IpPolicyForm({
             ? t(($) => $['settings.ipPolicyViewDescription'], { ns: 'common' })
             : t(($) => $['settings.ipPolicyDialogDescription'], { ns: 'common' })}
         </DialogDescription>
-        <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        <DialogHeaderCloseButton
+          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+          disabled={dismissDisabled}
+        />
       </DialogHeader>
 
       {mode === 'view' ? (
@@ -180,7 +192,7 @@ export function IpPolicyForm({
             </dl>
           </DialogBody>
           <DialogFooter>
-            <DialogClose render={<Button variant="secondary" />}>
+            <DialogClose disabled={dismissDisabled} render={<Button variant="secondary" />}>
               {t(($) => $['operation.close'], { ns: 'common' })}
             </DialogClose>
           </DialogFooter>
@@ -222,11 +234,7 @@ export function IpPolicyForm({
                   void currentIpQuery.refetch()
                 }}
                 onEntriesChange={(nextEntries) => {
-                  if (analyticsSession)
-                    recordPolicyValidation(
-                      analyticsSession,
-                      nextEntries.map((entry) => entry.value),
-                    )
+                  onValidateEntries?.(nextEntries.map((entry) => entry.value))
                   setEntries(nextEntries)
                 }}
               />
@@ -258,7 +266,10 @@ export function IpPolicyForm({
             </div>
           </DialogBody>
           <DialogFooter>
-            <DialogClose render={<Button type="button" variant="secondary" />}>
+            <DialogClose
+              disabled={dismissDisabled}
+              render={<Button type="button" variant="secondary" />}
+            >
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </DialogClose>
             <Button

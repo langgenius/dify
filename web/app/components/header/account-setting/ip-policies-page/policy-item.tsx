@@ -1,6 +1,9 @@
 'use client'
 
 import type { NetworkAccessGroupResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { DialogHandle } from '@langgenius/dify-ui/dialog'
+import type { PolicyDialogPayload } from './policy-dialog-payload'
+import type { IpPolicyFormContext } from '@/features/network-access/analytics'
 import {
   AlertDialog,
   AlertDialogBody,
@@ -11,8 +14,10 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  createAlertDialogHandle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
+import { DialogClose, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -34,16 +39,15 @@ export const policyActionsColClassName = 'flex w-8 shrink-0 items-center justify
 type PolicyItemProps = {
   group: NetworkAccessGroupResponse
   canMutate: boolean
-  onView: (group: NetworkAccessGroupResponse, trigger: HTMLElement) => void
-  onEdit: (group: NetworkAccessGroupResponse, trigger: HTMLElement) => void
+  policyDialog: DialogHandle<PolicyDialogPayload>
+  onFormOpen: (context: IpPolicyFormContext) => void
 }
 
-export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps) {
+export function PolicyItem({ group, canMutate, policyDialog, onFormOpen }: PolicyItemProps) {
   const { t } = useTranslation(['common'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const menuButtonRef = useRef<HTMLButtonElement>(null)
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleteDialog] = useState(() => createAlertDialogHandle())
   const deleteGroup = useMutation(
     consoleQuery.workspaces.current.networkAccessGroups.byGroupId.delete.mutationOptions(),
   )
@@ -59,7 +63,7 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
           })
 
   const handleDelete = () => {
-    if (!canMutate || deleteGroup.isPending) return
+    if (!deleteDialog.isOpen || !canMutate || deleteGroup.isPending) return
     trackNetworkAccessEvent('ip_policy_interaction', {
       action: 'delete_confirmed',
       policy_id: group.id,
@@ -73,7 +77,7 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
       },
       {
         onSuccess: () => {
-          setConfirmDelete(false)
+          deleteDialog.close()
         },
       },
     )
@@ -86,16 +90,27 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
     >
       <div role="cell" className="flex min-w-0 flex-1">
         {/* Extend the name button's hit area across the row without nesting the actions. */}
-        <Button
-          variant="ghost"
-          className="h-auto w-full min-w-0 justify-start gap-0 overflow-visible rounded-none p-0 text-start after:absolute after:inset-0 hover:bg-transparent"
-          aria-haspopup="dialog"
-          onClick={(event) => onView(group, event.currentTarget)}
+        <DialogTrigger
+          handle={policyDialog}
+          payload={{ mode: canMutate ? 'edit' : 'view', group }}
+          onClick={() =>
+            onFormOpen({
+              mode: canMutate ? 'edit' : 'view',
+              source: 'list_row',
+              policy_id: group.id,
+            })
+          }
+          render={
+            <Button
+              variant="ghost"
+              className="h-auto w-full min-w-0 justify-start gap-0 overflow-visible rounded-none p-0 text-start after:absolute after:inset-0 hover:bg-transparent"
+            />
+          }
         >
           <span className={`${policyNameColClassName} system-sm-medium text-text-secondary`}>
             {group.name}
           </span>
-        </Button>
+        </DialogTrigger>
       </div>
       <div
         role="cell"
@@ -117,7 +132,7 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
       </div>
       <div role="cell" className={`${policyActionsColClassName} pointer-events-none relative`}>
         {canMutate && (
-          <Menu open={menuOpen} onOpenChange={setMenuOpen}>
+          <Menu>
             <Tooltip>
               <TooltipTrigger
                 render={
@@ -147,8 +162,13 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
                 disabled={!canMutate}
                 className="system-sm-semibold text-text-secondary"
                 onClick={() => {
-                  if (!canMutate) return
-                  if (menuButtonRef.current) onEdit(group, menuButtonRef.current)
+                  if (!canMutate || !menuButtonRef.current) return
+                  onFormOpen({ mode: 'edit', source: 'list_row_menu', policy_id: group.id })
+                  policyDialog.openWithPayload({
+                    mode: 'edit',
+                    group,
+                    opener: menuButtonRef.current,
+                  })
                 }}
               >
                 {t(($) => $['operation.edit'], { ns: 'common' })}
@@ -160,12 +180,11 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
                 className="system-sm-semibold"
                 onClick={() => {
                   if (!canMutate) return
-                  setConfirmDelete(true)
+                  deleteDialog.open(null)
                   trackNetworkAccessEvent('ip_policy_interaction', {
                     action: 'delete_attempted',
                     policy_id: group.id,
                   })
-                  setMenuOpen(false)
                 }}
               >
                 {t(($) => $['operation.delete'], { ns: 'common' })}
@@ -174,76 +193,86 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
           </Menu>
         )}
       </div>
-      <AlertDialog
-        open={confirmDelete && canMutate}
-        onOpenChange={(open) => {
-          if (!deleteGroup.isPending) setConfirmDelete(open)
-        }}
-      >
-        <AlertDialogContent backdropProps={{ forceRender: true }} className="w-120">
-          <AlertDialogHeader>
-            <div className="flex items-start gap-4">
-              <div className="min-w-0 flex-1">
-                <AlertDialogTitle>
-                  {t(($) => $['settings.ipPolicyDeleteConfirm'], {
-                    ns: 'common',
-                    name: group.name,
-                  })}
-                </AlertDialogTitle>
+      {canMutate && (
+        <AlertDialog
+          handle={deleteDialog}
+          onOpenChange={(open, details) => {
+            if (!open && deleteGroup.isPending && details.reason !== 'imperative-action')
+              details.cancel()
+          }}
+        >
+          <AlertDialogContent
+            backdropProps={{ forceRender: true }}
+            className="w-120"
+            finalFocus={menuButtonRef}
+          >
+            <AlertDialogHeader>
+              <div className="flex items-start gap-4">
+                <div className="min-w-0 flex-1">
+                  <AlertDialogTitle>
+                    {t(($) => $['settings.ipPolicyDeleteConfirm'], {
+                      ns: 'common',
+                      name: group.name,
+                    })}
+                  </AlertDialogTitle>
+                </div>
+                <DialogClose
+                  disabled={deleteGroup.isPending}
+                  render={
+                    <IconButton
+                      size="lg"
+                      aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                    >
+                      <span aria-hidden className="i-ri-close-line size-4" />
+                    </IconButton>
+                  }
+                />
               </div>
-              <IconButton
-                size="lg"
-                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              <AlertDialogDescription>
+                {isBound
+                  ? t(($) => $['settings.ipPolicyDeleteBoundDescription'], { ns: 'common' })
+                  : t(($) => $['settings.ipPolicyDeleteDescription'], { ns: 'common' })}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            {isBound && (
+              <AlertDialogBody>
+                <div className="flex flex-col gap-3">
+                  <p className="system-sm-medium text-text-secondary">
+                    {t(($) => $['settings.ipPolicyUsedBy'], {
+                      ns: 'common',
+                      count: group.used_by_count,
+                    })}
+                  </p>
+                  {group.apps.length > 0 && (
+                    <PolicyReferencedApps apps={group.apps} usedByCount={group.used_by_count} />
+                  )}
+                </div>
+              </AlertDialogBody>
+            )}
+            <AlertDialogFooter>
+              <AlertDialogCancelButton
+                variant="secondary"
                 disabled={deleteGroup.isPending}
-                onClick={() => setConfirmDelete(false)}
+                onClick={() =>
+                  trackNetworkAccessEvent('ip_policy_interaction', {
+                    action: 'delete_cancelled',
+                    policy_id: group.id,
+                  })
+                }
               >
-                <span aria-hidden className="i-ri-close-line size-4" />
-              </IconButton>
-            </div>
-            <AlertDialogDescription>
-              {isBound
-                ? t(($) => $['settings.ipPolicyDeleteBoundDescription'], { ns: 'common' })
-                : t(($) => $['settings.ipPolicyDeleteDescription'], { ns: 'common' })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          {isBound && (
-            <AlertDialogBody>
-              <div className="flex flex-col gap-3">
-                <p className="system-sm-medium text-text-secondary">
-                  {t(($) => $['settings.ipPolicyUsedBy'], {
-                    ns: 'common',
-                    count: group.used_by_count,
-                  })}
-                </p>
-                {group.apps.length > 0 && (
-                  <PolicyReferencedApps apps={group.apps} usedByCount={group.used_by_count} />
-                )}
-              </div>
-            </AlertDialogBody>
-          )}
-          <AlertDialogFooter>
-            <AlertDialogCancelButton
-              variant="secondary"
-              disabled={deleteGroup.isPending}
-              onClick={() =>
-                trackNetworkAccessEvent('ip_policy_interaction', {
-                  action: 'delete_cancelled',
-                  policy_id: group.id,
-                })
-              }
-            >
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </AlertDialogCancelButton>
-            <AlertDialogConfirmButton
-              disabled={!canMutate}
-              loading={deleteGroup.isPending}
-              onClick={handleDelete}
-            >
-              {t(($) => $['operation.delete'], { ns: 'common' })}
-            </AlertDialogConfirmButton>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+                {t(($) => $['operation.cancel'], { ns: 'common' })}
+              </AlertDialogCancelButton>
+              <AlertDialogConfirmButton
+                disabled={!canMutate}
+                loading={deleteGroup.isPending}
+                onClick={handleDelete}
+              >
+                {t(($) => $['operation.delete'], { ns: 'common' })}
+              </AlertDialogConfirmButton>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   )
 }

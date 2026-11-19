@@ -139,6 +139,7 @@ describe('Settings content loading', () => {
   })
 
   it('loads the IP Policies deep link without waiting for unrelated copy or flashing a create button', async () => {
+    vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
     const { finishLoading } = deferNamespace('deployments')
     const groups = createDeferred<NetworkAccessGroupListResponse>()
     mocks.loadGroups.mockReturnValue(groups.promise)
@@ -166,8 +167,12 @@ describe('Settings content loading', () => {
       await create.click()
       const editor = page.getByRole('dialog', { name: 'New IP Policy' })
       const name = editor.getByRole('textbox', { name: 'Name', exact: true })
+      await editor.getByPlaceholder('10.0.0.0/8').fill('10.0.0.0/8')
       await name.fill('Unsaved office network')
-      await userEvent.keyboard('{Escape}')
+      await expect
+        .element(editor.getByRole('button', { name: 'Create', exact: true }))
+        .toBeEnabled()
+      await userEvent.keyboard('{Escape}{Enter}')
       await expect.element(editor).not.toBeInTheDocument()
       await expect.element(create).toHaveFocus()
       await userEvent.keyboard('{Enter}')

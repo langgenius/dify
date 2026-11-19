@@ -169,6 +169,23 @@ it('keeps policy data readable and keyboard scrollable inside Settings at 320 px
   }
 })
 
+it('returns focus to the row menu button after editing from the menu', async () => {
+  vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
+  try {
+    const { screen } = await renderPoliciesSettings(1000)
+    const more = screen.getByRole('button', { name: 'More actions for Internal Network' })
+    await more.click()
+    await screen.getByRole('menuitem', { name: 'Edit', exact: true }).click()
+    const editor = screen.getByRole('dialog', { name: 'Edit IP Policy' })
+    await expect.element(editor.getByRole('button', { name: 'Close', exact: true })).toHaveFocus()
+    await expect.element(screen.getByRole('menu')).not.toBeInTheDocument()
+    await userEvent.keyboard('{Escape}')
+    await expect.element(more).toHaveFocus()
+  } finally {
+    vi.unstubAllGlobals()
+  }
+})
+
 it('keeps Add clear of Settings Close at 320 px and preserves the desktop action order', async () => {
   // Real hit testing catches the global Close overlay; the desktop order must survive reflow.
   const { screen, queryClient } = await renderPoliciesSettings()
