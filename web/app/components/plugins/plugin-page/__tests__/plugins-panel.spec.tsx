@@ -35,9 +35,6 @@ vi.mock('../../hooks', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../hooks')>()),
   usePluginsWithLatestVersion: (plugins: PluginDetail[] = []) => plugins,
 }))
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({ setShowUpdatePluginModal: vi.fn() }),
-}))
 vi.mock('@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list', () => ({
   default: () => ({ refreshPluginList: vi.fn() }),
 }))

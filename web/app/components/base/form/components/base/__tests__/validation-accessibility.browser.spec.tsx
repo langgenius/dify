@@ -1,16 +1,19 @@
+import type { ReactElement } from 'react'
 import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
 import { createRef } from 'react'
 import { page } from 'vite-plus/test/browser'
-import { render } from 'vitest-browser-react'
+import { render as renderBrowser } from 'vitest-browser-react'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import BaseForm from '../base-form'
 
-vi.mock('@/service/use-triggers', () => ({
-  useTriggerPluginDynamicOptions: () => ({ data: undefined, isLoading: false, error: null }),
-}))
+const render = (ui: ReactElement) => {
+  const { wrapper: Providers } = createConsoleQueryWrapper()
+  return renderBrowser(<Providers>{ui}</Providers>)
+}
 
 const requiredSchema = (label: string): FormSchema => ({
   name: 'token',

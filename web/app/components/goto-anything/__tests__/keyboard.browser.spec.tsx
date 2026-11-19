@@ -21,20 +21,16 @@ const api = vi.hoisted(() => ({
   install: vi.fn<typeof consoleClient.workspaces.current.plugin.install.marketplace.post>(),
   push: vi.fn(),
   refresh: vi.fn(),
-  setLocale: vi.fn<(locale: string) => Promise<void>>(),
-  agentEnabled: true,
   pathname: '/',
 }))
+// boundary: Next's app router is unavailable in the standalone Vitest browser page.
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
   useRouter: () => ({ push: api.push, refresh: api.refresh }),
   usePathname: () => api.pathname,
   useParams: () => ({}),
 }))
-vi.mock('@/i18n/client', () => ({ setLocaleOnClient: api.setLocale }))
-vi.mock('@/features/agent-v2/feature-flag', () => ({
-  isAgentV2Enabled: () => api.agentEnabled,
-}))
+// boundary: search-result reads and plugin installation stop at the generated console transport.
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses, withConsoleClientResponses } =
@@ -67,6 +63,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
   }
 })
+// boundary: marketplace discovery is an external HTTP service below the palette owner.
 vi.mock('@/service/marketplace', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/marketplace')>()
   return {

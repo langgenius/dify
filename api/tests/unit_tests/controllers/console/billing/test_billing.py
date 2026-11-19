@@ -8,6 +8,7 @@ from flask import Flask
 
 from controllers.console.billing.billing import Invoices, Subscription, SubscriptionQuery
 from controllers.console.billing.error import (
+    AnnualDiscountActiveError,
     BillingOperationFailedError,
     BillingUnavailableError,
 )
@@ -131,6 +132,12 @@ class TestBillingPortal:
         ("error", "expected"),
         [
             (
+                billing.BillingSubscriptionUpstreamInvalidResponseError(
+                    status_code=409, reason="ANNUAL_DISCOUNT_ACTIVE"
+                ),
+                AnnualDiscountActiveError,
+            ),
+            (
                 billing.BillingSubscriptionUpstreamInvalidResponseError(status_code=400, reason="MISSING_PLAN"),
                 BillingOperationFailedError,
             ),
@@ -160,7 +167,7 @@ class TestBillingPortal:
             (billing.BillingSubscriptionUpstreamUnavailableError(), BillingUnavailableError),
         ],
     )
-    def test_get_subscription_maps_every_reason_to_a_generic_billing_error(
+    def test_get_subscription_maps_upstream_errors(
         self,
         app: Flask,
         request_context: RequestContext,

@@ -58,7 +58,7 @@ const List = ({
   const isPartialLoading = isLoading && fileList.length > 0
   const isEmptyFolder = !isLoading && fileList.length === 0 && keywords.length === 0
   const isSearchResultEmpty = !isLoading && fileList.length === 0 && keywords.length > 0
-  const selectedFileId = selectedFileIds[0]
+  const selectedFileId = selectedFileIds[0] ?? ''
   const handleRadioChange = (fileId: string) => {
     const selectedFile = fileList.find((file) => file.id === fileId)
     if (selectedFile) handleSelectFile(selectedFile)

@@ -22,6 +22,7 @@ import { BlockEnum } from '../../types'
 import { createChannelsQueryClient } from '../human-input-v2/__tests__/channel-fixtures'
 import Panel from '../panel'
 
+// boundary: enable the build-time IM delivery flag.
 vi.mock('@/config', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/config')>()),
   ENABLE_HITL_IM: true,
