@@ -1,4 +1,8 @@
-import type { KnowledgeFsBackgroundTaskResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type {
+  KnowledgeFsBackgroundTaskListResponse,
+  KnowledgeFsBackgroundTaskResponse,
+} from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { InfiniteData, QueryClient } from '@tanstack/react-query'
 import { skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithInfiniteQuery, atomWithQuery, queryClientAtom } from 'jotai-tanstack-query'
@@ -29,12 +33,12 @@ function isFirstSourceTask(task: KnowledgeFsBackgroundTaskResponse) {
   )
 }
 
-const backgroundTasksQueryAtom = atomWithInfiniteQuery((get) =>
+const backgroundTasksQueryOptions = (controlSpaceId: string) =>
   consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.infiniteOptions({
     getNextPageParam: (lastPage) => lastPage.next_cursor,
     initialPageParam: null as string | null,
     input: (pageParam) => ({
-      params: { control_space_id: get(overviewKnowledgeSpaceIdAtom) },
+      params: { control_space_id: controlSpaceId },
       query: {
         ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
         limit: TASK_PAGE_SIZE,
@@ -46,8 +50,27 @@ const backgroundTasksQueryAtom = atomWithInfiniteQuery((get) =>
       )
         ? OVERVIEW_REFRESH_INTERVAL
         : false,
-  }),
+  })
+const backgroundTasksQueryAtom = atomWithInfiniteQuery((get) =>
+  backgroundTasksQueryOptions(get(overviewKnowledgeSpaceIdAtom)),
 )
+
+function overviewTaskState(queryClient: QueryClient, controlSpaceId: string) {
+  // Read the cache at interval time because the task observer can replay an older result.
+  const queryKey = backgroundTasksQueryOptions(controlSpaceId).queryKey
+  const tasks =
+    queryClient
+      .getQueryData<InfiniteData<KnowledgeFsBackgroundTaskListResponse>>(queryKey)
+      ?.pages.flatMap((page) => page.data) ?? []
+  return {
+    hasActiveTasks: tasks.some((task) => ACTIVE_TASK_STATES.has(task.state)),
+    latestTaskUpdatedAt: tasks.reduce<number | undefined>((latest, task) => {
+      const updatedAt = Date.parse(task.updated_at)
+      if (!Number.isFinite(updatedAt)) return latest
+      return latest === undefined || updatedAt > latest ? updatedAt : latest
+    }, undefined),
+  }
+}
 
 const backgroundTasksQueryDataAtom = selectAtom(backgroundTasksQueryAtom, (query) => query.data)
 const backgroundTasksRefetchAtom = selectAtom(backgroundTasksQueryAtom, (query) => query.refetch)
@@ -56,7 +79,7 @@ const backgroundTasksPendingAtom = selectAtom(backgroundTasksQueryAtom, (query) 
 const backgroundTasksAtom = atom(
   (get) => get(backgroundTasksQueryDataAtom)?.pages.flatMap((page) => page.data) ?? [],
 )
-const overviewHasActiveTasksAtom = atom((get) =>
+export const overviewHasActiveTasksAtom = atom((get) =>
   get(backgroundTasksAtom).some((task) => ACTIVE_TASK_STATES.has(task.state)),
 )
 // A stable completion token, not a copy of task state. It changes when a terminal task is
@@ -67,13 +90,6 @@ export const overviewTerminalTasksVersionAtom = atom((get) =>
     .map((task) => `${task.task_kind}:${task.id}:${task.state}:${task.updated_at}`)
     .sort()
     .join('|'),
-)
-const latestTaskUpdatedAtAtom = atom((get) =>
-  get(backgroundTasksAtom).reduce<number | undefined>((latest, task) => {
-    const updatedAt = Date.parse(task.updated_at)
-    if (!Number.isFinite(updatedAt)) return latest
-    return latest === undefined || updatedAt > latest ? updatedAt : latest
-  }, undefined),
 )
 export const overviewIndexingTaskAtom = atom((get) =>
   get(backgroundTasksAtom).find(
@@ -87,56 +103,93 @@ export const overviewFailedFirstSourceTaskAtom = atom((get) => {
   return latestTask?.state === 'failed' ? latestTask : undefined
 })
 
-const statsQueryAtom = atomWithQuery((get) =>
-  consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.stats.get.queryOptions({
+const statsQueryAtom = atomWithQuery((get) => {
+  const queryClient = get(queryClientAtom)
+  const controlSpaceId = get(overviewKnowledgeSpaceIdAtom)
+  return consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.stats.get.queryOptions({
     input: {
-      params: { control_space_id: get(overviewKnowledgeSpaceIdAtom) },
+      params: { control_space_id: controlSpaceId },
       query: { window: get(overviewWindowAtom) },
     },
     refetchInterval: (query) =>
       overviewRefreshInterval({
         generatedAt: query.state.data?.generated_at,
-        hasActiveTasks: get(overviewHasActiveTasksAtom),
-        latestTaskUpdatedAt: get(latestTaskUpdatedAtAtom),
+        ...overviewTaskState(queryClient, controlSpaceId),
       }),
-  }),
-)
-export const overviewStatsDataAtom = selectAtom(statsQueryAtom, (query) => query.data)
+  })
+})
+const statsObservedDataAtom = selectAtom(statsQueryAtom, (query) => query.data)
+// Query observers can replay a pre-completion snapshot after the cache has advanced.
+export const overviewStatsDataAtom = atom((get) => {
+  const observed = get(statsObservedDataAtom)
+  const input = {
+    params: { control_space_id: get(overviewKnowledgeSpaceIdAtom) },
+    query: { window: get(overviewWindowAtom) },
+  }
+  const queryKey = consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.stats.get.queryOptions(
+    { input },
+  ).queryKey
+  const cached = get(queryClientAtom).getQueryData<typeof observed>(queryKey)
+  return cached ?? observed
+})
 export const overviewStatsPendingAtom = selectAtom(statsQueryAtom, (query) => query.isPending)
 const statsErrorAtom = selectAtom(statsQueryAtom, (query) => query.isError)
 const statsRefetchAtom = selectAtom(statsQueryAtom, (query) => query.refetch)
 
-const outcomesQueryAtom = atomWithQuery((get) =>
-  consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.queryOutcomes.get.queryOptions({
+const outcomesQueryAtom = atomWithQuery((get) => {
+  const queryClient = get(queryClientAtom)
+  const controlSpaceId = get(overviewKnowledgeSpaceIdAtom)
+  return consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.queryOutcomes.get.queryOptions({
     input: {
-      params: { control_space_id: get(overviewKnowledgeSpaceIdAtom) },
+      params: { control_space_id: controlSpaceId },
       query: { window: get(overviewWindowAtom) },
     },
     refetchInterval: (query) =>
       overviewRefreshInterval({
         generatedAt: query.state.data?.generated_at,
-        hasActiveTasks: get(overviewHasActiveTasksAtom),
-        latestTaskUpdatedAt: get(latestTaskUpdatedAtAtom),
+        ...overviewTaskState(queryClient, controlSpaceId),
       }),
-  }),
-)
-export const overviewOutcomesDataAtom = selectAtom(outcomesQueryAtom, (query) => query.data)
+  })
+})
+const outcomesObservedDataAtom = selectAtom(outcomesQueryAtom, (query) => query.data)
+export const overviewOutcomesDataAtom = atom((get) => {
+  const observed = get(outcomesObservedDataAtom)
+  const input = {
+    params: { control_space_id: get(overviewKnowledgeSpaceIdAtom) },
+    query: { window: get(overviewWindowAtom) },
+  }
+  const queryKey =
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.queryOutcomes.get.queryOptions({
+      input,
+    }).queryKey
+  return get(queryClientAtom).getQueryData<typeof observed>(queryKey) ?? observed
+})
 export const overviewOutcomesPendingAtom = selectAtom(outcomesQueryAtom, (query) => query.isPending)
 export const overviewOutcomesErrorAtom = selectAtom(outcomesQueryAtom, (query) => query.isError)
 const outcomesRefetchAtom = selectAtom(outcomesQueryAtom, (query) => query.refetch)
 
-const inventoryQueryAtom = atomWithQuery((get) =>
-  consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.inventory.get.queryOptions({
-    input: { params: { control_space_id: get(overviewKnowledgeSpaceIdAtom) } },
+const inventoryQueryAtom = atomWithQuery((get) => {
+  const queryClient = get(queryClientAtom)
+  const controlSpaceId = get(overviewKnowledgeSpaceIdAtom)
+  return consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.inventory.get.queryOptions({
+    input: { params: { control_space_id: controlSpaceId } },
     refetchInterval: (query) =>
       overviewRefreshInterval({
         generatedAt: query.state.data?.generated_at,
-        hasActiveTasks: get(overviewHasActiveTasksAtom),
-        latestTaskUpdatedAt: get(latestTaskUpdatedAtAtom),
+        ...overviewTaskState(queryClient, controlSpaceId),
       }),
-  }),
-)
-export const overviewInventoryDataAtom = selectAtom(inventoryQueryAtom, (query) => query.data)
+  })
+})
+const inventoryObservedDataAtom = selectAtom(inventoryQueryAtom, (query) => query.data)
+export const overviewInventoryDataAtom = atom((get) => {
+  const observed = get(inventoryObservedDataAtom)
+  const input = { params: { control_space_id: get(overviewKnowledgeSpaceIdAtom) } }
+  const queryKey =
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.inventory.get.queryOptions({
+      input,
+    }).queryKey
+  return get(queryClientAtom).getQueryData<typeof observed>(queryKey) ?? observed
+})
 export const overviewInventoryPendingAtom = selectAtom(
   inventoryQueryAtom,
   (query) => query.isPending,
@@ -144,15 +197,20 @@ export const overviewInventoryPendingAtom = selectAtom(
 export const overviewInventoryErrorAtom = selectAtom(inventoryQueryAtom, (query) => query.isError)
 const inventoryRefetchAtom = selectAtom(inventoryQueryAtom, (query) => query.refetch)
 
-const attentionQueryAtom = atomWithQuery((get) =>
-  consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.attention.get.queryOptions({
+const attentionQueryAtom = atomWithQuery((get) => {
+  const queryClient = get(queryClientAtom)
+  const controlSpaceId = get(overviewKnowledgeSpaceIdAtom)
+  return consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.attention.get.queryOptions({
     input: {
-      params: { control_space_id: get(overviewKnowledgeSpaceIdAtom) },
+      params: { control_space_id: controlSpaceId },
       query: { include_dismissed: false, limit: 100 },
     },
-    refetchInterval: get(overviewHasActiveTasksAtom) ? OVERVIEW_REFRESH_INTERVAL : false,
-  }),
-)
+    refetchInterval: () =>
+      overviewTaskState(queryClient, controlSpaceId).hasActiveTasks
+        ? OVERVIEW_REFRESH_INTERVAL
+        : false,
+  })
+})
 export const overviewAttentionDataAtom = selectAtom(
   attentionQueryAtom,
   (query) => query.data?.data ?? [],
@@ -180,10 +238,12 @@ const indexingSourceQueryAtom = atomWithQuery((get) => {
 export const overviewIndexingSourceNameAtom = atom((get) => get(indexingSourceQueryAtom).data?.name)
 const indexingSourcePendingAtom = selectAtom(indexingSourceQueryAtom, (query) => query.isPending)
 
-const activityPreviewQueryAtom = atomWithQuery((get) =>
-  consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.activity.get.queryOptions({
+const activityPreviewQueryAtom = atomWithQuery((get) => {
+  const queryClient = get(queryClientAtom)
+  const controlSpaceId = get(overviewKnowledgeSpaceIdAtom)
+  return consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.activity.get.queryOptions({
     input: {
-      params: { control_space_id: get(overviewKnowledgeSpaceIdAtom) },
+      params: { control_space_id: controlSpaceId },
       query: {
         limit: ACTIVITY_PREVIEW_PAGE_SIZE,
         ...(get(deploymentEditionAtom) === 'CLOUD'
@@ -191,9 +251,12 @@ const activityPreviewQueryAtom = atomWithQuery((get) =>
           : {}),
       },
     },
-    refetchInterval: get(overviewHasActiveTasksAtom) ? OVERVIEW_REFRESH_INTERVAL : false,
-  }),
-)
+    refetchInterval: () =>
+      overviewTaskState(queryClient, controlSpaceId).hasActiveTasks
+        ? OVERVIEW_REFRESH_INTERVAL
+        : false,
+  })
+})
 export const overviewActivityPreviewDataAtom = selectAtom(
   activityPreviewQueryAtom,
   (query) => query.data?.data ?? [],
@@ -260,6 +323,17 @@ export const retryOverviewSnapshotsAtom = atom(null, (get) => {
     get(inventoryRefetchAtom)(),
     get(attentionRefetchAtom)(),
     get(backgroundTasksRefetchAtom)(),
+  ])
+})
+export const resumeOverviewPollingAtom = atom(null, (get) => {
+  const queryClient = get(queryClientAtom)
+  if (!overviewTaskState(queryClient, get(overviewKnowledgeSpaceIdAtom)).hasActiveTasks) return
+  void Promise.allSettled([
+    get(statsRefetchAtom)(),
+    get(outcomesRefetchAtom)(),
+    get(inventoryRefetchAtom)(),
+    get(attentionRefetchAtom)(),
+    get(activityPreviewRefetchAtom)(),
   ])
 })
 export const reconcileOverviewAfterTasksAtom = atom(null, async (get) => {
