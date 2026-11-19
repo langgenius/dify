@@ -190,7 +190,7 @@ describe('Settings content loading', () => {
       await expect
         .element(editor.getByRole('button', { name: 'Create', exact: true }))
         .toBeEnabled()
-      await userEvent.keyboard('{Escape}{Enter}')
+      await userEvent.keyboard('{Escape}')
       await expect.element(editor).not.toBeInTheDocument()
       await expect.element(create).toHaveFocus()
       expect(mocks.createPolicy).not.toHaveBeenCalled()
