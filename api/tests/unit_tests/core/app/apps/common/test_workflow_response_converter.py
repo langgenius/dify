@@ -560,7 +560,10 @@ class TestWorkflowResponseConverterResumptionCases:
             execution_metadata=json.dumps({"tool_info": {"provider_type": provider_type, "provider_id": "provider-1"}}),
         )
         assert response is not None
+        from services.workflow.node_execution_extras import node_execution_extras
+
         assert response.data.extras == saved.extras
+        assert response.data.extras == node_execution_extras(saved, tool_providers=tool_providers)
         assert response.data.extras.get("workflow_tool", False) == (provider_type == "workflow")
 
     @staticmethod
