@@ -195,6 +195,9 @@ it('locks a pending verification and displays a generic HTTP400 without inventin
   )
   await expect
     .element(dialog().getByRole('alert'))
+    .toMatchTextContent('Could not verify the connection.')
+  await expect
+    .element(dialog().getByRole('alert'))
     .toMatchTextContent('Could not verify this connection.')
   await expect.element(endpoint()).toHaveValue('https://agents.example.test/contract')
   await expect
@@ -229,7 +232,10 @@ it.each([
     await setup()
     await endpoint().fill('https://agents.example.test/contract')
     await verify().click()
-    await expect.element(dialog().getByRole('alert')).toHaveTextContent(explanation)
+    await expect
+      .element(dialog().getByRole('alert'))
+      .toMatchTextContent('Could not verify the connection.')
+    await expect.element(dialog().getByRole('alert')).toMatchTextContent(explanation)
     expect(requests.create).not.toHaveBeenCalled()
     await verify().click()
     await expect.element(description()).toBeVisible()

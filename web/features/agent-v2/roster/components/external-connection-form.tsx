@@ -3,7 +3,7 @@ import type {
   ExternalConnectionSettings,
   ExternalConnectionVerificationState,
 } from './external-connection-verification'
-import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Alert, AlertDescription, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import { DialogBody, DialogClose, DialogFooter } from '@langgenius/dify-ui/dialog'
 import {
@@ -33,6 +33,8 @@ import { ExternalConnectionSteps } from './external-connection-steps'
 
 type ExternalConnectionFormProps = {
   initialSettings: ExternalConnectionSettings
+  savedSettings?: Pick<ExternalConnectionSettings, 'endpoint' | 'authentication'>
+  endpointDescription?: string
   verification: ExternalConnectionVerificationState
   endpointRef: RefObject<HTMLInputElement | null>
   onVerify: (settings: ExternalConnectionSettings) => void
@@ -48,6 +50,8 @@ function focusEndpoint(input: HTMLInputElement | null) {
 
 export function ExternalConnectionForm({
   initialSettings,
+  savedSettings,
+  endpointDescription,
   verification,
   endpointRef,
   onVerify,
@@ -62,6 +66,11 @@ export function ExternalConnectionForm({
   const submitLabelId = useId()
   const pending = verification.status === 'verifying'
   const verified = verification.status === 'verified'
+  const changed =
+    !savedSettings ||
+    draft.endpoint.trim() !== savedSettings.endpoint.trim() ||
+    draft.authentication !== savedSettings.authentication ||
+    (draft.authentication === 'bearer' && draft.token !== '')
   const options = [
     { value: 'none', label: t(($) => $['external.connection.none']) },
     { value: 'bearer', label: t(($) => $['external.connection.bearerToken']) },
@@ -76,6 +85,17 @@ export function ExternalConnectionForm({
     unsupported_protocol: t(($) => $['external.connection.errors.unsupported']),
     invalid_agent_card: t(($) => $['external.connection.errors.invalidAgentCard']),
   }
+  const failureTitle = t(($) => $['external.connection.errors.unknown'])
+  const failureReason =
+    verification.status === 'failed'
+      ? verification.reason
+        ? verificationErrors[verification.reason]
+        : verification.message
+      : undefined
+  const genericFailure =
+    !failureReason ||
+    failureReason === failureTitle ||
+    /^could not verify the connection\.?$/i.test(failureReason.trim())
 
   function updateSetting<K extends keyof ExternalConnectionSettings>(
     name: K,
@@ -95,7 +115,7 @@ export function ExternalConnectionForm({
           onContinue()
           return
         }
-        if (!executionEnabled) return
+        if (!executionEnabled || !changed) return
         onVerify({
           endpoint: values.endpoint.trim(),
           authentication: draft.authentication,
@@ -130,6 +150,7 @@ export function ExternalConnectionForm({
             maxLength={4096}
             required
           />
+          {endpointDescription && <FieldDescription>{endpointDescription}</FieldDescription>}
           <FieldValidity>
             {({ validity, error }) => (
               <FieldError>
@@ -211,11 +232,14 @@ export function ExternalConnectionForm({
         )}
         {verification.status === 'failed' && (
           <Alert type="error">
-            <AlertTitle>
-              {verification.reason
-                ? verificationErrors[verification.reason]
-                : verification.message || t(($) => $['external.connection.errors.unknown'])}
-            </AlertTitle>
+            <AlertTitle>{failureTitle}</AlertTitle>
+            {(!savedSettings || !genericFailure) && (
+              <AlertDescription>
+                {genericFailure
+                  ? t(($) => $['external.connection.errors.changesKept'])
+                  : failureReason}
+              </AlertDescription>
+            )}
           </Alert>
         )}
         {verification.status === 'expired' && (
@@ -237,7 +261,7 @@ export function ExternalConnectionForm({
           type="submit"
           variant="primary"
           loading={pending}
-          disabled={!verified && !executionEnabled}
+          disabled={!verified && (!executionEnabled || !changed)}
           aria-labelledby={submitLabelId}
         >
           <span id={submitLabelId}>

@@ -77,15 +77,16 @@ function TestAgentSession({
   const isStopping = run?.status === 'stopping'
   const isInProgress = isRunning || isStopping
   const unknownRequest = testRun.requestUnknown
-  const filesBlockReason = isInProgress
-    ? undefined
-    : files.attachments.some((file) => file.state === 'error')
-      ? t(($) => $['external.overview.testRun.filesFailed'])
-      : files.attachments.some((file) => file.state === 'uploading')
-        ? t(($) => $['external.overview.testRun.filesUploading'])
-        : undefined
+  const filesBlockReason =
+    isInProgress || unknownRequest
+      ? undefined
+      : files.attachments.some((file) => file.state === 'error')
+        ? t(($) => $['external.overview.testRun.filesFailed'])
+        : files.attachments.some((file) => file.state === 'uploading')
+          ? t(($) => $['external.overview.testRun.filesUploading'])
+          : undefined
   const canRun =
-    executionEnabled && !isInProgress && !unknownRequest && files.ready && task.trim().length > 0
+    !isInProgress && (unknownRequest || (executionEnabled && files.ready && task.trim().length > 0))
 
   function updateTask(value: string) {
     onTaskChange(value)
@@ -158,6 +159,10 @@ function TestAgentSession({
           }}
           onFormSubmit={(values) => {
             if (!canRun) return
+            if (unknownRequest) {
+              testRun.recoverRequest()
+              return
+            }
             const leases = files.selectedLeaseIds()
             if (leases !== null) startRun(values.task, leases)
           }}
@@ -307,15 +312,7 @@ function TestAgentSession({
             {t(($) => $['external.overview.testRun.executionUnavailable'])}
           </p>
         )}
-        {unknownRequest && (
-          <div className="space-y-2 system-xs-regular text-text-warning">
-            <p>{t(($) => $['external.overview.testRun.requestUnknown'])}</p>
-            <Button loading={testRun.isSubmitting} onClick={testRun.recoverRequest}>
-              {t(($) => $['external.overview.testRun.recoverRequest'])}
-            </Button>
-          </div>
-        )}
-        {testRun.failure && (
+        {testRun.failure && !run && (
           <div role="alert" className="space-y-2 system-xs-regular text-text-destructive">
             <p>{testRun.failure}</p>
           </div>

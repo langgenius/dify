@@ -6,7 +6,7 @@ import type {
 } from '@dify/contracts/api/console/external-agents/types.gen'
 import type { ExternalConnectionSettings } from '../../roster/components/external-connection-verification'
 import type { ExternalAgentOverview } from '../model'
-import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Alert, AlertDescription, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -23,7 +23,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
-import { SkeletonRectangle } from '@/app/components/base/skeleton'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
 import { ExternalConnectionForm } from '../../roster/components/external-connection-form'
@@ -33,6 +33,8 @@ import {
   useExternalConnectionVerification,
 } from '../../roster/components/external-connection-verification'
 import { toExternalAgentOverview } from '../model'
+import { EditConnectionApps } from './edit-connection-apps'
+import { EditConnectionConflict } from './edit-connection-conflict'
 
 function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }) {
   const { t } = useTranslation(['agentRoster', 'common'])
@@ -43,7 +45,9 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
   const [submitted, setSubmitted] = useState<ExternalAgentConnectionPayload>()
   const [saveUnknown, setSaveUnknown] = useState(false)
   const [saveError, setSaveError] = useState<string>()
+  const [latestEndpoint, setLatestEndpoint] = useState<string>()
   const endpointRef = useRef<HTMLInputElement>(null)
+  const loadEpochRef = useRef(0)
   const detail = useQuery(
     consoleQuery.externalAgents.byAgentId.get.queryOptions({
       input: { params: { agent_id: overview.asset.id } },
@@ -69,12 +73,14 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
   const { invalidate: invalidateVerification } = verification
   const { reset: resetSave } = save
   const reset = useCallback(() => {
+    loadEpochRef.current += 1
     setBase(undefined)
     setReview(undefined)
     setSettings(undefined)
     setSubmitted(undefined)
     setSaveUnknown(false)
     setSaveError(undefined)
+    setLatestEndpoint(undefined)
     invalidateVerification()
     resetSave()
   }, [invalidateVerification, resetSave])
@@ -89,21 +95,40 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
   function openSession() {
     if (saveUnknown) return
     const scope = verification.scope
+    const epoch = ++loadEpochRef.current
     void detail.refetch().then((result) => {
-      if (scopeRef.current !== scope || !result.data || result.error) return
+      if (
+        loadEpochRef.current !== epoch ||
+        scopeRef.current !== scope ||
+        !result.data ||
+        result.error
+      )
+        return
       const loaded = toExternalAgentOverview(result.data)
       setBase(loaded)
       setSettings({ endpoint: loaded.endpoint, authentication: loaded.authentication, token: '' })
     })
   }
-  function loadLatest() {
+  function loadLatest(keepEdits: boolean) {
     verification.invalidate()
     const scope = verification.scope
+    const epoch = ++loadEpochRef.current
     void detail.refetch().then((result) => {
-      if (scopeRef.current !== scope || !result.data || result.error) return
+      if (
+        loadEpochRef.current !== epoch ||
+        scopeRef.current !== scope ||
+        !result.data ||
+        result.error
+      )
+        return
       const loaded = toExternalAgentOverview(result.data)
       setBase(loaded)
-      setSettings({ endpoint: loaded.endpoint, authentication: loaded.authentication, token: '' })
+      setSettings(
+        keepEdits && settings
+          ? { ...settings, token: '' }
+          : { endpoint: loaded.endpoint, authentication: loaded.authentication, token: '' },
+      )
+      setLatestEndpoint(keepEdits ? loaded.endpoint : undefined)
       setReview(undefined)
       setSubmitted(undefined)
       setSaveUnknown(false)
@@ -150,20 +175,24 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
             unknown
               ? t(($) => $['external.api.saveUnknown'])
               : status === 409
-                ? t(($) => $['external.api.conflict'])
+                ? undefined
                 : externalAgentErrorMessage(
                     error,
-                    t(($) => $['external.api.saveFailed']),
+                    t(($) => $['external.connection.errors.changesKept']),
                   ),
           )
           if (!unknown) {
             setSubmitted(undefined)
             if (status === 400 || status === 409) verification.invalidate()
+            if (status === 409) void detail.refetch()
           }
         },
       },
     )
   }
+  const conflicted = getHttpErrorStatus(save.error) === 409
+  const latest =
+    conflicted && detail.data && !detail.isError ? toExternalAgentOverview(detail.data) : undefined
   const warnings = review ? [...review.warnings.technical, ...review.warnings.business] : []
   const warningLabels: Record<string, string> = {
     input_modes_narrowed: t(($) => $['external.connection.warnings.inputModesNarrowed']),
@@ -183,6 +212,7 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
         else {
           setOpen(next)
           if (next) openSession()
+          else loadEpochRef.current += 1
         }
       }}
       onOpenChangeComplete={(next) => {
@@ -212,9 +242,40 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
         {!base || !settings ? (
           <DialogBody>
             {(detail.isPending || detail.isFetching) && (
-              <SkeletonRectangle className="h-40 w-full" />
+              <LoadingPlaceholder
+                className={overview.authentication === 'bearer' ? 'h-92' : 'h-66'}
+              />
             )}
           </DialogBody>
+        ) : conflicted ? (
+          <>
+            <DialogBody>
+              <EditConnectionConflict
+                settings={settings}
+                latest={latest}
+                loading={detail.isFetching}
+              />
+            </DialogBody>
+            <DialogFooter className="max-sm:flex-col max-sm:items-stretch">
+              <Button variant="secondary" onClick={() => setOpen(false)}>
+                {t(($) => $['operation.cancel'], { ns: 'common' })}
+              </Button>
+              <Button
+                variant="secondary"
+                disabled={detail.isFetching}
+                onClick={() => loadLatest(false)}
+              >
+                {t(($) => $['external.connection.useLatest'])}
+              </Button>
+              <Button
+                variant="primary"
+                disabled={detail.isFetching}
+                onClick={() => loadLatest(true)}
+              >
+                {t(($) => $['external.connection.keepMyEdits'])}
+              </Button>
+            </DialogFooter>
+          </>
         ) : review ? (
           <>
             <DialogBody className="space-y-4">
@@ -229,17 +290,20 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
                   ? t(($) => $['external.connection.authReadPassed'])
                   : t(($) => $['external.connection.authNotExercised'])}
               </p>
-              {warnings.length ? (
-                <ul className="space-y-2 system-sm-regular text-text-warning">
-                  {warnings.map((warning) => (
-                    <li key={warning}>{warningLabels[warning] ?? warning}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="system-sm-regular text-text-tertiary">
-                  {t(($) => $['external.connection.noWarnings'])}
-                </p>
-              )}
+              <div className="space-y-3 rounded-lg bg-background-section p-3">
+                <EditConnectionApps agentId={base.asset.id} />
+                {warnings.length ? (
+                  <ul className="space-y-2 system-sm-regular text-text-warning">
+                    {warnings.map((warning) => (
+                      <li key={warning}>{warningLabels[warning] ?? warning}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="system-sm-regular text-text-tertiary">
+                    {t(($) => $['external.connection.noWarnings'])}
+                  </p>
+                )}
+              </div>
               {verification.state.status === 'expired' && !saveUnknown && (
                 <Alert type="warning">
                   <AlertTitle>{t(($) => $['external.connection.proofExpired'])}</AlertTitle>
@@ -247,12 +311,10 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
               )}
               {saveError && (
                 <Alert type="error">
-                  <AlertTitle>{saveError}</AlertTitle>
-                  {getHttpErrorStatus(save.error) === 409 && (
-                    <Button variant="secondary" size="small" onClick={loadLatest}>
-                      {t(($) => $['external.api.loadLatest'])}
-                    </Button>
-                  )}
+                  <AlertTitle>
+                    {saveUnknown ? saveError : t(($) => $['external.connection.errors.saveFailed'])}
+                  </AlertTitle>
+                  {!saveUnknown && <AlertDescription>{saveError}</AlertDescription>}
                 </Alert>
               )}
             </DialogBody>
@@ -280,6 +342,14 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
           <ExternalConnectionForm
             key={base.connectionRevisionId}
             initialSettings={settings}
+            savedSettings={base}
+            endpointDescription={
+              latestEndpoint
+                ? t(($) => $['external.connection.conflict.latestEndpoint'], {
+                    endpoint: latestEndpoint,
+                  })
+                : undefined
+            }
             endpointRef={endpointRef}
             verification={verification.state}
             executionEnabled={capabilities.data?.enabled === true}

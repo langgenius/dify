@@ -11,6 +11,7 @@ import common from '@/i18n/locales/en-US/common.json'
 import {
   createExternalAgentCapabilities,
   createExternalAgentDetail,
+  createExternalAgentReferences,
 } from '@/test/console/external-agents'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
@@ -21,6 +22,7 @@ const requests = vi.hoisted(() => ({
   capabilities: vi.fn(),
   verify: vi.fn(),
   save: vi.fn(),
+  references: vi.fn(),
 }))
 // boundary: restore real English labels for browser-driven forms.
 vi.mock('react-i18next', async (importOriginal) => importOriginal())
@@ -35,6 +37,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       'externalAgents.capabilities.get': requests.capabilities,
       'externalAgents.verify.post': requests.verify,
       'externalAgents.byAgentId.connection.put': requests.save,
+      'externalAgents.byAgentId.references.get': requests.references,
     }),
   }
 })
@@ -42,6 +45,7 @@ vi.mock('@/service/console', async (importOriginal) => {
 let current: ExternalAgentDetailResponse
 const dialog = () => page.getByRole('dialog', { name: 'Edit connection', exact: true })
 const endpoint = () => dialog().getByRole('textbox', { name: 'A2A endpoint', exact: true })
+const token = () => dialog().getByLabelText('Token', { exact: true })
 const verify = () => dialog().getByRole('button', { name: 'Verify connection', exact: true })
 
 async function setup() {
@@ -79,6 +83,62 @@ beforeEach(({ onTestFinished }) => {
   requests.capabilities.mockReset().mockResolvedValue(createExternalAgentCapabilities())
   requests.verify.mockReset().mockResolvedValue(createExternalVerification())
   requests.save.mockReset().mockResolvedValue(createExternalOperation({ kind: 'connection' }))
+  requests.references.mockReset().mockResolvedValue(createExternalAgentReferences())
+})
+
+it('enables verification only while the connection has edits and disables it again when restored', async () => {
+  await setup()
+  await expect.element(verify()).toBeDisabled()
+  await endpoint().fill('https://my-change.example.test/agent')
+  await expect.element(verify()).toBeEnabled()
+  await endpoint().fill('https://agents.example.test/contract')
+  await expect.element(verify()).toBeDisabled()
+  await token().fill('replacement-token')
+  await expect.element(verify()).toBeEnabled()
+  await token().fill('')
+  await expect.element(verify()).toBeDisabled()
+  expect(requests.verify).not.toHaveBeenCalled()
+  expect(requests.save).not.toHaveBeenCalled()
+})
+
+it('shows a fixed verification failure title with the server conflict reason', async () => {
+  requests.verify.mockRejectedValueOnce(
+    new ORPCError('conflict', {
+      status: 409,
+      message: 'The connection changed; load its current configuration.',
+    }),
+  )
+  await setup()
+  await endpoint().fill('https://my-change.example.test/agent')
+  await verify().click()
+  await expect
+    .element(dialog().getByRole('alert'))
+    .toMatchTextContent('Could not verify the connection.')
+  await expect
+    .element(dialog().getByRole('alert'))
+    .toMatchTextContent('The connection changed; load its current configuration.')
+  await expect.element(endpoint()).toHaveValue('https://my-change.example.test/agent')
+  expect(requests.save).not.toHaveBeenCalled()
+})
+
+it.each([
+  [
+    'an unpunctuated generic server reason',
+    () => new ORPCError('bad_request', { status: 400, message: 'Could not verify the connection' }),
+  ],
+  [
+    'a punctuated generic server reason',
+    () =>
+      new ORPCError('bad_request', { status: 400, message: 'Could not verify the connection.' }),
+  ],
+])('shows only the fixed verification title when editing with %s', async (_, error) => {
+  requests.verify.mockRejectedValueOnce(error())
+  await setup()
+  await endpoint().fill('https://my-change.example.test/agent')
+  await verify().click()
+  const alert = dialog().getByRole('alert')
+  await expect.element(alert).toHaveTextContent('Could not verify the connection.')
+  expect(requests.save).not.toHaveBeenCalled()
 })
 
 it('keeps a saved Bearer credential without sending a mask and saves the verified connection revision', async () => {
@@ -89,7 +149,8 @@ it('keeps a saved Bearer credential without sending a mask and saves the verifie
     }),
   )
   await setup()
-  await expect.element(dialog().getByLabelText('Token', { exact: true })).toHaveValue('')
+  await expect.element(token()).toHaveValue('')
+  await endpoint().fill('https://my-change.example.test/agent')
   await verify().click()
   await expect
     .element(dialog().getByText('Review connection changes', { exact: true }))
@@ -102,7 +163,7 @@ it('keeps a saved Bearer credential without sending a mask and saves the verifie
     .toBeVisible()
   expect(requests.verify).toHaveBeenCalledExactlyOnceWith({
     body: {
-      endpoint: 'https://agents.example.test/contract',
+      endpoint: 'https://my-change.example.test/agent',
       auth_type: 'bearer',
       credential_action: 'keep',
       agent_id: current.asset.id,
@@ -122,27 +183,66 @@ it('keeps a saved Bearer credential without sending a mask and saves the verifie
   })
 })
 
-it('discards conflicted evidence and requires Verify against the explicitly reloaded revision', async () => {
-  requests.save.mockRejectedValueOnce(new ORPCError('conflict', { status: 409 }))
+it('shows a fixed save failure title and keeps the edited draft when the server gives no reason', async () => {
+  requests.save.mockRejectedValueOnce(new ORPCError('', { status: 400, message: '' }))
   await setup()
   await endpoint().fill('https://my-change.example.test/agent')
   await verify().click()
-  await expect.element(dialog().getByRole('button', { name: 'Save', exact: true })).toBeEnabled()
   await dialog().getByRole('button', { name: 'Save', exact: true }).click()
   await expect
-    .element(
-      dialog().getByText(
-        'This configuration changed. Load the latest version before saving again.',
-        { exact: true },
-      ),
-    )
-    .toBeVisible()
+    .element(dialog().getByRole('alert'))
+    .toMatchTextContent('Could not save the connection.')
   await expect
-    .element(dialog().getByText('https://my-change.example.test/agent', { exact: true }))
-    .toBeVisible()
-  await expect.element(dialog().getByRole('button', { name: 'Save', exact: true })).toBeDisabled()
-  expect(requests.save).toHaveBeenCalledTimes(1)
-  const original = requests.save.mock.calls[0]![0]
+    .element(dialog().getByRole('alert'))
+    .toMatchTextContent('Your changes have been kept.')
+  await dialog().getByRole('button', { name: 'Back', exact: true }).click()
+  await expect.element(endpoint()).toHaveValue('https://my-change.example.test/agent')
+  await expect.element(verify()).toBeEnabled()
+})
+
+it('shows the referenced apps in the verified connection review before saving', async () => {
+  requests.references.mockResolvedValue(
+    createExternalAgentReferences({
+      apps: [
+        {
+          app_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+          name: 'Contract approval',
+          mode: 'workflow',
+          node_ids: ['review'],
+        },
+        {
+          app_id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+          name: 'Legal assistant',
+          mode: 'advanced-chat',
+          node_ids: ['legal'],
+        },
+        {
+          app_id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+          name: 'Procurement review',
+          mode: 'workflow',
+          node_ids: ['procurement'],
+        },
+      ],
+    }),
+  )
+  await setup()
+  await endpoint().fill('https://my-change.example.test/agent')
+  await verify().click()
+  await expect.element(dialog().getByText('3 apps use this agent', { exact: true })).toBeVisible()
+  await expect.element(dialog().getByText('Contract approval', { exact: true })).toBeVisible()
+  await expect.element(dialog().getByText('Legal assistant', { exact: true })).toBeVisible()
+  await expect.element(dialog().getByText('Procurement review', { exact: true })).toBeVisible()
+  expect(requests.references).toHaveBeenCalledWith({ params: { agent_id: current.asset.id } })
+  expect(requests.save).not.toHaveBeenCalled()
+})
+
+it('replaces conflicted edits with the latest configuration and requires another edit before verification', async () => {
+  requests.save.mockRejectedValueOnce(new ORPCError('conflict', { status: 409 }))
+  await setup()
+  await endpoint().fill('https://my-change.example.test/agent')
+  await token().fill('discarded-token')
+  await verify().click()
+  await expect.element(dialog().getByRole('button', { name: 'Save', exact: true })).toBeEnabled()
   current = createExternalAgentDetail({
     connection: {
       ...current.connection,
@@ -152,19 +252,36 @@ it('discards conflicted evidence and requires Verify against the explicitly relo
       has_credential: false,
     },
   })
+  await dialog().getByRole('button', { name: 'Save', exact: true }).click()
+  await expect
+    .element(dialog().getByText('This connection was updated by someone else.', { exact: true }))
+    .toBeVisible()
+  await expect.element(dialog().getByText('Your changes', { exact: true })).toBeVisible()
+  await expect.element(dialog().getByText('Latest configuration', { exact: true })).toBeVisible()
+  await expect
+    .element(dialog().getByText('https://my-change.example.test/agent', { exact: true }))
+    .toBeVisible()
+  await expect
+    .element(dialog().getByText('https://latest.example.test/agent', { exact: true }))
+    .toBeVisible()
+  const original = requests.save.mock.calls[0]![0]
   requests.verify.mockResolvedValue(
     createExternalVerification({ verification_id: '99999999-9999-4999-8999-999999999999' }),
   )
-  await dialog().getByRole('button', { name: 'Load latest configuration', exact: true }).click()
+  await dialog().getByRole('button', { name: 'Use latest configuration', exact: true }).click()
   await expect.element(endpoint()).toHaveValue('https://latest.example.test/agent')
-  await expect.element(verify()).toBeVisible()
+  await expect.element(token()).not.toBeInTheDocument()
+  await expect.element(verify()).toBeDisabled()
+  expect(requests.verify).toHaveBeenCalledTimes(1)
+  expect(requests.save).toHaveBeenCalledTimes(1)
+  await endpoint().fill('https://another-change.example.test/agent')
   await verify().click()
   await expect.element(dialog().getByRole('button', { name: 'Save', exact: true })).toBeEnabled()
   await dialog().getByRole('button', { name: 'Save', exact: true }).click()
   await expect.element(dialog()).not.toBeInTheDocument()
   expect(requests.verify).toHaveBeenLastCalledWith({
     body: {
-      endpoint: 'https://latest.example.test/agent',
+      endpoint: 'https://another-change.example.test/agent',
       auth_type: 'none',
       credential_action: 'remove',
       agent_id: current.asset.id,
@@ -181,11 +298,104 @@ it('discards conflicted evidence and requires Verify against the explicitly relo
   )
 })
 
+it('keeps the edited endpoint and authentication after a conflict but reverifies a fresh credential against the latest revision', async () => {
+  requests.save.mockRejectedValueOnce(new ORPCError('conflict', { status: 409 }))
+  await setup()
+  await endpoint().fill('https://my-change.example.test/agent')
+  await token().fill('discarded-token')
+  await verify().click()
+  await expect.element(dialog().getByRole('button', { name: 'Save', exact: true })).toBeEnabled()
+  current = createExternalAgentDetail({
+    connection: {
+      ...current.connection,
+      revision_id: '88888888-8888-4888-8888-888888888888',
+      endpoint: 'https://latest.example.test/agent',
+      auth_type: 'none',
+      has_credential: false,
+    },
+  })
+  await dialog().getByRole('button', { name: 'Save', exact: true }).click()
+  await expect
+    .element(
+      dialog().getByText('Credentials are not shown. Enter a replacement again if needed.', {
+        exact: true,
+      }),
+    )
+    .toBeVisible()
+  const original = requests.save.mock.calls[0]![0]
+  await dialog().getByRole('button', { name: 'Keep my edits', exact: true }).click()
+  await expect.element(endpoint()).toHaveValue('https://my-change.example.test/agent')
+  await expect.element(token()).toHaveValue('')
+  await expect.element(verify()).toBeVisible()
+  expect(requests.verify).toHaveBeenCalledTimes(1)
+  expect(requests.save).toHaveBeenCalledTimes(1)
+  await token().fill('new-replacement-token')
+  requests.verify.mockResolvedValue(
+    createExternalVerification({ verification_id: '99999999-9999-4999-8999-999999999999' }),
+  )
+  await verify().click()
+  await expect.element(dialog().getByRole('button', { name: 'Save', exact: true })).toBeEnabled()
+  expect(requests.verify).toHaveBeenLastCalledWith({
+    body: {
+      endpoint: 'https://my-change.example.test/agent',
+      auth_type: 'bearer',
+      credential_action: 'replace',
+      credential: 'new-replacement-token',
+      agent_id: current.asset.id,
+      expected_connection_revision_id: '88888888-8888-4888-8888-888888888888',
+    },
+  })
+  await dialog().getByRole('button', { name: 'Save', exact: true }).click()
+  await expect.element(dialog()).not.toBeInTheDocument()
+  expect(requests.save.mock.calls[1]![0].body).toEqual({
+    verification_id: '99999999-9999-4999-8999-999999999999',
+    expected_revision_id: '88888888-8888-4888-8888-888888888888',
+    idempotency_key: expect.any(String),
+  })
+  expect(requests.save.mock.calls[1]![0].body.idempotency_key).not.toBe(
+    original.body.idempotency_key,
+  )
+})
+
+it('uses the latest saved credential when keeping endpoint edits without replaying the discarded replacement', async () => {
+  requests.save.mockRejectedValueOnce(new ORPCError('conflict', { status: 409 }))
+  await setup()
+  await endpoint().fill('https://my-change.example.test/agent')
+  await token().fill('discarded-token')
+  await verify().click()
+  await expect.element(dialog().getByRole('button', { name: 'Save', exact: true })).toBeEnabled()
+  current = createExternalAgentDetail({
+    connection: {
+      ...current.connection,
+      revision_id: '88888888-8888-4888-8888-888888888888',
+      endpoint: 'https://latest.example.test/agent',
+    },
+  })
+  await dialog().getByRole('button', { name: 'Save', exact: true }).click()
+  await dialog().getByRole('button', { name: 'Keep my edits', exact: true }).click()
+  await expect.element(endpoint()).toHaveValue('https://my-change.example.test/agent')
+  await expect.element(token()).toHaveValue('')
+  await expect.element(verify()).toBeEnabled()
+  await verify().click()
+  await expect.element(dialog().getByRole('button', { name: 'Save', exact: true })).toBeEnabled()
+  expect(requests.verify).toHaveBeenLastCalledWith({
+    body: {
+      endpoint: 'https://my-change.example.test/agent',
+      auth_type: 'bearer',
+      credential_action: 'keep',
+      agent_id: current.asset.id,
+      expected_connection_revision_id: '88888888-8888-4888-8888-888888888888',
+    },
+  })
+  expect(requests.save).toHaveBeenCalledTimes(1)
+})
+
 it('recovers an unknown connection Save with the original proof, revision and key after reopening', async () => {
   const proof = createExternalVerification()
   requests.verify.mockResolvedValue(proof)
   requests.save.mockRejectedValueOnce(new ORPCError('INTERNAL_SERVER_ERROR', { status: 500 }))
   const { trigger } = await setup()
+  await endpoint().fill('https://my-change.example.test/agent')
   await verify().click()
   await dialog().getByRole('button', { name: 'Save', exact: true }).click()
   await expect
