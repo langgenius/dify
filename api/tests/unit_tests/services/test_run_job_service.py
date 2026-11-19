@@ -361,7 +361,7 @@ def _lapse_alive_key(harness: Harness, job_id: str) -> None:
     harness.redis.delete(f"openapi:job:{job_id}:alive")
 
 
-def test_view_of_a_chatflow_answered_without_a_run_succeeds_once_its_reader_is_gone() -> None:
+def test_view_of_a_chatflow_answered_without_a_run_carries_its_saved_answer() -> None:
     """An annotation reply or input moderation: the reader recorded success and the message, but no run id."""
     harness = _harness()
     job = _job(harness, AppMode.ADVANCED_CHAT)
@@ -369,9 +369,11 @@ def test_view_of_a_chatflow_answered_without_a_run_succeeds_once_its_reader_is_g
     harness.store.settle(job.id, JobEnding(status=JobStatus.SUCCEEDED))
     _lapse_alive_key(harness, job.id)
 
+    harness.results.messages[("a1", "msg-1")] = MessageResult(answer="a preset answer", error=None)
+
     view = harness.service.view(OWNER, job.id)
 
-    assert (view.status, view.error) == (JobStatus.SUCCEEDED, None)
+    assert (view.status, view.error, view.answer) == (JobStatus.SUCCEEDED, None, "a preset answer")
     stored = harness.store.get(job.id)
     assert stored is not None
     assert stored.failure is None
