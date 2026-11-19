@@ -28,6 +28,47 @@ it('sends decoded chat actions from the native keyboard focus order', async () =
   expect(onSend).toHaveBeenCalledExactlyOnceWith('hello world')
 })
 
+it('renders the chat action button instead of crashing when the hidden text is malformed percent-encoding', async () => {
+  const screen = await render(
+    <Link
+      node={{ properties: { href: 'abbr:100%bad%E0%A4%A' }, children: [{ value: 'Reply' }] }}
+    />,
+  )
+
+  await expect.element(screen.getByRole('button', { name: 'Reply' })).toBeVisible()
+  expect(onSend).not.toHaveBeenCalled()
+})
+
+it('keeps the raw hidden text readable when decoding fails', async () => {
+  const screen = await render(
+    <Link node={{ properties: { href: 'abbr:hello%20%zz' }, children: [{ value: 'Reply' }] }} />,
+  )
+
+  await expect.element(screen.getByRole('button', { name: 'Reply' })).toBeVisible()
+})
+
+it('sends the decoded hidden text for well-formed chat actions on click', async () => {
+  const screen = await render(
+    <Link
+      node={{ properties: { href: 'abbr:hello%20world' }, children: [{ value: 'Send greeting' }] }}
+    />,
+  )
+
+  await userEvent.click(screen.getByRole('button', { name: 'Send greeting' }))
+
+  expect(onSend).toHaveBeenCalledExactlyOnceWith('hello world')
+})
+
+it('does not send the literal "undefined" when the chat action has no hidden text', async () => {
+  const screen = await render(
+    <Link node={{ properties: { href: 'abbr:' }, children: [{ value: 'Reply' }] }} />,
+  )
+
+  await userEvent.click(screen.getByRole('button', { name: 'Reply' }))
+
+  expect(onSend).not.toHaveBeenCalledWith('undefined')
+})
+
 it('scrolls only the matching anchor inside the current answer', async () => {
   await page.viewport(800, 600)
   const screen = await render(
