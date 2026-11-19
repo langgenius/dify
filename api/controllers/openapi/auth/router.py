@@ -5,17 +5,24 @@ from functools import partial, wraps
 from typing import Any
 
 from flask import request
-from werkzeug.exceptions import NotFound, Unauthorized
+from werkzeug.exceptions import HTTPException, NotFound, Unauthorized
 
 from configs import dify_config
+from constants.oauth_bearer import TokenType
+from controllers.openapi import api
+from controllers.openapi._audit import emit_personal_request, personal_audit_targets
 from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.personal_access import authenticate_personal_token
 from controllers.openapi.auth.pipelines import pipeline_for_subject
 from controllers.openapi.auth.requirements import assert_license_valid
-from controllers.openapi.auth.spec import EndpointSpec
+from controllers.openapi.auth.resource_access import authenticate_resource_token
+from controllers.openapi.auth.spec import EndpointSpec, Kind
 from controllers.openapi.auth.subjects import subject_from_auth
 from core.db.session_factory import session_factory
+from core.logging.context import get_trace_id
 from enums import DeploymentEdition
 from libs.oauth_bearer import InvalidBearerError, assert_bearer_feature_enabled, extract_bearer, get_authenticator
+from services.auth.resource_access_token_contracts import is_resource_access_token
 
 
 class AuthRouter:
@@ -44,24 +51,36 @@ class AuthRouter:
         assert_bearer_feature_enabled()
 
         token = extract_bearer(request)
+        is_resource_token = bool(token and is_resource_access_token(token))
         if not token:
             raise Unauthorized("bearer required")
 
         try:
-            auth = get_authenticator().authenticate(token)
-        except InvalidBearerError:
+            if token.startswith(TokenType.PERSONAL_ACCESS.prefix):
+                auth = authenticate_personal_token(token)
+            elif is_resource_token:
+                auth = authenticate_resource_token(token)
+            else:
+                auth = get_authenticator().authenticate(token)
+        except InvalidBearerError as caught_error:
             # One answer for every rejection reason - unknown prefix, no live row,
             # expired - so a caller cannot probe which one it hit. Same reasoning as
             # the 404-not-403 elsewhere on this surface.
-            raise Unauthorized("invalid bearer")
+            raise Unauthorized("invalid bearer") from caught_error
         subject = subject_from_auth(auth)
         pipeline = pipeline_for_subject(subject)
 
-        # One session spans the loaders and the handler, so the objects the
-        # requirements load stay attached while the handler reads them. It is
-        # finalised here, like `with_session` does, until repositories own it.
+        # The pipeline closes the admission session before handlers that use only
+        # identity values or no context; ORM handlers keep sharing it.
         with session_factory.create_session() as session:
-            ctx = Context(subject, session, dict(request.view_args or {}))
+            ctx = Context(
+                subject,
+                session,
+                dict(request.view_args or {}),
+                trace_id=get_trace_id() or request.headers.get("X-Trace-Id"),
+                pat_policy=spec.pat_policy,
+            )
+            status = 500
             try:
                 result = pipeline.run(
                     subject=subject,
@@ -71,11 +90,35 @@ class AuthRouter:
                     session=session,
                     call=call,
                 )
-            except Exception:
+                session.commit()
+                status = result.status_code if hasattr(result, "status_code") else 200
+                if isinstance(result, tuple) and len(result) > 1 and isinstance(result[1], int):
+                    status = result[1]
+                return result
+            except Exception as error:
+                if isinstance(error, HTTPException):
+                    status = error.code or 500
+                else:
+                    try:
+                        status, _ = api.resolve_error(type(error))
+                    except ValueError:
+                        status = 500
                 session.rollback()  # guard-ignore: no-new-controller-sqlalchemy -- the router owns the rollback
                 raise
-            session.commit()
-            return result
+            finally:
+                if auth.token_type is TokenType.PERSONAL_ACCESS:
+                    # Only reviewed target fields with UUID values enter audit records.
+                    targets = {"workspace_id": request.args.get("workspace_id"), **(request.view_args or {})}
+                    emit_personal_request(
+                        token_id=str(auth.token_id),
+                        account_id=str(auth.account_id),
+                        operation=spec.catalog.op,
+                        target_route=request.url_rule.rule if request.url_rule else "",
+                        target_ids=personal_audit_targets(targets),
+                        http_status=status,
+                        streaming=spec.catalog.kind is Kind.SSE,
+                        trace_id=get_trace_id(),
+                    )
 
 
 subject_router = AuthRouter()

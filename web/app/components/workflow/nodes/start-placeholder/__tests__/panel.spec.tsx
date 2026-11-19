@@ -1,147 +1,151 @@
-import type { Node } from '@/app/components/workflow/types'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { BlockEnum } from '@/app/components/workflow/types'
+import type { ReactNode } from 'react'
+import type { AvailableNodesMetaData } from '@/app/components/workflow/hooks-store'
+import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import { useNodes } from 'reactflow'
+import { FeaturesContext } from '@/app/components/base/features/context'
+import { createFeaturesStore } from '@/app/components/base/features/store'
+import { useNodesSyncDraft } from '@/app/components/workflow-app/hooks/use-nodes-sync-draft'
+import { createWorkflowSlice } from '@/app/components/workflow-app/store/workflow/workflow-slice'
+import { HooksStoreContext } from '@/app/components/workflow/hooks-store/provider'
+import { createHooksStore } from '@/app/components/workflow/hooks-store/store'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
+import { createNode } from '../../../__tests__/fixtures'
+import { renderWorkflowFlowComponent } from '../../../__tests__/workflow-test-env'
+import { BlockEnum } from '../../../types'
+import webhookDefault from '../../trigger-webhook/default'
 import Panel from '../panel'
 
-const mocks = vi.hoisted(() => ({
-  autoGenerateWebhookUrl: vi.fn(),
-  handleSyncWorkflowDraft: vi.fn(),
-  setHasSelectedStartNode: vi.fn(),
-  setNodes: vi.fn(),
-  setShouldAutoOpenStartNodeSelector: vi.fn(),
-}))
-
-let currentNodes: Node[] = []
-
-vi.mock('reactflow', () => ({
-  useStoreApi: () => ({
-    getState: () => ({
-      getNodes: () => currentNodes,
-      setNodes: mocks.setNodes,
-    }),
-  }),
-}))
-
-vi.mock('@/app/components/plugins/marketplace/search-box', () => ({
-  default: () => <input aria-label="Search trigger" />,
-}))
-
-vi.mock('@/app/components/workflow/block-selector/all-start-blocks', () => ({
-  default: ({ onSelect }: { onSelect: (type: BlockEnum) => void }) => (
-    <button type="button" onClick={() => onSelect(BlockEnum.Start)}>
-      Select User Input
-    </button>
-  ),
-}))
-
-vi.mock('../../../hooks/use-auto-generate-webhook-url', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('../../../hooks/use-auto-generate-webhook-url')>()
-
+const persistDraft = vi.fn()
+const fetchWebhook = vi.fn()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    useAutoGenerateWebhookUrl: () => mocks.autoGenerateWebhookUrl,
+    consoleClient: {
+      ...actual.consoleClient,
+      apps: {
+        byAppId: { workflows: { draft: { post: (...args: unknown[]) => persistDraft(...args) } } },
+      },
+    },
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.workflows.triggers.webhook.get': (input: unknown) => fetchWebhook(input),
+    }),
   }
 })
 
-vi.mock('@/app/components/workflow/hooks-store', () => ({
-  useHooksStore: (selector: (state: unknown) => unknown) =>
-    selector({
+const selectedStart = {
+  metaData: webhookDefault.metaData,
+  checkValid: () => ({ isValid: true }),
+  defaultValue: { ...webhookDefault.defaultValue, title: 'Webhook', desc: '' },
+}
+
+const nodesMap: Partial<NonNullable<AvailableNodesMetaData['nodesMap']>> = {
+  [BlockEnum.TriggerWebhook]: selectedStart,
+}
+
+function DraftOwner({ children }: { children: ReactNode }) {
+  const sync = useNodesSyncDraft()
+  const [hooks] = useState(() =>
+    createHooksStore({
+      ...sync,
       availableNodesMetaData: {
-        nodesMap: {
-          [BlockEnum.Start]: {
-            defaultValue: {
-              title: 'User Input',
-              desc: '',
-              variables: [],
-            },
-          },
-        },
+        nodes: [selectedStart],
+        nodesMap: nodesMap as AvailableNodesMetaData['nodesMap'],
       },
     }),
-}))
+  )
+  return <HooksStoreContext value={hooks}>{children}</HooksStoreContext>
+}
 
-vi.mock('../../../hooks/use-nodes-sync-draft', () => ({
-  useNodesSyncDraft: () => ({
-    handleSyncWorkflowDraft: mocks.handleSyncWorkflowDraft,
-  }),
-}))
+function GraphState() {
+  return <output aria-label="Graph">{JSON.stringify(useNodes())}</output>
+}
 
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: unknown) => unknown) =>
-    selector({
-      setHasSelectedStartNode: mocks.setHasSelectedStartNode,
-      setShouldAutoOpenStartNodeSelector: mocks.setShouldAutoOpenStartNodeSelector,
-    }),
-}))
-
-const createPlaceholderNode = (): Node => ({
-  id: 'placeholder-1',
-  type: 'custom',
-  position: { x: 0, y: 0 },
-  data: {
-    type: BlockEnum.StartPlaceholder,
-    title: 'Pick a start node',
-    desc: '',
-    selected: true,
-  },
-})
-
-describe('StartPlaceholderPanel', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    currentNodes = [
-      createPlaceholderNode(),
-      {
-        id: 'other-node',
-        type: 'custom',
-        position: { x: 100, y: 0 },
-        data: {
-          type: BlockEnum.LLM,
-          title: 'LLM',
-          desc: '',
-          selected: true,
-        },
-      },
-    ]
-    mocks.setNodes.mockImplementation((nodes: Node[]) => {
-      currentNodes = nodes
-    })
+it('replaces the placeholder and generates webhook URLs only after the graph is persisted', async () => {
+  const user = userEvent.setup()
+  const pending = createDeferred<{ hash: string; updated_at: number }>()
+  persistDraft.mockReturnValue(pending.promise)
+  fetchWebhook.mockResolvedValue({
+    webhook_url: 'https://hooks.example.com/live',
+    webhook_debug_url: 'https://hooks.example.com/debug',
   })
-
-  describe('Start node selection', () => {
-    it('should replace the placeholder with user input and auto-open the next node selector', () => {
-      render(
-        <Panel id="placeholder-1" data={createPlaceholderNode().data} panelProps={{} as never} />,
-      )
-
-      fireEvent.click(screen.getByRole('button', { name: 'Select User Input' }))
-
-      expect(mocks.setNodes).toHaveBeenCalledTimes(1)
-      expect(currentNodes[0]).toMatchObject({
-        id: 'placeholder-1',
-        data: {
-          type: BlockEnum.Start,
-          title: 'User Input',
-          selected: true,
-          variables: [],
-        },
-      })
-      expect(currentNodes[1]?.data.selected).toBe(false)
-      expect(mocks.setHasSelectedStartNode).toHaveBeenCalledWith(true)
-      expect(mocks.setShouldAutoOpenStartNodeSelector).toHaveBeenCalledWith(true)
-      expect(mocks.handleSyncWorkflowDraft).toHaveBeenCalledWith(
-        true,
-        false,
-        expect.objectContaining({
-          onSuccess: expect.any(Function),
+  const placeholder = createNode({
+    id: 'placeholder-1',
+    data: { type: BlockEnum.StartPlaceholder, selected: true },
+  })
+  const { queryClient } = createConsoleQueryWrapper({
+    appDslVersion: '0.6.0',
+    systemFeatures: { enable_marketplace: false },
+  })
+  queryClient.setQueryData(consoleQuery.workspaces.current.triggers.get.queryKey({ input: {} }), [])
+  const { store } = renderWorkflowFlowComponent(
+    <FeaturesContext value={createFeaturesStore()}>
+      <DraftOwner>
+        <Panel
+          panelProps={{
+            getInputVars: () => [],
+            toVarInputs: () => [],
+            runInputData: {},
+            runInputDataRef: { current: {} },
+            setRunInputData: () => {},
+            runResult: null,
+          }}
+          id={placeholder.id}
+          data={placeholder.data}
+        />
+        <GraphState />
+      </DraftOwner>
+    </FeaturesContext>,
+    {
+      queryClient,
+      injectWorkflowStoreSliceFn: createWorkflowSlice as InjectWorkflowStoreSliceFn,
+      initialStoreState: { isWorkflowDataLoaded: true },
+      nodes: [placeholder, createNode({ id: 'other-node', data: { selected: true } })],
+    },
+  )
+  await user.click(await screen.findByRole('button', { name: 'workflow.blocks.trigger-webhook' }))
+  const nodes = JSON.parse(screen.getByLabelText('Graph').textContent!)
+  expect(nodes[0]).toMatchObject({
+    id: 'placeholder-1',
+    data: { type: BlockEnum.TriggerWebhook, title: 'Webhook', selected: true, webhook_url: '' },
+  })
+  expect(nodes[1].data.selected).toBe(false)
+  expect(store.getState().hasSelectedStartNode).toBe(true)
+  expect(store.getState().shouldAutoOpenStartNodeSelector).toBe(true)
+  expect(persistDraft).toHaveBeenCalledWith(
+    expect.objectContaining({
+      params: { app_id: 'app-1' },
+      body: expect.objectContaining({
+        graph: expect.objectContaining({
+          nodes: expect.arrayContaining([
+            expect.objectContaining({
+              id: 'placeholder-1',
+              data: expect.objectContaining({ type: BlockEnum.TriggerWebhook }),
+            }),
+          ]),
         }),
-      )
-
-      const callback = mocks.handleSyncWorkflowDraft.mock.calls[0]?.[2] as { onSuccess: () => void }
-      callback.onSuccess()
-
-      expect(mocks.autoGenerateWebhookUrl).toHaveBeenCalledWith('placeholder-1')
-    })
+      }),
+    }),
+    expect.anything(),
+  )
+  expect(fetchWebhook).not.toHaveBeenCalled()
+  await act(async () => pending.resolve({ hash: 'saved-hash', updated_at: 123 }))
+  await waitFor(() =>
+    expect(JSON.parse(screen.getByLabelText('Graph').textContent!)[0].data).toMatchObject({
+      webhook_url: 'https://hooks.example.com/live',
+      webhook_debug_url: 'https://hooks.example.com/debug',
+    }),
+  )
+  expect(fetchWebhook).toHaveBeenCalledWith({
+    params: { app_id: 'app-1' },
+    query: { node_id: 'placeholder-1' },
   })
+  expect(store.getState().syncWorkflowDraftHash).toBe('saved-hash')
+  expect(store.getState().draftUpdatedAt).toBe(123000)
 })

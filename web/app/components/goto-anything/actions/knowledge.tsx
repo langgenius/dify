@@ -1,5 +1,5 @@
 import type { DatasetListItemResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { ActionItem, KnowledgeSearchResult } from './types'
+import type { ActionItem, KnowledgeSearchResult, SearchQueryOptions } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { consoleQuery } from '@/service/console'
 
@@ -43,7 +43,7 @@ export const knowledgeAction: ActionItem = {
   source: 'remote',
 }
 
-export function knowledgeSearchQueryOptions(searchTerm: string) {
+export function knowledgeSearchQueryOptions(searchTerm: string, options: SearchQueryOptions = {}) {
   return consoleQuery.datasets.get.queryOptions({
     input: {
       query: {
@@ -53,6 +53,7 @@ export function knowledgeSearchQueryOptions(searchTerm: string) {
       },
     },
     retry: false,
+    ...options,
     select: (response) => getKnowledgeResults(response.data),
   })
 }

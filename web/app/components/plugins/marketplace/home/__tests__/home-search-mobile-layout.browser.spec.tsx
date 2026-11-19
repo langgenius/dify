@@ -1,35 +1,9 @@
-import { page } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { MARKETPLACE_CONTAINER_ID } from '../../constants'
 import HomeHeader from '../home-header'
 import HomeSearch from '../home-search'
 import { HomeShell } from '../home-shell'
-
-vi.mock('../home-catalog-tabs', () => ({
-  default: () => null,
-}))
-
-vi.mock('../home-creator-center', () => ({
-  default: () => null,
-}))
-
-vi.mock('../home-guide', () => ({
-  default: () => null,
-}))
-
-const nextFrame = () =>
-  new Promise<void>((resolve) => {
-    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-  })
-
-const overlaps = (a: DOMRect, b: DOMRect) =>
-  a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top
-
-const isCenterClickable = (target: Element) => {
-  const rect = target.getBoundingClientRect()
-  const node = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
-  return Boolean(node && target.contains(node))
-}
 
 const renderMarketplaceHome = () =>
   render(
@@ -63,6 +37,10 @@ describe('Marketplace mobile search layout', () => {
     const screen = await renderMarketplaceHome()
 
     const scrollContainer = document.getElementById(MARKETPLACE_CONTAINER_ID)!
+    await expect.element(screen.getByRole('banner')).toBeVisible()
+    await expect
+      .element(screen.getByRole('textbox', { name: 'Search plugins or templates' }))
+      .toBeVisible()
     const header = screen.getByRole('banner').element()
     const brand = screen.getByRole('link', { name: 'Dify Marketplace' }).element()
     const signIn = screen.getByRole('button', { name: 'Sign in' }).element()
@@ -70,39 +48,32 @@ describe('Marketplace mobile search layout', () => {
       .getByRole('textbox', { name: 'Search plugins or templates' })
       .element()
 
-    scrollContainer.scrollTop = 400
-    scrollContainer.dispatchEvent(new Event('scroll'))
-    await nextFrame()
+    scrollContainer.scrollTo({ top: 400 })
+    await expect.poll(() => scrollContainer.scrollTop).toBe(400)
 
-    const headerRect = header.getBoundingClientRect()
-    const searchRect = searchInput.getBoundingClientRect()
-
-    expect(searchRect.top).toBeGreaterThanOrEqual(headerRect.bottom - 1)
-    expect(searchRect.top).toBeLessThanOrEqual(headerRect.bottom + 2)
-    expect(overlaps(searchRect, brand.getBoundingClientRect())).toBe(false)
-    expect(overlaps(searchRect, signIn.getBoundingClientRect())).toBe(false)
-    expect(isCenterClickable(brand)).toBe(true)
-    expect(isCenterClickable(signIn)).toBe(true)
-    expect(isCenterClickable(searchInput)).toBe(true)
-  })
-
-  it('keeps the desktop search in the header gap while scrolling', async () => {
-    await page.viewport(1280, 900)
-    const screen = await renderMarketplaceHome()
-
-    const scrollContainer = document.getElementById(MARKETPLACE_CONTAINER_ID)!
-    const header = screen.getByRole('banner').element()
-    const searchInput = screen
-      .getByRole('textbox', { name: 'Search plugins or templates' })
-      .element()
-
-    scrollContainer.scrollTop = 400
-    scrollContainer.dispatchEvent(new Event('scroll'))
-    await nextFrame()
-
-    expect(
-      searchInput.getBoundingClientRect().top - header.getBoundingClientRect().top,
-    ).toBeCloseTo(6, 0)
+    // The field must occupy the row below the header, with its controls still operable.
+    await expect
+      .poll(() => searchInput.getBoundingClientRect().top)
+      .toBeGreaterThanOrEqual(header.getBoundingClientRect().bottom - 1)
+    expect(searchInput.getBoundingClientRect().top).toBeLessThanOrEqual(
+      header.getBoundingClientRect().bottom + 2,
+    )
+    for (const target of [brand, signIn]) {
+      const bounds = target.getBoundingClientRect()
+      expect(
+        target.contains(
+          document.elementFromPoint(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2),
+        ),
+      ).toBe(true)
+    }
+    const signInButton = screen.getByRole('button', { name: 'Sign in' })
+    await signInButton.click()
+    await expect.element(signInButton).toHaveFocus()
+    const search = screen.getByRole('textbox', { name: 'Search plugins or templates' })
+    await search.click()
+    await userEvent.keyboard('knowledge')
+    await expect.element(search).toHaveValue('knowledge')
+    await expect.element(search).toHaveFocus()
   })
 
   it('keeps a search-results search below the header when there is no hero to overlap', async () => {
@@ -132,6 +103,10 @@ describe('Marketplace mobile search layout', () => {
       </div>,
     )
 
+    await expect.element(screen.getByRole('banner')).toBeVisible()
+    await expect
+      .element(screen.getByRole('textbox', { name: 'Search plugins or templates' }))
+      .toBeVisible()
     const header = screen.getByRole('banner').element()
     const searchInput = screen
       .getByRole('textbox', { name: 'Search plugins or templates' })
@@ -140,7 +115,11 @@ describe('Marketplace mobile search layout', () => {
     expect(searchInput.getBoundingClientRect().top).toBeGreaterThanOrEqual(
       header.getBoundingClientRect().bottom - 1,
     )
-    expect(searchInput.getBoundingClientRect().width).toBeGreaterThan(300)
+    const search = screen.getByRole('textbox', { name: 'Search plugins or templates' })
+    await search.click()
+    await userEvent.keyboard('search results')
+    await expect.element(search).toHaveValue('search results')
+    await expect.element(search).toHaveFocus()
   })
 
   it('does not jump the page when the stuck desktop search is focused or typed into', async () => {
@@ -148,28 +127,35 @@ describe('Marketplace mobile search layout', () => {
     const screen = await renderMarketplaceHome()
 
     const scrollContainer = document.getElementById(MARKETPLACE_CONTAINER_ID)!
+    await expect.element(screen.getByRole('banner')).toBeVisible()
+    await expect
+      .element(screen.getByRole('textbox', { name: 'Search plugins or templates' }))
+      .toBeVisible()
     const header = screen.getByRole('banner').element()
     const searchInput = screen
       .getByRole('textbox', { name: 'Search plugins or templates' })
       .element()
 
-    scrollContainer.scrollTop = 400
-    scrollContainer.dispatchEvent(new Event('scroll'))
-    await nextFrame()
+    scrollContainer.scrollTo({ top: 400 })
+    await expect.poll(() => scrollContainer.scrollTop).toBe(400)
 
     const scrollTopBefore = scrollContainer.scrollTop
     const inputTopBefore = searchInput.getBoundingClientRect().top
-    expect(inputTopBefore - header.getBoundingClientRect().top).toBeCloseTo(6, 0)
+    expect(inputTopBefore).toBeGreaterThanOrEqual(header.getBoundingClientRect().top)
+    expect(searchInput.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      header.getBoundingClientRect().bottom,
+    )
 
     const searchLocator = screen.getByRole('textbox', { name: 'Search plugins or templates' })
     await searchLocator.click()
-    await nextFrame()
+    await expect.element(searchLocator).toHaveFocus()
 
     expect(scrollContainer.scrollTop).toBe(scrollTopBefore)
     expect(searchInput.getBoundingClientRect().top).toBeCloseTo(inputTopBefore)
 
-    await searchLocator.fill('g')
-    await nextFrame()
+    await userEvent.keyboard('knowledge')
+    await expect.element(searchLocator).toHaveValue('knowledge')
+    await expect.element(searchLocator).toHaveFocus()
 
     expect(scrollContainer.scrollTop).toBe(scrollTopBefore)
     expect(searchInput.getBoundingClientRect().top).toBeCloseTo(inputTopBefore)

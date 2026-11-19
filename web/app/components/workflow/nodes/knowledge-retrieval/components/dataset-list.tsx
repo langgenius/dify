@@ -1,7 +1,7 @@
 'use client'
 
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
-import type { DataSet } from '@/models/datasets'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
@@ -14,8 +14,8 @@ import { getDatasetACLCapabilities } from '@/utils/permission'
 import Item from './dataset-item'
 
 type Props = Readonly<{
-  list: DataSet[]
-  onChange: (list: DataSet[]) => void
+  list: DatasetDetailWithPartialMembersResponse[]
+  onChange: (list: DatasetDetailWithPartialMembersResponse[]) => void
   readonly?: boolean
   settingsDrawerBackdropClassName?: string
   settingsDrawerBackdropForceRender?: boolean
@@ -53,7 +53,7 @@ const DatasetList: FC<Props> = ({
 
   const handleChange = useCallback(
     (index: number) => {
-      return (value: DataSet) => {
+      return (value: DatasetDetailWithPartialMembersResponse) => {
         const newList = produce(list, (draft) => {
           draft[index] = value
         })

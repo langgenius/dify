@@ -1,13 +1,14 @@
 {
+  "activateFailed": "Non è stato possibile attivare lo sconto educativo. La tua verifica educativa attuale potrebbe essere ancora attiva, oppure questa email non è più idonea.",
   "applied.activeSubscription.description": "Hai un abbonamento attivo. Puoi utilizzare lo sconto educativo dopo la scadenza dell'abbonamento. Conferma il tuo abbonamento su <stripeLink>Stripe</stripeLink>.",
   "applied.noPaymentPermission.description": "Non hai il permesso di pagamento in questo workspace. Passa a un workspace in cui puoi gestire la fatturazione per utilizzare lo sconto educativo.",
   "applied.noPaymentPermission.returnHome": "Torna a Dify",
   "applied.step1.description": "Hai fatto domanda per lo sconto educativo con successo.",
   "applied.step2.description": "Seleziona il workspace che vuoi utilizzare con lo sconto educativo.",
   "currentSigned": "ATTUALMENTE ACCEDUTO COME",
-  "educationPricingConfirm.cancel": "Mantieni il piano attuale",
+  "educationPricingConfirm.cancel": "Continua senza sconto",
   "educationPricingConfirm.continue": "Passa a Professional annuale",
-  "educationPricingConfirm.description": "Lo sconto Education si applica solo al piano Professional annuale. Mantenendo il piano attuale, lo sconto non verrà incluso.",
+  "educationPricingConfirm.description": "Hai selezionato {{selected_plan_name}} ({{selected_billing_cycle}}). Scegli Professional annuale per usare lo sconto per l’istruzione oppure prosegui con il piano selezionato senza sconto.",
   "educationPricingConfirm.title": "Il piano selezionato non supporta lo sconto Education",
   "emailLabel": "La tua email attuale",
   "form.schoolName.noResults": "Nessuna scuola corrispondente trovata. Puoi comunque inserire il nome ufficiale.",
@@ -42,7 +43,7 @@
   "notice.stillInEducation.expired": "Verifica di nuovo ora per ottenere un nuovo coupon per il prossimo anno accademico. Lo aggiungeremo al tuo account e potrai usarlo per il prossimo aggiornamento.",
   "notice.stillInEducation.isAboutToExpire": "Verifica di nuovo ora per ottenere un nuovo coupon per il prossimo anno accademico. Sarà salvato nel tuo account e pronto per essere utilizzato al tuo prossimo rinnovo.",
   "notice.stillInEducation.title": "Ancora in formazione?",
-  "planNotSupportEducationDiscount": "Non idoneo per i prezzi educativi",
+  "planNotSupportEducationDiscount": "Nessuno sconto per l’istruzione su questo piano",
   "rejectContent": "Sfortunatamente, non sei idoneo per lo status di Educazione Verificata e quindi non puoi ricevere il coupon esclusivo del 100% per il Piano Professionale Dify se usi questo indirizzo email.",
   "rejectTitle": "La tua verifica educativa Dify è stata rifiutata.",
   "submit": "Invia",
@@ -51,5 +52,7 @@
   "toVerifiedTip.coupon": "coupon esclusivo al 100%",
   "toVerifiedTip.end": "per il Piano Professionale Dify.",
   "toVerifiedTip.front": "Ora sei idoneo per lo stato di Educazione Verificata. Per favore, inserisci le tue informazioni educative qui sotto per completare il processo e ricevere un",
-  "useEducationDiscount": "Utilizza lo sconto educativo"
+  "tooManyAttempts": "Troppi tentativi. Riprova più tardi.",
+  "useEducationDiscount": "Utilizza lo sconto educativo",
+  "verifyFailed": "Non è stato possibile verificare il tuo stato educativo. Se ti sei verificato di recente, la tua verifica educativa attuale potrebbe essere ancora attiva. Altrimenti, riprova più tardi."
 }

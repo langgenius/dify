@@ -29,7 +29,7 @@ const getDatasetDocuments = async (client: ConsoleClient, datasetId: string) => 
   while (hasMore) {
     const response = await client.datasets.byDatasetId.documents.get({
       params: { dataset_id: datasetId },
-      query: { limit: '100', page: String(page) },
+      query: { limit: 100, page },
     })
 
     documents.push(...response.data)

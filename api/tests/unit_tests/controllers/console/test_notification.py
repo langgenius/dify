@@ -5,13 +5,19 @@ from unittest.mock import Mock, patch
 import pytest
 from flask import Flask
 
+from controllers.console import flask_admission, wraps
 from controllers.console.notification import (
     DismissNotificationPayload,
     NotificationApi,
     NotificationDismissApi,
 )
+from enums import DeploymentEdition
+from libs.login import AccountWithTenant
 from machinery.context import RequestContext
 from services.entities.notification_entities import NotificationItem, NotificationResult
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.controllers.knowledge_fs_controller_fakes import narrowed
+from tests.helpers.unit.model_factories import make_account
 
 
 def _request_context() -> RequestContext:
@@ -29,9 +35,14 @@ def _request_context() -> RequestContext:
 )
 def test_get_notification_validates_language_query_and_serializes_result(
     app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
     query_string: dict[str, str],
     expected_language: str,
 ) -> None:
+    """Preconditions: The account is admitted and the service returns a notification.
+
+    Postconditions: The handler returns HTTP 200, serializes the notification, and preserves the request context.
+    """
     service = Mock()
     service.get_active.return_value = NotificationResult(
         should_show=True,
@@ -49,14 +60,19 @@ def test_get_notification_validates_language_query_and_serializes_result(
     )
     services = SimpleNamespace(notifications=service)
     api = NotificationApi()
-    method = api.get.__wrapped__
     context = _request_context()
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, LOGIN_DISABLED=True)
+    identity = AccountWithTenant(account=make_account(), tenant_id=context.active_workspace_id)
+    monkeypatch.setattr(wraps, "current_account_with_tenant", lambda: identity)
+    monkeypatch.setattr(flask_admission, "current_account_with_tenant", lambda: identity)
+    monkeypatch.setattr(flask_admission, "get_request_id", lambda: context.request_id)
+    monkeypatch.setattr(flask_admission, "get_trace_id", lambda: context.trace_id)
 
     with (
         app.test_request_context("/notification", query_string=query_string),
         patch("controllers.console.notification.application_services", return_value=services),
     ):
-        result, status = method(api, context)
+        result, status = narrowed(api.get(), tuple)
 
     assert status == 200
     assert result == {

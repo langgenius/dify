@@ -3,13 +3,13 @@
 import type { WorkflowVersion } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { Node } from '@/app/components/workflow/types'
 import { RuntimeState } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { BlockEnum, isTriggerNode } from '@/app/components/workflow/types'
 import useTimestamp from '@/hooks/use-timestamp'
-import { useMCPServerDetail } from '@/service/use-tools'
+import { useParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { AccessPointIcon } from '../shared/access-point-icon'
 import { RuntimeStateIndicator } from '../shared/runtime-state'
@@ -17,17 +17,25 @@ import { VersionLabel } from '../shared/version-label'
 import { ACCESS_POINT_ORDER, getAccessPointHref } from '../utils/access-point'
 
 function Divider() {
-  return <div className="i-custom-vender-deploy-line-5 h-10 w-3" />
+  return (
+    <div aria-hidden className="i-custom-vender-deploy-line-5 hidden h-10 w-3 shrink-0 lg:block" />
+  )
 }
 
 export const BuiltInEnvironmentCard = memo(
   ({ canViewAccessPoint }: { canViewAccessPoint: boolean }) => {
     const { t } = useTranslation(['deployments'])
     const { formatTime } = useTimestamp()
-    const appDetail = useAppStore((state) => state.appDetail)
-    const appId = appDetail?.id ?? ''
-    const { data: publishedWorkflow } = useQuery(appWorkflowQueryOptions(appId || null))
-    const { data: mcpServerDetail } = useMCPServerDetail(appId, Boolean(appId))
+    const { appId } = useParams<{ appId: string }>()
+    const { data: appDetail } = useSuspenseQuery(
+      consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+    )
+    const { data: publishedWorkflow } = useQuery(appWorkflowQueryOptions(appId))
+    const { data: mcpServerDetail } = useQuery(
+      consoleQuery.apps.byAppId.server.get.queryOptions({
+        input: { params: { app_id: appId } },
+      }),
+    )
     const publishedNodes = Array.isArray(publishedWorkflow?.graph.nodes)
       ? (publishedWorkflow.graph.nodes as Node[])
       : []
@@ -36,11 +44,11 @@ export const BuiltInEnvironmentCard = memo(
     const serviceModeAvailable = Boolean(publishedWorkflow && hasStartNode && !hasTriggerNode)
     const activeAccessPoints = {
       mcp: serviceModeAvailable && mcpServerDetail?.status === 'active',
-      serviceApi: serviceModeAvailable && Boolean(appDetail?.enable_api),
+      serviceApi: serviceModeAvailable && appDetail.enable_api,
       trigger: Boolean(publishedWorkflow && hasTriggerNode),
-      webApp: serviceModeAvailable && Boolean(appDetail?.enable_site),
+      webApp: serviceModeAvailable && appDetail.enable_site,
     }
-    const publishedBy = publishedWorkflow?.created_by?.name ?? appDetail?.author_name ?? '--'
+    const publishedBy = publishedWorkflow?.created_by?.name ?? '--'
     const updatedBy = publishedWorkflow?.updated_by?.name ?? publishedBy
     const publishedVersion: WorkflowVersion | undefined = publishedWorkflow
       ? {
@@ -65,17 +73,17 @@ export const BuiltInEnvironmentCard = memo(
             <span aria-hidden className="i-ri-instance-line size-5 text-text-secondary" />
           </div>
           {/* Info */}
-          <div className="flex items-center gap-10">
-            <div className="flex flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-x-10 gap-y-4">
+            <div className="flex min-w-0 flex-col gap-1">
               <h2 id="built-in-environment-title" className="system-md-semibold text-text-primary">
                 {t(($) => $['studio.builtInTitle'])}
               </h2>
-              <p className="truncate system-xs-regular text-text-tertiary">
+              <p className="system-xs-regular wrap-break-word text-text-tertiary">
                 {t(($) => $['studio.builtInDescription'])}
               </p>
             </div>
             <Divider />
-            <div className="flex flex-col gap-1">
+            <div className="flex min-w-0 flex-col gap-1">
               <div className="system-2xs-medium-uppercase text-text-tertiary">
                 {t(($) => $['studio.liveVersion'])}
               </div>
@@ -104,9 +112,9 @@ export const BuiltInEnvironmentCard = memo(
           </div>
         </div>
         {/* Status and updated time */}
-        <div className="flex items-center justify-between gap-4 px-4 py-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2.5">
           <RuntimeStateIndicator runtimeState={RuntimeState.RUNTIME_STATE_RUNNING} />
-          <p className="truncate system-xs-regular text-text-tertiary">
+          <p className="system-xs-regular wrap-break-word text-text-tertiary">
             {publishedWorkflow
               ? t(($) => $['studio.updatedAtBy'], {
                   name: updatedBy,

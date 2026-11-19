@@ -4,6 +4,63 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type DataSourceIntegrateListResponse = {
+  data: Array<DataSourceIntegrateResponse>
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
+export type SimpleResultResponse = {
+  result: string
+}
+
+export type InvalidActionError = ErrorResponse & {
+  code: 'invalid_action'
+  status: 400
+}
+
+export type DataSourceIntegrateResponse = {
+  created_at: number | null
+  disabled: boolean | null
+  id: string | null
+  is_bound: boolean
+  link: string
+  provider: string
+  source_info: DataSourceIntegrateWorkspaceResponse | null
+}
+
+export type DataSourceIntegrateWorkspaceResponse = {
+  pages: Array<DataSourceIntegratePageResponse>
+  total: number
+  workspace_icon: string | null
+  workspace_id: string | null
+  workspace_name: string | null
+}
+
+export type DataSourceIntegratePageResponse = {
+  page_icon: DataSourceIntegrateIconResponse | null
+  page_id: string
+  page_name: string
+  parent_id: string
+  type: NotionPageType
+}
+
+export type DataSourceIntegrateIconResponse = {
+  emoji?: string | null
+  type?: string | null
+  url?: string | null
+}
+
+export type NotionPageType = 'database' | 'page'
+
 export type GetDataSourceIntegratesData = {
   body?: never
   path?: never
@@ -11,49 +68,19 @@ export type GetDataSourceIntegratesData = {
   url: '/data-source/integrates'
 }
 
+export type GetDataSourceIntegratesErrors = {
+  default: ErrorResponse
+}
+
+export type GetDataSourceIntegratesError =
+  GetDataSourceIntegratesErrors[keyof GetDataSourceIntegratesErrors]
+
 export type GetDataSourceIntegratesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DataSourceIntegrateListResponse
 }
 
 export type GetDataSourceIntegratesResponse =
   GetDataSourceIntegratesResponses[keyof GetDataSourceIntegratesResponses]
-
-export type PatchDataSourceIntegratesData = {
-  body?: never
-  path?: never
-  query?: never
-  url: '/data-source/integrates'
-}
-
-export type PatchDataSourceIntegratesResponses = {
-  200: {
-    [key: string]: unknown
-  }
-}
-
-export type PatchDataSourceIntegratesResponse =
-  PatchDataSourceIntegratesResponses[keyof PatchDataSourceIntegratesResponses]
-
-export type GetDataSourceIntegratesByBindingIdByActionData = {
-  body?: never
-  path: {
-    action: string
-    binding_id: string
-  }
-  query?: never
-  url: '/data-source/integrates/{binding_id}/{action}'
-}
-
-export type GetDataSourceIntegratesByBindingIdByActionResponses = {
-  200: {
-    [key: string]: unknown
-  }
-}
-
-export type GetDataSourceIntegratesByBindingIdByActionResponse =
-  GetDataSourceIntegratesByBindingIdByActionResponses[keyof GetDataSourceIntegratesByBindingIdByActionResponses]
 
 export type PatchDataSourceIntegratesByBindingIdByActionData = {
   body?: never
@@ -65,10 +92,16 @@ export type PatchDataSourceIntegratesByBindingIdByActionData = {
   url: '/data-source/integrates/{binding_id}/{action}'
 }
 
+export type PatchDataSourceIntegratesByBindingIdByActionErrors = {
+  400: InvalidActionError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PatchDataSourceIntegratesByBindingIdByActionError =
+  PatchDataSourceIntegratesByBindingIdByActionErrors[keyof PatchDataSourceIntegratesByBindingIdByActionErrors]
+
 export type PatchDataSourceIntegratesByBindingIdByActionResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PatchDataSourceIntegratesByBindingIdByActionResponse =

@@ -1,4 +1,8 @@
 {
+  "callback.error": "授权失败",
+  "callback.errorHint": "请返回上一页并重试。",
+  "callback.success": "授权完成",
+  "callback.successHint": "现在可以关闭此标签页并返回上一页。",
   "connect": "连接到",
   "continue": "继续",
   "error.authAppInfoFetchFailed": "获取待授权应用的信息失败",

@@ -1,8 +1,6 @@
 import logging
 from typing import override
 
-import pypandoc  # type: ignore
-
 from configs import dify_config
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
@@ -36,10 +34,9 @@ class UnstructuredEpubExtractor(BaseExtractor):
 
             elements = partition_via_api(filename=self._file_path, api_url=self._api_url, api_key=self._api_key)
         else:
-            from unstructured.partition.epub import partition_epub
+            from libs.epub import partition_epub
 
-            pypandoc.download_pandoc()
-            elements = partition_epub(filename=self._file_path, xml_keep_tags=True)
+            elements = partition_epub(self._file_path)
 
         from unstructured.chunking.title import chunk_by_title
 

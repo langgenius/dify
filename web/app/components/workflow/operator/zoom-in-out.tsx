@@ -1,21 +1,22 @@
 import type { FC } from 'react'
 import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuItem,
-  DropdownMenuPopup,
-  DropdownMenuPortal,
-  DropdownMenuPositioner,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { Fragment, memo } from 'react'
+  Menu,
+  MenuCheckboxItem,
+  MenuItem,
+  MenuPopup,
+  MenuPortal,
+  MenuPositioner,
+  MenuSeparator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
+import { useAtomValue } from 'jotai'
+import { Fragment, memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow, useViewport } from 'reactflow'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { editorCollaborationEnabledAtom } from '@/app/components/workflow/editor-resource/state'
 import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
 import { useWorkflowReadOnly } from '../hooks/use-workflow'
+import { handleWorkflowMenuKeyDown } from '../shortcuts/handle-workflow-menu-key-down'
 import { ShortcutKbd } from '../shortcuts/shortcut-kbd'
 import TipPopup from './tip-popup'
 
@@ -53,14 +54,12 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
   isCommentMode = false,
 }) => {
   const { t } = useTranslation(['workflow'])
+  const [open, setOpen] = useState(false)
   const { zoomIn, zoomOut, zoomTo, fitView } = useReactFlow()
   const { zoom } = useViewport()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { workflowReadOnly, getWorkflowReadOnly } = useWorkflowReadOnly()
-  const { data: isCollaborationEnabled } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (s) => s.enable_collaboration_mode,
-  })
+  const isCollaborationEnabled = useAtomValue(editorCollaborationEnabledAtom)
 
   const zoomOptions = [
     [
@@ -150,6 +149,11 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
     handleSyncWorkflowDraft()
   }
 
+  function selectZoom(type: ZoomType) {
+    handleZoom(type)
+    setOpen(false)
+  }
+
   return (
     <div
       className={`h-9 cursor-pointer rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 text-[13px] shadow-lg backdrop-blur-[5px] hover:bg-state-base-hover ${workflowReadOnly && 'cursor-not-allowed! opacity-50'} `}
@@ -177,30 +181,39 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
             />
           </button>
         </TipPopup>
-        <DropdownMenu>
-          <DropdownMenuTrigger
+        <Menu open={open} onOpenChange={setOpen}>
+          <MenuTrigger
             disabled={getWorkflowReadOnly()}
             className="flex h-8 w-8.5 items-center justify-center rounded-lg system-sm-medium text-text-tertiary hover:bg-black/5 hover:text-text-secondary data-popup-open:bg-black/5 data-popup-open:text-text-secondary"
           >
             {Number.parseFloat(`${zoom * 100}`).toFixed(0)}%
-          </DropdownMenuTrigger>
-          <DropdownMenuPortal>
-            <DropdownMenuPositioner placement="top-start" sideOffset={4} alignOffset={-2}>
-              <DropdownMenuPopup>
+          </MenuTrigger>
+          <MenuPortal>
+            <MenuPositioner sideOffset={4} side="top" align="start" alignOffset={-2}>
+              <MenuPopup
+                onKeyDown={(event) => {
+                  if (workflowReadOnly) return
+                  handleWorkflowMenuKeyDown(event, [
+                    ['workflow.zoom-to-fit', () => selectZoom(ZoomType.zoomToFit)],
+                    ['workflow.zoom-to-100', () => selectZoom(ZoomType.zoomTo100)],
+                    ['workflow.zoom-to-50', () => selectZoom(ZoomType.zoomTo50)],
+                  ])
+                }}
+              >
                 <div className="w-48 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
                   {zoomOptions.map((options, groupIndex) => (
                     <Fragment key={options[0]!.key}>
-                      {groupIndex !== 0 && <DropdownMenuSeparator className="my-0" />}
+                      {groupIndex !== 0 && <MenuSeparator className="my-0" />}
                       <div className="p-1">
                         {options.map((option) =>
                           'checked' in option ? (
-                            <DropdownMenuCheckboxItem
+                            <MenuCheckboxItem
                               key={option.key}
                               className="gap-2 px-3 py-1.5 system-md-regular text-text-secondary"
                               checked={option.checked}
                               disabled={option.key === ZoomType.toggleUserComments && isCommentMode}
                               closeOnClick
-                              onCheckedChange={() => handleZoom(option.key)}
+                              onCheckedChange={() => selectZoom(option.key)}
                             >
                               <span
                                 aria-hidden
@@ -211,12 +224,12 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
                                 }
                               />
                               <span>{option.text}</span>
-                            </DropdownMenuCheckboxItem>
+                            </MenuCheckboxItem>
                           ) : (
-                            <DropdownMenuItem
+                            <MenuItem
                               key={option.key}
                               className="justify-between px-3 py-1.5 system-md-regular text-text-secondary"
-                              onClick={() => handleZoom(option.key)}
+                              onClick={() => selectZoom(option.key)}
                             >
                               <div className="flex items-center gap-2">
                                 {option.key === ZoomType.zoomToFit && (
@@ -241,17 +254,17 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
                                   <ShortcutKbd shortcut="workflow.zoom-to-100" />
                                 )}
                               </div>
-                            </DropdownMenuItem>
+                            </MenuItem>
                           ),
                         )}
                       </div>
                     </Fragment>
                   ))}
                 </div>
-              </DropdownMenuPopup>
-            </DropdownMenuPositioner>
-          </DropdownMenuPortal>
-        </DropdownMenu>
+              </MenuPopup>
+            </MenuPositioner>
+          </MenuPortal>
+        </Menu>
         <TipPopup
           title={t(($) => $['operator.zoomIn'], { ns: 'workflow' })}
           shortcut="workflow.zoom-in"

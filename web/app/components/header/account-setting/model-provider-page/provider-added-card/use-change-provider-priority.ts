@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { ConfigurationMethodEnum } from '../declarations'
 import { useUpdateModelList, useUpdateModelProviders } from '../hooks'
 
@@ -26,8 +27,8 @@ export function useChangeProviderPriority(
   const { mutate: changePriority, isPending: isChangingPriority } = useMutation(
     consoleQuery.workspaces.current.modelProviders.byProvider.preferredProviderType.post.mutationOptions(
       {
+        context: { silent: true },
         onSuccess: () => {
-          toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
           queryClient.invalidateQueries({
             queryKey: modelProviderModelListQueryKey,
             exact: true,
@@ -39,13 +40,17 @@ export function useChangeProviderPriority(
               provider?.supported_model_types.forEach((modelType) => updateModelList(modelType))
           })
         },
-        onError: () => {
-          toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+        onError: (error) => {
+          toast.error(
+            getErrorMessage(error) ??
+              t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+          )
         },
       },
     ),
   )
   const handleChangePriority = (key: PreferredProviderTypeEnum) => {
+    if (!providerName) return
     changePriority({
       params: { provider: providerName },
       body: { preferred_provider_type: key },

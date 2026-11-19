@@ -1,12 +1,12 @@
+import type { SegmentResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
-import type { SegmentDetailModel } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import TagInput from '@/app/components/base/tag-input'
 
 type IKeywordsProps = {
-  segInfo?: Partial<SegmentDetailModel> & { id: string }
+  segInfo?: Partial<SegmentResponse> & { id: string }
   className?: string
   keywords: string[]
   onKeywordsChange: (keywords: string[]) => void

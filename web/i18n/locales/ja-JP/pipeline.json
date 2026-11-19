@@ -1,6 +1,6 @@
 {
   "common.confirmPublish": "公開を確認する",
-  "common.confirmPublishContent": "知識パイプラインを正常に公開した後、この知識ベースのチャンク構造は変更できません。本当に公開してもよろしいですか？",
+  "common.confirmPublishContent": "知識パイプラインを正常に公開した後、このナレッジベースのチャンク構造は変更できません。本当に公開してもよろしいですか？",
   "common.goToAddDocuments": "ドキュメントを追加するために行く",
   "common.preparingDataSource": "データソースを準備中",
   "common.processing": "処理中",

@@ -2,29 +2,16 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { IndexBar } from '../index-bar'
 
-describe('IndexBar', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+it('scrolls only the section matching the selected letter', async () => {
+  const user = userEvent.setup()
+  const a = document.createElement('section')
+  const b = document.createElement('section')
+  a.scrollIntoView = vi.fn()
+  b.scrollIntoView = vi.fn()
 
-  // Clicking a letter should scroll the matching section into view.
-  describe('Rendering', () => {
-    it('should let keyboard users scroll to the selected letter', async () => {
-      const user = userEvent.setup()
-      const scrollIntoView = vi.fn()
-      const itemRefs = {
-        current: {
-          A: { scrollIntoView } as unknown as HTMLElement,
-        },
-      }
+  render(<IndexBar letters={['A', 'B']} itemRefs={{ current: { A: a, B: b } }} />)
+  await user.click(screen.getByRole('button', { name: 'B' }))
 
-      render(<IndexBar letters={['A']} itemRefs={itemRefs} />)
-
-      await user.tab()
-      expect(screen.getByRole('button', { name: 'A' })).toHaveFocus()
-      await user.keyboard('{Enter}')
-
-      expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth' })
-    })
-  })
+  expect(b.scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth' })
+  expect(a.scrollIntoView).not.toHaveBeenCalled()
 })

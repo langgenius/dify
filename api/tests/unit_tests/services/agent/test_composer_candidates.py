@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from unittest.mock import Mock
 
 from fields.agent_fields import AgentComposerCandidatesResponse
@@ -65,7 +66,7 @@ def _draft_vars(nid: str) -> list[tuple[str, str | None]]:
     return []
 
 
-def _collect(node_id: str, *, system_vars=()):
+def _collect(node_id: str, *, system_vars: Iterable[tuple[str, str]] = ()) -> tuple[list[dict[str, object]], bool]:
     entries, truncated = previous_node_output_candidates(
         graph=_GRAPH,
         node_id=node_id,
@@ -76,7 +77,7 @@ def _collect(node_id: str, *, system_vars=()):
     return entries, truncated
 
 
-def test_upstream_outputs_follow_inspector_semantics():
+def test_upstream_outputs_follow_inspector_semantics() -> None:
     entries, truncated = _collect("agent-target", system_vars=[("query", "string")])
 
     assert truncated is False
@@ -107,7 +108,7 @@ def test_upstream_outputs_follow_inspector_semantics():
     assert "end" not in by_node
 
 
-def test_results_differ_per_node_id():
+def test_results_differ_per_node_id() -> None:
     entries_target, _ = _collect("agent-target")
     entries_llm, _ = _collect("llm-1")
 
@@ -140,17 +141,17 @@ def test_historical_agent_version_two_uses_inferred_outputs() -> None:
     declared_loader.assert_not_called()
 
 
-def test_previous_outputs_capped_and_flagged():
+def test_previous_outputs_capped_and_flagged() -> None:
     graph = {
-        "nodes": [{"id": "start-1", "data": {"type": "start", "title": "S", "variables": []}}, {"id": "t"}],
+        "nodes": [{"id": "start-1", "data": {"type": "start", "title": "S", "variables": list[object]()}}, {"id": "t"}],
         "edges": [{"source": "start-1", "target": "t"}],
     }
     many: list[tuple[str, str | None]] = [(f"v{i}", "string") for i in range(MAX_CANDIDATES_PER_LIST + 5)]
     entries, truncated = previous_node_output_candidates(
         graph=graph,
         node_id="t",
-        declared_outputs_loader=lambda nid: None,
-        draft_variables_loader=lambda nid: [],
+        declared_outputs_loader=lambda _nid: None,
+        draft_variables_loader=lambda _nid: [],
         system_variables_loader=lambda: many,
     )
     assert len(entries) == MAX_CANDIDATES_PER_LIST
@@ -183,7 +184,7 @@ def _soul() -> AgentSoulConfig:
     )
 
 
-def test_soul_candidates_lists_configured_items_only():
+def test_soul_candidates_lists_configured_items_only() -> None:
     dataset = Dataset(
         id="ds-1",
         tenant_id="tenant-1",
@@ -193,7 +194,7 @@ def test_soul_candidates_lists_configured_items_only():
     )
     lists, truncated = soul_candidates(
         agent_soul=_soul(),
-        dataset_lookup=lambda ids: {"ds-1": dataset},
+        dataset_lookup=lambda _ids: {"ds-1": dataset},
         workspace_tools_loader=lambda: [
             {"id": "tavily/tavily_search", "name": "tavily_search", "provider": "tavily", "plugin_id": "lg/tavily"}
         ],
@@ -217,7 +218,7 @@ def test_soul_candidates_lists_configured_items_only():
     assert lists["dify_tools"][0]["id"] == "tavily/tavily_search"
 
 
-def test_candidates_response_omits_legacy_skill_file_candidates():
+def test_candidates_response_omits_legacy_skill_file_candidates() -> None:
     response = AgentComposerCandidatesResponse.model_validate(
         {
             "variant": "agent_app",
@@ -232,20 +233,20 @@ def test_candidates_response_omits_legacy_skill_file_candidates():
     assert "skills_files" not in response["allowed_soul_candidates"]
 
 
-def test_soul_candidates_empty_config_yields_empty_lists():
+def test_soul_candidates_empty_config_yields_empty_lists() -> None:
     lists, truncated = soul_candidates(
         agent_soul=None,
-        dataset_lookup=lambda ids: {},
+        dataset_lookup=lambda _ids: {},
         workspace_tools_loader=lambda: [],
     )
     assert truncated is False
     assert all(value == [] for value in lists.values())
 
 
-def test_soul_candidates_caps_lists():
+def test_soul_candidates_caps_lists() -> None:
     lists, truncated = soul_candidates(
         agent_soul=None,
-        dataset_lookup=lambda ids: {},
+        dataset_lookup=lambda _ids: {},
         workspace_tools_loader=lambda: [{"id": str(i)} for i in range(MAX_CANDIDATES_PER_LIST + 1)],
     )
     assert len(lists["dify_tools"]) == MAX_CANDIDATES_PER_LIST

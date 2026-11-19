@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Callable
 from unittest.mock import Mock, patch
 
 import pytest
@@ -9,13 +10,16 @@ from libs.workspace_permission import (
     check_workspace_member_invite_permission,
     check_workspace_owner_transfer_permission,
 )
+from services.enterprise.enterprise_service import WorkspacePermission
 
 
 class TestWorkspacePermissionHelper:
     """Test workspace permission helper functions."""
 
     @patch("libs.workspace_permission.EnterpriseService")
-    def test_community_edition_allows_invite(self, mock_enterprise_service, config_overrides):
+    def test_community_edition_allows_invite(
+        self, mock_enterprise_service: Mock, config_overrides: Callable[..., None]
+    ) -> None:
         """Community edition should always allow invitations without calling any service."""
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
 
@@ -25,7 +29,7 @@ class TestWorkspacePermissionHelper:
         # EnterpriseService should NOT be called in community edition
         mock_enterprise_service.WorkspacePermissionService.get_permission.assert_not_called()
 
-    def test_community_edition_allows_transfer(self, config_overrides):
+    def test_community_edition_allows_transfer(self, config_overrides: Callable[..., None]) -> None:
         """Community edition should check billing plan but not call enterprise service."""
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
 
@@ -33,12 +37,13 @@ class TestWorkspacePermissionHelper:
         check_workspace_owner_transfer_permission("test-workspace-id", owner_transfer_allowed=True)
 
     @patch("libs.workspace_permission.EnterpriseService")
-    def test_enterprise_blocks_invite_when_disabled(self, mock_enterprise_service, config_overrides):
+    def test_enterprise_blocks_invite_when_disabled(
+        self, mock_enterprise_service: Mock, config_overrides: Callable[..., None]
+    ) -> None:
         """Enterprise edition should block invitations when workspace policy is False."""
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
 
-        mock_permission = Mock()
-        mock_permission.allow_member_invite = False
+        mock_permission = WorkspacePermission(workspaceId="test-workspace-id", allowMemberInvite=False)
         mock_enterprise_service.WorkspacePermissionService.get_permission.return_value = mock_permission
 
         with pytest.raises(Forbidden, match="Workspace policy prohibits member invitations"):
@@ -47,12 +52,13 @@ class TestWorkspacePermissionHelper:
         mock_enterprise_service.WorkspacePermissionService.get_permission.assert_called_once_with("test-workspace-id")
 
     @patch("libs.workspace_permission.EnterpriseService")
-    def test_enterprise_allows_invite_when_enabled(self, mock_enterprise_service, config_overrides):
+    def test_enterprise_allows_invite_when_enabled(
+        self, mock_enterprise_service: Mock, config_overrides: Callable[..., None]
+    ) -> None:
         """Enterprise edition should allow invitations when workspace policy is True."""
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
 
-        mock_permission = Mock()
-        mock_permission.allow_member_invite = True
+        mock_permission = WorkspacePermission(workspaceId="test-workspace-id", allowMemberInvite=True)
         mock_enterprise_service.WorkspacePermissionService.get_permission.return_value = mock_permission
 
         # Should not raise
@@ -61,7 +67,9 @@ class TestWorkspacePermissionHelper:
         mock_enterprise_service.WorkspacePermissionService.get_permission.assert_called_once_with("test-workspace-id")
 
     @patch("libs.workspace_permission.EnterpriseService")
-    def test_billing_plan_blocks_transfer(self, mock_enterprise_service, config_overrides):
+    def test_billing_plan_blocks_transfer(
+        self, mock_enterprise_service: Mock, config_overrides: Callable[..., None]
+    ) -> None:
         """SANDBOX billing plan should block owner transfer before checking enterprise policy."""
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
         with pytest.raises(Forbidden, match="Your current plan does not allow workspace ownership transfer"):
@@ -71,11 +79,12 @@ class TestWorkspacePermissionHelper:
         mock_enterprise_service.WorkspacePermissionService.get_permission.assert_not_called()
 
     @patch("libs.workspace_permission.EnterpriseService")
-    def test_enterprise_blocks_transfer_when_disabled(self, mock_enterprise_service, config_overrides):
+    def test_enterprise_blocks_transfer_when_disabled(
+        self, mock_enterprise_service: Mock, config_overrides: Callable[..., None]
+    ) -> None:
         """Enterprise edition should block transfer when workspace policy is False."""
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
-        mock_permission = Mock()
-        mock_permission.allow_owner_transfer = False  # Workspace policy blocks
+        mock_permission = WorkspacePermission(workspaceId="test-workspace-id", allowOwnerTransfer=False)
         mock_enterprise_service.WorkspacePermissionService.get_permission.return_value = mock_permission
 
         with pytest.raises(Forbidden, match="Workspace policy prohibits ownership transfer"):
@@ -84,11 +93,12 @@ class TestWorkspacePermissionHelper:
         mock_enterprise_service.WorkspacePermissionService.get_permission.assert_called_once_with("test-workspace-id")
 
     @patch("libs.workspace_permission.EnterpriseService")
-    def test_enterprise_allows_transfer_when_both_enabled(self, mock_enterprise_service, config_overrides):
+    def test_enterprise_allows_transfer_when_both_enabled(
+        self, mock_enterprise_service: Mock, config_overrides: Callable[..., None]
+    ) -> None:
         """Enterprise edition should allow transfer when both billing and workspace policy allow."""
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
-        mock_permission = Mock()
-        mock_permission.allow_owner_transfer = True  # Workspace policy allows
+        mock_permission = WorkspacePermission(workspaceId="test-workspace-id", allowOwnerTransfer=True)
         mock_enterprise_service.WorkspacePermissionService.get_permission.return_value = mock_permission
 
         # Should not raise
@@ -98,8 +108,8 @@ class TestWorkspacePermissionHelper:
 
     @patch("libs.workspace_permission.EnterpriseService")
     def test_enterprise_service_error_fails_open(
-        self, mock_enterprise_service, config_overrides, caplog: pytest.LogCaptureFixture
-    ):
+        self, mock_enterprise_service: Mock, config_overrides: Callable[..., None], caplog: pytest.LogCaptureFixture
+    ) -> None:
         """On enterprise service error, should fail-open (allow) and log error."""
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
 

@@ -10,6 +10,7 @@ from core.app.entities.task_entities import (
     ErrorStreamResponse,
     MessageEndStreamResponse,
     NodeFinishStreamResponse,
+    NodeRetryStreamResponse,
     NodeStartStreamResponse,
     PingStreamResponse,
     StreamEvent,
@@ -80,8 +81,8 @@ class AdvancedChatAppGenerateResponseConverter(
     @classmethod
     @override
     def convert_stream_full_response(
-        cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[dict[str, Any] | str, Any, None]:
+        cls, stream_response: Generator[AppStreamResponse]
+    ) -> Generator[dict[str, Any] | str, Any]:
         """
         Convert stream full response.
         :param stream_response: stream response
@@ -112,10 +113,15 @@ class AdvancedChatAppGenerateResponseConverter(
     @classmethod
     @override
     def convert_stream_simple_response(
-        cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[dict[str, Any] | str, Any, None]:
+        cls, stream_response: Generator[AppStreamResponse]
+    ) -> Generator[dict[str, Any] | str, Any]:
         """
         Convert stream simple response.
+
+        Preconditions: the caller selected the public response for this task stream.
+        Postconditions: node start, finish, and retry details are redacted without
+        mutating their source events; event order and upstream errors are preserved.
+
         :param stream_response: stream response
         :return:
         """
@@ -143,7 +149,7 @@ class AdvancedChatAppGenerateResponseConverter(
                 case ErrorStreamResponse():
                     data = cls._error_to_stream_response(sub_stream_response.err)
                     response_chunk.update(data)
-                case NodeStartStreamResponse() | NodeFinishStreamResponse():
+                case NodeStartStreamResponse() | NodeFinishStreamResponse() | NodeRetryStreamResponse():
                     response_chunk.update(sub_stream_response.to_ignore_detail_dict())
                 case _:
                     response_chunk.update(sub_stream_response.model_dump(mode="json"))

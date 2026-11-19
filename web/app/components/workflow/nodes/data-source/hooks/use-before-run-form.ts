@@ -1,5 +1,6 @@
 import type { CustomRunFormProps, DataSourceNodeType } from '../types'
-import type { NodeRunResult } from '@/types/workflow'
+import type { NodeTracing } from '@/types/workflow'
+import { useMutation } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useShallow } from 'zustand/react/shallow'
@@ -7,20 +8,19 @@ import {
   useDataSourceStore,
   useDataSourceStoreWithSelector,
 } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
+import { selectDatasourceSingleRun } from '@/app/components/rag-pipeline/utils/query-select'
 import { DatasourceType } from '@/models/pipeline'
-import { useDatasourceSingleRun } from '@/service/use-pipeline'
-import { useInvalidLastRun } from '@/service/use-workflow'
+import { consoleQuery } from '@/service/console'
+import { useInvalidateLastRun } from '@/service/use-workflow'
 import { fetchNodeInspectVars } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
-import { FlowType } from '@/types/common'
 import { useNodeDataUpdate } from '../../../hooks/use-node-data-update'
 import { useNodesSyncDraft } from '../../../hooks/use-nodes-sync-draft'
 import { NodeRunningStatus } from '../../../types'
 
 const useBeforeRunForm = ({
   nodeId,
-  flowId,
-  flowType,
+  resource,
   payload,
   setRunResult,
   isPaused,
@@ -29,6 +29,9 @@ const useBeforeRunForm = ({
   onSuccess,
   appendNodeInspectVars,
 }: CustomRunFormProps) => {
+  if (resource.kind !== 'knowledge-pipeline')
+    throw new Error('Data source runs require a knowledge pipeline')
+  const flowId = resource.pipelineId
   const store = useStoreApi()
   const dataSourceStore = useDataSourceStore()
   const isPausedRef = useRef(isPaused)
@@ -80,9 +83,9 @@ const useBeforeRunForm = ({
     })
   }
 
-  const invalidLastRun = useInvalidLastRun(flowType, flowId, nodeId)
+  const invalidLastRun = useInvalidateLastRun(resource, nodeId)
 
-  const updateRunResult = async (data: NodeRunResult) => {
+  const updateRunResult = async (data: NodeTracing | undefined) => {
     const isPaused = isPausedRef.current
 
     // The backend don't support pause the single run, so the frontend handle the pause state.
@@ -90,19 +93,21 @@ const useBeforeRunForm = ({
 
     const canRunLastRun = !isRunAfterSingleRun || runningStatus === NodeRunningStatus.Succeeded
     if (!canRunLastRun) {
-      setRunResult(data)
+      setRunResult(data ?? null)
       return
     }
 
     // run fail may also update the inspect vars when the node set the error default output.
-    const vars = await fetchNodeInspectVars(FlowType.ragPipeline, flowId, nodeId)
+    const vars = await fetchNodeInspectVars(resource, nodeId)
     const { getNodes } = store.getState()
     const nodes = getNodes()
     appendNodeInspectVars(nodeId, vars, nodes)
     if (data?.status === NodeRunningStatus.Succeeded) onSuccess()
   }
 
-  const { mutateAsync: handleDatasourceSingleRun, isPending } = useDatasourceSingleRun()
+  const { mutate: handleDatasourceSingleRun, isPending } = useMutation(
+    consoleQuery.rag.pipelines.byPipelineId.workflows.draft.datasource.variablesInspect.post.mutationOptions(),
+  )
 
   const handleRun = () => {
     let datasourceInfo: Record<string, any> = {}
@@ -152,11 +157,13 @@ const useBeforeRunForm = ({
     let hasError = false
     handleDatasourceSingleRun(
       {
-        pipeline_id: flowId,
-        start_node_id: nodeId,
-        start_node_title: datasourceNodeData.title,
-        datasource_type: datasourceType,
-        datasource_info: datasourceInfo,
+        params: { pipeline_id: flowId },
+        body: {
+          start_node_id: nodeId,
+          start_node_title: datasourceNodeData.title,
+          datasource_type: datasourceType,
+          datasource_info: datasourceInfo,
+        },
       },
       {
         onError: () => {
@@ -173,7 +180,8 @@ const useBeforeRunForm = ({
           })
         },
         onSettled: (data) => {
-          updateRunResult(data!)
+          // A failed request settles without data; still refresh inspect vars.
+          updateRunResult(data ? selectDatasourceSingleRun(data) : undefined)
           if (!hasError && !isPausedRef.current) {
             handleNodeDataUpdate({
               id: nodeId,

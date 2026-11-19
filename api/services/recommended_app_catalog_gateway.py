@@ -328,7 +328,11 @@ def _map_app_info(source: Mapping[str, object] | None) -> RecommendedAppInfoReco
 def _map_detail(source: Mapping[str, object]) -> RecommendedAppDetailRecord:
     app_id = source["id"]
     name = source["name"]
-    export_data = source["export_data"]
+    mode = _enum_string(source["mode"], field="mode")
+    package_url = source.get("package_url")
+    if package_url is not None and (not isinstance(package_url, str) or not package_url.strip()):
+        raise TypeError("package_url must be a non-empty string")
+    export_data = source.get("export_data", "") if mode == "agent" and package_url else source["export_data"]
     if not isinstance(app_id, str):
         raise TypeError("id must be a string")
     if not isinstance(name, str):
@@ -336,7 +340,6 @@ def _map_detail(source: Mapping[str, object]) -> RecommendedAppDetailRecord:
     if not isinstance(export_data, str):
         raise TypeError("export_data must be a string")
 
-    mode = _enum_string(source["mode"], field="mode")
     if mode is None:
         raise TypeError("mode must be a string or string enum")
     return RecommendedAppDetailRecord(
@@ -346,6 +349,7 @@ def _map_detail(source: Mapping[str, object]) -> RecommendedAppDetailRecord:
         icon_background=cast(str | None, source.get("icon_background")),
         mode=mode,
         export_data=export_data,
+        package_url=package_url,
     )
 
 

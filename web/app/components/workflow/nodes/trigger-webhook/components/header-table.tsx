@@ -13,20 +13,22 @@ type HeaderTableProps = {
 }
 
 const HeaderTable: FC<HeaderTableProps> = ({ readonly = false, headers = [], onChange }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowIntegrations'])
 
   // Define columns for header table - matching prototype design
   const columns: ColumnConfig[] = [
     {
       key: 'name',
-      title: t(($) => $['nodes.triggerWebhook.varName'], { ns: 'workflow' }),
+      title: t(($) => $['nodes.triggerWebhook.varName'], { ns: 'workflowIntegrations' }),
       type: 'input',
       width: 'flex-1',
-      placeholder: t(($) => $['nodes.triggerWebhook.varNamePlaceholder'], { ns: 'workflow' }),
+      placeholder: t(($) => $['nodes.triggerWebhook.varNamePlaceholder'], {
+        ns: 'workflowIntegrations',
+      }),
     },
     {
       key: 'required',
-      title: t(($) => $['nodes.triggerWebhook.required'], { ns: 'workflow' }),
+      title: t(($) => $['nodes.triggerWebhook.required'], { ns: 'workflowIntegrations' }),
       type: 'switch',
       width: 'w-[88px]',
     },
@@ -64,7 +66,7 @@ const HeaderTable: FC<HeaderTableProps> = ({ readonly = false, headers = [], onC
       data={tableData}
       onChange={handleDataChange}
       readonly={readonly}
-      placeholder={t(($) => $['nodes.triggerWebhook.noHeaders'], { ns: 'workflow' })}
+      placeholder={t(($) => $['nodes.triggerWebhook.noHeaders'], { ns: 'workflowIntegrations' })}
       emptyRowData={emptyRowData}
       showHeader={true}
     />

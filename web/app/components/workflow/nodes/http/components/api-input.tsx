@@ -30,7 +30,7 @@ type Props = Readonly<{
 }>
 
 const ApiInput: FC<Props> = ({ nodeId, readonly, method, onMethodChange, url, onUrlChange }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowIntegrations'])
 
   const [isFocus, setIsFocus] = useState(false)
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
@@ -80,8 +80,10 @@ const ApiInput: FC<Props> = ({ nodeId, readonly, method, onMethodChange, url, on
         nodesOutputVars={availableVars}
         availableNodes={availableNodesWithParent}
         onFocusChange={setIsFocus}
-        placeholder={!readonly ? t(($) => $['nodes.http.apiPlaceholder'], { ns: 'workflow' })! : ''}
-        placeholderClassName="leading-[21px]!"
+        placeholder={
+          !readonly ? t(($) => $['nodes.http.apiPlaceholder'], { ns: 'workflowIntegrations' })! : ''
+        }
+        placeholderClassName="truncate leading-[21px]!"
       />
     </div>
   )

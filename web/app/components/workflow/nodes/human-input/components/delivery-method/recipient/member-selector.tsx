@@ -1,13 +1,13 @@
 'use client'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FC } from 'react'
 import type { Recipient } from '@/app/components/workflow/nodes/human-input/types'
-import type { Member } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiContactsBookLine } from '@remixicon/react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import MemberList from './member-list'
+import { MemberList } from './member-list'
 
 const i18nPrefix = 'nodes.humanInput'
 
@@ -15,11 +15,11 @@ type Props = Readonly<{
   value: Recipient[]
   email: string
   onSelect: (value: string) => void
-  list: Member[]
+  list: AccountWithRoleResponse[]
 }>
 
 const MemberSelector: FC<Props> = ({ value, email, onSelect, list = [] }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowHumanInput'])
   const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
 
@@ -42,14 +42,14 @@ const MemberSelector: FC<Props> = ({ value, email, onSelect, list = [] }) => {
             <RiContactsBookLine className="size-4" />
             <div>
               {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.trigger`], {
-                ns: 'workflow',
+                ns: 'workflowHumanInput',
               })}
             </div>
           </Button>
         }
       />
       <PopoverContent
-        placement="bottom-end"
+        align="end"
         sideOffset={4}
         alignOffset={35}
         className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"

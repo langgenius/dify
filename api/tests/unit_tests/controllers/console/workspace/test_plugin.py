@@ -13,8 +13,6 @@ from controllers.console.workspace.plugin import (
     ParserAsset,
     ParserAutoUpgradeChange,
     ParserAutoUpgradeFetch,
-    ParserDynamicOptions,
-    ParserDynamicOptionsWithCredentials,
     ParserExcludePlugin,
     ParserGithubInstall,
     ParserGithubUpgrade,
@@ -39,8 +37,6 @@ from controllers.console.workspace.plugin import (
     PluginDeleteInstallTaskApi,
     PluginDeleteInstallTaskItemApi,
     PluginFetchAutoUpgradeApi,
-    PluginFetchDynamicSelectOptionsApi,
-    PluginFetchDynamicSelectOptionsWithCredentialsApi,
     PluginFetchInstallTaskApi,
     PluginFetchInstallTasksApi,
     PluginFetchManifestApi,
@@ -64,7 +60,6 @@ from controllers.console.workspace.plugin import (
     PluginUploadFromPkgApi,
     _list_hardcoded_builtin_tool_providers,
 )
-from core.plugin.entities.parameters import PluginParameterOption
 from core.plugin.entities.plugin import PluginCategory, PluginDeclaration, PluginEntity, PluginInstallation
 from core.plugin.entities.plugin_daemon import PluginInstallTask
 from core.plugin.impl.exc import PluginDaemonClientSideError
@@ -82,8 +77,9 @@ from models.account import (
     TenantPluginDebugPermission,
     TenantPluginInstallPermission,
 )
-from tests.unit_tests.config_override import config_overrides_context
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.controllers.error_body import raised_error
+from tests.helpers.unit.model_factories import make_account
 
 
 def _plugin_category_list_item(category: str = "tool") -> dict[str, Any]:
@@ -340,40 +336,22 @@ def _expected_latest_plugin_cache_dump() -> dict[str, str]:
     }
 
 
-def _dynamic_option() -> PluginParameterOption:
-    return PluginParameterOption.model_validate(
-        {
-            "value": 101,
-            "label": {"en_US": "Dataset 101"},
-            "icon": None,
-        }
-    )
-
-
-def _expected_dynamic_option_dump() -> dict[str, Any]:
-    return {
-        "value": "101",
-        "label": _expected_i18n("Dataset 101"),
-        "icon": None,
-    }
-
-
 def _account(role: TenantAccountRole = TenantAccountRole.OWNER) -> Account:
     return make_account(account_id="u1", name="Test User", email="u1@example.com", role=role)
 
 
 @pytest.fixture
-def user():
+def user() -> Account:
     return _account()
 
 
 @pytest.fixture
-def tenant():
+def tenant() -> str:
     return "t1"
 
 
 class TestPluginListLatestVersionsApi:
-    def test_success(self, app: Flask):
+    def test_success(self, app: Flask) -> None:
         api = PluginListLatestVersionsApi()
         method = unwrap(api.post)
 
@@ -396,7 +374,7 @@ class TestPluginListLatestVersionsApi:
             }
         }
 
-    def test_daemon_error(self, app: Flask):
+    def test_daemon_error(self, app: Flask) -> None:
         api = PluginListLatestVersionsApi()
         method = unwrap(api.post)
 
@@ -409,12 +387,12 @@ class TestPluginListLatestVersionsApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, ParserLatest.model_validate(payload))
+            result = raised_error(lambda: method(api, ParserLatest.model_validate(payload)))
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginDebuggingKeyApi:
-    def test_debugging_key_success(self, app: Flask):
+    def test_debugging_key_success(self, app: Flask) -> None:
         api = PluginDebuggingKeyApi()
         method = unwrap(api.get)
 
@@ -426,7 +404,7 @@ class TestPluginDebuggingKeyApi:
 
         assert result["key"] == "k"
 
-    def test_debugging_key_error(self, app: Flask):
+    def test_debugging_key_error(self, app: Flask) -> None:
         api = PluginDebuggingKeyApi()
         method = unwrap(api.get)
 
@@ -437,12 +415,12 @@ class TestPluginDebuggingKeyApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, "t1")
+            result = raised_error(lambda: method(api, "t1"))
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginListApi:
-    def test_plugin_list(self, app: Flask):
+    def test_plugin_list(self, app: Flask) -> None:
         api = PluginListApi()
         method = unwrap(api.get)
 
@@ -462,7 +440,7 @@ class TestPluginListApi:
 
 
 class TestPluginCategoryListApi:
-    def test_plugin_category_list(self, app: Flask):
+    def test_plugin_category_list(self, app: Flask) -> None:
         api = PluginCategoryListApi()
         method = unwrap(api.get)
         plugin_item = _plugin_category_list_item()
@@ -503,7 +481,7 @@ class TestPluginCategoryListApi:
             language="zh_Hans",
         )
 
-    def test_builtin_tool_providers_use_the_category_list_filters(self):
+    def test_builtin_tool_providers_use_the_category_list_filters(self) -> None:
         search_provider = ToolProviderApiEntity(
             id="search-provider",
             author="dify",
@@ -551,7 +529,7 @@ class TestPluginCategoryListApi:
 
         assert [provider["id"] for provider in result] == ["search-provider"]
 
-    def test_non_tool_category_does_not_include_builtin_tools(self, app: Flask):
+    def test_non_tool_category_does_not_include_builtin_tools(self, app: Flask) -> None:
         api = PluginCategoryListApi()
         method = unwrap(api.get)
         mock_list = MagicMock(list=[_plugin_category_list_item(category="datasource")], has_more=False)
@@ -568,18 +546,18 @@ class TestPluginCategoryListApi:
         assert result["has_more"] is False
         builtin_mock.assert_not_called()
 
-    def test_invalid_category(self, app: Flask):
+    def test_invalid_category(self, app: Flask) -> None:
         api = PluginCategoryListApi()
         method = unwrap(api.get)
 
         with (
             app.test_request_context("/?page=1&page_size=10"),
         ):
-            result = method(api, "t1", "unknown")
+            result = raised_error(lambda: method(api, "t1", "unknown"))
 
         assert result == ({"code": "invalid_param", "message": "invalid plugin category"}, 400)
 
-    def test_daemon_error(self, app: Flask):
+    def test_daemon_error(self, app: Flask) -> None:
         api = PluginCategoryListApi()
         method = unwrap(api.get)
 
@@ -590,13 +568,13 @@ class TestPluginCategoryListApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, "t1", "tool")
+            result = raised_error(lambda: method(api, "t1", "tool"))
 
         assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginIconApi:
-    def test_plugin_icon(self, app: Flask):
+    def test_plugin_icon(self, app: Flask) -> None:
         api = PluginIconApi()
         method = unwrap(api.get)
 
@@ -610,7 +588,7 @@ class TestPluginIconApi:
 
 
 class TestPluginAssetApi:
-    def test_plugin_asset(self, app: Flask):
+    def test_plugin_asset(self, app: Flask) -> None:
         api = PluginAssetApi()
         method = unwrap(api.get)
 
@@ -626,7 +604,7 @@ class TestPluginAssetApi:
 
 
 class TestPluginUploadFromPkgApi:
-    def test_upload_pkg_success(self, app: Flask):
+    def test_upload_pkg_success(self, app: Flask) -> None:
         api = PluginUploadFromPkgApi()
         method = unwrap(api.post)
 
@@ -642,7 +620,7 @@ class TestPluginUploadFromPkgApi:
 
         assert result["ok"] is True
 
-    def test_upload_pkg_too_large(self, app: Flask):
+    def test_upload_pkg_too_large(self, app: Flask) -> None:
         api = PluginUploadFromPkgApi()
         method = unwrap(api.post)
 
@@ -655,7 +633,7 @@ class TestPluginUploadFromPkgApi:
             config_overrides_context(PLUGIN_MAX_PACKAGE_SIZE=0),
             patch("controllers.console.workspace.plugin.PluginService.upload_pkg") as upload_pkg_mock,
         ):
-            with pytest.raises(ValueError) as exc_info:
+            with pytest.raises(ValueError, match="File size exceeds the maximum allowed size") as exc_info:
                 method(api, "t1")
             assert "File size exceeds the maximum allowed size" in str(exc_info.value)
 
@@ -663,7 +641,7 @@ class TestPluginUploadFromPkgApi:
 
 
 class TestPluginInstallFromPkgApi:
-    def test_install_from_pkg(self, app: Flask):
+    def test_install_from_pkg(self, app: Flask) -> None:
         api = PluginInstallFromPkgApi()
         method = unwrap(api.post)
 
@@ -682,7 +660,7 @@ class TestPluginInstallFromPkgApi:
 
 class TestPluginUninstallApi:
     @pytest.mark.parametrize("preserve_credentials", [False, True])
-    def test_uninstall(self, app: Flask, preserve_credentials: bool):
+    def test_uninstall(self, app: Flask, preserve_credentials: bool) -> None:
         api = PluginUninstallApi()
         method = unwrap(api.post)
 
@@ -706,7 +684,7 @@ class TestPluginUninstallApi:
 
 
 class TestPluginChangePermissionApi:
-    def test_change_permission_forbidden(self, app: Flask):
+    def test_change_permission_forbidden(self, app: Flask) -> None:
         api = PluginChangePermissionApi()
         method = unwrap(api.post)
 
@@ -723,7 +701,7 @@ class TestPluginChangePermissionApi:
             with pytest.raises(Forbidden):
                 method(api, ParserPermissionChange(), "t1", user)
 
-    def test_change_permission_success(self, app: Flask):
+    def test_change_permission_success(self, app: Flask) -> None:
         api = PluginChangePermissionApi()
         method = unwrap(api.post)
 
@@ -744,7 +722,7 @@ class TestPluginChangePermissionApi:
 
 
 class TestPluginFetchPermissionApi:
-    def test_fetch_permission_default(self, app: Flask):
+    def test_fetch_permission_default(self, app: Flask) -> None:
         api = PluginFetchPermissionApi()
         method = unwrap(api.get)
 
@@ -754,35 +732,12 @@ class TestPluginFetchPermissionApi:
         ):
             result = method(api, "t1")
 
-        assert result["install_permission"] is not None
-
-
-class TestPluginFetchDynamicSelectOptionsApi:
-    def test_fetch_dynamic_options(self, app: Flask, user):
-        api = PluginFetchDynamicSelectOptionsApi()
-        method = unwrap(api.get)
-
-        with (
-            app.test_request_context("/?plugin_id=p&provider=x&action=y&parameter=z&provider_type=tool"),
-            patch(
-                "controllers.console.workspace.plugin.PluginParameterService.get_dynamic_select_options",
-                return_value=[_dynamic_option()],
-            ),
-        ):
-            result = method(
-                api,
-                ParserDynamicOptions.model_validate(
-                    {"plugin_id": "p", "provider": "x", "action": "y", "parameter": "z", "provider_type": "tool"}
-                ),
-                "t1",
-                user,
-            )
-
-        assert result == {"options": [_expected_dynamic_option_dump()]}
+        assert result["install_permission"] == TenantPluginInstallPermission.ADMINS
+        assert result["debug_permission"] == TenantPluginDebugPermission.EVERYONE
 
 
 class TestPluginReadmeApi:
-    def test_fetch_readme(self, app: Flask):
+    def test_fetch_readme(self, app: Flask) -> None:
         api = PluginReadmeApi()
         method = unwrap(api.get)
 
@@ -796,7 +751,7 @@ class TestPluginReadmeApi:
 
 
 class TestPluginListInstallationsFromIdsApi:
-    def test_success(self, app: Flask, user):
+    def test_success(self, app: Flask, user: Account) -> None:
         api = PluginListInstallationsFromIdsApi()
         method = unwrap(api.post)
 
@@ -813,7 +768,7 @@ class TestPluginListInstallationsFromIdsApi:
 
         assert result == {"plugins": [_expected_plugin_installation_dump()]}
 
-    def test_daemon_error(self, app: Flask):
+    def test_daemon_error(self, app: Flask) -> None:
         api = PluginListInstallationsFromIdsApi()
         method = unwrap(api.post)
 
@@ -826,12 +781,12 @@ class TestPluginListInstallationsFromIdsApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, ParserLatest.model_validate(payload), "t1")
+            result = raised_error(lambda: method(api, ParserLatest.model_validate(payload), "t1"))
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginInstalledIdsApi:
-    def test_success(self, app: Flask):
+    def test_success(self, app: Flask) -> None:
         api = PluginInstalledIdsApi()
         method = unwrap(api.get)
 
@@ -847,7 +802,7 @@ class TestPluginInstalledIdsApi:
         assert result == {"plugin_ids": ["langgenius/openai", "langgenius/anthropic"]}
         list_installed_plugin_ids.assert_called_once_with("t1", PluginCategory.Tool)
 
-    def test_daemon_error(self, app: Flask):
+    def test_daemon_error(self, app: Flask) -> None:
         api = PluginInstalledIdsApi()
         method = unwrap(api.get)
 
@@ -858,13 +813,15 @@ class TestPluginInstalledIdsApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, PluginInstalledIdsQuery.model_validate({"category": "tool"}), "t1")
+            result = raised_error(
+                lambda: method(api, PluginInstalledIdsQuery.model_validate({"category": "tool"}), "t1")
+            )
 
         assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginUploadFromGithubApi:
-    def test_success(self, app: Flask, user):
+    def test_success(self, app: Flask, user: Account) -> None:
         api = PluginUploadFromGithubApi()
         method = unwrap(api.post)
 
@@ -880,7 +837,7 @@ class TestPluginUploadFromGithubApi:
 
         assert result["ok"] is True
 
-    def test_daemon_error(self, app: Flask):
+    def test_daemon_error(self, app: Flask) -> None:
         api = PluginUploadFromGithubApi()
         method = unwrap(api.post)
 
@@ -893,12 +850,28 @@ class TestPluginUploadFromGithubApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, ParserGithubUpload.model_validate(payload), "t1")
+            result = raised_error(lambda: method(api, ParserGithubUpload.model_validate(payload), "t1"))
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
+
+    def test_download_error_reports_status(self, app: Flask) -> None:
+        api = PluginUploadFromGithubApi()
+        method = unwrap(api.post)
+
+        payload = {"repo": "r", "version": "v", "package": "p"}
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch(
+                "controllers.console.workspace.plugin.PluginService.upload_pkg_from_github",
+                side_effect=PluginDaemonClientSideError("Failed to download file: HTTP 403"),
+            ),
+        ):
+            result = raised_error(lambda: method(api, ParserGithubUpload.model_validate(payload), "t1"))
+            assert result == ({"code": "plugin_error", "message": "Failed to download file: HTTP 403"}, 400)
 
 
 class TestPluginUploadFromBundleApi:
-    def test_success(self, app: Flask):
+    def test_success(self, app: Flask) -> None:
         api = PluginUploadFromBundleApi()
         method = unwrap(api.post)
 
@@ -920,7 +893,7 @@ class TestPluginUploadFromBundleApi:
 
         assert result["ok"] is True
 
-    def test_too_large(self, app: Flask):
+    def test_too_large(self, app: Flask) -> None:
         api = PluginUploadFromBundleApi()
         method = unwrap(api.post)
 
@@ -939,7 +912,7 @@ class TestPluginUploadFromBundleApi:
             config_overrides_context(PLUGIN_MAX_BUNDLE_SIZE=0),
             patch("controllers.console.workspace.plugin.PluginService.upload_bundle") as upload_bundle_mock,
         ):
-            with pytest.raises(ValueError) as exc_info:
+            with pytest.raises(ValueError, match="File size exceeds the maximum allowed size") as exc_info:
                 method(api, "t1")
             assert "File size exceeds the maximum allowed size" in str(exc_info.value)
 
@@ -947,7 +920,7 @@ class TestPluginUploadFromBundleApi:
 
 
 class TestPluginInstallFromGithubApi:
-    def test_success(self, app: Flask):
+    def test_success(self, app: Flask) -> None:
         api = PluginInstallFromGithubApi()
         method = unwrap(api.post)
 
@@ -966,7 +939,7 @@ class TestPluginInstallFromGithubApi:
 
         assert result["ok"] is True
 
-    def test_daemon_error(self, app: Flask):
+    def test_daemon_error(self, app: Flask) -> None:
         api = PluginInstallFromGithubApi()
         method = unwrap(api.post)
 
@@ -984,12 +957,12 @@ class TestPluginInstallFromGithubApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, ParserGithubInstall.model_validate(payload), "t1")
+            result = raised_error(lambda: method(api, ParserGithubInstall.model_validate(payload), "t1"))
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginInstallFromMarketplaceApi:
-    def test_success(self, app: Flask):
+    def test_success(self, app: Flask) -> None:
         api = PluginInstallFromMarketplaceApi()
         method = unwrap(api.post)
 
@@ -1006,7 +979,7 @@ class TestPluginInstallFromMarketplaceApi:
 
         assert result["ok"] is True
 
-    def test_daemon_error(self, app: Flask):
+    def test_daemon_error(self, app: Flask) -> None:
         api = PluginInstallFromMarketplaceApi()
         method = unwrap(api.post)
 
@@ -1019,12 +992,12 @@ class TestPluginInstallFromMarketplaceApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, ParserPluginIdentifiers.model_validate(payload), "t1")
+            result = raised_error(lambda: method(api, ParserPluginIdentifiers.model_validate(payload), "t1"))
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginFetchMarketplacePkgApi:
-    def test_success(self, app: Flask):
+    def test_success(self, app: Flask) -> None:
         api = PluginFetchMarketplacePkgApi()
         method = unwrap(api.get)
 
@@ -1039,7 +1012,7 @@ class TestPluginFetchMarketplacePkgApi:
 
         assert result == {"manifest": _expected_plugin_declaration_dump()}
 
-    def test_daemon_error(self, app: Flask):
+    def test_daemon_error(self, app: Flask) -> None:
         api = PluginFetchMarketplacePkgApi()
         method = unwrap(api.get)
 
@@ -1050,12 +1023,14 @@ class TestPluginFetchMarketplacePkgApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, ParserPluginIdentifierQuery.model_validate({"plugin_unique_identifier": "p"}), "t1")
+            result = raised_error(
+                lambda: method(api, ParserPluginIdentifierQuery.model_validate({"plugin_unique_identifier": "p"}), "t1")
+            )
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginFetchManifestApi:
-    def test_success(self, app: Flask):
+    def test_success(self, app: Flask) -> None:
         api = PluginFetchManifestApi()
         method = unwrap(api.get)
 
@@ -1069,7 +1044,7 @@ class TestPluginFetchManifestApi:
 
         assert result == {"manifest": _expected_plugin_declaration_dump()}
 
-    def test_daemon_error(self, app: Flask):
+    def test_daemon_error(self, app: Flask) -> None:
         api = PluginFetchManifestApi()
         method = unwrap(api.get)
 
@@ -1080,12 +1055,14 @@ class TestPluginFetchManifestApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, ParserPluginIdentifierQuery.model_validate({"plugin_unique_identifier": "p"}), "t1")
+            result = raised_error(
+                lambda: method(api, ParserPluginIdentifierQuery.model_validate({"plugin_unique_identifier": "p"}), "t1")
+            )
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginFetchInstallTasksApi:
-    def test_success(self, app: Flask):
+    def test_success(self, app: Flask) -> None:
         api = PluginFetchInstallTasksApi()
         method = unwrap(api.get)
 
@@ -1100,7 +1077,7 @@ class TestPluginFetchInstallTasksApi:
 
         assert result == {"tasks": [_expected_plugin_task_dump()]}
 
-    def test_daemon_error(self, app: Flask):
+    def test_daemon_error(self, app: Flask) -> None:
         api = PluginFetchInstallTasksApi()
         method = unwrap(api.get)
 
@@ -1111,12 +1088,12 @@ class TestPluginFetchInstallTasksApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, ParserTasks(), "t1")
+            result = raised_error(lambda: method(api, ParserTasks(), "t1"))
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginFetchInstallTaskApi:
-    def test_success(self, app: Flask):
+    def test_success(self, app: Flask) -> None:
         api = PluginFetchInstallTaskApi()
         method = unwrap(api.get)
 
@@ -1128,7 +1105,7 @@ class TestPluginFetchInstallTaskApi:
 
         assert result == {"task": _expected_plugin_task_dump()}
 
-    def test_daemon_error(self, app: Flask):
+    def test_daemon_error(self, app: Flask) -> None:
         api = PluginFetchInstallTaskApi()
         method = unwrap(api.get)
 
@@ -1139,12 +1116,12 @@ class TestPluginFetchInstallTaskApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, "t1", "t")
+            result = raised_error(lambda: method(api, "t1", "t"))
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginDeleteInstallTaskApi:
-    def test_success(self, app: Flask):
+    def test_success(self, app: Flask) -> None:
         api = PluginDeleteInstallTaskApi()
         method = unwrap(api.post)
 
@@ -1156,7 +1133,7 @@ class TestPluginDeleteInstallTaskApi:
 
         assert result["success"] is True
 
-    def test_daemon_error(self, app: Flask):
+    def test_daemon_error(self, app: Flask) -> None:
         api = PluginDeleteInstallTaskApi()
         method = unwrap(api.post)
 
@@ -1167,12 +1144,12 @@ class TestPluginDeleteInstallTaskApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, "t1", "t")
+            result = raised_error(lambda: method(api, "t1", "t"))
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginDeleteAllInstallTaskItemsApi:
-    def test_success(self, app: Flask):
+    def test_success(self, app: Flask) -> None:
         api = PluginDeleteAllInstallTaskItemsApi()
         method = unwrap(api.post)
 
@@ -1186,7 +1163,7 @@ class TestPluginDeleteAllInstallTaskItemsApi:
 
         assert result["success"] is True
 
-    def test_daemon_error(self, app: Flask):
+    def test_daemon_error(self, app: Flask) -> None:
         api = PluginDeleteAllInstallTaskItemsApi()
         method = unwrap(api.post)
 
@@ -1197,12 +1174,12 @@ class TestPluginDeleteAllInstallTaskItemsApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, "t1")
+            result = raised_error(lambda: method(api, "t1"))
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginDeleteInstallTaskItemApi:
-    def test_success(self, app: Flask):
+    def test_success(self, app: Flask) -> None:
         api = PluginDeleteInstallTaskItemApi()
         method = unwrap(api.post)
 
@@ -1214,7 +1191,7 @@ class TestPluginDeleteInstallTaskItemApi:
 
         assert result["success"] is True
 
-    def test_daemon_error(self, app: Flask):
+    def test_daemon_error(self, app: Flask) -> None:
         api = PluginDeleteInstallTaskItemApi()
         method = unwrap(api.post)
 
@@ -1225,12 +1202,12 @@ class TestPluginDeleteInstallTaskItemApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, "t1", "task1", "item1")
+            result = raised_error(lambda: method(api, "t1", "task1", "item1"))
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginUpgradeFromMarketplaceApi:
-    def test_success(self, app: Flask, user):
+    def test_success(self, app: Flask, user: Account) -> None:
         api = PluginUpgradeFromMarketplaceApi()
         method = unwrap(api.post)
 
@@ -1250,7 +1227,7 @@ class TestPluginUpgradeFromMarketplaceApi:
 
         assert result["ok"] is True
 
-    def test_daemon_error(self, app: Flask):
+    def test_daemon_error(self, app: Flask) -> None:
         api = PluginUpgradeFromMarketplaceApi()
         method = unwrap(api.post)
 
@@ -1266,12 +1243,12 @@ class TestPluginUpgradeFromMarketplaceApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, ParserMarketplaceUpgrade.model_validate(payload), "t1")
+            result = raised_error(lambda: method(api, ParserMarketplaceUpgrade.model_validate(payload), "t1"))
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginUpgradeFromGithubApi:
-    def test_success(self, app: Flask):
+    def test_success(self, app: Flask) -> None:
         api = PluginUpgradeFromGithubApi()
         method = unwrap(api.post)
 
@@ -1294,7 +1271,7 @@ class TestPluginUpgradeFromGithubApi:
 
         assert result["ok"] is True
 
-    def test_daemon_error(self, app: Flask):
+    def test_daemon_error(self, app: Flask) -> None:
         api = PluginUpgradeFromGithubApi()
         method = unwrap(api.post)
 
@@ -1313,61 +1290,12 @@ class TestPluginUpgradeFromGithubApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, ParserGithubUpgrade.model_validate(payload), "t1")
-            assert result == ({"code": "plugin_error", "message": "error"}, 400)
-
-
-class TestPluginFetchDynamicSelectOptionsWithCredentialsApi:
-    def test_success(self, app: Flask, user):
-        api = PluginFetchDynamicSelectOptionsWithCredentialsApi()
-        method = unwrap(api.post)
-
-        payload = {
-            "plugin_id": "p",
-            "provider": "x",
-            "action": "y",
-            "parameter": "z",
-            "credential_id": "c",
-            "credentials": {"k": "v"},
-        }
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch(
-                "controllers.console.workspace.plugin.PluginParameterService.get_dynamic_select_options_with_credentials",
-                return_value=[_dynamic_option()],
-            ),
-        ):
-            result = method(api, ParserDynamicOptionsWithCredentials.model_validate(payload), "t1", user)
-
-        assert result == {"options": [_expected_dynamic_option_dump()]}
-
-    def test_daemon_error(self, app: Flask, user):
-        api = PluginFetchDynamicSelectOptionsWithCredentialsApi()
-        method = unwrap(api.post)
-
-        payload = {
-            "plugin_id": "p",
-            "provider": "x",
-            "action": "y",
-            "parameter": "z",
-            "credential_id": "c",
-            "credentials": {"k": "v"},
-        }
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch(
-                "controllers.console.workspace.plugin.PluginParameterService.get_dynamic_select_options_with_credentials",
-                side_effect=PluginDaemonClientSideError("error"),
-            ),
-        ):
-            result = method(api, ParserDynamicOptionsWithCredentials.model_validate(payload), "t1", user)
+            result = raised_error(lambda: method(api, ParserGithubUpgrade.model_validate(payload), "t1"))
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginChangeAutoUpgradeApi:
-    def test_success(self, app: Flask):
+    def test_success(self, app: Flask) -> None:
         api = PluginChangeAutoUpgradeApi()
         method = unwrap(api.post)
 
@@ -1379,8 +1307,8 @@ class TestPluginChangeAutoUpgradeApi:
                 "strategy_setting": TenantPluginAutoUpgradeStrategySetting.FIX_ONLY,
                 "upgrade_time_of_day": 0,
                 "upgrade_mode": TenantPluginAutoUpgradeMode.EXCLUDE,
-                "exclude_plugins": [],
-                "include_plugins": [],
+                "exclude_plugins": list[str](),
+                "include_plugins": list[str](),
             },
         }
 
@@ -1395,7 +1323,7 @@ class TestPluginChangeAutoUpgradeApi:
         assert result["success"] is True
         change.assert_called_once()
 
-    def test_success_with_model_category_auto_upgrade(self, app: Flask):
+    def test_success_with_model_category_auto_upgrade(self, app: Flask) -> None:
         api = PluginChangeAutoUpgradeApi()
         method = unwrap(api.post)
 
@@ -1407,8 +1335,8 @@ class TestPluginChangeAutoUpgradeApi:
                 "strategy_setting": TenantPluginAutoUpgradeStrategySetting.LATEST,
                 "upgrade_time_of_day": 3600,
                 "upgrade_mode": TenantPluginAutoUpgradeMode.ALL,
-                "exclude_plugins": [],
-                "include_plugins": [],
+                "exclude_plugins": list[str](),
+                "include_plugins": list[str](),
             },
         }
 
@@ -1424,7 +1352,7 @@ class TestPluginChangeAutoUpgradeApi:
         change.assert_called_once()
         assert change.call_args.kwargs["category"] == TenantPluginAutoUpgradeCategory.MODEL
 
-    def test_auto_upgrade_fail(self, app: Flask):
+    def test_auto_upgrade_fail(self, app: Flask) -> None:
         api = PluginChangeAutoUpgradeApi()
         method = unwrap(api.post)
 
@@ -1436,8 +1364,8 @@ class TestPluginChangeAutoUpgradeApi:
                 "strategy_setting": TenantPluginAutoUpgradeStrategySetting.FIX_ONLY,
                 "upgrade_time_of_day": 0,
                 "upgrade_mode": TenantPluginAutoUpgradeMode.EXCLUDE,
-                "exclude_plugins": [],
-                "include_plugins": [],
+                "exclude_plugins": list[str](),
+                "include_plugins": list[str](),
             },
         }
 
@@ -1451,7 +1379,7 @@ class TestPluginChangeAutoUpgradeApi:
 
 
 class TestPluginFetchAutoUpgradeApi:
-    def test_success(self, app: Flask):
+    def test_success(self, app: Flask) -> None:
         api = PluginFetchAutoUpgradeApi()
         method = unwrap(api.get)
 
@@ -1481,7 +1409,7 @@ class TestPluginFetchAutoUpgradeApi:
         assert result["category"] == TenantPluginAutoUpgradeCategory.TOOL
         assert result["auto_upgrade"]["upgrade_time_of_day"] == 1
 
-    def test_returns_disabled_settings_when_strategy_is_missing(self, app: Flask):
+    def test_returns_disabled_settings_when_strategy_is_missing(self, app: Flask) -> None:
         api = PluginFetchAutoUpgradeApi()
         method = unwrap(api.get)
 
@@ -1515,7 +1443,7 @@ class TestPluginFetchAutoUpgradeApi:
 
 
 class TestPluginAutoUpgradeExcludePluginApi:
-    def test_success(self, app: Flask):
+    def test_success(self, app: Flask) -> None:
         api = PluginAutoUpgradeExcludePluginApi()
         method = unwrap(api.post)
 
@@ -1529,7 +1457,7 @@ class TestPluginAutoUpgradeExcludePluginApi:
 
         assert result["success"] is True
 
-    def test_fail(self, app: Flask):
+    def test_fail(self, app: Flask) -> None:
         api = PluginAutoUpgradeExcludePluginApi()
         method = unwrap(api.post)
 

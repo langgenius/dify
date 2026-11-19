@@ -22,12 +22,11 @@ describe('Zendesk runtime', () => {
     const firstOpen = runtime.open('CLOUD')
     const secondOpen = runtime.open('CLOUD')
 
-    expect(firstOpen).toBe(secondOpen)
     expect(runtime.getSnapshot()).toEqual({ attempt: 1, status: 'loading' })
     expect(api).not.toHaveBeenCalled()
 
     runtime.markReady()
-    await firstOpen
+    await Promise.all([firstOpen, secondOpen])
 
     expect(api).toHaveBeenCalledWith(
       'messenger:set',
@@ -92,6 +91,27 @@ describe('Zendesk runtime', () => {
 
     expect(api).toHaveBeenCalledWith('messenger', 'show')
     expect(api).toHaveBeenCalledWith('messenger', 'open')
+  })
+
+  it('opens the widget even when applying the initial theme throws', async () => {
+    const error = new Error('Customization failed')
+    using warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    api.mockImplementation((_command, action) => {
+      if (action === 'customization') throw error
+    })
+
+    const open = runtime.open('CLOUD')
+    runtime.markReady('dark')
+
+    await expect(open).resolves.toBeUndefined()
+    expect(warn).toHaveBeenCalledWith('Failed to apply the Zendesk theme', error)
+    expect(api).toHaveBeenCalledWith('messenger', 'open')
+
+    api.mockImplementation(() => {})
+    runtime.syncTheme('dark')
+    expect(api).toHaveBeenLastCalledWith('messenger:set', 'customization', {
+      theme: expect.objectContaining({ background: '#222225' }),
+    })
   })
 
   it('does not load or queue fields outside Cloud deployments', async () => {

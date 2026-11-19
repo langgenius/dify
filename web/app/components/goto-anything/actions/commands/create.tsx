@@ -1,10 +1,5 @@
-import type { SlashCommandHandler } from './types'
+import type { SlashCommand } from './types'
 import type { WorkflowGeneratorMode } from '@/app/components/workflow/workflow-generator/types'
-import { getI18n } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { useWorkflowGeneratorStore } from '@/app/components/workflow/workflow-generator/store'
-import { AppModeEnum } from '@/types/app'
-import { registerCommands, unregisterCommands } from './command-bus'
 
 type CreateOption = {
   id: string
@@ -66,16 +61,33 @@ const OPTIONS = [
  * through so the modal offers "Apply to current draft". Auto-mode always creates
  * a new app since the planner may pick a different type than the open Studio.
  */
-export const createCommand: SlashCommandHandler = {
+export const createCommand: SlashCommand = {
   name: 'create',
   aliases: ['new', 'generate'],
-  description: getI18n().t(($) => $['gotoAnything.actions.createCategoryDesc'], { ns: 'app' }),
+  description: 'Create an app with AI',
   mode: 'submenu',
+  execute(args, context) {
+    const option = OPTIONS.find(
+      (option) => option.mode === args.mode && option.auto === !!args.auto,
+    )
+    if (!option) return
+    const initialInstruction = typeof args.instruction === 'string' ? args.instruction : ''
+    const app = context.currentApp
+    if (!option.auto && app?.mode === option.mode) {
+      context.openGenerator({
+        mode: option.mode,
+        currentAppId: app.id,
+        currentAppMode: app.mode,
+        initialInstruction,
+      })
+      return
+    }
+    context.openGenerator({ mode: option.mode, autoMode: option.auto, initialInstruction })
+  },
 
-  search(args: string, locale?: string) {
-    const i18n = getI18n()
+  search(args: string, context) {
     const tr = (key: (typeof OPTIONS)[number]['titleKey' | 'descKey']) =>
-      i18n.t(($) => $[key], { ns: 'app', lng: locale })
+      context.t(($) => $[key], { ns: 'app', lng: context.locale })
 
     const renderIcon = (iconClassName: string) => (
       <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">
@@ -91,7 +103,7 @@ export const createCommand: SlashCommandHandler = {
       description: instruction || tr(opt.descKey),
       type: 'command' as const,
       icon: renderIcon(opt.iconClassName),
-      data: { command: 'create.open', args: { mode: opt.mode, auto: !!opt.auto, instruction } },
+      data: { command: 'create', args: { mode: opt.mode, auto: !!opt.auto, instruction } },
     })
 
     const trimmed = args.trim()
@@ -115,46 +127,5 @@ export const createCommand: SlashCommandHandler = {
     )
     if (matched) return [toResult(matched, tokens.slice(1).join(' '))]
     return OPTIONS.map((opt) => toResult(opt, trimmed))
-  },
-
-  register() {
-    registerCommands({
-      'create.open': async (args) => {
-        const mode: WorkflowGeneratorMode = (args?.mode ?? 'workflow') as WorkflowGeneratorMode
-        const autoMode = !!args?.auto
-        const initialInstruction = typeof args?.instruction === 'string' ? args.instruction : ''
-
-        // If a graph-based Studio app is open and its mode matches the picked
-        // mode, thread it through so the modal can offer "Apply to current
-        // draft". A mode mismatch (or no app open) falls back to new-app only,
-        // mirroring the precondition the modal uses for canApplyToCurrent.
-        // Auto-mode always creates a new app — the planner may resolve a type
-        // different from the open Studio, so applying to the current draft is
-        // unsafe.
-        const appDetail = useAppStore.getState().appDetail
-        const currentAppMode: WorkflowGeneratorMode | null =
-          appDetail?.mode === AppModeEnum.WORKFLOW
-            ? 'workflow'
-            : appDetail?.mode === AppModeEnum.ADVANCED_CHAT
-              ? 'advanced-chat'
-              : null
-
-        if (!autoMode && appDetail && currentAppMode === mode) {
-          useWorkflowGeneratorStore.getState().openGenerator({
-            mode,
-            currentAppId: appDetail.id,
-            currentAppMode,
-            initialInstruction,
-          })
-          return
-        }
-
-        useWorkflowGeneratorStore.getState().openGenerator({ mode, autoMode, initialInstruction })
-      },
-    })
-  },
-
-  unregister() {
-    unregisterCommands(['create.open'])
   },
 }

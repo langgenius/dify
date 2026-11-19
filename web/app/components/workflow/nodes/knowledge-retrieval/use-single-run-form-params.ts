@@ -1,8 +1,8 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { RefObject } from 'react'
 import type { KnowledgeRetrievalNodeType } from './types'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import type { InputVar, Var, Variable } from '@/app/components/workflow/types'
-import type { DataSet } from '@/models/datasets'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { InputVarType, VarType } from '@/app/components/workflow/types'
@@ -28,7 +28,7 @@ const useSingleRunFormParams = ({
   runInputDataRef,
   setRunInputData,
 }: Params) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowModels'])
   const datasetsDetail = useDatasetsDetailStore((s) => s.datasetsDetail)
   const query = runInputData.query
   const queryAttachment = runInputData.queryAttachment
@@ -67,7 +67,7 @@ const useSingleRunFormParams = ({
 
   const forms = useMemo(() => {
     const datasetIds = payload.dataset_ids
-    const datasets = datasetIds.reduce<DataSet[]>((acc, id) => {
+    const datasets = datasetIds.reduce<DatasetDetailWithPartialMembersResponse[]>((acc, id) => {
       if (datasetsDetail[id]) acc.push(datasetsDetail[id])
       return acc
     }, [])
@@ -76,7 +76,7 @@ const useSingleRunFormParams = ({
       {
         inputs: [
           {
-            label: t(($) => $[`${i18nPrefix}.queryText`], { ns: 'workflow' })!,
+            label: t(($) => $[`${i18nPrefix}.queryText`], { ns: 'workflowModels' })!,
             variable: 'query',
             type: InputVarType.paragraph,
             required: false,
@@ -94,7 +94,7 @@ const useSingleRunFormParams = ({
       inputFields.push({
         inputs: [
           {
-            label: t(($) => $[`${i18nPrefix}.queryAttachment`], { ns: 'workflow' })!,
+            label: t(($) => $[`${i18nPrefix}.queryAttachment`], { ns: 'workflowModels' })!,
             variable: 'queryAttachment',
             type: currentVariable?.formType as InputVarType,
             required: false,

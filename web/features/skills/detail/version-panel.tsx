@@ -3,83 +3,44 @@
 import type { SkillVersionResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
-import { getSkillVersionTitle, invalidateSkillDetail } from './shared'
+import { getErrorMessage } from '@/utils/error-message'
+import { RestoreVersionDialogContent } from './restore-version-dialog-content'
+import { getSkillVersionTitle } from './shared'
 
 type VersionFilterValue = 'all' | 'onlyNamed'
-
-export function RestoreVersionDialog({
-  loading,
-  onConfirm,
-  onOpenChange,
-  open,
-  versionTitle,
-}: {
-  loading: boolean
-  onConfirm: () => void
-  onOpenChange: (open: boolean) => void
-  open: boolean
-  versionTitle: string
-}) {
-  const { t } = useTranslation(['skill'])
-  const { t: tCommon } = useTranslation(['common'])
-
-  return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="p-6">
-        <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $['skillManagement.detail.restoreVersionConfirmTitle'])}
-        </AlertDialogTitle>
-        <AlertDialogDescription className="mt-2 system-md-regular whitespace-pre-line text-text-tertiary">
-          {t(($) => $['skillManagement.detail.restoreVersionConfirmDescription'], {
-            version: versionTitle,
-          })}
-        </AlertDialogDescription>
-        <AlertDialogActions className="p-0 pt-6">
-          <AlertDialogCancelButton disabled={loading}>
-            {tCommon(($) => $['operation.cancel'])}
-          </AlertDialogCancelButton>
-          <AlertDialogConfirmButton loading={loading} onClick={onConfirm}>
-            {t(($) => $['skillManagement.detail.restoreVersion'])}
-          </AlertDialogConfirmButton>
-        </AlertDialogActions>
-      </AlertDialogContent>
-    </AlertDialog>
-  )
-}
 
 function VersionTimelineDot({
   isActive,
@@ -122,7 +83,7 @@ function CurrentDraftItem({
       aria-current={isActive ? 'true' : undefined}
       onClick={onSelect}
       className={cn(
-        'flex w-full items-start gap-1 rounded-lg py-1 pr-1.25 pl-2 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+        'flex w-full items-start gap-1 rounded-lg py-1 ps-2 pe-1.25 text-start outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
         isActive ? 'bg-state-accent-active' : 'hover:bg-state-base-hover',
       )}
     >
@@ -147,7 +108,7 @@ function VersionFilter({
   onChange: (value: VersionFilterValue) => void
 }) {
   const { t } = useTranslation(['skill'])
-  const { t: tWorkflow } = useTranslation(['workflow'])
+  const { t: tWorkflow } = useTranslation(['workflowHistory'])
   const [open, setOpen] = useState(false)
   const isFiltering = value !== 'all'
 
@@ -160,11 +121,13 @@ function VersionFilter({
             type="button"
             aria-label={`${t(($) => $['skillManagement.detail.versions'])}: ${
               value === 'all'
-                ? tWorkflow(($) => $['versionHistory.filter.all'])
-                : tWorkflow(($) => $['versionHistory.filter.onlyShowNamedVersions'])
+                ? tWorkflow(($) => $['versionHistory.filter.all'], { ns: 'workflowHistory' })
+                : tWorkflow(($) => $['versionHistory.filter.onlyShowNamedVersions'], {
+                    ns: 'workflowHistory',
+                  })
             }`}
             className={cn(
-              'flex size-6 shrink-0 items-center justify-center rounded-md p-0.5 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+              'flex size-6 shrink-0 items-center justify-center rounded-md p-0.5',
               isFiltering
                 ? 'bg-state-accent-active-alt text-text-accent'
                 : 'text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
@@ -175,7 +138,7 @@ function VersionFilter({
         }
       />
       <PopoverContent
-        placement="bottom-end"
+        align="end"
         sideOffset={4}
         alignOffset={55}
         className="border-none bg-transparent shadow-none"
@@ -185,7 +148,7 @@ function VersionFilter({
             <button
               key={filterValue}
               type="button"
-              className="flex h-8 w-full cursor-pointer items-center justify-between gap-1 rounded-lg px-2 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              className="flex h-8 w-full cursor-pointer items-center justify-between gap-1 rounded-lg px-2 text-start outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
               onClick={() => {
                 onChange(filterValue)
                 setOpen(false)
@@ -193,8 +156,10 @@ function VersionFilter({
             >
               <span className="min-w-0 flex-1 truncate system-md-regular text-text-primary">
                 {filterValue === 'all'
-                  ? tWorkflow(($) => $['versionHistory.filter.all'])
-                  : tWorkflow(($) => $['versionHistory.filter.onlyShowNamedVersions'])}
+                  ? tWorkflow(($) => $['versionHistory.filter.all'], { ns: 'workflowHistory' })
+                  : tWorkflow(($) => $['versionHistory.filter.onlyShowNamedVersions'], {
+                      ns: 'workflowHistory',
+                    })}
               </span>
               {value === filterValue && (
                 <span aria-hidden className="i-ri-check-line size-4 shrink-0 text-text-accent" />
@@ -225,20 +190,27 @@ function VersionRow({
   const { t } = useTranslation(['skill'])
   const { t: tCommon } = useTranslation(['common'])
   const { formatTime } = useTimestamp()
-  const queryClient = useQueryClient()
-  const [renameOpen, setRenameOpen] = useState(false)
-  const [deleteOpen, setDeleteOpen] = useState(false)
-  const [restoreOpen, setRestoreOpen] = useState(false)
-  const [versionName, setVersionName] = useState(version.version_name)
-  const [publishNote, setPublishNote] = useState(version.publish_note)
+  const [dialog, setDialog] = useState<'rename' | 'restore' | 'delete' | null>(null)
   const renameMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId.patch.mutationOptions(),
+    consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId.patch.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const restoreMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.restore.post.mutationOptions(),
+    consoleQuery.workspaces.current.skills.bySkillId.restore.post.mutationOptions({
+      onSuccess: () => {
+        setDialog(null)
+        onSelect(null)
+      },
+    }),
   )
   const deleteMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId.delete.mutationOptions(),
+    consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId.delete.mutationOptions({
+      onSuccess: () => {
+        setDialog(null)
+        onSelect(null)
+      },
+    }),
   )
   const publishedBy = version.published_by_name ?? version.published_by ?? '-'
   const versionTitle = getSkillVersionTitle(version)
@@ -246,11 +218,14 @@ function VersionRow({
     ? t(($) => $['skillManagement.detail.editVersionInfo'])
     : t(($) => $['skillManagement.detail.nameThisVersion'])
 
-  const invalidateVersions = () => invalidateSkillDetail(queryClient, skillId)
-
-  const handleRename = () => {
-    const trimmedName = versionName.trim()
-
+  const handleRename = ({
+    versionTitle,
+    publishNote,
+  }: {
+    versionTitle: string
+    publishNote: string
+  }) => {
+    if (renameMutation.isPending) return
     renameMutation.mutate(
       {
         params: {
@@ -259,67 +234,29 @@ function VersionRow({
         },
         body: {
           publish_note: publishNote,
-          version_name: trimmedName,
+          version_name: versionTitle.trim(),
         },
       },
       {
-        onSuccess: () => {
-          toast.success(t(($) => $['skillManagement.detail.renameVersionSuccess']))
-          setRenameOpen(false)
-          invalidateVersions()
-        },
-        onError: () => {
-          toast.error(t(($) => $['skillManagement.detail.renameVersionFailed']))
+        onSuccess: () => setDialog(null),
+        onError: (error) => {
+          toast.error(
+            getErrorMessage(error) ?? t(($) => $['skillManagement.detail.renameVersionFailed']),
+          )
         },
       },
     )
   }
 
   const handleRestore = () => {
-    restoreMutation.mutate(
-      {
-        params: {
-          skill_id: skillId,
-        },
-        body: {
-          version_id: version.id,
-          version_name: version.version_name,
-        },
-      },
-      {
-        onSuccess: () => {
-          toast.success(t(($) => $['skillManagement.detail.restoreVersionSuccess']))
-          setRestoreOpen(false)
-          invalidateVersions()
-          onSelect(null)
-        },
-        onError: () => {
-          toast.error(t(($) => $['skillManagement.detail.restoreVersionFailed']))
-        },
-      },
-    )
+    restoreMutation.mutate({
+      params: { skill_id: skillId },
+      body: { version_id: version.id, version_name: version.version_name },
+    })
   }
 
   const handleDelete = () => {
-    deleteMutation.mutate(
-      {
-        params: {
-          skill_id: skillId,
-          version_id: version.id,
-        },
-      },
-      {
-        onSuccess: () => {
-          toast.success(t(($) => $['skillManagement.detail.deleteVersionSuccess']))
-          setDeleteOpen(false)
-          invalidateVersions()
-          onSelect(null)
-        },
-        onError: () => {
-          toast.error(t(($) => $['skillManagement.detail.deleteVersionFailed']))
-        },
-      },
-    )
+    deleteMutation.mutate({ params: { skill_id: skillId, version_id: version.id } })
   }
 
   return (
@@ -327,7 +264,7 @@ function VersionRow({
       <li className="group relative">
         <div
           className={cn(
-            'relative flex w-full items-start gap-1 rounded-lg py-1 pr-1.25 pl-2 text-left outline-hidden focus-within:ring-2 focus-within:ring-state-accent-solid',
+            'relative flex w-full items-start gap-1 rounded-lg py-1 ps-2 pe-1.25 text-start outline-hidden focus-within:ring-2 focus-within:ring-state-accent-solid',
             selected ? 'bg-state-accent-active' : 'hover:bg-state-base-hover',
           )}
         >
@@ -335,11 +272,11 @@ function VersionRow({
           <button
             type="button"
             aria-current={selected ? 'true' : undefined}
-            className="min-w-0 flex-1 cursor-pointer py-0.5 text-left outline-hidden"
+            className="min-w-0 flex-1 cursor-pointer py-0.5 text-start outline-hidden"
             onClick={() => onSelect(version.id)}
           >
             <span className="flex min-w-0 flex-col gap-0.5">
-              <span className="flex min-w-0 items-center gap-1 py-px pr-6">
+              <span className="flex min-w-0 items-center gap-1 py-px pe-6">
                 <span
                   className={cn(
                     'min-w-0 flex-1 truncate system-sm-semibold',
@@ -370,120 +307,123 @@ function VersionRow({
               </span>
             </span>
           </button>
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger
+          <Menu modal={false}>
+            <MenuTrigger
               aria-label={tCommon(($) => $['operation.more'])}
-              className="absolute top-1 right-1 flex size-6 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-1 opacity-0 shadow-xs outline-hidden group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:opacity-100"
+              className="absolute inset-e-1 top-1 flex size-6 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-1 opacity-0 shadow-xs group-hover:opacity-100 focus-visible:opacity-100 data-popup-open:opacity-100"
             >
               <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-46">
-              <DropdownMenuItem onClick={() => setRestoreOpen(true)}>
+            </MenuTrigger>
+            <MenuContent align="end" className="w-46">
+              <MenuItem onClick={() => setDialog('restore')}>
                 {t(($) => $['skillManagement.detail.restoreVersion'])}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => {
-                  setVersionName(version.version_name)
-                  setPublishNote(version.publish_note)
-                  setRenameOpen(true)
-                }}
-              >
-                {versionInfoLabel}
-              </DropdownMenuItem>
+              </MenuItem>
+              <MenuItem onClick={() => setDialog('rename')}>{versionInfoLabel}</MenuItem>
               {!version.is_latest && (
                 <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
+                  <MenuSeparator />
+                  <MenuItem variant="destructive" onClick={() => setDialog('delete')}>
                     {tCommon(($) => $['operation.delete'])}
-                  </DropdownMenuItem>
+                  </MenuItem>
                 </>
               )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </MenuContent>
+          </Menu>
         </div>
       </li>
-      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <DialogContent className="w-full max-w-120 overflow-hidden! border-none p-0 text-left align-middle">
-          <DialogClose
-            render={
-              <IconButton
-                aria-label={tCommon(($) => $['operation.close'])}
-                size="lg"
-                className="absolute inset-e-6 top-6"
-              >
-                <span aria-hidden className="i-ri-close-line size-4" />
-              </IconButton>
-            }
-          />
-          <div className="px-6 pt-6 pr-14 pb-4">
-            <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {versionInfoLabel}
-            </DialogTitle>
+      <Dialog
+        open={dialog === 'rename'}
+        onOpenChange={(open, details) => {
+          if (!open && renameMutation.isPending) details.cancel()
+          else if (!open) setDialog(null)
+        }}
+      >
+        <DialogContent className="w-120">
+          <DialogHeader>
+            <DialogTitle>{versionInfoLabel}</DialogTitle>
             <DialogDescription className="sr-only">
               {t(($) => $['skillManagement.detail.renameVersionPrompt'])}
             </DialogDescription>
-          </div>
-          <div className="flex flex-col gap-y-4 px-6 py-3">
-            <Field name="versionTitle">
-              <FieldLabel className="system-sm-semibold">
-                {t(($) => $['skillManagement.detail.versionTitle'])}
-              </FieldLabel>
-              <Input
-                value={versionName}
-                placeholder={t(($) => $['skillManagement.detail.nameThisVersion'])}
-                onValueChange={setVersionName}
-              />
-            </Field>
-            <Field name="publishNote">
-              <FieldLabel className="system-sm-semibold">
-                {t(($) => $['skillManagement.detail.versionPublishNote'])}
-              </FieldLabel>
-              <Textarea
-                value={publishNote}
-                placeholder={t(($) => $['skillManagement.detail.versionPublishNotePlaceholder'])}
-                onValueChange={setPublishNote}
-              />
-            </Field>
-          </div>
-          <div className="flex justify-end p-6 pt-5">
-            <div className="flex items-center gap-x-3">
+            <DialogHeaderCloseButton aria-label={tCommon(($) => $['operation.close'])} />
+          </DialogHeader>
+          <Form<{ versionTitle: string; publishNote: string }>
+            className="contents"
+            onFormSubmit={handleRename}
+          >
+            <DialogBody className="flex flex-col gap-y-4">
+              <Field name="versionTitle">
+                <FieldLabel className="system-sm-semibold">
+                  {t(($) => $['skillManagement.detail.versionTitle'])}
+                </FieldLabel>
+                <Input
+                  defaultValue={version.version_name}
+                  placeholder={t(($) => $['skillManagement.detail.nameThisVersion'])}
+                  disabled={renameMutation.isPending}
+                />
+              </Field>
+              <Field name="publishNote">
+                <FieldLabel className="system-sm-semibold">
+                  {t(($) => $['skillManagement.detail.versionPublishNote'])}
+                </FieldLabel>
+                <Textarea
+                  defaultValue={version.publish_note}
+                  placeholder={t(($) => $['skillManagement.detail.versionPublishNotePlaceholder'])}
+                  disabled={renameMutation.isPending}
+                />
+              </Field>
+            </DialogBody>
+            <DialogFooter>
               <DialogClose render={<Button disabled={renameMutation.isPending} />}>
                 {tCommon(($) => $['operation.cancel'])}
               </DialogClose>
-              <Button variant="primary" loading={renameMutation.isPending} onClick={handleRename}>
+              <Button variant="primary" loading={renameMutation.isPending} type="submit">
                 {t(($) => $['skillManagement.detail.publish'])}
               </Button>
-            </div>
-          </div>
+            </DialogFooter>
+          </Form>
         </DialogContent>
       </Dialog>
-      <RestoreVersionDialog
-        open={restoreOpen}
-        loading={restoreMutation.isPending}
-        versionTitle={versionTitle}
-        onOpenChange={setRestoreOpen}
-        onConfirm={handleRestore}
-      />
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent className="p-6">
-          <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t(($) => $['skillManagement.detail.deleteVersionConfirm'])}
-          </AlertDialogTitle>
-          <AlertDialogDescription className="mt-2 system-md-regular text-text-tertiary">
-            {versionTitle}
-          </AlertDialogDescription>
-          <AlertDialogActions className="p-0 pt-6">
+      <AlertDialog
+        open={dialog === 'restore'}
+        onOpenChange={(open, details) => {
+          if (!open && restoreMutation.isPending) {
+            details.cancel()
+            return
+          }
+          if (!open) setDialog(null)
+        }}
+      >
+        <RestoreVersionDialogContent
+          isPending={restoreMutation.isPending}
+          versionTitle={versionTitle}
+          onConfirm={handleRestore}
+        />
+      </AlertDialog>
+      <AlertDialog
+        open={dialog === 'delete'}
+        onOpenChange={(open, details) => {
+          if (!open && deleteMutation.isPending) {
+            details.cancel()
+            return
+          }
+          if (!open) setDialog(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t(($) => $['skillManagement.detail.deleteVersionConfirm'])}
+            </AlertDialogTitle>
+            <AlertDialogDescription>{versionTitle}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
             <AlertDialogCancelButton disabled={deleteMutation.isPending}>
               {tCommon(($) => $['operation.cancel'])}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton
-              tone="destructive"
-              loading={deleteMutation.isPending}
-              onClick={handleDelete}
-            >
+            <AlertDialogConfirmButton loading={deleteMutation.isPending} onClick={handleDelete}>
               {tCommon(($) => $['operation.delete'])}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>
@@ -504,7 +444,7 @@ export function VersionPanel({
   versions: SkillVersionResponse[]
 }) {
   const { t } = useTranslation(['skill'])
-  const { t: tWorkflow } = useTranslation(['workflow'])
+  const { t: tWorkflow } = useTranslation(['workflowHistory'])
   const [filterValue, setFilterValue] = useState<VersionFilterValue>('all')
   const titleId = useId()
   const filteredVersions = versions.filter((version) => {
@@ -515,8 +455,8 @@ export function VersionPanel({
 
   return (
     <section aria-labelledby={titleId} className="flex w-67 shrink-0 flex-col py-1">
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-l-lg bg-components-panel-bg">
-        <div className="flex shrink-0 items-center gap-2 pt-3 pr-3 pl-4">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-s-lg bg-components-panel-bg">
+        <div className="flex shrink-0 items-center gap-2 ps-4 pe-3 pt-3">
           <h2 id={titleId} className="min-w-0 flex-1 truncate system-xl-semibold text-text-primary">
             {t(($) => $['skillManagement.detail.versions'])}
           </h2>
@@ -546,14 +486,14 @@ export function VersionPanel({
             {versions.length > 0 && filteredVersions.length === 0 && (
               <div className="rounded-lg px-3 py-6 text-center">
                 <p className="system-sm-regular text-text-tertiary">
-                  {tWorkflow(($) => $['versionHistory.filter.empty'])}
+                  {tWorkflow(($) => $['versionHistory.filter.empty'], { ns: 'workflowHistory' })}
                 </p>
                 <button
                   type="button"
                   className="mt-2 rounded-md px-2 py-1 system-xs-medium text-text-accent outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                   onClick={() => setFilterValue('all')}
                 >
-                  {tWorkflow(($) => $['versionHistory.filter.reset'])}
+                  {tWorkflow(($) => $['versionHistory.filter.reset'], { ns: 'workflowHistory' })}
                 </button>
               </div>
             )}

@@ -27,7 +27,7 @@ type NodeGroupItemProps = {
   item: GroupItem
 }
 const NodeGroupItem = ({ item }: NodeGroupItemProps) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowLogic'])
   const enteringNodePayload = useStore((s) => s.enteringNodePayload)
   const hoveringAssignVariableGroupId = useStore((s) => s.hoveringAssignVariableGroupId)
   const nodes: Node[] = useNodes()
@@ -122,7 +122,7 @@ const NodeGroupItem = ({ item }: NodeGroupItemProps) => {
             (showSelectedBorder || showSelectionBorder) && 'bg-black/2!',
           )}
         >
-          {t(($) => $[`${i18nPrefix}.varNotSet`], { ns: 'workflow' })}
+          {t(($) => $[`${i18nPrefix}.varNotSet`], { ns: 'workflowLogic' })}
         </div>
       )}
       {!!item.variables.length && (

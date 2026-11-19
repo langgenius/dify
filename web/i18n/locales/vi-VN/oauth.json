@@ -1,4 +1,8 @@
 {
+  "callback.error": "Ủy quyền không thành công",
+  "callback.errorHint": "Vui lòng quay lại trang trước và thử lại.",
+  "callback.success": "Ủy quyền hoàn tất",
+  "callback.successHint": "Bây giờ bạn có thể đóng tab này và quay lại trang trước.",
   "connect": "Kết nối với",
   "continue": "Tiếp tục",
   "error.authAppInfoFetchFailed": "Không thể lấy thông tin ứng dụng để xác thực",

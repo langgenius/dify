@@ -15,12 +15,12 @@ const ACCESS_POINT_ICON_CLASS_NAMES: Record<AccessPoint, string> = {
 
 function useAccessPointLabels() {
   const { t: tAgent } = useTranslation(['agentV2'])
-  const { t: tCommon } = useTranslation(['common'])
+  const { t: tCommon } = useTranslation(['navigation'])
 
   return {
     mcp: 'MCP',
     serviceApi: tAgent(($) => $['agentDetail.access.serviceApi.title']),
-    trigger: tCommon(($) => $['settings.trigger']),
+    trigger: tCommon(($) => $['settings.trigger'], { ns: 'navigation' }),
     webApp: tAgent(($) => $['agentDetail.access.webApp.title']),
   } satisfies Record<AccessPoint, string>
 }
@@ -43,7 +43,7 @@ export function AccessPointIcon({
   const linkHref = active ? href : undefined
   const navigable = Boolean(linkHref)
   const triggerClassName = cn(
-    'flex size-5 shrink-0 items-center justify-center rounded-md border border-divider-regular text-text-secondary shadow-xs outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+    'flex size-6 shrink-0 items-center justify-center rounded-md border border-divider-regular text-text-secondary shadow-xs outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
     active ? 'opacity-100' : 'opacity-30',
     navigable ? 'cursor-pointer hover:bg-state-base-hover' : 'cursor-not-allowed',
   )

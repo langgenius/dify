@@ -1,21 +1,13 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
-
-from werkzeug.exceptions import ServiceUnavailable
 
 from services.enterprise.enterprise_service import EnterpriseService
+from services.entities.app_entities import PermittedAppsPage
+from services.errors.app import PermittedAppsUnavailableError
 from services.errors.enterprise import EnterpriseAPIError
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass(frozen=True, slots=True)
-class PermittedAppsPage:
-    app_ids: list[str]
-    total: int
-    has_more: bool
 
 
 def list_permitted_apps(
@@ -35,7 +27,7 @@ def list_permitted_apps(
             getattr(exc, "status_code", None),
             str(exc),
         )
-        raise ServiceUnavailable("permitted_apps_unavailable") from exc
+        raise PermittedAppsUnavailableError("permitted_apps_unavailable") from exc
 
     return PermittedAppsPage(
         app_ids=[row["appId"] for row in body.get("data", [])],

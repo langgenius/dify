@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
+import { useFileScanEnabled } from '@/features/file-scan/provider-types'
 
 export type IntegrationHeader = {
   description: string
@@ -18,11 +19,12 @@ export const getPluginCategoryBySection = (section: IntegrationSection) => {
 }
 
 export function useIntegrationNav(section: IntegrationSection) {
-  const { t } = useTranslation(['common', 'plugin', 'workflow'])
+  const { t } = useTranslation(['common', 'plugin', 'workflow', 'navigation', 'fileScan'])
+  const fileScanEnabled = useFileScanEnabled()
   const providerItem = useMemo<IntegrationSidebarNavItemData>(
     () => ({
       section: 'provider',
-      label: t(($) => $['settings.provider'], { ns: 'common' }),
+      label: t(($) => $['settings.provider'], { ns: 'navigation' }),
       icon: 'i-ri-brain-2-line',
       stepByStepTourTarget: STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderNav,
     }),
@@ -31,7 +33,7 @@ export function useIntegrationNav(section: IntegrationSection) {
   const dataSourceItem = useMemo<IntegrationSidebarNavItemData>(
     () => ({
       section: 'data-source',
-      label: t(($) => $['settings.dataSource'], { ns: 'common' }),
+      label: t(($) => $['settings.dataSource'], { ns: 'navigation' }),
       icon: 'i-ri-database-2-line',
       iconClassName: 'size-4',
       stepByStepTourTarget: STEP_BY_STEP_TOUR_TARGETS.integrationDataSourceNav,
@@ -41,17 +43,30 @@ export function useIntegrationNav(section: IntegrationSection) {
   const customEndpointItem = useMemo<IntegrationSidebarNavItemData>(
     () => ({
       section: 'custom-endpoint',
-      label: t(($) => $['settings.customEndpoint'], { ns: 'common' }),
+      label: t(($) => $['settings.customEndpoint'], { ns: 'navigation' }),
       icon: 'i-custom-vender-integrations-api-extension',
       iconClassName: 'h-[13px] w-3.5',
     }),
     [t],
   )
+  // Malware scanners only exist in workspaces that have the feature turned on.
+  const fileScanItem = useMemo<IntegrationSidebarNavItemData | null>(
+    () =>
+      fileScanEnabled
+        ? {
+            section: 'file-scan',
+            label: t(($) => $['settings.title'], { ns: 'fileScan' }),
+            icon: 'i-ri-shield-check-line',
+            iconClassName: 'size-4',
+          }
+        : null,
+    [fileScanEnabled, t],
+  )
   const toolItems = useMemo<IntegrationSidebarNavItemData[]>(() => {
     const items: IntegrationSidebarNavItemData[] = [
       {
         section: 'builtin',
-        label: t(($) => $['toolsPage.toolPlugin'], { ns: 'common' }),
+        label: t(($) => $['toolsPage.toolPlugin'], { ns: 'navigation' }),
         icon: 'i-custom-vender-integrations-tools',
         iconClassName: 'h-[14px] w-[12.5px]',
         className: 'pl-8',
@@ -70,14 +85,14 @@ export function useIntegrationNav(section: IntegrationSection) {
       },
       {
         section: 'workflow-tool',
-        label: t(($) => $['common.workflowAsTool'], { ns: 'workflow' }),
+        label: t(($) => $['common.workflowAsTool'], { ns: 'navigation' }),
         icon: 'i-custom-vender-integrations-workflow-as-tool',
         iconClassName: 'size-4',
         className: 'pl-8',
       },
       {
         section: 'custom-tool',
-        label: t(($) => $['settings.swaggerAPIAsTool'], { ns: 'common' }),
+        label: t(($) => $['settings.swaggerAPIAsTool'], { ns: 'navigation' }),
         icon: 'i-custom-vender-integrations-custom-tool',
         iconClassName: 'h-[14.5px] w-[12.5px]',
         className: 'pl-8',
@@ -116,13 +131,14 @@ export function useIntegrationNav(section: IntegrationSection) {
     ...toolItems,
     ...secondaryItems,
     customEndpointItem,
+    ...(fileScanItem ? [fileScanItem] : []),
   ].find((item) => item.section === section)
   const integrationHeader = useMemo<IntegrationHeader | null>(() => {
     switch (section) {
       case 'builtin':
         return {
-          title: t(($) => $['toolsPage.toolPlugin'], { ns: 'common' }),
-          description: t(($) => $['toolsPage.description'], { ns: 'common' }),
+          title: t(($) => $['toolsPage.toolPlugin'], { ns: 'navigation' }),
+          description: t(($) => $['toolsPage.description'], { ns: 'navigation' }),
         }
       case 'mcp':
         return {
@@ -131,22 +147,27 @@ export function useIntegrationNav(section: IntegrationSection) {
         }
       case 'custom-tool':
         return {
-          title: t(($) => $['settings.swaggerAPIAsTool'], { ns: 'common' }),
+          title: t(($) => $['settings.swaggerAPIAsTool'], { ns: 'navigation' }),
           description: t(($) => $['swaggerAPIAsToolPage.description'], { ns: 'common' }),
         }
       case 'workflow-tool':
         return {
-          title: t(($) => $['common.workflowAsTool'], { ns: 'workflow' }),
+          title: t(($) => $['common.workflowAsTool'], { ns: 'navigation' }),
           description: t(($) => $['workflowAsToolPage.description'], { ns: 'common' }),
         }
       case 'custom-endpoint':
         return {
-          title: t(($) => $['settings.customEndpoint'], { ns: 'common' }),
+          title: t(($) => $['settings.customEndpoint'], { ns: 'navigation' }),
           description: t(($) => $['apiBasedExtensionPage.description'], { ns: 'common' }),
+        }
+      case 'file-scan':
+        return {
+          title: t(($) => $['settings.title'], { ns: 'fileScan' }),
+          description: t(($) => $['settings.description'], { ns: 'fileScan' }),
         }
       case 'data-source':
         return {
-          title: t(($) => $['settings.dataSource'], { ns: 'common' }),
+          title: t(($) => $['settings.dataSource'], { ns: 'navigation' }),
           description: t(($) => $['dataSourcePage.description'], { ns: 'common' }),
         }
       case 'trigger':
@@ -173,6 +194,7 @@ export function useIntegrationNav(section: IntegrationSection) {
     activeItem,
     customEndpointItem,
     dataSourceItem,
+    fileScanItem,
     integrationHeader,
     providerItem,
     secondaryItems,

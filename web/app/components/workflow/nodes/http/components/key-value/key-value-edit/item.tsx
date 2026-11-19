@@ -56,7 +56,7 @@ const KeyValueItem: FC<Props> = ({
   keyNotSupportVar,
   insertVarTipToLeft,
 }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowIntegrations'])
   const hasValuePayload = payload.type === 'file' ? !!payload.file?.length : !!payload.value
 
   const handleChange = useCallback(
@@ -104,7 +104,7 @@ const KeyValueItem: FC<Props> = ({
             value={payload.key}
             onChange={handleChange('key')}
             hasRemove={false}
-            placeholder={t(($) => $[`${i18nPrefix}.key`], { ns: 'workflow' })!}
+            placeholder={t(($) => $[`${i18nPrefix}.key`], { ns: 'workflowIntegrations' })!}
             readOnly={readonly}
             insertVarTipToLeft={insertVarTipToLeft}
           />
@@ -124,7 +124,7 @@ const KeyValueItem: FC<Props> = ({
             readOnly={readonly}
           >
             <SelectTrigger
-              aria-label={t(($) => $[`${i18nPrefix}.type`], { ns: 'workflow' })}
+              aria-label={t(($) => $[`${i18nPrefix}.type`], { ns: 'workflowIntegrations' })}
               className="h-7 rounded-none bg-transparent text-text-primary hover:bg-state-base-hover focus-visible:bg-state-base-hover data-popup-open:bg-state-base-hover"
             >
               <SelectValue />
@@ -167,7 +167,7 @@ const KeyValueItem: FC<Props> = ({
             onChange={handleChange('value')}
             hasRemove={!readonly && canRemove}
             onRemove={onRemove}
-            placeholder={t(($) => $[`${i18nPrefix}.value`], { ns: 'workflow' })!}
+            placeholder={t(($) => $[`${i18nPrefix}.value`], { ns: 'workflowIntegrations' })!}
             readOnly={readonly}
             isSupportFile={isSupportFile}
             insertVarTipToLeft={insertVarTipToLeft}

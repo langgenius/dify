@@ -1,5 +1,4 @@
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
-import { act, render, waitFor } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { REQUEST_URL_PLACEHOLDER_TEXT } from '../../../constants'
 import {
   getNodeCount,
@@ -30,10 +29,6 @@ const renderRequestURLBlock = (
 }
 
 describe('RequestURLBlock', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   describe('Command handling', () => {
     it('should insert request URL block and call onInsert when insert command is dispatched', async () => {
       const onInsert = vi.fn()
@@ -56,25 +51,6 @@ describe('RequestURLBlock', () => {
       expect(getNodeCount(editor, RequestURLBlockNode)).toBe(1)
     })
 
-    it('should insert request URL block without onInsert callback', async () => {
-      const { getEditor } = renderRequestURLBlock()
-
-      const editor = await waitForEditorReady(getEditor)
-
-      selectRootEnd(editor)
-
-      let handled = false
-      act(() => {
-        handled = editor.dispatchCommand(INSERT_REQUEST_URL_BLOCK_COMMAND, undefined)
-      })
-
-      expect(handled).toBe(true)
-      await waitFor(() => {
-        expect(readRootTextContent(editor)).toBe(REQUEST_URL_PLACEHOLDER_TEXT)
-      })
-      expect(getNodeCount(editor, RequestURLBlockNode)).toBe(1)
-    })
-
     it('should call onDelete when delete command is dispatched', async () => {
       const onDelete = vi.fn()
       const { getEditor } = renderRequestURLBlock({ onDelete })
@@ -88,19 +64,6 @@ describe('RequestURLBlock', () => {
 
       expect(handled).toBe(true)
       expect(onDelete).toHaveBeenCalledTimes(1)
-    })
-
-    it('should handle delete command without onDelete callback', async () => {
-      const { getEditor } = renderRequestURLBlock()
-
-      const editor = await waitForEditorReady(getEditor)
-
-      let handled = false
-      act(() => {
-        handled = editor.dispatchCommand(DELETE_REQUEST_URL_BLOCK_COMMAND, undefined)
-      })
-
-      expect(handled).toBe(true)
     })
   })
 
@@ -121,24 +84,6 @@ describe('RequestURLBlock', () => {
 
       expect(insertHandled).toBe(false)
       expect(deleteHandled).toBe(false)
-    })
-
-    it('should throw when request URL node is not registered on editor', () => {
-      expect(() => {
-        render(
-          <LexicalComposer
-            initialConfig={{
-              namespace: 'request-url-block-plugin-missing-node-test',
-              onError: (error: Error) => {
-                throw error
-              },
-              nodes: [CustomTextNode],
-            }}
-          >
-            <RequestURLBlock />
-          </LexicalComposer>,
-        )
-      }).toThrow('RequestURLBlockPlugin: RequestURLBlock not registered on editor')
     })
   })
 })

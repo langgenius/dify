@@ -1,4 +1,4 @@
-import type { SchemaTypeDefinition } from '@/service/use-common'
+import type { SchemaDefinitionItemResponse } from '@dify/contracts/api/console/spec/types.gen'
 import { VarType } from '@/app/components/workflow/types'
 import { getMatchedSchemaType } from '../_base/components/variable/use-match-schema-type'
 
@@ -44,7 +44,7 @@ export const normalizeJsonSchemaType = (schema: any): string | undefined => {
 
   for (const candidate of compositeCandidates) {
     const normalized = normalizeJsonSchemaType(candidate)
-    if (normalized) return normalized
+    if (normalized && normalized !== 'null') return normalized
   }
 
   if (properties) return 'object'
@@ -68,7 +68,7 @@ export const pickItemSchema = (schema: any) => {
  */
 export const resolveVarType = (
   schema: any,
-  schemaTypeDefinitions?: SchemaTypeDefinition[],
+  schemaTypeDefinitions?: SchemaDefinitionItemResponse[],
 ): { type: VarType; schemaType?: string } => {
   const schemaType = getMatchedSchemaType(schema, schemaTypeDefinitions)
   if (schema && typeof schema.type === 'string') {

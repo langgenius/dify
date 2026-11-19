@@ -2,6 +2,7 @@ import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { AnnotationReplyConfig } from '@/models/debug'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog } from '@langgenius/dify-ui/dialog'
 import { RiEqualizer2Line, RiExternalLinkLine } from '@remixicon/react'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -11,10 +12,12 @@ import { useFeatures, useFeaturesStore } from '@/app/components/base/features/ho
 import ConfigParamModal from '@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal'
 import useAnnotationConfig from '@/app/components/base/features/new-feature-panel/annotation-reply/use-annotation-config'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
-import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
+import AnnotationFullContent from '@/app/components/billing/annotation-full/modal'
+import { toast } from '@/app/notifications'
 import { ANNOTATION_DEFAULT } from '@/config'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
+import { getErrorMessage } from '@/utils/error-message'
 
 type Props = Readonly<{
   disabled?: boolean
@@ -22,12 +25,13 @@ type Props = Readonly<{
 }>
 
 const AnnotationReply = ({ disabled, onChange }: Props) => {
-  const { t } = useTranslation(['appDebug', 'common'])
+  const { t } = useTranslation(['appDebug', 'common', 'modelProvider'])
   const pathname = usePathname()
   const matched = /\/app\/([^/]+)/.exec(pathname)
   const appId = matched?.length && matched[1] ? matched[1] : ''
   const featuresStore = useFeaturesStore()
   const annotationReply = useFeatures((s) => s.features.annotationReply)
+  const [isDisabling, setIsDisabling] = useState(false)
 
   const updateAnnotationReply = useCallback(
     (newConfig: AnnotationReplyConfig) => {
@@ -64,11 +68,27 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
   })
 
   const handleSwitch = useCallback(
-    (enabled: boolean) => {
+    async (enabled: boolean) => {
+      if (isDisabling) return
       if (enabled) setIsShowAnnotationConfigInit(true)
-      else handleDisableAnnotation(annotationReply?.embedding_model as any)
+      else {
+        setIsDisabling(true)
+        try {
+          await handleDisableAnnotation(annotationReply?.embedding_model as any)
+        } catch (error) {
+          toast.error(getErrorMessage(error) || t(($) => $['api.actionFailed'], { ns: 'common' }))
+        } finally {
+          setIsDisabling(false)
+        }
+      }
     },
-    [annotationReply?.embedding_model, handleDisableAnnotation, setIsShowAnnotationConfigInit],
+    [
+      annotationReply?.embedding_model,
+      handleDisableAnnotation,
+      isDisabling,
+      setIsShowAnnotationConfigInit,
+      t,
+    ],
   )
 
   const [isHovering, setIsHovering] = useState(false)
@@ -90,6 +110,7 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
         disabled={disabled || (!annotationReply?.enabled && isAnnotationQuotaUnavailable)}
+        loading={isDisabling}
       >
         <>
           {!annotationReply?.enabled && (
@@ -99,7 +120,7 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
           )}
           {!!annotationReply?.enabled && (
             <>
-              {!isHovering && (
+              {(!isHovering || isDisabling) && (
                 <div className="flex items-center gap-4 pt-0.5">
                   <div className="">
                     <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">
@@ -112,7 +133,7 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
                   <div className="h-6.75 w-px rotate-12 bg-divider-subtle"></div>
                   <div className="">
                     <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">
-                      {t(($) => $['modelProvider.embeddingModel.key'], { ns: 'common' })}
+                      {t(($) => $['modelProvider.embeddingModel.key'], { ns: 'modelProvider' })}
                     </div>
                     <div className="system-xs-regular text-text-secondary">
                       {annotationReply.embedding_model?.embedding_model_name}
@@ -120,7 +141,7 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
                   </div>
                 </div>
               )}
-              {isHovering && (
+              {isHovering && !isDisabling && (
                 <div className="flex items-center justify-between">
                   <Button
                     className="w-44.5"
@@ -143,26 +164,25 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
           )}
         </>
       </FeatureCard>
-      <ConfigParamModal
-        appId={appId}
-        isInit
-        isShow={isShowAnnotationConfigInit}
-        onHide={() => {
-          setIsShowAnnotationConfigInit(false)
-          // showChooseFeatureTrue()
-        }}
-        onSave={async (embeddingModel, score) => {
-          await handleEnableAnnotation(embeddingModel, score)
-          setIsShowAnnotationConfigInit(false)
-        }}
-        annotationConfig={annotationReply as any}
-      />
-      {isShowAnnotationFullModal && (
-        <AnnotationFullModal
-          show={isShowAnnotationFullModal}
-          onHide={() => setIsShowAnnotationFullModal(false)}
+      {isShowAnnotationConfigInit && (
+        <ConfigParamModal
+          appId={appId}
+          isInit
+          isShow={isShowAnnotationConfigInit}
+          onHide={() => {
+            setIsShowAnnotationConfigInit(false)
+            // showChooseFeatureTrue()
+          }}
+          onSave={async (embeddingModel, score) => {
+            await handleEnableAnnotation(embeddingModel, score)
+            setIsShowAnnotationConfigInit(false)
+          }}
+          annotationConfig={annotationReply as any}
         />
       )}
+      <Dialog open={isShowAnnotationFullModal} onOpenChange={setIsShowAnnotationFullModal}>
+        <AnnotationFullContent />
+      </Dialog>
     </>
   )
 }

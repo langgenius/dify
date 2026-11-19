@@ -8,12 +8,12 @@ import { getNextExecutionTime } from './utils/execution-time-calculator'
 const i18nPrefix = 'nodes.triggerSchedule'
 
 const Node: FC<NodeProps<ScheduleTriggerNodeType>> = ({ data }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowIntegrations'])
 
   return (
     <div className="mb-1 px-3 py-1">
       <div className="mb-1 text-2xs font-medium tracking-wide text-text-tertiary uppercase">
-        {t(($) => $[`${i18nPrefix}.nextExecutionTime`], { ns: 'workflow' })}
+        {t(($) => $[`${i18nPrefix}.nextExecutionTime`], { ns: 'workflowIntegrations' })}
       </div>
       <div className="flex h-6.5 items-center rounded-md bg-workflow-block-parma-bg px-2 text-xs text-text-secondary">
         <div className="w-0 grow">

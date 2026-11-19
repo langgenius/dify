@@ -107,7 +107,7 @@ def test_verify_tool_file_signature_rejects_invalid_sign(
     query = parse_qs(parsed.query)
     timestamp = query["timestamp"][0]
     nonce = query["nonce"][0]
-    sign = query["sign"][0]
+    query["sign"][0]
 
     assert verify_tool_file_signature("tool-file-id", timestamp, nonce, "bad-signature") is False
 

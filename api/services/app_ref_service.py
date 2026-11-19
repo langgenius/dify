@@ -21,20 +21,6 @@ class MessageRef(NamedTuple):
     account_id: str | None = None
 
 
-class AnnotationRef(NamedTuple):
-    """Annotation identifiers used to scope downstream resource lookups."""
-
-    app: AppRef
-    annotation_id: str
-
-
-class AppMCPServerRef(NamedTuple):
-    """MCP server identifiers used to scope downstream resource lookups."""
-
-    app: AppRef
-    server_id: str
-
-
 class AppRefService:
     """Factory helpers for app and child resource refs."""
 
@@ -56,13 +42,3 @@ class AppRefService:
             end_user_id=end_user_id,
             account_id=account_id,
         )
-
-    @staticmethod
-    def create_annotation_ref(app_ref: AppRef, annotation_id: str) -> AnnotationRef:
-        """Bind a candidate annotation ID; ownership is enforced when the ref is consumed."""
-        return AnnotationRef(app=app_ref, annotation_id=annotation_id)
-
-    @staticmethod
-    def create_mcp_server_ref(app_ref: AppRef, server_id: str) -> AppMCPServerRef:
-        """Bind a candidate MCP server ID; ownership is enforced when the ref is consumed."""
-        return AppMCPServerRef(app=app_ref, server_id=server_id)

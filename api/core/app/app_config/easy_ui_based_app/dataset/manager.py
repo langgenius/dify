@@ -12,7 +12,7 @@ from core.app.app_config.entities import (
 from core.entities.agent_entities import PlanningStrategy
 from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
 from models.model import AppMode, AppModelConfigDict
-from services.dataset_service import DatasetService
+from services.knowledge.dataset_service import DatasetService
 
 
 class DatasetConfigManager:
@@ -207,6 +207,36 @@ class DatasetConfigManager:
         if not isinstance(config["agent_mode"]["tools"], list):
             raise ValueError("tools in agent_mode must be a list of objects")
 
+        # All app modes persist these tools, including modes that skip the agent validator.
+        for tool in config["agent_mode"]["tools"]:
+            if not isinstance(tool, dict):
+                continue
+            if all(field in tool for field in ("provider_type", "provider_id", "tool_name", "tool_parameters")):
+                tool_config = tool
+            else:
+                tool_name = next(
+                    (
+                        name
+                        for name in (
+                            "dataset",
+                            "google_search",
+                            "web_reader",
+                            "wikipedia",
+                            "current_datetime",
+                            "sensitive-word-avoidance",
+                        )
+                        if name in tool
+                    ),
+                    None,
+                )
+                if tool_name is None:
+                    continue
+                tool_config = tool[tool_name]
+                if not isinstance(tool_config, dict):
+                    continue
+            if "enabled" not in tool_config or tool_config["enabled"] is None:
+                tool_config["enabled"] = False
+
         # strategy
         if "strategy" not in config["agent_mode"] or not config["agent_mode"].get("strategy"):
             config["agent_mode"]["strategy"] = PlanningStrategy.ROUTER
@@ -238,8 +268,8 @@ class DatasetConfigManager:
 
                     try:
                         uuid.UUID(tool_item["id"])
-                    except ValueError:
-                        raise ValueError("id in dataset must be of UUID type")
+                    except ValueError as caught_error:
+                        raise ValueError("id in dataset must be of UUID type") from caught_error
 
                     if not cls.is_dataset_exists(tenant_id, tool_item["id"], session):
                         raise ValueError("Dataset ID does not exist, please check your permission.")
@@ -265,7 +295,4 @@ class DatasetConfigManager:
         if not dataset:
             return False
 
-        if dataset.tenant_id != tenant_id:
-            return False
-
-        return True
+        return dataset.tenant_id == tenant_id

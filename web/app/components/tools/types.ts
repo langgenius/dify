@@ -1,4 +1,5 @@
 import type {
+  ToolParameter as ContractToolParameter,
   DatasourceProviderType,
   ToolProviderType,
 } from '@dify/contracts/api/console/workspaces/types.gen'
@@ -109,7 +110,7 @@ export type ToolParameter = {
   llm_description: string
   required: boolean
   multiple: boolean
-  default: string
+  default?: ContractToolParameter['default']
   options?: {
     label: LocalizedText
     value: string
@@ -178,8 +179,7 @@ export type CustomCollectionBackend = {
   schema: string
   privacy_policy: string
   custom_disclaimer: string
-  tools?: ParamItem[]
-  id: string
+  tools?: CustomParamSchema[]
   labels: string[]
 }
 
@@ -191,7 +191,7 @@ type ParamItem = {
   type: string
   form: string
   required: boolean
-  default: string
+  default?: ContractToolParameter['default']
   min?: number
   max?: number
   options?: {
@@ -247,6 +247,7 @@ export type WorkflowToolProviderOutputSchema = {
 
 export type WorkflowToolProviderRequest = {
   name: string
+  label: string
   icon: Emoji
   description: string
   parameters: WorkflowToolProviderParameter[]

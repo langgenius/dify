@@ -15,14 +15,13 @@
   },
   "scripts": {
     "test": "vp test",
-    "type-check": "tsc"
+    "type-check": "tsrs --noEmit"
   },
   "devDependencies": {
     "@dify/tsconfig": "workspace:*",
     "@testing-library/react": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "@typescript/native": "catalog:",
     "happy-dom": "catalog:",
     "jotai": "catalog:",
     "jotai-scope": "catalog:",
@@ -30,6 +29,7 @@
     "nuqs": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "tsrs": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"

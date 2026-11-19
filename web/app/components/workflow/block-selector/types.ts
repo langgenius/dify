@@ -204,7 +204,7 @@ export const TriggerCredentialType = {
 export type TriggerCredentialType =
   (typeof TriggerCredentialType)[keyof typeof TriggerCredentialType]
 
-type TriggerSubscriptionStructure = {
+export type TriggerSubscription = {
   id: string
   name: string
   provider: string
@@ -216,9 +216,7 @@ type TriggerSubscriptionStructure = {
   workflows_in_use: number
 }
 
-export type TriggerSubscription = TriggerSubscriptionStructure
-
-export type TriggerSubscriptionBuilder = TriggerSubscriptionStructure
+export type TriggerSubscriptionBuilder = TriggerSubscription
 
 // OAuth configuration types
 export type TriggerOAuthConfig = {

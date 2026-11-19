@@ -1,6 +1,9 @@
 import { spawnSync } from 'node:child_process'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, it } from 'vite-plus/test'
+import { describe, expect, it, vi } from 'vite-plus/test'
 
 const SCRIPT = fileURLToPath(new URL('./install.ps1', import.meta.url))
 
@@ -16,6 +19,8 @@ function hasPwsh(): boolean {
 }
 
 const PWSH = hasPwsh()
+// Each test starts pwsh; cold starts on a busy CI runner can exceed the default 5 seconds.
+if (PWSH) vi.setConfig({ testTimeout: 15_000 })
 
 const STUB = [
   'function Invoke-RestMethod {',
@@ -286,12 +291,73 @@ describe.skipIf(!PWSH)('install.ps1 rate limit', () => {
 
   it('Resolve-Release surfaces the rate-limit hint and exits, not "not found"', () => {
     const stub = `function Invoke-RestMethod { throw [Microsoft.PowerShell.Commands.HttpResponseException]::new('rate limited', $script:rlResp) }`
-    const setup = `$script:rlResp = [System.Net.Http.HttpResponseMessage]::new([System.Net.HttpStatusCode]403)
+    // The stub bypasses Invoke-RestMethod's module autoload, which provides HttpResponseException.
+    const setup = `Import-Module Microsoft.PowerShell.Utility
+      $script:rlResp = [System.Net.Http.HttpResponseMessage]::new([System.Net.HttpStatusCode]403)
       $script:rlResp.Headers.TryAddWithoutValidation('x-ratelimit-remaining','0') | Out-Null
       $script:rlResp.Headers.TryAddWithoutValidation('x-ratelimit-reset','${futureReset}') | Out-Null`
     const r = runPwsh(`${setup}\n${stub}\nResolve-Release`, { DIFY_VERSION: '1.15.0' })
-    expect(r.code).not.toBe(0)
+    expect(r.code).toBe(1)
     expect(r.stderr).toContain('rate limit exceeded')
     expect(r.stderr).not.toContain('not found')
+  })
+})
+
+describe.skipIf(!PWSH)('install.ps1 install location and PATH hint', () => {
+  const where = (env: Record<string, string>) =>
+    runPwsh('Write-Output (Resolve-BinDir)', {
+      DIFYCTL_PREFIX: '',
+      DIFYCTL_INSTALL_DIR: '',
+      LOCALAPPDATA: '/lad',
+      ...env,
+    }).stdout
+
+  it('defaults to %LOCALAPPDATA%\\difyctl\\bin', () => {
+    expect(where({})).toBe(join('/lad', 'difyctl', 'bin'))
+  })
+
+  it('puts the binary under <DIFYCTL_PREFIX>\\bin', () => {
+    expect(where({ DIFYCTL_PREFIX: '/opt/dify' })).toBe(join('/opt/dify', 'bin'))
+  })
+
+  it('takes DIFYCTL_INSTALL_DIR as the bin folder itself, over DIFYCTL_PREFIX', () => {
+    expect(where({ DIFYCTL_PREFIX: '/opt/dify', DIFYCTL_INSTALL_DIR: '/custom/bin' })).toBe(
+      '/custom/bin',
+    )
+  })
+
+  it('the PATH command adds to the user PATH, not the whole session PATH', () => {
+    const hint = runPwsh(`Write-Output (Get-PathHint 'C:\\dify\\bin')`).stdout
+    expect(hint).toContain(
+      `"C:\\dify\\bin;" + [Environment]::GetEnvironmentVariable('PATH', 'User')`,
+    )
+    expect(hint).not.toContain('$env:PATH')
+  })
+})
+
+// A v2 binary answers `install skills --help`; a v1 one exits 1 with "unknown command".
+// The fakes are shell scripts, so this runs where pwsh runs outside Windows.
+describe.skipIf(!PWSH || process.platform === 'win32')('install.ps1 Write-SkillHint', () => {
+  const hint = (bin: string) => runPwsh(`Write-SkillHint '${bin}'`)
+
+  it('prints the hint for a binary that has install skills, and stays quiet otherwise', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'difyctl-hint-'))
+    try {
+      const v2 = join(dir, 'v2')
+      const v1 = join(dir, 'v1')
+      writeFileSync(v2, '#!/bin/sh\n[ "$*" = "install skills --help" ]\n', { mode: 0o755 })
+      writeFileSync(v1, '#!/bin/sh\necho "unknown command: $*" >&2\nexit 1\n', { mode: 0o755 })
+      expect(hint(v2)).toMatchObject({
+        code: 0,
+        stdout: expect.stringContaining('difyctl install skills <skills root>'),
+      })
+      expect(hint(v1)).toMatchObject({ code: 0, stdout: '' })
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('prints nothing when the binary cannot run', () => {
+    expect(hint('/nonexistent/difyctl')).toMatchObject({ code: 0, stdout: '' })
   })
 })

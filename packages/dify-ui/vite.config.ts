@@ -1,9 +1,6 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { storybookTest } from '@storybook/addon-vitest/vitest-plugin'
-import tailwindcss from '@tailwindcss/vite'
-import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite-plus'
+import { configDefaults, defineConfig, lazyPlugins } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -11,21 +8,32 @@ const configDir = path.join(dirname, '.storybook')
 const isCI = !!process.env.CI
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: lazyPlugins(async () => {
+    const { default: react } = await import('@vitejs/plugin-react')
+    return [react()]
+  }),
   resolve: {
     tsconfigPaths: true,
   },
-  optimizeDeps: {
-    include: ['vite-plus/test/browser'],
-  },
   test: {
+    // `--changed` follows source imports, so dependency inputs rerun every test.
+    forceRerunTriggers: [
+      ...configDefaults.forceRerunTriggers,
+      '**/pnpm-lock.yaml',
+      '**/pnpm-workspace.yaml',
+      '**/patches/**',
+      // `tsconfigPaths` resolves aliases from these files.
+      '**/packages/dify-ui/tsconfig.json',
+      '**/packages/tsconfig/**',
+      // The setup file loads global styles through CSS imports, which the module graph does not track.
+      '**/packages/dify-ui/vitest.css',
+      '**/packages/dify-ui/src/{styles,themes,plugins}/**',
+    ],
     browser: {
-      expect: { toMatchScreenshot: { screenshotDirectory: './.vitest-browser/screenshots' } },
       enabled: true,
       provider: playwright(),
       instances: [{ browser: 'chromium' }],
       headless: true,
-      screenshotDirectory: './.vitest-browser/screenshots',
       screenshotFailures: true,
     },
     coverage: {
@@ -42,7 +50,10 @@ export default defineConfig({
     projects: [
       {
         extends: true,
-        plugins: [tailwindcss()],
+        plugins: lazyPlugins(async () => {
+          const { default: tailwindcss } = await import('@tailwindcss/vite')
+          return [tailwindcss()]
+        }),
         test: {
           name: 'unit',
           globals: true,
@@ -50,7 +61,7 @@ export default defineConfig({
           include: ['src/**/__tests__/**/*.spec.{ts,tsx}'],
           browser: {
             trace: {
-              mode: 'retain-on-failure',
+              mode: isCI ? 'retain-on-failure' : 'off',
               tracesDir: './.vitest-browser/traces',
             },
           },
@@ -58,11 +69,10 @@ export default defineConfig({
       },
       {
         extends: true,
-        plugins: [
-          storybookTest({
-            configDir,
-          }),
-        ],
+        plugins: lazyPlugins(async () => {
+          const { storybookTest } = await import('@storybook/addon-vitest/vitest-plugin')
+          return [storybookTest({ configDir })]
+        }),
         test: {
           name: 'storybook',
         },

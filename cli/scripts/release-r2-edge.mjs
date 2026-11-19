@@ -41,7 +41,7 @@ function shaMap(checksumsPath) {
 function emitManifest(args) {
   requireArgs(args, ['channel', 'version', 'commit', 'build-date', 'base-url', 'checksums'])
   validateVersionForChannel(args.version, args.channel)
-  const { release, compat } = loadPkg()
+  const { release } = loadPkg()
   const shas = shaMap(args.checksums)
 
   const targetLines = release.targets
@@ -61,7 +61,6 @@ function emitManifest(args) {
     version: args.version,
     commit: args.commit,
     buildDate: args['build-date'],
-    compat: { minDify: compat.minDify, maxDify: compat.maxDify },
     baseUrl: args['base-url'],
   }
   const headLines = Object.entries(head)

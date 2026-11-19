@@ -1,15 +1,36 @@
-import type { ModelConfig as BackendModelConfig } from '@/types/app'
+import type {
+  AppChatPromptPayload,
+  AppCompletionPromptPayload,
+} from '@dify/contracts/api/console/apps/types.gen'
+import type { ChatPromptConfig, CompletionPromptConfig } from '@/models/debug'
 import { clone } from 'es-toolkit/object'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 
 export const normalizeChatPromptConfig = (
-  chatPromptConfig: BackendModelConfig['chat_prompt_config'],
-): NonNullable<BackendModelConfig['chat_prompt_config']> =>
-  chatPromptConfig?.prompt?.length ? chatPromptConfig : clone(DEFAULT_CHAT_PROMPT_CONFIG)
+  chatPromptConfig?: AppChatPromptPayload | null,
+): ChatPromptConfig =>
+  chatPromptConfig?.prompt?.length
+    ? {
+        ...chatPromptConfig,
+        prompt: chatPromptConfig.prompt.map((prompt) => ({
+          ...prompt,
+          role: prompt.role ?? undefined,
+        })),
+      }
+    : clone(DEFAULT_CHAT_PROMPT_CONFIG)
 
 export const normalizeCompletionPromptConfig = (
-  completionPromptConfig: BackendModelConfig['completion_prompt_config'],
-): NonNullable<BackendModelConfig['completion_prompt_config']> =>
+  completionPromptConfig?: AppCompletionPromptPayload | null,
+): CompletionPromptConfig =>
   completionPromptConfig?.prompt && completionPromptConfig.conversation_histories_role
-    ? completionPromptConfig
+    ? {
+        ...completionPromptConfig,
+        prompt: { ...completionPromptConfig.prompt },
+        conversation_histories_role: {
+          ...completionPromptConfig.conversation_histories_role,
+          user_prefix: completionPromptConfig.conversation_histories_role.user_prefix ?? '',
+          assistant_prefix:
+            completionPromptConfig.conversation_histories_role.assistant_prefix ?? '',
+        },
+      }
     : clone(DEFAULT_COMPLETION_PROMPT_CONFIG)

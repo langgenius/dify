@@ -18,7 +18,7 @@ type RunModeProps = {
 }
 
 const RunMode = ({ text }: RunModeProps) => {
-  const { t } = useTranslation(['snippet', 'workflow'])
+  const { t } = useTranslation(['snippet', 'workflow', 'workflowDebug'])
   const { handleWorkflowStartRunInWorkflow } = useWorkflowStartRun()
   const { handleStopRun } = useWorkflowRun()
   const workflowRunningData = useStore((s) => s.workflowRunningData)
@@ -62,7 +62,7 @@ const RunMode = ({ text }: RunModeProps) => {
       {isRunning && (
         <button
           type="button"
-          aria-label={t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflow' })}
+          aria-label={t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflowDebug' })}
           className="flex size-7 items-center justify-center rounded-r-md bg-state-accent-active"
           onClick={handleStop}
         >

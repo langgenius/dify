@@ -1,71 +1,51 @@
-import { renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { act, waitFor } from '@testing-library/react'
+import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { useInputVariables } from '../hooks'
 
-let mockPipelineId: string | undefined
-
+const { getParams } = vi.hoisted(() => ({ getParams: vi.fn() }))
 vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (
-    selector: (state: { dataset: { pipeline_id?: string } | null }) => unknown,
-  ) => selector({ dataset: mockPipelineId ? { pipeline_id: mockPipelineId } : null }),
+    selector: (state: { dataset: { pipeline_id: string } }) => unknown,
+  ) => selector({ dataset: { pipeline_id: 'pipeline-1' } }),
 }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.byPipelineId.workflows.published.processing.parameters.get': getParams,
+    }),
+  }
+})
 
-let mockParamsReturn: {
-  data: Record<string, unknown> | undefined
-  isFetching: boolean
+const response = {
+  variables: [
+    {
+      variable: 'chunkSize',
+      label: 'Chunk size',
+      type: 'number',
+      required: true,
+      default_value: 100,
+    },
+  ],
 }
-
-const mockUsePublishedPipelineProcessingParams = vi.fn(
-  (_params: { pipeline_id: string; node_id: string }) => mockParamsReturn,
-)
-
-vi.mock('@/service/use-pipeline', () => ({
-  usePublishedPipelineProcessingParams: (params: { pipeline_id: string; node_id: string }) =>
-    mockUsePublishedPipelineProcessingParams(params),
-}))
+const renderVariables = () => renderHook(() => useInputVariables('node-1'))
 
 describe('useInputVariables', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockPipelineId = 'pipeline-123'
-    mockParamsReturn = {
-      data: undefined,
-      isFetching: false,
-    }
-  })
-
-  // Returns paramsConfig from API
-  describe('Data Retrieval', () => {
-    it('should return paramsConfig from API', () => {
-      const mockConfig = { variables: [{ name: 'var1', type: 'string' }] }
-      mockParamsReturn = { data: mockConfig, isFetching: false }
-
-      const { result } = renderHook(() => useInputVariables('node-456'))
-
-      expect(result.current.paramsConfig).toEqual(mockConfig)
-    })
-
-    it('should return isFetchingParams loading state', () => {
-      mockParamsReturn = { data: undefined, isFetching: true }
-
-      const { result } = renderHook(() => useInputVariables('node-456'))
-
-      expect(result.current.isFetchingParams).toBe(true)
-    })
-  })
-
-  // Passes correct parameters to API hook
-  describe('Parameter Passing', () => {
-    it('should pass correct pipeline_id and node_id to API hook', () => {
-      mockPipelineId = 'pipeline-789'
-      mockParamsReturn = { data: undefined, isFetching: false }
-
-      renderHook(() => useInputVariables('node-abc'))
-
-      expect(mockUsePublishedPipelineProcessingParams).toHaveBeenCalledWith({
-        pipeline_id: 'pipeline-789',
-        node_id: 'node-abc',
-      })
+  it('loads the current pipeline and node parameters before exposing the configuration', async () => {
+    const pending = createDeferred<typeof response>()
+    getParams.mockReturnValue(pending.promise)
+    const { result } = renderVariables()
+    expect(result.current.isFetchingParams).toBe(true)
+    expect(result.current.paramsConfig).toBeUndefined()
+    await act(async () => pending.resolve(response))
+    await waitFor(() => expect(result.current.isFetchingParams).toBe(false))
+    expect(result.current.paramsConfig?.variables).toEqual(response.variables)
+    expect(getParams).toHaveBeenCalledWith({
+      params: { pipeline_id: 'pipeline-1' },
+      query: { node_id: 'node-1' },
     })
   })
 })

@@ -39,11 +39,12 @@ export type BeforeRunFormProps = {
   existVarValuesInForms: Record<string, any>[]
   filteredExistVarForms: FormProps[]
   showGeneratedForm?: boolean
+  isGeneratingForm?: boolean
   handleShowGeneratedForm?: (data: Record<string, any>) => void
   handleHideGeneratedForm?: () => void
   formData?: HumanInputFormData
   handleSubmitHumanInputForm?: (data: any) => Promise<void>
-  handleAfterHumanInputStepRun?: () => void
+  handleAfterHumanInputStepRun?: () => void | Promise<void>
 } & Partial<SpecialResultPanelProps>
 
 const BeforeRunForm: FC<BeforeRunFormProps> = ({
@@ -55,13 +56,14 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
   filteredExistVarForms,
   existVarValuesInForms,
   showGeneratedForm = false,
+  isGeneratingForm = false,
   handleShowGeneratedForm,
   handleHideGeneratedForm,
   formData,
   handleSubmitHumanInputForm,
   handleAfterHumanInputStepRun,
 }) => {
-  const { t } = useTranslation(['appDebug', 'workflow'])
+  const { t } = useTranslation(['appDebug', 'workflow', 'workflowHumanInput'])
   const isHumanInput = nodeType === BlockEnum.HumanInput
   const showBackButton = filteredExistVarForms.length > 0
 
@@ -88,7 +90,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
 
   const handleHumanInputFormSubmit = async (data: any) => {
     await handleSubmitHumanInputForm?.(data)
-    handleAfterHumanInputStepRun?.()
+    await handleAfterHumanInputStepRun?.()
   }
 
   const hasRun = useRef(false)
@@ -129,7 +131,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
           <div className="mt-4 flex justify-between space-x-2 px-4">
             {!isHumanInput && (
               <Button
-                disabled={!isFileLoaded}
+                disabled={!isFileLoaded || isGeneratingForm}
                 variant="primary"
                 className="w-0 grow"
                 onClick={handleRunOrGenerateForm}
@@ -139,12 +141,15 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
             )}
             {isHumanInput && (
               <Button
-                disabled={!isFileLoaded}
+                disabled={!isFileLoaded || isGeneratingForm}
+                loading={isGeneratingForm}
                 variant="primary"
                 className="w-0 grow"
                 onClick={handleRunOrGenerateForm}
               >
-                <div>{t(($) => $['nodes.humanInput.singleRun.button'], { ns: 'workflow' })}</div>
+                <div>
+                  {t(($) => $['nodes.humanInput.singleRun.button'], { ns: 'workflowHumanInput' })}
+                </div>
               </Button>
             )}
           </div>

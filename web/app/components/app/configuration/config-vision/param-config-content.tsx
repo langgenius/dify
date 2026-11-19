@@ -20,7 +20,7 @@ const optionClassName =
 const ParamConfigContent: FC = () => {
   const resolutionLabelId = React.useId()
 
-  const { t } = useTranslation(['appDebug'])
+  const { t } = useTranslation(['fileUpload'])
   const file = useFeatures((s) => s.features.file)
   const featuresStore = useFeaturesStore()
 
@@ -73,7 +73,7 @@ const ParamConfigContent: FC = () => {
               id={resolutionLabelId}
               className="m-0 py-0 text-[13px] leading-4.5 font-semibold text-text-secondary"
             >
-              {t(($) => $['vision.visionSettings.resolution'], { ns: 'appDebug' })}
+              {t(($) => $['vision.visionSettings.resolution'], { ns: 'fileUpload' })}
             </FieldsetLegend>
             <Infotip>
               <InfotipTrigger aria-labelledby={resolutionLabelId} />
@@ -81,7 +81,7 @@ const ParamConfigContent: FC = () => {
                 aria-labelledby={resolutionLabelId}
                 className="w-45 whitespace-pre-wrap"
               >
-                {t(($) => $['vision.visionSettings.resolutionTooltip'], { ns: 'appDebug' })}
+                {t(($) => $['vision.visionSettings.resolutionTooltip'], { ns: 'fileUpload' })}
               </InfotipContent>
             </Infotip>
           </div>
@@ -89,11 +89,11 @@ const ParamConfigContent: FC = () => {
             {[
               {
                 value: Resolution.high,
-                label: t(($) => $['vision.visionSettings.high'], { ns: 'appDebug' }),
+                label: t(($) => $['vision.visionSettings.high'], { ns: 'fileUpload' }),
               },
               {
                 value: Resolution.low,
-                label: t(($) => $['vision.visionSettings.low'], { ns: 'appDebug' }),
+                label: t(($) => $['vision.visionSettings.low'], { ns: 'fileUpload' }),
               },
             ].map((option) => (
               <FieldItem key={option.value} className="grow">
@@ -130,21 +130,21 @@ const ParamConfigContent: FC = () => {
           }
         >
           <FieldsetLegend className="mb-2 py-0 text-[13px] leading-4.5 font-semibold text-text-secondary">
-            {t(($) => $['vision.visionSettings.uploadMethod'], { ns: 'appDebug' })}
+            {t(($) => $['vision.visionSettings.uploadMethod'], { ns: 'fileUpload' })}
           </FieldsetLegend>
           <div className="flex items-center gap-1">
             {[
               {
                 value: 'both' as const,
-                label: t(($) => $['vision.visionSettings.both'], { ns: 'appDebug' }),
+                label: t(($) => $['vision.visionSettings.both'], { ns: 'fileUpload' }),
               },
               {
                 value: TransferMethod.local_file,
-                label: t(($) => $['vision.visionSettings.localUpload'], { ns: 'appDebug' }),
+                label: t(($) => $['vision.visionSettings.localUpload'], { ns: 'fileUpload' }),
               },
               {
                 value: TransferMethod.remote_url,
-                label: t(($) => $['vision.visionSettings.url'], { ns: 'appDebug' }),
+                label: t(($) => $['vision.visionSettings.url'], { ns: 'fileUpload' }),
               },
             ].map((option) => (
               <FieldItem key={option.value} className="grow">
@@ -165,7 +165,7 @@ const ParamConfigContent: FC = () => {
         <ParamItem
           id="upload_limit"
           className=""
-          name={t(($) => $['vision.visionSettings.uploadLimit'], { ns: 'appDebug' })}
+          name={t(($) => $['vision.visionSettings.uploadLimit'], { ns: 'fileUpload' })}
           noTooltip
           {...{
             default: 2,

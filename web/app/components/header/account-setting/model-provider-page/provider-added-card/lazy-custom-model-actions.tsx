@@ -8,13 +8,13 @@ import {
   ManageCustomModelCredentials,
 } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import { ConfigurationMethodEnum, ModelModalModeEnum } from '../declarations'
-import { useLazyModelProviderDetail, useModelModalHandler } from '../hooks'
+import { useLazyModelProviderDetail } from '../hooks'
+import { modelCredentialDialog } from '../model-modal/handle'
 
 type ProviderSummary = ModelProviderSummaryResponse | ModelProvider
 
 export default function LazyCustomModelActions({ provider }: { provider: ProviderSummary }) {
-  const { t } = useTranslation(['common'])
-  const handleOpenModelModal = useModelModalHandler()
+  const { t } = useTranslation(['modelProvider'])
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [isManageOpen, setIsManageOpen] = useState(false)
   const { providerDetail, loadProviderDetail, isLoadingProviderDetail } =
@@ -33,7 +33,9 @@ export default function LazyCustomModelActions({ provider }: { provider: Provide
       return
     }
 
-    handleOpenModelModal(detail, ConfigurationMethodEnum.customizableModel, undefined, {
+    modelCredentialDialog.openWithPayload({
+      provider: detail,
+      configurateMethod: ConfigurationMethodEnum.customizableModel,
       isModelCredential: true,
       mode: ModelModalModeEnum.configCustomModel,
     })
@@ -76,9 +78,9 @@ export default function LazyCustomModelActions({ provider }: { provider: Provide
           size="small"
           loading={isLoadingProviderDetail}
           onClick={handleManageClick}
-          className="mr-0.5 text-text-tertiary"
+          className="me-0.5 text-text-tertiary"
         >
-          {t(($) => $['modelProvider.auth.manageCredentials'], { ns: 'common' })}
+          {t(($) => $['modelProvider.auth.manageCredentials'], { ns: 'modelProvider' })}
         </Button>
       )}
       <Button
@@ -88,8 +90,8 @@ export default function LazyCustomModelActions({ provider }: { provider: Provide
         onClick={handleAddClick}
         className="text-text-tertiary"
       >
-        <span className="mr-1 i-ri-add-circle-fill size-3.5" />
-        {t(($) => $['modelProvider.addModel'], { ns: 'common' })}
+        <span className="me-1 i-ri-add-circle-fill size-3.5" />
+        {t(($) => $['modelProvider.addModel'], { ns: 'modelProvider' })}
       </Button>
     </>
   )

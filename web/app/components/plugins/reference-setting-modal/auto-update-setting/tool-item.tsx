@@ -4,8 +4,8 @@ import type { PluginDetail } from '@/app/components/plugins/types'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import * as React from 'react'
 import Icon from '@/app/components/plugins/card/base/card-icon'
-import { MARKETPLACE_API_PREFIX } from '@/config'
 import { useGetLanguage } from '@/context/i18n'
+import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
 import { renderI18nObject } from '@/i18n/metadata'
 
 type Props = Readonly<{
@@ -22,7 +22,7 @@ const ToolItem: FC<Props> = ({ payload, isChecked, onCheckChange }) => {
   return (
     <div className="flex w-full items-center gap-1 rounded-lg py-1 pr-2 pl-3 select-none hover:bg-state-base-hover">
       <div className="flex min-w-0 grow items-center gap-2 pr-2">
-        <Icon size="tiny" src={`${MARKETPLACE_API_PREFIX}/plugins/${plugin_id}/icon`} />
+        <Icon size="tiny" src={getMarketplacePluginIconUrl(plugin_id)} />
         <div className="min-w-0 truncate system-sm-medium text-text-secondary">
           {renderI18nObject(label, language)}
         </div>

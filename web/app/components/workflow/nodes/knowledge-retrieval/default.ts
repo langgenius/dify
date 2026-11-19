@@ -26,7 +26,10 @@ const nodeDefault: NodeDefault<KnowledgeRetrievalNodeType> = {
       reranking_enable: false,
     },
   },
-  checkValid(payload: KnowledgeRetrievalNodeType, t: TFunction<['workflow', 'common']>) {
+  checkValid(
+    payload: KnowledgeRetrievalNodeType,
+    t: TFunction<['workflow', 'common', 'modelProvider']>,
+  ) {
     let errorMessages = ''
 
     if (!errorMessages && (!payload.dataset_ids || payload.dataset_ids.length === 0))
@@ -42,7 +45,7 @@ const nodeDefault: NodeDefault<KnowledgeRetrievalNodeType> = {
     )
       errorMessages = t(($) => $[`${i18nPrefix}errorMsg.fieldRequired`], {
         ns: 'workflow',
-        field: t(($) => $['modelProvider.systemReasoningModel.key'], { ns: 'common' }),
+        field: t(($) => $['modelProvider.systemReasoningModel.key'], { ns: 'modelProvider' }),
       })
 
     const { _datasets, multiple_retrieval_config, retrieval_mode } = payload

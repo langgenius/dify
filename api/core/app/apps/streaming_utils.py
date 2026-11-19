@@ -9,6 +9,9 @@ from core.app.entities.task_entities import StreamEvent
 from libs.broadcast_channel.channel import Subscription
 from libs.broadcast_channel.exc import SubscriptionClosedError
 
+# Internal transport signal, consumed before decoding public stream events.
+STREAM_COMPLETE_SIGNAL = b"__dify_app_stream_complete__"
+
 
 def stream_topic_events(
     *,
@@ -17,7 +20,14 @@ def stream_topic_events(
     ping_interval: float | None = None,
     on_subscribe: Callable[[], None] | None = None,
     terminal_events: Iterable[str | StreamEvent] | None = None,
-) -> Generator[Mapping[str, Any] | str, None, None]:
+) -> Generator[Mapping[str, Any] | str]:
+    """Yield JSON topic events until a terminal event, transport completion, closure, or idle timeout.
+
+    The subscription must deliver JSON payloads or ``STREAM_COMPLETE_SIGNAL`` in publish order.
+    The completion signal closes the subscription without becoming a public event, regardless
+    of the selected terminal events. Invalid JSON and subscription errors other than closure
+    propagate to the caller; an entered subscription is closed on exit.
+    """
     # send a PING event immediately to prevent the connection staying in pending state for a long time.
     #
     # This simplify the debugging process as the DevTools in Chrome does not
@@ -45,6 +55,9 @@ def stream_topic_events(
                     yield StreamEvent.PING.value
                     last_ping_time = current_time
                 continue
+
+            if msg == STREAM_COMPLETE_SIGNAL:
+                return
 
             last_msg_time = time.time()
             last_ping_time = last_msg_time

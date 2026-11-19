@@ -7,10 +7,10 @@ import type { DeploymentConfigurationValuesController } from './use-deployment-c
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { getErrorMessage } from '@/utils/error-message'
 import { CredentialsSection } from './credentials-section'
 import { DeploymentPrecheckAlert } from './deployment-precheck-alert'
 import { EnvironmentVariablesSection } from './environment-variables-section'
-import { getDeploymentErrorMessage } from './utils/deployment-error'
 
 function ConfigurationError({ messages }: { messages: string[] }) {
   const { t } = useTranslation(['common'])
@@ -35,12 +35,14 @@ function ConfigurationError({ messages }: { messages: string[] }) {
 export function DeploymentConfigurationContent({
   compact = false,
   configurationValues,
+  onConfigurationChange,
   queryState,
   request,
   version,
 }: {
   compact?: boolean
   configurationValues: DeploymentConfigurationValuesController
+  onConfigurationChange: () => void
   queryState: DeploymentConfigurationQueryState
   request: DeploymentDialogRequest
   version: DeploymentVersion
@@ -58,7 +60,7 @@ export function DeploymentConfigurationContent({
     precheckError,
   } = queryState
   const {
-    credentials,
+    getCredential,
     getEnvironmentVariableSelection,
     setCredential,
     setEnvironmentVariableSelection,
@@ -103,7 +105,7 @@ export function DeploymentConfigurationContent({
         {!isPrechecking && precheckError && (
           <div className={cn('py-4', horizontalPaddingClassName)}>
             <ConfigurationError
-              messages={[getDeploymentErrorMessage(precheckError) ?? tCommon(($) => $.error)]}
+              messages={[getErrorMessage(precheckError) ?? tCommon(($) => $.error)]}
             />
           </div>
         )}
@@ -119,7 +121,7 @@ export function DeploymentConfigurationContent({
           <div className={cn('py-4', horizontalPaddingClassName)}>
             <ConfigurationError
               messages={[
-                getDeploymentErrorMessage(deploymentOptionsError) ??
+                getErrorMessage(deploymentOptionsError) ??
                   t(($) => $['deployDrawer.bindingOptionsFailed']),
               ]}
             />
@@ -129,16 +131,22 @@ export function DeploymentConfigurationContent({
           <>
             <CredentialsSection
               credentialSlots={deploymentOptions?.credential_slots ?? []}
-              credentials={credentials}
+              getCredential={getCredential}
               horizontalPaddingClassName={horizontalPaddingClassName}
-              onChange={setCredential}
+              onChange={(key, value) => {
+                setCredential(key, value)
+                onConfigurationChange()
+              }}
             />
             <EnvironmentVariablesSection
               environmentVariableGroups={deploymentOptions?.environment_variable_groups ?? []}
               getEnvironmentVariableSelection={getEnvironmentVariableSelection}
               hasCredentialSlots={hasCredentialSlots}
               horizontalPaddingClassName={horizontalPaddingClassName}
-              setEnvironmentVariableSelection={setEnvironmentVariableSelection}
+              setEnvironmentVariableSelection={(workflowId, key, value) => {
+                setEnvironmentVariableSelection(workflowId, key, value)
+                onConfigurationChange()
+              }}
             />
           </>
         )}

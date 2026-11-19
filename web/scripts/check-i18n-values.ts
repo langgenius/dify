@@ -1,4 +1,4 @@
-import { getTranslationSourceKey } from './check-i18n-plurals.ts'
+import { getTranslationSourceKey } from '@dify/tooling/i18n-plurals'
 
 /**
  * Value-level checks for locale files.

@@ -12,6 +12,6 @@ export function useTranslation<
 }
 
 export function useLocale(): Locale {
-  const { i18n } = useTranslationOriginal()
+  const { i18n } = useTranslationOriginal([])
   return i18n.language as Locale
 }

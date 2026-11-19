@@ -3,6 +3,7 @@ import type { AgentV2NodeType } from '../types'
 import type { NodeProps, Var } from '@/app/components/workflow/types'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useTranslation } from 'react-i18next'
+import { v4 as uuid4 } from 'uuid'
 import { useEdgesInteractions } from '@/app/components/workflow/hooks/use-edges-interactions'
 import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
@@ -19,7 +20,7 @@ const filterVar = (variable: Var) =>
   variable.type === VarType.string || variable.type === VarType.number
 
 export function AgentOutputRoutes({ id, data }: NodeProps<AgentV2NodeType>) {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowAgent'])
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
   const { removeBranchEdges } = useEdgesInteractions()
   const { handleNodeDataUpdate } = useNodeDataUpdate()
@@ -63,7 +64,7 @@ export function AgentOutputRoutes({ id, data }: NodeProps<AgentV2NodeType>) {
     if (enabled) {
       while (nextList.length < 2)
         nextList.push({
-          id: crypto.randomUUID(),
+          id: uuid4(),
           name: '',
           label: defaultLabel(nextList.length + 1),
         })
@@ -72,7 +73,7 @@ export function AgentOutputRoutes({ id, data }: NodeProps<AgentV2NodeType>) {
   }
 
   return (
-    <div className="border-b border-divider-subtle px-4 py-3">
+    <div className="px-4 py-3">
       <BranchList
         nodeId={id}
         list={list}
@@ -95,9 +96,9 @@ export function AgentOutputRoutes({ id, data }: NodeProps<AgentV2NodeType>) {
         filterVar={filterVar}
         labels={{
           title: t(($) => $['nodes.agent.outputRoutes.title'], { ns: 'workflow' }),
-          add: t(($) => $['nodes.agent.outputRoutes.add'], { ns: 'workflow' }),
-          placeholder: t(($) => $['nodes.agent.outputRoutes.placeholder'], { ns: 'workflow' }),
-          renameHint: t(($) => $['nodes.agent.outputRoutes.renameHint'], { ns: 'workflow' }),
+          add: t(($) => $['nodes.agent.outputRoutes.add'], { ns: 'workflowAgent' }),
+          placeholder: t(($) => $['nodes.agent.outputRoutes.placeholder'], { ns: 'workflowAgent' }),
+          renameHint: t(($) => $['nodes.agent.outputRoutes.renameHint'], { ns: 'workflowAgent' }),
           defaultLabel,
         }}
       />

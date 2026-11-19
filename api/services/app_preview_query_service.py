@@ -1,11 +1,11 @@
 """Read-only app previews, independent of trial execution and account quotas."""
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 
-from services.app_definition_query_service import AppSiteConfiguration
+from services.app_definition_query_service import AppDefinitionUnavailableError, AppSiteConfiguration
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,6 +33,8 @@ class AppPreviewDataset:
 
 
 class AppPreviewQuery(Protocol):
+    def get_agent_composer(self, *, app: AppPreviewRef) -> Mapping[str, object] | None: ...
+
     def get_app(self, *, app_id: str) -> AppPreviewRef | None: ...
 
     def get_site(self, *, app: AppPreviewRef) -> AppPreviewSite | None: ...
@@ -53,6 +55,12 @@ class AppPreviewOwnerUnavailableError(LookupError):
 
 
 class AppPreviewQueryService:
+    def get_agent_composer(self, *, app: AppPreviewRef) -> Mapping[str, object]:
+        preview = self._apps.get_agent_composer(app=app)
+        if preview is None:
+            raise AppDefinitionUnavailableError("Agent preview is unavailable")
+        return preview
+
     def __init__(self, *, apps: AppPreviewQuery, is_previewable: Callable[[str], bool]) -> None:
         self._apps: AppPreviewQuery = apps
         self._is_previewable: Callable[[str], bool] = is_previewable

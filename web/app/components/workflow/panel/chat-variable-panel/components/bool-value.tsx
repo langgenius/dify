@@ -6,10 +6,11 @@ import OptionCard from '../../../nodes/_base/components/option-card'
 
 type Props = Readonly<{
   value: boolean
+  disabled?: boolean
   onChange: (value: boolean) => void
 }>
 
-const BoolValue: FC<Props> = ({ value, onChange }) => {
+const BoolValue: FC<Props> = ({ value, onChange, disabled }) => {
   const booleanValue = value
   const handleChange = useCallback(
     (newValue: boolean) => {
@@ -24,12 +25,14 @@ const BoolValue: FC<Props> = ({ value, onChange }) => {
     <div className="flex w-full space-x-1">
       <OptionCard
         className="grow"
+        disabled={disabled}
         selected={booleanValue}
         title="True"
         onSelect={handleChange(true)}
       />
       <OptionCard
         className="grow"
+        disabled={disabled}
         selected={!booleanValue}
         title="False"
         onSelect={handleChange(false)}

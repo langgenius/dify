@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from 'react'
 export const useElapsedTimer = (complete: boolean) => {
   const [startTime] = useState(() => Date.now())
   const [elapsedTime, setElapsedTime] = useState(0)
+  const [hasStarted] = useState(() => !complete)
   // Latch completion so a transient flip back to "not complete" never restarts the timer.
   const completedRef = useRef(complete)
   const isComplete = complete || completedRef.current
@@ -30,5 +31,5 @@ export const useElapsedTimer = (complete: boolean) => {
     }
   }, [startTime, isComplete])
 
-  return { elapsedTime, isComplete }
+  return { elapsedTime, hasStarted, isComplete }
 }

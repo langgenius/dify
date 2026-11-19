@@ -52,7 +52,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
   ragVariables,
   readonly,
 }) => {
-  const { t } = useTranslation(['appDebug', 'common', 'workflow'])
+  const { t } = useTranslation(['appDebug', 'common', 'workflow', 'workflowHumanInput'])
   const resolvedFormInput = formInput || createDefaultParagraphFormInput(varName)
   const paragraphDefault = isParagraphFormInput(resolvedFormInput)
     ? resolvedFormInput.default
@@ -72,7 +72,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
     return () => {
       if (editBtn) editBtn.removeEventListener('click', showEditModal)
     }
-  }, [showEditModal])
+  }, [showEditModal, readonly])
 
   const removeBtnRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -83,7 +83,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
     return () => {
       if (removeBtn) removeBtn.removeEventListener('click', removeHandler)
     }
-  }, [onRemove, varName])
+  }, [onRemove, varName, readonly])
 
   const handleChange = useCallback(
     (newPayload: FormInputItem) => {
@@ -123,7 +123,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
 
     if (isSelectFormInput(resolvedFormInput)) {
       if (resolvedFormInput.option_source.type === 'variable')
-        return t(($) => $[`${i18nPrefix}.variable`], { ns: 'workflow' })
+        return t(($) => $[`${i18nPrefix}.variable`], { ns: 'workflowHumanInput' })
       return resolvedFormInput.option_source.value.join(', ') || inputTypeLabel
     }
 
@@ -131,8 +131,8 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
   }, [inputTypeLabel, paragraphDefault?.value, resolvedFormInput, t])
 
   return (
-    <div className="group relative flex h-8 w-full items-center rounded-lg border-[1.5px] border-components-input-border-active bg-background-default-hover pr-0.5 pl-1.5 select-none">
-      <div className="absolute -top-3 left-2.5">
+    <div className="group relative flex h-8 w-full items-center rounded-lg border-[1.5px] border-components-input-border-active bg-background-default-hover ps-1.5 pe-0.5 select-none">
+      <div className="absolute inset-s-2.5 -top-3">
         <div className="absolute bottom-1 h-[1.5px] w-full bg-background-default-subtle"></div>
         <div className="relative flex items-center space-x-0.5 px-1 text-text-accent-light-mode-only">
           <span aria-hidden className="i-custom-vender-workflow-variable-x size-3" />
@@ -140,7 +140,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
         </div>
       </div>
 
-      <div className="flex w-full items-center gap-x-2 pr-5">
+      <div className="flex w-full items-center gap-x-2 pe-5">
         <div className="min-w-0 grow">
           {variableSelector ? (
             <VariableBlock
@@ -189,7 +189,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
             if (!open) hideEditModal()
           }}
         >
-          <DialogContent className="w-full max-w-93 overflow-hidden! border-none p-0! text-left align-middle">
+          <DialogContent className="w-93">
             <InputField
               nodeId={nodeId}
               isEdit

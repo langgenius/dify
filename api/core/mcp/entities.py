@@ -7,7 +7,8 @@ from pydantic import BaseModel
 from core.mcp.session.base_session import BaseSession
 from core.mcp.types import LATEST_PROTOCOL_VERSION, OAuthClientInformation, OAuthMetadata, RequestId, RequestParams
 
-SUPPORTED_PROTOCOL_VERSIONS: list[str] = ["2024-11-05", "2025-03-26", LATEST_PROTOCOL_VERSION]
+# 2025-06-18 stays explicit: it is no longer LATEST_PROTOCOL_VERSION, but servers still negotiate down to it.
+SUPPORTED_PROTOCOL_VERSIONS: list[str] = ["2024-11-05", "2025-03-26", "2025-06-18", LATEST_PROTOCOL_VERSION]
 
 
 @dataclass

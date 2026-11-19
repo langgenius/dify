@@ -20,14 +20,23 @@ describe('assigner/operation-selector', () => {
       />,
     )
 
-    await user.click(screen.getByText('workflow.nodes.assigner.operations.over-write'))
+    await user.click(
+      screen.getByRole('button', { name: 'workflowLogic.nodes.assigner.operations.over-write' }),
+    )
 
-    expect(screen.getByText('workflow.nodes.assigner.operations.title')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.assigner.operations.clear')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.assigner.operations.set')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.assigner.operations.+=')).toBeInTheDocument()
+    expect(screen.getByText('workflowLogic.nodes.assigner.operations.title')).toBeInTheDocument()
+    expect(screen.getByText('workflowLogic.nodes.assigner.operations.clear')).toBeInTheDocument()
+    expect(screen.getByText('workflowLogic.nodes.assigner.operations.set')).toBeInTheDocument()
+    expect(screen.getByText('workflowLogic.nodes.assigner.operations.+=')).toBeInTheDocument()
 
-    await user.click(screen.getAllByText('workflow.nodes.assigner.operations.+=').at(-1)!)
+    expect(
+      screen.getByRole('menuitemradio', {
+        name: 'workflowLogic.nodes.assigner.operations.over-write',
+      }),
+    ).toHaveAttribute('aria-checked', 'true')
+    await user.click(
+      screen.getByRole('menuitemradio', { name: 'workflowLogic.nodes.assigner.operations.+=' }),
+    )
 
     expect(onSelect).toHaveBeenCalledWith({ value: WriteMode.increment, name: WriteMode.increment })
   })
@@ -45,8 +54,12 @@ describe('assigner/operation-selector', () => {
       />,
     )
 
-    await user.click(screen.getByText('workflow.nodes.assigner.operations.over-write'))
+    await user.click(
+      screen.getByRole('button', { name: 'workflowLogic.nodes.assigner.operations.over-write' }),
+    )
 
-    expect(screen.queryByText('workflow.nodes.assigner.operations.title')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('workflowLogic.nodes.assigner.operations.title'),
+    ).not.toBeInTheDocument()
   })
 })

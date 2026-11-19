@@ -1,4 +1,5 @@
 import type { StateCreator } from 'zustand'
+import type { IChatItem } from '@/app/components/base/chat/chat/type'
 
 export type WorkflowContextMenuTarget =
   | { type: 'panel' }
@@ -7,6 +8,8 @@ export type WorkflowContextMenuTarget =
   | { type: 'edge'; edgeId: string }
 
 export type PanelSliceShape = {
+  messageLogItem?: IChatItem & { workflow_run_id: string }
+  setMessageLogItem: (item?: IChatItem) => void
   panelWidth: number
   setPanelWidth: (width: number) => void
   showFeaturesPanel: boolean
@@ -34,6 +37,16 @@ export type PanelSliceShape = {
 }
 
 export const createPanelSlice: StateCreator<PanelSliceShape> = (set) => ({
+  messageLogItem: undefined,
+  setMessageLogItem: (item) => {
+    if (!item) {
+      set({ messageLogItem: undefined })
+      return
+    }
+    if (item.workflow_run_id) {
+      set({ messageLogItem: { ...item, workflow_run_id: item.workflow_run_id } })
+    }
+  },
   panelWidth: 420,
   setPanelWidth: (width) =>
     set((state) => (state.panelWidth === width ? state : { panelWidth: width })),

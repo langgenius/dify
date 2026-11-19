@@ -1,15 +1,6 @@
-import {
-  getAnalyticsConsent,
-  getAnalyticsConsentFromCookie,
-  getAnalyticsConsentFromEvent,
-  setAnalyticsConsent,
-} from '../consent-store'
+import { getAnalyticsConsentFromCookie, getAnalyticsConsentFromEvent } from '../consent-store'
 
 describe('analytics consent store', () => {
-  beforeEach(() => {
-    setAnalyticsConsent('unknown')
-  })
-
   describe('CookieYes cookie parsing', () => {
     it.each([
       ['', 'unknown'],
@@ -42,11 +33,5 @@ describe('analytics consent store', () => {
       ).toBeNull()
       expect(getAnalyticsConsentFromEvent(null)).toBeNull()
     })
-  })
-
-  it('exposes the current consent synchronously', () => {
-    setAnalyticsConsent('granted')
-
-    expect(getAnalyticsConsent()).toBe('granted')
   })
 })

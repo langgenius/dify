@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { ModalContextProvider } from '@/context/modal-context-provider'
+import { TriggerEventsLimitPrompt } from '@/app/components/billing/trigger-events-limit-modal/prompt'
 import { consoleQuery } from '@/service/console'
 import {
   createConsoleQueryClient,
@@ -64,7 +64,7 @@ it('reveals the plan and all usage together when both billing queries have data'
 
 it('renders annotation usage only from returned data and preserves zero as an unlimited quota', async () => {
   const queryClient = createConsoleQueryClient()
-  const { wrapper } = createConsoleQueryWrapper({ queryClient })
+  const { wrapper } = createConsoleQueryWrapper({ queryClient, features: null })
   render(<AnnotationUsage />, { wrapper })
   expect(
     screen.queryByRole('group', { name: 'billing.annotatedResponse.quotaTitle' }),
@@ -118,33 +118,41 @@ it.each([
 )
 
 it('shows a dismissible limit dialog when the workspace receives a zero event quota', async () => {
-  localStorage.clear()
-  const user = userEvent.setup()
-  const { queryClient, wrapper } = createConsoleQueryWrapper({
-    systemFeatures: { deployment_edition: 'CLOUD' },
-    currentWorkspace: { id: 'workspace-zero-quota' },
-  })
-  const { wrapper: NuqsWrapper } = createNuqsTestWrapper()
-  render(
-    <NuqsWrapper>
-      <ModalContextProvider>
-        <span>Workspace</span>
-      </ModalContextProvider>
-    </NuqsWrapper>,
-    { wrapper },
-  )
-
-  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-  await act(async () => {
-    seedFeatures(queryClient, {
-      billing: { subscription: { plan: 'professional' } },
-      trigger_event: { limit: 0, usage: 0, reset_date: -1 },
+  const key = 'trigger-events-limit-dismissed-workspace-zero-quota-professional-0-none'
+  const previous = localStorage.getItem(key)
+  localStorage.removeItem(key)
+  try {
+    const user = userEvent.setup()
+    const { queryClient, wrapper } = createConsoleQueryWrapper({
+      systemFeatures: { deployment_edition: 'CLOUD' },
+      currentWorkspace: { id: 'workspace-zero-quota' },
     })
-  })
-  const dialog = await screen.findByRole('dialog', { name: 'billing.triggerLimitModal.title' })
-  expect(within(dialog).getByTestId('billing-quota-value')).toHaveTextContent('0/0')
-  await user.click(
-    within(dialog).getByRole('button', { name: 'billing.triggerLimitModal.dismiss' }),
-  )
-  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    const { wrapper: NuqsWrapper } = createNuqsTestWrapper()
+    render(
+      <NuqsWrapper>
+        <>
+          <span>Workspace</span>
+          <TriggerEventsLimitPrompt />
+        </>
+      </NuqsWrapper>,
+      { wrapper },
+    )
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await act(async () => {
+      seedFeatures(queryClient, {
+        billing: { subscription: { plan: 'professional' } },
+        trigger_event: { limit: 0, usage: 0, reset_date: -1 },
+      })
+    })
+    const dialog = await screen.findByRole('dialog', { name: 'billing.triggerLimitModal.title' })
+    expect(within(dialog).getByTestId('billing-quota-value')).toHaveTextContent('0/0')
+    await user.click(
+      within(dialog).getByRole('button', { name: 'billing.triggerLimitModal.dismiss' }),
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  } finally {
+    if (previous === null) localStorage.removeItem(key)
+    else localStorage.setItem(key, previous)
+  }
 })

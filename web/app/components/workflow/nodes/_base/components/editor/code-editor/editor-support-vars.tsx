@@ -26,6 +26,7 @@ const CodeEditor: FC<Props> = ({ availableVars, varList, onAddVar, ...editorProp
 
   const editorRef = useRef(null)
   const monacoRef = useRef(null)
+  const [keyboardTarget, setKeyboardTarget] = useState<HTMLElement | null>(null)
 
   const popupRef = useRef<HTMLDivElement>(null)
   const [isShowVarPicker, setIsShowVarPicker] = useState(false)
@@ -72,6 +73,7 @@ const CodeEditor: FC<Props> = ({ availableVars, varList, onAddVar, ...editorProp
   const onEditorMounted = (editor: any, monaco: any) => {
     editorRef.current = editor
     monacoRef.current = monaco
+    setKeyboardTarget(editor.getDomNode())
     editor.onDidChangeCursorPosition(handleCursorPositionChange)
   }
 
@@ -150,7 +152,7 @@ const CodeEditor: FC<Props> = ({ availableVars, varList, onAddVar, ...editorProp
         createPortal(
           <div
             ref={popupRef}
-            className="fixed z-50 w-57 space-y-1 rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg"
+            className="fixed w-57 space-y-1 rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg"
             style={{
               top: popupPosition.y,
               left: popupPosition.x,
@@ -158,6 +160,7 @@ const CodeEditor: FC<Props> = ({ availableVars, varList, onAddVar, ...editorProp
           >
             <VarReferenceVars
               hideSearch
+              keyboardTarget={keyboardTarget}
               vars={availableVars}
               onChange={handleSelectVar}
               isSupportFileVar={false}

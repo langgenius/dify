@@ -1,16 +1,23 @@
 from __future__ import annotations
 
 from collections.abc import Generator
-from typing import Any
-from unittest.mock import Mock, patch
+from dataclasses import dataclass
+from datetime import timedelta
+from decimal import Decimal
+from typing import Any, override
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import ToolInvoked, TraceCorrelation, TraceEvent
 from sqlalchemy import select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
+from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
@@ -29,14 +36,34 @@ from core.tools.errors import (
     ToolParameterValidationError,
 )
 from core.tools.tool_engine import ToolEngine
+from models.enums import ConversationFromSource
+from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import AppMode, Message, MessageFile
 
 
+@dataclass(eq=False, repr=False)
 class _DatabaseBinding:
     engine: Engine
 
-    def __init__(self, engine: Engine) -> None:
-        self.engine = engine
+
+class _Recorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
+def _trace_scope(recorder: _Recorder) -> TraceScope:
+    return TraceScope(
+        emitter=recorder,
+        tenant_id="tenant-1",
+        app_id="app-1",
+        user_id="u1",
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
+    )
 
 
 def _message() -> Message:
@@ -46,22 +73,22 @@ def _message() -> Message:
         model_id="model",
         override_model_configs=None,
         conversation_id=str(uuid4()),
-        inputs={},
+        _inputs={},
         query="query",
         message="",
         message_tokens=0,
-        message_unit_price=0,
-        message_price_unit=0,
+        message_unit_price=Decimal(0),
+        message_price_unit=Decimal(0),
         answer="",
         answer_tokens=0,
-        answer_unit_price=0,
-        answer_price_unit=0,
+        answer_unit_price=Decimal(0),
+        answer_price_unit=Decimal(0),
         parent_message_id=None,
         provider_response_latency=0,
-        total_price=0,
+        total_price=Decimal(0),
         currency="USD",
-        invoke_from="debugger",
-        from_source="console",
+        invoke_from=ModelInvokeFrom.DEBUGGER,
+        from_source=ConversationFromSource.CONSOLE,
         from_end_user_id=None,
         from_account_id=str(uuid4()),
         app_mode=AppMode.CHAT,
@@ -82,25 +109,27 @@ class _DummyTool(Tool):
     def tool_provider_type(self) -> ToolProviderType:
         return ToolProviderType.BUILT_IN
 
+    @override
     def _invoke(
         self,
-        session: Any,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
+        del session
         if self.raise_error:
             raise self.raise_error
-        if isinstance(self.result, list | Generator):
+        if isinstance(self.result, (list, Generator)):
             yield from self.result
         else:
             yield self.result
 
 
 def _build_tool(with_llm_parameter: bool = False) -> _DummyTool:
-    parameters = []
+    parameters: list[ToolParameter] = []
     if with_llm_parameter:
         parameters = [
             ToolParameter.get_simple_instance(
@@ -118,7 +147,7 @@ def _build_tool(with_llm_parameter: bool = False) -> _DummyTool:
     return _DummyTool(entity=entity, runtime=runtime)
 
 
-def test_convert_tool_response_to_str_and_extract_binary_messages():
+def test_convert_tool_response_to_str_and_extract_binary_messages() -> None:
     tool = _build_tool()
     messages = [
         tool.create_text_message("hello"),
@@ -183,7 +212,7 @@ def test_convert_tool_response_to_str_and_extract_binary_messages():
 )
 def test_convert_tool_response_deduplicates_equivalent_json(
     text: str, json_object: dict[str, Any] | list[Any], json_first: bool
-):
+) -> None:
     tool = _build_tool()
     messages = [
         ToolInvokeMessage(
@@ -216,7 +245,7 @@ def test_convert_tool_response_deduplicates_equivalent_json(
         pytest.param('{"a":"a b"}', {"a": "ab"}, '{"a": "ab"}', id="string-whitespace"),
     ],
 )
-def test_convert_tool_response_preserves_distinct_json(text: str, json_object: dict[str, Any], json_text: str):
+def test_convert_tool_response_preserves_distinct_json(text: str, json_object: dict[str, Any], json_text: str) -> None:
     tool = _build_tool()
     messages = [tool.create_json_message(json_object), tool.create_text_message(text)]
 
@@ -224,14 +253,14 @@ def test_convert_tool_response_preserves_distinct_json(text: str, json_object: d
 
 
 @pytest.mark.parametrize("suppress_output", [True, False])
-def test_convert_tool_response_preserves_json_only_output(suppress_output: bool):
+def test_convert_tool_response_preserves_json_only_output(suppress_output: bool) -> None:
     tool = _build_tool()
     messages = [tool.create_json_message({"b": 2, "a": "中文"}, suppress_output=suppress_output)]
 
     assert ToolEngine.tool_response_to_str(messages) == ("" if suppress_output else '{"b": 2, "a": "中文"}')
 
 
-def test_convert_tool_response_deduplicates_only_matching_json():
+def test_convert_tool_response_deduplicates_only_matching_json() -> None:
     tool = _build_tool()
     text = '{"b":2,"a":1}'
     messages = [
@@ -247,7 +276,7 @@ def test_convert_tool_response_deduplicates_only_matching_json():
 
 
 @pytest.mark.parametrize("sqlite_session", [(MessageFile,)], indirect=True)
-def test_create_message_files_and_invoke_generator(sqlite_engine: Engine, sqlite_session: Session):
+def test_create_message_files_and_invoke_generator(sqlite_engine: Engine, sqlite_session: Session) -> None:
     binaries = [
         ToolInvokeMessageBinary(mimetype="image/png", url="https://example.com/abc.png"),
         ToolInvokeMessageBinary(mimetype="audio/wav", url="https://example.com/def.wav"),
@@ -268,16 +297,16 @@ def test_create_message_files_and_invoke_generator(sqlite_engine: Engine, sqlite
 
     tool = _build_tool()
     invoked = list(ToolEngine._invoke(sqlite_session, tool, {"a": 1}, user_id="u"))
+    assert isinstance(invoked[0], ToolInvokeMessage)
     assert invoked[0].type == ToolInvokeMessage.MessageType.TEXT
     assert isinstance(invoked[-1], ToolInvokeMeta)
     assert invoked[-1].error is None
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_generic_invoke_success_and_error_paths(sqlite_session: Session):
+def test_generic_invoke_success_and_error_paths(sqlite_session: Session) -> None:
     tool = _build_tool()
-    callback = Mock()
-    callback.on_tool_execution.side_effect = lambda **kwargs: kwargs["tool_outputs"]
+    callback = DifyWorkflowCallbackHandler()
     response = list(
         ToolEngine.generic_invoke(
             session=sqlite_session,
@@ -291,13 +320,11 @@ def test_generic_invoke_success_and_error_paths(sqlite_session: Session):
             message_id="m1",
         )
     )
+    assert isinstance(response[0].message, ToolInvokeMessage.TextMessage)
     assert response[0].message.text == "ok"
-    callback.on_tool_start.assert_called_once()
-    callback.on_tool_execution.assert_called_once()
 
     tool.raise_error = RuntimeError("boom")
-    error_callback = Mock()
-    error_callback.on_tool_execution.side_effect = lambda **kwargs: list(kwargs["tool_outputs"])
+    error_callback = DifyWorkflowCallbackHandler()
     with pytest.raises(RuntimeError, match="boom"):
         list(
             ToolEngine.generic_invoke(
@@ -309,13 +336,12 @@ def test_generic_invoke_success_and_error_paths(sqlite_session: Session):
                 workflow_call_depth=0,
             )
         )
-    error_callback.on_tool_error.assert_called_once()
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_agent_invoke_success(sqlite_session: Session):
+def test_agent_invoke_success(sqlite_session: Session) -> None:
     tool = _build_tool(with_llm_parameter=True)
-    callback = Mock()
+    callback = DifyAgentCallbackHandler()
     message = _message()
     meta = ToolInvokeMeta.empty()
 
@@ -335,19 +361,65 @@ def test_agent_invoke_success(sqlite_session: Session):
                         message=message,
                         invoke_from=InvokeFrom.DEBUGGER,
                         agent_tool_callback=callback,
+                        trace_scope=None,
                     )
 
     assert result_text == "ok"
     assert message_files == []
     assert result_meta.error is None
-    callback.on_tool_start.assert_called_once()
-    callback.on_tool_end.assert_called_once()
+
+
+def test_agent_invoke_emits_tool_invoked_from_meta(
+    sqlite_engine: Engine, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tool = _build_tool(with_llm_parameter=True)
+    message = _message()
+    meta = ToolInvokeMeta(
+        time_cost=1.25,
+        error="partial failure",
+        tool_config={"tool_name": "tool-a", "tool_provider": "provider-a", "tool_parameters": {"rt": 1}},
+    )
+    recorder = _Recorder()
+    monkeypatch.setattr(
+        ToolEngine, "_invoke", staticmethod(lambda *_args: iter([tool.create_text_message("ok"), meta]))
+    )
+    monkeypatch.setattr("core.tools.tool_engine.db", _DatabaseBinding(sqlite_engine))
+
+    ToolEngine.agent_invoke(
+        session=sqlite_session,
+        tool=tool,
+        tool_parameters="hello",
+        user_id="u1",
+        tenant_id="tenant-1",
+        message=message,
+        invoke_from=InvokeFrom.DEBUGGER,
+        agent_tool_callback=DifyAgentCallbackHandler(),
+        trace_scope=_trace_scope(recorder),
+    )
+
+    [event] = recorder.events
+    payload = event.payload
+    assert isinstance(payload, ToolInvoked)
+    assert payload == ToolInvoked(
+        message_id=message.id,
+        tool_name="tool-a",
+        tool_inputs={"query": "hello"},
+        tool_outputs="ok",
+        tool_config={"tool_name": "tool-a", "tool_provider": "provider-a", "tool_parameters": {"rt": 1}},
+        error="partial failure",
+        time_cost=1.25,
+        started_at=payload.started_at,
+        ended_at=payload.ended_at,
+    )
+    assert payload.started_at.utcoffset() == timedelta(0)
+    assert payload.ended_at.utcoffset() == timedelta(0)
+    assert payload.ended_at >= payload.started_at
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_agent_invoke_param_validation_error(sqlite_session: Session):
+def test_agent_invoke_param_validation_error(sqlite_session: Session) -> None:
     tool = _build_tool(with_llm_parameter=True)
-    callback = Mock()
+    callback = DifyAgentCallbackHandler()
     message = _message()
 
     with patch.object(ToolEngine, "_invoke", side_effect=ToolParameterValidationError("bad-param")):
@@ -360,6 +432,7 @@ def test_agent_invoke_param_validation_error(sqlite_session: Session):
             message=message,
             invoke_from=InvokeFrom.DEBUGGER,
             agent_tool_callback=callback,
+            trace_scope=None,
         )
 
     assert "tool parameters validation error" in error_text
@@ -368,9 +441,9 @@ def test_agent_invoke_param_validation_error(sqlite_session: Session):
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_agent_invoke_engine_meta_error(sqlite_session: Session):
+def test_agent_invoke_engine_meta_error(sqlite_session: Session) -> None:
     tool = _build_tool(with_llm_parameter=True)
-    callback = Mock()
+    callback = DifyAgentCallbackHandler()
     message = _message()
     engine_error = ToolEngineInvokeError(ToolInvokeMeta.error_instance("meta failure"))
 
@@ -384,6 +457,7 @@ def test_agent_invoke_engine_meta_error(sqlite_session: Session):
             message=message,
             invoke_from=InvokeFrom.DEBUGGER,
             agent_tool_callback=callback,
+            trace_scope=None,
         )
 
     assert "meta failure" in error_text
@@ -391,7 +465,7 @@ def test_agent_invoke_engine_meta_error(sqlite_session: Session):
     assert error_meta.error == "meta failure"
 
 
-def test_convert_tool_response_excludes_variable_messages():
+def test_convert_tool_response_excludes_variable_messages() -> None:
     """Regression test for issue #34723.
 
     WorkflowTool._invoke yields VARIABLE, TEXT, and suppressed-JSON messages.
@@ -414,9 +488,9 @@ def test_convert_tool_response_excludes_variable_messages():
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_agent_invoke_tool_invoke_error(sqlite_session: Session):
+def test_agent_invoke_tool_invoke_error(sqlite_session: Session) -> None:
     tool = _build_tool(with_llm_parameter=True)
-    callback = Mock()
+    callback = DifyAgentCallbackHandler()
     message = _message()
 
     with patch.object(ToolEngine, "_invoke", side_effect=ToolInvokeError("invoke boom")):
@@ -429,6 +503,7 @@ def test_agent_invoke_tool_invoke_error(sqlite_session: Session):
             message=message,
             invoke_from=InvokeFrom.DEBUGGER,
             agent_tool_callback=callback,
+            trace_scope=None,
         )
 
     assert "tool invoke error" in error_text

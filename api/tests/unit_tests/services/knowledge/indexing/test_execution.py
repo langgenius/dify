@@ -1,0 +1,224 @@
+from unittest.mock import MagicMock
+
+import pytest
+
+from core.rag.models.document import Document
+from services.knowledge.indexing.errors import DocumentIsDeletedPausedError, DocumentIsPausedError
+from services.knowledge.indexing.estimate import StoredSource
+from services.knowledge.indexing.execution import DocumentIndexingService, IndexingDocument
+from services.knowledge.resource_scope import DatasetRef
+
+ExecutionFixture = tuple[DocumentIndexingService, MagicMock, IndexingDocument, list[Document]]
+
+
+@pytest.fixture
+def execution() -> ExecutionFixture:
+    ref = DatasetRef("tenant", "dataset").document("document")
+    document = IndexingDocument(
+        StoredSource(ref, "upload_file", {}, "text_model"), {"mode": "automatic"}, "English", False
+    )
+    ports = MagicMock()
+    ports.documents.get_indexing_document.return_value = document
+    chunks = [Document(page_content="one"), Document(page_content="two")]
+    ports.backend.extract.return_value = chunks
+    ports.backend.transform.return_value = chunks
+    ports.backend.count_tokens.return_value = [7, 11]
+    ports.backend.describe_error.side_effect = str
+    ports.segments.resume_indexing.return_value = (chunks[1:], 18)
+    service = DocumentIndexingService(
+        documents=ports.documents,
+        segments=ports.segments,
+        backend=ports.backend,
+        enforce_vector_space_admission=True,
+        clock=iter([10, 13]).__next__,
+    )
+    return service, ports, document, chunks
+
+
+@pytest.mark.parametrize("start", ["parsing", "splitting", "indexing"])
+def test_completion_waits_for_persisted_segments_and_all_index_writes(execution: ExecutionFixture, start: str) -> None:
+    service, ports, document, chunks = execution
+    if start == "parsing":
+        service.run([document.ref])
+    elif start == "splitting":
+        service.run_in_splitting_status(document.ref)
+    else:
+        service.run_in_indexing_status(document.ref)
+    calls = [call[0] for call in ports.mock_calls]
+    assert calls.index("backend.load") < calls.index("documents.complete_indexing")
+    ports.documents.complete_indexing.assert_called_once_with(document.ref, tokens=18, latency=3)
+    if start == "indexing":
+        ports.backend.extract.assert_not_called()
+        ports.segments.save_for_indexing.assert_not_called()
+        ports.backend.load.assert_called_once_with(document, chunks[1:])
+    else:
+        assert calls.index("segments.save_for_indexing") < calls.index("backend.load")
+        ports.segments.save_for_indexing.assert_called_once_with(document, chunks, [7, 11])
+        if start == "splitting":
+            assert calls.index("segments.clear_for_indexing") < calls.index("backend.extract")
+    assert ports.backend.ensure_admission.call_count == (start == "parsing")
+
+
+@pytest.mark.parametrize("stage", ["extract", "transform", "ensure_admission", "count_tokens", "load"])
+def test_failed_phase_records_error_without_completing(execution: ExecutionFixture, stage: str) -> None:
+    service, ports, document, _ = execution
+    operation = {
+        "extract": ports.backend.extract,
+        "transform": ports.backend.transform,
+        "ensure_admission": ports.backend.ensure_admission,
+        "count_tokens": ports.backend.count_tokens,
+        "load": ports.backend.load,
+    }[stage]
+    operation.side_effect = RuntimeError("index unavailable")
+    service.run([document.ref])
+    ports.documents.complete_indexing.assert_not_called()
+    ports.documents.fail_indexing.assert_called_once_with(document.ref, "index unavailable")
+    if stage != "load":
+        ports.backend.load.assert_not_called()
+
+
+@pytest.mark.parametrize("stage", ["get_indexing_document", "mark_splitting", "complete_indexing"])
+@pytest.mark.parametrize("error", [DocumentIsPausedError, DocumentIsDeletedPausedError])
+def test_pause_and_deletion_do_not_become_indexing_errors(
+    execution: ExecutionFixture, stage: str, error: type[Exception]
+) -> None:
+    service, ports, document, _ = execution
+    operation = {
+        "get_indexing_document": ports.documents.get_indexing_document,
+        "mark_splitting": ports.documents.mark_splitting,
+        "complete_indexing": ports.documents.complete_indexing,
+    }[stage]
+    operation.side_effect = error()
+    if error is DocumentIsPausedError:
+        with pytest.raises(DocumentIsPausedError):
+            service.run([document.ref])
+    else:
+        service.run([document.ref])
+    ports.documents.fail_indexing.assert_not_called()
+
+
+def test_pause_after_worker_completion_prevents_document_completion(execution: ExecutionFixture) -> None:
+    service, ports, document, _ = execution
+    ports.backend.check_paused.side_effect = [None, None, DocumentIsPausedError()]
+    with pytest.raises(DocumentIsPausedError):
+        service.run([document.ref])
+    ports.documents.complete_indexing.assert_not_called()
+    ports.documents.fail_indexing.assert_not_called()
+
+
+def test_missing_document_is_skipped(execution: ExecutionFixture) -> None:
+    service, ports, document, _ = execution
+    ports.documents.get_indexing_document.return_value = None
+    service.run([document.ref])
+    ports.backend.extract.assert_not_called()
+    ports.documents.fail_indexing.assert_not_called()
+
+
+def test_indexing_persists_the_backend_error_description(execution: ExecutionFixture) -> None:
+    service, ports, document, _ = execution
+    error = RuntimeError("backend details")
+    ports.backend.extract.side_effect = error
+    ports.backend.describe_error.side_effect = None
+    ports.backend.describe_error.return_value = "source file missing"
+
+    service.run([document.ref])
+
+    ports.backend.describe_error.assert_called_once_with(error)
+    ports.documents.fail_indexing.assert_called_once_with(document.ref, "source file missing")
+    ports.documents.complete_indexing.assert_not_called()
+
+
+@pytest.mark.parametrize("start", ["parsing", "indexing"])
+def test_deletion_after_index_write_discards_the_written_entries(execution: ExecutionFixture, start: str) -> None:
+    service, ports, document, chunks = execution
+    ports.documents.complete_indexing.side_effect = DocumentIsDeletedPausedError()
+    if start == "parsing":
+        service.run([document.ref])
+    else:
+        service.run_in_indexing_status(document.ref)
+    loaded = chunks if start == "parsing" else chunks[1:]
+    calls = [call[0] for call in ports.mock_calls]
+    assert calls.index("backend.load") < calls.index("backend.discard")
+    ports.backend.discard.assert_called_once_with(document, loaded)
+    ports.documents.fail_indexing.assert_not_called()
+
+
+def test_deletion_detected_inside_load_discards_the_chunks_handed_to_load(execution: ExecutionFixture) -> None:
+    service, ports, document, chunks = execution
+    ports.backend.load.side_effect = DocumentIsDeletedPausedError()
+    service.run([document.ref])
+    ports.backend.discard.assert_called_once_with(document, chunks)
+    ports.documents.complete_indexing.assert_not_called()
+
+
+@pytest.mark.parametrize("stage", ["get_indexing_document", "mark_splitting"])
+def test_deletion_before_index_write_has_nothing_to_discard(execution: ExecutionFixture, stage: str) -> None:
+    service, ports, document, _ = execution
+    operation = {
+        "get_indexing_document": ports.documents.get_indexing_document,
+        "mark_splitting": ports.documents.mark_splitting,
+    }[stage]
+    operation.side_effect = DocumentIsDeletedPausedError()
+    service.run([document.ref])
+    ports.backend.load.assert_not_called()
+    ports.backend.discard.assert_not_called()
+
+
+def test_discard_failure_is_logged_without_failing_the_deleted_document(
+    execution: ExecutionFixture, caplog: pytest.LogCaptureFixture
+) -> None:
+    service, ports, document, _ = execution
+    ports.documents.complete_indexing.side_effect = DocumentIsDeletedPausedError()
+    ports.backend.discard.side_effect = RuntimeError("vector store unavailable")
+    service.run([document.ref])
+    ports.documents.fail_indexing.assert_not_called()
+    assert "Failed to discard index entries of document deleted during indexing" in caplog.text
+
+
+@pytest.mark.parametrize(
+    ("existence_check", "discarded"), [(DocumentIsDeletedPausedError, True), (DocumentIsPausedError, False)]
+)
+def test_pause_after_index_write_discards_only_when_the_document_was_deleted(
+    execution: ExecutionFixture, existence_check: type[Exception], discarded: bool
+) -> None:
+    service, ports, document, chunks = execution
+    # The pause flag survives deletion and is checked before document existence.
+    ports.backend.check_paused.side_effect = [None, None, DocumentIsPausedError()]
+    ports.documents.get_indexing_document.side_effect = [document, existence_check()]
+    with pytest.raises(DocumentIsPausedError):
+        service.run([document.ref])
+    if discarded:
+        ports.backend.discard.assert_called_once_with(document, chunks)
+    else:
+        ports.backend.discard.assert_not_called()
+    ports.documents.complete_indexing.assert_not_called()
+
+
+@pytest.mark.parametrize("document_deleted", [True, False])
+def test_failed_index_write_discards_entries_only_for_a_deleted_document(
+    execution: ExecutionFixture, document_deleted: bool
+) -> None:
+    service, ports, document, chunks = execution
+    ports.backend.load.side_effect = RuntimeError("vector store unavailable")
+    ports.documents.get_indexing_document.side_effect = [
+        document,
+        DocumentIsDeletedPausedError() if document_deleted else document,
+    ]
+    service.run([document.ref])
+    ports.documents.fail_indexing.assert_called_once_with(document.ref, "vector store unavailable")
+    if document_deleted:
+        ports.backend.discard.assert_called_once_with(document, chunks)
+    else:
+        ports.backend.discard.assert_not_called()
+
+
+def test_unverifiable_existence_after_a_pause_keeps_entries_and_the_pause(
+    execution: ExecutionFixture, caplog: pytest.LogCaptureFixture
+) -> None:
+    service, ports, document, _ = execution
+    ports.backend.check_paused.side_effect = [None, None, DocumentIsPausedError()]
+    ports.documents.get_indexing_document.side_effect = [document, RuntimeError("database unavailable")]
+    with pytest.raises(DocumentIsPausedError):
+        service.run([document.ref])
+    ports.backend.discard.assert_not_called()
+    assert "Could not check whether document still exists after indexing stopped" in caplog.text

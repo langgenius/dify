@@ -1,25 +1,22 @@
 'use client'
 import type { MeterTone } from '@langgenius/dify-ui/meter'
 import type { FC, ReactNode } from 'react'
+import type { BillingQuota } from '../quota'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Meter, MeterIndicator, MeterTrack } from '@langgenius/dify-ui/meter'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { NUM_INFINITE } from '../config'
 
 type Props = Readonly<{
   className?: string
   iconClassName: string
   name: string
   tooltip?: string
-  usage: number
-  total: number
+  quota: BillingQuota
   unit?: string
   unitPosition?: 'inline' | 'suffix'
   resetHint?: string
-  resetInDays?: number
   hideIcon?: boolean
   // Props for the 50MB threshold display logic
   storageMode?: boolean
@@ -34,12 +31,10 @@ const UsageInfo: FC<Props> = ({
   iconClassName,
   name,
   tooltip,
-  usage,
-  total,
+  quota,
   unit,
   unitPosition = 'suffix',
   resetHint,
-  resetInDays,
   hideIcon = false,
   storageMode = false,
   storageThreshold = 50,
@@ -50,22 +45,24 @@ const UsageInfo: FC<Props> = ({
   const labelId = React.useId()
 
   const { t } = useTranslation(['billing'])
+  const { usage, limit, resetInDays } = quota
 
   const isBelowThreshold = !usageUnknown && storageMode && usage < storageThreshold
   const isSandboxFull = !usageUnknown && storageMode && isSandboxPlan && usage >= storageThreshold
+  const storageHelp = !usageUnknown && storageMode ? storageTooltip : undefined
 
   // Zero count quotas have no remaining capacity; storage keeps its separate limit convention.
-  const isZeroQuota = !storageMode && total === 0
-  const rawPercent = total > 0 ? (usage / total) * 100 : 0
+  const isZeroQuota = !storageMode && limit === 0
+  const rawPercent = limit !== 'unlimited' && limit > 0 ? (usage / limit) * 100 : 0
   const effectivePercent = isSandboxFull || isZeroQuota ? 100 : Math.min(rawPercent, 100)
   const tone: MeterTone =
     effectivePercent >= 100 ? 'error' : effectivePercent >= 80 ? 'warning' : 'neutral'
 
-  const isUnlimited = total === NUM_INFINITE
+  const isUnlimited = limit === 'unlimited'
   let totalDisplay: string | number = isUnlimited
     ? t(($) => $['plansCommon.unlimited'], { ns: 'billing' })
-    : total
-  if (!isUnlimited && unit && unitPosition === 'inline') totalDisplay = `${total}${unit}`
+    : limit
+  if (!isUnlimited && unit && unitPosition === 'inline') totalDisplay = `${limit}${unit}`
   const showUnit = !!unit && !isUnlimited && unitPosition === 'suffix'
   const resetText =
     resetHint ??
@@ -146,18 +143,6 @@ const UsageInfo: FC<Props> = ({
     </Meter>
   )
 
-  const wrapWithStorageTooltip = (children: ReactNode) => {
-    if (!usageUnknown && storageMode && storageTooltip) {
-      return (
-        <Tooltip>
-          <TooltipTrigger render={<div className="cursor-default">{children}</div>} />
-          <TooltipContent className="w-50 max-w-50">{storageTooltip}</TooltipContent>
-        </Tooltip>
-      )
-    }
-    return children
-  }
-
   return (
     <div
       role="group"
@@ -170,11 +155,12 @@ const UsageInfo: FC<Props> = ({
       <dl className="flex flex-col gap-2">
         <dt className="flex items-center gap-1 system-xs-medium text-text-tertiary">
           <span id={labelId}>{name}</span>
-          {tooltip && (
+          {(tooltip || storageHelp) && (
             <Infotip>
               <InfotipTrigger aria-labelledby={labelId} />
               <InfotipContent aria-labelledby={labelId} className="w-45">
-                {tooltip}
+                {tooltip && <p>{tooltip}</p>}
+                {storageHelp && <p>{storageHelp}</p>}
               </InfotipContent>
             </Infotip>
           )}
@@ -183,11 +169,11 @@ const UsageInfo: FC<Props> = ({
           data-testid="billing-quota-value"
           className="flex items-center gap-1 system-md-semibold text-text-primary"
         >
-          {wrapWithStorageTooltip(usageDisplay)}
+          {usageDisplay}
           {rightInfo}
         </dd>
       </dl>
-      {!usageUnknown && wrapWithStorageTooltip(bar)}
+      {!usageUnknown && bar}
     </div>
   )
 }

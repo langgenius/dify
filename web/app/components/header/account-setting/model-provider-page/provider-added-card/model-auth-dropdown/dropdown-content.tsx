@@ -2,11 +2,11 @@ import type { Credential, ModelProvider, PreferredProviderTypeEnum } from '../..
 import type { CredentialPanelState } from '../use-credential-panel-state'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
-  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { memo, useCallback } from 'react'
@@ -37,7 +37,7 @@ function DropdownContent({
   onChangePriority,
   onClose,
 }: DropdownContentProps) {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'modelProvider'])
   const { available_credentials } = provider.custom_configuration
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
 
@@ -120,20 +120,19 @@ function DropdownContent({
         }}
       >
         <AlertDialogContent>
-          <div className="p-6 pb-0">
-            <AlertDialogTitle className="system-xl-semibold text-text-primary">
-              {t(($) => $['modelProvider.confirmDelete'], { ns: 'common' })}
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t(($) => $['modelProvider.confirmDelete'], { ns: 'modelProvider' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="mt-1 system-sm-regular text-text-secondary" />
-          </div>
-          <AlertDialogActions>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
             <AlertDialogCancelButton disabled={doingAction}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton disabled={doingAction} onClick={handleConfirmDelete}>
               {t(($) => $['operation.delete'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

@@ -18,31 +18,34 @@ type FrequencyOption = {
 }
 
 type FrequencySelectorProps = {
+  disabled?: boolean
   frequency: ScheduleFrequency
   onChange: (frequency: ScheduleFrequency) => void
 }
 
-const FrequencySelector = ({ frequency, onChange }: FrequencySelectorProps) => {
-  const { t } = useTranslation(['workflow'])
-  const groupLabel = t(($) => $['nodes.triggerSchedule.frequency.label'], { ns: 'workflow' })
+const FrequencySelector = ({ frequency, onChange, disabled }: FrequencySelectorProps) => {
+  const { t } = useTranslation(['workflow', 'workflowIntegrations'])
+  const groupLabel = t(($) => $['nodes.triggerSchedule.frequency.label'], {
+    ns: 'workflowIntegrations',
+  })
   const fieldLabel = t(($) => $['nodes.triggerSchedule.frequencyLabel'], { ns: 'workflow' })
 
   const frequencies: FrequencyOption[] = [
     {
       value: 'hourly',
-      name: t(($) => $['nodes.triggerSchedule.frequency.hourly'], { ns: 'workflow' }),
+      name: t(($) => $['nodes.triggerSchedule.frequency.hourly'], { ns: 'workflowIntegrations' }),
     },
     {
       value: 'daily',
-      name: t(($) => $['nodes.triggerSchedule.frequency.daily'], { ns: 'workflow' }),
+      name: t(($) => $['nodes.triggerSchedule.frequency.daily'], { ns: 'workflowIntegrations' }),
     },
     {
       value: 'weekly',
-      name: t(($) => $['nodes.triggerSchedule.frequency.weekly'], { ns: 'workflow' }),
+      name: t(($) => $['nodes.triggerSchedule.frequency.weekly'], { ns: 'workflowIntegrations' }),
     },
     {
       value: 'monthly',
-      name: t(($) => $['nodes.triggerSchedule.frequency.monthly'], { ns: 'workflow' }),
+      name: t(($) => $['nodes.triggerSchedule.frequency.monthly'], { ns: 'workflowIntegrations' }),
     },
   ]
   const selectedFrequency = frequencies.find((item) => item.value === frequency)
@@ -54,6 +57,7 @@ const FrequencySelector = ({ frequency, onChange }: FrequencySelectorProps) => {
 
   return (
     <Select
+      disabled={disabled}
       key={`${frequency}-${groupLabel}`}
       value={frequency}
       onValueChange={handleFrequencyChange}
@@ -62,7 +66,7 @@ const FrequencySelector = ({ frequency, onChange }: FrequencySelectorProps) => {
         <SelectLabel className="text-xs">{fieldLabel}</SelectLabel>
         <SelectTrigger className="w-full py-2">
           {selectedFrequency?.name ??
-            t(($) => $['nodes.triggerSchedule.selectFrequency'], { ns: 'workflow' })}
+            t(($) => $['nodes.triggerSchedule.selectFrequency'], { ns: 'workflowIntegrations' })}
         </SelectTrigger>
       </div>
       <SelectContent>

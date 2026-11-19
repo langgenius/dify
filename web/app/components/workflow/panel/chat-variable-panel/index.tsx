@@ -2,10 +2,12 @@ import type { ConversationVariable } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
+import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
 import {
   findUsedVarNodes,
@@ -25,7 +27,7 @@ const ChatVariablePanel = () => {
   const varList = useStore((s) => s.conversationVariables) as ConversationVariable[]
   const updateChatVarList = useStore((s) => s.setConversationVariables)
   const setControlPromptEditorRerenderKey = useStore((s) => s.setControlPromptEditorRerenderKey)
-  const appId = useStore((s) => s.appId) as string
+  const { appId } = useAtomValue(workflowAppIdentityAtom)
   const { invalidateConversationVarValues } = useInspectVarsCrud()
 
   const [showTip, setShowTip] = useState(true)

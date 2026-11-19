@@ -7,7 +7,7 @@ import type {
   SetFieldsParam,
 } from '@/app/components/base/form/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useForm, useStore } from '@tanstack/react-form'
+import { useForm, useSelector } from '@tanstack/react-form'
 import { memo, useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useGetFormValues, useGetValidators } from '@/app/components/base/form/hooks'
 import { FormItemValidateStatusEnum } from '@/app/components/base/form/types'
@@ -16,12 +16,13 @@ import { BaseField } from '.'
 export type BaseFormProps = {
   formSchemas?: FormSchema[]
   defaultValues?: Record<string, any>
+  id?: string
   formClassName?: string
   ref?: FormRef
   disabled?: boolean
   formFromProps?: AnyFormApi
   onChange?: (field: string, value: any) => void
-  onSubmit?: (e: React.FormEvent<HTMLFormElement>) => void
+  onSubmit?: (e: React.SubmitEvent<HTMLFormElement>) => void
   preventDefaultSubmit?: boolean
 } & Pick<
   BaseFieldProps,
@@ -29,6 +30,7 @@ export type BaseFormProps = {
 >
 
 const BaseForm = ({
+  id,
   formSchemas = [],
   defaultValues,
   formClassName,
@@ -48,7 +50,7 @@ const BaseForm = ({
 
     return formSchemas.reduce(
       (acc, schema) => {
-        if (schema.default) acc[schema.name] = schema.default
+        if (schema.default !== undefined) acc[schema.name] = schema.default
         return acc
       },
       {} as Record<string, any>,
@@ -81,7 +83,7 @@ const BaseForm = ({
 
   const [fieldStates, setFieldStates] = useState<Record<string, FieldState>>({})
 
-  const showOnValues = useStore(form.store, (s: any) => {
+  const showOnValues = useSelector(form.store, (s: any) => {
     const result: Record<string, any> = {}
     formSchemas.forEach((schema) => {
       const { show_on } = schema
@@ -192,7 +194,7 @@ const BaseForm = ({
 
   if (!formSchemas?.length) return null
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     if (preventDefaultSubmit) {
       e.preventDefault()
       e.stopPropagation()
@@ -201,7 +203,7 @@ const BaseForm = ({
   }
 
   return (
-    <form ref={formElementRef} className={cn(formClassName)} onSubmit={handleSubmit}>
+    <form id={id} ref={formElementRef} className={cn(formClassName)} onSubmit={handleSubmit}>
       {formSchemas.map(renderFieldWrapper)}
     </form>
   )

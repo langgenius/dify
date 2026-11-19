@@ -1,6 +1,7 @@
+import type { PluginApi } from '@vitejs/plugin-rsc'
 import type { Logger, Plugin } from 'vite'
 import type { TranslationAdapter } from './i18n-analysis/api'
-import type { ModuleResolutions } from './i18n-analysis/compiler'
+import type { createImportBindingReader, ModuleResolutions } from './i18n-analysis/compiler'
 import type { AnalysisEvidence } from './i18n-analysis/graph'
 import type {
   EnvironmentUsage,
@@ -13,6 +14,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { normalizePath } from 'vite'
 import { analyzeEnvironmentRoutes, validateRouteNamespaces } from './i18n-analysis/routes'
+import { analyzeGraphInWorker } from './i18n-analysis/worker'
 
 const SOURCE_META = 'dify:i18n-source'
 
@@ -51,6 +53,8 @@ export function i18nAnalysisPlugin(
   let logger: Logger
   let reportPath: string | undefined
   let buildingApp = false
+  let rscApi: PluginApi | undefined
+  let readBindings: ReturnType<typeof createImportBindingReader> | undefined
   const graphs = new Map<
     string,
     {
@@ -65,24 +69,33 @@ export function i18nAnalysisPlugin(
   const moduleId = normalizePath
   const checks = new Map<string, Promise<void>>()
   const snapshots = new Map<string, string>()
+  const environmentOrder = new Set<string>()
 
   const check = async () => {
+    // Import collection is complete; do not retain source strings and binding
+    // arrays while the TypeScript programs allocate their type state.
+    readBindings = undefined
     const started = performance.now()
-    const { checkTranslationGraph, createAnalysisContext } = await import('./i18n-analysis/graph')
-    const context = createAnalysisContext(root, options.adapters)
-    const setupMs = performance.now() - started
     const environments = new Map<string, EnvironmentUsage>()
     const evidence: AnalysisReport['evidence'] = []
     const metrics: AnalysisReport['metrics'] = {
       totalMs: 0,
-      setupMs,
+      setupMs: 0,
       routesMs: 0,
       environments: [],
     }
     let unused: Record<string, string[]> | undefined
     const protectedNamespaces = new Set<string>()
-    for (const [environment, graph] of graphs) {
-      const result = checkTranslationGraph(root, graph.modules, graph.resolutions, context)
+    for (const environment of environmentOrder) {
+      const graph = graphs.get(environment)
+      if (!graph) continue
+      const result = await analyzeGraphInWorker({
+        root,
+        modules: graph.modules,
+        resolutions: graph.resolutions,
+        adapters: options.adapters ?? [],
+      })
+      metrics.setupMs += result.setupMs
       environments.set(environment, {
         dependencies: graph.dependencies,
         usage: result.moduleNamespaces,
@@ -180,7 +193,9 @@ export function i18nAnalysisPlugin(
       apply: 'build',
       enforce: 'pre',
       sharedDuringBuild: true,
-      configResolved(config) {
+      async configResolved(config) {
+        const { getPluginApi } = await import('@vitejs/plugin-rsc')
+        rscApi = getPluginApi(config)
         root = config.root
         logger = config.logger
         reportPath = config.build.write
@@ -188,19 +203,24 @@ export function i18nAnalysisPlugin(
           : undefined
       },
       async buildApp() {
+        readBindings = undefined
         graphs.clear()
+        environmentOrder.clear()
         checks.clear()
         snapshots.clear()
         buildingApp = true
       },
       buildStart() {
         if (this.meta.watchMode) {
+          readBindings = undefined
           checks.delete(this.environment.name)
           snapshots.delete(this.environment.name)
         }
         if (!buildingApp && !snapshots.has(this.environment.name)) {
           graphs.clear()
+          environmentOrder.clear()
         }
+        environmentOrder.add(this.environment.name)
       },
       transform: {
         filter: {
@@ -214,6 +234,9 @@ export function i18nAnalysisPlugin(
       },
       async buildEnd(error) {
         if (error) return
+        // RSC explicitly marks its reference scans; write:false alone also
+        // describes ordinary in-memory builds whose usage must be checked.
+        if (buildingApp && rscApi?.manager.isScanBuild) return
         const resolutionStarted = performance.now()
         const graph = new Map<string, string>()
         const compiledModules = new Map<string, string>()
@@ -259,8 +282,9 @@ export function i18nAnalysisPlugin(
         if (snapshots.get(this.environment.name) === snapshot) return
         checks.delete(this.environment.name)
         snapshots.set(this.environment.name, snapshot)
-        const { hasClientDirective, resolveTranslationImports } =
+        const { createImportBindingReader, hasClientDirective, resolveTranslationImports } =
           await import('./i18n-analysis/compiler')
+        readBindings ??= createImportBindingReader()
         const clientReferences = new Set<string>()
         if (this.environment.name === 'rsc') {
           for (const [id, code] of graph) {
@@ -280,6 +304,7 @@ export function i18nAnalysisPlugin(
           },
           (specifier) =>
             !specifier.includes('?') && this.environment.config.assetsInclude(specifier),
+          readBindings,
         )
         graphs.set(this.environment.name, {
           modules: graph,
@@ -291,6 +316,7 @@ export function i18nAnalysisPlugin(
         })
       },
       closeBundle() {
+        if (!buildingApp) readBindings = undefined
         snapshots.delete(this.environment.name)
         checks.delete(this.environment.name)
       },
@@ -321,6 +347,7 @@ export function i18nAnalysisPlugin(
             await check()
           } finally {
             buildingApp = false
+            readBindings = undefined
             graphs.clear()
           }
         },

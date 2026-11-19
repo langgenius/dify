@@ -7,12 +7,6 @@ import { Pagination } from '@langgenius/dify-ui/pagination'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  useChunkListAllKey,
-  useChunkListDisabledKey,
-  useChunkListEnabledKey,
-} from '@/service/knowledge/use-segment'
-import { useInvalid } from '@/service/use-base'
 import { useDocumentContext } from '../context'
 import BatchAction from './common/batch-action'
 import { DrawerGroup } from './components/drawer-group'
@@ -70,34 +64,6 @@ const Completed: FC<ICompletedProps> = ({
   // Selection state
   const selectionState = useSegmentSelection()
 
-  // Invalidation hooks for child segment data
-  const invalidChunkListAll = useInvalid(useChunkListAllKey)
-  const invalidChunkListEnabled = useInvalid(useChunkListEnabledKey)
-  const invalidChunkListDisabled = useInvalid(useChunkListDisabledKey)
-
-  const refreshChunkListDataWithDetailChanged = useCallback(() => {
-    const refreshMap: Record<string, () => void> = {
-      all: () => {
-        invalidChunkListDisabled()
-        invalidChunkListEnabled()
-      },
-      true: () => {
-        invalidChunkListAll()
-        invalidChunkListDisabled()
-      },
-      false: () => {
-        invalidChunkListAll()
-        invalidChunkListEnabled()
-      },
-    }
-    refreshMap[String(searchFilter.selectedStatus)]?.()
-  }, [
-    searchFilter.selectedStatus,
-    invalidChunkListDisabled,
-    invalidChunkListEnabled,
-    invalidChunkListAll,
-  ])
-
   // Segment list data
   const segmentListDataHook = useSegmentListData({
     searchValue: searchFilter.searchValue,
@@ -142,7 +108,7 @@ const Completed: FC<ICompletedProps> = ({
     currChunkId: modalState.currChunkId,
     isFullDocMode: segmentListDataHook.isFullDocMode,
     onCloseChildSegmentDetail: modalState.onCloseChildSegmentDetail,
-    refreshChunkListDataWithDetailChanged,
+    refreshChunkListDataWithDetailChanged: segmentListDataHook.markOtherStatusListsStale,
     updateSegmentInCache: segmentListDataHook.updateSegmentInCache,
   })
 

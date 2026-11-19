@@ -61,6 +61,7 @@ describe('Strategy details contract', () => {
     expect(drawer.getByText('boolean')).toBeInTheDocument()
     expect(drawer.getByText('tools.setBuiltInTools.file')).toBeInTheDocument()
     expect(drawer.getByText('multiple-tool-select')).toBeInTheDocument()
+    expect(drawer.getByText('workflow.common.output')).toBeInTheDocument()
     expect(drawer.getByText('String')).toBeInTheDocument()
     expect(drawer.getByText('Array[String]')).toBeInTheDocument()
     expect(drawer.getByText('Result output')).toBeInTheDocument()
@@ -72,7 +73,7 @@ describe('Strategy details contract', () => {
 
     expect(screen.getByRole('dialog', { name: 'Strategy Label' })).toBeInTheDocument()
     expect(screen.queryByText('Search query')).not.toBeInTheDocument()
-    expect(screen.queryByText('OUTPUT')).not.toBeInTheDocument()
+    expect(screen.queryByText('workflow.common.output')).not.toBeInTheDocument()
   })
 
   it('safely displays JSON schema properties that do not declare a simple type', () => {

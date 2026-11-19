@@ -4,6 +4,7 @@ import type {
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig, OnFeedback } from '@/app/components/base/chat/types'
+import { DrawerTitle } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -11,9 +12,11 @@ import { useTranslation } from 'react-i18next'
 import Chat from '@/app/components/base/chat/chat'
 import CopyIcon from '@/app/components/base/copy-icon'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { ExternalTraceRow } from '@/app/components/workflow/run/external-trace-row'
 import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 
 export function AgentLogDetailPanel({
   agentId,
@@ -25,11 +28,11 @@ export function AgentLogDetailPanel({
   onClose: () => void
 }) {
   const { t } = useTranslation(['agentV2', 'appLog', 'common'])
-  const { t: tAgentV2 } = useTranslation(['agentV2'])
+  const { t: tAgentV2 } = useTranslation(['agentV2', 'agentRoster'])
   const { formatTime } = useTimestamp()
   const queryClient = useQueryClient()
   const feedbackMutation = useMutation(
-    consoleQuery.agent.byAgentId.feedbacks.post.mutationOptions(),
+    consoleQuery.agent.byAgentId.feedbacks.post.mutationOptions({ context: { silent: true } }),
   )
   const messagesQuery = useQuery(
     consoleQuery.agent.byAgentId.logs.byConversationId.messages.get.queryOptions({
@@ -56,7 +59,7 @@ export function AgentLogDetailPanel({
         formatLogTime: (value) =>
           formatTime(
             value,
-            tAgentV2(($) => $['roster.dateTimeFormat']),
+            tAgentV2(($) => $['roster.dateTimeFormat'], { ns: 'agentRoster' }),
           ),
         messages: messagesQuery.data?.data ?? [],
       })
@@ -79,9 +82,10 @@ export function AgentLogDetailPanel({
           queryKey: consoleQuery.agent.byAgentId.logs.byConversationId.messages.get.key(),
         }),
       ])
-      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
     } catch (error) {
-      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      toast.error(
+        getErrorMessage(error) ?? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+      )
       throw error
     }
   }
@@ -108,9 +112,9 @@ export function AgentLogDetailPanel({
           </div>
         </div>
         <div className="flex min-w-0 grow flex-wrap items-center justify-end gap-y-1">
-          <div className="min-w-0 truncate system-sm-medium text-text-secondary">
-            {log?.title || log?.conversation_id}
-          </div>
+          <DrawerTitle className="min-w-0 truncate system-sm-medium text-text-secondary">
+            {log?.title || log?.conversation_id || tAgentV2(($) => $['agentDetail.logs.title'])}
+          </DrawerTitle>
         </div>
         <IconButton
           size="lg"
@@ -145,9 +149,19 @@ export function AgentLogDetailPanel({
                 } as ChatConfig
               }
               chatList={chatList}
+              renderMessageFooter={(item) => (
+                <dl>
+                  <ExternalTraceRow
+                    source={
+                      log?.source?.type === 'workflow'
+                        ? { kind: 'node', appId: log.source.app_id, nodeExecutionId: item.id }
+                        : { kind: 'agent', agentId, messageId: item.id }
+                    }
+                  />
+                </dl>
+              )}
               noChatInput
               hideProcessDetail
-              hideLogModal
               chatContainerInnerClassName="px-3"
               onFeedback={handleFeedback}
             />

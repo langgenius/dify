@@ -27,7 +27,7 @@ from werkzeug.routing import Rule
 from configs import dify_config
 from constants import HEADER_NAME_CATALOG
 from controllers.openapi._upload import has_binary_leaf
-from controllers.openapi.auth.spec import spec_of
+from controllers.openapi.auth.spec import Effect, spec_of
 
 CATALOG_HEADER: Final = HEADER_NAME_CATALOG
 _SURFACE: Final = "/openapi/v1"
@@ -137,6 +137,7 @@ def build_catalog(app: Flask) -> dict[str, Any]:
             "method": verb,
             "path": _catalog_path(rule.rule),
             "kind": meta.kind.value,
+            "effect": (meta.effect or Effect.for_method(verb)).value,
             "input": schema,
             "bind": derive_bind(method=verb, path_params=path_params, schema=schema),
             "internal": meta.internal,

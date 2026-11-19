@@ -2,12 +2,14 @@ import logging
 
 from flask import request
 from flask_restx import Resource
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError
 
 import services
 from controllers.common.controller_schemas import TextToAudioPayload
 from controllers.common.fields import AudioBinaryResponse, AudioTranscriptResponse
 from controllers.common.schema import register_response_schema_models, register_schema_model
+from controllers.common.session import with_session
 from controllers.console.wraps import model_validate
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
@@ -26,8 +28,8 @@ from controllers.service_api.schema import binary_response, expect_with_user, mu
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.base.tts.audio_mime import SUPPORTED_TTS_AUDIO_MIME_TYPES
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from models.model import App, EndUser
 from services.app_ref_service import AppRefService
@@ -47,6 +49,18 @@ register_response_schema_models(service_api_ns, AudioBinaryResponse, AudioTransc
 
 @service_api_ns.route("/audio-to-text")
 class AudioApi(Resource):
+    @error_responses(
+        AppUnavailableError,
+        AudioTooLargeError,
+        CompletionRequestError,
+        NoAudioUploadedError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderNotSupportSpeechToTextError,
+        ProviderQuotaExceededError,
+        SpeechToTextDisabledError,
+        UnsupportedAudioTypeError,
+    )
     @service_api_ns.doc(
         summary="Convert Audio to Text",
         description=(
@@ -98,7 +112,8 @@ class AudioApi(Resource):
         service_api_ns.models[AudioTranscriptResponse.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.FORM))
-    def post(self, app_model: App, end_user: EndUser):
+    @with_session(write=False)
+    def post(self, session: Session, app_model: App, end_user: EndUser):
         """Convert audio to text using speech-to-text.
 
         Accepts an audio file upload and returns the transcribed text.
@@ -109,37 +124,37 @@ class AudioApi(Resource):
             response = AudioService.transcript_asr(
                 app_model=app_model,
                 file=file,
-                session=db.session(),
+                session=session,
                 end_user=end_user.id,
             )
 
             return dump_response(AudioTranscriptResponse, response)
-        except services.errors.app_model_config.AppModelConfigBrokenError:
+        except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:
             logger.exception("App model config broken.")
-            raise AppUnavailableError()
-        except NoAudioUploadedServiceError:
-            raise NoAudioUploadedError()
+            raise AppUnavailableError() from caught_error
+        except NoAudioUploadedServiceError as caught_error:
+            raise NoAudioUploadedError() from caught_error
         except AudioTooLargeServiceError as e:
-            raise AudioTooLargeError(str(e))
-        except UnsupportedAudioTypeServiceError:
-            raise UnsupportedAudioTypeError()
-        except ProviderNotSupportSpeechToTextServiceError:
-            raise ProviderNotSupportSpeechToTextError()
-        except SpeechToTextDisabledServiceError:
-            raise SpeechToTextDisabledError()
+            raise AudioTooLargeError(str(e)) from e
+        except UnsupportedAudioTypeServiceError as caught_error:
+            raise UnsupportedAudioTypeError() from caught_error
+        except ProviderNotSupportSpeechToTextServiceError as caught_error:
+            raise ProviderNotSupportSpeechToTextError() from caught_error
+        except SpeechToTextDisabledServiceError as caught_error:
+            raise SpeechToTextDisabledError() from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
         except ValueError as e:
             raise e
         except Exception as e:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from e
 
 
 register_schema_model(service_api_ns, TextToAudioPayload)
@@ -147,6 +162,13 @@ register_schema_model(service_api_ns, TextToAudioPayload)
 
 @service_api_ns.route("/text-to-audio")
 class TextApi(Resource):
+    @error_responses(
+        AppUnavailableError,
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @service_api_ns.doc(
         summary="Convert Text to Audio",
         description="Convert text to speech.",
@@ -182,8 +204,9 @@ class TextApi(Resource):
     # TTS returns provider audio bytes, so the success response is intentionally schema-less.
     @service_api_ns.response(200, "Text successfully converted to audio")
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
+    @with_session(write=False)
     @model_validate(TextToAudioPayload)
-    def post(self, payload: TextToAudioPayload, app_model: App, end_user: EndUser):
+    def post(self, payload: TextToAudioPayload, session: Session, app_model: App, end_user: EndUser):
         """Convert text to audio using text-to-speech.
 
         Converts the provided text to audio using the specified voice.
@@ -202,33 +225,25 @@ class TextApi(Resource):
                 )
             return AudioService.transcript_tts(
                 app_model=app_model,
-                session=db.session(),
+                session=session,
                 text=text,
                 voice=voice,
                 end_user=end_user.external_user_id,
                 message_ref=message_ref,
             )
-        except services.errors.app_model_config.AppModelConfigBrokenError:
+        except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:
             logger.exception("App model config broken.")
-            raise AppUnavailableError()
-        except NoAudioUploadedServiceError:
-            raise NoAudioUploadedError()
-        except AudioTooLargeServiceError as e:
-            raise AudioTooLargeError(str(e))
-        except UnsupportedAudioTypeServiceError:
-            raise UnsupportedAudioTypeError()
-        except ProviderNotSupportSpeechToTextServiceError:
-            raise ProviderNotSupportSpeechToTextError()
+            raise AppUnavailableError() from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
         except ValueError as e:
             raise e
         except Exception as e:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from e

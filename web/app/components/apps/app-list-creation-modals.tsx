@@ -2,7 +2,7 @@
 
 import type { AppListUrlQuery } from './query-params'
 import { zPostAppsBody } from '@dify/contracts/api/console/apps/zod.gen'
-import dynamic from '@/next/dynamic'
+import dynamic from 'next/dynamic'
 
 type AppListCategory = AppListUrlQuery['category']
 
@@ -24,21 +24,22 @@ export type AppListCreationDialog =
 
 export function AppListCreationModals({
   canCreateApp,
-  category,
+  defaultMode,
   dialog,
   onClose,
   onOpenBlank,
   onOpenTemplate,
 }: {
   canCreateApp: boolean
-  category: AppListCategory
+  /** Preselected app type for blank creation; `all` leaves the picker on its default. */
+  defaultMode: AppListCategory
   dialog: AppListCreationDialog
   onClose: () => void
   onOpenBlank: () => void
   onOpenTemplate: () => void
 }) {
   if (!canCreateApp) return null
-  const defaultAppModeResult = zPostAppsBody.shape.mode.safeParse(category)
+  const defaultAppModeResult = zPostAppsBody.shape.mode.safeParse(defaultMode)
 
   return (
     <>

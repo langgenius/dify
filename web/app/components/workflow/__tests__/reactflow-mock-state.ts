@@ -57,11 +57,10 @@ export function resetReactFlowMockState() {
   rfState.setEdges.mockReset()
 }
 
-export function createReactFlowModuleMock() {
+export async function createReactFlowModuleMock() {
+  const actual = await vi.importActual<typeof import('reactflow')>('reactflow')
   return {
-    Position: { Left: 'left', Right: 'right', Top: 'top', Bottom: 'bottom' },
-    MarkerType: { Arrow: 'arrow', ArrowClosed: 'arrowclosed' },
-    ConnectionMode: { Strict: 'strict', Loose: 'loose' },
+    ...actual,
 
     useStoreApi: vi.fn(() => ({
       getState: () => ({
@@ -125,19 +124,6 @@ export function createReactFlowModuleMock() {
     BaseEdge: (props: Record<string, unknown>) => React.createElement('path', props),
     EdgeLabelRenderer: ({ children }: { children?: React.ReactNode }) =>
       React.createElement('div', null, children),
-
-    getOutgoers: vi.fn().mockReturnValue([]),
-    getIncomers: vi.fn().mockReturnValue([]),
-    getConnectedEdges: vi.fn().mockReturnValue([]),
-    isNode: vi.fn().mockReturnValue(true),
-    isEdge: vi.fn().mockReturnValue(false),
-    addEdge: vi.fn().mockImplementation((_e: unknown, edges: unknown[]) => edges),
-    applyNodeChanges: vi.fn().mockImplementation((_c: unknown[], nodes: unknown[]) => nodes),
-    applyEdgeChanges: vi.fn().mockImplementation((_c: unknown[], edges: unknown[]) => edges),
-    getBezierPath: vi.fn().mockReturnValue(['M 0 0', 0, 0]),
-    getSmoothStepPath: vi.fn().mockReturnValue(['M 0 0', 0, 0]),
-    getStraightPath: vi.fn().mockReturnValue(['M 0 0', 0, 0]),
-    internalsSymbol: Symbol('internals'),
   }
 }
 

@@ -44,7 +44,6 @@
   "form.retrievalSetting.multiModalTip": "Quando o modelo de incorporação suportar multimodal, por favor selecione um modelo de reclassificação multimodal para melhor desempenho.",
   "form.retrievalSetting.title": "Configuração de recuperação",
   "form.save": "Salvar",
-  "form.searchModel": "Pesquisar modelo",
   "form.summaryAutoGen": "Geração Automática de Resumo",
   "form.summaryAutoGenEnableTip": "Uma vez ativado, resumos serão gerados automaticamente para documentos recém-adicionados. Documentos existentes ainda podem ser resumidos manualmente.",
   "form.summaryAutoGenTip": "Resumos são gerados automaticamente para documentos recém-adicionados. Documentos existentes ainda podem ser resumidos manualmente.",

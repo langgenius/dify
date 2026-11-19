@@ -1,6 +1,6 @@
 'use client'
 
-import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
@@ -8,7 +8,7 @@ import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
 
-const PUBLISH_SKILL_HOTKEY = 'Mod+Shift+P' satisfies Hotkey
+const PUBLISH_SKILL_HOTKEY = 'Mod+Shift+P' satisfies HotkeyChord
 
 type SkillPublishState = 'draft' | 'publishing' | 'published' | 'unpublished'
 
@@ -36,9 +36,9 @@ export function SkillPublishBottomActions({ children }: { children: ReactNode })
 export function SkillPublishShortcut() {
   return (
     <KbdGroup aria-hidden>
-      {PUBLISH_SKILL_HOTKEY.split('+').map((key) => (
+      {formatForDisplay(PUBLISH_SKILL_HOTKEY, { parts: true }).map((key) => (
         <Kbd key={key} color="white">
-          {formatForDisplay(key)}
+          {key}
         </Kbd>
       ))}
     </KbdGroup>
@@ -56,10 +56,22 @@ export function SkillPublishBar({
   const { t } = useTranslation(['skill'])
   const canPublish = hasPublishPermission && (state === 'draft' || state === 'unpublished')
 
-  useHotkey(PUBLISH_SKILL_HOTKEY, onPublish, {
-    enabled: canPublish,
-    ignoreInputs: false,
-  })
+  useHotkey(
+    PUBLISH_SKILL_HOTKEY,
+    (event) => {
+      if (event.defaultPrevented) return
+      event.preventDefault()
+      event.stopPropagation()
+      if (event.repeat) return
+      onPublish()
+    },
+    {
+      enabled: canPublish,
+      ignoreInputs: false,
+      preventDefault: false,
+      stopPropagation: false,
+    },
+  )
 
   const stateMeta = {
     draft: {

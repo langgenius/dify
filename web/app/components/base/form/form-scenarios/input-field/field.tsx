@@ -1,11 +1,11 @@
 import type { InputFieldConfiguration } from './types'
-import { useStore } from '@tanstack/react-form'
+import { useSelector } from '@tanstack/react-form'
 import * as React from 'react'
 import { withForm } from '../..'
 import { InputFieldType } from './types'
 
 type InputFieldProps = {
-  initialData?: Record<string, any>
+  initialData?: Record<string, unknown>
   config: InputFieldConfiguration
 }
 
@@ -31,11 +31,11 @@ const InputField = ({ initialData, config }: InputFieldProps) =>
         popupProps,
       } = config
 
-      const isAllConditionsMet = useStore(form.store, (state) => {
+      const isAllConditionsMet = useSelector(form.store, (state) => {
         const fieldValues = state.values
         return showConditions.every((condition) => {
           const { variable, value } = condition
-          const fieldValue = fieldValues[variable as keyof typeof fieldValues]
+          const fieldValue = fieldValues[variable]
           return fieldValue === value
         })
       })

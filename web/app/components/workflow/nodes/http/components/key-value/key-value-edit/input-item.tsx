@@ -37,7 +37,7 @@ const InputItem: FC<Props> = ({
   isSupportFile,
   insertVarTipToLeft,
 }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowIntegrations'])
 
   const hasValue = !!value
 
@@ -75,8 +75,10 @@ const InputItem: FC<Props> = ({
           nodesOutputVars={availableVars}
           availableNodes={availableNodesWithParent}
           onFocusChange={setIsFocus}
-          placeholder={t(($) => $['nodes.http.insertVarPlaceholder'], { ns: 'workflow' })!}
-          placeholderClassName="leading-[21px]!"
+          placeholder={t(($) => $['nodes.http.insertVarPlaceholder'], {
+            ns: 'workflowIntegrations',
+          })!}
+          placeholderClassName="truncate leading-[21px]!"
           insertVarTipToLeft={insertVarTipToLeft}
         />
       ) : (
@@ -99,8 +101,10 @@ const InputItem: FC<Props> = ({
               nodesOutputVars={availableVars}
               availableNodes={availableNodesWithParent}
               onFocusChange={setIsFocus}
-              placeholder={t(($) => $['nodes.http.insertVarPlaceholder'], { ns: 'workflow' })!}
-              placeholderClassName="leading-[21px]!"
+              placeholder={t(($) => $['nodes.http.insertVarPlaceholder'], {
+                ns: 'workflowIntegrations',
+              })!}
+              placeholderClassName="truncate leading-[21px]!"
               promptMinHeightClassName="h-full"
               insertVarTipToLeft={insertVarTipToLeft}
             />
