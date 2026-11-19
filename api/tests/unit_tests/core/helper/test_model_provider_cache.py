@@ -2,6 +2,7 @@ import json
 from unittest.mock import MagicMock
 
 import pytest
+from pydantic import JsonValue
 from pytest_mock import MockerFixture
 from redis.exceptions import ConnectionError
 
@@ -57,13 +58,11 @@ def test_model_provider_credentials_cache_get_returns_none_for_invalid_utf8(mock
 def test_get_treats_invalid_entries_as_cache_misses(
     payload: bytes | None,
     redis_transport: tuple[RedisClientWrapper, MagicMock],
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Given missing or invalid cached data, return a miss without mutating it."""
     redis, commands = redis_transport
-    monkeypatch.setattr("core.helper.model_provider_cache.redis_client", redis)
     cache = ProviderCredentialsCache(
-        tenant_id="tenant", identity_id="identity", cache_type=ProviderCredentialsCacheType.PROVIDER
+        tenant_id="tenant", identity_id="identity", cache_type=ProviderCredentialsCacheType.PROVIDER, redis=redis
     )
     commands.return_value = payload
 
@@ -71,32 +70,38 @@ def test_get_treats_invalid_entries_as_cache_misses(
     commands.assert_called_once_with("GET", cache.cache_key, keys=[cache.cache_key])
 
 
-@pytest.mark.parametrize("payload", [{}, {"api_key": "密钥", "options": [1, True, None, {"nested": "value"}]}])
+@pytest.mark.parametrize(
+    ("serialized", "expected"),
+    [
+        (b"{}", {}),
+        (
+            '{"api_key":"密钥","options":[1,true,null,{"nested":"value"}]}'.encode(),
+            {"api_key": "密钥", "options": [1, True, None, {"nested": "value"}]},
+        ),
+    ],
+)
 def test_get_preserves_json_object_values(
-    payload: dict[str, object],
+    serialized: bytes,
+    expected: dict[str, JsonValue],
     redis_transport: tuple[RedisClientWrapper, MagicMock],
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Given a JSON object, preserve its keys and arbitrary nested values."""
     redis, commands = redis_transport
-    monkeypatch.setattr("core.helper.model_provider_cache.redis_client", redis)
     cache = ProviderCredentialsCache(
-        tenant_id="tenant", identity_id="identity", cache_type=ProviderCredentialsCacheType.PROVIDER
+        tenant_id="tenant", identity_id="identity", cache_type=ProviderCredentialsCacheType.PROVIDER, redis=redis
     )
-    commands.return_value = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    commands.return_value = serialized
 
-    assert cache.get() == payload
+    assert cache.get() == expected
 
 
 def test_get_propagates_redis_failures(
     redis_transport: tuple[RedisClientWrapper, MagicMock],
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Given a Redis outage, propagate it rather than report a cache miss."""
     redis, commands = redis_transport
-    monkeypatch.setattr("core.helper.model_provider_cache.redis_client", redis)
     cache = ProviderCredentialsCache(
-        tenant_id="tenant", identity_id="identity", cache_type=ProviderCredentialsCacheType.PROVIDER
+        tenant_id="tenant", identity_id="identity", cache_type=ProviderCredentialsCacheType.PROVIDER, redis=redis
     )
     commands.side_effect = ConnectionError("Redis unavailable")
 

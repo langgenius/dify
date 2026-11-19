@@ -4,7 +4,7 @@ from typing import Any, override
 
 from pydantic import TypeAdapter, ValidationError
 
-from extensions.ext_redis import redis_client
+from extensions.ext_redis import RedisClientWrapper, redis_client
 
 _credentials_adapter = TypeAdapter(dict[str, Any])
 
@@ -12,7 +12,9 @@ _credentials_adapter = TypeAdapter(dict[str, Any])
 class ProviderCredentialsCache(ABC):
     """Base class for provider credentials cache"""
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, *, redis: RedisClientWrapper | None = None, **kwargs: Any) -> None:
+        """Use the supplied Redis wrapper, or the application wrapper if omitted."""
+        self._redis = redis_client if redis is None else redis
         self.cache_key = self._generate_cache_key(**kwargs)
 
     @abstractmethod
@@ -27,7 +29,7 @@ class ProviderCredentialsCache(ABC):
         malformed, non-UTF-8, or non-object entry. Never mutate cached data;
         Redis failures propagate so callers can distinguish an outage from a miss.
         """
-        cached_credentials = redis_client.get(self.cache_key)
+        cached_credentials = self._redis.get(self.cache_key)
         if cached_credentials:
             try:
                 return _credentials_adapter.validate_json(cached_credentials.decode("utf-8"))
@@ -37,11 +39,11 @@ class ProviderCredentialsCache(ABC):
 
     def set(self, config: dict[str, Any]) -> None:
         """Cache provider credentials"""
-        redis_client.setex(self.cache_key, 86400, json.dumps(config))
+        self._redis.setex(self.cache_key, 86400, json.dumps(config))
 
     def delete(self) -> None:
         """Delete cached provider credentials"""
-        redis_client.delete(self.cache_key)
+        self._redis.delete(self.cache_key)
 
 
 class SingletonProviderCredentialsCache(ProviderCredentialsCache):
@@ -66,9 +68,20 @@ class SingletonProviderCredentialsCache(ProviderCredentialsCache):
 class ToolProviderCredentialsCache(ProviderCredentialsCache):
     """Cache for tool provider credentials"""
 
-    def __init__(self, tenant_id: str, provider: str, credential_id: str, *, fingerprint: str | None = None):
-        """A fingerprint selects one snapshot-checked entry; None retains the legacy cache."""
-        super().__init__(tenant_id=tenant_id, provider=provider, credential_id=credential_id)
+    def __init__(
+        self,
+        tenant_id: str,
+        provider: str,
+        credential_id: str,
+        *,
+        fingerprint: str | None = None,
+        redis: RedisClientWrapper | None = None,
+    ) -> None:
+        """Select a snapshot with a fingerprint, or the legacy entry without one.
+
+        When no Redis wrapper is supplied, use the application wrapper.
+        """
+        super().__init__(redis=redis, tenant_id=tenant_id, provider=provider, credential_id=credential_id)
         self._legacy_cache_key = self.cache_key
         self._fingerprint = fingerprint
         if fingerprint is not None:
@@ -93,8 +106,8 @@ class ToolProviderCredentialsCache(ProviderCredentialsCache):
     @override
     def delete(self) -> None:
         # Separate commands also work when Redis Cluster puts the entries in different slots.
-        redis_client.delete(self._legacy_cache_key)
-        redis_client.delete(f"{self._legacy_cache_key}:snapshot")
+        self._redis.delete(self._legacy_cache_key)
+        self._redis.delete(f"{self._legacy_cache_key}:snapshot")
 
     @override
     def _generate_cache_key(self, **kwargs: Any) -> str:
