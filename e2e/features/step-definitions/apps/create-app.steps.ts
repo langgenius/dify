@@ -3,6 +3,7 @@ import type { DifyWorld } from '../../support/world.ts'
 import { Then, When } from '@cucumber/cucumber'
 import { zPostAppsResponse } from '@dify/contracts/api/console/apps/zod.gen'
 import { expect } from '@playwright/test'
+import { createE2EResourceName } from '../../../support/naming.ts'
 
 const appModeByType: Record<string, CreateAppPayload['mode']> = {
   Agent: 'agent-chat',
@@ -11,6 +12,9 @@ const appModeByType: Record<string, CreateAppPayload['mode']> = {
   'Text Generator': 'completion',
   Workflow: 'workflow',
 }
+
+// A losing branch of a Promise.race must not reject later as an unhandled rejection.
+const neverSettles = () => new Promise<never>(() => {})
 
 const getLatestCreatedAppId = (world: DifyWorld) => {
   const appId = world.createdAppIds.at(-1)
@@ -40,16 +44,29 @@ When('I create the {string} app from Studio', async function (this: DifyWorld, a
 
   await page.getByRole('menuitem', { name: appType, exact: true }).click()
 
-  if (appType === 'Workflow' || appType === 'Chatflow') {
-    const starterTitle =
-      appType === 'Workflow' ? 'Build your next workflow' : 'Build your next chatflow'
-    const starter = page.getByRole('dialog', { name: starterTitle })
-    const firstOutcome = await Promise.race([
-      responsePromise.then(() => 'created' as const),
-      starter.waitFor({ state: 'visible' }).then(() => 'starter' as const),
-    ])
-    if (firstOutcome === 'starter')
-      await starter.getByRole('button', { name: 'Open a blank canvas' }).click()
+  // With the Dify Builder enabled the menu creates the app directly (or shows a starter
+  // dialog for Workflow/Chatflow). With it disabled (the default) the menu opens the named
+  // "create app" dialog, which needs a name before the POST is sent.
+  const nameInput = page.getByRole('dialog').getByPlaceholder('Give your app a name')
+  const starterTitle =
+    appType === 'Workflow' ? 'Build your next workflow' : 'Build your next chatflow'
+  const starter = page.getByRole('dialog', { name: starterTitle })
+  const outcomes: Promise<'created' | 'starter' | 'named'>[] = [
+    responsePromise.then(() => 'created' as const),
+    nameInput.waitFor({ state: 'visible' }).then(() => 'named' as const, neverSettles),
+  ]
+  if (appType === 'Workflow' || appType === 'Chatflow')
+    outcomes.push(
+      starter.waitFor({ state: 'visible' }).then(() => 'starter' as const, neverSettles),
+    )
+  const firstOutcome = await Promise.race(outcomes)
+  if (firstOutcome === 'starter')
+    await starter.getByRole('button', { name: 'Open a blank canvas' }).click()
+  if (firstOutcome === 'named') {
+    await nameInput.fill(createE2EResourceName('App'))
+    const createButton = page.getByRole('dialog').getByRole('button', { name: /^Create(?:\s|$)/ })
+    await expect(createButton).toBeEnabled()
+    await createButton.click()
   }
 
   const response = await responsePromise
