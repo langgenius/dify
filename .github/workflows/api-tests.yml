@@ -115,7 +115,8 @@ jobs:
   api-unit:
     needs: api-unit-plan
     name: API Unit Tests (${{ matrix.python-version }}, shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
-    runs-on: depot-ubuntu-24.04-4
+    # A baseline runs every unit test in one recording process, which ran out of memory on 4 CPUs.
+    runs-on: ${{ inputs.testmon-baseline && 'depot-ubuntu-24.04-8' || 'depot-ubuntu-24.04-4' }}
     env:
       PYTHONUNBUFFERED: '1'
       COVERAGE_FILE: coverage-unit-${{ matrix.python-version }}-${{ matrix.shardIndex }}
@@ -231,12 +232,16 @@ jobs:
           elif [[ "$TESTMON_EXPECTED" == true ]]; then
             echo "Running every API unit test: no testmon baseline from main matches this environment." >> "$GITHUB_STEP_SUMMARY"
           fi
-          uv run --project api --group evaluation "${with_testmon[@]}" pytest "${args[@]}" "@$RUNNER_TEMP/unit-test-files.txt"
+          status=0
+          uv run --project api --group evaluation "${with_testmon[@]}" pytest "${args[@]}" "@$RUNNER_TEMP/unit-test-files.txt" || status=$?
+          echo "pytest-exit=$status" >> "$GITHUB_OUTPUT"
+          exit "$status"
 
       # Main is the only writer; pull requests read the baseline and discard their own data.
-      # testmon reruns a failed test until it passes, so a failing run still saves its data.
+      # testmon reruns a failed test until it passes, so a run whose tests failed (exit 1) still
+      # saves its data. Any other exit, such as a crash or an out-of-memory kill, may leave it partial.
       - name: Save testmon baseline
-        if: ${{ !cancelled() && env.API_TEST_MODE == 'baseline' && contains(fromJSON('["success", "failure"]'), steps.run-tests.outcome) }}
+        if: ${{ !cancelled() && env.API_TEST_MODE == 'baseline' && contains(fromJSON('["0", "1"]'), steps.run-tests.outputs.pytest-exit) }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/testmon
@@ -353,12 +358,15 @@ jobs:
           elif [[ "$TESTMON_EXPECTED" == true ]]; then
             echo "Running every API controller test: no testmon baseline from main matches this environment." >> "$GITHUB_STEP_SUMMARY"
           fi
+          status=0
           uv run --project api "${with_testmon[@]}" pytest "${args[@]}" \
             api/tests/unit_tests/controllers \
-            api/tests/e2e_tests/contracts/controllers
+            api/tests/e2e_tests/contracts/controllers || status=$?
+          echo "pytest-exit=$status" >> "$GITHUB_OUTPUT"
+          exit "$status"
 
       - name: Save testmon baseline
-        if: ${{ !cancelled() && env.API_TEST_MODE == 'baseline' && contains(fromJSON('["success", "failure"]'), steps.run-tests.outcome) }}
+        if: ${{ !cancelled() && env.API_TEST_MODE == 'baseline' && contains(fromJSON('["0", "1"]'), steps.run-tests.outputs.pytest-exit) }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/testmon
