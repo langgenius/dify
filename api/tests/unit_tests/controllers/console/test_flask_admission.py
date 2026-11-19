@@ -111,6 +111,8 @@ def test_first_console_bootstrap_request_activates_workspace(
     assert summary_data["id"] == workspace_id
     assert summary_data["name"] == "End User's Workspace"
     assert summary_data["role"] == "owner"
+    apps = browser.get("/console/api/apps")
+    assert apps.status_code == 200, apps.json
     assert account_domain.workspaces.list_ids_for_account(account.id) == (workspace_id,)
     activated = account_domain.repository.get(account.id)
     assert activated is not None
@@ -151,7 +153,7 @@ def test_console_bootstrap_denial_does_not_provision(
     case: str,
     status: int,
 ) -> None:
-    """Only CSRF-validated, policy-eligible first workspace requests may create membership."""
+    """Reject workspace-less access without allocating membership, including before bootstrap."""
     app, account_domain = console_bootstrap
     with sqlite_session_factory.begin() as session:
         origin = datetime(2026, 1, 1) if case == "previous_builder" else None
@@ -163,9 +165,20 @@ def test_console_bootstrap_denial_does_not_provision(
     if case == "creation_disabled":
         config_overrides(ALLOW_CREATE_WORKSPACE=False)
 
-    response = browser.get(SUMMARY_PATH)
+    apps = browser.get("/console/api/apps")
+    summary = browser.get(SUMMARY_PATH)
 
-    assert response.status_code == status, response.json
+    assert summary.status_code == status, summary.json
+    assert apps.status_code == status, apps.json
+    if status == 403:
+        expected_denial = {
+            "code": "active_workspace_required",
+            "message": "An active workspace is required.",
+            "status": 403,
+        }
+        assert apps.get_json() == expected_denial
+        if case == "previous_builder":
+            assert summary.get_json() == expected_denial
     assert account_domain.workspaces.list_ids_for_account(account.id) == ()
     persisted = account_domain.repository.get(account.id)
     assert persisted is not None

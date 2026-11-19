@@ -29,6 +29,7 @@ from libs.login import current_account_with_tenant, current_account_with_tenant_
 from libs.oauth_bearer import bearer_feature_required
 from libs.token import extract_console_cookie_token, is_admin_api_key_request
 from machinery.context import AccountRequestContext, RequestContext
+from machinery.errors import ActiveWorkspaceRequiredError
 from models.account import AccountStatus
 from services.errors.workspace import (
     WorkSpaceNotAllowedCreateError,
@@ -149,7 +150,7 @@ def _bootstrap_console_workspace() -> None:
             AccountStatus.ACTIVE,
             AccountStatus.UNINITIALIZED,
         ):
-            raise Forbidden("An active workspace is required.")
+            raise ActiveWorkspaceRequiredError()
         try:
             application_services().workspaces.provisioning.activate(account.id)
         except WorkspaceOwnerNotFoundError as error:
@@ -159,7 +160,7 @@ def _bootstrap_console_workspace() -> None:
         except WorkspacesLimitExceededError as error:
             raise Forbidden(WorkspacesLimitExceeded.description) from error
         except WorkspaceNotFoundError as error:
-            raise Forbidden("An active workspace is required.") from error
+            raise ActiveWorkspaceRequiredError() from error
     elif account.status != AccountStatus.UNINITIALIZED:
         return
 
@@ -169,7 +170,7 @@ def _bootstrap_console_workspace() -> None:
         raise Unauthorized()
     active_workspace_id = refreshed.current_tenant_id
     if active_workspace_id is None:
-        raise Forbidden("An active workspace is required.")
+        raise ActiveWorkspaceRequiredError()
     g._login_user = refreshed
     set_identity_context(tenant_id=active_workspace_id, user_id=refreshed.id, user_type="account")
 
