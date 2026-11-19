@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from flask import Flask
@@ -114,7 +114,9 @@ def test_normalized_email_conflict_exposes_a_distinct_error_code() -> None:
 
 
 def test_send_email_delegates_with_remote_ip(app: Flask, service: AccountEmailRegistrationService) -> None:
-    service.send_code.return_value = "token-123"
+    send_code = service.send_code
+    assert isinstance(send_code, Mock)
+    send_code.return_value = "token-123"
 
     with _request(
         app,
@@ -125,7 +127,7 @@ def test_send_email_delegates_with_remote_ip(app: Flask, service: AccountEmailRe
         response = EmailRegisterSendEmailApi().post()
 
     assert response == {"result": "success", "data": "token-123"}
-    assert service.send_code.call_args.kwargs == {
+    assert send_code.call_args.kwargs == {
         "remote_ip": "127.0.0.1",
         "requested_email": "Invitee@Example.com",
         "requested_language": "zh-Hans",
@@ -147,7 +149,9 @@ def test_send_email_translates_application_errors(
     service_error: Exception,
     http_error: type[Exception],
 ) -> None:
-    service.send_code.side_effect = service_error
+    send_code = service.send_code
+    assert isinstance(send_code, Mock)
+    send_code.side_effect = service_error
 
     with _request(
         app,
@@ -160,7 +164,9 @@ def test_send_email_translates_application_errors(
 
 
 def test_verify_email_code_serializes_application_result(app: Flask, service: AccountEmailRegistrationService) -> None:
-    service.verify_code.return_value = AccountEmailRegistrationVerification(
+    verify_code = service.verify_code
+    assert isinstance(verify_code, Mock)
+    verify_code.return_value = AccountEmailRegistrationVerification(
         email="user@example.com",
         token="verified-token",
     )
@@ -174,7 +180,7 @@ def test_verify_email_code_serializes_application_result(app: Flask, service: Ac
         response = EmailRegisterCheckApi().post()
 
     assert response == {"is_valid": True, "email": "user@example.com", "token": "verified-token"}
-    service.verify_code.assert_called_once_with(
+    verify_code.assert_called_once_with(
         email="User@Example.com",
         code="123456",
         token="pending-token",
@@ -196,7 +202,9 @@ def test_verify_email_code_translates_application_errors(
     service_error: Exception,
     http_error: type[Exception],
 ) -> None:
-    service.verify_code.side_effect = service_error
+    verify_code = service.verify_code
+    assert isinstance(verify_code, Mock)
+    verify_code.side_effect = service_error
 
     with _request(
         app,
@@ -209,7 +217,9 @@ def test_verify_email_code_translates_application_errors(
 
 
 def test_register_delegates_and_serializes_tokens(app: Flask, service: AccountEmailRegistrationService) -> None:
-    service.register.return_value = AccountSessionTokens(
+    register = service.register
+    assert isinstance(register, Mock)
+    register.return_value = AccountSessionTokens(
         access_token="access",
         refresh_token="refresh",
         csrf_token="csrf",
@@ -233,7 +243,7 @@ def test_register_delegates_and_serializes_tokens(app: Flask, service: AccountEm
         "result": "success",
         "data": {"access_token": "access", "refresh_token": "refresh", "csrf_token": "csrf"},
     }
-    assert service.register.call_args.kwargs == {
+    assert register.call_args.kwargs == {
         "remote_ip": "127.0.0.1",
         "token": "verified-token",
         "new_password": "ValidPass123!",
@@ -265,7 +275,9 @@ def test_register_translates_application_errors(
     service_error: Exception,
     http_error: type[Exception],
 ) -> None:
-    service.register.side_effect = service_error
+    register = service.register
+    assert isinstance(register, Mock)
+    register.side_effect = service_error
 
     with _request(
         app,

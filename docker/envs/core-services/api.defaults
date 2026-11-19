@@ -3,6 +3,9 @@
 # Optional application settings are commented to retain their application defaults.
 
 # MODE is selected by the Compose service.
+# Maximum number of characters in a knowledge base description (positive integer).
+# Recreate the API service after changing this value.
+# DATASET_DESCRIPTION_MAX_LENGTH=400
 # Optional SaaS network-policy control plane and current-IP preview trust.
 # NETWORK_ACCESS_API_URL=
 # Comma-separated proxy CIDRs; empty disables Cloud IP previews. The edge
@@ -84,12 +87,12 @@ CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://:${REDIS_PASSWORD:-difyai123456}@
 # WEBSOCKET_MAX_HTTP_BUFFER_SIZE=10485760
 # SWAGGER_UI_ENABLED=false
 # SWAGGER_UI_PATH=/swagger-ui.html
-# OPENAPI_ENABLED=false
+# OPENAPI_ENABLED=true
 # OPENAPI_CORS_ALLOW_ORIGINS=
 # OPENAPI_KNOWN_CLIENT_IDS=difyctl
 # OPENAPI_RATE_LIMIT_PER_TOKEN=60
 # DEVICE_FLOW_APPROVE_RATE_LIMIT_PER_HOUR=10
-# ENABLE_OAUTH_BEARER=false
+# ENABLE_OAUTH_BEARER=true
 
 # Container variable mappings; keep these expressions unchanged in the copy.
 AGENT_BACKEND_API_TOKEN=${DIFY_AGENT_API_TOKEN:-dify-agent-run-token-for-dev-only}

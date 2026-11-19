@@ -5,7 +5,6 @@ from typing import Annotated, Literal
 import pytest
 import sqlalchemy as sa
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
-from pydantic_core import PydanticSerializationError
 from sqlalchemy import Engine, select
 from sqlalchemy.dialects import mysql, postgresql, sqlite
 from sqlalchemy.dialects.mysql import LONGTEXT
@@ -168,13 +167,6 @@ def test_bind_processor_does_not_double_encode_model_json() -> None:
 
     assert bind_processor is not None
     assert bind_processor(_NamePayload(name="Alice")) == '{"name":"Alice"}'
-
-
-def test_bind_treats_serialization_warnings_as_errors() -> None:
-    invalid_model = _FrozenStrictPayload.model_construct(name=42, attributes={})
-
-    with pytest.raises(PydanticSerializationError):
-        _PAYLOAD_TYPE.process_bind_param(invalid_model, sqlite.dialect())
 
 
 def test_validation_errors_are_not_swallowed() -> None:

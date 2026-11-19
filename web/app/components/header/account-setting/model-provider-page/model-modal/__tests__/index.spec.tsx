@@ -1,5 +1,4 @@
-import type { ComponentProps } from 'react'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
   createCredentialProvider,
@@ -7,7 +6,7 @@ import {
   renderCredentialComponent,
 } from '../../__tests__/credential-test-env'
 import { ConfigurationMethodEnum, FormTypeEnum, ModelModalModeEnum } from '../../declarations'
-import ModelModal from '../index'
+import { modelCredentialDialog } from '../handle'
 
 const requests = vi.hoisted(() => ({ provider: vi.fn(), model: vi.fn() }))
 vi.mock('@/service/console', async (importOriginal) => {
@@ -32,18 +31,19 @@ beforeEach(() => {
   requests.provider.mockResolvedValue({ result: 'success' })
   requests.model.mockResolvedValue({ result: 'success' })
 })
-function renderModal(overrides: Partial<ComponentProps<typeof ModelModal>> = {}) {
+function renderModal(
+  overrides: Partial<Parameters<typeof modelCredentialDialog.openWithPayload>[0]> = {},
+) {
   const onSave = vi.fn()
-  renderCredentialComponent(
-    <ModelModal
-      provider={createCredentialProvider()}
-      configurateMethod={ConfigurationMethodEnum.predefinedModel}
-      onCancel={() => {}}
-      onSave={onSave}
-      onRemove={() => {}}
-      {...overrides}
-    />,
-  )
+  renderCredentialComponent(<></>)
+  act(() => {
+    modelCredentialDialog.openWithPayload({
+      provider: createCredentialProvider(),
+      configurateMethod: ConfigurationMethodEnum.predefinedModel,
+      ...overrides,
+      onSave,
+    })
+  })
   return onSave
 }
 async function fill(user: ReturnType<typeof userEvent.setup>) {
@@ -56,17 +56,17 @@ async function fill(user: ReturnType<typeof userEvent.setup>) {
 it('blocks invalid credentials then saves the entered values through the real auth owner', async () => {
   const user = userEvent.setup()
   const onSave = renderModal()
-  await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+  await user.click(await screen.findByRole('button', { name: 'common.operation.save' }))
   expect(requests.provider).not.toHaveBeenCalled()
   await fill(user)
-  await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+  await user.click(await screen.findByRole('button', { name: 'common.operation.save' }))
   await waitFor(() =>
     expect(requests.provider).toHaveBeenCalledExactlyOnceWith({
       params: { provider: 'openai' },
       body: { credential_id: undefined, credentials: { api_key: 'secret' }, name: 'My credential' },
     }),
   )
-  expect(onSave).toHaveBeenCalledWith({
+  expect(onSave).toHaveBeenCalledWith(undefined, {
     __authorization_name__: 'My credential',
     api_key: 'secret',
   })
@@ -88,7 +88,7 @@ it.each(['model', 'fixed'] as const)(
           }),
     })
     await fill(user)
-    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    await user.click(await screen.findByRole('button', { name: 'common.operation.save' }))
     await waitFor(() =>
       expect(requests.model).toHaveBeenCalledExactlyOnceWith({
         params: { provider: 'openai' },
@@ -110,7 +110,7 @@ it('does not save a model credential without model context', async () => {
   const user = userEvent.setup()
   renderModal({ isModelCredential: true, mode: ModelModalModeEnum.configModelCredential })
   await fill(user)
-  await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+  await user.click(await screen.findByRole('button', { name: 'common.operation.save' }))
   expect(requests.model).not.toHaveBeenCalled()
   expect(requests.provider).not.toHaveBeenCalled()
 })
@@ -142,7 +142,7 @@ it('validates the model name as well as credentials before adding a custom model
 })
 it.each(['openai', 'langgenius/openai/openai', 'langgenius/azure_openai/azure_openai'])(
   'limits Responses API guidance to official OpenAI providers: %s',
-  (provider) => {
+  async (provider) => {
     renderModal({
       provider: createCredentialProvider({
         provider,
@@ -161,6 +161,7 @@ it.each(['openai', 'langgenius/openai/openai', 'langgenius/azure_openai/azure_op
         },
       }),
     })
+    await screen.findByRole('button', { name: 'common.operation.save' })
     const tip = screen.queryByText('modelProvider.modelProvider.auth.openAIResponsesAPITip')
     if (provider.includes('azure_openai')) expect(tip).not.toBeInTheDocument()
     else expect(tip).toBeInTheDocument()

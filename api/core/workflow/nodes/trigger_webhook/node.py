@@ -2,7 +2,7 @@ import logging
 from collections.abc import Mapping
 from typing import Any, override
 
-from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
+from constants.trigger import TRIGGER_WEBHOOK_NODE_TYPE
 from core.workflow.file_reference import resolve_file_record_id
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
 from factories.variable_factory import build_segment_with_type

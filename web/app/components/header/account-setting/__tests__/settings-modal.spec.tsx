@@ -1,5 +1,5 @@
 import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useQueryState } from 'nuqs'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -41,6 +41,7 @@ vi.mock('@/service/console', async (importOriginal) => {
         entitled: true,
         groups: [],
       }),
+      'workspaces.byWorkspaceId.members.pendingInvitations.get': async () => ({ invitations: [] }),
       'workspaces.current.members.get': async () => ({ accounts: [] }),
       'features.vectorSpace.get': async () => ({ size: 0, limit: 50, usage_unknown: false }),
       'billing.invoices.get': async () => ({ url: 'https://billing.example.com' }),
@@ -117,13 +118,17 @@ function renderSettings(
   return { ...rendered, onUrlUpdate }
 }
 
-const findSettings = async () => {
-  // The settings surface is lazy; finish loading it before starting the DOM query timeout.
-  await act(async () => vi.dynamicImportSettled())
-  return screen.findByRole('dialog', { name: 'navigation.settings.settings' })
-}
+const findSettings = () => screen.findByRole('dialog', { name: 'navigation.settings.settings' })
 const expectMembers = () =>
   screen.findByRole('columnheader', { name: 'workspaceMembers.members.name' })
+
+beforeAll(async () => {
+  // Load the real dialogs before the tests so cold module transforms run during suite setup.
+  await Promise.all([
+    import('@/app/components/header/account-setting'),
+    import('@/app/components/integrations/modal'),
+  ])
+})
 
 it('exposes the Members content title as a heading', async () => {
   renderSettings()
@@ -341,7 +346,6 @@ it.each([
 it('opens an integration destination and updates the URL through its real sidebar', async () => {
   const user = userEvent.setup()
   const { onUrlUpdate } = renderSettings('custom-tool')
-  await act(async () => vi.dynamicImportSettled())
   const dialog = await screen.findByRole('dialog', { name: 'navigation.settings.integrations' })
   await user.click(within(dialog).getByRole('button', { name: 'navigation.common.workflowAsTool' }))
   await waitFor(() =>

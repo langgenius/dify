@@ -5,6 +5,7 @@ import type {
 import type { RenderOptions } from '@testing-library/react'
 import type { ReactElement } from 'react'
 import type { DeepPartial } from '@/test/console/system-features'
+import { Dialog } from '@langgenius/dify-ui/dialog'
 import { render as renderUI, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import dayjs from 'dayjs'
@@ -660,7 +661,11 @@ describe('Cross-Component Upgrade Flow', () => {
       annotation_quota_limit: { size: 10, limit: 10 },
     })
 
-    render(<AnnotationFullModal show={true} onHide={vi.fn()} />)
+    render(
+      <Dialog defaultOpen>
+        <AnnotationFullModal />
+      </Dialog>,
+    )
 
     const upgradeText = screen.getByText(/upgradeBtn\.encourage$/i)
     await user.click(upgradeText)
