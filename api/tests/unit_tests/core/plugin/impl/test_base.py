@@ -141,6 +141,20 @@ class TestBasePluginClientImpl:
         assert result == payload["data"]
         assert [response.model_dump(mode="json") for response in transformed] == [payload]
 
+    def test_request_with_plugin_daemon_response_applies_transformer_to_bool_data(self) -> None:
+        envelope = PluginDaemonBasicResponse[bool](code=0, message="", data=True)
+        client = BasePluginClient(
+            httpx_client=httpx.Client(transport=httpx.MockTransport(lambda _: _response(envelope)))
+        )
+
+        def transformer(json_response: PluginDaemonRawResponse) -> PluginDaemonRawResponse:
+            assert json_response.data is True
+            return json_response
+
+        result = client._request_with_plugin_daemon_response("GET", "plugin/tenant/path", bool, transformer=transformer)
+
+        assert result is True
+
     @pytest.mark.parametrize("include_data", [False, True])
     def test_request_with_plugin_daemon_response_transformer_accepts_missing_or_null_data(
         self, include_data: bool
