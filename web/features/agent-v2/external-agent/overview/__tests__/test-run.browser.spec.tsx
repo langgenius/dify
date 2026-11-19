@@ -1,13 +1,21 @@
 import { ORPCError } from '@orpc/client'
 import { act } from 'react'
-import { page } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
 import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
+import { createExternalAgentCapabilities } from '@/test/console/external-agents'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { anchorId, childId, renderTestPanel, testOverview, testResult } from './test-run-fixture'
 
 // boundary: real translations name the user-facing controls in this browser fixture.
 vi.mock('react-i18next', async (importOriginal) => importOriginal())
-const api = vi.hoisted(() => ({ start: vi.fn(), read: vi.fn(), cancel: vi.fn(), leave: vi.fn() }))
+const api = vi.hoisted(() => ({
+  start: vi.fn(),
+  read: vi.fn(),
+  cancel: vi.fn(),
+  leave: vi.fn(),
+  capabilities: vi.fn(),
+}))
 // boundary: only generated Console transport responses are stubbed; the session, queries, mutations and Drawer stay real.
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -19,8 +27,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       'externalAgentTests.leavePage.post': api.leave,
     }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'externalAgents.capabilities.get': async () =>
-        (await import('@/test/console/external-agents')).createExternalAgentCapabilities(),
+      'externalAgents.capabilities.get': api.capabilities,
       'externalAgents.byAgentId.tests.post': api.start,
       'externalAgents.byAgentId.tests.byInvocationId.get': api.read,
       'externalAgents.byAgentId.tests.byInvocationId.cancel.post': api.cancel,
@@ -48,6 +55,7 @@ function usePollClock() {
 beforeEach(({ onTestFinished }) => {
   onTestFinished(guardUnexpectedFetch())
   onTestFinished(() => toast.dismiss())
+  api.capabilities.mockReset().mockResolvedValue(createExternalAgentCapabilities())
   api.start.mockReset().mockResolvedValue(testResult())
   api.read.mockReset().mockResolvedValue(testResult())
   api.cancel.mockReset().mockResolvedValue({ result: 'requested' })
@@ -176,25 +184,88 @@ it('polls the fixed anchor, cancels its latest retry child, and gives completion
   expect(api.read).toHaveBeenCalledTimes(2)
 })
 
-it('recovers an unknown submission with the identical key and body instead of creating a second logical test', async () => {
-  const rendered = await renderTestPanel()
+it('shows a submission gateway error once in Result and recovers the identical request even if execution is later disabled', async () => {
+  const rendered = await renderTestPanel(testOverview(true))
   onTestFinished(() => rendered.queryClient.clear())
   api.start
-    .mockRejectedValueOnce(new TypeError('Connection lost.'))
+    .mockRejectedValueOnce(new ORPCError('BAD_GATEWAY', { status: 502, message: 'Bad Gateway' }))
     .mockResolvedValue(testResult('succeeded'))
   await page.getByRole('button', { name: 'Test agent', exact: true }).click()
   await task().fill('Review this contract.')
   await panel().getByRole('button', { name: 'Run test', exact: true }).click()
-  const recover = panel().getByRole('button', { name: 'Recover request', exact: true })
-  await expect.element(recover).toBeVisible()
+  await expect.element(status().getByText('Error', { exact: true })).toBeVisible()
+  await expect
+    .element(
+      panel()
+        .getByRole('tabpanel', { name: 'Result', exact: true })
+        .getByText('Bad Gateway', { exact: true }),
+    )
+    .toBeVisible()
+  expect(panel().getByText('Bad Gateway', { exact: true }).all()).toHaveLength(1)
+  await expect.element(panel().getByRole('alert')).not.toBeInTheDocument()
+  await expect
+    .element(panel().getByRole('button', { name: 'Recover request', exact: true }))
+    .not.toBeInTheDocument()
+  await expect
+    .element(
+      panel().getByText(
+        'The request outcome is unknown. Recover the same request before starting a new test.',
+        { exact: true },
+      ),
+    )
+    .not.toBeInTheDocument()
   await expect.element(task()).toHaveAttribute('readonly')
+  await task().click()
+  await userEvent.keyboard('Changed task')
+  await expect.element(task()).toHaveValue('Review this contract.')
   const original = api.start.mock.calls[0]![0]
-  await recover.click()
+  api.capabilities.mockResolvedValue(createExternalAgentCapabilities({ enabled: false }))
+  await rendered.queryClient.refetchQueries({
+    queryKey: consoleQuery.externalAgents.capabilities.get.queryOptions({
+      input: { query: { agent_id: testOverview().asset.id } },
+    }).queryKey,
+  })
+  await expect
+    .element(
+      panel().getByText('External agent execution is unavailable on this deployment.', {
+        exact: true,
+      }),
+    )
+    .toBeVisible()
+  await panel().getByRole('button', { name: 'Close', exact: true }).click()
+  await expect.element(panel()).not.toBeInTheDocument()
+  await page.getByRole('button', { name: 'Test agent', exact: true }).click()
+  const retry = panel().getByRole('button', { name: 'Run test', exact: true })
+  await expect.element(retry).toBeEnabled()
+  await retry.click()
   await expect.element(status().getByText('Success', { exact: true })).toBeVisible()
   expect(api.start).toHaveBeenCalledTimes(2)
   expect(api.start.mock.calls[1]![0]).toEqual(original)
   expect(original.body.idempotency_key).toBeTruthy()
   expect(api.read).not.toHaveBeenCalled()
+})
+
+it('keeps a failed agent result and its error message in the result section', async () => {
+  api.start.mockResolvedValue(
+    testResult('failed', { error_message: 'The agent rejected this task.' }),
+  )
+  const rendered = await renderTestPanel()
+  onTestFinished(() => rendered.queryClient.clear())
+  await page.getByRole('button', { name: 'Test agent', exact: true }).click()
+  await task().fill('Review this contract.')
+  await panel().getByRole('button', { name: 'Run test', exact: true }).click()
+  await expect.element(status().getByText('Failed', { exact: true })).toBeVisible()
+  await expect
+    .element(
+      panel()
+        .getByRole('tabpanel', { name: 'Result', exact: true })
+        .getByText('The agent rejected this task.', { exact: true }),
+    )
+    .toBeVisible()
+  expect(panel().getByText('The agent rejected this task.', { exact: true }).all()).toHaveLength(1)
+  await expect.element(panel().getByRole('alert')).not.toBeInTheDocument()
+  await expect.element(task()).not.toHaveAttribute('readonly')
+  await expect.element(panel().getByRole('button', { name: 'Run test', exact: true })).toBeEnabled()
 })
 
 it('keeps a closed test running, restores its input through the result toast, and leaves only when its page unmounts', async () => {

@@ -19,9 +19,9 @@ export function TestAgentResults({
   tab: TestAgentResultTab
   onTabChange: (tab: TestAgentResultTab) => void
 }) {
-  const { t, i18n } = useTranslation(['agentRoster'])
+  const { t, i18n } = useTranslation(['agentRoster', 'common'])
   const succeeded = run.status === 'succeeded'
-  const failed = run.status === 'failed'
+  const failed = run.status === 'failed' || run.status === 'error'
   const stopping = run.status === 'stopping'
   const stopped = run.status === 'stopped'
   const ended = run.status === 'ended'
@@ -33,6 +33,7 @@ export function TestAgentResults({
     succeeded: t(($) => $['external.overview.testRun.success']),
     failed: t(($) => $['external.overview.testRun.failed']),
     ended: t(($) => $['external.overview.testRun.ended']),
+    error: t(($) => $.error, { ns: 'common' }),
     unknown: t(($) => $['external.overview.testRun.unsupportedState']),
   }
   const outputs = run.result?.outputs
@@ -50,7 +51,9 @@ export function TestAgentResults({
   const numberFormat = new Intl.NumberFormat(i18n.language)
   return (
     <div className="flex shrink-0 flex-col gap-4">
-      <StatusContainer status={stopping ? 'running' : ended ? 'stopped' : run.status}>
+      <StatusContainer
+        status={failed ? 'failed' : stopping ? 'running' : ended ? 'stopped' : run.status}
+      >
         <dl className="relative grid grid-cols-3 gap-2">
           <div>
             <dt className="mb-1 system-2xs-medium-uppercase text-text-tertiary">
@@ -144,8 +147,10 @@ export function TestAgentResults({
                 </div>
               ))}
             </div>
-          ) : run.result?.error_message ? (
-            <p className="system-sm-regular text-text-destructive">{run.result.error_message}</p>
+          ) : run.errorMessage || run.result?.error_message ? (
+            <p className="system-sm-regular text-text-destructive">
+              {run.errorMessage || run.result?.error_message}
+            </p>
           ) : failed ? (
             <p className="system-sm-regular text-text-destructive">
               {t(($) => $['external.overview.testRun.failedToast'])}

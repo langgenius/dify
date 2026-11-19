@@ -20,7 +20,8 @@ type TestRequest = {
 }
 export type TestAgentRun = {
   result: ExternalTestStatusResponse | undefined
-  status: 'running' | 'stopping' | 'stopped' | 'ended' | 'unknown' | TestAgentRunOutcome
+  status: 'running' | 'stopping' | 'stopped' | 'ended' | 'unknown' | 'error' | TestAgentRunOutcome
+  errorMessage?: string | null
   elapsedSeconds: number | null
   currentInvocationId: string | undefined
   tracing: boolean
@@ -228,9 +229,10 @@ export function useTestAgentRun({
         return
       const status = getHttpErrorStatus(error)
       const unknown = status === undefined || status === 408 || status >= 500
-      const next = unknown ? { ...snapshot, unknown: true } : null
+      const next = { ...snapshot, unknown }
       requestRef.current = next
       setRequest(next)
+      setTab('result')
       setFailure(
         message(
           error,
@@ -296,19 +298,23 @@ export function useTestAgentRun({
     setFailure(null)
   }
   const state = result?.state
-  const status: TestAgentRun['status'] = activeRequest?.unknown
-    ? 'unknown'
-    : state === 'succeeded' || state === 'failed' || state === 'ended' || state === 'stopped'
-      ? state
-      : cancel.isPending || result?.metadata.cancellation_state === 'requested'
-        ? 'stopping'
-        : state === 'waiting' || state === 'retry_pending' || (activeRequest && start.isPending)
-          ? 'running'
-          : 'unknown'
+  const status: TestAgentRun['status'] =
+    activeRequest && start.isPending
+      ? 'running'
+      : activeRequest?.unknown || (activeRequest && !anchorId && failure)
+        ? 'error'
+        : state === 'succeeded' || state === 'failed' || state === 'ended' || state === 'stopped'
+          ? state
+          : cancel.isPending || result?.metadata.cancellation_state === 'requested'
+            ? 'stopping'
+            : state === 'waiting' || state === 'retry_pending'
+              ? 'running'
+              : 'unknown'
   const run: TestAgentRun | null = activeRequest
     ? {
         result,
         status,
+        errorMessage: failure,
         currentInvocationId: result?.invocation_id,
         tracing: activeRequest.tracing,
         fileAccess: result

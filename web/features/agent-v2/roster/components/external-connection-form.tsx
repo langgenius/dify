@@ -33,6 +33,8 @@ import { ExternalConnectionSteps } from './external-connection-steps'
 
 type ExternalConnectionFormProps = {
   initialSettings: ExternalConnectionSettings
+  savedSettings?: Pick<ExternalConnectionSettings, 'endpoint' | 'authentication'>
+  endpointDescription?: string
   verification: ExternalConnectionVerificationState
   endpointRef: RefObject<HTMLInputElement | null>
   onVerify: (settings: ExternalConnectionSettings) => void
@@ -48,6 +50,8 @@ function focusEndpoint(input: HTMLInputElement | null) {
 
 export function ExternalConnectionForm({
   initialSettings,
+  savedSettings,
+  endpointDescription,
   verification,
   endpointRef,
   onVerify,
@@ -62,6 +66,11 @@ export function ExternalConnectionForm({
   const submitLabelId = useId()
   const pending = verification.status === 'verifying'
   const verified = verification.status === 'verified'
+  const changed =
+    !savedSettings ||
+    draft.endpoint.trim() !== savedSettings.endpoint.trim() ||
+    draft.authentication !== savedSettings.authentication ||
+    (draft.authentication === 'bearer' && draft.token !== '')
   const options = [
     { value: 'none', label: t(($) => $['external.connection.none']) },
     { value: 'bearer', label: t(($) => $['external.connection.bearerToken']) },
@@ -95,7 +104,7 @@ export function ExternalConnectionForm({
           onContinue()
           return
         }
-        if (!executionEnabled) return
+        if (!executionEnabled || !changed) return
         onVerify({
           endpoint: values.endpoint.trim(),
           authentication: draft.authentication,
@@ -130,6 +139,7 @@ export function ExternalConnectionForm({
             maxLength={4096}
             required
           />
+          {endpointDescription && <FieldDescription>{endpointDescription}</FieldDescription>}
           <FieldValidity>
             {({ validity, error }) => (
               <FieldError>
@@ -237,7 +247,7 @@ export function ExternalConnectionForm({
           type="submit"
           variant="primary"
           loading={pending}
-          disabled={!verified && !executionEnabled}
+          disabled={!verified && (!executionEnabled || !changed)}
           aria-labelledby={submitLabelId}
         >
           <span id={submitLabelId}>
