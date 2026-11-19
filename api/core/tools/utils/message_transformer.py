@@ -1,6 +1,6 @@
 import logging
 import re
-from collections.abc import Generator
+from collections.abc import Generator, Mapping
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
@@ -8,6 +8,7 @@ from uuid import UUID
 from zoneinfo import ZoneInfo
 
 import numpy as np
+from pydantic import JsonValue
 
 from core.app.file_access import grant_tool_file_access
 from core.tools.entities.tool_entities import ToolInvokeMessage
@@ -56,9 +57,7 @@ def safe_json_value(v):
             return v
 
 
-def safe_json_dict(d: dict[str, Any]):
-    if not isinstance(d, dict):
-        raise TypeError("safe_json_dict() expects a dictionary (dict) as input")
+def safe_json_dict(d: Mapping[str, object]) -> dict[str, JsonValue]:
     return {k: safe_json_value(v) for k, v in d.items()}
 
 

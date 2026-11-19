@@ -1,11 +1,13 @@
 import json
+from collections.abc import Generator, Iterable
 from datetime import UTC, date, datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, ClassVar
 from uuid import uuid4
 
 import numpy as np
 import pytest
+from pydantic import BaseModel, JsonValue
 
 import core.tools.utils.message_transformer as mt
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
@@ -18,7 +20,7 @@ from models.tools import ToolFile
 class _FakeToolFileManager:
     """Fake ToolFileManager to capture the mimetype passed in."""
 
-    last_call: dict[str, Any] | None = None
+    last_call: ClassVar[dict[str, Any] | None] = None
 
     def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
         pass
@@ -32,8 +34,8 @@ class _FakeToolFileManager:
         file_binary: bytes,
         mimetype: str,
         filename: str | None = None,
-    ):
-        type(self).last_call = {
+    ) -> ToolFile:
+        _FakeToolFileManager.last_call = {
             "user_id": user_id,
             "tenant_id": tenant_id,
             "conversation_id": conversation_id,
@@ -54,14 +56,51 @@ class _FakeToolFileManager:
         return tool_file
 
 
-def _gen(messages):
+def _gen(messages: Iterable[ToolInvokeMessage]) -> Generator[ToolInvokeMessage]:
     yield from messages
+
+
+def _json_message_of(message: ToolInvokeMessage) -> ToolInvokeMessage.JsonMessage:
+    """Narrow a message payload to JsonMessage, since MessageType also covers non-JSON payloads."""
+    assert isinstance(message.message, ToolInvokeMessage.JsonMessage)
+    return message.message
+
+
+class _MetadataOut(BaseModel):
+    created_at: str
+    version: float
+    tags: list[str]
+
+
+class _DataOut(BaseModel):
+    values: list[float]
+    binary: str
+
+
+class _NestedInnerOut(BaseModel):
+    datetime: str
+    decimal: float
+
+
+class _NestedLevel2Out(BaseModel):
+    level2: _NestedInnerOut
+
+
+class _NestedPayload(BaseModel):
+    level1: _NestedLevel2Out
+
+
+class _SerializedIntegrationPayload(BaseModel):
+    """Shape of ``complex_data`` after serialization, so assertions read typed fields."""
+
+    metadata: _MetadataOut
+    data: _DataOut
 
 
 class TestMessageTransformerCases:
     @staticmethod
     @pytest.fixture(autouse=True)
-    def _patch_tool_file_manager(monkeypatch: pytest.MonkeyPatch):
+    def _patch_tool_file_manager(monkeypatch: pytest.MonkeyPatch) -> Generator[None]:
         # Patch the manager used inside the transformer module
         monkeypatch.setattr(mt, "ToolFileManager", _FakeToolFileManager)
         # also ensure predictable URL generation (no need to patch; uses id and extension only)
@@ -69,7 +108,7 @@ class TestMessageTransformerCases:
         _FakeToolFileManager.last_call = None
 
     @staticmethod
-    def test_transform_tool_invoke_messages_mimetype_key_present_but_none():
+    def test_transform_tool_invoke_messages_mimetype_key_present_but_none() -> None:
         # Arrange: a BLOB message whose meta contains a mime_type key set to None
         blob = b"hello"
         msg = ToolInvokeMessage(
@@ -100,11 +139,12 @@ class TestMessageTransformerCases:
         assert o.message.text.endswith(".bin")
         # meta is preserved (still contains mime_type: None)
         assert "mime_type" in (o.meta or {})
+        assert o.meta is not None
         assert o.meta["mime_type"] is None
         assert o.meta["tool_file_id"] == "fake-tool-file-id"
 
     @staticmethod
-    def test_transform_tool_invoke_messages_prefers_filename_extension_over_mimetype():
+    def test_transform_tool_invoke_messages_prefers_filename_extension_over_mimetype() -> None:
         msg = ToolInvokeMessage(
             type=ToolInvokeMessage.MessageType.BLOB,
             message=ToolInvokeMessage.BlobMessage(blob=b"docx"),
@@ -127,7 +167,7 @@ class TestMessageTransformerCases:
         assert out[0].message.text.endswith(".docx")
 
     @staticmethod
-    def test_transform_tool_invoke_messages_parses_existing_tool_file_link_meta():
+    def test_transform_tool_invoke_messages_parses_existing_tool_file_link_meta() -> None:
         msg = ToolInvokeMessage(
             type=ToolInvokeMessage.MessageType.IMAGE_LINK,
             message=ToolInvokeMessage.TextMessage(text="/files/tools/existing-tool-file.png"),
@@ -144,10 +184,11 @@ class TestMessageTransformerCases:
         )
 
         assert len(out) == 1
+        assert out[0].meta is not None
         assert out[0].meta["tool_file_id"] == "existing-tool-file"
 
     @staticmethod
-    def test_transform_tool_invoke_messages_grants_tool_file_to_current_end_user_scope():
+    def test_transform_tool_invoke_messages_grants_tool_file_to_current_end_user_scope() -> None:
         """Workflow-as-tool LLM nodes need a grant for plugin files (#41169)."""
         msg = ToolInvokeMessage(
             type=ToolInvokeMessage.MessageType.IMAGE_LINK,
@@ -180,7 +221,7 @@ class TestToolEngineSerializationCases:
     class TestSafeJsonValue:
         """Test suite for safe_json_value function to ensure proper serialization of complex types"""
 
-        def test_datetime_conversion(self):
+        def test_datetime_conversion(self) -> None:
             """Test datetime conversion with timezone handling"""
             # Test datetime with UTC timezone
             dt = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
@@ -197,27 +238,27 @@ class TestToolEngineSerializationCases:
             # Check that it's a valid ISO format datetime string
             assert len(result) >= 19  # At least YYYY-MM-DDTHH:MM:SS
 
-        def test_date_conversion(self):
+        def test_date_conversion(self) -> None:
             """Test date conversion to ISO format"""
             test_date = date(2024, 1, 1)
             result = safe_json_value(test_date)
             assert result == "2024-01-01"
 
-        def test_uuid_conversion(self):
+        def test_uuid_conversion(self) -> None:
             """Test UUID conversion to string"""
             test_uuid = uuid4()
             result = safe_json_value(test_uuid)
             assert isinstance(result, str)
             assert result == str(test_uuid)
 
-        def test_decimal_conversion(self):
+        def test_decimal_conversion(self) -> None:
             """Test Decimal conversion to float"""
             test_decimal = Decimal("123.456")
             result = safe_json_value(test_decimal)
             assert result == 123.456
             assert isinstance(result, float)
 
-        def test_bytes_conversion(self):
+        def test_bytes_conversion(self) -> None:
             """Test bytes conversion with UTF-8 decoding"""
             # Test valid UTF-8 bytes
             test_bytes = b"Hello, World!"
@@ -229,14 +270,14 @@ class TestToolEngineSerializationCases:
             result = safe_json_value(invalid_bytes)
             assert result == "fffefd"
 
-        def test_memoryview_conversion(self):
+        def test_memoryview_conversion(self) -> None:
             """Test memoryview conversion to hex string"""
             test_bytes = b"test data"
             test_memoryview = memoryview(test_bytes)
             result = safe_json_value(test_memoryview)
             assert result == "746573742064617461"  # hex of "test data"
 
-        def test_numpy_ndarray_conversion(self):
+        def test_numpy_ndarray_conversion(self) -> None:
             """Test numpy ndarray conversion to list"""
             # Test 1D array
             test_array = np.array([1, 2, 3, 4])
@@ -253,7 +294,7 @@ class TestToolEngineSerializationCases:
             result = safe_json_value(test_float_array)
             assert result == [1.5, 2.7, float("3.14")]
 
-        def test_dict_conversion(self):
+        def test_dict_conversion(self) -> None:
             """Test dictionary conversion using safe_json_dict"""
             test_dict = {
                 "string": "value",
@@ -267,7 +308,7 @@ class TestToolEngineSerializationCases:
             assert isinstance(result, dict)
             assert result == test_dict
 
-        def test_list_conversion(self):
+        def test_list_conversion(self) -> None:
             """Test list conversion with mixed types"""
             test_list = [
                 "string",
@@ -287,14 +328,14 @@ class TestToolEngineSerializationCases:
             assert isinstance(result[7], float)  # Decimal should be converted to float
             assert isinstance(result[8], str)  # UUID should be converted to string
 
-        def test_tuple_conversion(self):
+        def test_tuple_conversion(self) -> None:
             """Test tuple conversion to list"""
             test_tuple = (1, "string", float("3.14"))
             result = safe_json_value(test_tuple)
             assert isinstance(result, list)
             assert result == [1, "string", float("3.14")]
 
-        def test_set_conversion(self):
+        def test_set_conversion(self) -> None:
             """Test set conversion to list"""
             test_set = {1, "string", float("3.14")}
             result = safe_json_value(test_set)
@@ -305,7 +346,7 @@ class TestToolEngineSerializationCases:
             assert "string" in result
             assert float("3.14") in result
 
-        def test_basic_types_passthrough(self):
+        def test_basic_types_passthrough(self) -> None:
             """Test that basic types are passed through unchanged"""
             assert safe_json_value("string") == "string"
             assert safe_json_value(42) == 42
@@ -314,7 +355,7 @@ class TestToolEngineSerializationCases:
             assert safe_json_value(False) is False
             assert safe_json_value(None) is None
 
-        def test_nested_complex_structure(self):
+        def test_nested_complex_structure(self) -> None:
             """Test complex nested structure with all types"""
             complex_data = {
                 "dates": [date(2024, 1, 1), date(2024, 1, 2)],
@@ -350,7 +391,7 @@ class TestToolEngineSerializationCases:
     class TestSafeJsonDict:
         """Test suite for safe_json_dict function"""
 
-        def test_valid_dict_conversion(self):
+        def test_valid_dict_conversion(self) -> None:
             """Test valid dictionary conversion"""
             test_dict = {
                 "string": "value",
@@ -365,23 +406,12 @@ class TestToolEngineSerializationCases:
             assert isinstance(result["datetime"], str)
             assert isinstance(result["decimal"], float)
 
-        def test_invalid_input_type(self):
-            """Test that invalid input types raise TypeError"""
-            with pytest.raises(TypeError, match="safe_json_dict\\(\\) expects a dictionary \\(dict\\) as input"):
-                safe_json_dict("not a dict")
-
-            with pytest.raises(TypeError, match="safe_json_dict\\(\\) expects a dictionary \\(dict\\) as input"):
-                safe_json_dict([1, 2, 3])
-
-            with pytest.raises(TypeError, match="safe_json_dict\\(\\) expects a dictionary \\(dict\\) as input"):
-                safe_json_dict(42)
-
-        def test_empty_dict(self):
+        def test_empty_dict(self) -> None:
             """Test empty dictionary handling"""
             result = safe_json_dict({})
             assert result == {}
 
-        def test_nested_dict_conversion(self):
+        def test_nested_dict_conversion(self) -> None:
             """Test nested dictionary conversion"""
             test_dict = {
                 "level1": {
@@ -391,14 +421,14 @@ class TestToolEngineSerializationCases:
                     }
                 }
             }
-            result = safe_json_dict(test_dict)
-            assert isinstance(result["level1"]["level2"]["datetime"], str)
-            assert isinstance(result["level1"]["level2"]["decimal"], float)
+            nested = _NestedPayload.model_validate(safe_json_dict(test_dict))
+            assert nested.level1.level2.datetime == "2024-01-01T12:00:00+00:00"
+            assert nested.level1.level2.decimal == 123.456
 
     class TestToolInvokeMessageJsonSerialization:
         """Test suite for ToolInvokeMessage JSON serialization through safe_json_value"""
 
-        def test_json_message_serialization(self):
+        def test_json_message_serialization(self) -> None:
             """Test JSON message serialization with complex data"""
             complex_data = {
                 "timestamp": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
@@ -413,7 +443,7 @@ class TestToolEngineSerializationCases:
             message = ToolInvokeMessage(type=ToolInvokeMessage.MessageType.JSON, message=json_message)
 
             # Apply safe_json_value transformation
-            transformed_data = safe_json_value(message.message.json_object)
+            transformed_data = safe_json_value(_json_message_of(message).json_object)
 
             # Verify transformations
             assert isinstance(transformed_data["timestamp"], str)
@@ -431,7 +461,7 @@ class TestToolEngineSerializationCases:
             assert deserialized["amount"] == 123.45
             assert deserialized["array"] == [1, 2, 3]
 
-        def test_json_message_with_nested_structures(self):
+        def test_json_message_with_nested_structures(self) -> None:
             """Test JSON message with deeply nested complex structures"""
             nested_data = {
                 "level1": {
@@ -450,7 +480,7 @@ class TestToolEngineSerializationCases:
             message = ToolInvokeMessage(type=ToolInvokeMessage.MessageType.JSON, message=json_message)
 
             # Transform the data
-            transformed_data = safe_json_value(message.message.json_object)
+            transformed_data = safe_json_value(_json_message_of(message).json_object)
 
             # Verify nested transformations
             level3 = transformed_data["level1"]["level2"]["level3"]
@@ -467,7 +497,7 @@ class TestToolEngineSerializationCases:
             deserialized = json.loads(json_string)
             assert deserialized["level1"]["level2"]["level3"]["numbers"] == [1.1, 2.2]
 
-        def test_json_message_transformer_integration(self):
+        def test_json_message_transformer_integration(self) -> None:
             """Test integration with ToolFileMessageTransformer for JSON messages"""
             complex_data = {
                 "metadata": {
@@ -479,7 +509,7 @@ class TestToolEngineSerializationCases:
             }
 
             # Create message generator
-            def message_generator():
+            def message_generator() -> Generator[ToolInvokeMessage]:
                 json_message = ToolInvokeMessage.JsonMessage(json_object=complex_data)
                 message = ToolInvokeMessage(type=ToolInvokeMessage.MessageType.JSON, message=json_message)
                 yield message
@@ -496,14 +526,15 @@ class TestToolEngineSerializationCases:
             assert transformed_message.type == ToolInvokeMessage.MessageType.JSON
 
             # Verify the JSON object was transformed
-            json_obj = transformed_message.message.json_object
-            assert isinstance(json_obj["metadata"]["created_at"], str)
-            assert isinstance(json_obj["metadata"]["version"], float)
-            assert isinstance(json_obj["data"]["values"], list)
-            assert isinstance(json_obj["data"]["binary"], str)
+            payload = _SerializedIntegrationPayload.model_validate(_json_message_of(transformed_message).json_object)
+            assert payload.metadata.created_at == "2024-01-01T12:00:00+00:00"
+            assert payload.metadata.version == 1.0
+            assert payload.metadata.tags == ["tag1", "tag2"]
+            assert payload.data.values == [1.1, 2.2, 3.3]
+            assert payload.data.binary == "binary content"
 
             # Test final JSON serialization
-            final_json = json.dumps(json_obj, ensure_ascii=False)
+            final_json = json.dumps(_json_message_of(transformed_message).json_object, ensure_ascii=False)
             assert isinstance(final_json, str)
 
             # Verify we can deserialize
@@ -511,7 +542,7 @@ class TestToolEngineSerializationCases:
             assert deserialized["metadata"]["version"] == 1.0
             assert deserialized["data"]["values"] == [1.1, 2.2, 3.3]
 
-        def test_edge_cases_and_error_handling(self):
+        def test_edge_cases_and_error_handling(self) -> None:
             """Test edge cases and error handling in JSON serialization"""
             # Test with None values
             data_with_none = {"null_value": None, "empty_string": "", "zero": 0, "false_value": False}
@@ -519,7 +550,7 @@ class TestToolEngineSerializationCases:
             json_message = ToolInvokeMessage.JsonMessage(json_object=data_with_none)
             message = ToolInvokeMessage(type=ToolInvokeMessage.MessageType.JSON, message=json_message)
 
-            transformed_data = safe_json_value(message.message.json_object)
+            transformed_data = safe_json_value(_json_message_of(message).json_object)
             json_string = json.dumps(transformed_data, ensure_ascii=False)
 
             # Verify serialization works with edge cases
@@ -540,7 +571,7 @@ class TestToolEngineSerializationCases:
             json_message = ToolInvokeMessage.JsonMessage(json_object=large_data)
             message = ToolInvokeMessage(type=ToolInvokeMessage.MessageType.JSON, message=json_message)
 
-            transformed_data = safe_json_value(message.message.json_object)
+            transformed_data = safe_json_value(_json_message_of(message).json_object)
             json_string = json.dumps(transformed_data, ensure_ascii=False)
 
             # Verify large numbers are handled correctly
@@ -552,7 +583,7 @@ class TestToolEngineSerializationCases:
     class TestEndToEndSerialization:
         """Test suite for end-to-end serialization workflow"""
 
-        def test_complete_workflow_with_real_data(self):
+        def test_complete_workflow_with_real_data(self) -> None:
             """Test complete workflow from complex data to JSON string and back"""
             # Simulate real-world complex data structure
             real_world_data = {
@@ -597,7 +628,7 @@ class TestToolEngineSerializationCases:
             message = ToolInvokeMessage(type=ToolInvokeMessage.MessageType.JSON, message=json_message)
 
             # Step 2: Apply safe_json_value transformation
-            transformed_data = safe_json_value(message.message.json_object)
+            transformed_data = safe_json_value(_json_message_of(message).json_object)
 
             # Step 3: Serialize to JSON string
             json_string = json.dumps(transformed_data, ensure_ascii=False)
@@ -623,7 +654,7 @@ class TestToolEngineSerializationCases:
             # Step 7: Verify all complex types were properly converted
             self._verify_all_complex_types_converted(deserialized_data)
 
-        def _verify_all_complex_types_converted(self, data):
+        def _verify_all_complex_types_converted(self, data: JsonValue) -> None:
             """Helper method to verify all complex types were properly converted"""
             match data:
                 case dict():

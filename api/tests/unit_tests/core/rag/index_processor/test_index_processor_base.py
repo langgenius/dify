@@ -1,4 +1,4 @@
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import override
@@ -13,12 +13,11 @@ from sqlalchemy.orm import Session
 from core.entities.knowledge_entities import PreviewDetail
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.index_processor.constant.doc_type import DocType
-from core.rag.index_processor.index_processor_base import BaseIndexProcessor, SummaryIndexSettingDict
+from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import AttachmentDocument, Document
 from extensions.storage.storage_type import StorageType
 from models.account import Account
 from models.dataset import Dataset
-from models.dataset import Document as DatasetDocument
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.tools import ToolFile
@@ -61,89 +60,57 @@ def _account() -> Account:
     return account
 
 
+def _image_response(
+    url: str,
+    *,
+    headers: Mapping[str, str],
+    content: bytes = b"",
+    stream: httpx.SyncByteStream | None = None,
+) -> httpx.Response:
+    """Build a real httpx response so ``_download_image`` runs against actual httpx behavior."""
+    request = httpx.Request("GET", url)
+    if stream is not None:
+        return httpx.Response(200, headers=headers, stream=stream, request=request)
+    return httpx.Response(200, headers=headers, content=content, request=request)
+
+
 class _ForwardingBaseIndexProcessor(BaseIndexProcessor):
-    """Call the abstract base implementations so their NotImplementedError can be asserted.
-
-    The base methods are abstract, so they are called through the class explicitly;
-    pyrefly rejects `super()` calls to abstract methods without an implementation.
-    """
+    """Forwards every abstract method to ``BaseIndexProcessor`` so the abstract bodies can be exercised."""
 
     @override
-    def extract(self, extract_setting: ExtractSetting, *, session: Session, **kwargs: object) -> list[Document]:
-        return BaseIndexProcessor.extract(self, extract_setting, session=session, **kwargs)
+    def extract[**P](self, *args: P.args, **kwargs: P.kwargs) -> list[Document]:
+        forwarded: Callable[..., list[Document]] = BaseIndexProcessor.extract
+        return forwarded(self, *args, **kwargs)
 
     @override
-    def transform(
-        self,
-        documents: list[Document],
-        current_user: Account | None = None,
-        *,
-        session: Session,
-        **kwargs: object,
-    ) -> list[Document]:
-        return BaseIndexProcessor.transform(self, documents, current_user=current_user, session=session, **kwargs)
+    def transform[**P](self, *args: P.args, **kwargs: P.kwargs) -> list[Document]:
+        forwarded: Callable[..., list[Document]] = BaseIndexProcessor.transform
+        return forwarded(self, *args, **kwargs)
 
     @override
-    def generate_summary_preview(
-        self,
-        tenant_id: str,
-        preview_texts: list[PreviewDetail],
-        summary_index_setting: SummaryIndexSettingDict,
-        doc_language: str | None = None,
-        *,
-        session: Session,
-    ) -> list[PreviewDetail]:
-        return BaseIndexProcessor.generate_summary_preview(
-            self,
-            tenant_id=tenant_id,
-            preview_texts=preview_texts,
-            summary_index_setting=summary_index_setting,
-            doc_language=doc_language,
-            session=session,
-        )
+    def generate_summary_preview[**P](self, *args: P.args, **kwargs: P.kwargs) -> list[PreviewDetail]:
+        forwarded: Callable[..., list[PreviewDetail]] = BaseIndexProcessor.generate_summary_preview
+        return forwarded(self, *args, **kwargs)
 
     @override
-    def load(
-        self,
-        dataset: Dataset,
-        documents: list[Document],
-        multimodal_documents: list[AttachmentDocument] | None = None,
-        with_keywords: bool = True,
-        *,
-        session: Session,
-        **kwargs: object,
-    ) -> None:
-        return BaseIndexProcessor.load(
-            self,
-            dataset=dataset,
-            documents=documents,
-            multimodal_documents=multimodal_documents,
-            with_keywords=with_keywords,
-            session=session,
-            **kwargs,
-        )
+    def load[**P](self, *args: P.args, **kwargs: P.kwargs) -> None:
+        forwarded: Callable[..., None] = BaseIndexProcessor.load
+        return forwarded(self, *args, **kwargs)
 
     @override
-    def clean(
-        self,
-        dataset: Dataset,
-        node_ids: list[str] | None,
-        with_keywords: bool = True,
-        *,
-        session: Session,
-        **kwargs: object,
-    ) -> None:
-        return BaseIndexProcessor.clean(
-            self, dataset=dataset, node_ids=node_ids, with_keywords=with_keywords, session=session, **kwargs
-        )
+    def clean[**P](self, *args: P.args, **kwargs: P.kwargs) -> None:
+        forwarded: Callable[..., None] = BaseIndexProcessor.clean
+        return forwarded(self, *args, **kwargs)
 
     @override
-    def index(self, dataset: Dataset, document: DatasetDocument, chunks: object, session: Session) -> None:
-        return BaseIndexProcessor.index(self, dataset=dataset, document=document, chunks=chunks, session=session)
+    def index[**P](self, *args: P.args, **kwargs: P.kwargs) -> None:
+        forwarded: Callable[..., None] = BaseIndexProcessor.index
+        return forwarded(self, *args, **kwargs)
 
     @override
-    def format_preview(self, chunks: object) -> Mapping[str, object]:
-        return BaseIndexProcessor.format_preview(self, chunks)
+    def format_preview[**P](self, *args: P.args, **kwargs: P.kwargs) -> Mapping[str, object]:
+        forwarded: Callable[..., Mapping[str, object]] = BaseIndexProcessor.format_preview
+        return forwarded(self, *args, **kwargs)
 
 
 class TestBaseIndexProcessor:
@@ -341,14 +308,15 @@ class TestBaseIndexProcessor:
         content_disposition: str,
         expected_filename: str,
     ) -> None:
-        response = Mock()
-        response.headers = {
-            "Content-Length": "4",
-            "content-disposition": content_disposition,
-            "content-type": "image/png",
-        }
-        response.raise_for_status.return_value = None
-        response.iter_bytes.return_value = [b"data"]
+        response = _image_response(
+            "https://example.com/test.png",
+            headers={
+                "Content-Length": "4",
+                "content-disposition": content_disposition,
+                "content-type": "image/png",
+            },
+            content=b"data",
+        )
         upload_result = _upload(upload_id=str(uuid4()), name=expected_filename)
         current_user = _account()
 
@@ -372,29 +340,28 @@ class TestBaseIndexProcessor:
         )
 
     def test_download_image_validates_size_and_empty_content(self, processor: _ForwardingBaseIndexProcessor) -> None:
-        too_large = httpx.Response(
-            200,
+        too_large = _image_response(
+            "https://example.com/too-large.png",
             headers={"Content-Length": str(3 * 1024 * 1024), "content-type": "image/png"},
-            content=b"",
         )
 
         with patch("core.rag.index_processor.index_processor_base.remote_fetcher.make_request", return_value=too_large):
             assert processor._download_image("https://example.com/too-large.png", current_user=_account()) is None
 
-        empty = httpx.Response(
-            200,
+        empty = _image_response(
+            "https://example.com/empty.png",
             headers={"Content-Length": "0", "content-type": "image/png"},
-            content=b"",
         )
 
         with patch("core.rag.index_processor.index_processor_base.remote_fetcher.make_request", return_value=empty):
             assert processor._download_image("https://example.com/empty.png", current_user=_account()) is None
 
     def test_download_image_limits_stream_size(self, processor: _ForwardingBaseIndexProcessor) -> None:
-        response = Mock()
-        response.headers = {"content-type": "image/png"}
-        response.raise_for_status.return_value = None
-        response.iter_bytes.return_value = [b"a" * (3 * 1024 * 1024)]
+        response = _image_response(
+            "https://example.com/big-stream.png",
+            headers={"content-type": "image/png"},
+            stream=httpx.ByteStream(b"a" * (3 * 1024 * 1024)),
+        )
 
         with patch("core.rag.index_processor.index_processor_base.remote_fetcher.make_request", return_value=response):
             assert processor._download_image("https://example.com/big-stream.png", current_user=_account()) is None
