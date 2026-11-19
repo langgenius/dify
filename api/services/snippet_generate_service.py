@@ -253,9 +253,15 @@ class SnippetGenerateService:
 
         app_proxy = cast(App, _SnippetAsApp(snippet))
 
-        response = EvaluationWorkflowGenerator(execution_driver=WorkflowRunAgg.run).generate(
+        from extensions.application_services.workflow import build_workflow_execution_dependencies
+        from repositories.workflow.definition_repository import workflow_snapshot
+
+        response = EvaluationWorkflowGenerator(
+            runtime=build_workflow_execution_dependencies(session_maker or session_factory.get_session_maker()),
+            execution_driver=WorkflowRunAgg.run,
+        ).generate(
             app_model=app_proxy,
-            workflow=workflow,
+            workflow=workflow_snapshot(workflow),
             user=user,
             execution_identity=build_workflow_execution_identity(user),
             args=args,

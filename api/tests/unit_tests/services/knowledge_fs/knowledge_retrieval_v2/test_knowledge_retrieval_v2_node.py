@@ -15,7 +15,6 @@ from sqlalchemy.orm import Session
 
 from core.app.apps.exc import ModerationInvocationError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.workflow.node_factory import resolve_workflow_node_class
 from core.workflow.system_variables import build_system_variables
 from graphon.engine_events.node import NodeRunFailedEvent
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -59,6 +58,7 @@ from services.moderation_invocation_errors import (
     ModerationRejectedInvocationError,
     ModerationUnavailableInvocationError,
 )
+from services.workflow.execution.adapters.node_factory import resolve_workflow_node_class
 from tasks import knowledge_fs_failed_retrieval_tasks as failed_retrieval_dependencies
 from tests.workflow_test_utils import build_test_graph_init_params
 

@@ -2468,7 +2468,9 @@ def test_run_single_app_target_loads_pinned_workflow_version(
 
     assert result["workflow_run_id"] == "workflow-run-1"
     assert workflow_requests == [(app, "workflow-version-7", sqlite_session)]
-    assert generated_requests[0]["workflow"] is workflow
+    from repositories.workflow.definition_repository import workflow_snapshot
+
+    assert generated_requests[0]["workflow"] == workflow_snapshot(workflow)
     assert generated_requests[0]["task_id"] == EvaluationService.workflow_task_id("run-1", "target", 0)
     assert generated_requests[0]["capture_agent_evaluation_trace"] is True
     assert execution_drivers == [WorkflowRunAgg.run]

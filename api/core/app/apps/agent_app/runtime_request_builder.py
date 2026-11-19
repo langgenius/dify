@@ -41,20 +41,6 @@ from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
 from core.app.llm import model_access
 from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
 from core.workflow.file_reference import build_file_reference, is_canonical_file_reference
-from core.workflow.nodes.agent_v2.dify_tools_builder import (
-    WorkflowAgentDifyToolLayersBuilder,
-    WorkflowAgentDifyToolsBuilder,
-    WorkflowAgentDifyToolsBuildError,
-    WorkflowAgentToolLayers,
-)
-from core.workflow.nodes.agent_v2.runtime_request_builder import (
-    append_runtime_warnings,
-    build_config_aware_soul_mention_resolver,
-    build_config_layer_config,
-    build_knowledge_layer_config,
-    build_shell_layer_config,
-    load_runtime_agent_skill_configs,
-)
 from core.workflow.nodes.agent_v2.tool_snapshot import (
     AgentRuntimeToolDefinition,
     build_runtime_tool_definitions,
@@ -66,6 +52,19 @@ from models.agent_config_entities import AgentKnowledgeSpaceConfig, AgentSoulCon
 from models.provider_ids import ModelProviderID
 from services.agent.knowledge_runtime_config import build_knowledge_fs_layer_config
 from services.agent.prompt_mentions import expand_prompt_mentions
+from services.workflow.execution.adapters.agent_v2.dify_tools_builder import (
+    WorkflowAgentDifyToolLayersBuilder,
+    WorkflowAgentDifyToolsBuildError,
+    WorkflowAgentToolLayers,
+)
+from services.workflow.execution.adapters.agent_v2.runtime_request_builder import (
+    append_runtime_warnings,
+    build_config_aware_soul_mention_resolver,
+    build_config_layer_config,
+    build_knowledge_layer_config,
+    build_shell_layer_config,
+    load_runtime_agent_skill_configs,
+)
 
 
 class AgentAppRuntimeRequestBuildError(ValueError):
@@ -117,10 +116,10 @@ class AgentAppRuntimeRequestBuilder:
         self,
         *,
         request_builder: AgentBackendRunRequestBuilder | None = None,
-        dify_tools_builder: WorkflowAgentDifyToolLayersBuilder | None = None,
+        dify_tools_builder: WorkflowAgentDifyToolLayersBuilder,
     ) -> None:
         self._request_builder = request_builder or AgentBackendRunRequestBuilder()
-        self._dify_tools_builder = dify_tools_builder or WorkflowAgentDifyToolsBuilder()
+        self._dify_tools_builder = dify_tools_builder
 
     def build(self, context: AgentAppRuntimeBuildContext) -> AgentAppRuntimeRequest:
         agent_soul = context.agent_soul

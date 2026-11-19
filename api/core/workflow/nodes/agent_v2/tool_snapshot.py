@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from .dify_tools_builder import WorkflowAgentToolLayers
+if TYPE_CHECKING:
+    from services.workflow.execution.adapters.agent_v2.dify_tools_builder import WorkflowAgentToolLayers
 
 
 @dataclass(frozen=True, slots=True)

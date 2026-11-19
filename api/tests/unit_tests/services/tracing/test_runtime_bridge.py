@@ -29,10 +29,8 @@ from sqlalchemy import URL, Engine, create_engine, delete, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeBuildContext
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeBuildContext
 from domain.tracing.trace_run_agg import TraceRunState, TraceSourceKind
 from extensions.tracing import application_tracing_hooks, bind_tracing
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
@@ -63,6 +61,7 @@ from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfi
 from repositories.application_trace_repository import ApplicationTraceRepository
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.trace_record_repository import TraceRecordRepository
+from services.app.generation.adapters.agent_request_builder import AgentAppRuntimeBuildContext
 from services.tracing.adapters import StoredPolicyTraceScopes
 from services.tracing.canonical import CanonicalTraceBuilder
 from services.tracing.collection import AgentTraceSettings, AppTracingSnapshot, TraceRun, workflow_has_agent_v2
@@ -73,6 +72,7 @@ from services.tracing.records import WorkflowTraceInfo
 from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
 from services.tracing.scopes import TraceScopes
 from services.tracing.service import ApplicationTracingService
+from services.workflow.execution.adapters.agent_v2.runtime_request_builder import WorkflowAgentRuntimeBuildContext
 from tests.helpers.unit.model_factories import (
     make_account,
     make_app,

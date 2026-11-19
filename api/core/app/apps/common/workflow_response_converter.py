@@ -64,7 +64,6 @@ from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.nodes.human_input_v2.presentation import build_human_input_v2_pause_reason
 from core.workflow.nodes.human_input_v2.runtime import PreparedForm
 from core.workflow.system_variables import SystemVariableKey, system_variables_to_mapping
-from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from graphon.entities import WorkflowStartReason
 from graphon.enums import (
@@ -86,6 +85,7 @@ from models.provider_ids import TriggerProviderID
 from models.utils.trigger_endpoint import generate_trigger_plugin_icon_url
 from models.workflow import WorkflowRun
 from services.variable_truncator import BaseTruncator, DummyVariableTruncator, VariableTruncator
+from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
 
 # Live responses target the initiating entry. None explicitly means there is no
 # interactive form response surface; later access uses the endpoint's surface.

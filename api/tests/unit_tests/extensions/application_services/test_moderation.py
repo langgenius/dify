@@ -9,7 +9,6 @@ from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguratio
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
 from core.model_manager import ModelInstance, ModelManager, QuotaManagedModelInstance
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_model_manager
-from core.workflow.node_runtime import DifyPreparedPollingLLM
 from enums import DeploymentEdition
 from extensions.application_services.moderation import (
     build_llm_moderation_guard,
@@ -32,6 +31,7 @@ from services.agent_llm_inner_service import AgentLLMInnerService, PreparedAgent
 from services.entities.agent_llm_inner import AgentLLMInvokeCaller, AgentLLMInvokeRequest, AgentLLMInvokeTarget
 from services.moderation_adapters import ChainedLLMModerationPolicy, LLMModerationGuard
 from services.moderation_service import ModerationRejectedError, ModerationRule, ModerationService
+from services.workflow.execution.adapters.node_runtime import DifyPreparedPollingLLM
 from tests.helpers.unit.core.model_fixtures import make_model_config
 from tests.helpers.unit.core.model_moderation_fixtures import (
     RecordingPollingRuntime,

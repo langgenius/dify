@@ -12,7 +12,6 @@ from pydantic import BaseModel, Field, ValidationInfo, field_validator
 from pydantic_core import PydanticCustomError
 
 from core.human_input_v2.entities import DebugChannel
-from core.workflow.node_factory import resolve_workflow_node_class
 from core.workflow.nodes.human_input_v2.entities import (
     HUMAN_INPUT_V2_VERSION,
     DebugModeConfig,
@@ -24,6 +23,7 @@ from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
 from models.human_input_delivery import DeliveryChannelConfig, EmailDeliveryConfig
 from models.human_input_entities import HumanInputNodeData
+from services.workflow.execution.adapters.node_factory import resolve_workflow_node_class
 
 # Only empty containers: values the editor reads without a guard and that mean "none yet".
 EDITOR_EMPTY: Final[Mapping[str, Mapping[str, object]]] = {

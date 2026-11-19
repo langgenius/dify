@@ -9,12 +9,12 @@ from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.workflow.agent_log_events import AgentLogEvent, NodeRunAgentLogEvent
 from core.workflow.nodes.agent.entities import AgentNodeData
 from core.workflow.nodes.agent.message_transformer import AgentMessageTransformer
-from core.workflow.nodes.agent.runtime_support import AgentRuntimeSupport
 from graphon.engine_events import NodeRunStreamChunkEvent
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from graphon.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 from graphon.runtime import InitParams, RuntimeState, VariablePool
 from services.workflow.execution.adapters.agent_node import AgentNode
+from services.workflow.execution.adapters.agent_runtime import AgentRuntimeSupport
 
 
 class _RecordingStrategy:
@@ -66,7 +66,7 @@ def test_dispatch_converts_agent_events_and_delegates_other_events() -> None:
         strategy_resolver=_StrategyResolver(_RecordingStrategy()),
         presentation_provider=_PresentationProvider(),
         runtime_support=AgentRuntimeSupport(),
-        message_transformer=AgentMessageTransformer(),
+        message_transformer=AgentMessageTransformer(provider_icons=lambda _provider, icon: (icon, None)),
     )
     node._node_execution_id = "execution-id"
 
@@ -135,7 +135,7 @@ def test_run_captures_tool_snapshots_only_for_evaluation(
     monkeypatch.setattr(runtime_support, "build_credentials", lambda **_kwargs: None)
 
     completed_event = StreamCompletedEvent(node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED))
-    message_transformer = AgentMessageTransformer()
+    message_transformer = AgentMessageTransformer(provider_icons=lambda _provider, icon: (icon, None))
     transform_calls: list[dict[str, object]] = []
 
     def transform(**kwargs: object) -> Generator[StreamCompletedEvent]:
@@ -174,7 +174,7 @@ def test_run_captures_tool_snapshots_only_for_evaluation(
     )
     node._node_execution_id = "execution-id"
 
-    with caplog.at_level(logging.WARNING, logger="core.workflow.nodes.agent.agent_node"):
+    with caplog.at_level(logging.WARNING, logger="services.workflow.execution.adapters.agent_node"):
         events = list(node._run())
 
     assert events == [completed_event]

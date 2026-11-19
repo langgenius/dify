@@ -2698,10 +2698,16 @@ class EvaluationService:
                     f"Pinned workflow version {target_workflow_version_id} no longer exists for app {target_id}."
                 )
 
-            response: Mapping[str, object] = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
+            from extensions.application_services.workflow import build_workflow_execution_dependencies
+            from repositories.workflow.definition_repository import workflow_snapshot
+
+            response: Mapping[str, object] = WorkflowAppGenerator(
+                runtime=build_workflow_execution_dependencies(session_factory.get_session_maker()),
+                execution_driver=WorkflowRunAgg.run,
+            ).generate(
                 execution_identity=build_workflow_execution_identity(service_account),
                 app_model=app,
-                workflow=workflow,
+                workflow=workflow_snapshot(workflow),
                 user=service_account,
                 args={"inputs": item.inputs},
                 invoke_from=InvokeFrom.SERVICE_API,

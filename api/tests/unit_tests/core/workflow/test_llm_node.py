@@ -5,10 +5,14 @@ import pytest
 
 from core.helper.ssrf_proxy import graphon_ssrf_proxy
 from core.workflow.llm_node import DifyLLMNode
-from core.workflow.node_runtime import DifyPreparedPollingLLM, DifyPromptMessageSerializer, build_dify_llm_file_saver
 from graphon.nodes.llm.entities import LLMNodeData
 from graphon.nodes.llm.node import LLMNode
 from graphon.runtime import RuntimeState
+from services.workflow.execution.adapters.node_runtime import (
+    DifyPreparedPollingLLM,
+    DifyPromptMessageSerializer,
+    build_dify_llm_file_saver,
+)
 from tests.helpers.unit.core.model_fixtures import make_model_instance
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_run_context, build_test_variable_pool
 
