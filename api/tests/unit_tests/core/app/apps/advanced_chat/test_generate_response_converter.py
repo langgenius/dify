@@ -3,7 +3,6 @@ from typing import Literal
 
 import pytest
 
-from core.app.apps.advanced_chat.generate_response_converter import AdvancedChatAppGenerateResponseConverter
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import (
     AdvancedChatPausedBlockingResponse,
@@ -18,6 +17,9 @@ from core.app.entities.task_entities import (
 )
 from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from services.workflow.execution.adapters.chatflow.generate_response_converter import (
+    AdvancedChatAppGenerateResponseConverter,
+)
 
 
 class TestAdvancedChatGenerateResponseConverter:

@@ -2,7 +2,6 @@ from collections.abc import Generator
 
 import pytest
 
-from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import (
     ErrorStreamResponse,
@@ -14,6 +13,9 @@ from core.app.entities.task_entities import (
     WorkflowAppStreamResponse,
 )
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from services.workflow.execution.adapters.workflow.generate_response_converter import (
+    WorkflowAppGenerateResponseConverter,
+)
 
 
 class TestWorkflowGenerateResponseConverter:
