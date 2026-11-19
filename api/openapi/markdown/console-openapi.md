@@ -27200,6 +27200,8 @@ stays open because ``HTTPException.data`` may carry extra keys.
 
 #### EvaluationRunResponse
 
+Expose the model pinned in the run snapshot, independent of later config edits.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | completed_at | integer |  | No |
@@ -27209,6 +27211,8 @@ stays open because ``HTTPException.data`` may carry extra keys.
 | dataset_file_id | string |  | No |
 | error | string |  | No |
 | evaluation_config_id | string |  | Yes |
+| evaluation_model | string |  | No |
+| evaluation_model_provider | string |  | No |
 | failed_items | integer |  | Yes |
 | id | string |  | Yes |
 | metrics_summary | object |  | No |
