@@ -9,12 +9,14 @@ from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
+from repositories.plugin_permission_repository import SQLAlchemyPluginPermissionRepository
 from repositories.workspace.resource_cleanup_repository import WorkspaceResourceCleanupRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.account.adapters import RedisInvitationTokenStore
 from services.file_service import FileService
 from services.plugin.plugin_parameter_gateway import DaemonPluginParameterGateway
 from services.plugin.plugin_parameter_service import PluginParameterService, PluginParameterSubscriptions
+from services.plugin.plugin_permission_settings_service import PluginPermissionSettingsService
 from services.trigger.provider_loader import PluginTriggerProviderLoader
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderQuery
 from services.workspace.gateways import (
@@ -53,6 +55,7 @@ class WorkspaceServices:
     identity: WorkspaceIdentityGateway
     resource_cleanup: WorkspaceResourceCleanupService
     plugin_parameters: PluginParameterService
+    plugin_permissions: PluginPermissionSettingsService
 
 
 def build_workspace_membership_services(
@@ -133,5 +136,8 @@ def build_workspace_services(
             subscriptions=trigger_subscriptions,
             builders=trigger_builders,
             plugins=DaemonPluginParameterGateway(providers=trigger_providers),
+        ),
+        plugin_permissions=PluginPermissionSettingsService(
+            settings=SQLAlchemyPluginPermissionRepository(session_factory=database_client),
         ),
     )

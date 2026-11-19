@@ -16880,6 +16880,15 @@ Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/permission/change
+**Replace the active workspace's plugin permission settings**
+
+Preconditions: admission yielded an initialized account with an active
+workspace, and the payload validated.
+Postconditions: returns ``{"success": True}`` after the settings commit.
+Raises ``Forbidden`` before any write when ``Account.is_admin_or_owner``
+rejects the admitted account. As before, that property admits every role
+when RBAC is enabled.
+
 #### Request Body
 
 | Required | Schema |
@@ -16894,6 +16903,11 @@ Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/permission/fetch
+**Return the active workspace's effective plugin permission settings**
+
+Postconditions: returns the stored settings, or install by admins and debug
+by everyone when the workspace has none. No state changes.
+
 #### Responses
 
 | Code | Description | Schema |

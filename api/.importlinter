@@ -959,6 +959,38 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
+[importlinter:contract:plugin-permission-settings-service-boundary]
+name = Plugin permission settings application service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.plugin.plugin_permission_settings_service
+forbidden_modules =
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
+[importlinter:contract:console-plugin-permission-controller-boundary]
+name = Console plugin permission controller reaches persistence only through the composition root
+type = forbidden
+source_modules =
+    controllers.console.workspace.plugin_permission
+forbidden_modules =
+    extensions.ext_database
+    models
+    repositories
+    services.plugin.plugin_permission_service
+    sqlalchemy
+# The composition root (extensions.ext_application_services) wires repositories,
+# so only direct imports are checked here.
+allow_indirect_imports = True
+
 [importlinter:contract:api-based-extension-application-service-boundary]
 name = API-based extension application service is framework and persistence neutral
 type = forbidden

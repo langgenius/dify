@@ -1107,6 +1107,42 @@ def test_build_application_services_groups_dataset_services_and_reuses_repositor
     assert services.workspaces.member_queries._members is dataset_access._workspace_roles
 
 
+def test_build_application_services_wires_plugin_permission_settings(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    from enums.plugin_permission import TenantPluginDebugPermission, TenantPluginInstallPermission
+    from machinery.context import RequestContext
+    from repositories.plugin_permission_repository import SQLAlchemyPluginPermissionRepository
+    from services.plugin.plugin_permission_settings_service import (
+        DEFAULT_PLUGIN_PERMISSION_SETTINGS,
+        PluginPermissionSettings,
+    )
+
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=_redis(),
+    )
+    permissions = services.workspaces.plugin_permissions
+    context = RequestContext(
+        request_id="req-1",
+        trace_id=None,
+        account_id=str(uuid4()),
+        active_workspace_id=str(uuid4()),
+    )
+    settings = PluginPermissionSettings(
+        install_permission=TenantPluginInstallPermission.NOBODY,
+        debug_permission=TenantPluginDebugPermission.ADMINS,
+    )
+
+    assert isinstance(permissions._settings, SQLAlchemyPluginPermissionRepository)
+    assert permissions._settings._session_factory is sqlite_session_factory
+    assert permissions.get_settings(context) == DEFAULT_PLUGIN_PERMISSION_SETTINGS
+    permissions.change_settings(context, settings)
+    assert permissions.get_settings(context) == settings
+
+
 def test_build_application_services_wires_credential_query(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
