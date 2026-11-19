@@ -25,12 +25,12 @@ from controllers.console.human_input_form import (
     _jsonify_form_definition,
 )
 from core.rbac import RBACPermission, RBACResourceScope
-from core.repositories.human_input_repository import HumanInputFormRecord
 from core.workflow.human_input_policy import HumanInputSurface
 from enums.human_input import HumanInputFormKind, HumanInputFormStatus, RecipientType, ValueSourceType
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from models import Account
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.human_input_contracts import HumanInputFormRecord
 from models.human_input_entities import FormDefinition, SelectInputConfig, StringListSource
 from models.model import App, AppMode
 from models.workflow import WorkflowRun

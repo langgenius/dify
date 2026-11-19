@@ -21,7 +21,7 @@ from models.agent import (
     AgentStatus,
     AgentWorkspaceOwnerType,
 )
-from models.agent_config_entities import AgentSoulConfig
+from models.agent_config_entities import AgentSoulConfig, agent_soul_has_model
 from models.enums import ConversationFromSource
 from models.model import App, Conversation, IconType, Message
 from repositories.agent_roster_queries import (
@@ -42,7 +42,6 @@ from repositories.app.agent_runtime_app import (
     find_runtime_resolvable_agent,
     resolve_agent_runtime_app,
 )
-from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import (
     AgentArchivedError,

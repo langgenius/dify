@@ -229,7 +229,7 @@ def test_get_paginated_attaches_completed_evaluation_metrics(
     sqlite_session.add_all([_run(log.workflow_run_id), log, evaluation_run, evaluation_item])
     sqlite_session.commit()
 
-    result = WorkflowAppLogQueryRepository(session_factory=sqlite_session_factory).get_paginated(
+    result = WorkflowAppLogRepository(session_factory=sqlite_session_factory).get_paginated(
         tenant_id="tenant-1",
         app_id="app-1",
     )

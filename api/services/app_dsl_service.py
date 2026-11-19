@@ -627,9 +627,14 @@ class AppDslService:
     def _load_app_for_overwrite(self, account: Account, app_id: str) -> App | None:
         allowed = self._check_overwrite_access(account, app_id)
         assert account.current_tenant_id is not None
-        return self._overwrites.load(
+        target = self._overwrites.load(
             tenant_id=account.current_tenant_id, account_id=account.id, app_id=app_id, rbac_allowed=allowed
         )
+        if target is None:
+            return None
+        from repositories.app.console_repository import find_normal_app
+
+        return find_normal_app(self._session, workspace_id=account.current_tenant_id, app_id=app_id, refresh=True)
 
     def _ensure_agent_import_permission(self, account: Account, *, app: App | None) -> None:
         if not dify_config.RBAC_ENABLED:

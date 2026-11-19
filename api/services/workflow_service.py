@@ -92,11 +92,11 @@ from events.app_event import app_published_workflow_was_updated
 from libs.helper import escape_like_pattern
 from models.workflow import WorkflowKind, resolve_workflow_kind
 from repositories.credentials.query_repository import CredentialQueryRepository
+from repositories.workflow.version_repository import allocate_version_number
 from services.app.access import AppRunAccessFilter
 from services.errors.app import WorkflowNotFoundError
 from services.errors.billing import BillingError
 from services.errors.evaluation import EvaluationEntitlementUnavailableError, EvaluationPlanRequiredError
-from services.workflow_version_number_service import allocate_version_number
 
 
 class WorkflowService:
