@@ -257,20 +257,24 @@ class RedisInvitationTokenStore(InvitationTokenStore):
             account_id = self._redis.get(self._workspace_invitation_key(invitation))
             if account_id is None:
                 return None
-            return InvitationToken(
+            legacy = InvitationToken(
                 account_id=account_id.decode("utf-8"),
                 email=invitation.email,
                 workspace_id=invitation.workspace_id,
             )
+            # Workspace-scoped links predate the index, so a revocation or resend always retires them.
+            return None if self._is_unindexed_revoked(legacy) else legacy
 
         data = self._redis.get(self._invitation_token_key(invitation.token))
         if data is None:
             return None
         token = _invitation_token_adapter.validate_json(data)
-        unindexed_revoked = self._redis.get(self._unindexed_revoked_key(token.workspace_id, token.account_id)) == b"1"
-        if unindexed_revoked and not self._is_indexed(token.workspace_id, invitation.token):
+        if self._is_unindexed_revoked(token) and not self._is_indexed(token.workspace_id, invitation.token):
             return None
         return token
+
+    def _is_unindexed_revoked(self, token: InvitationToken) -> bool:
+        return self._redis.get(self._unindexed_revoked_key(token.workspace_id, token.account_id)) == b"1"
 
     def _is_indexed(self, workspace_id: str, token: str) -> bool:
         entries = self._redis.zrangebyscore_withscores(self._pending_workspace_key(workspace_id), "-inf", "+inf")

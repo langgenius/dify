@@ -578,6 +578,8 @@ class TestMemberServiceCases:
             workspace_id, "member@example.com", account_id=member_id
         )
         assert account_domain.members.get_role(workspace_id, member_id) is None
+        # Another workspace may still invite this account, so it outlives its last membership.
+        assert account_domain.repository.get(member_id) is not None
 
     @staticmethod
     def test_revoking_never_removes_an_active_member(
@@ -885,7 +887,8 @@ class TestMemberServiceCases:
         invited = account_domain.repository.find_by_email(email)
         assert invited is not None
         assert member_service.get_role(workspace_id, invited.id) == _member_service_TenantAccountRole.NORMAL
-        if status == AccountStatus.ACTIVE and already_joined:
+        if already_joined:
+            # A member keeps every role it holds; resending only reissues the link.
             assert replace.calls == []
         else:
             assignments = [item for item in replace.calls if item.tenant_id == workspace_id]
