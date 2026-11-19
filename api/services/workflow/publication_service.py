@@ -2,8 +2,7 @@
 
 import json
 
-from core.trigger.constants import TRIGGER_NODE_TYPES
-
+from constants.trigger import TRIGGER_NODE_TYPES
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from libs.schedule_utils import calculate_next_run_at
 from services.agent.publication_contracts import AgentPublicationState
