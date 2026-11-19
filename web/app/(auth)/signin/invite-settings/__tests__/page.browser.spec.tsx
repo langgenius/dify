@@ -44,7 +44,7 @@ vi.mock('@/utils/timezone', async (importOriginal) => ({
 }))
 
 it('submits only the language and time zone confirmed in the pickers', async () => {
-  await page.viewport(320, 740)
+  await page.viewport(620, 740)
   mocks.activate.mockResolvedValue({ result: 'success' })
   const i18n = createInstance()
   await i18n.init({
@@ -87,6 +87,17 @@ it('submits only the language and time zone confirmed in the pickers', async () 
       name: login.joinWorkspace.replace('{{workspaceName}}', workspaceName),
     })
     await name.fill('邀请测试')
+    const formFieldWidth = name.element().getBoundingClientRect().width
+    const expectListAlignedWithForm = async () => {
+      const list = screen.getByRole('listbox')
+      await expect.element(list).toBeVisible()
+      // The list sits inside the popup border.
+      await expect
+        .poll(() => Math.abs(list.element().getBoundingClientRect().width - formFieldWidth), {
+          timeout: 2000,
+        })
+        .toBeLessThanOrEqual(2)
+    }
     await expect
       .element(timezone)
       .toHaveValue('+08:00 Taipei Time - Taipei, Kaohsiung, Taichung, Tainan')
@@ -110,6 +121,7 @@ it('submits only the language and time zone confirmed in the pickers', async () 
     await expect
       .element(screen.getByRole('option', { name: 'English (United States)' }))
       .toBeVisible()
+    await expectListAlignedWithForm()
     await userEvent.keyboard('{ArrowDown}')
     await expect.element(language).toHaveAttribute('aria-activedescendant')
     await userEvent.keyboard('{Enter}')
@@ -127,6 +139,7 @@ it('submits only the language and time zone confirmed in the pickers', async () 
     await timezone.fill('Pacific/Niue')
     const niue = screen.getByRole('option', { name: /Niue/ })
     await expect.element(niue).toBeVisible()
+    await expectListAlignedWithForm()
     const niueLabel = niue.element().textContent
     await userEvent.keyboard('{ArrowDown}')
     await expect.element(timezone).toHaveAttribute('aria-activedescendant')
@@ -135,6 +148,7 @@ it('submits only the language and time zone confirmed in the pickers', async () 
     await expect.element(timezone).toHaveFocus()
     expect(mocks.activate).not.toHaveBeenCalled()
 
+    await page.viewport(320, 740)
     await submit.click()
     await expect.poll(() => mocks.replace.mock.calls.length).toBe(1)
     expect(mocks.activate).toHaveBeenCalledExactlyOnceWith({

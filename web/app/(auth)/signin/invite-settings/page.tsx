@@ -185,7 +185,7 @@ export default function InviteSettingsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="mx-auto flex w-full max-w-100 flex-col gap-3">
       <div className="inline-flex size-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge shadow-lg">
         <span
           className="i-ri-account-circle-line size-6 text-text-accent-light-mode-only"
