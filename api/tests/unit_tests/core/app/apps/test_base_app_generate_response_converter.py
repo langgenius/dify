@@ -13,7 +13,7 @@ from clients.agent_backend.errors import (
     AgentBackendValidationError,
 )
 from core.app.apps.base_app_generate_response_converter import AppGenerateResponseConverter
-from core.app.apps.exc import AppGenerateError
+from core.app.apps.exc import AppGenerateError, ModerationInvocationError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import (
     AppStreamResponse,
@@ -23,6 +23,10 @@ from core.app.entities.task_entities import (
 )
 from graphon.enums import WorkflowExecutionStatus
 from graphon.model_runtime.errors.invoke import InvokeError
+from services.moderation_invocation_errors import (
+    ModerationRejectedInvocationError,
+    ModerationUnavailableInvocationError,
+)
 
 
 class _DummyConverter(AppGenerateResponseConverter[WorkflowAppBlockingResponse]):
@@ -102,6 +106,14 @@ def test_convert_routes_blocking_response_by_invoke_from() -> None:
     assert _DummyConverter.blocking_simple_calls == [blocking_response]
 
 
+def test_unmapped_app_error_uses_the_generic_stream_error_contract() -> None:
+    assert AppGenerateResponseConverter._error_to_stream_response(AppGenerateError("Invalid input")) == {
+        "code": "invalid_param",
+        "message": "Invalid input",
+        "status": 400,
+    }
+
+
 def test_convert_routes_stream_response_by_invoke_from() -> None:
     _DummyConverter.reset()
 
@@ -140,15 +152,18 @@ def test_stream_error_mapping(error: Exception, status: int, code: str) -> None:
     assert AppGenerateResponseConverter._error_to_stream_response(error)["message"] == str(error)
 
 
-def test_stream_error_preserves_app_generate_contract() -> None:
-    error = AppGenerateError("draft conflict")
-    error.error_code = "draft_conflict"
-    error.status_code = 409
-
+@pytest.mark.parametrize(
+    ("error", "status", "code"),
+    [
+        (ModerationRejectedInvocationError("input", "rejected"), 400, "moderation_rejected"),
+        (ModerationUnavailableInvocationError(), 503, "moderation_unavailable"),
+    ],
+)
+def test_stream_error_preserves_moderation_contract(error: ModerationInvocationError, status: int, code: str) -> None:
     assert AppGenerateResponseConverter._error_to_stream_response(error) == {
-        "code": "draft_conflict",
-        "status": 409,
-        "message": "draft conflict",
+        "code": code,
+        "status": status,
+        "message": str(error),
     }
 
 

@@ -1878,5 +1878,11 @@ export const lintConfig = {
         'dify/marketplace-boundary': 'error',
       },
     },
+    {
+      ...handwrittenApiScope,
+      rules: {
+        'dify/no-module-scope-clock': 'error',
+      },
+    },
   ],
 } satisfies OxlintConfig

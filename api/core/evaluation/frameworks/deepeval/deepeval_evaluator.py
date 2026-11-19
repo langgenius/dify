@@ -22,6 +22,7 @@ from core.evaluation.entities.evaluation_entity import (
     EvaluationMetric,
     EvaluationMetricName,
 )
+from core.evaluation.exceptions import EvaluationErrorCode, new_public_evaluation_error
 from core.evaluation.frameworks.deepeval.deepeval_model_wrapper import DifyDeepEvalModel
 from core.plugin.impl.base import use_plugin_daemon_request_timeout
 
@@ -191,6 +192,12 @@ class DeepEvalEvaluator(BaseEvaluationInstance):
         tenant_id: str,
         category: EvaluationCategory,
     ) -> list[EvaluationItemResult]:
+        """Score rows with supported DeepEval metrics and public failures.
+
+        Precondition: the selected category and metrics are from validated configuration.
+        Postcondition: each row has metric scores or approved public errors;
+        raw provider exceptions remain in server logs.
+        """
         requested_metrics = metric_names or self.get_supported_metrics(category)
         category_metrics = set(self.get_supported_metrics(category))
         supported_metrics = [name for name in requested_metrics if name in category_metrics]
@@ -202,7 +209,16 @@ class DeepEvalEvaluator(BaseEvaluationInstance):
         model: DifyDeepEvalModel | None = None
         results: list[EvaluationItemResult] = []
         for item in items:
-            errors = [f"Metric '{name}' is not supported by DeepEval." for name in unsupported_metrics]
+            errors: list[str] = []
+            for name in unsupported_metrics:
+                failure = new_public_evaluation_error(EvaluationErrorCode.UNSUPPORTED_METRIC)
+                logger.info(
+                    "DeepEval metric %s is unsupported for item %d (error_id=%s)",
+                    name,
+                    item.index,
+                    failure.error_id,
+                )
+                errors.append(failure.text)
             if category == EvaluationCategory.AGENT and isinstance(item, AgentEvaluationItem) and not item.tool_calls:
                 results.append(
                     EvaluationItemResult(
@@ -240,9 +256,15 @@ class DeepEvalEvaluator(BaseEvaluationInstance):
                     if reason:
                         details["reason"] = str(reason)
                     metrics.append(EvaluationMetric(name=canonical_name, value=numeric_score, details=details))
-                except Exception as exc:
-                    logger.exception("DeepEval metric %s failed for item %d", canonical_name, item.index)
-                    errors.append(f"Metric '{canonical_name}' failed: {exc}")
+                except Exception:
+                    failure = new_public_evaluation_error(EvaluationErrorCode.METRIC_FAILED)
+                    logger.exception(
+                        "DeepEval metric %s failed for item %d (error_id=%s)",
+                        canonical_name,
+                        item.index,
+                        failure.error_id,
+                    )
+                    errors.append(failure.text)
 
             results.append(
                 EvaluationItemResult(

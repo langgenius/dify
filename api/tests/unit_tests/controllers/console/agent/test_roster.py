@@ -1,5 +1,5 @@
 import json
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from datetime import datetime
 from inspect import getsource, unwrap
 from typing import Any, Self, cast
@@ -38,7 +38,9 @@ from controllers.console.agent.roster import (
 )
 from controllers.console.app import completion as completion_controller
 from controllers.console.app.completion import AgentBuildChatFinalizeApi, AgentChatMessageApi, AgentChatMessageStopApi
+from controllers.console.app.error import CompletionRequestError
 from core.logging.context import clear_request_context, get_request_id, get_trace_id, init_request_context
+from enums import DeploymentEdition
 from libs.exception import RelayedHTTPError
 from models.account import Account, TenantAccountRole
 from models.agent import Agent, AgentConfigDraftType, AgentScope, AgentSource
@@ -1098,7 +1100,9 @@ def test_agent_chat_helper_resolves_scoped_conversation_and_forces_streaming(
     expected_draft_type: AgentConfigDraftType,
     expected_start_new: bool,
     unbound_session: Session,
+    config_overrides: Callable[..., None],
 ) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     app_model = _app_detail_obj(id="app-1", tenant_id="tenant-1", mode=AppMode.AGENT)
     current_user = _account(account_id=account_id)
     captured: dict[str, object] = {}
@@ -1142,8 +1146,13 @@ def test_agent_chat_helper_resolves_scoped_conversation_and_forces_streaming(
 
 
 def test_agent_chat_helper_ignores_private_exit_intent_payload_key(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str, unbound_session: Session
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    account_id: str,
+    unbound_session: Session,
+    config_overrides: Callable[..., None],
 ) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     app_model = _app_detail_obj(id="app-1", tenant_id="tenant-1", mode=AppMode.AGENT)
     current_user = _account(account_id=account_id)
     captured: dict[str, object] = {}
@@ -1200,7 +1209,9 @@ def test_agent_chat_helper_rejects_foreign_debug_conversation_before_generation(
     payload_extra: dict[str, str],
     expected_draft_type: AgentConfigDraftType,
     unbound_session: Session,
+    config_overrides: Callable[..., None],
 ) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     app_model = _app_detail_obj(id="app-1", tenant_id="tenant-1", mode=AppMode.AGENT)
     generate = MagicMock()
     resolve_debug_conversation = MagicMock(return_value="owned-conversation")
@@ -1359,7 +1370,7 @@ def test_resolve_current_user_agent_debug_conversation_uses_agent_or_backing_app
             completion_controller.ProviderModelCurrentlyNotSupportError,
         ),
         (completion_controller.InvokeRateLimitError("rate limited"), completion_controller.InvokeRateLimitHttpError),
-        (completion_controller.InvokeError("invoke failed"), completion_controller.CompletionRequestError),
+        (completion_controller.InvokeError("invoke failed"), CompletionRequestError),
         (RuntimeError("unexpected"), InternalServerError),
     ],
 )
