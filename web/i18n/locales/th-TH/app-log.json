@@ -59,7 +59,6 @@
   "export.failed": "ส่งออกไม่สำเร็จ โปรดลองอีกครั้ง",
   "export.identitiesAll": "ผู้ใช้และบัญชีทั้งหมด",
   "export.identitiesSelected": "เลือกผู้ใช้หรือบัญชี",
-  "export.identityHint": "เลือกผู้ใช้หรือบัญชีที่ต้องการรวมบันทึก ค้นหาด้วย ID ผู้ใช้แบบเต็ม ชื่อบัญชี หรือ ID บัญชี",
   "export.identityRequired": "เลือกผู้ใช้หรือบัญชีอย่างน้อยหนึ่งรายการ",
   "export.noIdentities": "ไม่พบผลลัพธ์ที่ตรงกัน",
   "export.noMatches": "ไม่มีบันทึกที่ตรงกับตัวกรองนี้",

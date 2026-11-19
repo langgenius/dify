@@ -1,7 +1,6 @@
 'use client'
 import type { FC, ReactNode } from 'react'
 import type { QueryParam } from './index'
-import type { LogIdentity } from './log-filters'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -17,14 +16,12 @@ import {
   useCloudSandboxPlanStatus,
 } from './cloud-sandbox-retention'
 import { TIME_PERIOD_MAPPING } from './log-filters'
-import { LogIdentityPicker } from './log-identity-picker'
 
 type IFilterProps = {
   isChatMode?: boolean
   appId: string
   queryParams: QueryParam
   setQueryParams: (v: QueryParam) => void
-  identityOptions?: LogIdentity[]
   actions?: ReactNode
 }
 
@@ -33,7 +30,6 @@ const Filter: FC<IFilterProps> = ({
   appId,
   queryParams,
   setQueryParams,
-  identityOptions,
   actions,
 }: IFilterProps) => {
   const { data } = useQuery(
@@ -105,14 +101,6 @@ const Filter: FC<IFilterProps> = ({
           setQueryParams({ ...queryParams, keyword: value })
         }}
       />
-      {identityOptions && (
-        <LogIdentityPicker
-          appId={appId}
-          options={identityOptions}
-          value={queryParams.identities ?? []}
-          onChange={(identities) => setQueryParams({ ...queryParams, identities })}
-        />
-      )}
       {isChatMode && (
         <>
           <div className="h-3.5 w-px bg-divider-regular"></div>

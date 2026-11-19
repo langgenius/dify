@@ -59,7 +59,6 @@
   "export.failed": "Falha na exportação. Tente novamente.",
   "export.identitiesAll": "Todos os usuários e contas",
   "export.identitiesSelected": "Selecionar usuários ou contas",
-  "export.identityHint": "Selecione os usuários ou as contas cujos logs deseja incluir. Pesquise pelo ID completo do usuário, nome da conta ou ID da conta.",
   "export.identityRequired": "Selecione pelo menos um usuário ou uma conta.",
   "export.noIdentities": "Nenhum resultado correspondente.",
   "export.noMatches": "Nenhum log corresponde a esses filtros.",

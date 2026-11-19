@@ -59,7 +59,6 @@
   "export.failed": "Exporteren mislukt. Probeer het opnieuw.",
   "export.identitiesAll": "Alle gebruikers en accounts",
   "export.identitiesSelected": "Gebruikers of accounts selecteren",
-  "export.identityHint": "Kies van welke gebruikers of accounts je de logs wilt opnemen. Zoek op volledige gebruikers-ID, accountnaam of account-ID.",
   "export.identityRequired": "Selecteer ten minste één gebruiker of account.",
   "export.noIdentities": "Geen overeenkomende resultaten.",
   "export.noMatches": "Geen logboeken komen overeen met deze filters.",

@@ -59,7 +59,6 @@
   "export.failed": "Échec de l’export. Réessayez.",
   "export.identitiesAll": "Tous les utilisateurs et comptes",
   "export.identitiesSelected": "Sélectionner des utilisateurs ou des comptes",
-  "export.identityHint": "Sélectionnez les utilisateurs ou comptes dont vous souhaitez voir les journaux. Recherchez par ID utilisateur complet, nom de compte ou ID de compte.",
   "export.identityRequired": "Sélectionnez au moins un utilisateur ou un compte.",
   "export.noIdentities": "Aucun résultat correspondant.",
   "export.noMatches": "Aucun journal ne correspond à ces filtres.",

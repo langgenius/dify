@@ -59,7 +59,6 @@
   "export.failed": "Ekspor gagal. Coba lagi.",
   "export.identitiesAll": "Semua pengguna dan akun",
   "export.identitiesSelected": "Pilih pengguna atau akun",
-  "export.identityHint": "Pilih pengguna atau akun yang lognya ingin ditampilkan. Cari dengan ID pengguna lengkap, nama akun, atau ID akun.",
   "export.identityRequired": "Pilih minimal satu pengguna atau akun.",
   "export.noIdentities": "Tidak ada hasil yang cocok.",
   "export.noMatches": "Tidak ada log yang cocok dengan filter ini.",

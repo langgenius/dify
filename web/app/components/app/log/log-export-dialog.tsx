@@ -33,7 +33,7 @@ import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { API_PREFIX } from '@/config'
 import { consoleQuery } from '@/service/console'
 import { downloadUrl } from '@/utils/download'
-import { identityKey, logDateRange, logIdentityFilters, TIME_PERIOD_MAPPING } from './log-filters'
+import { logDateRange, logIdentityFilters, TIME_PERIOD_MAPPING } from './log-filters'
 import { LogIdentityPicker } from './log-identity-picker'
 
 type LogExportFilters = NonNullable<GetAppsByAppIdConversationLogExportsPreviewData['query']>
@@ -251,6 +251,7 @@ export function LogExportDialog({
           </DialogFooter>
         ) : (
           <form
+            className="contents"
             onSubmit={(event) => {
               event.preventDefault()
               if (busy) return
@@ -295,29 +296,13 @@ export function LogExportDialog({
                       disabled={filtersLocked}
                     />
                     {filterIdentities && (
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <LogIdentityPicker
-                          appId={appId}
-                          options={identityOptions}
-                          value={identities}
-                          onChange={setIdentities}
-                          disabled={filtersLocked}
-                        />
-                        {identities.map((identity) => (
-                          <Button
-                            key={identityKey(identity)}
-                            type="button"
-                            size="small"
-                            aria-label={`${t(($) => $['operation.remove'], { ns: 'common' })} ${identity.label}`}
-                            onClick={() =>
-                              setIdentities(identities.filter((item) => item !== identity))
-                            }
-                          >
-                            <span className="max-w-32 truncate">{identity.label}</span>
-                            <span className="i-ri-close-line size-3" aria-hidden />
-                          </Button>
-                        ))}
-                      </div>
+                      <LogIdentityPicker
+                        appId={appId}
+                        options={identityOptions}
+                        value={identities}
+                        onChange={setIdentities}
+                        disabled={filtersLocked}
+                      />
                     )}
                     <ExportSelect
                       label={t(($) => $['export.timeRange'], { ns: 'appLog' })}

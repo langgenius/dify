@@ -59,7 +59,6 @@
   "export.failed": "İxrac alınmadı. Yenidən cəhd edin.",
   "export.identitiesAll": "Bütün istifadəçilər və hesablar",
   "export.identitiesSelected": "İstifadəçiləri və ya hesabları seç",
-  "export.identityHint": "Jurnallarını görmək istədiyiniz istifadəçiləri və ya hesabları seçin. Tam istifadəçi ID-si, hesab adı və ya hesab ID-si ilə axtarın.",
   "export.identityRequired": "Ən azı bir istifadəçi və ya hesab seçin.",
   "export.noIdentities": "Uyğun nəticə yoxdur.",
   "export.noMatches": "Bu filtrlərə uyğun jurnal yoxdur.",

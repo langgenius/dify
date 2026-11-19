@@ -5,7 +5,6 @@ import type {
   GetAppsByAppIdChatConversationsData,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
-import type { LogIdentity } from './log-filters'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
@@ -27,12 +26,7 @@ import {
 import Filter from './filter'
 import List from './list'
 import { LogExportDialog } from './log-export-dialog'
-import {
-  getLogIdentities,
-  logDateRange,
-  logIdentityFilters,
-  TIME_PERIOD_MAPPING,
-} from './log-filters'
+import { getLogIdentities, logDateRange, TIME_PERIOD_MAPPING } from './log-filters'
 import { RetentionUpgradeNotice } from './retention-upgrade-notice'
 
 type ILogsProps = {
@@ -46,7 +40,6 @@ export type QueryParam = {
   annotation_status?: ConversationsQuery['annotation_status']
   keyword?: string
   sort_by?: ConversationsQuery['sort_by']
-  identities?: LogIdentity[]
 }
 
 const defaultQueryParams: QueryParam = {
@@ -86,7 +79,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     appDetail.mode === 'agent-chat'
 
   const toFilters = (params: QueryParam) => {
-    const { period, identities, ...filters } = params
+    const { period, ...filters } = params
     const timePeriod = resolveLogTimePeriodOption(
       period,
       TIME_PERIOD_MAPPING[period]!,
@@ -95,7 +88,6 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     return {
       ...filters,
       ...(period !== '9' ? logDateRange(timePeriod.value) : {}),
-      ...(supportsLogExport ? logIdentityFilters(identities) : {}),
     }
   }
   const query = { ...toFilters(requestQueryParams), page: currPage + 1, limit }
@@ -115,9 +107,6 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
 
   const total = isChatMode ? chatConversations?.total : completionConversations?.total
   const totalPages = total ? Math.max(Math.ceil(total / limit), 1) : 1
-  const identityOptions = supportsLogExport
-    ? getLogIdentities(chatConversations?.data ?? [])
-    : undefined
 
   const handlePageChange = useCallback(
     (page: number) => {
@@ -155,7 +144,6 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
           appId={appDetail.id}
           queryParams={effectiveQueryParams}
           setQueryParams={handleQueryParamsChange}
-          identityOptions={identityOptions}
           actions={
             supportsLogExport &&
             canExportLogs && (
@@ -164,7 +152,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
                 appId={appDetail.id}
                 appName={appDetail.name}
                 currentFilters={toFilters(effectiveQueryParams)}
-                identityOptions={identityOptions ?? []}
+                identityOptions={getLogIdentities(chatConversations?.data ?? [])}
                 planState={cloudSandboxPlanState}
               />
             )

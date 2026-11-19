@@ -59,7 +59,6 @@
   "export.failed": "Izvoz ni uspel. Poskusite znova.",
   "export.identitiesAll": "Vsi uporabniki in računi",
   "export.identitiesSelected": "Izberite uporabnike ali račune",
-  "export.identityHint": "Izberite uporabnike ali račune, katerih dnevnike želite vključiti. Iščite po celotnem ID-ju uporabnika, imenu ali ID-ju računa.",
   "export.identityRequired": "Izberite vsaj enega uporabnika ali račun.",
   "export.noIdentities": "Ni ujemajočih se rezultatov.",
   "export.noMatches": "Noben dnevnik ne ustreza tem filtrom.",

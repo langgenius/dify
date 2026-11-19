@@ -69,7 +69,6 @@ const conversations: ConversationWithSummary[] = [
 ]
 
 async function openExport() {
-  const listQueries: URLSearchParams[] = []
   const previews: URLSearchParams[] = []
   const requests: unknown[] = []
   let statusReads = 0
@@ -78,20 +77,8 @@ async function openExport() {
     const url = new URL(request.url)
     const route = url.pathname.split(`/apps/${appId}/`)[1]
     switch (route) {
-      case 'chat-conversations': {
-        listQueries.push(url.searchParams)
-        const users = url.searchParams.getAll('end_user_ids')
-        const accounts = url.searchParams.getAll('account_ids')
-        const data =
-          users.length || accounts.length
-            ? conversations.filter(
-                (row) =>
-                  users.includes(row.from_end_user_id ?? '') ||
-                  accounts.includes(row.from_account_id ?? ''),
-              )
-            : conversations
-        return Response.json({ data, total: 38, page: 2, limit: 10, has_more: true })
-      }
+      case 'chat-conversations':
+        return Response.json({ data: conversations, total: 38, page: 2, limit: 10, has_more: true })
       case 'chat-conversations/identity-options':
         return Response.json({
           data: url.searchParams.get('keyword') === olderEndUser.label ? [olderEndUser] : [],
@@ -146,7 +133,7 @@ async function openExport() {
   )
   const trigger = screen.getByRole('button', { name: 'appLog.export.title' })
   const dialog = page.getByRole('dialog', { name: 'appLog.export.title' })
-  return { screen, trigger, dialog, listQueries, previews, requests }
+  return { screen, trigger, dialog, previews, requests }
 }
 
 it('exports the current filters across pages and downloads when the task is ready', async () => {
@@ -157,16 +144,11 @@ it('exports the current filters across pages and downloads when the task is read
     downloadPaths.push(new URL(this.href).pathname)
   })
   onTestFinished(() => followLink.mockRestore())
-  const { screen, trigger, dialog, listQueries, previews, requests } = await openExport()
+  const { screen, trigger, dialog, previews, requests } = await openExport()
   await expect.element(screen.getByText(conversation.summary, { exact: true })).toBeVisible()
-  await screen.getByRole('button', { name: 'appLog.table.header.endUser' }).click()
-  await page.getByRole('checkbox', { name: 'user-1024' }).click()
-  await expect.poll(() => listQueries.at(-1)?.getAll('end_user_ids')).toEqual([endUserId])
   await expect
-    .element(screen.getByText('Change the email on my account', { exact: true }))
+    .element(screen.getByRole('button', { name: 'appLog.table.header.endUser' }))
     .not.toBeInTheDocument()
-  await page.getByRole('checkbox', { name: 'Mia Chen' }).click()
-  await userEvent.keyboard('{Escape}')
   await screen.getByPlaceholder('common.operation.search').fill('refund')
   await trigger.click()
   const submit = dialog.getByRole('button', { name: 'appLog.export.submit' })
@@ -188,8 +170,6 @@ it('exports the current filters across pages and downloads when the task is read
       keyword: 'refund',
       annotation_status: 'all',
       sort_by: '-created_at',
-      end_user_ids: [endUserId],
-      account_ids: [accountId],
       start: expect.any(String),
       end: expect.any(String),
     },
@@ -199,11 +179,13 @@ it('exports the current filters across pages and downloads when the task is read
   ])
 })
 
-it('finds identities beyond the visible Logs page and previews the selected IDs', async () => {
-  const { trigger, dialog, previews } = await openExport()
+it('shows an inline identity list and previews selections beyond the visible Logs page', async () => {
+  const { trigger, dialog, previews, requests } = await openExport()
   await trigger.click()
   await dialog.getByRole('combobox', { name: 'appLog.export.scope' }).click()
   await page.getByRole('option', { name: 'appLog.export.all' }).click()
+  const identities = dialog.getByRole('group', { name: 'appLog.table.header.endUser' })
+  await expect.element(identities).not.toBeInTheDocument()
   await dialog.getByRole('combobox', { name: 'appLog.table.header.endUser' }).click()
   await page.getByRole('option', { name: 'appLog.export.identitiesSelected' }).click()
   const submit = dialog.getByRole('button', { name: 'appLog.export.submit' })
@@ -211,15 +193,14 @@ it('finds identities beyond the visible Logs page and previews the selected IDs'
   await expect
     .element(dialog.getByRole('alert'))
     .toHaveTextContent('appLog.export.identityRequired')
-  await dialog.getByRole('button', { name: 'appLog.table.header.endUser' }).click()
-  await page.getByRole('checkbox', { name: 'user-1024' }).click()
+  await identities.getByRole('checkbox', { name: 'user-1024' }).click()
   await expect
     .element(dialog.getByRole('status'))
     .toHaveTextContent('appLog.export.previewSize:{"conversations":1,"rows":2}')
-  await page.getByRole('checkbox', { name: 'Mia Chen' }).click()
-  await page.getByRole('searchbox', { name: 'common.operation.search' }).fill(olderEndUser.label)
-  await page.getByRole('checkbox', { name: olderEndUser.label }).click()
-  await userEvent.keyboard('{Escape}')
+  await identities.getByRole('checkbox', { name: 'Mia Chen' }).click()
+  const search = dialog.getByRole('searchbox', { name: 'common.operation.search' })
+  await search.fill(olderEndUser.label)
+  await identities.getByRole('checkbox', { name: olderEndUser.label }).click()
   await expect
     .element(dialog.getByRole('status'))
     .toHaveTextContent('appLog.export.previewSize:{"conversations":3,"rows":6}')
@@ -227,4 +208,7 @@ it('finds identities beyond the visible Logs page and previews the selected IDs'
   expect(previews.at(-1)?.getAll('end_user_ids')).toEqual([endUserId, olderEndUser.id])
   expect(previews.at(-1)?.getAll('account_ids')).toEqual([accountId])
   expect(previews.at(-1)?.has('start')).toBe(false)
+  await search.click()
+  await userEvent.keyboard('{Enter}')
+  expect(requests).toEqual([])
 })

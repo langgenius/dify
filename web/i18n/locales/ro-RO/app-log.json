@@ -59,7 +59,6 @@
   "export.failed": "Exportul a eșuat. Încearcă din nou.",
   "export.identitiesAll": "Toți utilizatorii și toate conturile",
   "export.identitiesSelected": "Selectează utilizatori sau conturi",
-  "export.identityHint": "Selectează utilizatorii sau conturile ale căror jurnale vrei să le incluzi. Caută după ID-ul complet al utilizatorului, numele contului sau ID-ul contului.",
   "export.identityRequired": "Selectează cel puțin un utilizator sau un cont.",
   "export.noIdentities": "Niciun rezultat potrivit.",
   "export.noMatches": "Nicio înregistrare nu se potrivește acestor filtre.",

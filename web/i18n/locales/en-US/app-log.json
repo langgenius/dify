@@ -59,7 +59,6 @@
   "export.failed": "Export failed. Please try again.",
   "export.identitiesAll": "All end users and accounts",
   "export.identitiesSelected": "Select end users or accounts",
-  "export.identityHint": "Select whose logs to include. Search by full end user ID, account name, or account ID.",
   "export.identityRequired": "Select at least one end user or account.",
   "export.noIdentities": "No matches found.",
   "export.noMatches": "No logs match these filters.",

@@ -59,7 +59,6 @@
   "export.failed": "Xuất không thành công. Vui lòng thử lại.",
   "export.identitiesAll": "Tất cả người dùng và tài khoản",
   "export.identitiesSelected": "Chọn người dùng hoặc tài khoản",
-  "export.identityHint": "Chọn người dùng hoặc tài khoản có nhật ký bạn muốn xem. Tìm theo ID người dùng đầy đủ, tên tài khoản hoặc ID tài khoản.",
   "export.identityRequired": "Chọn ít nhất một người dùng hoặc tài khoản.",
   "export.noIdentities": "Không tìm thấy kết quả phù hợp.",
   "export.noMatches": "Không có nhật ký phù hợp với các bộ lọc này.",

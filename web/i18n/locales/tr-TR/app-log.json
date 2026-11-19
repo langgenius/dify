@@ -59,7 +59,6 @@
   "export.failed": "Dışa aktarma başarısız oldu. Tekrar deneyin.",
   "export.identitiesAll": "Tüm kullanıcılar ve hesaplar",
   "export.identitiesSelected": "Kullanıcı veya hesap seç",
-  "export.identityHint": "Günlüklerini dahil etmek istediğiniz kullanıcıları veya hesapları seçin. Tam kullanıcı kimliği, hesap adı veya hesap kimliğiyle arayın.",
   "export.identityRequired": "En az bir kullanıcı veya hesap seçin.",
   "export.noIdentities": "Eşleşen sonuç bulunamadı.",
   "export.noMatches": "Bu filtrelerle eşleşen günlük yok.",

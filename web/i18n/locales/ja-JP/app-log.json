@@ -59,7 +59,6 @@
   "export.failed": "エクスポートに失敗しました。再試行してください。",
   "export.identitiesAll": "すべてのユーザーとアカウント",
   "export.identitiesSelected": "ユーザーまたはアカウントを選択",
-  "export.identityHint": "ログを絞り込むユーザーやアカウントを選択します。完全なユーザー ID、アカウント名、またはアカウント ID で検索できます。",
   "export.identityRequired": "ユーザーまたはアカウントを 1 つ以上選択してください。",
   "export.noIdentities": "一致する結果がありません。",
   "export.noMatches": "条件に一致するログはありません。",

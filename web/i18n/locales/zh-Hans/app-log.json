@@ -59,7 +59,6 @@
   "export.failed": "导出失败，请重试。",
   "export.identitiesAll": "全部用户和账户",
   "export.identitiesSelected": "选择指定用户或账户",
-  "export.identityHint": "勾选用户或账户，筛选他们的日志。可用完整用户 ID、账户名或账户 ID 查找。",
   "export.identityRequired": "请至少选择一位用户或一个账户。",
   "export.noIdentities": "没有匹配的结果。",
   "export.noMatches": "没有符合条件的日志。",
