@@ -3,6 +3,7 @@ import json
 import logging
 import sys
 import types
+from collections.abc import Iterator
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -16,7 +17,7 @@ from extensions.storage.storage_type import StorageType
 from models.dataset import Dataset, Whitelist
 from models.enums import CreatorUserRole
 from models.model import UploadFile
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 def _dataset(**overrides) -> Dataset:
@@ -45,7 +46,8 @@ def _register_fake_factory_module(monkeypatch: pytest.MonkeyPatch, module_path: 
 
 
 @pytest.fixture
-def vector_factory_module():
+def vector_factory_module() -> Iterator[types.ModuleType]:
+    """Reload the factory module and leave no cached test factories after the case."""
     import importlib
 
     from core.rag.datasource.vdb import vector_backend_registry as reg
@@ -53,7 +55,11 @@ def vector_factory_module():
     reg.clear_vector_factory_cache()
     import core.rag.datasource.vdb.vector_factory as module
 
-    return importlib.reload(module)
+    try:
+        yield importlib.reload(module)
+    finally:
+        # Restoring sys.modules does not evict fake classes cached by the registry.
+        reg.clear_vector_factory_cache()
 
 
 def test_gen_index_struct_dict(vector_factory_module):
@@ -203,6 +209,24 @@ def test_vector_init_uses_default_and_custom_attributes(vector_factory_module, u
     assert [call.kwargs["session"] for call in init_vector.call_args_list] == [unbound_session, unbound_session]
 
 
+@pytest.mark.parametrize("with_session", [True, False])
+def test_vector_with_resolved_type_passes_session(vector_factory_module, unbound_session: Session, with_session: bool):
+    dataset = _dataset()
+    session = unbound_session if with_session else None
+    factory = MagicMock()
+    with (
+        patch.object(vector_factory_module.Vector, "get_vector_factory", return_value=factory),
+        patch.object(vector_factory_module.Vector, "resolve_vector_type") as resolve_vector_type,
+    ):
+        vector = vector_factory_module.Vector(dataset, session=session, vector_type="qdrant")
+
+    resolve_vector_type.assert_not_called()
+    factory.return_value.init_vector.assert_called_once_with(
+        dataset, vector._attributes, vector._embeddings, session=session
+    )
+    assert vector._vector_processor is factory.return_value.init_vector.return_value
+
+
 def test_lazy_embeddings_defer_real_load_until_first_embed_call(vector_factory_module, monkeypatch: pytest.MonkeyPatch):
     """``Vector(dataset, session=...)`` must not transitively call ``ModelManager`` during
     construction. The real embedding model should only be materialized on the
@@ -265,8 +289,8 @@ def test_init_vector_prefers_dataset_index_struct(
     calls = {"vector_type": None, "init_args": None}
 
     class _Factory:
-        def init_vector(self, dataset, attributes, embeddings):
-            calls["init_args"] = (dataset, attributes, embeddings)
+        def init_vector(self, dataset, attributes, embeddings, *, session):
+            calls["init_args"] = (dataset, attributes, embeddings, session)
             return "vector-processor"
 
     monkeypatch.setattr(
@@ -284,7 +308,7 @@ def test_init_vector_prefers_dataset_index_struct(
 
     assert result == "vector-processor"
     assert calls["vector_type"] == vector_factory_module.VectorType.UPSTASH
-    assert calls["init_args"] == (vector._dataset, ["doc_id"], "embeddings")
+    assert calls["init_args"] == (vector._dataset, ["doc_id"], "embeddings", unbound_session)
 
 
 def test_init_vector_uses_whitelist_override(
@@ -293,7 +317,7 @@ def test_init_vector_uses_whitelist_override(
     calls = {"vector_type": None}
 
     class _Factory:
-        def init_vector(self, dataset, attributes, embeddings):
+        def init_vector(self, dataset, attributes, embeddings, *, session):
             return "vector-processor"
 
     tenant_id = str(uuid4())

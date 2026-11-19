@@ -29,7 +29,9 @@ class TestSystemFeatureApi:
         app: Flask,
         mocker: MockerFixture,
     ) -> None:
-        system_features = SystemFeatureModel(deployment_edition=deployment_edition)
+        system_features = SystemFeatureModel(
+            agent_tracing_api_collection_enabled=False, deployment_edition=deployment_edition
+        )
         feature_queries = _install_feature_queries(mocker)
         feature_queries.get_public_system_features.return_value = system_features
 

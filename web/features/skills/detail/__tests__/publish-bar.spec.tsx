@@ -75,7 +75,8 @@ describe('SkillPublishBar', () => {
     expect(onPublish).toHaveBeenCalledOnce()
   })
 
-  it('labels an edited published skill as an unpublished update', () => {
+  it('publishes an update to an already published skill', async () => {
+    const user = userEvent.setup()
     render(
       <SkillPublishBar
         metaLabel="Saved 2 min ago"
@@ -88,9 +89,10 @@ describe('SkillPublishBar', () => {
     expect(screen.getByRole('status')).toHaveAccessibleName(
       'skill.skillManagement.detail.unpublishedChanges. Saved 2 min ago',
     )
-    expect(
+    await user.click(
       screen.getByRole('button', { name: 'skill.skillManagement.detail.publishUpdate' }),
-    ).toBeEnabled()
+    )
+    expect(onPublish).toHaveBeenCalledOnce()
   })
 
   it('keeps the primary action visible but inert while publishing', async () => {
@@ -110,23 +112,5 @@ describe('SkillPublishBar', () => {
     expect(publishingButton).toHaveAttribute('aria-disabled', 'true')
     await user.click(publishingButton)
     expect(onPublish).not.toHaveBeenCalled()
-  })
-
-  it('keeps the complete status available when the visual timestamp needs less space', () => {
-    const longMetaLabel = 'Saved a few seconds ago after a long autosave operation'
-    render(
-      <SkillPublishBar
-        metaLabel={longMetaLabel}
-        state="draft"
-        onOpenVersions={onOpenVersions}
-        onPublish={onPublish}
-      />,
-    )
-
-    expect(screen.getByText('skill.skillManagement.detail.draft')).toBeVisible()
-    expect(screen.getByText(longMetaLabel)).toBeVisible()
-    expect(screen.getByRole('status')).toHaveAccessibleName(
-      `skill.skillManagement.detail.draft. ${longMetaLabel}`,
-    )
   })
 })

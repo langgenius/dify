@@ -1,10 +1,10 @@
-import type { ZodNumber, ZodSchema, ZodString } from 'zod'
+import type { ZodNumber, ZodString, ZodType } from 'zod'
 import type { BaseConfiguration } from './types'
 import * as z from 'zod'
 import { BaseFieldType } from './types'
 
 export const generateZodSchema = (fields: BaseConfiguration[]) => {
-  const shape: Record<string, ZodSchema> = {}
+  const shape: Record<string, ZodType> = {}
 
   fields.forEach((field) => {
     const textFieldTypes: readonly BaseFieldType[] = [

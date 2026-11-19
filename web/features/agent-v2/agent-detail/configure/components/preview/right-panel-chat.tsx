@@ -47,6 +47,7 @@ export function AgentConfigureRightPanelChat({
   ) : (
     <AgentPreviewChat
       {...props}
+      inputAutoFocus={false}
       conversationId={conversationId}
       agentSoulConfig={previewAgentSoulConfig}
       onConversationComplete={handleConversationComplete}

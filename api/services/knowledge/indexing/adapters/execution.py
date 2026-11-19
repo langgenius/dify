@@ -33,6 +33,9 @@ from models.enums import DataSourceType
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
 from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
+from services.file_scan import FileScanBlockedError, FileScanService, ScanScope
+from services.file_scan.entities import SCOPE_DATASET
+from services.knowledge.indexing.adapters.cleanup import delete_index_entries
 from services.knowledge.indexing.adapters.sources import (
     CompositeStoredSourceResolver,
     FileSourceAdapter,
@@ -86,6 +89,7 @@ class IndexingExecutionAdapter:
     def extract(self, document: IndexingDocument) -> list[Document]:
         if not document.processing_rule:
             raise ValueError("no process rule found")
+        self._scan_uploaded_file(document)
         setting = self._sources.resolve_for_indexing(document.source)
         processor = IndexProcessorFactory(document.doc_form).init_index_processor()
         # Legacy extractors persist downloaded images and Notion source metadata.
@@ -96,6 +100,26 @@ class IndexingExecutionAdapter:
         for text in texts:
             text.metadata.update(document_id=document.ref.document_id, dataset_id=document.ref.dataset.dataset_id)
         return texts
+
+    def _scan_uploaded_file(self, document: IndexingDocument) -> None:
+        """Stop this document before its uploaded file is read when the malware scan rejects it.
+
+        The scan covers one document, so a rejected file fails only its own indexing run.
+        """
+        source = document.source
+        if source.source_type != DataSourceType.UPLOAD_FILE or not source.source_info:
+            return
+        upload_file_id = source.source_info.get("upload_file_id")
+        if not isinstance(upload_file_id, str) or not upload_file_id:
+            return
+        dataset = document.ref.dataset
+        outcome = FileScanService(self._session_factory).scan_upload_file(
+            tenant_id=dataset.tenant_id,
+            upload_file_id=upload_file_id,
+            scope=ScanScope(SCOPE_DATASET, dataset.dataset_id),
+        )
+        if not outcome.allowed:
+            raise FileScanBlockedError(outcome)
 
     def transform(self, document: IndexingDocument, texts: list[Document]) -> list[Document]:
         dataset, _ = self._documents.get_indexing_models(document.ref)
@@ -173,6 +197,38 @@ class IndexingExecutionAdapter:
             # them and incorrectly let the document become completed.
             with ThreadPoolExecutor(max_workers=1) as executor:
                 executor.submit(propagate_context(self._process_chunk), app, document.ref, chunks, True).result()
+
+    def discard(self, document: IndexingDocument, chunks: list[Document]) -> None:
+        """Remove the index entries ``load`` writes for ``chunks`` through ``delete_index_entries``.
+
+        Mirrors ``_process_chunk``: child vectors for parent-child documents, body vectors
+        otherwise, and body keywords for economy datasets. Some ids may never have been
+        written; each store handles that as it does when document cleanup issues the same call.
+        """
+        dataset = self._documents.get_indexing_dataset(document.ref.dataset)
+        if dataset is None:
+            return
+        if document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
+            node_ids = [child.metadata["doc_id"] for chunk in chunks for child in chunk.children or []]
+        else:
+            node_ids = [chunk.metadata["doc_id"] for chunk in chunks]
+        if not node_ids:
+            return
+        vector_type = None
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
+            with self._session_factory() as session:
+                vector_type = Vector.resolve_vector_type(dataset, session=session)
+        writes_keywords = (
+            dataset.indexing_technique == IndexTechniqueType.ECONOMY
+            and document.doc_form != IndexStructureType.PARENT_CHILD_INDEX
+        )
+        delete_index_entries(
+            dataset,
+            vector_node_ids=node_ids,
+            vector_type=vector_type,
+            keyword_node_ids=node_ids if writes_keywords else [],
+            new_session=self._session_factory,
+        )
 
     def _process_chunk(self, app: Flask, ref: DocumentRef, chunks: list[Document], keywords: bool) -> None:
         with app.app_context():

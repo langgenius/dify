@@ -164,7 +164,7 @@ Dify সব ধরনের অবদানকে স্বাগত জান�
 - [X](https://x.com/dify_ai): রিলিজের খবর এবং প্রকল্পের হালনাগাদ পেতে Dify অনুসরণ করুন।
 ## স্টার হিস্ট্রি
 
-[![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
+[![Star History Chart](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-light-mode-only) [![Star History Chart](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&theme=dark&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-dark-mode-only)
 
 ## নিরাপত্তা বিষয়ক
 

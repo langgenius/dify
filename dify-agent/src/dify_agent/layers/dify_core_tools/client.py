@@ -13,6 +13,11 @@ from dify_agent.layers.dify_core_tools.configs import DifyCoreToolConfig
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 
 
+def _is_none(value: object) -> bool:
+    """Return whether Pydantic should omit an optional field."""
+    return value is None
+
+
 class DifyCoreToolsClientError(RuntimeError):
     """Raised when the inner core-tools HTTP boundary fails."""
 
@@ -51,6 +56,7 @@ class _DifyCoreToolsCaller(BaseModel):
     node_execution_id: str | None = None
     agent_id: str | None = None
     agent_config_version_id: str | None = None
+    trace_session_id: str | None = Field(default=None, exclude_if=_is_none)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -90,7 +96,11 @@ class DifyCoreToolsInvokeResponse(BaseModel):
 
 @dataclass(slots=True)
 class DifyCoreToolsClient:
-    """Boundary client for `POST /inner/api/agent/tools/invoke`."""
+    """Boundary client for `POST /inner/api/agent/tools/invoke`.
+
+    Caller identity and trace context come only from the server-supplied execution-context layer;
+    model-provided tool parameters cannot override them.
+    """
 
     base_url: str
     api_key: str = field(repr=False)
@@ -107,13 +117,19 @@ class DifyCoreToolsClient:
         tool_parameters: dict[str, JsonValue],
     ) -> DifyCoreToolsInvokeResponse:
         _validate_execution_context(execution_context)
+        user_id = execution_context.user_id
+        user_from = execution_context.user_from
+        app_id = execution_context.app_id
+        assert user_id is not None
+        assert user_from is not None
+        assert app_id is not None
 
         request_payload = _DifyCoreToolsInvokeRequest(
             caller=_DifyCoreToolsCaller(
                 tenant_id=execution_context.tenant_id,
-                user_id=cast(str, execution_context.user_id),
-                user_from=cast(str, execution_context.user_from),
-                app_id=cast(str, execution_context.app_id),
+                user_id=user_id,
+                user_from=user_from,
+                app_id=app_id,
                 invoke_from=execution_context.invoke_from,
                 conversation_id=execution_context.conversation_id,
                 workflow_id=execution_context.workflow_id,
@@ -122,6 +138,7 @@ class DifyCoreToolsClient:
                 node_execution_id=execution_context.node_execution_id,
                 agent_id=execution_context.agent_id,
                 agent_config_version_id=execution_context.agent_config_version_id,
+                trace_session_id=execution_context.trace_id,
             ),
             tool=_DifyCoreToolsRequestTool(
                 provider_type=tool_config.provider_type,
@@ -193,13 +210,14 @@ def _build_http_error(response: httpx.Response) -> DifyCoreToolsClientError:
 def _decode_error_detail(response: httpx.Response) -> dict[str, str | None]:
     raw_body = response.text
     try:
-        payload = response.json()
+        payload = cast(object, response.json())
     except json.JSONDecodeError:
         payload = None
 
     if isinstance(payload, dict):
-        error_code = payload.get("code")
-        message = payload.get("message")
+        error_payload = cast(dict[str, object], payload)
+        error_code = error_payload.get("code")
+        message = error_payload.get("message")
         return {
             "error_code": error_code if isinstance(error_code, str) else None,
             "message": message if isinstance(message, str) and message else raw_body or f"HTTP {response.status_code}",

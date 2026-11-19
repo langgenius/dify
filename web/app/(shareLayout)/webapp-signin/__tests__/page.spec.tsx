@@ -38,8 +38,9 @@ vi.mock('@/service/webapp-auth', () => ({
   webAppLogout: vi.fn(),
 }))
 
+const originalUrl = window.location.href
 afterEach(() => {
-  window.history.replaceState({}, '', '/')
+  window.history.replaceState({}, '', originalUrl)
 })
 
 describe('WebSSOForm redirect security', () => {

@@ -126,8 +126,9 @@ describe('isAgentCompatibleModel', () => {
     )
     expect(isAgentCompatibleModel(provider, createModelItem('qwen3-coder-plus'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('qwen3.5-max'))).toBe(false)
-    expect(isAgentCompatibleModel(provider, createModelItem('qwen3.7-flash'))).toBe(false)
+    expect(isAgentCompatibleModel(provider, createModelItem('qwen3.5-flash'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('qwen-flash'))).toBe(false)
+    expect(isAgentCompatibleModel(provider, createModelItem('qwen-mt-flash'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('farui-plus'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('chatglm-3-turbo'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('glm-3-turbo'))).toBe(false)
@@ -172,6 +173,15 @@ describe('isAgentCompatibleModel', () => {
     expect(isAgentCompatibleModel(provider, createModelItem('grok-4'))).toBe(true)
     expect(isAgentCompatibleModel(provider, createModelItem('qwen3.7-max'))).toBe(true)
   })
+
+  it('should allow Qwen flash models from 3.6 onward', () => {
+    const provider = createModel('any-provider')
+
+    expect(isAgentCompatibleModel(provider, createModelItem('qwen3.6-flash'))).toBe(true)
+    expect(isAgentCompatibleModel(provider, createModelItem('qwen3.7-flash'))).toBe(true)
+    expect(isAgentCompatibleModel(provider, createModelItem('qwen3.7-flash-2026-07-15'))).toBe(true)
+    expect(isAgentCompatibleModel(provider, createModelItem('qwen3.8-flash'))).toBe(true)
+  })
 })
 
 describe('isAgentSuggestedModel', () => {
@@ -200,6 +210,31 @@ describe('isAgentSuggestedModel', () => {
     expect(isAgentSuggestedModel(provider, createModelItem('qwen3-coder-plus'))).toBe(true)
     expect(isAgentSuggestedModel(provider, createModelItem('glm-5.1'))).toBe(true)
     expect(isAgentSuggestedModel(provider, createModelItem('other-model'))).toBe(false)
+  })
+
+  it('should suggest the latest flagship models by their official plugin labels', () => {
+    const provider = createModel('any-provider')
+
+    expect(isAgentSuggestedModel(provider, createModelItem('claude-opus-4-8'))).toBe(true)
+    expect(isAgentSuggestedModel(provider, createModelItem('claude-opus-4-7'))).toBe(true)
+    expect(isAgentSuggestedModel(provider, createModelItem('claude-sonnet-4-6'))).toBe(true)
+    expect(isAgentSuggestedModel(provider, createModelItem('claude-opus-5-5'))).toBe(true)
+    expect(isAgentSuggestedModel(provider, createModelItem('claude-sonnet-5-5'))).toBe(true)
+    expect(isAgentSuggestedModel(provider, createModelItem('claude-fable-5-1'))).toBe(true)
+    expect(isAgentSuggestedModel(provider, createModelItem('gpt-6-astra'))).toBe(true)
+    expect(isAgentSuggestedModel(provider, createModelItem('gpt-6-sol'))).toBe(true)
+    expect(isAgentSuggestedModel(provider, createModelItem('gpt-6-luna'))).toBe(true)
+    expect(
+      isAgentSuggestedModel(
+        provider,
+        createModelItem('GPT-6 Luna (Question Classifier · Decisions)'),
+      ),
+    ).toBe(false)
+    expect(isAgentSuggestedModel(provider, createModelItem('grok-4.6'))).toBe(true)
+    expect(isAgentSuggestedModel(provider, createModelItem('qwen3.8-max'))).toBe(true)
+    expect(isAgentSuggestedModel(provider, createModelItem('kimi-k3.1-pro'))).toBe(true)
+    expect(isAgentSuggestedModel(provider, createModelItem('kimi-k3.1-pro-highspeed'))).toBe(false)
+    expect(isAgentSuggestedModel(provider, createModelItem('glm-5.3'))).toBe(true)
   })
 
   it('should evaluate suggestions against the English model label', () => {

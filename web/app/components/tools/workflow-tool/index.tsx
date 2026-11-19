@@ -1,5 +1,4 @@
 'use client'
-import type { DrawerProps } from '@langgenius/dify-ui/drawer'
 import type {
   Emoji,
   WorkflowToolOutputSource,
@@ -29,8 +28,12 @@ import { produce } from 'immer'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppIcon from '@/app/components/base/app-icon'
-import { IconPickerDialog } from '@/app/components/base/icon-picker'
+import {
+  IconPicker,
+  IconPickerContent,
+  IconPickerIcon,
+  IconPickerTrigger,
+} from '@/app/components/base/icon-picker'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import ConfirmModal from '@/app/components/tools/workflow-tool/confirm-modal'
 import MethodSelector from '@/app/components/tools/workflow-tool/method-selector'
@@ -93,8 +96,8 @@ const WorkflowToolDrawerFrame = ({
   onHide,
   children,
 }: WorkflowToolDrawerFrameProps) => {
-  const handleOpenChange = React.useCallback<NonNullable<DrawerProps['onOpenChange']>>(
-    (open) => {
+  const handleOpenChange = React.useCallback(
+    (open: boolean) => {
       if (!open) onHide()
     },
     [onHide],
@@ -114,12 +117,12 @@ const WorkflowToolDrawerFrame = ({
           <DrawerPopup
             className={cn(
               'data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-[calc(100dvh-16px)] data-[swipe-direction=right]:w-160 data-[swipe-direction=right]:max-w-[calc(100vw-16px)]',
-              'data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:border-r-[0.5px] data-[swipe-direction=right]:border-divider-subtle',
+              'data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:ring-divider-subtle',
             )}
           >
-            <DrawerContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-0 pb-0">
+            <DrawerContent className="overflow-hidden">
               <div className="shrink-0 border-b border-divider-subtle py-4">
-                <div className="flex h-6 items-center justify-between pr-5 pl-6">
+                <div className="flex h-6 items-center justify-between ps-6 pe-5">
                   <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
                     {title}
                   </DrawerTitle>
@@ -239,7 +242,6 @@ export function WorkflowToolDrawer({
   const parameterId = React.useId()
   const toolNameLabelId = React.useId()
 
-  const [showEmojiPicker, setShowEmojiPicker] = useState<boolean>(false)
   const [emoji, setEmoji] = useState<Emoji>(payload.icon)
   const [label, setLabel] = useState<string>(payload.label)
   const [name, setName] = useState(payload.name)
@@ -339,47 +341,52 @@ export function WorkflowToolDrawer({
         >
           <div className="h-0 grow space-y-4 overflow-y-auto px-6 py-3">
             {/* name & icon */}
-            <Field name="label" className="gap-0">
-              <FieldLabel className="py-2 text-text-primary">
-                {t(($) => $['createTool.name'], { ns: 'tools' })}{' '}
-                <span aria-hidden className="ml-1 text-text-destructive">
-                  *
-                </span>
-              </FieldLabel>
-              <div className="flex items-center justify-between gap-3">
-                <button
-                  type="button"
-                  aria-label={t(($) => $['createTool.changeIcon'], { ns: 'tools' })}
-                  className="shrink-0 cursor-pointer rounded-[10px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                  onClick={() => setShowEmojiPicker(true)}
-                >
-                  <AppIcon
-                    decorative
-                    size="large"
-                    iconType="emoji"
-                    icon={emoji.content}
-                    background={emoji.background}
+            <IconPicker
+              value={{
+                type: 'emoji',
+                icon: emoji.content,
+                background: emoji.background,
+              }}
+              onValueChange={(payload) => {
+                if (payload.type === 'emoji')
+                  setEmoji({ content: payload.icon, background: payload.background })
+              }}
+            >
+              <Field name="label" className="gap-0">
+                <FieldLabel className="py-2 text-text-primary">
+                  {t(($) => $['createTool.name'], { ns: 'tools' })}{' '}
+                  <span aria-hidden className="ms-1 text-text-destructive">
+                    *
+                  </span>
+                </FieldLabel>
+                <div className="flex items-center justify-between gap-3">
+                  <IconPickerTrigger
+                    aria-label={t(($) => $['createTool.changeIcon'], { ns: 'tools' })}
+                    className="shrink-0 cursor-pointer rounded-[10px]"
+                  >
+                    <IconPickerIcon size="large" />
+                  </IconPickerTrigger>
+                  <Input
+                    className="h-10 min-w-0 flex-1"
+                    placeholder={t(($) => $['createTool.toolNamePlaceHolder'], { ns: 'tools' })!}
+                    value={label}
+                    onValueChange={(value) => setLabel(value)}
                   />
-                </button>
-                <Input
-                  className="h-10 min-w-0 flex-1"
-                  placeholder={t(($) => $['createTool.toolNamePlaceHolder'], { ns: 'tools' })!}
-                  value={label}
-                  onValueChange={(value) => setLabel(value)}
-                />
-              </div>
-            </Field>
+                </div>
+              </Field>
+              <IconPickerContent enableImageUpload={false} />
+            </IconPicker>
             {/* name for tool call */}
             <Field name="name" className="gap-0" invalid={!isWorkflowToolNameValid(name)}>
               <div className="flex items-center py-2 system-sm-medium text-text-primary">
                 <FieldLabel id={toolNameLabelId} className="py-0 text-text-primary">
                   {t(($) => $['createTool.nameForToolCall'], { ns: 'tools' })}
                 </FieldLabel>
-                <span aria-hidden className="ml-1 text-text-destructive">
+                <span aria-hidden className="ms-1 text-text-destructive">
                   *
                 </span>
                 <Infotip>
-                  <InfotipTrigger aria-labelledby={toolNameLabelId} className="ml-1 size-3.5" />
+                  <InfotipTrigger aria-labelledby={toolNameLabelId} className="ms-1 size-3.5" />
                   <InfotipContent aria-labelledby={toolNameLabelId} className="w-45">
                     {t(($) => $['createTool.nameForToolCallPlaceHolder'], { ns: 'tools' })}
                   </InfotipContent>
@@ -403,9 +410,7 @@ export function WorkflowToolDrawer({
                 {t(($) => $['createTool.description'], { ns: 'tools' })}
               </FieldLabel>
               <Textarea
-                placeholder={
-                  t(($) => $['createTool.descriptionPlaceholder'], { ns: 'tools' }) || ''
-                }
+                placeholder={t(($) => $['createTool.descriptionPlaceholder'], { ns: 'tools' })}
                 value={description}
                 onValueChange={(value) => setDescription(value)}
               />
@@ -419,13 +424,13 @@ export function WorkflowToolDrawer({
                 <table className="w-full text-xs leading-4.5 font-normal text-text-secondary">
                   <thead className="text-text-tertiary uppercase">
                     <tr className="border-b border-divider-regular">
-                      <th className="w-39 p-2 pl-3 font-medium">
+                      <th className="w-39 p-2 ps-3 font-medium">
                         {t(($) => $['createTool.toolInput.name'], { ns: 'tools' })}
                       </th>
-                      <th className="w-25.5 p-2 pl-3 font-medium">
+                      <th className="w-25.5 p-2 ps-3 font-medium">
                         {t(($) => $['createTool.toolInput.method'], { ns: 'tools' })}
                       </th>
-                      <th id={`${parameterId}-description`} className="p-2 pl-3 font-medium">
+                      <th id={`${parameterId}-description`} className="p-2 ps-3 font-medium">
                         {t(($) => $['createTool.toolInput.description'], { ns: 'tools' })}
                       </th>
                     </tr>
@@ -433,7 +438,7 @@ export function WorkflowToolDrawer({
                   <tbody>
                     {parameters.map((item, index) => (
                       <tr key={index} className="border-b border-divider-regular last:border-0">
-                        <td className="max-w-39 p-2 pl-3">
+                        <td className="max-w-39 p-2 ps-3">
                           <div className="text-[13px] leading-4.5">
                             <div className="flex">
                               <span
@@ -442,7 +447,7 @@ export function WorkflowToolDrawer({
                               >
                                 {item.name}
                               </span>
-                              <span className="shrink-0 pl-1 text-xs leading-4.5 text-[#ec4a0a]">
+                              <span className="shrink-0 ps-1 text-xs leading-4.5 text-[#ec4a0a]">
                                 {item.required
                                   ? t(($) => $['createTool.toolInput.required'], { ns: 'tools' })
                                   : ''}
@@ -476,7 +481,7 @@ export function WorkflowToolDrawer({
                             />
                           )}
                         </td>
-                        <td className="w-59 p-2 pl-3 text-text-tertiary">
+                        <td className="w-59 p-2 ps-3 text-text-tertiary">
                           <input
                             type="text"
                             aria-labelledby={`${parameterId}-${index}-name ${parameterId}-description`}
@@ -508,10 +513,10 @@ export function WorkflowToolDrawer({
                 <table className="w-full text-xs leading-4.5 font-normal text-text-secondary">
                   <thead className="text-text-tertiary uppercase">
                     <tr className="border-b border-divider-regular">
-                      <th className="w-39 p-2 pl-3 font-medium">
+                      <th className="w-39 p-2 ps-3 font-medium">
                         {t(($) => $['createTool.name'], { ns: 'tools' })}
                       </th>
-                      <th className="p-2 pl-3 font-medium">
+                      <th className="p-2 ps-3 font-medium">
                         {t(($) => $['createTool.toolOutput.description'], { ns: 'tools' })}
                       </th>
                     </tr>
@@ -528,7 +533,7 @@ export function WorkflowToolDrawer({
                         }
                         className="border-b border-divider-regular last:border-0"
                       >
-                        <td className="max-w-39 p-2 pl-3">
+                        <td className="max-w-39 p-2 ps-3">
                           <WorkflowToolOutputName
                             duplicateSources={duplicateOutputSourceGroups.get(
                               normalizeWorkflowOutputName(item.name),
@@ -537,7 +542,7 @@ export function WorkflowToolDrawer({
                             reservedOutputParameters={reservedOutputParameters}
                           />
                         </td>
-                        <td className="w-59 p-2 pl-3 text-text-tertiary">
+                        <td className="w-59 p-2 ps-3 text-text-tertiary">
                           <span className="text-[13px] leading-4.5 font-normal text-text-secondary">
                             {item.description}
                           </span>
@@ -564,9 +569,7 @@ export function WorkflowToolDrawer({
                 className="h-10"
                 value={privacyPolicy}
                 onValueChange={(value) => setPrivacyPolicy(value)}
-                placeholder={
-                  t(($) => $['createTool.privacyPolicyPlaceholder'], { ns: 'tools' }) || ''
-                }
+                placeholder={t(($) => $['createTool.privacyPolicyPlaceholder'], { ns: 'tools' })}
               />
             </Field>
           </div>
@@ -590,20 +593,6 @@ export function WorkflowToolDrawer({
           </div>
         </form>
       </WorkflowToolDrawerFrame>
-      <IconPickerDialog
-        open={showEmojiPicker}
-        enableImageUpload={false}
-        defaultValue={{
-          type: 'emoji',
-          icon: emoji.content,
-          background: emoji.background,
-        }}
-        onOpenChange={setShowEmojiPicker}
-        onConfirm={(payload) => {
-          if (payload.type === 'emoji')
-            setEmoji({ content: payload.icon, background: payload.background })
-        }}
-      />
       {confirmModalOpen && (
         <ConfirmModal
           show={confirmModalOpen}

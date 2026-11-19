@@ -9,6 +9,9 @@ domain value type through its public API.
   `RadioItem` belongs to a group; do not render a standalone radio.
 - `SegmentedControl` selects one mode, filter, or view. It follows radio-group semantics: an active
   item cannot be toggled off, `Tab` enters on the selected item, and arrow keys move and select.
+  The primitive owns the track, focus ring and selection motion. Preserve the existing density,
+  dimensions and documented surface treatments when adopting it.
+  Use `RadioGroup` with `RadioItem` for a custom single-choice surface such as separate filter pills.
 - `Tabs` selects a panel and provides `tablist` and `tabpanel` semantics.
 - [`Autocomplete`] accepts free-form text with optional suggestions.
 - [`Combobox`] selects and remembers one or more values from a searchable collection.
@@ -28,6 +31,13 @@ put the input hint there because it takes precedence over `aria-description`.
 Autocomplete, Combobox, and Select popups use Base UI's `--anchor-width` and `--available-width`
 variables to follow their trigger while clamping to the viewport. Do not replace that sizing with
 a fixed width or an unclamped minimum width.
+
+When a Combobox renders its input inside the popup, do not add a control that clears the typed
+query. The query is per-open state that Base UI resets: choosing an item clears it in `multiple`
+mode and closes the popup in single mode, and closing the popup (Escape, outside press) clears it.
+A clear control there adds a second tab stop to the popup's focus loop and a second x that means
+something other than `ComboboxClear`, which clears the selected value. Outside the popup, use
+`ComboboxClear` or `AutocompleteClear`.
 
 Use `Radio` for the default radio appearance. Use `RadioItem` when custom content itself is a
 radio item, and put `RadioControl` inside it for Dify UI's visual indicator. `RadioControl` is a

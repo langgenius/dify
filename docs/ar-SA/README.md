@@ -86,7 +86,7 @@
   جرّب [Dify Cloud](https://cloud.dify.ai) دون إدارة خادم. راجع [صفحة الأسعار](https://dify.ai/pricing) للاطلاع على الخطط وحصص الاستخدام الحالية.
 
 - **استضافة ذاتية لنسخة المجتمع Dify</br>**
-  ابدأ سريعًا في تشغيل Dify في بيئتك باستخدام \[دليل البدء السريع\](#البدء السريع).
+  ابدأ سريعًا في تشغيل Dify في بيئتك باستخدام \[دليل البدء السريع\](#البداية-السريعة).
   استخدم [توثيقنا](https://docs.dify.ai) للمزيد من المراجع والتعليمات الأعمق.
 
 - **مشروع Dify للشركات / المؤسسات</br>**
@@ -148,7 +148,7 @@ docker compose up -d
 - [X](https://x.com/dify_ai): لمتابعة أخبار الإصدارات وتحديثات المشروع.
 ## تاريخ النجمة
 
-[![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
+[![Star History Chart](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-light-mode-only) [![Star History Chart](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&theme=dark&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-dark-mode-only)
 
 ## الكشف عن الأمان
 

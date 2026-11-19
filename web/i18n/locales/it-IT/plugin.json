@@ -3,7 +3,6 @@
   "action.delete": "Rimuovi plugin",
   "action.deleteContentLeft": "Vorresti rimuovere",
   "action.deleteContentRight": "plugin?",
-  "action.deleteSuccess": "Plugin rimosso con successo",
   "action.pluginInfo": "Informazioni sul plugin",
   "allCategories": "Tutte le categorie",
   "auth.addApi": "Aggiungi la chiave API",
@@ -302,9 +301,7 @@
   "task.runningPlugins": "Installing Plugins",
   "task.successPlugins": "Successfully Installed Plugins",
   "templatePublishingGuide": "Guida alla pubblicazione dei modelli",
-  "upgrade.close": "Chiudere",
   "upgrade.description": "Sto per installare il seguente plugin",
-  "upgrade.successfulTitle": "Installazione riuscita",
   "upgrade.title": "Installa il plugin",
   "upgrade.upgrade": "Installare",
   "upgrade.upgrading": "Installazione..."

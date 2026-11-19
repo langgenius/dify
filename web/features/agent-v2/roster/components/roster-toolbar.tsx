@@ -78,7 +78,7 @@ function RosterSearchFilter() {
   return (
     <SearchInput
       aria-label={t(($) => $['roster.searchLabel'], { ns: 'agentRoster' })}
-      className="h-8 w-full min-w-0 sm:w-50 [&_button]:text-text-secondary [&_input::placeholder]:text-text-secondary"
+      className="h-8 w-full min-w-0 sm:w-50"
       placeholder={t(($) => $['roster.searchPlaceholder'], { ns: 'agentRoster' })}
       value={keyword}
       onValueChange={(value) => {
@@ -119,7 +119,7 @@ export function RosterToolbar({ publicationCounts }: RosterToolbarProps) {
         <div className="h-full w-px bg-divider-regular" />
       </div>
       <RosterCreatedByMeFilter />
-      <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+      <div className="ms-auto flex flex-wrap items-center justify-end gap-2">
         <RosterSortSelect />
         <RosterCreateMenu />
       </div>

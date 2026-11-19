@@ -1,20 +1,26 @@
 import type { Shape as HooksStoreShape } from '../../hooks-store/store'
 import type { RunFile } from '../../types'
 import type { FileUpload } from '@/app/components/base/features/types'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TransferMethod } from '@/types/app'
-import { FlowType } from '@/types/common'
 import { createStartNode } from '../../__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 import { InputVarType, WorkflowRunningStatus } from '../../types'
 import InputsPanel from '../inputs-panel'
 
-const mockCheckInputsForm = vi.fn()
 const mockNotify = vi.fn()
+const request = vi.hoisted(() => vi.fn<() => Promise<Response>>())
+
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request,
+}))
 
 vi.mock('next/navigation', () => ({
   useParams: () => ({}),
+  usePathname: () => '/apps',
 }))
 
 vi.mock('@/app/notifications', async (importOriginal) => ({
@@ -25,12 +31,6 @@ vi.mock('@/app/notifications', async (importOriginal) => ({
     warning: (message: string) => mockNotify({ type: 'warning', message }),
     info: (message: string) => mockNotify({ type: 'info', message }),
   },
-}))
-
-vi.mock('@/app/components/base/chat/chat/check-input-forms-hooks', () => ({
-  useCheckInputsForms: () => ({
-    checkInputsForm: mockCheckInputsForm,
-  }),
 }))
 
 const fileSettingsWithImage = {
@@ -56,11 +56,7 @@ const createHooksStoreProps = (
   overrides: Partial<HooksStoreShape> = {},
 ): Partial<HooksStoreShape> => ({
   handleRun: vi.fn(),
-  configsMap: {
-    flowId: 'flow-1',
-    flowType: FlowType.appFlow,
-    fileSettings: fileSettingsWithImage,
-  },
+  fileSettings: fileSettingsWithImage,
   ...overrides,
 })
 
@@ -78,7 +74,7 @@ const renderInputsPanel = (
 describe('InputsPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockCheckInputsForm.mockReturnValue(true)
+    request.mockReset()
   })
 
   describe('Rendering', () => {
@@ -165,7 +161,6 @@ describe('InputsPanel', () => {
 
     it('should not start a run when input validation fails', async () => {
       const user = userEvent.setup()
-      mockCheckInputsForm.mockReturnValue(false)
       const onRun = vi.fn()
       const handleRun = vi.fn()
 
@@ -178,7 +173,6 @@ describe('InputsPanel', () => {
                 variable: 'question',
                 label: 'Question',
                 required: true,
-                default: 'default question',
               },
             ],
           },
@@ -191,13 +185,10 @@ describe('InputsPanel', () => {
 
       await user.click(screen.getByRole('button', { name: 'workflow.singleRun.startRun' }))
 
-      expect(mockCheckInputsForm).toHaveBeenCalledWith(
-        { question: 'default question' },
-        expect.arrayContaining([
-          expect.objectContaining({ variable: 'question' }),
-          expect.objectContaining({ variable: '__image' }),
-        ]),
-      )
+      expect(mockNotify).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'appDebug.errorMessage.valueOfVarRequired:{"key":"Question"}',
+      })
       expect(onRun).not.toHaveBeenCalled()
       expect(handleRun).not.toHaveBeenCalled()
     })
@@ -236,12 +227,8 @@ describe('InputsPanel', () => {
           },
           hooksStoreProps: createHooksStoreProps({
             handleRun,
-            configsMap: {
-              flowId: 'flow-1',
-              flowType: FlowType.appFlow,
-              fileSettings: {
-                enabled: false,
-              },
+            fileSettings: {
+              enabled: false,
             },
           }),
         },
@@ -261,6 +248,131 @@ describe('InputsPanel', () => {
     })
   })
 
+  it.each([false, true])(
+    'submits the selected file and preserves clear semantics (required: %s)',
+    async (required) => {
+      const user = userEvent.setup()
+      const handleRun = vi.fn()
+      const defaultFile: FileEntity = {
+        id: 'default-file',
+        name: 'default.txt',
+        size: 10,
+        type: 'text/plain',
+        progress: 100,
+        transferMethod: TransferMethod.local_file,
+        supportFileType: 'document',
+        uploadedId: 'default-upload',
+      }
+      renderInputsPanel(
+        createStartNode({
+          data: {
+            variables: [
+              {
+                type: InputVarType.singleFile,
+                variable: 'file',
+                label: 'File',
+                required,
+                default: defaultFile,
+                allowed_file_types: ['document'],
+                allowed_file_upload_methods: [TransferMethod.remote_url],
+              },
+            ],
+          },
+        }),
+        { hooksStoreProps: createHooksStoreProps({ handleRun, fileSettings: { enabled: false } }) },
+      )
+      const runButton = screen.getByRole('button', { name: 'workflow.singleRun.startRun' })
+      await user.click(runButton)
+      expect(handleRun).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          inputs: {
+            file: {
+              type: 'document',
+              transfer_method: 'local_file',
+              url: '',
+              upload_file_id: 'default-upload',
+            },
+          },
+        }),
+      )
+
+      await user.click(screen.getByRole('button', { name: /remove.*default.txt/ }))
+      expect(screen.queryByText('default.txt')).not.toBeInTheDocument()
+      handleRun.mockClear()
+      await user.click(runButton)
+      if (required) {
+        expect(handleRun).not.toHaveBeenCalled()
+        expect(mockNotify).toHaveBeenCalledWith({
+          type: 'error',
+          message: 'appDebug.errorMessage.valueOfVarRequired:{"key":"File"}',
+        })
+      } else {
+        expect(handleRun).toHaveBeenCalledWith(expect.objectContaining({ inputs: { file: '' } }))
+      }
+
+      const replacementUrl = 'https://example.com/replacement.txt'
+      request.mockResolvedValue(
+        Response.json({
+          id: 'replacement-upload',
+          name: 'replacement.txt',
+          mime_type: 'text/plain',
+          size: 10,
+          url: replacementUrl,
+        }),
+      )
+      await user.click(screen.getByRole('button', { name: /fileUploader.pasteFileLink/ }))
+      await user.type(screen.getByPlaceholderText(/pasteFileLinkInputPlaceholder/), replacementUrl)
+      await user.click(screen.getByRole('button', { name: 'common.operation.ok' }))
+      await waitFor(() => expect(screen.queryByRole('progressbar')).not.toBeInTheDocument())
+      await user.keyboard('{Escape}')
+      await user.click(runButton)
+      expect(handleRun).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          inputs: {
+            file: {
+              type: 'document',
+              transfer_method: 'remote_url',
+              url: replacementUrl,
+              upload_file_id: 'replacement-upload',
+            },
+          },
+        }),
+      )
+    },
+  )
+
+  it.each([false, true])(
+    'accepts a zero default or explicit numeric override (%s)',
+    async (override) => {
+      const user = userEvent.setup()
+      const handleRun = vi.fn()
+      renderInputsPanel(
+        createStartNode({
+          data: {
+            variables: [
+              {
+                type: InputVarType.number,
+                variable: 'count',
+                label: 'Count',
+                required: true,
+                default: override ? 5 : 0,
+              },
+            ],
+          },
+        }),
+        {
+          initialStoreState: { inputs: override ? { count: 0 } : {} },
+          hooksStoreProps: createHooksStoreProps({ handleRun, fileSettings: { enabled: false } }),
+        },
+      )
+
+      await user.click(screen.getByRole('button', { name: 'workflow.singleRun.startRun' }))
+
+      expect(mockNotify).not.toHaveBeenCalled()
+      expect(handleRun).toHaveBeenCalledWith(expect.objectContaining({ inputs: { count: 0 } }))
+    },
+  )
+
   describe('Disabled States', () => {
     it('should disable the run button while a local file is still uploading', () => {
       renderInputsPanel(createStartNode(), {
@@ -268,12 +380,8 @@ describe('InputsPanel', () => {
           files: [uploadingRunFile],
         },
         hooksStoreProps: createHooksStoreProps({
-          configsMap: {
-            flowId: 'flow-1',
-            flowType: FlowType.appFlow,
-            fileSettings: {
-              enabled: false,
-            },
+          fileSettings: {
+            enabled: false,
           },
         }),
       })
@@ -324,7 +432,7 @@ describe('InputsPanel', () => {
       await user.click(screen.getByRole('button', { name: 'workflow.singleRun.startRun' }))
 
       expect(screen.getByRole('button', { name: 'workflow.singleRun.startRun' })).toBeDisabled()
-      expect(mockCheckInputsForm).not.toHaveBeenCalled()
+      expect(mockNotify).not.toHaveBeenCalled()
       expect(onRun).not.toHaveBeenCalled()
       expect(handleRun).not.toHaveBeenCalled()
     })

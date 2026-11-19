@@ -34,16 +34,14 @@ def apply_published_workflow_snapshot_to_draft(
     the published source row before the caller commits.
     """
     if not draft_workflow:
-        workflow_type = (
-            source_workflow.type.value if isinstance(source_workflow.type, WorkflowType) else source_workflow.type
-        )
+        workflow_type = WorkflowType(source_workflow.type)
         draft_workflow = Workflow(
             tenant_id=tenant_id,
             app_id=app_id,
             type=workflow_type,
             version=Workflow.VERSION_DRAFT,
             graph=source_workflow.graph,
-            features=source_workflow.serialized_features,
+            _features=source_workflow.serialized_features,
             created_by=account.id,
         )
         draft_workflow.copy_serialized_variable_storage_from(source_workflow)

@@ -115,7 +115,7 @@ export const Anatomy: Story = {
           role="region"
           className="border-[0.5px] border-divider-subtle bg-components-panel-bg"
         >
-          <VerticalContent className="flex flex-col gap-4 py-2 pr-5 pl-3 system-sm-regular leading-6 text-text-secondary">
+          <VerticalContent className="flex flex-col gap-4 py-2 ps-3 pe-5 system-sm-regular leading-6 text-text-secondary">
             {articleParagraphs.map((paragraph) => (
               <p key={paragraph}>{paragraph}</p>
             ))}
@@ -142,7 +142,7 @@ export const Vertical: Story = {
           role="region"
           className="border-[0.5px] border-divider-subtle bg-components-panel-bg"
         >
-          <VerticalContent className="flex flex-col gap-4 p-4 pr-6 system-sm-regular leading-6 text-text-secondary">
+          <VerticalContent className="flex flex-col gap-4 p-4 pe-6 system-sm-regular leading-6 text-text-secondary">
             <div className="space-y-1">
               <div className="system-xs-medium-uppercase text-text-tertiary">Article</div>
               <div className="system-md-semibold text-text-primary">Scrollable text region</div>
@@ -213,7 +213,7 @@ export const ScrollFade: Story = {
             'mask-linear-[to_bottom,transparent_0,black_min(40px,var(--scroll-area-overflow-y-start)),black_calc(100%-min(40px,var(--scroll-area-overflow-y-end,40px))),transparent_100%] mask-no-repeat',
           )}
         >
-          <VerticalContent className="flex flex-col gap-4 px-4 py-3 pr-6 system-sm-regular leading-6 text-text-secondary">
+          <VerticalContent className="flex flex-col gap-4 px-4 py-3 pe-6 system-sm-regular leading-6 text-text-secondary">
             {Array.from({ length: 5 }, (_, groupIndex) =>
               articleParagraphs.map((paragraph) => (
                 <p key={`${groupIndex}-${paragraph}`}>{paragraph}</p>
@@ -277,7 +277,7 @@ export const BothAxes: Story = {
           role="region"
           className="border-[0.5px] border-divider-subtle bg-components-panel-bg"
         >
-          <ScrollAreaContent className="pt-3 pr-6 pb-6 pl-3">
+          <ScrollAreaContent className="ps-3 pe-6 pt-3 pb-6">
             <div className="grid grid-cols-[repeat(10,6.25rem)] grid-rows-[repeat(10,6.25rem)] gap-3">
               {gridCells.map((cell) => (
                 <div

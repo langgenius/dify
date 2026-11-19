@@ -11,10 +11,11 @@ import Citation from '@/app/components/base/features/new-feature-panel/citation'
 import ConversationOpener from '@/app/components/base/features/new-feature-panel/conversation-opener'
 import { FeaturePanelDrawer } from '@/app/components/base/features/new-feature-panel/feature-panel-drawer'
 import FileUpload from '@/app/components/base/features/new-feature-panel/file-upload'
-import FollowUp from '@/app/components/base/features/new-feature-panel/follow-up'
+import { FollowUp } from '@/app/components/base/features/new-feature-panel/follow-up'
 import ImageUpload from '@/app/components/base/features/new-feature-panel/image-upload'
 import Moderation from '@/app/components/base/features/new-feature-panel/moderation'
 import MoreLikeThis from '@/app/components/base/features/new-feature-panel/more-like-this'
+import ShowThoughts from '@/app/components/base/features/new-feature-panel/show-thoughts'
 import SpeechToText from '@/app/components/base/features/new-feature-panel/speech-to-text'
 import TextToSpeech from '@/app/components/base/features/new-feature-panel/text-to-speech'
 import {
@@ -23,7 +24,6 @@ import {
 } from '@/app/components/billing/pricing/query-params'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useModalContext } from '@/context/modal-context'
 
 type Props = Readonly<{
   show: boolean
@@ -33,6 +33,7 @@ type Props = Readonly<{
   onClose: () => void
   inWorkflow?: boolean
   showFileUpload?: boolean
+  showThoughtsToggle?: boolean
   showModeration?: boolean
   showAnnotationReply?: boolean
   promptVariables?: PromptVariable[]
@@ -51,6 +52,7 @@ const NewFeaturePanel = ({
   onClose,
   inWorkflow = true,
   showFileUpload = true,
+  showThoughtsToggle = false,
   showModeration = true,
   showAnnotationReply = true,
   promptVariables,
@@ -64,11 +66,10 @@ const NewFeaturePanel = ({
   const { t } = useTranslation(['common', 'workflow'])
   const { data: speech2textDefaultModel } = useDefaultModel(ModelTypeEnum.speech2text)
   const { data: text2speechDefaultModel } = useDefaultModel(ModelTypeEnum.tts)
-  const { hasBlockingModalOpen } = useModalContext()
 
   return (
     <FeaturePanelDrawer
-      show={show && !hasBlockingModalOpen && pricing !== 'open'}
+      show={show && pricing !== 'open'}
       onClose={onClose}
       inWorkflow={inWorkflow}
       className={drawerClassName}
@@ -114,6 +115,9 @@ const NewFeaturePanel = ({
           {showFileUpload && isChatMode && <FileUpload disabled={disabled} onChange={onChange} />}
           {showFileUpload && !isChatMode && <ImageUpload disabled={disabled} onChange={onChange} />}
           {isChatMode && <Citation disabled={disabled} onChange={onChange} />}
+          {isChatMode && showThoughtsToggle && (
+            <ShowThoughts disabled={disabled} onChange={onChange} />
+          )}
           {showModeration && (isChatMode || !inWorkflow) && (
             <Moderation disabled={disabled} onChange={onChange} />
           )}

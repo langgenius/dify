@@ -5,7 +5,6 @@ import { Provider as JotaiProvider } from 'jotai'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import PluginTypeSwitch from '../plugin-type-switch'
-import styles from '../plugin-type-switch.module.css'
 
 vi.mock('#i18n', async () => {
   const { withSelectorKey } = await import('@/test/i18n-mock')
@@ -61,16 +60,10 @@ describe('PluginTypeSwitch', () => {
   it('exposes the selected category and updates the URL in the home variant', async () => {
     const user = userEvent.setup()
     const { onUrlUpdate } = renderSwitch('?category=all', { variant: 'home' })
-    const categoryGroup = screen.getByRole('group', { name: 'allCategories' })
 
-    expect(categoryGroup).toHaveClass('w-full', 'justify-start', 'gap-1')
     const activeCategory = screen.getByRole('button', { name: 'category.all' })
-    const inactiveCategory = screen.getByRole('button', { name: 'category.models' })
 
     expect(activeCategory).toHaveAttribute('aria-pressed', 'true')
-    expect(activeCategory).toHaveClass(styles.homeItem!, styles.homeItemActive!)
-    expect(inactiveCategory).toHaveClass(styles.homeItem!)
-    expect(inactiveCategory).not.toHaveClass(styles.homeItemActive!)
     expect(screen.getByRole('button', { name: 'categorySingle.datasource' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'categorySingle.agent' })).toBeInTheDocument()
 

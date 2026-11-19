@@ -3,7 +3,8 @@
 Bearer-authed counterparts to the cookie-authed /console/api/workspaces
 endpoints. Account bearers (dfoa_) see every tenant they're a member of.
 External SSO bearers (dfoe_) have no account_id and so see an empty list —
-that matches /openapi/v1/account.
+that matches /openapi/v1/account. Resource access bearers may list only their
+own tenant, without inheriting any account membership or role.
 
 Member management declares both authorization arms; ``RBAC_ENABLED`` picks one.
 ``GET /workspaces/<workspace_id>`` deliberately declares neither: it admits any
@@ -20,9 +21,11 @@ from werkzeug.exceptions import BadRequest, NotFound
 
 from configs import dify_config
 from constants.oauth_bearer import Scope
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.rbac import RBACCheck, RBACPermission, Workspace
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint
+from controllers.openapi._errors import MemberLicenseExceeded, MemberLimitExceeded
 from controllers.openapi._models import (
     MemberActionResponse,
     MemberInvitePayload,
@@ -45,9 +48,10 @@ from controllers.openapi.auth.requirements import (
     CheckWorkspaceMember,
     CheckWorkspaceRole,
 )
-from controllers.openapi.auth.subjects import AccountSubject
+from controllers.openapi.auth.subjects import AccountSubject, ResourceAccessSubject
 from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
+from machinery.scope import scope_admits
 from services.account_errors import AccountNotFoundError, AccountRegisterError, SeatsLimitExceededError
 from services.errors.base import NoPermissionError
 from services.errors.workspace import (
@@ -56,6 +60,8 @@ from services.errors.workspace import (
     InvalidWorkspaceMemberRoleError,
     MemberNotInTenantError,
     RoleAlreadyAssignedError,
+    WorkspaceInvitationQuotaError,
+    WorkspaceMemberLicenseQuotaError,
     WorkspaceNotLinkedError,
 )
 from services.workspace.contracts import WorkspaceInvitation, WorkspaceMemberRecord, WorkspaceSnapshot
@@ -76,16 +82,23 @@ def _member_response(account: WorkspaceMemberRecord) -> MemberResponse:
 class WorkspacesApi(Resource):
     @endpoint(
         op="get.workspace",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_DISCOVERY,
         kind=Kind.LIST,
         summary="List workspaces of the current account",
         examples=(Example(title="List my workspaces, first page", input={"page": 1, "limit": 20}),),
-        requirements=(CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.WORKSPACE_READ)),
+        requirements=(CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)), CheckScope(Scope.WORKSPACE_READ)),
         query=WorkspaceListQuery,
         returns=(200, WorkspaceListResponse, "Workspace list"),
     )
     def get(self, ctx: Context, *, query: WorkspaceListQuery):
+        if isinstance(ctx.subject, ResourceAccessSubject):
+            tenant = ctx.workspace
+            item = WorkspaceSummaryResponse(id=str(tenant.id), name=tenant.name, role="", status=tenant.status)
+            return WorkspaceListResponse.page_of([item], query=query)
         rows = application_services().workspaces.management.list_memberships(str(ctx.subject.account_id))
-        return WorkspaceListResponse.page_of([_workspace_summary(row) for row in rows], query=query)
+        return WorkspaceListResponse.page_of(
+            [_workspace_summary(row) for row in rows if scope_admits(ctx.personal_workspace_ids, row.id)], query=query
+        )
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>")
@@ -201,15 +214,21 @@ class WorkspaceMembersApi(Resource):
                 role=body.role,
             )
         except AccountAlreadyInTenantError as exc:
-            raise BadRequest(str(exc))
+            raise BadRequest(str(exc)) from exc
         except InvalidWorkspaceMemberRoleError as exc:
             raise BadRequest(str(exc)) from exc
         except NoPermissionError as exc:
-            raise BadRequest(str(exc))
-        except SeatsLimitExceededError:
-            raise BadRequest("licensed seats limit exceeded")
+            raise BadRequest(str(exc)) from exc
+        except SeatsLimitExceededError as caught_error:
+            raise BadRequest("licensed seats limit exceeded") from caught_error
+        except WorkspaceMemberLicenseQuotaError as caught_error:
+            raise MemberLicenseExceeded() from caught_error
+        except WorkspaceInvitationQuotaError as caught_error:
+            if caught_error.seats:
+                raise BadRequest("licensed seats limit exceeded") from caught_error
+            raise MemberLimitExceeded() from caught_error
         except AccountRegisterError as exc:
-            raise BadRequest(str(exc))
+            raise BadRequest(str(exc)) from exc
 
         return _invitation_response(invitation)
 
@@ -245,11 +264,11 @@ class WorkspaceMemberApi(Resource):
         except AccountNotFoundError:
             raise NotFound("member not found") from None
         except CannotOperateSelfError as exc:
-            raise BadRequest(str(exc))
+            raise BadRequest(str(exc)) from exc
         except NoPermissionError as exc:
-            raise BadRequest(str(exc))
+            raise BadRequest(str(exc)) from exc
         except MemberNotInTenantError as exc:
-            raise NotFound(str(exc))
+            raise NotFound(str(exc)) from exc
 
         return MemberActionResponse()
 
@@ -280,13 +299,13 @@ class WorkspaceMemberApi(Resource):
         except AccountNotFoundError:
             raise NotFound("member not found") from None
         except CannotOperateSelfError as exc:
-            raise BadRequest(str(exc))
+            raise BadRequest(str(exc)) from exc
         except NoPermissionError as exc:
-            raise BadRequest(str(exc))
+            raise BadRequest(str(exc)) from exc
         except MemberNotInTenantError as exc:
-            raise NotFound(str(exc))
+            raise NotFound(str(exc)) from exc
         except RoleAlreadyAssignedError as exc:
-            raise BadRequest(str(exc))
+            raise BadRequest(str(exc)) from exc
         except InvalidWorkspaceMemberRoleError as exc:
             raise BadRequest(str(exc)) from exc
 
@@ -318,7 +337,6 @@ def _workspace_summary(tenant: WorkspaceSnapshot) -> WorkspaceSummaryResponse:
         name=tenant.name,
         role=tenant.role or "",
         status=tenant.status,
-        current=tenant.current,
     )
 
 
@@ -328,6 +346,5 @@ def _workspace_detail(tenant: WorkspaceSnapshot) -> WorkspaceDetailResponse:
         name=tenant.name,
         role=tenant.role or "",
         status=tenant.status,
-        current=tenant.current,
         created_at=tenant.created_at.isoformat() if tenant.created_at else None,
     )

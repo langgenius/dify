@@ -1,19 +1,48 @@
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Generator, Mapping
-from typing import Any, Union, cast
+from typing import Any, cast
 
 from dify_agent.protocol import RunFailureType
 from pydantic import JsonValue
 
 from clients.agent_backend.errors import AgentBackendError, AgentBackendRunFailedError
-from core.app.apps.exc import AppGenerateError
+from core.app.apps.exc import ModerationInvocationError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import AppBlockingResponse, AppStreamResponse
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError, InvokeRateLimitError
+from libs.exception import BaseHTTPException
 
 logger = logging.getLogger(__name__)
+
+
+class ModerationRejectedHTTPError(BaseHTTPException):
+    """Represent an unhandled rejection on a transport, never an app's successful preset reply."""
+
+    error_code = "moderation_rejected"
+    code = 400
+    description = "The content was rejected by moderation."
+
+
+class ModerationUnavailableHTTPError(BaseHTTPException):
+    """Expose a safe retryable transport error without provider diagnostics."""
+
+    error_code = "moderation_unavailable"
+    code = 503
+    description = "This message can’t be processed right now. Please try again later."
+
+
+def moderation_http_exception(
+    error: ModerationInvocationError,
+) -> ModerationRejectedHTTPError | ModerationUnavailableHTTPError:
+    """Convert a classified invocation failure only after app replacement handling; share HTTP/SSE semantics."""
+    error_type = (
+        ModerationUnavailableHTTPError
+        if error.error_code == ModerationUnavailableHTTPError.error_code
+        else ModerationRejectedHTTPError
+    )
+    return error_type(description=str(error))
 
 
 class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
@@ -23,14 +52,14 @@ class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
 
     @classmethod
     def convert(
-        cls, response: Union[AppBlockingResponse, Generator[AppStreamResponse, Any, None]], invoke_from: InvokeFrom
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], Any, None]:
+        cls, response: AppBlockingResponse | Generator[AppStreamResponse, Any], invoke_from: InvokeFrom
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], Any]:
         if invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.SERVICE_API, InvokeFrom.OPENAPI}:
             if isinstance(response, AppBlockingResponse):
                 return cls.convert_blocking_full_response(cls._cast_blocking_response(response))
             else:
 
-                def _generate_full_response() -> Generator[dict[str, Any] | str, Any, None]:
+                def _generate_full_response() -> Generator[dict[str, Any] | str, Any]:
                     yield from cls.convert_stream_full_response(response)
 
                 return _generate_full_response()
@@ -39,7 +68,7 @@ class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
                 return cls.convert_blocking_simple_response(cls._cast_blocking_response(response))
             else:
 
-                def _generate_simple_response() -> Generator[dict[str, Any] | str, Any, None]:
+                def _generate_simple_response() -> Generator[dict[str, Any] | str, Any]:
                     yield from cls.convert_stream_simple_response(response)
 
                 return _generate_simple_response()
@@ -57,15 +86,15 @@ class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
     @classmethod
     @abstractmethod
     def convert_stream_full_response(
-        cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[dict[str, Any] | str, None, None]:
+        cls, stream_response: Generator[AppStreamResponse]
+    ) -> Generator[dict[str, Any] | str]:
         raise NotImplementedError
 
     @classmethod
     @abstractmethod
     def convert_stream_simple_response(
-        cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[dict[str, Any] | str, None, None]:
+        cls, stream_response: Generator[AppStreamResponse]
+    ) -> Generator[dict[str, Any] | str]:
         raise NotImplementedError
 
     @classmethod
@@ -82,12 +111,16 @@ class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
                 updated_resources.append(
                     {
                         "dataset_id": resource.get("dataset_id"),
+                        "knowledge_fs_citation": resource.get("knowledge_fs_citation"),
                         "dataset_name": resource.get("dataset_name"),
                         "document_id": resource.get("document_id"),
+                        "document_asset_id": resource.get("document_asset_id"),
                         "segment_id": resource.get("segment_id", ""),
                         "position": resource["position"],
                         "data_source_type": resource.get("data_source_type"),
                         "document_name": resource["document_name"],
+                        "document_revision": resource.get("document_revision"),
+                        "document_version": resource.get("document_version"),
                         "score": resource["score"],
                         "hit_count": resource.get("hit_count"),
                         "word_count": resource.get("word_count"),
@@ -126,11 +159,12 @@ class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
                 "message": str(e),
             }
 
-        if isinstance(e, AppGenerateError):
+        if isinstance(e, ModerationInvocationError):
+            http_error = moderation_http_exception(e)
             return {
-                "code": e.error_code,
-                "status": e.status_code,
-                "message": str(e),
+                "code": http_error.error_code,
+                "status": http_error.code,
+                "message": http_error.description,
             }
 
         error_responses: dict[type[Exception], dict[str, JsonValue]] = {

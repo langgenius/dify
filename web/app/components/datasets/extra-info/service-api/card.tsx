@@ -1,5 +1,6 @@
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { PopoverClose } from '@langgenius/dify-ui/popover'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useTranslation } from 'react-i18next'
@@ -9,14 +10,15 @@ import Link from '@/next/link'
 
 type CardProps = {
   apiBaseUrl: string
+  apiReferenceUrl?: string
   canManageApiKey: boolean
-  onOpenApiKeyModal: () => void
 }
 
-export function ServiceApiCard({ apiBaseUrl, canManageApiKey, onOpenApiKeyModal }: CardProps) {
+export function ServiceApiCard({ apiBaseUrl, apiReferenceUrl, canManageApiKey }: CardProps) {
   const { t } = useTranslation(['dataset'])
 
-  const apiReferenceUrl = useDatasetApiAccessUrl()
+  const datasetApiReferenceUrl = useDatasetApiAccessUrl()
+  const referenceUrl = apiReferenceUrl ?? datasetApiReferenceUrl
 
   return (
     <div className="flex w-90 flex-col rounded-xl border border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-1">
@@ -55,22 +57,25 @@ export function ServiceApiCard({ apiBaseUrl, canManageApiKey, onOpenApiKeyModal 
       <div className="flex gap-x-1 border-t-[0.5px] border-divider-subtle p-4">
         <PopoverClose
           render={
-            <Button
-              variant="ghost"
-              size="small"
-              className="text-text-tertiary"
-              disabled={!canManageApiKey}
-              onClick={onOpenApiKeyModal}
-            >
-              <span aria-hidden className="i-ri-key-2-line size-3.5 shrink-0" />
-              <span className="system-xs-medium">
-                {t(($) => $['serviceApi.card.apiKey'], { ns: 'dataset' })}
-              </span>
-            </Button>
+            <DialogTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="small"
+                  className="text-text-tertiary"
+                  disabled={!canManageApiKey}
+                />
+              }
+            />
           }
-        />
+        >
+          <span aria-hidden className="i-ri-key-2-line size-3.5 shrink-0" />
+          <span className="system-xs-medium">
+            {t(($) => $['serviceApi.card.apiKey'], { ns: 'dataset' })}
+          </span>
+        </PopoverClose>
         <Link
-          href={apiReferenceUrl}
+          href={referenceUrl}
           target="_blank"
           rel="noopener noreferrer"
           className={cn(buttonVariants({ variant: 'ghost', size: 'small' }), 'text-text-tertiary')}

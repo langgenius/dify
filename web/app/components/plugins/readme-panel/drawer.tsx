@@ -36,8 +36,8 @@ export function ReadmeDrawer({ detail, open, onOpenChange, triggerId }: ReadmeDr
       <DrawerPortal>
         <DrawerBackdrop className="bg-transparent" />
         <DrawerViewport>
-          <DrawerPopup className="data-[swipe-direction=left]:top-16 data-[swipe-direction=left]:bottom-2 data-[swipe-direction=left]:left-2 data-[swipe-direction=left]:h-auto data-[swipe-direction=left]:w-150 data-[swipe-direction=left]:max-w-[calc(100vw-1rem)] data-[swipe-direction=left]:rounded-2xl data-[swipe-direction=left]:border-l-[0.5px]">
-            <DrawerContent className="flex min-h-0 flex-1 flex-col p-0">
+          <DrawerPopup className="data-[swipe-direction=left]:top-16 data-[swipe-direction=left]:bottom-2 data-[swipe-direction=left]:left-2 data-[swipe-direction=left]:h-auto data-[swipe-direction=left]:w-150 data-[swipe-direction=left]:max-w-[calc(100vw-1rem)] data-[swipe-direction=left]:rounded-2xl">
+            <DrawerContent>
               <ReadmePanelContent
                 detail={detail}
                 title={

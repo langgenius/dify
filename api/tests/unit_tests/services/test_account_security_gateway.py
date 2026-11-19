@@ -2,7 +2,7 @@
 
 import logging
 from typing import cast
-from unittest.mock import Mock, call
+from unittest.mock import call, create_autospec
 
 import pytest
 from redis import RedisError
@@ -50,7 +50,7 @@ def test_redis_failures_remain_fail_open_but_are_logged(
 
 @pytest.mark.parametrize("already_frozen", [True, False], ids=["frozen-ip", "lost-hour-counter-race"])
 def test_frozen_ip_and_concurrent_hour_claim_remain_limited(already_frozen: bool) -> None:
-    redis = Mock(spec=RedisClientWrapper)
+    redis = create_autospec(RedisClientWrapper, instance=True)
     values = (
         {"email_send_ip_limit_freeze:127.0.0.1": b"1"}
         if already_frozen

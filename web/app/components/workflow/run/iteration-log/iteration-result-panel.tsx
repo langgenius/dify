@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import type { ExternalTraceRun } from '../external-trace-row'
 import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -20,9 +21,10 @@ type Props = {
   readonly list: NodeTracing[][]
   readonly onBack: () => void
   readonly iterDurationMap?: IterationDurationMap
+  readonly externalTraceRun?: ExternalTraceRun
 }
 
-const IterationResultPanel: FC<Props> = ({ list, onBack, iterDurationMap }) => {
+const IterationResultPanel: FC<Props> = ({ list, onBack, iterDurationMap, externalTraceRun }) => {
   const { t } = useTranslation(['workflow'])
   const [expandedIterations, setExpandedIterations] = useState<Record<number, boolean>>({})
 
@@ -94,9 +96,11 @@ const IterationResultPanel: FC<Props> = ({ list, onBack, iterDurationMap }) => {
             key={index}
             className={cn('mb-1 overflow-hidden rounded-xl border-none bg-background-section-burn')}
           >
-            <div
+            <button
+              type="button"
+              aria-expanded={!!expandedIterations[index]}
               className={cn(
-                'flex w-full cursor-pointer items-center justify-between px-3',
+                'flex w-full cursor-pointer items-center justify-between px-3 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
                 expandedIterations[index] ? 'pt-3 pb-2' : 'py-3',
                 'rounded-xl text-left',
               )}
@@ -114,15 +118,21 @@ const IterationResultPanel: FC<Props> = ({ list, onBack, iterDurationMap }) => {
                 </span>
                 {iterationStatusShow(index, iteration, iterDurationMap)}
               </div>
-            </div>
+            </button>
             {expandedIterations[index] && <div className="h-px grow bg-divider-subtle"></div>}
             <div
+              inert={!expandedIterations[index]}
+              aria-hidden={!expandedIterations[index]}
               className={cn(
                 'transition-all duration-200',
                 expandedIterations[index] ? 'opacity-100' : 'max-h-0 overflow-hidden opacity-0',
               )}
             >
-              <TracingPanel list={iteration} className="bg-background-section-burn" />
+              <TracingPanel
+                list={iteration}
+                className="bg-background-section-burn"
+                externalTraceRun={externalTraceRun}
+              />
             </div>
           </div>
         ))}

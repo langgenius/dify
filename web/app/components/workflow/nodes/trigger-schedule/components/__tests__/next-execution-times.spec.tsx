@@ -20,13 +20,24 @@ const createData = (overrides: Partial<ScheduleTriggerNodeType> = {}): ScheduleT
 })
 
 describe('trigger-schedule/next-execution-times', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-01-15T12:00:00Z'))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('renders the upcoming execution times when the schedule is valid', () => {
     render(<NextExecutionTimes data={createData()} />)
 
     expect(
       screen.getByText('workflowIntegrations.nodes.triggerSchedule.nextExecutionTimes'),
     ).toBeInTheDocument()
-    expect(screen.getAllByText(/^\d{2}$/).length).toBeGreaterThan(0)
+    expect(screen.getByText(/January 16, 2026, 11:30\sAM/)).toBeInTheDocument()
+    expect(screen.getByText(/January 20, 2026, 11:30\sAM/)).toBeInTheDocument()
+    expect(screen.getAllByText(/January \d+, 2026, 11:30\sAM/)).toHaveLength(5)
   })
 
   it('hides upcoming execution times when frequency is missing or cron is invalid', () => {

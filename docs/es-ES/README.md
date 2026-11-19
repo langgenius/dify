@@ -158,7 +158,7 @@ Elige el canal que mejor se adapte a tu consulta:
 - [X](https://x.com/dify_ai): Sigue las noticias de versiones y las actualizaciones del proyecto.
 ## Historial de Estrellas
 
-[![Gráfico de Historial de Estrellas](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
+[![Gráfico de Historial de Estrellas](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-light-mode-only) [![Gráfico de Historial de Estrellas](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&theme=dark&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-dark-mode-only)
 
 ## Divulgación de Seguridad
 

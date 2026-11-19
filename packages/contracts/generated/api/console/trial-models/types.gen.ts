@@ -8,12 +8,28 @@ export type TrialModelsResponse = {
   trial_models: Array<string>
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type GetTrialModelsData = {
   body?: never
   path?: never
   query?: never
   url: '/trial-models'
 }
+
+export type GetTrialModelsErrors = {
+  default: ErrorResponse
+}
+
+export type GetTrialModelsError = GetTrialModelsErrors[keyof GetTrialModelsErrors]
 
 export type GetTrialModelsResponses = {
   200: TrialModelsResponse

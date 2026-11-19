@@ -1,179 +1,90 @@
-import type React from 'react'
 import type { CommonNodeType } from '../../../../types'
-import { fireEvent, screen } from '@testing-library/react'
-import { renderWorkflowComponent } from '../../../../__tests__/workflow-test-env'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useNodes } from 'reactflow'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper, seedAppDslVersion } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
+import { renderWorkflowFlowComponent } from '../../../../__tests__/workflow-test-env'
 import { fullWorkflowAccessControl } from '../../../../hooks-store'
 import { BlockEnum, NodeRunningStatus } from '../../../../types'
 import NodeControl from '../node-control'
 
-const { mockHandleNodeSelect, mockCanRunBySingle, mockUseNodesReadOnly } = vi.hoisted(() => ({
-  mockHandleNodeSelect: vi.fn(),
-  mockCanRunBySingle: vi.fn(() => true),
-  mockUseNodesReadOnly: vi.fn(() => false),
-}))
-
-let mockPluginInstallLocked = false
-
-vi.mock('../../../../hooks/use-nodes-interactions', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../../hooks/use-nodes-interactions')>()
-  return {
-    ...actual,
-    useNodesInteractions: () => ({
-      handleNodeSelect: mockHandleNodeSelect,
-    }),
-  }
-})
-
-vi.mock('../../../../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../../hooks/use-workflow')>()
-  return {
-    ...actual,
-    useNodesReadOnly: mockUseNodesReadOnly,
-  }
-})
-
-vi.mock('../../../../utils', async () => {
-  const actual = await vi.importActual<typeof import('../../../../utils')>('../../../../utils')
-  return {
-    ...actual,
-    canRunBySingle: mockCanRunBySingle,
-  }
-})
-
-vi.mock('@/app/components/workflow/node-actions-menu', () => ({
-  NodeActionsDropdown: ({ onOpenChange }: { onOpenChange: (open: boolean) => void }) => (
-    <>
-      <button type="button" onClick={() => onOpenChange(true)}>
-        open panel
-      </button>
-      <button type="button" onClick={() => onOpenChange(false)}>
-        close panel
-      </button>
-    </>
-  ),
-}))
-
-function NodeControlHarness({
-  id,
-  data,
+function SelectedNode() {
+  const selected = useNodes<CommonNodeType>().find((node) => node.data.selected)
+  return <output aria-label="Selected node">{selected?.id}</output>
+}
+const renderControl = ({
+  data = {},
+  canRun = true,
+  readonly = false,
+  pluginInstallLocked = false,
 }: {
-  id: string
-  data: CommonNodeType
-  selected?: boolean
-}) {
-  return <NodeControl id={id} data={data} pluginInstallLocked={mockPluginInstallLocked} />
-}
-
-function renderNodeControl(ui: React.ReactElement, accessControl = fullWorkflowAccessControl) {
-  return renderWorkflowComponent(ui, {
-    hooksStoreProps: {
-      accessControl,
+  data?: Partial<CommonNodeType>
+  canRun?: boolean
+  readonly?: boolean
+  pluginInstallLocked?: boolean
+} = {}) => {
+  const { queryClient } = createConsoleQueryWrapper()
+  seedAppDslVersion(queryClient)
+  seedToolProviders(queryClient, { builtInTools: [], customTools: [], workflowTools: [] })
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.defaultModel.get.queryKey({
+      input: { query: { model_type: 'llm' } },
+    }),
+    { data: null },
+  )
+  const payload: CommonNodeType = { type: BlockEnum.Code, title: 'Code', desc: '', ...data }
+  return renderWorkflowFlowComponent(
+    <>
+      <NodeControl id="node-1" data={payload} pluginInstallLocked={pluginInstallLocked} />
+      <SelectedNode />
+    </>,
+    {
+      queryClient,
+      nodes: [{ id: 'node-1', position: { x: 0, y: 0 }, data: payload }],
+      initialStoreState: { canvasReadOnly: readonly },
+      hooksStoreProps: { accessControl: { ...fullWorkflowAccessControl, canRun } },
     },
-  })
+  )
 }
-
-const makeData = (overrides: Partial<CommonNodeType> = {}): CommonNodeType => ({
-  type: BlockEnum.Code,
-  title: 'Node',
-  desc: '',
-  selected: false,
-  _singleRunningStatus: undefined,
-  isInIteration: false,
-  isInLoop: false,
-  ...overrides,
-})
 
 describe('NodeControl', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockPluginInstallLocked = false
-    mockCanRunBySingle.mockReturnValue(true)
-    mockUseNodesReadOnly.mockReturnValue(false)
-  })
-
-  // Run/stop behavior should be driven by the workflow store, not CSS classes.
-  describe('Single Run Actions', () => {
-    it('should trigger a single run through the workflow store', () => {
-      const { store } = renderNodeControl(<NodeControlHarness id="node-1" data={makeData()} />)
-
-      fireEvent.click(screen.getByRole('button', { name: 'workflow.panel.runThisStep' }))
-
+  it.each([
+    { status: undefined, label: 'workflow.panel.runThisStep', action: 'run' },
+    {
+      status: NodeRunningStatus.Running,
+      label: 'workflowDebug.debug.variableInspect.trigger.stop',
+      action: 'stop',
+    },
+  ])(
+    'selects the node and requests $action using real workflow permissions',
+    async ({ status, label, action }) => {
+      const user = userEvent.setup()
+      const { store } = renderControl({ data: { _singleRunningStatus: status } })
+      await user.click(screen.getByRole('button', { name: label }))
       expect(store.getState().initShowLastRunTab).toBe(true)
-      expect(store.getState().pendingSingleRun).toEqual({ nodeId: 'node-1', action: 'run' })
-      expect(mockHandleNodeSelect).toHaveBeenCalledWith('node-1')
-    })
+      expect(store.getState().pendingSingleRun).toEqual({ nodeId: 'node-1', action })
+      expect(screen.getByRole('status', { name: 'Selected node' })).toHaveTextContent('node-1')
+    },
+  )
 
-    it('should trigger stop when the node is already single-running', () => {
-      const { store } = renderNodeControl(
-        <NodeControlHarness
-          id="node-2"
-          data={makeData({
-            selected: true,
-            _singleRunningStatus: NodeRunningStatus.Running,
-          })}
-        />,
-      )
-
-      fireEvent.click(
-        screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.trigger.stop' }),
-      )
-
-      expect(store.getState().pendingSingleRun).toEqual({ nodeId: 'node-2', action: 'stop' })
-      expect(mockHandleNodeSelect).toHaveBeenCalledWith('node-2')
-    })
+  it.each([
+    { reason: 'read-only canvas', readonly: true },
+    { reason: 'missing run permission', canRun: false },
+    { reason: 'unsupported node type', data: { type: BlockEnum.End } },
+  ])('hides execution controls for $reason', (options) => {
+    renderControl(options)
+    expect(
+      screen.queryByRole('button', { name: 'workflow.panel.runThisStep' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.more' })).toBeInTheDocument()
   })
 
-  // Capability gating should hide the run control while leaving panel actions available.
-  describe('Availability', () => {
-    it('should keep the panel operator available when the plugin is install-locked', () => {
-      mockPluginInstallLocked = true
-
-      renderNodeControl(
-        <NodeControlHarness
-          id="node-3"
-          data={makeData({
-            selected: true,
-          })}
-        />,
-      )
-
-      expect(screen.getByRole('button', { name: 'open panel' })).toBeInTheDocument()
-    })
-
-    it('should hide the run control when single-node execution is not supported', () => {
-      mockCanRunBySingle.mockReturnValue(false)
-
-      renderNodeControl(<NodeControlHarness id="node-4" data={makeData()} />)
-
-      expect(
-        screen.queryByRole('button', { name: 'workflow.panel.runThisStep' }),
-      ).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'open panel' })).toBeInTheDocument()
-    })
-
-    it('should hide the run control when workflow run permission is missing', () => {
-      renderNodeControl(<NodeControlHarness id="node-5" data={makeData()} />, {
-        canEdit: false,
-        canRun: false,
-        canImportExportDSL: false,
-        canReleaseAndVersion: false,
-      })
-
-      expect(
-        screen.queryByRole('button', { name: 'workflow.panel.runThisStep' }),
-      ).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'open panel' })).toBeInTheDocument()
-    })
-
-    it('should hide the run control when nodes are read-only', () => {
-      mockUseNodesReadOnly.mockReturnValue(true)
-
-      renderNodeControl(<NodeControlHarness id="node-6" data={makeData()} />)
-
-      expect(
-        screen.queryByRole('button', { name: 'workflow.panel.runThisStep' }),
-      ).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'open panel' })).toBeInTheDocument()
-    })
+  it('allows opening node actions while plugin installation is locked', async () => {
+    const user = userEvent.setup()
+    renderControl({ pluginInstallLocked: true, data: { selected: true } })
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+    expect(await screen.findByRole('menu')).toBeVisible()
   })
 })

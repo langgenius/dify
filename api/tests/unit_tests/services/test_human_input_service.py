@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 import services.human_input_service as human_input_service_module
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
 from core.repositories.human_input_repository import (
     HumanInputFormRecord,
@@ -32,7 +32,7 @@ from core.workflow.nodes.human_input.entities import (
 )
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
 from graphon.file import File, FileTransferMethod, FileType
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.human_input import HumanInputDelivery, HumanInputForm, HumanInputFormRecipient, RecipientType
 from models.model import App, AppMode
@@ -44,7 +44,7 @@ from services.human_input_service import (
     HumanInputService,
     InvalidFormDataError,
 )
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 def _make_app(mode: AppMode) -> App:
@@ -277,6 +277,7 @@ def _build_resumption_context_state(*, options: list[str], workflow_run_id: str)
         workflow_id="workflow-id",
     )
     generate_entity = WorkflowAppGenerateEntity(
+        user_from=UserFrom.ACCOUNT,
         task_id="task-id",
         app_config=app_config,
         inputs={},
@@ -287,7 +288,7 @@ def _build_resumption_context_state(*, options: list[str], workflow_run_id: str)
         call_depth=0,
         workflow_execution_id=workflow_run_id,
     )
-    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+    runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0.0)
     runtime_state.variable_pool.add(("start", "options"), options)
     context = WorkflowResumptionContext(
         generate_entity=_WorkflowGenerateEntityWrapper(entity=generate_entity),
@@ -332,8 +333,31 @@ def test_resolve_form_inputs_uses_runtime_select_options(
     assert len(resolved_inputs) == 1
     resolved_input = resolved_inputs[0]
     assert isinstance(resolved_input, SelectInputConfig)
+    assert resolved_input.option_source.type == ValueSourceType.CONSTANT
+    assert resolved_input.option_source.selector == ()
     assert resolved_input.option_source.value == ["approve", "reject"]
     workflow_run_repo.get_workflow_pause.assert_called_once_with(record.workflow_run_id)
+
+
+def test_constant_select_rejects_unlisted_submission(
+    sample_form_record: HumanInputFormRecord,
+    unbound_session_factory: sessionmaker[Session],
+) -> None:
+    configured_input = SelectInputConfig(
+        output_variable_name="decision",
+        option_source=StringListSource(
+            type=ValueSourceType.CONSTANT,
+            value=["approve", "reject"],
+        ),
+    )
+    record = dataclasses.replace(
+        sample_form_record,
+        definition=sample_form_record.definition.model_copy(update={"inputs": [configured_input]}),
+    )
+    service = HumanInputService(unbound_session_factory)
+
+    with pytest.raises(InvalidFormDataError, match="Invalid value for select input 'decision': forged"):
+        service._validate_submission(Form(record), selected_action_id="submit", form_data={"decision": "forged"})
 
 
 def test_submit_form_by_token_calls_repository_and_enqueue(
@@ -368,36 +392,6 @@ def test_submit_form_by_token_calls_repository_and_enqueue(
     assert persisted.submitted_data == {"field": "value"}
     assert persisted.submission_end_user_id == "end-user-id"
     enqueue_spy.assert_called_once_with(sample_form_record.workflow_run_id)
-
-
-def test_submit_form_by_token_enqueues_agent_app_resume_for_conversation_form(
-    form_repository: Callable[[HumanInputFormRecord | None], HumanInputFormSubmissionRepository],
-    sample_form_record: HumanInputFormRecord,
-    unbound_session_factory: sessionmaker[Session],
-    mocker: MockerFixture,
-) -> None:
-    # ENG-635: a conversation-owned (Agent v2 chat) form routes to the chat
-    # resume, not the workflow resume.
-    conversation_record = dataclasses.replace(
-        sample_form_record,
-        workflow_run_id=None,
-        conversation_id="conv-1",
-    )
-    repo = form_repository(conversation_record)
-    service = HumanInputService(unbound_session_factory, form_repository=repo)
-    workflow_enqueue_spy = mocker.patch.object(service, "enqueue_resume")
-    chat_enqueue_spy = mocker.patch.object(service, "enqueue_agent_app_resume")
-
-    service.submit_form_by_token(
-        recipient_type=RecipientType.STANDALONE_WEB_APP,
-        form_token="token",
-        selected_action_id="submit",
-        form_data={"field": "value"},
-        submission_end_user_id="end-user-id",
-    )
-
-    chat_enqueue_spy.assert_called_once_with(conversation_id="conv-1", form_id=conversation_record.form_id)
-    workflow_enqueue_spy.assert_not_called()
 
 
 def test_submit_form_by_token_skips_enqueue_for_delivery_test(
@@ -474,7 +468,6 @@ def test_submit_form_by_token_missing_inputs(
     sample_form_record: HumanInputFormRecord,
     unbound_session_factory: sessionmaker[Session],
 ) -> None:
-
     definition_with_input = FormDefinition(
         form_content="hello",
         inputs=[ParagraphInputConfig(output_variable_name="content")],
@@ -501,6 +494,10 @@ def test_submit_form_by_token_missing_inputs(
 @pytest.mark.parametrize(
     ("input_definition", "submitted_value", "expected_message"),
     [
+        *[
+            ({"type": "paragraph", "output_variable_name": "note"}, value, "note")
+            for value in (12, True, None, ["text"], {"text": "text"})
+        ],
         (
             {
                 "type": "select",
@@ -546,7 +543,7 @@ def test_submit_form_by_token_missing_inputs(
         ),
     ],
 )
-def test_validate_human_input_submission_rejects_invalid_select_and_file_payloads(
+def test_validate_human_input_submission_rejects_invalid_input_payloads(
     form_repository: Callable[[HumanInputFormRecord | None], HumanInputFormSubmissionRepository],
     sample_form_record: HumanInputFormRecord,
     unbound_session_factory: sessionmaker[Session],

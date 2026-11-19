@@ -7,7 +7,7 @@ import orjson
 
 
 class TestStructuredJSONFormatter:
-    def test_basic_log_format(self):
+    def test_basic_log_format(self) -> None:
         from core.logging.structured_formatter import StructuredJSONFormatter
 
         formatter = StructuredJSONFormatter(service_name="test-service")
@@ -31,7 +31,7 @@ class TestStructuredJSONFormatter:
         assert "ts" in log_dict
         assert log_dict["ts"].endswith("Z")
 
-    def test_severity_mapping(self):
+    def test_severity_mapping(self) -> None:
         from core.logging.structured_formatter import StructuredJSONFormatter
 
         formatter = StructuredJSONFormatter()
@@ -58,7 +58,7 @@ class TestStructuredJSONFormatter:
             log_dict = orjson.loads(output)
             assert log_dict["severity"] == expected_severity, f"Level {level} should map to {expected_severity}"
 
-    def test_error_with_stack_trace(self):
+    def test_error_with_stack_trace(self) -> None:
         from core.logging.structured_formatter import StructuredJSONFormatter
 
         formatter = StructuredJSONFormatter()
@@ -85,7 +85,7 @@ class TestStructuredJSONFormatter:
         assert "stack_trace" in log_dict
         assert "ValueError: Test error" in log_dict["stack_trace"]
 
-    def test_no_stack_trace_for_info(self):
+    def test_no_stack_trace_for_info(self) -> None:
         from core.logging.structured_formatter import StructuredJSONFormatter
 
         formatter = StructuredJSONFormatter()
@@ -110,7 +110,7 @@ class TestStructuredJSONFormatter:
 
         assert "stack_trace" not in log_dict
 
-    def test_trace_context_included(self):
+    def test_trace_context_included(self) -> None:
         from core.logging.structured_formatter import StructuredJSONFormatter
 
         formatter = StructuredJSONFormatter()
@@ -132,7 +132,7 @@ class TestStructuredJSONFormatter:
         assert log_dict["trace_id"] == "5b8aa5a2d2c872e8321cf37308d69df2"
         assert log_dict["span_id"] == "051581bf3bb55c45"
 
-    def test_identity_context_included(self):
+    def test_identity_context_included(self) -> None:
         from core.logging.structured_formatter import StructuredJSONFormatter
 
         formatter = StructuredJSONFormatter()
@@ -157,7 +157,7 @@ class TestStructuredJSONFormatter:
         assert log_dict["identity"]["user_id"] == "u-admin-007"
         assert log_dict["identity"]["user_type"] == "admin"
 
-    def test_no_identity_when_empty(self):
+    def test_no_identity_when_empty(self) -> None:
         from core.logging.structured_formatter import StructuredJSONFormatter
 
         formatter = StructuredJSONFormatter()
@@ -176,7 +176,7 @@ class TestStructuredJSONFormatter:
 
         assert "identity" not in log_dict
 
-    def test_attributes_included(self):
+    def test_attributes_included(self) -> None:
         from core.logging.structured_formatter import StructuredJSONFormatter
 
         formatter = StructuredJSONFormatter()
@@ -197,7 +197,7 @@ class TestStructuredJSONFormatter:
         assert log_dict["attributes"]["order_id"] == "ord-123"
         assert log_dict["attributes"]["amount"] == 99.99
 
-    def test_message_with_args(self):
+    def test_message_with_args(self) -> None:
         from core.logging.structured_formatter import StructuredJSONFormatter
 
         formatter = StructuredJSONFormatter()
@@ -216,7 +216,7 @@ class TestStructuredJSONFormatter:
 
         assert log_dict["message"] == "User john logged in from 192.168.1.1"
 
-    def test_timestamp_format(self):
+    def test_timestamp_format(self) -> None:
         from core.logging.structured_formatter import StructuredJSONFormatter
 
         formatter = StructuredJSONFormatter()
@@ -240,7 +240,7 @@ class TestStructuredJSONFormatter:
         # Should have milliseconds
         assert "." in ts
 
-    def test_fallback_for_non_serializable_attributes(self):
+    def test_fallback_for_non_serializable_attributes(self) -> None:
         from core.logging.structured_formatter import StructuredJSONFormatter
 
         formatter = StructuredJSONFormatter()

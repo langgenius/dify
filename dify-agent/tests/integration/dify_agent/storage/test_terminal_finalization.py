@@ -1,7 +1,8 @@
-"""Real-Redis contracts for terminal finalization and cancellation observation."""
+"""Real-Redis contracts for idempotent admission, retention, and terminal coordination."""
 
 import asyncio
 from collections.abc import Iterator
+import hashlib
 import shutil
 import socket
 import subprocess
@@ -12,7 +13,7 @@ import httpx
 import pytest
 from redis.asyncio import Redis
 
-from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.protocol.snapshot import SessionSnapshot
 from dify_agent.protocol.schemas import (
     CancelRunRequest,
     CreateRunRequest,
@@ -25,10 +26,11 @@ from dify_agent.protocol.schemas import (
     RunSucceededEventData,
     utc_now,
 )
+from dify_agent.runtime.context import Services
 from dify_agent.runtime.cancellation import RunCancellationIntent
 from dify_agent.runtime.run_scheduler import RunScheduler
-from dify_agent.storage.redis_keys import run_cancel_intent_key, run_events_key, run_record_key
-from dify_agent.storage.redis_run_store import RedisRunStore
+from dify_agent.storage.redis_keys import run_cancel_intent_key, run_events_key, run_idempotency_key, run_record_key
+from dify_agent.storage.redis_run_store import IdempotencyConflictError, RedisRunStore
 
 
 pytestmark = pytest.mark.integration
@@ -40,10 +42,127 @@ def _success_or_failure_event(kind: str, run_id: str) -> RunSucceededEvent | Run
             run_id=run_id,
             data=RunSucceededEventData(
                 output="done",
-                session_snapshot=CompositorSessionSnapshot(layers=[]),
+                session_snapshot=SessionSnapshot(layers={}),
             ),
         )
     return RunFailedEvent(run_id=run_id, data=RunFailedEventData(error="model failed"))
+
+
+def test_idempotent_run_admission_is_atomic_across_redis_clients(redis_url: str) -> None:
+    async def scenario() -> None:
+        first_client = Redis.from_url(redis_url)
+        second_client = Redis.from_url(redis_url)
+        prefix = f"idempotency-{uuid4().hex}"
+        stores = (
+            RedisRunStore(first_client, prefix=prefix, run_retention_seconds=60),
+            RedisRunStore(second_client, prefix=prefix, run_retention_seconds=60),
+        )
+        try:
+            results = await asyncio.gather(
+                *(
+                    stores[index % 2].create_run_idempotent(
+                        idempotency_key="same-request",
+                        request_fingerprint="fingerprint-a",
+                    )
+                    for index in range(24)
+                )
+            )
+
+            assert len({record.run_id for record, _created in results}) == 1
+            assert sum(created for _record, created in results) == 1
+            record = results[0][0]
+            assert (await stores[1].get_run(record.run_id)).status == "running"
+            with pytest.raises(IdempotencyConflictError):
+                _ = await stores[1].create_run_idempotent(
+                    idempotency_key="same-request",
+                    request_fingerprint="fingerprint-b",
+                )
+            claim_key = run_idempotency_key(prefix, hashlib.sha256(b"same-request").hexdigest())
+            record_key = run_record_key(prefix, record.run_id)
+            assert await first_client.get(claim_key) == record.run_id.encode()
+            for key in (claim_key, record_key):
+                assert await first_client.expire(key, 30)
+            previous_ttls = [await first_client.pttl(key) for key in (claim_key, record_key)]
+
+            replay, created = await stores[1].create_run_idempotent(
+                idempotency_key="same-request", request_fingerprint="fingerprint-a"
+            )
+
+            assert (replay, created) == (record, False)
+            for key, previous_ttl in zip((claim_key, record_key), previous_ttls, strict=True):
+                assert 0 < await first_client.pttl(key) <= previous_ttl
+        finally:
+            await first_client.aclose()
+            await second_client.aclose()
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("refresh_path", ["event", "cancel_intent", "finalize", "finalize_cancel"])
+@pytest.mark.parametrize("claim_state", ["decaying", "expired", "reclaimed"])
+def test_active_run_refresh_preserves_idempotency_claim_ownership(
+    redis_url: str, refresh_path: str, claim_state: str
+) -> None:
+    async def scenario() -> None:
+        client = Redis.from_url(redis_url)
+        prefix = f"idempotency-retention-{uuid4().hex}"
+        key = "long-running-request"
+        store = RedisRunStore(client, prefix=prefix, run_retention_seconds=60)
+        try:
+            original, created = await store.create_run_idempotent(
+                idempotency_key=key,
+                request_fingerprint="fingerprint-a",
+            )
+            assert created is True
+
+            if refresh_path == "finalize_cancel":
+                await store.request_cancellation(original.run_id, CancelRunRequest(reason="test"))
+            claim_key = run_idempotency_key(prefix, hashlib.sha256(key.encode()).hexdigest())
+            replacement = None
+            if claim_state == "decaying":
+                assert await client.expire(claim_key, 1)
+            else:
+                # Expire the claim while the original record remains live.
+                assert await client.expire(claim_key, 0)
+                if claim_state == "reclaimed":
+                    replacement, created = await store.create_run_idempotent(
+                        idempotency_key=key, request_fingerprint="fingerprint-b"
+                    )
+                    assert created
+                    assert await client.expire(claim_key, 30)
+
+            if refresh_path == "event":
+                _ = await store.append_event(RunStartedEvent(run_id=original.run_id))
+            elif refresh_path == "cancel_intent":
+                await store.request_cancellation(original.run_id, CancelRunRequest(reason="test"))
+            elif refresh_path == "finalize":
+                await store.finalize_run(
+                    RunSucceededEvent(
+                        run_id=original.run_id,
+                        data=RunSucceededEventData(output="done", session_snapshot=SessionSnapshot(layers={})),
+                    )
+                )
+            else:
+                intent = await store.get_cancellation_intent(original.run_id)
+                assert intent is not None
+                await store.finalize_cancellation(original.run_id, intent)
+
+            if replacement is not None:
+                assert await client.get(claim_key) == replacement.run_id.encode()
+                assert 0 < await client.ttl(claim_key) <= 30
+                expected, fingerprint = replacement, "fingerprint-b"
+            else:
+                assert await client.get(claim_key) == original.run_id.encode()
+                assert (1 if claim_state == "decaying" else 0) < await client.ttl(claim_key) <= 60
+                expected, fingerprint = await store.get_run(original.run_id), "fingerprint-a"
+            retried, created = await store.create_run_idempotent(idempotency_key=key, request_fingerprint=fingerprint)
+
+            assert created is False
+            assert retried == expected
+        finally:
+            await client.aclose()
+
+    asyncio.run(scenario())
 
 
 @pytest.fixture
@@ -108,7 +227,7 @@ def test_success_and_cancel_intent_commit_exactly_one_matching_terminal(redis_ur
                 run_id=record.run_id,
                 data=RunSucceededEventData(
                     output="done",
-                    session_snapshot=CompositorSessionSnapshot(layers=[]),
+                    session_snapshot=SessionSnapshot(layers={}),
                 ),
             )
 
@@ -175,7 +294,7 @@ def test_event_stream_is_trimmed_and_keeps_the_terminal_event(redis_url: str) ->
                     run_id=record.run_id,
                     data=RunSucceededEventData(
                         output="done",
-                        session_snapshot=CompositorSessionSnapshot(layers=[]),
+                        session_snapshot=SessionSnapshot(layers={}),
                     ),
                 )
             )
@@ -263,7 +382,7 @@ def test_cancellation_intent_lifecycle_and_terminal_exclusion(redis_url: str) ->
             first_finalization = await store.finalize_cancellation(
                 record.run_id,
                 intent,
-                session_snapshot=CompositorSessionSnapshot(layers=[]),
+                session_snapshot=SessionSnapshot(layers={}),
             )
             repeated_finalization = await store.finalize_cancellation(record.run_id, intent)
             post_terminal_status = await store.request_cancellation(
@@ -369,17 +488,12 @@ def test_non_owner_scheduler_cancellation_stops_owner_runner(redis_url: str) -> 
         async with httpx.AsyncClient() as http_client:
             owner_scheduler = RunScheduler(
                 store=owner_store,
-                plugin_daemon_http_client=http_client,
-                dify_api_http_client=http_client,
-                runner_factory=lambda _record, _request: BlockingRunner(
-                    started=runner_started,
-                    stopped=runner_stopped,
-                ),
+                runner_factory=lambda _record, _request: BlockingRunner(started=runner_started, stopped=runner_stopped),
+                services=Services(plugin_daemon_http_client=http_client, dify_api_http_client=http_client),
             )
             remote_scheduler = RunScheduler(
                 store=remote_store,
-                plugin_daemon_http_client=http_client,
-                dify_api_http_client=http_client,
+                services=Services(plugin_daemon_http_client=http_client, dify_api_http_client=http_client),
             )
             try:
                 record = await owner_scheduler.create_run(CreateRunRequest(composition=RunComposition(layers=[])))

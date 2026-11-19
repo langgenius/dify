@@ -103,7 +103,7 @@ function TaskStatusIndicator({
           </IconButton>
         }
       />
-      <TooltipContent sideOffset={8}>{tip}</TooltipContent>
+      <TooltipContent>{tip}</TooltipContent>
     </Tooltip>
   )
 }

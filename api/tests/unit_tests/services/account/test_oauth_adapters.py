@@ -23,7 +23,7 @@ from services.account_errors import (
     OAuthWorkspaceCreationNotAllowedError,
 )
 from services.entities.account_oauth_entities import OAuthAccountRegistration, OAuthAuthorizationRequest, OAuthIdentity
-from tests.unit_tests.account_domain import AccountDomain
+from tests.helpers.unit.account_domain import AccountDomain
 
 
 class StubOAuthClient(OAuth):

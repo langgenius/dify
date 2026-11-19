@@ -1,22 +1,29 @@
-import type { HumanInputNodeType } from '../types'
+import type { HumanInputSharedNodeType } from '../shared/types'
 import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import type { InputVar } from '@/app/components/workflow/types'
-import type { HumanInputFormData } from '@/types/workflow'
-import { useCallback, useMemo, useState } from 'react'
+import { zFormInputConfig, zUserActionConfig } from '@dify/contracts/api/console/apps/zod.gen'
+import { useMutation } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
+import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { getProcessedHumanInputFormInputs } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
-import { fetchHumanInputNodeStepRunForm, submitHumanInputNodeStepRunForm } from '@/service/workflow'
-import { AppModeEnum } from '@/types/app'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
+import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
+import { toast } from '@/app/notifications'
+import { consoleClient, consoleQuery } from '@/service/console'
 import useNodeCrud from '../../_base/hooks/use-node-crud'
+import { isHumanInputV2NodeData } from '../../human-input-v2/types'
+import { selectHumanInputFormPreview } from '../query-select'
+import { HumanInputDraftSyncError, syncHumanInputDraft } from '../shared/sync-draft'
 import { getHumanInputFormDependencySelectors, isOutput } from '../utils'
 
 const i18nPrefix = 'nodes.humanInput'
+const EMPTY_REQUEST_INPUTS: Record<string, string> = {}
 
 type Params = {
   id: string
-  payload: HumanInputNodeType
+  payload: HumanInputSharedNodeType
   runInputData: Record<string, string>
   getInputVars: (textList: string[]) => InputVar[]
   setRunInputData: (data: Record<string, string>) => void
@@ -29,11 +36,19 @@ const useSingleRunFormParams = ({
   getInputVars,
   setRunInputData,
 }: Params) => {
-  const { t } = useTranslation(['workflow', 'workflowHumanInput'])
-  const { inputs } = useNodeCrud<HumanInputNodeType>(id, payload)
-  const [showGeneratedForm, setShowGeneratedForm] = useState(false)
-  const [formData, setFormData] = useState<HumanInputFormData | null>(null)
-  const [requiredInputs, setRequiredInputs] = useState<Record<string, string>>({})
+  const { mutateAsync: submitWorkflowForm } = useMutation(
+    consoleQuery.apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.form.run.post.mutationOptions(
+      { context: { silent: true } },
+    ),
+  )
+  const { mutateAsync: submitChatflowForm } = useMutation(
+    consoleQuery.apps.byAppId.advancedChat.workflows.draft.humanInput.nodes.byNodeId.form.run.post.mutationOptions(
+      { context: { silent: true } },
+    ),
+  )
+  const { t } = useTranslation(['workflow', 'workflowHumanInput', 'common'])
+  const { inputs } = useNodeCrud<HumanInputSharedNodeType>(id, payload)
+  const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const generatedInputs = useMemo(() => {
     const formInputDependencyInputs = getHumanInputFormDependencySelectors(inputs.inputs).map(
       (selector) => `{{#${selector.join('.')}#}}`,
@@ -60,7 +75,6 @@ const useSingleRunFormParams = ({
   const getDependentVars = () => {
     return generatedInputs
       .map((item) => {
-        // Guard against null/undefined variable to prevent app crash
         if (!item.variable || typeof item.variable !== 'string') return []
 
         return item.variable.slice(1, -1).split('.')
@@ -68,34 +82,48 @@ const useSingleRunFormParams = ({
       .filter((arr) => arr.length > 0)
   }
 
-  const appDetail = useAppStore((s) => s.appDetail)
-  const appId = appDetail?.id
-  const isWorkflowMode = appDetail?.mode === AppModeEnum.WORKFLOW
-  const fetchURL = useMemo(() => {
-    if (!appId) return ''
-    if (!isWorkflowMode) {
-      return `/apps/${appId}/advanced-chat/workflows/draft/human-input/nodes/${id}/form`
-    } else {
-      return `/apps/${appId}/workflows/draft/human-input/nodes/${id}/form`
-    }
-  }, [appId, id, isWorkflowMode])
-
-  const handleFetchFormContent = useCallback(
-    async (inputs: Record<string, string>) => {
-      if (!fetchURL) return null
-      let requestParamsObj: Record<string, string> = {}
-      Object.keys(inputs).forEach((key) => {
-        if (inputs[key] === undefined) {
-          delete inputs[key]
-        }
+  const resource = useAtomValue(editorResourceAtom)
+  const appId = resource.kind === 'app' ? resource.appId : undefined
+  const isWorkflowMode = resource.kind === 'app' && resource.mode === 'workflow'
+  const isV2 = isHumanInputV2NodeData(payload)
+  const generation = useMutation({
+    mutationKey: ['human-input-preview', appId, id],
+    mutationFn: async (values: Record<string, string>) => {
+      if (!appId) throw new Error('Missing application')
+      if (isV2) await syncHumanInputDraft(doSyncWorkflowDraft)
+      const requestInputs = Object.fromEntries(
+        Object.entries(values).filter(([, value]) => value !== undefined),
+      )
+      const api = isWorkflowMode
+        ? consoleClient.apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.form
+        : consoleClient.apps.byAppId.advancedChat.workflows.draft.humanInput.nodes.byNodeId.form
+      const response = await api.preview.post({
+        params: { app_id: appId, node_id: id },
+        body: { inputs: requestInputs },
       })
-      requestParamsObj = { ...inputs }
-      const data = await fetchHumanInputNodeStepRunForm(fetchURL, { inputs: requestParamsObj! })
-      setFormData(data)
-      setRequiredInputs(requestParamsObj)
-      return data
+      return {
+        formData: selectHumanInputFormPreview({
+          ...response,
+          inputs: response.inputs?.map((input) => zFormInputConfig.parse(input)),
+          actions: response.actions?.map((action) => zUserActionConfig.parse(action)),
+        }),
+        requestInputs,
+      }
     },
-    [fetchURL],
+    onError: (error) => {
+      if (error instanceof HumanInputDraftSyncError)
+        toast.error(t(($) => $['nodes.humanInputV2.template.testSaveFailed'], { ns: 'workflow' }))
+    },
+  })
+  const { mutate: generate, mutateAsync: generateAsync, reset: resetGeneration } = generation
+  useEffect(() => {
+    if (payload._isSingleRun === false) resetGeneration()
+  }, [payload._isSingleRun, resetGeneration])
+  const formData = generation.data?.formData ?? null
+  const requiredInputs = generation.data?.requestInputs ?? EMPTY_REQUEST_INPUTS
+  const handleFetchFormContent = useCallback(
+    async (values: Record<string, string>) => (await generateAsync(values)).formData,
+    [generateAsync],
   )
 
   const handleSubmitHumanInputForm = useCallback(
@@ -104,30 +132,46 @@ const useSingleRunFormParams = ({
       form_inputs: Record<string, HumanInputFieldValue> | undefined
       action: string
     }) => {
+      if (!appId) return
       const formInputs = formData?.inputs?.length ? formData.inputs : inputs.inputs
-
-      await submitHumanInputNodeStepRunForm(fetchURL, {
-        inputs: requiredInputs,
-        form_inputs: getProcessedHumanInputFormInputs(formInputs, submission.inputs),
-        action: submission.action,
+      const submitForm = isWorkflowMode ? submitWorkflowForm : submitChatflowForm
+      await submitForm({
+        params: { app_id: appId, node_id: id },
+        body: {
+          inputs: requiredInputs,
+          form_inputs: getProcessedHumanInputFormInputs(formInputs, submission.inputs) ?? {},
+          action: submission.action,
+        },
       })
     },
-    [fetchURL, formData?.inputs, inputs.inputs, requiredInputs],
+    [
+      appId,
+      id,
+      isWorkflowMode,
+      submitWorkflowForm,
+      submitChatflowForm,
+      formData?.inputs,
+      inputs.inputs,
+      requiredInputs,
+    ],
   )
 
-  const handleShowGeneratedForm = async (formValue: Record<string, string>) => {
-    setShowGeneratedForm(true)
-    await handleFetchFormContent(formValue)
-  }
-
-  const handleHideGeneratedForm = () => {
-    setShowGeneratedForm(false)
-  }
+  const handleShowGeneratedForm = useCallback(
+    (values: Record<string, string>) => {
+      if (!appId) return
+      generate(values)
+    },
+    [appId, generate],
+  )
+  const handleHideGeneratedForm = useCallback(() => {
+    resetGeneration()
+  }, [resetGeneration])
 
   return {
     forms,
+    isGeneratingForm: generation.isPending,
     getDependentVars,
-    showGeneratedForm,
+    showGeneratedForm: generation.isSuccess && Boolean(formData),
     handleShowGeneratedForm,
     handleHideGeneratedForm,
     formData,

@@ -64,7 +64,7 @@ const ConditionString = ({
       )}
       {valueMethod === 'constant' && (
         <Input
-          className="border-none bg-transparent hover:bg-transparent focus:bg-transparent focus:shadow-none focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          className="border-none bg-transparent hover:bg-transparent focus:bg-transparent"
           value={value}
           onValueChange={onChange}
           aria-label={t(($) => $['nodes.knowledgeRetrieval.metadata.panel.placeholder'], {

@@ -7,7 +7,6 @@ from contextlib import AbstractContextManager
 from typing import Literal, override
 from uuid import uuid4
 
-from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -32,8 +31,8 @@ from services.billing_service import BillingService
 from services.credit_pool_service import CreditPoolBalance, CreditPoolService
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
-from services.enterprise.rbac_service import ListOption, RBACService
-from services.entities.account_activation_entities import InvitationToken
+from services.enterprise.rbac_service import RBACService
+from services.entities.account_activation_entities import InvitationToken, PendingWorkspaceInvitation
 from services.entities.account_entities import AccountSnapshot
 from services.errors.base import NoPermissionError
 from services.errors.workspace import (
@@ -45,6 +44,7 @@ from services.errors.workspace import (
 from services.feature_service import FeatureService
 from services.file_service import FileService
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
+from services.rbac.contracts import ListOption
 from services.system_feature_service import SystemFeatureService
 from services.workspace.contracts import (
     CreatedWorkspace,
@@ -167,17 +167,26 @@ class WorkspaceInvitationGateway:
         if features.workspace_members.enabled and not features.workspace_members.is_available(1):
             raise WorkspaceMemberLicenseQuotaError()
 
-    def check_capacity(self, workspace_id: str, *, current_members: int, new_members: int, new_accounts: int) -> None:
+    def check_capacity(
+        self,
+        workspace_id: str,
+        *,
+        current_members: int,
+        pending_invitations: int,
+        new_members: int,
+        new_accounts: int,
+    ) -> None:
+        """Admit a batch when joined members, live invitations and the batch fit the member limit."""
         if dify_config.DEPLOYMENT_EDITION not in {DeploymentEdition.CLOUD, DeploymentEdition.ENTERPRISE}:
             return
         features = FeatureService.get_features(tenant_id=workspace_id, exclude_vector_space=True)
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
             quota = features.workspace_members
-            if quota.enabled and not quota.is_available(new_members):
+            if quota.enabled and not quota.is_available(pending_invitations + new_members):
                 raise WorkspaceMemberLicenseQuotaError()
             if new_accounts and not SystemFeatureService.get_license().seats.is_available(new_accounts):
                 raise WorkspaceInvitationQuotaError(seats=True)
-        elif 0 < features.members.limit < current_members + new_members:
+        elif 0 < features.members.limit < current_members + pending_invitations + new_members:
             raise WorkspaceInvitationQuotaError()
 
     def ensure_allowed(self, workspace_id: str) -> None:
@@ -187,7 +196,22 @@ class WorkspaceInvitationGateway:
             raise NoPermissionError(error.description) from error
 
     def create(self, invitation: InvitationToken) -> str:
+        """Issue an indexed invitation link.
+
+        Raises:
+            RedisError: The link could not be issued together with its index entry.
+        """
         return self._tokens.create(invitation)
+
+    def list_pending(self, workspace_id: str) -> tuple[PendingWorkspaceInvitation, ...]:
+        """List the outstanding invitation links indexed for this workspace."""
+        return self._tokens.list_pending(workspace_id)
+
+    def revoke_pending(self, workspace_id: str, email: str, *, account_id: str | None, keep_token: str | None) -> None:
+        self._tokens.revoke_pending(workspace_id, email, account_id=account_id, keep_token=keep_token)
+
+    def discard(self, workspace_id: str, token: str) -> None:
+        self._tokens.discard(workspace_id, token)
 
     def send(self, *, language: str, email: str, token: str, inviter_name: str, workspace_name: str) -> None:
         send_invite_member_mail_task.delay(
@@ -199,10 +223,29 @@ class WorkspaceInvitationGateway:
         )
 
 
-class DeploymentWorkspaceMemberAccessGateway:
-    def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
-        self._session_factory = session_factory
+class WorkspaceMemberCapacityGateway:
+    """Admit invitation acceptances only while the workspace has a free member seat."""
 
+    def __init__(self, *, workspaces: WorkspaceRepository, redis: RedisClientWrapper) -> None:
+        self._workspaces = workspaces
+        self._redis = redis
+
+    def acquire(self, workspace_id: str) -> AbstractContextManager[object]:
+        return self._redis.lock(f"workspace_member_invite:{workspace_id}", timeout=60)
+
+    def can_join(self, workspace_id: str, account_id: str) -> bool:
+        if dify_config.DEPLOYMENT_EDITION not in {DeploymentEdition.CLOUD, DeploymentEdition.ENTERPRISE}:
+            return True
+        if self._workspaces.member_role(workspace_id, account_id) is not None:
+            return True
+        features = FeatureService.get_features(tenant_id=workspace_id, exclude_vector_space=True)
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
+            quota = features.workspace_members
+            return not quota.enabled or quota.is_available(1)
+        return not 0 < features.members.limit <= self._workspaces.count_members(workspace_id)
+
+
+class DeploymentWorkspaceMemberAccessGateway:
     def ensure_role_enabled(self, role: str) -> None:
         _ensure_role_enabled(role)
 
@@ -211,17 +254,14 @@ class DeploymentWorkspaceMemberAccessGateway:
         return dify_config.RBAC_ENABLED
 
     def permission_keys(self, workspace_id: str, actor_id: str) -> set[str]:
-        with self._session_factory() as session:
-            permissions = RBACService.MyPermissions.get(workspace_id, actor_id, session=session)
-            return set(permissions.workspace.permission_keys)
+        permissions = RBACService.MyPermissions.get(workspace_id, actor_id)
+        return set(permissions.workspace.permission_keys)
 
     def is_owner(self, workspace_id: str, actor_id: str, member_id: str) -> bool:
-        with self._session_factory() as session:
-            roles = RBACService.MemberRoles.get(workspace_id, actor_id, member_id, session=session).roles
-            return any(
-                role.is_builtin and role.category == "global_system_default" and role.role_tag == "owner"
-                for role in roles
-            )
+        roles = RBACService.MemberRoles.get(workspace_id, actor_id, member_id).roles
+        return any(
+            role.is_builtin and role.category == "global_system_default" and role.role_tag == "owner" for role in roles
+        )
 
     @staticmethod
     def _role_id(workspace_id: str, actor_id: str, tag: str) -> str:
@@ -245,15 +285,12 @@ class DeploymentWorkspaceMemberAccessGateway:
         return members[0].account_id
 
     def assign_role(self, workspace_id: str, actor_id: str, member_id: str, role_id: str) -> None:
-        with self._session_factory() as session:
-            RBACService.MemberRoles.replace(
-                tenant_id=workspace_id,
-                account_id=actor_id,
-                member_account_id=member_id,
-                role_ids=[role_id],
-                session=session,
-            )
-            session.commit()
+        RBACService.MemberRoles.replace(
+            tenant_id=workspace_id,
+            account_id=actor_id,
+            member_account_id=member_id,
+            role_ids=[role_id],
+        )
 
     def change_role(self, workspace_id: str, actor_id: str, member_id: str, role: TenantAccountRole) -> None:
         if not TenantAccountRole.is_non_owner_role(role):
@@ -264,25 +301,21 @@ class DeploymentWorkspaceMemberAccessGateway:
         owner_role_id = self._role_id(workspace_id, actor_id, "owner")
         old_owner_id = self.owner_id(workspace_id, actor_id)
         no_access_id = self._role_id(workspace_id, actor_id, "no_access")
-        # With RBAC enabled these calls update the enterprise service, not the local
-        # Session. Complete both before the repository commits local owner changes.
-        with self._session_factory() as session:
-            current = RBACService.MemberRoles.get(workspace_id, actor_id, old_owner_id, session=session).roles
-            remaining = [str(item.id) for item in current if str(item.id) != owner_role_id]
-            RBACService.MemberRoles.replace(
-                tenant_id=workspace_id,
-                account_id=actor_id,
-                member_account_id=old_owner_id,
-                role_ids=remaining or [no_access_id],
-                session=session,
-            )
-            RBACService.MemberRoles.replace(
-                tenant_id=workspace_id,
-                account_id=actor_id,
-                member_account_id=member_id,
-                role_ids=[owner_role_id],
-                session=session,
-            )
+        # Complete the remote role changes before the repository commits local ownership.
+        current = RBACService.MemberRoles.get(workspace_id, actor_id, old_owner_id).roles
+        remaining = [str(item.id) for item in current if str(item.id) != owner_role_id]
+        RBACService.MemberRoles.replace(
+            tenant_id=workspace_id,
+            account_id=actor_id,
+            member_account_id=old_owner_id,
+            role_ids=remaining or [no_access_id],
+        )
+        RBACService.MemberRoles.replace(
+            tenant_id=workspace_id,
+            account_id=actor_id,
+            member_account_id=member_id,
+            role_ids=[owner_role_id],
+        )
 
     def membership_changed(self, membership: WorkspaceMemberWrite, operator_account_id: str | None) -> None:
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
@@ -302,8 +335,6 @@ class DeploymentWorkspaceMemberAccessGateway:
             )
 
     def member_removed(self, workspace_id: str, removal: WorkspaceMemberRemoval) -> None:
-        if removal.account_deleted:
-            logger.info("Deleted orphaned pending account: account_id=%s, email=%s", removal.account_id, removal.email)
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             BillingService.clean_billing_info_cache(workspace_id)
         from services.enterprise.account_deletion_sync import sync_workspace_member_removal
@@ -342,7 +373,7 @@ class DeploymentWorkspacePlanGateway(WorkspacePlanGateway):
         for workspace_id in ids:
             tenant_plan = bulk_plans.get(workspace_id)
             if tenant_plan:
-                resolved[workspace_id] = tenant_plan["plan"] or CloudPlan.SANDBOX
+                resolved[workspace_id] = tenant_plan.plan or CloudPlan.SANDBOX
                 continue
 
             features = FeatureService.get_features(workspace_id, exclude_vector_space=True)
@@ -367,21 +398,13 @@ class DeploymentWorkspaceFeatureGateway(WorkspaceFeatureGateway):
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             return EffectiveCreditPool()
         billing = BillingService.get_info(workspace_id, exclude_vector_space=True)
-        return self._credit_pool(
-            workspace_id, CloudPlan(billing["subscription"]["plan"]), billing.get("next_credit_reset_date")
-        )
+        return self._credit_pool(workspace_id, CloudPlan(billing.subscription.plan), billing.next_credit_reset_date)
 
     @staticmethod
     def _credit_pool(workspace_id: str, plan: CloudPlan, reset_date: int | None) -> EffectiveCreditPool:
         # In Cloud, CreditPoolService reads the billing quota API, without an ORM Session.
-        pool = None
-        pool_type: Literal["paid", "trial"] = "trial"
-        if plan != CloudPlan.SANDBOX:
-            paid = CreditPoolService.get_pool(tenant_id=workspace_id, pool_type="paid")
-            if paid is not None and (paid.quota_limit == -1 or paid.quota_limit > paid.quota_used):
-                pool, pool_type = paid, "paid"
-        if pool is None:
-            pool = CreditPoolService.get_pool(tenant_id=workspace_id, pool_type="trial")
+        pool_type: Literal["paid", "trial"] = "trial" if plan == CloudPlan.SANDBOX else "paid"
+        pool = CreditPoolService.get_pool(tenant_id=workspace_id, pool_type=pool_type)
         if pool is None:
             return EffectiveCreditPool(plan=plan, next_credit_reset_date=reset_date)
         exhausted_at = pool.exhausted_at if isinstance(pool, CreditPoolBalance) else None
@@ -442,6 +465,8 @@ class DeploymentWorkspaceMemberRoleResolver(WorkspaceMemberRoleResolver):
         workspace_id: str,
         actor_account_id: str,
         subjects: Sequence[WorkspaceMemberRoleSubject],
+        *,
+        language: str | None = None,
     ) -> Mapping[str, Sequence[WorkspaceMemberRole]]:
         role_subjects = tuple(subjects)
         if not role_subjects:
@@ -457,6 +482,7 @@ class DeploymentWorkspaceMemberRoleResolver(WorkspaceMemberRoleResolver):
             workspace_id,
             actor_account_id,
             [subject.account_id for subject in role_subjects],
+            language=language,
         )
         return {
             item.account_id: tuple(WorkspaceMemberRole(id=role.id, name=role.name) for role in item.roles)
@@ -466,9 +492,6 @@ class DeploymentWorkspaceMemberRoleResolver(WorkspaceMemberRoleResolver):
 
 class WorkspaceProvisioningEffectsGateway:
     """Prepare external resources and publish committed workspace creation."""
-
-    def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
-        self._session_factory = session_factory
 
     def prepare(self, name: str) -> WorkspaceCreation:
         workspace_id = str(uuid4())
@@ -488,16 +511,12 @@ class WorkspaceProvisioningEffectsGateway:
         if not dify_config.RBAC_ENABLED:
             return
         role_id = DeploymentWorkspaceMemberAccessGateway._role_id(workspace_id, account_id, "owner")
-        # RBAC uses the enterprise API here. Its shared signature requires a
-        # Session, but this call does not perform local database queries.
-        with self._session_factory() as session:
-            RBACService.MemberRoles.replace(
-                tenant_id=workspace_id,
-                account_id=account_id,
-                member_account_id=account_id,
-                role_ids=[role_id],
-                session=session,
-            )
+        RBACService.MemberRoles.replace(
+            tenant_id=workspace_id,
+            account_id=account_id,
+            member_account_id=account_id,
+            role_ids=[role_id],
+        )
 
     def created(self, workspace: CreatedWorkspace, *, owner_id: str | None) -> None:
         if owner_id is not None and dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:

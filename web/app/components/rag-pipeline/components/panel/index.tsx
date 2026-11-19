@@ -1,6 +1,8 @@
 import type { PanelProps } from '@/app/components/workflow/panel'
+import { useAtomValue } from 'jotai'
 import dynamic from 'next/dynamic'
 import { memo, useMemo } from 'react'
+import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import Panel from '@/app/components/workflow/panel'
 import { useStore } from '@/app/components/workflow/store'
 
@@ -56,16 +58,10 @@ const RagPipelinePanelOnLeft = () => {
 }
 
 const RagPipelinePanel = () => {
-  const pipelineId = useStore((s) => s.pipelineId)
+  const pipelineId = useAtomValue(knowledgePipelineIdentityAtom).pipelineId
   const versionHistoryPanelProps = useMemo(() => {
     return {
       getVersionListUrl: `/rag/pipelines/${pipelineId}/workflows`,
-      deleteVersionUrl: (versionId: string) =>
-        `/rag/pipelines/${pipelineId}/workflows/${versionId}`,
-      restoreVersionUrl: (versionId: string) =>
-        `/rag/pipelines/${pipelineId}/workflows/${versionId}/restore`,
-      updateVersionUrl: (versionId: string) =>
-        `/rag/pipelines/${pipelineId}/workflows/${versionId}`,
       latestVersionId: '',
     }
   }, [pipelineId])

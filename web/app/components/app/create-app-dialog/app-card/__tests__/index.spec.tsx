@@ -4,7 +4,6 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
-import { AppModeEnum } from '@/types/app'
 import AppCard from '../index'
 
 vi.mock('@/app/components/base/amplitude', () => ({ trackEvent: vi.fn() }))
@@ -16,7 +15,7 @@ const app = {
   can_trial: true,
   app: {
     id: 'app-1',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     icon_type: 'emoji',
     icon: '🤖',
     icon_background: '#FFEAD5',
@@ -37,6 +36,8 @@ describe('AppCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
+
+  afterEach(() => vi.restoreAllMocks())
 
   it('exposes template creation only when creation is allowed', () => {
     const { rerender } = render(
@@ -61,7 +62,9 @@ describe('AppCard', () => {
   })
 
   it('uses the remote image URL for image icons', () => {
-    render(
+    vi.spyOn(HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(true)
+    vi.spyOn(HTMLImageElement.prototype, 'naturalWidth', 'get').mockReturnValue(32)
+    const { container } = render(
       <AppCard
         app={{
           ...app,
@@ -77,10 +80,8 @@ describe('AppCard', () => {
         onPreview={vi.fn()}
       />,
     )
-    expect(screen.getByRole('img', { name: 'app icon' })).toHaveAttribute(
-      'src',
-      'https://example.com/remote.png',
-    )
+    expect(container.querySelector('img')).toHaveAttribute('src', 'https://example.com/remote.png')
+    expect(screen.queryByRole('img')).not.toBeInTheDocument()
   })
 
   it('tracks and opens template preview in Cloud edition', async () => {

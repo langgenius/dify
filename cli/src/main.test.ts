@@ -12,7 +12,7 @@ afterEach(async () => {
 
 it('prints the envelope on stderr and returns the exit code', async () => {
   w = await testContext({ login: false })
-  const code = await main(['nope'], w.overrides)
+  const code = await main(['versoin'], w.overrides)
   expect(code).toBe(2)
   expect(JSON.parse(w.io.errBuf()).error.code).toBe('usage_invalid_flag')
   expect(w.io.outBuf()).toBe('')

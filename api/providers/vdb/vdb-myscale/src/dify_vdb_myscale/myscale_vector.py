@@ -7,6 +7,7 @@ from typing import Any, override
 
 from clickhouse_connect import get_client  # type: ignore[import-untyped]
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.rag.datasource.vdb.vector_base import BaseVector
@@ -196,7 +197,9 @@ class MyScaleVector(BaseVector):
 
 class MyScaleVectorFactory(AbstractVectorFactory):
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> MyScaleVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> MyScaleVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix.lower()

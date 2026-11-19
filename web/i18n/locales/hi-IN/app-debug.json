@@ -95,6 +95,8 @@
   "feature.moreLikeThis.description": "एक बार में कई पाठ उत्पन्न करें, और फिर संपादित करें और जारी रखें",
   "feature.moreLikeThis.tip": "इस सुविधा का उपयोग करने से अतिरिक्त टोकन खर्च होगा",
   "feature.moreLikeThis.title": "ऐसा और",
+  "feature.showThoughts.description": "बातचीत में मॉडल की सोचने की प्रक्रिया दिखाएँ।",
+  "feature.showThoughts.title": "सोचने की प्रक्रिया दिखाएँ",
   "feature.speechToText.description": "सक्रिय होने पर, आप वॉयस इनपुट का उपयोग कर सकते हैं।",
   "feature.speechToText.title": "वाक् से पाठ",
   "feature.suggestedQuestionsAfterAnswer.description": "अगले प्रश्न सुझाव सेट करना उपयोगकर्ताओं को बेहतर चैट दे सकता है।",

@@ -1,18 +1,18 @@
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from core.schemas.registry import SchemaRegistry
 from core.schemas.schema_manager import SchemaManager
 
 
-def test_init_with_provided_registry(tmp_path: Path):
+def test_init_with_provided_registry(tmp_path: Path) -> None:
     registry = SchemaRegistry(str(tmp_path))
     manager = SchemaManager(registry=registry)
     assert manager.registry == registry
 
 
 @patch("core.schemas.schema_manager.SchemaRegistry.default_registry")
-def test_init_with_default_registry(mock_default_registry, tmp_path: Path):
+def test_init_with_default_registry(mock_default_registry: MagicMock, tmp_path: Path) -> None:
     registry = SchemaRegistry(str(tmp_path))
     mock_default_registry.return_value = registry
 
@@ -22,11 +22,11 @@ def test_init_with_default_registry(mock_default_registry, tmp_path: Path):
     assert manager.registry == registry
 
 
-def test_get_all_schema_definitions(tmp_path: Path):
+def test_get_all_schema_definitions(tmp_path: Path) -> None:
     registry = SchemaRegistry(str(tmp_path))
     expected_definitions = [
-        {"name": "schema1", "label": "schema1", "schema": {}},
-        {"name": "schema2", "label": "schema2", "schema": {}},
+        {"name": "schema1", "label": "schema1", "schema": dict[str, object]()},
+        {"name": "schema2", "label": "schema2", "schema": dict[str, object]()},
     ]
     registry.versions = {"v1": {"other": {}}, "v2": {"schema1": {}, "schema2": {}}}
 
@@ -36,7 +36,7 @@ def test_get_all_schema_definitions(tmp_path: Path):
     assert result == expected_definitions
 
 
-def test_get_schema_by_name_success(tmp_path: Path):
+def test_get_schema_by_name_success(tmp_path: Path) -> None:
     registry = SchemaRegistry(str(tmp_path))
     mock_schema = {"type": "object"}
     registry.versions = {"v1": {"my_schema": mock_schema}, "v2": {"my_schema": {"type": "string"}}}
@@ -47,7 +47,7 @@ def test_get_schema_by_name_success(tmp_path: Path):
     assert result == {"name": "my_schema", "schema": mock_schema}
 
 
-def test_get_schema_by_name_not_found(tmp_path: Path):
+def test_get_schema_by_name_not_found(tmp_path: Path) -> None:
     registry = SchemaRegistry(str(tmp_path))
 
     manager = SchemaManager(registry=registry)
@@ -56,7 +56,7 @@ def test_get_schema_by_name_not_found(tmp_path: Path):
     assert result is None
 
 
-def test_list_available_schemas(tmp_path: Path):
+def test_list_available_schemas(tmp_path: Path) -> None:
     registry = SchemaRegistry(str(tmp_path))
     expected_schemas = ["schema1", "schema2"]
     registry.versions = {"v1": {"schema2": {}, "schema1": {}}, "v2": {"other": {}}}
@@ -67,7 +67,7 @@ def test_list_available_schemas(tmp_path: Path):
     assert result == expected_schemas
 
 
-def test_list_available_versions(tmp_path: Path):
+def test_list_available_versions(tmp_path: Path) -> None:
     registry = SchemaRegistry(str(tmp_path))
     expected_versions = ["v1", "v2"]
     registry.versions = {"v2": {}, "v1": {}}

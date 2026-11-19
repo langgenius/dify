@@ -1,5 +1,5 @@
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { createContext } from 'react'
-import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { createDataSourceStore } from './'
 
 type DataSourceStoreApi = ReturnType<typeof createDataSourceStore>

@@ -1,15 +1,19 @@
 from collections.abc import Callable
-from datetime import datetime
+from datetime import UTC, datetime
 from http import HTTPStatus
+from importlib import import_module
 from inspect import unwrap
 from typing import NamedTuple, override
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, create_autospec
+from uuid import uuid4
 
 import pytest
 from flask import Flask
 from flask_restx import Api, Resource
+from pydantic import ValidationError
 from werkzeug.exceptions import Forbidden, NotFound
 
+from controllers.common.errors import ForbiddenError
 from controllers.console.auth.error import (
     CannotTransferOwnerToSelfError,
     EmailCodeError,
@@ -23,6 +27,7 @@ from controllers.console.auth.error import (
     MemberNotInTenantError as MemberNotInTenantRequestError,
 )
 from controllers.console.error import EmailSendIpLimitError, SeatsLimitExceeded, WorkspaceMembersLimitExceeded
+from controllers.console.workspace.error import PendingInvitationNotFoundError as PendingInvitationNotFoundHTTPError
 from controllers.console.workspace.members import (
     DatasetOperatorMemberListApi,
     MemberCancelInviteApi,
@@ -31,11 +36,15 @@ from controllers.console.workspace.members import (
     MemberUpdateRoleApi,
     OwnerTransfer,
     OwnerTransferCheckApi,
+    PendingWorkspaceInvitationListApi,
+    PendingWorkspaceInvitationRevokeApi,
     SendOwnerTransferEmailApi,
 )
+from enums.account import TenantAccountRole
 from libs.external_api import register_external_error_handlers
 from machinery.context import RequestContext
 from services.account_errors import AccountNotFoundError
+from services.entities.account_activation_entities import PendingWorkspaceInvitation
 from services.errors.base import NoPermissionError
 from services.errors.workspace import (
     CannotOperateSelfError,
@@ -47,22 +56,28 @@ from services.errors.workspace import (
     OwnerTransferSendIPLimitedError,
     OwnerTransferSendRateLimitError,
     OwnerTransferVerificationLimitError,
+    PendingInvitationNotFoundError,
     RoleAlreadyAssignedError,
     WorkspaceNotFoundError,
     WorkspaceNotLinkedError,
 )
 from services.workspace.contracts import WorkspaceMemberRecord, WorkspaceMemberRole, WorkspaceMemberSummary
 from services.workspace.member_service import WorkspaceMemberQueryService, WorkspaceMemberService
+from tests.helpers.unit.controllers.error_body import raised_error
 
 
 class _RecordingWorkspaceMemberQueryService(WorkspaceMemberQueryService):
     def __init__(self, result: tuple[WorkspaceMemberSummary, ...]) -> None:
         self._result = result
         self.contexts: list[RequestContext] = []
+        self.languages: list[str | None] = []
 
     @override
-    def list_current(self, context: RequestContext) -> tuple[WorkspaceMemberSummary, ...]:
+    def list_current(
+        self, context: RequestContext, *, language: str | None = None
+    ) -> tuple[WorkspaceMemberSummary, ...]:
         self.contexts.append(context)
+        self.languages.append(language)
         return self._result
 
 
@@ -75,7 +90,10 @@ class _ApplicationServicesStub(NamedTuple):
 
 
 class TestMemberListApi:
-    def test_get_passes_context_and_serializes_application_result(self, app: Flask) -> None:
+    @pytest.mark.parametrize(("language", "expected"), [("", None), (" JA ", "ja"), ("unknown", None)])
+    def test_get_passes_context_and_serializes_application_result(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, language: str, expected: str | None
+    ) -> None:
         api = MemberListApi()
         method = unwrap(api.get)
         request_context = RequestContext(
@@ -106,13 +124,12 @@ class TestMemberListApi:
         )
         application_services_stub = _ApplicationServicesStub(_WorkspaceServicesStub(workspace_member_queries))
 
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.workspace.members.application_services",
-                return_value=application_services_stub,
-            ),
-        ):
+        monkeypatch.setattr(
+            import_module("controllers.console.workspace.members"),
+            "application_services",
+            lambda: application_services_stub,
+        )
+        with app.test_request_context("/", query_string={"language": language}):
             result, status = method(api, request_context=request_context)
 
         assert status == HTTPStatus.OK
@@ -137,6 +154,7 @@ class TestMemberListApi:
             ]
         }
         assert workspace_member_queries.contexts == [request_context]
+        assert workspace_member_queries.languages == [expected]
 
 
 @pytest.fixture
@@ -145,19 +163,75 @@ def services(monkeypatch: pytest.MonkeyPatch) -> Mock:
     from extensions.ext_application_services import AccountServices, ApplicationServices
     from services.workspace.member_service import WorkspaceInvitationService, WorkspaceOwnerTransferService
 
-    services = Mock(spec=ApplicationServices)
-    services.accounts = Mock(spec=AccountServices)
-    services.workspaces = Mock(spec=WorkspaceServices)
-    services.workspaces.invitations = Mock(spec=WorkspaceInvitationService)
-    services.workspaces.owner_transfer = Mock(spec=WorkspaceOwnerTransferService)
-    services.workspaces.members = Mock(spec=WorkspaceMemberService)
-    services.workspaces.member_queries = Mock(spec=WorkspaceMemberQueryService)
+    services = create_autospec(ApplicationServices, instance=True)
+    services.accounts = create_autospec(AccountServices, instance=True)
+    services.workspaces = create_autospec(WorkspaceServices, instance=True)
+    services.workspaces.invitations = create_autospec(WorkspaceInvitationService, instance=True)
+    services.workspaces.owner_transfer = create_autospec(WorkspaceOwnerTransferService, instance=True)
+    services.workspaces.members = create_autospec(WorkspaceMemberService, instance=True)
+    services.workspaces.member_queries = create_autospec(WorkspaceMemberQueryService, instance=True)
     import importlib
 
     monkeypatch.setattr(
         importlib.import_module("controllers.console.workspace.members"), "application_services", lambda: services
     )
     return services
+
+
+def test_pending_invitation_endpoint_scopes_to_active_workspace_and_omits_tokens(app: Flask, services: Mock) -> None:
+    workspace_id = uuid4()
+    context = RequestContext("request", None, "actor", str(workspace_id))
+    api = PendingWorkspaceInvitationListApi()
+    get = unwrap(api.get)
+    services.workspaces.invitations.list_pending.return_value = (
+        PendingWorkspaceInvitation(
+            "account-1", "invitee@example.com", TenantAccountRole.EDITOR, datetime(2026, 12, 1, tzinfo=UTC)
+        ),
+    )
+    with app.test_request_context("/"):
+        with pytest.raises(ForbiddenError):
+            get(api, context, uuid4())
+        services.workspaces.invitations.list_pending.assert_not_called()
+        response, status = get(api, context, workspace_id)
+
+    assert status == HTTPStatus.OK
+    assert response == {
+        "invitations": [{"email": "invitee@example.com", "role": "editor", "expires_at": "2026-12-01T00:00:00Z"}]
+    }
+
+
+@pytest.mark.parametrize(
+    ("service_error", "http_error"),
+    [
+        (None, None),
+        (NoPermissionError("denied"), ForbiddenError),
+        (PendingInvitationNotFoundError(), PendingInvitationNotFoundHTTPError),
+    ],
+)
+def test_pending_invitation_revoke_endpoint(
+    app: Flask,
+    services: Mock,
+    service_error: Exception | None,
+    http_error: type[Exception] | None,
+) -> None:
+    workspace_id = uuid4()
+    context = RequestContext("request", None, "actor", str(workspace_id))
+    api = PendingWorkspaceInvitationRevokeApi()
+    post = unwrap(api.post)
+    services.workspaces.invitations.revoke_pending.side_effect = service_error
+    with app.test_request_context("/", json={"email": "Invitee@Example.com"}):
+        with pytest.raises(ForbiddenError):
+            post(api, context, uuid4())
+        services.workspaces.invitations.revoke_pending.assert_not_called()
+        if http_error is None:
+            assert post(api, context, workspace_id) == ({"result": "success"}, HTTPStatus.OK)
+        else:
+            with pytest.raises(http_error):
+                post(api, context, workspace_id)
+
+    services.workspaces.invitations.revoke_pending.assert_called_once()
+    assert services.workspaces.invitations.revoke_pending.call_args.args[0] is context
+    assert services.workspaces.invitations.revoke_pending.call_args.args[1].lower() == "invitee@example.com"
 
 
 @pytest.mark.parametrize("operation", ["remove", "update_role"])
@@ -180,9 +254,9 @@ def test_member_mutation_delegates_admitted_ids(app: Flask, services: Mock, oper
 @pytest.mark.parametrize(
     ("error", "code", "status"),
     [
-        (CannotOperateSelfError("self"), "cannot-operate-self", 400),
+        (CannotOperateSelfError("self"), "cannot_operate_self", 400),
         (NoPermissionError("denied"), "forbidden", 403),
-        (MemberNotInTenantError("missing"), "member-not-found", 404),
+        (MemberNotInTenantError("missing"), "member_not_found", 404),
     ],
 )
 def test_member_mutation_maps_errors(
@@ -195,7 +269,9 @@ def test_member_mutation_maps_errors(
     api = MemberCancelInviteApi() if operation == "remove" else MemberUpdateRoleApi()
     method = api.delete if isinstance(api, MemberCancelInviteApi) else api.put
     with app.test_request_context("/", json={"role": "editor"}):
-        result = unwrap(method)(api, RequestContext("request", None, "actor", "workspace"), "member")
+        result = raised_error(
+            lambda: unwrap(method)(api, RequestContext("request", None, "actor", "workspace"), "member")
+        )
     assert result == ({"code": code, "message": str(error)}, status)
 
 
@@ -214,15 +290,17 @@ def test_member_mutation_maps_missing_account(app: Flask, services: Mock, operat
 @pytest.mark.parametrize(
     ("error", "code", "message"),
     [
-        (InvalidWorkspaceMemberRoleError(), "invalid-role", "Invalid role"),
-        (RoleAlreadyAssignedError("unchanged"), "role-already-assigned", "unchanged"),
+        (InvalidWorkspaceMemberRoleError(), "invalid_role", "Invalid role."),
+        (RoleAlreadyAssignedError("unchanged"), "role_already_assigned", "unchanged"),
     ],
 )
 def test_update_role_maps_role_errors(app: Flask, services: Mock, error: Exception, code: str, message: str) -> None:
     services.workspaces.members.update_role.side_effect = error
     api = MemberUpdateRoleApi()
     with app.test_request_context("/", json={"role": "editor"}):
-        result = unwrap(api.put)(api, RequestContext("request", None, "actor", "workspace"), "member")
+        result = raised_error(
+            lambda: unwrap(api.put)(api, RequestContext("request", None, "actor", "workspace"), "member")
+        )
     assert result == ({"code": code, "message": message}, 400)
 
 
@@ -306,6 +384,24 @@ def test_bulk_invite_serializes_results_and_normalizes_input(app: Flask, service
     services.workspaces.invitations.invite_many.assert_called_once_with(
         context, emails=["a@example.com", "b@example.com", "c@example.com"], language=None, role="normal"
     )
+
+
+@pytest.mark.parametrize(
+    "invalid_email",
+    ["", "invalid-email", "@example.com", "user@", "user@example", "user@example.com\n", "user@example.com\r\n"],
+)
+def test_bulk_invite_rejects_invalid_email_before_inviting(app: Flask, services: Mock, invalid_email: str) -> None:
+    api = MemberInviteEmailApi()
+    with (
+        app.test_request_context(
+            "/", method="POST", json={"emails": ["valid@example.com", invalid_email], "role": "normal"}
+        ),
+        pytest.raises(ValidationError, match="not a valid email") as error,
+    ):
+        unwrap(api.post)(api, RequestContext("request", None, "owner", "workspace"))
+
+    assert error.value.errors()[0]["loc"] == ("emails", 1)
+    services.workspaces.invitations.invite_many.assert_not_called()
 
 
 @pytest.mark.parametrize(("seats", "expected"), [(True, SeatsLimitExceeded), (False, WorkspaceMembersLimitExceeded)])

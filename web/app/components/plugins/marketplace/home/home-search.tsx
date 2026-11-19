@@ -1,6 +1,6 @@
 'use client'
 
-import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useHotkey } from '@tanstack/react-hotkeys'
@@ -10,7 +10,7 @@ import EmbeddedMarketplaceSearch from './embedded-marketplace-search'
 import styles from './home-sticky.module.css'
 import { preserveStickySearchScroll } from './preserve-sticky-search-scroll'
 
-const SEARCH_HOTKEY = 'Mod+K' satisfies Hotkey
+const SEARCH_HOTKEY = 'Mod+K' satisfies HotkeyChord
 
 type HomeSearchProps = {
   children?: ReactNode

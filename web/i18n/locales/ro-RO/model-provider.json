@@ -53,6 +53,8 @@
   "modelProvider.card.usageLabel": "Utilizare",
   "modelProvider.card.usagePriority": "Prioritate de utilizare",
   "modelProvider.card.usagePriorityTip": "Setați ce resursă să fie utilizată prima la rularea modelelor.",
+  "modelProvider.clearDefaultModel.description": "Această modificare intră în vigoare la salvare. Golirea acestui model implicit poate cauza eșecul fluxurilor de lucru care depind de el.",
+  "modelProvider.clearDefaultModel.title": "Golești {{modelType}}?",
   "modelProvider.configureTip": "Configurați api-key sau adăugați modelul de utilizat",
   "modelProvider.confirmDelete": "confirmați ștergerea?",
   "modelProvider.defaultConfig": "Configurație implicită",

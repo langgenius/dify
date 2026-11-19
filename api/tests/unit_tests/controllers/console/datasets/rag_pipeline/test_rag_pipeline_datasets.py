@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 import services
@@ -18,10 +19,10 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_datasets import (
     RagPipelineDatasetImportPayload,
 )
 from models.account import Account, TenantAccountRole
-from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.dsl_entities import ImportStatus
-from tests.unit_tests.config_override import config_overrides_context
-from tests.unit_tests.model_factories import make_account
+from services.rbac import contracts as rbac_contracts
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.model_factories import make_account
 
 
 def _account(*, editor: bool) -> Account:
@@ -37,7 +38,7 @@ class TestCreateRagPipelineDatasetApi:
     def _valid_payload(self) -> dict[str, str]:
         return {"yaml_content": "name: test"}
 
-    def test_post_success(self, app: Flask) -> None:
+    def test_post_success(self, app: Flask, unbound_session: Session) -> None:
         api = CreateRagPipelineDatasetApi()
         method = unwrap(api.post)
 
@@ -62,10 +63,13 @@ class TestCreateRagPipelineDatasetApi:
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_datasets.RagPipelineDslService",
                 return_value=mock_service,
-            ),
+            ) as dsl_service_cls,
         ):
-            response, status = method(api, RagPipelineDatasetImportPayload.model_validate(payload), "tenant-1", user)
+            response, status = method(
+                api, RagPipelineDatasetImportPayload.model_validate(payload), unbound_session, "tenant-1", user
+            )
 
+        dsl_service_cls.assert_called_once_with(unbound_session)
         assert status == 201
         assert response == {
             "id": "import-1",
@@ -77,7 +81,7 @@ class TestCreateRagPipelineDatasetApi:
             "error": "",
         }
 
-    def test_post_success_syncs_creator_under_rbac(self, app: Flask) -> None:
+    def test_post_success_syncs_creator_under_rbac(self, app: Flask, unbound_session: Session) -> None:
         """RBAC: RAG-pipeline dataset create must keep the creator bound to their own dataset.
 
         Regression guard for the #42430 flip to automatic_include_workspace_members=False:
@@ -102,10 +106,12 @@ class TestCreateRagPipelineDatasetApi:
 
         mock_service = MagicMock()
         mock_service.create_rag_pipeline_dataset.return_value = import_info
+        events: list[str] = []
 
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
+            patch.object(unbound_session, "commit", side_effect=lambda: events.append("commit")),
             config_overrides_context(RBAC_ENABLED=True),
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_datasets.RagPipelineDslService",
@@ -115,19 +121,22 @@ class TestCreateRagPipelineDatasetApi:
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_datasets.enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist"
             ),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_datasets.enterprise_rbac_service.try_sync_creator_access_policy_member_bindings"
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_datasets.enterprise_rbac_service.try_sync_creator_access_policy_member_bindings",
+                side_effect=lambda *_args: events.append("sync_creator"),
             ) as sync_creator,
         ):
-            response, status = method(api, RagPipelineDatasetImportPayload.model_validate(payload), "tenant-1", user)
+            response, status = method(
+                api, RagPipelineDatasetImportPayload.model_validate(payload), unbound_session, "tenant-1", user
+            )
 
         assert status == 201
         assert sync_creator.called, "RAG pipeline create must sync the creator's own access"
-        sync_creator.assert_called_once_with(
-            "tenant-1", user.id, enterprise_rbac_service.RBACResourceType.DATASET, "ds-1"
-        )
+        sync_creator.assert_called_once_with("tenant-1", user.id, rbac_contracts.RBACResourceType.DATASET, "ds-1")
         assert response["dataset_id"] == "ds-1"
+        # The RBAC service runs outside the request session, so the dataset must be committed first.
+        assert events == ["commit", "sync_creator"]
 
-    def test_post_forbidden_non_editor(self, app: Flask) -> None:
+    def test_post_forbidden_non_editor(self, app: Flask, unbound_session: Session) -> None:
         api = CreateRagPipelineDatasetApi()
         method = unwrap(api.post)
 
@@ -139,9 +148,9 @@ class TestCreateRagPipelineDatasetApi:
             patch.object(type(console_ns), "payload", payload),
         ):
             with pytest.raises(Forbidden):
-                method(api, RagPipelineDatasetImportPayload.model_validate(payload), "tenant-1", user)
+                method(api, RagPipelineDatasetImportPayload.model_validate(payload), unbound_session, "tenant-1", user)
 
-    def test_post_dataset_name_duplicate(self, app: Flask) -> None:
+    def test_post_dataset_name_duplicate(self, app: Flask, unbound_session: Session) -> None:
         api = CreateRagPipelineDatasetApi()
         method = unwrap(api.post)
 
@@ -160,9 +169,9 @@ class TestCreateRagPipelineDatasetApi:
             ),
         ):
             with pytest.raises(DatasetNameDuplicateError):
-                method(api, RagPipelineDatasetImportPayload.model_validate(payload), "tenant-1", user)
+                method(api, RagPipelineDatasetImportPayload.model_validate(payload), unbound_session, "tenant-1", user)
 
-    def test_post_invalid_payload(self, app: Flask) -> None:
+    def test_post_invalid_payload(self, app: Flask, unbound_session: Session) -> None:
         api = CreateRagPipelineDatasetApi()
         method = unwrap(api.post)
 
@@ -173,12 +182,14 @@ class TestCreateRagPipelineDatasetApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
         ):
-            with pytest.raises(ValueError):
-                method(api, RagPipelineDatasetImportPayload.model_validate(payload), "tenant-1", user)
+            with pytest.raises(
+                ValueError, match="1 validation error for RagPipelineDatasetImportPayload\\\nyaml_content"
+            ):
+                method(api, RagPipelineDatasetImportPayload.model_validate(payload), unbound_session, "tenant-1", user)
 
 
 class TestCreateEmptyRagPipelineDatasetApi:
-    def test_post_forbidden_non_editor(self, app: Flask) -> None:
+    def test_post_forbidden_non_editor(self, app: Flask, unbound_session: Session) -> None:
         api = CreateEmptyRagPipelineDatasetApi()
         method = unwrap(api.post)
 
@@ -186,4 +197,4 @@ class TestCreateEmptyRagPipelineDatasetApi:
 
         with app.test_request_context("/"):
             with pytest.raises(Forbidden):
-                method(api, "tenant-1", user)
+                method(api, unbound_session, "tenant-1", user)

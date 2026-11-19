@@ -1,147 +1,68 @@
-import type { ChatWithHistoryContextValue } from '../../context'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { InputVarType } from '@/app/components/workflow/types'
-import { useChatWithHistoryContext } from '../../context'
+import { useState } from 'react'
+import { fetchChatList, fetchConversations } from '@/service/share'
+import { createChatConfigFixture } from '@/test/fixtures/chat'
+import { CONVERSATION_ID_INFO, TAB_CONVERSATION_ID_INFO } from '../../../constants'
+import { renderChatHistory } from '../../__tests__/chat-history-test-env'
 import InputsFormNode from '../index'
 
-// Mocks for components used by InputsFormContent (the real sibling)
-vi.mock('@/app/components/workflow/nodes/_base/components/before-run-form/bool-input', () => ({
-  default: ({ value, name }: { value: boolean; name: string }) => (
-    <div data-testid="mock-bool-input" role="checkbox" aria-checked={value}>
-      {name}
-    </div>
-  ),
+vi.mock('@/service/share', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/share')>()),
+  fetchChatList: vi.fn(),
+  fetchConversations: vi.fn(),
 }))
 
-vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ value, placeholder }: { value: string; placeholder?: React.ReactNode }) => (
-    <div data-testid="mock-code-editor">
-      <span>{value}</span>
-      {placeholder}
-    </div>
-  ),
-}))
+function Conversation({ initiallyCollapsed = true }: { initiallyCollapsed?: boolean }) {
+  const [collapsed, setCollapsed] = useState(initiallyCollapsed)
+  return <InputsFormNode collapsed={collapsed} setCollapsed={setCollapsed} />
+}
+const topic = { label: 'Topic', variable: 'topic', required: true, default: '' }
+const appParams = createChatConfigFixture({ user_input_form: [{ 'text-input': topic }] })
 
-vi.mock('@/app/components/base/file-uploader', () => ({
-  FileUploaderInAttachmentWrapper: ({ value }: { value?: unknown[] }) => (
-    <div data-testid="mock-file-uploader" data-count={value?.length ?? 0} />
-  ),
-}))
-
-vi.mock('../../context', () => ({
-  useChatWithHistoryContext: vi.fn(),
-}))
-
-const mockHandleStartChat = vi.fn((cb?: () => void) => {
-  if (cb) cb()
+beforeEach(() => {
+  vi.mocked(fetchChatList).mockResolvedValue({ data: [] })
+  vi.mocked(fetchConversations).mockResolvedValue({ data: [], has_more: false, limit: 100 })
+})
+afterEach(() => {
+  localStorage.removeItem(CONVERSATION_ID_INFO)
+  sessionStorage.removeItem(TAB_CONVERSATION_ID_INFO)
+  localStorage.removeItem('webappSidebarCollapse')
 })
 
-const defaultContextValues: Partial<ChatWithHistoryContextValue> = {
-  isMobile: false,
-  currentConversationId: '',
-  handleStartChat: mockHandleStartChat,
-  allInputsHidden: false,
-  theme: undefined,
-  inputsForms: [{ variable: 'test_var', type: InputVarType.textInput, label: 'Test Label' }],
-  currentConversationInputs: {},
-  newConversationInputs: {},
-  newConversationInputsRef: { current: {} } as unknown as React.RefObject<Record<string, unknown>>,
-  setCurrentConversationInputs: vi.fn(),
-  handleNewConversationInputsChange: vi.fn(),
-}
-
-const setMockContext = (overrides: Partial<ChatWithHistoryContextValue> = {}) => {
-  vi.mocked(useChatWithHistoryContext).mockReturnValue({
-    ...defaultContextValues,
-    ...overrides,
-  } as unknown as ChatWithHistoryContextValue)
-}
-
 describe('InputsFormNode', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    setMockContext()
-  })
-
-  it('should render nothing if allInputsHidden is true', () => {
-    setMockContext({ allInputsHidden: true })
-    const { container } = render(<InputsFormNode collapsed={true} setCollapsed={vi.fn()} />)
-    expect(container.firstChild).toBeNull()
-  })
-
-  it('should render nothing if inputsForms array is empty', () => {
-    setMockContext({ inputsForms: [] })
-    const { container } = render(<InputsFormNode collapsed={true} setCollapsed={vi.fn()} />)
-    expect(container.firstChild).toBeNull()
-  })
-
-  it('should render collapsed state with edit button', async () => {
-    const user = userEvent.setup()
-    const setCollapsed = vi.fn()
-    setMockContext({ currentConversationId: '' })
-    render(<InputsFormNode collapsed={true} setCollapsed={setCollapsed} />)
-
-    expect(screen.getByText('share.chat.chatSettingsTitle')).toBeInTheDocument()
-
-    const editBtn = screen.getByRole('button', { name: /common.operation.edit/i })
-    await user.click(editBtn)
-    expect(setCollapsed).toHaveBeenCalledWith(false)
-  })
-
-  it('should render expanded state with close button when a conversation exists', async () => {
-    const user = userEvent.setup()
-    const setCollapsed = vi.fn()
-    setMockContext({ currentConversationId: 'conv-1' })
-    render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
-
-    // Real InputsFormContent should render the label
-    expect(screen.getByText('Test Label')).toBeInTheDocument()
-
-    const closeBtn = screen.getByRole('button', { name: /common.operation.close/i })
-    await user.click(closeBtn)
-    expect(setCollapsed).toHaveBeenCalledWith(true)
-  })
-
-  it('should render start chat button with theme styling when no conversation exists', async () => {
-    const user = userEvent.setup()
-    const setCollapsed = vi.fn()
-    const themeColor = 'rgb(18, 52, 86)' // #123456
-
-    setMockContext({
-      currentConversationId: '',
-      theme: { primaryColor: themeColor } as unknown as ChatWithHistoryContextValue['theme'],
+  it.each([
+    { name: 'hidden inputs', user_input_form: [{ 'text-input': { ...topic, hide: true } }] },
+    { name: 'no inputs', user_input_form: [] },
+  ])('omits settings for $name', ({ user_input_form }) => {
+    const { container } = renderChatHistory(<Conversation />, {
+      appParams: createChatConfigFixture({ user_input_form }),
     })
-
-    render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
-    const startBtn = screen.getByRole('button', { name: /share.chat.startChat/i })
-
-    expect(startBtn).toBeInTheDocument()
-    expect(startBtn).toHaveStyle({ backgroundColor: themeColor })
-
-    await user.click(startBtn)
-    expect(mockHandleStartChat).toHaveBeenCalled()
-    expect(setCollapsed).toHaveBeenCalledWith(true)
+    expect(container).toBeEmptyDOMElement()
   })
 
-  it('should apply mobile specific classes when isMobile is true', () => {
-    setMockContext({ isMobile: true })
-    const { container } = render(<InputsFormNode collapsed={false} setCollapsed={vi.fn()} />)
+  it('opens and closes settings for an existing conversation', async () => {
+    const user = userEvent.setup()
+    renderChatHistory(<Conversation />, { appParams })
+    expect(screen.queryByRole('textbox', { name: 'Topic' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+    expect(screen.getByRole('textbox', { name: 'Topic' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'share.chat.startChat' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    expect(screen.queryByRole('textbox', { name: 'Topic' })).not.toBeInTheDocument()
+  })
 
-    // Prefer selecting by a test id if the component exposes it. Fallback to queries that
-    // don't rely on internal DOM structure so tests are less brittle.
-    const outerDiv =
-      screen.queryByTestId('inputs-form-node') ?? (container.firstChild as HTMLElement)
-    expect(outerDiv).toBeTruthy()
-    // Check for mobile-specific layout classes (pt-4)
-
-    // Check padding in expanded content (p-4 for mobile)
-    // Prefer a test id for the content wrapper; fallback to finding the label's closest ancestor
-    const contentWrapper =
-      screen.queryByTestId('inputs-form-content-wrapper') ??
-      screen.getByText('Test Label').closest('.p-4')
-    expect(contentWrapper).toBeInTheDocument()
+  it('collapses new conversation settings only after starting chat succeeds', async () => {
+    const user = userEvent.setup()
+    renderChatHistory(<Conversation initiallyCollapsed={false} />, {
+      currentConversationId: '',
+      appParams,
+    })
+    await user.click(screen.getByRole('button', { name: 'share.chat.startChat' }))
+    expect(screen.getByRole('textbox', { name: 'Topic' })).toBeVisible()
+    await user.type(screen.getByRole('textbox', { name: 'Topic' }), 'Travel')
+    await user.click(screen.getByRole('button', { name: 'share.chat.startChat' }))
+    expect(screen.queryByRole('textbox', { name: 'Topic' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.edit' })).toBeVisible()
   })
 })

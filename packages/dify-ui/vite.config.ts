@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { defineConfig, lazyPlugins } from 'vite-plus'
+import { configDefaults, defineConfig, lazyPlugins } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -16,13 +16,24 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   test: {
+    // `--changed` follows source imports, so dependency inputs rerun every test.
+    forceRerunTriggers: [
+      ...configDefaults.forceRerunTriggers,
+      '**/pnpm-lock.yaml',
+      '**/pnpm-workspace.yaml',
+      '**/patches/**',
+      // `tsconfigPaths` resolves aliases from these files.
+      '**/packages/dify-ui/tsconfig.json',
+      '**/packages/tsconfig/**',
+      // The setup file loads global styles through CSS imports, which the module graph does not track.
+      '**/packages/dify-ui/vitest.css',
+      '**/packages/dify-ui/src/{styles,themes,plugins}/**',
+    ],
     browser: {
-      expect: { toMatchScreenshot: { screenshotDirectory: './.vitest-browser/screenshots' } },
       enabled: true,
       provider: playwright(),
       instances: [{ browser: 'chromium' }],
       headless: true,
-      screenshotDirectory: './.vitest-browser/screenshots',
       screenshotFailures: true,
     },
     coverage: {
@@ -50,7 +61,7 @@ export default defineConfig({
           include: ['src/**/__tests__/**/*.spec.{ts,tsx}'],
           browser: {
             trace: {
-              mode: 'retain-on-failure',
+              mode: isCI ? 'retain-on-failure' : 'off',
               tracesDir: './.vitest-browser/traces',
             },
           },

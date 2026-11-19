@@ -35,7 +35,7 @@ const useConfig = (id: string, payload: TemplateTransformNodeType) => {
 
   const handleVarListChange = useCallback(
     (newList: Variable[]) => {
-      const newInputs = produce(inputsRef.current, (draft: any) => {
+      const newInputs = produce(inputsRef.current, (draft) => {
         draft.variables = newList
       })
       setInputs(newInputs)
@@ -45,7 +45,7 @@ const useConfig = (id: string, payload: TemplateTransformNodeType) => {
 
   const handleAddVariable = useCallback(
     (payload: Variable) => {
-      const newInputs = produce(inputsRef.current, (draft: any) => {
+      const newInputs = produce(inputsRef.current, (draft) => {
         draft.variables.push(payload)
       })
       setInputs(newInputs)
@@ -56,7 +56,7 @@ const useConfig = (id: string, payload: TemplateTransformNodeType) => {
   // rename var in code
   const handleVarNameChange = useCallback(
     (oldName: string, newName: string) => {
-      const newInputs = produce(inputsRef.current, (draft: any) => {
+      const newInputs = produce(inputsRef.current, (draft) => {
         draft.template = draft.template.replaceAll(`{{ ${oldName} }}`, `{{ ${newName} }}`)
       })
       setInputs(newInputs)
@@ -78,7 +78,7 @@ const useConfig = (id: string, payload: TemplateTransformNodeType) => {
 
   const handleCodeChange = useCallback(
     (template: string) => {
-      const newInputs = produce(inputsRef.current, (draft: any) => {
+      const newInputs = produce(inputsRef.current, (draft) => {
         draft.template = template
       })
       setInputs(newInputs)

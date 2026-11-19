@@ -1,6 +1,9 @@
 'use client'
 
-import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  AppDetailWithSite,
+  GetAppsByAppIdWorkflowAppLogsData,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { useQuery } from '@tanstack/react-query'
@@ -16,7 +19,7 @@ import EmptyElement from '@/app/components/app/log/empty-element'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { APP_PAGE_LIMIT } from '@/config'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { useWorkflowLogs } from '@/service/use-log'
+import { consoleQuery } from '@/service/console'
 import PageTitle from '../log-annotation/page-title'
 import { ArchivedLogsNotice } from '../log/archived-logs-notice'
 import { shouldShowArchivedLogsNotice } from '../log/archived-logs-notice-utils'
@@ -36,9 +39,11 @@ export type ILogsProps = {
   appDetail: AppDetailWithSite
 }
 
+type WorkflowLogStatus = NonNullable<GetAppsByAppIdWorkflowAppLogsData['query']>['status']
+
 export type QueryParam = {
   period: string
-  status?: string
+  status?: WorkflowLogStatus | 'all'
   keyword?: string
 }
 
@@ -81,10 +86,11 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     ...omit(requestQueryParams, ['period', 'status']),
   }
 
-  const { data: workflowLogs, refetch: mutate } = useWorkflowLogs({
-    appId: appDetail.id,
-    params: query,
-  })
+  const { data: workflowLogs, refetch: mutate } = useQuery(
+    consoleQuery.apps.byAppId.workflowAppLogs.get.queryOptions({
+      input: { params: { app_id: appDetail.id }, query },
+    }),
+  )
   const total = workflowLogs?.total
   const totalPages = total ? Math.max(Math.ceil(total / limit), 1) : 1
   const showArchivedLogsNotice = shouldShowArchivedLogsNotice(

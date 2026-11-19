@@ -28,10 +28,11 @@ export const TitleInput = memo(({ value, onBlur }: TitleInputProps) => {
   }, [])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      ;(e.target as HTMLInputElement).blur()
-    }
+    if (e.key !== 'Enter') return
+    // oxlint-disable-next-line typescript/no-deprecated -- Safari can report 229 after composition ends.
+    if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return
+    e.preventDefault()
+    e.currentTarget.blur()
   }, [])
 
   // Sync local state with incoming collaborative updates so remote title edits appear immediately.
@@ -42,7 +43,7 @@ export const TitleInput = memo(({ value, onBlur }: TitleInputProps) => {
   }, [value])
 
   return (
-    <div className="mr-2 min-w-0 grow">
+    <div className="me-2 min-w-0 grow">
       <label htmlFor={inputId} className="sr-only">
         {t(($) => $['common.nodeTitle'], { ns: 'workflow' })}
       </label>
@@ -52,7 +53,7 @@ export const TitleInput = memo(({ value, onBlur }: TitleInputProps) => {
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         className={`h-7 w-full min-w-0 appearance-none rounded-md border border-transparent bg-transparent px-1 system-xl-semibold text-text-primary outline-hidden focus:shadow-xs focus-visible:ring-1 focus-visible:ring-components-input-border-hover`}
-        placeholder={t(($) => $['common.addTitle'], { ns: 'workflow' }) || ''}
+        placeholder={t(($) => $['common.addTitle'], { ns: 'workflow' })}
         onBlur={handleBlur}
       />
     </div>
@@ -93,7 +94,7 @@ export const DescriptionInput = memo(({ value, onChange, inputRef }: Description
           onFocus={handleFocus}
           onBlur={handleBlur}
           className={`w-full resize-none appearance-none bg-transparent text-xs leading-4.5 text-text-primary caret-[#295EFF] outline-hidden placeholder:text-text-quaternary focus-visible:ring-1 focus-visible:ring-components-input-border-hover`}
-          placeholder={t(($) => $['common.addDescription'], { ns: 'workflow' }) || ''}
+          placeholder={t(($) => $['common.addDescription'], { ns: 'workflow' })}
         />
       </div>
     </div>

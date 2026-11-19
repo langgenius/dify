@@ -1,15 +1,21 @@
 import pytest
 from sqlalchemy.orm import Session
 
-from services.rag_pipeline.pipeline_template.pipeline_template_base import PipelineTemplateRetrievalBase
+from services.rag_pipeline.pipeline_template.pipeline_template_base import (
+    PipelineTemplateRetrievalBase,
+)
 
 
 class DummyRetrieval(PipelineTemplateRetrievalBase):
-    def get_pipeline_templates(self, language: str, *, session) -> dict:
-        del session
+    def get_pipeline_templates(
+        self, language: str, current_tenant_id: str | None = None, *, session: Session
+    ) -> dict[str, object]:
+        del current_tenant_id, session
         return {"language": language}
 
-    def get_pipeline_template_detail(self, template_id: str, current_tenant_id: str, *, session) -> dict | None:
+    def get_pipeline_template_detail(
+        self, template_id: str, current_tenant_id: str, *, session: Session
+    ) -> dict[str, object] | None:
         del current_tenant_id, session
         return {"id": template_id}
 
@@ -18,7 +24,9 @@ class DummyRetrieval(PipelineTemplateRetrievalBase):
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_pipeline_template_retrieval_base_concrete_implementation(sqlite_session: Session) -> None:
+def test_pipeline_template_retrieval_base_concrete_implementation(
+    sqlite_session: Session,
+) -> None:
     retrieval = DummyRetrieval()
 
     assert retrieval.get_pipeline_templates("en-US", session=sqlite_session) == {"language": "en-US"}

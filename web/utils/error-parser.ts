@@ -6,25 +6,11 @@
  * Input: { message: "req_id: xxx PluginInvokeError: {\"message\":\"Bad credentials\"}" }
  * Output: "Bad credentials"
  *
- * @param error - Error object (can be Response object or error with message property)
- * @returns Promise<string> or string - Parsed error message
+ * @param error - Error object (an Error or object with a message property)
+ * @returns Parsed error message
  */
-export const parsePluginErrorMessage = async (error: any): Promise<string> => {
-  let rawMessage = ''
-
-  // Handle Response object from fetch/ky
-  if (error instanceof Response) {
-    try {
-      const body = await error.clone().json()
-      rawMessage = body?.message || error.statusText || 'Unknown error'
-    } catch {
-      rawMessage = error.statusText || 'Unknown error'
-    }
-  } else {
-    rawMessage = error?.message || error?.toString() || 'Unknown error'
-  }
-
-  console.log('rawMessage', rawMessage)
+export const parsePluginErrorMessage = (error: any): string => {
+  const rawMessage = error?.message || error?.toString() || 'Unknown error'
 
   // Try to extract nested JSON from PluginInvokeError
   // Use greedy match .+ to capture the complete JSON object with nested braces

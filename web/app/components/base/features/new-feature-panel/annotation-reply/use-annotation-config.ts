@@ -2,14 +2,14 @@ import type { EmbeddingModelConfig } from '@/app/components/app/annotation/type'
 import type { AnnotationReplyConfig } from '@/models/debug'
 import { useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
-import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { AnnotationEnableStatus, JobStatus } from '@/app/components/app/annotation/type'
+import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { ANNOTATION_DEFAULT } from '@/config'
-import { deploymentEditionAtom } from '@/features/system-features/state'
-import { queryAnnotationJobStatus, updateAnnotationStatus } from '@/service/annotation'
-import { consoleQuery } from '@/service/console'
+import { updateAnnotationStatus } from '@/service/annotation'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { sleep } from '@/utils'
 
 type Params = {
@@ -18,21 +18,15 @@ type Params = {
   setAnnotationConfig: (annotationConfig: AnnotationReplyConfig) => void
 }
 const useAnnotationConfig = ({ appId, annotationConfig, setAnnotationConfig }: Params) => {
-  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { t } = useTranslation(['common'])
   const { data: annotationQuota } = useQuery(
     consoleQuery.features.get.queryOptions({
-      enabled: deploymentEdition === 'CLOUD' && !annotationConfig.enabled,
-      select: (data) => data.annotation_quota_limit,
+      enabled: !annotationConfig.enabled,
+      select: (data) => getCountQuota(data.annotation_quota_limit),
     }),
   )
-  const isAnnotationQuotaUnavailable =
-    deploymentEdition === 'CLOUD' && annotationQuota === undefined
-  // A limit of 0 means unlimited.
-  const isAnnotationFull =
-    deploymentEdition === 'CLOUD' &&
-    annotationQuota !== undefined &&
-    annotationQuota.limit > 0 &&
-    annotationQuota.size >= annotationQuota.limit
+  const isAnnotationQuotaUnavailable = annotationQuota === undefined
+  const isAnnotationFull = annotationQuota !== undefined && isQuotaReached(annotationQuota)
   const [isShowAnnotationFullModal, setIsShowAnnotationFullModal] = useState(false)
   const [isShowAnnotationConfigInit, doSetIsShowAnnotationConfigInit] = React.useState(false)
   const setIsShowAnnotationConfigInit = (isShow: boolean) => {
@@ -48,9 +42,15 @@ const useAnnotationConfig = ({ appId, annotationConfig, setAnnotationConfig }: P
   const ensureJobCompleted = async (jobId: string, status: AnnotationEnableStatus) => {
     let isCompleted = false
     while (!isCompleted) {
-      const res: any = await queryAnnotationJobStatus(appId, status, jobId)
+      const res = await consoleClient.apps.byAppId.annotationReply.byAction.status.byJobId.get(
+        { params: { app_id: appId, action: status, job_id: jobId } },
+        { context: { silent: true } },
+      )
       isCompleted = res.job_status === JobStatus.completed
       if (isCompleted) break
+      if (res.job_status === JobStatus.error) {
+        throw new Error(res.error_msg || t(($) => $['api.actionFailed'], { ns: 'common' }))
+      }
 
       await sleep(2000)
     }
@@ -59,7 +59,7 @@ const useAnnotationConfig = ({ appId, annotationConfig, setAnnotationConfig }: P
   const handleEnableAnnotation = async (embeddingModel: EmbeddingModelConfig, score?: number) => {
     if (!annotationConfig.enabled && (isAnnotationQuotaUnavailable || isAnnotationFull)) return
 
-    const { job_id: jobId }: any = await updateAnnotationStatus(
+    const { job_id: jobId } = await updateAnnotationStatus(
       appId,
       AnnotationEnableStatus.enable,
       embeddingModel,
@@ -70,8 +70,7 @@ const useAnnotationConfig = ({ appId, annotationConfig, setAnnotationConfig }: P
       produce(annotationConfig, (draft: AnnotationReplyConfig) => {
         draft.enabled = true
         draft.embedding_model = embeddingModel
-        if (draft.score_threshold === undefined || draft.score_threshold === null)
-          draft.score_threshold = ANNOTATION_DEFAULT.score_threshold
+        draft.score_threshold = score ?? draft.score_threshold ?? ANNOTATION_DEFAULT.score_threshold
       }),
     )
   }
@@ -88,7 +87,12 @@ const useAnnotationConfig = ({ appId, annotationConfig, setAnnotationConfig }: P
   const handleDisableAnnotation = async (embeddingModel: EmbeddingModelConfig) => {
     if (!annotationConfig.enabled) return
 
-    await updateAnnotationStatus(appId, AnnotationEnableStatus.disable, embeddingModel)
+    const { job_id: jobId } = await updateAnnotationStatus(
+      appId,
+      AnnotationEnableStatus.disable,
+      embeddingModel,
+    )
+    await ensureJobCompleted(jobId, AnnotationEnableStatus.disable)
     setAnnotationConfig(
       produce(annotationConfig, (draft: AnnotationReplyConfig) => {
         draft.enabled = false

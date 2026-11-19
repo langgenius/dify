@@ -1,9 +1,8 @@
 """SQLAlchemy repository for tenant-owned document state."""
 
-import json
 from collections.abc import Mapping
 
-from pydantic import TypeAdapter, ValidationError
+from pydantic import TypeAdapter
 from sqlalchemy import exists, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -12,6 +11,7 @@ from models import Account
 from models.dataset import Dataset, DatasetProcessRule, Document, Pipeline
 from models.enums import IndexingStatus
 from repositories.knowledge.dataset_read_repository import get_pipeline_dataset
+from repositories.knowledge.dataset_repository import _get_dataset
 from services.knowledge.document_sync import SyncDocumentRecord
 from services.knowledge.indexing.errors import DocumentIsDeletedPausedError, DocumentIsPausedError
 from services.knowledge.indexing.estimate import EstimateDocumentRecord, StoredSource
@@ -26,9 +26,9 @@ def _mapping(value: object) -> Mapping[str, object] | None:
         return None
     try:
         if isinstance(value, str):
-            return _MAPPING_ADAPTER.validate_python(json.loads(value))
+            return _MAPPING_ADAPTER.validate_json(value)
         return _MAPPING_ADAPTER.validate_python(value)
-    except (TypeError, ValueError, ValidationError):
+    except (TypeError, ValueError):
         return {}
 
 
@@ -119,6 +119,14 @@ class SQLAlchemyDocumentRepository:
             )
             assert dataset is not None
             return dataset, document
+
+    def get_indexing_dataset(self, dataset_ref: DatasetRef) -> Dataset | None:
+        """Detached dataset for index cleanup after the document row may already be gone.
+
+        None means the dataset was deleted too, so dataset cleanup owns its whole index.
+        """
+        with self._session_factory() as session:
+            return _get_dataset(session, dataset_ref)
 
     def get_indexing_user(self, ref: DocumentRef) -> Account:
         with self._session_factory() as session:

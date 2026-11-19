@@ -13,7 +13,6 @@
   "versionHistory.action.copyIdSuccess": "ID copiat în clipboard",
   "versionHistory.action.deleteDeployedVersionError": "Această versiune a fluxului de lucru este implementată sau în curs de implementare în unul sau mai multe medii. Retrageți-o din toate mediile înainte de a șterge versiunea.",
   "versionHistory.action.deleteFailure": "Ștergerea versiunii a eșuat",
-  "versionHistory.action.deleteSuccess": "Versiune ștearsă",
   "versionHistory.action.restoreFailure": "Restaurarea versiunii a eșuat",
   "versionHistory.action.restoreInProgress": "{{userName}} restaurează la versiunea {{versionName}}...",
   "versionHistory.action.restoreSuccess": "Versiune restaurată",

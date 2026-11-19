@@ -1,22 +1,14 @@
-import type { ButtonHTMLAttributes, ReactElement } from 'react'
+import type { ReactElement } from 'react'
 import type { NodeDefault } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { FlowType } from '@/types/common'
 import BlockSelector from '..'
-import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
+import { createNode } from '../../__tests__/fixtures'
+import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
 import { BlockClassification, TabType } from '../types'
-
-vi.mock('reactflow', () => ({
-  useStoreApi: () => ({
-    getState: () => ({
-      getNodes: () => [],
-    }),
-  }),
-}))
 
 vi.mock('@/service/use-plugins', () => ({
   useFeaturedToolsRecommendations: () => ({
@@ -38,12 +30,38 @@ vi.mock('@/service/use-triggers', () => ({
   useInvalidateAllTriggerPlugins: () => vi.fn(),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: [] }),
-  useAllCustomTools: () => ({ data: [] }),
-  useAllWorkflowTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: [] }),
-  useInvalidateAllBuiltInTools: () => vi.fn(),
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.builtin.get': async () => [],
+      'workspaces.current.tools.api.get': async () => [],
+      'workspaces.current.tools.workflow.get': async () => [],
+      'workspaces.current.tools.mcp.get': async () => [],
+    }),
+  }
+})
+
+const collaboration = vi.hoisted(() => ({
+  ready: true,
+  subscribers: [] as ((ready: boolean) => void)[],
+}))
+
+vi.mock('../../collaboration/core/collaboration-manager', () => ({
+  collaborationManager: {
+    canApplyLocalGraphMutation: () => collaboration.ready,
+    onGraphReadyChange: (subscriber: (ready: boolean) => void) => {
+      collaboration.subscribers.push(subscriber)
+      subscriber(collaboration.ready)
+      return () => {
+        collaboration.subscribers = collaboration.subscribers.filter(
+          (value) => value !== subscriber,
+        )
+      }
+    },
+  },
 }))
 
 const createBlock = (type: BlockEnum, title: string): NodeDefault => ({
@@ -59,24 +77,41 @@ const createBlock = (type: BlockEnum, title: string): NodeDefault => ({
   checkValid: () => ({ isValid: true }),
 })
 
-type RenderBlockSelectorOptions = Parameters<typeof renderWorkflowComponent>[1]
+type RenderBlockSelectorOptions = Parameters<typeof renderWorkflowFlowComponent>[1]
 
 const renderBlockSelector = (ui: ReactElement, options?: RenderBlockSelectorOptions) => {
-  return renderWorkflowComponent(ui, {
+  return renderWorkflowFlowComponent(ui, {
     ...options,
-    hooksStoreProps: {
-      ...options?.hooksStoreProps,
-      configsMap: {
-        flowId: 'app-1',
-        flowType: FlowType.appFlow,
-        fileSettings: {} as never,
-        ...options?.hooksStoreProps?.configsMap,
-      },
-    },
+    resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
+    nodes: options?.initialStoreState?.nodes,
   })
 }
 
 describe('BlockSelector', () => {
+  beforeEach(() => {
+    collaboration.ready = true
+    collaboration.subscribers = []
+  })
+
+  it('disables node selection until collaboration is ready', async () => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn()
+    collaboration.ready = false
+    const rendered = renderBlockSelector(<BlockSelector onSelect={onSelect} />)
+    rendered.rerender(<BlockSelector onSelect={onSelect} />)
+    await expect(
+      screen.findByRole('button', { name: 'workflow.common.addBlock' }),
+    ).resolves.toBeDisabled()
+    collaboration.ready = true
+    act(() => collaboration.subscribers.forEach((subscriber) => subscriber(true)))
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'workflow.common.addBlock' })).toBeEnabled(),
+    )
+    await user.click(screen.getByRole('button', { name: 'workflow.common.addBlock' }))
+    expect(
+      await screen.findByRole('dialog', { name: 'workflow.common.addBlock' }),
+    ).toBeInTheDocument()
+  })
   it('resolves available blocks from the mounted workflow content owner', async () => {
     renderBlockSelector(
       <BlockSelector open onSelect={vi.fn()} availableBlocksTypes={[BlockEnum.Code]} />,
@@ -364,33 +399,6 @@ describe('BlockSelector', () => {
     expect(screen.getByRole('searchbox', { name: 'workflow.tabs.searchBlock' })).toBeInTheDocument()
   })
 
-  it('can render a prop-forwarding button component as the popover root', async () => {
-    const user = userEvent.setup()
-
-    function ForwardingButtonTrigger(props: ButtonHTMLAttributes<HTMLButtonElement>) {
-      return (
-        <button type="button" {...props}>
-          open-selector-root
-        </button>
-      )
-    }
-
-    renderBlockSelector(
-      <BlockSelector
-        onSelect={vi.fn()}
-        blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
-        availableBlocksTypes={[BlockEnum.LLM]}
-        trigger={<ForwardingButtonTrigger />}
-      />,
-    )
-
-    const trigger = screen.getByRole('button', { name: 'open-selector-root' })
-    await user.click(trigger)
-
-    expect(trigger).toHaveAttribute('aria-haspopup', 'dialog')
-    expect(screen.getByRole('searchbox', { name: 'workflow.tabs.searchBlock' })).toBeInTheDocument()
-  })
-
   it('can render the shared Button trigger as the popover root', async () => {
     const user = userEvent.setup()
 
@@ -456,13 +464,8 @@ describe('BlockSelector', () => {
       {
         initialStoreState: {
           nodes: [
-            {
-              id: 'start-placeholder',
-              data: {
-                type: BlockEnum.StartPlaceholder,
-              },
-            },
-          ] as never,
+            createNode({ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }),
+          ],
         },
       },
     )
@@ -488,14 +491,7 @@ describe('BlockSelector', () => {
       />,
       {
         initialStoreState: {
-          nodes: [
-            {
-              id: 'start',
-              data: {
-                type: BlockEnum.Start,
-              },
-            },
-          ] as never,
+          nodes: [createNode({ id: 'start', data: { type: BlockEnum.Start } })],
         },
       },
     )

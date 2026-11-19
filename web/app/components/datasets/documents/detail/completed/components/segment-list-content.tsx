@@ -1,22 +1,25 @@
 'use client'
+import type {
+  ChildChunkResponse,
+  SegmentResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
-import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import ChildSegmentList from '../child-segment-list'
 import SegmentCard from '../segment-card'
 import SegmentList from '../segment-list'
 
 type FullDocModeContentProps = {
-  segments: SegmentDetailModel[]
-  childSegments: ChildChunkDetail[]
+  segments: SegmentResponse[]
+  childSegments: ChildChunkResponse[]
   isLoadingSegmentList: boolean
   isLoadingChildSegmentList: boolean
   currSegmentId?: string
-  onClickCard: (detail: SegmentDetailModel, isEditMode?: boolean) => void
+  onClickCard: (detail: SegmentResponse, isEditMode?: boolean) => void
   onDeleteChildChunk: (segmentId: string, childChunkId: string) => Promise<void>
   handleInputChange: (value: string) => void
   handleAddNewChildChunk: (parentChunkId: string) => void
-  onClickSlice: (detail: ChildChunkDetail) => void
+  onClickSlice: (detail: ChildChunkResponse) => void
   archived?: boolean
   childChunkTotal: number
   inputValue: string
@@ -78,14 +81,14 @@ type GeneralModeContentProps = {
   segmentListRef: React.RefObject<HTMLDivElement | null>
   embeddingAvailable: boolean
   isLoadingSegmentList: boolean
-  segments: SegmentDetailModel[]
+  segments: SegmentResponse[]
   onChangeSwitch: (enable: boolean, segId?: string) => Promise<void>
   onDelete: (segId?: string) => Promise<void>
-  onClickCard: (detail: SegmentDetailModel, isEditMode?: boolean) => void
+  onClickCard: (detail: SegmentResponse, isEditMode?: boolean) => void
   archived?: boolean
   onDeleteChildChunk: (segmentId: string, childChunkId: string) => Promise<void>
   handleAddNewChildChunk: (parentChunkId: string) => void
-  onClickSlice: (detail: ChildChunkDetail) => void
+  onClickSlice: (detail: ChildChunkResponse) => void
   onClearFilter: () => void
 }
 
