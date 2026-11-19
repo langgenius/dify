@@ -25,14 +25,15 @@ function createCardQueryWrapper() {
   return wrapper
 }
 
-it('keeps operations visible on keyboard focus without covering the unavailable label', async () => {
+it('keeps operations visible on keyboard focus without covering the reranking unavailable label', async () => {
   // Real CSS and native Tab navigation catch visibility-hidden triggers that happy-dom misses.
   const Provider = createCardQueryWrapper()
   const dataset = createDatasetFixture({
     id: 'dataset-1',
     name: 'Test Dataset',
     runtime_mode: 'general',
-    embedding_available: false,
+    embedding_available: true,
+    reranking_available: false,
     permission_keys: [DatasetACLPermission.Edit],
   })
   const screen = await render(

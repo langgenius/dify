@@ -11,3 +11,11 @@ it.each([true, false])(
     expect(!!screen.queryByText('dataset.cornerLabel.unavailable')).toBe(!embeddingAvailable)
   },
 )
+
+it('reports a missing reranking dependency and clears the label when it recovers', () => {
+  const dataset = createDatasetFixture({ reranking_available: false })
+  const { rerender } = render(<CornerLabels dataset={dataset} />)
+  expect(screen.getByText('dataset.cornerLabel.unavailable')).toBeInTheDocument()
+  rerender(<CornerLabels dataset={{ ...dataset, reranking_available: true }} />)
+  expect(screen.queryByText('dataset.cornerLabel.unavailable')).not.toBeInTheDocument()
+})
