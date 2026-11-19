@@ -174,8 +174,10 @@ const createWorkflowComposerState = (
     workflow_id: 'workflow-1',
   },
   node_job: {
+    continue_agent_session: true,
     mode: 'tell_agent_what_to_do',
     schema_version: 1,
+    session_generation: '',
     workflow_prompt: '',
   },
   save_options: ['node_job_only', 'save_as_new_agent'],

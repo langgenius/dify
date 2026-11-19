@@ -7,6 +7,7 @@ from dify_agent.protocol.snapshot import SessionSnapshot
 from sqlalchemy import event, inspect
 from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
 from sqlalchemy.sql import ClauseElement
+from typing_extensions import TypedDict
 
 from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingError, WorkflowAgentBindingResolver
 from core.workflow.nodes.agent_v2.session_store import (
@@ -37,6 +38,26 @@ from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from services.agent.workspace_service import AgentWorkspaceService
 
+
+class _ResolverIds(TypedDict, closed=True):
+    """Exact owner identifiers accepted by the resolver's keyword boundary."""
+
+    tenant_id: str
+    app_id: str
+    workflow_id: str
+    node_id: str
+
+
+class _ChatflowResolverIds(TypedDict, closed=True):
+    """Resolver owner identifiers with an explicit Chatflow conversation."""
+
+    tenant_id: str
+    app_id: str
+    workflow_id: str
+    node_id: str
+    conversation_id: str
+
+
 RESOLVER_MODELS = (WorkflowAgentNodeBinding, Agent, AgentConfigSnapshot, AgentConfigRevision)
 CHATFLOW_MODELS = (
     *RESOLVER_MODELS,
@@ -50,7 +71,7 @@ CHATFLOW_MODELS = (
 def _conversation_participant(
     session: Session,
     *,
-    ids: dict[str, str],
+    ids: _ChatflowResolverIds,
     binding: WorkflowAgentNodeBinding,
     snapshot: AgentConfigSnapshot,
     session_generation: str = "",
@@ -102,7 +123,7 @@ def test_chatflow_keeps_participant_config_and_home_after_agent_update(
     monkeypatch: pytest.MonkeyPatch,
     binding_type: WorkflowAgentBindingType,
 ) -> None:
-    ids = {**_resolve_ids(), "conversation_id": str(uuid4())}
+    ids: _ChatflowResolverIds = {**_resolve_ids(), "conversation_id": str(uuid4())}
     is_roster = binding_type == WorkflowAgentBindingType.ROSTER_AGENT
     agent = _agent(
         tenant_id=ids["tenant_id"],
@@ -137,7 +158,8 @@ def test_chatflow_keeps_participant_config_and_home_after_agent_update(
     continuing = resolver.resolve(**ids)
     assert continuing.snapshot.id == original.id
     assert continuing.snapshot.home_snapshot_id == original.home_snapshot_id
-    assert resolver.resolve(**{**ids, "conversation_id": str(uuid4())}).snapshot.id == published.id
+    another_chat: _ChatflowResolverIds = {**ids, "conversation_id": str(uuid4())}
+    assert resolver.resolve(**another_chat).snapshot.id == published.id
     assert (
         resolver.resolve(
             tenant_id=ids["tenant_id"],
@@ -195,7 +217,7 @@ def test_chatflow_disable_and_reenable_only_pin_the_requested_session_generation
     sqlite_session: Session, binding_type: WorkflowAgentBindingType
 ) -> None:
     """Given an old participant, fresh modes use current config while explicit resumes retain their pin."""
-    ids = {**_resolve_ids(), "conversation_id": str(uuid4())}
+    ids: _ChatflowResolverIds = {**_resolve_ids(), "conversation_id": str(uuid4())}
     is_roster = binding_type is WorkflowAgentBindingType.ROSTER_AGENT
     agent = _agent(
         tenant_id=ids["tenant_id"],
@@ -254,7 +276,7 @@ def test_chatflow_disable_and_reenable_only_pin_the_requested_session_generation
 
 def test_disabled_chatflow_repeated_execution_pins_only_its_current_run_generation(sqlite_session: Session) -> None:
     """Given a participant from this run, repeat visits keep its config without leaking it to other runs."""
-    ids = {**_resolve_ids(), "conversation_id": str(uuid4())}
+    ids: _ChatflowResolverIds = {**_resolve_ids(), "conversation_id": str(uuid4())}
     agent = _agent(tenant_id=ids["tenant_id"], scope=AgentScope.ROSTER, source=AgentSource.ROSTER)
     sqlite_session.add(agent)
     sqlite_session.flush()
@@ -308,7 +330,7 @@ def test_chatflow_config_pin_is_isolated_to_its_parallel_branch(
     sqlite_session: Session, continue_agent_session: bool
 ) -> None:
     """Given an active branch participant, only that branch can inherit its config and Home generation."""
-    ids = {**_resolve_ids(), "conversation_id": str(uuid4())}
+    ids: _ChatflowResolverIds = {**_resolve_ids(), "conversation_id": str(uuid4())}
     agent = _agent(tenant_id=ids["tenant_id"], scope=AgentScope.ROSTER, source=AgentSource.ROSTER)
     sqlite_session.add(agent)
     sqlite_session.flush()
@@ -371,7 +393,7 @@ def test_chatflow_pin_is_scoped_to_active_conversation_node_participant(
     sqlite_session: Session,
     mismatch: str,
 ) -> None:
-    ids = {**_resolve_ids(), "conversation_id": str(uuid4())}
+    ids: _ChatflowResolverIds = {**_resolve_ids(), "conversation_id": str(uuid4())}
     agent = _agent(tenant_id=ids["tenant_id"], scope=AgentScope.ROSTER, source=AgentSource.ROSTER)
     sqlite_session.add(agent)
     sqlite_session.flush()
@@ -412,7 +434,7 @@ def test_chatflow_never_falls_back_from_invalid_pinned_generation(
     sqlite_session: Session,
     version_kind: AgentConfigVersionKind,
 ) -> None:
-    ids = {**_resolve_ids(), "conversation_id": str(uuid4())}
+    ids: _ChatflowResolverIds = {**_resolve_ids(), "conversation_id": str(uuid4())}
     agent = _agent(tenant_id=ids["tenant_id"], scope=AgentScope.ROSTER, source=AgentSource.ROSTER)
     sqlite_session.add(agent)
     sqlite_session.flush()
@@ -440,7 +462,8 @@ def test_chatflow_never_falls_back_from_invalid_pinned_generation(
     assert exc_info.value.error_code == expected
 
 
-def _resolve_ids() -> dict[str, str]:
+def _resolve_ids() -> _ResolverIds:
+    """Return valid owner IDs without admitting unrelated resolver keyword arguments."""
     return {
         "tenant_id": str(uuid4()),
         "app_id": str(uuid4()),
@@ -503,7 +526,7 @@ def _snapshot(*, tenant_id: str, agent_id: str) -> AgentConfigSnapshot:
 
 
 def _binding(
-    *, ids: dict[str, str], agent_id: str, snapshot_id: str, binding_type: WorkflowAgentBindingType
+    *, ids: _ResolverIds | _ChatflowResolverIds, agent_id: str, snapshot_id: str, binding_type: WorkflowAgentBindingType
 ) -> WorkflowAgentNodeBinding:
     return WorkflowAgentNodeBinding(
         tenant_id=ids["tenant_id"],

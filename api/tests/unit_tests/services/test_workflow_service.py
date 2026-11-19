@@ -148,7 +148,10 @@ def test_publish_locks_and_refreshes_the_latest_draft_graph(
 
     event.listen(sqlite_session, "do_orm_execute", record_workflow_lock)
     try:
-        published = service.publish_workflow(session=sqlite_session, app_model=app, account=account)
+        # This test owns the publication transaction, not process-global signal
+        # subscribers that other suites may import with their own Flask bindings.
+        with workflow_service_module.app_published_workflow_was_updated.muted():
+            published = service.publish_workflow(session=sqlite_session, app_model=app, account=account)
     finally:
         event.remove(sqlite_session, "do_orm_execute", record_workflow_lock)
     assert published.graph_dict == new_graph
@@ -176,9 +179,10 @@ def test_restore_locks_both_the_source_and_destination_draft(
 
     event.listen(sqlite_session, "do_orm_execute", record_workflow_lock)
     try:
-        restored = service.restore_published_workflow_to_draft(
-            app_model=app, workflow_id=source.id, account=account, session=sqlite_session
-        )
+        with workflow_service_module.app_draft_workflow_was_synced.muted():
+            restored = service.restore_published_workflow_to_draft(
+                app_model=app, workflow_id=source.id, account=account, session=sqlite_session
+            )
     finally:
         event.remove(sqlite_session, "do_orm_execute", record_workflow_lock)
     assert restored.id == draft.id

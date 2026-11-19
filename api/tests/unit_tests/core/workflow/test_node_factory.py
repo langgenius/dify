@@ -131,17 +131,18 @@ class TestNodeFactoryCases:
             with pytest.raises(ValueError, match="No class mapping found for node type: unknown"):
                 factory.create_node({"id": "node-1", "data": {"type": "unknown"}})
 
-        def test_child_factories_keep_root_container_ledger_for_agent_sessions(self):
+        def test_child_factories_keep_root_container_ledger_for_agent_sessions(self) -> None:
             factory = self._factory()
-            child_state = SimpleNamespace()
+            child_state = RuntimeState(variable_pool=VariablePool(), start_at=0, workflow_id="workflow-1")
             child = factory.with_runtime_state(child_state)
-            grandchild = child.with_runtime_state(SimpleNamespace())
+            grandchild_state = RuntimeState(variable_pool=VariablePool(), start_at=0, workflow_id="workflow-1")
+            grandchild = child.with_runtime_state(grandchild_state)
             assert child.runtime_state is child_state
             assert child._root_runtime_state is factory.runtime_state
             assert grandchild._root_runtime_state is factory.runtime_state
             scoped = child.with_graph_config({"nodes": [{"id": "only-child"}], "edges": []})
             assert scoped._root_graph_config is factory.init_params.graph_config
-            assert scoped.with_runtime_state(SimpleNamespace())._root_graph_config is factory.init_params.graph_config
+            assert scoped.with_runtime_state(grandchild_state)._root_graph_config is factory.init_params.graph_config
 
         def test_create_node_missing_mapping(self, monkeypatch: pytest.MonkeyPatch):
             factory = self._factory()
@@ -1583,9 +1584,11 @@ def test_real_scoped_child_graph_keeps_root_agent_parallel_session_lineage(
     from graphon.runtime.container_state import IterationFrameState, IterationRunState
 
     config_overrides(AGENT_BACKEND_USE_FAKE=True)
+    variables: list[dict[str, object]] = []
+    outputs: list[dict[str, object]] = []
     graph_config = {
         "nodes": [
-            {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
+            {"id": "start", "data": {"type": "start", "title": "Start", "variables": variables}},
             {
                 "id": "parallel",
                 "data": {
@@ -1613,7 +1616,7 @@ def test_real_scoped_child_graph_keeps_root_agent_parallel_session_lineage(
                     "continue_agent_session": False,
                 },
             },
-            {"id": "end", "data": {"type": "end", "title": "End", "outputs": []}},
+            {"id": "end", "data": {"type": "end", "title": "End", "outputs": outputs}},
         ],
         "edges": [
             {"id": "start-parallel", "source": "start", "target": "parallel"},

@@ -54,7 +54,7 @@ def test_graph_session_policy_is_server_owned_and_frozen_on_publish(sqlite_sessi
     assert saved is not None
     first_generation = saved.node_job_config.session_generation
     assert str(UUID(first_generation)) == first_generation
-    assert saved.node_job_config_dict["continue_agent_session"] is False
+    assert WorkflowNodeJobConfig.model_validate(saved.node_job_config_dict).continue_agent_session is False
     assert workflow.graph_dict["nodes"][0]["data"]["agent_session_generation"] == first_generation
 
     published = _workflow(workflow_id="published-sessions", version="published-sessions")
@@ -76,7 +76,7 @@ def test_graph_session_policy_is_server_owned_and_frozen_on_publish(sqlite_sessi
     WorkflowAgentPublishService.sync_agent_bindings_for_draft(
         session=sqlite_session, draft_workflow=workflow, account_id="account-1"
     )
-    assert saved.node_job_config_dict["continue_agent_session"] is False
+    assert WorkflowNodeJobConfig.model_validate(saved.node_job_config_dict).continue_agent_session is False
     assert saved.node_job_config.session_generation == first_generation
     assert workflow.graph_dict["nodes"][0]["data"]["continue_agent_session"] is False
 
@@ -127,7 +127,7 @@ def test_graph_sync_refreshes_cached_binding_policy_before_merging(sqlite_sessio
     workflow.graph = json.dumps({"nodes": [{"id": "fresh-node", "data": node_data}], "edges": []})
     sqlite_session.add_all([agent, snapshot, binding])
     sqlite_session.commit()
-    assert binding.node_job_config_dict["continue_agent_session"] is True
+    assert WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict).continue_agent_session is True
     saved_generation = "00000000-0000-4000-8000-000000000003"
     sqlite_session.execute(
         update(WorkflowAgentNodeBinding)
@@ -137,12 +137,12 @@ def test_graph_sync_refreshes_cached_binding_policy_before_merging(sqlite_sessio
         )
         .execution_options(synchronize_session=False)
     )
-    assert binding.node_job_config_dict["continue_agent_session"] is True
+    assert WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict).continue_agent_session is True
 
     WorkflowAgentPublishService.sync_agent_bindings_for_draft(
         session=sqlite_session, draft_workflow=workflow, account_id="account-1"
     )
-    assert binding.node_job_config_dict["continue_agent_session"] is False
+    assert WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict).continue_agent_session is False
     assert binding.node_job_config.session_generation == saved_generation
     assert workflow.graph_dict["nodes"][0]["data"]["agent_session_generation"] == saved_generation
 

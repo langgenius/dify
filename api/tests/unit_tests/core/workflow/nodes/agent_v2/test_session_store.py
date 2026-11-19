@@ -4,6 +4,7 @@ from contextlib import nullcontext
 from dataclasses import replace
 from datetime import datetime
 from types import SimpleNamespace
+from typing import override
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -426,6 +427,7 @@ def test_parallel_branch_first_allocations_can_overlap_without_sharing_resources
     overlapping: list[str] = []
 
     class InterleavingAllocations(_WorkspaceAllocationRecorder):
+        @override
         def create_execution_binding_sync(
             self, request: CreateExecutionBindingRequest
         ) -> CreateExecutionBindingResponse:
