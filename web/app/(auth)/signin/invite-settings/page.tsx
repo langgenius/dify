@@ -1,5 +1,6 @@
 'use client'
 import type { Locale } from '@/i18n'
+import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
@@ -15,11 +16,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
+import { safe } from '@orpc/client'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { TimezoneCombobox } from '@/features/account-profile/timezone-combobox'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -63,6 +66,7 @@ export default function InviteSettingsPage() {
   const locale = useLocale()
   const [name, setName] = useState('')
   const [isActivating, setIsActivating] = useState(false)
+  const [isWorkspaceFull, setIsWorkspaceFull] = useState(false)
   const [language, setLanguage] = useState(() => getInitialLanguage(locale))
   const [timezone, setTimezone] = useState(() => getBrowserTimezone() || 'America/Los_Angeles')
 
@@ -118,6 +122,7 @@ export default function InviteSettingsPage() {
       if (isActivating) return
       if (!isInvitationForCurrentAccount) return
       setIsActivating(true)
+      setIsWorkspaceFull(false)
       const body = requiresAccountSetup
         ? {
             token,
@@ -128,7 +133,19 @@ export default function InviteSettingsPage() {
         : {
             token,
           }
-      const res = await consoleClient.activate.post({ body })
+      const [error, res, isDefined] = await safe(
+        consoleClient.activate.post({ body }, { context: { silent: true } }),
+      )
+      if (error) {
+        setIsActivating(false)
+        if (isDefined && error.code === 'workspace_member_limit_reached') {
+          setIsWorkspaceFull(true)
+          return
+        }
+        toast.error(isDefined ? error.message : t(($) => $['api.actionFailed'], { ns: 'common' }))
+        recheck()
+        return
+      }
       if (res.result === 'success') {
         // Tokens are now stored in cookies by the backend
         if (requiresAccountSetup) await setLocaleOnClient(language!)
@@ -148,6 +165,7 @@ export default function InviteSettingsPage() {
     recheck,
     requiresAccountSetup,
     searchParams,
+    t,
     timezone,
     token,
     router,
@@ -245,6 +263,11 @@ export default function InviteSettingsPage() {
               onValueChange={setTimezone}
             />
           </>
+        )}
+        {isWorkspaceFull && (
+          <Alert type="warning">
+            <AlertTitle>{t(($) => $.invitationWorkspaceFull, { ns: 'login' })}</AlertTitle>
+          </Alert>
         )}
         <Button
           type="submit"

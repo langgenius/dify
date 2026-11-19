@@ -1800,6 +1800,19 @@ export type AccountNotLinkTenantError = ErrorResponse & {
   status: 403
 }
 
+export type PendingWorkspaceInvitationListResponse = {
+  invitations: Array<PendingWorkspaceInvitationResponse>
+}
+
+export type PendingInvitationRevokePayload = {
+  email: string
+}
+
+export type PendingInvitationNotFoundError = ErrorResponse & {
+  code: 'pending_invitation_not_found'
+  status: 404
+}
+
 export type TenantListItemResponse = {
   created_at?: number | null
   current: boolean
@@ -2866,6 +2879,12 @@ export type TenantInfoResponse = {
   trial_credits_exhausted_at?: number | null
   trial_credits_used?: number | null
   trial_end_reason?: string | null
+}
+
+export type PendingWorkspaceInvitationResponse = {
+  email: string
+  expires_at: string
+  role: TenantAccountRole
 }
 
 export type AgentStrategyProviderIdentity = {
@@ -11192,3 +11211,52 @@ export type GetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangRespo
 
 export type GetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangResponse =
   GetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangResponses[keyof GetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangResponses]
+
+export type GetWorkspacesByWorkspaceIdMembersPendingInvitationsData = {
+  body?: never
+  path: {
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/members/pending-invitations'
+}
+
+export type GetWorkspacesByWorkspaceIdMembersPendingInvitationsErrors = {
+  403: ForbiddenError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetWorkspacesByWorkspaceIdMembersPendingInvitationsError =
+  GetWorkspacesByWorkspaceIdMembersPendingInvitationsErrors[keyof GetWorkspacesByWorkspaceIdMembersPendingInvitationsErrors]
+
+export type GetWorkspacesByWorkspaceIdMembersPendingInvitationsResponses = {
+  200: PendingWorkspaceInvitationListResponse
+}
+
+export type GetWorkspacesByWorkspaceIdMembersPendingInvitationsResponse =
+  GetWorkspacesByWorkspaceIdMembersPendingInvitationsResponses[keyof GetWorkspacesByWorkspaceIdMembersPendingInvitationsResponses]
+
+export type PostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeData = {
+  body: PendingInvitationRevokePayload
+  path: {
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/members/pending-invitations/revoke'
+}
+
+export type PostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeErrors = {
+  403: ForbiddenError | ErrorResponse
+  404: PendingInvitationNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeError =
+  PostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeErrors[keyof PostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeErrors]
+
+export type PostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeResponses = {
+  200: SimpleResultResponse
+}
+
+export type PostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeResponse =
+  PostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeResponses[keyof PostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeResponses]
