@@ -78,9 +78,6 @@ func TestBuildRulesWithoutExtraPaths(t *testing.T) {
 	}
 }
 
-// TestRestrictV1Fallback runs Restrict in a subprocess with the ABI forced to 1
-// and asserts that the V1 ruleset enforces filesystem isolation while denying
-// all cross-directory rename/link (REFER cannot be granted on ABI v1).
 func TestRestrictV1Fallback(t *testing.T) {
 	skipIfNoRealLandlock(t)
 	outside := t.TempDir()
@@ -90,8 +87,6 @@ func TestRestrictV1Fallback(t *testing.T) {
 	}
 }
 
-// TestRestrictV2Refer is a regression guard: on a real ABI >= 2 kernel,
-// cross-directory rename/link inside Home must keep working via REFER.
 func TestRestrictV2Refer(t *testing.T) {
 	skipIfNoRealLandlock(t)
 	outside := t.TempDir()
