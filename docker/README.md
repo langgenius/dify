@@ -447,6 +447,23 @@ docker compose exec caddy sh /etc/caddy/docker-entrypoint.sh reload
 To return to Nginx, run `docker compose rm -sf caddy` first, then delete the
 `COMPOSE_FILE` line and run `docker compose up -d --remove-orphans`.
 
+### Let Caddy obtain HTTPS certificates
+
+Caddy can obtain and renew certificates itself, without Certbot. Point the domain's
+DNS at the server, publish ports 80 and 443 (the `EXPOSE_NGINX_PORT` and
+`EXPOSE_NGINX_SSL_PORT` defaults), keep `NGINX_HTTPS_ENABLED=false`, and set the
+domain in `envs/infrastructure/nginx.env` or root `.env`:
+
+```dotenv
+CADDY_AUTO_HTTPS_DOMAINS=dify.example.com
+```
+
+Separate several domains with spaces. Certificates come from Let's Encrypt and are
+kept in `volumes/caddy/data`; set `CADDY_ACME_CA` to use another ACME directory, such
+as Let's Encrypt's staging directory while trying the setup. Plain HTTP keeps serving
+Dify, as it does with Nginx. Apply the change with `docker compose up -d caddy` and
+check `docker compose logs caddy` for `certificate obtained successfully`.
+
 ## Configure HTTPS and telemetry
 
 For HTTPS certificates, follow the [Certbot guide](certbot/README.md).

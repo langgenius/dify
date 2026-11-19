@@ -66,7 +66,8 @@ docker compose exec nginx nginx -s reload
 ## With Caddy
 
 If you use [Caddy as the reverse proxy](../README.md#use-caddy-as-the-reverse-proxy-preview),
-the same settings and steps apply. Replace `nginx` with `caddy` in the `up` commands,
+you can skip Certbot and [let Caddy obtain the certificates](../README.md#let-caddy-obtain-https-certificates).
+To keep Certbot, the same settings and steps apply. Replace `nginx` with `caddy` in the `up` commands,
 and reload with:
 
 ```shell

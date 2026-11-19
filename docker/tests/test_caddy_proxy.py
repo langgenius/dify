@@ -121,6 +121,22 @@ class ProxySettingsTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn("must not contain", result.stderr)
 
+    def test_auto_https_domains_switch_to_acme(self):
+        values = translate(CADDY_AUTO_HTTPS_DOMAINS="dify.example.com,www.dify.example.com")
+        self.assertEqual(values["DIFY_PROXY_HTTPS"], "acme")
+        self.assertEqual(values["DIFY_PROXY_AUTO_HTTPS"], "disable_redirects")
+        self.assertEqual(values["DIFY_PROXY_ACME_SITES"], "dify.example.com, www.dify.example.com")
+        self.assertEqual(values["DIFY_PROXY_ACME_CA"], "https://acme-v02.api.letsencrypt.org/directory")
+        staging = "https://acme-staging-v02.api.letsencrypt.org/directory"
+        values = translate(CADDY_AUTO_HTTPS_DOMAINS="dify.example.com", CADDY_ACME_CA=staging)
+        self.assertEqual(values["DIFY_PROXY_ACME_CA"], staging)
+        self.assertEqual(translate()["DIFY_PROXY_AUTO_HTTPS"], "off")
+
+    def test_auto_https_and_certificate_files_are_exclusive(self):
+        result = run_translation(CADDY_AUTO_HTTPS_DOMAINS="dify.example.com", NGINX_HTTPS_ENABLED="true")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("not both", result.stderr)
+
 
 @unittest.skipUnless(docker_available(), "needs a Docker daemon to run Caddy")
 class CaddyfileTests(unittest.TestCase):
@@ -164,6 +180,17 @@ class CaddyfileTests(unittest.TestCase):
         self.assertEqual(loaded["certificate"], "/etc/ssl/dify.crt")
         self.assertEqual(loaded["key"], "/etc/ssl/dify.key")
         self.assertIn("/.well-known/acme-challenge/*", json.dumps(config))
+
+    def test_auto_https_serves_the_domains_on_the_tls_port(self):
+        config = self.adapt(CADDY_AUTO_HTTPS_DOMAINS="dify.example.com www.dify.example.com")
+        http = config["apps"]["http"]
+        self.assertEqual((http["http_port"], http["https_port"]), (80, 443))
+        servers = {server["listen"][0]: server for server in http["servers"].values()}
+        self.assertEqual(sorted(servers), [":443", ":80"])
+        self.assertEqual(servers[":443"]["routes"][0]["match"][0]["host"], ["dify.example.com", "www.dify.example.com"])
+        for server in servers.values():
+            # HTTP keeps serving Dify, as with Nginx.
+            self.assertEqual(server["automatic_https"], {"disable_redirects": True})
 
     def test_trusted_proxies_reach_every_server(self):
         config = self.adapt(NGINX_HTTPS_ENABLED="true", CADDY_TRUSTED_PROXIES="192.0.2.10/32")

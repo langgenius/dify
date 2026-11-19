@@ -5,8 +5,13 @@
 {
 	# The admin API listens on the container's loopback only; `reload` uses it.
 	admin localhost:2019
-	# Certificates come from the operator or Certbot, as with Nginx.
-	auto_https off
+	# Off unless CADDY_AUTO_HTTPS_DOMAINS is set; otherwise certificates come from
+	# the operator or Certbot, as with Nginx. HTTP is never redirected, as with Nginx.
+	auto_https {$DIFY_PROXY_AUTO_HTTPS}
+	acme_ca {$DIFY_PROXY_ACME_CA}
+	# ACME challenges arrive on the container ports that EXPOSE_NGINX_*PORT publish.
+	http_port {$NGINX_PORT}
+	https_port {$NGINX_SSL_PORT}
 	servers {
 		protocols h1 h2
 		import client-ip-{$DIFY_PROXY_CLIENT_IP}.caddy

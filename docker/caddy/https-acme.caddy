@@ -1,0 +1,8 @@
+# CADDY_AUTO_HTTPS_DOMAINS is set: serve the same routes over HTTPS for those
+# names with certificates Caddy obtains and renews from CADDY_ACME_CA.
+{$DIFY_PROXY_ACME_SITES} {
+	tls {
+		protocols {$DIFY_PROXY_TLS_PROTOCOLS}
+	}
+	import dify_routes
+}
