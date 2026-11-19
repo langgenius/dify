@@ -32,10 +32,6 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
   useRouter: () => ({ push: vi.fn() }),
 }))
 
-// boundary: ECharts is an external renderer; the page's real chart surface remains asserted.
-vi.mock('echarts-for-react', () => ({
-  default: () => <div aria-label="query outcomes chart" />,
-}))
 type OverviewResource =
   | 'activity'
   | 'attention'
@@ -223,7 +219,9 @@ describe('KnowledgeOverviewPage metrics and readiness', () => {
     void queryClient.invalidateQueries({ queryKey: overviewKeys.stats() })
     await expect.poll(() => queryClient.isFetching()).toBeGreaterThan(0)
     await expect.element(page.getByText('84%')).toBeInTheDocument()
-    await expect.element(page.getByLabelText('query outcomes chart')).toBeInTheDocument()
+    await expect.element(page.getByText('knowledgeOverview.overview.answered')).toBeVisible()
+    await expect.element(page.getByText('knowledgeOverview.overview.lowConfidence')).toBeVisible()
+    await expect.element(page.getByText('knowledgeOverview.overview.noEvidence')).toBeVisible()
     await release()
     await expect.element(page.getByText('86%')).toBeVisible()
   })

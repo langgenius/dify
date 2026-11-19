@@ -6,37 +6,51 @@ import (
 	"os"
 
 	golandlock "github.com/landlock-lsm/go-landlock/landlock"
+	ll "github.com/landlock-lsm/go-landlock/landlock/syscall"
 )
 
-// Restrict applies Landlock V1 filesystem restrictions for the current process.
-func Restrict(cfg *Config) error {
-	rules := buildRules(cfg)
+// Overridden in tests.
+var getABIVersion = ll.LandlockGetABIVersion
 
-	if err := golandlock.V1.RestrictPaths(rules...); err != nil {
-		return err
+// Restrict applies Landlock filesystem restrictions for the current process.
+// ABI v1 kernels get a V1 ruleset: REFER cannot be granted there, so all
+// cross-directory rename/link fail with EXDEV. BestEffort is not an option
+// because go-landlock v0.9.0 downgrades WithRefer rules to no isolation.
+// Any other setup failure is returned so the runner fails closed.
+func Restrict(cfg *Config) error {
+	if abi, err := getABIVersion(); err == nil && abi == 1 {
+		return golandlock.V1.RestrictPaths(buildRules(cfg, false)...)
 	}
-	return nil
+	return golandlock.V2.RestrictPaths(buildRules(cfg, true)...)
 }
 
-func buildRules(cfg *Config) []golandlock.Rule {
+func buildRules(cfg *Config, refer bool) []golandlock.Rule {
 	// Collect RO paths that exist on this system.
 	roPaths := filterExisting(cfg.ROPaths)
 	if cfg.JobDir != "" {
 		roPaths = append(roPaths, cfg.JobDir)
 	}
 
-	// RW dirs: always include HOME and Cwd, plus configured extra paths.
+	// Keep primary paths unfiltered so invalid Home/Cwd fail closed. Only these
+	// per-job trees receive REFER for cross-directory rename/link operations.
 	rwDirs := []string{cfg.Home}
 	if cfg.Cwd != "" && cfg.Cwd != cfg.Home {
 		rwDirs = append(rwDirs, cfg.Cwd)
 	}
-	rwDirs = append(rwDirs, filterExisting(cfg.RWPaths)...)
+	extraRWDirs := filterExisting(cfg.RWPaths)
 
 	// Device files with RW access.
 	rwDevFiles := filterExisting(cfg.RWDevPaths)
 
-	rules := []golandlock.Rule{
-		golandlock.RWDirs(rwDirs...),
+	homeRule := golandlock.RWDirs(rwDirs...)
+	if refer {
+		homeRule = homeRule.WithRefer()
+	}
+	rules := []golandlock.Rule{homeRule}
+	if len(extraRWDirs) > 0 {
+		// Shared writable paths must not gain REFER, including across the
+		// boundary with Home/Cwd, so keep them in a separate rule.
+		rules = append(rules, golandlock.RWDirs(extraRWDirs...))
 	}
 	if len(roPaths) > 0 {
 		rules = append(rules, golandlock.RODirs(roPaths...))

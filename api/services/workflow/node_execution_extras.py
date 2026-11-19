@@ -2,8 +2,8 @@
 
 from typing import Any
 
+from constants.trigger import TRIGGER_PLUGIN_NODE_TYPE
 from core.tools.entities.tool_entities import ToolProviderType
-from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from models.workflow import WorkflowNodeExecutionModel
 from services.tools.provider_queries import ToolProviderIcons
@@ -12,7 +12,9 @@ from services.tools.provider_queries import ToolProviderIcons
 def node_execution_extras(
     execution: WorkflowNodeExecutionModel, *, tool_providers: ToolProviderIcons
 ) -> dict[str, Any]:
-    from core.trigger.trigger_manager import TriggerManager
+    from core.plugin.impl.trigger import PluginTriggerClient
+    from models.provider_ids import TriggerProviderID
+    from models.utils.trigger_endpoint import generate_trigger_plugin_icon_url
     from services.tools.tool_manager import ToolManager
 
     extras: dict[str, Any] = {}
@@ -39,8 +41,6 @@ def node_execution_extras(
             trigger_info = execution_metadata[WorkflowNodeExecutionMetadataKey.TRIGGER_INFO] or {}
             provider_id = trigger_info.get("provider_id")
             if provider_id:
-                extras["icon"] = TriggerManager.get_trigger_plugin_icon(
-                    tenant_id=execution.tenant_id,
-                    provider_id=provider_id,
-                )
+                provider = PluginTriggerClient().fetch_trigger_provider(execution.tenant_id, TriggerProviderID(provider_id))
+                extras["icon"] = generate_trigger_plugin_icon_url(execution.tenant_id, provider.declaration.identity.icon)
     return extras

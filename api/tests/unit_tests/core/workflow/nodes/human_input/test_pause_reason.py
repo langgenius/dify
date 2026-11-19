@@ -80,8 +80,7 @@ def _form_record(
         (
             {
                 "f1": FormDisposition(
-                    form_token=None,
-                    approval_channels=[ApprovalChannel.CONSOLE, ApprovalChannel.EMAIL],
+                    form_token=None, approval_channels=[ApprovalChannel.CONSOLE, ApprovalChannel.EMAIL]
                 )
             },
             None,
@@ -285,13 +284,13 @@ def _legacy_user_action_payloads() -> list[dict[str, Any]]:
     ]
 
 
-def _validate_legacy_json(model_class: type, payload: dict[str, Any]) -> Any:
+def _validate_legacy_json(model_class: object, payload: dict[str, Any]) -> Any:
     adapter = TypeAdapter(model_class)
     return adapter.validate_json(json.dumps(payload))
 
 
 def test_form_input_accepts_current_serialized_payload() -> None:
-    payload = {
+    payload: dict[str, Any] = {
         "type": "paragraph",
         "output_variable_name": "name",
         "default": {
@@ -409,7 +408,7 @@ def test_human_input_content_accepts_current_serialized_payload() -> None:
 
 
 def test_human_input_content_accepts_current_serialized_payload_with_form_data() -> None:
-    payload = {
+    payload: dict[str, Any] = {
         "workflow_run_id": "run-1",
         "submitted": True,
         "form_definition": {

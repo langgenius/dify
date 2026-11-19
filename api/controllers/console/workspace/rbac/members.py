@@ -5,7 +5,7 @@ from flask_restx import Resource
 from werkzeug.exceptions import Forbidden
 
 from controllers.common.errors import InvalidArgumentError
-from controllers.common.rbac import rbac_language
+from controllers.common.rbac import RBACCheck, Workspace, rbac_language
 from controllers.common.schema import query_params_from_model
 from controllers.console import console_ns
 from controllers.console.flask_admission import console_account_admission
@@ -13,6 +13,7 @@ from controllers.console.workspace.rbac.schemas import (
     _AccessControlLanguageQuery,
     _ReplaceMemberRolesRequest,
 )
+from core.rbac import RBACPermission
 from extensions.ext_application_services import application_services
 from libs.helper import dump_response
 from machinery.context import RequestContext
@@ -56,7 +57,14 @@ class RBACMemberRolesApi(Resource):
             application_services().rbac.members.get(context, str(member_id), language=rbac_language()),
         )
 
-    @console_account_admission()
+    @console_account_admission(
+        rbac_checks=[
+            RBACCheck(
+                RBACPermission.WORKSPACE_MEMBER_MANAGE,
+                Workspace(),
+            )
+        ]
+    )
     @console_ns.expect(console_ns.models[_ReplaceMemberRolesRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[dto.MemberRolesResponse.__name__])
     def put(self, context: RequestContext, member_id):

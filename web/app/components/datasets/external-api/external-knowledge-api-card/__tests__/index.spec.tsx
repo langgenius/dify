@@ -1,32 +1,32 @@
 import type { ExternalKnowledgeApiResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import { useQuery } from '@tanstack/react-query'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
-import {
-  checkUsageExternalAPI,
-  deleteExternalAPI,
-  fetchExternalAPI,
-  updateExternalAPI,
-} from '@/service/datasets'
+import { checkUsageExternalAPI, deleteExternalAPI, fetchExternalAPI } from '@/service/datasets'
 import { renderWithConfigurationModals } from '@/test/configuration-modals'
 import { createConsoleQueryClient } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import ExternalKnowledgeAPICard from '../index'
+import ExternalAPIPanel from '../../external-api-panel'
 
 vi.mock('@/service/datasets', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/datasets')>()),
   fetchExternalAPI: vi.fn(),
-  updateExternalAPI: vi.fn(),
   deleteExternalAPI: vi.fn(),
   checkUsageExternalAPI: vi.fn(),
 }))
-const { getApis } = vi.hoisted(() => ({ getApis: vi.fn() }))
+const { getApis, updateExternalAPI } = vi.hoisted(() => ({
+  getApis: vi.fn(),
+  updateExternalAPI: vi.fn(),
+}))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'datasets.externalKnowledgeApi.byExternalKnowledgeApiId.patch': updateExternalAPI,
+    }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'datasets.externalKnowledgeApi.get': getApis,
     }),
@@ -54,18 +54,10 @@ const listOptions = consoleQuery.datasets.externalKnowledgeApi.get.queryOptions(
 function setup({ apis = [api], canManage = true } = {}) {
   const queryClient = createConsoleQueryClient()
   queryClient.setQueryData(listOptions.queryKey, listResponse(apis))
-  function ApiCards() {
-    const { data } = useQuery(listOptions)
-    return data?.data.map((item, index) => (
-      <ExternalKnowledgeAPICard
-        key={item.id}
-        api={item}
-        position={index + 1}
-        canManageExternalKnowledgeApi={canManage}
-      />
-    ))
-  }
-  return renderWithConfigurationModals(<ApiCards />, { queryClient })
+  return renderWithConfigurationModals(
+    <ExternalAPIPanel canManageExternalKnowledgeApi={canManage} onClose={() => {}} />,
+    { queryClient },
+  )
 }
 const edit = () =>
   screen.getByRole('button', {
@@ -114,10 +106,16 @@ it('loads API details and bindings into the real edit dialog', async () => {
   await user.click(edit())
   const dialog = await screen.findByRole('dialog', { name: 'dataset.editExternalAPIFormTitle' })
   expect(fetchExternalAPI).toHaveBeenCalledWith({ apiTemplateId: api.id })
-  expect(within(dialog).getByLabelText(/Name/)).toHaveValue(api.name)
+  expect(await within(dialog).findByLabelText(/Name/)).toHaveValue(api.name)
   expect(within(dialog).getByLabelText(/API Endpoint/)).toHaveValue(api.settings.endpoint)
   expect(within(dialog).getByLabelText(/API Key/)).toHaveValue(api.settings.api_key)
-  expect(dialog).toHaveTextContent('1 dataset.editExternalAPIFormWarning.end')
+  await user.click(
+    within(dialog).getByRole('button', { name: 'dataset.editExternalAPITooltipTitle' }),
+  )
+  const bindings = await screen.findByRole('dialog', {
+    name: '1 dataset.editExternalAPITooltipTitle',
+  })
+  expect(within(bindings).getByRole('listitem')).toHaveTextContent('Dataset 1')
 })
 
 it('saves edits through the modal and refreshes the displayed card', async () => {
@@ -141,10 +139,13 @@ it('saves edits through the modal and refreshes the displayed card', async () =>
   }
   await user.click(within(dialog).getByRole('button', { name: 'dataset.externalAPIForm.save' }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-  expect(updateExternalAPI).toHaveBeenCalledWith({
-    apiTemplateId: api.id,
-    body: { name: updated.name, settings: updated.settings },
-  })
+  expect(updateExternalAPI).toHaveBeenCalledWith(
+    {
+      params: { external_knowledge_api_id: api.id },
+      body: { name: updated.name, settings: updated.settings },
+    },
+    { context: { silent: true } },
+  )
   expect(await screen.findByText(updated.name)).toBeVisible()
   expect(screen.getByText(updated.settings.endpoint)).toBeVisible()
   expect(screen.queryByText(api.name)).not.toBeInTheDocument()
@@ -248,3 +249,17 @@ it.each(['fetch', 'usage', 'delete'] as const)(
     }
   },
 )
+
+it('edits only the last selected card when detail requests resolve out of order', async () => {
+  const user = userEvent.setup()
+  const first = createDeferred<ExternalKnowledgeApiResponse>()
+  const second = { ...api, id: 'second', name: 'Second API' }
+  vi.mocked(fetchExternalAPI).mockReturnValueOnce(first.promise).mockResolvedValueOnce(second)
+  setup({ apis: [api, second] })
+  await user.click(edit())
+  await user.click(screen.getByRole('button', { name: /common.operation.edit Second API/ }))
+  const editor = await screen.findByRole('dialog', { name: 'dataset.editExternalAPIFormTitle' })
+  await act(async () => first.resolve(api))
+  expect(screen.getAllByRole('dialog')).toHaveLength(1)
+  expect(within(editor).getByLabelText(/Name/)).toHaveValue('Second API')
+})
