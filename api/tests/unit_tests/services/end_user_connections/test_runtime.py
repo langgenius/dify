@@ -291,15 +291,16 @@ def test_guest_activity_is_recorded_only_at_dispatch_with_the_fixed_credential(
     with httpx.Client(transport=httpx.MockTransport(respond)) as client, base.sessions() as session:
         monkeypatch.setattr(plugin_client, "_httpx_client", client)
         if expiry_wins:
-            outcome = base.repository.expire_guest(candidate, before=cutoff, now=datetime(2001, 1, 2))
-            assert outcome == "manual_revocation_required"
+            removed = base.repository.expire_guest(candidate, before=cutoff)
+            assert removed is not None
+            assert removed.access.id == selected.id
             with pytest.raises(ConnectionConflictError):
                 list(tool.invoke(session, base.context.end_user_id, {}))
             assert dispatched == []
         else:
             list(tool.invoke(session, base.context.end_user_id, {}))
             assert dispatched == [{"api_key": "original-secret"}]
-            assert base.repository.expire_guest(candidate, before=cutoff, now=datetime(2001, 1, 2)) is None
+            assert base.repository.expire_guest(candidate, before=cutoff) is None
 
 
 def test_oauth_refresh_preserves_connection_id_and_checks_current_client(harness: OAuthHarness) -> None:

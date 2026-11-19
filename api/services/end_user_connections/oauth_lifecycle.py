@@ -13,7 +13,6 @@ from services.end_user_connections.entities import (
     ConnectionManagementContext,
     ConnectionMutationGuard,
     ConnectionOAuthClient,
-    OAuthGrantRevocationStatus,
     WebConnectionContext,
 )
 from services.end_user_connections.errors import (
@@ -273,36 +272,29 @@ class OAuthConnectionLifecycleService:
         )
 
     def revoke_deleted(self, context: ConnectionManagementContext, record: StoredConnection) -> None:
-        """Attempt revocation after user-initiated deletion has committed."""
-        reference = record.access.oauth_client
-        if reference is not None:
-            status = self.revoke_grant(
-                context,
-                provider=record.access.provider,
-                reference=reference,
-                encrypted_credentials=record.encrypted_credentials,
-            )
-            if status not in {"revoked", "unsupported"}:
-                logger.warning("OAuth revocation incomplete for deleted Connection %s: %s", record.access.id, status)
+        """Attempt one best-effort revocation after deletion has committed.
 
-    def revoke_grant(
-        self,
-        context: ConnectionManagementContext,
-        *,
-        provider: str,
-        reference: ConnectionOAuthClient,
-        encrypted_credentials: str,
-    ) -> OAuthGrantRevocationStatus:
-        """Use only the deleted grant's pinned Client and artifact, outside any write transaction.
-
-        Missing provenance, missing artifacts and transport errors are terminal
-        best-effort outcomes. Never log provider errors or restore local state.
+        Only the deleted grant's pinned Client and artifact are used, outside any
+        write transaction. Missing provenance, missing artifacts and transport
+        errors are terminal outcomes; never restore local state or log provider text.
         """
-        if reference.plugin_unique_identifier is None or reference.fingerprint is None or not encrypted_credentials:
-            return "unavailable"
+        reference = record.access.oauth_client
+        if (
+            reference is None
+            or reference.plugin_unique_identifier is None
+            or reference.fingerprint is None
+            or not record.encrypted_credentials
+        ):
+            return
         try:
-            client = self._gateway.resolve_grant_client(context.tenant_id, provider, reference)
-            credentials = self._cipher.decrypt(context.tenant_id, encrypted_credentials)
-            return self._gateway.revoke(context, provider, client, credentials).status
+            client = self._gateway.resolve_grant_client(context.tenant_id, record.access.provider, reference)
+            credentials = self._cipher.decrypt(context.tenant_id, record.encrypted_credentials)
+            result = self._gateway.revoke(context, record.access.provider, client, credentials)
+            if result.status in {"failed", "temporarily_unavailable"}:
+                logger.warning(
+                    "OAuth revocation incomplete for deleted Connection %s: %s", record.access.id, result.status
+                )
         except Exception:
-            return "unavailable"
+            # Missing old artifacts and changed Clients must never undo local deletion.
+            # Provider exceptions may contain credentials, so only log the Connection ID.
+            logger.warning("Pinned OAuth revocation unavailable for deleted Connection %s", record.access.id)

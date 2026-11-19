@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from models.account import Account, AccountStatus
-from models.end_user_connection import AppConnection, EndUserConnection, ExpiredGuestOAuthGrant
+from models.end_user_connection import AppConnection, EndUserConnection
 from models.enums import ConversationFromSource, CreatorUserRole, CustomizeTokenStrategy, EndUserType, InvokeFrom
 from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Site, UploadFile
 from models.tools import ToolFile
@@ -21,7 +21,7 @@ from repositories.conversation_access import ConversationAccessDeniedError, requ
 from repositories.end_user_execution_lock import lock_end_user
 from repositories.entities.web_execution import EndUserBusyError
 from repositories.web_migration_repository import WebMigrationRepository
-from services.end_user_connections.guest_expiry import GuestExpiryOutcome
+from services.end_user_connections.management import StoredConnection
 from services.web_migration_service import MigrationCounts
 from tests.helpers.end_user_api_key import PROVIDER, make_harness
 from tests.helpers.unit.model_factories import make_upload_file
@@ -200,8 +200,8 @@ def test_inactive_connection_cleanup_and_claim_use_the_same_identity_fence(
     def claim() -> MigrationCounts:
         return migration.claim_guest(source, account_end_user_id=account.end_user_id)
 
-    def cleanup() -> GuestExpiryOutcome | None:
-        return harness.repository.expire_guest(candidate, before=cutoff, now=cutoff + timedelta(days=30))
+    def cleanup() -> StoredConnection | None:
+        return harness.repository.expire_guest(candidate, before=cutoff)
 
     event.listen(engine, "after_cursor_execute", pause_write)
     try:
@@ -216,9 +216,11 @@ def test_inactive_connection_cleanup_and_claim_use_the_same_identity_fence(
                         claim()
             finally:
                 release.set()
-            assert first.result(timeout=10) == (
-                MigrationCounts(1, 0) if winner == "claim" else "manual_revocation_required"
-            )
+            outcome = first.result(timeout=10)
+            if winner == "claim":
+                assert outcome == MigrationCounts(1, 0)
+            else:
+                assert isinstance(outcome, StoredConnection)
     finally:
         event.remove(engine, "after_cursor_execute", pause_write)
 
@@ -230,8 +232,6 @@ def test_inactive_connection_cleanup_and_claim_use_the_same_identity_fence(
     else:
         assert claim() == MigrationCounts(0, 0)
         assert harness.repository.find(context, connection.id) is None
-    with sessions() as session:
-        assert session.get(ExpiredGuestOAuthGrant, connection.id) is None
 
 
 @pytest.mark.timeout(30)

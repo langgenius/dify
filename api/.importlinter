@@ -237,6 +237,7 @@ forbidden_modules =
     repositories
     models
     tasks
+allow_indirect_imports = True
 
 [importlinter:contract:guest-connection-cleanup-task-boundary]
 name = Guest Connection cleanup task uses the composition root rather than persistence

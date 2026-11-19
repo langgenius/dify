@@ -22,15 +22,14 @@ expiry cannot be claimed. No replacement Connection is selected. Run history and
 its fixed selection IDs are untouched; a later attempt to dispatch with a deleted
 ID fails instead of resolving a new default.
 
-For OAuth, that transaction saves only the encrypted grant and its original Client
-and plugin artifact references in a revocation job. After committing a short job
-lease, the worker attempts best-effort revocation outside the database transaction.
-Unsupported, failed and unavailable outcomes are logged and retire the job without
-retrying the Provider or restoring the Connection. If the worker is interrupted
-before settling the job, the first sweep after the five-minute lease expires can
-retry it. This may repeat a revoke request for the already-deleted grant. Cleanup
-logs contain Connection IDs and normalized outcomes, never credentials or provider
-error text.
+For OAuth, the sweep captures the grant's encrypted credentials and its original
+Client and plugin artifact references inside the deleting transaction, then
+attempts best-effort revocation after that transaction commits. Unsupported,
+failed and unavailable outcomes are logged and never retry the Provider or restore
+the Connection. A worker interrupted between the commit and the attempt loses only
+that attempt; the Connection stays deleted and a later sweep does not repeat or
+resurrect it. Cleanup logs contain Connection IDs and credential types, never
+credentials or provider error text.
 
 API keys are deleted locally without calling the Provider. If the Connection
 response has `manual_revocation_required_on_expiry: true`, callers can explain
@@ -39,8 +38,8 @@ it. This field is advisory and does not mean cleanup has run or is enabled.
 
 ## Deployment
 
-Apply database migrations and deploy the activity writers to all API and worker
-processes before enabling the task. Older Connections retain their recorded
+Deploy the activity writers to all API and worker processes before enabling the
+task; no schema change is required. Older Connections retain their recorded
 `last_active_at` (old versions did not record renames or dispatch), so review the
 initial cutoff before enabling cleanup on an existing deployment.
 
@@ -48,11 +47,9 @@ initial cutoff before enabling cleanup on an existing deployment.
 | --- | --- | --- |
 | `ENABLE_GUEST_CONNECTION_CLEANUP_TASK` | `false` | Opt in on Beat and workers after deployment. |
 | `GUEST_CONNECTION_INACTIVITY_DAYS` | `30` | Time since the last qualifying activity; the sweep uses a strict cutoff in UTC. |
-| `GUEST_CONNECTION_CLEANUP_INTERVAL_MINUTES` | `60` | Interval between sweeps for expiry and revocation recovery. |
-| `GUEST_CONNECTION_CLEANUP_BATCH_SIZE` | `100` | Page size for candidate and revocation-job scans. Each deletion is its own transaction. |
+| `GUEST_CONNECTION_CLEANUP_INTERVAL_MINUTES` | `60` | Interval between sweeps. |
+| `GUEST_CONNECTION_CLEANUP_BATCH_SIZE` | `100` | Page size for candidate scans. Each deletion is its own transaction. |
 
 Workers with custom queue lists must subscribe to `retention`. A failed row does
 not block later pages; the next sweep retries rows that are still eligible.
-Disabling the task pauses both expiry and pending revocation delivery. Drain pending
-revocations before downgrading; downgrade discards any remaining jobs and does not
-restore deleted Connections.
+Disabling the task pauses expiry, and a downgrade never restores deleted Connections.

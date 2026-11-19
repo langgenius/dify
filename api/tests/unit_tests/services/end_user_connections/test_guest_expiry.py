@@ -16,7 +16,7 @@ from clients.plugin.auth_entities import OAuthRevokeResult
 from context.connection_execution import ConnectionExecutionContext, ExecutionConnectionSelection
 from extensions.ext_redis import redis_client
 from graphon.enums import WorkflowExecutionStatus
-from models.end_user_connection import AppConnection, EndUserConnection, ExpiredGuestOAuthGrant, SessionConnection
+from models.end_user_connection import AppConnection, EndUserConnection, SessionConnection
 from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.model import EndUser
 from models.workflow import WorkflowRun, WorkflowType
@@ -72,8 +72,8 @@ def _backdate(harness: OAuthHarness, connection_id: str, activity: datetime = _O
         row.last_active_at = activity
 
 
-def _sweep(harness: OAuthHarness, *, now: datetime = _NOW) -> None:
-    """Run real cleanup with one-row pages and a fixed time; only external I/O is scripted."""
+def _sweep(harness: OAuthHarness) -> None:
+    """Run real cleanup with one-row pages; only the external revocation call is scripted."""
     GuestConnectionExpiryService(
         store=harness.base.repository,
         oauth=OAuthConnectionLifecycleService(
@@ -84,7 +84,7 @@ def _sweep(harness: OAuthHarness, *, now: datetime = _NOW) -> None:
         ),
         inactivity=_RETENTION,
         batch_size=1,
-        clock=lambda: now,
+        clock=lambda: _NOW,
     ).run()
 
 
@@ -181,7 +181,7 @@ def test_stale_candidate_is_rechecked_after_activity_and_reads_do_not_touch_it(h
     renamed = base.service.update_connection(guest, connection.id, UpdateConnectionInput(name="Renamed"))
     assert renamed.last_active_at is not None
     assert renamed.last_active_at > _OLD
-    assert base.repository.expire_guest(candidate, before=_CUTOFF, now=_NOW) is None
+    assert base.repository.expire_guest(candidate, before=_CUTOFF) is None
     assert base.service.get_connection(guest, connection.id) == renamed
     replaced = base.service.update_connection(
         guest,
@@ -192,9 +192,8 @@ def test_stale_candidate_is_rechecked_after_activity_and_reads_do_not_touch_it(h
     assert replaced.last_active_at >= renamed.last_active_at
 
 
-@pytest.mark.parametrize("outcome", ["revoked", "unsupported", "failed", "temporarily_unavailable", "unavailable"])
-def test_oauth_expiry_uses_original_grant_after_commit_and_claim_cannot_recover_it(
-    harness: OAuthHarness, caplog: pytest.LogCaptureFixture, outcome: str
+def test_oauth_expiry_uses_the_original_grant_after_commit(
+    harness: OAuthHarness, caplog: pytest.LogCaptureFixture
 ) -> None:
     base = harness.base
     account = base.context
@@ -212,17 +211,11 @@ def test_oauth_expiry_uses_original_grant_after_commit_and_claim_cannot_recover_
     def during_revoke() -> None:
         with base.sessions() as session:
             assert session.get(EndUserConnection, connection.id) is None
-            assert session.get(ExpiredGuestOAuthGrant, connection.id) is not None
-        # This writer succeeds while the external call is outstanding: no open write transaction or Claim fence.
+        # The delete has committed, so the Provider call holds no write transaction
+        # and the row can no longer be claimed by a concurrent writer.
         claimed_counts.append(migration.claim_guest(source, account_end_user_id=account.end_user_id).connections)
-        if outcome == "unavailable":
-            raise ValueError("the upstream error echoes access-secret")
 
     base.auth.on_revoke = during_revoke
-    if outcome != "unavailable":
-        base.auth.revoke_result = OAuthRevokeResult.model_validate(
-            {"status": outcome, "reason_code": None, "retryable": False}
-        )
     with caplog.at_level(logging.INFO):
         _sweep(harness)
         _sweep(harness)
@@ -230,11 +223,76 @@ def test_oauth_expiry_uses_original_grant_after_commit_and_claim_cannot_recover_
     assert len(base.auth.revocations) == 1
     assert base.auth.revocations[0][0:3] == (guest.tenant_id, guest.end_user_id, PROVIDER)
     assert base.auth.revocations[0][4]["access_token"] == "access-secret"
-    assert f"connection_id={connection.id} outcome={outcome}" in caplog.text
     assert "access-secret" not in caplog.text
     with base.sessions() as session:
-        assert session.get(ExpiredGuestOAuthGrant, connection.id) is None
         assert session.get(EndUserConnection, connection.id) is None
+
+
+@pytest.mark.parametrize(
+    ("outcome", "expects_warning"),
+    [("revoked", False), ("unsupported", False), ("failed", True), ("temporarily_unavailable", True)],
+)
+def test_revocation_outcomes_never_restore_or_block_local_deletion(
+    harness: OAuthHarness, caplog: pytest.LogCaptureFixture, outcome: str, expects_warning: bool
+) -> None:
+    """A provider result is terminal: the grant stays deleted and the sweep completes."""
+    base = harness.base
+    base.context = _guest(harness)
+    connection = harness.finish(harness.start())
+    _backdate(harness, connection.id)
+    base.auth.revoke_result = OAuthRevokeResult.model_validate(
+        {"status": outcome, "reason_code": None, "retryable": False}
+    )
+    with caplog.at_level(logging.WARNING):
+        _sweep(harness)
+    assert len(base.auth.revocations) == 1
+    assert ("revocation incomplete" in caplog.text) is expects_warning
+    with base.sessions() as session:
+        assert session.get(EndUserConnection, connection.id) is None
+
+
+def test_revocation_transport_failure_is_logged_without_secrets(
+    harness: OAuthHarness, caplog: pytest.LogCaptureFixture
+) -> None:
+    base = harness.base
+    base.context = _guest(harness)
+    connection = harness.finish(harness.start())
+    _backdate(harness, connection.id)
+
+    def explode() -> None:
+        raise ValueError("the upstream error echoes access-secret")
+
+    base.auth.on_revoke = explode
+    with caplog.at_level(logging.WARNING):
+        _sweep(harness)
+        _sweep(harness)
+    assert "access-secret" not in caplog.text
+    assert "Pinned OAuth revocation unavailable" in caplog.text
+    assert len(base.auth.revocations) == 1
+    with base.sessions() as session:
+        assert session.get(EndUserConnection, connection.id) is None
+
+
+def test_claim_winner_cannot_be_revoked_even_from_a_preclaim_scan(harness: OAuthHarness) -> None:
+    base = harness.base
+    account = base.context
+    guest = _guest(harness)
+    base.context = guest
+    connection = harness.finish(harness.start())
+    _backdate(harness, connection.id)
+    (candidate,) = base.repository.inactive_guests(before=_CUTOFF, after=None, limit=1)
+    migration = WebMigrationRepository(session_factory=base.sessions)
+    source = migration.get_claim_source(app_code=harness.app_code, app_id=guest.app_id, end_user_id=guest.end_user_id)
+    assert source is not None
+    assert migration.claim_guest(source, account_end_user_id=account.end_user_id).connections == 1
+    assert base.repository.expire_guest(candidate, before=_CUTOFF) is None
+    _sweep(harness)
+    assert base.auth.revocations == []
+    with base.sessions() as session:
+        kept = session.get(EndUserConnection, connection.id)
+        assert kept is not None
+        assert kept.account_id == account.account_id
+        assert kept.last_active_at == _OLD
 
 
 def test_automatic_oauth_refresh_does_not_extend_activity_but_reauthorization_does(harness: OAuthHarness) -> None:
@@ -265,51 +323,7 @@ def test_automatic_oauth_refresh_does_not_extend_activity_but_reauthorization_do
     assert updated.last_active_at > _OLD
 
 
-def test_claim_winner_cannot_be_revoked_even_from_a_preclaim_scan(harness: OAuthHarness) -> None:
-    base = harness.base
-    account = base.context
-    guest = _guest(harness)
-    base.context = guest
-    connection = harness.finish(harness.start())
-    _backdate(harness, connection.id)
-    (candidate,) = base.repository.inactive_guests(before=_CUTOFF, after=None, limit=1)
-    migration = WebMigrationRepository(session_factory=base.sessions)
-    source = migration.get_claim_source(app_code=harness.app_code, app_id=guest.app_id, end_user_id=guest.end_user_id)
-    assert source is not None
-    assert migration.claim_guest(source, account_end_user_id=account.end_user_id).connections == 1
-    assert base.repository.expire_guest(candidate, before=_CUTOFF, now=_NOW) is None
-    _sweep(harness)
-    assert base.auth.revocations == []
-    with base.sessions() as session:
-        kept = session.get(EndUserConnection, connection.id)
-        assert kept is not None
-        assert kept.account_id == account.account_id
-        assert kept.last_active_at == _OLD
-        assert session.get(ExpiredGuestOAuthGrant, connection.id) is None
-
-
-def test_expired_lease_recovers_without_repeating_local_deletion(harness: OAuthHarness) -> None:
-    base = harness.base
-    base.context = _guest(harness)
-    connection = harness.finish(harness.start())
-    _backdate(harness, connection.id)
-    (candidate,) = base.repository.inactive_guests(before=_CUTOFF, after=None, limit=1)
-    assert base.repository.expire_guest(candidate, before=_CUTOFF, now=_NOW) == "oauth_revocation_pending"
-    (job,) = base.repository.pending_guest_oauth_revocations(now=_NOW, after=None, limit=1)
-    until = _NOW + timedelta(minutes=5)
-    assert base.repository.lease_guest_oauth_revocation(job, until=until) is not None
-    assert base.repository.lease_guest_oauth_revocation(job, until=until) is None
-    _sweep(harness)
-    assert base.auth.revocations == []
-    _sweep(harness, now=until)
-    _sweep(harness, now=until)
-    assert len(base.auth.revocations) == 1
-    with base.sessions() as session:
-        assert session.get(EndUserConnection, connection.id) is None
-        assert session.get(ExpiredGuestOAuthGrant, connection.id) is None
-
-
-def test_failed_outbox_write_rolls_back_one_connection_and_does_not_block_later_pages(
+def test_failed_deletion_rolls_back_one_connection_and_does_not_block_later_pages(
     harness: OAuthHarness, caplog: pytest.LogCaptureFixture
 ) -> None:
     base = harness.base
@@ -321,17 +335,20 @@ def test_failed_outbox_write_rolls_back_one_connection_and_does_not_block_later_
     with base.sessions.begin() as session:
         session.execute(
             sa.text(
-                "CREATE TRIGGER reject_revocation_job BEFORE INSERT ON expired_guest_oauth_grants "
-                "BEGIN SELECT RAISE(ABORT, 'sensitive-db-detail'); END"
+                "CREATE TRIGGER reject_guest_expiry BEFORE DELETE ON end_user_connections "
+                f"WHEN OLD.id = '{oauth.id}' BEGIN SELECT RAISE(ABORT, 'sensitive-db-detail'); END"
             )
         )
-    _sweep(harness)
+    with caplog.at_level(logging.ERROR):
+        _sweep(harness)
     assert base.auth.revocations == []
     assert f"expiry failed: connection_id={oauth.id}" in caplog.text
     assert "sensitive-db-detail" not in caplog.text
     with base.sessions.begin() as session:
         assert session.get(EndUserConnection, oauth.id) is not None
         assert session.get(EndUserConnection, api_key.id) is None
-        session.execute(sa.text("DROP TRIGGER reject_revocation_job"))
+        session.execute(sa.text("DROP TRIGGER reject_guest_expiry"))
     _sweep(harness)
     assert len(base.auth.revocations) == 1
+    with base.sessions() as session:
+        assert session.get(EndUserConnection, oauth.id) is None

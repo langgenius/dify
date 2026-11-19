@@ -1,21 +1,16 @@
-"""Expire only inactive Guest Connections and deliver their pinned OAuth revocations."""
+"""Expire only inactive Guest Connections and attempt their OAuth revocation."""
 
 import logging
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Literal, Protocol
+from typing import Protocol
 
-from services.end_user_connections.entities import (
-    ConnectionOAuthClient,
-    OAuthGrantRevocationStatus,
-    WebConnectionContext,
-)
+from constants.end_user_connections import ConnectionCredentialType
+from services.end_user_connections.entities import ConnectionManagementContext, WebConnectionContext
+from services.end_user_connections.management import StoredConnection
 
 logger = logging.getLogger(__name__)
-_REVOCATION_LEASE = timedelta(minutes=5)
-
-type GuestExpiryOutcome = Literal["manual_revocation_required", "oauth_revocation_pending", "oauth_unavailable"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,21 +18,6 @@ class GuestExpiryCandidate:
     connection_id: str
     context: WebConnectionContext
     last_active_at: datetime
-
-
-@dataclass(frozen=True, slots=True)
-class PendingGuestOAuthRevocation:
-    connection_id: str
-    tenant_id: str
-    available_at: datetime
-
-
-@dataclass(frozen=True, slots=True)
-class GuestOAuthRevocation:
-    context: WebConnectionContext
-    provider: str
-    client: ConnectionOAuthClient
-    encrypted_credentials: str = field(repr=False)
 
 
 class GuestConnectionExpiryStore(Protocol):
@@ -51,51 +31,21 @@ class GuestConnectionExpiryStore(Protocol):
         """
         ...
 
-    def expire_guest(
-        self, candidate: GuestExpiryCandidate, *, before: datetime, now: datetime
-    ) -> GuestExpiryOutcome | None:
-        """Recheck Guest ownership and inactivity, then atomically remove live state.
+    def expire_guest(self, candidate: GuestExpiryCandidate, *, before: datetime) -> StoredConnection | None:
+        """Recheck Guest ownership and inactivity, then delete the row and its live choices.
 
         Share the EndUser fence with Claim and take the Connection row lock to
-        serialize with activity writes. Return None if the row is no longer
-        eligible or its owner is busy. On success only OAuth grants with pinned
-        provenance leave an encrypted revocation job, committed with deletion.
-        History is never changed. Any failure rolls back this Connection alone.
+        serialize with activity writes. Return the captured row on commit so the
+        caller can attempt revocation, or None when the row is no longer eligible
+        or its owner is busy. History is never changed. Any failure rolls back this
+        Connection alone, and the caller must not hold this transaction open.
         """
-        ...
-
-    def pending_guest_oauth_revocations(
-        self, *, now: datetime, after: PendingGuestOAuthRevocation | None, limit: int
-    ) -> tuple[PendingGuestOAuthRevocation, ...]:
-        """Page due work without secrets, ordered by availability then ID; None starts a sweep."""
-        ...
-
-    def lease_guest_oauth_revocation(
-        self, candidate: PendingGuestOAuthRevocation, *, until: datetime
-    ) -> GuestOAuthRevocation | None:
-        """Advance the matching availability timestamp to `until` and commit before returning the grant.
-
-        Only one worker can reserve a given version. A stale or completed candidate
-        returns None. If a worker stops before finishing, the lease makes the work
-        visible again at `until` without making the deleted Connection claimable.
-        """
-        ...
-
-    def finish_guest_oauth_revocation(self, candidate: PendingGuestOAuthRevocation, *, until: datetime) -> None:
-        """Erase the encrypted job only if the original lease is still current."""
         ...
 
 
 class GuestOAuthRevoker(Protocol):
-    def revoke_grant(
-        self,
-        context: WebConnectionContext,
-        *,
-        provider: str,
-        reference: ConnectionOAuthClient,
-        encrypted_credentials: str,
-    ) -> OAuthGrantRevocationStatus:
-        """Attempt once using the original artifact and Client; return a safe status."""
+    def revoke_deleted(self, context: ConnectionManagementContext, record: StoredConnection) -> None:
+        """Attempt one best-effort revocation after the deletion has committed."""
         ...
 
 
@@ -125,48 +75,36 @@ class GuestConnectionExpiryService:
         later pages. Repeated or concurrent sweeps can neither delete an Account
         grant nor restore a deleted Connection, even if the Provider is unavailable.
         """
-        now = self._clock()
-        before = now - self._inactivity
+        before = self._clock() - self._inactivity
         page = self._store.inactive_guests(before=before, after=None, limit=self._batch_size)
         while page:
             for candidate in page:
-                self._expire(candidate, before=before, now=now)
+                self._expire(candidate, before=before)
             page = self._store.inactive_guests(before=before, after=page[-1], limit=self._batch_size)
 
-        pending = self._store.pending_guest_oauth_revocations(now=now, after=None, limit=self._batch_size)
-        while pending:
-            for job in pending:
-                self._revoke(job)
-            pending = self._store.pending_guest_oauth_revocations(now=now, after=pending[-1], limit=self._batch_size)
+    def _expire(self, candidate: GuestExpiryCandidate, *, before: datetime) -> None:
+        """Keep revocation outside the write transaction and never let one failure halt the sweep.
 
-    def _expire(self, candidate: GuestExpiryCandidate, *, before: datetime, now: datetime) -> None:
-        """Log only committed deletion outcomes; do not let one local failure halt the sweep."""
+        A crash between the commit and the revocation attempt loses only that
+        best-effort attempt; the Connection stays deleted and the next sweep does
+        not resurrect or repeat it.
+        """
         try:
-            outcome = self._store.expire_guest(candidate, before=before, now=now)
+            record = self._store.expire_guest(candidate, before=before)
         except Exception:
-            # A database or provider error can carry secret input. Never attach it to these logs.
+            # A database error can carry secret input. Never attach it to these logs.
             logger.error("Guest Connection expiry failed: connection_id=%s", candidate.connection_id)  # noqa: TRY400
-        else:
-            if outcome is not None:
-                logger.info("Guest Connection expired: connection_id=%s outcome=%s", candidate.connection_id, outcome)
-
-    def _revoke(self, job: PendingGuestOAuthRevocation) -> None:
-        """Use a committed lease; retire normal provider failures as well as successes."""
-        # Whole seconds round-trip unchanged through both PostgreSQL and MySQL DateTime columns.
-        until = self._clock().replace(microsecond=0) + _REVOCATION_LEASE
+            return
+        if record is None:
+            return
+        logger.info(
+            "Guest Connection expired: connection_id=%s credential_type=%s",
+            candidate.connection_id,
+            record.access.credential_type,
+        )
+        if record.access.credential_type != ConnectionCredentialType.OAUTH2:
+            return
         try:
-            grant = self._store.lease_guest_oauth_revocation(job, until=until)
-            if grant is not None:
-                outcome = self._oauth.revoke_grant(
-                    grant.context,
-                    provider=grant.provider,
-                    reference=grant.client,
-                    encrypted_credentials=grant.encrypted_credentials,
-                )
-                level = logging.INFO if outcome in {"revoked", "unsupported"} else logging.WARNING
-                logger.log(
-                    level, "Expired Guest OAuth revocation: connection_id=%s outcome=%s", job.connection_id, outcome
-                )
-                self._store.finish_guest_oauth_revocation(job, until=until)
+            self._oauth.revoke_deleted(candidate.context, record)
         except Exception:
-            logger.error("Guest OAuth revocation job failed: connection_id=%s", job.connection_id)  # noqa: TRY400
+            logger.error("Guest OAuth revocation failed: connection_id=%s", candidate.connection_id)  # noqa: TRY400
