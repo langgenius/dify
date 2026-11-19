@@ -410,7 +410,6 @@ class ModelProviderPaymentCheckoutUrlApi(Resource):
     def get(self, current_tenant_id: str, current_user: Account, provider: str):
         if provider != "anthropic":
             raise ValueError(f"provider name {provider} is invalid")
-        # pyrefly: ignore [deprecated]
         link = BillingService.get_model_provider_payment_link(
             provider_name=provider,
             tenant_id=current_tenant_id,
