@@ -40,6 +40,7 @@ class ExecutionTraceScopes(Protocol):
         app_tracing: str | None,
         user_id: str | None,
         correlation: TraceCorrelation,
+        external_tracing_disabled: bool = False,
     ) -> TraceScope | None: ...
 
     def for_app(
@@ -109,9 +110,15 @@ def correlation_from_extras(extras: Mapping[str, Any]) -> TraceCorrelation:
 
 
 def create_trace_scope(
-    *, tenant_id: str, app_id: str | None, app_tracing: str | None, user_id: str | None, extras: Mapping[str, Any]
+    *,
+    tenant_id: str,
+    app_id: str | None,
+    app_tracing: str | None,
+    user_id: str | None,
+    extras: Mapping[str, Any],
+    external_tracing_disabled: bool = False,
 ) -> TraceScope | None:
-    """The scope for an execution whose app row is loaded; ``None`` when nothing consumes its events."""
+    """Use the loaded app and admitted policy; restricted executions emit only enterprise telemetry."""
     scopes = _scopes()
     if scopes is None:
         return None
@@ -122,6 +129,7 @@ def create_trace_scope(
             app_tracing=app_tracing,
             user_id=user_id,
             correlation=correlation_from_extras(extras),
+            external_tracing_disabled=external_tracing_disabled is not False,
         )
     except Exception:
         logger.warning("Tracing scope unavailable: app_id=%s", app_id, exc_info=True)

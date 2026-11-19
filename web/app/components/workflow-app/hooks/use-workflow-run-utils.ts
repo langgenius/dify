@@ -72,7 +72,7 @@ const debugLabelMap: Record<DebuggableTriggerType, string> = {
   [TriggerType.Schedule]: 'Schedule',
 }
 
-const createRunningWorkflowState = () => {
+export const createRunningWorkflowState = () => {
   return {
     result: {
       status: WorkflowRunningStatus.Running,

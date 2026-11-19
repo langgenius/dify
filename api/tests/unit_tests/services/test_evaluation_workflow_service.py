@@ -166,7 +166,8 @@ def test_cloud_sandbox_cannot_publish_an_evaluation_workflow(
         version=Workflow.VERSION_DRAFT,
     )
     sqlite_session.add_all([app, active, draft])
-    sqlite_session.flush()
+    # Commit: publish first prepares Tool setup from the draft in its own clean read session.
+    sqlite_session.commit()
 
     with (
         patch(

@@ -139,7 +139,11 @@ class TraceDeliveryService:
         self._max_export_attempts = max_export_attempts
 
     def deliver(self, event: TraceEvent, *, enterprise_delivered: bool) -> None:
-        """Raises SourceNotReadyError (redeliver later) or TraceCollectorUnavailableError."""
+        """Deliver a validated event while preserving its external tracing restriction across retries.
+
+        Raises SourceNotReadyError (redeliver later) or TraceCollectorUnavailableError.
+        Restricted events never resolve a provider or enter Agent collection.
+        """
         kind = event.payload.kind
         try:
             record = self._records.assemble(event)
@@ -152,6 +156,9 @@ class TraceDeliveryService:
                 self._enterprise_sink(record)
             except Exception:
                 logger.exception("Enterprise trace failed: kind=%s app_id=%s", kind, event.app_id)
+        if event.external_tracing_disabled is not False:
+            _event_counter.add(1, {"kind": kind, "outcome": "external_disabled"})
+            return
         if self._collector is not None:
             try:
                 if self._collector.capture_terminal(tenant_id=event.tenant_id, info=record):
