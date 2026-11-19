@@ -8,7 +8,7 @@ document, and segment service test modules that exercise
 import json
 from datetime import datetime
 from types import SimpleNamespace
-from typing import Any
+from typing import Literal
 from unittest.mock import MagicMock, Mock, create_autospec, patch
 
 import pytest
@@ -18,6 +18,7 @@ from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from enums import CloudPlan
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
@@ -30,8 +31,7 @@ from models.dataset import (
     Document,
     DocumentSegment,
 )
-from models.enums import DataSourceType
-from models.model import UploadFile
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     IconInfo as PipelineIconInfo,
 )
@@ -88,7 +88,6 @@ __all__ = [
     "DatasetPermissionService",
     "DatasetProcessRule",
     "DatasetService",
-    "DatasetServiceUnitDataFactory",
     "Document",
     "DocumentIndexingError",
     "DocumentSegment",
@@ -152,117 +151,11 @@ def _make_session_context(session: MagicMock) -> MagicMock:
     return context_manager
 
 
-class DatasetServiceUnitDataFactory:
-    """Factory for lightweight doubles used across dataset service tests."""
-
-    @staticmethod
-    def create_dataset_mock(
-        dataset_id: str = "dataset-123",
-        tenant_id: str = "tenant-123",
-        *,
-        permission: str = DatasetPermissionEnum.ALL_TEAM,
-        created_by: str = "user-123",
-        indexing_technique: str = "economy",
-        embedding_model_provider: str = "provider",
-        embedding_model: str = "model",
-        built_in_field_enabled: bool = False,
-        doc_form: str | None = "text_model",
-        enable_api: bool = False,
-        summary_index_setting: dict[str, Any] | None = None,
-        **kwargs,
-    ) -> Dataset:
-        return Dataset(
-            id=dataset_id,
-            tenant_id=tenant_id,
-            permission=permission,
-            created_by=created_by,
-            indexing_technique=indexing_technique,
-            embedding_model_provider=embedding_model_provider,
-            embedding_model=embedding_model,
-            built_in_field_enabled=built_in_field_enabled,
-            chunk_structure=doc_form,
-            enable_api=enable_api,
-            updated_by=None,
-            summary_index_setting=summary_index_setting,
-            **kwargs,
-        )
-
-    @staticmethod
-    def create_user_mock(
-        user_id: str = "user-123",
-        tenant_id: str = "tenant-123",
-        role: str = TenantAccountRole.OWNER,
-        **kwargs,
-    ) -> SimpleNamespace:
-        return SimpleNamespace(
-            id=user_id,
-            current_tenant_id=tenant_id,
-            current_role=role,
-            **kwargs,
-        )
-
-    @staticmethod
-    def create_document_mock(
-        document_id: str = "doc-123",
-        dataset_id: str = "dataset-123",
-        tenant_id: str = "tenant-123",
-        *,
-        indexing_status: str = "completed",
-        is_paused: bool = False,
-        archived: bool = False,
-        enabled: bool = True,
-        data_source_type: str = "upload_file",
-        data_source_info_dict: dict[str, Any] | None = None,
-        data_source_info: str | None = None,
-        doc_form: str = "text_model",
-        need_summary: bool = True,
-        position: int = 0,
-        doc_metadata: dict[str, Any] | None = None,
-        name: str = "Document",
-        **kwargs,
-    ) -> Document:
-        return Document(
-            id=document_id,
-            dataset_id=dataset_id,
-            tenant_id=tenant_id,
-            indexing_status=indexing_status,
-            is_paused=is_paused,
-            paused_by=None,
-            paused_at=None,
-            archived=archived,
-            enabled=enabled,
-            data_source_type=data_source_type,
-            data_source_info=data_source_info
-            if data_source_info is not None
-            else json.dumps(data_source_info_dict or {}),
-            doc_form=doc_form,
-            need_summary=need_summary,
-            position=position,
-            doc_metadata=doc_metadata,
-            name=name,
-            **kwargs,
-        )
-
-    @staticmethod
-    def create_upload_file_mock(file_id: str = "file-123", name: str = "upload.txt") -> UploadFile:
-        upload_file = UploadFile(
-            tenant_id="tenant-id",
-            storage_type="opendal",
-            key="test-key",
-            name=name,
-            size=0,
-            extension="txt",
-            mime_type="text/plain",
-            created_by_role="account",
-            created_by="account-id",
-            created_at=datetime.now(),
-            used=False,
-        )
-        upload_file.id = file_id
-        return upload_file
+class _UnsetType:
+    """Sentinel type marking an argument that was not explicitly provided."""
 
 
-_UNSET = object()
+_UNSET = _UnsetType()
 
 
 def _make_lock_context() -> MagicMock:
@@ -309,12 +202,12 @@ def _make_document(
     dataset_id: str = "dataset-1",
     tenant_id: str = "tenant-1",
     batch: str = "batch-1",
-    doc_form: str = IndexStructureType.PARAGRAPH_INDEX,
+    doc_form: IndexStructureType = IndexStructureType.PARAGRAPH_INDEX,
     word_count: int = 0,
     name: str = "Document 1",
     enabled: bool = True,
     archived: bool = False,
-    indexing_status: str = "completed",
+    indexing_status: IndexingStatus = IndexingStatus.COMPLETED,
 ) -> Document:
     document = Document(
         id=document_id,
@@ -330,12 +223,12 @@ def _make_document(
         indexing_status=indexing_status,
         data_source_type=DataSourceType("upload_file"),
         data_source_info="{}",
-        completed_at=SimpleNamespace(),
-        processing_started_at="started",
-        parsing_completed_at="parsed",
-        cleaning_completed_at="cleaned",
-        splitting_completed_at="split",
-        created_from=None,
+        completed_at=datetime.now(),
+        processing_started_at=datetime.now(),
+        parsing_completed_at=datetime.now(),
+        cleaning_completed_at=datetime.now(),
+        splitting_completed_at=datetime.now(),
+        created_from=DocumentCreatedFrom.WEB,
         created_by="user-1",
         dataset_process_rule_id="process-rule-1",
     )
@@ -369,7 +262,7 @@ def _make_segment(
         index_node_id=index_node_id,
         disabled_at=None,
         disabled_by=None,
-        status="completed",
+        status=SegmentStatus.COMPLETED,
         error=None,
     )
     segment.id = segment_id
@@ -394,19 +287,22 @@ def _make_upload_knowledge_config(
     original_document_id: str | None = None,
     file_ids: list[str] | None = None,
     process_rule: ProcessRule | None = None,
-    data_source: DataSource | object | None = _UNSET,
+    data_source: DataSource | None | _UnsetType = _UNSET,
 ) -> KnowledgeConfig:
-    if data_source is _UNSET:
+    resolved_data_source: DataSource | None
+    if isinstance(data_source, _UnsetType):
         info_list = InfoList(
             data_source_type="upload_file",
             file_info_list=FileInfo(file_ids=file_ids) if file_ids is not None else None,
         )
-        data_source = DataSource(info_list=info_list)
+        resolved_data_source = DataSource(info_list=info_list)
+    else:
+        resolved_data_source = data_source
 
     return KnowledgeConfig(
         original_document_id=original_document_id,
         indexing_technique="economy",
-        data_source=data_source,
+        data_source=resolved_data_source,
         process_rule=process_rule,
         doc_form=IndexStructureType.PARAGRAPH_INDEX,
         doc_language="English",
@@ -449,11 +345,11 @@ def _make_rag_pipeline_retrieval_setting() -> RagPipelineRetrievalSetting:
 def _make_knowledge_configuration(
     *,
     chunk_structure: str = "paragraph",
-    indexing_technique: str = "high_quality",
+    indexing_technique: Literal["high_quality", "economy"] = "high_quality",
     embedding_model_provider: str = "provider",
     embedding_model: str = "embedding-model",
     keyword_number: int = 8,
-    summary_index_setting: dict | None = None,
+    summary_index_setting: SummaryIndexSettingDict | None = None,
 ) -> KnowledgeConfiguration:
     return KnowledgeConfiguration(
         chunk_structure=chunk_structure,
