@@ -15,7 +15,7 @@
   "debug.variableInspect.exportToolTip": "Değişkeni Dosya Olarak Dışa Aktar",
   "debug.variableInspect.largeData": "Büyük veri, salt okunur önizleme. Tümünü görüntülemek için dışa aktarın.",
   "debug.variableInspect.largeDataNoExport": "Büyük veri - yalnızca kısmi önizleme",
-  "debug.variableInspect.listening.defaultNodeName": "bu tetik",
+  "debug.variableInspect.listening.defaultNodeName": "bu tetikleyici",
   "debug.variableInspect.listening.defaultPluginName": "bu eklenti tetikleyici",
   "debug.variableInspect.listening.defaultScheduleTime": "Yapılandırılmadı",
   "debug.variableInspect.listening.stopButton": "Dur",

@@ -11,7 +11,7 @@
   "overview.answered": "Yanıtlandı",
   "overview.attention.failedDocument.description": "En son belge revizyonu işlenemedi. Hatayı incelemek ve işlemeyi yeniden denemek için Belgeler'i açın.",
   "overview.attention.failedDocument.title": "Belge işleme başarısız oldu",
-  "overview.attention.lowQualityQuery.description": "Bu Agent bilgi tabanındaki bir sorgu, getirilen kanıtlar zayıf veya eksik olduğu için incelenmeyi bekliyor.",
+  "overview.attention.lowQualityQuery.description": "Bu Agent bilgi tabanındaki bir sorgu, alınan kanıtlar zayıf veya eksik olduğu için incelenmeyi bekliyor.",
   "overview.attention.lowQualityQuery.title": "Sorgu kalitesinin incelenmesi gerekiyor",
   "overview.attention.staleSource.description": "Bu kaynak hiç başarıyla eşitlenmedi veya son başarılı eşitlemenin üzerinden 7 günden fazla zaman geçti.",
   "overview.attention.staleSource.title": "Kaynak verileri güncel değil",

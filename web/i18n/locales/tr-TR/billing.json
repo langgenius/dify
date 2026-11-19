@@ -93,7 +93,7 @@
   "plansCommon.modelProviders": "OpenAI/Anthropic/Llama2/Azure OpenAI/Hugging Face/Replicate Desteği",
   "plansCommon.month": "ay",
   "plansCommon.mostPopular": "En Popüler",
-  "plansCommon.priceTip": "iş alanı başına/",
+  "plansCommon.priceTip": "çalışma alanı başına/",
   "plansCommon.priority.priority": "Öncelikli",
   "plansCommon.priority.standard": "Standart",
   "plansCommon.priority.top-priority": "En Öncelikli",
