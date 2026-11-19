@@ -144,6 +144,29 @@ describe('useDocumentActions', () => {
       expect(mockToastError).toHaveBeenCalledWith(expect.any(String))
       expect(defaultOptions.onUpdate).not.toHaveBeenCalled()
     })
+
+    it('reports deletion failure to the confirmation and preserves selection for retry', async () => {
+      const error = new Error('Deletion failed')
+      mockDelete.mockRejectedValueOnce(error).mockResolvedValueOnce({ result: 'success' })
+      const { result } = renderHook(() => useDocumentActions(defaultOptions))
+
+      await act(async () => {
+        await expect(result.current.handleAction(DocumentActionType.delete)()).rejects.toThrow(
+          error,
+        )
+      })
+
+      expect(mockToastError).toHaveBeenCalledWith('Deletion failed')
+      expect(defaultOptions.onClearSelection).not.toHaveBeenCalled()
+      expect(defaultOptions.onUpdate).not.toHaveBeenCalled()
+
+      await act(async () => {
+        await result.current.handleAction(DocumentActionType.delete)()
+      })
+
+      expect(defaultOptions.onClearSelection).toHaveBeenCalledOnce()
+      expect(defaultOptions.onUpdate).toHaveBeenCalledOnce()
+    })
   })
 
   describe('handleBatchReIndex', () => {
