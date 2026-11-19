@@ -4,10 +4,26 @@ from typing import cast
 
 from flask import current_app, got_request_exception
 
+from core.app.apps.base_app_generate_response_converter import (
+    ModerationRejectedHTTPError,
+    ModerationUnavailableHTTPError,
+    moderation_http_exception,
+)
 from core.logging.context import get_request_id
 from libs.exception import BaseHTTPException
 from libs.external_api import ExternalApi
+from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.errors.base import NoPermissionError
+from services.moderation_invocation_errors import (
+    ModerationRejectedInvocationError,
+    ModerationUnavailableInvocationError,
+)
+
+
+class PaidPlanRequiredError(BaseHTTPException):
+    error_code = "paid_plan_required"
+    description = "This feature requires a paid plan."
+    code = 403
 
 
 class FilenameNotExistsError(BaseHTTPException):
@@ -169,7 +185,7 @@ class InvalidArgumentError(BaseHTTPException):
 def register_permission_error_handler(api: ExternalApi) -> None:
     """Preserve the default permission-error response for Console and Service API."""
 
-    @api.errorhandler(NoPermissionError)
+    @api.errorhandler(NoPermissionError)  # pyrefly: ignore[not-callable] - Flask-RESTX errorhandler overload
     def handle_permission_error(error: NoPermissionError) -> tuple[dict[str, str | int], int]:
         got_request_exception.send(current_app, exception=error)
         return {
@@ -181,3 +197,63 @@ def register_permission_error_handler(api: ExternalApi) -> None:
     # Flask-RESTX picks the first matching handler, including the generic Exception handler.
     cast(OrderedDict[type[Exception], object], api.error_handlers).move_to_end(NoPermissionError, last=False)
     api.document_error_handler(NoPermissionError, status=HTTPStatus.BAD_REQUEST, code=InvalidArgumentError.error_code)
+
+
+def register_credential_refresh_error_handler(api: ExternalApi) -> None:
+    """Give temporary refresh failures the same retryable response on each API surface.
+
+    Preconditions: The API supports exception-specific error registration.
+    Postconditions: Refresh failures return HTTP 503 before the generic handler.
+    Existing exception handlers and public error documentation remain registered.
+    """
+    register_handler = api.errorhandler(CredentialRefreshUnavailableError)
+    assert callable(register_handler)
+
+    @register_handler
+    def handle_refresh_unavailable(error: CredentialRefreshUnavailableError) -> tuple[dict[str, str | int], int]:
+        got_request_exception.send(current_app, exception=error)
+        status = HTTPStatus.SERVICE_UNAVAILABLE
+        return {"code": "service_unavailable", "message": str(error), "status": status.value}, status.value
+
+    handlers: object = api.error_handlers
+    assert isinstance(handlers, OrderedDict)
+    handlers.move_to_end(CredentialRefreshUnavailableError, last=False)
+    api.document_error_handler(
+        CredentialRefreshUnavailableError, status=HTTPStatus.SERVICE_UNAVAILABLE, code="service_unavailable"
+    )
+
+
+def register_moderation_error_handlers(api: ExternalApi) -> None:
+    """Preserve model moderation error codes for non-streaming requests.
+
+    Preconditions: The API supports exception-specific registration and ordered
+    handlers. Postconditions: Rejections return 400 and unavailable checks return
+    503 before ValueError or generic handlers; both codes are documented without
+    changing unrelated error responses.
+    """
+
+    def handle_moderation_error(
+        error: ModerationRejectedInvocationError | ModerationUnavailableInvocationError,
+    ) -> tuple[dict[str, str | int], int]:
+        got_request_exception.send(current_app, exception=error)
+        http_error = moderation_http_exception(error)
+        assert http_error.code is not None
+        assert http_error.description is not None
+        return {
+            "code": http_error.error_code,
+            "message": http_error.description,
+            "status": http_error.code,
+        }, http_error.code
+
+    for error_type, http_error_type in (
+        (ModerationRejectedInvocationError, ModerationRejectedHTTPError),
+        (ModerationUnavailableInvocationError, ModerationUnavailableHTTPError),
+    ):
+        register_handler = api.errorhandler(error_type)
+        assert callable(register_handler)
+        register_handler(handle_moderation_error)
+        handlers: object = api.error_handlers
+        assert isinstance(handlers, OrderedDict)
+        handlers.move_to_end(error_type, last=False)
+        assert http_error_type.code is not None
+        api.document_error_handler(error_type, status=http_error_type.code, code=http_error_type.error_code)

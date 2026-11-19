@@ -52,8 +52,8 @@ export function ResourceAccessRuleSection({
   const updateRule = useMutation(
     consoleQuery.workspaces.current.rbac.accessPolicies.byPolicyId.put.mutationOptions(),
   )
-  const rules = (rulesQuery.data?.pages.flatMap((page) => page.items ?? []) ?? []).flatMap(
-    (rule) => (rule.policy ? [{ ...rule, policy: rule.policy }] : []),
+  const rules = (rulesQuery.data?.pages.flatMap((page) => page.items ?? []) ?? []).flatMap((rule) =>
+    rule.policy ? [{ ...rule, policy: rule.policy }] : [],
   )
 
   const submit = async ({ name, description, permissionKeys }: PermissionSetFormValues) => {

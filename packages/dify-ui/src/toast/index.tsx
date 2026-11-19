@@ -162,6 +162,7 @@ function ToastCard({ toast: toastItem }: { toast: ToastObject<ToastData> }) {
       )}
     >
       <div className="relative h-full overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
+        {/* Same type-to-halo and type-to-icon mapping as Alert; change both together. */}
         <div
           aria-hidden="true"
           className={cn(

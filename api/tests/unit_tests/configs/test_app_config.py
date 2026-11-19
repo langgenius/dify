@@ -11,36 +11,19 @@ from yarl import URL
 
 from configs.app_config import DifyConfig
 from configs.deploy import IMEventTransportMode
-from configs.feature import OpsTraceConfig
+from configs.feature import EvaluationConfig, OpsTraceConfig
 from enums import DeploymentEdition
 
 
-def test_ops_trace_config_rejects_parent_context_ttl_shorter_than_retry_window() -> None:
-    with pytest.raises(ValidationError, match="must cover the retry window"):
-        OpsTraceConfig(
-            OPS_TRACE_UNIFIED_ENABLED=True,
-            OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES=4,
-            OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS=5,
-            OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS=19,
-        )
+def test_ops_trace_export_attempts_must_be_positive() -> None:
+    with pytest.raises(ValidationError, match="OPS_TRACE_EXPORT_MAX_ATTEMPTS"):
+        OpsTraceConfig(OPS_TRACE_EXPORT_MAX_ATTEMPTS=0)
 
 
-def test_ops_trace_config_skips_parent_context_validation_when_unified_tracing_is_disabled() -> None:
-    OpsTraceConfig(
-        OPS_TRACE_UNIFIED_ENABLED=False,
-        OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES=4,
-        OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS=5,
-        OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS=19,
-    )
-
-
-def test_ops_trace_config_accepts_parent_context_ttl_covering_retry_window() -> None:
-    OpsTraceConfig(
-        OPS_TRACE_UNIFIED_ENABLED=True,
-        OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES=4,
-        OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS=5,
-        OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS=20,
-    )
+@pytest.mark.parametrize("queue", ["", " ", "ops_trace,ops_trace_v2", "ops trace", "ops_trace\n"])
+def test_ops_trace_queue_requires_one_shell_safe_queue_name(queue: str) -> None:
+    with pytest.raises(ValidationError, match="OPS_TRACE_QUEUE"):
+        OpsTraceConfig(OPS_TRACE_QUEUE=queue)
 
 
 @pytest.mark.parametrize(
@@ -67,6 +50,24 @@ def test_im_event_transport_mode_defaults_to_webhook() -> None:
 def test_im_event_transport_mode_rejects_invalid_values() -> None:
     with pytest.raises(ValidationError, match="HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE"):
         _make_config(HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE="SOCKET")
+
+
+def test_evaluation_config_rejects_heartbeat_interval_not_shorter_than_lease() -> None:
+    with pytest.raises(ValidationError, match="heartbeat interval must be shorter than the lease timeout"):
+        EvaluationConfig(
+            EVALUATION_RUN_HEARTBEAT_INTERVAL=60,
+            EVALUATION_RUN_LEASE_TIMEOUT=60,
+        )
+
+
+def test_evaluation_config_accepts_heartbeat_interval_shorter_than_lease() -> None:
+    config = EvaluationConfig(
+        EVALUATION_RUN_HEARTBEAT_INTERVAL=30,
+        EVALUATION_RUN_LEASE_TIMEOUT=180,
+    )
+
+    assert config.EVALUATION_RUN_MAX_RETRIES == 3
+    assert config.EVALUATION_RUN_RETRY_DELAY == 30
 
 
 class _IsolatedDifyConfig(DifyConfig):
@@ -135,8 +136,9 @@ def test_dify_config() -> None:
     assert config.TEMPLATE_TRANSFORM_MAX_LENGTH == 400_000
     assert config.APP_MAX_EXECUTION_TIME == 3600
     assert config.WORKFLOW_MAX_EXECUTION_TIME == 3600
-    assert config.OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES == 780
-    assert config.OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS == 3900
+    assert config.OPS_TRACE_EXPORT_MAX_ATTEMPTS == 6
+    assert config.OPS_TRACE_QUEUE == "ops_trace_v2"
+    assert config.ENABLE_TRACE_PAYLOAD_SWEEP_TASK is True
     assert config.GRAPH_ENGINE_MAX_WORKERS == 10
 
     # annotated field with custom configured value
@@ -147,6 +149,21 @@ def test_dify_config() -> None:
 
     # values from pyproject.toml
     assert Version(config.project.version) >= Version("1.0.0")
+
+
+def test_dify_config_ignores_removed_trace_dispatch_settings() -> None:
+    removed = {
+        "OPS_TRACE_UNIFIED_ENABLED": "true",
+        "OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES": "780",
+        "OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS": "5",
+        # Shorter than the old retry window, which used to fail startup.
+        "OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS": "19",
+    }
+
+    config = _make_config(**removed)
+
+    assert not any(hasattr(config, name) for name in removed)
+    assert config.OPS_TRACE_EXPORT_MAX_ATTEMPTS == 6
 
 
 @pytest.mark.parametrize(

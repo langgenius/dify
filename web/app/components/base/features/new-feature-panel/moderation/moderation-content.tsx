@@ -77,10 +77,9 @@ const ModerationContent: FC<ModerationContentProps> = ({
               }
               value={presetResponse}
               className="size-full resize-none pb-8"
-              placeholder={
-                t(($) => $['feature.moderation.modal.content.placeholder'], { ns: 'appDebug' }) ||
-                ''
-              }
+              placeholder={t(($) => $['feature.moderation.modal.content.placeholder'], {
+                ns: 'appDebug',
+              })}
               onValueChange={handlePresetResponseChange}
             />
             <div className="absolute right-2 bottom-2 flex h-5 items-center rounded-md bg-background-section px-1 system-2xs-medium-uppercase text-text-quaternary">

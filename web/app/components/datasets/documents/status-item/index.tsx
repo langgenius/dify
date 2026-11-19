@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { asyncRunSafe } from '@/utils'
+import { getErrorMessage } from '@/utils/error-message'
 import { useIndexStatus } from './hooks'
 
 const STATUS_TEXT_COLOR_MAP: Record<StatusDotStatus, string> = {
@@ -58,9 +59,11 @@ const StatusItem = ({
   const { enabled = false, archived = false, id = '' } = detail || {}
   const documents = consoleQuery.datasets.byDatasetId.documents
   const { mutateAsync: changeDocumentStatus } = useMutation(
-    documents.status.byAction.batch.patch.mutationOptions(),
+    documents.status.byAction.batch.patch.mutationOptions({ context: { silent: true } }),
   )
-  const { mutateAsync: deleteDocuments } = useMutation(documents.delete.mutationOptions())
+  const { mutateAsync: deleteDocuments } = useMutation(
+    documents.delete.mutationOptions({ context: { silent: true } }),
+  )
   const onOperate = async (operationName: OperationName) => {
     if (!canEdit) return
 
@@ -75,7 +78,9 @@ const StatusItem = ({
     if (!e) {
       onUpdate?.(operationName)
     } else {
-      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      toast.error(
+        getErrorMessage(e) ?? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+      )
     }
   }
   const { run: handleSwitch } = useDebounceFn(

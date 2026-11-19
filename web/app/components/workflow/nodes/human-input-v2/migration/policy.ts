@@ -121,3 +121,35 @@ export const canInsertHumanInputNodes = (
   if (hasIncomingV2 && hasIncomingLegacy) return false
   return humanInputNodes.every((node) => canInsertHumanInput(nodes, node.data.type, node.data))
 }
+
+export type HumanInputInsertionBlocker =
+  | 'disabled'
+  | 'unsupported-version'
+  | 'migration-required'
+  | 'incompatible-versions'
+
+export const getHumanInputInsertionBlocker = (
+  nodes: Pick<Node, 'data'>[],
+  nodeType: BlockEnum,
+  data?: Pick<CommonNodeType, 'type'> & { version?: unknown },
+): HumanInputInsertionBlocker | undefined => {
+  if (canInsertHumanInput(nodes, nodeType, data)) return undefined
+  if (data?.version !== undefined && data.version !== '1' && data.version !== '2')
+    return 'unsupported-version'
+  if (!ENABLE_HITL_IM) return 'disabled'
+  if (nodes.some((node) => classifyHumanInputVersion(node.data) === HumanInputVersionKind.V2))
+    return 'incompatible-versions'
+  return 'migration-required'
+}
+
+export const getHumanInputNodesInsertionBlocker = (
+  nodes: Pick<Node, 'data'>[],
+  incomingNodes: Pick<Node, 'data'>[],
+): HumanInputInsertionBlocker | undefined => {
+  if (canInsertHumanInputNodes(nodes, incomingNodes)) return undefined
+  for (const node of incomingNodes) {
+    const blocker = getHumanInputInsertionBlocker(nodes, node.data.type, node.data)
+    if (blocker) return blocker
+  }
+  return 'incompatible-versions'
+}

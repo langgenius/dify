@@ -7,6 +7,7 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ENABLE_HITL_IM } from '@/config'
+import { HumanInputSubmissionPreparationError } from '@/service/human-input-submission'
 import ContentItem from './content-item'
 import {
   getButtonStyle,
@@ -45,13 +46,11 @@ const HumanInputFormContent = ({ formData, onSubmit }: HumanInputFormProps) => {
       await onSubmit?.(formToken, {
         inputs: getProcessedHumanInputFormInputs(renderedFormInputs, inputs) || {},
         action: actionID,
+        form_version: formData.form_version,
       })
     } catch (error) {
-      setSubmissionError(
-        error instanceof Error && error.message
-          ? error.message
-          : t(($) => $['api.actionFailed'], { ns: 'common' }),
-      )
+      if (error instanceof HumanInputSubmissionPreparationError)
+        setSubmissionError(t(($) => $['api.actionFailed'], { ns: 'common' }))
     } finally {
       setIsSubmitting(false)
     }

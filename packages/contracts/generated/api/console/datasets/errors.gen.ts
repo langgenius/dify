@@ -122,11 +122,50 @@ const zChildChunkDeleteIndexError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zPaidPlanRequiredError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('paid_plan_required'),
+      status: z.literal(403),
+    }),
+  ))()
+
 const zCompletionRequestError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
       code: z.literal('completion_request_error'),
       status: z.literal(400),
+    }),
+  ))()
+
+const zKnowledgeFsUpgradeModelIssueResponse = /* @__PURE__ */ (() =>
+  z.object({
+    field: z.enum(['embedding', 'reasoning', 'rerank']),
+    model: z.string().nullish(),
+    provider: z.string().nullish(),
+    reason: z.enum([
+      'credential-removed',
+      'deprecated',
+      'disabled',
+      'missing',
+      'no-configure',
+      'no-permission',
+      'not_found',
+      'quota-exceeded',
+    ]),
+  }))()
+
+const zKnowledgeFsUpgradeModelErrorDetailsResponse = /* @__PURE__ */ (() =>
+  z.object({
+    issues: z.array(zKnowledgeFsUpgradeModelIssueResponse).min(1).max(3),
+  }))()
+
+const zKnowledgeFsUpgradeModelsUnavailableError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('knowledge_fs_upgrade_models_unavailable'),
+      details: zKnowledgeFsUpgradeModelErrorDetailsResponse.optional(),
+      status: z.literal(422),
     }),
   ))()
 
@@ -243,23 +282,50 @@ export const post15Errors = {
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
 }
 
-export const post16Errors = {
+export const get27Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+
+export const get28Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+
+export const get29Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+
+export const post16Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+
+export const post17Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+
+export const post18Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+
+export const get30Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+
+export const post19Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+
+export const get31Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+
+export const put2Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+
+export const post20Errors = {
   dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
 }
 
-export const post17Errors = {
+export const post21Errors = {
   completion_request_error: { status: 400, data: zCompletionRequestError },
   model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
   provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
 }
 
-export const get31Errors = {
+export const post23Errors = {
+  knowledge_fs_upgrade_models_unavailable: {
+    status: 422,
+    data: zKnowledgeFsUpgradeModelsUnavailableError,
+  },
+}
+
+export const get37Errors = {
   dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
 }
 
-export const post23Errors = { max_keys_exceeded: { status: 400, data: zMaxKeysExceededError } }
+export const post27Errors = { max_keys_exceeded: { status: 400, data: zMaxKeysExceededError } }
 
-export const post24Errors = {
+export const post28Errors = {
   dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
 }

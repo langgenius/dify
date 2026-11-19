@@ -1174,7 +1174,7 @@ describe('useConfiguration utils', () => {
     expect(mockToastWarning).toHaveBeenCalledWith(
       'modelProvider.parametersInvalidRemoved: top_k (unsupported)',
     )
-    expect(mockToastError).toHaveBeenCalledWith('error')
+    expect(mockToastError).toHaveBeenCalledExactlyOnceWith('boom')
     expect(setCompletionParams).toHaveBeenCalledWith({})
   })
 })

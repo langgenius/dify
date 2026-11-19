@@ -14,10 +14,16 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.console.human_input_v2 import form as controller
 from core.human_input import ButtonStyle
-from core.human_input_v2.resolved_form import MarkdownFragment, ParagraphInput, ResolvedForm, UserAction
+from core.human_input_v2.resolved_form import (
+    MarkdownFragment,
+    ParagraphDefaultConfig,
+    ParagraphInput,
+    ResolvedForm,
+    UserAction,
+)
 from core.human_input_v2.shared.values import ContactId, TenantId
 from core.tools.signature import sign_tool_file, verify_tool_file_signature
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
 from core.workflow.nodes.human_input_v2.entities import Contact
 from dify_app import DifyApp
 from enums import DeploymentEdition
@@ -56,8 +62,34 @@ class ConsoleForm:
     actor: Account | None
 
 
+@pytest.fixture(scope="module")
+def console_app() -> DifyApp:
+    """One app with the console namespace, which takes a few hundred milliseconds to mount.
+
+    Each request logs in the actor of the scenario the running test stored under
+    ``extensions["test_console_form"]``, read per request so tests can change it.
+    """
+    app = DifyApp(__name__)
+    manager = DifyLoginManager(app)
+
+    @manager.unauthorized_handler
+    def unauthorized() -> Response:
+        return Response(
+            '{"code":"unauthorized","message":"Login required","status":401}', status=401, mimetype="application/json"
+        )
+
+    @app.before_request
+    def load_session_actor() -> None:
+        g._login_user = app.extensions["test_console_form"].actor
+
+    ExternalApi(app).add_namespace(controller.console_ns, path="/console/api")
+    return app
+
+
 @pytest.fixture
-def console_form(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch) -> ConsoleForm:
+def console_form(
+    console_app: DifyApp, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> ConsoleForm:
     tenant = make_tenant(tenant_id=str(uuid4()))
     active_tenant = make_tenant(tenant_id=str(uuid4()))
     account = make_account(account_id=str(uuid4()), tenant=active_tenant)
@@ -82,7 +114,13 @@ def console_form(sqlite_session_factory: sessionmaker[Session], monkeypatch: pyt
                     title="Frozen approval",
                     parts=(
                         MarkdownFragment(text="Review: "),
-                        ParagraphInput(output_variable_name="note", default_value="Draft"),
+                        ParagraphInput(
+                            output_variable_name="note",
+                            resolved_default_value="Draft",
+                            default_config=ParagraphDefaultConfig(
+                                type=ValueSourceType.VARIABLE, selector=("seed", "note"), value=""
+                            ),
+                        ),
                     ),
                     actions=(UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),),
                     legacy_form_content="Review: {{#$output.note#}}",
@@ -113,22 +151,10 @@ def console_form(sqlite_session_factory: sessionmaker[Session], monkeypatch: pyt
     monkeypatch.setattr("services.human_input_v2.submission_service.naive_utc_now", lambda: _NOW)
     # Isolate session decoding and CSRF; keep the route's login and Contact authorization real.
     monkeypatch.setattr("libs.login.check_csrf_token", lambda _request, _user_id: None)
-    app = DifyApp(__name__)
-    manager = DifyLoginManager(app)
-
-    @manager.unauthorized_handler
-    def unauthorized() -> Response:
-        return Response(
-            '{"code":"unauthorized","message":"Login required","status":401}', status=401, mimetype="application/json"
-        )
-
-    scenario = ConsoleForm(app.test_client(), sqlite_session_factory, form, recipient, ContactId(identity.id), account)
-
-    @app.before_request
-    def load_session_actor() -> None:
-        g._login_user = scenario.actor
-
-    ExternalApi(app).add_namespace(controller.console_ns, path="/console/api")
+    scenario = ConsoleForm(
+        console_app.test_client(), sqlite_session_factory, form, recipient, ContactId(identity.id), account
+    )
+    monkeypatch.setitem(console_app.extensions, "test_console_form", scenario)
     return scenario
 
 
@@ -173,7 +199,7 @@ def test_reads_refresh_file_signatures_without_changing_the_snapshot(
         update={
             "parts": (
                 MarkdownFragment(text=f"[Report]({old_url}) "),
-                ParagraphInput(output_variable_name="note", default_value="Draft"),
+                ParagraphInput(output_variable_name="note", resolved_default_value="Draft"),
             ),
             "legacy_form_content": content,
         }

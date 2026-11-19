@@ -6,6 +6,7 @@ const DATASET_COLLECTION_ROUTES = new Set(['create', 'create-from-pipeline', 'co
 
 export type MainNavRouteConfig = {
   key: string
+  ns?: 'navigation' | 'contacts'
   href: string
   active: (pathname: string) => boolean
   icon: string
@@ -83,6 +84,7 @@ export const MAIN_NAV_ROUTES = [
     key: 'contacts',
     href: '/contacts',
     labelKey: 'directory.title',
+    ns: 'contacts',
     active: (path: string) => isPathUnderRoute(path, '/contacts'),
     icon: 'i-ri-contacts-book-2-line',
     activeIcon: 'i-ri-contacts-book-2-fill',
@@ -162,10 +164,7 @@ export function shouldHideMainNavigation(pathname: string) {
   const [section, namespace, knowledgeSpaceId] = pathname.split('/').filter(Boolean)
 
   return (
-    (section === 'datasets' &&
-      namespace === 'new' &&
-      !!knowledgeSpaceId &&
-      knowledgeSpaceId !== 'create') ||
+    (section === 'datasets' && namespace === 'new' && !!knowledgeSpaceId) ||
     isSkillDetailPathname(pathname)
   )
 }

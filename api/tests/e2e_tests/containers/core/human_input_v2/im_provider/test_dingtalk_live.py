@@ -18,7 +18,7 @@ import pytest
 from alibabacloud_dingtalk.robot_1_0.models import BatchOTOQueryHeaders, BatchOTOQueryRequest
 from alibabacloud_tea_util.models import RuntimeOptions
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
-from Tea.exceptions import RetryError, TeaException, UnretryableException, ValidateException
+from Tea.exceptions import RetryError, TeaException, ValidateException
 
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
@@ -300,7 +300,7 @@ def _wait_for_message_send_success(
                     read_timeout=_SDK_TIMEOUT_MILLISECONDS,
                 ),
             )
-        except (RetryError, TeaException, UnretryableException, ValidateException):
+        except (RetryError, TeaException, ValidateException):
             _fail("DingTalk live message status query failed")
         if not isinstance(response.status_code, int) or not 200 <= response.status_code < 300:
             _fail("DingTalk live message status query returned a non-success status")

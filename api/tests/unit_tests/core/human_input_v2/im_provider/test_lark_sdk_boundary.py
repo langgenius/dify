@@ -153,8 +153,8 @@ def _live_intent(mode: str) -> ResolvedForm:
         title=f"Lark {mode} fixture capture",
         parts=(
             MarkdownFragment(text="Lark confirmed card form."),
-            ParagraphInput(output_variable_name="comment", default_value=None),
-            SelectInput(output_variable_name="decision", options=("ship", "hold"), default_value="hold"),
+            ParagraphInput(output_variable_name="comment", resolved_default_value=None),
+            SelectInput(output_variable_name="decision", options=("ship", "hold"), resolved_default_value="hold"),
         ),
         actions=(
             UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),
@@ -210,8 +210,9 @@ class _RecordedSDKStreamClient:
             event_handler=self._dispatcher,
             domain=self._domain,
         )
-        client._write_message = self._write
-        await client._handle_data_frame(self._frame)
+        with pytest.MonkeyPatch.context() as monkeypatch:
+            monkeypatch.setattr(client, "_write_message", self._write)
+            await client._handle_data_frame(self._frame)
 
     def start(self) -> None:
         asyncio.run(self._deliver())
@@ -321,8 +322,10 @@ def _intent() -> ResolvedForm:
         title="Lark unit test capture",
         parts=(
             MarkdownFragment(text="Protocol capture for **Lark** unit tests."),
-            ParagraphInput(output_variable_name="comment", default_value="Initial comment"),
-            SelectInput(output_variable_name="decision", options=("Approve", "Reject"), default_value="Approve"),
+            ParagraphInput(output_variable_name="comment", resolved_default_value="Initial comment"),
+            SelectInput(
+                output_variable_name="decision", options=("Approve", "Reject"), resolved_default_value="Approve"
+            ),
         ),
         actions=(UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),),
         legacy_form_content="",

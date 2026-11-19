@@ -178,7 +178,9 @@ const ModelLoadBalancingModal = ({
     [extendedSecretFormSchemas, originalConfigMap],
   )
   const { mutateAsync: updateModelLoadBalancingConfig } = useMutation(
-    consoleQuery.workspaces.current.modelProviders.byProvider.models.post.mutationOptions(),
+    consoleQuery.workspaces.current.modelProviders.byProvider.models.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const initialCustomModelCredential = useMemo(() => {
     if (!current_credential_id) return undefined
@@ -237,11 +239,10 @@ const ModelLoadBalancingModal = ({
     onClose?.()
   }, [handleConfirmDelete, onClose])
   const handleUpdate = useCallback(
-    async (payload?: any, formValues?: Record<string, any>) => {
+    async (modelCredential?: Credential, formValues?: Record<string, unknown>) => {
       const result = await refetch()
       const available_credentials = result.data?.available_credentials || []
       const credentialName = formValues?.__authorization_name__
-      const modelCredential = payload?.credential
       if (!available_credentials.length) {
         onClose?.()
         return
@@ -327,7 +328,7 @@ const ModelLoadBalancingModal = ({
             </DialogTitle>
             {Boolean(model) && (
               <div className="flex h-5 items-center">
-                <ModelIcon className="mr-2 shrink-0" provider={provider} modelName={model!.model} />
+                <ModelIcon className="me-2 shrink-0" provider={provider} modelName={model!.model} />
                 <ModelName
                   className="grow system-md-regular text-text-secondary"
                   modelItem={model!}

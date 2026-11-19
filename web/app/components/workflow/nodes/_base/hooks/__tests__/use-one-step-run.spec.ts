@@ -64,7 +64,7 @@ const renderUseOneStepRun = (type: BlockEnum = BlockEnum.IfElse) => {
     () =>
       useOneStepRun({
         id: 'if-else-node',
-        resource: { kind: 'app', appId: 'app-id', mode: 'workflow' },
+        resource: { kind: 'app', collaborationEnabled: false, appId: 'app-id', mode: 'workflow' },
 
         data: {
           type,
@@ -76,7 +76,7 @@ const renderUseOneStepRun = (type: BlockEnum = BlockEnum.IfElse) => {
         isPaused: false,
       }),
     {
-      resource: { kind: 'app', appId: 'app-id', mode: 'workflow' },
+      resource: { kind: 'app', collaborationEnabled: false, appId: 'app-id', mode: 'workflow' },
       nodes,
       edges,
       historyStore: { nodes, edges },
@@ -178,6 +178,28 @@ describe('useOneStepRun single-run input vars', () => {
     },
   )
 
+  it.each([BlockEnum.TriggerSchedule, BlockEnum.TriggerWebhook, BlockEnum.TriggerPlugin])(
+    'reports a %s business failure once before stopping the run',
+    async (type) => {
+      runTrigger.mockResolvedValueOnce({
+        id: 'execution-1',
+        status: 'error',
+        message: 'Trigger rejected',
+      })
+      const notifyError = vi.spyOn(toast, 'error')
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      const { result, store } = renderUseOneStepRun(type)
+
+      await act(async () => {
+        expect(await result.current.handleRun({})).toBe(false)
+      })
+
+      expect(await screen.findByText('Trigger rejected')).toBeInTheDocument()
+      expect(notifyError).toHaveBeenCalledExactlyOnceWith('Trigger rejected')
+      expect(store.getState().isListening).toBe(false)
+    },
+  )
+
   it('preserves the plugin request error and metadata when reporting a failed run', async () => {
     const error = new ORPCError('forbidden', {
       status: 403,
@@ -205,7 +227,7 @@ describe('useOneStepRun single-run input vars', () => {
       const { result } = renderHook(() =>
         useOneStepRun<HumanInputV2NodeType>({
           id: 'human-v2',
-          resource: { kind: 'app', appId: 'app-id', mode: 'workflow' },
+          resource: { kind: 'app', collaborationEnabled: false, appId: 'app-id', mode: 'workflow' },
 
           data: {
             type: BlockEnum.HumanInput,

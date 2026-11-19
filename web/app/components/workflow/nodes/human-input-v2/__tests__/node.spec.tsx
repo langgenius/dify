@@ -1,9 +1,9 @@
 import type { HumanInputV2NodeType } from '../types'
-import { render, screen } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { UserActionButtonType } from '../../human-input/shared/types'
 import { HumanInputV2Node } from '../node'
-import { mockContactRecipientOptionProvider } from './fixtures/contact-provider'
+import { contactApi, renderContactOwner as render, resetContactApi } from './fixtures/contact-api'
 
 const mockHitlIm = vi.hoisted(() => ({ enabled: true }))
 
@@ -14,17 +14,9 @@ vi.mock('@/config', async (importOriginal) => ({
   },
 }))
 
-vi.mock('../contact-provider', async (importOriginal) => {
-  const { mockContactRecipientOptionProvider } = await import('./fixtures/contact-provider')
-  const actual = await importOriginal<typeof import('../contact-provider')>()
-  return {
-    ...actual,
-    useContactRecipientOptionProvider: () => ({
-      provider: mockContactRecipientOptionProvider,
-      workspaceId: 'workspace-1',
-    }),
-  }
-})
+vi.mock('@/service/console', async () => ({
+  consoleQuery: (await import('./fixtures/contact-api')).testConsoleQuery,
+}))
 
 vi.mock('../../_base/components/node-handle', () => ({
   NodeSourceHandle: (props: { handleId: string }) => <div>{`handle:${props.handleId}`}</div>,
@@ -49,6 +41,7 @@ const createData = (overrides: Partial<HumanInputV2NodeType> = {}): HumanInputV2
 describe('Human Input v2 node card', () => {
   beforeEach(() => {
     mockHitlIm.enabled = true
+    resetContactApi()
   })
 
   it('renders the empty recipient warning and shared branch handles', () => {
@@ -98,7 +91,7 @@ describe('Human Input v2 node card', () => {
     ).toBeInTheDocument()
   })
 
-  it('renders deterministic overflow and unresolved states', () => {
+  it('renders deterministic overflow and unresolved states', async () => {
     const { rerender } = render(
       <HumanInputV2Node
         id="human-input-v2"
@@ -122,7 +115,7 @@ describe('Human Input v2 node card', () => {
         data={createData({ recipients_spec: [{ type: 'contact', contact_id: 'unresolved' }] })}
       />,
     )
-    expect(screen.getByText('workflow.nodes.humanInputV2.card.invalid')).toBeInTheDocument()
+    expect(await screen.findByText('workflow.nodes.humanInputV2.card.invalid')).toBeInTheDocument()
   })
 
   it('summarizes all workspace contacts distinctly from the initiator and preserves mixed recipients', () => {
@@ -158,7 +151,7 @@ describe('Human Input v2 node card', () => {
 
 it('preserves stored v2 branches without resolving contacts or exposing recipient summaries while disabled', () => {
   mockHitlIm.enabled = false
-  const resolve = vi.spyOn(mockContactRecipientOptionProvider, 'resolve')
+  contactApi.batch.mockClear()
   const data = createData({ recipients_spec: [{ type: 'contact', contact_id: 'stored-contact' }] })
   const original = structuredClone(data)
   render(<HumanInputV2Node id="human-input-v2" data={data} />)
@@ -167,7 +160,28 @@ it('preserves stored v2 branches without resolving contacts or exposing recipien
   expect(screen.getByText('handle:approve')).toBeInTheDocument()
   expect(screen.getByText('handle:__timeout')).toBeInTheDocument()
   expect(screen.queryByText('workflow.nodes.humanInputV2.recipients.title')).not.toBeInTheDocument()
-  expect(resolve).not.toHaveBeenCalled()
+  expect(contactApi.batch).not.toHaveBeenCalled()
   expect(data).toEqual(original)
-  resolve.mockRestore()
+})
+
+it('does not show a deleted-contact warning while the lookup is pending or rejected', async () => {
+  mockHitlIm.enabled = true
+  resetContactApi()
+  let reject!: (error: Error) => void
+  contactApi.batch.mockImplementation(
+    () =>
+      new Promise((_, fail) => {
+        reject = fail
+      }),
+  )
+  render(
+    <HumanInputV2Node
+      id="human-input-v2"
+      data={createData({ recipients_spec: [{ type: 'contact', contact_id: 'pending' }] })}
+    />,
+  )
+  await waitFor(() => expect(contactApi.batch).toHaveBeenCalled())
+  expect(screen.queryByText('workflow.nodes.humanInputV2.card.invalid')).not.toBeInTheDocument()
+  await act(async () => reject(new Error('offline')))
+  expect(screen.queryByText('workflow.nodes.humanInputV2.card.invalid')).not.toBeInTheDocument()
 })

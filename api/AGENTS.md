@@ -40,10 +40,13 @@ changes, and CI checks the PR against its target revision.
 ## Billing And SaaS Calls
 
 - Call billing and saas only through the generated functions in `services/billing_client`; do not hand-write paths or response types.
+- Ruff's banned-api rule (TID251) enforces this: outside `services/billing_client`, reading the billing URL and secret settings or calling `transport.request` fails lint.
 - To call a new endpoint, add it to `ALLOWED_OPERATIONS` in `dev/generate_billing_client.py` and rerun that script against a dify-saas checkout. Never edit the generated modules or snapshots by hand.
 
 ## Typing Best Practises
 
+- Use `StrEnum` instead of `Literal["a", "b", ...]` for multiple string alternatives.
+- Single-value `Literal["tag"]` is allowed for tagged unions.
 - Treat nullable types (`T | None`) strictly as union types; document the semantic meaning for each branch.
 - Treat default parameter values as introducing distinct function overloads; verify that every added default has demonstrable practical utility and avoids masking unsafe runtime states.
 

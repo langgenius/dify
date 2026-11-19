@@ -8,7 +8,9 @@ import type {
   ConversationVariable,
   EnvironmentVariable,
 } from '@/app/components/workflow/types'
+import type { ConsoleClientContext } from '@/service/console'
 import type { FetchWorkflowDraftResponse, HumanInputFormData, VarInInspect } from '@/types/workflow'
+import { zConsoleHumanInputV2SubmitPayload } from '@dify/contracts/api/console/form/zod.gen'
 import { consoleClient } from '@/service/console'
 import { get } from './base'
 
@@ -122,21 +124,27 @@ export const fetchNodeInspectVars = async (resource: EditorResource, nodeId: str
   }
 }
 
-export const updateEnvironmentVariables = ({
-  appId,
-  environmentVariables,
-  deletedEnvironmentVariableIds,
-}: {
-  appId: string
-} & EnvironmentVariablePatch) => {
-  return consoleClient.apps.byAppId.workflows.draft.environmentVariables.post({
-    params: { app_id: appId },
-    body: {
-      environment_variables: environmentVariables,
-      patch: true,
-      deleted_environment_variable_ids: deletedEnvironmentVariableIds,
+export const updateEnvironmentVariables = (
+  {
+    appId,
+    environmentVariables,
+    deletedEnvironmentVariableIds,
+  }: {
+    appId: string
+  } & EnvironmentVariablePatch,
+  context?: ConsoleClientContext,
+) => {
+  return consoleClient.apps.byAppId.workflows.draft.environmentVariables.post(
+    {
+      params: { app_id: appId },
+      body: {
+        environment_variables: environmentVariables,
+        patch: true,
+        deleted_environment_variable_ids: deletedEnvironmentVariableIds,
+      },
     },
-  })
+    { context },
+  )
 }
 
 export const updateConversationVariables = ({
@@ -172,15 +180,22 @@ export const submitHumanInputForm = (
     action: string
   },
   formVersion?: HumanInputFormData['form_version'],
+  context?: ConsoleClientContext,
 ) => {
   if (formVersion === '2') {
-    return consoleClient.form.humanInput.v2.byFormToken.post({
+    return consoleClient.form.humanInput.v2.byFormToken.post(
+      {
+        params: { form_token: token },
+        body: zConsoleHumanInputV2SubmitPayload.parse(data),
+      },
+      { context },
+    )
+  }
+  return consoleClient.form.humanInput.byFormToken.post(
+    {
       params: { form_token: token },
       body: data,
-    })
-  }
-  return consoleClient.form.humanInput.byFormToken.post({
-    params: { form_token: token },
-    body: data,
-  })
+    },
+    { context },
+  )
 }

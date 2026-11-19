@@ -11,14 +11,13 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { Suspense, useRef } from 'react'
+import { lazy, Suspense, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
-import { useDocLink } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import {
   currentWorkspaceAtom,
@@ -28,19 +27,25 @@ import {
 } from '@/context/workspace-state'
 import { env } from '@/env'
 import { selectIMCentrallyManaged } from '@/features/contacts/im-capability'
-import { ContactsImPlatformAccountSettingPage } from '@/features/contacts/im-platform/account-setting-page'
 import { isContactsImPlatformEnabled } from '@/features/contacts/im-platform/feature-flag'
+import { useChannelDocLink } from '@/features/contacts/im-platform/use-channel-doc-link'
 import { canReadNetworkAccessAtom } from '@/features/network-access/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import AccessRulesPage from './access-rules-page'
 import IpPoliciesPage from './ip-policies-page'
-import MembersPage from './members-page'
+import { MembersPage } from './members-page'
 import PermissionsPage from './permissions-page'
 import PreferencePage from './preference-page'
 import ResourceAccessTokenPage from './resource-access-token-page'
 import WorkflowLogArchivesPage from './workflow-log-archives-page'
+
+const ContactsImPlatformAccountSettingPage = lazy(() =>
+  import('@/features/contacts/im-platform/account-setting-page').then((module) => ({
+    default: module.ContactsImPlatformAccountSettingPage,
+  })),
+)
 
 const iconClassName = `
   size-4 shrink-0 sm:me-2
@@ -57,6 +62,7 @@ type GroupItem = {
   name: string
   title?: string
   description?: string
+  docLink?: { href: string; label: string }
   icon: React.JSX.Element
   activeIcon: React.JSX.Element
 }
@@ -77,7 +83,7 @@ export default function AccountSetting({
   ])
   const featuresQuery = useQuery(consoleQuery.features.get.queryOptions())
   const enableReplaceWebAppLogo = featuresQuery.data?.can_replace_logo
-  const docLink = useDocLink()
+  const docLink = useChannelDocLink()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
@@ -93,6 +99,7 @@ export default function AccountSetting({
   const canViewWorkflowLogArchives =
     systemFeatures.deployment_edition === 'CLOUD' && isCurrentWorkspaceManager
   const canViewContactsImPlatform =
+    isCurrentWorkspaceManager &&
     featuresQuery.isSuccess &&
     isContactsImPlatformEnabled(selectIMCentrallyManaged(featuresQuery.data))
   const canViewIpPolicies = useAtomValue(canReadNetworkAccessAtom)
@@ -128,6 +135,10 @@ export default function AccountSetting({
       key: ACCOUNT_SETTING_TAB.IM_PLATFORM,
       name: t(($) => $['imPlatform.title'], { ns: 'contacts' }),
       description: t(($) => $['imPlatform.description'], { ns: 'contacts' }),
+      docLink: {
+        href: docLink('/use-dify/workspace/channels/overview'),
+        label: t(($) => $['imPlatform.learnMore'], { ns: 'contacts' }),
+      },
       icon: <span className={cn('i-ri-chat-ai-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-chat-ai-fill', iconClassName)} />,
     },
@@ -186,7 +197,6 @@ export default function AccountSetting({
     },
   ]
   const activeItem = settingItems.find((item) => item.key === activeMenu)
-  const isChannelsPage = activeMenu === ACCOUNT_SETTING_TAB.IM_PLATFORM
 
   const visibleSettingItems: GroupItem[] = (() => {
     const visibleTabs: AccountSettingTab[] = []
@@ -296,14 +306,14 @@ export default function AccountSetting({
                   {activeItem?.description && (
                     <p className="mt-1 system-sm-regular wrap-break-word whitespace-normal text-text-tertiary">
                       {activeItem.description}
-                      {isChannelsPage && (
+                      {activeItem?.docLink && (
                         <a
-                          href={docLink('/use-dify/nodes/human-input')}
+                          href={activeItem.docLink.href}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="ms-0.5 inline-flex items-center text-text-accent focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                         >
-                          {t(($) => $['imPlatform.learnMore'], { ns: 'contacts' })}
+                          {activeItem.docLink.label}
                           <span aria-hidden className="i-ri-external-link-line size-3" />
                         </a>
                       )}
@@ -321,12 +331,7 @@ export default function AccountSetting({
                 style={{ minWidth: 0 }}
                 className="min-h-full w-full max-w-full pb-4"
               >
-                <div
-                  className={cn(
-                    'max-w-full min-w-0 px-4 sm:px-8',
-                    isChannelsPage ? 'pt-4' : 'pt-6',
-                  )}
-                >
+                <div className="max-w-full min-w-0 px-4 pt-6 sm:px-8">
                   {/* First-use translations and queries must not suspend the dialog shell. */}
                   <Suspense fallback={<LoadingPlaceholder className="py-10" />}>
                     {activeMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}

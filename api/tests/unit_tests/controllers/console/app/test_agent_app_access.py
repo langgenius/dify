@@ -81,7 +81,9 @@ def test_features_parse_full_state_and_drop_soul_fields(app: Flask, services: Se
     with app.test_request_context(
         "/", method="POST", json={"opening_statement": "Hi", "speech_to_text": None, "model": {"name": "x"}}
     ):
-        result = unwrap(agent_app_feature.AgentAppFeatureConfigResource.post)(object(), CONTEXT, AGENT_ID)
+        result = unwrap(agent_app_feature.AgentAppFeatureConfigResource.post)(
+            agent_app_feature.AgentAppFeatureConfigResource(), CONTEXT, AGENT_ID
+        )
     assert result == {"result": "success"}
     assert services.agent_apps.features.calls == [(CONTEXT, str(AGENT_ID), {"opening_statement": "Hi"})]
 
@@ -96,16 +98,17 @@ def test_feature_admission_enforces_editing_roles(
     monkeypatch.setattr(flask_admission, "get_request_id", lambda: "request")
     monkeypatch.setattr(flask_admission, "get_trace_id", lambda: None)
     # Exercise the declared admission policy after setup/login/initialization.
-    view = agent_app_feature.AgentAppFeatureConfigResource.post
-    while hasattr(view.__wrapped__, "__wrapped__"):
-        view = view.__wrapped__
+    view = unwrap(
+        agent_app_feature.AgentAppFeatureConfigResource.post,
+        stop=lambda handler: handler.__code__.co_name == "inject_request_context",
+    )
     with app.test_request_context("/", method="POST", json={}):
         if role in (TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR):
-            assert view(object(), agent_id=AGENT_ID) == {"result": "success"}
+            assert view(agent_app_feature.AgentAppFeatureConfigResource(), agent_id=AGENT_ID) == {"result": "success"}
             assert services.agent_apps.features.calls == [(CONTEXT, str(AGENT_ID), {})]
         else:
             with pytest.raises(Forbidden):
-                view(object(), agent_id=AGENT_ID)
+                view(agent_app_feature.AgentAppFeatureConfigResource(), agent_id=AGENT_ID)
             assert services.agent_apps.features.calls == []
 
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import secrets
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from unittest.mock import Mock, patch
@@ -147,7 +148,7 @@ def repository(db_session_with_containers: Session) -> DifyAPISQLAlchemyWorkflow
 
 
 @pytest.fixture
-def test_scope(db_session_with_containers: Session) -> _TestScope:
+def test_scope(db_session_with_containers: Session) -> Iterator[_TestScope]:
     """Provide an isolated scope and clean related data after each test."""
 
     scope = _TestScope()

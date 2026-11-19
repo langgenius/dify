@@ -83,11 +83,15 @@ async function setup(ids: string[]) {
           value={{
             dataset: createDatasetFixture({
               embedding_available: true,
-              permission_keys: [DatasetACLPermission.Use, DatasetACLPermission.DeleteFile],
+              permission_keys: [
+                DatasetACLPermission.Use,
+                DatasetACLPermission.Edit,
+                DatasetACLPermission.DeleteFile,
+              ],
             }),
           }}
         >
-          <div className="h-screen">
+          <div className="isolate h-screen">
             <Documents datasetId="dataset-1" />
           </div>
         </DatasetDetailContext.Provider>
@@ -161,3 +165,43 @@ describe('Classic document deletion', () => {
     await expect.element(screen.getByRole('region')).toHaveFocus()
   })
 })
+
+it.each(['pencil', 'menu'])(
+  'returns focus to the selected row after cancelling rename from its %s entry',
+  async (entry) => {
+    const { screen } = await setup(['Alpha', 'Beta'])
+    const row = screen.getByRole('row', { name: /Beta/ })
+    await row.getByRole('link', { name: 'Beta' }).hover()
+    const rename = 'datasetDocuments.list.table.rename'
+    const trigger = row.getByRole('button', {
+      name: entry === 'pencil' ? rename : 'common.operation.more',
+    })
+    if (entry === 'pencil') {
+      row.getByRole('link', { name: 'Beta' }).element().focus()
+      await userEvent.tab()
+      await expect.element(trigger).toHaveFocus()
+      await userEvent.keyboard('{Enter}')
+    } else {
+      await trigger.click()
+      await screen.getByRole('menuitem', { name: rename }).click()
+    }
+    const dialog = screen.getByRole('dialog', { name: rename })
+    const textbox = dialog.getByRole('textbox')
+    await expect.element(textbox).toHaveValue('Beta')
+    const expectedName = entry === 'pencil' ? 'Unsubmitted draft' : 'Beta'
+    if (entry === 'pencil') await textbox.fill(expectedName)
+
+    const popup = dialog.element()
+    const input = textbox.element() as HTMLInputElement
+    await expect.poll(() => getComputedStyle(popup).opacity).toBe('1')
+    const exitingName = vi.fn()
+    popup.addEventListener('transitionstart', (event) => {
+      if (event.target === popup && popup.hasAttribute('data-ending-style'))
+        exitingName(input.value)
+    })
+    await userEvent.keyboard('{Escape}')
+    await expect.poll(() => exitingName.mock.calls.flat()).toContain(expectedName)
+    await expect.element(dialog).not.toBeInTheDocument()
+    await expect.element(trigger).toHaveFocus()
+  },
+)

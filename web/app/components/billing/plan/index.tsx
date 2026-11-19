@@ -23,8 +23,8 @@ type Props = Readonly<{
 }>
 
 const selectEducationPlanStatus = ({ allow_refresh, is_student }: EducationStatusResponse) => ({
-  isAboutToExpire: allow_refresh ?? false,
-  isEducationAccount: is_student ?? false,
+  isAboutToExpire: allow_refresh,
+  isEducationAccount: is_student,
 })
 
 const PlanComp: FC<Props> = ({ loc }) => {

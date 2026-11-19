@@ -227,7 +227,7 @@ describe('TriggerAccessPointCard', () => {
     await user.click(screen.getByRole('switch', { name: 'Trigger enabled' }))
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
+      expect(toast.error).toHaveBeenCalledWith('request failed')
     })
     expect(toast.success).not.toHaveBeenCalled()
   })

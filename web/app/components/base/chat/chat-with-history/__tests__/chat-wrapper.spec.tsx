@@ -7,8 +7,12 @@ import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { registerWebAppEventTracker } from '@/app/components/base/amplitude/web-app-event'
 import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
-import { fetchChatList, fetchSuggestedQuestions, stopChatMessageResponding } from '@/service/share'
-import { submitWebAppHumanInputForm as submitHumanInputForm } from '@/service/webapp-human-input'
+import {
+  fetchChatList,
+  fetchSuggestedQuestions,
+  stopChatMessageResponding,
+  submitHumanInputForm,
+} from '@/service/share'
 import { submitHumanInputForm as submitInstalledForm } from '@/service/workflow'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createChatConfigFixture, createChatFileFixture } from '@/test/fixtures/chat'
@@ -101,7 +105,7 @@ const createHistoryContextValue = (
   handleFeedback: vi.fn().mockResolvedValue(undefined),
   pinnedConversationList: [],
   chatShouldReloadKey: '',
-  isMobile: false,
+  isBelowSm: false,
   currentConversationInputs: {},
   setCurrentConversationInputs: vi.fn(),
   allInputsHidden: false,
@@ -697,11 +701,11 @@ it('does not submit human input when the workflow event connection fails before 
 
 it.each([false, true])(
   'shows inputs before the welcome and reveals it after starting chat (mobile=%s)',
-  async (isMobile) => {
+  async (isBelowSm) => {
     const user = userEvent.setup()
     renderChat({
       currentConversationId: '',
-      isMobile,
+      isBelowSm,
       appParams: createChatConfigFixture({ opening_statement: 'Welcome' }),
       inputsForms: [
         { variable: 'test', label: 'Test', type: InputVarType.textInput, required: false },
@@ -717,7 +721,7 @@ it.each([false, true])(
 it('hides the mobile variable form after entering an existing conversation', () => {
   const { updateContext } = renderChat({
     currentConversationId: '',
-    isMobile: true,
+    isBelowSm: true,
     inputsForms: [
       { variable: 'test', label: 'Test', type: InputVarType.textInput, required: false },
     ],
@@ -746,5 +750,3 @@ it.each([
   })
   expect(screen.getByRole('img', { name: label })).toHaveTextContent(initial)
 })
-
-vi.mock('@/service/webapp-human-input', () => ({ submitWebAppHumanInputForm: vi.fn() }))

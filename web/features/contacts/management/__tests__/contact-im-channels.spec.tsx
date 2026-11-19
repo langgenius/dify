@@ -1,48 +1,86 @@
-import type { ContactView } from '../types'
+import type {
+  ChannelSummary,
+  ContactImBindingDetail,
+  ImIdentity,
+} from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ContactsFeatureContextValue, ContactView } from '../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
-import { consoleClient } from '@/service/console'
+import userEvent from '@testing-library/user-event'
 import { ContactsManagementProvider } from '../composition'
 import { ContactDetailsPanel } from '../contact-details-panel'
-import { createContactsApiRepository } from '../repository'
-import { ContactsMockScenario, createContactsMockScenario } from './fixtures/scenarios'
+import { alice, managerContext } from './fixtures/data'
 
-vi.mock('@/service/console', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/console')>()),
-  consoleClient: {
-    workspaces: {
-      current: {
-        humanInput: { v2: { channels: { get: vi.fn() } } },
-      },
-    },
-  },
+const api = vi.hoisted(() => ({
+  channels: vi.fn(),
+  identities: vi.fn(),
+  bind: vi.fn(),
+  override: vi.fn(),
+  unbind: vi.fn(),
+  reset: vi.fn(),
 }))
-
-function renderContact(imCentrallyManaged: boolean, bound: boolean) {
-  const scenario = createContactsMockScenario(ContactsMockScenario.EeMixed)
-  const contact: ContactView = {
-    id: 'contact-member',
-    type: 'workspace',
-    name: 'Workspace Member',
-    email: 'member@example.com',
-    avatar_url: '',
-    created_at: 1,
-    im_bindings: bound ? [{ id: 'binding-feishu', provider: 'feishu', scope: 'organization' }] : [],
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.humanInput.v2.channels.get': api.channels,
+      'workspaces.current.humanInput.v2.imIdentities.get': api.identities,
+      'workspaces.current.humanInput.v2.contacts.byContactId.imBindings.put': api.bind,
+      'workspaces.current.humanInput.v2.contacts.byContactId.imOverride.put': api.override,
+      'workspaces.current.humanInput.v2.contacts.byContactId.imBindings.delete': api.unbind,
+      'workspaces.current.humanInput.v2.contacts.byContactId.imOverride.delete': api.reset,
+    }),
   }
+})
+const identity: ImIdentity = {
+  id: 'identity-1',
+  display_name: 'Alice IM',
+  provider: 'feishu',
+  provider_user_id: 'ou_alice',
+  email: 'alice.im@example.com',
+  binding_status: 'unbound',
+}
+const detail: ContactImBindingDetail = {
+  id: 'binding-1',
+  provider: 'feishu',
+  scope: 'organization',
+  identity: {
+    id: identity.id,
+    display_name: identity.display_name ?? null,
+    email: identity.email ?? null,
+    provider_user_id: identity.provider_user_id,
+  },
+}
+const channel: ChannelSummary = {
+  id: 'channel-1',
+  config_version: 'version-1',
+  created_at: 1780000000,
+  updated_at: 1780000000,
+  display_identifier: 'Test Feishu',
+  kind: 'im',
+  provider: 'feishu',
+  status: 'connected',
+  status_description: '',
+  webhook_url: null,
+}
+const workspaceContact: ContactView = {
+  ...alice,
+  type: 'workspace',
+  im_bindings: [{ id: detail.id, provider: detail.provider, scope: detail.scope }],
+  im_binding_details: [detail],
+}
+function setup(
+  context: ContactsFeatureContextValue = managerContext,
+  contact: ContactView = workspaceContact,
+) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
   render(
     <QueryClientProvider client={queryClient}>
-      <ContactsManagementProvider
-        context={{
-          deployment: scenario.deployment,
-          imCentrallyManaged,
-          permissions: scenario.permissions,
-          workspaceId: scenario.workspaceId,
-        }}
-        repository={createContactsApiRepository()}
-      >
+      <ContactsManagementProvider context={context}>
         <ContactDetailsPanel
           contact={contact}
           onClose={vi.fn()}
@@ -52,68 +90,79 @@ function renderContact(imCentrallyManaged: boolean, bound: boolean) {
       </ContactsManagementProvider>
     </QueryClientProvider>,
   )
-  return screen.getByRole('complementary', { name: 'contacts.details.title' })
 }
+beforeEach(() => {
+  api.channels.mockReset().mockResolvedValue({ channels: [channel] })
+  api.identities.mockReset().mockResolvedValue({ data: [identity], page: 1, limit: 20, total: 1 })
+  api.bind.mockReset().mockResolvedValue({ contact: workspaceContact })
+  api.override.mockReset().mockResolvedValue({ contact: workspaceContact })
+  api.unbind.mockReset().mockResolvedValue({})
+  api.reset.mockReset().mockResolvedValue({})
+})
 
-describe('Contact details IM channel availability', () => {
-  const channels = consoleClient.workspaces.current.humanInput.v2.channels
+it.each([true, undefined])(
+  'never calls workspace channel management while centralized capability=%s',
+  async (imCentrallyManaged) => {
+    setup({ ...managerContext, imCentrallyManaged })
+    expect(screen.getByRole('region', { name: 'Alice' })).toBeInTheDocument()
+    await Promise.resolve()
+    expect(api.channels).not.toHaveBeenCalled()
+  },
+)
 
-  beforeEach(() => vi.resetAllMocks())
+it('keeps external contacts email-only even when a channel is configured', () => {
+  setup(managerContext, alice)
+  expect(screen.queryByRole('button', { name: /imBinding.changeTitle/ })).not.toBeInTheDocument()
+  expect(api.channels).not.toHaveBeenCalled()
+})
 
-  it.each([false, true])(
-    'does not call workspace channel management in centrally managed mode when bound is %s',
-    async (bound) => {
-      vi.mocked(channels.get).mockRejectedValue(
-        Object.assign(new Error('Workspace channel management is unavailable'), { status: 501 }),
-      )
+it('offers an initially unbound workspace contact a provider-described bind action', async () => {
+  setup(managerContext, { ...workspaceContact, im_bindings: [], im_binding_details: [] })
+  const bind = await screen.findByRole('button', { name: 'contacts.imBinding.bind' })
+  expect(bind).toHaveAccessibleDescription('Feishu')
+})
 
-      const details = renderContact(true, bound)
-      await waitFor(() => {
-        expect(
-          within(details).getByText('contacts.imBinding.enterpriseReadOnly'),
-        ).toBeInTheDocument()
-        expect(within(details).queryByRole('alert')).not.toBeInTheDocument()
-      })
+it('unbinds a default identity through the generated delete operation', async () => {
+  const user = userEvent.setup()
+  setup()
+  await user.click(screen.getByRole('button', { name: /imBinding.changeTitle.*Feishu/ }))
+  const dialog = await screen.findByRole('dialog')
+  await user.click(within(dialog).getByRole('button', { name: 'contacts.imBinding.remove' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(api.unbind).toHaveBeenCalledWith({ params: { contact_id: alice.id } })
+  expect(api.reset).not.toHaveBeenCalled()
+})
 
-      expect(channels.get).not.toHaveBeenCalled()
-      expect(
-        within(details).queryByRole('button', { name: 'contacts.imBinding.bind' }),
-      ).not.toBeInTheDocument()
-      if (bound) {
-        expect(within(details).getByText('Feishu')).toBeInTheDocument()
-        expect(
-          within(details).getByRole('button', { name: /^contacts\.imBinding\.changeTitle/ }),
-        ).toBeEnabled()
-      } else {
-        expect(within(details).queryByText('Feishu')).not.toBeInTheDocument()
-      }
+it('exposes centralized binding modes with an associated organization identity preview', async () => {
+  const user = userEvent.setup()
+  setup({ ...managerContext, imCentrallyManaged: true })
+  await user.click(screen.getByRole('button', { name: /imBinding.changeTitle.*Feishu/ }))
+  const group = await screen.findByRole('radiogroup', { name: 'contacts.imBinding.modeLabel' })
+  const organization = within(group).getByRole('radio', {
+    name: 'contacts.imBinding.organizationMode',
+  })
+  expect(organization).toBeChecked()
+  expect(organization).toHaveAccessibleDescription(/Alice IM/)
+  expect(api.channels).not.toHaveBeenCalled()
+})
+
+it('restores an override with the override delete operation instead of unbinding the default', async () => {
+  const user = userEvent.setup()
+  const overridden = { ...detail, scope: 'workspace' as const }
+  setup(
+    { ...managerContext, imCentrallyManaged: true },
+    {
+      ...workspaceContact,
+      im_bindings: [{ id: detail.id, provider: 'feishu', scope: 'workspace' }],
+      im_binding_details: [overridden],
     },
   )
-
-  it('still discovers configured IM channels and offers initial binding in workspace-managed mode', async () => {
-    vi.mocked(channels.get).mockResolvedValue({
-      channels: [
-        {
-          id: 'channel-feishu',
-          kind: 'im',
-          provider: 'feishu',
-          config_version: 'version-1',
-          created_at: 1,
-          updated_at: 1,
-          display_identifier: 'feishu-app',
-          status: 'configured',
-          status_description: '',
-          webhook_url: null,
-        },
-      ],
-    })
-
-    const details = renderContact(false, false)
-
-    expect(
-      await within(details).findByRole('button', { name: 'contacts.imBinding.bind' }),
-    ).toBeEnabled()
-    expect(within(details).getByText('Feishu')).toBeInTheDocument()
-    expect(channels.get).toHaveBeenCalledExactlyOnceWith(undefined, { context: { silent: true } })
-  })
+  await user.click(screen.getByRole('button', { name: /imBinding.changeTitle.*Feishu/ }))
+  await user.click(
+    await screen.findByRole('radio', { name: 'contacts.imBinding.organizationMode' }),
+  )
+  await user.click(screen.getByRole('button', { name: 'contacts.imBinding.saveBinding' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(api.reset).toHaveBeenCalledWith({ params: { contact_id: alice.id } })
+  expect(api.unbind).not.toHaveBeenCalled()
 })

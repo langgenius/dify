@@ -68,7 +68,6 @@ const Citation: FC<CitationProps> = ({
       const fullWidth =
         widths.reduce((total, width) => total + width, 0) + Math.max(0, widths.length - 1) * 4
       if (fullWidth <= containerWidth) {
-        // oxlint-disable-next-line eslint-react/set-state-in-effect -- Citation capacity depends on mounted element widths and must be measured again when the container resizes.
         setLimitNumberInOneLine(resources.length)
         return
       }
@@ -80,9 +79,9 @@ const Citation: FC<CitationProps> = ({
         if (totalWidth + 4 + 34 > containerWidth) break
         limit += 1
       }
-      // oxlint-disable-next-line eslint-react/set-state-in-effect -- Citation capacity depends on mounted element widths and must be measured again when the container resizes.
       setLimitNumberInOneLine(limit)
     }
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Citation capacity depends on mounted element widths and must be measured again when the container resizes.
     updateLimit()
     const observer = new ResizeObserver(updateLimit)
     observer.observe(container)

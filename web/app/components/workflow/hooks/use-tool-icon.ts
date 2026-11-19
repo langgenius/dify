@@ -9,7 +9,7 @@ import { useCallback, useMemo } from 'react'
 import { resolveDatasourceIcon } from '@/app/components/rag-pipeline/utils/datasource-icon'
 import { CollectionType } from '@/app/components/tools/types'
 import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
-import useTheme from '@/hooks/use-theme'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { consoleQuery } from '@/service/console'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { canFindTool } from '@/utils'
@@ -189,7 +189,7 @@ export const useToolIcon = (data?: Node['data']) => {
   )
   const dataSourceList = useStore((s) => s.dataSourceList)
   const { data: triggerPlugins } = useAllTriggerPlugins()
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
 
   const toolIcon = useMemo(() => {
     return (
@@ -239,7 +239,7 @@ export const useGetToolIcon = () => {
   )
   const { data: triggerPlugins } = useAllTriggerPlugins()
   const workflowStore = useWorkflowStore()
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
 
   const getToolIcon = useCallback(
     (data: Node['data']) => {

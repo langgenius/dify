@@ -13,6 +13,8 @@ from controllers.common.errors import (
     InvalidArgumentError,
     NotFoundError,
     UnauthorizedError,
+    register_credential_refresh_error_handler,
+    register_moderation_error_handlers,
     register_permission_error_handler,
 )
 from controllers.console.error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
@@ -36,6 +38,8 @@ api = ExternalApi(
     description="Console management APIs for app configuration, monitoring, and administration",
 )
 register_permission_error_handler(api)
+register_credential_refresh_error_handler(api)
+register_moderation_error_handlers(api)
 # Errors the Console client handles centrally (bootstrap redirects, forced logout, malformed
 # input); any operation may answer with them, so no operation lists them. The shared
 # ``not_found``, ``unauthorized`` and ``internal_server_error`` codes are the ones Werkzeug's own
@@ -52,7 +56,7 @@ api.document_generic_errors(
 )
 
 
-@api.errorhandler(ActiveWorkspaceRequiredError)
+@api.errorhandler(ActiveWorkspaceRequiredError)  # pyrefly: ignore[not-callable] - Flask-RESTX decorator typing
 def _handle_active_workspace_required_error(error: ActiveWorkspaceRequiredError):
     """Map a broken Console admission invariant without exposing internal details."""
     got_request_exception.send(current_app, exception=error)
@@ -64,7 +68,7 @@ def _handle_active_workspace_required_error(error: ActiveWorkspaceRequiredError)
     }, status.value
 
 
-@api.errorhandler(WorkflowRunArchiveInvalidMonthError)
+@api.errorhandler(WorkflowRunArchiveInvalidMonthError)  # pyrefly: ignore[not-callable] - Flask-RESTX errorhandler overload
 def _handle_workflow_run_archive_invalid_month_error(
     error: WorkflowRunArchiveInvalidMonthError,
 ) -> tuple[dict[str, str | int], int]:
@@ -73,8 +77,8 @@ def _handle_workflow_run_archive_invalid_month_error(
     return {"code": "bad_request", "message": str(error), "status": status.value}, status.value
 
 
-@api.errorhandler(WorkflowRunArchiveNotFoundError)
-@api.errorhandler(WorkflowRunArchiveDownloadTaskNotFoundError)
+@api.errorhandler(WorkflowRunArchiveNotFoundError)  # pyrefly: ignore[not-callable] - Flask-RESTX errorhandler overload
+@api.errorhandler(WorkflowRunArchiveDownloadTaskNotFoundError)  # pyrefly: ignore[not-callable] - Flask-RESTX errorhandler overload
 def _handle_workflow_run_archive_not_found_error(
     error: WorkflowRunArchiveNotFoundError | WorkflowRunArchiveDownloadTaskNotFoundError,
 ) -> tuple[dict[str, str | int], int]:
@@ -83,7 +87,7 @@ def _handle_workflow_run_archive_not_found_error(
     return {"code": "not_found", "message": str(error), "status": status.value}, status.value
 
 
-@api.errorhandler(WorkflowRunArchiveDownloadNotReadyError)
+@api.errorhandler(WorkflowRunArchiveDownloadNotReadyError)  # pyrefly: ignore[not-callable] - Flask-RESTX errorhandler overload
 def _handle_workflow_run_archive_download_not_ready_error(
     error: WorkflowRunArchiveDownloadNotReadyError,
 ) -> tuple[dict[str, str | int], int]:
@@ -139,18 +143,22 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     # Import other controllers
     from . import (
         apikey,
+        evaluation,
         extension,
         feature,
+        file_scan,
         human_input_form,
         init_validate,
         notification,
         onboarding,
+        personal_access_token,
         resource_access_token,
         setup,
         spec,
         system,
         workflow_run_archive,
     )
+    from .agent import api_access as agent_api_access
     from .agent import composer as agent_composer
     from .agent import roster as agent_roster
     from .agent import tracing as agent_tracing
@@ -265,7 +273,9 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 
     return (
         apikey,
+        evaluation,
         extension,
+        file_scan,
         feature,
         human_input_form,
         human_input_channel,
@@ -273,11 +283,13 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         init_validate,
         notification,
         onboarding,
+        personal_access_token,
         resource_access_token,
         setup,
         spec,
         system,
         workflow_run_archive,
+        agent_api_access,
         agent_composer,
         agent_roster,
         agent_tracing,
@@ -368,7 +380,9 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 
 (
     apikey,
+    evaluation,
     extension,
+    file_scan,
     feature,
     human_input_form,
     human_input_channel,
@@ -376,11 +390,13 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     init_validate,
     notification,
     onboarding,
+    personal_access_token,
     resource_access_token,
     setup,
     spec,
     system,
     workflow_run_archive,
+    agent_api_access,
     agent_composer,
     agent_roster,
     agent_tracing,
@@ -475,6 +491,7 @@ __all__ = [
     "activate",
     "advanced_prompt_template",
     "agent",
+    "agent_api_access",
     "agent_app_access",
     "agent_app_feature",
     "agent_app_sandbox",
@@ -507,9 +524,11 @@ __all__ = [
     "datasource_content_preview",
     "email_register",
     "endpoint",
+    "evaluation",
     "extension",
     "external",
     "feature",
+    "file_scan",
     "forgot_password",
     "generator",
     "hit_testing",
@@ -537,6 +556,7 @@ __all__ = [
     "onboarding",
     "ops_trace",
     "parameter",
+    "personal_access_token",
     "plugin",
     "rag_pipeline",
     "rag_pipeline_datasets",

@@ -6,7 +6,6 @@ import {
   getRecipientCanonicalKey,
   getRecipientValidationError,
   hasDuplicateRecipients,
-  removeRecipient,
   replaceContactRecipient,
   updateRecipient,
 } from '../recipient-utils'
@@ -54,12 +53,6 @@ describe('Human Input v2 recipient utilities', () => {
     expect(updateRecipient(added, 1, { type: 'contact', contact_id: 'contact-amanda' })[0]).toBe(
       recipients[0],
     )
-    expect(removeRecipient(added, 2)).toEqual([
-      recipients[0],
-      recipients[1],
-      recipients[3],
-      added[4],
-    ])
   })
 
   it.each([
@@ -142,7 +135,6 @@ describe('Human Input v2 recipient utilities', () => {
       hasAllWorkspaceContacts: true,
       hasInitiator: true,
     })
-    expect(removeRecipient(selected, 0)).toEqual([{ type: 'initiator' }])
   })
 
   it('locks only other contacts with the same normalized email', () => {

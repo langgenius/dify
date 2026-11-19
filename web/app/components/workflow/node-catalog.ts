@@ -1,21 +1,23 @@
 import type { AvailableNodesMetaData } from '@/app/components/workflow/hooks-store/store'
+import type { HumanInputV2NodeType } from '@/app/components/workflow/nodes/human-input-v2/types'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from 'reactflow'
+import { useShallow } from 'zustand/react/shallow'
 import { WORKFLOW_COMMON_NODES } from '@/app/components/workflow/constants/node'
 import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import AnswerDefault from '@/app/components/workflow/nodes/answer/default'
 import EndDefault from '@/app/components/workflow/nodes/end/default'
 import { getHumanInputCreationPolicy } from '@/app/components/workflow/nodes/human-input-v2/migration/policy'
-import HumanInputDefault from '@/app/components/workflow/nodes/human-input/default'
 import StartPlaceholderDefault from '@/app/components/workflow/nodes/start-placeholder/default'
 import StartDefault from '@/app/components/workflow/nodes/start/default'
 import TriggerPluginDefault from '@/app/components/workflow/nodes/trigger-plugin/default'
 import TriggerScheduleDefault from '@/app/components/workflow/nodes/trigger-schedule/default'
 import TriggerWebhookDefault from '@/app/components/workflow/nodes/trigger-webhook/default'
+import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { getNodePersistedType } from '@/app/components/workflow/utils/node'
 import { ENABLE_HITL_IM } from '@/config'
@@ -34,18 +36,42 @@ const getNodeHelpLinkPath = (helpLinkUri?: string): DocPathWithoutLang | undefin
 export const useWorkflowNodeCatalog = () => {
   const { t } = useTranslation(['workflow'])
   const isChatflow = useAtomValue(isChatflowAtom)
+  const humanInputDefaultConfig = useWorkflowStore(
+    (state) =>
+      state.nodesDefaultConfigs?.[BlockEnum.HumanInput] as
+        | Partial<HumanInputV2NodeType>
+        | undefined,
+  )
+  const humanInputV2MessageTemplate =
+    humanInputDefaultConfig?.version === '2' ? humanInputDefaultConfig.message_template : undefined
   const docLink = useDocLink()
   const agentV2Enabled = isAgentV2Enabled()
   // Chatflow (advanced-chat) keeps Agent v2 hidden by default; opt in via
   // NEXT_PUBLIC_ENABLE_AGENT_V2_IN_CHATFLOW. Pure workflows are unaffected.
   const shouldUseAgentV2 = agentV2Enabled && (!isChatflow || isAgentV2InChatflowEnabled())
-  const { data: knowledgeFsEnabled } = useSuspenseQuery(
+  const { data: knowledgeFsEnabled = false } = useQuery(
     consoleQuery.features.get.queryOptions({
       select: (features) => features.enable_knowledge_fs,
     }),
   )
-  const canContinueLegacyHumanInput = useStore(
-    (state) => getHumanInputCreationPolicy(state.getNodes(), true).canAddLegacyHumanInput,
+  const humanInputData = useStore(
+    useShallow((state) =>
+      ENABLE_HITL_IM
+        ? state
+            .getNodes()
+            .filter((node) => node.data.type === BlockEnum.HumanInput)
+            .map((node) => node.data)
+        : [],
+    ),
+  )
+  const canContinueLegacyHumanInput = useMemo(
+    () =>
+      ENABLE_HITL_IM &&
+      getHumanInputCreationPolicy(
+        humanInputData.map((data) => ({ data })),
+        true,
+      ).canAddLegacyHumanInput,
+    [humanInputData],
   )
   const useLegacyHumanInput = !ENABLE_HITL_IM || canContinueLegacyHumanInput
 
@@ -99,41 +125,29 @@ export const useWorkflowNodeCatalog = () => {
           },
           defaultValue: {
             ...node.defaultValue,
+            ...(metaData.type === BlockEnum.HumanInputV2 && humanInputV2MessageTemplate
+              ? { message_template: humanInputV2MessageTemplate }
+              : {}),
             type: getNodePersistedType(metaData.type),
             title,
           },
         }
       }),
-    [mergedNodesMetaData, t, docLink],
+    [mergedNodesMetaData, t, docLink, humanInputV2MessageTemplate],
   )
-
-  const legacyHumanInputMetaData = useMemo(() => {
-    const { metaData } = HumanInputDefault
-    const title = t(($) => $[`blocks.${BlockEnum.HumanInput}`], { ns: 'workflow' })
-    const description = t(($) => $[`blocksAbout.${BlockEnum.HumanInput}`], { ns: 'workflow' })
-
-    return {
-      ...HumanInputDefault,
-      metaData: { ...metaData, title, description },
-      defaultValue: {
-        ...HumanInputDefault.defaultValue,
-        type: BlockEnum.HumanInput,
-        title,
-      },
-    }
-  }, [t])
 
   const availableNodesMetaData = useMemo(
     () =>
       nodesMetaData.filter(
         (node) =>
+          (node.metaData.type !== BlockEnum.HumanInputV2 || !!humanInputV2MessageTemplate) &&
           node.metaData.type !==
             (useLegacyHumanInput ? BlockEnum.HumanInputV2 : BlockEnum.HumanInput) &&
           (shouldUseAgentV2
             ? node.metaData.type !== BlockEnum.Agent
             : node.metaData.type !== BlockEnum.AgentV2),
       ),
-    [nodesMetaData, shouldUseAgentV2, useLegacyHumanInput],
+    [nodesMetaData, shouldUseAgentV2, useLegacyHumanInput, humanInputV2MessageTemplate],
   )
 
   const nodesMetaDataMap = useMemo(
@@ -143,11 +157,9 @@ export const useWorkflowNodeCatalog = () => {
           acc![node.metaData.type] = node
           return acc
         },
-        {
-          [BlockEnum.HumanInput]: legacyHumanInputMetaData,
-        } as unknown as AvailableNodesMetaData['nodesMap'],
+        {} as unknown as AvailableNodesMetaData['nodesMap'],
       ),
-    [nodesMetaData, legacyHumanInputMetaData],
+    [nodesMetaData],
   )
 
   return useMemo(

@@ -1,5 +1,5 @@
 import type { ScheduleTriggerNodeType } from '../types'
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { renderNodePanel } from '../../__tests__/render-node-panel'
@@ -35,13 +35,21 @@ const cronButton = () =>
 const frequencyPicker = () => screen.getByRole('combobox', { name: /frequencyLabel/ })
 
 describe('TriggerSchedulePanel', () => {
-  it('prevents time editing when the workflow is read only', async () => {
+  it('lets a read-only workflow browse the time without editing it', async () => {
     const user = userEvent.setup()
     const { data } = renderPanel(createData(), true)
     const trigger = screen.getByRole('button', { name: /11:30 AM.*UTC/ })
+    expect(trigger).toHaveAttribute('data-readonly')
     await user.click(trigger)
-    expect(trigger).toHaveAttribute('aria-disabled', 'true')
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    const [hours] = screen.getAllByRole('listbox')
+    await user.click(within(hours!).getByRole('option', { name: '2' }))
+    expect(within(hours!).getByRole('option', { name: '11' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    expect(screen.queryByRole('button', { name: /operation\.ok/i })).not.toBeInTheDocument()
+    await user.keyboard('{Escape}')
     expect(data()).toMatchObject(createData())
   })
 

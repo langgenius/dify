@@ -713,6 +713,7 @@ export const zAppNotFoundError = zErrorResponse.and(
  */
 export const zTraceAppConfigResponse = z.object({
   app_id: z.string().nullish(),
+  configured_secrets: z.array(z.string()).nullish(),
   created_at: z.string().nullish(),
   error: z.string().nullish(),
   has_not_configured: z.boolean().nullish(),
@@ -941,6 +942,8 @@ export const zWorkflowPartial = z.object({
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   id: z.string(),
+  kind: z.string().nullish(),
+  type: z.string(),
   updated_at: z.int().nullish(),
   updated_by: z.string().nullish(),
 })
@@ -2270,12 +2273,14 @@ export const zLlmMode = z.enum(['chat', 'completion'])
 
 /**
  * AppModelSelectionResponse
+ *
+ * Readable model selection; missing or null identifiers mean it is not fully configured.
  */
 export const zAppModelSelectionResponse = z.object({
   completion_params: z.record(z.string(), zJsonValue).optional(),
   mode: z.union([zLlmMode, z.literal('')]).optional(),
-  name: z.string().optional(),
-  provider: z.string().optional(),
+  name: z.string().nullish(),
+  provider: z.string().nullish(),
 })
 
 /**
@@ -2328,6 +2333,8 @@ export const zAgentAppPartial = z.object({
   updated_by: z.string().nullish(),
   use_icon_as_answer_icon: z.boolean().nullish(),
   workflow: zWorkflowPartial.nullish(),
+  workflow_kind: z.string().nullish(),
+  workflow_type: z.string().nullish(),
 })
 
 /**
@@ -3103,6 +3110,8 @@ export const zAgentAppDetailWithSite = z.object({
   updated_by: z.string().nullable(),
   use_icon_as_answer_icon: z.boolean(),
   workflow: zWorkflowPartial.nullable(),
+  workflow_kind: z.string().nullish(),
+  workflow_type: z.string().nullish(),
 })
 
 /**
@@ -3132,6 +3141,7 @@ export const zAgentSoulAppFeaturesConfig = z.object({
   opening_statement: z.string().nullish(),
   retriever_resource: zAgentFeatureToggleConfig.nullish(),
   sensitive_word_avoidance: zAgentSensitiveWordAvoidanceFeatureConfig.nullish(),
+  show_thoughts: zAgentFeatureToggleConfig.nullish(),
   speech_to_text: zAgentFeatureToggleConfig.nullish(),
   suggested_questions: z.array(z.string()).nullish(),
   suggested_questions_after_answer: zAgentSuggestedQuestionsAfterAnswerFeatureConfig.nullish(),
@@ -3813,6 +3823,8 @@ export const zAgentAppPartialWritable = z.object({
   updated_by: z.string().nullish(),
   use_icon_as_answer_icon: z.boolean().nullish(),
   workflow: zWorkflowPartial.nullish(),
+  workflow_kind: z.string().nullish(),
+  workflow_type: z.string().nullish(),
 })
 
 /**
@@ -3895,6 +3907,8 @@ export const zAgentAppDetailWithSiteWritable = z.object({
   updated_by: z.string().nullable(),
   use_icon_as_answer_icon: z.boolean(),
   workflow: zWorkflowPartial.nullable(),
+  workflow_kind: z.string().nullish(),
+  workflow_type: z.string().nullish(),
 })
 
 export const zGetAgentQuery = z.object({

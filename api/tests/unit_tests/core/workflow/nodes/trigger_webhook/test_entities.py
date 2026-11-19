@@ -10,7 +10,7 @@ from core.workflow.nodes.trigger_webhook.entities import (
 )
 
 
-def test_method_enum():
+def test_method_enum() -> None:
     """Test Method enum values."""
     assert Method.GET == "get"
     assert Method.POST == "post"
@@ -24,7 +24,7 @@ def test_method_enum():
         assert isinstance(method.value, str)
 
 
-def test_content_type_enum():
+def test_content_type_enum() -> None:
     """Test ContentType enum values."""
     assert ContentType.JSON == "application/json"
     assert ContentType.FORM_DATA == "multipart/form-data"
@@ -37,7 +37,7 @@ def test_content_type_enum():
         assert isinstance(content_type.value, str)
 
 
-def test_webhook_parameter_creation():
+def test_webhook_parameter_creation() -> None:
     """Test WebhookParameter model creation and validation."""
     # Test with all fields
     param = WebhookParameter(name="api_key", required=True)
@@ -51,17 +51,13 @@ def test_webhook_parameter_creation():
 
     # Test validation - name is required
     with pytest.raises(ValidationError):
-        WebhookParameter()
+        WebhookParameter.model_validate({})
 
 
-def test_webhook_body_parameter_creation():
+def test_webhook_body_parameter_creation() -> None:
     """Test WebhookBodyParameter model creation and validation."""
     # Test with all fields
-    body_param = WebhookBodyParameter(
-        name="user_data",
-        type="object",
-        required=True,
-    )
+    body_param = WebhookBodyParameter.model_validate({"name": "user_data", "type": "object", "required": True})
     assert body_param.name == "user_data"
     assert body_param.type == "object"
     assert body_param.required is True
@@ -74,10 +70,10 @@ def test_webhook_body_parameter_creation():
 
     # Test validation - name is required
     with pytest.raises(ValidationError):
-        WebhookBodyParameter()
+        WebhookBodyParameter.model_validate({})
 
 
-def test_webhook_body_parameter_types():
+def test_webhook_body_parameter_types() -> None:
     """Test WebhookBodyParameter type validation."""
     valid_types = [
         "string",
@@ -92,15 +88,15 @@ def test_webhook_body_parameter_types():
     ]
 
     for param_type in valid_types:
-        param = WebhookBodyParameter(name="test", type=param_type)
+        param = WebhookBodyParameter.model_validate({"name": "test", "type": param_type})
         assert param.type == param_type
 
     # Test invalid type
     with pytest.raises(ValidationError):
-        WebhookBodyParameter(name="test", type="invalid_type")
+        WebhookBodyParameter.model_validate({"name": "test", "type": "invalid_type"})
 
 
-def test_webhook_data_creation_minimal():
+def test_webhook_data_creation_minimal() -> None:
     """Test WebhookData creation with minimal required fields."""
     data = WebhookData(title="Test Webhook")
 
@@ -116,7 +112,7 @@ def test_webhook_data_creation_minimal():
     assert data.timeout == 30  # Default
 
 
-def test_webhook_data_creation_full():
+def test_webhook_data_creation_full() -> None:
     """Test WebhookData creation with all fields."""
     headers = [
         WebhookParameter(name="Authorization", required=True),
@@ -127,9 +123,9 @@ def test_webhook_data_creation_full():
         WebhookParameter(name="format", required=False),
     ]
     body = [
-        WebhookBodyParameter(name="message", type="string", required=True),
-        WebhookBodyParameter(name="count", type="number", required=False),
-        WebhookBodyParameter(name="upload", type="file", required=True),
+        WebhookBodyParameter.model_validate({"name": "message", "type": "string", "required": True}),
+        WebhookBodyParameter.model_validate({"name": "count", "type": "number", "required": False}),
+        WebhookBodyParameter.model_validate({"name": "upload", "type": "file", "required": True}),
     ]
 
     # Use the alias for content_type to test it properly
@@ -160,16 +156,16 @@ def test_webhook_data_creation_full():
     assert data.timeout == 60
 
 
-def test_webhook_data_content_type_alias():
+def test_webhook_data_content_type_alias() -> None:
     """Test WebhookData content_type accepts both strings and enum values."""
-    data1 = WebhookData(title="Test", content_type="application/json")
+    data1 = WebhookData.model_validate({"title": "Test", "content_type": "application/json"})
     assert data1.content_type == ContentType.JSON
 
     data2 = WebhookData(title="Test", content_type=ContentType.FORM_DATA)
     assert data2.content_type == ContentType.FORM_DATA
 
 
-def test_webhook_data_model_dump():
+def test_webhook_data_model_dump() -> None:
     """Test WebhookData model serialization."""
     data = WebhookData(
         title="Test Webhook",
@@ -177,7 +173,7 @@ def test_webhook_data_model_dump():
         content_type=ContentType.JSON,
         headers=[WebhookParameter(name="Authorization", required=True)],
         params=[WebhookParameter(name="version", required=False)],
-        body=[WebhookBodyParameter(name="message", type="string", required=True)],
+        body=[WebhookBodyParameter.model_validate({"name": "message", "type": "string", "required": True})],
         status_code=200,
         response_body="OK",
         timeout=30,
@@ -196,7 +192,7 @@ def test_webhook_data_model_dump():
     assert dumped["body"][0]["type"] == "string"
 
 
-def test_webhook_data_model_dump_with_alias():
+def test_webhook_data_model_dump_with_alias() -> None:
     """Test WebhookData model serialization includes alias."""
     data = WebhookData(
         title="Test Webhook",
@@ -208,33 +204,33 @@ def test_webhook_data_model_dump_with_alias():
     assert dumped["content_type"] == "multipart/form-data"
 
 
-def test_webhook_data_validation_errors():
+def test_webhook_data_validation_errors() -> None:
     """Test WebhookData validation errors."""
 
     # Invalid method
     with pytest.raises(ValidationError):
-        WebhookData(title="Test", method="invalid_method")
+        WebhookData.model_validate({"title": "Test", "method": "invalid_method"})
 
     # Invalid content_type
     with pytest.raises(ValidationError):
-        WebhookData(title="Test", content_type="invalid/type")
+        WebhookData.model_validate({"title": "Test", "content_type": "invalid/type"})
 
     # Invalid status_code (should be int) - use non-numeric string
     with pytest.raises(ValidationError):
-        WebhookData(title="Test", status_code="invalid")
+        WebhookData.model_validate({"title": "Test", "status_code": "invalid"})
 
     # Invalid timeout (should be int) - use non-numeric string
     with pytest.raises(ValidationError):
-        WebhookData(title="Test", timeout="invalid")
+        WebhookData.model_validate({"title": "Test", "timeout": "invalid"})
 
     # Valid cases that should NOT raise errors
     # These should work fine (pydantic converts string numbers to int)
-    valid_data = WebhookData(title="Test", status_code="200", timeout="30")
+    valid_data = WebhookData.model_validate({"title": "Test", "status_code": "200", "timeout": "30"})
     assert valid_data.status_code == 200
     assert valid_data.timeout == 30
 
 
-def test_webhook_data_sequence_fields():
+def test_webhook_data_sequence_fields() -> None:
     """Test WebhookData sequence field behavior."""
     # Test empty sequences
     data = WebhookData(title="Test")
@@ -251,23 +247,23 @@ def test_webhook_data_sequence_fields():
     assert len(data.headers) == 1  # Should still be 1
 
 
-def test_webhook_data_rejects_non_string_header_types():
+def test_webhook_data_rejects_non_string_header_types() -> None:
     """Headers should stay string-only because runtime does not coerce header values."""
     for param_type in ["number", "boolean", "object", "array[string]", "file"]:
         with pytest.raises(ValidationError):
             WebhookData(
                 title="Test",
-                headers=[WebhookParameter(name="X-Test", type=param_type)],
+                headers=[WebhookParameter.model_validate({"name": "X-Test", "type": param_type})],
             )
 
 
-def test_webhook_data_limits_query_param_types_to_scalar_values():
+def test_webhook_data_limits_query_param_types_to_scalar_values() -> None:
     """Query params only support scalar conversions in the current runtime."""
     data = WebhookData(
         title="Test",
         params=[
-            WebhookParameter(name="count", type="number"),
-            WebhookParameter(name="enabled", type="boolean"),
+            WebhookParameter.model_validate({"name": "count", "type": "number"}),
+            WebhookParameter.model_validate({"name": "enabled", "type": "boolean"}),
         ],
     )
     assert data.params[0].type == "number"
@@ -277,18 +273,18 @@ def test_webhook_data_limits_query_param_types_to_scalar_values():
         with pytest.raises(ValidationError):
             WebhookData(
                 title="Test",
-                params=[WebhookParameter(name="test", type=param_type)],
+                params=[WebhookParameter.model_validate({"name": "test", "type": param_type})],
             )
 
 
-def test_webhook_data_sync_mode():
+def test_webhook_data_sync_mode() -> None:
     """Test WebhookData SyncMode nested enum."""
     # Test that SyncMode enum exists and has expected value
     assert hasattr(WebhookData, "SyncMode")
     assert WebhookData.SyncMode.SYNC == "async"  # Note: confusingly named but correct
 
 
-def test_webhook_parameter_edge_cases():
+def test_webhook_parameter_edge_cases() -> None:
     """Test WebhookParameter edge cases."""
     # Test with special characters in name
     param = WebhookParameter(name="X-Custom-Header-123", required=True)
@@ -299,10 +295,10 @@ def test_webhook_parameter_edge_cases():
     assert param_empty.name == ""
 
 
-def test_webhook_body_parameter_edge_cases():
+def test_webhook_body_parameter_edge_cases() -> None:
     """Test WebhookBodyParameter edge cases."""
     # Test file type parameter
-    file_param = WebhookBodyParameter(name="upload", type="file", required=True)
+    file_param = WebhookBodyParameter.model_validate({"name": "upload", "type": "file", "required": True})
     assert file_param.type == "file"
     assert file_param.required is True
 
@@ -318,11 +314,11 @@ def test_webhook_body_parameter_edge_cases():
         "array[object]",
         "file",
     ]:
-        param = WebhookBodyParameter(name=f"test_{param_type}", type=param_type)
+        param = WebhookBodyParameter.model_validate({"name": f"test_{param_type}", "type": param_type})
         assert param.type == param_type
 
 
-def test_webhook_data_inheritance():
+def test_webhook_data_inheritance() -> None:
     """Test WebhookData inherits from BaseNodeData correctly."""
     from graphon.entities.base_node_data import BaseNodeData
 

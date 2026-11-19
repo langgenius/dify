@@ -7,7 +7,7 @@ from tests.helpers.unit.core.workflow.nodes.template_transform.template_transfor
 )
 
 
-def test_extract_variable_selector_to_variable_mapping_accepts_mixed_valid_entries():
+def test_extract_variable_selector_to_variable_mapping_accepts_mixed_valid_entries() -> None:
     mapping = TemplateTransformNode._extract_variable_selector_to_variable_mapping(
         graph_config={"ignored": True},
         node_id="node_123",

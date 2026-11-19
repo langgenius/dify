@@ -174,7 +174,7 @@ const autocompleteControlVariants = cva(
     insetFocusRingClassName,
     'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-tertiary disabled:focus-visible:bg-transparent',
     'group-data-disabled/autocomplete:cursor-not-allowed group-data-disabled/autocomplete:hover:bg-transparent group-data-disabled/autocomplete:focus-visible:bg-transparent',
-    'group-data-readonly/autocomplete:hidden',
+    'data-readonly:not-data-disabled:cursor-default data-readonly:not-data-disabled:hover:bg-transparent data-readonly:not-data-disabled:hover:text-text-tertiary',
   ],
   {
     variants: {
@@ -236,7 +236,7 @@ function AutocompleteClear({
       className={(state) =>
         cn(
           autocompleteControlVariants({ size }),
-          'data-ending-style:opacity-0 data-starting-style:opacity-0',
+          'group-data-readonly/autocomplete:hidden data-ending-style:opacity-0 data-starting-style:opacity-0',
           resolveClassName(className, state),
         )
       }

@@ -142,7 +142,7 @@ With `name`, the committed value participates in native FormData; an empty field
 `form` can associate an external form. Required/invalid fields block native validated submission
 and focus the first invalid trigger. Reset restores `defaultValue` and closes the popup; a
 controlled owner must accept the reset callback. Disabled fields are omitted from submission;
-read-only fields remain focusable and submit their value without allowing edits. With a surrounding `Field`, pickers also register with Base UI Form:
+read-only fields remain focusable, open for browsing and submit their value without allowing edits. With a surrounding `Field`, pickers also register with Base UI Form:
 
 - `Field.name` takes precedence over the picker's `name`; otherwise the picker supplies the name.
 - `Field.validate` receives the committed domain value (`string | null` or `Date | null`).

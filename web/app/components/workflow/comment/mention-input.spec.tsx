@@ -12,7 +12,9 @@ const render = (ui: ReactElement, cachedUsers?: UserProfile[]) => {
   const store = createWorkflowStore({})
   if (cachedUsers) store.getState().setMentionableUsersCache('app-1', cachedUsers)
   return renderComponent(
-    <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
+    <EditorResourceScope
+      resource={{ kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'workflow' }}
+    >
       <WorkflowContext value={store}>{ui}</WorkflowContext>
     </EditorResourceScope>,
   )

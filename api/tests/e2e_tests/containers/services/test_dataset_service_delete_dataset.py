@@ -18,7 +18,7 @@ class DatasetDeleteIntegrationDataFactory:
     """Create persisted entities used by delete_dataset integration tests."""
 
     @staticmethod
-    def create_account_with_tenant(db_session_with_containers) -> tuple[Account, Tenant]:
+    def create_account_with_tenant(db_session_with_containers: Session) -> tuple[Account, Tenant]:
         """Persist an owner account, tenant, and tenant join for dataset deletion tests."""
         account = Account(
             email=f"owner-{uuid4()}@example.com",
@@ -50,7 +50,7 @@ class DatasetDeleteIntegrationDataFactory:
 
     @staticmethod
     def create_dataset(
-        db_session_with_containers,
+        db_session_with_containers: Session,
         tenant_id: str,
         created_by: str,
         *,
@@ -78,7 +78,7 @@ class DatasetDeleteIntegrationDataFactory:
 
     @staticmethod
     def create_document(
-        db_session_with_containers,
+        db_session_with_containers: Session,
         *,
         tenant_id: str,
         dataset_id: str,
@@ -105,7 +105,7 @@ class DatasetDeleteIntegrationDataFactory:
 class TestDatasetServiceDeleteDataset:
     """Integration coverage for DatasetService.delete_dataset using testcontainers."""
 
-    def test_delete_dataset_with_documents_success(self, db_session_with_containers: Session):
+    def test_delete_dataset_with_documents_success(self, db_session_with_containers: Session) -> None:
         """Delete a dataset with documents and dispatch cleanup through the real signal handler."""
         # Arrange
         owner, tenant = DatasetDeleteIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
@@ -148,7 +148,7 @@ class TestDatasetServiceDeleteDataset:
             dataset.pipeline_id,
         )
 
-    def test_delete_empty_dataset_success(self, db_session_with_containers: Session):
+    def test_delete_empty_dataset_success(self, db_session_with_containers: Session) -> None:
         """Delete an empty dataset without scheduling cleanup when both gating fields are absent."""
         # Arrange
         owner, tenant = DatasetDeleteIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
@@ -176,7 +176,7 @@ class TestDatasetServiceDeleteDataset:
         assert db_session_with_containers.get(Dataset, dataset.id) is None
         clean_dataset_delay.assert_not_called()
 
-    def test_delete_dataset_with_partial_none_values(self, db_session_with_containers: Session):
+    def test_delete_dataset_with_partial_none_values(self, db_session_with_containers: Session) -> None:
         """Delete a dataset without cleanup when indexing_technique is missing but doc_form resolves."""
         # Arrange
         owner, tenant = DatasetDeleteIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
@@ -204,7 +204,9 @@ class TestDatasetServiceDeleteDataset:
         assert db_session_with_containers.get(Dataset, dataset.id) is None
         clean_dataset_delay.assert_not_called()
 
-    def test_delete_dataset_with_doc_form_none_indexing_technique_exists(self, db_session_with_containers: Session):
+    def test_delete_dataset_with_doc_form_none_indexing_technique_exists(
+        self, db_session_with_containers: Session
+    ) -> None:
         """Delete a dataset without cleanup when indexing exists but doc_form resolves to None."""
         # Arrange
         owner, tenant = DatasetDeleteIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
@@ -232,7 +234,7 @@ class TestDatasetServiceDeleteDataset:
         assert db_session_with_containers.get(Dataset, dataset.id) is None
         clean_dataset_delay.assert_not_called()
 
-    def test_delete_dataset_not_found(self, db_session_with_containers: Session):
+    def test_delete_dataset_not_found(self, db_session_with_containers: Session) -> None:
         """Return False without scheduling cleanup when the target dataset does not exist."""
         # Arrange
         owner, _ = DatasetDeleteIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)

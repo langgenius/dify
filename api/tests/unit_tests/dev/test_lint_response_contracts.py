@@ -1,31 +1,19 @@
-import importlib.util
 import sys
 from pathlib import Path
 
 import pytest
 
-
-def _load_lint_response_contracts_module():
-    api_dir = Path(__file__).parents[3]
-    script_path = api_dir / "dev" / "lint_response_contracts.py"
-    spec = importlib.util.spec_from_file_location("lint_response_contracts", script_path)
-    assert spec is not None
-    module = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
+from dev import lint_response_contracts
 
 
-def _checks_for_source(tmp_path: Path, source: str):
-    module = _load_lint_response_contracts_module()
+def _checks_for_source(tmp_path: Path, source: str) -> list[lint_response_contracts.ContractCheck]:
     controller_path = tmp_path / "controllers" / "sample.py"
     controller_path.parent.mkdir()
     controller_path.write_text(source, encoding="utf-8")
-    return module.checks_for_file(controller_path, tmp_path)
+    return lint_response_contracts.checks_for_file(controller_path, tmp_path)
 
 
-def test_no_body_status_with_body_is_mismatch_while_empty_body_is_valid(tmp_path: Path):
+def test_no_body_status_with_body_is_mismatch_while_empty_body_is_valid(tmp_path: Path) -> None:
     checks = _checks_for_source(
         tmp_path,
         """
@@ -51,7 +39,7 @@ class EmptyDeleteApi(Resource):
     assert "no-body response but returns raw_dict" in checks[0].reason
 
 
-def test_variable_model_dump_is_refactorable_not_valid(tmp_path: Path):
+def test_variable_model_dump_is_refactorable_not_valid(tmp_path: Path) -> None:
     checks = _checks_for_source(
         tmp_path,
         """
@@ -77,7 +65,7 @@ class AnnotationApi(Resource):
     assert "prefer dump_response" in checks[0].reason
 
 
-def test_constructor_variable_model_dump_is_valid(tmp_path: Path):
+def test_constructor_variable_model_dump_is_valid(tmp_path: Path) -> None:
     checks = _checks_for_source(
         tmp_path,
         """
@@ -96,7 +84,7 @@ class AnnotationApi(Resource):
     assert checks[0].actual[0].model == "AnnotationResponse"
 
 
-def test_variable_model_dump_with_wrong_documented_schema_is_mismatch(tmp_path: Path):
+def test_variable_model_dump_with_wrong_documented_schema_is_mismatch(tmp_path: Path) -> None:
     checks = _checks_for_source(
         tmp_path,
         """
@@ -114,7 +102,7 @@ class AnnotationApi(Resource):
     assert "documents DocumentedResponse but returns ActualResponse" in checks[0].reason
 
 
-def test_nested_returns_are_ignored_for_outer_control_flow(tmp_path: Path):
+def test_nested_returns_are_ignored_for_outer_control_flow(tmp_path: Path) -> None:
     checks = _checks_for_source(
         tmp_path,
         """
@@ -136,7 +124,7 @@ class StreamApi(Resource):
     assert {actual.model for actual in checks[0].actual} == {"StreamResponse"}
 
 
-def test_response_contract_ignore_comment_skips_route_method(tmp_path: Path):
+def test_response_contract_ignore_comment_skips_route_method(tmp_path: Path) -> None:
     checks = _checks_for_source(
         tmp_path,
         """
@@ -168,7 +156,7 @@ class RegularApi(Resource):
     assert checks[0].classification == "valid"
 
 
-def test_method_ignore_comment_does_not_skip_sibling_methods(tmp_path: Path):
+def test_method_ignore_comment_does_not_skip_sibling_methods(tmp_path: Path) -> None:
     checks = _checks_for_source(
         tmp_path,
         """
@@ -191,8 +179,7 @@ class MixedApi(Resource):
     assert checks[0].classification == "valid"
 
 
-def test_main_is_report_only_by_default_for_mismatches(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    module = _load_lint_response_contracts_module()
+def test_main_is_report_only_by_default_for_mismatches(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     controller_path = tmp_path / "controllers" / "sample.py"
     controller_path.parent.mkdir()
     controller_path.write_text(
@@ -207,14 +194,15 @@ class BadDeleteApi(Resource):
     )
 
     monkeypatch.setattr(sys, "argv", ["lint_response_contracts.py", str(controller_path)])
-    assert module.main() == 0
+    assert lint_response_contracts.main() == 0
 
     monkeypatch.setattr(sys, "argv", ["lint_response_contracts.py", "--fail-on-mismatch", str(controller_path)])
-    assert module.main() == 1
+    assert lint_response_contracts.main() == 1
 
 
-def test_main_hides_unknown_details_by_default(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys):
-    module = _load_lint_response_contracts_module()
+def test_main_hides_unknown_details_by_default(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     controller_path = tmp_path / "controllers" / "sample.py"
     controller_path.parent.mkdir()
     controller_path.write_text(
@@ -229,19 +217,19 @@ class ItemApi(Resource):
     )
 
     monkeypatch.setattr(sys, "argv", ["lint_response_contracts.py", str(controller_path)])
-    assert module.main() == 0
+    assert lint_response_contracts.main() == 0
     default_output = capsys.readouterr().out
     assert "1 unknown" in default_output
     assert "UNKNOWN:" not in default_output
 
     monkeypatch.setattr(sys, "argv", ["lint_response_contracts.py", "--include-unknown", str(controller_path)])
-    assert module.main() == 0
+    assert lint_response_contracts.main() == 0
     include_unknown_output = capsys.readouterr().out
     assert "UNKNOWN:" in include_unknown_output
     assert "non-literal or unsupported status" in include_unknown_output
 
 
-def test_class_level_route_and_response_docs_apply_to_methods(tmp_path: Path):
+def test_class_level_route_and_response_docs_apply_to_methods(tmp_path: Path) -> None:
     checks = _checks_for_source(
         tmp_path,
         """
@@ -258,7 +246,7 @@ class ItemListApi(Resource):
     assert checks[0].route == "/items"
 
 
-def test_unknown_reassignment_prevents_variable_model_dump_inference(tmp_path: Path):
+def test_unknown_reassignment_prevents_variable_model_dump_inference(tmp_path: Path) -> None:
     checks = _checks_for_source(
         tmp_path,
         """
@@ -278,7 +266,7 @@ class ItemApi(Resource):
     assert "returns unknown" in checks[0].reason
 
 
-def test_non_literal_status_is_unknown_not_defaulted_to_200(tmp_path: Path):
+def test_non_literal_status_is_unknown_not_defaulted_to_200(tmp_path: Path) -> None:
     checks = _checks_for_source(
         tmp_path,
         """

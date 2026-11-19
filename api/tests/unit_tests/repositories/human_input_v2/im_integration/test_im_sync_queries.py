@@ -2,16 +2,21 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Generator
 from datetime import datetime, timedelta
 
 import pytest
+import sqlalchemy as sa
+from pydantic import JsonValue
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from core.human_input_v2.entities import IMIdentityBindingStatus, IMProvider, IMSyncResultType
 from core.human_input_v2.im_integration import IMChannelRevision, IMSyncRun, SyncResultFact
+from core.human_input_v2.im_integration.sync_records import SysUserId, SysUserIMSyncInitiator
 from core.human_input_v2.shared import ContactId, IMIdentityId, IMSyncResultId, IMSyncRunId
+from models.human_input_v2 import HumanInputIMSyncResult
 from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials
 from repositories.human_input_v2.im_binding_repository import IMBindingAssignment
 from repositories.human_input_v2.im_channel_repository import (
@@ -61,7 +66,7 @@ def _run(run_id: IMSyncRunId, created_at: datetime) -> IMSyncRun:
         sync_run_id=run_id,
         channel_revision=IMChannelRevision(str(_CHANNEL_ID), 1),
         provider=IMProvider.FEISHU,
-        started_by_account_id=None,
+        started_by=SysUserIMSyncInitiator(SysUserId("00000000-0000-0000-0000-000000000999")),
         now=created_at,
     )
 
@@ -172,6 +177,35 @@ def test_result_query_pages_one_required_bucket_in_stable_order(sync_query_conte
     assert first_page.total == 2
     assert [item.id for item in first_page.items] == [IMSyncResultId("00000000-0000-0000-0000-000000000502")]
     assert [item.id for item in second_page.items] == [IMSyncResultId("00000000-0000-0000-0000-000000000501")]
+
+
+def test_reading_and_appending_history_preserves_original_snapshot(sqlite_engine: Engine) -> None:
+    snapshot: dict[str, JsonValue] = {
+        "contact_id": "contact",
+        "name": "Historical",
+        "future_optional": None,
+        "future_profile": {"nested": None},
+    }
+    with Session(sqlite_engine) as session, session.begin():
+        record = sync_result_to_record(_result("00000000-0000-0000-0000-000000000501", IMSyncResultType.ADDED, _NOW))
+        session.add(record)
+        session.flush()
+        session.execute(
+            sa.text("UPDATE human_input_im_sync_results SET contact_snapshot = :payload WHERE id = :id"),
+            {"payload": json.dumps(snapshot), "id": record.id},
+        )
+        session.expire_all()
+        repository = SQLAlchemyIMControlPlaneRepository(session, _channel())
+        page = repository.page_sync_results(_LATEST_RUN_ID, IMSyncResultType.ADDED, page=1, limit=10)
+        assert page.items[0].contact_snapshot is not None
+        assert page.items[0].contact_snapshot.name == "Historical"
+        repository.append_sync_results((_result("00000000-0000-0000-0000-000000000502", IMSyncResultType.ADDED, _NOW),))
+        stored = session.scalars(
+            sa.select(sa.cast(HumanInputIMSyncResult.contact_snapshot, sa.Text)).where(
+                HumanInputIMSyncResult.id == record.id
+            )
+        ).one()
+        assert json.loads(stored) == snapshot
 
 
 @pytest.mark.parametrize(("page", "limit"), [(0, 1), (1, 0), (1, 101)])

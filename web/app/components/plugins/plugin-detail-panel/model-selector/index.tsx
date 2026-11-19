@@ -18,6 +18,7 @@ import { SplitModelSelector } from '@/app/components/header/account-setting/mode
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
+import { getErrorMessage } from '@/utils/error-message'
 import LLMParamsPanel from './llm-params-panel'
 import TTSParamsPanel from './tts-params-panel'
 
@@ -174,8 +175,8 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
             `${t(($) => $['modelProvider.parametersInvalidRemoved'], { ns: 'modelProvider' })}: ${keys.map((k) => `${k} (${removedDetails[k]})`).join(', ')}`,
           )
         }
-      } catch {
-        toast.error(t(($) => $.error, { ns: 'common' }))
+      } catch (error) {
+        toast.error(getErrorMessage(error) ?? t(($) => $.error, { ns: 'common' }))
       }
     }
 

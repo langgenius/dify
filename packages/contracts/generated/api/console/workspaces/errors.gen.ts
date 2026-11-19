@@ -18,6 +18,14 @@ const zInvalidRequestError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zPaidPlanRequiredError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('paid_plan_required'),
+      status: z.literal(403),
+    }),
+  ))()
+
 const zInvalidRoleError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -138,6 +146,86 @@ const zRoleAlreadyAssignedError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zNetworkAccessForbiddenError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('network_access_forbidden'),
+      status: z.literal(403),
+    }),
+  ))()
+
+const zNetworkAccessNotEntitledError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('network_access_not_entitled'),
+      status: z.literal(403),
+    }),
+  ))()
+
+const zNetworkAccessRoleDeniedError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('network_access_role_denied'),
+      status: z.literal(403),
+    }),
+  ))()
+
+const zBillingOperationFailedError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('billing_operation_failed'),
+      status: z.literal(502),
+    }),
+  ))()
+
+const zBillingUnavailableError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('billing_unavailable'),
+      status: z.literal(503),
+    }),
+  ))()
+
+const zNetworkAccessInvalidInputError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('network_access_invalid_input'),
+      status: z.literal(400),
+    }),
+  ))()
+
+const zNetworkAccessGroupNameConflictError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('network_access_group_name_conflict'),
+      status: z.literal(409),
+    }),
+  ))()
+
+const zNetworkAccessGroupNotFoundError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('network_access_group_not_found'),
+      status: z.literal(404),
+    }),
+  ))()
+
+const zNetworkAccessGroupBoundError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('network_access_group_bound'),
+      status: z.literal(409),
+    }),
+  ))()
+
+const zNetworkAccessVersionConflictError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('network_access_version_conflict'),
+      status: z.literal(409),
+    }),
+  ))()
+
 const zPluginError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -166,6 +254,78 @@ const zCurrentWorkspaceArchivedError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
       code: z.literal('current_workspace_archived'),
+      status: z.literal(409),
+    }),
+  ))()
+
+const zTriggerOauthClientConfigInvalidError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('trigger_oauth_client_config_invalid'),
+      status: z.literal(500),
+    }),
+  ))()
+
+const zTriggerOauthClientChangedError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('trigger_oauth_client_changed'),
+      status: z.literal(409),
+    }),
+  ))()
+
+const zTriggerSubscriptionLimitReachedError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('trigger_subscription_limit_reached'),
+      status: z.literal(400),
+    }),
+  ))()
+
+const zTriggerSubscriptionNameConflictError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('trigger_subscription_name_conflict'),
+      status: z.literal(409),
+    }),
+  ))()
+
+const zTriggerSubscriptionProviderError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('trigger_subscription_provider_error'),
+      status: z.literal(502),
+    }),
+  ))()
+
+const zTriggerOauthProviderError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('trigger_oauth_provider_error'),
+      status: z.literal(502),
+    }),
+  ))()
+
+const zTriggerSubscriptionInvalidError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('trigger_subscription_invalid'),
+      status: z.literal(400),
+    }),
+  ))()
+
+const zTriggerSubscriptionNotFoundError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('trigger_subscription_not_found'),
+      status: z.literal(404),
+    }),
+  ))()
+
+const zTriggerSubscriptionChangedError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('trigger_subscription_changed'),
       status: z.literal(409),
     }),
   ))()
@@ -210,7 +370,19 @@ const zAccountNotLinkTenantError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zPendingInvitationNotFoundError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('pending_invitation_not_found'),
+      status: z.literal(404),
+    }),
+  ))()
+
 export const putErrors = { invalid_request: { status: 400, data: zInvalidRequestError } }
+
+export const get4Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+
+export const get13Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
 
 export const post24Errors = {
   invalid_role: { status: 400, data: zInvalidRoleError },
@@ -253,13 +425,79 @@ export const delete8Errors = {
   member_not_found: { status: 404, data: zMemberNotFoundError },
 }
 
-export const get40Errors = { plugin_error: { status: 400, data: zPluginError } }
+export const get38Errors = {
+  network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
+}
 
-export const get42Errors = { plugin_error: { status: 400, data: zPluginError } }
+export const get39Errors = {
+  billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+  billing_unavailable: { status: 503, data: zBillingUnavailableError },
+  network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
+  network_access_group_not_found: { status: 404, data: zNetworkAccessGroupNotFoundError },
+  network_access_not_entitled: { status: 403, data: zNetworkAccessNotEntitledError },
+  network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
+}
+
+export const delete12Errors = {
+  billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+  billing_unavailable: { status: 503, data: zBillingUnavailableError },
+  network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
+  network_access_group_bound: { status: 409, data: zNetworkAccessGroupBoundError },
+  network_access_group_not_found: { status: 404, data: zNetworkAccessGroupNotFoundError },
+  network_access_not_entitled: { status: 403, data: zNetworkAccessNotEntitledError },
+  network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
+  network_access_version_conflict: { status: 409, data: zNetworkAccessVersionConflictError },
+  paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+}
+
+export const get40Errors = {
+  billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+  billing_unavailable: { status: 503, data: zBillingUnavailableError },
+  network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
+  network_access_group_not_found: { status: 404, data: zNetworkAccessGroupNotFoundError },
+  network_access_not_entitled: { status: 403, data: zNetworkAccessNotEntitledError },
+  network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
+}
+
+export const put9Errors = {
+  billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+  billing_unavailable: { status: 503, data: zBillingUnavailableError },
+  network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
+  network_access_group_name_conflict: { status: 409, data: zNetworkAccessGroupNameConflictError },
+  network_access_group_not_found: { status: 404, data: zNetworkAccessGroupNotFoundError },
+  network_access_invalid_input: { status: 400, data: zNetworkAccessInvalidInputError },
+  network_access_not_entitled: { status: 403, data: zNetworkAccessNotEntitledError },
+  network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
+  network_access_version_conflict: { status: 409, data: zNetworkAccessVersionConflictError },
+  paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+}
+
+export const get41Errors = {
+  billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+  billing_unavailable: { status: 503, data: zBillingUnavailableError },
+  network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
+  network_access_not_entitled: { status: 403, data: zNetworkAccessNotEntitledError },
+  network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
+}
+
+export const post38Errors = {
+  billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+  billing_unavailable: { status: 503, data: zBillingUnavailableError },
+  network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
+  network_access_group_name_conflict: { status: 409, data: zNetworkAccessGroupNameConflictError },
+  network_access_invalid_input: { status: 400, data: zNetworkAccessInvalidInputError },
+  network_access_not_entitled: { status: 403, data: zNetworkAccessNotEntitledError },
+  network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
+  paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+}
 
 export const get43Errors = { plugin_error: { status: 400, data: zPluginError } }
 
-export const get44Errors = { plugin_error: { status: 400, data: zPluginError } }
+export const get45Errors = { plugin_error: { status: 400, data: zPluginError } }
+
+export const get46Errors = { plugin_error: { status: 400, data: zPluginError } }
+
+export const get47Errors = { plugin_error: { status: 400, data: zPluginError } }
 
 export const post41Errors = { plugin_error: { status: 400, data: zPluginError } }
 
@@ -267,17 +505,17 @@ export const post42Errors = { plugin_error: { status: 400, data: zPluginError } 
 
 export const post43Errors = { plugin_error: { status: 400, data: zPluginError } }
 
-export const get45Errors = { plugin_error: { status: 400, data: zPluginError } }
+export const get48Errors = { plugin_error: { status: 400, data: zPluginError } }
 
 export const post44Errors = { plugin_error: { status: 400, data: zPluginError } }
 
 export const post45Errors = { plugin_error: { status: 400, data: zPluginError } }
 
-export const get46Errors = { plugin_error: { status: 400, data: zPluginError } }
+export const get49Errors = { plugin_error: { status: 400, data: zPluginError } }
 
-export const get47Errors = { plugin_error: { status: 400, data: zPluginError } }
+export const get50Errors = { plugin_error: { status: 400, data: zPluginError } }
 
-export const get48Errors = { plugin_error: { status: 400, data: zPluginError } }
+export const get51Errors = { plugin_error: { status: 400, data: zPluginError } }
 
 export const post46Errors = { plugin_error: { status: 400, data: zPluginError } }
 
@@ -287,9 +525,9 @@ export const post49Errors = { plugin_error: { status: 400, data: zPluginError } 
 
 export const post50Errors = { plugin_error: { status: 400, data: zPluginError } }
 
-export const get51Errors = { plugin_error: { status: 400, data: zPluginError } }
+export const get54Errors = { plugin_error: { status: 400, data: zPluginError } }
 
-export const get52Errors = { plugin_error: { status: 400, data: zPluginError } }
+export const get55Errors = { plugin_error: { status: 400, data: zPluginError } }
 
 export const post51Errors = { plugin_error: { status: 400, data: zPluginError } }
 
@@ -301,7 +539,7 @@ export const post55Errors = { plugin_error: { status: 400, data: zPluginError } 
 
 export const post56Errors = { plugin_error: { status: 400, data: zPluginError } }
 
-export const get53Errors = { plugin_error: { status: 400, data: zPluginError } }
+export const get56Errors = { plugin_error: { status: 400, data: zPluginError } }
 
 export const post61Errors = {
   filename_missing: { status: 400, data: zFilenameMissingError },
@@ -314,9 +552,9 @@ export const post63Errors = { invalid_request: { status: 400, data: zInvalidRequ
 
 export const post65Errors = { invalid_request: { status: 400, data: zInvalidRequestError } }
 
-export const get94Errors = { invalid_request: { status: 400, data: zInvalidRequestError } }
+export const get97Errors = { invalid_request: { status: 400, data: zInvalidRequestError } }
 
-export const get95Errors = { invalid_request: { status: 400, data: zInvalidRequestError } }
+export const get98Errors = { invalid_request: { status: 400, data: zInvalidRequestError } }
 
 export const patch6Errors = { invalid_request: { status: 400, data: zInvalidRequestError } }
 
@@ -334,8 +572,47 @@ export const patch8Errors = { invalid_request: { status: 400, data: zInvalidRequ
 
 export const post68Errors = { invalid_request: { status: 400, data: zInvalidRequestError } }
 
-export const get101Errors = {
+export const get104Errors = {
   current_workspace_archived: { status: 409, data: zCurrentWorkspaceArchivedError },
+}
+
+export const get130Errors = {
+  trigger_oauth_client_config_invalid: { status: 500, data: zTriggerOauthClientConfigInvalidError },
+}
+
+export const post84Errors = {
+  trigger_oauth_client_changed: { status: 409, data: zTriggerOauthClientChangedError },
+  trigger_oauth_client_config_invalid: { status: 500, data: zTriggerOauthClientConfigInvalidError },
+}
+
+export const post85Errors = {
+  trigger_subscription_limit_reached: { status: 400, data: zTriggerSubscriptionLimitReachedError },
+  trigger_subscription_name_conflict: { status: 409, data: zTriggerSubscriptionNameConflictError },
+  trigger_subscription_provider_error: { status: 502, data: zTriggerSubscriptionProviderError },
+}
+
+export const get134Errors = {
+  trigger_oauth_client_config_invalid: { status: 500, data: zTriggerOauthClientConfigInvalidError },
+  trigger_oauth_provider_error: { status: 502, data: zTriggerOauthProviderError },
+}
+
+export const post89Errors = {
+  trigger_subscription_invalid: { status: 400, data: zTriggerSubscriptionInvalidError },
+  trigger_subscription_not_found: { status: 404, data: zTriggerSubscriptionNotFoundError },
+  trigger_subscription_provider_error: { status: 502, data: zTriggerSubscriptionProviderError },
+}
+
+export const post90Errors = {
+  trigger_subscription_changed: { status: 409, data: zTriggerSubscriptionChangedError },
+  trigger_subscription_not_found: { status: 404, data: zTriggerSubscriptionNotFoundError },
+  trigger_subscription_provider_error: { status: 502, data: zTriggerSubscriptionProviderError },
+}
+
+export const post91Errors = {
+  trigger_subscription_changed: { status: 409, data: zTriggerSubscriptionChangedError },
+  trigger_subscription_name_conflict: { status: 409, data: zTriggerSubscriptionNameConflictError },
+  trigger_subscription_not_found: { status: 404, data: zTriggerSubscriptionNotFoundError },
+  trigger_subscription_provider_error: { status: 502, data: zTriggerSubscriptionProviderError },
 }
 
 export const post92Errors = {
@@ -349,3 +626,10 @@ export const post92Errors = {
 export const post95Errors = {
   account_not_link_tenant: { status: 403, data: zAccountNotLinkTenantError },
 }
+
+export const post96Errors = {
+  forbidden: { status: 403, data: zForbiddenError },
+  pending_invitation_not_found: { status: 404, data: zPendingInvitationNotFoundError },
+}
+
+export const get138Errors = { forbidden: { status: 403, data: zForbiddenError } }

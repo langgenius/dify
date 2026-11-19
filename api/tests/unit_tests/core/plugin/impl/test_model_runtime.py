@@ -1,5 +1,7 @@
 """Unit tests for the plugin-backed model runtime adapter."""
 
+from __future__ import annotations
+
 import datetime
 import inspect
 import uuid
@@ -71,7 +73,7 @@ def _recording_model_client(
     return client, results, calls
 
 
-def _redis_cache(monkeypatch: pytest.MonkeyPatch) -> tuple[Redis, list[tuple[str, int, str]]]:
+def _redis_cache(monkeypatch: pytest.MonkeyPatch) -> tuple[Redis[bytes], list[tuple[str, int, str]]]:
     redis = Redis()
     values: dict[str, str] = {}
     writes: list[tuple[str, int, str]] = []
@@ -548,7 +550,7 @@ class TestPluginModelRuntime:
         self, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
     ) -> None:
         client, client_results, client_calls = _recording_model_client(monkeypatch)
-        client_results["fetch_model_providers"] = []
+        client_results["fetch_model_providers"] = list[object]()
         from core.plugin import plugin_service as plugin_service_module
 
         redis = Redis()

@@ -151,6 +151,7 @@ function AgentConfigurePageComposerSession({
   })
   const refreshDebugConversationMutation = useMutation(
     consoleQuery.agent.byAgentId.debugConversation.refresh.post.mutationOptions({
+      context: { silent: true },
       onSuccess: ({
         debug_conversation_id,
         debug_conversation_has_messages,
@@ -178,7 +179,12 @@ function AgentConfigurePageComposerSession({
     isPending: isRefreshingBuildConversation,
   } = refreshDebugConversationMutation
   const refreshDebugConversation = () => {
-    refreshDebugConversationRequest({ params: { agent_id: agentId } })
+    refreshDebugConversationRequest(
+      { params: { agent_id: agentId } },
+      {
+        onError: (error) => toast.error(error.message),
+      },
+    )
   }
   const refreshDebugConversationAsync = useCallback(
     () => refreshDebugConversationRequestAsync({ params: { agent_id: agentId } }),

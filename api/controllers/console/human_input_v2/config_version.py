@@ -66,7 +66,7 @@ def _decode(
         padding = "=" * (-len(value) % 4)
         serialized = base64.b64decode(value + padding, altchars=b"-_", validate=True)
         decoded = json.loads(serialized)
-    except (UnicodeEncodeError, ValueError, json.JSONDecodeError):
+    except (UnicodeEncodeError, ValueError):
         raise InvalidConfigVersionError("invalid configuration version") from None
 
     if not isinstance(decoded, list) or len(decoded) != 4:

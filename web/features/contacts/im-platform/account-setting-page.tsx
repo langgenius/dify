@@ -22,7 +22,9 @@ export function ContactsImPlatformAccountSettingPage({
 
   return (
     <ContactsImPlatformRuntimeProvider organization={organization}>
-      <ContactsImPlatformManagementSurface />
+      <div className="-mt-2">
+        <ContactsImPlatformManagementSurface />
+      </div>
     </ContactsImPlatformRuntimeProvider>
   )
 }

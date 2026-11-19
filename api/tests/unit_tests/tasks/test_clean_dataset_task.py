@@ -28,14 +28,9 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from extensions.storage.storage_type import StorageType
-from models.base import TypeBase
 from models.dataset import (
-    AppDatasetJoin,
     ChildChunk,
     DatasetMetadata,
-    DatasetMetadataBinding,
-    DatasetProcessRule,
-    DatasetQuery,
     Document,
     DocumentSegment,
     Pipeline,
@@ -77,26 +72,8 @@ def pipeline_id() -> str:
 
 
 @pytest.fixture
-def orm_session_maker(
-    sqlite_engine: Engine,
-    sqlite_session_factory: sessionmaker[Session],
-) -> sessionmaker[Session]:
-    """Create the cleanup tables and return the suite's real SQLite session factory."""
-    models = (
-        Document,
-        DocumentSegment,
-        ChildChunk,
-        SegmentAttachmentBinding,
-        UploadFile,
-        DatasetProcessRule,
-        DatasetQuery,
-        AppDatasetJoin,
-        DatasetMetadata,
-        DatasetMetadataBinding,
-        Pipeline,
-        Workflow,
-    )
-    TypeBase.metadata.create_all(sqlite_engine, tables=[model.__table__ for model in models])
+def orm_session_maker(sqlite_session_factory: sessionmaker[Session]) -> sessionmaker[Session]:
+    """Return the suite's real SQLite session factory over the shared full schema."""
     return sqlite_session_factory
 
 
@@ -129,7 +106,7 @@ def mock_index_processor_factory() -> Iterator[dict[str, MagicMock]]:
 def mock_get_image_upload_file_ids() -> Iterator[MagicMock]:
     """Mock get_image_upload_file_ids function."""
     with patch("tasks.clean_dataset_task.get_image_upload_file_ids", autospec=True) as mock_func:
-        mock_func.return_value = []
+        mock_func.return_value = list[str]()
         yield mock_func
 
 
@@ -338,7 +315,7 @@ class TestErrorHandling:
         mock_storage: MagicMock,
         mock_index_processor_factory: dict[str, MagicMock],
         mock_get_image_upload_file_ids: MagicMock,
-    ):
+    ) -> None:
         """
         Test that session is closed even if rollback fails.
 
@@ -400,7 +377,7 @@ class TestPipelineAndWorkflowDeletion:
         mock_storage: MagicMock,
         mock_index_processor_factory: dict[str, MagicMock],
         mock_get_image_upload_file_ids: MagicMock,
-    ):
+    ) -> None:
         """
         Test that pipeline and workflow are deleted when pipeline_id is provided.
 
@@ -437,7 +414,7 @@ class TestPipelineAndWorkflowDeletion:
         mock_storage: MagicMock,
         mock_index_processor_factory: dict[str, MagicMock],
         mock_get_image_upload_file_ids: MagicMock,
-    ):
+    ) -> None:
         """
         Test that pipeline/workflow deletion is skipped when pipeline_id is None.
 
@@ -490,7 +467,7 @@ class TestSegmentAttachmentCleanup:
         )
         binding, attachment_file = _persist_attachment(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
         segment.content = f"![image](https://example.com/files/{attachment_file.id}/file-preview)"
-        document.data_source_type = "upload_file"
+        document.data_source_type = DataSourceType.UPLOAD_FILE
         document.data_source_info = json.dumps({"upload_file_id": attachment_file.id})
         binding.document_id = document.id
         binding.segment_id = segment.id
@@ -557,7 +534,7 @@ class TestSegmentAttachmentCleanup:
         mock_storage: MagicMock,
         mock_index_processor_factory: dict[str, MagicMock],
         mock_get_image_upload_file_ids: MagicMock,
-    ):
+    ) -> None:
         """
         Test that segment attachments are cleaned up properly.
 
@@ -599,7 +576,7 @@ class TestSegmentAttachmentCleanup:
         mock_storage: MagicMock,
         mock_index_processor_factory: dict[str, MagicMock],
         mock_get_image_upload_file_ids: MagicMock,
-    ):
+    ) -> None:
         """
         Test that cleanup continues even if attachment storage deletion fails.
 
@@ -646,7 +623,7 @@ class TestEdgeCases:
         mock_storage: MagicMock,
         mock_index_processor_factory: dict[str, MagicMock],
         mock_get_image_upload_file_ids: MagicMock,
-    ):
+    ) -> None:
         """
         Test that cleanup commits and the task-owned session releases its resources.
 
@@ -769,7 +746,7 @@ class TestIndexProcessorParameters:
         mock_storage: MagicMock,
         mock_index_processor_factory: dict[str, MagicMock],
         mock_get_image_upload_file_ids: MagicMock,
-    ):
+    ) -> None:
         """
         Test that correct parameters are passed to IndexProcessor.clean().
 
@@ -990,7 +967,7 @@ class TestStepIsolation:
         ]
         with orm_session_maker.begin() as session:
             for document, source_file in zip(documents, source_files, strict=True):
-                document.data_source_type = "upload_file"
+                document.data_source_type = DataSourceType.UPLOAD_FILE
                 document.data_source_info = json.dumps({"upload_file_id": source_file.id})
                 session.add_all([document, source_file])
 
@@ -1063,7 +1040,7 @@ class TestStepIsolation:
         mock_storage: MagicMock,
         mock_index_processor_factory: dict[str, MagicMock],
         mock_get_image_upload_file_ids: MagicMock,
-    ):
+    ) -> None:
         """A single commit at the end is what strands data when any step fails."""
         document = _persist_document(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
         _persist_segment(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id, document_id=document.id)
@@ -1356,7 +1333,7 @@ class TestBatchedDeletes:
         mock_storage: MagicMock,
         mock_index_processor_factory: dict[str, MagicMock],
         mock_get_image_upload_file_ids: MagicMock,
-    ):
+    ) -> None:
         """With a batch size smaller than the row count the loop must still drain the
         table, rather than stopping after the first batch."""
         documents = [_persist_document(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id) for _ in range(5)]
@@ -1448,13 +1425,19 @@ def test_dataset_cleanup_keeps_a_leased_legacy_source_file(
 
 
 @pytest.mark.parametrize("shared_tenant", [None, "same", "other"])
-def test_crawl_cache_cleanup_preserves_shared_jobs(orm_session_maker, tenant_id, dataset_id, shared_tenant):
+def test_crawl_cache_cleanup_preserves_shared_jobs(
+    orm_session_maker: sessionmaker[Session],
+    tenant_id: str,
+    dataset_id: str,
+    shared_tenant: str | None,
+) -> None:
     from services import dataset_storage_cleanup_service as cleanup
 
     document = _persist_document(orm_session_maker, tenant_id=tenant_id, dataset_id=dataset_id)
     with orm_session_maker.begin() as session:
         row = session.get(Document, document.id)
-        row.data_source_type = "website_crawl"
+        assert row is not None
+        row.data_source_type = DataSourceType.WEBSITE_CRAWL
         row.data_source_info = json.dumps({"provider": "firecrawl", "job_id": "job-42"})
     if shared_tenant:
         other = _persist_document(
@@ -1464,7 +1447,8 @@ def test_crawl_cache_cleanup_preserves_shared_jobs(orm_session_maker, tenant_id,
         )
         with orm_session_maker.begin() as session:
             row = session.get(Document, other.id)
-            row.data_source_type = "website_crawl"
+            assert row is not None
+            row.data_source_type = DataSourceType.WEBSITE_CRAWL
             row.data_source_info = json.dumps({"provider": "firecrawl", "job_id": "job-42"})
     with patch.object(cleanup, "storage", autospec=True) as mock:
         cleanup.cleanup_dataset_crawl_cache(tenant_id, dataset_id)
@@ -1475,13 +1459,19 @@ def test_crawl_cache_cleanup_preserves_shared_jobs(orm_session_maker, tenant_id,
 
 
 @pytest.mark.parametrize("error", [FileNotFoundError(), PermissionError("denied")])
-def test_crawl_cache_failure_preserves_document(orm_session_maker, tenant_id, dataset_id, error):
+def test_crawl_cache_failure_preserves_document(
+    orm_session_maker: sessionmaker[Session],
+    tenant_id: str,
+    dataset_id: str,
+    error: Exception,
+) -> None:
     from services import dataset_storage_cleanup_service as cleanup
 
     document = _persist_document(orm_session_maker, tenant_id=tenant_id, dataset_id=dataset_id)
     with orm_session_maker.begin() as session:
         row = session.get(Document, document.id)
-        row.data_source_type = "website_crawl"
+        assert row is not None
+        row.data_source_type = DataSourceType.WEBSITE_CRAWL
         row.data_source_info = json.dumps({"provider": "firecrawl", "job_id": "job-42"})
     with patch.object(cleanup, "storage", autospec=True) as mock:
         mock.delete.side_effect = error
@@ -1497,7 +1487,7 @@ def test_crawl_cache_failure_preserves_document(orm_session_maker, tenant_id, da
 @pytest.mark.parametrize(
     "info", ["broken", "[]", '{"provider":"watercrawl","job_id":"job"}', '{"provider":"firecrawl","job_id":"../job"}']
 )
-def test_crawl_cache_ignores_invalid_or_other_provider_info(info):
+def test_crawl_cache_ignores_invalid_or_other_provider_info(info: str) -> None:
     from services.dataset_storage_cleanup_service import _crawl_cache_key
 
     assert _crawl_cache_key(info) is None

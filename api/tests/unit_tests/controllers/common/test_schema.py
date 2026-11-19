@@ -97,20 +97,20 @@ def _make_same_named_model() -> type[BaseModel]:
 class TestSchemaCases:
     @staticmethod
     @pytest.fixture(autouse=True)
-    def console_ns():
+    def console_ns() -> Iterator[Namespace]:
         """Isolate the console import while exercising a real namespace."""
         namespace = Namespace("console")
         with patch.dict(sys.modules, {"controllers.console": SimpleNamespace(console_ns=namespace)}):
             yield namespace
 
     @staticmethod
-    def test_default_ref_template_value():
+    def test_default_ref_template_value() -> None:
         from controllers.common.schema import DEFAULT_REF_TEMPLATE_OPENAPI_3_0
 
         assert DEFAULT_REF_TEMPLATE_OPENAPI_3_0 == "#/components/schemas/{model}"
 
     @staticmethod
-    def test_register_schema_model_calls_namespace_schema_model():
+    def test_register_schema_model_calls_namespace_schema_model() -> None:
         from controllers.common.schema import register_schema_model
 
         namespace = Namespace("test")
@@ -123,7 +123,7 @@ class TestSchemaCases:
         assert "properties" in schema
 
     @staticmethod
-    def test_register_schema_model_passes_schema_from_pydantic():
+    def test_register_schema_model_passes_schema_from_pydantic() -> None:
         from controllers.common.schema import DEFAULT_REF_TEMPLATE_OPENAPI_3_0, register_schema_model
 
         namespace = Namespace("test")
@@ -137,7 +137,7 @@ class TestSchemaCases:
         assert schema == expected_schema
 
     @staticmethod
-    def test_register_schema_model_promotes_nested_pydantic_definitions():
+    def test_register_schema_model_promotes_nested_pydantic_definitions() -> None:
         from controllers.common.schema import DEFAULT_REF_TEMPLATE_OPENAPI_3_0, register_schema_model
 
         namespace = Namespace("test")
@@ -153,7 +153,7 @@ class TestSchemaCases:
         assert called_schemas["ChildModel"] == parent_schema["$defs"]["ChildModel"]
 
     @staticmethod
-    def test_register_schema_model_allows_reregistering_the_same_model():
+    def test_register_schema_model_allows_reregistering_the_same_model() -> None:
         from controllers.common.schema import register_schema_model
 
         namespace = Namespace("test")
@@ -165,7 +165,7 @@ class TestSchemaCases:
 
     @staticmethod
     @pytest.mark.parametrize("strict", [False, True])
-    def test_register_schema_model_keeps_annotated_enum_names_stable(strict: bool):
+    def test_register_schema_model_keeps_annotated_enum_names_stable(strict: bool) -> None:
         from controllers.common.schema import register_schema_model
 
         enum_types = [StrEnum("StableStatus", {"ACTIVE": "active"}, module=__name__) for _ in range(2)]
@@ -181,7 +181,7 @@ class TestSchemaCases:
         assert snapshots[0] == snapshots[1]
 
     @staticmethod
-    def test_register_schema_model_rejects_different_model_with_same_name():
+    def test_register_schema_model_rejects_different_model_with_same_name() -> None:
         from controllers.common.schema import SchemaNameCollisionError, register_schema_model
 
         namespace = Namespace("test")
@@ -191,7 +191,7 @@ class TestSchemaCases:
             register_schema_model(namespace, _make_same_named_model())
 
     @staticmethod
-    def test_register_schema_model_rejects_nested_definition_with_same_name():
+    def test_register_schema_model_rejects_nested_definition_with_same_name() -> None:
         from controllers.common.schema import SchemaNameCollisionError, register_schema_model
 
         other_child = create_model("ChildModel", __module__="other_module", other=(int, ...))
@@ -203,7 +203,7 @@ class TestSchemaCases:
             register_schema_model(namespace, other_parent)
 
     @staticmethod
-    def test_register_schema_model_rejects_same_named_types_inside_one_schema():
+    def test_register_schema_model_rejects_same_named_types_inside_one_schema() -> None:
         from controllers.common.schema import SchemaNameCollisionError, register_schema_model
 
         other_child = create_model("ChildModel", __module__="other_module", other=(int, ...))
@@ -213,7 +213,7 @@ class TestSchemaCases:
             register_schema_model(Namespace("test"), both_children)
 
     @staticmethod
-    def test_register_schema_model_rejects_model_registered_in_both_modes_with_different_shapes():
+    def test_register_schema_model_rejects_model_registered_in_both_modes_with_different_shapes() -> None:
         from controllers.common.schema import (
             SchemaNameCollisionError,
             register_response_schema_model,
@@ -227,7 +227,7 @@ class TestSchemaCases:
             register_schema_model(namespace, ResponseAliasModel)
 
     @staticmethod
-    def test_register_schema_model_rejects_names_that_collide_after_normalization():
+    def test_register_schema_model_rejects_names_that_collide_after_normalization() -> None:
         from controllers.common.schema import SchemaNameCollisionError, register_schema_model
 
         namespace = Namespace("test")
@@ -237,14 +237,14 @@ class TestSchemaCases:
             register_schema_model(namespace, create_model("JsonPayload", value=(str, ...)))
 
     @staticmethod
-    def test_register_schema_model_keeps_namespaces_independent():
+    def test_register_schema_model_keeps_namespaces_independent() -> None:
         from controllers.common.schema import register_schema_model
 
         register_schema_model(Namespace("first"), UserModel)
         register_schema_model(Namespace("second"), _make_same_named_model())
 
     @staticmethod
-    def test_register_schema_model_applies_schema_name_overrides(monkeypatch: pytest.MonkeyPatch):
+    def test_register_schema_model_applies_schema_name_overrides(monkeypatch: pytest.MonkeyPatch) -> None:
         from controllers.common import schema as schema_module
 
         monkeypatch.setattr(
@@ -261,7 +261,7 @@ class TestSchemaCases:
         assert parent_schema["properties"]["child"]["$ref"] == "#/components/schemas/RenamedChildModel"
 
     @staticmethod
-    def test_register_schema_models_registers_multiple_models():
+    def test_register_schema_models_registers_multiple_models() -> None:
         from controllers.common.schema import register_schema_models
 
         namespace = Namespace("test")
@@ -272,14 +272,14 @@ class TestSchemaCases:
         assert called_names == ["UserModel", "ProductModel"]
 
     @staticmethod
-    def test_register_schema_models_calls_register_schema_model(monkeypatch: pytest.MonkeyPatch):
+    def test_register_schema_models_calls_register_schema_model(monkeypatch: pytest.MonkeyPatch) -> None:
         from controllers.common.schema import register_schema_models
 
         namespace = Namespace("test")
 
         calls = []
 
-        def fake_register(ns, model):
+        def fake_register(ns: Namespace, model: type[BaseModel]) -> None:
             calls.append((ns, model))
 
         monkeypatch.setattr(
@@ -295,7 +295,7 @@ class TestSchemaCases:
         ]
 
     @staticmethod
-    def test_register_response_schema_model_uses_serialized_field_names():
+    def test_register_response_schema_model_uses_serialized_field_names() -> None:
         from controllers.common.schema import register_response_schema_model
 
         namespace = Namespace("test")
@@ -308,7 +308,7 @@ class TestSchemaCases:
         assert "internal_name" not in schema["properties"]
 
     @staticmethod
-    def test_register_schema_model_preserves_openapi_nullable_unions():
+    def test_register_schema_model_preserves_openapi_nullable_unions() -> None:
         from controllers.common.schema import register_schema_model
 
         namespace = Namespace("test")
@@ -324,7 +324,7 @@ class TestSchemaCases:
         assert "anyOf" in properties["ambiguous"]
 
     @staticmethod
-    def test_get_or_create_model_returns_existing_model(console_ns):
+    def test_get_or_create_model_returns_existing_model(console_ns: Namespace) -> None:
         from controllers.common.schema import get_or_create_model
 
         existing_model = console_ns.model("TestModel", {"name": fields.String})
@@ -335,7 +335,7 @@ class TestSchemaCases:
         assert len(console_ns.models) == 1
 
     @staticmethod
-    def test_get_or_create_model_creates_new_model_when_not_exists(console_ns):
+    def test_get_or_create_model_creates_new_model_when_not_exists(console_ns: Namespace) -> None:
         from controllers.common.schema import get_or_create_model
 
         field_def = {"name": fields.String}
@@ -346,7 +346,7 @@ class TestSchemaCases:
         assert result.__schema__["properties"] == {"name": {"type": "string"}}
 
     @staticmethod
-    def test_get_or_create_model_does_not_call_model_if_exists(console_ns):
+    def test_get_or_create_model_does_not_call_model_if_exists(console_ns: Namespace) -> None:
         from controllers.common.schema import get_or_create_model
 
         existing_model = console_ns.model("ExistingModel", {"name": fields.String})
@@ -357,7 +357,7 @@ class TestSchemaCases:
         assert len(console_ns.models) == 1
 
     @staticmethod
-    def test_register_enum_models_registers_single_enum():
+    def test_register_enum_models_registers_single_enum() -> None:
         from controllers.common.schema import register_enum_models
 
         namespace = Namespace("test")
@@ -369,7 +369,7 @@ class TestSchemaCases:
         assert isinstance(schema, dict)
 
     @staticmethod
-    def test_register_enum_models_registers_multiple_enums():
+    def test_register_enum_models_registers_multiple_enums() -> None:
         from controllers.common.schema import register_enum_models
 
         namespace = Namespace("test")
@@ -380,7 +380,7 @@ class TestSchemaCases:
         assert called_names == ["StatusEnum", "PriorityEnum"]
 
     @staticmethod
-    def test_register_enum_models_uses_correct_ref_template():
+    def test_register_enum_models_uses_correct_ref_template() -> None:
         from controllers.common.schema import register_enum_models
 
         namespace = Namespace("test")
@@ -393,7 +393,7 @@ class TestSchemaCases:
         assert "enum" in schema or "anyOf" in schema
 
     @staticmethod
-    def test_query_params_from_model_builds_flask_restx_doc_params():
+    def test_query_params_from_model_builds_flask_restx_doc_params() -> None:
         from controllers.common.schema import query_params_from_model
 
         params = query_params_from_model(QueryModel)
@@ -458,7 +458,7 @@ class TestSchemaCases:
         }
 
     @staticmethod
-    def test_query_params_from_request_preserves_repeated_list_params():
+    def test_query_params_from_request_preserves_repeated_list_params() -> None:
         from controllers.common.schema import query_params_from_request
 
         app = Flask(__name__)
@@ -471,7 +471,7 @@ class TestSchemaCases:
         assert query.keyword == "hello"
 
     @staticmethod
-    def test_query_params_from_request_raises_for_malformed_ints_by_default():
+    def test_query_params_from_request_raises_for_malformed_ints_by_default() -> None:
         from controllers.common.schema import query_params_from_request
 
         app = Flask(__name__)
@@ -480,7 +480,7 @@ class TestSchemaCases:
                 query_params_from_request(HelperQueryModel, list_fields=("status",))
 
     @staticmethod
-    def test_query_params_from_request_can_use_model_default_for_malformed_defaulted_ints():
+    def test_query_params_from_request_can_use_model_default_for_malformed_defaulted_ints() -> None:
         from controllers.common.schema import query_params_from_request
 
         app = Flask(__name__)
@@ -932,6 +932,30 @@ class TestErrorResponseContractCheckCases:
         assert found is not None
         assert "does not match ErrorResponse" in found
         assert f"{field}:" in found
+
+    @staticmethod
+    def test_documents_only_the_surface_models_a_test_api_references(monkeypatch: pytest.MonkeyPatch) -> None:
+        # Copying every surface model into each test API made every document carry thousands of schemas.
+        surface = ExternalApi(Flask("surface"))
+        surface.model("BorrowedItem", {"value": fields.String})
+        surface.model("UnrelatedItem", {"value": fields.String})
+        monkeypatch.setattr(error_contract, "_module_apis", lambda *_names: iter([surface]))
+        app = Flask(__name__)
+        api = ExternalApi(app)
+
+        @api.route("/items")
+        class Items(Resource):
+            @api.response(200, "OK", "BorrowedItem")
+            def get(self) -> dict[str, str]:
+                return {}
+
+        own_models = dict(api.models)
+        with app.test_request_context("/items"):
+            schemas = error_contract._document(api)["components"]["schemas"]  # type: ignore[index]
+
+        assert "BorrowedItem" in schemas
+        assert "UnrelatedItem" not in schemas
+        assert dict(api.models) == own_models
 
     @staticmethod
     @pytest.mark.allow_error_contract_violations

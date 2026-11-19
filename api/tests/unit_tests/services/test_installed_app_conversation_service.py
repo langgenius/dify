@@ -32,6 +32,10 @@ from services.message_query_adapters import MessageFileResolver
 _TIME = datetime(2024, 1, 1)
 
 
+def _unexpected_agent_workspace_collection(*, tenant_id: str, agent_workspace_ids: tuple[str, ...]) -> None:
+    raise AssertionError(f"No Agent workspace collection expected: {tenant_id} {agent_workspace_ids}")
+
+
 @pytest.fixture
 def ref(sqlite_session_factory: sessionmaker[Session]) -> InstalledAppConversationRef:
     with sqlite_session_factory.begin() as session:
@@ -102,7 +106,11 @@ def _service(
             files=MessageFileResolver(), conversations=repository, restore_inputs=restore_input_files
         ),
         names=ConversationNameService(conversations=repository, generate_name=generate_name),
-        commands=ConversationCommandService(conversations=repository, enqueue_delete_cleanup=cleanup),
+        commands=ConversationCommandService(
+            conversations=repository,
+            enqueue_delete_cleanup=cleanup,
+            collect_agent_workspaces=_unexpected_agent_workspace_collection,
+        ),
     )
 
 

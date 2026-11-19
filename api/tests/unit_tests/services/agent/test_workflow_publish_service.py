@@ -558,7 +558,7 @@ def test_restore_clones_inline_binding_owned_by_published_workflow(
     assert restored.current_snapshot_id == "draft-snapshot"
 
 
-def test_output_routes_round_trip_through_sync_projection_and_publication(sqlite_session: Session):
+def test_output_routes_round_trip_through_sync_projection_and_publication(sqlite_session: Session) -> None:
     import json
 
     from models.agent_config_entities import WorkflowNodeJobConfig
@@ -598,6 +598,7 @@ def test_output_routes_round_trip_through_sync_projection_and_publication(sqlite
     frozen = sqlite_session.scalar(
         select(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.workflow_id == published.id)
     )
+    assert frozen is not None
     assert WorkflowNodeJobConfig.model_validate(frozen.node_job_config_dict).output_routes.model_dump() == routes
     node_data["agent_output_routes"] = {"enabled": False, "routes": routes["routes"]}
     workflow.graph = json.dumps({"nodes": [{"id": "route-node", "data": node_data}], "edges": []})

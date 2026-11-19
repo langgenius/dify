@@ -10,8 +10,6 @@ import useHumanInputSharedConfig from '../human-input/shared/use-config'
 
 const useHumanInputV2Config = (id: string, payload: HumanInputV2NodeType) => {
   const removedInputsRef = useRef(new Map<string, Map<string, FormInputItem>>())
-  // Older drafts can retain input definitions after losing their body placeholders.
-  // Restore the existing controls without replacing their options or output identities.
   const missingPlaceholders = payload.inputs
     .map((input) => `{{#$output.${input.output_variable_name}#}}`)
     .filter((placeholder) => !payload.form_content.includes(placeholder))
@@ -51,7 +49,6 @@ const useHumanInputV2Config = (id: string, payload: HumanInputV2NodeType) => {
         removedInputs.set(input.output_variable_name, input)
         return false
       })
-      // Lexical undo restores the body token; retain its original field definition too.
       for (const [name, input] of removedInputs) {
         if (
           value.includes(`{{#$output.${name}#}}`) &&
@@ -68,7 +65,6 @@ const useHumanInputV2Config = (id: string, payload: HumanInputV2NodeType) => {
   const handleFormInputsChange = useCallback((inputs: FormInputItem[]) => {
     const config = configRef.current
     if (config.readOnly) return
-    // Existing editor blocks can still hold the definitions from before a keyboard deletion.
     config.handleFormInputsChange(
       inputs.filter((input) =>
         config.inputs.form_content.includes(`{{#$output.${input.output_variable_name}#}}`),

@@ -1,14 +1,60 @@
-import type { ComponentProps } from 'react'
-import type Run from '@/app/components/workflow/run'
-import { render, screen } from '@testing-library/react'
+import type { WorkflowRunDetailResponse } from '@/models/log'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import { createNodeTracing } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowComponent as render } from '@/app/components/workflow/__tests__/workflow-test-env'
 import MessageLogModal from '../index'
 
-const run = vi.hoisted(() => vi.fn<(_props: ComponentProps<typeof Run>) => null>(() => null))
-// The run viewer is independently tested; this owner selects its run and tab.
-vi.mock('@/app/components/workflow/run', () => ({
-  default: (props: ComponentProps<typeof Run>) => run(props),
+const { fetchRunDetail, fetchTracingList } = vi.hoisted(() => ({
+  fetchRunDetail: vi.fn(),
+  fetchTracingList: vi.fn(),
 }))
+vi.mock('@/service/log', () => ({ fetchRunDetail, fetchTracingList }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.traceRuns.bySourceKind.bySourceId.get': () => ({ status: 'not_collected' }),
+    }),
+  }
+})
+beforeEach(() => {
+  fetchRunDetail.mockImplementation(async (url: string): Promise<WorkflowRunDetailResponse> => {
+    if (
+      url !== '/apps/inspected-app/workflow-runs/run-1' &&
+      url !== '/apps/app-1/workflow-runs/run-1'
+    )
+      throw new Error(`Unexpected detail: ${url}`)
+    return {
+      id: 'run-1',
+      version: '1',
+      graph: { nodes: [], edges: [] },
+      inputs: '{}',
+      inputs_truncated: false,
+      outputs: 'message output',
+      outputs_truncated: false,
+      status: 'succeeded',
+      elapsed_time: 1,
+      total_tokens: 3,
+      total_steps: 1,
+      created_by_role: 'account',
+      created_by_account: { id: 'user', name: 'Alice', email: 'alice@example.com' },
+      created_at: 1710000000,
+      finished_at: 1710000001,
+    }
+  })
+  fetchTracingList.mockImplementation(async ({ url }: { url: string }) => {
+    if (
+      url !== '/apps/inspected-app/workflow-runs/run-1/node-executions' &&
+      url !== '/apps/app-1/workflow-runs/run-1/node-executions'
+    )
+      throw new Error(`Unexpected tracing: ${url}`)
+    return { data: [createNodeTracing({ title: 'Message execution' })] }
+  })
+})
 const log = { id: 'message-1', content: 'Message', isAnswer: true, workflow_run_id: 'run-1' }
 
 it.each([undefined, { ...log, workflow_run_id: undefined }])(
@@ -23,7 +69,8 @@ it.each([undefined, { ...log, workflow_run_id: undefined }])(
       />,
     )
     expect(container).toBeEmptyDOMElement()
-    expect(run).not.toHaveBeenCalled()
+    expect(fetchRunDetail).not.toHaveBeenCalled()
+    expect(fetchTracingList).not.toHaveBeenCalled()
   },
 )
 
@@ -32,27 +79,41 @@ it.each([false, true])(
   async (fixedWidth) => {
     const user = userEvent.setup()
     const onCancel = vi.fn()
-    render(
-      <MessageLogModal
-        appId="inspected-app"
-        width={800}
-        onCancel={onCancel}
-        currentLogItem={log}
-        defaultTab="TRACING"
-        fixedWidth={fixedWidth}
-      />,
+    function Viewer() {
+      const [open, setOpen] = useState(true)
+      return (
+        open && (
+          <MessageLogModal
+            appId="inspected-app"
+            width={800}
+            onCancel={() => {
+              onCancel()
+              setOpen(false)
+            }}
+            currentLogItem={log}
+            defaultTab="TRACING"
+            fixedWidth={fixedWidth}
+          />
+        )
+      )
+    }
+    render(<Viewer />)
+    expect(screen.getByRole('tab', { name: 'runLog.tracing' })).toHaveAttribute(
+      'aria-selected',
+      'true',
     )
-    expect(run).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        appId: 'inspected-app',
-        activeTab: 'TRACING',
-        hideResult: true,
-        runDetailUrl: '/apps/inspected-app/workflow-runs/run-1',
-        tracingListUrl: '/apps/inspected-app/workflow-runs/run-1/node-executions',
-      }),
+    expect(screen.queryByRole('tab', { name: 'runLog.result' })).not.toBeInTheDocument()
+    expect(await screen.findByText('Message execution')).toBeInTheDocument()
+    expect(fetchRunDetail).toHaveBeenCalledWith('/apps/inspected-app/workflow-runs/run-1', {
+      silent: true,
+    })
+    expect(fetchTracingList).toHaveBeenCalledWith(
+      { url: '/apps/inspected-app/workflow-runs/run-1/node-executions' },
+      { silent: true },
     )
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
     expect(onCancel).toHaveBeenCalledTimes(1)
+    expect(screen.queryByText('Message execution')).not.toBeInTheDocument()
   },
 )
 

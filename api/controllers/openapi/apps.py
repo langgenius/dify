@@ -10,6 +10,7 @@ from flask_restx import Resource
 from werkzeug.exceptions import NotFound
 
 from constants.oauth_bearer import Scope
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._app_response import app_list_row, build_app_describe_response
@@ -88,6 +89,7 @@ class AppDescribeApi(Resource):
     @endpoint(
         context="app",
         op="describe.console_app",
+        pat_policy=PersonalAccessTokenPolicy.RESOURCE_CALLS,
         kind=Kind.OBJECT,
         summary="App detail, parameters and runtime input_schema",
         examples=(
@@ -122,6 +124,7 @@ class AppListApi(Resource):
     @endpoint(
         context="workspace",
         op="get.console_app",
+        pat_policy=PersonalAccessTokenPolicy.RESOURCE_DISCOVERY,
         kind=Kind.LIST,
         summary="List apps in a workspace",
         examples=(

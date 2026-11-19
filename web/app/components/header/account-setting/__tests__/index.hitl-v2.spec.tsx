@@ -4,7 +4,6 @@ import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { consoleQuery } from '@/service/console'
 import {
   createConsoleQueryClient,
@@ -61,15 +60,6 @@ vi.mock('@/features/contacts/im-platform/account-setting-page', () => ({
   ContactsImPlatformAccountSettingPage: () => <div data-testid="contacts-im-platform-page" />,
 }))
 
-vi.mock('@/hooks/use-breakpoints', () => ({
-  MediaType: {
-    mobile: 'mobile',
-    tablet: 'tablet',
-    pc: 'pc',
-  },
-  default: vi.fn(),
-}))
-
 vi.mock('next-themes', () => ({
   useTheme: vi.fn(() => ({
     theme: 'system',
@@ -110,6 +100,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
   const query = withConsoleResponses(actual.consoleQuery, {
+    'workspaces.byWorkspaceId.members.pendingInvitations.get': async () => ({ invitations: [] }),
     'workspaces.current.members.get': async () => ({ accounts: [] }),
   })
   return {
@@ -255,13 +246,13 @@ describe('AccountSetting', () => {
       </NuqsTestingAdapter>,
       {
         queryClient,
+        features: null,
         accountProfile: (mockConsoleState.current as ConsoleStateFixture).userProfile,
         systemFeatures: {
           deployment_edition: deploymentEdition,
           webapp_auth: { enabled: true },
           branding: { enabled: false },
           enable_marketplace: true,
-          enable_collaboration_mode: false,
           rbac_enabled: rbacEnabled,
         },
       },
@@ -275,10 +266,27 @@ describe('AccountSetting', () => {
     mockConfig.getFeatures.mockImplementation(() => new Promise(() => {}))
     canReplaceLogo = true
     mockConsoleState.current = baseConsoleState
-    vi.mocked(useBreakpoints).mockReturnValue(MediaType.pc)
   })
 
   describe('Rendering', () => {
+    it.each(['editor', 'normal', 'dataset_operator'])(
+      'hides Channels and rejects its deep link for the %s role',
+      (role) => {
+        mockConsoleState.current = {
+          ...baseConsoleState,
+          currentWorkspace: { ...baseConsoleState.currentWorkspace, role },
+          isCurrentWorkspaceManager: false,
+          isCurrentWorkspaceOwner: false,
+          isCurrentWorkspaceDatasetOperator: role === 'dataset_operator',
+        }
+        renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.IM_PLATFORM })
+        expect(
+          screen.queryByRole('button', { name: 'contacts.imPlatform.title' }),
+        ).not.toBeInTheDocument()
+        expect(screen.queryByTestId('contacts-im-platform-page')).not.toBeInTheDocument()
+      },
+    )
+
     it('hides workspace channels when centrally managed even in Community edition', () => {
       renderAccountSetting({ deploymentEdition: 'COMMUNITY', imCentrallyManaged: true })
 
@@ -287,7 +295,7 @@ describe('AccountSetting', () => {
       ).not.toBeInTheDocument()
     })
 
-    it('allows workspace channels in Enterprise edition when not centrally managed', () => {
+    it('allows workspace channels in Enterprise edition when not centrally managed', async () => {
       renderAccountSetting({
         initialTab: ACCOUNT_SETTING_TAB.IM_PLATFORM,
         deploymentEdition: 'ENTERPRISE',
@@ -295,7 +303,7 @@ describe('AccountSetting', () => {
       })
 
       expect(screen.getByRole('button', { name: 'contacts.imPlatform.title' })).toBeInTheDocument()
-      expect(screen.getByTestId('contacts-im-platform-page')).toBeInTheDocument()
+      expect(await screen.findByTestId('contacts-im-platform-page')).toBeInTheDocument()
     })
 
     it('keeps workspace channels available for older successful features responses', () => {
@@ -318,7 +326,7 @@ describe('AccountSetting', () => {
 
     it('closes workspace channels if the features request becomes unavailable', async () => {
       const { queryClient } = renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.IM_PLATFORM })
-      expect(screen.getByTestId('contacts-im-platform-page')).toBeInTheDocument()
+      expect(await screen.findByTestId('contacts-im-platform-page')).toBeInTheDocument()
 
       await act(async () => {
         mockConfig.getFeatures.mockRejectedValue(new Error('features unavailable'))
@@ -345,13 +353,13 @@ describe('AccountSetting', () => {
       expect(screen.getAllByText('navigation.settings.members').length).toBeGreaterThan(0)
     })
 
-    it('keeps released IM channels available when unrelated feature previews are disabled', () => {
+    it('keeps released IM channels available when unrelated feature previews are disabled', async () => {
       mockConfig.ENABLE_FEATURE_PREVIEW = false
 
       renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.IM_PLATFORM })
 
       expect(screen.getByRole('button', { name: 'contacts.imPlatform.title' })).toBeInTheDocument()
-      expect(screen.getByTestId('contacts-im-platform-page')).toBeInTheDocument()
+      expect(await screen.findByTestId('contacts-im-platform-page')).toBeInTheDocument()
     })
 
     it('rejects centrally managed workspace channels deep links', () => {
@@ -367,12 +375,12 @@ describe('AccountSetting', () => {
   })
 
   describe('Tab Navigation', () => {
-    it('should mount the Contacts-owned IM platform page from its entry', () => {
+    it('should mount the Contacts-owned IM platform page from its entry', async () => {
       renderAccountSetting()
 
       fireEvent.click(screen.getByRole('button', { name: 'contacts.imPlatform.title' }))
 
-      expect(screen.getByTestId('contacts-im-platform-page')).toBeInTheDocument()
+      expect(await screen.findByTestId('contacts-im-platform-page')).toBeInTheDocument()
     })
   })
 })

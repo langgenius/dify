@@ -6,8 +6,9 @@ starts from the production incident shape: the caller has already deleted the
 """
 
 import uuid
+from collections.abc import Generator
 from datetime import UTC, datetime, timedelta
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy import select
@@ -67,14 +68,14 @@ def bind_task_sessions(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session)
 
 
 @pytest.fixture
-def mock_storage():
+def mock_storage() -> Generator[MagicMock]:
     with patch("tasks.clean_document_task.storage", autospec=True) as mock:
         mock.delete.return_value = None
         yield mock
 
 
 @pytest.fixture
-def mock_index_cleanup(tenant_id: str):
+def mock_index_cleanup(tenant_id: str) -> Generator[MagicMock]:
     """Keep task resilience tests independent of the external index backend."""
     with patch("tasks.clean_document_task.clean_document_indexes", return_value=tenant_id) as cleanup:
         yield cleanup
@@ -201,8 +202,8 @@ class TestVectorCleanupResilience:
         tenant_id: str,
         sqlite_session: Session,
         bind_task_sessions: None,
-        mock_storage,
-        mock_index_cleanup,
+        mock_storage: MagicMock,
+        mock_index_cleanup: MagicMock,
     ) -> None:
         """A transient billing failure leaves only the unrelated document's rows."""
         other_document_id, survivor_segment_id = _persist_deleted_document_state(
@@ -241,8 +242,8 @@ def test_active_upgrade_lease_keeps_the_legacy_source_file(
     tenant_id: str,
     sqlite_session: Session,
     bind_task_sessions: None,
-    mock_storage,
-    mock_index_cleanup,
+    mock_storage: MagicMock,
+    mock_index_cleanup: MagicMock,
 ) -> None:
     del bind_task_sessions, mock_index_cleanup
     _persist_deleted_document_state(
@@ -312,8 +313,8 @@ class TestVectorCleanupSuccessPaths:
         tenant_id: str,
         sqlite_session: Session,
         bind_task_sessions: None,
-        mock_storage,
-        mock_index_cleanup,
+        mock_storage: MagicMock,
+        mock_index_cleanup: MagicMock,
     ) -> None:
         """The happy path calls the index boundary and completes scoped cleanup."""
         other_document_id, survivor_segment_id = _persist_deleted_document_state(
@@ -357,8 +358,8 @@ class TestVectorCleanupSuccessPaths:
         tenant_id: str,
         sqlite_session: Session,
         bind_task_sessions: None,
-        mock_storage,
-        mock_index_cleanup,
+        mock_storage: MagicMock,
+        mock_index_cleanup: MagicMock,
     ) -> None:
         """Cleanup checks for orphan summaries even when no segments remain."""
         mock_index_cleanup.return_value = None

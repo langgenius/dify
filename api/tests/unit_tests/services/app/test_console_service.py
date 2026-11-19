@@ -1299,6 +1299,7 @@ def test_export_bundles_the_pinned_workflow_and_its_tool_definition(
             ["productivity"],
         )
         with ZipFile(archive.open(tool["path"])) as nested:
+            assert yaml.safe_load(nested.read("manifest.yaml"))["format_version"] == 2
             assert yaml.safe_load(nested.read("app.yaml"))["app"]["name"] == "Summarizer"
 
 
@@ -1331,6 +1332,7 @@ def test_export_bundles_only_workflows_the_caller_may_export(
     with exported, ZipFile(exported.archive) as archive:
         manifest = yaml.safe_load(archive.read("manifest.yaml"))
         dsl = yaml.safe_load(archive.read("app.yaml"))
+    assert manifest["format_version"] == 2
     assert [tool["provider_id"] for tool in manifest.get("workflow_tools", [])] == (
         [workspaces.provider_id] if bundled else []
     )

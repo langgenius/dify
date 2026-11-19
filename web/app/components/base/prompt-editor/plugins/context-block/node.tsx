@@ -95,8 +95,8 @@ export class ContextBlockNode extends DecoratorNode<React.JSX.Element> {
 
   override exportJSON(): SerializedNode {
     return {
+      ...super.exportJSON(),
       type: 'context-block',
-      version: 1,
       datasets: this.getDatasets(),
       onAddContext: this.getOnAddContext(),
       canNotAddContext: this.getCanNotAddContext(),

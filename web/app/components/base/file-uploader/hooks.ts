@@ -23,6 +23,7 @@ import { useParams } from '@/next/navigation'
 import { uploadPublicRemoteFileInfo } from '@/service/common'
 import { consoleQuery } from '@/service/console'
 import { TransferMethod } from '@/types/app'
+import { getErrorMessage } from '@/utils/error-message'
 import { formatFileSize } from '@/utils/format'
 import { isAbortError } from '@/utils/is-abort-error'
 import { useFileStore } from './store'
@@ -63,10 +64,12 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
   const params = useParams()
   const { localUploadUrl, trialAppId, uploadStrategy } = useFileUploadContext()
   const { mutateAsync: uploadConsoleRemoteFile } = useMutation(
-    consoleQuery.remoteFiles.upload.post.mutationOptions(),
+    consoleQuery.remoteFiles.upload.post.mutationOptions({ context: { silent: true } }),
   )
   const { mutateAsync: uploadTrialRemoteFile } = useMutation(
-    consoleQuery.trialApps.byAppId.remoteFiles.upload.post.mutationOptions(),
+    consoleQuery.trialApps.byAppId.remoteFiles.upload.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } = getFileSizeLimit(
     fileConfig.fileUploadConfig,
@@ -252,7 +255,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       if (uploadStrategy) remoteUpload = uploadStrategy.uploadRemote(url)
       else if (trialAppId)
         remoteUpload = uploadTrialRemoteFile({ params: { app_id: trialAppId }, body: { url } })
-      else if (params.token) remoteUpload = uploadPublicRemoteFileInfo(url)
+      else if (params.token) remoteUpload = uploadPublicRemoteFileInfo(url, { silent: true })
       else remoteUpload = uploadConsoleRemoteFile({ body: { url } })
 
       remoteUpload
@@ -291,7 +294,14 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
         .catch((error: unknown) => {
           if (!fileStore.getState().isActive) return
           if (!isAppAccessError(error) && !isAbortError(error))
-            toast.error(t(($) => $['fileUploader.pasteFileLinkInvalid'], { ns: 'common' }))
+            toast.error(
+              getFileUploadErrorMessage(
+                error,
+                getErrorMessage(error) ??
+                  t(($) => $['fileUploader.pasteFileLinkInvalid'], { ns: 'common' }),
+                t,
+              ),
+            )
           handleRemoveFile(uploadingFile.id)
         })
     },

@@ -4,9 +4,7 @@ import type { ContactImIntegrationView, ContactImProviderField } from './types'
 export const canRetainCredential = (
   integration: ContactImIntegrationView | null,
   field: ContactImProviderField,
-  requiresFreshCredentials = false,
 ) =>
-  !requiresFreshCredentials &&
   Boolean(integration) &&
   (integration?.configuredFields?.includes(field) ??
     (field === 'secret'

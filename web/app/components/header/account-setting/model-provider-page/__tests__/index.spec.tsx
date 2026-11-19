@@ -324,6 +324,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.modelProviders.summary.get': () => new Promise(() => {}),
+      'workspaces.current.modelProviders.credits.get': () => new Promise(() => {}),
       'workspaces.current.defaultModel.get': mockDefaultModelQuery,
       'workspaces.current.models.modelTypes.byModelType.get': () => ({ data: [] }),
       'workspaces.current.plugin.list.latestVersions.post': () => new Promise(() => {}),

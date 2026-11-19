@@ -18,7 +18,7 @@ import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleClient } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
-import MemberSelector from './member-selector'
+import { MemberSelector } from './member-selector'
 
 const STEP = {
   start: 'start',
@@ -27,7 +27,7 @@ const STEP = {
 }
 type Step = (typeof STEP)[keyof typeof STEP]
 
-const TransferOwnershipContent = () => {
+export const TransferOwnershipContent = () => {
   const { t } = useTranslation(['common', 'workspaceMembers'])
   const verificationCodeInputId = React.useId()
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
@@ -69,9 +69,12 @@ const TransferOwnershipContent = () => {
   })
   const verifyEmailAddress = async (code: string, token: string, callback?: () => void) => {
     try {
-      const res = await consoleClient.workspaces.current.members.ownerTransferCheck.post({
-        body: { code, token },
-      })
+      const res = await consoleClient.workspaces.current.members.ownerTransferCheck.post(
+        {
+          body: { code, token },
+        },
+        { context: { silent: true } },
+      )
       if (res.is_valid) {
         setStepToken(res.token)
         callback?.()
@@ -98,10 +101,13 @@ const TransferOwnershipContent = () => {
   const handleTransfer = async () => {
     setIsTransfer(true)
     try {
-      await consoleClient.workspaces.current.members.byMemberId.ownerTransfer.post({
-        params: { member_id: newOwner },
-        body: { token: stepToken },
-      })
+      await consoleClient.workspaces.current.members.byMemberId.ownerTransfer.post(
+        {
+          params: { member_id: newOwner },
+          body: { token: stepToken },
+        },
+        { context: { silent: true } },
+      )
       globalThis.location.reload()
     } catch (error) {
       toast.error(`Error ownership transfer: ${getErrorMessage(error) ?? ''}`)
@@ -286,4 +292,3 @@ const TransferOwnershipContent = () => {
     </>
   )
 }
-export default TransferOwnershipContent

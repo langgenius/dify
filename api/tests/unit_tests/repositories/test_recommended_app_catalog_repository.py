@@ -348,3 +348,61 @@ def test_detail_does_not_require_site(
 
     assert detail is not None
     assert detail.id == app.id
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        None,
+        b"",
+        b"\xff",
+        b'["A", "private-value\xff"]',
+        b"\xfe\xff\x00[\x00]",
+        b"not-json",
+        b"null",
+        b"true",
+        b"42",
+        b'"Workflow"',
+        b"{}",
+        b"[]",
+        b"[null, false, 1, {}]",
+    ],
+)
+def test_list_recommended_falls_back_when_category_order_is_unreadable(
+    payload: bytes | None,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    sqlite_session_factory: sessionmaker[Session],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """An unreadable optional category order must not hide the catalog or its categories."""
+    with sqlite_session_factory() as session:
+        app = _add_catalog_app(session, categories=["B", "A"])
+    redis, commands = redis_transport
+    commands.return_value = payload
+
+    page = _repository(sqlite_session_factory, redis=redis).list_recommended("en-US")
+
+    assert page.categories == ("A", "B")
+    assert [record.app_id for record in page.recommended_apps] == [app.id]
+    commands.assert_called_once_with(
+        "GET", "explore:apps:category_order:en-US", keys=["explore:apps:category_order:en-US"]
+    )
+    assert "private-value" not in caplog.text
+
+
+@pytest.mark.parametrize("as_bytes", [True, False])
+def test_list_recommended_preserves_string_order_in_mixed_category_arrays(
+    as_bytes: bool,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    """Keep legacy filtering and order, including Unicode and duplicate strings."""
+    with sqlite_session_factory() as session:
+        _add_catalog_app(session, categories=["B", "A", "其他"])
+    redis, commands = redis_transport
+    serialized = json.dumps(["其他", None, "B", 1, False, {}, ["A"], "其他"], ensure_ascii=False)
+    commands.return_value = serialized.encode("utf-8") if as_bytes else serialized
+
+    page = _repository(sqlite_session_factory, redis=redis).list_recommended("en-US")
+
+    assert page.categories == ("其他", "B", "其他")

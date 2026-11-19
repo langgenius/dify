@@ -40,6 +40,11 @@ type FormQueryOptions = Omit<
   context: { silent: boolean }
 }
 
+// Load the real code-split renderer before assertions start their interaction deadlines.
+beforeAll(async () => {
+  await import('@/app/components/base/markdown/streamdown-wrapper')
+})
+
 vi.mock('@/service/console', () => ({
   consoleClient: {
     account: { profile: { get: fetchProfile } },
@@ -165,7 +170,7 @@ describe('ConsoleHumanInputForm', () => {
     renderForm()
 
     expect(await screen.findByRole('heading', { name: 'Review the request' })).toBeInTheDocument()
-    const response = screen.getByRole('textbox', { name: 'response' })
+    const response = screen.getByRole('textbox', { name: 'Review the request' })
     expect(response).toHaveValue('Resolved approval notes')
     expect(fetchForm).toHaveBeenCalledWith('console-token')
     expect(fetchLegacyForm).not.toHaveBeenCalled()
@@ -183,7 +188,7 @@ describe('ConsoleHumanInputForm', () => {
     expect(submitLegacyForm).not.toHaveBeenCalled()
     expect(await screen.findByText('share.humanInput.thanks')).toBeInTheDocument()
     expect(screen.getByText('share.humanInput.recorded')).toBeInTheDocument()
-    expect(screen.queryByRole('textbox', { name: 'response' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: 'Review the request' })).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'share.humanInput.switchAccount' }),
     ).not.toBeInTheDocument()
@@ -197,7 +202,7 @@ describe('ConsoleHumanInputForm', () => {
     )
     renderForm()
 
-    const response = await screen.findByRole('textbox', { name: 'response' })
+    const response = await screen.findByRole('textbox', { name: 'Review the request' })
     await user.clear(response)
     await user.type(response, 'Keep these approval notes')
     await user.click(screen.getByRole('button', { name: 'Approve' }))
@@ -216,6 +221,22 @@ describe('ConsoleHumanInputForm', () => {
     expect(await screen.findByText('share.humanInput.thanks')).toBeInTheDocument()
   })
 
+  it('maps generated workflow-not-active submission errors without discarding edited input', async () => {
+    const user = userEvent.setup()
+    submitForm.mockRejectedValueOnce({
+      status: 400,
+      data: { body: { code: 'workflow_not_active' } },
+    })
+    renderForm()
+    const response = await screen.findByRole('textbox', { name: 'Review the request' })
+    await user.clear(response)
+    await user.type(response, 'Retained after workflow stops')
+    await user.click(screen.getByRole('button', { name: 'Approve' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('share.humanInputV2.unavailable')
+    expect(response).toHaveValue('Retained after workflow stops')
+    expect(screen.getByRole('button', { name: 'Approve' })).toBeEnabled()
+  })
+
   it('disables every action while submitting to prevent duplicate approvals', async () => {
     const user = userEvent.setup()
     let resolveSubmission: ((value: Record<string, unknown>) => void) | undefined
@@ -228,8 +249,8 @@ describe('ConsoleHumanInputForm', () => {
     const approve = await screen.findByRole('button', { name: 'Approve' })
     const reject = screen.getByRole('button', { name: 'Reject' })
     await user.click(approve)
-    expect(approve).toBeDisabled()
-    expect(reject).toBeDisabled()
+    expect(approve).toHaveAttribute('aria-disabled', 'true')
+    expect(reject).toHaveAttribute('aria-disabled', 'true')
     await user.click(approve)
     await user.click(reject)
     expect(submitForm).toHaveBeenCalledTimes(1)
@@ -364,11 +385,11 @@ describe('ConsoleHumanInputForm', () => {
       await screen.findByText('share.humanInput.currentAccount:{"name":"Approval Reviewer"}'),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'share.humanInput.switchAccount' })).toBeEnabled()
-    expect(screen.queryByRole('textbox', { name: 'response' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: 'Review the request' })).not.toBeInTheDocument()
     expect(submitForm).toHaveBeenCalledOnce()
   })
 
-  it.each([{ status: 409, code: 'already_submitted' }, new Response(null, { status: 409 })])(
+  it.each([{ status: 409, code: 'already_submitted' }])(
     'shows the complete already-processed status when opening a resolved form: %j',
     async (error) => {
       fetchForm.mockRejectedValue(error)
@@ -404,9 +425,7 @@ describe('ConsoleHumanInputForm', () => {
 
   it('shows the complete already-processed status if another recipient approves before submission', async () => {
     const user = userEvent.setup()
-    submitForm.mockRejectedValue(
-      new Response(JSON.stringify({ code: 'already_submitted' }), { status: 409 }),
-    )
+    submitForm.mockRejectedValue({ status: 409, code: 'already_submitted' })
     renderForm()
 
     await user.click(await screen.findByRole('button', { name: 'Approve' }))
@@ -416,7 +435,7 @@ describe('ConsoleHumanInputForm', () => {
     expect(
       screen.getByText('share.humanInput.submissionID:{"id":"console-token"}'),
     ).toBeInTheDocument()
-    expect(screen.queryByRole('textbox', { name: 'response' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: 'Review the request' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'common.operation.retry' })).not.toBeInTheDocument()
     expect(submitForm).toHaveBeenCalledTimes(1)
   })
@@ -430,7 +449,7 @@ describe('ConsoleHumanInputForm', () => {
     expect(fetchForm).toHaveBeenCalledTimes(1)
     await user.click(retry)
 
-    expect(await screen.findByRole('textbox', { name: 'response' })).toHaveValue(
+    expect(await screen.findByRole('textbox', { name: 'Review the request' })).toHaveValue(
       'Resolved approval notes',
     )
     await waitFor(() => expect(fetchForm).toHaveBeenCalledTimes(2))

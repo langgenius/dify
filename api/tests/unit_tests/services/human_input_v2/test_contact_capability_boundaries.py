@@ -58,6 +58,12 @@ class _TenantContactPort:
     def get_contact_by_account_id(self, tenant_id: TenantId, account_id: AccountId) -> Contact | None:
         raise AssertionError(f"Account identity lookup is outside this contract: {tenant_id}, {account_id}")
 
+    def get_contacts_by_account_ids(
+        self, tenant_id: TenantId, account_ids: Sequence[AccountId]
+    ) -> Mapping[AccountId, Contact]:
+        """Reject Account identity reads outside these Contact capability scenarios."""
+        raise AssertionError(f"Account identity lookup is outside this contract: {tenant_id}, {account_ids}")
+
     def get_contacts_by_ids(self, tenant_id: TenantId, contact_ids: Sequence[ContactId]) -> Sequence[Contact]:
         self.tenant_calls.append(tenant_id)
         requested_ids = set(contact_ids)
@@ -187,9 +193,10 @@ def test_tenant_scoped_core_service_needs_only_contact_and_binding_read_ports() 
     assert tuple(item.contact for item in contacts_with_bindings) == (contact,)
     assert selected is not None
     assert selected.contact == contact
-    assert tuple(options) == (contact,)
+    assert tuple(option.contact for option in options) == (contact,)
+    assert all(not option.im_bindings for option in options)
     assert contact_port.tenant_calls == [_TENANT_ID, _TENANT_ID, _TENANT_ID]
-    assert binding_port.calls == [(_TENANT_ID, (contact.id,)), (_TENANT_ID, (contact.id,))]
+    assert binding_port.calls == [(_TENANT_ID, (contact.id,)), (_TENANT_ID, (contact.id,)), (_TENANT_ID, (contact.id,))]
 
 
 def test_candidate_id_round_trips_unchanged_through_the_enterprise_service_port() -> None:

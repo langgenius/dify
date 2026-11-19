@@ -14,6 +14,7 @@ import { createDeferred } from '@/test/deferred'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { createHitTestingRecordFixture } from '@/test/fixtures/hit-testing'
+import { resetViewportWidth, setViewportWidth } from '@/test/viewport'
 import { RETRIEVE_METHOD } from '@/types/app'
 import HitTestingPage from '../index'
 
@@ -131,9 +132,8 @@ describe('HitTestingPage', () => {
     getRecords.mockReset().mockImplementation(async () => recordsData!)
     mockHitTestingMutateAsync.mockReset()
     mockExternalHitTestingMutateAsync.mockReset()
-    vi.stubGlobal('innerWidth', 1024)
   })
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => resetViewportWidth())
 
   it('disables record loading and query input without retrieval recall permission', async () => {
     mockDataset.permission_keys = []
@@ -185,7 +185,7 @@ describe('HitTestingPage', () => {
 
   it('removes stale mobile result counts while pending or failed and restores the latest successful count', async () => {
     const user = userEvent.setup()
-    vi.stubGlobal('innerWidth', 390)
+    setViewportWidth(390)
     const response: HitTestingResponse = {
       query: { content: 'Test query' },
       records: [createMockHitTesting()],
@@ -211,6 +211,21 @@ describe('HitTestingPage', () => {
     mockHitTestingMutateAsync.mockResolvedValueOnce({ ...response, records: [] })
     await user.click(screen.getByRole('button', { name: /input.testing/ }))
     expect(await screen.findByRole('dialog', { name: '0 Retrieved Chunks' })).toBeInTheDocument()
+  })
+
+  it('does not open the results drawer when a wide-screen query is followed by a narrow window', async () => {
+    const user = userEvent.setup()
+    mockHitTestingMutateAsync.mockResolvedValueOnce({
+      query: { content: 'Test query' },
+      records: [createMockHitTesting()],
+    })
+    renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
+    await user.type(screen.getByRole('textbox'), 'Test query')
+    await user.click(screen.getByRole('button', { name: /input.testing/ }))
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('1 Retrieved Chunks'))
+
+    act(() => setViewportWidth(390))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('announces zero retrieved chunks after an empty response', async () => {

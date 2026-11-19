@@ -677,6 +677,78 @@ export const zAppNamePayload = z.object({
 })
 
 /**
+ * NetworkAccessUnsupportedAppModeError
+ *
+ * Network access control is not supported for this app mode.
+ */
+export const zNetworkAccessUnsupportedAppModeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('network_access_unsupported_app_mode'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NetworkAccessForbiddenError
+ *
+ * Network access groups are not available for this workspace.
+ */
+export const zNetworkAccessForbiddenError = zErrorResponse.and(
+  z.object({
+    code: z.literal('network_access_forbidden'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * NetworkAccessNotEntitledError
+ *
+ * Network access groups are not available for this workspace.
+ */
+export const zNetworkAccessNotEntitledError = zErrorResponse.and(
+  z.object({
+    code: z.literal('network_access_not_entitled'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * NetworkAccessRoleDeniedError
+ *
+ * Your workspace role does not allow this network access operation.
+ */
+export const zNetworkAccessRoleDeniedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('network_access_role_denied'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * BillingOperationFailedError
+ *
+ * We couldn't complete this request. Please try again. If the problem persists, contact support.
+ */
+export const zBillingOperationFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('billing_operation_failed'),
+    status: z.literal(502),
+  }),
+)
+
+/**
+ * BillingUnavailableError
+ *
+ * This operation is temporarily unavailable. Please try again later.
+ */
+export const zBillingUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('billing_unavailable'),
+    status: z.literal(503),
+  }),
+)
+
+/**
  * AppNetworkAccessGroupUpdatePayload
  */
 export const zAppNetworkAccessGroupUpdatePayload = z.object({
@@ -685,6 +757,66 @@ export const zAppNetworkAccessGroupUpdatePayload = z.object({
   expected_version: z.int().gte(0),
   group_id: z.uuid().nullable(),
 })
+
+/**
+ * NetworkAccessInvalidInputError
+ *
+ * Invalid network access group request.
+ */
+export const zNetworkAccessInvalidInputError = zErrorResponse.and(
+  z.object({
+    code: z.literal('network_access_invalid_input'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NetworkAccessUnsupportedAccessPointsError
+ *
+ * Some access points are not supported for this app.
+ */
+export const zNetworkAccessUnsupportedAccessPointsError = zErrorResponse.and(
+  z.object({
+    code: z.literal('network_access_unsupported_access_points'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * PaidPlanRequiredError
+ *
+ * This feature requires a paid plan.
+ */
+export const zPaidPlanRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('paid_plan_required'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * NetworkAccessGroupNotFoundError
+ *
+ * Network access group was not found.
+ */
+export const zNetworkAccessGroupNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('network_access_group_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * NetworkAccessVersionConflictError
+ *
+ * The network access resource changed. Refresh it and try again.
+ */
+export const zNetworkAccessVersionConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('network_access_version_conflict'),
+    status: z.literal(409),
+  }),
+)
 
 /**
  * AppNetworkAccessGroupStatusResponse
@@ -898,6 +1030,7 @@ export const zTraceProviderCapabilitiesResponse = z.object({
  */
 export const zTraceAppConfigResponse = z.object({
   app_id: z.string().nullish(),
+  configured_secrets: z.array(z.string()).nullish(),
   created_at: z.string().nullish(),
   error: z.string().nullish(),
   has_not_configured: z.boolean().nullish(),
@@ -1217,6 +1350,17 @@ export const zWorkflowCommentResolve = z.object({
   resolved: z.boolean(),
   resolved_at: z.int().nullish(),
   resolved_by: z.string().nullish(),
+})
+
+/**
+ * WorkflowKindConvertResponse
+ */
+export const zWorkflowKindConvertResponse = z.object({
+  kind: z.string(),
+  result: z.string(),
+  type: z.string(),
+  updated_at: z.int(),
+  workflow_id: z.string(),
 })
 
 /**
@@ -1613,6 +1757,8 @@ export const zWorkflowPartial = z.object({
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   id: z.string(),
+  kind: z.string().nullish(),
+  type: z.string(),
   updated_at: z.int().nullish(),
   updated_by: z.string().nullish(),
 })
@@ -3765,31 +3911,6 @@ export const zWorkflowRunForLogResponse = z.object({
 })
 
 /**
- * WorkflowAppLogPartialResponse
- */
-export const zWorkflowAppLogPartialResponse = z.object({
-  created_at: z.int().nullish(),
-  created_by_account: zSimpleAccountResponse.nullish(),
-  created_by_end_user: zSimpleEndUser.nullish(),
-  created_by_role: z.string().nullish(),
-  created_from: z.string().nullish(),
-  details: z.unknown().optional(),
-  id: z.string(),
-  workflow_run: zWorkflowRunForLogResponse.nullish(),
-})
-
-/**
- * WorkflowAppLogPaginationResponse
- */
-export const zWorkflowAppLogPaginationResponse = z.object({
-  data: z.array(zWorkflowAppLogPartialResponse),
-  has_more: z.boolean(),
-  limit: z.int(),
-  page: z.int(),
-  total: z.int(),
-})
-
-/**
  * MemberRoleSummaryResponse
  */
 export const zMemberRoleSummaryResponse = z.object({
@@ -4244,12 +4365,14 @@ export const zLlmMode = z.enum(['chat', 'completion'])
 
 /**
  * AppModelSelectionResponse
+ *
+ * Readable model selection; missing or null identifiers mean it is not fully configured.
  */
 export const zAppModelSelectionResponse = z.object({
   completion_params: z.record(z.string(), zJsonValue).optional(),
   mode: z.union([zLlmMode, z.literal('')]).optional(),
-  name: z.string().optional(),
-  provider: z.string().optional(),
+  name: z.string().nullish(),
+  provider: z.string().nullish(),
 })
 
 /**
@@ -4294,6 +4417,8 @@ export const zAppPartial = z.object({
   updated_by: z.string().nullish(),
   use_icon_as_answer_icon: z.boolean().nullish(),
   workflow: zWorkflowPartial.nullish(),
+  workflow_kind: z.string().nullish(),
+  workflow_type: z.string().nullish(),
 })
 
 /**
@@ -4683,6 +4808,51 @@ export const zAppUserInputFormPayload = z.union([
   zAppCheckboxInputPayload,
   zAppExternalDataInputPayload,
 ])
+
+/**
+ * WorkflowAppLogEvaluationNodeInfoResponse
+ */
+export const zWorkflowAppLogEvaluationNodeInfoResponse = z.object({
+  node_id: z.string(),
+  title: z.string(),
+  type: z.string(),
+})
+
+/**
+ * WorkflowAppLogEvaluationItemResponse
+ */
+export const zWorkflowAppLogEvaluationItemResponse = z.object({
+  details: z.record(z.string(), z.unknown()).optional(),
+  name: z.string(),
+  node_info: zWorkflowAppLogEvaluationNodeInfoResponse.nullish(),
+  value: z.unknown().optional(),
+})
+
+/**
+ * WorkflowAppLogPartialResponse
+ */
+export const zWorkflowAppLogPartialResponse = z.object({
+  created_at: z.int().nullish(),
+  created_by_account: zSimpleAccountResponse.nullish(),
+  created_by_end_user: zSimpleEndUser.nullish(),
+  created_by_role: z.string().nullish(),
+  created_from: z.string().nullish(),
+  details: z.unknown().optional(),
+  evaluation: z.array(zWorkflowAppLogEvaluationItemResponse).optional(),
+  id: z.string(),
+  workflow_run: zWorkflowRunForLogResponse.nullish(),
+})
+
+/**
+ * WorkflowAppLogPaginationResponse
+ */
+export const zWorkflowAppLogPaginationResponse = z.object({
+  data: z.array(zWorkflowAppLogPartialResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
 
 /**
  * WorkflowFileUploadTransferPayload
@@ -5393,6 +5563,8 @@ export const zAppDetailWithSite = z.object({
   updated_by: z.string().nullable(),
   use_icon_as_answer_icon: z.boolean(),
   workflow: zWorkflowPartial.nullable(),
+  workflow_kind: z.string().nullish(),
+  workflow_type: z.string().nullish(),
 })
 
 /**
@@ -5419,6 +5591,8 @@ export const zAppDetail = z.object({
   updated_by: z.string().nullable(),
   use_icon_as_answer_icon: z.boolean(),
   workflow: zWorkflowPartial.nullable(),
+  workflow_kind: z.string().nullish(),
+  workflow_type: z.string().nullish(),
 })
 
 /**
@@ -5957,6 +6131,7 @@ export const zAgentSoulAppFeaturesConfig = z.object({
   opening_statement: z.string().nullish(),
   retriever_resource: zAgentFeatureToggleConfig.nullish(),
   sensitive_word_avoidance: zAgentSensitiveWordAvoidanceFeatureConfig.nullish(),
+  show_thoughts: zAgentFeatureToggleConfig.nullish(),
   speech_to_text: zAgentFeatureToggleConfig.nullish(),
   suggested_questions: z.array(z.string()).nullish(),
   suggested_questions_after_answer: zAgentSuggestedQuestionsAfterAnswerFeatureConfig.nullish(),
@@ -6238,6 +6413,8 @@ export const zAppPartialWritable = z.object({
   updated_by: z.string().nullish(),
   use_icon_as_answer_icon: z.boolean().nullish(),
   workflow: zWorkflowPartial.nullish(),
+  workflow_kind: z.string().nullish(),
+  workflow_type: z.string().nullish(),
 })
 
 /**
@@ -6312,6 +6489,8 @@ export const zAppDetailWithSiteWritable = z.object({
   updated_by: z.string().nullable(),
   use_icon_as_answer_icon: z.boolean(),
   workflow: zWorkflowPartial.nullable(),
+  workflow_kind: z.string().nullish(),
+  workflow_type: z.string().nullish(),
 })
 
 /**
@@ -6641,6 +6820,18 @@ export const zGetAppsByAppIdAdvancedChatWorkflowRunsCountQuery = z.object({
  * Workflow runs count retrieved successfully
  */
 export const zGetAppsByAppIdAdvancedChatWorkflowRunsCountResponse = zWorkflowRunCountResponse
+
+export const zPostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetirePath = z.object(
+  {
+    app_id: z.uuid(),
+  },
+)
+
+/**
+ * Workspaces retired
+ */
+export const zPostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetireResponse =
+  z.void()
 
 export const zPostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewBody =
   zHumanInputFormPreviewPayload
@@ -8149,6 +8340,19 @@ export const zGetAppsByAppIdWorkflowsQuery = z.object({
  */
 export const zGetAppsByAppIdWorkflowsResponse = zWorkflowPaginationResponse
 
+export const zPostAppsByAppIdWorkflowsConvertTypePath = z.object({
+  app_id: z.uuid(),
+})
+
+export const zPostAppsByAppIdWorkflowsConvertTypeQuery = z.object({
+  target_type: z.enum(['evaluation', 'workflow']),
+})
+
+/**
+ * Workflow kind converted successfully
+ */
+export const zPostAppsByAppIdWorkflowsConvertTypeResponse = zWorkflowKindConvertResponse
+
 export const zGetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsPath = z.object({
   app_id: z.uuid(),
 })
@@ -8657,6 +8861,17 @@ export const zPostAppsByAppIdWorkflowsPublishPath = z.object({
  * Workflow published successfully
  */
 export const zPostAppsByAppIdWorkflowsPublishResponse = zWorkflowPublishResponse
+
+export const zPostAppsByAppIdWorkflowsPublishEvaluationBody = zPublishWorkflowPayload
+
+export const zPostAppsByAppIdWorkflowsPublishEvaluationPath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * Evaluation workflow published successfully
+ */
+export const zPostAppsByAppIdWorkflowsPublishEvaluationResponse = zWorkflowPublishResponse
 
 export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsPath = z.object({
   app_id: z.uuid(),

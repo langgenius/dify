@@ -338,3 +338,25 @@ it('announces the complete custom displayed value including its timezone', async
     .element(screen.getByRole('button', { name: 'Time 1:30 PM UTC+08:00', exact: true }))
     .toBeVisible()
 })
+
+it('opens a read-only picker for browsing without changing its time', async () => {
+  const changed = vi.fn()
+  const screen = await render(
+    <TimePicker readOnly defaultValue="09:30" onValueChange={changed}>
+      <TimePickerLabel className="sr-only">Time</TimePickerLabel>
+      <TimePickerTrigger />
+      <TimePickerContent />
+    </TimePicker>,
+  )
+  await screen.getByRole('button', { name: 'Time 9:30 AM' }).click()
+  const hours = screen.getByRole('listbox', { name: 'Hour' })
+  await expect.element(hours).toHaveAttribute('aria-readonly', 'true')
+  await hours.getByRole('option', { name: '10', exact: true }).click()
+  await userEvent.keyboard('{ArrowDown}')
+  await expect
+    .element(hours.getByRole('option', { name: '9', exact: true }))
+    .toHaveAttribute('aria-selected', 'true')
+  await expect.element(screen.getByRole('button', { name: 'OK' })).not.toBeInTheDocument()
+  await expect.element(screen.getByRole('button', { name: 'Now' })).not.toBeInTheDocument()
+  expect(changed).not.toHaveBeenCalled()
+})

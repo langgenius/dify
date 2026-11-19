@@ -24,10 +24,10 @@ from services.network_access_group_service import (
     NetworkAccessGroupControlPlane,
     NetworkAccessGroupEntitlement,
     NetworkAccessGroupInvalidPolicyError,
+    NetworkAccessGroupNotFoundError,
     NetworkAccessGroupService,
     NetworkAccessGroupUnsupportedAccessPointsError,
     NetworkAccessGroupUnsupportedAppModeError,
-    NetworkAccessGroupUpstreamError,
     WorkspaceMembershipRoleQuery,
 )
 
@@ -116,7 +116,13 @@ def _app(
     )
 
 
-def _harness(*, role: str | None = "owner", paid: bool = True, app_mode: str = "workflow") -> _Harness:
+def _harness(
+    *,
+    role: str | None = "owner",
+    paid: bool = True,
+    app_mode: str = "workflow",
+    rbac_enabled: Callable[[], bool] = lambda: False,
+) -> _Harness:
     control_plane = create_autospec(NetworkAccessGroupControlPlane, instance=True, spec_set=True)
     apps = create_autospec(NetworkAccessGroupAppQuery, instance=True, spec_set=True)
     memberships = create_autospec(WorkspaceMembershipRoleQuery, instance=True, spec_set=True)
@@ -139,6 +145,7 @@ def _harness(*, role: str | None = "owner", paid: bool = True, app_mode: str = "
             apps=apps,
             memberships=memberships,
             entitlement=entitlement,
+            rbac_enabled=rbac_enabled,
         ),
         control_plane=control_plane,
         apps=apps,
@@ -245,6 +252,15 @@ def test_policy_reads_allow_persisted_owner_admin_and_editor(role: str) -> None:
 
     harness.control_plane.list_groups.assert_called_once_with(WORKSPACE_ID, ACCOUNT_ID)
     harness.control_plane.get_group.assert_called_once_with(WORKSPACE_ID, GROUP_ID, ACCOUNT_ID)
+
+
+def test_service_skips_legacy_role_check_when_rbac_is_enabled() -> None:
+    """RBAC grants are authoritative when enabled; legacy roles are the fallback only."""
+    harness = _harness(role="normal", rbac_enabled=lambda: True)
+
+    harness.service.list_groups(_context())
+
+    harness.control_plane.list_groups.assert_called_once_with(WORKSPACE_ID, ACCOUNT_ID)
 
 
 @pytest.mark.parametrize(
@@ -792,9 +808,9 @@ def test_current_ip_check_rejects_role_before_policy_or_ip_lookup(role: str | No
 
 def test_current_ip_check_does_not_read_ip_when_tenant_scoped_policy_lookup_fails() -> None:
     harness = _harness(role="admin")
-    harness.control_plane.get_group.side_effect = NetworkAccessGroupUpstreamError(404)
+    harness.control_plane.get_group.side_effect = NetworkAccessGroupNotFoundError
 
-    with pytest.raises(NetworkAccessGroupUpstreamError):
+    with pytest.raises(NetworkAccessGroupNotFoundError):
         harness.service.check_current_ip(_context(), group_id=GROUP_ID, client_ip_supplier=_unexpected_client_ip_read)
 
 

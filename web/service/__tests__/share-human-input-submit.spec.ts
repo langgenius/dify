@@ -63,6 +63,23 @@ describe('Web App human input submission', () => {
     },
   )
 
+  it.each([401, 403, 404, 409, 410, 500])(
+    'propagates V2 HTTP %i without retrying the legacy endpoint',
+    async (status) => {
+      mocks.fetch.mockResolvedValue(
+        new Response(JSON.stringify({ code: 'not_found' }), {
+          status,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+      await expect(
+        submitHumanInputForm('v2-token', { inputs: {}, action: 'approve' }, '2'),
+      ).rejects.toBeDefined()
+      expect(mocks.legacyPost).not.toHaveBeenCalled()
+      expect(mocks.fetch.mock.calls.length).toBeGreaterThanOrEqual(1)
+    },
+  )
+
   it('uses the environment app API prefix when submitting its v2 form', async () => {
     mocks.address.mockReturnValue({ kind: 'environment', code: 'environment-code' })
 

@@ -36,12 +36,15 @@ const renderControl = ({
 } = {}) => {
   const { queryClient } = createConsoleQueryWrapper({
     accountProfile: { name: 'Ada' },
-    systemFeatures: { enable_collaboration_mode: collaborationEnabled },
   })
   return renderWorkflowFlowComponent(<Control />, {
     queryClient,
+    resource: { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled },
     nodes: [createNode({ id: 'node-1' })],
-    initialStoreState: { controlMode: ControlMode.Pointer, ...initialStoreState },
+    initialStoreState: {
+      controlMode: ControlMode.Pointer,
+      ...initialStoreState,
+    },
   })
 }
 
