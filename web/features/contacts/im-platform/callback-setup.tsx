@@ -88,7 +88,7 @@ export function ContactImCallbackSetup({
           rel="noreferrer"
           target="_blank"
         >
-          {t(($) => $['imPlatform.bindingDialog.viewSetupGuide'])}
+          {t(($) => $['imPlatform.bindingDialog.openSetupGuide'])}
           <span aria-hidden className="i-ri-external-link-line size-3" />
         </a>
         <div className="ms-auto flex gap-2">

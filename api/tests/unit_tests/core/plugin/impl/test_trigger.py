@@ -1,12 +1,10 @@
-from collections.abc import Callable
 from io import BytesIO
 from types import SimpleNamespace
-from typing import Literal
 
 import pytest
+from flask import Request
 from pydantic import JsonValue
 from pytest_mock import MockerFixture
-from werkzeug import Request
 
 from core.plugin.entities.plugin_daemon import CredentialType, PluginDaemonRawResponse
 from core.plugin.impl.trigger import PluginTriggerClient
@@ -65,9 +63,6 @@ def _subscription_call_kwargs(method_name: str) -> dict[str, object]:
     }
 
 
-_Transformer = Callable[[PluginDaemonRawResponse], PluginDaemonRawResponse]
-
-
 def _raw_response(data: JsonValue) -> PluginDaemonRawResponse:
     return PluginDaemonRawResponse(code=0, message="", data=data)
 
@@ -77,9 +72,9 @@ class TestPluginTriggerClient:
         client = PluginTriggerClient()
         provider = _trigger_provider("remote")
 
-        def fake_request(
-            method: str, path: str, type_: object, *, transformer: _Transformer, **kwargs: object
-        ) -> list[SimpleNamespace]:
+        def fake_request[**P](*args: P.args, **kwargs: P.kwargs) -> object:
+            transformer = kwargs["transformer"]
+            assert callable(transformer)
             payload = _raw_response(
                 [
                     {
@@ -111,9 +106,9 @@ class TestPluginTriggerClient:
         client = PluginTriggerClient()
         provider = _trigger_provider("provider")
 
-        def fake_request(
-            method: str, path: str, type_: object, *, transformer: _Transformer, **kwargs: object
-        ) -> SimpleNamespace:
+        def fake_request[**P](*args: P.args, **kwargs: P.kwargs) -> object:
+            transformer = kwargs["transformer"]
+            assert callable(transformer)
             payload = _raw_response({"declaration": {"events": [{"identity": {"provider": "old"}}]}})
             transformed = transformer(payload)
             assert transformed.data == {"declaration": {"events": [{"identity": {"provider": "org/plugin/provider"}}]}}
@@ -214,9 +209,7 @@ class TestPluginTriggerClient:
             )
 
     @pytest.mark.parametrize("method_name", ["subscribe", "unsubscribe", "refresh"])
-    def test_subscription_operations_success(
-        self, mocker: MockerFixture, method_name: Literal["subscribe", "unsubscribe", "refresh"]
-    ) -> None:
+    def test_subscription_operations_success(self, mocker: MockerFixture, method_name: str) -> None:
         client = PluginTriggerClient()
         stream_mock = mocker.patch.object(
             client,
@@ -238,12 +231,7 @@ class TestPluginTriggerClient:
             ("refresh", "No response received from plugin daemon for refresh"),
         ],
     )
-    def test_subscription_operations_no_response(
-        self,
-        mocker: MockerFixture,
-        method_name: Literal["subscribe", "unsubscribe", "refresh"],
-        expected: str,
-    ) -> None:
+    def test_subscription_operations_no_response(self, mocker: MockerFixture, method_name: str, expected: str) -> None:
         client = PluginTriggerClient()
         mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
         method = getattr(client, method_name)

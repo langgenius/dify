@@ -81,7 +81,9 @@ def _patch_redis_clients_on_loaded_modules() -> None:
         if module is None:
             continue
         for client_attribute in ("redis_client", "_pubsub_redis_client"):
-            if hasattr(module, client_attribute):
+            # Lazy third-party modules can import optional dependencies from __getattr__.
+            # Only replace references already present in the module namespace.
+            if client_attribute in vars(module):
                 setattr(module, client_attribute, redis_mock)
 
 

@@ -14,7 +14,6 @@ vi.mock('@/service/console', () => ({
     files: { upload: { post: { mutationOptions: () => ({ mutationFn: uploadImage }) } } },
   },
 }))
-vi.mock('@/next/navigation', () => ({ useParams: () => ({}) }))
 
 async function createImageFile() {
   const canvas = document.createElement('canvas')

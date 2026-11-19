@@ -1,0 +1,11 @@
+# Public console and app URLs shared by web, API, and Celery workers, including Beat.
+# Copy this file to urls.env to customize them once for all consumers.
+# Explicit urls.env values override service-specific URL settings; docker/.env takes precedence.
+# Leave empty for same-origin URLs. Empty assignments override localhost defaults baked into images.
+# Set browser-accessible base URLs, without the /console/api, /api, or /v1 suffixes.
+
+CONSOLE_API_URL=${CONSOLE_API_URL:-}
+CONSOLE_WEB_URL=${CONSOLE_WEB_URL:-}
+SERVICE_API_URL=${SERVICE_API_URL:-}
+APP_API_URL=${APP_API_URL:-}
+APP_WEB_URL=${APP_WEB_URL:-}

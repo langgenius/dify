@@ -75,7 +75,7 @@ def client(
     app.config["TEST_BROWSER_ACCOUNT"] = account
     login_manager.init_app(app)
     bind_account_loader(app, account_application_services.accounts.identity.load_user)
-    bind_account_only_loader(app, account_application_services.accounts.identity.get_account_by_id)
+    bind_account_only_loader(app, account_application_services.accounts.identity.load_account)
     services = build_application_services(
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.COMMUNITY,

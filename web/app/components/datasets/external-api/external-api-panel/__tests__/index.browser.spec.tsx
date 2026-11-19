@@ -1,18 +1,20 @@
 import type { ExternalKnowledgeApiListResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { consoleClient } from '@/service/console'
+import { onlineManager } from '@tanstack/react-query'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
 import { render } from 'vitest-browser-react'
 import { FeaturesContext } from '@/app/components/base/features/context'
 import { createFeaturesStore } from '@/app/components/base/features/store'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
-import { ModalContextProvider } from '@/context/modal-context-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import ExternalAPIPanel from '../index'
 
 const api = vi.hoisted(() => ({
+  get: vi.fn<typeof consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.get>(),
   list: vi.fn<typeof consoleClient.datasets.externalKnowledgeApi.get>(),
   create: vi.fn<typeof consoleClient.datasets.externalKnowledgeApi.post>(),
 }))
@@ -27,6 +29,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'datasets.externalKnowledgeApi.post': api.create,
+      'datasets.externalKnowledgeApi.byExternalKnowledgeApiId.get': api.get,
     }),
   }
 })
@@ -52,6 +55,7 @@ const response: ExternalKnowledgeApiListResponse = {
 
 beforeEach(() => {
   onTestFinished(guardUnexpectedFetch())
+  api.get.mockReset().mockResolvedValue(response.data[0]!)
   api.list.mockReset().mockResolvedValue(response)
   api.create.mockReset().mockResolvedValue(response.data[0]!)
 })
@@ -70,12 +74,13 @@ async function setup(canManage = true) {
       <NuqsTestingAdapter>
         <EventEmitterContextProvider>
           <FeaturesContext value={featuresStore}>
-            <ModalContextProvider>
+            <>
               {/* RootLayout isolates page z-indices from body-portalled dialogs. */}
               <div className="isolate">
                 <PanelOwner />
               </div>
-            </ModalContextProvider>
+              <AppToaster />
+            </>
           </FeaturesContext>
         </EventEmitterContextProvider>
       </NuqsTestingAdapter>
@@ -112,11 +117,13 @@ it('shows read-only API cards without management controls', async () => {
 })
 
 it('opens a blank creation form and refreshes the list from the saved API', async () => {
+  const refresh = createDeferred<ExternalKnowledgeApiListResponse>()
   let saved: ExternalKnowledgeApiListResponse['data'] = []
   api.list.mockImplementation(async () => ({ ...response, data: saved, total: saved.length }))
   api.create.mockImplementation(async ({ body }) => {
     const created = { ...response.data[0]!, ...body }
     saved = [created]
+    api.list.mockReturnValue(refresh.promise)
     return created
   })
   const screen = await setup()
@@ -133,6 +140,7 @@ it('opens a blank creation form and refreshes the list from the saved API', asyn
   await key.fill('secret-key')
   await dialog.getByRole('button', { name: 'dataset.externalAPIForm.save' }).click()
   await expect.element(dialog).not.toBeInTheDocument()
+  refresh.resolve({ ...response, data: saved, total: saved.length })
   await expect.element(screen.getByText('Product knowledge')).toBeVisible()
   await expect.element(screen.getByText('https://knowledge.example.com')).toBeVisible()
   expect(api.create).toHaveBeenCalledExactlyOnceWith(
@@ -150,4 +158,49 @@ it('opens a blank creation form and refreshes the list from the saved API', asyn
   await expect
     .element(screen.getByRole('button', { name: /common.operation.delete Product knowledge/ }))
     .toBeVisible()
+})
+
+it('opens the card editor as the only top-level dialog', async () => {
+  const screen = await setup()
+  const edit = screen.getByRole('button', { name: /common.operation.edit Product knowledge/ })
+  await edit.click()
+  const editor = screen.getByRole('dialog', { name: 'dataset.editExternalAPIFormTitle' })
+  await expect.element(editor).toBeVisible()
+  await expect.element(editor).not.toHaveAttribute('data-nested')
+  await editor.getByRole('button', { name: 'dataset.externalAPIForm.cancel' }).click()
+  await expect.element(edit).toHaveFocus()
+})
+
+it('retains the external API draft and allows cancel after an offline save fails', async () => {
+  api.create.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+  const screen = await setup()
+  await screen.getByRole('button', { name: 'dataset.createExternalAPI' }).click()
+  const dialog = screen.getByRole('dialog', { name: /dataset\./ })
+  const name = dialog.getByLabelText(/Name/)
+  await name.fill('Draft')
+  await dialog.getByLabelText(/API Endpoint/).fill('https://knowledge.example.com')
+  await dialog.getByLabelText(/API Key/).fill('secret-key')
+  onlineManager.setOnline(false)
+  onTestFinished(() => onlineManager.setOnline(true))
+  await dialog.getByRole('button', { name: 'dataset.externalAPIForm.save' }).click()
+  await expect.poll(() => api.create.mock.calls.length).toBe(1)
+  await expect.element(name).toHaveValue('Draft')
+  await dialog.getByRole('button', { name: /cancel/i }).click()
+  await expect.element(dialog).not.toBeInTheDocument()
+})
+
+it('attempts an offline edit immediately without opening an editor on reconnect', async () => {
+  api.get.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+  const screen = await setup()
+  const edit = screen.getByRole('button', { name: /common.operation.edit Product knowledge/ })
+  await expect.element(edit).toBeVisible()
+  onlineManager.setOnline(false)
+  onTestFinished(() => onlineManager.setOnline(true))
+  await edit.click()
+  await expect.poll(() => api.get.mock.calls.length).toBe(1)
+  await expect.element(screen.getByText('common.api.actionFailed')).toBeVisible()
+  onlineManager.setOnline(true)
+  await expect.element(screen.getByRole('dialog', { name: /dataset\./ })).not.toBeInTheDocument()
+  await edit.click()
+  await expect.element(screen.getByRole('dialog', { name: /dataset\./ })).toBeVisible()
 })
