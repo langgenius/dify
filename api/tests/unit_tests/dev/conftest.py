@@ -13,6 +13,10 @@ def openapi_subprocess_coverage(
 ) -> None:
     if request.path.name not in {"test_cached_console_openapi.py", "test_generate_swagger_specs.py"}:
         return
+    # Only pytest-cov reports need child data. pytest-testmon also traces with Coverage,
+    # but without a data file for these children to write to.
+    if not request.config.getoption("cov_source", default=None):
+        return
     current = coverage.Coverage.current()
     if current is None:
         return
