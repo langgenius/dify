@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, Mock, PropertyMock, call, patch
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 from pytest_mock import MockerFixture
 from sqlalchemy import select
 from sqlalchemy.engine import Engine
@@ -1059,6 +1060,74 @@ class TestRetrievalServiceInternals:
                     exceptions=["keyword error"],
                     query="query",
                 )
+
+    @pytest.mark.parametrize(
+        ("summary_score", "original_score", "expected_score"),
+        [(0.95, 0.9, 0.95), (0.8, 1.0, 1.0)],
+    )
+    def test_hybrid_summary_and_original_share_one_top_k_slot(
+        self,
+        app: Flask,
+        sqlite_session: Session,
+        vector_engine: Engine,
+        mocker: MockerFixture,
+        summary_score: float,
+        original_score: float,
+        expected_score: float,
+    ) -> None:
+        dataset = _dataset()
+        dataset.chunk_structure = IndexStructureType.PARAGRAPH_INDEX
+        dataset.summary_index_setting = {"enable": True}
+        source = _dataset_document(document_id="doc", doc_form=IndexStructureType.PARAGRAPH_INDEX)
+        sqlite_session.add_all(
+            [dataset, source, *(_segment(segment_id=s, document_id="doc", index_node_id=f"node-{s}") for s in "abc")]
+        )
+        sqlite_session.commit()
+        metadata = {"dataset_id": dataset.id, "document_id": source.id}
+        original = create_mock_document("original", "node-a", original_score, additional_metadata=metadata)
+        summary = create_mock_document(
+            "summary",
+            "summary-node",
+            summary_score,
+            additional_metadata={**metadata, "is_summary": True, "original_chunk_id": "a"},
+        )
+        candidates = [
+            original,
+            summary,
+            create_mock_document("second", "node-b", 0.8, additional_metadata=metadata),
+            create_mock_document("below threshold", "node-c", 0.1, additional_metadata=metadata),
+        ]
+
+        def search(_query: str, *, top_k: int, **_kwargs: object) -> list[Document]:
+            return candidates[:top_k]
+
+        def rerank(
+            *, documents: list[Document], score_threshold: float, top_n: int, **_kwargs: object
+        ) -> list[Document]:
+            eligible = (doc for doc in documents if doc.metadata["score"] >= score_threshold)
+            return sorted(eligible, key=lambda doc: doc.metadata["score"], reverse=True)[:top_n]
+
+        vector = mocker.patch.object(retrieval_service_module, "Vector").return_value
+        vector.search_by_vector.side_effect = search
+        vector.search_by_full_text.side_effect = search
+        processor = mocker.patch.object(retrieval_service_module, "DataPostProcessor").return_value
+        processor.invoke.side_effect = rerank
+        with app.app_context():
+            hits = RetrievalService.retrieve(
+                RetrievalMethod.HYBRID_SEARCH,
+                dataset.id,
+                "query",
+                top_k=2,
+                score_threshold=0.5,
+                reranking_model={"reranking_provider_name": "provider", "reranking_model_name": "model"},
+                document_ids_filter=[source.id],
+            )
+        records = RetrievalService.format_retrieval_documents(sqlite_session, hits)
+        assert [(r.segment.id, r.score) for r in records] == [("a", expected_score), ("b", 0.8)]
+        assert vector.search_by_vector.call_args.kwargs["top_k"] == 4
+        assert vector.search_by_full_text.call_args.kwargs["top_k"] == 4
+        assert vector.search_by_vector.call_args.kwargs["document_ids_filter"] == [source.id]
+        assert vector.search_by_full_text.call_args.kwargs["document_ids_filter"] == [source.id]
 
     def test_retrieve_internal_hybrid_weighted_attachment_flow(
         self, monkeypatch: pytest.MonkeyPatch, internal_dataset, internal_flask_app, vector_engine

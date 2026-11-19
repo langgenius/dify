@@ -262,6 +262,80 @@ class RetrievalService:
         return [chosen[k] for k in order]
 
     @classmethod
+    def _deduplicate_summary_documents(
+        cls, session: Session, dataset_id: str, documents: list[Document]
+    ) -> list[Document]:
+        """Keep the highest-ranked hit for each source segment represented by a summary.
+
+        The input must already be reranked. This method resolves stored vector-node IDs
+        through the database, preserves summary metadata for later formatting, and
+        leaves documents unrelated to a summary segment unchanged. Database failures
+        propagate without mutating persistent state.
+        """
+        summary_segment_ids = {
+            str(document.metadata["original_chunk_id"])
+            for document in documents
+            if document.metadata.get("is_summary") and document.metadata.get("original_chunk_id")
+        }
+        if not summary_segment_ids:
+            return documents
+
+        node_to_segment = {
+            str(index_node_id): str(segment_id)
+            for index_node_id, segment_id in session.execute(
+                select(DocumentSegment.index_node_id, DocumentSegment.id).where(
+                    DocumentSegment.dataset_id == dataset_id,
+                    DocumentSegment.id.in_(summary_segment_ids),
+                )
+            ).tuples()
+            if index_node_id
+        }
+        node_to_segment.update(
+            {
+                str(index_node_id): str(segment_id)
+                for index_node_id, segment_id in session.execute(
+                    select(ChildChunk.index_node_id, ChildChunk.segment_id).where(
+                        ChildChunk.dataset_id == dataset_id,
+                        ChildChunk.segment_id.in_(summary_segment_ids),
+                    )
+                ).tuples()
+                if index_node_id
+            }
+        )
+        node_to_segment.update(
+            {
+                str(attachment_id): str(segment_id)
+                for attachment_id, segment_id in session.execute(
+                    select(SegmentAttachmentBinding.attachment_id, SegmentAttachmentBinding.segment_id).where(
+                        SegmentAttachmentBinding.dataset_id == dataset_id,
+                        SegmentAttachmentBinding.segment_id.in_(summary_segment_ids),
+                    )
+                ).tuples()
+            }
+        )
+
+        chosen: dict[tuple[str, str, str], Document] = {}
+        order: list[tuple[str, str, str]] = []
+        for document in documents:
+            metadata = document.metadata or {}
+            if metadata.get("is_summary"):
+                segment_id = metadata.get("original_chunk_id")
+            else:
+                doc_id = metadata.get("doc_id")
+                segment_id = node_to_segment.get(str(doc_id)) if doc_id else None
+            identity = str(segment_id or metadata.get("doc_id") or document.page_content)
+            key = (document.provider or "dify", "segment" if segment_id else "document", identity)
+            if key not in chosen:
+                chosen[key] = document
+                order.append(key)
+            elif float(metadata.get("score", 0.0) or 0.0) > float(
+                (chosen[key].metadata or {}).get("score", 0.0) or 0.0
+            ):
+                chosen[key] = document
+
+        return [chosen[key] for key in order]
+
+    @classmethod
     def _get_dataset(cls, dataset_id: str) -> Dataset | None:
         with Session(db.engine) as session:
             return session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
@@ -809,6 +883,14 @@ class RetrievalService:
             return
         with flask_app.app_context():
             all_documents_item: list[Document] = []
+            candidate_top_k = (
+                top_k * 2
+                if query
+                and retrieval_method == RetrievalMethod.HYBRID_SEARCH
+                and dataset.summary_index_setting
+                and dataset.summary_index_setting.get("enable")
+                else top_k
+            )
             # Optimize multithreading with thread pools
             with ThreadPoolExecutor(max_workers=dify_config.RETRIEVAL_SERVICE_EXECUTORS) as executor:  # type: ignore
                 futures = []
@@ -833,7 +915,7 @@ class RetrievalService:
                                 flask_app=current_app._get_current_object(),  # type: ignore
                                 dataset_id=dataset.id,
                                 query=query,
-                                top_k=top_k,
+                                top_k=candidate_top_k,
                                 score_threshold=score_threshold,
                                 reranking_model=reranking_model,
                                 all_documents=all_documents_item,
@@ -867,7 +949,7 @@ class RetrievalService:
                             flask_app=current_app._get_current_object(),  # type: ignore
                             dataset_id=dataset.id,
                             query=query,
-                            top_k=top_k,
+                            top_k=candidate_top_k,
                             score_threshold=score_threshold,
                             reranking_model=reranking_model,
                             all_documents=all_documents_item,
@@ -915,13 +997,17 @@ class RetrievalService:
                         query=rerank_query,
                         documents=all_documents_item,
                         score_threshold=score_threshold,
-                        top_n=top_k,
+                        top_n=candidate_top_k,
                         query_type=query_type,
                     )
                     if not data_post_processor.rerank_runner and score_threshold:
                         all_documents_item = self._filter_documents_by_vector_score_threshold(
                             all_documents_item, score_threshold
                         )
+                    if candidate_top_k != top_k:
+                        all_documents_item = self._deduplicate_summary_documents(
+                            rerank_session, str(dataset.id), all_documents_item
+                        )[:top_k]
 
             all_documents.extend(all_documents_item)
 
