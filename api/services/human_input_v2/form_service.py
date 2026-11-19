@@ -14,9 +14,10 @@ import secrets
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 from datetime import timedelta
-from typing import NamedTuple, assert_never
+from typing import Literal, NamedTuple, assert_never
 
 from pydantic import EmailStr, NaiveDatetime, SecretStr, TypeAdapter, ValidationError
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -45,6 +46,7 @@ from graphon.variable_loader import VariableLoader, load_into_variable_pool
 from graphon.variables.segments import StringSegment
 from graphon.variables.template_resolution import convert_template
 from libs.datetime_utils import naive_utc_now
+from models.model import App
 from models.workflow import WorkflowRun
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory
@@ -225,6 +227,9 @@ class FormExecutionContext:
     # Present only for an actual debugger invocation; node configuration alone
     # must not establish a debugging identity or redirect production recipients.
     debugging_account_id: AccountId | None
+    run_gateway: Literal["dify", "enterprise"] = "dify"
+    form_version: Literal["1", "2"] = "2"
+    owner_ref: dict[str, str] | None = None
 
 
 class HumanInputFormService:
@@ -261,6 +266,15 @@ class HumanInputFormService:
         expected_hash = None
         created = None
         with self._session_factory() as session, session.begin():
+            if self._context.run_gateway == "enterprise":
+                # AppDeploy has no local run row to lock. The App owner lock
+                # serializes first initialization before the unique execution
+                # insert; only its creator may initialize recipients/delivery.
+                session.scalar(
+                    select(App.id)
+                    .where(App.id == self._context.app_id, App.tenant_id == self._context.tenant_id)
+                    .with_for_update()
+                )
             repository = SQLAlchemyFormRepository(session, self._context.tenant_id, self._context.app_id)
             existing = repository.get_form(self._context.workflow_run_id, node_execution_id)
             if existing is not None:
@@ -294,6 +308,9 @@ class HumanInputFormService:
                         resolved_form=compile_resolved_form(node_data, variable_pool),
                         expiration_time=now + duration,
                         global_timeout_deadline=self._context.global_timeout_deadline,
+                        run_gateway=self._context.run_gateway,
+                        form_version=self._context.form_version,
+                        owner_ref=self._context.owner_ref,
                     )
                 )
                 resolved_recipients = self._resolve_recipients(
@@ -444,6 +461,13 @@ def handle_form_timeouts(
     forms and evaluate deadlines using the current database time.
     Lock individual forms only when applying their state transitions.
     """
+    with session_factory() as session:
+        gateway = SQLAlchemyFormRepository(session, tenant_id, app_id).get_run_gateway(workflow_run_id)
+    if gateway == "enterprise":
+        _handle_enterprise_timeouts(
+            session_factory=session_factory, tenant_id=tenant_id, app_id=app_id, workflow_run_id=workflow_run_id
+        )
+        return
     resume = False
     with session_factory() as session, session.begin():
         workflow_run_repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_factory)
@@ -469,6 +493,34 @@ def handle_form_timeouts(
             resume = _handle_node_timeouts(repository, run, node_timeouts)
     if resume:
         _enqueue_resume(workflow_run_id)
+
+
+def _handle_enterprise_timeouts(
+    *, session_factory: sessionmaker[Session], tenant_id: TenantId, app_id: str, workflow_run_id: str
+) -> None:
+    """Settle AppDeploy deadlines locally, then retry idempotent Enterprise effects.
+
+    State transitions persist a pending run effect in the same transaction.
+    Enterprise's periodic outbox poller repairs failures without holding DB locks.
+    """
+    from services.human_input_v2.run_gateway import build_run_gateway
+
+    with session_factory() as session, session.begin():
+        repository = SQLAlchemyFormRepository(session, tenant_id, app_id)
+        batch = repository.list_waiting_forms_for_run(workflow_run_id)
+        globally_expired = any(form.global_timeout_deadline <= batch.now for form in batch.forms)
+        for form in batch.forms:
+            if globally_expired:
+                repository.cancel_form(form.id)
+            else:
+                repository.timeout_form(form.id)
+        forms = repository.get_run_forms(workflow_run_id)
+    expired = next((form for form in forms if form.status == HumanInputFormStatus.EXPIRED), None)
+    timeout = next((form for form in forms if form.status == HumanInputFormStatus.TIMEOUT), None)
+    if expired is not None:
+        build_run_gateway(expired, session_factory).stop(expired, "Human input global timeout")
+    elif timeout is not None:
+        build_run_gateway(timeout, session_factory).request_resume(timeout)
 
 
 def _handle_global_expiration(
@@ -508,6 +560,33 @@ def _enqueue_resume(workflow_run_id: str) -> None:
 class _InitiatorFormToken(NamedTuple):
     ciphertext: str
     token_hash: str
+
+
+def recover_initiator_prepared_form(*, form: Form, session_factory: Callable[[], Session]) -> PreparedForm:
+    """Recover an authorized run's original stream grant after closing its read.
+
+    The caller already checked the complete form owner. Terminal forms return
+    no token; notification tokens are never eligible for stream replay.
+    """
+    protected_token = None
+    expected_hash = None
+    if form.status == HumanInputFormStatus.WAITING:
+        with session_factory() as session:
+            delivery = SQLAlchemyDeliveryRepository(session).get_initiator_delivery(
+                tenant_id=form.tenant_id, form_id=form.id
+            )
+            if delivery is not None:
+                assert isinstance(delivery.target_snapshot, InitiatorSnapshot)
+                protected_token = delivery.target_snapshot.protected_form_token
+                expected_hash = delivery.token_hash
+    token = None
+    if protected_token is not None:
+        plaintext = encrypter.decrypt_token(str(form.tenant_id), protected_token)
+        assert expected_hash is not None
+        if not hmac.compare_digest(hashlib.sha256(plaintext.encode()).hexdigest(), expected_hash):
+            raise ValueError("Recovered initiator token does not match its delivery")
+        token = SecretStr(plaintext)
+    return PreparedForm(form, token)
 
 
 def load_prepared_forms(

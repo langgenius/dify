@@ -323,7 +323,9 @@ class EmailOtpService:
                 or form.global_timeout_deadline <= now
             ):
                 raise EmailOtpError(OtpFailure.EXPIRED)
-            if form.workflow_run_id is not None:
+            # Enterprise has no local WorkflowRun. OTP proves recipient access;
+            # Submission's run gateway checks the active checkpoint on acceptance.
+            if form.workflow_run_id is not None and form.run_gateway == "dify":
                 run = session.scalar(
                     sa.select(WorkflowRun).where(
                         WorkflowRun.id == form.workflow_run_id,

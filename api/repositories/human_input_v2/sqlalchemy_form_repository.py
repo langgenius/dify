@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from datetime import datetime
-from typing import Self, override
+from typing import Literal, Self, override
 
 import sqlalchemy as sa
 from pydantic import BaseModel, ConfigDict, Json, JsonValue, NaiveDatetime, TypeAdapter, model_validator
@@ -50,6 +50,9 @@ class _StoredForm(BaseModel):
     node_execution_id: str | None
     form_kind: HumanInputFormKind
     status: HumanInputFormStatus
+    run_gateway: Literal["dify", "enterprise"] = "dify"
+    form_version: Literal["1", "2"] = "2"
+    owner_ref: dict[str, str] | None = None
     resolved_form: ResolvedForm
     created_at: NaiveDatetime
     updated_at: NaiveDatetime
@@ -117,6 +120,9 @@ class _StoredForm(BaseModel):
             expiration_time=self.expiration_time,
             global_timeout_deadline=self.global_timeout_deadline,
             submission=submission,
+            run_gateway=self.run_gateway,
+            form_version=self.form_version,
+            owner_ref=self.owner_ref,
         )
 
 
@@ -198,6 +204,37 @@ class SQLAlchemyFormRepository(FormRepository):
         record = self._session.scalar(self._query().where(HumanInputForm.id == form_id))
         return _form_from_record(record) if record is not None else None
 
+    def get_run_forms(self, workflow_run_id: str) -> tuple[Form, ...]:
+        """Read every form for the bound owner/run in stable ID order."""
+        return tuple(
+            _form_from_record(record)
+            for record in self._session.scalars(
+                self._query().where(HumanInputForm.workflow_run_id == workflow_run_id).order_by(HumanInputForm.id)
+            )
+        )
+
+    def get_run_gateway(self, workflow_run_id: str) -> str | None:
+        """Read the persisted runtime owner without decoding unrelated submissions."""
+        return self._session.scalar(
+            sa.select(HumanInputForm.run_gateway)
+            .where(
+                HumanInputForm.tenant_id == self._tenant_id,
+                HumanInputForm.app_id == self._app_id,
+                HumanInputForm.workflow_run_id == workflow_run_id,
+            )
+            .limit(1)
+        )
+
+    def cancel_form(self, form_id: str) -> Form | None:
+        """Expire a waiting form on explicit run stop; preserve accepted outcomes."""
+        record = self._lock_form(form_id)
+        if record is not None and record.status == HumanInputFormStatus.WAITING:
+            record.status = HumanInputFormStatus.EXPIRED
+            record.run_effect_pending = record.run_gateway == "enterprise"
+            record.updated_at = self._database_now()
+            self._session.flush([record])
+        return _form_from_record(record) if record is not None else None
+
     @override
     def get_forms_by_ids(self, *, workflow_run_id: str, form_ids: Sequence[str]) -> tuple[Form, ...]:
         if not form_ids:
@@ -240,6 +277,9 @@ class SQLAlchemyFormRepository(FormRepository):
             "workflow_run_id": params.workflow_run_id,
             "node_execution_id": params.node_execution_id,
             "form_kind": params.form_kind,
+            "run_gateway": params.run_gateway,
+            "form_version": params.form_version,
+            "owner_ref": dict(params.owner_ref) if params.owner_ref is not None else None,
             "status": HumanInputFormStatus.WAITING,
             "resolved_form": params.resolved_form,
             "expiration_time": params.expiration_time,
@@ -356,6 +396,7 @@ class SQLAlchemyFormRepository(FormRepository):
             warnings="error",
         ).decode()
         record.status = HumanInputFormStatus.SUBMITTED
+        record.run_effect_pending = record.run_gateway == "enterprise"
         record.submitted_at = now
         record.submitted_by_recipient_id = submitted_by_recipient_id
         record.submitted_by_delivery_id = submitted_by_delivery_id
@@ -431,6 +472,7 @@ class SQLAlchemyFormRepository(FormRepository):
         if now < form.expiration_time or now >= form.global_timeout_deadline:
             return form
         record.status = HumanInputFormStatus.TIMEOUT
+        record.run_effect_pending = record.run_gateway == "enterprise"
         record.updated_at = now
         self._session.flush([record])
         return _form_from_record(record)

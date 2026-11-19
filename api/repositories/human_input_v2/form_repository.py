@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Protocol
+from typing import Literal, Protocol
 
 from pydantic import JsonValue, NaiveDatetime
 
@@ -46,6 +46,9 @@ class Form:
     # The source of truth for form status. Deadlines govern transitions out of
     # WAITING, but never change an already persisted outcome.
     status: HumanInputFormStatus
+    run_gateway: Literal["dify", "enterprise"] = "dify"
+    form_version: Literal["1", "2"] = "2"
+    owner_ref: Mapping[str, str] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,6 +65,9 @@ class FormCreateParams:
     expiration_time: NaiveDatetime
     global_timeout_deadline: NaiveDatetime
     form_kind: HumanInputFormKind = HumanInputFormKind.RUNTIME
+    run_gateway: Literal["dify", "enterprise"] = "dify"
+    form_version: Literal["1", "2"] = "2"
+    owner_ref: Mapping[str, str] | None = None
 
 
 @dataclass(frozen=True, slots=True)

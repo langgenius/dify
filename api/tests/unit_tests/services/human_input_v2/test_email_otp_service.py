@@ -179,6 +179,26 @@ def context(request: pytest.FixtureRequest, sqlite_engine: sa.Engine, monkeypatc
     return result
 
 
+@pytest.mark.parametrize("gateway", ["dify", "enterprise"])
+def test_otp_run_authorization_uses_persisted_gateway(context: Context, gateway: str) -> None:
+    """Enterprise grants need no local run; community missing runs remain expired."""
+    with context.sessions.begin() as session:
+        session.execute(
+            sa.update(HumanInputForm)
+            .where(HumanInputForm.id == context.form.id)
+            .values(
+                workflow_run_id=str(uuid4()),
+                run_gateway=gateway,
+            )
+        )
+    if gateway == "enterprise":
+        context.service._authorize("form-secret")
+    else:
+        with pytest.raises(EmailOtpError) as error:
+            context.service._authorize("form-secret")
+        assert error.value.reason == OtpFailure.EXPIRED
+
+
 def test_send_uses_frozen_email_and_six_digit_code_without_tokens(context: Context) -> None:
     response = context.service.request_access(context.token)
     address, code = context.sent_emails[-1]

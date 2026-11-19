@@ -72,7 +72,7 @@ from repositories.human_input_v2.delivery_repository import (
 from repositories.human_input_v2.im_channel_repository import IMChannelStatus
 
 from .base import DefaultFieldsDCMixin, TypeBase
-from .types import EnumText, FrozenPydanticModelColumn, LongText, StringUUID
+from .types import AdjustedJSON, EnumText, FrozenPydanticModelColumn, LongText, StringUUID
 
 
 class _ImmutableJSONModel(BaseModel):
@@ -1148,11 +1148,17 @@ class HumanInputForm(DefaultFieldsDCMixin, TypeBase):
         sa.Index("hitlv2_forms_expiration_scan_idx", "tenant_id", "app_id", "form_kind", "status", "id"),
         sa.Index("hitlv2_forms_node_deadline_idx", "form_kind", "status", "expiration_time", "id"),
         sa.Index("hitlv2_forms_global_deadline_idx", "form_kind", "status", "global_timeout_deadline", "id"),
+        sa.Index("hitlv2_forms_run_effect_idx", "run_gateway", "run_effect_pending", "id"),
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_run_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    run_gateway: Mapped[str] = mapped_column(sa.String(20), default="dify", server_default="dify", kw_only=True)
+    form_version: Mapped[str] = mapped_column(sa.String(1), default="2", server_default="2", kw_only=True)
+    # Transactional run-effect outbox: clear only after Enterprise acknowledges.
+    run_effect_pending: Mapped[bool] = mapped_column(sa.Boolean, default=False, server_default=sa.false(), kw_only=True)
+    owner_ref: Mapped[dict[str, str] | None] = mapped_column(AdjustedJSON(), default=None, kw_only=True)
     # correspond to WorkflowNodeExecutionModel.id
     node_execution_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     form_kind: Mapped[HumanInputFormKind] = mapped_column(

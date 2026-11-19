@@ -337,6 +337,12 @@ def init_app(app: DifyApp) -> Celery:
             "task": "schedule.queue_monitor_task.queue_monitor_task",
             "schedule": timedelta(minutes=dify_config.QUEUE_MONITOR_INTERVAL or 30),
         }
+    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
+        imports.append("tasks.enterprise_human_input_tasks")
+        beat_schedule["enterprise-human-input-run-effects"] = {
+            "task": "enterprise_human_input.deliver_run_effects",
+            "schedule": timedelta(seconds=30),
+        }
     if dify_config.ENABLE_HUMAN_INPUT_TIMEOUT_TASK:
         imports.append("tasks.human_input_timeout_tasks")
         beat_schedule["human_input_form_timeout"] = {

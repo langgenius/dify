@@ -16,6 +16,7 @@ from configs import dify_config
 from core.workflow.nodes.human_input.enums import HumanInputFormKind
 from graphon.file import helpers as file_helpers
 from libs.datetime_utils import to_utc_timestamp
+from models.enums import CreatorUserRole
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.human_input_v2.form_repository import Form
 from repositories.human_input_v2.sqlalchemy_file_upload_repository import SQLAlchemyFileUploadRepository
@@ -100,6 +101,24 @@ class HumanInputV2FileUploadService:
         return self._remote_files.upload_from_url(url=url, user=context.owner, tenant_id=str(context.form.tenant_id))
 
     def _resolve_owner(self, form: Form) -> FileUploadActor:
+        if form.run_gateway == "enterprise":
+            reference = form.owner_ref or {}
+            role = {
+                "end_user": CreatorUserRole.END_USER,
+                "account": CreatorUserRole.ACCOUNT,
+            }.get(reference.get("initiator_type", ""))
+            if role is None or "initiator_id" not in reference:
+                raise InvalidUploadTokenError()
+            with self._sessions() as session:
+                owner = SQLAlchemyFileUploadRepository(session).get_owner(
+                    tenant_id=str(form.tenant_id),
+                    app_id=form.app_id,
+                    owner_id=reference["initiator_id"],
+                    owner_role=role,
+                )
+            if owner is None:
+                raise InvalidUploadTokenError()
+            return FileUploadActor(id=owner.id, creator_role=owner.creator_role)
         if form.workflow_run_id is not None:
             runs = DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._sessions)
             run = runs.get_workflow_run_by_id(

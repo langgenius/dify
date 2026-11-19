@@ -57,6 +57,7 @@ from services.human_input_v2.email_otp_service import (
     OtpFailure,
     VerifiedEmail,
 )
+from services.human_input_v2.run_gateway import build_run_gateway
 
 _STRING = TypeAdapter(str)
 _FILE = TypeAdapter(dict[str, JsonValue])
@@ -253,7 +254,7 @@ class HumanInputSubmissionService:
         with self._session_factory() as session:
             form = self._authorize_web_app(session, actor=actor, token_hash=token_hash).form
         if naive_utc_now() >= min(form.expiration_time, form.global_timeout_deadline):
-            raise HumanInputFormError(HumanInputFormErrorCode.EXPIRED)
+            raise HumanInputFormError(HumanInputFormErrorCode.EXPIRED, form_id=form.id)
         self._record_form_view(form, ip_address=ip_address)
         return form
 
@@ -386,6 +387,8 @@ class HumanInputSubmissionService:
     ) -> Form:
         with self._session_factory() as session:
             form = authorize(session).form
+        if form.form_version == "1":
+            input_validation_mode = _InputValidationMode.LEGACY_COMPATIBLE
         # File reconstruction can access storage or remote URLs. Keep it outside
         # the write transaction, then recheck authorization and terminal state.
         try:
@@ -393,10 +396,18 @@ class HumanInputSubmissionService:
         except ValueError as exc:
             raise HumanInputFormError(HumanInputFormErrorCode.INVALID_INPUT, form_id=form.id) from exc
 
+        # Enterprise owns its checkpoint. Finish its network preflight before
+        # opening the local form-write transaction; terminal races make resume
+        # an idempotent no-op in Enterprise.
+        if form.run_gateway == "enterprise":
+            with self._session_factory() as session:
+                if not build_run_gateway(form, self._session_factory).is_paused(form, session):
+                    raise HumanInputFormError(HumanInputFormErrorCode.WORKFLOW_NOT_ACTIVE)
+
         with self._session_factory() as session, session.begin():
             authorized = authorize(session)
             form = authorized.form
-            if form.workflow_run_id is not None:
+            if form.workflow_run_id is not None and form.run_gateway == "dify":
                 # Keep the run-before-form lock order shared with expiration.
                 workflow_run_repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(
                     self._session_factory
@@ -460,12 +471,9 @@ class HumanInputSubmissionService:
                 form.id,
             )
 
-    @staticmethod
-    def _enqueue_resume(form: Form) -> None:
+    def _enqueue_resume(self, form: Form) -> None:
         if form.workflow_run_id is not None:
-            from tasks.app_generate.workflow_execute_task import resume_app_execution
-
-            resume_app_execution.apply_async(kwargs={"payload": {"workflow_run_id": form.workflow_run_id}})
+            build_run_gateway(form, self._session_factory).request_resume(form)
 
     @staticmethod
     def _authorize_service_api(
@@ -766,12 +774,14 @@ class HumanInputSubmissionService:
             ):
                 raise HumanInputFormError(HumanInputFormErrorCode.ALREADY_SUBMITTED)
             should_resume = False
-            if form.workflow_run_id is not None:
+            if form.workflow_run_id is not None and form.run_gateway == "dify":
                 repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._session_factory)
                 run = repository.get_workflow_run_by_id_for_update(
                     session, tenant_id=form.tenant_id, app_id=form.app_id, run_id=form.workflow_run_id
                 )
                 should_resume = run is not None and run.status == WorkflowExecutionStatus.PAUSED
+            elif form.run_gateway == "enterprise":
+                should_resume = True
         # A callback redelivery can also repair card publication after resume.
         self._enqueue_card_updates(form)
         if should_resume:
