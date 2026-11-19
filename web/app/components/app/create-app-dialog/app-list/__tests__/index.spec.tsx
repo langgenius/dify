@@ -7,6 +7,7 @@ import type {
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
+import { createFeaturesFixture } from '@/test/console/features-fixture'
 import {
   createConsoleQueryClient,
   renderWithConsoleQuery as render,
@@ -97,6 +98,7 @@ beforeEach(() => {
     if (path.startsWith('/explore/apps?')) return Response.json(catalog)
     if (path === '/explore/apps/catalog-Alpha') return Response.json(detail)
     if (path === '/apps/imports') return Response.json(imported)
+    if (path === '/features') return Response.json(createFeaturesFixture())
     throw new Error(`Unexpected request: ${url}`)
   })
 })
@@ -236,7 +238,9 @@ it('fetches fresh detail by canonical app_id and submits the actual form with an
   await user.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
   await waitFor(() => expect(redirect).toHaveBeenCalled())
   expect(
-    request.mock.calls.map(([url]) => new URL(url).pathname.replace('/console/api', '')),
+    request.mock.calls
+      .map(([url]) => new URL(url).pathname.replace('/console/api', ''))
+      .filter((path) => path !== '/features'),
   ).toEqual(['/explore/apps/catalog-Alpha', '/apps/imports'])
   expect(await request.mock.calls[1]![2].request.json()).toMatchObject({
     yaml_content: 'fresh-dsl',

@@ -4,7 +4,6 @@ import type { consoleClient } from '@/service/console'
 import type { marketplaceClient } from '@/service/marketplace'
 import type { fetchMarketplaceTemplateDSL } from '@/service/marketplace-templates'
 import { zAppPagination, zImport } from '@dify/contracts/api/console/apps/zod.gen'
-import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
@@ -12,6 +11,7 @@ import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { consoleQuery } from '@/service/console'
 import { marketplaceQuery } from '@/service/marketplace'
+import { createFeaturesFixture } from '@/test/console/features-fixture'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createTrialAppDetailFixture } from '@/test/fixtures/app'
@@ -57,7 +57,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       'apps.starred.get': async () =>
         zAppPagination.parse({ data: [], page: 1, limit: 100, total: 0, has_more: false }),
       'trialApps.byAppId.get': api.trial,
-      'features.get': async () => zGetFeaturesResponse.parse({ apps: { size: 1, limit: 10 } }),
+      'features.get': async () => createFeaturesFixture({ apps: { size: 1, limit: 10 } }),
       'tags.get': async () => [],
       'workspaces.current.members.get': async () => ({ accounts: [] }),
       'workspaces.current.toolProviders.get': async () => [],

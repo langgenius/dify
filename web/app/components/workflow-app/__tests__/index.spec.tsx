@@ -1,6 +1,5 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement } from 'react'
-import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
@@ -13,6 +12,7 @@ import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-s
 import { BlockEnum } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
+import { createFeaturesFixture } from '@/test/console/features-fixture'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { seedAppDetail, seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
@@ -216,7 +216,7 @@ describe('WorkflowApp', () => {
   )
 
   it('waits for workspace capabilities before starting the editor', async () => {
-    let resolveFeatures!: (features: ReturnType<typeof zGetFeaturesResponse.parse>) => void
+    let resolveFeatures!: (features: ReturnType<typeof createFeaturesFixture>) => void
     fetchFeatures.mockReturnValue(
       new Promise((resolve) => {
         resolveFeatures = resolve
@@ -230,7 +230,7 @@ describe('WorkflowApp', () => {
     expect(fetchDraft).not.toHaveBeenCalled()
 
     await act(async () =>
-      resolveFeatures(zGetFeaturesResponse.parse({ workflow_collaboration_enabled: false })),
+      resolveFeatures(createFeaturesFixture({ workflow_collaboration_enabled: false })),
     )
     expect(await screen.findByRole('region', { name: 'Workflow canvas' })).toBeInTheDocument()
     expect(screen.getByLabelText('Collaboration enabled')).toHaveTextContent('false')
@@ -238,7 +238,7 @@ describe('WorkflowApp', () => {
 
   it('blocks the editor when workspace capabilities cannot be loaded and retries in place', async () => {
     const user = userEvent.setup()
-    let resolveRetry!: (features: ReturnType<typeof zGetFeaturesResponse.parse>) => void
+    let resolveRetry!: (features: ReturnType<typeof createFeaturesFixture>) => void
     fetchFeatures.mockRejectedValueOnce(new Error('billing unavailable')).mockReturnValueOnce(
       new Promise((resolve) => {
         resolveRetry = resolve
@@ -256,7 +256,7 @@ describe('WorkflowApp', () => {
     expect(screen.getByLabelText('common.loading')).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Workflow canvas' })).not.toBeInTheDocument()
     await act(async () =>
-      resolveRetry(zGetFeaturesResponse.parse({ workflow_collaboration_enabled: true })),
+      resolveRetry(createFeaturesFixture({ workflow_collaboration_enabled: true })),
     )
     expect(await screen.findByRole('region', { name: 'Workflow canvas' })).toBeInTheDocument()
     expect(screen.getByLabelText('Collaboration enabled')).toHaveTextContent('true')

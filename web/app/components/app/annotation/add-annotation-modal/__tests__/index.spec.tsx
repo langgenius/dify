@@ -1,7 +1,7 @@
 import type { consoleClient } from '@/service/console'
-import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createFeaturesFixture } from '@/test/console/features-fixture'
 import { renderWithConsoleQuery, seedFeatures } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import AddAnnotationDialog from '../index'
@@ -34,11 +34,10 @@ const next = () => screen.getByRole('checkbox', { name: 'appAnnotation.addModal.
 const trigger = () =>
   screen.getByRole('button', { name: 'appAnnotation.table.header.addAnnotation' })
 
-async function setup(quota = { size: 0, limit: 10 }, cloud = true) {
+async function setup(quota = { size: 0, limit: 10 }) {
   const user = userEvent.setup()
   const onAdded = vi.fn()
   const view = renderWithConsoleQuery(<AddAnnotationDialog appId="app-id" onAdded={onAdded} />, {
-    systemFeatures: { deployment_edition: cloud ? 'CLOUD' : 'COMMUNITY' },
     features: { annotation_quota_limit: quota },
   })
   const features = seedFeatures(view.queryClient, { annotation_quota_limit: quota })
@@ -154,11 +153,10 @@ it('rechecks quota after creation before allowing the next annotation', async ()
 })
 
 it.each([
-  { quota: { size: 10, limit: 10 }, cloud: true, disabled: true },
-  { quota: { size: 10, limit: 0 }, cloud: true, disabled: false },
-  { quota: { size: 10, limit: 10 }, cloud: false, disabled: false },
-])('honors quota $quota.limit with cloud=$cloud', async ({ quota, cloud, disabled }) => {
-  await setup(quota, cloud)
+  { quota: { size: 10, limit: 10 }, disabled: true },
+  { quota: { size: 10, limit: 0 }, disabled: false },
+])('honors quota $quota.limit', async ({ quota, disabled }) => {
+  await setup(quota)
   if (disabled) expect(submit()).toBeDisabled()
   else expect(submit()).toBeEnabled()
 })
@@ -168,7 +166,7 @@ it('blocks saving until quota loads and lets a failed quota request retry', asyn
   api.features.mockReturnValueOnce(request.promise)
   const user = userEvent.setup()
   renderWithConsoleQuery(<AddAnnotationDialog appId="app-id" onAdded={vi.fn()} />, {
-    systemFeatures: { deployment_edition: 'CLOUD' },
+    features: null,
   })
   await user.click(trigger())
   expect(submit()).toBeDisabled()
@@ -177,7 +175,7 @@ it('blocks saving until quota loads and lets a failed quota request retry', asyn
   expect(screen.getByRole('alert')).toHaveTextContent('common.api.actionFailed')
   expect(submit()).toBeDisabled()
   api.features.mockResolvedValue(
-    zGetFeaturesResponse.parse({ annotation_quota_limit: { size: 0, limit: 10 } }),
+    createFeaturesFixture({ annotation_quota_limit: { size: 0, limit: 10 } }),
   )
   await user.click(retry)
   await waitFor(() => expect(submit()).toBeEnabled())

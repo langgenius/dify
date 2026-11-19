@@ -50,9 +50,11 @@ vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses, withConsoleClientResponses } =
     await import('@/test/console/service-responses')
+  const { createFeaturesFixture } = await import('@/test/console/features-fixture')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'features.get': () => createFeaturesFixture(),
       'apps.byAppId.annotations.byAnnotationId.post': (input) => api.editAnnotation(input),
       'apps.byAppId.annotations.byAnnotationId.delete': (input) => api.removeAnnotation(input),
       'apps.byAppId.traceRuns.bySourceKind.bySourceId.get': (input) => api.externalTrace(input),

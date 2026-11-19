@@ -1,6 +1,7 @@
 import type { consoleClient } from '@/service/console'
 import { Dialog } from '@langgenius/dify-ui/dialog'
 import { render } from 'vitest-browser-react'
+import { createFeaturesFixture } from '@/test/console/features-fixture'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { PricingContent } from '../content'
@@ -24,6 +25,7 @@ vi.mock('@/service/console', async (importOriginal) => {
 async function setup(options: Parameters<typeof createConsoleQueryWrapper>[0] = {}) {
   const { queryClient, wrapper: Providers } = createConsoleQueryWrapper({
     currentWorkspace: { role: 'owner' },
+    features: null,
     ...options,
   })
   onTestFinished(() => queryClient.clear())
@@ -55,8 +57,7 @@ it('keeps prices and interval selection available while purchases wait for featu
   await screen.getByRole('radio', { name: /billing\.pricing\.annually/ }).click()
   await expect.element(screen.getByText('$590', { exact: true })).toBeInTheDocument()
   await expect.element(purchase).toBeDisabled()
-  const { zGetFeaturesResponse } = await import('@dify/contracts/api/console/features/zod.gen')
-  request.resolve(zGetFeaturesResponse.parse({ billing: { subscription: { plan: 'team' } } }))
+  request.resolve(createFeaturesFixture({ billing: { subscription: { plan: 'team' } } }))
   await expect
     .element(screen.getByRole('button', { name: 'billing.plansCommon.manageSubscription' }))
     .toBeEnabled()
@@ -135,10 +136,9 @@ it('starts cached eligible education accounts on annual pricing with the discoun
 })
 
 it('keeps prices readable after features fail and restores purchases through Retry', async () => {
-  const { zGetFeaturesResponse } = await import('@dify/contracts/api/console/features/zod.gen')
   api.features
     .mockRejectedValueOnce(new Error('Unavailable'))
-    .mockResolvedValue(zGetFeaturesResponse.parse({}))
+    .mockResolvedValue(createFeaturesFixture())
   const screen = await setup()
   await expect.element(screen.getByRole('alert')).toMatchTextContent('common.error')
   const purchase = screen.getByRole('button', { name: 'billing.plansCommon.upgradeToProfessional' })

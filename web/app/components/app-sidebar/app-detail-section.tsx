@@ -8,11 +8,10 @@ import { useAtomValue } from 'jotai'
 import { Fragment, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getAppIdFromPathname } from '@/app/components/app/app-detail-route'
-import { useEvaluationRequiresUpgrade } from '@/app/components/billing/use-snippets-and-evaluation-access'
+import { useEvaluationAccess } from '@/app/components/billing/use-evaluation-access'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { isEvaluationEdition } from '@/features/system-features/utils'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { getAppACLCapabilities } from '@/utils/permission'
@@ -65,7 +64,8 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
     ],
   })
   const systemFeatures = featuresQuery.data
-  const evaluationRequiresUpgrade = useEvaluationRequiresUpgrade()
+  const { isVisible: isEvaluationVisible, requiresUpgrade: evaluationRequiresUpgrade } =
+    useEvaluationAccess()
   const currentUserId = profileQuery.data?.profile.id
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures?.rbac_enabled
@@ -96,9 +96,7 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
             },
           ]
         : []),
-      ...(appDetail.mode === 'workflow' &&
-      appACLCapabilities.canViewLayout &&
-      isEvaluationEdition(systemFeatures.deployment_edition)
+      ...(appDetail.mode === 'workflow' && appACLCapabilities.canViewLayout && isEvaluationVisible
         ? [
             {
               name: t(($) => $.title, { ns: 'evaluation' }),
@@ -180,6 +178,7 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
     workspacePermissionKeys,
     isRbacEnabled,
     systemFeatures,
+    isEvaluationVisible,
     evaluationRequiresUpgrade,
   ])
 

@@ -6,12 +6,12 @@ import type {
   ListContactsResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactElement } from 'react'
-import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { render } from '@testing-library/react'
 import { createStore, Provider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
+import { createFeaturesFixture } from '@/test/console/features-fixture'
 import { createTestQueryClient } from '@/test/query-client'
 
 export const contactApi = {
@@ -60,7 +60,7 @@ export const organizationContact = {
 export function resetContactApi() {
   contactApi.features
     .mockReset()
-    .mockResolvedValue({ ...zGetFeaturesResponse.parse({}), im_centrally_managed: true })
+    .mockResolvedValue(createFeaturesFixture({ im_centrally_managed: true }))
   contactApi.contacts.mockReset().mockResolvedValue({ data: [], total: 7, page: 1, limit: 1 })
   contactApi.options
     .mockReset()

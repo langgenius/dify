@@ -31,6 +31,7 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
+import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceAtom, isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
@@ -94,7 +95,7 @@ const MembersPageContent = () => {
     consoleQuery.features.get.queryOptions({
       select: (data) => ({
         plan: data.billing.subscription.plan,
-        members: data.members,
+        members: getCountQuota(data.members),
         is_allow_transfer_workspace: data.is_allow_transfer_workspace,
       }),
     }),
@@ -102,11 +103,10 @@ const MembersPageContent = () => {
 
   const isNotUnlimitedMemberPlan =
     deploymentEdition === 'CLOUD' && features !== undefined && features.plan !== 'team'
-  // A limit of 0 means unlimited.
   const isMemberFull =
-    isNotUnlimitedMemberPlan &&
-    features.members.limit > 0 &&
-    accounts.length >= features.members.limit
+    features !== undefined &&
+    features.plan !== 'team' &&
+    isQuotaReached({ usage: accounts.length, limit: features.members.limit })
   const detailsActionsRef = useRef<DialogActions>(null)
 
   const canManageMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
@@ -187,7 +187,7 @@ const MembersPageContent = () => {
                           <span>{accounts.length}</span>
                           <span>/</span>
                           <span>
-                            {features.members.limit === 0
+                            {features.members.limit === 'unlimited'
                               ? t(($) => $['plansCommon.unlimited'], { ns: 'billing' })
                               : features.members.limit}
                           </span>

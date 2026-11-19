@@ -1,6 +1,5 @@
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactNode } from 'react'
-import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { Provider as JotaiProvider, useAtomValue } from 'jotai'
@@ -16,6 +15,7 @@ import { ZENDESK_FIELD_IDS } from '@/config'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { createFeaturesFixture } from '@/test/console/features-fixture'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import {
   datasetDefaultPermissionKeysAtom,
@@ -403,7 +403,7 @@ describe('Console bootstrap', () => {
         act(() =>
           queryClient.setQueryData(
             consoleQuery.features.get.queryKey(),
-            zGetFeaturesResponse.parse({
+            createFeaturesFixture({
               billing: { subscription: { plan: 'professional', interval: 'month' } },
             }),
           ),
@@ -417,7 +417,7 @@ describe('Console bootstrap', () => {
         act(() =>
           queryClient.setQueryData(
             consoleQuery.features.get.queryKey(),
-            zGetFeaturesResponse.parse({
+            createFeaturesFixture({
               billing: { subscription: { plan: 'team', interval: 'month' } },
             }),
           ),

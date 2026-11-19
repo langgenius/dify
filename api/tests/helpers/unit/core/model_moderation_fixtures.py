@@ -321,3 +321,23 @@ class RecordingHostedModerationClient(PluginModelClient):
         if self.error is not None:
             raise self.error
         return "blocked" in text
+
+
+def make_tenant_moderation_provider() -> tuple[RecordingProviderManager, RecordingHostedModerationClient]:
+    """Offer both sources so tests can detect accidental use of system credentials."""
+    model = make_model_config(provider="openai", model="test-model", mode="chat")
+    configuration = model.provider_model_bundle.configuration
+    configuration.using_provider_type = ProviderType.SYSTEM
+    configuration.system_configuration.credentials = {"openai_api_key": "system-key"}
+    configuration.custom_configuration.provider = CustomProviderConfiguration(
+        credentials={"openai_api_key": "tenant-key"}
+    )
+    client = RecordingHostedModerationClient()
+    runtime = PluginModelRuntime(
+        tenant_id=configuration.tenant_id, user_id=None, client=client, plugin_service=PluginService
+    )
+    bundle = ProviderModelBundle(
+        configuration=configuration,
+        model_type_instance=LargeLanguageModel(provider_schema=configuration.provider, model_runtime=runtime),
+    )
+    return RecordingProviderManager(bundle), client

@@ -10,7 +10,6 @@ import type { ReactNode } from 'react'
 import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
 import type { consoleClient } from '@/service/console'
 import { zPostAppsImportsResponse } from '@dify/contracts/api/console/apps/zod.gen'
-import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useSetAtom } from 'jotai'
@@ -23,6 +22,7 @@ import {
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { DSLImportStatus } from '@/models/app'
 import { consoleQuery } from '@/service/console'
+import { createFeaturesFixture } from '@/test/console/features-fixture'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createStepByStepTourService } from '@/test/fixtures/onboarding'
@@ -124,7 +124,7 @@ vi.mock('@/service/console', async (importOriginal) => {
           ? new Promise<never>(() => {})
           : { recommended_apps: mockLearnDifyApps },
       'explore.apps.byAppId.get': mockGetRecommendedApp,
-      'features.get': async () => zGetFeaturesResponse.parse({ apps: { size: 0, limit: 100 } }),
+      'features.get': async () => createFeaturesFixture({ apps: { size: 0, limit: 100 } }),
       'apps.recent.get': async () => ({ data: mockWorkspaceApps.slice(0, 8) }),
       'apps.imports.post': importDSL,
       'apps.imports.byImportId.confirm.post': confirmImport,

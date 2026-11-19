@@ -1,12 +1,12 @@
 import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
 import type { CurrentWorkspaceSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { consoleQuery } from '@/service/console'
+import { createFeaturesFixture } from '@/test/console/features-fixture'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { ContactsManagementRuntimeProvider } from '../composition'
 import { useContactsFeatureContext } from '../composition-context'
@@ -111,7 +111,7 @@ describe('ContactsManagementRuntimeProvider capability', () => {
         resolveWorkspace = resolve
       }),
     )
-    service.getFeatures.mockResolvedValue(zGetFeaturesResponse.parse({}))
+    service.getFeatures.mockResolvedValue(createFeaturesFixture())
     renderRuntime('COMMUNITY', false)
     await user.type(screen.getByRole('textbox', { name: 'Unsaved draft' }), 'Keep my edits')
     await act(async () =>
@@ -133,10 +133,7 @@ describe('ContactsManagementRuntimeProvider capability', () => {
   ])(
     'uses features rather than $edition edition when centrally managed is $managed',
     async ({ edition, managed, expected }) => {
-      const features = {
-        ...zGetFeaturesResponse.parse({}),
-        im_centrally_managed: managed,
-      }
+      const features = createFeaturesFixture({ im_centrally_managed: managed })
       service.getFeatures.mockResolvedValue(features)
 
       renderRuntime(edition)
@@ -163,7 +160,7 @@ describe('ContactsManagementRuntimeProvider capability', () => {
     expect(screen.getByLabelText('Contacts management capability')).toHaveTextContent(
       'Loading capabilities',
     )
-    await act(async () => resolveFeatures?.(zGetFeaturesResponse.parse({})))
+    await act(async () => resolveFeatures?.(createFeaturesFixture()))
 
     await waitFor(() =>
       expect(screen.getByLabelText('Contacts management capability')).toHaveTextContent(
@@ -183,7 +180,7 @@ describe('ContactsManagementRuntimeProvider capability', () => {
       'Loading capabilities',
     )
 
-    const features = { ...zGetFeaturesResponse.parse({}), im_centrally_managed: true }
+    const features = createFeaturesFixture({ im_centrally_managed: true })
     service.getFeatures.mockResolvedValue(features)
     await user.click(screen.getByRole('button', { name: 'Retry capabilities' }))
 
