@@ -27,8 +27,12 @@ here (all enforced in code, not only in the prompt):
   variable's type; values follow the If-Else encoding (numbers as strings, no
   value for the operators that take none), and a numeric comparison's constant
   parses as a number unless it is a ``{{#node.var#}}`` template.
-- In ``llm`` mode every ``when`` is a non-empty sentence and every input
-  selector is an available variable.
+- In ``llm`` mode every ``when`` is a non-empty sentence, every input
+  selector is an available variable and every input name is unique.
+- An existing (preserved) outcome is matched only by the id the model proposed
+  for it, and its id is reserved before new outcomes get ids, so a new outcome
+  can never take over an existing, already-wired exit. A preserved outcome
+  proposed zero or several times is a validation error, never a guess.
 - The proposal is validated with the decision node's own entities; there is no
   second schema.
 
@@ -253,7 +257,11 @@ def build_decision_config(
             errors.append("'decide_by' must be 'rules' or 'llm'")
             return DecisionBuildResult(None, errors, None, 0)
 
-    model_outcomes = _normalize_model_outcomes(model_payload.get("outcomes"), errors)
+    model_outcomes = _normalize_model_outcomes(
+        model_payload.get("outcomes"),
+        reserved_ids=frozenset(preserved.id for preserved in preserved_outcomes),
+        errors=errors,
+    )
     outcome_entries = _assemble_outcome_entries(model_outcomes, preserved_outcomes, errors)
     if not outcome_entries:
         errors.append("At least one outcome is required")
@@ -323,7 +331,9 @@ def fallback_to_llm(
     model was free to mode-choose, and no rule group could be built from it.
     Postconditions: returns a config validated through the node entities with
     each outcome's ``when`` taken from its ``when_description`` sentence, or
-    ``None`` when the proposal carries no usable descriptions.
+    ``None`` when the proposal carries no usable descriptions. A preserved
+    outcome is matched only by the id the model proposed, exactly once; a
+    missing or repeated match also yields ``None`` instead of a guess.
     """
     raw_outcomes = model_payload.get("outcomes")
     if not isinstance(raw_outcomes, list):
@@ -334,6 +344,11 @@ def fallback_to_llm(
         if isinstance(raw, Mapping) and isinstance(raw.get("when_description"), str) and raw["when_description"].strip()
     ]
     if not parsed:
+        return None
+    # An existing outcome proposed more than once cannot be matched without
+    # guessing which proposal owns its wired exit.
+    proposed_ids = [raw.get("id") for _, raw in parsed]
+    if any(proposed_ids.count(preserved.id) > 1 for preserved in preserved_outcomes):
         return None
 
     model_by_id = {raw.get("id"): raw for _, raw in parsed if isinstance(raw.get("id"), str)}
@@ -412,34 +427,67 @@ def _parse_decide_by(value: Any) -> DecideBy | None:
     return None
 
 
-def _normalize_model_outcomes(raw_outcomes: Any, errors: list[str]) -> list[_ModelOutcome | None]:
-    """Fix outcome ids in code and keep labels, ``when`` and descriptions for validation."""
+def _normalize_model_outcomes(
+    raw_outcomes: Any,
+    *,
+    reserved_ids: frozenset[str],
+    errors: list[str],
+) -> list[_ModelOutcome | None]:
+    """Fix outcome ids in code and keep labels, ``when`` and descriptions for validation.
+
+    Preconditions: ``reserved_ids`` holds the ids of the existing (preserved)
+    outcomes, which may already be wired to downstream nodes.
+    Postconditions: an outcome the model proposed under a reserved id keeps
+    exactly that id, so it can only be matched to the existing outcome through
+    its ``proposed_id``; every other outcome gets an id derived by
+    ``_derive_outcome_id`` that is never a reserved id, so a new outcome can
+    never take over an existing outcome's id (and with it the existing exit's
+    edge). Errors for malformed entries are appended to ``errors``; their
+    position holds ``None``.
+    """
     if not isinstance(raw_outcomes, list):
         errors.append("'outcomes' must be a list of objects")
         return []
-    used_ids: set[str] = set()
+    used_ids: set[str] = set(reserved_ids)
     normalized: list[_ModelOutcome | None] = []
     for index, raw in enumerate(raw_outcomes):
         if not isinstance(raw, Mapping):
             errors.append(f"outcomes[{index}] must be an object")
             normalized.append(None)
-            continue
-        label = raw.get("label")
-        label = label if isinstance(label, str) else ""
-        when_description = raw.get("when_description")
-        when_description = when_description if isinstance(when_description, str) else ""
-        outcome_id = _derive_outcome_id(raw.get("id"), label, index, used_ids)
-        proposed_id = raw.get("id")
-        normalized.append(
-            _ModelOutcome(
-                id=outcome_id,
-                label=label,
-                when=raw.get("when"),
-                when_description=when_description,
-                proposed_id=proposed_id if isinstance(proposed_id, str) else "",
-            )
-        )
+        else:
+            normalized.append(_normalize_model_outcome(raw, index, reserved_ids, used_ids))
     return normalized
+
+
+def _normalize_model_outcome(
+    raw: Mapping[str, Any],
+    index: int,
+    reserved_ids: frozenset[str],
+    used_ids: set[str],
+) -> _ModelOutcome:
+    """Return one proposed outcome with its id fixed in code.
+
+    Preconditions: ``used_ids`` already contains every id in ``reserved_ids``
+    plus the ids chosen for earlier outcomes of this proposal.
+    Postconditions: a proposal naming a reserved id keeps it unchanged (two
+    proposals naming the same reserved id are left for
+    ``_assemble_outcome_entries`` to reject); any other proposal gets a fresh
+    id from ``_derive_outcome_id``, which is added to ``used_ids``.
+    """
+    label = raw.get("label")
+    label = label if isinstance(label, str) else ""
+    when_description = raw.get("when_description")
+    when_description = when_description if isinstance(when_description, str) else ""
+    proposed_id = raw.get("id")
+    proposed_id = proposed_id if isinstance(proposed_id, str) else ""
+    outcome_id = proposed_id if proposed_id in reserved_ids else _derive_outcome_id(proposed_id, label, index, used_ids)
+    return _ModelOutcome(
+        id=outcome_id,
+        label=label,
+        when=raw.get("when"),
+        when_description=when_description,
+        proposed_id=proposed_id,
+    )
 
 
 def _assemble_outcome_entries(
@@ -447,20 +495,34 @@ def _assemble_outcome_entries(
     preserved_outcomes: Sequence[DecisionGenerateOutcome],
     errors: list[str],
 ) -> list[tuple[str, str, Any]]:
-    """Place preserved outcomes first with their exact ids and labels, then the model's additions."""
-    model_by_id = {outcome.id: outcome for outcome in model_outcomes if outcome is not None}
+    """Place preserved outcomes first with their exact ids and labels, then the model's additions.
+
+    Preconditions: ``model_outcomes`` comes from ``_normalize_model_outcomes``
+    with the preserved ids reserved.
+    Postconditions: a preserved outcome takes the ``when`` of the one model
+    outcome whose original ``proposed_id`` equals its id. It is never matched
+    through a rewritten id, so a new outcome cannot hand its condition to an
+    existing, already-wired exit. No match, or more than one, is reported in
+    ``errors`` for the repair retry instead of guessing; the preserved outcome
+    is then left out of the result. Model outcomes not proposed under a
+    preserved id follow in proposal order.
+    """
     entries: list[tuple[str, str, Any]] = []
     for preserved in preserved_outcomes:
-        model_outcome = model_by_id.get(preserved.id)
-        if model_outcome is None:
+        matches = [outcome for outcome in model_outcomes if outcome is not None and outcome.proposed_id == preserved.id]
+        if not matches:
             errors.append(f"No 'when' was generated for the existing outcome '{preserved.id}'")
+        elif len(matches) > 1:
+            errors.append(
+                f"The existing outcome '{preserved.id}' was proposed {len(matches)} times; propose it exactly once"
+            )
         else:
-            entries.append((preserved.id, preserved.label, model_outcome.when))
+            entries.append((preserved.id, preserved.label, matches[0].when))
     preserved_ids = {preserved.id for preserved in preserved_outcomes}
     appended = [
         (outcome.id, outcome.label, outcome.when)
         for outcome in model_outcomes
-        if outcome is not None and outcome.id not in preserved_ids
+        if outcome is not None and outcome.proposed_id not in preserved_ids
     ]
     return [*entries, *appended]
 
@@ -725,20 +787,32 @@ def _build_inputs(
     available_variables: Sequence[DecisionGenerateVariable],
     errors: list[str],
 ) -> list[VariableSelector]:
-    """Validate the llm-mode inputs: chosen from the available variables, unique names."""
+    """Validate the llm-mode inputs: chosen from the available variables, unique names.
+
+    Preconditions: ``raw_inputs`` is the model's proposed ``inputs`` value.
+    Postconditions: returns the inputs that are well formed and select an
+    available variable; every malformed input and every input whose
+    ``variable`` name repeats an earlier one is named in ``errors`` for the
+    repair retry, so a configuration is only built when the names are unique.
+    """
     if raw_inputs is None:
         return []
     if not isinstance(raw_inputs, list):
         errors.append("'inputs' must be a list")
         return []
-    inputs = [
-        input_
-        for input_ in (
-            _build_input(f"inputs[{index}]", raw, available_variables, errors) for index, raw in enumerate(raw_inputs)
-        )
-        if input_ is not None
+    built = [
+        (index, _build_input(f"inputs[{index}]", raw, available_variables, errors))
+        for index, raw in enumerate(raw_inputs)
     ]
-    return inputs
+    # The node hands inputs to the model as a name -> value mapping, so a
+    # repeated name would silently drop the earlier value; reject it instead.
+    seen_names: set[str] = set()
+    for index, input_ in built:
+        if input_ is not None and input_.variable in seen_names:
+            errors.append(f"inputs[{index}]: 'variable' {input_.variable!r} is already used by another input")
+        if input_ is not None:
+            seen_names.add(input_.variable)
+    return [input_ for _, input_ in built if input_ is not None]
 
 
 def _build_input(

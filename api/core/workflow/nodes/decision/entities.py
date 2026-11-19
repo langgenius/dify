@@ -11,6 +11,8 @@ model. Invariants this module owns:
   ``^[a-zA-Z_][a-zA-Z0-9_]{0,29}$`` and never shadows a built-in output key.
   Extra names become output variable names later nodes reference, so they
   must be identifiers the editor accepts.
+- ``inputs[].variable`` is unique. The node hands the inputs to the model as a
+  name -> value mapping, so a repeated name would silently drop a value.
 - ``outcomes[].when`` accepts both authoring shapes (a rule group for
   ``rules``, a description string for ``llm``) because drafts are saved
   mid-edit; the node checks the shape it needs at run time.
@@ -197,4 +199,18 @@ class DecisionNodeData(BaseNodeData):
             if extra.name in seen:
                 raise ValueError(f"Duplicate extra name {extra.name!r}")
             seen.add(extra.name)
+        return self
+
+    @model_validator(mode="after")
+    def _validate_input_names(self) -> "DecisionNodeData":
+        """Reject repeated ``inputs[].variable`` names, whatever ``decide_by`` is.
+
+        Postconditions: on success every input name is unique, so the
+        name -> value mapping built for the model keeps every input; DSL
+        import and draft validation reject a repeated name instead.
+        """
+        names = [input_.variable for input_ in self.inputs]
+        duplicates = sorted({name for name in names if names.count(name) > 1})
+        if duplicates:
+            raise ValueError(f"Duplicate input variable {duplicates[0]!r}")
         return self

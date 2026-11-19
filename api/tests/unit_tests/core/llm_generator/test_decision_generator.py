@@ -485,6 +485,48 @@ class TestBuildDecisionConfig:
         assert build.config is None
         assert "No 'when' was generated for the existing outcome 'approve'" in build.errors
 
+    def test_a_new_outcome_cannot_take_an_existing_outcomes_id(self) -> None:
+        """Review V4 F3: the new outcome ``new urgent`` normalises to ``urgent``. Without
+        reserving existing ids and matching by the proposed id, the wired exit ``urgent``
+        silently took the routine-request condition."""
+        build = build_decision_config(
+            {
+                "decide_by": "llm",
+                "outcomes": [
+                    {"id": "new urgent", "label": "Urgent", "when": "Routine request; no escalation needed"},
+                    {"id": "urgent", "label": "Escalate", "when": "Customer explicitly asks for a human"},
+                ],
+            },
+            available_variables=[],
+            preserved_outcomes=[DecisionGenerateOutcome(id="urgent", label="Escalate")],
+            forced_decide_by=None,
+        )
+
+        assert build.errors == []
+        assert build.config is not None
+        assert build.config["outcomes"] == [
+            {"id": "urgent", "label": "Escalate", "when": "Customer explicitly asks for a human"},
+            {"id": "urgent_2", "label": "Urgent", "when": "Routine request; no escalation needed"},
+        ]
+
+    def test_an_existing_outcome_proposed_twice_is_rejected(self) -> None:
+        """Review V4 F3: an ambiguous match goes to the repair retry; it is never resolved by a guess."""
+        build = build_decision_config(
+            {
+                "decide_by": "llm",
+                "outcomes": [
+                    {"id": "urgent", "label": "Escalate", "when": "Customer asks for a human"},
+                    {"id": "urgent", "label": "Escalate", "when": "Customer is angry"},
+                ],
+            },
+            available_variables=[],
+            preserved_outcomes=[DecisionGenerateOutcome(id="urgent", label="Escalate")],
+            forced_decide_by=None,
+        )
+
+        assert build.config is None
+        assert "The existing outcome 'urgent' was proposed 2 times; propose it exactly once" in build.errors
+
     def test_forced_rules_ignores_model_mode_choice(self) -> None:
         build = build_decision_config(
             {"decide_by": "llm", **{key: _llm_reply()[key] for key in ("outcomes", "otherwise", "inputs", "extras")}},
@@ -748,6 +790,28 @@ class TestProposalShapeErrors:
         assert build.config is None
         assert build.errors == [expected]
 
+    def test_a_repeated_input_name_is_reported(self) -> None:
+        """Review V4 F4: two upstream ``text`` outputs under one name would make the model see
+        only the last value; the repeated name goes to the repair retry instead."""
+        build = build_decision_config(
+            {
+                **_llm_reply(),
+                "inputs": [
+                    {"variable": "text", "value_selector": ["extract_a", "text"]},
+                    {"variable": "text", "value_selector": ["extract_b", "text"]},
+                ],
+            },
+            available_variables=[
+                _variable(["extract_a", "text"], "string"),
+                _variable(["extract_b", "text"], "string"),
+            ],
+            preserved_outcomes=[],
+            forced_decide_by=None,
+        )
+
+        assert build.config is None
+        assert build.errors == ["inputs[1]: 'variable' 'text' is already used by another input"]
+
     def test_missing_llm_inputs_mean_no_inputs(self) -> None:
         build = _llm_with(inputs=None)
 
@@ -863,6 +927,23 @@ class TestFallbackToLlm:
         # A malformed extra is optional, so it is dropped instead of blocking the fallback.
         assert result["extras"] == []
         assert result["otherwise"] == {"label": "Can't decide"}
+
+    def test_a_preserved_outcome_described_twice_gives_no_fallback(self) -> None:
+        """Review V4 F3: the fallback does not guess which proposal owns an existing exit."""
+        payload: dict[str, object] = {
+            "outcomes": [
+                {"id": "approve", "when_description": "Over 500."},
+                {"id": "approve", "when_description": "Under 500."},
+            ]
+        }
+
+        result = fallback_to_llm(
+            payload,
+            available_variables=_AMOUNT_VARIABLES,
+            preserved_outcomes=[DecisionGenerateOutcome(id="approve", label="Approve")],
+        )
+
+        assert result is None
 
     def test_a_proposal_the_node_entity_rejects_gives_no_fallback(self) -> None:
         payload: dict[str, object] = {"outcomes": [{"id": "approve", "when_description": "Over 500."}]}

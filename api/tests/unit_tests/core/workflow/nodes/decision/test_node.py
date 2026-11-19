@@ -243,6 +243,103 @@ class TestRulesMode:
         assert result.outputs["outcome_id"] == OTHERWISE_HANDLE
         assert result.outputs["reason"].startswith("Input missing or invalid:")
 
+    def test_a_missing_variable_in_a_value_template_falls_back_to_otherwise(
+        self, build_decision_node: DecisionNodeBuilder
+    ) -> None:
+        """Review V4 F2: without the check the processor compares against the literal
+        selector text, so ``country is not '{{#start.blocked_country#}}'`` picked ``approve``."""
+        node = build_decision_node(
+            _rules_data(
+                {
+                    "id": "approve",
+                    "label": "Approve",
+                    "when": _group(_condition(["start", "country"], "is not", "{{#start.blocked_country#}}")),
+                }
+            ),
+            variables=[_country("US")],
+        )
+
+        result = node._run()
+
+        assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+        assert result.outputs["outcome_id"] == OTHERWISE_HANDLE
+        assert result.outputs["reason"] == "Input missing or invalid: Variable ['start', 'blocked_country'] not found"
+        assert result.edge_source_handle == OTHERWISE_HANDLE
+
+    def test_a_value_template_after_the_short_circuit_point_is_not_checked(
+        self, build_decision_node: DecisionNodeBuilder
+    ) -> None:
+        """Review V4 F2: the check runs per evaluated condition, so first-match order and
+        short-circuiting are unchanged: an ``and`` group stops at its first false condition."""
+        node = build_decision_node(
+            _rules_data(
+                {
+                    "id": "blocked",
+                    "label": "Blocked",
+                    "when": _group(
+                        _condition(["start", "amount"], ">", "100"),
+                        _condition(["start", "country"], "is", "{{#start.blocked_country#}}"),
+                    ),
+                },
+                {"id": "small", "label": "Small", "when": _group(_condition(["start", "amount"], "<", "10"))},
+                {
+                    "id": "later",
+                    "label": "Later",
+                    "when": _group(_condition(["start", "country"], "is", "{{#start.missing#}}")),
+                },
+            ),
+            variables=[_amount(5.0), _country("US")],
+        )
+
+        result = node._run()
+
+        assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+        assert result.outputs["outcome_id"] == "small"
+        assert [entry["results"] for entry in result.process_data["condition_results"]] == [[False], [True]]
+
+    def test_a_boolean_constant_that_is_not_a_boolean_fails_the_node(
+        self, build_decision_node: DecisionNodeBuilder
+    ) -> None:
+        """Review V4 F7: a valid boolean input with an unreadable constant is a configuration
+        error; without the check it ended ``succeeded`` via ``otherwise``."""
+        node = build_decision_node(
+            _rules_data(
+                {
+                    "id": "approve",
+                    "label": "Approve",
+                    "when": _group(_condition(["start", "approved"], "=", "not-a-boolean")),
+                }
+            ),
+            variables=[BooleanVariable(name="approved", value=True, selector=["start", "approved"])],
+        )
+
+        result = node._run()
+
+        assert result.status == WorkflowNodeExecutionStatus.FAILED
+        assert "approve" in result.error
+        assert "not-a-boolean" in result.error
+
+    def test_a_boolean_constant_with_a_missing_variable_falls_back_to_otherwise(
+        self, build_decision_node: DecisionNodeBuilder
+    ) -> None:
+        """Review V4 F7: the constant check is type-aware at run time; a missing input still
+        goes to ``otherwise``, only a bad constant for a present boolean fails."""
+        node = build_decision_node(
+            _rules_data(
+                {
+                    "id": "approve",
+                    "label": "Approve",
+                    "when": _group(_condition(["start", "approved"], "=", "not-a-boolean")),
+                }
+            ),
+        )
+
+        result = node._run()
+
+        assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+        assert result.outputs["outcome_id"] == OTHERWISE_HANDLE
+        assert result.outputs["reason"].startswith("Input missing or invalid:")
+
     def test_string_when_fails_the_node(self, build_decision_node: DecisionNodeBuilder) -> None:
         node = build_decision_node(_rules_data({"id": "big", "label": "Big", "when": "not a rule group"}))
 
@@ -731,12 +828,48 @@ class TestRenderRuleGroup:
 
 
 class TestVariableSelectorMapping:
-    def test_collects_rule_selectors_inputs_and_template_references(self) -> None:
+    def test_rules_mode_collects_only_rule_selectors(self) -> None:
+        """Review V4 (host): a rules node may keep llm inputs, descriptions and context from
+        an earlier switch; single-node debugging must not demand them as inputs."""
         node_data = DecisionNodeData.model_validate(
             {
                 "type": DECISION_NODE_TYPE,
                 "title": "Decision",
                 "decide_by": "rules",
+                "outcomes": [
+                    {
+                        "id": "vip",
+                        "when": _group(_condition(["start", "amount"], ">", "{{#start.limit#}}")),
+                    },
+                    {"id": "described", "when": "The user wants {{#start.message#}}"},
+                ],
+                "inputs": [{"variable": "message", "value_selector": ["start", "message"]}],
+                "context": {
+                    "glossary": "Term: {{#start.glossary_term#}}",
+                    "prompt": "Use {{#start.tone#}}",
+                },
+            }
+        )
+
+        mapping = DecisionNode._extract_variable_selector_to_variable_mapping(
+            graph_config={},
+            node_id="decision",
+            node_data=node_data,
+        )
+
+        assert mapping == {
+            "decision.#start.amount#": ["start", "amount"],
+            "decision.#start.limit#": ["start", "limit"],
+        }
+
+    def test_llm_mode_collects_inputs_descriptions_and_context(self) -> None:
+        """The llm counterpart of the test above (it replaces the earlier mixed-mode test,
+        which asserted that a rules node also collected llm inputs and context)."""
+        node_data = DecisionNodeData.model_validate(
+            {
+                "type": DECISION_NODE_TYPE,
+                "title": "Decision",
+                "decide_by": "llm",
                 "outcomes": [
                     {
                         "id": "vip",
@@ -758,11 +891,12 @@ class TestVariableSelectorMapping:
             node_data=node_data,
         )
 
-        assert mapping["decision.#start.amount#"] == ["start", "amount"]
-        assert mapping["decision.#start.message#"] == ["start", "message"]
-        assert mapping["decision.message"] == ["start", "message"]
-        assert mapping["decision.#start.glossary_term#"] == ["start", "glossary_term"]
-        assert mapping["decision.#start.tone#"] == ["start", "tone"]
+        assert mapping == {
+            "decision.#start.message#": ["start", "message"],
+            "decision.message": ["start", "message"],
+            "decision.#start.glossary_term#": ["start", "glossary_term"],
+            "decision.#start.tone#": ["start", "tone"],
+        }
 
     def test_collects_the_template_referenced_on_the_right_of_a_condition(self) -> None:
         """F5: the processor resolves ``condition.value`` templates, so debugging must load them."""

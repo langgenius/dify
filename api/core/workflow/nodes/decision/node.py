@@ -13,7 +13,12 @@ Run-time contract:
   ``outcome_id`` is ``otherwise``, and every extra is ``""``.
 - A missing or wrongly typed rule input yields ``otherwise`` with a reason
   starting ``Input missing or invalid:``; this is deliberate, If-Else fails the
-  node instead. A configuration error fails the node and names the outcome.
+  node instead. A variable referenced by a ``{{#node.var#}}`` template on the
+  right of a condition counts as a rule input: the shared processor would
+  compare against the literal selector text, so the node checks it first.
+- A configuration error fails the node and names the outcome. That includes a
+  constant that cannot be read as the type the rule's variable holds at run
+  time (a number, or a boolean).
 """
 
 import json
@@ -37,10 +42,12 @@ from graphon.nodes.llm.file_saver import LLMFileSaver
 from graphon.nodes.llm.node import LLMNode
 from graphon.nodes.llm.runtime_protocols import LLMProtocol, PromptMessageSerializerProtocol
 from graphon.runtime import InitParams, RuntimeState
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from graphon.utils.condition.entities import Condition
-from graphon.utils.condition.processor import ConditionProcessor
+from graphon.utils.condition.processor import ConditionCheckResult, ConditionProcessor
 from graphon.utils.json_in_md_parser import parse_json_markdown
-from graphon.variables.template_resolution import convert_template
+from graphon.variables.segments import ArrayBooleanSegment, BooleanSegment
+from graphon.variables.template_resolution import VARIABLE_PATTERN, convert_template
 from libs.workflow_template_values import template_value_selectors
 
 from .entities import (
@@ -94,6 +101,59 @@ def render_rule_group(group: RuleGroup) -> str:
     """Render a matched rule group as the short human-readable ``reason``."""
     joiner = " and " if group.logical_operator is LogicalOperator.AND else " or "
     return joiner.join(_render_condition(condition) for condition in group.conditions)
+
+
+def _is_boolean_text(text: str) -> bool:
+    """Return whether the condition processor can read ``text`` as a boolean.
+
+    Postconditions: ``True`` exactly when ``text`` is JSON for a boolean or an
+    integer, the values the processor's boolean conversion accepts.
+    """
+    try:
+        loaded = json.loads(text)
+    except ValueError:
+        return False
+    return isinstance(loaded, int)
+
+
+def _boolean_constant_error(operator: str, value: object) -> str | None:
+    """Return why a condition on a boolean variable can never be evaluated, or ``None``.
+
+    Preconditions: the condition's variable holds a boolean or an array of
+    booleans at run time; ``operator`` and ``value`` are the condition's.
+    Postconditions: returns a message when the operator takes a value and a
+    literal part of ``value`` is text the processor cannot read as a boolean.
+    A scalar string carrying a ``{{#node.var#}}`` template is resolved at run
+    time, so it is not a constant and yields ``None``; list items are never
+    resolved by the processor, so each one is checked as a constant.
+    """
+    if operator in _UNARY_OPERATORS:
+        return None
+    if isinstance(value, str):
+        items: list[object] = [] if VARIABLE_PATTERN.search(value) else [value]
+    elif isinstance(value, Sequence):
+        items = list(value)
+    else:
+        items = []
+    bad = [item for item in items if isinstance(item, str) and not _is_boolean_text(item)]
+    if not bad:
+        return None
+    return f"comparison_operator '{operator}' on a boolean needs true or false, but the value is {bad[0]!r}"
+
+
+def _missing_template_reference(variable_pool: ReadOnlyVariablePool, condition: Condition) -> list[str] | None:
+    """Return the first selector a condition's value template names that is not in the pool, or ``None``.
+
+    Preconditions: ``condition`` is about to be evaluated against ``variable_pool``.
+    Postconditions: mirrors what the shared processor resolves: only a scalar
+    string value of an operator that takes a value is template-resolved, with
+    the same pattern ``convert_template`` uses. Any other value yields ``None``.
+    """
+    value = condition.value
+    if condition.comparison_operator in _UNARY_OPERATORS or not isinstance(value, str):
+        return None
+    selectors = [reference.split(".") for reference in VARIABLE_PATTERN.findall(value)]
+    return next((selector for selector in selectors if variable_pool.get(selector) is None), None)
 
 
 def _strip_think_tags(text: str) -> str:
@@ -187,7 +247,7 @@ class DecisionNode(Node[DecisionNodeData]):
             if not when.conditions:
                 return self._failed(f"Outcome '{outcome.id}' has no conditions in 'when'")
             for condition in when.conditions:
-                problem = self._numeric_constant_problem(condition)
+                problem = self._constant_problem(condition)
                 if problem is not None:
                     return self._failed(f"Outcome '{outcome.id}' has a rule that can never be evaluated: {problem}")
             groups.append((outcome, when))
@@ -197,11 +257,7 @@ class DecisionNode(Node[DecisionNodeData]):
         process_data: dict[str, Any] = {"condition_results": []}
         for outcome, group in groups:
             try:
-                check = condition_processor.process_conditions(
-                    variable_pool=self.runtime_state.variable_pool,
-                    conditions=group.conditions,
-                    operator="and" if group.logical_operator is LogicalOperator.AND else "or",
-                )
+                check = self._evaluate_group(condition_processor, group)
             except (TypeError, ValueError) as error:
                 return self._otherwise(
                     reason=f"Input missing or invalid: {error}",
@@ -234,21 +290,60 @@ class DecisionNode(Node[DecisionNodeData]):
             process_data=process_data,
         )
 
-    def _numeric_constant_problem(self, condition: Condition) -> str | None:
-        """Return why a numeric comparison can never be evaluated, or ``None``.
+    def _evaluate_group(self, condition_processor: ConditionProcessor, group: RuleGroup) -> ConditionCheckResult:
+        """Evaluate one rule group condition by condition, short-circuiting as the processor does.
+
+        Preconditions: ``group`` has at least one condition.
+        Postconditions: returns what ``process_conditions`` returns for the
+        whole group (inputs and results of the evaluated conditions, the group
+        result), evaluating conditions in order and stopping at the first
+        ``False`` for ``and`` or the first ``True`` for ``or``. Before each
+        condition is evaluated, every variable its value template references
+        must be in the pool; otherwise raises ``ValueError`` naming the
+        selector, so the caller routes to ``otherwise``. Conditions after the
+        short-circuit point are neither checked nor evaluated. ``TypeError``
+        and ``ValueError`` from the processor propagate unchanged.
+        """
+        variable_pool = self.runtime_state.variable_pool
+        # ``and`` stops at the first False, ``or`` at the first True.
+        stop_on = group.logical_operator is LogicalOperator.OR
+        inputs: list[Mapping[str, Any]] = []
+        results: list[bool] = []
+        remaining = list(group.conditions)
+        while remaining and (not results or results[-1] is not stop_on):
+            condition = remaining.pop(0)
+            missing = _missing_template_reference(variable_pool, condition)
+            if missing is not None:
+                raise ValueError(f"Variable {missing} not found")
+            check = condition_processor.process_conditions(
+                variable_pool=variable_pool,
+                conditions=[condition],
+                operator="and",
+            )
+            inputs.extend(check.inputs)
+            results.append(check.final_result)
+        final_result = any(results) if stop_on else all(results)
+        return ConditionCheckResult(inputs, results, final_result)
+
+    def _constant_problem(self, condition: Condition) -> str | None:
+        """Return why a condition's constant can never be evaluated, or ``None``.
 
         Preconditions: ``condition`` is one condition of a rule group.
-        Postconditions: returns a message only when the condition compares
-        numbers and the variable it selects currently holds a number (``int``
-        or ``float``, not ``bool``) that the constant cannot be compared with.
-        A missing variable or another type is left to the processor, which
-        reports it as an input problem and routes to ``otherwise``: the
-        constant alone does not say which operand types the rule accepts, and
-        the processor converts it for the type it finds (``"true"`` for a
-        boolean, for example).
+        Postconditions: returns a message only when the variable the condition
+        selects currently holds a number (``int`` or ``float``, not ``bool``)
+        or a boolean (or array of booleans) and the constant cannot be read as
+        that type. A missing variable or another type is left to the
+        processor, which reports it as an input problem and routes to
+        ``otherwise``: the constant alone does not say which operand types the
+        rule accepts, and the processor converts it for the type it finds
+        (``"true"`` for a boolean, for example).
         """
         variable = self.runtime_state.variable_pool.get(condition.variable_selector)
-        if variable is None or isinstance(variable.value, bool) or not isinstance(variable.value, int | float):
+        if variable is None:
+            return None
+        if isinstance(variable, BooleanSegment | ArrayBooleanSegment):
+            return _boolean_constant_error(condition.comparison_operator, condition.value)
+        if isinstance(variable.value, bool) or not isinstance(variable.value, int | float):
             return None
         return numeric_constant_error(condition.comparison_operator, condition.value)
 
@@ -485,13 +580,29 @@ class DecisionNode(Node[DecisionNodeData]):
         node_id: str,
         node_data: DecisionNodeData,
     ) -> Mapping[str, Sequence[str]]:
-        """Collect rule selectors, model inputs, and template references for single-step debugging.
+        """Collect the variables the current ``decide_by`` mode reads, for single-step debugging.
 
-        A condition references variables on both sides: its ``variable_selector``
-        and any ``{{#node.var#}}`` template in its value, which the condition
-        processor resolves before comparing.
+        Preconditions: ``node_data`` is validated decision node data.
+        Postconditions: in ``rules`` mode the mapping holds every condition's
+        ``variable_selector`` and every ``{{#node.var#}}`` template in its value
+        (the condition processor resolves those before comparing); in ``llm``
+        mode it holds the model inputs and the templates in the outcome
+        descriptions, the glossary and the prompt. Configuration the other mode
+        left behind is never demanded as an input. ``decision_model`` reads no
+        variable (running it fails the node), so its mapping is empty.
         """
         _ = graph_config
+        match node_data.decide_by:
+            case DecideBy.RULES:
+                return cls._rules_variable_mapping(node_id, node_data)
+            case DecideBy.LLM:
+                return cls._llm_variable_mapping(node_id, node_data)
+            case DecideBy.DECISION_MODEL:
+                return {}
+
+    @staticmethod
+    def _rules_variable_mapping(node_id: str, node_data: DecisionNodeData) -> dict[str, Sequence[str]]:
+        """Map the rule selectors and value templates of every rule-group ``when``."""
         variable_mapping: dict[str, Sequence[str]] = {}
         for outcome in node_data.outcomes:
             when = outcome.when
@@ -501,9 +612,16 @@ class DecisionNode(Node[DecisionNodeData]):
                     variable_mapping[key] = list(condition.variable_selector)
                     for selector in template_value_selectors(condition.value):
                         variable_mapping[f"{node_id}.#{'.'.join(selector)}#"] = selector
-            elif isinstance(when, str):
-                for selector in extract_selectors_from_template(when):
-                    variable_mapping[f"{node_id}.{selector.variable}"] = list(selector.value_selector)
+        return variable_mapping
+
+    @staticmethod
+    def _llm_variable_mapping(node_id: str, node_data: DecisionNodeData) -> dict[str, Sequence[str]]:
+        """Map the model inputs and the templates in descriptions, glossary and prompt."""
+        variable_mapping: dict[str, Sequence[str]] = {}
+        descriptions = [outcome.when for outcome in node_data.outcomes if isinstance(outcome.when, str)]
+        for description in descriptions:
+            for selector in extract_selectors_from_template(description):
+                variable_mapping[f"{node_id}.{selector.variable}"] = list(selector.value_selector)
         for input_ in node_data.inputs:
             variable_mapping[f"{node_id}.{input_.variable}"] = list(input_.value_selector)
         for template in (node_data.context.glossary, node_data.context.prompt):

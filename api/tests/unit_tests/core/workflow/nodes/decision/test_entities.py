@@ -151,6 +151,19 @@ class TestDecisionNodeData:
                 )
             )
 
+    def test_rejects_duplicate_input_names(self) -> None:
+        """Review V4 F4: the model inputs are a name -> value mapping, so a repeated
+        name would silently drop a value; DSL import must not bypass the generator check."""
+        with pytest.raises(ValidationError, match="Duplicate input variable 'text'"):
+            DecisionNodeData.model_validate(
+                _data(
+                    inputs=[
+                        {"variable": "text", "value_selector": ["extract_a", "text"]},
+                        {"variable": "text", "value_selector": ["extract_b", "text"]},
+                    ]
+                )
+            )
+
     def test_rejects_an_empty_extra_name(self) -> None:
         with pytest.raises(ValidationError, match="must not be empty"):
             DecisionNodeData.model_validate(_data(extras=[{"name": "  ", "from": "fixed", "values": {}}]))
