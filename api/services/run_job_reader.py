@@ -79,16 +79,30 @@ def _message_ended(context: _FrameContext) -> JobEnding | None:
     return JobEnding(status=JobStatus.SUCCEEDED)
 
 
+def _answered_without_run(context: _FrameContext) -> JobEnding | None:
+    """End a chatflow that answered without starting its workflow.
+
+    Precondition: context.record is a GRAPH job and context.frame is message_end.
+    Postcondition: SUCCEEDED when the job has no run id (an annotation reply or input moderation answered it, and
+    the message is its result, as core's worker treats that stream); None once a run id is known, as the run row
+    then holds the job's state.
+    """
+    if context.record.run_id is not None:
+        return None
+    return JobEnding(status=JobStatus.SUCCEEDED)
+
+
 def _run_errored(context: _FrameContext) -> JobEnding | None:
     """Precondition: context.frame is an error frame. Postcondition: an ending of FAILED with the frame's message."""
     return JobEnding(status=JobStatus.FAILED, error=context.frame.error)
 
 
-# A graph job's stream always ends with workflow_finished or workflow_paused: core's worker follows an error with a
+# A graph job's stream ends with workflow_finished or workflow_paused: core's worker follows an error with a
 # failed workflow_finished that carries the same message, and it is the only outcome of a run that failed before
-# it was stored. Chat streams have no workflow_finished.
+# it was stored. A chatflow answered without a run (annotation reply, input moderation) ends with message_end.
+# Chat streams have no workflow_finished.
 ENDINGS_BY_FAMILY: Final[Mapping[JobFamily, Mapping[StreamEvent, _Handler]]] = {
-    JobFamily.GRAPH: {StreamEvent.WORKFLOW_FINISHED: _run_finished},
+    JobFamily.GRAPH: {StreamEvent.WORKFLOW_FINISHED: _run_finished, StreamEvent.MESSAGE_END: _answered_without_run},
     JobFamily.MESSAGE: {StreamEvent.MESSAGE_END: _message_ended, StreamEvent.ERROR: _run_errored},
 }
 

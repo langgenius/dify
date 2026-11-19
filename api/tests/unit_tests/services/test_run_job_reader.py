@@ -176,6 +176,24 @@ def test_message_end_finishes_a_message_job_but_not_a_graph_job(
     )
 
 
+def test_a_chatflow_answered_without_a_run_ends_with_its_message(
+    store: RedisRunJobStore, stopper: RecordingJobStopper
+) -> None:
+    """An annotation reply or input moderation answers a chatflow and never starts its workflow."""
+    _open(store, AppMode.ADVANCED_CHAT)
+    chat_ids = {"task_id": "task-1", "message_id": "msg-1", "conversation_id": "conv-1"}
+    end = _frame(StreamEvent.MESSAGE_END, **chat_ids, id="msg-1", metadata={})
+
+    record = _read(store, stopper, [end, PING])
+
+    assert (record.status, record.failure, record.run_id, record.message_id) == (
+        JobStatus.SUCCEEDED,
+        None,
+        None,
+        "msg-1",
+    )
+
+
 def test_message_end_after_a_stop_request_marks_the_job_stopped(
     store: RedisRunJobStore, stopper: RecordingJobStopper
 ) -> None:
