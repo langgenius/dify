@@ -39,6 +39,11 @@ async function outlastHoverCloseDelay() {
   await vi.advanceTimersByTimeAsync(300)
 }
 
+// Base UI keeps a hover-opened popup open on clicks within 500 ms, so pin and unpin after that window.
+async function outlastPatientClickThreshold() {
+  await vi.advanceTimersByTimeAsync(500)
+}
+
 it('reanchors a pinned explanation to a hovered feature in the same or another plan', async () => {
   // boundary: advance only the hover delays; pointer events and positioning stay real.
   vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout'] })
@@ -79,9 +84,11 @@ it('reanchors a pinned explanation to a hovered feature in the same or another p
     await outlastHoverCloseDelay()
     await expect.element(popup).toBeVisible()
     await title.hover()
+    await outlastHoverCloseDelay()
     await expect.element(popup).not.toBeInTheDocument()
     await next.hover()
     await expect.element(popup).toBeVisible()
+    await outlastPatientClickThreshold()
     await next.click()
     await title.hover()
     await outlastHoverCloseDelay()
