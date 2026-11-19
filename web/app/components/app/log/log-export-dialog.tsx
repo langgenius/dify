@@ -226,7 +226,7 @@ export function LogExportDialog({
         setOpen(next)
       }}
     >
-      <DialogTrigger render={<Button size="small" variant="secondary" />}>
+      <DialogTrigger render={<Button variant="secondary" />}>
         <span className="i-ri-download-2-line size-4" aria-hidden />
         {title}
       </DialogTrigger>
