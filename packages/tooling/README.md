@@ -229,7 +229,8 @@ does not enforce Query ownership.
 
 ### Deployment Edition Policies
 
-See the shared [feature flag guidelines] for resolving deployment-edition lint errors.
+See the shared [feature flag guidelines] for capability principles and resolving
+deployment-edition lint errors.
 
 ### Translation Function Types
 
