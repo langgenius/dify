@@ -8,24 +8,16 @@ vi.mock('@/utils/var', () => ({
   PUBLIC_API_PREFIX: '/api',
 }))
 
-// Minimal streaming Response: a body whose reader yields the given chunks in
-// order, then signals done. ``json()`` backs the non-2xx error path.
-const makeStreamResponse = (chunks: string[], status = 200) => {
-  const encoder = new TextEncoder()
-  let i = 0
-  return {
-    status,
-    body: {
-      getReader: () => ({
-        read: () =>
-          i < chunks.length
-            ? Promise.resolve({ done: false, value: encoder.encode(chunks[i++]) })
-            : Promise.resolve({ done: true, value: undefined }),
-      }),
-    },
-    json: () => Promise.resolve({ message: 'Server Error' }),
-  } as unknown as Response
-}
+const makeStreamResponse = (chunks: Uint8Array[]) =>
+  new Response(
+    new ReadableStream({
+      start(controller) {
+        for (const chunk of chunks) controller.enqueue(chunk)
+        controller.close()
+      },
+    }),
+  )
+const encode = (text: string) => new TextEncoder().encode(text)
 
 describe('sseGeneratorPost', () => {
   afterEach(() => {
@@ -36,7 +28,10 @@ describe('sseGeneratorPost', () => {
   it('streams plan then result events, hands back an AbortController, and completes', async () => {
     const planFrame = `data: ${JSON.stringify({ event: 'plan', title: 'X', nodes: [] })}\n\n`
     const resultFrame = `data: ${JSON.stringify({ event: 'result', graph: { nodes: [] } })}\n\n`
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(makeStreamResponse([planFrame, resultFrame])))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(makeStreamResponse([encode(planFrame), encode(resultFrame)])),
+    )
 
     const onPlan = vi.fn()
     const onResult = vi.fn()
@@ -66,26 +61,38 @@ describe('sseGeneratorPost', () => {
     expect(onError).not.toHaveBeenCalled()
     // POSTs to the prefixed stream URL.
     const [calledUrl, calledOpts] = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0]!
-    expect(String(calledUrl)).toContain('/workflow-generate/stream')
-    expect((calledOpts as RequestInit).method).toBe('POST')
+    expect(new URL(String(calledUrl), window.location.origin).pathname).toBe(
+      '/console/api/workflow-generate/stream',
+    )
+    expect(calledOpts).toMatchObject({
+      method: 'POST',
+      body: JSON.stringify({ mode: 'workflow' }),
+      signal: controller!.signal,
+    })
   })
 
-  it('reassembles a JSON frame split across chunk boundaries', async () => {
-    const frame = JSON.stringify({ event: 'result', graph: { nodes: [] } })
-    const part1 = `data: ${frame.slice(0, 10)}`
-    const part2 = `${frame.slice(10)}\n\n`
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(makeStreamResponse([part1, part2])))
+  it('reassembles a frame even when a UTF-8 character is split across chunks', async () => {
+    const result = { event: 'result', graph: { nodes: [{ id: 'node-1', title: '测试' }] } }
+    const bytes = encode(`data: ${JSON.stringify(result)}\n\n`)
+    const split = bytes.findIndex((byte) => byte >= 128) + 1
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(makeStreamResponse([bytes.slice(0, split), bytes.slice(split)])),
+    )
 
     const onResult = vi.fn()
     const onCompleted = vi.fn()
     sseGeneratorPost('/workflow-generate/stream', {}, { onResult, onCompleted })
 
     await vi.waitFor(() => expect(onCompleted).toHaveBeenCalled())
-    expect(onResult).toHaveBeenCalledTimes(1)
+    expect(onResult).toHaveBeenCalledExactlyOnceWith(result)
   })
 
   it('reports a non-2xx (non-401) response through onError', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(makeStreamResponse([], 500)))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(Response.json({ message: 'Server Error' }, { status: 500 })),
+    )
 
     const onError = vi.fn()
     sseGeneratorPost('/workflow-generate/stream', {}, { onError })

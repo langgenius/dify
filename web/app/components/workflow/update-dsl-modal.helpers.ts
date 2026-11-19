@@ -1,9 +1,8 @@
-import type { Import } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppMode, Import } from '@dify/contracts/api/console/apps/types.gen'
 import type { TFunction } from 'i18next'
 import type { CommonNodeType, Node } from './types'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { DSLImportStatus } from '@/models/app'
-import { AppModeEnum } from '@/types/app'
 import { loadYaml } from '@/utils/yaml'
 import { BlockEnum, SupportUploadFileTypes } from './types'
 
@@ -45,8 +44,8 @@ type ImportNotificationPayload = {
   children?: string
 }
 
-export const getInvalidNodeTypes = (mode?: AppModeEnum): BlockEnum[] => {
-  if (mode === AppModeEnum.ADVANCED_CHAT) {
+const getInvalidNodeTypes = (mode?: AppMode): BlockEnum[] => {
+  if (mode === 'advanced-chat') {
     return [
       BlockEnum.End,
       BlockEnum.TriggerWebhook,
@@ -58,7 +57,7 @@ export const getInvalidNodeTypes = (mode?: AppModeEnum): BlockEnum[] => {
   return [BlockEnum.Answer]
 }
 
-export const validateDSLContent = (content: string, mode?: AppModeEnum) => {
+export const validateDSLContent = (content: string, mode?: AppMode) => {
   try {
     const data = loadYaml(content) as ParsedDSL | undefined
     const nodes = data?.workflow?.graph?.nodes ?? []

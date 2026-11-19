@@ -9,7 +9,8 @@ class DifyClient {
 
     public function __construct($api_key, $base_url = null) {
         $this->api_key = $api_key;
-        $this->base_url = $base_url ?? 'https://api.dify.ai/v1/';
+        // Endpoints are relative to the API directory, including for custom base URLs.
+        $this->base_url = rtrim($base_url ?? 'https://api.dify.ai/v1/', '/') . '/';
         $this->client = new Client([
             'base_uri' => $this->base_url,
             'headers' => [
@@ -80,7 +81,7 @@ class DifyClient {
             'streaming' => $streaming
         ];
 
-        return $this->send_request('POST', 'text-to-audio', $data);
+        return $this->send_request('POST', 'text-to-audio', $data, null, $streaming);
     }
 
     public function get_meta($user) {
@@ -95,7 +96,7 @@ class DifyClient {
 class CompletionClient extends DifyClient {
     public function create_completion_message($inputs, $response_mode, $user, $files = null) {
         $data = [
-            'inputs' => $inputs,
+            'inputs' => $inputs === [] ? new stdClass() : $inputs,
             'response_mode' => $response_mode,
             'user' => $user,
             'files' => $files,
@@ -107,7 +108,7 @@ class CompletionClient extends DifyClient {
 class ChatClient extends DifyClient {
     public function create_chat_message($inputs, $query, $user, $response_mode = 'blocking', $conversation_id = null, $files = null) {
         $data = [
-            'inputs' => $inputs,
+            'inputs' => $inputs === [] ? new stdClass() : $inputs,
             'query' => $query,
             'user' => $user,
             'response_mode' => $response_mode,
@@ -135,7 +136,7 @@ class ChatClient extends DifyClient {
     public function get_conversations($user, $first_id = null, $limit = null, $pinned = null) {
         $params = [
             'user' => $user,
-            'first_id' => $first_id,
+            'last_id' => $first_id,
             'limit' => $limit,
             'pinned'=> $pinned,
         ];
@@ -164,7 +165,7 @@ class ChatClient extends DifyClient {
             'user' => $user,
             'auto_generate' => $auto_generate
         ];
-        return $this->send_request('PATCH', "conversations/{$conversation_id}", $data);
+        return $this->send_request('POST', "conversations/{$conversation_id}/name", $data);
     }
 
     public function delete_conversation($conversation_id, $user) {
@@ -189,11 +190,11 @@ class ChatClient extends DifyClient {
 class WorkflowClient extends DifyClient{
     public function run($inputs, $response_mode, $user) {
         $data = [
-            'inputs' => $inputs,
+            'inputs' => $inputs === [] ? new stdClass() : $inputs,
             'response_mode' => $response_mode,
             'user' => $user,
         ];
-        return $this->send_request('POST', 'workflows/run', $data);
+        return $this->send_request('POST', 'workflows/run', $data, null, $response_mode === 'streaming');
     }
 
     public function stop($task_id, $user) {

@@ -29,7 +29,7 @@ def _output(
     on_failure: OutputErrorStrategy = OutputErrorStrategy.STOP,
     max_retries: int = 0,
     retry_enabled: bool = False,
-    default_value=None,
+    default_value: object = None,
 ) -> DeclaredOutputConfig:
     strategy = DeclaredOutputFailureStrategy(
         retry=DeclaredOutputRetryConfig(enabled=retry_enabled, max_retries=max_retries),
@@ -48,7 +48,7 @@ def _failure(declared: DeclaredOutputConfig, kind: OutputFailureKind = OutputFai
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def test_retry_within_budget_returns_retry_and_increments_attempt():
+def test_retry_within_budget_returns_retry_and_increments_attempt() -> None:
     orch = OutputFailureOrchestrator()
     declared = _output("x", retry_enabled=True, max_retries=2)
 
@@ -58,7 +58,7 @@ def test_retry_within_budget_returns_retry_and_increments_attempt():
     assert outcome.next_attempt == 1
 
 
-def test_retry_budget_uses_max_across_multiple_outputs():
+def test_retry_budget_uses_max_across_multiple_outputs() -> None:
     """If two outputs fail and their retry budgets differ, retry continues
     until the *larger* budget is spent (§7)."""
     orch = OutputFailureOrchestrator()
@@ -71,7 +71,7 @@ def test_retry_budget_uses_max_across_multiple_outputs():
     assert outcome.next_attempt == 2
 
 
-def test_retry_disabled_skips_retry_even_with_max_retries_set():
+def test_retry_disabled_skips_retry_even_with_max_retries_set() -> None:
     orch = OutputFailureOrchestrator()
     declared = _output("x", retry_enabled=False, max_retries=5)  # disabled wins
 
@@ -80,7 +80,7 @@ def test_retry_disabled_skips_retry_even_with_max_retries_set():
     assert outcome.decision != OutputFailureDecision.RETRY
 
 
-def test_retry_budget_exhausted_falls_to_terminal():
+def test_retry_budget_exhausted_falls_to_terminal() -> None:
     orch = OutputFailureOrchestrator()
     declared = _output(
         "x", retry_enabled=True, max_retries=1, on_failure=OutputErrorStrategy.DEFAULT_VALUE, default_value="fallback"
@@ -97,7 +97,7 @@ def test_retry_budget_exhausted_falls_to_terminal():
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def test_stop_terminal_returns_fail_node():
+def test_stop_terminal_returns_fail_node() -> None:
     orch = OutputFailureOrchestrator()
     declared = _output("x", on_failure=OutputErrorStrategy.STOP)
 
@@ -107,7 +107,7 @@ def test_stop_terminal_returns_fail_node():
     assert outcome.per_output_actions == {}
 
 
-def test_default_value_terminal_collects_per_output_defaults():
+def test_default_value_terminal_collects_per_output_defaults() -> None:
     orch = OutputFailureOrchestrator()
     out_a = _output("a", on_failure=OutputErrorStrategy.DEFAULT_VALUE, default_value="A")
     out_b = _output("b", on_failure=OutputErrorStrategy.DEFAULT_VALUE, default_value="B")
@@ -118,7 +118,7 @@ def test_default_value_terminal_collects_per_output_defaults():
     assert outcome.per_output_actions == {"a": "A", "b": "B"}
 
 
-def test_fail_branch_terminal_returns_take_fail_branch():
+def test_fail_branch_terminal_returns_take_fail_branch() -> None:
     orch = OutputFailureOrchestrator()
     declared = _output("x", on_failure=OutputErrorStrategy.FAIL_BRANCH)
 
@@ -132,7 +132,7 @@ def test_fail_branch_terminal_returns_take_fail_branch():
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def test_fail_branch_wins_over_stop_and_default_value():
+def test_fail_branch_wins_over_stop_and_default_value() -> None:
     orch = OutputFailureOrchestrator()
     out_a = _output("a", on_failure=OutputErrorStrategy.DEFAULT_VALUE, default_value="x")
     out_b = _output("b", on_failure=OutputErrorStrategy.STOP)
@@ -148,7 +148,7 @@ def test_fail_branch_wins_over_stop_and_default_value():
     assert outcome.per_output_actions == {}
 
 
-def test_stop_wins_over_default_value_when_no_fail_branch():
+def test_stop_wins_over_default_value_when_no_fail_branch() -> None:
     orch = OutputFailureOrchestrator()
     out_a = _output("a", on_failure=OutputErrorStrategy.DEFAULT_VALUE, default_value="x")
     out_b = _output("b", on_failure=OutputErrorStrategy.STOP)
@@ -163,7 +163,7 @@ def test_stop_wins_over_default_value_when_no_fail_branch():
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def test_failure_kinds_dedupes_and_preserves_order():
+def test_failure_kinds_dedupes_and_preserves_order() -> None:
     orch = OutputFailureOrchestrator()
     decl = _output("x")
     failures = [
@@ -182,7 +182,7 @@ def test_failure_kinds_dedupes_and_preserves_order():
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def test_primary_reason_includes_every_failure():
+def test_primary_reason_includes_every_failure() -> None:
     orch = OutputFailureOrchestrator()
     out_a = _output("a")
     out_b = _output("b")
@@ -199,7 +199,7 @@ def test_primary_reason_includes_every_failure():
     assert "b[output_check]: missing section 3" in outcome.primary_reason
 
 
-def test_no_failures_raises():
+def test_no_failures_raises() -> None:
     orch = OutputFailureOrchestrator()
     with pytest.raises(ValueError, match="at least one failure"):
         orch.decide(failures=[], current_attempt=0)
@@ -210,19 +210,19 @@ def test_no_failures_raises():
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def test_idempotency_key_first_attempt_matches_pre_stage_4_shape():
+def test_idempotency_key_first_attempt_matches_pre_stage_4_shape() -> None:
     key = retry_idempotency_key(workflow_run_id="run-1", node_execution_id="node-exec-1", attempt=0)
     assert key == "run-1:node-exec-1"
 
 
-def test_idempotency_key_appends_retry_attempt_for_retries():
+def test_idempotency_key_appends_retry_attempt_for_retries() -> None:
     assert (
         retry_idempotency_key(workflow_run_id="run-1", node_execution_id="node-exec-1", attempt=2)
         == "run-1:node-exec-1:retry-2"
     )
 
 
-def test_idempotency_key_handles_missing_workflow_run_id():
+def test_idempotency_key_handles_missing_workflow_run_id() -> None:
     assert retry_idempotency_key(workflow_run_id=None, node_execution_id="node-exec-9", attempt=0) == "node-exec-9"
     assert (
         retry_idempotency_key(workflow_run_id=None, node_execution_id="node-exec-9", attempt=1) == "node-exec-9:retry-1"

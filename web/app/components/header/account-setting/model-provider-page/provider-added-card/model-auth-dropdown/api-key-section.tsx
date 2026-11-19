@@ -55,7 +55,7 @@ function ApiKeySection({
   return (
     <div className="border-t border-t-divider-subtle">
       <div className="px-1">
-        <div className="pt-3 pr-2 pb-1 pl-7 system-xs-medium-uppercase text-text-tertiary">
+        <div className="ps-7 pe-2 pt-3 pb-1 system-xs-medium-uppercase text-text-tertiary">
           {t(($) => $['modelProvider.auth.apiKeys'], { ns: 'modelProvider' })}
         </div>
         <div className="max-h-50 overflow-y-auto">

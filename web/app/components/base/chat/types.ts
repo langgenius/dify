@@ -1,6 +1,7 @@
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import type { AgentConfig } from '@/models/debug'
 import type { ModelConfig } from '@/types/app'
 import type { HumanInputFilledFormData, HumanInputFormData, NodeTracing } from '@/types/workflow'
 
@@ -12,13 +13,14 @@ export type EnableType = {
   enabled: boolean
 }
 
-export type ChatConfig = Omit<ModelConfig, 'model'> & {
+export type ChatConfig = Omit<ModelConfig, 'model' | 'system_parameters' | 'agent_mode'> & {
+  agent_mode: Pick<AgentConfig, 'enabled' | 'tools'> & { strategy?: AgentConfig['strategy'] }
   supportAnnotation?: boolean
   appId?: string
   questionEditEnable?: boolean
   supportFeedback?: boolean
   supportCitationHitInfo?: boolean
-  system_parameters: {
+  system_parameters?: {
     audio_file_size_limit: number
     file_size_limit: number
     image_file_size_limit: number
@@ -41,9 +43,33 @@ export type WorkflowProcess = {
   humanInputFilledFormDataList?: HumanInputFilledFormData[]
 }
 
+export type WorkflowAgentToolActivityStatus =
+  | 'started'
+  | 'running'
+  | 'succeeded'
+  | 'failed'
+  | 'cancelled'
+
+export type WorkflowAgentToolActivity = {
+  id: string
+  node_id: string
+  node_execution_id: string
+  label: string
+  status: WorkflowAgentToolActivityStatus
+  error: string | null
+  data: {
+    tool_call_id: string
+    tool_name: string
+    tool_input: string
+    tool_output: string
+    node_title: string
+  }
+}
+
 export type ChatItem = IChatItem & {
   isError?: boolean
   workflowProcess?: WorkflowProcess
+  workflowAgentActivities?: WorkflowAgentToolActivity[]
   conversationId?: string
   allFiles?: FileEntity[]
 }

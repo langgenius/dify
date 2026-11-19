@@ -132,19 +132,14 @@ describe('agent/default', () => {
     expect(result.isValid).toBe(valid)
   })
 
-  it('links directly to the New Agent section of the shared agent node document', () => {
-    expect(nodeDefault.metaData.helpLinkUri).toBe('agent#new-agent')
-  })
-
   it('identifies version 2 agent data as Agent v2', () => {
     expect(isAgentV2NodeData(createPayload({ type: BlockEnum.Agent }))).toBe(true)
-    expect(
-      isAgentV2NodeData({
-        title: 'Agent',
-        desc: '',
-        type: BlockEnum.Agent,
-        version: '2',
-      } as Parameters<typeof isAgentV2NodeData>[0]),
-    ).toBe(false)
+    const legacyAgent = {
+      title: 'Agent',
+      desc: '',
+      type: BlockEnum.Agent,
+      version: '2',
+    }
+    expect(isAgentV2NodeData(legacyAgent)).toBe(false)
   })
 })

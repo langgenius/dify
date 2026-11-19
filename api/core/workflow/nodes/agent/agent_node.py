@@ -1,19 +1,20 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Generator, Mapping, Sequence
 from functools import singledispatchmethod
 from typing import TYPE_CHECKING, Any, override
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+from core.workflow.agent_log_events import AgentLogEvent, NodeRunAgentLogEvent, node_run_agent_log_event
 from core.workflow.system_variables import SystemVariableKey, get_system_text
+from graphon.engine_events import NodeEvent
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-from graphon.graph_events import GraphNodeEventBase
-from graphon.node_events import NodeEventBase, NodeRunResult, StreamCompletedEvent
+from graphon.node_events import NodeEventPayload, NodeRunResult, StreamCompletedEvent
 from graphon.nodes.base.node import Node
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 
 from .entities import AgentNodeData
-from .events import AgentLogEvent, NodeRunAgentLogEvent
 from .exceptions import (
     AgentInvocationError,
     AgentMessageTransformError,
@@ -23,8 +24,9 @@ from .runtime_support import AgentRuntimeSupport
 from .strategy_protocols import AgentStrategyPresentationProvider, AgentStrategyResolver
 
 if TYPE_CHECKING:
-    from graphon.entities import GraphInitParams
-    from graphon.runtime import GraphRuntimeState
+    from graphon.runtime import InitParams, RuntimeState
+
+logger = logging.getLogger(__name__)
 
 
 class AgentNode(Node[AgentNodeData]):
@@ -40,8 +42,8 @@ class AgentNode(Node[AgentNodeData]):
         node_id: str,
         data: AgentNodeData,
         *,
-        graph_init_params: GraphInitParams,
-        graph_runtime_state: GraphRuntimeState,
+        init_params: InitParams,
+        runtime_state: RuntimeState,
         strategy_resolver: AgentStrategyResolver,
         presentation_provider: AgentStrategyPresentationProvider,
         runtime_support: AgentRuntimeSupport,
@@ -50,8 +52,8 @@ class AgentNode(Node[AgentNodeData]):
         super().__init__(
             node_id=node_id,
             data=data,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=init_params,
+            runtime_state=runtime_state,
         )
         self._strategy_resolver = strategy_resolver
         self._presentation_provider = presentation_provider
@@ -77,28 +79,26 @@ class AgentNode(Node[AgentNodeData]):
     @override
     @singledispatchmethod
     def _dispatch(  # pyrefly: ignore[missing-override-decorator]
-        self, event: NodeEventBase
-    ) -> GraphNodeEventBase:
+        self, event: NodeEventPayload
+    ) -> NodeEvent:
         return super()._dispatch(event)
 
     @_dispatch.register
     def _dispatch_agent_log(self, event: AgentLogEvent) -> NodeRunAgentLogEvent:
-        return NodeRunAgentLogEvent(
-            id=self.execution_id,
+        return node_run_agent_log_event(
+            event,
+            execution_id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
-            message_id=event.message_id,
-            label=event.label,
-            node_execution_id=event.node_execution_id,
-            parent_id=event.parent_id,
-            error=event.error,
-            status=event.status,
-            data=event.data,
-            metadata=event.metadata,
         )
 
     @override
-    def _run(self) -> Generator[NodeEventBase, None, None]:
+    def _run(self) -> Generator[NodeEventPayload]:
+        """Run the Agent node, adding best-effort tool metadata only for evaluation.
+
+        Normal executions retain their existing tool metadata; a snapshot failure
+        during evaluation does not interrupt the Agent invocation.
+        """
         from core.plugin.impl.exc import PluginDaemonClientSideError
 
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
@@ -123,7 +123,7 @@ class AgentNode(Node[AgentNodeData]):
 
         parameters = self._runtime_support.build_parameters(
             agent_parameters=agent_parameters,
-            variable_pool=self.graph_runtime_state.variable_pool,
+            variable_pool=self.runtime_state.variable_pool,
             node_data=self.node_data,
             strategy=strategy,
             tenant_id=dify_ctx.tenant_id,
@@ -133,7 +133,7 @@ class AgentNode(Node[AgentNodeData]):
         )
         parameters_for_log = self._runtime_support.build_parameters(
             agent_parameters=agent_parameters,
-            variable_pool=self.graph_runtime_state.variable_pool,
+            variable_pool=self.runtime_state.variable_pool,
             node_data=self.node_data,
             strategy=strategy,
             tenant_id=dify_ctx.tenant_id,
@@ -142,9 +142,21 @@ class AgentNode(Node[AgentNodeData]):
             invoke_from=dify_ctx.invoke_from,
             for_log=True,
         )
+        available_tools: list[dict[str, Any]] | None = None
+        if dify_ctx.capture_agent_evaluation_trace:
+            try:
+                available_tools = self._runtime_support.build_model_visible_tool_snapshots(
+                    agent_parameters=agent_parameters,
+                    resolved_parameters=parameters,
+                )
+            except Exception:
+                logger.warning(
+                    "Failed to capture model-visible tools for Agent evaluation; continuing without the snapshot",
+                    exc_info=True,
+                )
         credentials = self._runtime_support.build_credentials(parameters=parameters)
 
-        conversation_id = get_system_text(self.graph_runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
+        conversation_id = get_system_text(self.runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
 
         try:
             message_stream = strategy.invoke(
@@ -174,6 +186,7 @@ class AgentNode(Node[AgentNodeData]):
                         agent_strategy_provider_name=self.node_data.agent_strategy_provider_name,
                     ),
                     "agent_strategy": self.node_data.agent_strategy_name,
+                    **({"available_tools": available_tools} if dify_ctx.capture_agent_evaluation_trace else {}),
                 },
                 parameters_for_log=parameters_for_log,
                 user_id=dify_ctx.user_id,

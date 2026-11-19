@@ -45,7 +45,6 @@
   "nodes.triggerSchedule.nextExecutionTimes": "接下来 5 次执行时间",
   "nodes.triggerSchedule.onMinute": "分钟",
   "nodes.triggerSchedule.selectFrequency": "选择频率",
-  "nodes.triggerSchedule.selectTime": "选择时间",
   "nodes.triggerSchedule.title": "定时触发",
   "nodes.triggerSchedule.useCronExpression": "使用 Cron 表达式",
   "nodes.triggerSchedule.useVisualPicker": "使用可视化配置",

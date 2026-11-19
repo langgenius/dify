@@ -5,8 +5,6 @@ import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import EndpointModal from '../endpoint-modal'
 import { createPluginDetail } from './endpoint-fixture'
 
-const { showError } = vi.hoisted(() => ({ showError: vi.fn() }))
-vi.mock('@/app/notifications', () => ({ toast: { error: showError } }))
 vi.mock('../../readme-panel/entrance', () => ({ ReadmeEntrance: () => null }))
 vi.mock('@/hooks/use-i18n', () => ({
   useRenderI18nObject: () => (label: { en_US: string }) => label.en_US,
@@ -31,13 +29,17 @@ describe('Endpoint settings form', () => {
         ]}
       />,
     )
+    expect(
+      screen.getByRole('dialog', { name: 'plugin.detailPanel.endpointModalTitle' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Endpoint Name' })).toBeInTheDocument()
     await user.type(screen.getByPlaceholderText('Endpoint Name'), 'New endpoint')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
     expect(onSaved).toHaveBeenCalledWith({
       name: 'New endpoint',
       settings: { enabled: false, limit: '0' },
     })
-    expect(showError).not.toHaveBeenCalled()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it.each([
@@ -119,7 +121,8 @@ describe('Endpoint settings form', () => {
     )
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
     expect(onSaved).not.toHaveBeenCalled()
-    expect(showError).toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toHaveTextContent('common.errorMsg.fieldRequired')
+    expect(screen.getByRole('alert')).toHaveFocus()
   })
 
   it('preserves explicit clearing and does not mutate edit values', async () => {
@@ -179,8 +182,11 @@ describe('Endpoint settings form', () => {
     )
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
     expect(onSaved).not.toHaveBeenCalled()
-    expect(showError).toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toHaveTextContent('Endpoint Name')
+    expect(screen.getByRole('alert')).toHaveFocus()
     expect(screen.getByPlaceholderText('Endpoint Name')).toBeInTheDocument()
+    await user.type(screen.getByRole('textbox', { name: 'Endpoint Name' }), 'New endpoint')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('keeps pending save focusable and blocks click and implicit submissions', async () => {

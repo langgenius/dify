@@ -5,11 +5,13 @@ from __future__ import annotations
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from flask import Flask
 from pydantic import ValidationError
+from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.console import bp as console_bp
 from controllers.console.auth.email_register import (
@@ -35,7 +37,9 @@ from controllers.console.error import (
     SeatsLimitExceeded,
 )
 from enums import DeploymentEdition
-from services.account_email_registration_service import AccountEmailRegistrationService
+from extensions.ext_application_services import build_application_services
+from extensions.ext_redis import RedisClientWrapper
+from services.account.email_registration_service import AccountEmailRegistrationService
 from services.account_errors import (
     AccountEmailAlreadyInUseError,
     AccountEmailDomainSuspendedError,
@@ -61,11 +65,11 @@ def _cloud_edition(config_overrides: Callable[..., None]) -> None:
 @contextmanager
 def _request(
     app: Flask,
-    service: Mock,
+    service: AccountEmailRegistrationService,
     *,
     path: str,
     payload: dict[str, str],
-) -> Generator[None, None, None]:
+) -> Generator[None]:
     services = SimpleNamespace(accounts=SimpleNamespace(email_registration=service))
     with (
         patch("controllers.console.auth.email_register.application_services", return_value=services),
@@ -83,8 +87,22 @@ def _request(
         yield
 
 
-def _service() -> Mock:
-    return Mock(spec=AccountEmailRegistrationService)
+@pytest.fixture
+def service(
+    sqlite_session_factory: sessionmaker[Session],
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    mocker: MockerFixture,
+) -> AccountEmailRegistrationService:
+    service = build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=redis_transport[0],
+    ).accounts.email_registration
+    mocker.patch.object(service, "send_code")
+    mocker.patch.object(service, "verify_code")
+    mocker.patch.object(service, "register")
+    return service
 
 
 def test_normalized_email_conflict_exposes_a_distinct_error_code() -> None:
@@ -95,9 +113,10 @@ def test_normalized_email_conflict_exposes_a_distinct_error_code() -> None:
     assert error.data["code"] == "normalized_email_already_in_use"
 
 
-def test_send_email_delegates_with_remote_ip(app: Flask) -> None:
-    service = _service()
-    service.send_code.return_value = "token-123"
+def test_send_email_delegates_with_remote_ip(app: Flask, service: AccountEmailRegistrationService) -> None:
+    send_code = service.send_code
+    assert isinstance(send_code, Mock)
+    send_code.return_value = "token-123"
 
     with _request(
         app,
@@ -108,7 +127,7 @@ def test_send_email_delegates_with_remote_ip(app: Flask) -> None:
         response = EmailRegisterSendEmailApi().post()
 
     assert response == {"result": "success", "data": "token-123"}
-    assert service.send_code.call_args.kwargs == {
+    assert send_code.call_args.kwargs == {
         "remote_ip": "127.0.0.1",
         "requested_email": "Invitee@Example.com",
         "requested_language": "zh-Hans",
@@ -126,11 +145,13 @@ def test_send_email_delegates_with_remote_ip(app: Flask) -> None:
 )
 def test_send_email_translates_application_errors(
     app: Flask,
+    service: AccountEmailRegistrationService,
     service_error: Exception,
     http_error: type[Exception],
 ) -> None:
-    service = _service()
-    service.send_code.side_effect = service_error
+    send_code = service.send_code
+    assert isinstance(send_code, Mock)
+    send_code.side_effect = service_error
 
     with _request(
         app,
@@ -142,9 +163,10 @@ def test_send_email_translates_application_errors(
             EmailRegisterSendEmailApi().post()
 
 
-def test_verify_email_code_serializes_application_result(app: Flask) -> None:
-    service = _service()
-    service.verify_code.return_value = AccountEmailRegistrationVerification(
+def test_verify_email_code_serializes_application_result(app: Flask, service: AccountEmailRegistrationService) -> None:
+    verify_code = service.verify_code
+    assert isinstance(verify_code, Mock)
+    verify_code.return_value = AccountEmailRegistrationVerification(
         email="user@example.com",
         token="verified-token",
     )
@@ -158,7 +180,7 @@ def test_verify_email_code_serializes_application_result(app: Flask) -> None:
         response = EmailRegisterCheckApi().post()
 
     assert response == {"is_valid": True, "email": "user@example.com", "token": "verified-token"}
-    service.verify_code.assert_called_once_with(
+    verify_code.assert_called_once_with(
         email="User@Example.com",
         code="123456",
         token="pending-token",
@@ -176,11 +198,13 @@ def test_verify_email_code_serializes_application_result(app: Flask) -> None:
 )
 def test_verify_email_code_translates_application_errors(
     app: Flask,
+    service: AccountEmailRegistrationService,
     service_error: Exception,
     http_error: type[Exception],
 ) -> None:
-    service = _service()
-    service.verify_code.side_effect = service_error
+    verify_code = service.verify_code
+    assert isinstance(verify_code, Mock)
+    verify_code.side_effect = service_error
 
     with _request(
         app,
@@ -192,9 +216,10 @@ def test_verify_email_code_translates_application_errors(
             EmailRegisterCheckApi().post()
 
 
-def test_register_delegates_and_serializes_tokens(app: Flask) -> None:
-    service = _service()
-    service.register.return_value = AccountSessionTokens(
+def test_register_delegates_and_serializes_tokens(app: Flask, service: AccountEmailRegistrationService) -> None:
+    register = service.register
+    assert isinstance(register, Mock)
+    register.return_value = AccountSessionTokens(
         access_token="access",
         refresh_token="refresh",
         csrf_token="csrf",
@@ -218,7 +243,7 @@ def test_register_delegates_and_serializes_tokens(app: Flask) -> None:
         "result": "success",
         "data": {"access_token": "access", "refresh_token": "refresh", "csrf_token": "csrf"},
     }
-    assert service.register.call_args.kwargs == {
+    assert register.call_args.kwargs == {
         "remote_ip": "127.0.0.1",
         "token": "verified-token",
         "new_password": "ValidPass123!",
@@ -246,11 +271,13 @@ def test_register_delegates_and_serializes_tokens(app: Flask) -> None:
 )
 def test_register_translates_application_errors(
     app: Flask,
+    service: AccountEmailRegistrationService,
     service_error: Exception,
     http_error: type[Exception],
 ) -> None:
-    service = _service()
-    service.register.side_effect = service_error
+    register = service.register
+    assert isinstance(register, Mock)
+    register.side_effect = service_error
 
     with _request(
         app,

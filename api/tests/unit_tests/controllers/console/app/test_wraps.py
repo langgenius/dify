@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from inspect import getsource
 from uuid import uuid4
 
@@ -11,6 +12,7 @@ from controllers.console.app import completion as completion_module
 from controllers.console.app import workflow as workflow_module
 from controllers.console.app import wraps as wraps_module
 from controllers.console.app.error import AppNotFoundError
+from models.agent import Agent, AgentScope, AgentSource, AgentStatus
 from models.model import App, AppMode
 
 
@@ -34,10 +36,11 @@ def test_get_app_model_injects_model(monkeypatch: pytest.MonkeyPatch, sqlite_ses
     monkeypatch.setattr(wraps_module.db, "session", sqlite_session)
 
     @wraps_module.get_app_model
-    def handler(app_model):
+    def handler(app_model: App) -> str:
         return app_model.id
 
-    assert handler(app_id=app_model.id) == app_model.id
+    decorated: Callable[..., str] = handler
+    assert decorated(app_id=app_model.id) == app_model.id
 
 
 def test_get_app_model_rejects_wrong_mode(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
@@ -46,20 +49,22 @@ def test_get_app_model_rejects_wrong_mode(monkeypatch: pytest.MonkeyPatch, sqlit
     monkeypatch.setattr(wraps_module.db, "session", sqlite_session)
 
     @wraps_module.get_app_model(mode=[AppMode.COMPLETION])
-    def handler(app_model):
+    def handler(app_model: App) -> str:
         return app_model.id
 
+    decorated: Callable[..., str] = handler
     with pytest.raises(AppNotFoundError):
-        handler(app_id=app_model.id)
+        decorated(app_id=app_model.id)
 
 
 def test_get_app_model_requires_app_id() -> None:
     @wraps_module.get_app_model
-    def handler(app_model):
+    def handler(app_model: App) -> str:
         return app_model.id
 
-    with pytest.raises(ValueError):
-        handler()
+    decorated: Callable[..., str] = handler
+    with pytest.raises(ValueError, match="missing app_id in path parameters"):
+        decorated()
 
 
 def test_wraps_with_session_reexports_common_session_decorator() -> None:
@@ -75,14 +80,56 @@ def test_get_app_model_prefers_injected_session(
 
     class Handler:
         @wraps_module.get_app_model
-        def get(self, _injected_session, app_model):
+        def get(self, _injected_session, app_model: App) -> str:
             return app_model.id
 
     # An unbound real Session fails on query, so success proves the injected
     # request Session was preferred over the legacy scoped-session fallback.
     with Session() as scoped_session:
         monkeypatch.setattr(wraps_module.db, "session", scoped_session)
-        assert Handler().get(sqlite_session, app_id=app_model.id) == app_model.id
+        decorated: Callable[..., str] = Handler().get
+        assert decorated(sqlite_session, app_id=app_model.id) == app_model.id
+
+
+@pytest.mark.parametrize("scope", [AgentScope.ROSTER, AgentScope.WORKFLOW_ONLY])
+@pytest.mark.parametrize("status", [AgentStatus.ACTIVE, AgentStatus.ARCHIVED])
+@pytest.mark.parametrize("inject_session", [False, True])
+def test_get_app_model_hides_only_workflow_backing_apps(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    scope: AgentScope,
+    status: AgentStatus,
+    inject_session: bool,
+) -> None:
+    app_model = _persist_app(sqlite_session, mode=AppMode.AGENT)
+    workflow_only = scope == AgentScope.WORKFLOW_ONLY
+    sqlite_session.add(
+        Agent(
+            tenant_id=app_model.tenant_id,
+            name="Bound agent",
+            scope=scope,
+            source=AgentSource.WORKFLOW if workflow_only else AgentSource.AGENT_APP,
+            status=status,
+            app_id=None if workflow_only else app_model.id,
+            backing_app_id=app_model.id if workflow_only else None,
+        )
+    )
+    sqlite_session.commit()
+    monkeypatch.setattr(wraps_module, "current_account_with_tenant", lambda: (None, app_model.tenant_id))
+    monkeypatch.setattr(wraps_module.db, "session", sqlite_session)
+
+    class Handler:
+        @wraps_module.get_app_model
+        def get(self, *_args: object, app_model: App) -> str:
+            return app_model.id
+
+    args = (sqlite_session,) if inject_session else ()
+    decorated: Callable[..., str] = Handler().get
+    if workflow_only:
+        with pytest.raises(AppNotFoundError):
+            decorated(*args, app_id=app_model.id)
+    else:
+        assert decorated(*args, app_id=app_model.id) == app_model.id
 
 
 @pytest.mark.parametrize(

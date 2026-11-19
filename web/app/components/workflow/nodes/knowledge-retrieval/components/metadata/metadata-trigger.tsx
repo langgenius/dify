@@ -50,11 +50,7 @@ const MetadataTrigger = ({
           </Button>
         }
       />
-      <PopoverContent
-        placement="left"
-        sideOffset={4}
-        className="border-none bg-transparent shadow-none"
-      >
+      <PopoverContent side="left" sideOffset={4} className="border-none bg-transparent shadow-none">
         <MetadataPanel
           metadataFilteringConditions={metadataFilteringConditions}
           onCancel={() => setOpen(false)}

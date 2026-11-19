@@ -1,11 +1,11 @@
-import type { DataSourceCredential } from '@/types/pipeline'
+import type { DatasourceCredentialResponse } from '@dify/contracts/api/console/auth/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine } from '@remixicon/react'
 import * as React from 'react'
 import { CredentialIcon } from '@/app/components/datasets/common/credential-icon'
 
 type TriggerProps = {
-  currentCredential: DataSourceCredential | undefined
+  currentCredential: DatasourceCredentialResponse | undefined
   isOpen: boolean
 }
 
@@ -19,7 +19,7 @@ const Trigger = ({ currentCredential, isOpen }: TriggerProps) => {
         isOpen ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
       )}
     >
-      <CredentialIcon avatarUrl={avatar_url} name={name} size={20} />
+      <CredentialIcon avatarUrl={avatar_url ?? undefined} name={name} size={20} />
       <div className="flex grow items-center gap-x-1 overflow-hidden">
         <span className="grow truncate system-md-semibold text-text-secondary">{name}</span>
         <RiArrowDownSLine className="size-4 shrink-0 text-text-secondary" />

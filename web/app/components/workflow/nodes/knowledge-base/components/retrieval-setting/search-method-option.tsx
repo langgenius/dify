@@ -3,6 +3,7 @@ import type { WeightedScore } from '../../types'
 import type { RerankingModelSelectorProps } from './reranking-model-selector'
 import type { TopKFieldProps, VisibleScoreThresholdFieldProps } from './top-k-and-score-threshold'
 import type { HybridSearchModeOption, Option } from './type'
+import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
@@ -210,7 +211,7 @@ function HybridSearchModeRadioCard({
         render={<button type="button" />}
         disabled={readonly}
         className={cn(
-          'w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-3 text-left outline-hidden transition-colors',
+          'w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-3 text-left outline-hidden',
           'data-checked:border-[1.5px] data-checked:bg-components-option-card-option-selected-bg',
           'focus-visible:ring-1 focus-visible:ring-components-input-border-active',
           'cursor-pointer hover:shadow-xs data-disabled:cursor-not-allowed data-disabled:hover:shadow-none',
@@ -283,7 +284,7 @@ export function SearchMethodOption({
           {showRerankModelSelectorSwitch ? (
             <Field name="reranking_model_enabled" className="mb-1 gap-0">
               <div className="flex items-center">
-                <FieldLabel className="flex min-w-0 items-center py-0 system-sm-semibold text-text-secondary">
+                <FieldLabel className="flex min-w-0 cursor-pointer items-center py-0 system-sm-semibold text-text-secondary has-data-disabled:cursor-not-allowed">
                   <Switch
                     className="mr-1"
                     checked={reranking.enabled ?? false}
@@ -310,15 +311,11 @@ export function SearchMethodOption({
             readonly={readonly}
           />
           {reranking.showMultiModalTip ? (
-            <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
-              <div className="absolute inset-0 bg-dataset-warning-message-bg opacity-40" />
-              <div className="p-1">
-                <div className="i-custom-vender-solid-alertsAndFeedback-alert-triangle size-4 text-text-warning-secondary" />
-              </div>
-              <span className="system-xs-medium text-text-primary">
+            <Alert type="warning" className="mt-2">
+              <AlertTitle>
                 {t(($) => $['form.retrievalSetting.multiModalTip'], { ns: 'datasetSettings' })}
-              </span>
-            </div>
+              </AlertTitle>
+            </Alert>
           ) : null}
         </div>
       ) : null}

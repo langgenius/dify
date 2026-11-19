@@ -1,5 +1,7 @@
 """Agent Workspace persistence within a caller-owned session and transaction."""
 
+from collections.abc import Sequence
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -71,14 +73,24 @@ class AgentWorkspaceRepository:
             binding.retired_at = now
         return workspace.id
 
-    def retire_all_for_conversation(self, *, tenant_id: str, app_id: str, conversation_id: str) -> list[str]:
-        """Retire all active workspaces owned by the conversation, including Chatflow nodes."""
+    def retire_all_for_conversations(
+        self, *, tenant_id: str, app_id: str, conversation_ids: Sequence[str]
+    ) -> list[str]:
+        """Retire all active workspaces owned by the conversations, including Chatflow nodes.
+
+        Preconditions: every conversation id belongs to ``app_id`` under
+        ``tenant_id``; the caller resolves ownership. Postconditions: matching
+        ACTIVE workspaces and their ACTIVE bindings are RETIRED and their ids
+        returned; empty ``conversation_ids`` retires nothing. Never commits.
+        """
+        if not conversation_ids:
+            return []
         workspaces = self._session.scalars(
             select(AgentWorkspace).where(
                 AgentWorkspace.tenant_id == tenant_id,
                 AgentWorkspace.app_id == app_id,
                 AgentWorkspace.owner_type == AgentWorkspaceOwnerType.CONVERSATION,
-                AgentWorkspace.owner_id == conversation_id,
+                AgentWorkspace.owner_id.in_(conversation_ids),
                 AgentWorkspace.status == AgentWorkingResourceStatus.ACTIVE,
             )
         ).all()
@@ -88,3 +100,9 @@ class AgentWorkspaceRepository:
             if workspace_id is not None:
                 retired.append(workspace_id)
         return retired
+
+    def retire_all_for_conversation(self, *, tenant_id: str, app_id: str, conversation_id: str) -> list[str]:
+        """Retire all active workspaces owned by the conversation, including Chatflow nodes."""
+        return self.retire_all_for_conversations(
+            tenant_id=tenant_id, app_id=app_id, conversation_ids=(conversation_id,)
+        )

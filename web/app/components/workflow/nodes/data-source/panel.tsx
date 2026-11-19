@@ -1,9 +1,11 @@
 import type { FC } from 'react'
 import type { DataSourceNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import { useAtomValue } from 'jotai'
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import TagInput from '@/app/components/base/tag-input'
+import { editorResourceKindAtom } from '@/app/components/workflow/editor-resource/state'
 import { BoxGroupField } from '@/app/components/workflow/nodes/_base/components/layout'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import StructureOutputItem from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
@@ -20,7 +22,7 @@ import { useConfig } from './hooks/use-config'
 import { DataSourceClassification } from './types'
 
 const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow'] as const)
   const { nodesReadOnly } = useNodesReadOnly()
   const dataSourceList = useStore((s) => s.dataSourceList)
   const { provider_type, fileExtensions = [], datasource_parameters } = data
@@ -36,7 +38,7 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
     [currentDataSourceItem],
   )
 
-  const pipelineId = useStore((s) => s.pipelineId)
+  const resourceKind = useAtomValue(editorResourceKindAtom)
   const setShowInputFieldPanel = useStore((s) => s.setShowInputFieldPanel)
   const { schemaTypeDefinitions } = useMatchSchemaType()
   return (
@@ -61,7 +63,7 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
               staticSchema
               value={datasource_parameters}
               onChange={handleParametersChange}
-              showManageInputField={!!pipelineId}
+              showManageInputField={resourceKind === 'knowledge-pipeline'}
               onManageInputField={() => setShowInputFieldPanel?.(true)}
             />
           )}

@@ -1,0 +1,146 @@
+'use client'
+
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
+import { useTranslation } from 'react-i18next'
+import { KnowledgeModelReadinessBanner } from '../components/knowledge-model-readiness-banner'
+import { OverviewActivity } from './overview-activity'
+import { AttentionPanel } from './overview-attention'
+import { InventoryPanel } from './overview-inventory'
+import { OverviewMetrics, QueryOutcomesChart } from './overview-metrics'
+import { OverviewOnboarding } from './overview-onboarding'
+import { OverviewTaskSync } from './overview-task-sync'
+import { OVERVIEW_WINDOWS } from './query-state'
+import {
+  overviewEmptyAtom,
+  overviewFirstLoadFailedAtom,
+  overviewKnowledgeSpaceIdAtom,
+  overviewPageLoadingAtom,
+  overviewShowEmptyModulesAtom,
+  overviewShowIndexingAtom,
+  overviewWindowAtom,
+  retryOverviewSnapshotsAtom,
+} from './state'
+import { OverviewStateBoundary } from './state-boundary'
+
+export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
+  return (
+    <OverviewStateBoundary knowledgeSpaceId={knowledgeSpaceId}>
+      <KnowledgeOverviewContent />
+    </OverviewStateBoundary>
+  )
+}
+
+function KnowledgeOverviewContent() {
+  const showEmptyModules = useAtomValueRawSync(overviewShowEmptyModulesAtom)
+  const showIndexing = useAtomValueRawSync(overviewShowIndexingAtom)
+
+  return (
+    <div className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-components-panel-bg">
+      <div className="w-full px-6 pt-3 pb-6">
+        <OverviewTaskSync />
+        <OverviewHeader />
+        <OverviewKnowledgeModelReadinessBanner />
+        <OverviewRecoveryStatus />
+        <OverviewOnboarding />
+        <div className={cn('mt-3', showEmptyModules && 'pt-6')}>
+          <OverviewMetrics />
+        </div>
+        <div
+          className={cn(
+            'grid lg:grid-cols-2',
+            showIndexing ? 'mt-3 gap-2.5' : showEmptyModules ? 'mt-2 gap-2.5' : 'mt-3 gap-2.5',
+          )}
+        >
+          <AttentionPanel />
+          <QueryOutcomesChart />
+        </div>
+        <OverviewActivity />
+        <div className="mt-3">
+          <InventoryPanel />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function OverviewHeader() {
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeOverview'])
+  const empty = useAtomValueRawSync(overviewEmptyAtom)
+  const showIndexing = useAtomValueRawSync(overviewShowIndexingAtom)
+  const window = useAtomValueRawSync(overviewWindowAtom)
+  const setWindow = useSetAtom(overviewWindowAtom)
+
+  return (
+    <header className="relative -top-0.75 flex flex-wrap items-center justify-between gap-3">
+      <h1 className="title-3xl-bold text-text-primary">{t(($) => $.overviewTitle)}</h1>
+      {!empty && !showIndexing && (
+        <SegmentedControl<(typeof OVERVIEW_WINDOWS)[number]>
+          aria-label={t(($) => $['overview.timeRange'], { ns: 'knowledgeOverview' })}
+          value={window}
+          onValueChange={(value) => {
+            void setWindow(value)
+          }}
+        >
+          {OVERVIEW_WINDOWS.map((value) => (
+            <SegmentedControlItem<(typeof OVERVIEW_WINDOWS)[number]>
+              key={value}
+              className="h-6.5 px-2.5"
+              value={value}
+            >
+              {value === '24h'
+                ? t(($) => $['overview.twentyFourHours'], { ns: 'knowledgeOverview' })
+                : value === '7d'
+                  ? t(($) => $['overview.sevenDays'], { ns: 'knowledgeOverview' })
+                  : t(($) => $['overview.thirtyDays'], { ns: 'knowledgeOverview' })}
+            </SegmentedControlItem>
+          ))}
+        </SegmentedControl>
+      )}
+    </header>
+  )
+}
+
+function OverviewKnowledgeModelReadinessBanner() {
+  const knowledgeSpaceId = useAtomValueRawSync(overviewKnowledgeSpaceIdAtom)
+  return (
+    <KnowledgeModelReadinessBanner
+      capability="query"
+      className="mt-4"
+      knowledgeSpaceId={knowledgeSpaceId}
+    />
+  )
+}
+
+function OverviewRecoveryStatus() {
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
+  const pageLoading = useAtomValueRawSync(overviewPageLoadingAtom)
+  const firstLoadFailed = useAtomValueRawSync(overviewFirstLoadFailedAtom)
+  const retry = useSetAtom(retryOverviewSnapshotsAtom)
+
+  return (
+    <>
+      {pageLoading && (
+        <p className="sr-only" role="status">
+          {tCommon(($) => $.loading)}
+        </p>
+      )}
+      {firstLoadFailed && (
+        <div
+          role="alert"
+          className="mt-4 flex items-center justify-between gap-4 rounded-xl border border-divider-regular bg-background-section p-4"
+        >
+          <p className="system-sm-regular text-text-destructive">
+            {t(($) => $.detailErrorDescription)}
+          </p>
+          <Button size="small" variant="secondary" onClick={retry}>
+            {tCommon(($) => $['operation.retry'])}
+          </Button>
+        </div>
+      )}
+    </>
+  )
+}

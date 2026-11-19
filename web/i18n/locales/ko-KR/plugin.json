@@ -3,7 +3,6 @@
   "action.delete": "플러그인 제거",
   "action.deleteContentLeft": "제거하시겠습니까?",
   "action.deleteContentRight": "플러그인?",
-  "action.deleteSuccess": "플러그인이 성공적으로 제거되었습니다",
   "action.pluginInfo": "플러그인 정보",
   "allCategories": "모든 카테고리",
   "auth.addApi": "API 키 추가하기",
@@ -302,9 +301,7 @@
   "task.runningPlugins": "Installing Plugins",
   "task.successPlugins": "Successfully Installed Plugins",
   "templatePublishingGuide": "템플릿 게시 가이드",
-  "upgrade.close": "닫기",
   "upgrade.description": "다음 플러그인을 설치하려고 합니다.",
-  "upgrade.successfulTitle": "설치 성공",
   "upgrade.title": "플러그인 설치",
   "upgrade.upgrade": "업그레이드",
   "upgrade.upgrading": "설치..."

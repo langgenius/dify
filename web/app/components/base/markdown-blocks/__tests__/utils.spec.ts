@@ -2,14 +2,21 @@ import { getMarkdownImageURL, isValidUrl } from '../utils'
 
 vi.mock('@/config', () => ({
   ALLOW_UNSAFE_DATA_SCHEME: false,
-  MARKETPLACE_API_PREFIX: '/api/marketplace',
 }))
+vi.mock('@/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/env')>()
+  return {
+    ...actual,
+    env: { ...actual.env, NEXT_PUBLIC_MARKETPLACE_API_PREFIX: '/api/marketplace' },
+  }
+})
+
+afterEach(() => {
+  vi.doUnmock('@/config')
+  vi.resetModules()
+})
 
 describe('utils', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   describe('isValidUrl', () => {
     it('should return true for http: URLs', () => {
       expect(isValidUrl('http://example.com')).toBe(true)
@@ -57,7 +64,6 @@ describe('utils', () => {
       vi.resetModules()
       vi.doMock('@/config', () => ({
         ALLOW_UNSAFE_DATA_SCHEME: true,
-        MARKETPLACE_API_PREFIX: '/api/marketplace',
       }))
     })
 
@@ -99,20 +105,18 @@ describe('utils', () => {
         'https://cdn.example.com/_assets/image.png',
       )
     })
-
-    it('should use empty string for pathname when undefined', () => {
-      const result = getMarkdownImageURL('./_assets/test.png')
-      expect(result).toBe('/api/marketplace/plugins//_assets/test.png')
-    })
   })
 
   describe('getMarkdownImageURL with trailing slash prefix', () => {
     beforeEach(() => {
       vi.resetModules()
-      vi.doMock('@/config', () => ({
-        ALLOW_UNSAFE_DATA_SCHEME: false,
-        MARKETPLACE_API_PREFIX: '/api/marketplace/',
-      }))
+      vi.doMock('@/env', async (importOriginal) => {
+        const actual = await importOriginal<typeof import('@/env')>()
+        return {
+          ...actual,
+          env: { ...actual.env, NEXT_PUBLIC_MARKETPLACE_API_PREFIX: '/api/marketplace/' },
+        }
+      })
     })
 
     it('should not add extra slash when prefix ends with slash', async () => {

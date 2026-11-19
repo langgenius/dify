@@ -26,7 +26,6 @@ export function EdgeContextmenu({ onClose }: { onClose: () => void }) {
   return (
     <ContextMenuContent
       className="rounded-lg"
-      sideOffset={4}
       onKeyDown={(event) => {
         if (getNodesReadOnly()) return
         handleWorkflowMenuKeyDown(event, [['workflow.delete', deleteEdge]])

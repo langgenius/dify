@@ -28,6 +28,8 @@
   "menus.plugins": "Integrationen",
   "menus.status": "Beta",
   "menus.tools": "Werkzeuge",
+  "settings.accessToken": "Zugriffstoken",
+  "settings.accessTokenDescription": "Erstellen Sie Service-API-Token, die nur Zugriff auf ausgewählte Anwendungen und Wissensdatenbanken gewähren.",
   "settings.agentStrategy": "Agent strategy",
   "settings.billing": "Abrechnung",
   "settings.customEndpoint": "Benutzerdefinierter Endpunkt",

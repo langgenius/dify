@@ -1,18 +1,17 @@
+import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
-import { useWorkflowStore } from '@/app/components/workflow/store'
+import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 
 export const useGetRunAndTraceUrl = () => {
-  const workflowStore = useWorkflowStore()
+  const { pipelineId } = useAtomValue(knowledgePipelineIdentityAtom)
   const getWorkflowRunAndTraceUrl = useCallback(
     (runId: string) => {
-      const { pipelineId } = workflowStore.getState()
-
       return {
         runUrl: `/rag/pipelines/${pipelineId}/workflow-runs/${runId}`,
         traceUrl: `/rag/pipelines/${pipelineId}/workflow-runs/${runId}/node-executions`,
       }
     },
-    [workflowStore],
+    [pipelineId],
   )
 
   return {

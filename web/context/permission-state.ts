@@ -4,10 +4,8 @@ import { atom } from 'jotai'
 import { atomWithQuery } from 'jotai-tanstack-query'
 import { consoleQuery } from '@/service/console'
 import { emptyWorkspacePermissionKeys } from './app-context-normalizers'
-import { authSessionRevisionAtom } from './auth-session-state'
 
-const workspacePermissionKeysQueryAtom = atomWithQuery((get) => {
-  get(authSessionRevisionAtom)
+const workspacePermissionKeysQueryAtom = atomWithQuery(() => {
   return consoleQuery.workspaces.current.rbac.myPermissions.get.queryOptions()
 })
 
@@ -30,18 +28,6 @@ export const workspacePermissionKeysLoadingAtom = atom((get) => {
   return get(workspacePermissionKeysQueryAtom).isPending
 })
 
-export const workspacePermissionKeysFetchingAtom = atom((get) => {
-  return get(workspacePermissionKeysQueryAtom).isFetching
-})
-
 export const workspacePermissionKeysErrorAtom = atom((get) => {
   return get(workspacePermissionKeysQueryAtom).error
-})
-
-export const retryWorkspacePermissionKeysAtom = atom(null, (get) => {
-  return get(workspacePermissionKeysQueryAtom).refetch({ cancelRefetch: false })
-})
-
-export const refreshWorkspacePermissionKeysAfterMutationDenialAtom = atom(null, (get) => {
-  return get(workspacePermissionKeysQueryAtom).refetch({ cancelRefetch: true })
 })

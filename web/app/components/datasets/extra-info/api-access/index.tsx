@@ -25,7 +25,7 @@ const ApiAccess = ({ expand, apiEnabled }: ApiAccessProps) => {
               type="button"
               aria-label={!expand ? t(($) => $['appMenus.apiAccess'], { ns: 'common' }) : undefined}
               className={cn(
-                'nokey w-full rounded-lg border-none bg-transparent p-0 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid',
+                'nokey w-full rounded-lg border-none bg-transparent p-0 text-left',
                 props.className,
               )}
             >
@@ -54,7 +54,8 @@ const ApiAccess = ({ expand, apiEnabled }: ApiAccessProps) => {
           )}
         />
         <PopoverContent
-          placement="top-start"
+          side="top"
+          align="start"
           sideOffset={4}
           alignOffset={-4}
           className="border-none bg-transparent shadow-none"

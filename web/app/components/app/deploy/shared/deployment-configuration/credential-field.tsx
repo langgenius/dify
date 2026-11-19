@@ -1,5 +1,6 @@
 import type { CredentialSlot, WorkflowPath } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { PluginCategory } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import { Field, FieldError } from '@langgenius/dify-ui/field'
 import {
   Select,
   SelectContent,
@@ -7,35 +8,36 @@ import {
   SelectGroupLabel,
   SelectItem,
   SelectItemText,
+  SelectLabel,
   SelectTrigger,
+  SelectValue,
 } from '@langgenius/dify-ui/select'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useTranslation } from 'react-i18next'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
-import useTheme from '@/hooks/use-theme'
-import { Theme } from '@/types/app'
+import { useResolvedTheme } from '@/features/theme/hooks'
+import { credentialFieldId } from './utils/field-id'
 import { credentialProviderName } from './utils/workflow-deployment-input'
 import { WorkflowDependencyPreview } from './workflow-source-popover'
 
 export function CredentialField({
   slot,
   paths = [],
-  value,
+  defaultValue,
   onChange,
 }: {
   slot: CredentialSlot
   paths?: WorkflowPath[]
-  value?: string
+  defaultValue?: string
   onChange: (value: string) => void
 }) {
   const { t } = useTranslation(['deployments'])
   const { t: tPlugin } = useTranslation(['plugin'])
   const { getIconUrl } = useGetIcon()
-  const { theme } = useTheme()
-  const selectedOption = slot.candidates.find((candidate) => candidate.credential_id === value)
+  const theme = useResolvedTheme()
+  const inputId = credentialFieldId(slot)
   const name = credentialProviderName(slot.provider_id)
-  const iconFileName =
-    theme === Theme.dark ? slot.icon_dark || slot.icon : slot.icon || slot.icon_dark
+  const iconFileName = theme === 'dark' ? slot.icon_dark || slot.icon : slot.icon || slot.icon_dark
   const iconSrc = iconFileName ? getIconUrl(iconFileName) : undefined
   const category =
     slot.category === PluginCategory.PLUGIN_CATEGORY_MODEL
@@ -45,41 +47,46 @@ export function CredentialField({
         : ''
 
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex min-w-0 items-center justify-between gap-2 py-0.5">
-        <div className="flex min-w-0 flex-1 items-center gap-1">
-          <span className="size-5 shrink-0 overflow-hidden rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge">
-            {iconSrc ? (
-              <img alt="" src={iconSrc} className="size-full object-contain" />
-            ) : (
-              <span
-                aria-hidden
-                className="i-ri-plug-2-line flex size-full items-center justify-center text-text-tertiary"
-              />
-            )}
-          </span>
-          <span className="truncate system-sm-medium text-text-primary">{name}</span>
-          {category && (
-            <span className="shrink-0 system-xs-regular text-text-tertiary">{category}</span>
-          )}
-        </div>
-        <WorkflowDependencyPreview subjectName={name} paths={paths} />
-      </div>
+    <Field name={inputId}>
       <Select
-        value={value ?? null}
+        defaultValue={defaultValue ?? null}
         onValueChange={(nextValue) => {
           if (nextValue) onChange(nextValue)
         }}
       >
-        <SelectTrigger aria-label={name} className="px-2">
+        <div className="flex min-w-0 items-center justify-between gap-2 py-0.5">
+          <div className="flex min-w-0 flex-1 items-center gap-1">
+            <span className="size-5 shrink-0 overflow-hidden rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge">
+              {iconSrc ? (
+                <img alt="" src={iconSrc} className="size-full object-contain" />
+              ) : (
+                <span
+                  aria-hidden
+                  className="i-ri-plug-2-line flex size-full items-center justify-center text-text-tertiary"
+                />
+              )}
+            </span>
+            <SelectLabel className="min-w-0 system-sm-medium wrap-anywhere text-text-primary">
+              {name}
+            </SelectLabel>
+            {category && (
+              <span className="shrink-0 system-xs-regular text-text-tertiary">{category}</span>
+            )}
+          </div>
+          <WorkflowDependencyPreview subjectName={name} paths={paths} />
+        </div>
+        <SelectTrigger id={inputId} className="ps-2">
           <span className="flex min-w-0 items-center gap-1.5">
             <StatusDot />
-            <span className="truncate">
-              {selectedOption?.display_name ??
+            <SelectValue<string> className="truncate text-text-secondary">
+              {(value) =>
+                slot.candidates.find((candidate) => candidate.credential_id === value)
+                  ?.display_name ??
                 (slot.candidates.length === 0
                   ? t(($) => $['deployDrawer.noCredentialCandidates'])
-                  : t(($) => $['deployDrawer.selectCredential']))}
-            </span>
+                  : t(($) => $['deployDrawer.selectCredential']))
+              }
+            </SelectValue>
           </span>
         </SelectTrigger>
         <SelectContent className="w-(--anchor-width) bg-components-panel-bg-blur backdrop-blur-[5px]">
@@ -104,12 +111,12 @@ export function CredentialField({
                 <SelectItem
                   key={candidate.credential_id}
                   value={candidate.credential_id}
-                  className="h-8 gap-1.5 py-1 pr-1 pl-3 system-md-regular data-selected:bg-state-base-hover"
+                  className="h-8 gap-1.5 py-1 ps-3 pe-1 system-md-regular data-selected:bg-state-base-hover"
                 >
                   <span className="flex size-2 shrink-0 items-center justify-center">
                     <StatusDot size="small" />
                   </span>
-                  <SelectItemText className="me-0 px-0 system-md-regular">
+                  <SelectItemText className="me-0 system-md-regular">
                     {candidate.display_name || candidate.credential_id}
                   </SelectItemText>
                 </SelectItem>
@@ -118,6 +125,7 @@ export function CredentialField({
           )}
         </SelectContent>
       </Select>
-    </div>
+      <FieldError />
+    </Field>
   )
 }

@@ -4,18 +4,24 @@ from typing import override
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
+from flask import Blueprint, Flask
 from flask_login import LoginManager, UserMixin
+from flask_restx import Api, Namespace, Resource
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import HTTPException
 
-from controllers.common.rbac import DatasetId, PlainApp, RBACCheck, Workspace
+from controllers.common.rbac import RBAC_CHECKS_ATTR, DatasetId, PlainApp, RBACCheck, Workspace
 from controllers.console import api as console_api
 from controllers.console import flask_admission
 from controllers.console import wraps as wraps_module
-from controllers.console.error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
+from controllers.console.error import (
+    NotInitValidateError,
+    NotSetupError,
+    PaidPlanRequiredError,
+    UnauthorizedAndForceLogout,
+)
 from controllers.console.workspace.error import AccountNotInitializedError
 from controllers.console.wraps import (
     RBACPermission,
@@ -27,6 +33,8 @@ from controllers.console.wraps import (
     cloud_edition_billing_resource_check,
     cloud_utm_record,
     enterprise_license_required,
+    evaluation_edition_required,
+    evaluation_paid_plan_required,
     is_admin_or_owner_required,
     model_validate,
     only_edition_cloud,
@@ -34,11 +42,13 @@ from controllers.console.wraps import (
     only_edition_self_hosted,
     rbac_permission_required,
     setup_required,
+    validate_request,
     with_current_tenant_id,
     with_current_user,
     with_current_user_id,
 )
 from enums import DeploymentEdition
+from libs.external_api import ExternalApi, register_external_error_handlers
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
 from machinery.errors import ActiveWorkspaceRequiredError
@@ -46,7 +56,9 @@ from models import Account, DifySetup
 from models.account import AccountStatus, TenantAccountRole
 from models.dataset import RateLimitLog
 from services.entities.feature_entities import LicenseStatus
-from tests.unit_tests.config_override import config_overrides_context
+from services.errors.billing import BillingUpstreamUnavailableError
+from tests.helpers import billing_builders as builders
+from tests.helpers.unit.config_override import config_overrides_context
 
 
 @pytest.fixture(autouse=True)
@@ -215,6 +227,52 @@ class TestCurrentContextInjection:
         login_required.assert_called_once()
         account_initialization_required.assert_called_once()
 
+    @pytest.mark.parametrize(
+        ("status", "admitted"),
+        [(AccountStatus.ACTIVE, True), (AccountStatus.UNINITIALIZED, False)],
+    )
+    def test_console_account_admission_without_active_workspace(self, status: AccountStatus, admitted: bool):
+        current_user = make_account()
+        current_user.status = status
+
+        with (
+            patch("controllers.console.flask_admission.setup_required", side_effect=lambda view: view),
+            patch("controllers.console.flask_admission.login_required", side_effect=lambda view: view),
+            patch(
+                "controllers.console.flask_admission.account_initialization_required", side_effect=lambda view: view
+            ) as account_initialization_required,
+            patch(
+                "controllers.console.flask_admission.current_account_with_tenant_optional",
+                return_value=(current_user, None),
+            ),
+            patch("controllers.console.flask_admission.current_account_with_tenant") as with_tenant,
+            patch("controllers.console.flask_admission.get_request_id", return_value="request-1"),
+            patch("controllers.console.flask_admission.get_trace_id", return_value="trace-1"),
+        ):
+
+            class Handler:
+                @flask_admission.console_account_admission(require_active_workspace=False)
+                def get(self, request_context: RequestContext):
+                    return request_context
+
+            with Flask(__name__).test_request_context():
+                if admitted:
+                    result = Handler().get()
+                    assert result.account_id == current_user.id
+                    assert result.active_workspace_id == ""
+                else:
+                    with pytest.raises(AccountNotInitializedError):
+                        Handler().get()
+
+        with_tenant.assert_not_called()
+        account_initialization_required.assert_not_called()
+
+    def test_console_account_admission_without_active_workspace_rejects_role_checks(self):
+        with pytest.raises(ValueError, match="active workspace"):
+            flask_admission.console_account_admission(
+                require_active_workspace=False, allowed_roles=frozenset({TenantAccountRole.OWNER})
+            )
+
     def test_console_email_registration_admission_checks_features_once(self):
         with (
             patch(
@@ -302,21 +360,6 @@ class TestCurrentContextInjection:
 
         assert admission_context.active_workspace_id == "tenant-123"
         assert route_value == "route-value"
-
-    def test_console_account_admission_enforces_declared_edition_first(self):
-        class Handler:
-            @flask_admission.console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
-            def get(self, request_context: RequestContext):
-                return request_context
-
-        with (
-            config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY),
-            Flask(__name__).test_request_context(),
-            pytest.raises(HTTPException) as exc_info,
-        ):
-            Handler().get()
-
-        assert exc_info.value.code == 404
 
     def test_console_account_admission_enforces_legacy_workspace_roles(self):
         current_user = make_account()
@@ -491,6 +534,19 @@ class TestCurrentContextInjection:
 
 class TestRbacPermissionRequired:
     """Test enterprise RBAC decorator."""
+
+    def test_keeps_swagger_docs_but_not_rbac_checks_of_the_wrapped_view(self):
+        def view(**kwargs):
+            return "ok"
+
+        inner_checks = (RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()),)
+        view.__apidoc__ = {"responses": {"404": ("Missing", None, {})}}  # type: ignore[attr-defined]
+        setattr(view, RBAC_CHECKS_ATTR, inner_checks)
+
+        guarded = rbac_permission_required(RBACCheck(RBACPermission.APP_DELETE, PlainApp()))(view)
+
+        assert guarded.__apidoc__ == view.__apidoc__  # type: ignore[attr-defined]
+        assert guarded.__dict__[RBAC_CHECKS_ATTR] != inner_checks
 
     def test_resource_scoped_check_uses_resource_id(self):
         current_user = make_account("account-1")
@@ -717,6 +773,35 @@ class TestModelValidationInjection:
         assert "count" in exc_info.value.description
 
 
+class TestValidateRequest:
+    class Payload(BaseModel):
+        token: dict[str, str]
+
+    @pytest.mark.parametrize("http_method", ["POST", "PUT"])
+    def test_rejected_input_is_redacted_from_response_and_logs(
+        self, caplog: pytest.LogCaptureFixture, http_method: str
+    ) -> None:
+        secret = "submitted-private-token-should-never-appear"
+        app = Flask(__name__)
+        api = Api(app)
+        register_external_error_handlers(api)
+        payload_model = self.Payload
+
+        class Endpoint(Resource):
+            def post(self) -> object:
+                return validate_request(payload_model).model_dump()
+
+            put = post
+
+        api.add_resource(Endpoint, "/items")
+        response = app.test_client().open("/items", method=http_method, json={"token": secret})
+
+        assert response.status_code == 422
+        assert "token" in response.get_data(as_text=True)
+        assert secret not in response.get_data(as_text=True)
+        assert secret not in caplog.text
+
+
 class TestEditionChecks:
     """Test edition-specific decorators"""
 
@@ -776,6 +861,35 @@ class TestEditionChecks:
         # Assert
         assert result == "self_hosted_success"
 
+    @pytest.mark.parametrize(
+        "edition",
+        [DeploymentEdition.ENTERPRISE, DeploymentEdition.CLOUD],
+    )
+    def test_evaluation_edition_required_allows_supported_editions(
+        self,
+        config_overrides: Callable[..., None],
+        edition: DeploymentEdition,
+    ) -> None:
+        @evaluation_edition_required
+        def evaluation_view():
+            return "evaluation_success"
+
+        config_overrides(DEPLOYMENT_EDITION=edition)
+
+        assert evaluation_view() == "evaluation_success"
+
+    def test_evaluation_edition_required_rejects_community(self) -> None:
+        app = Flask(__name__)
+
+        @evaluation_edition_required
+        def evaluation_view():
+            return "evaluation_success"
+
+        with app.test_request_context(), pytest.raises(HTTPException) as exc_info:
+            evaluation_view()
+
+        assert exc_info.value.code == 404
+
 
 class TestBillingPaidPlanRequired:
     @pytest.mark.parametrize("plan", ["professional", "team"])
@@ -784,7 +898,7 @@ class TestBillingPaidPlanRequired:
         def paid_view():
             return "paid_success"
 
-        billing_info = {"subscription": {"plan": plan}}
+        billing_info = builders.subscription_info(plan)
         with (
             patch(
                 "controllers.console.wraps.current_account_with_tenant",
@@ -805,7 +919,9 @@ class TestBillingPaidPlanRequired:
         def paid_view():
             return "paid_success"
 
-        billing_info = {"subscription": {"plan": plan}}
+        billing_info = builders.subscription_info(
+            subscription=builders.subscription_plan().model_copy(update={"plan": plan})
+        )
         with app.test_request_context():
             with (
                 patch(
@@ -819,6 +935,145 @@ class TestBillingPaidPlanRequired:
 
         assert exc_info.value.code == 403
         assert "requires a paid plan" in str(exc_info.value.description)
+
+    def test_should_return_service_unavailable_when_billing_lookup_fails(self) -> None:
+        app = create_app_with_login()
+
+        @cloud_edition_billing_paid_plan_required
+        def paid_view() -> str:
+            return "paid_success"
+
+        with app.test_request_context():
+            with (
+                patch(
+                    "controllers.console.wraps.current_account_with_tenant",
+                    return_value=(MockUser("test_user"), "tenant123"),
+                ),
+                patch(
+                    "controllers.console.wraps.BillingService.get_info",
+                    side_effect=BillingUpstreamUnavailableError("billing unavailable"),
+                ),
+                pytest.raises(HTTPException) as exc_info,
+            ):
+                paid_view()
+
+        assert exc_info.value.code == 503
+        assert "temporarily unavailable" in str(exc_info.value.description)
+
+    @pytest.mark.parametrize("plan", ["professional", "team"])
+    def test_evaluation_guard_allows_cloud_paid_plan(self, config_overrides: Callable[..., None], plan: str) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+
+        @evaluation_paid_plan_required
+        def evaluation_view() -> str:
+            return "allowed"
+
+        with (
+            patch(
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=(MockUser("test_user"), "tenant123"),
+            ),
+            patch(
+                "controllers.console.wraps.BillingService.get_info",
+                return_value=builders.subscription_info(plan),
+            ) as get_info,
+        ):
+            assert evaluation_view() == "allowed"
+
+        get_info.assert_called_once_with("tenant123", exclude_vector_space=True)
+
+    def test_evaluation_guard_rejects_cloud_sandbox(self, config_overrides: Callable[..., None]) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+
+        @evaluation_paid_plan_required
+        def evaluation_view() -> str:
+            return "allowed"
+
+        with (
+            patch(
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=(MockUser("test_user"), "tenant123"),
+            ),
+            patch(
+                "controllers.console.wraps.BillingService.get_info",
+                return_value=builders.subscription_info("sandbox"),
+            ),
+            pytest.raises(HTTPException) as exc_info,
+        ):
+            evaluation_view()
+
+        assert exc_info.value.code == 403
+        assert isinstance(exc_info.value, PaidPlanRequiredError)
+        assert exc_info.value.error_code == "paid_plan_required"
+
+    def test_evaluation_guard_skips_billing_for_enterprise(self, config_overrides: Callable[..., None]) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+
+        @evaluation_paid_plan_required
+        def evaluation_view() -> str:
+            return "allowed"
+
+        with (
+            patch(
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=(MockUser("test_user"), "tenant123"),
+            ),
+            patch("controllers.console.wraps.BillingService.get_info", side_effect=AssertionError("no billing")),
+        ):
+            assert evaluation_view() == "allowed"
+
+    def test_evaluation_guard_fails_closed_on_billing_error(self, config_overrides: Callable[..., None]) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+
+        @evaluation_paid_plan_required
+        def evaluation_view() -> str:
+            return "allowed"
+
+        with (
+            patch(
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=(MockUser("test_user"), "tenant123"),
+            ),
+            patch(
+                "controllers.console.wraps.BillingService.get_info",
+                side_effect=BillingUpstreamUnavailableError("billing unavailable"),
+            ),
+            pytest.raises(HTTPException) as exc_info,
+        ):
+            evaluation_view()
+
+        assert exc_info.value.code == 503
+
+    def test_evaluation_guard_serves_documented_paid_plan_error(self, config_overrides: Callable[..., None]) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        app = Flask(__name__)
+        blueprint = Blueprint("evaluation_plan_guard", __name__, url_prefix="/check")
+        api = ExternalApi(blueprint)
+        namespace = Namespace("evaluation", path="/")
+
+        @namespace.route("/evaluation")
+        class EvaluationResource(Resource):
+            @evaluation_paid_plan_required
+            def get(self) -> dict[str, str]:
+                return {"result": "allowed"}
+
+        api.add_namespace(namespace)
+        app.register_blueprint(blueprint)
+
+        with (
+            patch(
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=(MockUser("test_user"), "tenant123"),
+            ),
+            patch(
+                "controllers.console.wraps.BillingService.get_info",
+                return_value=builders.subscription_info("sandbox"),
+            ),
+        ):
+            response = app.test_client().get("/check/evaluation")
+
+        assert response.status_code == 403
+        assert response.json["code"] == "paid_plan_required"
 
 
 class TestBillingResourceLimits:

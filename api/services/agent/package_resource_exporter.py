@@ -25,7 +25,6 @@ from services.agent.errors import RosterAgentPackageExportFailedError, RosterAge
 from services.agent.roster_package_entities import (
     AgentPackageResources,
     PackageIcon,
-    RosterAgentPackageAudit,
     RosterAgentPackageFile,
     RosterAgentPackageSkill,
 )
@@ -34,7 +33,7 @@ from services.skill_management_service import SkillManagementService
 
 
 class _Storage(Protocol):
-    def load_stream(self, filename: str) -> Generator[bytes, None, None]: ...
+    def load_stream(self, filename: str) -> Generator[bytes]: ...
 
 
 @dataclass(frozen=True)
@@ -44,7 +43,6 @@ class _SkillSource:
     id: str
     scope: Literal["agent_config", "workspace"]
     name: str
-    audit_ref: str
 
 
 @dataclass(frozen=True)
@@ -52,7 +50,6 @@ class _FileSource:
     path: str
     storage_key: str
     id: str
-    audit_ref: str
 
 
 class AgentPackageResourceExporter:
@@ -150,7 +147,6 @@ class AgentPackageResourceExporter:
                         id=resource_id,
                         scope="workspace",
                         name=archive.name,
-                        audit_ref=archive.version_id,
                     )
                 )
                 package.workspace_skills.append(
@@ -162,6 +158,78 @@ class AgentPackageResourceExporter:
                     )
                 )
         self._workspace_sources.clear()
+
+    def read_local_resources(
+        self, package_ref: str
+    ) -> tuple[dict[str, bytes], AgentPackageResources, list[PackageIcon]]:
+        """Read bounded local assets without building an outer archive."""
+        skill_sources, file_sources = self.sources[package_ref]
+        if len(skill_sources) + len(file_sources) + len(self.icon_sources) + 2 > dify_config.AGENT_PACKAGE_MAX_ENTRIES:
+            raise RosterAgentPackageTooLargeError("Agent template has too many resources")
+        payloads: dict[str, bytes] = {}
+        total_size = 0
+
+        def read(path: str, storage_key: str, limit: int) -> tuple[int, str]:
+            nonlocal total_size
+            content = bytearray()
+            try:
+                for chunk in self._storage.load_stream(storage_key):
+                    if len(content) + len(chunk) > min(limit, dify_config.AGENT_PACKAGE_MAX_BYTES - total_size):
+                        raise RosterAgentPackageTooLargeError("Agent template resources exceed the size limit")
+                    content.extend(chunk)
+            except RosterAgentPackageTooLargeError:
+                raise
+            except Exception as exc:
+                raise RosterAgentPackageExportFailedError(f"Unable to read template resource {path!r}") from exc
+            payload = bytes(content)
+            payloads[path] = payload
+            total_size += len(payload)
+            return len(payload), hashlib.sha256(payload).hexdigest()
+
+        skills: list[RosterAgentPackageSkill] = []
+        files: list[RosterAgentPackageFile] = []
+        nested_uncompressed_size = 0
+        skill_packages = SkillPackageService()
+        for item in skill_sources:
+            size, digest = read(item.path, item.storage_key, dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * 1024 * 1024)
+            try:
+                inspection = skill_packages.inspect(content=payloads[item.path], filename=item.path)
+            except SkillPackageError as exc:
+                raise RosterAgentPackageExportFailedError(
+                    f"Agent template contains unusable Skill {item.name!r}"
+                ) from exc
+            if inspection.name != item.name:
+                raise RosterAgentPackageExportFailedError(f"Agent template Skill {item.name!r} has a name mismatch")
+            nested_uncompressed_size += inspection.uncompressed_size
+            if nested_uncompressed_size > dify_config.AGENT_PACKAGE_MAX_BYTES:
+                raise RosterAgentPackageTooLargeError("Agent template nested Skill contents exceed the size limit")
+            skills.append(
+                RosterAgentPackageSkill(
+                    id=item.id,
+                    scope=item.scope,
+                    name=item.name,
+                    path=item.path,
+                    size=size,
+                    sha256=digest,
+                )
+            )
+        for file_source in file_sources:
+            size, digest = read(file_source.path, file_source.storage_key, dify_config.AGENT_PACKAGE_MAX_BYTES)
+            files.append(
+                RosterAgentPackageFile(
+                    id=file_source.id,
+                    path=file_source.path,
+                    size=size,
+                    sha256=digest,
+                )
+            )
+        icons = []
+        for path, key in self.icon_sources.values():
+            size, digest = read(path, key, dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024)
+            icons.append(PackageIcon(id=path.split(".")[0], path=path, size=size, sha256=digest))
+        resources = AgentPackageResources(skills=skills, files=files)
+        resources.validate_packages([self.packages[package_ref]])
+        return payloads, resources, icons
 
     def write_resources(self, archive: zipfile.ZipFile) -> tuple[dict[str, AgentPackageResources], int]:
         entry_count = sum(len(skills) + len(files) for skills, files in self.sources.values()) + 2
@@ -210,7 +278,6 @@ class AgentPackageResourceExporter:
                             path=source.path,
                             size=member_size,
                             sha256=member_digest,
-                            audit=RosterAgentPackageAudit(ref=source.audit_ref),
                         )
                     )
                 else:
@@ -220,7 +287,6 @@ class AgentPackageResourceExporter:
                             path=source.path,
                             size=member_size,
                             sha256=member_digest,
-                            audit=RosterAgentPackageAudit(ref=source.audit_ref),
                         )
                     )
             resources[ref] = AgentPackageResources(skills=skills, files=files)
@@ -241,7 +307,7 @@ class AgentPackageResourceExporter:
 
         skill_file_ids = [item.file_id for item in soul.config_skills if not item.is_missing]
         tool_files = self._tool_files(session=session, tenant_id=tenant_id, file_ids=skill_file_ids)
-        for skill_ref, portable_skill_ref in zip(soul.config_skills, resource_data["config_skills"]):
+        for skill_ref, portable_skill_ref in zip(soul.config_skills, resource_data["config_skills"], strict=False):
             if skill_ref.is_missing:
                 continue
             resource_id = f"s_{skill_offset + len(skill_sources) + 1:06d}"
@@ -258,7 +324,6 @@ class AgentPackageResourceExporter:
                     id=resource_id,
                     scope="agent_config",
                     name=skill_ref.name,
-                    audit_ref=tool_file.id,
                 )
             )
 
@@ -270,7 +335,7 @@ class AgentPackageResourceExporter:
         ]
         file_tool_files = self._tool_files(session=session, tenant_id=tenant_id, file_ids=tool_file_refs)
         upload_files = self._upload_files(session=session, tenant_id=tenant_id, file_ids=upload_file_refs)
-        for file_ref, portable_file_ref in zip(soul.config_files, resource_data["config_files"]):
+        for file_ref, portable_file_ref in zip(soul.config_files, resource_data["config_files"], strict=False):
             if file_ref.is_missing:
                 continue
             resource_id = f"f_{file_offset + len(file_sources) + 1:06d}"
@@ -282,14 +347,12 @@ class AgentPackageResourceExporter:
                     raise RosterAgentPackageExportFailedError(f"Config file {file_ref.name!r} payload is unavailable")
                 storage_key = tool_file.file_key
                 mime_type = file_ref.mime_type or tool_file.mimetype
-                audit_ref = tool_file.id
             else:
                 upload_file = upload_files.get(file_ref.file_id)
                 if upload_file is None:
                     raise RosterAgentPackageExportFailedError(f"Config file {file_ref.name!r} payload is unavailable")
                 storage_key = upload_file.key
                 mime_type = file_ref.mime_type or upload_file.mime_type
-                audit_ref = upload_file.id
             portable_file_ref["file_id"] = resource_id
             portable_file_ref["is_missing"] = False
             portable_file_ref["mime_type"] = mime_type or "application/octet-stream"
@@ -298,7 +361,6 @@ class AgentPackageResourceExporter:
                     path=path,
                     storage_key=storage_key,
                     id=resource_id,
-                    audit_ref=audit_ref,
                 )
             )
 

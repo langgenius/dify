@@ -1,9 +1,13 @@
 'use client'
+
 import type { ConfigurationPublishConfig } from './configuration-lifecycle/types'
 import type { ConfigurationViewModel } from './configuration-view-model'
+import type { ConfigurationAppMode } from '@/app/components/app/configuration/hooks/configuration-lifecycle/types'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { Collection } from '@/app/components/tools/types'
 import type { Inputs, ModelConfig, PromptConfig, PromptVariable } from '@/models/debug'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
+import { useQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import { useQueryState } from 'nuqs'
@@ -22,10 +26,9 @@ import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { PromptMode } from '@/models/debug'
-import { useFileUploadConfig } from '@/service/use-common'
-import { AppModeEnum, ModelModeType } from '@/types/app'
+import { consoleQuery } from '@/service/console'
+import { ModelModeType } from '@/types/app'
 import { supportFunctionCall } from '@/utils/tool-call'
 import { buildConfigurationFeaturesData, getConfigurationPublishingState } from '../utils'
 import { buildConfigurationContextValue } from './build-configuration-context'
@@ -53,21 +56,19 @@ export const useConfiguration = (): ConfigurationViewModel => {
     currentWorkspace,
     isLoadingCurrentWorkspace,
     serverLatestPublishedAt,
-    setShowAppConfigureFeaturesModal,
-    showAppConfigureFeaturesModal,
     updateModelConfig,
   } = useConfigurationAppContext()
-  const { data: fileUploadConfigResponse } = useFileUploadConfig()
+  const { data: fileUploadConfigResponse } = useQuery(consoleQuery.files.upload.get.queryOptions())
+  const [showAppConfigureFeaturesModal, setShowAppConfigureFeaturesModal] = useState(false)
   const [formattingChanged, setFormattingChanged] = useState(false)
   const [hasFetchedDetail, setHasFetchedDetail] = useState(false)
   // oxlint-disable-next-line eslint-react/use-state -- This custom hook returns a state object.
   const featureConfiguration = useFeatureConfigurationState()
-  const [mode, setMode] = useState<AppModeEnum>(AppModeEnum.CHAT)
+  const [mode, setMode] = useState<ConfigurationAppMode>('chat')
   const [publishedConfig, setPublishedConfig] = useState<ConfigurationPublishConfig | null>(null)
   const [conversationId, setConversationId] = useState<string | null>('')
 
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
+  const isBelowSm = useMediaQuery('(width < 40rem)', {})
   const [isShowDebugPanel, { setTrue: showDebugPanel, setFalse: hideDebugPanel }] =
     useBoolean(false)
 
@@ -107,7 +108,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
     visionConfig,
   } = modelConfiguration
   const modelModeType = modelConfig.mode
-  const isAgent = mode === AppModeEnum.AGENT_CHAT
+  const isAgent = mode === 'agent-chat'
 
   const [collectionList, setCollectionList] = useState<Collection[]>([])
   // oxlint-disable-next-line eslint-react/use-state -- This custom hook returns a state object.
@@ -354,6 +355,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
     model: modelConfiguration,
     base: {
       appId,
+      onOpenFeatures: () => setShowAppConfigureFeaturesModal(true),
       canReturnToSimpleMode,
       canTestAndRun: appACLCapabilities.canTestAndRun,
       collectionList,
@@ -394,6 +396,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
 
   return {
     appPublisherProps: {
+      appId,
       disabled: !appACLCapabilities.canReleaseAndVersion,
       publishDisabled: cannotPublish || !appACLCapabilities.canReleaseAndVersion,
       publishedAt: (serverLatestPublishedAt || 0) * 1000,
@@ -410,7 +413,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
     featuresData,
     isAgent,
     isAdvancedMode,
-    isMobile,
+    isBelowSm,
     isShowDebugPanel,
     isShowHistoryModal,
     isShowSelectDataSet,

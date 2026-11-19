@@ -16,6 +16,7 @@ from controllers.console.wraps import (
 )
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
@@ -96,6 +97,7 @@ register_schema_models(console_ns, AppSiteUpdatePayload, AppSiteResponse)
 
 @console_ns.route("/apps/<uuid:app_id>/site")
 class AppSite(Resource):
+    @error_responses(AppNotFoundError)
     @console_ns.doc("update_app_site")
     @console_ns.doc(description="Update application site configuration")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -129,6 +131,7 @@ class AppSite(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/site/access-token-reset")
 class AppSiteAccessTokenReset(Resource):
+    @error_responses(AppNotFoundError)
     @console_ns.doc("reset_app_site_access_token")
     @console_ns.doc(description="Reset access token for application site")
     @console_ns.doc(params={"app_id": "Application ID"})

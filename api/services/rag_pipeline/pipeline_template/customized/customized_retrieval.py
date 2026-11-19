@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from libs.login import resolve_tenant_id_fallback
 from models.dataset import PipelineCustomizedTemplate
+from repositories.knowledge.dataset_read_repository import get_pipeline_template_creator_name
 from services.rag_pipeline.pipeline_template.pipeline_template_base import PipelineTemplateRetrievalBase
 from services.rag_pipeline.pipeline_template.pipeline_template_type import PipelineTemplateType
 
@@ -119,5 +120,5 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
             "chunk_structure": pipeline_template.chunk_structure,
             "export_data": pipeline_template.yaml_content,
             "graph": graph_data,
-            "created_by": pipeline_template.created_user_name(session=session),
+            "created_by": get_pipeline_template_creator_name(pipeline_template, session=session),
         }

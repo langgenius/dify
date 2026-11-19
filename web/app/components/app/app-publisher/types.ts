@@ -1,7 +1,8 @@
+import type { PopoverContentProps } from '@langgenius/dify-ui/popover'
 import type { ModelAndParameter } from '../configuration/debug/types'
 import type { WorkflowToolOutputVariable } from '@/app/components/tools/types'
 import type { InputVar } from '@/app/components/workflow/types'
-import type { PublishWorkflowParams } from '@/types/workflow'
+import type { PublishWorkflowParams, WorkflowKind } from '@/types/workflow'
 
 export type AppPublisherPublishParams = ModelAndParameter | PublishWorkflowParams
 
@@ -18,7 +19,12 @@ type AppPublisherPublishHandler =
 
 type AppPublisherRestoreHandler = () => Promise<unknown> | unknown
 
-export type AppPublisherProps = {
+type AppPublisherWorkflowKindChangeHandler = (
+  targetKind: WorkflowKind,
+) => Promise<unknown> | unknown
+
+export type AppPublisherProps = Pick<PopoverContentProps, 'alignOffset'> & {
+  appId: string
   disabled?: boolean
   publishDisabled?: boolean
   publishedAt?: number
@@ -28,9 +34,11 @@ export type AppPublisherProps = {
   multipleModelConfigs?: ModelAndParameter[]
   /** modelAndParameter is passed when debugWithMultipleModel is true */
   onPublish?: AppPublisherPublishHandler
+  onPublishEvaluation?: AppPublisherPublishHandler
+  onConvertWorkflowKind?: AppPublisherWorkflowKindChangeHandler
+  workflowKindChangePending?: boolean
   onRestore?: AppPublisherRestoreHandler
   onToggle?: (state: boolean) => void
-  crossAxisOffset?: number
   toolPublished?: boolean
   inputs?: InputVar[]
   outputs?: WorkflowToolOutputVariable[]
@@ -39,5 +47,4 @@ export type AppPublisherProps = {
   missingStartNode?: boolean
   hasTriggerNode?: boolean
   startNodeLimitExceeded?: boolean
-  hasHumanInputNode?: boolean
 }

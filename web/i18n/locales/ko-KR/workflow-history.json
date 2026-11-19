@@ -13,7 +13,6 @@
   "versionHistory.action.copyIdSuccess": "클립보드에 복사된 ID",
   "versionHistory.action.deleteDeployedVersionError": "이 워크플로 버전은 하나 이상의 환경에 배포되었거나 배포 중입니다. 버전을 삭제하기 전에 모든 환경에서 배포를 해제하세요.",
   "versionHistory.action.deleteFailure": "버전을 삭제하지 못했습니다.",
-  "versionHistory.action.deleteSuccess": "버전 삭제됨",
   "versionHistory.action.restoreFailure": "버전을 복원하지 못했습니다.",
   "versionHistory.action.restoreInProgress": "{{userName}}님이 버전 {{versionName}}로 복원하는 중입니다...",
   "versionHistory.action.restoreSuccess": "복원된 버전",

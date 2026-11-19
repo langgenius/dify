@@ -16,7 +16,7 @@ from typing import Any, Final, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ValidationError
 
-from controllers.openapi._models import Hint, Hinted, PageQuery, PaginationEnvelope
+from controllers.openapi._models import Hint, Hinted, PageQuery
 
 logger = logging.getLogger(__name__)
 
@@ -32,16 +32,26 @@ class _ClosableStream(Protocol):
     def close(self) -> None: ...
 
 
+def page_after(*, page: int, limit: int, has_more: bool) -> dict[str, Any] | None:
+    """The page-number input of the next page, or None on the last one."""
+    return PageQuery(page=page + 1, limit=limit).model_dump() if has_more else None
+
+
+def cursor_after(*, last_id: str | None, has_more: bool) -> dict[str, Any] | None:
+    """The cursor input of the next page, or None on the last one."""
+    return {"last_id": last_id} if has_more and last_id else None
+
+
 def next_page_hint(
-    *, op: str, path_args: Mapping[str, Any], query: BaseModel | None, envelope: PaginationEnvelope[Any]
-) -> Hint | None:
-    if not envelope.has_more:
-        return None
+    *, op: str, path_args: Mapping[str, Any], query: BaseModel | None, page: Mapping[str, Any] | None
+) -> list[Hint]:
+    """The call's own input with `page` (from `page_after` or `cursor_after`) on top; none on the last page."""
+    if page is None:
+        return []
     params: dict[str, Any] = dict(path_args)
     if query is not None:
         params |= query.model_dump(exclude_none=True)
-    params |= PageQuery(page=envelope.page + 1, limit=envelope.limit).model_dump()
-    return Hint(summary="Next page", op=op, input=params)
+    return [Hint(summary="Next page", op=op, input=params | dict(page))]
 
 
 def _wanted_event(chunk: str, event: str) -> dict[str, Any] | None:
@@ -62,7 +72,7 @@ def _wanted_event(chunk: str, event: str) -> dict[str, Any] | None:
     return parsed
 
 
-def attach_stream_hints(events: Iterable[str], *, event: str, build: HintBuilder) -> Generator[str, None, None]:
+def attach_stream_hints(events: Iterable[str], *, event: str, build: HintBuilder) -> Generator[str]:
     """Yield the source SSE chunks, adding a top-level `hints` list to every `event` that `build` hints.
 
     `event: ping` chunks, other event kinds, events `build` returns nothing for, and events

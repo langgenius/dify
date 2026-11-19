@@ -45,7 +45,6 @@
   "nodes.triggerSchedule.nextExecutionTimes": "Следующие 5 времен выполнения",
   "nodes.triggerSchedule.onMinute": "На минуту",
   "nodes.triggerSchedule.selectFrequency": "Выберите частоту",
-  "nodes.triggerSchedule.selectTime": "Выбрать время",
   "nodes.triggerSchedule.title": "Расписание",
   "nodes.triggerSchedule.useCronExpression": "Используйте cron-выражение",
   "nodes.triggerSchedule.useVisualPicker": "Использовать визуальный выбор",

@@ -94,6 +94,7 @@
   "nodes.humanInput.userActions.buttonTextPlaceholder": "ຄ່າການດຳເນີນການ",
   "nodes.humanInput.userActions.buttonTextTooLong": "ຂໍ້ຄວາມປຸ່ມຕ້ອງບໍ່ເກີນ {{maxLength}} ຕົວອັກສອນ",
   "nodes.humanInput.userActions.chooseStyle": "ເລືອກຮູບແບບປຸ່ມ",
+  "nodes.humanInput.userActions.defaultTitle": "ຂໍ້ຄວາມປຸ່ມ {{index}}",
   "nodes.humanInput.userActions.emptyTip": "ຄລິກປຸ່ມ '+' ເພື່ອເພີ່ມການດຳເນີນການຜູ້ໃຊ້",
   "nodes.humanInput.userActions.title": "ການດຳເນີນການຜູ້ໃຊ້",
   "nodes.humanInput.userActions.tooltip": "ກຳນົດປຸ່ມທີ່ຜູ້ໃຊ້ສາມາດຄລິກເພື່ອຕອບກັບຟອມນີ້. ໄອດີການດຳເນີນການຈະຄວບຄຸມການແຍກສາຂາ. ຄ່າການດຳເນີນການຈະຖືກສົ່ງໄປຫາຂັ້ນຕອນຖັດໄປ.",

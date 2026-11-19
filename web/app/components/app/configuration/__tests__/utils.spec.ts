@@ -1,5 +1,5 @@
 import type { ModelConfig } from '@/models/debug'
-import { AppModeEnum, ModelModeType, Resolution, TransferMethod } from '@/types/app'
+import { ModelModeType, Resolution, TransferMethod } from '@/types/app'
 import {
   buildConfigurationFeaturesData,
   getConfigurationPublishingState,
@@ -35,13 +35,6 @@ const createModelConfig = (overrides: Partial<ModelConfig> = {}): ModelConfig =>
   sensitive_word_avoidance: { enabled: false },
   annotation_reply: null,
   external_data_tools: [],
-  system_parameters: {
-    audio_file_size_limit: 1,
-    file_size_limit: 1,
-    image_file_size_limit: 1,
-    video_file_size_limit: 1,
-    workflow_file_upload_limit: 1,
-  },
   dataSets: [],
   agentConfig: {
     enabled: false,
@@ -136,7 +129,7 @@ describe('configuration utils', () => {
         hasSetContextVar: false,
         hasSelectedDataSets: false,
         isAdvancedMode: true,
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
         modelModeType: ModelModeType.completion,
         promptTemplate: 'ignored',
       })
@@ -165,7 +158,7 @@ describe('configuration utils', () => {
         hasSetContextVar: false,
         hasSelectedDataSets: true,
         isAdvancedMode: false,
-        mode: AppModeEnum.COMPLETION,
+        mode: 'completion' as const,
         modelModeType: ModelModeType.completion,
         promptTemplate: 'Prompt',
       })
@@ -195,7 +188,7 @@ describe('configuration utils', () => {
         hasSetContextVar: true,
         hasSelectedDataSets: false,
         isAdvancedMode: true,
-        mode: AppModeEnum.COMPLETION,
+        mode: 'completion' as const,
         modelModeType: ModelModeType.chat,
         promptTemplate: 'ignored',
       })
@@ -224,7 +217,7 @@ describe('configuration utils', () => {
         hasSetContextVar: true,
         hasSelectedDataSets: false,
         isAdvancedMode: true,
-        mode: AppModeEnum.COMPLETION,
+        mode: 'completion' as const,
         modelModeType: ModelModeType.completion,
         promptTemplate: 'ignored',
       })

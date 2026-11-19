@@ -13,7 +13,6 @@
   "versionHistory.action.copyIdSuccess": "تم نسخ المعرف إلى الحافظة",
   "versionHistory.action.deleteDeployedVersionError": "تم نشر إصدار سير العمل هذا، أو جارٍ نشره، في بيئة واحدة أو أكثر. ألغِ نشره من جميع البيئات قبل حذف الإصدار.",
   "versionHistory.action.deleteFailure": "فشل حذف الإصدار",
-  "versionHistory.action.deleteSuccess": "تم حذف الإصدار",
   "versionHistory.action.restoreFailure": "فشل استعادة الإصدار",
   "versionHistory.action.restoreInProgress": "{{userName}} يقوم بالاستعادة إلى الإصدار {{versionName}}...",
   "versionHistory.action.restoreSuccess": "تم استعادة الإصدار",

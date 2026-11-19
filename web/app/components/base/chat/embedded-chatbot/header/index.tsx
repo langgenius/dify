@@ -16,7 +16,7 @@ import { useEmbeddedChatbotContext } from '../context'
 import { CssTransform } from '../theme/utils'
 
 type IHeaderProps = {
-  isMobile?: boolean
+  isBelowSm?: boolean
   allowResetChat?: boolean
   customerIcon?: React.ReactNode
   title: string
@@ -24,7 +24,7 @@ type IHeaderProps = {
   onCreateNewChat?: () => void
 }
 const Header: FC<IHeaderProps> = ({
-  isMobile,
+  isBelowSm,
   allowResetChat,
   customerIcon,
   title,
@@ -43,6 +43,13 @@ const Header: FC<IHeaderProps> = ({
 
   const handleMessageReceived = useCallback(
     (event: MessageEvent) => {
+      if (event.source !== window.parent || event.data?.type !== 'dify-chatbot-config') return
+      const payload = event.data.payload
+      if (
+        typeof payload?.isToggledByButton !== 'boolean' ||
+        typeof payload?.isDraggable !== 'boolean'
+      )
+        return
       let currentParentOrigin = parentOrigin
       if (!currentParentOrigin && event.data.type === 'dify-chatbot-config') {
         currentParentOrigin = event.origin
@@ -81,7 +88,7 @@ const Header: FC<IHeaderProps> = ({
     )
   }, [isIframe, parentOrigin, showToggleExpandButton, expanded])
 
-  if (!isMobile) {
+  if (!isBelowSm) {
     return (
       <div className="flex h-14 shrink-0 items-center justify-end p-3">
         <div className="flex items-center gap-1">

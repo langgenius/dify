@@ -3,6 +3,13 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zAccountInFreezeError,
+  zAlreadyActivateError,
+  zEmailDomainSuspendedError,
+  zInvitationAccountMismatchError,
+  zWorkspaceMemberLimitReachedError,
+} from './zod.gen.ts'
+import {
   zGetActivateCheckQuery,
   zGetActivateCheckResponse,
   zPostActivateBody,
@@ -49,6 +56,13 @@ export const post = oc
   })
   .input(z.object({ body: zPostActivateBody }))
   .output(zPostActivateResponse)
+  .errors({
+    account_in_freeze: { status: 400, data: zAccountInFreezeError },
+    already_activate: { status: 403, data: zAlreadyActivateError },
+    email_domain_suspended: { status: 400, data: zEmailDomainSuspendedError },
+    invitation_account_mismatch: { status: 403, data: zInvitationAccountMismatchError },
+    workspace_member_limit_reached: { status: 400, data: zWorkspaceMemberLimitReachedError },
+  })
 
 export const activate = {
   post,

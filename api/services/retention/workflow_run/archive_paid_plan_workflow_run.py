@@ -325,10 +325,7 @@ class WorkflowRunArchiver:
 
         # Initialize archive storage (will raise if not configured)
         try:
-            if not self.dry_run:
-                storage = get_archive_storage()
-            else:
-                storage = None
+            storage = get_archive_storage() if not self.dry_run else None
         except ArchiveStorageNotConfiguredError as e:
             click.echo(click.style(f"Archive storage not configured: {e}", fg="red"))
             return summary
@@ -552,7 +549,7 @@ class WorkflowRunArchiver:
         # Filter to paid tenants (any plan except SANDBOX)
         paid = set()
         for tid, info in bulk_info.items():
-            if info and info.get("plan") in (CloudPlan.PROFESSIONAL, CloudPlan.TEAM):
+            if info and info.plan in (CloudPlan.PROFESSIONAL, CloudPlan.TEAM):
                 paid.add(tid)
 
         return paid
