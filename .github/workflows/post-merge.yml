@@ -64,7 +64,6 @@ jobs:
               - 'api/controllers/console/agent/**'
               - 'api/controllers/console/app/agent*.py'
               - 'api/controllers/console/app/audio.py'
-              - 'api/controllers/common/agent_access.py'
               - 'api/controllers/inner_api/agent/**'
               - 'api/controllers/inner_api/wraps.py'
               - 'api/controllers/service_api/app/completion.py'
