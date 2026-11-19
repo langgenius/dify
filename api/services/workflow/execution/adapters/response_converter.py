@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, NewType, TypedDict
 
+from constants.trigger import TRIGGER_PLUGIN_NODE_TYPE
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     NodeExecutionSnapshot,
@@ -46,8 +47,6 @@ from core.app.entities.task_entities import (
 )
 from core.plugin.impl.datasource import PluginDatasourceManager
 from core.tools.entities.tool_entities import ToolProviderType
-from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
-from core.trigger.trigger_manager import TriggerManager
 from core.workflow.human_input_policy import (
     FormDisposition,
     HumanInputSurface,
@@ -77,6 +76,7 @@ from models import Account, EndUser
 from models.workflow import WorkflowRun
 from services.tools.provider_queries import ToolProviderIcons
 from services.tools.tool_manager import ToolManager
+from services.trigger.provider_loader import TriggerManager
 from services.variable_truncator import BaseTruncator, DummyVariableTruncator, VariableTruncator
 from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
 from services.workflow.execution.ports import ExecutionContexts

@@ -22,7 +22,6 @@
     "@testing-library/react": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "@typescript/native": "catalog:",
     "happy-dom": "catalog:",
     "jotai": "catalog:",
     "jotai-scope": "catalog:",

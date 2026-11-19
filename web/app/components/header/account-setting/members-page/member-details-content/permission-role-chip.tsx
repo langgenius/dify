@@ -17,67 +17,62 @@ type PermissionRoleChipProps = {
   className?: string
 }
 
-const PermissionRoleChip = ({
-  roleId,
-  label,
-  isOwner,
-  permissionKeys,
-  onRemove,
-  className,
-}: PermissionRoleChipProps) => {
-  const { t } = useTranslation(['common'])
-  const canRemoveRole = !isOwner && !!onRemove
+export const PermissionRoleChip = memo(
+  ({ roleId, label, isOwner, permissionKeys, onRemove, className }: PermissionRoleChipProps) => {
+    const { t } = useTranslation(['common'])
+    const canRemoveRole = !isOwner && !!onRemove
 
-  const chipRootClassName = cn(
-    'inline-flex h-6 max-w-full min-w-0 items-center gap-1 rounded-full border-[0.5px] border-components-panel-border-subtle bg-background-body px-1.5 py-0.5 system-xs-medium text-text-primary shadow-xs transition-colors',
-    'hover:bg-background-section-burn has-data-popup-open:bg-background-section-burn',
-    className,
-  )
+    const chipRootClassName = cn(
+      'inline-flex h-6 max-w-full min-w-0 items-center gap-1 rounded-full border-[0.5px] border-components-panel-border-subtle bg-background-body px-1.5 py-0.5 system-xs-medium text-text-primary shadow-xs transition-colors',
+      'hover:bg-background-section-burn has-data-popup-open:bg-background-section-burn',
+      className,
+    )
 
-  const removeLabel = `${t(($) => $['operation.remove'], { ns: 'common' })} ${label}`
+    const removeLabel = `${t(($) => $['operation.remove'], { ns: 'common' })} ${label}`
 
-  const chip = (
-    <span className={chipRootClassName}>
-      <PopoverTrigger
-        openOnHover
-        delay={300}
-        closeDelay={200}
-        render={
-          <button
-            type="button"
-            className="min-w-0 truncate rounded-sm border-none bg-transparent p-0 text-start leading-4"
+    const chip = (
+      <span className={chipRootClassName}>
+        <PopoverTrigger
+          openOnHover
+          delay={300}
+          closeDelay={200}
+          render={
+            <button
+              type="button"
+              className="min-w-0 truncate rounded-sm border-none bg-transparent p-0 text-start leading-4"
+            >
+              {label}
+            </button>
+          }
+        />
+        {canRemoveRole && (
+          <IconButton
+            size="xs"
+            aria-label={removeLabel}
+            className="shrink-0 rounded-full"
+            onClick={() => onRemove?.(roleId)}
           >
-            {label}
-          </button>
-        }
-      />
-      {canRemoveRole && (
-        <IconButton
-          size="xs"
-          aria-label={removeLabel}
-          className="shrink-0 rounded-full"
-          onClick={() => onRemove?.(roleId)}
-        >
-          <span aria-hidden className="i-ri-close-line size-3" />
-        </IconButton>
-      )}
-    </span>
-  )
+            <span aria-hidden className="i-ri-close-line size-3" />
+          </IconButton>
+        )}
+      </span>
+    )
 
-  return (
-    <Popover>
-      {chip}
-      <PopoverContent
-        align="start"
-        className="overflow-hidden border-components-panel-border bg-components-tooltip-bg p-0 shadow-lg backdrop-blur-[5px]"
-      >
-        <Suspense fallback={<LoadingPlaceholder className="p-4" />}>
-          <PermissionSummary label={label} permissionKeys={permissionKeys} />
-        </Suspense>
-      </PopoverContent>
-    </Popover>
-  )
-}
+    return (
+      <Popover>
+        {chip}
+        <PopoverContent
+          align="start"
+          className="overflow-hidden border-components-panel-border bg-components-tooltip-bg p-0 shadow-lg backdrop-blur-[5px]"
+        >
+          <Suspense fallback={<LoadingPlaceholder className="p-4" />}>
+            <PermissionSummary label={label} permissionKeys={permissionKeys} />
+          </Suspense>
+        </PopoverContent>
+      </Popover>
+    )
+  },
+)
 
 function PermissionSummary({
   label,
@@ -121,5 +116,3 @@ function PermissionSummary({
     </div>
   )
 }
-
-export default memo(PermissionRoleChip)

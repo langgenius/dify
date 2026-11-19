@@ -1,4 +1,5 @@
-import { maxGoldenQuestionCsvRows, parseGoldenQuestionCsv } from '../golden-question-csv'
+import { parseGoldenQuestionCsv } from '../golden-question-csv'
+import { maxGoldenQuestionCsvRows } from '../golden-question-csv-limits'
 
 describe('parseGoldenQuestionCsv', () => {
   it('accepts localized headers and quoted tag lists', () => {

@@ -2,8 +2,9 @@ import { Dialog, DialogPopup, DialogPortal, DialogTitle } from '@langgenius/dify
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/handles'
+import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import {
   createFileTabSkillDetail,
@@ -24,6 +25,18 @@ import {
 } from './detail-page.fixture'
 
 const mocks = getMocks()
+const supportBoundary = vi.hoisted(() => ({ openZendesk: vi.fn() }))
+
+// boundary: Zendesk loads a third-party widget outside the test page.
+vi.mock('@/app/components/base/zendesk/runtime', () => ({
+  zendeskRuntime: { open: supportBoundary.openZendesk },
+}))
+
+// boundary: the widget key is supplied by the deployment environment.
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  ZENDESK_WIDGET_KEY: 'zendesk-key',
+}))
 
 function TestGotoAnythingDialog() {
   return (
@@ -39,6 +52,45 @@ function TestGotoAnythingDialog() {
 
 describe('SkillDetailPage navigation', () => {
   beforeEach(resetDetailPageFixture)
+
+  it('opens paid Cloud support from expanded and collapsed skill sidebars', async () => {
+    supportBoundary.openZendesk.mockResolvedValue(undefined)
+    mocks.supportPlan = 'team'
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    })
+    seedSystemFeatures(queryClient, { deployment_edition: 'CLOUD' })
+    seedFeatures(queryClient, { billing: { subscription: { plan: 'team' } } })
+    const user = userEvent.setup()
+    renderSkillDetailPage({ queryClient })
+
+    const contact = await screen.findByRole('button', {
+      name: 'common.userProfile.contactSupport',
+    })
+    await user.click(contact)
+    expect(supportBoundary.openZendesk).toHaveBeenCalledWith('CLOUD')
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'skill.skillManagement.detail.collapseSidebar',
+      }),
+    )
+    await waitFor(() => {
+      expect(screen.queryByTestId('skill-detail-sidebar-header')).not.toBeInTheDocument()
+    })
+    await user.hover(
+      screen.getByRole('button', {
+        name: 'common.userProfile.contactSupport',
+      }),
+    )
+    await screen.findByTestId('skill-detail-sidebar-header')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'common.userProfile.contactSupport',
+      }),
+    )
+    await waitFor(() => expect(supportBoundary.openZendesk).toHaveBeenCalledTimes(2))
+  })
 
   it('opens Go to Anything from the sidebar search action', async () => {
     const user = userEvent.setup()

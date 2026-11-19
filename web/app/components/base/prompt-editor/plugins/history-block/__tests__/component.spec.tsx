@@ -1,9 +1,9 @@
 import type { EventEmitterValue } from '@/context/event-emitter'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useEventEmitter } from 'ahooks'
 import { EventEmitterContext } from '@/context/event-emitter'
+import { TestLexicalComposer } from '@/test/lexical'
 import { UPDATE_HISTORY_EVENT_EMITTER } from '../../../constants'
 import HistoryBlockComponent from '../component'
 import { HistoryBlockNode } from '../node'
@@ -16,7 +16,7 @@ const setup = () => {
     emit = (event) => eventEmitter.emit(event)
     return (
       <EventEmitterContext.Provider value={{ eventEmitter }}>
-        <LexicalComposer
+        <TestLexicalComposer
           initialConfig={{
             namespace: 'history-block',
             nodes: [HistoryBlockNode],
@@ -30,7 +30,7 @@ const setup = () => {
             roleName={{ user: 'user-role', assistant: 'assistant-role' }}
             onEditRole={onEditRole}
           />
-        </LexicalComposer>
+        </TestLexicalComposer>
       </EventEmitterContext.Provider>
     )
   }
