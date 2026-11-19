@@ -513,9 +513,13 @@ class TestMemberServiceCases:
         config_overrides: Callable[..., None],
     ) -> None:
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-        monkeypatch.setattr(
-            FeatureService, "get_features", Mock(return_value=FeatureModel(members=LimitationModel(limit=4)))
-        )
+
+        def get_features(*, tenant_id: str, exclude_vector_space: bool) -> FeatureModel:
+            assert exclude_vector_space
+            assert tenant_id == workspace_id
+            return FeatureModel(members=LimitationModel(limit=4))
+
+        monkeypatch.setattr(FeatureService, "get_features", get_features)
         redis = create_autospec(RedisClientWrapper, instance=True)
         gateway = WorkspaceInvitationGateway(tokens=RedisInvitationTokenStore(redis=redis), redis=redis)
         workspace_id, owner_id, _ = members
