@@ -8,7 +8,6 @@ from typing import Never
 
 import httpx
 import pytest
-from pydantic import ValidationError
 from pytest_mock import MockerFixture
 
 from core.plugin.entities.plugin import PluginInstallationSource
@@ -16,7 +15,6 @@ from core.plugin.entities.plugin_daemon import (
     PluginDaemonInnerError,
     PluginModelProviderDeclaration,
     PluginStringResultResponse,
-    PluginVoicesResponse,
 )
 from core.plugin.impl import base as client_module
 from core.plugin.impl.exc import PluginInvokeError, PluginLLMPollingUnsupportedError
@@ -726,6 +724,29 @@ class TestModelClientCases:
 
             assert result == [{"name": "Alloy", "value": "alloy"}, {"name": "Echo", "value": "echo"}]
 
+        def test_get_tts_model_voices_rejects_null_value_from_daemon(self, mocker: MockerFixture) -> None:
+            client = PluginModelClient()
+            response_line = json.dumps(
+                {
+                    "code": 0,
+                    "message": "",
+                    "data": {"voices": [{"name": "Alloy", "value": None}]},
+                }
+            )
+            mocker.patch.object(client, "_stream_request", return_value=iter([response_line]))
+
+            with pytest.raises(ValueError, match='"value": null'):
+                client.get_tts_model_voices(
+                    tenant_id="tenant-1",
+                    user_id="user-1",
+                    plugin_id="org/plugin",
+                    provider="provider-a",
+                    model="tts-a",
+                    credentials={},
+                    language="en",
+                    plugin_unique_identifier=PLUGIN_IDENTIFIER,
+                )
+
         def test_get_tts_model_voices_empty_returns_list(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
@@ -742,14 +763,6 @@ class TestModelClientCases:
                 )
                 == []
             )
-
-        def test_plugin_voices_response_rejects_null_voice_value(self) -> None:
-            with pytest.raises(ValidationError) as exc_info:
-                PluginVoicesResponse.model_validate({"voices": [{"name": "Alloy", "value": None}]})
-
-            error = exc_info.value.errors()[0]
-            assert error["loc"] == ("voices", 0, "value")
-            assert error["type"] == "string_type"
 
         def test_invoke_speech_to_text(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
