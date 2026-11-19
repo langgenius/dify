@@ -375,6 +375,22 @@ def test_view_of_a_graph_job_without_a_run_id_and_without_a_reader_fails_and_is_
     assert (stored.status, stored.failure) == (JobStatus.FAILED, JobFailure.RUN_NOT_CONFIRMED)
 
 
+def test_view_of_a_chatflow_answered_without_a_run_succeeds_once_its_reader_is_gone() -> None:
+    """An annotation reply or input moderation: the reader recorded success and the message, but no run id."""
+    harness = _harness()
+    job = _job(harness, AppMode.ADVANCED_CHAT)
+    harness.store.record_ids(job.id, JobIds(task_id="task-1", message_id="msg-1", conversation_id="conv-1"))
+    harness.store.settle(job.id, JobEnding(status=JobStatus.SUCCEEDED))
+    _lapse_alive_key(harness, job.id)
+
+    view = harness.service.view(OWNER, job.id)
+
+    assert (view.status, view.error) == (JobStatus.SUCCEEDED, None)
+    stored = harness.store.get(job.id)
+    assert stored is not None
+    assert stored.failure is None
+
+
 class ReaderEndsDuringGetStore(RedisRunJobStore):
     """The reader stores the run id and ends right after the view has read the record."""
 
