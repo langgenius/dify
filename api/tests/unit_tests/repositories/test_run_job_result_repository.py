@@ -1,6 +1,7 @@
 import json
 import logging
 from collections.abc import Iterator, Mapping
+from datetime import datetime
 from typing import override
 from uuid import uuid4
 
@@ -12,7 +13,7 @@ from extensions.ext_application_services import ApplicationServices
 from graphon.enums import WorkflowExecutionStatus
 from models.enums import CreatorUserRole
 from models.model import AppMode
-from models.workflow import WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
+from models.workflow import WorkflowPause, WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
 from repositories import run_job_result_repository
 from repositories.run_job_result_repository import SQLAlchemyRunResultReader
 from services.run_job_contracts import JobStatus
@@ -112,6 +113,72 @@ def test_run_of_an_unknown_id_or_another_tenant_is_none(
 
     assert reader.run(tenant_id=tenant_id, run_id=str(uuid4())) is None
     assert reader.run(tenant_id=str(uuid4()), run_id=row.id) is None
+
+
+STARTED_AT = datetime(2026, 11, 18, 8, 0, 0)
+RESUMED_AT = datetime(2026, 11, 18, 11, 30, 0)
+
+
+def _started_at(session: Session, row: WorkflowRun, at: datetime) -> None:
+    row.created_at = at
+    session.commit()
+
+
+def _add_pause(session: Session, row: WorkflowRun, *, resumed_at: datetime | None) -> None:
+    pause = WorkflowPause(workflow_id=row.workflow_id, workflow_run_id=row.id, state_object_key="state.json")
+    pause.resumed_at = resumed_at
+    session.add(pause)
+    session.commit()
+
+
+def _running_since(sqlite_session_factory: sessionmaker[Session], row: WorkflowRun) -> datetime | None:
+    result = SQLAlchemyRunResultReader(session_factory=sqlite_session_factory).run(
+        tenant_id=row.tenant_id, run_id=row.id
+    )
+    assert result is not None
+    return result.running_since
+
+
+def test_a_running_run_that_never_paused_has_run_since_it_started(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    row = _add_run(sqlite_session, tenant_id=str(uuid4()), status=WorkflowExecutionStatus.RUNNING)
+    _started_at(sqlite_session, row, STARTED_AT)
+
+    assert _running_since(sqlite_session_factory, row) == STARTED_AT
+
+
+def test_a_running_run_resumed_after_a_pause_has_run_since_it_resumed(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    """Paused time does not count: core's own time limit restarts when a run resumes."""
+    row = _add_run(sqlite_session, tenant_id=str(uuid4()), status=WorkflowExecutionStatus.RUNNING)
+    _started_at(sqlite_session, row, STARTED_AT)
+    _add_pause(sqlite_session, row, resumed_at=RESUMED_AT)
+
+    assert _running_since(sqlite_session_factory, row) == RESUMED_AT
+
+
+def test_a_running_run_with_a_pause_not_marked_resumed_has_no_known_running_time(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    row = _add_run(sqlite_session, tenant_id=str(uuid4()), status=WorkflowExecutionStatus.RUNNING)
+    _add_pause(sqlite_session, row, resumed_at=None)
+
+    assert _running_since(sqlite_session_factory, row) is None
+
+
+@pytest.mark.parametrize(
+    "stored",
+    [WorkflowExecutionStatus.PAUSED, WorkflowExecutionStatus.SUCCEEDED, WorkflowExecutionStatus.FAILED],
+)
+def test_a_run_that_is_not_running_has_no_running_time(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], stored: WorkflowExecutionStatus
+) -> None:
+    row = _add_run(sqlite_session, tenant_id=str(uuid4()), status=stored)
+    _add_pause(sqlite_session, row, resumed_at=RESUMED_AT)
+
+    assert _running_since(sqlite_session_factory, row) is None
 
 
 class _RecordedFrames:

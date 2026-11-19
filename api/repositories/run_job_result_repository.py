@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from datetime import datetime
 from types import MappingProxyType
 from typing import Final
 
@@ -12,6 +13,7 @@ from core.app.entities.task_entities import HumanInputRequiredResponse
 from core.workflow.human_input_policy import HumanInputSurface
 from graphon.enums import WorkflowExecutionStatus
 from models.model import AppMode
+from models.workflow import WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from services.run_job_contracts import JobStatus
 from services.run_job_frames import pending_form
@@ -45,8 +47,9 @@ class SQLAlchemyRunResultReader:
         """Read the stored result of a run.
 
         Precondition: none.
-        Postcondition: the run's job status, outputs and error; None when the run is not stored for the tenant or
-        its stored status has no job status.
+        Postcondition: the run's job status, outputs and error, and for a running run when it started or last
+        resumed (see _running_since); None when the run is not stored for the tenant or its stored status has no job
+        status.
         """
         row = self._runs.get_workflow_run_by_id_and_tenant_id(tenant_id=tenant_id, run_id=run_id)
         if row is None:
@@ -54,7 +57,21 @@ class SQLAlchemyRunResultReader:
         status = STORED_STATUS_TO_JOB_STATUS.get(row.status)
         if status is None:
             return None
-        return RunResult(status=status, outputs=row.outputs_dict, error=row.error)
+        running_since = self._running_since(row) if status is JobStatus.RUNNING else None
+        return RunResult(status=status, outputs=row.outputs_dict, error=row.error, running_since=running_since)
+
+    def _running_since(self, row: WorkflowRun) -> datetime | None:
+        """Read when a running run started or last resumed.
+
+        Precondition: row is a running run.
+        Postcondition: the run's created_at when it has no pause row (core writes it when the run starts); the pause
+        row's resumed_at when it has one (core keeps a run's latest pause row until the resumed run ends, and its
+        time limit restarts at the resume); None for a pause row not marked resumed, as the time is then not known.
+        """
+        pause = self._runs.get_workflow_pause(row.id)
+        if pause is None:
+            return row.created_at
+        return pause.resumed_at
 
     def pending_form(
         self, *, tenant_id: str, app_id: str, run_id: str, mode: AppMode
