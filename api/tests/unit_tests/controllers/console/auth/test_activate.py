@@ -164,7 +164,10 @@ class TestActivateApi:
                 return_value=_services(activation_service),
             ),
             patch("controllers.console.auth.activate.extract_access_token", return_value="access-token"),
-            patch("controllers.console.auth.activate.current_account", return_value=account),
+            patch(
+                "controllers.console.auth.activate.current_account_with_tenant_optional",
+                return_value=(account, None),
+            ),
         ):
             response = ActivateApi().post()
 
@@ -195,7 +198,7 @@ class TestActivateApi:
                 return_value=_services(activation_service),
             ),
             patch("controllers.console.auth.activate.extract_access_token", return_value=None),
-            patch("controllers.console.auth.activate.current_account") as resolve_account,
+            patch("controllers.console.auth.activate.current_account_with_tenant_optional") as resolve_account,
         ):
             response = ActivateApi().post()
 

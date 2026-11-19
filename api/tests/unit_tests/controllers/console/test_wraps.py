@@ -241,7 +241,10 @@ class TestCurrentContextInjection:
             patch(
                 "controllers.console.flask_admission.account_initialization_required", side_effect=lambda view: view
             ) as account_initialization_required,
-            patch("controllers.console.flask_admission.current_account", return_value=current_user),
+            patch(
+                "controllers.console.flask_admission.current_account_with_tenant_optional",
+                return_value=(current_user, None),
+            ),
             patch("controllers.console.flask_admission.current_account_with_tenant") as with_tenant,
             patch("controllers.console.flask_admission.get_request_id", return_value="request-1"),
             patch("controllers.console.flask_admission.get_trace_id", return_value="trace-1"),

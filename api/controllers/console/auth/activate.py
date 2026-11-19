@@ -1,6 +1,7 @@
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
+from werkzeug.exceptions import Unauthorized
 
 from constants.languages import supported_language
 from controllers.common.schema import query_params_from_model, register_schema_models
@@ -17,7 +18,7 @@ from controllers.console.wraps import model_validate
 from extensions.ext_application_services import application_services
 from libs.external_api import error_responses
 from libs.helper import EmailStr, dump_response, timezone
-from libs.login import current_account
+from libs.login import current_account_with_tenant_optional
 from libs.token import extract_access_token
 from services.account_errors import AccountEmailDomainSuspendedError as EmailDomainSuspendedRegistrationError
 from services.account_errors import (
@@ -139,7 +140,10 @@ class ActivateApi(Resource):
         """
         authenticated_account_id: str | None = None
         if extract_access_token(request) is not None:
-            authenticated_account_id = current_account().id
+            account, _ = current_account_with_tenant_optional()
+            if account is None:
+                raise Unauthorized()
+            authenticated_account_id = account.id
 
         try:
             application_services().accounts.activation.activate(

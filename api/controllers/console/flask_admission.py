@@ -25,7 +25,6 @@ from enums import DeploymentEdition
 from enums.account import TenantAccountRole
 from extensions.ext_login import ACCOUNT_ONLY_ADMISSION_ATTR
 from libs.login import (
-    current_account,
     current_account_with_tenant,
     current_account_with_tenant_optional,
     login_required,
@@ -138,10 +137,13 @@ def console_account_admission[T, **P, R](
                 account = account_with_tenant.account
                 tenant_id = account_with_tenant.tenant_id
             else:
-                account = current_account()
-                if require_initialized and account.status == AccountStatus.UNINITIALIZED:
+                signed_in, current_tenant_id = current_account_with_tenant_optional()
+                if signed_in is None:
+                    raise Unauthorized()
+                if require_initialized and signed_in.status == AccountStatus.UNINITIALIZED:
                     raise AccountNotInitializedError()
-                tenant_id = account.current_tenant_id or ""
+                account = signed_in
+                tenant_id = current_tenant_id or ""
             if allowed_roles is not None and not dify_config.RBAC_ENABLED and account.role not in allowed_roles:
                 raise Forbidden()
             if rbac_checks is not None:

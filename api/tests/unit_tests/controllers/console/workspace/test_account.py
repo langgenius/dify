@@ -877,7 +877,10 @@ class TestAccountsCases:
                 app.test_request_context("/account/profile"),
                 patch("controllers.console.wraps._is_setup_completed", return_value=True),
                 config_overrides_context(LOGIN_DISABLED=True),
-                patch("controllers.console.flask_admission.current_account", return_value=user),
+                patch(
+                    "controllers.console.flask_admission.current_account_with_tenant_optional",
+                    return_value=(user, None),
+                ),
                 patch(
                     "controllers.console.flask_admission.current_account_with_tenant",
                     side_effect=ActiveWorkspaceRequiredError(),
