@@ -213,6 +213,13 @@ describe('skill MCP page', () => {
     for (const span of named) expect(ops, span).toContain(span)
   })
 
+  it('says a repeated idempotency key returns the same job, also a failed one', async () => {
+    const page = await readFile(join(SKILL_DIR, MCP_PAGE), 'utf8')
+    const runs = page.split('\n').find((line) => line.startsWith('- **Runs.**')) ?? ''
+    expect(runs).toMatch(/same `idempotency_key` returns the same job, also when it failed/)
+    expect(runs).toMatch(/use a new key/)
+  })
+
   it('says what an empty workspace list means and not to guess an id', async () => {
     const page = await readFile(join(SKILL_DIR, MCP_PAGE), 'utf8')
     const reach = page.split('\n').find((line) => line.startsWith('- **Reach.**')) ?? ''
