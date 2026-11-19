@@ -8,10 +8,12 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.entities.provider_configuration import ProviderModelBundle
-from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.plugin_service import PluginService
-from enums import DeploymentEdition
+from extensions.application_services.moderation_policy import (
+    platform_moderation_configured,
+    platform_moderation_enabled,
+)
 from graphon.model_runtime.entities.model_entities import ModelType
 from machinery.context import AppRequestContext
 from models.provider import ProviderType
@@ -31,34 +33,31 @@ if TYPE_CHECKING:
     from core.model_manager import LLMModerationPolicy
 
 
-def platform_moderation_enabled(bundle: ProviderModelBundle, *, credential_id: str | None = None) -> bool:
-    """Select hosted credits or this signup's bound credential, never a BYOK label or token."""
+def _managed_tokener_moderation_enabled(bundle: ProviderModelBundle, credential_id: str | None) -> bool:
+    """Select a native managed credential without changing shared hosted admission.
+
+    Only a durably bound credential of an enrolled workspace qualifies. Source
+    provider credits are handled by the generic SYSTEM policy.
+    """
+    configuration = bundle.configuration
     if (
-        dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD
-        or not dify_config.HOSTED_MODERATION_ENABLED
+        not platform_moderation_configured()
         or bundle.model_type_instance.model_type != ModelType.LLM
+        or configuration.using_provider_type != ProviderType.CUSTOM
+        or credential_id is None
+        or configuration.provider.provider != dify_config.TOKENER_PROVIDER_NAME
     ):
         return False
-    if bundle.configuration.using_provider_type == ProviderType.CUSTOM:
-        if credential_id is None or bundle.configuration.provider.provider != dify_config.TOKENER_PROVIDER_NAME:
-            return False
-        from core.db.session_factory import session_factory
-        from extensions.application_services.model_billing import build_model_billing_profiles
 
-        if not build_model_billing_profiles().resolve(bundle.configuration.tenant_id).uses_tokener:
-            return False
-        bound_id, _active = TokenerBootstrapRepository(sessions=session_factory.create_session).bound_credential(
-            bundle.configuration.tenant_id, bundle.configuration.provider.provider
-        )
-        return bound_id is not None and credential_id == bound_id
-    if bundle.configuration.using_provider_type != ProviderType.SYSTEM:
+    from core.db.session_factory import session_factory
+    from extensions.application_services.model_billing import build_model_billing_profiles
+
+    if not build_model_billing_profiles().resolve(configuration.tenant_id).uses_tokener:
         return False
-    configuration = bundle.configuration.system_configuration
-    return configuration.current_quota_type in {ProviderQuotaType.TRIAL, ProviderQuotaType.PAID} and any(
-        quota.quota_type == configuration.current_quota_type
-        and quota.quota_unit in {QuotaUnit.CREDITS, QuotaUnit.TIMES}
-        for quota in configuration.quota_configurations
+    bound_id, _active = TokenerBootstrapRepository(sessions=session_factory.create_session).bound_credential(
+        configuration.tenant_id, configuration.provider.provider
     )
+    return bound_id is not None and credential_id == bound_id
 
 
 def build_platform_moderation_service() -> ModerationService:
@@ -90,7 +89,7 @@ def bind_hosted_llm_moderation(
     bundle: ProviderModelBundle, *, policy: LLMModerationPolicy | None, credential_id: str | None = None
 ) -> LLMModerationPolicy | None:
     """Bind both phases; a native selected credential requires durable ownership reads that fail closed."""
-    if not platform_moderation_enabled(bundle, credential_id=credential_id):
+    if not (platform_moderation_enabled(bundle) or _managed_tokener_moderation_enabled(bundle, credential_id)):
         return policy
     guard = build_llm_moderation_guard(
         AppRequestContext(tenant_id=bundle.configuration.tenant_id, app_id=""),

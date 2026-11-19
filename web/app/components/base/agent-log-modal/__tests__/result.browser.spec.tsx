@@ -2,6 +2,7 @@ import { userEvent } from 'vite-plus/test/browser'
 import ResultPanel from '../result'
 import { renderAgentLog } from './browser-test-env'
 
+// boundary: keep Monaco's separately loaded editor runtime and workers out of this view test.
 vi.mock('@monaco-editor/react', async () => {
   const { createMonacoEditorModuleMock } = await import('@/test/monaco-editor-mock')
   return createMonacoEditorModuleMock()

@@ -7,6 +7,7 @@ import { consoleQuery } from '@/service/console'
 import { Type } from '../../types'
 import { StructureOutput } from '../structure-output'
 
+// boundary: keep Monaco's separately loaded editor runtime and workers out of this view test.
 vi.mock('@monaco-editor/react', () => {
   function Editor({
     value,
