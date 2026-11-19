@@ -7,7 +7,10 @@ import accountSettings from '@/i18n/locales/en-US/account-settings.json'
 import common from '@/i18n/locales/en-US/common.json'
 import deployments from '@/i18n/locales/en-US/deployments.json'
 import navigation from '@/i18n/locales/en-US/navigation.json'
-import { createNetworkAccessGroupFixture } from '@/test/console/network-access'
+import {
+  createNetworkAccessGroupFixture,
+  seedNetworkAccessGroups,
+} from '@/test/console/network-access'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { installFakeApi } from '@/test/fake-api'
@@ -32,31 +35,32 @@ async function renderPoliciesSettings(width = 320) {
   })
   const groups = [
     createNetworkAccessGroupFixture({
+      id: '1f9a3c2e-5b7d-4e8f-9a0b-1c2d3e4f5a6b',
       name: 'Internal Network',
       used_by_count: 2,
       updated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     }),
     createNetworkAccessGroupFixture({
-      id: 'group-2',
+      id: '2a8b4d3f-6c8e-4f9a-8b1c-2d3e4f5a6b7c',
       name: 'Engineering Office',
       allowed_cidrs: ['192.0.2.0/24'],
       updated_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
     }),
   ]
-  onTestFinished(
-    installFakeApi({
-      console: {
-        workspaces: {
-          current: {
-            networkAccessGroups: {
-              get: () => ({ tenant_id: 'workspace-1', entitled: true, groups }),
-              currentIp: { get: () => ({ client_ip: '203.0.113.42' }) },
-            },
+  const fake = installFakeApi({
+    console: {
+      workspaces: {
+        current: {
+          networkAccessGroups: {
+            get: () => ({ tenant_id: 'workspace-1', entitled: true, groups }),
+            currentIp: { get: () => ({ client_ip: '203.0.113.42' }) },
+            byGroupId: { delete: () => ({ deleted: true }) },
           },
         },
       },
-    }),
-  )
+    },
+  })
+  onTestFinished(fake)
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
       <I18nextProvider i18n={i18n}>
@@ -71,7 +75,7 @@ async function renderPoliciesSettings(width = 320) {
     </QueryClientTestProvider>,
   )
   await expect.element(screen.getByRole('table', { name: 'IP Policies' })).toBeVisible()
-  return { screen, queryClient, groups }
+  return { screen, queryClient, groups, fake }
 }
 
 async function expectReadableText(content: Element, viewport: HTMLElement) {
@@ -161,6 +165,79 @@ it('keeps policy data readable and keyboard scrollable inside Settings at 320 px
   } finally {
     await screen.unmount()
     queryClient.clear()
+  }
+})
+
+it('restores edit focus to the opener or the heading if its row disappears', async () => {
+  vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
+  try {
+    const { screen, queryClient, groups } = await renderPoliciesSettings(1000)
+    const more = screen.getByRole('button', { name: 'More actions for Internal Network' })
+    await more.click()
+    await screen.getByRole('menuitem', { name: 'Edit', exact: true }).click()
+    const editor = screen.getByRole('dialog', { name: 'Edit IP Policy' })
+    await expect.element(editor.getByRole('button', { name: 'Close', exact: true })).toHaveFocus()
+    await expect.element(screen.getByRole('menu')).not.toBeInTheDocument()
+    await userEvent.keyboard('{Escape}')
+    await expect.element(more).toHaveFocus()
+
+    await screen.getByRole('button', { name: 'Internal Network', exact: true }).click()
+    await expect.element(editor).toBeVisible()
+    seedNetworkAccessGroups(queryClient, { groups: groups.slice(1) })
+    await userEvent.keyboard('{Escape}')
+    await expect.element(editor).not.toBeInTheDocument()
+    await expect.element(screen.getByRole('heading', { name: 'IP Policies' })).toHaveFocus()
+  } finally {
+    vi.unstubAllGlobals()
+  }
+})
+
+it('confirms using the latest policy details and focuses the list after deleting the row', async () => {
+  vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
+  try {
+    const { screen, queryClient, groups, fake } = await renderPoliciesSettings(1000)
+    const policies = fake.console.workspaces.current.networkAccessGroups
+    let remainingGroups = groups
+    policies.get.mockImplementation(() => ({
+      tenant_id: 'workspace-1',
+      entitled: true,
+      groups: remainingGroups,
+    }))
+    policies.byGroupId.delete.mockImplementation(() => {
+      remainingGroups = groups.slice(1)
+      return { deleted: true }
+    })
+
+    await screen.getByRole('button', { name: 'More actions for Internal Network' }).click()
+    await screen.getByRole('menuitem', { name: 'Delete', exact: true }).click()
+    const confirmation = screen.getByRole('alertdialog', { name: 'Delete “Internal Network”?' })
+    await expect
+      .element(confirmation.getByText(common['settings.ipPolicyDeleteBoundDescription']))
+      .toBeVisible()
+    const refreshedPolicy = { ...groups[0]!, version: 7, used_by_count: 0 }
+    remainingGroups = [refreshedPolicy, ...groups.slice(1)]
+    seedNetworkAccessGroups(queryClient, { groups: remainingGroups })
+    await expect
+      .element(confirmation.getByText(common['settings.ipPolicyDeleteDescription']))
+      .toBeVisible()
+    await confirmation.getByRole('button', { name: 'Delete', exact: true }).click()
+    await expect
+      .poll(() => policies.byGroupId.delete)
+      .toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          params: { group_id: refreshedPolicy.id },
+          query: { expected_version: 7 },
+        }),
+      )
+    await expect
+      .element(screen.getByRole('button', { name: 'Internal Network', exact: true }))
+      .not.toBeInTheDocument()
+    await expect.element(confirmation).not.toBeInTheDocument()
+    await expect
+      .element(screen.getByRole('heading', { name: 'IP Policies', exact: true }))
+      .toHaveFocus()
+  } finally {
+    vi.unstubAllGlobals()
   }
 })
 
