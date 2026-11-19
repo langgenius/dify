@@ -144,7 +144,6 @@ project-excludes = [
   "services/test_workflow_collaboration_service.py",
   "services/test_workflow_node_execution_trace_service.py",
   "services/test_workflow_service.py",
-  "services/tools/test_tools_transform_service.py",
   "services/test_workflow_draft_variable_service.py",
   "tasks/app_generate/test_workflow_execute_task.py",
   "services/agent/test_dsl_service.py",
