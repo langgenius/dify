@@ -285,6 +285,26 @@ class TestPersistActivation:
         assert membership.role == TenantAccountRole.EDITOR
         assert membership.current is True
 
+    def test_joining_initializes_an_account_left_uninitialized_by_sign_up(
+        self,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        account, _ = _persist_invitation_state(sqlite_session)
+        account.status = AccountStatus.UNINITIALIZED
+        sqlite_session.commit()
+        repository = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
+
+        result = repository.activate(_invitation(), role="normal", setup=None)
+
+        assert result is not None
+        assert result.membership_created is True
+        sqlite_session.expire_all()
+        reloaded = sqlite_session.get(Account, account.id)
+        assert reloaded is not None
+        assert reloaded.status == AccountStatus.ACTIVE
+        assert reloaded.initialized_at is not None
+
     def test_does_not_create_membership_when_creation_is_disallowed(
         self,
         sqlite_session: Session,
