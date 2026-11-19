@@ -8,11 +8,13 @@ import time
 import uuid
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, replace
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Final, Protocol
 
 from flask import copy_current_request_context
 
 from core.app.entities.task_entities import HumanInputRequiredResponse
+from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from services.run_job_contracts import (
@@ -35,6 +37,8 @@ POLL_INTERVAL_SECONDS: Final = 1.0
 READER_THREAD_NAME: Final = "run-job-reader"
 # Keyed job ids are uuid5 names in this namespace, so a repeated key names the same job.
 JOB_ID_NAMESPACE: Final = uuid.UUID("5c1f2f86-6a47-4d3e-9a39-2f0b8d7c4e21")
+# Core checks its run time limit only when a node finishes, so a live run can pass the limit by one node's length.
+RUN_TIME_LIMIT_MARGIN: Final = timedelta(minutes=15)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -50,6 +54,8 @@ class RunResult:
     status: JobStatus
     outputs: Mapping[str, Any] | None = None
     error: str | None = None
+    # When a running run started or last resumed (naive UTC); None when it is not running or this is not known.
+    running_since: datetime | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -195,12 +201,15 @@ class RunJobService:
         tasks: RunTaskControl,
         max_background_runs: int,
         max_waiters: int,
+        run_time_limit: timedelta,
         sleep: Callable[[float], None] = time.sleep,
         monotonic: Callable[[], float] = time.monotonic,
+        now: Callable[[], datetime] = naive_utc_now,
     ) -> None:
         """Create the service.
 
-        Precondition: both caps are positive; sleep and monotonic are consistent with each other.
+        Precondition: both caps are positive; run_time_limit is core's limit on one run's execution time; sleep and
+        monotonic are consistent with each other; now returns naive UTC time, as run rows store it.
         Postcondition: no slot or waiter is held.
         """
         self._store = store
@@ -208,8 +217,10 @@ class RunJobService:
         self._stopper: JobStopper = TaskControlStopper(tasks)
         self._slots = threading.BoundedSemaphore(max_background_runs)
         self._waiters = threading.BoundedSemaphore(max_waiters)
+        self._stalled_after = run_time_limit + RUN_TIME_LIMIT_MARGIN
         self._sleep = sleep
         self._monotonic = monotonic
+        self._now = now
 
     def start(self, opening: JobOpening, launch: Callable[[], Iterable[str]]) -> str:
         """Create a job and start its run, or return the earlier job for the same idempotency key.
@@ -281,7 +292,9 @@ class RunJobService:
         Postcondition: a view of the job; a GRAPH job with a stored run takes status, outputs and error from the
         run, and its form from the pending form while paused (None otherwise). A GRAPH job
         without a run id whose reader died (alive key gone, no ending) is FAILED as RUN_NOT_CONFIRMED, and that
-        is saved; once saved it is final for good, even if a run id and a run row appear later. The alive key is
+        is saved; once saved it is final for good, even if a run id and a run row appear later. A GRAPH job whose run
+        stays running past core's time limit and RUN_TIME_LIMIT_MARGIN (see _stalled) is FAILED as RUN_STALLED, and
+        that is saved and final for good in the same way. The alive key is
         read before the record. Without a visible
         run row, and for
         MESSAGE jobs, the record's own status and error are used, with no form. Raises JobNotFoundError when the job is
@@ -325,6 +338,10 @@ class RunJobService:
         run = self._results.run(tenant_id=record.owner.tenant_id, run_id=record.run_id)
         if run is None:
             return fallback
+        if self._stalled(run):
+            self._store.settle(record.id, JobEnding(status=JobStatus.FAILED, failure=JobFailure.RUN_STALLED))
+            stalled = self._store.get(record.id) or record
+            return JobView(record=stalled, status=stalled.status, error=stalled.error)
         form = None
         if run.status is JobStatus.PAUSED:
             form = self._results.pending_form(
@@ -334,6 +351,20 @@ class RunJobService:
                 mode=record.mode,
             )
         return JobView(record=record, status=run.status, outputs=run.outputs, error=run.error, form=form)
+
+    def _stalled(self, run: RunResult) -> bool:
+        """Report whether a run stays running past core's time limit and the margin, as when its worker died.
+
+        Precondition: none.
+        Postcondition: true only for a running run whose time since it started or last resumed is known and longer
+        than the limit plus RUN_TIME_LIMIT_MARGIN. Paused time never counts: a paused run is not running, and a
+        resumed run counts from its resume, as core's limit does.
+        """
+        if run.status is not JobStatus.RUNNING:
+            return False
+        if run.running_since is None:
+            return False
+        return self._now() - run.running_since > self._stalled_after
 
     def wait(self, owner: JobOwner, job_id: str, *, wait_seconds: int) -> JobView:
         """Wait for a job to finish or pause.

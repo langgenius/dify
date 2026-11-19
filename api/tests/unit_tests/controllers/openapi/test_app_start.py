@@ -37,7 +37,12 @@ from services.run_job_service import (
 )
 from services.workflow.graph_check import GRAPH_MODES
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
-from tests.unit_tests.services.run_job_fakes import InMemoryRedis, InMemoryRunResults, RecordingTaskControl
+from tests.unit_tests.services.run_job_fakes import (
+    RUN_TIME_LIMIT,
+    InMemoryRedis,
+    InMemoryRunResults,
+    RecordingTaskControl,
+)
 
 WORKFLOW_ROUTE = "/openapi/v1/apps/{app_id}/workflow:start"
 CHATFLOW_ROUTE = "/openapi/v1/apps/{app_id}/advanced-chat:start"
@@ -114,6 +119,7 @@ def _world(
         tasks=RecordingTaskControl(),
         max_background_runs=max_background_runs,
         max_waiters=4,
+        run_time_limit=RUN_TIME_LIMIT,
         sleep=lambda _seconds: time.sleep(0.01),
     )
     services = dataclasses.replace(account_application_services, run_jobs=service)

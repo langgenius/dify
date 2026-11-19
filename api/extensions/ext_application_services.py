@@ -5,7 +5,7 @@ import logging
 import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import cast
 from uuid import uuid4
 
@@ -901,6 +901,7 @@ def build_application_services(
             tasks=app_tasks,
             max_background_runs=dify_config.OPENAPI_JOB_MAX_BACKGROUND_RUNS,
             max_waiters=dify_config.OPENAPI_JOB_MAX_WAITERS,
+            run_time_limit=timedelta(seconds=dify_config.WORKFLOW_MAX_EXECUTION_TIME),
         ),
         app_audio=AppAudioRuntime(session_factory=database_client),
         trial_apps=build_trial_app_services(database_client=database_client, trial_apps=trial_apps),

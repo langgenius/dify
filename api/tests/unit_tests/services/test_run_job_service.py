@@ -3,6 +3,7 @@ import threading
 import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass, field, replace
+from datetime import datetime, timedelta
 from typing import override
 
 import pytest
@@ -17,6 +18,7 @@ from services.run_job_contracts import JobEnding, JobFailure, JobIds, JobOwner, 
 from services.run_job_service import (
     POLL_INTERVAL_SECONDS,
     READER_THREAD_NAME,
+    RUN_TIME_LIMIT_MARGIN,
     WAIT_MAX_SECONDS,
     JobCapacityError,
     JobNotFoundError,
@@ -26,6 +28,7 @@ from services.run_job_service import (
     TaskControlStopper,
 )
 from tests.unit_tests.services.run_job_fakes import (
+    RUN_TIME_LIMIT,
     InMemoryRedis,
     InMemoryRunResults,
     RecordingTaskControl,
@@ -40,7 +43,11 @@ THREAD_TIMEOUT = 5
 class FakeClock:
     def __init__(self) -> None:
         self.now = 0.0
+        self.wall = datetime(2026, 11, 18, 12, 0, 0)
         self.slept: list[float] = []
+
+    def utc_now(self) -> datetime:
+        return self.wall
 
     def monotonic(self) -> float:
         return self.now
@@ -81,8 +88,10 @@ def _harness(*, max_background_runs: int = 10, max_waiters: int = 4) -> Harness:
         tasks=tasks,
         max_background_runs=max_background_runs,
         max_waiters=max_waiters,
+        run_time_limit=RUN_TIME_LIMIT,
         sleep=clock.sleep,
         monotonic=clock.monotonic,
+        now=clock.utc_now,
     )
     return Harness(service=service, store=store, results=results, tasks=tasks, redis=redis, clock=clock)
 
@@ -149,6 +158,7 @@ def test_start_fails_before_any_run_when_the_store_is_unavailable() -> None:
         tasks=RecordingTaskControl(),
         max_background_runs=1,
         max_waiters=1,
+        run_time_limit=RUN_TIME_LIMIT,
     )
     launches = Launches()
 
@@ -411,6 +421,7 @@ def test_a_view_reads_the_alive_key_before_the_record_so_a_reader_that_just_ende
         tasks=harness.tasks,
         max_background_runs=1,
         max_waiters=1,
+        run_time_limit=RUN_TIME_LIMIT,
         sleep=harness.clock.sleep,
         monotonic=harness.clock.monotonic,
     )
@@ -472,6 +483,68 @@ def test_a_graph_job_reported_not_confirmed_never_changes_when_its_run_appears_l
     not_confirmed = JobFailure.RUN_NOT_CONFIRMED.message
     assert (reported.status, reported.error) == (JobStatus.FAILED, not_confirmed)
     assert (later.status, later.error, later.outputs) == (JobStatus.FAILED, not_confirmed, None)
+
+
+STALLED_AFTER = RUN_TIME_LIMIT + RUN_TIME_LIMIT_MARGIN
+ONE_SECOND = timedelta(seconds=1)
+
+
+def _running_since(harness: Harness, job: JobRecord, age: timedelta, status: JobStatus = JobStatus.RUNNING) -> None:
+    """Give the job a run that has been running (since its start or last resume) for age."""
+    harness.store.record_ids(job.id, JobIds(run_id="run-1"))
+    harness.results.runs[("t1", "run-1")] = RunResult(status=status, running_since=harness.clock.wall - age)
+
+
+def test_a_running_graph_job_inside_the_time_limit_and_margin_stays_running() -> None:
+    harness = _harness()
+    job = _job(harness)
+    _running_since(harness, job, STALLED_AFTER - ONE_SECOND)
+
+    view = harness.service.view(OWNER, job.id)
+
+    assert view.status is JobStatus.RUNNING
+    stored = harness.store.get(job.id)
+    assert stored is not None
+    assert stored.failure is None
+
+
+def test_a_graph_job_running_past_the_time_limit_and_margin_fails_once_and_stays_failed() -> None:
+    harness = _harness()
+    job = _job(harness)
+    _running_since(harness, job, STALLED_AFTER + ONE_SECOND)
+
+    stalled = harness.service.view(OWNER, job.id)
+    harness.results.runs[("t1", "run-1")] = RunResult(status=JobStatus.SUCCEEDED, outputs={"x": 1})
+    later = harness.service.view(OWNER, job.id)
+
+    failed = (JobStatus.FAILED, JobFailure.RUN_STALLED.message)
+    assert (stalled.status, stalled.error) == failed
+    assert (later.status, later.error, later.outputs) == (*failed, None)
+    stored = harness.store.get(job.id)
+    assert stored is not None
+    assert stored.failure is JobFailure.RUN_STALLED
+
+
+def test_a_paused_graph_job_is_never_failed_by_the_time_limit() -> None:
+    harness = _harness()
+    job = _job(harness)
+    _running_since(harness, job, STALLED_AFTER * 24, status=JobStatus.PAUSED)
+
+    view = harness.service.view(OWNER, job.id)
+
+    assert view.status is JobStatus.PAUSED
+
+
+def test_a_running_graph_job_whose_running_time_is_not_known_is_never_failed_by_the_time_limit() -> None:
+    harness = _harness()
+    job = _job(harness)
+    harness.store.record_ids(job.id, JobIds(run_id="run-1"))
+    harness.results.runs[("t1", "run-1")] = RunResult(status=JobStatus.RUNNING, running_since=None)
+    harness.clock.wall += STALLED_AFTER * 24
+
+    view = harness.service.view(OWNER, job.id)
+
+    assert view.status is JobStatus.RUNNING
 
 
 def test_a_run_error_with_the_not_confirmed_text_is_still_read_from_the_run() -> None:
@@ -583,6 +656,7 @@ def test_wait_answers_at_once_when_the_waiter_cap_is_full() -> None:
         tasks=RecordingTaskControl(),
         max_background_runs=1,
         max_waiters=1,
+        run_time_limit=RUN_TIME_LIMIT,
         sleep=sleep_then_wait_again,
         monotonic=clock.monotonic,
     )
@@ -703,6 +777,7 @@ def test_stop_sends_the_stop_when_the_ids_arrive_while_it_is_recording_the_reque
         tasks=harness.tasks,
         max_background_runs=1,
         max_waiters=1,
+        run_time_limit=RUN_TIME_LIMIT,
         sleep=harness.clock.sleep,
         monotonic=harness.clock.monotonic,
     )

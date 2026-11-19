@@ -2,6 +2,7 @@
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from datetime import timedelta
 
 from core.app.entities.task_entities import HumanInputRequiredResponse
 from models.enums import CreatorUserRole
@@ -9,6 +10,9 @@ from models.model import AppMode
 from services.app_task_service import WorkflowStopOutcome
 from services.run_job_contracts import JobRecord
 from services.run_job_service import RunResult
+
+# Core's default WORKFLOW_MAX_EXECUTION_TIME.
+RUN_TIME_LIMIT = timedelta(hours=1)
 
 
 @dataclass
