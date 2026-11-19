@@ -15,9 +15,9 @@ from sqlalchemy.orm import Session, sessionmaker
 from constants.oauth_bearer import TokenType
 from core.human_input_v2.resolved_form import ParagraphInput, ResolvedForm, UserAction
 from core.human_input_v2.shared.values import ContactId, TenantId
-from core.workflow.nodes.human_input.enums import ButtonStyle, HumanInputFormStatus
 from core.workflow.nodes.human_input_v2.entities import Initiator
 from enums import DeploymentEdition, WebAppAccessMode
+from enums.human_input import ButtonStyle, HumanInputFormStatus
 from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from libs.oauth_bearer import AuthContext, BearerAuthenticator

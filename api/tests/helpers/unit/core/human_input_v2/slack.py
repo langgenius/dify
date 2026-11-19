@@ -15,12 +15,12 @@ from urllib.parse import parse_qs
 import pytest
 from slack_sdk.web import WebClient
 
-from core.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import slack as slack_adapter_module
 from core.human_input_v2.im_integration.adapters.credentials import SlackCredentials
 from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
 from core.human_input_v2.resolved_form import FormPart, MarkdownFragment, ResolvedForm, UserAction
+from enums.human_input import ButtonStyle
 
 SIGNING_SECRET = "sanitized-signing-material"
 

@@ -11,10 +11,10 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.helper import encrypter
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData
 from core.workflow.system_variables import SystemVariableKey, system_variable_selector
 from enums import DeploymentEdition
+from enums.human_input import HumanInputFormStatus
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import VariablePool
 from models.account import TenantAccountJoin, TenantAccountRole

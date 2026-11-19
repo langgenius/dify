@@ -1,6 +1,9 @@
+import ast
+import inspect
 from collections.abc import Mapping, Sequence
 from dataclasses import FrozenInstanceError
 from datetime import datetime
+from types import ModuleType
 from typing import Never, override
 from unittest.mock import create_autospec
 from uuid import uuid4
@@ -11,7 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.common import human_input_v2_migration as migration_boundary
 from core.human_input_v2.shared.values import AccountId, ContactId, TenantId
-from core.workflow.nodes.human_input.entities import HumanInputNodeDataFull
+from core.workflow.nodes.human_input_v2 import migration as migration_module
 from core.workflow.nodes.human_input_v2.migration import (
     LegacyDeliveryParseIssue,
     MemberContactSnapshot,
@@ -20,6 +23,7 @@ from core.workflow.nodes.human_input_v2.migration import (
     convert_legacy_human_input_node_data,
 )
 from models.account import Account, AccountStatus, TenantAccountJoin
+from models.human_input_entities import HumanInputNodeDataFull
 from models.human_input_v2 import (
     ContactSubjectType,
     HumanInputContactIdentity,
@@ -27,6 +31,7 @@ from models.human_input_v2 import (
 )
 from repositories.human_input_v2.contact import Contact, ContactRepository, ContactType
 from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
+from services.human_input_v2 import node_data_migration as service_module
 from services.human_input_v2.composition import build_human_input_node_data_migration_service
 from services.human_input_v2.node_data_migration import (
     HumanInputNodeDataMigrationService,
@@ -35,9 +40,46 @@ from services.human_input_v2.node_data_migration import (
     NodeDataMigrationFailure,
     NodeDataMigrationSuccess,
 )
+from services.human_input_v2.workspace_member_contact_lookup import SQLAlchemyWorkspaceMemberContactLookup
 
 _EMAIL_METHOD_ID = "11111111-1111-4111-8111-111111111111"
 _WEBAPP_METHOD_ID = "22222222-2222-4222-8222-222222222222"
+_ALLOWED_SHARED_MODEL_CONTRACTS = frozenset(
+    {
+        "models.human_input_contracts",
+        "models.human_input_delivery",
+        "models.human_input_entities",
+    }
+)
+_FORBIDDEN_INFRASTRUCTURE_IMPORT_PREFIXES = (
+    "extensions.ext_database",
+    "flask",
+    "models",
+    "repositories",
+    "sqlalchemy",
+)
+
+
+def _module_imports(module: ModuleType) -> set[str]:
+    tree = ast.parse(inspect.getsource(module))
+    imported_modules = {alias.name for node in ast.walk(tree) if isinstance(node, ast.Import) for alias in node.names}
+    imported_modules.update(
+        node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom) and node.module is not None
+    )
+    return imported_modules
+
+
+def _forbidden_infrastructure_imports(module: ModuleType) -> list[str]:
+    violations: list[str] = []
+    for imported_module in _module_imports(module):
+        if imported_module in _ALLOWED_SHARED_MODEL_CONTRACTS:
+            continue
+        if any(
+            imported_module == prefix or imported_module.startswith(f"{prefix}.")
+            for prefix in _FORBIDDEN_INFRASTRUCTURE_IMPORT_PREFIXES
+        ):
+            violations.append(imported_module)
+    return sorted(violations)
 
 
 def test_migration_preserves_member_contact_identity_and_same_email_external_recipient(
@@ -142,8 +184,7 @@ def _migration_service(
     repository = create_autospec(ContactRepository, instance=True)
     repository.get_contacts_by_account_ids.side_effect = lookup.find_member_contacts
     return HumanInputNodeDataMigrationService(
-        session_factory=Session,
-        contact_repository_factory=lambda _session: repository,
+        member_contact_lookup=SQLAlchemyWorkspaceMemberContactLookup(Session, lambda _session: repository),
         converter=converter,
     )
 
@@ -611,6 +652,12 @@ def test_batch_aggregates_blockers_discards_valid_results_and_retries_equivalent
 
 
 def test_success_blocked_and_repeated_requests_have_no_persistence_write_boundary() -> None:
+    assert _forbidden_infrastructure_imports(service_module) == []
+
+    service_source = inspect.getsource(service_module)
+    for forbidden_write in ("db.session", ".commit(", ".flush("):
+        assert forbidden_write not in service_source
+
     lookup = _ReadOnlyBoundarySpy()
     service = _migration_service(lookup)
     successful_nodes = (
@@ -757,8 +804,7 @@ def test_migration_resolves_only_current_workspace_member_identities_without_wri
             writes.append(statement)
 
     service = HumanInputNodeDataMigrationService(
-        session_factory=read_factory,
-        contact_repository_factory=SQLAlchemyContactRepository,
+        member_contact_lookup=SQLAlchemyWorkspaceMemberContactLookup(read_factory, SQLAlchemyContactRepository),
     )
     requested_id = str(uuid4()) if member_state == "missing-account" else account_id
     event.listen(engine, "before_cursor_execute", capture_writes)
@@ -785,3 +831,12 @@ def test_migration_resolves_only_current_workspace_member_identities_without_wri
     assert _TrackingReadSession.close_count == 1
     assert _TrackingReadSession.commit_count == 0
     assert _TrackingReadSession.flush_count == 0
+
+
+def test_composition_injects_sql_lookup_and_core_converter_has_no_infrastructure_imports() -> None:
+    service = build_human_input_node_data_migration_service()
+
+    assert isinstance(service, HumanInputNodeDataMigrationService)
+    assert isinstance(service._member_contact_lookup, SQLAlchemyWorkspaceMemberContactLookup)
+
+    assert _forbidden_infrastructure_imports(migration_module) == []

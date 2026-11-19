@@ -9,8 +9,8 @@ from __future__ import annotations
 from collections.abc import Generator, Mapping, Sequence
 from typing import assert_never, override
 
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input.session_binding import default_session_binding
+from enums.human_input import HumanInputFormStatus
 from factories.human_input_v2_form_presentation import render_filled_content
 from graphon.engine_events import NodeEvent
 from graphon.entities.pause_reason import HitlRequired

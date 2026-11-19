@@ -19,7 +19,7 @@ from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.resolved_form import ResolvedForm
 from core.human_input_v2.shared.values import RecipientId, TenantId
 from core.workflow.file_reference import build_file_reference
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+from enums.human_input import HumanInputFormStatus
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from libs.datetime_utils import naive_utc_now

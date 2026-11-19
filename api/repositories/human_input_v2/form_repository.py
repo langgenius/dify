@@ -11,7 +11,7 @@ from pydantic import JsonValue, NaiveDatetime
 
 from core.human_input_v2.resolved_form import ResolvedForm
 from core.human_input_v2.shared.values import RecipientId, TenantId
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from enums.human_input import HumanInputFormKind, HumanInputFormStatus
 from graphon.variables.segments import Segment
 
 

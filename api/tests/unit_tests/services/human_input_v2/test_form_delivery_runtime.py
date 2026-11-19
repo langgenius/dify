@@ -24,8 +24,6 @@ from core.human_input_v2.entities import EmailProviderType, IMProvider
 from core.human_input_v2.im_integration.adapters.entities import MessageAccepted, StaticCardIntent
 from core.human_input_v2.im_integration.adapters.message_locator import MessageLocator
 from core.human_input_v2.shared.values import AccountId, ContactId, NormalizedEmail, RecipientId, TenantId
-from core.workflow.nodes.human_input.entities import HumanInputNodeDataFull
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input_v2.entities import (
     Contact,
     DynamicEmail,
@@ -36,12 +34,14 @@ from core.workflow.nodes.human_input_v2.entities import (
 from core.workflow.nodes.human_input_v2.migration import MemberContactSnapshot, convert_legacy_human_input_node_data
 from core.workflow.nodes.human_input_v2.runtime import HumanInputDeliveryError, PreparedForm
 from enums import DeploymentEdition
+from enums.human_input import HumanInputFormStatus
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import VariablePool
 from libs.datetime_utils import naive_utc_now
 from models import CreatorUserRole
 from models.account import Account, TenantAccountJoin
 from models.enums import EndUserType
+from models.human_input_entities import HumanInputNodeDataFull
 from models.human_input_v2 import (
     FormViewEvent,
     HumanInputAuditEvent,
@@ -79,6 +79,7 @@ from services.human_input_v2.node_data_migration import (
     MigrationNode,
     NodeDataMigrationSuccess,
 )
+from services.human_input_v2.workspace_member_contact_lookup import SQLAlchemyWorkspaceMemberContactLookup
 from tests.helpers.unit.services.human_input_v2.form_runtime import (
     ACCOUNT_ID as _ACCOUNT,
 )
@@ -239,8 +240,7 @@ def test_migrated_member_creates_contact_recipient_separately_from_same_email_ta
         }
     )
     migration = HumanInputNodeDataMigrationService(
-        session_factory=context.sessions,
-        contact_repository_factory=SQLAlchemyContactRepository,
+        member_contact_lookup=SQLAlchemyWorkspaceMemberContactLookup(context.sessions, SQLAlchemyContactRepository),
     ).migrate(tenant_id=_TENANT, nodes=(MigrationNode("approval", legacy),))
     assert isinstance(migration, NodeDataMigrationSuccess)
 
@@ -1682,11 +1682,11 @@ def test_pause_persistence_and_reconnect_preserve_v2_form_and_initiator_only_tok
     )
     from core.db.session_factory import session_factory
     from core.workflow.human_input_policy import HumanInputSurface
-    from core.workflow.nodes.human_input.entities import FormDefinition
     from core.workflow.nodes.human_input_v2.presentation import build_human_input_v2_pause_reason
     from graphon.entities import WorkflowStartReason
     from graphon.runtime import RuntimeState
     from models.human_input import HumanInputForm as LegacyForm
+    from models.human_input_entities import FormDefinition
     from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
     from services import workflow_event_snapshot_service
     from services.human_input_v2.composition import build_human_input_delivery_service
@@ -1818,12 +1818,12 @@ def test_pause_snapshot_resolves_mixed_versions_in_checkpoint_order(
     context: Context, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
-    from core.workflow.nodes.human_input.entities import FormDefinition
     from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
     from core.workflow.nodes.human_input_v2.presentation import build_human_input_v2_pause_reason
     from graphon.entities.pause_reason import HitlRequired, SchedulingPause
     from graphon.runtime import RuntimeState
     from models.human_input import HumanInputForm as LegacyForm
+    from models.human_input_entities import FormDefinition
     from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
     from services.workflow_pause_service import load_workflow_pause_snapshot
 
@@ -1900,13 +1900,14 @@ def test_console_pause_details_follow_checkpoint_with_mixed_form_versions(
     context: Context, monkeypatch: pytest.MonkeyPatch, initiator: bool
 ) -> None:
     from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
-    from core.workflow.nodes.human_input.entities import FormDefinition
     from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+    from enums.human_input import RecipientType
     from graphon.entities.pause_reason import HitlRequired
     from graphon.runtime import RuntimeState
     from machinery.context import RequestContext
     from models.human_input import HumanInputForm as LegacyForm
-    from models.human_input import HumanInputFormRecipient, RecipientType
+    from models.human_input import HumanInputFormRecipient
+    from models.human_input_entities import FormDefinition
     from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
     from services.human_input_v2.composition import build_human_input_delivery_service
     from services.workflow_run_service import WorkflowRunPausedNode, WorkflowRunService

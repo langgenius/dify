@@ -6,8 +6,8 @@ from urllib.parse import urlsplit
 import pytest
 import sqlalchemy as sa
 
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input_v2.entities import Contact, HumanInputNodeData
+from enums.human_input import HumanInputFormStatus
 from graphon.enums import WorkflowExecutionStatus
 from models.human_input_v2 import HumanInputDelivery, HumanInputForm
 from models.workflow import WorkflowPause, WorkflowRun

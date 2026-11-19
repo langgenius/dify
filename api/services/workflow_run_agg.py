@@ -29,7 +29,6 @@ from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.node_runtime import DifyHumanInputNodeRuntime, resolve_dify_run_context
 from core.workflow.nodes.agent_v2.workspace_retirement_layer import build_workflow_agent_workspace_retirement_layer
 from core.workflow.nodes.human_input.boundary import build_human_input_pause_reason
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input.pause_reason import PauseReason
 from core.workflow.nodes.human_input.session_binding import default_session_binding
 from core.workflow.nodes.human_input_v2.events import NodeRunHumanInputV2FormRequiredEvent
@@ -37,6 +36,7 @@ from core.workflow.nodes.human_input_v2.presentation import resolve_human_input_
 from core.workflow.nodes.human_input_v2.runtime import PreparedForm
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from core.workflow.workflow_tool_container_types import WorkflowToolContainerPayload
+from enums.human_input import HumanInputFormStatus
 from extensions.otel import WorkflowAppRunnerHandler, trace_span
 from graphon.engine.layer import Layer
 from graphon.engine_events import (

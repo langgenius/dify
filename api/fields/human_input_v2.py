@@ -4,7 +4,6 @@ from typing import Annotated, Literal, assert_never
 
 from pydantic import Field
 
-from core.human_input import ButtonStyle
 from core.human_input_v2.resolved_form import (
     FileInput,
     FileListInput,
@@ -16,7 +15,7 @@ from core.human_input_v2.resolved_form import (
 from core.human_input_v2.resolved_form import (
     ResolvedForm as FormSnapshot,
 )
-from core.workflow.nodes.human_input.enums import ValueSourceType
+from enums.human_input import ButtonStyle, ValueSourceType
 from fields.base import ResponseModel
 from graphon.file.enums import FileTransferMethod, FileType
 

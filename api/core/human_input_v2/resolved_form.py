@@ -8,8 +8,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from core.human_input import ButtonStyle
-from core.workflow.nodes.human_input.enums import ValueSourceType
+from enums.human_input import ButtonStyle, ValueSourceType
 from graphon.file.enums import FileTransferMethod, FileType
 
 

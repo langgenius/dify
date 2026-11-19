@@ -18,8 +18,8 @@ from controllers.common.human_input_v2_contracts import (
     NodeDataMigrationResponse,
 )
 from controllers.common.human_input_v2_migration import preflight_legacy_human_input_node_data
-from core.workflow.human_input_adapter import BoundRecipient, EmailDeliveryMethod
 from core.workflow.nodes.human_input_v2.entities import RecipientConfig
+from models.human_input_delivery import BoundRecipient, EmailDeliveryMethod
 
 
 def test_request_dto_coerces_enum_values_and_forbids_extra_fields() -> None:
