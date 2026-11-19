@@ -1,6 +1,7 @@
 from flask import request
 
 import services
+from constants import DOCUMENT_EXTENSIONS
 from controllers.common.errors import (
     BlockedFileExtensionError,
     FilenameNotExistsError,
@@ -12,11 +13,13 @@ from controllers.common.errors import (
 from controllers.common.schema import JsonResponseWithStatus, register_response_schema_models
 from controllers.web import web_ns
 from controllers.web.wraps import WebApiResource
+from enums.creator import CreatorUserRole
 from extensions.ext_application_services import application_services
 from fields.file_fields import FileResponse
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from models.model import App, EndUser
+from services.entities.upload_file import FileUploadActor
 
 register_response_schema_models(web_ns, FileResponse)
 
@@ -92,8 +95,9 @@ class FileApi(WebApiResource):
                 filename=file.filename,
                 content=file.stream.read(),
                 mimetype=file.mimetype,
-                user=end_user,
-                source="datasets" if source == "datasets" else None,
+                actor=FileUploadActor(id=end_user.id, creator_role=CreatorUserRole.END_USER),
+                tenant_id=app_model.tenant_id,
+                allowed_extensions=frozenset(DOCUMENT_EXTENSIONS) if source == "datasets" else None,
             )
         except services.errors.file.FileTooLargeError as file_too_large_error:
             raise FileTooLargeError(file_too_large_error.description) from file_too_large_error

@@ -1,26 +1,28 @@
-"""The three retrieval routes share attachment validation and production error mapping."""
+"""Retrieval transports share attachment validation and production error mapping."""
 
 from collections.abc import Callable
+from dataclasses import replace
 from functools import wraps
+from inspect import unwrap
+from unittest.mock import create_autospec
 from uuid import UUID
 
 import pytest
-from flask import Blueprint, Flask
+from flask import Flask
+from flask_restx import Resource
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from controllers.common.hit_testing import validate_hit_testing_payload
 from controllers.console import api as console_api
-from controllers.console import console_ns
-from controllers.console.datasets.hit_testing_base import DatasetsHitTestingBase
-from controllers.service_api import api as service_api
-from controllers.service_api import service_api_ns
-from controllers.service_api.wraps import DatasetApiResource
-from enums import DeploymentEdition
+from controllers.console.datasets import hit_testing as console_controller
+from controllers.service_api.dataset import hit_testing as service_controller
+from extensions.ext_application_services import ApplicationServices
 from libs.external_api import ExternalApi
-from models.account import Account, Tenant
-from models.dataset import Dataset, DatasetQuery
-from models.enums import ApiTokenType
-from models.model import ApiToken
+from machinery.context import RequestContext
+from models.dataset import DatasetQuery
+from services.knowledge.hit_testing.application import HitTestingApplicationService
+from services.knowledge.hit_testing.entities import HitTestingRequest, HitTestingResponse
 
 DATASET_ID = "38cb8b13-ea36-4834-a320-14cb4f656de1"
 FILE_ID = "9c603550-52be-46d6-8078-f5047c6b631c"
@@ -31,58 +33,57 @@ ROUTES = [
 ]
 
 
+def _admitted(view: Callable[..., object]) -> Callable[..., object]:
+    """Supply admitted identity while retaining the production payload validator and handler."""
+    validated = validate_hit_testing_payload(unwrap(view))
+
+    @wraps(view)
+    def admitted(*args: object, **kwargs: object) -> object:
+        return validated(*args, request_context=RequestContext("request", None, "account-1", "tenant-1"), **kwargs)
+
+    return admitted
+
+
 @pytest.fixture(scope="module")
 def http_app() -> Flask:
     app = Flask(__name__)
-    app.config.update(TESTING=False, PROPAGATE_EXCEPTIONS=False, LOGIN_DISABLED=True)
-    console = ExternalApi(app)
-    console.error_handlers = console_api.error_handlers.copy()
-    console.add_namespace(console_ns, path="/console/api")
-    # Separate API instances retain each surface's own production error handlers.
+    app.config.update(TESTING=False, PROPAGATE_EXCEPTIONS=False)
+    api = ExternalApi(app)
+    api.error_handlers = console_api.error_handlers.copy()
 
-    bp = Blueprint("retrieval_service_test", __name__)
-    service = ExternalApi(bp, register_default_root=False)
-    service.error_handlers = service_api.error_handlers.copy()
-    service.add_namespace(service_api_ns, path="/v1")
-    app.register_blueprint(bp)
+    class ConsoleEndpoint(Resource):
+        post = _admitted(console_controller.HitTestingApi.post)
+
+    class ServiceEndpoint(Resource):
+        post = _admitted(service_controller.HitTestingApi.post)
+
+    api.add_resource(ConsoleEndpoint, "/console/api/datasets/<uuid:dataset_id>/hit-testing")
+    api.add_resource(
+        ServiceEndpoint, "/v1/datasets/<uuid:dataset_id>/retrieve", "/v1/datasets/<uuid:dataset_id>/hit-testing"
+    )
     return app
 
 
 @pytest.fixture
 def retrieval_calls(
-    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], sqlite_session: Session
+    monkeypatch: pytest.MonkeyPatch, account_application_services: ApplicationServices
 ) -> list[dict[str, object]]:
-    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, RBAC_ENABLED=False, LOGIN_DISABLED=True)
-    account = Account(name="Test", email="retrieval@example.com")
-    tenant = Tenant(name="Test")
-    tenant.id = "tenant-1"
-    account._current_tenant = tenant
-    dataset = Dataset(id=DATASET_ID, tenant_id=tenant.id, name="Test", created_by="actor")
-    monkeypatch.setattr("controllers.console.wraps.current_account_with_tenant", lambda: (account, tenant.id))
-    monkeypatch.setattr("controllers.console.wraps.check_knowledge_rate_limit", lambda: None)
-    monkeypatch.setattr("controllers.common.session.session_factory.create_session", lambda: sqlite_session)
-    token = ApiToken(type=ApiTokenType.DATASET, tenant_id=tenant.id, token="test-token")
-    monkeypatch.setattr("controllers.service_api.wraps.validate_and_get_api_token", lambda _kind: token)
-    monkeypatch.setattr("controllers.service_api.wraps.check_knowledge_rate_limit", lambda _token: None)
-
-    def admit_dataset(view: Callable[..., object]) -> Callable[..., object]:
-        @wraps(view)
-        def admitted(*args: object, **kwargs: object) -> object:
-            return view(*args, tenant_id=tenant.id, **kwargs)
-
-        return admitted
-
-    monkeypatch.setattr(DatasetApiResource, "method_decorators", [admit_dataset])
-    monkeypatch.setattr(DatasetsHitTestingBase, "get_and_validate_dataset", staticmethod(lambda *_args: dataset))
+    service = create_autospec(HitTestingApplicationService, instance=True, spec_set=True)
+    services = replace(
+        account_application_services,
+        knowledge=replace(account_application_services.knowledge, hit_testing=service),
+    )
+    monkeypatch.setattr(console_controller, "application_services", lambda: services)
+    monkeypatch.setattr(service_controller, "application_services", lambda: services)
     calls: list[dict[str, object]] = []
 
-    def retrieve(
-        _session: Session, _dataset: Dataset, args: dict[str, object], *_identity: object
-    ) -> dict[str, object]:
-        calls.append(args)
-        return {"query": {"content": args["query"]}, "records": []}
+    def retrieve(context: RequestContext, *, dataset_id: str, request: HitTestingRequest) -> HitTestingResponse:
+        assert context.active_workspace_id == "tenant-1"
+        assert dataset_id == DATASET_ID
+        calls.append({"query": request.query, "attachment_ids": request.attachment_ids})
+        return {"query": {"content": request.query}, "records": []}
 
-    monkeypatch.setattr(DatasetsHitTestingBase, "perform_hit_testing", staticmethod(retrieve))
+    service.retrieve.side_effect = retrieve
     return calls
 
 

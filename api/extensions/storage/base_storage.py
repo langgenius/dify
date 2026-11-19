@@ -28,7 +28,8 @@ class BaseStorage(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def delete(self, filename: str):
+    def delete(self, filename: str) -> None:
+        """Delete ``filename``; succeed when the object is already absent."""
         raise NotImplementedError
 
     def generate_presigned_url(

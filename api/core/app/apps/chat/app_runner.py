@@ -18,10 +18,11 @@ from core.db.session_factory import create_session
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.moderation.base import ModerationError
-from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from graphon.file import File
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from models.model import App, Conversation, Message
+from services.knowledge.retrieval.app_retrieval import retrieve_app_context
+from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,9 @@ class ChatAppRunner(AppRunner):
     """
     Chat Application Runner
     """
+
+    def __init__(self, *, knowledge_retrieval: KnowledgeRetriever) -> None:
+        self._knowledge_retrieval = knowledge_retrieval
 
     def run(
         self,
@@ -162,29 +166,19 @@ class ChatAppRunner(AppRunner):
         context = None
         context_files: list[File] = []
         if app_config.dataset and app_config.dataset.dataset_ids:
-            hit_callback = DatasetIndexToolCallbackHandler(
-                queue_manager,
-                app_record.id,
-                message.id,
-                application_generate_entity.user_id,
-                application_generate_entity.invoke_from,
-            )
+            hit_callback = DatasetIndexToolCallbackHandler(queue_manager)
 
-            dataset_retrieval = DatasetRetrieval(application_generate_entity)
-            context, retrieved_files = dataset_retrieval.retrieve(
-                session=session,
+            context, context_files = retrieve_app_context(
+                knowledge_retrieval=self._knowledge_retrieval,
+                application_generate_entity=application_generate_entity,
                 app_id=app_record.id,
-                user_id=application_generate_entity.user_id,
                 tenant_id=app_record.tenant_id,
-                model_config=application_generate_entity.model_conf,
-                config=app_config.dataset,
+                dataset_config=app_config.dataset,
                 query=query,
-                invoke_from=application_generate_entity.invoke_from,
                 show_retrieve_source=(
                     app_config.additional_features.show_retrieve_source if app_config.additional_features else False
                 ),
                 hit_callback=hit_callback,
-                memory=memory,
                 message_id=message.id,
                 inputs=inputs,
                 vision_enabled=bool(
@@ -193,7 +187,6 @@ class ChatAppRunner(AppRunner):
                     .get("enabled", False)
                 ),
             )
-            context_files = retrieved_files or []
 
         session.commit()
         session.close()

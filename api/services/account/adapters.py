@@ -4,7 +4,7 @@ import logging
 import secrets
 import uuid
 from collections.abc import Generator, Sequence
-from contextlib import contextmanager
+from contextlib import AbstractContextManager, contextmanager
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from time import time
@@ -85,6 +85,7 @@ from services.entities.auth_entities import (
     ChangeEmailTokenData,
 )
 from services.errors.billing import UnknownErrorReason
+from services.system_feature_service import SystemFeatureService
 from services.telemetry_service import CommunityTelemetryService
 from tasks.delete_account_task import delete_account_task
 from tasks.mail_account_deletion_task import send_account_deletion_verification_code
@@ -101,6 +102,31 @@ _ACCOUNT_DELETION_RATE_LIMIT_ATTEMPTS = 1
 _ACCOUNT_DELETION_RATE_LIMIT_SECONDS = 60
 _ACCOUNT_LAST_ACTIVE_REFRESH_INTERVAL = timedelta(minutes=10)
 
+_RELEASE_INVITATION_ACCEPTANCE_LUA = """
+if redis.call('GET', KEYS[1]) ~= ARGV[1] then return 0 end
+return redis.call('DEL', KEYS[1])
+"""
+
+_REVOKE_INVITATION_SUBJECT_LUA = """
+local ttl = redis.call('PTTL', KEYS[1])
+if ttl <= 0 then ttl = tonumber(ARGV[1]) end
+redis.call('SET', KEYS[1], 'revoked', 'PX', ttl)
+return ttl
+"""
+
+# Every invitation script touches exactly one key. The acceptance-claim, source,
+# membership-marker and subject-state keys share no hash tag (the source key
+# formats predate hash tags and cannot be renamed while invitations are
+# pending), so a multi-key script is rejected by Redis Cluster as cross-slot.
+_REVOKE_ACCEPTED_INVITATION_SUBJECT_LUA = """
+local state = redis.call('GET', KEYS[1])
+if state and state ~= ARGV[1] and state ~= 'revoked' then return 0 end
+local ttl = redis.call('PTTL', KEYS[1])
+if ttl <= 0 then ttl = tonumber(ARGV[2]) end
+redis.call('SET', KEYS[1], 'revoked', 'PX', ttl)
+return 1
+"""
+
 
 class AccountIdentityGateway:
     """Materialize framework identities while the repositories own their Sessions."""
@@ -116,6 +142,9 @@ class AccountIdentityGateway:
 
     def get_account_by_id(self, account_id: str) -> Account | None:
         return self._accounts.get_model(account_id)
+
+    def get_account_for_workspace(self, account_id: str, workspace_id: str) -> Account | None:
+        return self._accounts.get_workspace_identity(account_id, workspace_id)
 
     def get_account_by_email(self, email: str, *, case_fallback: bool = False) -> Account | None:
         return self._accounts.find_identity(email, case_fallback=case_fallback)
@@ -187,7 +216,7 @@ class RedisInvitationTokenStore(InvitationTokenStore):
     def __init__(self, *, redis: RedisClientWrapper) -> None:
         self._redis = redis
 
-    def create(self, invitation: InvitationToken) -> str:
+    def create(self, invitation: InvitationToken, *, pending_delivery: bool = False) -> str:
         """Issue a link and index it under its workspace; no link stays live without its index entry.
 
         Raises:
@@ -203,6 +232,10 @@ class RedisInvitationTokenStore(InvitationTokenStore):
             self._redis.zremrangebyscore(key, "-inf", now)
             self._redis.zadd(key, {token: now + expiry_seconds})
             self._redis.expire(key, expiry_seconds)
+            if not pending_delivery:
+                self._redis.setex(
+                    self._subject_state_key(invitation.workspace_id, invitation.account_id), expiry_seconds, token
+                )
         except RedisError:
             try:
                 self._redis.delete(token_key)
@@ -242,6 +275,14 @@ class RedisInvitationTokenStore(InvitationTokenStore):
         email, so the account is also marked: from now on only indexed links are accepted for it.
         """
         if account_id is not None:
+            if keep_token is not None:
+                self._redis.setex(
+                    self._subject_state_key(workspace_id, account_id),
+                    dify_config.INVITE_EXPIRY_HOURS * 3600,
+                    keep_token,
+                )
+            else:
+                self.revoke_subject(workspace_id, account_id)
             self._redis.setex(
                 self._unindexed_revoked_key(workspace_id, account_id), dify_config.INVITE_EXPIRY_HOURS * 60 * 60, "1"
             )
@@ -275,26 +316,84 @@ class RedisInvitationTokenStore(InvitationTokenStore):
     def _pending_workspace_key(workspace_id: str) -> str:
         return f"member_invite:pending:{workspace_id}"
 
+    def acquire_workspace_admission(self, workspace_id: str) -> AbstractContextManager[object]:
+        return self._redis.lock(f"workspace_member_invite:{workspace_id}", timeout=60)
+
     @override
     def find(self, invitation: InvitationLookup) -> InvitationToken | None:
-        if invitation.workspace_id is not None and invitation.email is not None:
-            account_id = self._redis.get(self._workspace_invitation_key(invitation))
-            if account_id is None:
-                return None
-            legacy = InvitationToken(
-                account_id=account_id.decode("utf-8"),
-                email=invitation.email,
-                workspace_id=invitation.workspace_id,
-            )
-            return None if self._is_unindexed_revoked(legacy) else legacy
-
-        data = self._redis.get(self._invitation_token_key(invitation.token))
-        if data is None:
+        token = self._find_source(invitation)
+        if token is None:
             return None
-        token = _invitation_token_adapter.validate_json(data)
+        if not self._is_subject_token_valid(token.workspace_id, token.account_id, invitation.token):
+            return None
         if self._is_unindexed_revoked(token) and not self._is_indexed(token.workspace_id, invitation.token):
             return None
         return token
+
+    @override
+    def revoke_subject(self, workspace_id: str, account_id: str) -> None:
+        self._redis.register_script(_REVOKE_INVITATION_SUBJECT_LUA)(
+            keys=[self._subject_state_key(workspace_id, account_id)],
+            args=[self._maximum_ttl_ms()],
+        )
+
+    def is_subject_revoked(self, workspace_id: str, account_id: str) -> bool:
+        state = self._redis.get(self._subject_state_key(workspace_id, account_id))
+        if isinstance(state, bytes):
+            state = state.decode("utf-8")
+        return state == "revoked"
+
+    def _is_subject_token_valid(self, workspace_id: str, account_id: str, token: str) -> bool:
+        state = self._redis.get(self._subject_state_key(workspace_id, account_id))
+        if state is None:
+            # Invitations issued before subject-scoped state was introduced
+            # remain usable until the first successful acceptance or removal.
+            return True
+        if isinstance(state, bytes):
+            state = state.decode("utf-8")
+        return state == token
+
+    @override
+    def claim(self, invitation: InvitationLookup, *, require_unused_membership: bool) -> str | None:
+        if require_unused_membership and self.is_membership_consumed(invitation):
+            return None
+        ttl = self._redis.pttl(self._source_key(invitation))
+        if ttl <= 0:
+            return None
+        claim_id = f"claim:{uuid.uuid4()}"
+        claimed = self._redis.set(
+            self._acceptance_claim_key(invitation.token),
+            claim_id,
+            nx=True,
+            px=ttl,
+        )
+        if not claimed:
+            return None
+        if require_unused_membership:
+            try:
+                membership_consumed = self.is_membership_consumed(invitation)
+            except BaseException:
+                self.release(invitation, claim_id)
+                raise
+            if membership_consumed:
+                self.release(invitation, claim_id)
+                return None
+        return claim_id
+
+    @override
+    def release(self, invitation: InvitationLookup, claim_id: str) -> None:
+        self._redis.register_script(_RELEASE_INVITATION_ACCEPTANCE_LUA)(
+            keys=[self._acceptance_claim_key(invitation.token)],
+            args=[claim_id],
+        )
+
+    @override
+    def complete_activation(self, invitation: InvitationLookup, claim_id: str) -> None:
+        self._complete(invitation, claim_id, membership=False)
+
+    @override
+    def complete_membership(self, invitation: InvitationLookup, claim_id: str) -> None:
+        self._complete(invitation, claim_id, membership=True)
 
     def _is_unindexed_revoked(self, token: InvitationToken) -> bool:
         return self._redis.get(self._unindexed_revoked_key(token.workspace_id, token.account_id)) == b"1"
@@ -309,14 +408,87 @@ class RedisInvitationTokenStore(InvitationTokenStore):
 
     @override
     def is_membership_consumed(self, invitation: InvitationLookup) -> bool:
-        return self._redis.get(self._membership_used_key(invitation.token)) == b"1"
+        return self._redis.get(self._membership_used_key(invitation.token)) in {b"1", "1"}
 
-    @override
-    def revoke(self, invitation: InvitationLookup) -> None:
-        if invitation.workspace_id is not None and invitation.email is not None:
-            self._redis.delete(self._workspace_invitation_key(invitation))
+    def _complete(self, invitation: InvitationLookup, claim_id: str, *, membership: bool) -> None:
+        """Record a committed acceptance using single-key Redis operations only.
+
+        The keys involved live in different Redis Cluster hash slots, so the
+        steps are not atomic as a group. The acceptance claim is the ownership
+        fence instead: it is created for the source token's remaining lifetime
+        and only its owner deletes it, so while this call runs no other
+        acceptance of the same token can interleave. Each step is individually
+        atomic and they are ordered so that an interruption fails closed:
+
+        - Membership: the ``membership_used`` marker is written first, then the
+          claim is released. The source and the subject state are left intact so
+          the same token still passes ``find`` and can complete activation once;
+          the marker stops that activation, and later sign-ins, from granting
+          membership again. If the marker write fails, nothing has changed.
+        - Activation: the subject state is revoked first (a compare-and-set that
+          never overwrites a newer invitation's token), which alone makes the
+          token unusable. Deleting the source and releasing the claim are
+          cleanup; their failures are logged and not raised because the
+          invitation is already consumed, and the keys expire with the source.
+
+        A process crash between steps leaves the claim in place until the
+        source expires, which keeps the token unusable rather than reusable.
+        Ownership is read before, not atomically with, the decisive write; the
+        claim can only disappear in between by expiring together with the source.
+
+        Raises:
+            RuntimeError: The source is gone or the claim is not owned. Nothing
+                was written.
+            RedisError: The decisive write failed. Nothing was written.
+        """
+        source = self._find_source(invitation)
+        if source is None:
+            raise RuntimeError("Invitation source is no longer available")
+        stored_claim = self._redis.get(self._acceptance_claim_key(invitation.token))
+        if isinstance(stored_claim, bytes):
+            stored_claim = stored_claim.decode("utf-8")
+        if stored_claim != claim_id:
+            raise RuntimeError("Invitation acceptance claim is no longer owned")
+
+        source_ttl = self._redis.pttl(self._source_key(invitation))
+        fallback_ttl = source_ttl if source_ttl > 0 else self._maximum_ttl_ms()
+        if membership:
+            self._redis.set(self._membership_used_key(invitation.token), "1", px=fallback_ttl)
         else:
-            self._redis.delete(self._invitation_token_key(invitation.token))
+            self._redis.register_script(_REVOKE_ACCEPTED_INVITATION_SUBJECT_LUA)(
+                keys=[self._subject_state_key(source.workspace_id, source.account_id)],
+                args=[invitation.token, fallback_ttl],
+            )
+            try:
+                self._redis.delete(self._source_key(invitation))
+            except RedisError:
+                logger.warning("Failed to delete a consumed invitation source", exc_info=True)
+        try:
+            self.release(invitation, claim_id)
+        except RedisError:
+            logger.warning("Failed to release a completed invitation acceptance claim", exc_info=True)
+
+    def _find_source(self, invitation: InvitationLookup) -> InvitationToken | None:
+        data = self._redis.get(self._source_key(invitation))
+        if data is None:
+            return None
+        if invitation.workspace_id is not None and invitation.email is not None:
+            account_id = data.decode("utf-8") if isinstance(data, bytes) else str(data)
+            return InvitationToken(
+                account_id=account_id,
+                email=invitation.email,
+                workspace_id=invitation.workspace_id,
+            )
+        return _invitation_token_adapter.validate_json(data)
+
+    @staticmethod
+    def _maximum_ttl_ms() -> int:
+        return int(dify_config.INVITE_EXPIRY_HOURS * 60 * 60 * 1000)
+
+    def _source_key(self, invitation: InvitationLookup) -> str:
+        if invitation.workspace_id is not None and invitation.email is not None:
+            return self._workspace_invitation_key(invitation)
+        return self._invitation_token_key(invitation.token)
 
     @staticmethod
     def _invitation_token_key(token: str) -> str:
@@ -326,12 +498,20 @@ class RedisInvitationTokenStore(InvitationTokenStore):
     def _membership_used_key(cls, token: str) -> str:
         return f"{cls._invitation_token_key(token)}:membership_used"
 
+    @classmethod
+    def _acceptance_claim_key(cls, token: str) -> str:
+        return f"{cls._invitation_token_key(token)}:acceptance_claim"
+
     @staticmethod
     def _workspace_invitation_key(invitation: InvitationLookup) -> str:
         assert invitation.workspace_id is not None
         assert invitation.email is not None
         email_hash = sha256(invitation.email.encode()).hexdigest()
         return f"member_invite_token:{invitation.workspace_id}, {email_hash}:{invitation.token}"
+
+    @staticmethod
+    def _subject_state_key(workspace_id: str, account_id: str) -> str:
+        return f"member_invite:subject:{workspace_id}:{account_id}:state"
 
 
 class DeploymentWorkspaceInvitePolicy(WorkspaceInvitePolicy):
@@ -349,6 +529,10 @@ class BillingAccountActivationEligibility(AccountActivationEligibility):
         if not self._enabled:
             return None
         return BillingService.get_email_freeze_type(email)
+
+    @override
+    def has_account_capacity(self) -> bool:
+        return SystemFeatureService.get_license().seats.is_available()
 
 
 class BillingWorkspaceMembershipCache(WorkspaceMembershipCache):

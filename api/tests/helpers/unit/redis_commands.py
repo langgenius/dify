@@ -1,5 +1,6 @@
 """In-memory Redis command handling for tests that patch the client's ``execute_command``."""
 
+from hashlib import sha1
 from operator import itemgetter
 
 from redis import RedisError
@@ -21,9 +22,29 @@ class RedisCommandEmulator:
         if command in self.failing:
             raise RedisError(f"{command} unavailable")
         key = str(args[0]) if args else ""
+        if command == "EVALSHA":
+            from services.account import adapters
+
+            digest, count, raw_key, *values = args
+            assert count == 1
+            key = str(raw_key)
+            if digest == sha1(adapters._RELEASE_INVITATION_ACCEPTANCE_LUA.encode()).hexdigest():
+                if self.values.get(key) != _as_bytes(values[0]):
+                    return 0
+                del self.values[key]
+                return 1
+            if digest == sha1(adapters._REVOKE_ACCEPTED_INVITATION_SUBJECT_LUA.encode()).hexdigest():
+                if self.values.get(key) not in (None, b"revoked", _as_bytes(values[0])):
+                    return 0
+            else:
+                assert digest == sha1(adapters._REVOKE_INVITATION_SUBJECT_LUA.encode()).hexdigest()
+            self.values[key] = b"revoked"
+            return 1
         if command == "GET":
             return self.values.get(key)
         if command in {"SETEX", "SET"}:
+            if command == "SET" and "NX" in args and key in self.values:
+                return None
             value = args[2] if command == "SETEX" else args[1]
             self.values[key] = _as_bytes(value)
             return b"OK"

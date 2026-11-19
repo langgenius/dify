@@ -13,7 +13,6 @@ from dify_trace_sdk.emitter import TraceScope
 from dify_trace_sdk.events import WorkflowRunCompleted
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
-from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.tools.workflow_as_tool.repository import WorkflowToolSource
 from core.workflow.node_execution import WorkflowNodeExecution as DifyWorkflowNodeExecution
 from core.workflow.node_execution_process_data import WORKFLOW_TOOL_ROOT_APP_ID_KEY, keep_agent_and_tool_ids
@@ -55,6 +54,7 @@ from services.workflow.inspector_events import (
 from services.workflow.inspector_events import (
     publish_workflow_completed as _inspector_publish_workflow_completed,
 )
+from services.workflow.persistence import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 
 
 @dataclass(slots=True)

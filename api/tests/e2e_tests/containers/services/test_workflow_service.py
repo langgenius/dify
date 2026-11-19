@@ -12,14 +12,15 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
+from enums.creator import CreatorUserRole
 from graphon.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
 from models import Account, AccountStatus, App, TenantStatus, Workflow
-from models.enums import CreatorUserRole
 from models.model import AppMode
 from models.workflow import WorkflowType
 from services.workflow_ref_service import WorkflowRef
 from services.workflow_service import WorkflowService
 from tests.helpers.unit.core.model_fixtures import make_model_instance
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 
 @dataclass(frozen=True)
@@ -1577,7 +1578,12 @@ class TestWorkflowService:
             autospec=True,
         ):
             result = workflow_service.run_free_workflow_node(
-                node_data=node_data, tenant_id=tenant_id, user_id=user_id, node_id=node_id, user_inputs=user_inputs
+                node_data=node_data,
+                tenant_id=tenant_id,
+                user_id=user_id,
+                node_id=node_id,
+                user_inputs=user_inputs,
+                knowledge_retrieval=make_knowledge_retriever(),
             )
 
         # Assert
@@ -1620,7 +1626,12 @@ class TestWorkflowService:
         # Since start nodes are not supported in run_free_node, we expect an error
         with pytest.raises(Exception, match="Node type start not supported") as exc_info:
             workflow_service.run_free_workflow_node(
-                node_data=node_data, tenant_id=tenant_id, user_id=user_id, node_id=node_id, user_inputs=user_inputs
+                node_data=node_data,
+                tenant_id=tenant_id,
+                user_id=user_id,
+                node_id=node_id,
+                user_inputs=user_inputs,
+                knowledge_retrieval=make_knowledge_retriever(),
             )
 
         # Verify the error message indicates the expected issue

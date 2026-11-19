@@ -12,9 +12,10 @@ from core.rag.embedding.cached_embedding import CacheEmbedding
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
-from core.rag.rerank.entity.weight import VectorSetting, Weights
+from core.rag.rerank.entity.weight import Weights
 from core.rag.rerank.rerank_base import BaseRerankRunner
 from graphon.model_runtime.entities.model_entities import ModelType
+from services.knowledge.entities.retrieval_settings import VectorSetting
 
 
 class WeightRerankRunner(BaseRerankRunner):
@@ -41,22 +42,37 @@ class WeightRerankRunner(BaseRerankRunner):
         :return:
         """
         unique_documents = []
-        doc_ids = set()
+        document_identities: set[tuple[str | None, str]] = set()
         for document in documents:
-            if (
-                document.provider == "dify"
-                and document.metadata is not None
-                and document.metadata["doc_id"] not in doc_ids
-            ):
-                # weight rerank only support text documents
-                if not document.metadata.get("doc_type") or document.metadata.get("doc_type") == DocType.TEXT:
-                    doc_ids.add(document.metadata["doc_id"])
-                    unique_documents.append(document)
-            else:
-                if document not in unique_documents:
-                    unique_documents.append(document)
+            if document.provider == "dify" and document.metadata is not None and document.metadata.get("doc_id"):
+                if query_type == QueryType.TEXT_QUERY and document.metadata.get("doc_type") not in {None, DocType.TEXT}:
+                    continue
+                source_dataset_id = document.metadata.get("_retrieval_source_dataset_id")
+                if source_dataset_id is None:
+                    source_dataset_id = document.metadata.get("dataset_id")
+                identity = (
+                    str(source_dataset_id) if source_dataset_id is not None else None,
+                    str(document.metadata["doc_id"]),
+                )
+                if identity in document_identities:
+                    continue
+                document_identities.add(identity)
+                unique_documents.append(document)
+            elif document not in unique_documents:
+                unique_documents.append(document)
 
         documents = unique_documents
+
+        if query_type == QueryType.IMAGE_QUERY:
+            documents = [
+                document
+                for document in documents
+                if document.metadata is not None
+                and (score := document.metadata.get("score")) is not None
+                and (score_threshold is None or score >= score_threshold)
+            ]
+            documents.sort(key=lambda document: document.metadata["score"], reverse=True)
+            return documents[:top_n] if top_n else documents
 
         query_scores = self._calculate_keyword_score(query, documents)
         query_vector_scores = self._calculate_cosine(self.tenant_id, query, documents, self.weights.vector_setting)

@@ -66,6 +66,14 @@ const zProviderQuotaExceededError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zDatasetConcurrentUpdateError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('dataset_concurrent_update'),
+      status: z.literal(409),
+    }),
+  ))()
+
 const zDocumentAlreadyFinishedError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -90,19 +98,19 @@ const zInvalidMetadataError = /* @__PURE__ */ (() =>
     }),
   ))()
 
-const zDocumentIndexingError = /* @__PURE__ */ (() =>
-  zErrorResponse.and(
-    z.object({
-      code: z.literal('document_indexing'),
-      status: z.literal(400),
-    }),
-  ))()
-
 const zArchivedDocumentImmutableError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
       code: z.literal('archived_document_immutable'),
       status: z.literal(403),
+    }),
+  ))()
+
+const zDocumentIndexingError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('document_indexing'),
+      status: z.literal(400),
     }),
   ))()
 
@@ -225,6 +233,7 @@ export const get16Errors = {
 }
 
 export const get18Errors = {
+  archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
   dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
 }
 
@@ -238,9 +247,7 @@ export const patch4Errors = {
   document_indexing: { status: 400, data: zDocumentIndexingError },
 }
 
-export const patch5Errors = { invalid_action: { status: 400, data: zInvalidActionError } }
-
-export const patch6Errors = {
+export const patch5Errors = {
   invalid_action: { status: 400, data: zInvalidActionError },
   provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
 }
@@ -253,11 +260,11 @@ export const delete3Errors = {
   child_chunk_delete_index_error: { status: 500, data: zChildChunkDeleteIndexError },
 }
 
-export const patch7Errors = {
+export const patch6Errors = {
   child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError },
 }
 
-export const patch8Errors = {
+export const patch7Errors = {
   child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError },
 }
 
@@ -266,12 +273,14 @@ export const post14Errors = {
   provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
 }
 
-export const patch9Errors = {
+export const patch8Errors = {
+  invalid_action: { status: 400, data: zInvalidActionError },
   provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
 }
 
 export const get23Errors = {
   archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
+  invalid_action: { status: 400, data: zInvalidActionError },
 }
 
 export const get24Errors = { invalid_metadata: { status: 400, data: zInvalidMetadataError } }
@@ -303,7 +312,7 @@ export const get31Errors = { paid_plan_required: { status: 403, data: zPaidPlanR
 export const put2Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
 
 export const post20Errors = {
-  dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
+  dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
 }
 
 export const post21Errors = {
@@ -321,7 +330,14 @@ export const post23Errors = {
 }
 
 export const get37Errors = {
+  archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
   dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
+}
+
+export const post26Errors = { invalid_action: { status: 400, data: zInvalidActionError } }
+
+export const patch10Errors = {
+  dataset_concurrent_update: { status: 409, data: zDatasetConcurrentUpdateError },
 }
 
 export const post27Errors = { max_keys_exceeded: { status: 400, data: zMaxKeysExceededError } }

@@ -12,6 +12,7 @@ import pytest
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError
 
+from libs.flask_restx_compat import finalize_openapi_payload
 from tests.helpers.unit.config_override import apply_config_overrides
 
 
@@ -415,7 +416,6 @@ def test_generate_specs_writes_unique_operation_ids(generated_specs: list[Path])
 
 
 def test_finalize_openapi_payload_preserves_canonical_operation_id():
-    module = _load_generate_swagger_specs_module()
     payload = {
         "paths": {
             "/items/create-by-file": {
@@ -427,7 +427,7 @@ def test_finalize_openapi_payload_preserves_canonical_operation_id():
         }
     }
 
-    result = module.finalize_openapi_payload(payload)
+    result = finalize_openapi_payload(payload)
 
     assert result["paths"]["/items/create-by-file"]["post"]["operationId"] == "create_item"
     legacy_operation_id = result["paths"]["/items/create_by_file"]["post"]["operationId"]
@@ -435,7 +435,6 @@ def test_finalize_openapi_payload_preserves_canonical_operation_id():
 
 
 def test_finalize_openapi_payload_only_marks_explicit_binary_responses():
-    module = _load_generate_swagger_specs_module()
     payload = {
         "paths": {
             "/transport": {
@@ -460,7 +459,7 @@ def test_finalize_openapi_payload_only_marks_explicit_binary_responses():
         }
     }
 
-    result = module.finalize_openapi_payload(payload)
+    result = finalize_openapi_payload(payload)
     operation = result["paths"]["/transport"]["get"]
     content = operation["responses"]["200"]["content"]
 
@@ -677,6 +676,51 @@ def test_generated_request_contracts_accept_and_reject_payloads(tmp_path: Path):
     ]
     for value in invalid_values:
         assert list(validator.iter_errors(value)), value
+
+
+def test_service_knowledge_operations_document_their_unavailable_failures(generated_specs: list[Path]) -> None:
+    service_path = next(path for path in generated_specs if path.name == "service-openapi.json")
+    payload = json.loads(service_path.read_text(encoding="utf-8"))
+    unavailable_operations = {
+        (method, path)
+        for path, path_item in payload["paths"].items()
+        for method, operation in path_item.items()
+        if isinstance(operation, dict)
+        and "503" in operation.get("responses", {})
+        and not path.startswith("/knowledge-fs/")
+    }
+    vector_space_operations = {
+        ("post", "/datasets/{dataset_id}/document/create-by-file"),
+        ("post", "/datasets/{dataset_id}/document/create-by-text"),
+        ("post", "/datasets/{dataset_id}/document/create_by_file"),
+        ("post", "/datasets/{dataset_id}/document/create_by_text"),
+        ("patch", "/datasets/{dataset_id}/documents/{document_id}"),
+        ("post", "/datasets/{dataset_id}/documents/{document_id}/segments"),
+        ("post", "/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}"),
+        ("post", "/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks"),
+        (
+            "patch",
+            "/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}",
+        ),
+        ("post", "/datasets/{dataset_id}/documents/{document_id}/update-by-file"),
+        ("post", "/datasets/{dataset_id}/documents/{document_id}/update-by-text"),
+        ("post", "/datasets/{dataset_id}/documents/{document_id}/update_by_file"),
+        ("post", "/datasets/{dataset_id}/documents/{document_id}/update_by_text"),
+    }
+    retrieval_unavailable_operations = {
+        ("post", "/datasets/{dataset_id}/hit-testing"),
+        ("post", "/datasets/{dataset_id}/retrieve"),
+    }
+    assert unavailable_operations == vector_space_operations | retrieval_unavailable_operations
+    for method, path in retrieval_unavailable_operations:
+        assert "knowledge index" in payload["paths"][path][method]["responses"]["503"]["description"]
+
+    vector_space_description = (
+        "`service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox "
+        "plan only; retry the request later."
+    )
+    for method, path in vector_space_operations:
+        assert payload["paths"][path][method]["responses"]["503"]["description"] == vector_space_description
 
 
 def test_generate_specs_writes_web_file_upload_error_codes(generated_specs: list[Path]):

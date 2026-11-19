@@ -11,8 +11,10 @@ and realistic testing scenarios with actual PostgreSQL and Redis instances.
 """
 
 import uuid
+from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
+from typing import TypedDict
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -21,19 +23,26 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
-from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document, DocumentSegment
-from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from models.model import UploadFile
+from services.knowledge.segments.indexing import SegmentIndexingGateway
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
+
+
+class _ExternalServiceDependencies(TypedDict):
+    storage: MagicMock
+    segment_index: MagicMock
 
 
 class TestBatchCreateSegmentToIndexTask:
     """Integration tests for batch_create_segment_to_index_task using testcontainers."""
 
     @pytest.fixture(autouse=True)
-    def cleanup_database(self, db_session_with_containers: Session):
+    def cleanup_database(self, db_session_with_containers: Session) -> None:
         """Clean up database before each test to ensure isolation."""
         from extensions.ext_redis import redis_client
 
@@ -51,37 +60,22 @@ class TestBatchCreateSegmentToIndexTask:
         redis_client.flushdb()
 
     @pytest.fixture
-    def mock_external_service_dependencies(self):
+    def mock_external_service_dependencies(self) -> Iterator[_ExternalServiceDependencies]:
         """Mock setup for external service dependencies."""
         with (
             patch("tasks.batch_create_segment_to_index_task.storage", autospec=True) as mock_storage,
-            patch(
-                "tasks.batch_create_segment_to_index_task.ModelManager.for_tenant",
-                autospec=True,
-            ) as mock_model_manager,
-            patch("extensions.ext_application_services.application_services") as mock_services,
+            patch.object(SegmentIndexingGateway, "count_tokens_many", autospec=True) as count_tokens,
+            patch.object(SegmentIndexingGateway, "create_many", autospec=True) as create_many,
         ):
-            # Setup default mock returns
             mock_storage.download.return_value = None
-
-            # Mock embedding model for high quality indexing
-            mock_embedding_model = MagicMock()
-            mock_embedding_model.get_text_embedding_num_tokens.return_value = [10, 15, 20]
-            mock_model_manager_instance = MagicMock()
-            mock_model_manager_instance.get_model_instance.return_value = mock_embedding_model
-            mock_model_manager.return_value = mock_model_manager_instance
-
-            mutations = mock_services.return_value.knowledge.segments.mutations
-            mutations.index_segments.return_value = None
+            count_tokens.side_effect = lambda _gateway, _dataset, texts: [len(text) for text in texts]
 
             yield {
                 "storage": mock_storage,
-                "model_manager": mock_model_manager,
-                "segment_mutations": mutations,
-                "embedding_model": mock_embedding_model,
+                "segment_index": create_many,
             }
 
-    def _create_test_account_and_tenant(self, db_session_with_containers: Session):
+    def _create_test_account_and_tenant(self, db_session_with_containers: Session) -> tuple[Account, Tenant]:
         """
         Helper method to create a test account and tenant for testing.
 
@@ -98,7 +92,7 @@ class TestBatchCreateSegmentToIndexTask:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
 
         db_session_with_containers.add(account)
@@ -107,7 +101,7 @@ class TestBatchCreateSegmentToIndexTask:
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
@@ -127,7 +121,12 @@ class TestBatchCreateSegmentToIndexTask:
 
         return account, tenant
 
-    def _create_test_dataset(self, db_session_with_containers: Session, account, tenant):
+    def _create_test_dataset(
+        self,
+        db_session_with_containers: Session,
+        account: Account,
+        tenant: Tenant,
+    ) -> Dataset:
         """
         Helper method to create a test dataset for testing.
 
@@ -157,7 +156,13 @@ class TestBatchCreateSegmentToIndexTask:
 
         return dataset
 
-    def _create_test_document(self, db_session_with_containers: Session, account, tenant, dataset):
+    def _create_test_document(
+        self,
+        db_session_with_containers: Session,
+        account: Account,
+        tenant: Tenant,
+        dataset: Dataset,
+    ) -> Document:
         """
         Helper method to create a test document for testing.
 
@@ -193,7 +198,12 @@ class TestBatchCreateSegmentToIndexTask:
 
         return document
 
-    def _create_test_upload_file(self, db_session_with_containers: Session, account, tenant):
+    def _create_test_upload_file(
+        self,
+        db_session_with_containers: Session,
+        account: Account,
+        tenant: Tenant,
+    ) -> UploadFile:
         """
         Helper method to create a test upload file for testing.
 
@@ -226,7 +236,10 @@ class TestBatchCreateSegmentToIndexTask:
 
         return upload_file
 
-    def _create_test_csv_content(self, content_type=IndexStructureType.PARAGRAPH_INDEX):
+    def _create_test_csv_content(
+        self,
+        content_type: IndexStructureType = IndexStructureType.PARAGRAPH_INDEX,
+    ) -> str:
         """
         Helper method to create test CSV content.
 
@@ -250,8 +263,10 @@ class TestBatchCreateSegmentToIndexTask:
         return csv_content
 
     def test_batch_create_segment_to_index_task_success_text_model(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies: _ExternalServiceDependencies,
+    ) -> None:
         """
         Test successful batch creation of segments for text model documents.
 
@@ -274,7 +289,7 @@ class TestBatchCreateSegmentToIndexTask:
         # Mock storage to return our CSV content
         mock_storage = mock_external_service_dependencies["storage"]
 
-        def mock_download(key, file_path):
+        def mock_download(_key: str, file_path: str) -> None:
             Path(file_path).write_text(csv_content, encoding="utf-8")
 
         mock_storage.download.side_effect = mock_download
@@ -311,11 +326,11 @@ class TestBatchCreateSegmentToIndexTask:
 
         # Check that document word count was updated
         db_session_with_containers.refresh(document)
+        assert document.word_count is not None
         assert document.word_count > 0
 
         # Verify vector service was called
-        mutations = mock_external_service_dependencies["segment_mutations"]
-        mutations.index_segments.assert_called_once()
+        mock_external_service_dependencies["segment_index"].assert_called_once()
 
         # Check Redis cache was set
         from extensions.ext_redis import redis_client
@@ -325,8 +340,10 @@ class TestBatchCreateSegmentToIndexTask:
         assert cache_value == b"completed"
 
     def test_batch_create_segment_to_index_task_preserves_csv_cell_text(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies: _ExternalServiceDependencies,
+    ) -> None:
         """Test that numeric-looking and NA CSV cells remain text in QA segments."""
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
         dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
@@ -338,7 +355,7 @@ class TestBatchCreateSegmentToIndexTask:
         csv_content = "content,answer\n00123,NA\nNA,00456\n"
         mock_storage = mock_external_service_dependencies["storage"]
 
-        def mock_download(key, file_path):
+        def mock_download(_key: str, file_path: str) -> None:
             Path(file_path).write_text(csv_content, encoding="utf-8")
 
         mock_storage.download.side_effect = mock_download
@@ -367,9 +384,7 @@ class TestBatchCreateSegmentToIndexTask:
         cache_key = f"segment_batch_import_{job_id}"
         assert redis_client.get(cache_key) == b"completed"
 
-    def test_batch_create_segment_to_index_task_dataset_not_found(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_batch_create_segment_to_index_task_dataset_not_found(self, db_session_with_containers: Session) -> None:
         """
         Test task failure when dataset does not exist.
 
@@ -415,9 +430,7 @@ class TestBatchCreateSegmentToIndexTask:
         documents = db_session_with_containers.scalars(select(Document)).all()
         assert len(documents) == 0
 
-    def test_batch_create_segment_to_index_task_document_not_found(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_batch_create_segment_to_index_task_document_not_found(self, db_session_with_containers: Session) -> None:
         """
         Test task failure when document does not exist.
 
@@ -467,8 +480,8 @@ class TestBatchCreateSegmentToIndexTask:
         assert len(segments_for_dataset) == 0
 
     def test_batch_create_segment_to_index_task_document_not_available(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self, db_session_with_containers: Session
+    ) -> None:
         """
         Test task failure when document is not available for indexing.
 
@@ -565,8 +578,8 @@ class TestBatchCreateSegmentToIndexTask:
             assert len(segments) == 0
 
     def test_batch_create_segment_to_index_task_upload_file_not_found(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self, db_session_with_containers: Session
+    ) -> None:
         """
         Test task failure when upload file does not exist.
 
@@ -613,8 +626,10 @@ class TestBatchCreateSegmentToIndexTask:
         assert document.word_count == 0
 
     def test_batch_create_segment_to_index_task_empty_csv_file(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies: _ExternalServiceDependencies,
+    ) -> None:
         """
         Test task failure when CSV file is empty.
 
@@ -636,7 +651,7 @@ class TestBatchCreateSegmentToIndexTask:
         # Mock storage to return empty CSV content
         mock_storage = mock_external_service_dependencies["storage"]
 
-        def mock_download(key, file_path):
+        def mock_download(_key: str, file_path: str) -> None:
             Path(file_path).write_text(empty_csv_content, encoding="utf-8")
 
         mock_storage.download.side_effect = mock_download
@@ -664,8 +679,10 @@ class TestBatchCreateSegmentToIndexTask:
         assert document.word_count == 0
 
     def test_batch_create_segment_to_index_task_position_calculation(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies: _ExternalServiceDependencies,
+    ) -> None:
         """
         Test proper position calculation for segments when existing segments exist.
 
@@ -709,7 +726,7 @@ class TestBatchCreateSegmentToIndexTask:
         # Mock storage to return our CSV content
         mock_storage = mock_external_service_dependencies["storage"]
 
-        def mock_download(key, file_path):
+        def mock_download(_key: str, file_path: str) -> None:
             Path(file_path).write_text(csv_content, encoding="utf-8")
 
         mock_storage.download.side_effect = mock_download
@@ -747,11 +764,11 @@ class TestBatchCreateSegmentToIndexTask:
 
         # Check that document word count was updated
         db_session_with_containers.refresh(document)
+        assert document.word_count is not None
         assert document.word_count > 0
 
         # Verify vector service was called
-        mutations = mock_external_service_dependencies["segment_mutations"]
-        mutations.index_segments.assert_called_once()
+        mock_external_service_dependencies["segment_index"].assert_called_once()
 
         # Check Redis cache was set
         from extensions.ext_redis import redis_client

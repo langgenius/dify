@@ -12,12 +12,12 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from enums import DeploymentEdition
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.file import FileTransferMethod, FileType
 from models.account import Tenant
 from models.enums import (
     ConversationFromSource,
-    CreatorUserRole,
     FeedbackFromSource,
     FeedbackRating,
     MessageChainType,
@@ -486,12 +486,12 @@ def test_process_tenant_processes_and_persists_all_batches(
     ]
     run_repo.delete_runs_by_ids.return_value = 1
     monkeypatch.setattr(
-        service_module.DifyAPIRepositoryFactory,
+        service_module.WorkflowRepositoryFactory,
         "create_api_workflow_node_execution_repository",
         lambda _session_maker: node_repo,
     )
     monkeypatch.setattr(
-        service_module.DifyAPIRepositoryFactory,
+        service_module.WorkflowRepositoryFactory,
         "create_api_workflow_run_repository",
         lambda _session_maker: run_repo,
     )
@@ -741,12 +741,12 @@ def test_process_tenant_repo_loops_break_on_empty_second_batch(
         return run_repo
 
     monkeypatch.setattr(
-        service_module.DifyAPIRepositoryFactory,
+        service_module.WorkflowRepositoryFactory,
         "create_api_workflow_node_execution_repository",
         create_node_repo,
     )
     monkeypatch.setattr(
-        service_module.DifyAPIRepositoryFactory,
+        service_module.WorkflowRepositoryFactory,
         "create_api_workflow_run_repository",
         create_run_repo,
     )

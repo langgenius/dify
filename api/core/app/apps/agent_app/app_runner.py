@@ -49,6 +49,7 @@ from core.app.entities.queue_entities import (
     QueueMessageEndEvent,
     QueueRetrieverResourcesEvent,
 )
+from enums.creator import CreatorUserRole
 from extensions.ext_database import db
 from extensions.tracing import application_tracing_hooks
 from graphon.file import File
@@ -69,7 +70,6 @@ from graphon.model_runtime.errors.invoke import (
 )
 from models.agent import AgentConfigVersionKind
 from models.agent_config_entities import AgentSoulConfig
-from models.enums import CreatorUserRole
 from models.model import Message, MessageAgentThought
 from services.agent.knowledge_citations import knowledge_sources_from_tool_part
 

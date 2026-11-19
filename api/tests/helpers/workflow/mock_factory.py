@@ -13,6 +13,8 @@ from graphon.entities.base_node_data import BaseNodeData
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from graphon.enums import BuiltinNodeTypes, NodeType
 from graphon.nodes.base.node import Node
+from services.file_service import UploadFileCreator
+from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 from tests.helpers.workflow.mock_nodes import (
     MockAgentNode,
     MockCodeNode,
@@ -46,6 +48,8 @@ class MockNodeFactory(DifyNodeFactory):
         self,
         init_params: "InitParams",
         runtime_state: "RuntimeState",
+        knowledge_retrieval: KnowledgeRetriever,
+        knowledge_index_files: UploadFileCreator,
         mock_config: "MockConfig | None" = None,
     ) -> None:
         """
@@ -55,7 +59,12 @@ class MockNodeFactory(DifyNodeFactory):
         :param runtime_state: Graph runtime state
         :param mock_config: Optional mock configuration for customizing mock behavior
         """
-        super().__init__(init_params, runtime_state)
+        super().__init__(
+            init_params,
+            runtime_state,
+            knowledge_retrieval=knowledge_retrieval,
+            knowledge_index_files=knowledge_index_files,
+        )
         self.mock_config = mock_config
 
         # Map of node types that should be mocked
@@ -79,6 +88,8 @@ class MockNodeFactory(DifyNodeFactory):
         return MockNodeFactory(
             init_params=self.init_params,
             runtime_state=runtime_state,
+            knowledge_retrieval=self.knowledge_retrieval,
+            knowledge_index_files=self.knowledge_index_files,
             mock_config=self.mock_config,
         )
 
@@ -151,6 +162,15 @@ class MockNodeFactory(DifyNodeFactory):
                     mock_config=self.mock_config,
                     credentials_provider=self._llm_credentials_provider,
                     model_factory=self._llm_model_factory,
+                )
+            elif node_type == BuiltinNodeTypes.TOOL:
+                mock_instance = mock_class(
+                    node_id=node_id,
+                    data=resolved_node_data,
+                    init_params=self.init_params,
+                    runtime_state=self.runtime_state,
+                    mock_config=self.mock_config,
+                    knowledge_retrieval=self.knowledge_retrieval,
                 )
             else:
                 mock_instance = mock_class(

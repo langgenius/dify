@@ -6,13 +6,13 @@ from sqlalchemy.orm import Session
 from core.app.app_config.entities import (
     DatasetEntity,
     DatasetRetrieveConfigEntity,
-    MetadataFilteringCondition,
     ModelConfig,
 )
 from core.entities.agent_entities import PlanningStrategy
-from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
 from models.model import AppMode, AppModelConfigDict
-from services.knowledge.dataset_service import DatasetService
+from repositories.knowledge.dataset_read_repository import get_dataset_for_tenant
+from services.knowledge.entities.metadata import MetadataFilteringCondition
+from services.knowledge.entities.retrieval_settings import RerankingModelDict, WeightsDict
 
 
 class DatasetConfigManager:
@@ -290,9 +290,4 @@ class DatasetConfigManager:
     @classmethod
     def is_dataset_exists(cls, tenant_id: str, dataset_id: str, session: Session) -> bool:
         # verify if the dataset ID exists
-        dataset = DatasetService.get_dataset(dataset_id, session)
-
-        if not dataset:
-            return False
-
-        return dataset.tenant_id == tenant_id
+        return get_dataset_for_tenant(session, tenant_id=tenant_id, dataset_id=dataset_id) is not None

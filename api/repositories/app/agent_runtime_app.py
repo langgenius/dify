@@ -7,6 +7,7 @@ from constants.model_template import default_app_templates
 from models.agent import APP_BACKED_AGENT_SOURCES, WORKFLOW_ONLY_AGENT_SOURCES, Agent, AgentScope, AgentStatus
 from models.enums import AppStatus
 from models.model import App, AppMode, AppModelConfig, IconType
+from repositories.file.upload_file_repository import lock_and_validate_owned_upload_files_in_session
 
 
 def create_hidden_backing_app(
@@ -48,6 +49,9 @@ def create_hidden_backing_app(
     app.updated_by = account_id
     session.add(app)
     session.flush()
+
+    if app.icon_type == IconType.IMAGE and app.icon:
+        lock_and_validate_owned_upload_files_in_session(session, tenant_id=tenant_id, upload_file_ids=(app.icon,))
 
     app_model_config = AppModelConfig(app_id=app.id, created_by=account_id, updated_by=account_id)
     session.add(app_model_config)

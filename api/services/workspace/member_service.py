@@ -6,6 +6,7 @@ from typing import Protocol
 
 from enums.account import TenantAccountRole
 from machinery.context import RequestContext
+from services.account_email import normalize_email
 from services.account_errors import AccountNotFoundError
 from services.account_ports import AccountSnapshotQuery
 from services.entities.account_activation_entities import InvitationToken, PendingWorkspaceInvitation
@@ -133,18 +134,17 @@ class WorkspaceMemberStore(Protocol):
         *,
         workspace_id: str,
         account_id: str,
-        owner_id: str,
-        actor_account_id: str,
+        operator_account_id: str,
+        require_privileged_operator: bool,
     ) -> WorkspaceMemberRemoval: ...
 
     def update_member_role(
         self,
         *,
         workspace_id: str,
+        actor_account_id: str,
         account_id: str,
         role: TenantAccountRole,
-        actor_account_id: str,
-        previous_owner_account_ids: Sequence[str] = (),
     ) -> None: ...
 
 
@@ -169,6 +169,12 @@ class WorkspaceMemberAccessGateway(Protocol):
     def membership_changed(self, membership: WorkspaceMemberWrite, operator_account_id: str | None) -> None: ...
 
     def member_removed(self, workspace_id: str, removal: WorkspaceMemberRemoval) -> None: ...
+
+    def revoke_pending_invitations(self, workspace_id: str, account_id: str) -> None: ...
+
+    def can_replay_member_removal(self, workspace_id: str, account_id: str) -> bool: ...
+
+    def acquire_invitation_admission(self, workspace_id: str) -> AbstractContextManager[object]: ...
 
 
 class WorkspaceInvitationLinks(Protocol):
@@ -280,24 +286,33 @@ class WorkspaceMemberService:
             ValueError: The workspace has no owner to receive the member's resources.
         """
         account = self._accounts.get(account_id)
-        if account is None:
-            raise AccountNotFoundError()
         self.check_permission(workspace_id, operator_id, account_id, "remove")
         if self.get_role(workspace_id, account_id) is None:
+            if self._access.can_replay_member_removal(workspace_id, account_id):
+                self._access.member_removed(
+                    workspace_id,
+                    WorkspaceMemberRemoval(
+                        account_id=account_id,
+                        email=account.email if account is not None else "",
+                        account_deleted=account is None,
+                    ),
+                )
+                return
+            if account is None:
+                raise AccountNotFoundError()
             raise MemberNotInTenantError("Member not in tenant.")
-        owner_id = (
-            self._access.owner_id(workspace_id, operator_id)
-            if self._access.rbac_enabled
-            else self._workspaces.owner_id(workspace_id)
-        )
-        if owner_id is None:
-            raise ValueError(f"Workspace owner not found for tenant {workspace_id}.")
+        if account is None:
+            raise AccountNotFoundError()
+        # Revoke before the database mutation so an old invitation cannot race
+        # the membership deletion and recreate access. The revoked subject is
+        # also bounded evidence that a later retry may replay external cleanup.
+        self._access.revoke_pending_invitations(workspace_id, account_id)
         self._invitation_links.revoke_pending(workspace_id, account.email, account_id=account_id, keep_token=None)
         removal = self._workspaces.remove_member(
             workspace_id=workspace_id,
             account_id=account_id,
-            owner_id=owner_id,
-            actor_account_id=operator_id,
+            operator_account_id=operator_id,
+            require_privileged_operator=not self._access.rbac_enabled,
         )
         self._access.member_removed(workspace_id, removal)
 
@@ -307,8 +322,8 @@ class WorkspaceMemberService:
         self._access.ensure_role_enabled(new_role)
         if self._accounts.get(member_id) is None:
             raise AccountNotFoundError()
-        self.check_permission(workspace_id, operator_id, member_id, "update")
         role = TenantAccountRole(new_role)
+        self.check_permission(workspace_id, operator_id, member_id, "update")
         previous = self.get_role(workspace_id, member_id)
         if previous is None:
             raise MemberNotInTenantError("Member not in tenant.")
@@ -324,19 +339,16 @@ class WorkspaceMemberService:
             raise NoPermissionError("No permission to update member.")
         if previous == role:
             raise RoleAlreadyAssignedError("The provided role is already assigned to the member.")
-        previous_owner_account_ids: tuple[str, ...] = ()
         if self._access.rbac_enabled:
             if role == TenantAccountRole.OWNER:
-                previous_owner_account_ids = (self._access.owner_id(workspace_id, operator_id),)
                 self._access.transfer_owner(workspace_id, operator_id, member_id)
             else:
                 self._access.change_role(workspace_id, operator_id, member_id, role)
         self._workspaces.update_member_role(
             workspace_id=workspace_id,
+            actor_account_id=operator_id,
             account_id=member_id,
             role=role,
-            actor_account_id=operator_id,
-            previous_owner_account_ids=previous_owner_account_ids,
         )
 
 
@@ -354,6 +366,7 @@ class InvitedAccountRegistration(Protocol):
         status: str,
         is_setup: bool,
         check_normalized_email: bool,
+        create_workspace_required: bool,
     ) -> AccountSnapshot: ...
 
 
@@ -525,6 +538,11 @@ class WorkspaceInvitationService:
         self._invitations.ensure_role_enabled(role)
         workspace_id = context.active_workspace_id
         self._invitations.ensure_allowed(workspace_id)
+        emails_by_identity: dict[str, str] = {}
+        for email in emails:
+            lowered_email = email.lower()
+            emails_by_identity.setdefault(normalize_email(lowered_email), lowered_email)
+        emails = tuple(emails_by_identity.values())
         results: list[WorkspaceInvitationResult] = []
         with self._invitations.acquire(workspace_id):
             self._admit(workspace_id, emails)
@@ -594,6 +612,7 @@ class WorkspaceInvitationService:
                 language=language,
                 status="pending",
                 is_setup=True,
+                create_workspace_required=False,
                 check_normalized_email=True,
             )
             if rbac_enabled:
@@ -638,8 +657,7 @@ class WorkspaceInvitationService:
         except Exception:
             self._invitations.discard(workspace_id, token)
             raise
-        if not rbac_enabled:
-            self._invitations.revoke_pending(workspace_id, account.email, account_id=account.id, keep_token=token)
+        self._invitations.revoke_pending(workspace_id, account.email, account_id=account.id, keep_token=token)
         return WorkspaceInvitation(workspace_id, account.id, normalized_email, role, token)
 
 
@@ -731,5 +749,5 @@ class WorkspaceOwnerTransferService:
         workspace = self._workspaces.get(context.active_workspace_id)
         if workspace is None:
             raise WorkspaceNotFoundError()
-        self._members.update_role(workspace.id, member.id, "owner", owner.id)
+        self._members.update_role(workspace.id, member.id, TenantAccountRole.OWNER.value, owner.id)
         self._challenges.notify(old_owner=owner, new_owner=member, workspace_name=workspace.name)

@@ -13,11 +13,13 @@ from celery import shared_task
 from sqlalchemy import select
 
 from core.db.session_factory import session_factory
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowExecutionStatus
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
-from models import CreatorUserRole, WorkflowRun
+from models import WorkflowRun
 from models.enums import WorkflowRunTriggeredFrom
 from repositories.entities.workflow_execution import WorkflowExecution
+from repositories.workflow.upload_file_references import lock_new_workflow_upload_file_references
 
 logger = logging.getLogger(__name__)
 
@@ -55,8 +57,15 @@ def save_workflow_execution_task(
             existing_run = session.scalar(select(WorkflowRun).where(WorkflowRun.id == execution.id_).with_for_update())
 
             if existing_run:
+                previous_payloads = (existing_run.graph, existing_run.inputs, existing_run.outputs)
                 # Update existing workflow run
                 _update_workflow_run_from_execution(existing_run, execution)
+                lock_new_workflow_upload_file_references(
+                    session,
+                    tenant_id=tenant_id,
+                    previous_payloads=previous_payloads,
+                    current_payloads=(existing_run.graph, existing_run.inputs, existing_run.outputs),
+                )
                 logger.debug("Updated existing workflow run: %s", execution.id_)
             else:
                 # Create new workflow run
@@ -67,6 +76,11 @@ def save_workflow_execution_task(
                     triggered_from=WorkflowRunTriggeredFrom(triggered_from),
                     creator_user_id=creator_user_id,
                     creator_user_role=CreatorUserRole(creator_user_role),
+                )
+                lock_new_workflow_upload_file_references(
+                    session,
+                    tenant_id=tenant_id,
+                    current_payloads=(workflow_run.graph, workflow_run.inputs, workflow_run.outputs),
                 )
                 session.add(workflow_run)
                 logger.debug("Created new workflow run: %s", execution.id_)

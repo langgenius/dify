@@ -48,10 +48,10 @@ class HuaweiObsStorage(BaseStorage):
         return res is not None
 
     @override
-    def delete(self, filename: str):
+    def delete(self, filename: str) -> None:
         response: Any = self.client.deleteObject(bucketName=self.bucket_name, objectKey=filename)
         if response.status == 404 and response.errorCode == "NoSuchKey":
-            raise FileNotFoundError(filename)
+            return
         if response.status >= 300:
             raise RuntimeError(f"OBS object deletion failed: status={response.status}, code={response.errorCode}")
 

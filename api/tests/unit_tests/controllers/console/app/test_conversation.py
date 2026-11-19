@@ -4,12 +4,12 @@ from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
+from enums.creator import CreatorUserRole
 from fields.conversation_fields import ConversationResponseSource
 from graphon.enums import WorkflowExecutionStatus
 from models import Account, EndUser, Message, MessageAnnotation, MessageFeedback
 from models.enums import (
     ConversationFromSource,
-    CreatorUserRole,
     EndUserType,
     FeedbackFromSource,
     FeedbackRating,

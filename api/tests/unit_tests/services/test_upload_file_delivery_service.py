@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_storage import Storage
 from extensions.storage.opendal_storage import OpenDALStorage
-from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
+from repositories.file.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
 from services.errors.file import UnsupportedFileTypeError
 from services.upload_file_delivery_service import (
     UploadFileDelivery,

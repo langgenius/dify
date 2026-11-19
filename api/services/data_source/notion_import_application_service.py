@@ -11,7 +11,7 @@ from services.data_source.entities.notion_import import (
     NotionWorkspace,
 )
 from services.knowledge.dataset_access import DatasetAccess
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.entities.resource_scope import DatasetRef
 
 
 class NotionDocumentBindingReader(Protocol):

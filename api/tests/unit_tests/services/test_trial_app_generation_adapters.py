@@ -22,6 +22,7 @@ from services.errors.conversation import ConversationNotExistsError
 from services.trial_app_access_service import TrialAppRef
 from services.trial_app_generation_adapters import AppGenerateServiceRuntime
 from services.trial_app_generation_service import GenerationResponse, TrialAppGenerationService
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 _ARGS: dict[str, object] = {"inputs": {"count": 0}, "query": "hello", "auto_generate_name": False}
 
@@ -29,6 +30,7 @@ _ARGS: dict[str, object] = {"inputs": {"count": 0}, "query": "hello", "auto_gene
 @dataclass
 class _Harness:
     runtime: AppGenerateServiceRuntime
+    app_generation: AppGenerateService
     app: TrialAppRef
     account_id: str
     closed_sessions: list[Session]
@@ -63,8 +65,13 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
                 raise failure
 
     factory = sessionmaker(bind=sqlite_engine, class_=TrackedSession, expire_on_commit=True)
+    app_generation = AppGenerateService(knowledge_retrieval=make_knowledge_retriever())
     return _Harness(
-        runtime=AppGenerateServiceRuntime(session_factory=cast(sessionmaker[Session], factory)),
+        runtime=AppGenerateServiceRuntime(
+            session_factory=cast(sessionmaker[Session], factory),
+            app_generation=app_generation,
+        ),
+        app_generation=app_generation,
         app=TrialAppRef(app_id=app.id, tenant_id=app.tenant_id, app_mode=app.mode),
         account_id=account.id,
         closed_sessions=closed_sessions,
@@ -131,7 +138,7 @@ def _patch_generation(
         assert args == expected_args
         return generate(session)
 
-    monkeypatch.setattr(AppGenerateService, "generate", legacy_generate)
+    monkeypatch.setattr(harness.app_generation, "generate", legacy_generate)
 
 
 def test_mapping_result_is_unchanged_and_generation_writes_are_committed(
@@ -285,7 +292,7 @@ def test_unavailable_generation_context_fails_before_entering_runtime(
     def unexpected_generate(**_kwargs: object) -> GenerationResponse:
         pytest.fail("Unavailable context must fail before generation")
 
-    monkeypatch.setattr(AppGenerateService, "generate", unexpected_generate)
+    monkeypatch.setattr(harness.app_generation, "generate", unexpected_generate)
     app = harness.app
     account_id = harness.account_id
     error_type: type[Exception] = AppDefinitionUnavailableError
@@ -318,7 +325,7 @@ def test_mode_changed_after_admission_fails_before_generation_and_usage_recordin
     def unexpected_generate(**_kwargs: object) -> GenerationResponse:
         pytest.fail("A stale app mode must fail before generation")
 
-    monkeypatch.setattr(AppGenerateService, "generate", unexpected_generate)
+    monkeypatch.setattr(harness.app_generation, "generate", unexpected_generate)
     service = TrialAppGenerationService(runtime=harness.runtime, usage=TrialAppRepository(sqlite_session_factory))
 
     with pytest.raises(AppDefinitionUnavailableError) as raised:
@@ -364,12 +371,12 @@ def _patch_chat_generation(monkeypatch: pytest.MonkeyPatch, harness: _Harness) -
         assert not harness.closed_sessions[0].in_transaction()
         assert session is not harness.closed_sessions[0]
         assert not session.in_transaction()
-        response = ChatAppGenerator().generate(
+        response = ChatAppGenerator(knowledge_retrieval=make_knowledge_retriever()).generate(
             app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming, session=session
         )
         return cast(GenerationResponse, ChatAppGenerator.convert_to_event_stream(response))
 
-    monkeypatch.setattr(AppGenerateService, "generate", legacy_generate)
+    monkeypatch.setattr(harness.app_generation, "generate", legacy_generate)
 
 
 @pytest.mark.parametrize("mismatch", ["missing", "app", "account", "source", "end-user", "deleted"])

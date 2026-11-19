@@ -18,7 +18,9 @@ import {
   zConversationNotFoundError,
   zConversationVariableNotFoundError,
   zConversationVariableTypeMismatchError,
+  zDatasetConcurrentUpdateError,
   zDatasetNameDuplicateError,
+  zDatasetNotInitializedError,
   zEndUserNotFoundError,
   zFileAccessDeniedError,
   zFileExtensionBlockedError,
@@ -1289,8 +1291,10 @@ export const post13 = oc
   .errors({
     file_too_large: { status: 413, data: zFileTooLargeError },
     filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     no_file_uploaded: { status: 400, data: zNoFileUploadedError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
     too_many_files: { status: 400, data: zTooManyFilesError },
   })
 
@@ -1323,8 +1327,10 @@ export const post14 = oc
   .errors({
     file_too_large: { status: 413, data: zFileTooLargeError },
     filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     no_file_uploaded: { status: 400, data: zNoFileUploadedError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
     too_many_files: { status: 400, data: zTooManyFilesError },
   })
 
@@ -1355,7 +1361,11 @@ export const post15 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdDocumentCreateByTextResponse)
-  .errors({ provider_not_initialize: { status: 400, data: zProviderNotInitializeError } })
+  .errors({
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 /**
  * Create document by text through the deprecated underscore alias
@@ -1383,7 +1393,11 @@ export const post16 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdDocumentCreateByText2Response)
-  .errors({ provider_not_initialize: { status: 400, data: zProviderNotInitializeError } })
+  .errors({
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 export const createByText = {
   post: post16,
@@ -1707,7 +1721,10 @@ export const post20 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse)
-  .errors({ provider_not_initialize: { status: 400, data: zProviderNotInitializeError } })
+  .errors({
+    invalid_action: { status: 400, data: zInvalidActionError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+  })
 
 export const bySegmentId = {
   delete: delete5,
@@ -1801,7 +1818,9 @@ export const post22 = oc
   .errors({
     file_too_large: { status: 413, data: zFileTooLargeError },
     filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
     too_many_files: { status: 400, data: zTooManyFilesError },
     unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
   })
@@ -1835,7 +1854,9 @@ export const post23 = oc
   .errors({
     file_too_large: { status: 413, data: zFileTooLargeError },
     filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
     too_many_files: { status: 400, data: zTooManyFilesError },
     unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
   })
@@ -1847,12 +1868,12 @@ export const updateByFile = {
 /**
  * Update Document by Text
  *
- * Update an existing document's text content, name, or processing configuration. Re-triggers indexing if content changes — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.
+ * Update an existing document's text content, name, or processing configuration. Changing only the name updates document metadata without reindexing. Providing text, including an empty string, or a processing rule re-triggers indexing; use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.
  */
 export const post24 = oc
   .route({
     description:
-      "Update an existing document's text content, name, or processing configuration. Re-triggers indexing if content changes — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.",
+      "Update an existing document's text content, name, or processing configuration. Changing only the name updates document metadata without reindexing. Providing text, including an empty string, or a processing rule re-triggers indexing; use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.",
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText',
@@ -1867,12 +1888,16 @@ export const post24 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponse)
-  .errors({ provider_not_initialize: { status: 400, data: zProviderNotInitializeError } })
+  .errors({
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 /**
  * Update document by text through the deprecated underscore alias
  *
- * Deprecated legacy alias for updating an existing document by providing text content. Use /datasets/{dataset_id}/documents/{document_id}/update-by-text instead.
+ * Deprecated legacy alias for updating an existing document's name, text content, or processing rule. Name-only updates do not reindex the document. Use /datasets/{dataset_id}/documents/{document_id}/update-by-text instead.
  *
  * @deprecated
  */
@@ -1880,7 +1905,7 @@ export const post25 = oc
   .route({
     deprecated: true,
     description:
-      'Deprecated legacy alias for updating an existing document by providing text content. Use /datasets/{dataset_id}/documents/{document_id}/update-by-text instead.',
+      "Deprecated legacy alias for updating an existing document's name, text content, or processing rule. Name-only updates do not reindex the document. Use /datasets/{dataset_id}/documents/{document_id}/update-by-text instead.",
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText',
@@ -1895,7 +1920,11 @@ export const post25 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Response)
-  .errors({ provider_not_initialize: { status: 400, data: zProviderNotInitializeError } })
+  .errors({
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 export const updateByText = {
   post: post25,
@@ -1972,7 +2001,9 @@ export const patch4 = oc
   .errors({
     file_too_large: { status: 413, data: zFileTooLargeError },
     filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
     too_many_files: { status: 400, data: zTooManyFilesError },
     unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
   })
@@ -2048,6 +2079,7 @@ export const post26 = oc
   .output(zPostDatasetsByDatasetIdHitTestingResponse)
   .errors({
     completion_request_error: { status: 400, data: zCompletionRequestError },
+    dataset_not_initialized: { status: 400, data: zDatasetNotInitializedError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
@@ -2330,6 +2362,7 @@ export const post31 = oc
   .output(zPostDatasetsByDatasetIdRetrieveResponse)
   .errors({
     completion_request_error: { status: 400, data: zCompletionRequestError },
+    dataset_not_initialized: { status: 400, data: zDatasetNotInitializedError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
@@ -2417,6 +2450,7 @@ export const patch6 = oc
   })
   .input(z.object({ body: zPatchDatasetsByDatasetIdBody, params: zPatchDatasetsByDatasetIdPath }))
   .output(zPatchDatasetsByDatasetIdResponse)
+  .errors({ dataset_concurrent_update: { status: 409, data: zDatasetConcurrentUpdateError } })
 
 export const byDatasetId = {
   delete: delete8,

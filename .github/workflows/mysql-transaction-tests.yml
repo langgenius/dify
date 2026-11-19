@@ -1,0 +1,81 @@
+name: MySQL Transaction Tests
+
+on:
+  workflow_call:
+
+concurrency:
+  group: mysql-transaction-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mysql-transaction-tests:
+    runs-on: depot-ubuntu-24.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup UV and Python
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          enable-cache: true
+          python-version: '3.13'
+          cache-dependency-glob: api/uv.lock
+
+      - name: Install dependencies
+        run: uv sync --project api --dev --locked
+      - name: Prepare middleware env for MySQL
+        run: |
+          cd docker
+          cp envs/middleware.env.example middleware.env
+          sed -i 's/DB_TYPE=postgresql/DB_TYPE=mysql/' middleware.env
+          sed -i 's/DB_HOST=db_postgres/DB_HOST=db_mysql/' middleware.env
+          sed -i 's/DB_PORT=5432/DB_PORT=3306/' middleware.env
+          sed -i 's/DB_USERNAME=postgres/DB_USERNAME=mysql/' middleware.env
+
+      - name: Set up Middlewares
+        uses: hoverkraft-tech/compose-action@b659c744ee9bed25aea2307c017ad849bd104433 # v3.2.0
+        with:
+          compose-file: |
+            docker/docker-compose.middleware.yaml
+          services: |
+            db_mysql
+            redis
+
+      - name: Prepare configs for MySQL
+        run: |
+          cd api
+          cp .env.example .env
+          sed -i 's/DB_TYPE=postgresql/DB_TYPE=mysql/' .env
+          sed -i 's/DB_PORT=5432/DB_PORT=3306/' .env
+          sed -i 's/DB_USERNAME=postgres/DB_USERNAME=root/' .env
+
+      # Container startup does not guarantee that InnoDB accepts connections.
+      # Wait for a real query before preparing the test database.
+      - name: Wait for MySQL to accept queries
+        run: |
+          set +e
+          for i in $(seq 1 60); do
+            if docker run --rm --network host mysql:8.0 \
+                mysql -h 127.0.0.1 -P 3306 -uroot -pdifyai123456 \
+                -e 'SELECT 1' >/dev/null 2>&1; then
+              echo "MySQL ready after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "MySQL not ready after 60s; dumping container logs:"
+          docker compose -f docker/docker-compose.middleware.yaml --profile mysql logs --tail=200 db_mysql
+          exit 1
+
+      - name: Prepare database schema
+        working-directory: api
+        env:
+          DEBUG: true
+        run: uv run --env-file .env flask --app app.py upgrade-db
+
+      - name: Run MySQL transaction and concurrency tests
+        run: uv run --project api --env-file api/.env pytest --no-cov api/tests/mysql_integration_tests

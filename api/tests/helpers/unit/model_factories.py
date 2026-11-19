@@ -11,6 +11,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
 from graphon.variables import VariableBase
 from models.account import Account, AccountStatus, Tenant, TenantAccountRole, TenantStatus
@@ -18,7 +19,6 @@ from models.dataset import Dataset, Document
 from models.enums import (
     AppStatus,
     ConversationStatus,
-    CreatorUserRole,
     DataSourceType,
     DocumentCreatedFrom,
     EndUserType,

@@ -33,10 +33,11 @@ from core.tools.errors import (
 )
 from core.tools.utils.message_transformer import ToolFileMessageTransformer, safe_json_value
 from core.tools.workflow_as_tool.tool import WorkflowTool
+from enums.creator import CreatorUserRole
 from extensions.ext_database import db
 from graphon.file import FileTransferMethod, FileType
 from libs.datetime_utils import utc_now
-from models.enums import CreatorUserRole, MessageFileBelongsTo
+from models.enums import MessageFileBelongsTo
 from models.model import Message, MessageFile
 
 logger = logging.getLogger(__name__)

@@ -1,10 +1,11 @@
 import logging
 from copy import deepcopy
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from sqlalchemy import inspect
+from sqlalchemy import Engine, inspect
 from sqlalchemy.orm import Session
 
 from core.app.apps.base_app_generator import BaseAppGenerator
@@ -15,7 +16,8 @@ from extensions.storage.storage_type import StorageType
 from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
 from graphon.file import File
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
-from models import CreatorUserRole, UploadFile, Workflow, WorkflowRun, WorkflowRunTriggeredFrom
+from models import UploadFile, Workflow, WorkflowRun
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowType as ModelWorkflowType
 from tests.helpers.unit.config_override import apply_config_overrides
 
@@ -600,9 +602,13 @@ class TestBaseAppGeneratorExtras:
         assert "\n\n" in converted[0]
         assert converted[1] == "event: ping\n\n"
 
-    def test_get_draft_var_saver_factory_debugger(self):
+    def test_get_draft_var_saver_factory_debugger(self, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
         from models import Account
 
+        monkeypatch.setattr(
+            "core.app.apps.base_app_generator.db",
+            SimpleNamespace(engine=sqlite_engine),
+        )
         base_app_generator = BaseAppGenerator()
         account = Account(name="Tester", email="tester@example.com")
         account.id = "account-id"

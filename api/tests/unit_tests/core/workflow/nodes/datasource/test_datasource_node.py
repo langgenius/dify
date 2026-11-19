@@ -9,6 +9,7 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.workflow.file_reference import build_file_reference
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.nodes.datasource.datasource_node import DatasourceNode
 from core.workflow.nodes.datasource.entities import DatasourceNodeData
@@ -16,6 +17,8 @@ from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 from graphon.runtime import RuntimeState, VariablePool
+from services.file_service import UploadFileCreator
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -144,7 +147,12 @@ def test_node_integration_minimal_stream(mocker: MockerFixture, sqlite_engine: E
             "core.workflow.node_factory.build_data_source_credentials",
             return_value=SimpleNamespace(providers=SimpleNamespace(get_datasource_credentials=load_credentials)),
         )
-        factory = DifyNodeFactory(init_params=graph_init_params, runtime_state=graph_runtime_state)
+        factory = DifyNodeFactory(
+            init_params=graph_init_params,
+            runtime_state=graph_runtime_state,
+            knowledge_retrieval=make_knowledge_retriever(),
+            knowledge_index_files=mocker.create_autospec(UploadFileCreator, instance=True),
+        )
         node = factory.create_node({"id": "n", "data": node_data.model_dump()})
         build_credentials.assert_called_once_with(database_client=database_client)
         assert isinstance(node, DatasourceNode)
@@ -160,3 +168,65 @@ def test_node_integration_minimal_stream(mocker: MockerFixture, sqlite_engine: E
     out = list(node._run())
     assert isinstance(out[-1], StreamCompletedEvent)
     load_credentials.assert_called_once_with("t1", "p", "plug", "credential-1")
+
+
+@pytest.mark.parametrize(
+    ("datasource_info", "expected_file_id"),
+    [
+        ({"name": "file", "real_file_id": "real-file"}, "real-file"),
+        (
+            {
+                "name": "file",
+                "real_file_id": "real-file",
+                "reference": build_file_reference(record_id="reference-file"),
+                "related_id": "related-file",
+            },
+            "real-file",
+        ),
+    ],
+)
+def test_local_file_uses_shared_persisted_reference_precedence(
+    mocker: MockerFixture,
+    datasource_info: dict[str, str],
+    expected_file_id: str,
+) -> None:
+    fetched: list[tuple[str, str]] = []
+
+    class _Mgr:
+        @classmethod
+        def get_icon_url(cls, **_: object) -> str:
+            return "icon"
+
+        @classmethod
+        def get_upload_file_by_id(cls, *, file_id: str, tenant_id: str) -> dict[str, str]:
+            fetched.append((file_id, tenant_id))
+            return {"id": file_id}
+
+    mocker.patch("core.workflow.nodes.datasource.datasource_node.DatasourceManager", new=_Mgr)
+    node = DatasourceNode(
+        node_id="n",
+        data=DatasourceNodeData(
+            type="datasource",
+            version="1",
+            title="Datasource",
+            provider_type="plugin",
+            provider_name="p",
+            plugin_id="plug",
+            datasource_name="ds",
+        ),
+        init_params=build_test_graph_init_params(workflow_id="wf-1", tenant_id="t1", app_id="app-1", user_id="u1"),
+        runtime_state=RuntimeState(
+            variable_pool=VariablePool.from_bootstrap(
+                system_variables=build_system_variables(datasource_type="local_file", datasource_info=datasource_info)
+            ),
+            start_at=time.perf_counter(),
+            workflow_id="wf-1",
+        ),
+        datasource_credentials=lambda _tenant, _provider, _plugin, _credential: {},
+    )
+
+    events = list(node._run())
+
+    assert fetched == [(expected_file_id, "t1")]
+    assert len(events) == 1
+    assert isinstance(events[0], StreamCompletedEvent)

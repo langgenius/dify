@@ -28,8 +28,7 @@ from models.model import AppMode, EndUser
 from models.tools import ToolFile
 from models.trigger import AppTrigger, WorkflowTriggerLog, WorkflowWebhookTrigger
 from models.workflow import Workflow
-from tasks.async_workflow_tasks import execute_workflow_sandbox
-from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue
+from tasks.async_workflow_tasks import _SANDBOX_QUEUE, execute_workflow_sandbox
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.helpers.unit.model_factories import make_app, make_workflow
 from tests.unit_tests.controllers.console.workspace import test_trigger_oauth_client
@@ -134,7 +133,7 @@ def broker() -> Iterator[SimpleQueue]:
     app.set_current()
     try:
         with app.connection_for_write() as connection:
-            with SimpleQueue(connection.channel(), AsyncWorkflowQueue.SANDBOX_QUEUE) as queue:
+            with SimpleQueue(connection.channel(), _SANDBOX_QUEUE) as queue:
                 queue.clear()
                 try:
                     yield queue

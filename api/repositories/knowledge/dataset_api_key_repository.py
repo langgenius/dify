@@ -5,7 +5,6 @@ from typing import override
 from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.account import Tenant
 from models.dataset import Dataset
 from models.enums import ApiTokenType
 from models.model import ApiToken
@@ -16,6 +15,7 @@ from services.auth.api_key_contracts import (
     ApiKeyRecord,
     ApiKeyResourceNotFoundError,
 )
+from services.knowledge.admission.application import DatasetApiKeyScope
 from services.knowledge.api_key_service import DatasetApiKeyStore, UnknownDatasetIdsError, UnknownKnowledgeSpaceIdsError
 
 
@@ -23,10 +23,22 @@ class DatasetApiKeyRepository(DatasetApiKeyStore):
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
+    def get_active_scope(self, workspace_id: str, api_key_id: str) -> DatasetApiKeyScope | None:
+        """Read key existence and bindings together; revoked keys never become unrestricted."""
+        with self._session_factory() as session:
+            scope = dataset_api_key_bindings.get_active_key_scope(
+                session,
+                api_token_id=api_key_id,
+                tenant_id=workspace_id,
+            )
+            if scope is None:
+                return None
+            return DatasetApiKeyScope(dataset_ids=scope.dataset_ids, restricted=scope.restricted)
+
     @override
     def list_keys(self, workspace_id: str, dataset_id: str) -> tuple[ApiKeyRecord, ...]:
         with self._session_factory() as session:
-            self._get_dataset(session, workspace_id, dataset_id)
+            self._get_dataset(session, workspace_id, dataset_id, current_read=False)
             return tuple(
                 self._record(key, (dataset_id,)) for key in session.scalars(self._key_query(workspace_id, dataset_id))
             )
@@ -35,7 +47,7 @@ class DatasetApiKeyRepository(DatasetApiKeyStore):
     def create_key(self, workspace_id: str, dataset_id: str, *, max_keys: int, prefix: str) -> ApiKeyRecord:
         with self._session_factory.begin() as session:
             self._lock_workspace(session, workspace_id)
-            self._get_dataset(session, workspace_id, dataset_id)
+            self._get_dataset(session, workspace_id, dataset_id, current_read=True)
             return self._create_key(session, workspace_id, (dataset_id,), max_keys=max_keys, prefix=prefix)
 
     @override
@@ -81,6 +93,7 @@ class DatasetApiKeyRepository(DatasetApiKeyStore):
     @override
     def delete_workspace_key(self, workspace_id: str, key_id: str) -> ApiKeyRecord:
         with self._session_factory.begin() as session:
+            self._lock_workspace(session, workspace_id)
             key = session.scalar(self._workspace_key_query(workspace_id).where(ApiToken.id == key_id))
             if key is None:
                 raise ApiKeyNotFoundError
@@ -115,14 +128,15 @@ class DatasetApiKeyRepository(DatasetApiKeyStore):
 
     @staticmethod
     def _lock_workspace(session: Session, workspace_id: str) -> None:
-        # Both creation routes lock the same row before counting all workspace dataset keys.
-        if session.scalar(select(Tenant.id).where(Tenant.id == workspace_id).with_for_update()) is None:
+        # Serialize key mutation with dataset cleanup and workspace quota checks.
+        if not dataset_api_key_bindings.lock_workspace(session, workspace_id):
             raise ApiKeyResourceNotFoundError("Workspace not found.")
 
     @override
     def delete_key(self, workspace_id: str, dataset_id: str, key_id: str) -> ApiKeyRecord:
         with self._session_factory.begin() as session:
-            self._get_dataset(session, workspace_id, dataset_id)
+            self._lock_workspace(session, workspace_id)
+            self._get_dataset(session, workspace_id, dataset_id, current_read=True)
             key = session.scalar(self._key_query(workspace_id, dataset_id).where(ApiToken.id == key_id))
             if key is None:
                 raise ApiKeyNotFoundError
@@ -131,8 +145,13 @@ class DatasetApiKeyRepository(DatasetApiKeyStore):
             return record
 
     @staticmethod
-    def _get_dataset(session: Session, workspace_id: str, dataset_id: str) -> Dataset:
+    def _get_dataset(session: Session, workspace_id: str, dataset_id: str, *, current_read: bool) -> Dataset:
         query = select(Dataset).where(Dataset.id == dataset_id, Dataset.tenant_id == workspace_id)
+        if current_read:
+            # Key mutation holds the tenant lock first. A locking read then sees
+            # a dataset deletion that committed while the creator was waiting,
+            # including under MySQL's REPEATABLE READ isolation.
+            query = query.with_for_update(read=True)
         dataset = session.scalar(query)
         if dataset is None:
             raise ApiKeyResourceNotFoundError("Dataset not found.")

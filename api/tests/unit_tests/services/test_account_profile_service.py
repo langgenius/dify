@@ -48,7 +48,7 @@ def test_update_applies_profile_changes(accounts: SQLAlchemyAccountRepository, m
     assert result.name == "Updated"
     assert result.timezone == "Asia/Singapore"
     assert accounts.get("account-1") == result
-    update.assert_called_once_with("account-1", changes)
+    update.assert_called_once_with("account-1", "workspace-1", changes)
 
 
 def test_update_treats_empty_changes_as_noop(accounts: SQLAlchemyAccountRepository, mocker: MockerFixture) -> None:
@@ -73,4 +73,4 @@ def test_update_rejects_missing_account(sqlite_session_factory: sessionmaker[Ses
     with pytest.raises(AccountNotFoundError):
         service.update(_context(), changes)
 
-    update.assert_called_once_with("account-1", changes)
+    update.assert_called_once_with("account-1", "workspace-1", changes)

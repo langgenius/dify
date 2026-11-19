@@ -206,6 +206,8 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.workflow_schedule_tasks",  # scheduled workflow execution
         "tasks.generate_summary_index_task",  # summary index generation
         "tasks.regenerate_summary_index_task",  # summary index regeneration
+        "tasks.document_indexing_task",  # document indexing
+        "tasks.duplicate_document_indexing_task",  # duplicate document indexing
         "tasks.rag_pipeline.rag_pipeline_run_task",  # regular RAG pipeline execution
         "tasks.rag_pipeline.priority_rag_pipeline_run_task",  # priority RAG pipeline execution
         "tasks.initialize_created_app_rbac_access_task",  # app access initialization

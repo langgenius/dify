@@ -61,6 +61,7 @@ from core.evaluation.runners.agent_evaluation_runner import AgentEvaluationRunne
 from core.evaluation.runners.base_evaluation_runner import BaseEvaluationRunner
 from core.evaluation.runners.llm_evaluation_runner import LLMEvaluationRunner
 from core.evaluation.runners.retrieval_evaluation_runner import RetrievalEvaluationRunner
+from extensions.ext_application_services import application_services
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
 from graphon.node_events import NodeRunResult
@@ -171,7 +172,9 @@ def _evaluate_with_customized_workflow(
                 node_run_result_mapping,
             )
 
-            generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
+            generator = WorkflowAppGenerator(
+                execution_driver=WorkflowRunAgg.run, knowledge_retrieval=application_services().knowledge.retrieval
+            )
             response: Mapping[str, Any] = generator.generate(
                 execution_identity=build_workflow_execution_identity(service_account),
                 app_model=app,

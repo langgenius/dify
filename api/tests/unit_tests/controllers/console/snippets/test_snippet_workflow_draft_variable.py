@@ -1,17 +1,33 @@
 import json
+from dataclasses import dataclass
 from inspect import unwrap
 from unittest.mock import Mock
 
 import pytest
 from flask import Flask
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.console.snippets import snippet_workflow_draft_variable as module
 from graphon.variables import StringSegment, StringVariable
 from models.account import Account, AccountStatus
 from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowDraftVariable
+from tests.unit_tests.services.snippet_test_utils import make_snippet_service
+
+
+@dataclass(frozen=True)
+class _SnippetApplicationServices:
+    snippets: object
+
+
+@pytest.fixture(autouse=True)
+def snippet_application_services(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = _SnippetApplicationServices(snippets=make_snippet_service(sqlite_session_factory))
+    monkeypatch.setattr(module, "application_services", lambda: services)
 
 
 def _make_account() -> Account:

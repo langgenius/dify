@@ -27,6 +27,11 @@ from models.model import App, AppMode
 from services.agent_tool_inner_service import AgentToolInnerService
 from services.entities.agent_tool_inner import AgentToolInvokeRequest
 from services.errors.agent_tool_inner import AgentToolInnerServiceError
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
+
+
+def _service() -> AgentToolInnerService:
+    return AgentToolInnerService(knowledge_retrieval=make_knowledge_retriever())
 
 
 def _request() -> AgentToolInvokeRequest:
@@ -99,7 +104,7 @@ def _invoke_observation(session: Session, messages: list[ToolInvokeMessage]) -> 
             side_effect=lambda messages, **_kwargs: messages,
         ),
     ):
-        return AgentToolInnerService().invoke(_request(), session=session).observation
+        return _service().invoke(_request(), session=session).observation
 
 
 @pytest.mark.parametrize("message_type", ["image_link", "binary_link", "link"])
@@ -167,7 +172,7 @@ def test_media_tool_observations_read_tool_files_committed_in_separate_transacti
             patch("services.agent_tool_inner_service.ToolManager.get_agent_tool_runtime", return_value=_FakeTool()),
             patch("services.agent_tool_inner_service.ToolEngine.generic_invoke", return_value=iter([blob_message])),
         ):
-            response = AgentToolInnerService().invoke(_request(), session=outer_session)
+            response = _service().invoke(_request(), session=outer_session)
             summary = json.loads(response.observation.split("Tool generated media file: ")[1].split(" (call")[0])
             record_id = resolve_file_record_id(summary["reference"])
             assert record_id is not None
@@ -313,7 +318,7 @@ def test_invoke_uses_agent_tool_runtime_and_returns_observation(
     ):
         request = _request()
         request.caller.workflow_id = workflow_id
-        response = AgentToolInnerService().invoke(request, session=sqlite_session)
+        response = _service().invoke(request, session=sqlite_session)
 
     assert response.observation == "ok"
     assert response.metadata == {
@@ -337,7 +342,7 @@ def test_invoke_uses_agent_tool_runtime_and_returns_observation(
 
 def test_invoke_raises_app_not_found_when_session_has_no_app(sqlite_session: Session) -> None:
     with pytest.raises(AgentToolInnerServiceError) as exc_info:
-        AgentToolInnerService().invoke(_request(), session=sqlite_session)
+        _service().invoke(_request(), session=sqlite_session)
 
     assert exc_info.value.error_code == "app_not_found"
     assert exc_info.value.status_code == 404
@@ -348,7 +353,7 @@ def test_invoke_raises_app_tenant_mismatch_when_app_belongs_to_other_tenant(sqli
     _persist_app(sqlite_session, tenant_id="tenant-2")
 
     with pytest.raises(AgentToolInnerServiceError) as exc_info:
-        AgentToolInnerService().invoke(_request(), session=sqlite_session)
+        _service().invoke(_request(), session=sqlite_session)
 
     assert exc_info.value.error_code == "app_tenant_mismatch"
     assert exc_info.value.status_code == 403
@@ -364,7 +369,7 @@ def test_invoke_maps_tool_runtime_app_not_found_value_error_to_specific_error_co
         patch("services.agent_tool_inner_service.ToolEngine.generic_invoke", side_effect=ValueError("app not found")),
     ):
         with pytest.raises(AgentToolInnerServiceError) as exc_info:
-            AgentToolInnerService().invoke(_request(), session=sqlite_session)
+            _service().invoke(_request(), session=sqlite_session)
 
     assert exc_info.value.error_code == "app_not_found"
     assert exc_info.value.status_code == 404
@@ -383,7 +388,7 @@ def test_invoke_maps_tool_invoke_error_without_private_tool_engine_helper(sqlite
         ),
     ):
         with pytest.raises(AgentToolInnerServiceError) as exc_info:
-            AgentToolInnerService().invoke(_request(), session=sqlite_session)
+            _service().invoke(_request(), session=sqlite_session)
 
     assert exc_info.value.error_code == "agent_tool_invoke_failed"
 
@@ -403,6 +408,6 @@ def test_invoke_maps_runtime_lookup_errors_to_service_error_codes(
 
     with patch("services.agent_tool_inner_service.ToolManager.get_agent_tool_runtime", side_effect=error):
         with pytest.raises(AgentToolInnerServiceError) as exc_info:
-            AgentToolInnerService().invoke(_request(), session=sqlite_session)
+            _service().invoke(_request(), session=sqlite_session)
 
     assert exc_info.value.error_code == expected_code

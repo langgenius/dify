@@ -9,17 +9,21 @@ from core.db.session_factory import session_factory
 from core.model_context import use_credit_usage_metadata
 from core.rag.index_processor.index_processor import IndexProcessor
 from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
-from core.rag.summary_index.summary_index import SummaryIndex
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from core.workflow.system_variables import SystemVariableKey, get_system_segment, get_system_text
 from graphon.enums import NodeExecutionType, WorkflowNodeExecutionStatus
 from graphon.node_events import NodeRunResult
 from graphon.nodes.base.node import Node
 from graphon.nodes.base.template import Template
+from services.file_service import UploadFileCreator
 
 from .entities import KnowledgeIndexNodeData
 from .exc import (
     KnowledgeIndexNodeError,
+)
+from .protocols import (
+    SUMMARY_INDEX_SERVICE_CONTEXT_KEY,
+    SummaryIndexServiceProtocol,
 )
 
 if TYPE_CHECKING:
@@ -40,15 +44,24 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
         *,
         init_params: "InitParams",
         runtime_state: "RuntimeState",
+        files: UploadFileCreator | None = None,
     ) -> None:
+        """Build the node with an optional summary service validated from the run context.
+
+        Invalid injected services raise before indexing; absent services retain the
+        existing path without summary generation.
+        """
         super().__init__(
             node_id=node_id,
             data=data,
             init_params=init_params,
             runtime_state=runtime_state,
         )
-        self.index_processor = IndexProcessor()
-        self.summary_index_service = SummaryIndex()
+        self.index_processor = IndexProcessor(files=files)
+        summary_service = init_params.run_context.get(SUMMARY_INDEX_SERVICE_CONTEXT_KEY)
+        if summary_service is not None and not isinstance(summary_service, SummaryIndexServiceProtocol):
+            raise TypeError("Summary index service does not implement the required interface.")
+        self.summary_index_service = summary_service
 
     @override
     def _run(self) -> NodeRunResult:
@@ -157,10 +170,16 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
             rst = self.index_processor.index_and_clean(
                 dataset_id, document_id, original_document_id, chunks, batch, summary_index_setting, session=session
             )
-            # Summary generation opens independent sessions and must see the indexed rows.
+            # Summary generation uses independent sessions and must see the indexed rows.
             session.commit()
-            self.summary_index_service.generate_and_vectorize_summary(
-                dataset_id, document_id, is_preview, summary_index_setting
+            summary_index_service = self.summary_index_service
+            if summary_index_service is None:
+                raise KnowledgeIndexNodeError("Summary index service is required.")
+            summary_index_service.generate_and_vectorize_summary(
+                dataset_id,
+                document_id,
+                is_preview,
+                summary_index_setting,
             )
         return rst
 

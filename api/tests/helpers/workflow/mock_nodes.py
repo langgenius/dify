@@ -97,7 +97,14 @@ class MockNodeMixin:
 
         if isinstance(self, _ToolNode):
             kwargs.setdefault("tool_file_manager", DifyToolFileManager(run_context))
-            kwargs.setdefault("runtime", DifyToolNodeRuntime(init_params.run_context))
+            if "runtime" not in kwargs:
+                knowledge_retrieval = kwargs.pop("knowledge_retrieval")
+                kwargs["runtime"] = DifyToolNodeRuntime(
+                    init_params.run_context,
+                    knowledge_retrieval=knowledge_retrieval,
+                )
+            else:
+                kwargs.pop("knowledge_retrieval", None)
 
         if isinstance(self, AgentNode):
             presentation_provider = MagicMock()

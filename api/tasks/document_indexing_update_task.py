@@ -2,42 +2,113 @@ import logging
 import time
 
 import click
-from celery import shared_task
-from sqlalchemy import delete, select
+from celery import Task, shared_task
+from redis.exceptions import RedisError
+from sqlalchemy import select
 
 from core.db.session_factory import session_factory
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor import IndexProcessorFactory
-from extensions.ext_storage import storage
+from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
-from models.dataset import Dataset, Document, DocumentSegment, SegmentAttachmentBinding
+from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import IndexingStatus
-from models.model import UploadFile
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.indexing.adapters.execution import build_document_indexing_service
+from services.knowledge.indexing.adapters.redis_lock import RedisKnowledgeIndexingLock
 from services.knowledge.indexing.errors import DocumentIsPausedError
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.indexing.locks import (
+    KnowledgeIndexingLease,
+    KnowledgeIndexingLeaseLostError,
+    KnowledgeIndexingLockBusyError,
+    document_index_lock_name,
+)
 from tasks.generate_summary_index_task import generate_summary_index_task
+from tasks.indexing_task_retry import (
+    is_terminal_failure,
+    mark_document_indexing_error,
+    resolve_documents_after_terminal_failure,
+)
 
 logger = logging.getLogger(__name__)
 
 
-@shared_task(queue="dataset")
-def document_indexing_update_task(dataset_id: str, document_id: str):
+_RETRYABLE_ERRORS = (KnowledgeIndexingLockBusyError, KnowledgeIndexingLeaseLostError, RedisError)
+
+
+@shared_task(
+    bind=True,
+    queue="dataset",
+    autoretry_for=_RETRYABLE_ERRORS,
+    retry_backoff=True,
+    max_retries=10,
+)
+def document_indexing_update_task(self: Task, dataset_id: str, document_id: str) -> None:
     """
     Async update document
     :param dataset_id:
     :param document_id:
 
+    Postcondition: when the task ends without having started the update
+    (retries exhausted, or a non-retryable error), a document still in the
+    ``waiting`` state its update request persisted is moved to ``error`` so
+    the user can retry it. A document any worker has already advanced is left
+    untouched.
+
     Usage: document_indexing_update_task.delay(dataset_id, document_id)
     """
+    try:
+        locks = RedisKnowledgeIndexingLock(redis=redis_client)
+        with locks.hold(
+            document_index_lock_name(document_id),
+            timeout=600,
+            blocking_timeout=5,
+        ) as lease:
+            _run_document_indexing_update_task(dataset_id, document_id, lease=lease)
+    except Exception as error:
+        if is_terminal_failure(self, error, retryable=_RETRYABLE_ERRORS, max_retries=self.max_retries):
+            logger.exception(
+                "Document update indexing failed terminally: dataset_id=%s document_id=%s", dataset_id, document_id
+            )
+            _fail_unstarted_update(document_id, error)
+        raise
+
+
+def _fail_unstarted_update(document_id: str, error: Exception) -> None:
+    """Fail an update that never left the ``waiting`` state its request persisted."""
+
+    message = f"Document update could not be indexed: {error}"
+    resolve_documents_after_terminal_failure(
+        [document_id],
+        still_owned=lambda document: document.indexing_status == IndexingStatus.WAITING,
+        resolve=lambda document: mark_document_indexing_error(document, message),
+    )
+
+
+def _run_document_indexing_update_task(
+    dataset_id: str,
+    document_id: str,
+    *,
+    lease: KnowledgeIndexingLease,
+) -> None:
     logger.info(click.style(f"Start update document: {document_id}", fg="green"))
     start_at = time.perf_counter()
 
     has_error = False
     try:
         with session_factory.create_session() as session:
+            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
+            if not dataset:
+                return
+
             document = session.scalar(
-                select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
+                select(Document)
+                .where(
+                    Document.id == document_id,
+                    Document.tenant_id == dataset.tenant_id,
+                    Document.dataset_id == dataset.id,
+                )
+                .limit(1)
             )
 
             if not document:
@@ -47,21 +118,22 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
             document.indexing_status = IndexingStatus.PARSING
             document.processing_started_at = naive_utc_now()
 
-            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
-            if not dataset:
-                return
-
             index_type = document.doc_form
-            segments = session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
+            segments = session.scalars(
+                select(DocumentSegment).where(
+                    DocumentSegment.tenant_id == dataset.tenant_id,
+                    DocumentSegment.dataset_id == dataset.id,
+                    DocumentSegment.document_id == document_id,
+                )
+            ).all()
             index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
             # Persist the parsing status before vector cleanup and extraction.
             session.commit()
 
-            clean_success = False
-            index_processor = None
             try:
                 index_processor = IndexProcessorFactory(index_type).init_index_processor()
                 if index_node_ids:
+                    lease.assert_owned()
                     index_processor.clean(
                         dataset,
                         index_node_ids,
@@ -69,6 +141,7 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
                         delete_child_chunks=True,
                         session=session,
                     )
+                    lease.assert_owned()
                     end_at = time.perf_counter()
                     logger.info(
                         click.style(
@@ -77,12 +150,20 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
                             fg="green",
                         )
                     )
-                    clean_success = True
+            except KnowledgeIndexingLeaseLostError:
+                session.rollback()
+                raise
             except Exception:
                 logger.exception("Failed to clean document index during update, document_id: %s", document_id)
                 session.rollback()
                 document = session.scalar(
-                    select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
+                    select(Document)
+                    .where(
+                        Document.id == document_id,
+                        Document.tenant_id == dataset.tenant_id,
+                        Document.dataset_id == dataset.id,
+                    )
+                    .limit(1)
                 )
                 if not document:
                     logger.info(click.style(f"Document not found: {document_id}", fg="red"))
@@ -91,90 +172,19 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
                 document.processing_started_at = naive_utc_now()
                 session.commit()
 
-            if clean_success and index_processor is not None:
-                attachment_storage_keys: list[str] = []
-                if dataset.is_multimodal:
-                    segment_attachment_bindings = session.scalars(
-                        select(SegmentAttachmentBinding).where(
-                            SegmentAttachmentBinding.tenant_id == dataset.tenant_id,
-                            SegmentAttachmentBinding.dataset_id == dataset.id,
-                            SegmentAttachmentBinding.document_id == document_id,
-                        )
-                    ).all()
-                    attachment_ids = list(
-                        dict.fromkeys(binding.attachment_id for binding in segment_attachment_bindings)
-                    )
-
-                    if segment_attachment_bindings:
-                        session.execute(
-                            delete(SegmentAttachmentBinding).where(
-                                SegmentAttachmentBinding.tenant_id == dataset.tenant_id,
-                                SegmentAttachmentBinding.dataset_id == dataset.id,
-                                SegmentAttachmentBinding.document_id == document_id,
-                            )
-                        )
-                        session.flush()
-
-                        remaining_attachment_ids = set(
-                            session.scalars(
-                                select(SegmentAttachmentBinding.attachment_id).where(
-                                    SegmentAttachmentBinding.attachment_id.in_(attachment_ids)
-                                )
-                            ).all()
-                        )
-                        orphan_attachment_ids = [
-                            attachment_id
-                            for attachment_id in attachment_ids
-                            if attachment_id not in remaining_attachment_ids
-                        ]
-
-                        if orphan_attachment_ids:
-                            attachment_storage_keys = list(
-                                dict.fromkeys(
-                                    session.scalars(
-                                        select(UploadFile.key).where(
-                                            UploadFile.tenant_id == dataset.tenant_id,
-                                            UploadFile.id.in_(orphan_attachment_ids),
-                                        )
-                                    ).all()
-                                )
-                            )
-                            index_processor.clean(
-                                session=session,
-                                dataset=dataset,
-                                node_ids=orphan_attachment_ids,
-                                with_keywords=False,
-                            )
-                            session.execute(
-                                delete(UploadFile).where(
-                                    UploadFile.tenant_id == dataset.tenant_id,
-                                    UploadFile.id.in_(orphan_attachment_ids),
-                                )
-                            )
-
-                segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.document_id == document_id)
-                session.execute(segment_delete_stmt)
-                session.commit()
-
-                for storage_key in attachment_storage_keys:
-                    try:
-                        storage.delete(storage_key)
-                    except Exception:
-                        logger.exception(
-                            "Failed to delete document attachment from storage during re-indexing, key: %s",
-                            storage_key,
-                        )
-
             indexing_service = build_document_indexing_service(session_factory=session_factory.get_session_maker())
             document_refs = [DatasetRef(document.tenant_id, document.dataset_id).document(document.id)]
             session.commit()
-            indexing_service.run(document_refs)
+            lease.assert_owned()
+            indexing_service.run(document_refs, owned_leases={document.id: lease})
 
             end_at = time.perf_counter()
             logger.info(click.style(f"update document: {document.id} latency: {end_at - start_at}", fg="green"))
     except DocumentIsPausedError as ex:
         logger.info(click.style(str(ex), fg="yellow"))
         has_error = True
+    except KnowledgeIndexingLeaseLostError:
+        raise
     except Exception:
         logger.exception("document_indexing_update_task failed, document_id: %s", document_id)
         has_error = True
@@ -185,13 +195,19 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
     # Trigger summary index generation for the updated document if enabled.
     # Only generate for high_quality indexing technique and when summary_index_setting is enabled.
     with session_factory.create_session() as session:
-        document = session.scalar(
-            select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
-        )
         dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
         if not dataset:
             logger.warning("Dataset %s not found after update indexing", dataset_id)
             return
+        document = session.scalar(
+            select(Document)
+            .where(
+                Document.id == document_id,
+                Document.tenant_id == dataset.tenant_id,
+                Document.dataset_id == dataset.id,
+            )
+            .limit(1)
+        )
 
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             summary_index_setting = dataset.summary_index_setting

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from models import Account
 from models.model import App, Conversation, EndUser
-from repositories.conversation_lifecycle import retire_superseded_debug_conversations
+from repositories.conversation.lifecycle import retire_superseded_debug_conversations
 from services.errors.conversation import ConversationNotExistsError
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 from tasks.delete_conversation_task import delete_conversation_related_data

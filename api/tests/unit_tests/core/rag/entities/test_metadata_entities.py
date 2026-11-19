@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from core.rag.entities.metadata_entities import (
+from services.knowledge.entities.metadata import (
     Condition,
     ConditionValue,
     MetadataFilteringCondition,

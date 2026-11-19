@@ -92,6 +92,7 @@ from core.errors.error import (
 )
 from core.helper import encrypter
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable, dump_environment_variable
+from enums.creator import CreatorUserRole
 from extensions.ext_application_services import application_services
 from fields.agent_fields import AgentAppComposerResponse
 from fields.base import ResponseModel
@@ -108,7 +109,6 @@ from libs.helper import dump_response, to_timestamp, uuid_value
 from libs.stream import close_stream
 from libs.url_utils import normalize_api_base_url
 from machinery.context import RequestContext
-from models.enums import CreatorUserRole
 from models.model import AppMode
 from services.account_errors import AccountNotFoundError
 from services.agent.errors import AgentVersionNotFoundError
@@ -121,6 +121,7 @@ from services.app_preview_query_service import (
 )
 from services.audio_types import AudioAppRef, AudioUpload
 from services.entities.message_entities import MessageAccount
+from services.entities.upload_file import FileUploadActor
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
@@ -136,7 +137,6 @@ from services.errors.message import (
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
-from services.file_service import FileUploadActor
 from services.trial_app_access_service import TrialAppRef
 from services.trial_app_generation_service import (
     TrialAppNotChatError,
@@ -542,8 +542,8 @@ class TrialAppRemoteFileUploadApi(Resource):
         """Upload a remote file into the tenant that owns the trial app."""
         remote_file = upload_remote_file(
             url=payload.url,
-            current_user=FileUploadActor(id=request_context.account_id, creator_role=CreatorUserRole.ACCOUNT),
-            resource_tenant_id=trial_app.tenant_id,
+            actor=FileUploadActor(id=request_context.account_id, creator_role=CreatorUserRole.ACCOUNT),
+            tenant_id=trial_app.tenant_id,
         )
         return dump_response(FileWithSignedUrl, remote_file), HTTPStatus.CREATED
 

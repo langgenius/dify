@@ -2,7 +2,8 @@ import logging
 import time
 
 import click
-from celery import shared_task
+from celery import Task, shared_task
+from redis.exceptions import RedisError
 from sqlalchemy import select, update
 
 from core.db.session_factory import session_factory
@@ -11,19 +12,84 @@ from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Document, DocumentSegment
 from models.enums import IndexingStatus
-from repositories.knowledge.dataset_read_repository import get_document_dataset
+from repositories.knowledge.document_query_repository import get_document_dataset
+from services.knowledge.indexing.adapters.redis_lock import RedisKnowledgeIndexingLock
+from services.knowledge.indexing.locks import (
+    KnowledgeIndexingLease,
+    KnowledgeIndexingLeaseLostError,
+    KnowledgeIndexingLockBusyError,
+    document_index_lock_name,
+)
+from tasks.indexing_task_retry import (
+    clear_document_indexing_cache,
+    is_terminal_failure,
+    resolve_documents_after_terminal_failure,
+)
 
 logger = logging.getLogger(__name__)
 
 
-@shared_task(queue="dataset")
-def remove_document_from_index_task(document_id: str):
+_RETRYABLE_ERRORS = (KnowledgeIndexingLockBusyError, KnowledgeIndexingLeaseLostError, RedisError)
+
+
+@shared_task(
+    bind=True,
+    queue="dataset",
+    autoretry_for=_RETRYABLE_ERRORS,
+    retry_backoff=True,
+    max_retries=10,
+)
+def remove_document_from_index_task(self: Task, document_id: str):
     """
     Async Remove document from index
     :param document_id: document id
 
+    Postconditions: every terminal exit clears ``document_{id}_indexing``; an
+    attempt that will be retried keeps it. When the task ends without having
+    cleaned the index (retries exhausted, or a non-retryable error), a
+    disabled document is re-enabled exactly as after a failed removal, so the
+    database matches the index again and the user can repeat the action. An
+    archived document stays archived; its remaining index nodes are logged.
+
     Usage: remove_document_from_index.delay(document_id)
     """
+    try:
+        locks = RedisKnowledgeIndexingLock(redis=redis_client)
+        with locks.hold(
+            document_index_lock_name(document_id),
+            timeout=600,
+            blocking_timeout=5,
+        ) as lease:
+            _remove_document_from_index(document_id, lease=lease)
+            lease.assert_owned()
+    except Exception as error:
+        if is_terminal_failure(self, error, retryable=_RETRYABLE_ERRORS, max_retries=self.max_retries):
+            logger.exception(
+                "Remove document from index failed terminally; index nodes remain: document_id=%s", document_id
+            )
+            _restore_unremoved_document(document_id)
+            clear_document_indexing_cache(redis_client, document_id)
+        raise
+    clear_document_indexing_cache(redis_client, document_id)
+
+
+def _restore_unremoved_document(document_id: str) -> None:
+    """Re-enable a disabled document whose index nodes were never removed."""
+
+    def still_requires_removal(document: Document) -> bool:
+        return document.indexing_status == IndexingStatus.COMPLETED and not document.enabled and not document.archived
+
+    def enable(document: Document) -> None:
+        document.enabled = True
+
+    resolve_documents_after_terminal_failure(
+        [document_id],
+        still_owned=still_requires_removal,
+        resolve=enable,
+    )
+
+
+def _remove_document_from_index(document_id: str, *, lease: KnowledgeIndexingLease) -> None:
     logger.info(click.style(f"Start remove document segments from index: {document_id}", fg="green"))
     start_at = time.perf_counter()
 
@@ -36,8 +102,9 @@ def remove_document_from_index_task(document_id: str):
         if document.indexing_status != IndexingStatus.COMPLETED:
             logger.info(click.style(f"Document is not completed, remove is not allowed: {document_id}", fg="red"))
             return
-
-        indexing_cache_key = f"document_{document.id}_indexing"
+        if document.enabled and not document.archived:
+            logger.info(click.style(f"Document no longer requires index removal: {document_id}", fg="yellow"))
+            return
 
         try:
             dataset = get_document_dataset(document, session=session)
@@ -55,17 +122,22 @@ def remove_document_from_index_task(document_id: str):
             segment_ids_list = [segment.id for segment in segments]
             if segment_ids_list:
                 try:
+                    lease.assert_owned()
                     SummaryIndexAdapter.disable_summaries_for_segments(
                         dataset=dataset,
                         segment_ids=segment_ids_list,
                         disabled_by=document.disabled_by,
                     )
+                    lease.assert_owned()
+                except KnowledgeIndexingLeaseLostError:
+                    raise
                 except Exception:
                     logger.warning("Failed to disable summaries for document %s", document.id, exc_info=True)
 
             index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
             if index_node_ids:
                 try:
+                    lease.assert_owned()
                     index_processor.clean(
                         dataset,
                         index_node_ids,
@@ -73,6 +145,9 @@ def remove_document_from_index_task(document_id: str):
                         delete_child_chunks=False,
                         session=session,
                     )
+                    lease.assert_owned()
+                except KnowledgeIndexingLeaseLostError:
+                    raise
                 except Exception:
                     logger.exception("clean dataset %s from index failed", dataset.id)
             # update segment to disable
@@ -95,10 +170,11 @@ def remove_document_from_index_task(document_id: str):
                     fg="green",
                 )
             )
+        except KnowledgeIndexingLeaseLostError:
+            session.rollback()
+            raise
         except Exception:
             logger.exception("remove document from index failed")
             if not document.archived:
                 document.enabled = True
                 session.commit()
-        finally:
-            redis_client.delete(indexing_cache_key)

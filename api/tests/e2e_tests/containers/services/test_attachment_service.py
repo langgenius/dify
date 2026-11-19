@@ -11,9 +11,9 @@ from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import NotFound
 
 import services.attachment_service as attachment_service_module
+from enums.creator import CreatorUserRole
 from extensions.ext_database import db
 from extensions.storage.storage_type import StorageType
-from models.enums import CreatorUserRole
 from models.model import UploadFile
 from services.attachment_service import AttachmentService
 

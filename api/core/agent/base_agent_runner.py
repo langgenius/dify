@@ -28,6 +28,7 @@ from core.prompt.utils.extract_thread_messages import extract_thread_messages
 from core.tools.__base.tool import Tool
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
+from enums.creator import CreatorUserRole
 from extensions.ext_database import db
 from factories import file_factory
 from graphon.file import file_manager
@@ -44,11 +45,11 @@ from graphon.model_runtime.entities import (
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
 from graphon.model_runtime.entities.model_entities import ModelFeature
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
-from models.enums import CreatorUserRole
 from models.model import Conversation, Message, MessageAgentThought, MessageFile, load_annotation_reply_config
 
 if TYPE_CHECKING:
     from core.app.apps.workflow_app_runner import WorkflowRunDriver
+    from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
@@ -59,6 +60,7 @@ class BaseAgentRunner(AppRunner):
         self,
         *,
         execution_driver: "WorkflowRunDriver",
+        knowledge_retrieval: "KnowledgeRetriever",
         session: Session,
         tenant_id: str,
         application_generate_entity: AgentChatAppGenerateEntity,
@@ -74,6 +76,7 @@ class BaseAgentRunner(AppRunner):
         prompt_messages: list[PromptMessage] | None = None,
     ):
         self._execution_driver = execution_driver
+        self._knowledge_retrieval = knowledge_retrieval
         self.tenant_id = tenant_id
         self.application_generate_entity = application_generate_entity
         self.conversation = conversation
@@ -92,15 +95,10 @@ class BaseAgentRunner(AppRunner):
         # init callback
         self.agent_callback = DifyAgentCallbackHandler()
         # init dataset tools
-        hit_callback = DatasetIndexToolCallbackHandler(
-            queue_manager=queue_manager,
-            app_id=self.app_config.app_id,
-            message_id=message.id,
-            user_id=user_id,
-            invoke_from=self.application_generate_entity.invoke_from,
-        )
+        hit_callback = DatasetIndexToolCallbackHandler(queue_manager=queue_manager)
         self.dataset_tools = DatasetRetrieverTool.get_dataset_tools(
-            session=session,
+            knowledge_retrieval=knowledge_retrieval,
+            app_id=self.app_config.app_id,
             tenant_id=tenant_id,
             dataset_ids=app_config.dataset.dataset_ids if app_config.dataset else [],
             retrieve_config=app_config.dataset.retrieve_config if app_config.dataset else None,
@@ -157,6 +155,7 @@ class BaseAgentRunner(AppRunner):
             agent_tool=tool,
             user_id=self.user_id,
             invoke_from=self.application_generate_entity.invoke_from,
+            knowledge_retrieval=self._knowledge_retrieval,
         )
         invoke_from = self.application_generate_entity.invoke_from
         if isinstance(invoke_from, InvokeFrom):

@@ -19,6 +19,7 @@ from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models import Account
 from models.snippet import CustomizedSnippet, SnippetType
 from models.workflow import Workflow
+from repositories.file.upload_file_repository import lock_and_validate_owned_upload_files_in_session
 from services.agent.dsl_service import AgentDslService
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
@@ -32,7 +33,7 @@ from services.entities.dsl_entities import (
     PendingImportOwner,
 )
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
-from services.snippet_service import SNIPPET_FORBIDDEN_NODE_TYPES, SnippetService
+from services.snippet_service import SNIPPET_FORBIDDEN_NODE_TYPES, SnippetService, snippet_image_upload_file_id
 
 logger = logging.getLogger(__name__)
 
@@ -71,12 +72,10 @@ class CheckDependenciesPendingData(BaseModel):
 
 
 class SnippetDslService:
-    def __init__(self, session: Session):
+    def __init__(self, session: Session, *, snippets: SnippetService):
         self._session = session
+        self._snippets = snippets
         self._warnings: list[DslImportWarning] = []
-
-    def _snippet_service(self) -> SnippetService:
-        return SnippetService(session=self._session)
 
     def import_snippet(
         self,
@@ -383,8 +382,7 @@ class SnippetDslService:
         """
         Check dependencies for a snippet
         """
-        snippet_service = self._snippet_service()
-        workflow = snippet_service.get_draft_workflow(snippet=snippet)
+        workflow = self._snippets.get_draft_workflow(snippet=snippet)
         if not workflow:
             return CheckDependenciesResult(leaked_dependencies=[])
 
@@ -425,6 +423,16 @@ class SnippetDslService:
 
         # Create or update snippet
         if snippet:
+            locked_snippet = self._session.scalar(
+                select(CustomizedSnippet)
+                .where(CustomizedSnippet.id == snippet.id, CustomizedSnippet.tenant_id == snippet.tenant_id)
+                .with_for_update()
+                .execution_options(populate_existing=True)
+            )
+            if locked_snippet is None:
+                raise ValueError("Snippet not found")
+            snippet = locked_snippet
+            previous_image_id = snippet_image_upload_file_id(snippet.icon_info)
             # Update existing snippet
             snippet.name = snippet_name
             snippet.description = snippet_description
@@ -446,6 +454,15 @@ class SnippetDslService:
             )
             self._session.add(snippet)
             self._session.flush()
+            previous_image_id = None
+
+        current_image_id = snippet_image_upload_file_id(icon_info)
+        if current_image_id is not None and current_image_id != previous_image_id:
+            lock_and_validate_owned_upload_files_in_session(
+                self._session,
+                tenant_id=snippet.tenant_id,
+                upload_file_ids=(current_image_id,),
+            )
 
         # Create or update draft workflow
         retirement_candidates: set[str] = set()
@@ -456,12 +473,11 @@ class SnippetDslService:
                 raise ValueError("agent_packages must be a mapping")
             graph_for_sync = AgentDslService.graph_without_package_bindings(graph) if raw_agent_packages else graph
 
-            snippet_service = self._snippet_service()
             # Get existing workflow hash if exists
-            existing_workflow = snippet_service.get_draft_workflow(snippet=snippet)
+            existing_workflow = self._snippets.get_draft_workflow(snippet=snippet)
             unique_hash = existing_workflow.unique_hash if existing_workflow else None
 
-            draft_workflow = snippet_service.sync_draft_workflow(
+            draft_workflow = self._snippets.sync_draft_workflow(
                 snippet=snippet,
                 graph=graph_for_sync,
                 unique_hash=unique_hash,
@@ -511,11 +527,10 @@ class SnippetDslService:
         :param workflow_id: Optional published workflow version to export; defaults to the draft workflow
         :return: YAML string
         """
-        snippet_service = self._snippet_service()
         workflow = (
-            snippet_service.get_published_workflow_by_id(snippet=snippet, workflow_id=workflow_id)
+            self._snippets.get_published_workflow_by_id(snippet=snippet, workflow_id=workflow_id)
             if workflow_id
-            else snippet_service.get_draft_workflow(snippet=snippet)
+            else self._snippets.get_draft_workflow(snippet=snippet)
         )
         if not workflow:
             workflow_description = (

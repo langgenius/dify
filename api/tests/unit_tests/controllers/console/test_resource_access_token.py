@@ -43,6 +43,9 @@ def _admit_as(monkeypatch: pytest.MonkeyPatch, role: TenantAccountRole) -> None:
     account.id = "account-1"
     apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
     monkeypatch.setattr(
+        controller, "current_account_with_tenant", lambda: AccountWithTenant(account=account, tenant_id="tenant-1")
+    )
+    monkeypatch.setattr(
         flask_admission,
         "current_account_with_tenant",
         lambda: AccountWithTenant(account=account, tenant_id="tenant-1"),
@@ -112,3 +115,15 @@ def test_service_failures_keep_the_http_error_contract(error: str, status: int) 
             raise errors[error]("original message")
     assert raised.value.code == status
     assert raised.value.description == "original message"
+
+
+@pytest.mark.parametrize("role", [TenantAccountRole.ADMIN, TenantAccountRole.EDITOR, TenantAccountRole.NORMAL])
+def test_rbac_does_not_delegate_machine_credential_management(
+    monkeypatch: pytest.MonkeyPatch, role: TenantAccountRole
+) -> None:
+    from services.auth.resource_access_token_contracts import ResourceAccessTokenForbiddenError
+
+    _admit_as(monkeypatch, role)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
+    with pytest.raises(ResourceAccessTokenForbiddenError):
+        controller._require_token_management()

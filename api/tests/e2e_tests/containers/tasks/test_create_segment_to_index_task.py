@@ -337,9 +337,9 @@ class TestCreateSegmentToIndexTask:
         # Assert: Task should complete without processing
         assert result is None
 
-        # Verify segment status changed to indexing (task updates status before checking document)
+        # Parent validation and the temporary INDEXING state share one transaction.
         db_session_with_containers.refresh(segment)
-        assert segment.status == SegmentStatus.INDEXING
+        assert segment.status == SegmentStatus.WAITING
 
         # Verify no index processor calls were made
         mock_external_service_dependencies["index_processor_factory"].assert_not_called()
@@ -375,9 +375,9 @@ class TestCreateSegmentToIndexTask:
         # Assert: Task should complete without processing
         assert result is None
 
-        # Verify segment status changed to indexing (task updates status before checking document)
+        # Parent validation and the temporary INDEXING state share one transaction.
         db_session_with_containers.refresh(segment)
-        assert segment.status == SegmentStatus.INDEXING
+        assert segment.status == SegmentStatus.WAITING
 
         # Verify no index processor calls were made
         mock_external_service_dependencies["index_processor_factory"].assert_not_called()
@@ -411,9 +411,9 @@ class TestCreateSegmentToIndexTask:
         # Assert: Task should complete without processing
         assert result is None
 
-        # Verify segment status changed to indexing (task updates status before checking document)
+        # Parent validation and the temporary INDEXING state share one transaction.
         db_session_with_containers.refresh(segment)
-        assert segment.status == SegmentStatus.INDEXING
+        assert segment.status == SegmentStatus.WAITING
 
         # Verify no index processor calls were made
         mock_external_service_dependencies["index_processor_factory"].assert_not_called()
@@ -447,9 +447,9 @@ class TestCreateSegmentToIndexTask:
         # Assert: Task should complete without processing
         assert result is None
 
-        # Verify segment status changed to indexing (task updates status before checking document)
+        # Parent validation and the temporary INDEXING state share one transaction.
         db_session_with_containers.refresh(segment)
-        assert segment.status == SegmentStatus.INDEXING
+        assert segment.status == SegmentStatus.WAITING
 
         # Verify no index processor calls were made
         mock_external_service_dependencies["index_processor_factory"].assert_not_called()
@@ -483,9 +483,9 @@ class TestCreateSegmentToIndexTask:
         # Assert: Task should complete without processing
         assert result is None
 
-        # Verify segment status changed to indexing (task updates status before checking document)
+        # Parent validation and the temporary INDEXING state share one transaction.
         db_session_with_containers.refresh(segment)
-        assert segment.status == SegmentStatus.INDEXING
+        assert segment.status == SegmentStatus.WAITING
 
         # Verify no index processor calls were made
         mock_external_service_dependencies["index_processor_factory"].assert_not_called()

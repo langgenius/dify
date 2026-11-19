@@ -1,5 +1,7 @@
 import json
 import uuid
+from collections.abc import Callable
+from dataclasses import dataclass
 from unittest.mock import patch
 
 import pytest
@@ -11,7 +13,8 @@ from sqlalchemy.orm import Session
 from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
-from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
+from enums.account import TenantAccountRole
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Pipeline
 from models.workflow import Workflow
 from models.workflow import WorkflowType as ModelWorkflowType
@@ -20,6 +23,30 @@ from tasks.rag_pipeline.priority_rag_pipeline_run_task import (
     run_single_rag_pipeline_task,
 )
 from tasks.rag_pipeline.rag_pipeline_run_task import rag_pipeline_run_task
+
+
+class _FileServiceBoundary:
+    def get_file_content(self, *, tenant_id: str, file_id: str) -> str:
+        raise AssertionError("get_file_content must be replaced by the test")
+
+    def delete_file(self, *, tenant_id: str, file_id: str) -> None:
+        raise AssertionError("delete_file must be replaced by the test")
+
+
+@dataclass(frozen=True, slots=True)
+class _PipelineGeneratorBoundary:
+    _generate: Callable[..., object]
+
+
+@dataclass(frozen=True, slots=True)
+class _KnowledgeServicesBoundary:
+    pipeline_generator: _PipelineGeneratorBoundary
+
+
+@dataclass(frozen=True, slots=True)
+class _ApplicationServicesBoundary:
+    files: _FileServiceBoundary
+    knowledge: _KnowledgeServicesBoundary
 
 
 class TestRagPipelineRunTasks:
@@ -44,15 +71,30 @@ class TestRagPipelineRunTasks:
             yield mock_generate
 
     @pytest.fixture
-    def mock_file_service(self):
-        """Mock FileService for file operations."""
+    def mock_file_service(self, mock_pipeline_generator):
+        """Provide the application services consumed by both task modules."""
+        file_service = _FileServiceBoundary()
+        services = _ApplicationServicesBoundary(
+            files=file_service,
+            knowledge=_KnowledgeServicesBoundary(
+                pipeline_generator=_PipelineGeneratorBoundary(_generate=mock_pipeline_generator),
+            ),
+        )
         with (
-            patch("services.file_service.FileService.get_file_content") as mock_get_content,
-            patch("services.file_service.FileService.delete_file") as mock_delete_file,
+            patch.object(file_service, "get_file_content") as get_file_content,
+            patch.object(file_service, "delete_file") as delete_file,
+            patch(
+                "tasks.rag_pipeline.rag_pipeline_run_task.application_services",
+                return_value=services,
+            ),
+            patch(
+                "tasks.rag_pipeline.priority_rag_pipeline_run_task.application_services",
+                return_value=services,
+            ),
         ):
             yield {
-                "get_content": mock_get_content,
-                "delete_file": mock_delete_file,
+                "get_content": get_file_content,
+                "delete_file": delete_file,
             }
 
     def _create_test_pipeline_and_workflow(self, db_session_with_containers: Session):
@@ -239,8 +281,8 @@ class TestRagPipelineRunTasks:
 
         # Assert: Verify expected outcomes
         # Verify file operations
-        mock_file_service["get_content"].assert_called_once_with(file_id)
-        mock_file_service["delete_file"].assert_called_once_with(file_id)
+        mock_file_service["get_content"].assert_called_once_with(tenant_id=tenant.id, file_id=file_id)
+        mock_file_service["delete_file"].assert_called_once_with(tenant_id=tenant.id, file_id=file_id)
 
         # Verify PipelineGenerator._generate was called for each entity
         assert mock_pipeline_generator.call_count == 2
@@ -284,8 +326,8 @@ class TestRagPipelineRunTasks:
 
         # Assert: Verify expected outcomes
         # Verify file operations
-        mock_file_service["get_content"].assert_called_once_with(file_id)
-        mock_file_service["delete_file"].assert_called_once_with(file_id)
+        mock_file_service["get_content"].assert_called_once_with(tenant_id=tenant.id, file_id=file_id)
+        mock_file_service["delete_file"].assert_called_once_with(tenant_id=tenant.id, file_id=file_id)
 
         # Verify PipelineGenerator._generate was called for each entity
         assert mock_pipeline_generator.call_count == 3
@@ -337,8 +379,8 @@ class TestRagPipelineRunTasks:
             priority_rag_pipeline_run_task(file_id, tenant.id)
 
             # Assert: Verify core processing occurred
-            mock_file_service["get_content"].assert_called_once_with(file_id)
-            mock_file_service["delete_file"].assert_called_once_with(file_id)
+            mock_file_service["get_content"].assert_called_once_with(tenant_id=tenant.id, file_id=file_id)
+            mock_file_service["delete_file"].assert_called_once_with(tenant_id=tenant.id, file_id=file_id)
             assert mock_pipeline_generator.call_count == 1
 
             # Verify waiting tasks were processed, pull 1 task a time by default
@@ -397,8 +439,8 @@ class TestRagPipelineRunTasks:
             rag_pipeline_run_task(file_id, tenant.id)
 
             # Assert: Verify core processing occurred
-            mock_file_service["get_content"].assert_called_once_with(file_id)
-            mock_file_service["delete_file"].assert_called_once_with(file_id)
+            mock_file_service["get_content"].assert_called_once_with(tenant_id=tenant.id, file_id=file_id)
+            mock_file_service["delete_file"].assert_called_once_with(tenant_id=tenant.id, file_id=file_id)
             assert mock_pipeline_generator.call_count == 1
 
             # Verify waiting tasks were processed via apply_async, pull 1 task a time by default
@@ -456,8 +498,8 @@ class TestRagPipelineRunTasks:
             rag_pipeline_run_task(file_id, tenant.id)
 
             # Assert: Verify core processing occurred
-            mock_file_service["get_content"].assert_called_once_with(file_id)
-            mock_file_service["delete_file"].assert_called_once_with(file_id)
+            mock_file_service["get_content"].assert_called_once_with(tenant_id=tenant.id, file_id=file_id)
+            mock_file_service["delete_file"].assert_called_once_with(tenant_id=tenant.id, file_id=file_id)
             assert mock_pipeline_generator.call_count == 1
 
             # Verify waiting tasks were processed via apply_async
@@ -514,8 +556,8 @@ class TestRagPipelineRunTasks:
 
             # Assert: Verify error was handled gracefully
             # The function should not raise exceptions
-            mock_file_service["get_content"].assert_called_once_with(file_id)
-            mock_file_service["delete_file"].assert_called_once_with(file_id)
+            mock_file_service["get_content"].assert_called_once_with(tenant_id=tenant.id, file_id=file_id)
+            mock_file_service["delete_file"].assert_called_once_with(tenant_id=tenant.id, file_id=file_id)
             assert mock_pipeline_generator.call_count == 1
 
             # Verify waiting task was still processed despite core processing error
@@ -569,8 +611,8 @@ class TestRagPipelineRunTasks:
 
             # Assert: Verify error was handled gracefully
             # The function should not raise exceptions
-            mock_file_service["get_content"].assert_called_once_with(file_id)
-            mock_file_service["delete_file"].assert_called_once_with(file_id)
+            mock_file_service["get_content"].assert_called_once_with(tenant_id=tenant.id, file_id=file_id)
+            mock_file_service["delete_file"].assert_called_once_with(tenant_id=tenant.id, file_id=file_id)
             assert mock_pipeline_generator.call_count == 1
 
             # Verify waiting task was still processed despite core processing error
@@ -879,7 +921,7 @@ class TestRagPipelineRunTasks:
                 priority_rag_pipeline_run_task(file_id, tenant.id)
 
             # Assert: Verify error was handled gracefully
-            mock_file_service["get_content"].assert_called_once_with(file_id)
+            mock_file_service["get_content"].assert_called_once_with(tenant_id=tenant.id, file_id=file_id)
             mock_pipeline_generator.assert_not_called()
 
             # Verify waiting task was still processed despite file error
@@ -927,7 +969,7 @@ class TestRagPipelineRunTasks:
                 rag_pipeline_run_task(file_id, tenant.id)
 
             # Assert: Verify error was handled gracefully
-            mock_file_service["get_content"].assert_called_once_with(file_id)
+            mock_file_service["get_content"].assert_called_once_with(tenant_id=tenant.id, file_id=file_id)
             mock_pipeline_generator.assert_not_called()
 
             # Verify waiting task was still processed despite file error

@@ -9,6 +9,7 @@ from extensions.ext_database import db
 from graphon.variables import StringVariable
 from models.workflow import ConversationVariable
 from services.conversation_variable_updater import ConversationVariableNotFoundError, ConversationVariableUpdater
+from tests.helpers.unit.model_factories import make_app
 
 
 class TestConversationVariableUpdater:
@@ -20,13 +21,19 @@ class TestConversationVariableUpdater:
         variable: StringVariable,
         app_id: str | None = None,
     ) -> ConversationVariable:
+        app_id = app_id or str(uuid4())
         row = ConversationVariable(
             id=variable.id,
             conversation_id=conversation_id,
-            app_id=app_id or str(uuid4()),
+            app_id=app_id,
             data=variable.model_dump_json(),
         )
-        db_session_with_containers.add(row)
+        db_session_with_containers.add_all(
+            [
+                make_app(app_id=app_id, tenant_id=str(uuid4())),
+                row,
+            ]
+        )
         db_session_with_containers.commit()
         return row
 

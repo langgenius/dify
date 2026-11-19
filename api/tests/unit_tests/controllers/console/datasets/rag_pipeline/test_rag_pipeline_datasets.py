@@ -189,7 +189,7 @@ class TestCreateRagPipelineDatasetApi:
 
 
 class TestCreateEmptyRagPipelineDatasetApi:
-    def test_post_forbidden_non_editor(self, app: Flask, unbound_session: Session) -> None:
+    def test_post_forbidden_non_editor(self, app: Flask) -> None:
         api = CreateEmptyRagPipelineDatasetApi()
         method = unwrap(api.post)
 
@@ -197,4 +197,4 @@ class TestCreateEmptyRagPipelineDatasetApi:
 
         with app.test_request_context("/"):
             with pytest.raises(Forbidden):
-                method(api, unbound_session, "tenant-1", user)
+                method(api, "tenant-1", user)

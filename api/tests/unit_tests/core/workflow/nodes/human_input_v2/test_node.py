@@ -62,6 +62,7 @@ from repositories.human_input_v2.form_repository import Form, FormSubmission
 from tests.unit_tests.core.app.apps.common.test_workflow_response_converter import (
     _workflow_response_converter_human_input_build_converter as _build_converter,
 )
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 
 @pytest.fixture
@@ -279,7 +280,9 @@ def test_actual_graph_queue_response_path_preserves_order_and_fields(form: Form,
     queue = WorkflowAppQueueManager(
         task_id="task-1", user_id="user-1", invoke_from=InvokeFrom.DEBUGGER, app_mode="workflow"
     )
-    runner = WorkflowBasedAppRunner(queue_manager=queue, app_id=form.app_id)
+    runner = WorkflowBasedAppRunner(
+        queue_manager=queue, app_id=form.app_id, knowledge_retrieval=make_knowledge_retriever()
+    )
     entry = WorkflowEntry({}, Graph(root_node=node), 0, node.runtime_state)
     for event in list(engine_events(node))[1:]:
         runner.handle_event(entry, event)
@@ -380,7 +383,9 @@ def test_file_segments_survive_node_graph_queue_and_response(form: Form) -> None
     queue = WorkflowAppQueueManager(
         task_id="task-1", user_id="user-1", invoke_from=InvokeFrom.DEBUGGER, app_mode="workflow"
     )
-    runner = WorkflowBasedAppRunner(queue_manager=queue, app_id=form.app_id)
+    runner = WorkflowBasedAppRunner(
+        queue_manager=queue, app_id=form.app_id, knowledge_retrieval=make_knowledge_retriever()
+    )
     runner.handle_event(WorkflowEntry({}, Graph(root_node=node), 0, node.runtime_state), graph_events[1])
     queue.stop_listen(execution_state=AppExecutionState.TERMINAL)
     [queue_event] = [message.event for message in queue.listen()]

@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from extensions.application_services.rag_pipeline import build_rag_pipeline_service
 from graphon.engine_events import NodeRunFailedEvent
 from graphon.enums import (
     BuiltinNodeTypes,
@@ -36,15 +37,21 @@ from models.dataset import (
     PipelineRecommendedPlugin,
 )
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
-from models.workflow import Workflow, WorkflowRun
+from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowRun
 from models.workflow import WorkflowType as ModelWorkflowType
-from repositories.knowledge.dataset_read_repository import get_pipeline_dataset
+from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
+from repositories.knowledge.pipeline_query_repository import get_pipeline_dataset
 from services.credentials.query import CredentialQuery
 from services.data_source.credential_gateway import DatasourceProviderCredentialStore
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, PipelineTemplateInfoEntity
+from services.errors.file import UploadFileReferenceNotFoundError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
+from services.knowledge.entities.resource_scope import DatasetRef
+from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 from services.rag_pipeline import rag_pipeline as rag_pipeline_module
 from services.rag_pipeline.rag_pipeline import RagPipelineService
+from services.workflow.persistence import WorkflowNodeExecutionRepository
+from services.workflow_draft_variable_service import DraftVariableSaver
 from services.workflow_ref_service import WorkflowRef
 from tests.helpers.unit.credential_refresh import build_datasource_provider_service
 
@@ -276,15 +283,15 @@ class TestRagPipelineServiceCases:
         sqlite_session_factory: sessionmaker[Session],
     ) -> RagPipelineServiceTestContext:
         mocker.patch(
-            "services.rag_pipeline.rag_pipeline.DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository",
+            "services.rag_pipeline.rag_pipeline.WorkflowRepositoryFactory.create_api_workflow_node_execution_repository",
             return_value=MockRepo(),
         )
         mocker.patch(
-            "services.rag_pipeline.rag_pipeline.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
+            "services.rag_pipeline.rag_pipeline.WorkflowRepositoryFactory.create_api_workflow_run_repository",
             return_value=MockRepo(),
         )
         mocker.patch("services.rag_pipeline.rag_pipeline.db", SimpleNamespace(engine=sqlite_session.get_bind()))
-        service = RagPipelineService(session=sqlite_session, session_maker=sqlite_session_factory)
+        service = build_rag_pipeline_service(session=sqlite_session, database_client=sqlite_session_factory)
         return RagPipelineServiceTestContext(
             service=service,
             session=sqlite_session,
@@ -670,10 +677,33 @@ class TestRagPipelineServiceCases:
         pipeline = _make_pipeline(workflow_id="wf-old-published")
         dataset = _make_dataset()
         _persist(rag_pipeline_service.session, draft_workflow, pipeline, dataset)
-        mocker.patch(
-            "services.rag_pipeline.rag_pipeline.KnowledgeConfiguration.model_validate", return_value=mocker.Mock()
+        configuration = rag_pipeline_module.KnowledgeConfiguration.model_validate(
+            {
+                "chunk_structure": "paragraph",
+                "indexing_technique": "high_quality",
+                "embedding_model_provider": None,
+                "embedding_model": None,
+                "keyword_number": None,
+                "retrieval_model": {"search_method": "hybrid_search", "top_k": 3},
+                "summary_index_setting": None,
+            }
         )
-        mock_dataset_service_class = mocker.patch("services.knowledge.dataset_service.DatasetService")
+        mocker.patch(
+            "services.rag_pipeline.rag_pipeline.KnowledgeConfiguration.model_validate", return_value=configuration
+        )
+        change = mocker.Mock()
+        calls: list[str] = []
+        datasets = rag_pipeline_service.service._datasets
+        get_snapshot = mocker.spy(datasets, "get_update_snapshot")
+        prepare = mocker.patch(
+            "services.rag_pipeline.rag_pipeline.prepare_rag_pipeline_dataset_update",
+            side_effect=lambda **_kwargs: calls.append("prepare") or change,
+        )
+        stage = mocker.patch.object(
+            datasets,
+            "stage_rag_pipeline_dataset_settings",
+            side_effect=lambda *_args, **_kwargs: calls.append("stage") or True,
+        )
 
         result = rag_pipeline_service.service.publish_workflow(
             session=rag_pipeline_service.session, pipeline=pipeline, account=_make_account()
@@ -681,7 +711,10 @@ class TestRagPipelineServiceCases:
 
         assert result.app_id == pipeline.id
         assert result.graph_dict == graph
-        mock_dataset_service_class.update_rag_pipeline_dataset_settings.assert_called_once()
+        get_snapshot.assert_called_once_with(DatasetRef(dataset.tenant_id, dataset.id))
+        assert prepare.call_args.kwargs["snapshot"] is not None
+        assert calls == ["prepare", "stage"]
+        stage.assert_called_once_with(rag_pipeline_service.session, change=change)
 
     @staticmethod
     def test_publish_workflow_rejects_missing_llm_environment_reference(
@@ -1132,19 +1165,20 @@ class TestRagPipelineServiceCases:
         mocker.patch.object(rag_pipeline_service.service, "_handle_node_run_result", return_value=execution)
 
         # Mock Repository
-        mock_repo_instance = mocker.Mock()
+        mock_repo_instance = create_autospec(WorkflowNodeExecutionRepository, instance=True, spec_set=True)
         mocker.patch(
-            "services.rag_pipeline.rag_pipeline.SQLAlchemyWorkflowNodeExecutionRepository",
+            "services.rag_pipeline.rag_pipeline.WorkflowRepositoryFactory.create_workflow_node_execution_repository",
             return_value=mock_repo_instance,
         )
-        # Repository._to_db_model is also called
-        mock_db_exec = mocker.Mock()
+        mock_db_exec = create_autospec(WorkflowNodeExecutionModel, instance=True, spec_set=True)
         mock_db_exec.node_id = "node-1"
         mock_db_exec.node_type = "datasource"
-        mock_repo_instance._to_db_model.return_value = mock_db_exec
+        node_execution_reader = create_autospec(DifyAPIWorkflowNodeExecutionRepository, instance=True, spec_set=True)
+        node_execution_reader.get_execution_by_id.return_value = mock_db_exec
+        rag_pipeline_service.service._node_execution_service_repo = node_execution_reader
 
         # Mock DraftVariableSaver
-        mock_saver_instance = mocker.Mock()
+        mock_saver_instance = create_autospec(DraftVariableSaver, instance=True, spec_set=True)
         mocker.patch("services.rag_pipeline.rag_pipeline.DraftVariableSaver", return_value=mock_saver_instance)
 
         # 2. Run test
@@ -1281,16 +1315,22 @@ class TestRagPipelineServiceCases:
             rag_pipeline_service.service, "_handle_node_run_result", return_value=execution
         )
         single_step_run = mocker.patch("services.rag_pipeline.rag_pipeline.WorkflowEntry.single_step_run")
+        mocker.patch.object(
+            rag_pipeline_service.service,
+            "_knowledge_retrieval",
+            return_value=create_autospec(KnowledgeRetriever, instance=True, spec_set=True),
+        )
 
-        repo = mocker.Mock()
+        repo = create_autospec(WorkflowNodeExecutionRepository, instance=True, spec_set=True)
         mocker.patch(
-            "services.rag_pipeline.rag_pipeline.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+            "services.rag_pipeline.rag_pipeline.WorkflowRepositoryFactory.create_workflow_node_execution_repository",
             return_value=repo,
         )
-        rag_pipeline_service.service._node_execution_service_repo = mocker.Mock(
-            get_execution_by_id=mocker.Mock(return_value="db")
-        )
-        mocker.patch("services.rag_pipeline.rag_pipeline.DraftVariableSaver", return_value=mocker.Mock())
+        node_execution_reader = create_autospec(DifyAPIWorkflowNodeExecutionRepository, instance=True, spec_set=True)
+        node_execution_reader.get_execution_by_id.return_value = "db"
+        rag_pipeline_service.service._node_execution_service_repo = node_execution_reader
+        saver = create_autospec(DraftVariableSaver, instance=True, spec_set=True)
+        mocker.patch("services.rag_pipeline.rag_pipeline.DraftVariableSaver", return_value=saver)
         rag_pipeline_service.service.run_draft_workflow_node(pipeline, "node-1", {}, account)
 
         getter = handle_node_run_result.call_args.kwargs["getter"]
@@ -1318,15 +1358,15 @@ class TestRagPipelineServiceCases:
         execution = SimpleNamespace(id="exec-1", node_id="node-1", node_type="llm", process_data={}, outputs={})
         mocker.patch.object(rag_pipeline_service.service, "_handle_node_run_result", return_value=execution)
 
-        repo = mocker.Mock()
+        repo = create_autospec(WorkflowNodeExecutionRepository, instance=True, spec_set=True)
         mocker.patch(
-            "services.rag_pipeline.rag_pipeline.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+            "services.rag_pipeline.rag_pipeline.WorkflowRepositoryFactory.create_workflow_node_execution_repository",
             return_value=repo,
         )
-        rag_pipeline_service.service._node_execution_service_repo = mocker.Mock(
-            get_execution_by_id=mocker.Mock(return_value="db")
-        )
-        saver = mocker.Mock()
+        node_execution_reader = create_autospec(DifyAPIWorkflowNodeExecutionRepository, instance=True, spec_set=True)
+        node_execution_reader.get_execution_by_id.return_value = "db"
+        rag_pipeline_service.service._node_execution_service_repo = node_execution_reader
+        saver = create_autospec(DraftVariableSaver, instance=True, spec_set=True)
         mocker.patch("services.rag_pipeline.rag_pipeline.DraftVariableSaver", return_value=saver)
 
         result = rag_pipeline_service.service.run_draft_workflow_node(pipeline, "node-1", {"q": "x"}, account)
@@ -2028,24 +2068,6 @@ class TestRagPipelineServiceCases:
             rag_pipeline_service.service.get_pipeline("t1", "d1")
 
     @staticmethod
-    def test_init_uses_default_sessionmaker_when_none(mocker: MockerFixture, sqlite_session: Session) -> None:
-        mocker.patch("services.rag_pipeline.rag_pipeline.db", SimpleNamespace(engine=sqlite_session.get_bind()))
-        create_exec_repo = mocker.patch(
-            "services.rag_pipeline.rag_pipeline.DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository"
-        )
-        create_run_repo = mocker.patch(
-            "services.rag_pipeline.rag_pipeline.DifyAPIRepositoryFactory.create_api_workflow_run_repository"
-        )
-
-        RagPipelineService(session=sqlite_session, session_maker=None)
-
-        exec_session_maker = create_exec_repo.call_args.args[0]
-        run_session_maker = create_run_repo.call_args.args[0]
-        assert exec_session_maker is run_session_maker
-        assert exec_session_maker.kw["bind"] is sqlite_session.get_bind()
-        assert exec_session_maker.kw["expire_on_commit"] is False
-
-    @staticmethod
     def test_get_pipeline_templates_builtin_en_us_no_fallback(
         mocker: MockerFixture, sqlite_session: Session, config_overrides: Callable[..., None]
     ) -> None:
@@ -2106,7 +2128,7 @@ class TestRagPipelineServiceCases:
     ) -> None:
         draft = _make_workflow(graph={"nodes": [{"data": {"type": "start"}}]})
         _persist(rag_pipeline_service.session, draft)
-        dataset_service = mocker.patch("services.knowledge.dataset_service.DatasetService")
+        stage = mocker.spy(rag_pipeline_service.service._datasets, "stage_rag_pipeline_dataset_settings")
 
         result = rag_pipeline_service.service.publish_workflow(
             session=rag_pipeline_service.session,
@@ -2115,7 +2137,7 @@ class TestRagPipelineServiceCases:
         )
 
         assert result.graph_dict == {"nodes": [{"data": {"type": "start"}}]}
-        dataset_service.update_rag_pipeline_dataset_settings.assert_not_called()
+        stage.assert_not_called()
 
     @staticmethod
     def test_get_default_block_config_returns_none_when_default_empty(
@@ -2731,3 +2753,60 @@ class TestRagPipelineServiceCases:
 
         assert result is pipeline
         assert RagPipelineService.get_pipeline_by_id("p1", "other-tenant", session=sqlite_session) is None
+
+
+def test_composition_uses_configured_session_factory(
+    mocker: MockerFixture,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    get_session_maker = mocker.patch(
+        "extensions.application_services.rag_pipeline.get_session_maker",
+        return_value=sqlite_session_factory,
+    )
+    create_exec_repo = mocker.patch(
+        "services.rag_pipeline.rag_pipeline.WorkflowRepositoryFactory.create_api_workflow_node_execution_repository"
+    )
+    create_run_repo = mocker.patch(
+        "services.rag_pipeline.rag_pipeline.WorkflowRepositoryFactory.create_api_workflow_run_repository"
+    )
+
+    build_rag_pipeline_service(session=sqlite_session)
+
+    exec_session_maker = create_exec_repo.call_args.args[0]
+    run_session_maker = create_run_repo.call_args.args[0]
+    get_session_maker.assert_called_once_with()
+    assert exec_session_maker is run_session_maker
+    assert exec_session_maker is sqlite_session_factory
+
+
+def test_update_customized_pipeline_template_revalidates_image_icon_upload(sqlite_session: Session) -> None:
+    template = _make_customized_template()
+    template.id = "tpl-1"
+    _persist(sqlite_session, template)
+    info = PipelineTemplateInfoEntity(
+        name="updated",
+        description="updated",
+        icon_info=IconInfo(icon="removed-upload", icon_type="image"),
+    )
+
+    with pytest.raises(UploadFileReferenceNotFoundError):
+        RagPipelineService.update_customized_pipeline_template(
+            "tpl-1", info, _make_account(), "t1", session=sqlite_session
+        )
+    sqlite_session.rollback()
+
+    template = sqlite_session.get_one(PipelineCustomizedTemplate, "tpl-1")
+    assert template.name == "old"
+    assert template.icon == {}
+
+
+def test_get_pipeline_by_id_uses_provided_session(sqlite_session: Session) -> None:
+    pipeline = _make_pipeline()
+    sqlite_session.add(pipeline)
+    sqlite_session.flush()
+
+    result = RagPipelineService.get_pipeline_by_id("p1", "t1", session=sqlite_session)
+
+    assert result is pipeline
+    assert RagPipelineService.get_pipeline_by_id("p1", "other-tenant", session=sqlite_session) is None

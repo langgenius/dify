@@ -1,10 +1,12 @@
 """Portable, presentation-only Site settings for App DSL exports."""
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from constants.languages import get_valid_language, supported_language
 from models.model import App, IconType, Site
+from repositories.file.upload_file_repository import lock_and_validate_owned_upload_files_in_session
 from services.icon_configuration import is_valid_image_icon
 
 _SITE_EXPORT_CONTEXT = object()
@@ -68,6 +70,7 @@ class SiteDsl(BaseModel):
 
 def apply_site_dsl(*, site: Site, app: App, data: SiteDsl, session: Session, allow_premium_settings: bool) -> None:
     """Apply portable Site fields, omitting unavailable paid settings and image ids."""
+    previous_image_id = site.icon if site.icon_type == IconType.IMAGE else None
     values = data.model_dump(exclude_unset=True)
     if not allow_premium_settings:
         # Cloud free workspaces must not retain paid Site settings after import.
@@ -81,5 +84,28 @@ def apply_site_dsl(*, site: Site, app: App, data: SiteDsl, session: Session, all
         # Standalone YAML cannot carry uploaded image bytes across workspaces.
         # Match App DSL imports: discard a foreign image id without a warning.
         values.update(icon_type=app.icon_type, icon=app.icon, icon_background=app.icon_background)
+    current_icon_type = values.get("icon_type", site.icon_type)
+    current_icon = values.get("icon", site.icon)
+    current_image_id = current_icon if current_icon_type == IconType.IMAGE else None
+    if isinstance(current_image_id, str) and current_image_id and current_image_id != previous_image_id:
+        locked_site = session.scalar(
+            select(Site)
+            .where(Site.id == site.id, Site.app_id == app.id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if locked_site is None:
+            raise ValueError("App Site is unavailable")
+        site = locked_site
+        previous_image_id = site.icon if site.icon_type == IconType.IMAGE else None
+        current_icon_type = values.get("icon_type", site.icon_type)
+        current_icon = values.get("icon", site.icon)
+        current_image_id = current_icon if current_icon_type == IconType.IMAGE else None
+    if isinstance(current_image_id, str) and current_image_id and current_image_id != previous_image_id:
+        lock_and_validate_owned_upload_files_in_session(
+            session,
+            tenant_id=app.tenant_id,
+            upload_file_ids=(current_image_id,),
+        )
     for name, value in values.items():
         setattr(site, name, value)

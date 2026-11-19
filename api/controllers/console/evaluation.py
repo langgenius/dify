@@ -13,7 +13,6 @@ from pydantic import AliasChoices, AliasPath, BaseModel, Field, RootModel, field
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound, TooManyRequests
 
-import services
 from configs import dify_config
 from constants.languages import get_valid_language, languages
 from controllers.common.fields import BinaryFileResponse
@@ -46,6 +45,7 @@ from core.evaluation.entities.evaluation_entity import (
 )
 from core.evaluation.entities.judgment_entity import JudgmentConfig
 from core.evaluation.exceptions import safe_evaluation_error_text
+from extensions.ext_application_services import application_services
 from extensions.ext_storage import storage
 from fields.base import ResponseModel
 from fields.member_fields import SimpleAccount
@@ -53,7 +53,8 @@ from graphon.file import helpers as file_helpers
 from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 from libs.helper import dump_response, to_timestamp
 from libs.login import current_account_with_tenant, login_required
-from models import Account, App, Dataset
+from machinery.context import RequestContext
+from models import Account, App
 from models.agent import Agent
 from models.evaluation import EvaluationConfiguration, EvaluationRun, EvaluationTargetType
 from models.model import AppMode
@@ -67,7 +68,7 @@ from services.errors.evaluation import (
     EvaluationNotFoundError,
 )
 from services.evaluation_service import EvaluationService
-from services.knowledge.dataset_service import DatasetService
+from services.knowledge.dataset_access import AccessibleDataset, DatasetAccessDeniedError, DatasetNotFoundError
 from services.workflow_service import WorkflowService
 
 P = ParamSpec("P")
@@ -422,16 +423,21 @@ def _get_accessible_dataset(
     dataset_id: UUID,
     current_user: Account,
     tenant_id: str,
-) -> Dataset:
-    dataset = DatasetService.get_dataset_for_tenant(str(dataset_id), tenant_id, session=session)
-    if dataset is None:
-        raise NotFound("Dataset not found.")
-    if not dify_config.RBAC_ENABLED:
-        try:
-            DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.base.NoPermissionError as exc:
-            raise Forbidden(str(exc)) from exc
-    return dataset
+) -> AccessibleDataset:
+    """Authorize the admitted account and return a tenant-scoped dataset identity.
+
+    The existing evaluation transaction stays caller-owned. Knowledge admission
+    uses its configured application service and raises the native HTTP errors.
+    """
+    try:
+        ref = application_services().knowledge.datasets.require_accessible(
+            RequestContext("", None, current_user.id, tenant_id), str(dataset_id)
+        )
+    except DatasetNotFoundError as exc:
+        raise NotFound("Dataset not found.") from exc
+    except DatasetAccessDeniedError as exc:
+        raise Forbidden(str(exc)) from exc
+    return AccessibleDataset(ref.dataset_id, ref.tenant_id)
 
 
 def _config_response(config: EvaluationConfiguration | None, *, target_type: str) -> dict[str, Any]:

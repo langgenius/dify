@@ -25,6 +25,7 @@ from models.agent_config_entities import AgentSoulConfig
 from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
 from services.agent.version_service import AgentVersionService
 from services.agent.version_store import AgentVersionPlanRequiredError
+from services.errors.file import UploadFileReferenceNotFoundError
 from tests.unit_tests.controllers.console.agent.test_api_access import Harness
 
 pytest_plugins = ("tests.unit_tests.controllers.console.agent.test_api_access",)
@@ -118,6 +119,38 @@ def test_restore_creates_then_updates_shared_draft_without_switching_active_snap
         drafts = session.scalars(select(AgentConfigDraft).where(AgentConfigDraft.agent_id == agent_id)).all()
         assert len(drafts) == 1
         assert drafts[0].base_snapshot_id == last
+
+
+@pytest.mark.parametrize("existing_draft", [False, True])
+def test_restore_rejects_removed_upload_without_changing_draft(harness: Harness, existing_draft: bool) -> None:
+    """A snapshot introducing a removed upload cannot create or replace the shared draft."""
+    agent_id, _ = harness.create_agent()
+    first, _, last = _seed_history(harness, agent_id)
+    repository = SQLAlchemyAgentVersionRepository(session_factory=harness.sessions)
+    if existing_draft:
+        repository.restore_version(
+            tenant_id=harness.tenant_id, agent_id=agent_id, version_id=last, account_id=harness.account_id
+        )
+    with harness.sessions.begin() as session:
+        snapshot = session.get(AgentConfigSnapshot, first)
+        assert snapshot is not None
+        snapshot.config_snapshot = AgentSoulConfig.model_validate(
+            {"config_files": [{"name": "guide.md", "file_kind": "upload_file", "file_id": str(uuid4())}]}
+        )
+
+    with pytest.raises(UploadFileReferenceNotFoundError):
+        repository.restore_version(
+            tenant_id=harness.tenant_id, agent_id=agent_id, version_id=first, account_id=harness.account_id
+        )
+
+    with harness.sessions() as session:
+        draft = session.scalar(select(AgentConfigDraft).where(AgentConfigDraft.agent_id == agent_id))
+        if existing_draft:
+            assert draft is not None
+            assert draft.base_snapshot_id == last
+            assert draft.config_snapshot_dict["config_files"] == []
+        else:
+            assert draft is None
 
 
 def test_foreign_agent_and_version_cannot_be_read_or_restored(harness: Harness) -> None:

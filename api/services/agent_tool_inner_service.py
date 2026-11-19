@@ -49,6 +49,7 @@ from models.model import App
 from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.entities.agent_tool_inner import AgentToolInvokeRequest, AgentToolInvokeResponse
 from services.errors.agent_tool_inner import AgentToolInnerServiceError
+from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 from services.workflow_run_agg import WorkflowRunAgg
 
 _TOOL_FILE_LINK_TYPES = frozenset(
@@ -63,8 +64,14 @@ _TOOL_FILE_LINK_TYPES = frozenset(
 class AgentToolInnerService:
     """Invoke one API-owned Agent tool declaration, including explicit plugin-via-core calls."""
 
-    def __init__(self, *, session_factory: Callable[[], Session] = default_session_factory.create_session) -> None:
+    def __init__(
+        self,
+        *,
+        knowledge_retrieval: KnowledgeRetriever,
+        session_factory: Callable[[], Session] = default_session_factory.create_session,
+    ) -> None:
         """Bind ``session_factory`` for post-invocation reads; defaults to the configured API session factory."""
+        self._knowledge_retrieval = knowledge_retrieval
         self._session_factory = session_factory
 
     def invoke(self, request: AgentToolInvokeRequest, *, session: Session) -> AgentToolInvokeResponse:
@@ -115,6 +122,7 @@ class AgentToolInnerService:
                 variable_pool=None,
                 allow_file_parameters=True,
                 use_default_for_missing_form_parameters=True,
+                knowledge_retrieval=self._knowledge_retrieval,
             )
             tool_runtime.runtime.dify_run_context = dify_run_context
             tool_runtime.runtime.tool_invoke_from = (

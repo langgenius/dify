@@ -29,6 +29,7 @@ from models.agent import (
 )
 from models.agent_config_entities import AgentSoulConfig
 from models.model import App, AppMode, AppModelConfig, IconType, UploadFile
+from repositories.file.upload_file_repository import lock_and_validate_owned_upload_files_in_session
 from services.agent.dsl_entities import AgentAppDsl, AgentPackage, AgentPackageMetadata
 from services.agent.dsl_service import AgentDslService
 from services.agent.errors import (
@@ -350,6 +351,12 @@ class RosterAgentPackageImporter:
             if metadata.icon_type in {item.value for item in AgentIconType} and is_valid_image_icon(
                 session=session, tenant_id=tenant_id, icon_type=metadata.icon_type, icon=metadata.icon
             ):
+                if metadata.icon and metadata.icon != agent.icon:
+                    lock_and_validate_owned_upload_files_in_session(
+                        session,
+                        tenant_id=tenant_id,
+                        upload_file_ids=(metadata.icon,),
+                    )
                 agent.icon_type = AgentIconType(metadata.icon_type)
                 agent.icon = metadata.icon
                 agent.icon_background = metadata.icon_background

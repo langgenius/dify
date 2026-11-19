@@ -13,7 +13,7 @@ from models.agent import (
 )
 from models.enums import ConversationFromSource, InvokeFrom
 from models.model import AppMode, Conversation
-from repositories.conversation_lifecycle import (
+from repositories.conversation.lifecycle import (
     retire_debug_conversation_workspaces,
     retire_superseded_debug_conversations,
 )

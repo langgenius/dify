@@ -17,8 +17,12 @@ from models.trigger import WorkflowTriggerLog
 from models.workflow import Workflow
 from services.errors.app import IsDraftWorkflowError, QuotaExceededError, WorkflowNotFoundError
 from services.workflow.entities import AsyncTriggerResponse, ScheduleTriggerData, TriggerActor
-from tasks.async_workflow_tasks import execute_workflow_professional, execute_workflow_sandbox, execute_workflow_team
-from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue
+from tasks.async_workflow_tasks import (
+    _SANDBOX_QUEUE,
+    execute_workflow_professional,
+    execute_workflow_sandbox,
+    execute_workflow_team,
+)
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.unit_tests.controllers.console.workspace.test_trigger_oauth_client import _Harness
 from tests.unit_tests.tasks import test_trigger_processing_tasks as worker_tests
@@ -76,7 +80,7 @@ def test_records_actor_and_publishes_lightweight_task(
     try:
         with (
             celery.connection_for_write() as connection,
-            SimpleQueue(connection.channel(), AsyncWorkflowQueue.SANDBOX_QUEUE) as queue,
+            SimpleQueue(connection.channel(), _SANDBOX_QUEUE) as queue,
         ):
             queue.clear()
             try:

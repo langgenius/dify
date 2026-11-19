@@ -12,12 +12,13 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.trigger.entities.entities import Subscription
+from enums.creator import CreatorUserRole
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.utils.trigger_endpoint import generate_plugin_trigger_endpoint_url, generate_webhook_trigger_endpoint
 
 from .base import TypeBase
-from .enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, PermissionEnum, WorkflowTriggerStatus
+from .enums import AppTriggerStatus, AppTriggerType, PermissionEnum, WorkflowTriggerStatus
 from .model import Account
 from .types import EnumText, LongText, StringUUID
 

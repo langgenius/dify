@@ -189,7 +189,7 @@ def test_datasource_media_uses_upload_file_preview_and_storage(
     from core.workflow.file_reference import build_file_reference
     from extensions.ext_storage import storage
     from extensions.storage.opendal_storage import OpenDALStorage
-    from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
+    from repositories.file.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
     from services.upload_file_delivery_service import UploadFileDeliveryService
     from tests.helpers.unit.model_factories import make_upload_file
 

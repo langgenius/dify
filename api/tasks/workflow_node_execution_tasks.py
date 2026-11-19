@@ -15,13 +15,15 @@ from sqlalchemy import and_, or_, select
 from core.db.session_factory import session_factory
 from core.workflow.node_execution import WorkflowNodeExecution as DifyWorkflowNodeExecution
 from core.workflow.node_execution_process_data import keep_agent_and_tool_ids
+from enums.creator import CreatorUserRole
 from graphon.entities.workflow_node_execution import (
     WorkflowNodeExecution,
 )
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
-from models import CreatorUserRole, WorkflowNodeExecutionModel
+from models import WorkflowNodeExecutionModel
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
+from repositories.workflow.upload_file_references import lock_new_workflow_upload_file_references
 from repositories.workflow_run_control import apply_workflow_stop_to_node, get_stopped_workflow_run
 
 logger = logging.getLogger(__name__)
@@ -70,22 +72,35 @@ def save_workflow_node_executions_task(
                     )
                 ),
             )
-            existing_models = {model.id: model for model in session.scalars(query)}
+            existing_models = {
+                model.id: model
+                for model in session.scalars(query.order_by(WorkflowNodeExecutionModel.id).with_for_update())
+            }
             for execution in executions:
                 existing = existing_models.get(execution.id)
                 if existing is None:
-                    session.add(
-                        _create_node_execution_from_domain(
-                            execution,
-                            tenant_id,
-                            app_id,
-                            WorkflowNodeExecutionTriggeredFrom(triggered_from),
-                            creator_user_id,
-                            CreatorUserRole(creator_user_role),
-                        )
+                    node_execution = _create_node_execution_from_domain(
+                        execution,
+                        tenant_id,
+                        app_id,
+                        WorkflowNodeExecutionTriggeredFrom(triggered_from),
+                        creator_user_id,
+                        CreatorUserRole(creator_user_role),
                     )
+                    lock_new_workflow_upload_file_references(
+                        session,
+                        tenant_id=tenant_id,
+                        current_payloads=(
+                            node_execution.inputs,
+                            node_execution.process_data,
+                            node_execution.outputs,
+                            node_execution.execution_metadata,
+                        ),
+                    )
+                    session.add(node_execution)
                     continue
                 inputs, process_data, outputs = existing.inputs, existing.process_data, existing.outputs
+                execution_metadata = existing.execution_metadata
                 _update_node_execution_from_domain(existing, execution)
                 if existing.inputs_truncated:
                     existing.inputs = inputs
@@ -93,6 +108,17 @@ def save_workflow_node_executions_task(
                     existing.process_data = process_data
                 if existing.outputs_truncated:
                     existing.outputs = outputs
+                lock_new_workflow_upload_file_references(
+                    session,
+                    tenant_id=tenant_id,
+                    previous_payloads=(inputs, process_data, outputs, execution_metadata),
+                    current_payloads=(
+                        existing.inputs,
+                        existing.process_data,
+                        existing.outputs,
+                        existing.execution_metadata,
+                    ),
+                )
         return True
     except Exception as error:
         logger.exception(
@@ -144,17 +170,36 @@ def save_workflow_node_execution_task(
 
             # Check if node execution already exists
             existing_execution = session.scalar(
-                select(WorkflowNodeExecutionModel).where(
+                select(WorkflowNodeExecutionModel)
+                .where(
                     WorkflowNodeExecutionModel.id == execution.id,
                     WorkflowNodeExecutionModel.tenant_id == tenant_id,
                     WorkflowNodeExecutionModel.app_id == app_id,
                     WorkflowNodeExecutionModel.workflow_id == execution.workflow_id,
                 )
+                .with_for_update()
             )
 
             if existing_execution:
+                previous_payloads = (
+                    existing_execution.inputs,
+                    existing_execution.process_data,
+                    existing_execution.outputs,
+                    existing_execution.execution_metadata,
+                )
                 # Update existing node execution
                 _update_node_execution_from_domain(existing_execution, execution)
+                lock_new_workflow_upload_file_references(
+                    session,
+                    tenant_id=tenant_id,
+                    previous_payloads=previous_payloads,
+                    current_payloads=(
+                        existing_execution.inputs,
+                        existing_execution.process_data,
+                        existing_execution.outputs,
+                        existing_execution.execution_metadata,
+                    ),
+                )
                 logger.debug("Updated existing workflow node execution: %s", execution.id)
             else:
                 # Create new node execution
@@ -165,6 +210,16 @@ def save_workflow_node_execution_task(
                     triggered_from=WorkflowNodeExecutionTriggeredFrom(triggered_from),
                     creator_user_id=creator_user_id,
                     creator_user_role=CreatorUserRole(creator_user_role),
+                )
+                lock_new_workflow_upload_file_references(
+                    session,
+                    tenant_id=tenant_id,
+                    current_payloads=(
+                        node_execution.inputs,
+                        node_execution.process_data,
+                        node_execution.outputs,
+                        node_execution.execution_metadata,
+                    ),
                 )
                 session.add(node_execution)
                 logger.debug("Created new workflow node execution: %s", execution.id)

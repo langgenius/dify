@@ -1,13 +1,15 @@
 from collections.abc import Callable
+from threading import Event
 from unittest.mock import MagicMock, Mock, create_autospec
 
+import httpx
 import pytest
 from redis import RedisError
 
 from enums import CloudPlan, DeploymentEdition
+from enums.creator import CreatorUserRole
 from extensions.ext_redis import RedisClientWrapper
 from machinery.context import RequestContext
-from models.account import Account
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.account.adapters import RedisInvitationTokenStore
 from services.credit_pool_service import CreditPoolBalance
@@ -29,6 +31,130 @@ from services.workspace.gateways import (
 from tests.helpers import billing_builders as builders
 from tests.helpers.unit.account_domain import AccountDomain
 from tests.helpers.unit.rbac_fakes import RBACTransport
+
+
+def test_workspace_owner_binding_retries_transient_rbac_failure(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(RBAC_ENABLED=True)
+    attempts: list[str] = []
+    monkeypatch.setattr(
+        gateways.DeploymentWorkspaceMemberAccessGateway,
+        "_role_id",
+        lambda _workspace_id, _account_id, _tag: "owner-role",
+    )
+
+    def replace(**kwargs: object) -> object:
+        attempts.append(str(kwargs["tenant_id"]))
+        if len(attempts) == 1:
+            raise httpx.ConnectError("temporary RBAC failure")
+        return object()
+
+    monkeypatch.setattr(gateways.RBACService.MemberRoles, "replace", replace)
+
+    gateways.WorkspaceProvisioningEffectsGateway().bind_owner("workspace", "account")
+
+    assert attempts == ["workspace", "workspace"]
+
+
+@pytest.mark.parametrize("edition", [DeploymentEdition.COMMUNITY, DeploymentEdition.CLOUD])
+def test_workspace_quota_guard_skips_redis_when_no_workspace_license_limit_is_enforced(
+    edition: DeploymentEdition,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=edition)
+    redis = create_autospec(RedisClientWrapper, instance=True, spec_set=True)
+    redis.lock.side_effect = RedisError("redis unavailable")
+
+    with gateways.RedisWorkspaceQuotaGuard(redis=redis).acquire() as assert_owned:
+        assert_owned()
+
+    redis.lock.assert_not_called()
+
+
+def test_workspace_quota_guard_fails_closed_when_enterprise_redis_is_unavailable(
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+    redis = create_autospec(RedisClientWrapper, instance=True, spec_set=True)
+    redis.lock.return_value.acquire.side_effect = RedisError("redis unavailable")
+
+    with pytest.raises(RuntimeError, match="Workspace quota guard is unavailable"):
+        with gateways.RedisWorkspaceQuotaGuard(redis=redis).acquire():
+            pytest.fail("the guard must not be entered")
+
+
+def test_workspace_quota_guard_renews_and_releases_owned_token(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+    renewed = Event()
+    calls: list[tuple[object, ...]] = []
+
+    class Lock:
+        def acquire(self) -> bool:
+            calls.append(("acquire",))
+            return True
+
+        def owned(self) -> bool:
+            calls.append(("owned",))
+            return True
+
+        def reacquire(self) -> bool:
+            calls.append(("renew",))
+            renewed.set()
+            return True
+
+        def release(self) -> None:
+            calls.append(("release",))
+
+    class Redis:
+        def lock(self, name: str, *, timeout: int, blocking_timeout: int, thread_local: bool) -> Lock:
+            calls.append(("lock", name, timeout, blocking_timeout, thread_local))
+            return Lock()
+
+    monkeypatch.setattr(gateways, "_WORKSPACE_QUOTA_LOCK_RENEW_INTERVAL_SECONDS", 0.001)
+    redis = create_autospec(RedisClientWrapper, instance=True, spec_set=True)
+    redis.lock.side_effect = Redis().lock
+    guard = gateways.RedisWorkspaceQuotaGuard(redis=redis)
+
+    with guard.acquire() as assert_owned:
+        assert renewed.wait(timeout=1)
+        assert_owned()
+
+    assert calls[0] == ("lock", "workspace:creation:quota", 60, 300, False)
+    assert ("renew",) in calls
+    assert calls[-1] == ("release",)
+
+
+def test_workspace_creation_capacity_bypasses_cached_enterprise_usage(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+    snapshot_values: tuple[dict[str, object], ...] = (
+        {"License": {"workspaces": {"enabled": True, "limit": 1, "used": 0}}},
+        {"License": {"workspaces": {"enabled": True, "limit": 1, "used": 1}}},
+    )
+    snapshots = iter(snapshot_values)
+    uncached_queries = 0
+
+    def get_uncached_info() -> dict[str, object]:
+        nonlocal uncached_queries
+        uncached_queries += 1
+        return next(snapshots)
+
+    monkeypatch.setattr(gateways.EnterpriseService, "get_uncached_info", get_uncached_info)
+    gateways.EnterpriseService.get_info.cache_clear()
+    try:
+        assert gateways.SystemFeatureService.get_license().workspaces.is_available()
+        assert not gateways.DeploymentWorkspaceCreationPolicy().has_workspace_capacity()
+        assert uncached_queries == 2
+    finally:
+        gateways.EnterpriseService.get_info.cache_clear()
+
 
 """Workspace policies and notifications with only external clients replaced."""
 
@@ -481,8 +607,8 @@ class TestWorkspaceFileGatewayCases:
         assert gateway.upload(context, filename="logo.png", content=b"image", mimetype="image/png") == "file-id"
 
         kwargs = files.upload_file.call_args.kwargs
-        assert isinstance(kwargs["user"], Account)
-        assert kwargs["user"].id == "account"
+        assert kwargs["actor"].id == "account"
+        assert kwargs["actor"].creator_role == CreatorUserRole.ACCOUNT
         assert kwargs["tenant_id"] == "workspace"
         assert kwargs["content"] == b"image"
 

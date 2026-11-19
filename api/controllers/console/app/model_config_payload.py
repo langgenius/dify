@@ -4,11 +4,11 @@ from pydantic import BaseModel, ConfigDict, Field, with_config
 from typing_extensions import TypedDict
 
 from core.entities.agent_entities import PlanningStrategy
-from core.rag.entities.metadata_entities import SupportedComparisonOperator
 from core.rag.rerank.rerank_type import RerankMode
 from core.tools.entities.tool_entities import ToolProviderType
 from graphon.file.enums import FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMMode
+from services.knowledge.entities.metadata import SupportedComparisonOperator
 
 # The recursive schema also keeps generated clients from turning JSON values into `any`.
 type AppConfigJsonValue = str | int | float | bool | None | list[AppConfigJsonValue] | dict[str, AppConfigJsonValue]

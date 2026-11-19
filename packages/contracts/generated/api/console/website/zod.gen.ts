@@ -12,11 +12,6 @@ export const zWebsiteCrawlPayload = z.object({
 })
 
 /**
- * WebsiteCrawlResponse
- */
-export const zWebsiteCrawlResponse = z.record(z.string(), z.unknown())
-
-/**
  * ErrorResponse
  *
  * Documented non-2xx body emitted by ``register_external_error_handlers``.
@@ -44,6 +39,66 @@ export const zCrawlFailedError = zErrorResponse.and(
   }),
 )
 
+/**
+ * WebsiteCrawlStartedResponse
+ */
+export const zWebsiteCrawlStartedResponse = z.object({
+  job_id: z.string(),
+  status: z.string(),
+})
+
+/**
+ * CrawledPage
+ */
+export const zCrawledPage = z.object({
+  description: z.string().nullable(),
+  markdown: z.string().nullable(),
+  source_url: z.string().nullable(),
+  title: z.string().nullable(),
+})
+
+/**
+ * WebsiteCrawlProgressResponse
+ */
+export const zWebsiteCrawlProgressResponse = z.object({
+  current: z.int(),
+  data: z.array(zCrawledPage),
+  job_id: z.string(),
+  status: z.string(),
+  time_consuming: z.union([z.string(), z.number()]).nullish(),
+  total: z.int(),
+})
+
+/**
+ * ScrapedPage
+ */
+export const zScrapedPage = z
+  .object({
+    content: z.string().nullish(),
+    description: z.string().nullish(),
+    title: z.string().nullish(),
+    url: z.string().nullish(),
+  })
+  .passthrough()
+
+/**
+ * WebsitePageCrawledResponse
+ */
+export const zWebsitePageCrawledResponse = z.object({
+  data: zScrapedPage,
+  status: z.string(),
+})
+
+/**
+ * WebsiteCrawlResponse
+ *
+ * A remote crawl job or the immediately available single-page content.
+ */
+export const zWebsiteCrawlResponse = z.union([
+  zWebsiteCrawlStartedResponse,
+  zWebsitePageCrawledResponse,
+])
+
 export const zPostWebsiteCrawlBody = zWebsiteCrawlPayload
 
 /**
@@ -62,4 +117,4 @@ export const zGetWebsiteCrawlStatusByJobIdQuery = z.object({
 /**
  * Crawl status retrieved successfully
  */
-export const zGetWebsiteCrawlStatusByJobIdResponse = zWebsiteCrawlResponse
+export const zGetWebsiteCrawlStatusByJobIdResponse = zWebsiteCrawlProgressResponse

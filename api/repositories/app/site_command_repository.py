@@ -8,8 +8,9 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from libs.datetime_utils import naive_utc_now
 from models.enums import AppStatus
-from models.model import App, Site
+from models.model import App, IconType, Site
 from repositories.app.console_visibility import console_visible_condition
+from repositories.file.upload_file_repository import lock_and_validate_owned_upload_files_in_session
 from services.app_site_service import (
     AppSiteAppNotFoundError,
     AppSiteChanges,
@@ -43,9 +44,18 @@ class AppSiteCommandRepository(AppSiteStore):
     ) -> AppSiteCommandResult:
         with self._session_factory.begin() as session:
             site = self._get_site(session, workspace_id, app_id)
+            previous_icon_id = site.icon if site.icon_type == IconType.IMAGE else None
             for field_name, value in asdict(changes).items():
                 if value is not None:
                     setattr(site, field_name, value)
+
+            current_icon_id = site.icon if site.icon_type == IconType.IMAGE else None
+            if current_icon_id is not None and current_icon_id != previous_icon_id:
+                lock_and_validate_owned_upload_files_in_session(
+                    session,
+                    tenant_id=workspace_id,
+                    upload_file_ids=(current_icon_id,),
+                )
 
             site.updated_by = actor_id
             site.updated_at = naive_utc_now()
@@ -71,7 +81,11 @@ class AppSiteCommandRepository(AppSiteStore):
     @staticmethod
     def _get_site(session: Session, workspace_id: str, app_id: str) -> Site:
         site = session.scalar(
-            select(Site).join(App, App.id == Site.app_id).where(*_console_app_conditions(workspace_id, app_id)).limit(1)
+            select(Site)
+            .join(App, App.id == Site.app_id)
+            .where(*_console_app_conditions(workspace_id, app_id))
+            .limit(1)
+            .with_for_update()
         )
         if site is not None:
             return site

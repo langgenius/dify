@@ -1,15 +1,12 @@
-from inspect import unwrap
 from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import Mock
-from uuid import UUID
 
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
 
-from constants.oauth_bearer import TokenType
 from controllers.common.errors import (
     BlockedFileExtensionError,
     FileTooLargeError,
@@ -19,35 +16,20 @@ from controllers.openapi._models import FileUploadPayload
 from controllers.openapi._multipart import body_from_request
 from controllers.openapi._upload import file_fields
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.subjects import AccountSubject
 from controllers.openapi.files import AppFileUploadApi
+from enums.creator import CreatorUserRole
 from libs.exception import BaseHTTPException
-from libs.oauth_bearer import AuthContext
 from models import Account
 from services.errors.file import BlockedFileExtensionError as ServiceBlockedFileExtensionError
 from services.errors.file import FileTooLargeError as ServiceFileTooLargeError
 from services.errors.file import UnsupportedFileTypeError as ServiceUnsupportedFileTypeError
+from tests.helpers.unit.controllers.openapi.auth._world import account_subject, make_tenant
 
 
 def _caller() -> Account:
     caller = Account(name="Uploader", email="uploader@example.com")
-    caller.id = str(UUID(int=1))
+    caller.id = "account-1"
     return caller
-
-
-def _context(caller: Account, session: Session) -> Context:
-    auth = AuthContext(
-        token_type=TokenType.OAUTH_ACCOUNT,
-        subject_email=caller.email,
-        subject_issuer="dify:account",
-        account_id=UUID(caller.id),
-        client_id="difyctl",
-        token_id=UUID(int=2),
-        expires_at=None,
-    )
-    context = Context(AccountSubject(auth), session, {"app_id": "app-1"})
-    context._caller = caller
-    return context
 
 
 def _upload_result() -> SimpleNamespace:
@@ -72,6 +54,13 @@ def _file_service(monkeypatch: pytest.MonkeyPatch) -> Mock:
     return service
 
 
+def _context(caller: Account, session: Session) -> Context:
+    context = Context(account_subject(), session, {})
+    context._caller = caller
+    context._workspace = make_tenant(tenant_id="tenant-1")
+    return context
+
+
 def test_upload_uses_injected_file_service(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
@@ -86,15 +75,18 @@ def test_upload_uses_injected_file_service(
         content_type="multipart/form-data",
     ):
         api = AppFileUploadApi()
-        result = unwrap(api.post)(api, _context(caller, sqlite_session), app_id="app-1", body=_body())
+        handler = vars(AppFileUploadApi.post)["__handler__"]
+        result = handler(api, _context(caller, sqlite_session), app_id="app-1", body=_body())
 
     assert result.id == "00000000-0000-0000-0000-000000000001"
-    service.upload_file.assert_called_once_with(
-        filename="note.txt",
-        content=b"hello",
-        mimetype="text/plain",
-        user=caller,
-    )
+    service.upload_file.assert_called_once()
+    kwargs = service.upload_file.call_args.kwargs
+    assert kwargs["filename"] == "note.txt"
+    assert kwargs["content"] == b"hello"
+    assert kwargs["mimetype"] == "text/plain"
+    assert kwargs["actor"].id == caller.id
+    assert kwargs["actor"].creator_role == CreatorUserRole.ACCOUNT
+    assert kwargs["tenant_id"] == "tenant-1"
 
 
 @pytest.mark.parametrize(
@@ -137,8 +129,9 @@ def test_upload_preserves_specific_file_errors(
         content_type="multipart/form-data",
     ):
         api = AppFileUploadApi()
+        handler = vars(AppFileUploadApi.post)["__handler__"]
         with pytest.raises(controller_error) as error_info:
-            unwrap(api.post)(api, _context(_caller(), sqlite_session), app_id="app-1", body=_body())
+            handler(api, _context(_caller(), sqlite_session), app_id="app-1", body=_body())
 
     assert error_info.value.code == status
     assert error_info.value.error_code == error_code
@@ -160,8 +153,9 @@ def test_upload_maps_other_value_errors_to_bad_request(
         content_type="multipart/form-data",
     ):
         api = AppFileUploadApi()
+        handler = vars(AppFileUploadApi.post)["__handler__"]
         with pytest.raises(BadRequest) as error_info:
-            unwrap(api.post)(api, _context(_caller(), sqlite_session), app_id="app-1", body=_body())
+            handler(api, _context(_caller(), sqlite_session), app_id="app-1", body=_body())
 
     assert error_info.value.description == str(service_error)
     assert error_info.value.__cause__ is service_error

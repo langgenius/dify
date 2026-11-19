@@ -88,7 +88,10 @@ def test_notion_page_is_marked_bound_from_persisted_document(
     )
 
     sessions = sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
-    datasets = SQLAlchemyDatasetRepository(session_factory=sessions)
+    datasets = SQLAlchemyDatasetRepository(
+        revoke_keys_after_commit=lambda _session, _tokens: None,
+        session_factory=sessions,
+    )
     credentials = build_data_source_credentials(database_client=sessions).actor
     notion_imports = NotionImportApplicationService(
         dataset_access=DatasetAccessService(

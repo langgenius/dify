@@ -40,6 +40,7 @@ from services.message_more_like_this_generator import (
     _restore_inputs,
 )
 from services.message_more_like_this_service import MessageMoreLikeThisService, MoreLikeThisFile, MoreLikeThisResponse
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 
 @dataclass(frozen=True)
@@ -115,7 +116,10 @@ def runtime(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
     factory = sessionmaker(bind=sqlite_engine)
     service = MessageMoreLikeThisService(
         repository=MessageRepository(session_factory=factory),
-        generator=MessageMoreLikeThisGenerator(session_factory=factory),
+        generator=MessageMoreLikeThisGenerator(
+            session_factory=factory,
+            knowledge_retrieval=make_knowledge_retriever(),
+        ),
     )
     app = Flask(__name__)
     app.config["SQLALCHEMY_DATABASE_URI"] = str(sqlite_engine.url)

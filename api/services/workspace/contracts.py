@@ -45,6 +45,7 @@ class WorkspaceMemberWrite:
 class WorkspaceMemberRemoval:
     account_id: str
     email: str
+    account_deleted: bool = False
 
 
 @dataclass(frozen=True)

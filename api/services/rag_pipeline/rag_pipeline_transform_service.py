@@ -7,7 +7,7 @@ from uuid import uuid4
 
 import yaml
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from constants import DOCUMENT_EXTENSIONS
@@ -20,9 +20,10 @@ from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipe
 from models.enums import DatasetRuntimeMode, DataSourceType
 from models.workflow import Workflow, WorkflowType
 from repositories.knowledge.dataset_read_repository import get_dataset_doc_form
+from repositories.workflow.upload_file_references import lock_new_workflow_upload_file_references
 from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeConfiguration, RetrievalSetting
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
-from services.file_service import FileService
+from services.file_adapters import build_file_service
 from services.plugin.plugin_migration import PluginMigration
 
 logger = logging.getLogger(__name__)
@@ -95,7 +96,6 @@ class RagPipelineTransformService:
             account_id=account_id,
             session=session,
         )
-
         # save chunk structure to dataset
         if doc_form == IndexStructureType.PARENT_CHILD_INDEX:
             dataset.chunk_structure = "hierarchical_model"
@@ -284,6 +284,16 @@ class RagPipelineTransformService:
             _conversation_variables=conversation_variables,
             _rag_pipeline_variables=rag_pipeline_variables_list,
         )
+        lock_new_workflow_upload_file_references(
+            session,
+            tenant_id=tenant_id,
+            current_payloads=(
+                draft_workflow.graph,
+                draft_workflow._conversation_variables,
+                published_workflow.graph,
+                published_workflow._conversation_variables,
+            ),
+        )
         session.add(draft_workflow)
         session.add(published_workflow)
         session.flush()
@@ -352,6 +362,7 @@ class RagPipelineTransformService:
         documents = session.scalars(
             select(Document).where(Document.dataset_id == dataset.id, Document.tenant_id == dataset.tenant_id)
         ).all()
+        file_service = build_file_service(session_factory=sessionmaker(bind=session.get_bind(), expire_on_commit=False))
 
         for document in documents:
             data_source_info_dict = document.data_source_info_dict
@@ -361,9 +372,7 @@ class RagPipelineTransformService:
                 file_id = data_source_info_dict.get("upload_file_id")
                 if file_id:
                     file_id = str(file_id)
-                    file = FileService.get_upload_files_by_ids(dataset.tenant_id, [file_id], session=session).get(
-                        file_id
-                    )
+                    file = file_service.get_files(tenant_id=dataset.tenant_id, file_ids=(file_id,)).get(file_id)
                     if file:
                         document.data_source_type = DataSourceType.LOCAL_FILE
                         data_source_info = json.dumps(

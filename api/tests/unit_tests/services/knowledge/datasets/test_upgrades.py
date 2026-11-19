@@ -2,17 +2,14 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import cast
-from unittest.mock import patch
+from datetime import UTC, datetime
+from unittest.mock import create_autospec, patch
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
-from graphon.model_runtime.entities.model_entities import ModelType
 from machinery.context import RequestContext
-from models import Dataset
 from models.knowledge_fs import KnowledgeFSUpgradeJob, KnowledgeFSUpgradeJobStatus
-from models.provider import TenantDefaultModel
 from services.dataset_knowledge_fs_upgrade_service import (
     KnowledgeFSUpgradeConflictError,
     KnowledgeFSUpgradeModelPreferences,
@@ -22,9 +19,10 @@ from services.dataset_knowledge_fs_upgrade_service import (
     KnowledgeFSUpgradeSnapshotService,
 )
 from services.knowledge.dataset_access import AccessibleDataset, DatasetAccess, DatasetAccessDeniedError
-from services.knowledge.datasets.adapters import SQLAlchemyDatasetOperations
-from services.knowledge.datasets.application import DatasetVisibility
+from services.knowledge.datasets.contracts import DatasetListFilter, DatasetVisibility
 from services.knowledge.datasets.upgrades import KnowledgeFSUpgradeUnavailableError, KnowledgeUpgradeApplicationService
+from services.knowledge.entities.datasets import DatasetDetailRecord, DatasetPage
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge_fs.product_dto import (
     KnowledgeFSModelIntent,
     KnowledgeFSUpgradeModelChoice,
@@ -33,7 +31,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSUpgradeModelRecommendationsResponse,
     KnowledgeFSUpgradeModelsPayload,
 )
-from tests.helpers.unit.services.knowledge_fs_services_a_fakes import UnusedSessionFactory, upgrade_job
+from tests.helpers.unit.services.knowledge_fs_services_a_fakes import upgrade_job
 
 CONTEXT = RequestContext("request", None, "account-1", "tenant-1")
 
@@ -52,9 +50,39 @@ class FakeDatasetAccess:
         return self.decide(context, dataset_id)
 
 
+@dataclass
 class FakeDatasets:
-    def visibility(self, _context: RequestContext) -> DatasetVisibility:
+    visible_ids: tuple[str, ...] = ()
+    provider: str = "vendor"
+    preferences: KnowledgeFSUpgradeModelPreferences = field(
+        default_factory=lambda: KnowledgeFSUpgradeModelPreferences(embedding=None, rerank=None, defaults={})
+    )
+    list_calls: list[tuple[DatasetListFilter, list[str] | None, bool]] = field(default_factory=list)
+
+    def visibility(self, context: RequestContext) -> DatasetVisibility:
+        del context
         return DatasetVisibility()
+
+    def list_datasets(
+        self,
+        context: RequestContext,
+        query: DatasetListFilter,
+        accessible_ids: list[str] | None,
+        include_own: bool,
+    ) -> DatasetPage:
+        del context
+        self.list_calls.append((query, accessible_ids, include_own))
+        requested = set(query.ids)
+        data = [_dataset_record(dataset_id) for dataset_id in self.visible_ids if dataset_id in requested]
+        return {"data": data, "has_more": False, "total": len(data), "page": 1, "limit": query.limit}
+
+    def get_dataset(self, context: RequestContext, ref: DatasetRef) -> DatasetDetailRecord:
+        del context
+        return _dataset_record(ref.dataset_id, provider=self.provider)
+
+    def get_upgrade_model_preferences(self, ref: DatasetRef) -> tuple[str, KnowledgeFSUpgradeModelPreferences]:
+        assert ref.tenant_id == "tenant-1"
+        return self.provider, self.preferences
 
 
 @dataclass
@@ -111,117 +139,70 @@ class FakeSnapshots:
         return self.jobs
 
 
+def _dataset_record(dataset_id: str, *, provider: str = "vendor") -> DatasetDetailRecord:
+    return DatasetDetailRecord(
+        id=dataset_id,
+        name=dataset_id,
+        description=None,
+        provider=provider,
+        permission="only_me",
+        data_source_type=None,
+        indexing_technique="high_quality",
+        keyword_number=None,
+        app_count=0,
+        document_count=0,
+        word_count=0,
+        created_by="account-1",
+        author_name=None,
+        created_at=datetime(2026, 1, 1, tzinfo=UTC),
+        updated_by=None,
+        updated_at=datetime(2026, 1, 1, tzinfo=UTC),
+        embedding_model=None,
+        embedding_model_provider=None,
+        embedding_available=True,
+        retrieval_model_dict={},
+        summary_index_setting=None,
+        tags=[],
+        doc_form=None,
+        external_knowledge_info=None,
+        external_retrieval_model=None,
+        doc_metadata=[],
+        built_in_field_enabled=False,
+        pipeline_id=None,
+        runtime_mode="general",
+        chunk_structure=None,
+        icon_info=None,
+        is_published=False,
+        total_documents=0,
+        total_available_documents=0,
+        enable_api=False,
+        is_multimodal=False,
+        permission_keys=[],
+        maintainer=None,
+    )
+
+
 def _service(
     *,
     feature_enabled: bool = True,
     access: FakeDatasetAccess | None = None,
+    datasets: FakeDatasets | None = None,
     enqueue: FakeEnqueue | None = None,
-    session_factory: sessionmaker[Session] | None = None,
 ) -> KnowledgeUpgradeApplicationService:
+    access_fake = access or FakeDatasetAccess()
+    access_port = create_autospec(DatasetAccess, instance=True, spec_set=True)
+    access_port.require_accessible.side_effect = access_fake.require_accessible
     return KnowledgeUpgradeApplicationService(
-        session_factory=session_factory or cast("sessionmaker[Session]", UnusedSessionFactory()),
-        dataset_access=cast(DatasetAccess, access or FakeDatasetAccess()),
-        datasets=cast(SQLAlchemyDatasetOperations, FakeDatasets()),
+        session_factory=sessionmaker(),
+        dataset_access=access_port,
+        datasets=datasets or FakeDatasets(),
         rbac_enabled=False,
         feature_enabled=lambda: feature_enabled,
         enqueue=enqueue or FakeEnqueue(),
     )
 
 
-def _dataset(dataset_id: str) -> Dataset:
-    dataset = Dataset()
-    dataset.id = dataset_id
-    return dataset
-
-
-def test_load_model_preferences_reads_tenant_defaults_and_handles_invalid_legacy_settings(
-    sqlite_session_factory: sessionmaker[Session],
-) -> None:
-    with sqlite_session_factory.begin() as session:
-        dataset = Dataset(
-            tenant_id="tenant-1",
-            name="Legacy knowledge base",
-            created_by="account-1",
-            provider="vendor",
-            embedding_model_provider="legacy-provider",
-            embedding_model="legacy-embedding",
-            retrieval_model={
-                "reranking_model": {
-                    "reranking_provider_name": "legacy-rerank-provider",
-                    "reranking_model_name": "legacy-rerank",
-                }
-            },
-        )
-        session.add(dataset)
-        session.flush()
-        dataset_id = dataset.id
-        session.add_all(
-            [
-                TenantDefaultModel(
-                    tenant_id="tenant-1",
-                    model_type=ModelType.TEXT_EMBEDDING,
-                    provider_name="default-embedding-provider",
-                    model_name="default-embedding",
-                ),
-                TenantDefaultModel(
-                    tenant_id="tenant-1",
-                    model_type=ModelType.RERANK,
-                    provider_name="default-rerank-provider",
-                    model_name="default-rerank",
-                ),
-                TenantDefaultModel(
-                    tenant_id="tenant-1",
-                    model_type=ModelType.LLM,
-                    provider_name="default-llm-provider",
-                    model_name="default-llm",
-                ),
-                TenantDefaultModel(
-                    tenant_id="tenant-2",
-                    model_type=ModelType.LLM,
-                    provider_name="other-tenant-provider",
-                    model_name="other-tenant-model",
-                ),
-            ]
-        )
-
-    service = _service(session_factory=sqlite_session_factory)
-    provider, preferences = service._load_model_preferences(tenant_id="tenant-1", dataset_id=dataset_id)
-
-    assert provider == "vendor"
-    assert preferences.embedding == KnowledgeFSUpgradeModelChoice(provider="legacy-provider", model="legacy-embedding")
-    assert preferences.rerank == KnowledgeFSUpgradeModelChoice(provider="legacy-rerank-provider", model="legacy-rerank")
-    assert preferences.defaults == {
-        ModelType.TEXT_EMBEDDING: KnowledgeFSUpgradeModelChoice(
-            provider="default-embedding-provider", model="default-embedding"
-        ),
-        ModelType.RERANK: KnowledgeFSUpgradeModelChoice(provider="default-rerank-provider", model="default-rerank"),
-        ModelType.LLM: KnowledgeFSUpgradeModelChoice(provider="default-llm-provider", model="default-llm"),
-    }
-
-    with sqlite_session_factory.begin() as session:
-        persisted = session.get(Dataset, dataset_id)
-        assert persisted is not None
-        persisted.embedding_model_provider = None
-        persisted.embedding_model = None
-        persisted.retrieval_model = {"reranking_model": "invalid"}
-
-    _, invalid_preferences = service._load_model_preferences(tenant_id="tenant-1", dataset_id=dataset_id)
-    assert invalid_preferences.embedding is None
-    assert invalid_preferences.rerank is None
-    assert invalid_preferences.defaults == preferences.defaults
-    with pytest.raises(KnowledgeFSUpgradeNotFoundError):
-        service._load_model_preferences(tenant_id="tenant-2", dataset_id=dataset_id)
-
-
-def test_discovery_includes_recommendations_only_for_eligible_datasets(
-    sqlite_session_factory: sessionmaker[Session],
-) -> None:
-    with sqlite_session_factory.begin() as session:
-        dataset = Dataset(tenant_id="tenant-1", name="Legacy", created_by="account-1", provider="vendor")
-        session.add(dataset)
-        session.flush()
-        dataset_id = dataset.id
-
+def test_discovery_includes_recommendations_only_for_eligible_datasets() -> None:
     selection = KnowledgeFSUpgradeModelChoice(provider="default-provider", model="default-model")
     recommendation = KnowledgeFSUpgradeModelRecommendationResponse(
         value=selection, source="workspace_default", available=True
@@ -229,7 +210,8 @@ def test_discovery_includes_recommendations_only_for_eligible_datasets(
     recommendations = KnowledgeFSUpgradeModelRecommendationsResponse(
         embedding=recommendation, rerank=recommendation, reasoning=recommendation
     )
-    service = _service(session_factory=sqlite_session_factory)
+    datasets = FakeDatasets()
+    service = _service(datasets=datasets)
     with (
         patch("services.knowledge.datasets.upgrades.KnowledgeFSUpgradeSnapshotService") as snapshots,
         patch("services.knowledge.datasets.upgrades.KnowledgeFSUpgradeModelResolver") as resolver,
@@ -237,17 +219,13 @@ def test_discovery_includes_recommendations_only_for_eligible_datasets(
         snapshots.return_value.get_latest.return_value = None
         resolver.return_value.recommend.return_value = recommendations
 
-        available = service.discovery(CONTEXT, dataset_id=dataset_id)
+        available = service.discovery(CONTEXT, dataset_id="dataset-1")
         assert available.can_upgrade is True
         assert available.models == recommendations
         resolver.return_value.recommend.assert_called_once()
 
-        with sqlite_session_factory.begin() as session:
-            persisted = session.get(Dataset, dataset_id)
-            assert persisted is not None
-            persisted.provider = "external"
-
-        blocked = service.discovery(CONTEXT, dataset_id=dataset_id)
+        datasets.provider = "external"
+        blocked = service.discovery(CONTEXT, dataset_id="dataset-1")
         assert blocked.can_upgrade is False
         assert blocked.models is None
         resolver.return_value.recommend.assert_called_once()
@@ -415,22 +393,15 @@ def test_list_recoverable_jobs_returns_only_accessible_dataset_jobs() -> None:
             raise DatasetAccessDeniedError()
         return AccessibleDataset(dataset_id, "tenant-1")
 
-    service = _service(access=FakeDatasetAccess(decide=require_accessible))
+    datasets = FakeDatasets(visible_ids=("dataset-1", "dataset-2"))
+    service = _service(access=FakeDatasetAccess(decide=require_accessible), datasets=datasets)
     snapshots = FakeSnapshots(
         jobs=[
             upgrade_job(job_id="job-1", old_dataset_id="dataset-1"),
             upgrade_job(job_id="job-2", old_dataset_id="dataset-2"),
         ]
     )
-    datasets = [_dataset("dataset-1"), _dataset("dataset-2")]
-
-    with (
-        patch("services.knowledge.datasets.upgrades.KnowledgeFSUpgradeSnapshotService", return_value=snapshots),
-        patch("services.knowledge.datasets.upgrades.load_actor"),
-        patch(
-            "services.knowledge.datasets.upgrades.DatasetService.get_datasets_by_ids", return_value=(datasets, 2)
-        ) as get_datasets,
-    ):
+    with patch("services.knowledge.datasets.upgrades.KnowledgeFSUpgradeSnapshotService", return_value=snapshots):
         jobs = service.list_recoverable_jobs(CONTEXT)
 
     assert [job.id for job in jobs] == ["job-1"]
@@ -444,4 +415,8 @@ def test_list_recoverable_jobs_returns_only_accessible_dataset_jobs() -> None:
             ),
         }
     ]
-    assert get_datasets.call_args.args[:2] == (["dataset-1", "dataset-2"], "tenant-1")
+    assert len(datasets.list_calls) == 1
+    query, accessible_ids, include_own = datasets.list_calls[0]
+    assert query.ids == ["dataset-1", "dataset-2"]
+    assert accessible_ids is None
+    assert include_own is False

@@ -46,12 +46,13 @@ from core.app.entities.task_entities import HumanInputRequiredResponse, StreamEv
 from core.db.session_factory import session_factory
 from core.human_input_v2.shared.values import AccountId, TenantId
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
+from enums.creator import CreatorUserRole
 from factories.human_input_v2_form_presentation import build_form_presentation
 from libs.exception import BaseHTTPException
 from libs.external_api import error_responses
 from libs.helper import extract_remote_ip, to_timestamp
-from models.enums import CreatorUserRole
 from models.model import App
+from services.entities.upload_file import FileUploadActor
 from services.human_input_service import FormNotFoundError, HumanInputService
 from services.human_input_v2.submission_service import (
     HumanInputFormError,
@@ -248,7 +249,12 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
                 _ensure_form_belongs_to_app(v2_form, ctx.app)
                 if body.files:
                     end_read_transaction(ctx.session)
-                inputs = merge_files(body.inputs, body.files, ctx.caller)
+                inputs = merge_files(
+                    body.inputs,
+                    body.files,
+                    actor=FileUploadActor(id=ctx.caller.id, creator_role=ctx.subject.caller_role),
+                    tenant_id=ctx.workspace.id,
+                )
                 submitted_form = v2_service.submit_openapi_form(
                     actor=actor, form_token=form_token, action=body.action, inputs=inputs
                 )
@@ -271,7 +277,12 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
 
         if body.files:
             end_read_transaction(ctx.session)
-        inputs = merge_files(body.inputs, body.files, ctx.caller)
+        inputs = merge_files(
+            body.inputs,
+            body.files,
+            actor=FileUploadActor(id=ctx.caller.id, creator_role=ctx.subject.caller_role),
+            tenant_id=ctx.workspace.id,
+        )
 
         try:
             service.submit_form_by_token(

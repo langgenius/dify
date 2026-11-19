@@ -39,8 +39,6 @@ from core.helper.trace_id_helper import (
     extract_parent_trace_context_from_args,
     extract_trace_session_id_from_args,
 )
-from core.repositories import DifyCoreRepositoryFactory
-from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.workflow.node_factory import get_default_root_node_id
 from extensions.ext_database import db
 from extensions.tracing import create_trace_scope
@@ -56,12 +54,16 @@ from models.enums import WorkflowRunTriggeredFrom
 from models.model import App, EndUser
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
 from repositories.entities.workflow_execution import WorkflowExecutionIdentity
+from repositories.workflow.factory import WorkflowRepositoryFactory
 from services.app.file_input_defaults import grant_file_default_access
+from services.file_adapters import build_file_service
+from services.workflow.persistence import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
 if TYPE_CHECKING:
     from controllers.console.app.workflow import LoopNodeRunPayload
     from core.app.apps.workflow_app_runner import WorkflowRunDriver
+    from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -73,8 +75,14 @@ def _extract_trace_session_id_from_debug_args(args: Mapping[str, Any] | Any) -> 
 
 
 class WorkflowAppGenerator(BaseAppGenerator):
-    def __init__(self, *, execution_driver: WorkflowRunDriver) -> None:
+    def __init__(
+        self,
+        *,
+        execution_driver: WorkflowRunDriver,
+        knowledge_retrieval: KnowledgeRetriever,
+    ) -> None:
         self._execution_driver = execution_driver
+        self._knowledge_retrieval = knowledge_retrieval
 
     @staticmethod
     def _ensure_snippet_start_node_in_worker(*, session: Session, workflow: Workflow) -> Workflow:
@@ -107,8 +115,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         streaming: Literal[True],
         call_depth: int,
-        workflow_run_id: str | uuid.UUID | None = None,
         task_id: str | None = None,
+        workflow_run_id: str | uuid.UUID | None = None,
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[Layer] = (),
@@ -129,8 +137,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         streaming: Literal[False],
         call_depth: int,
-        workflow_run_id: str | uuid.UUID | None = None,
         task_id: str | None = None,
+        workflow_run_id: str | uuid.UUID | None = None,
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[Layer] = (),
@@ -151,8 +159,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         streaming: bool,
         call_depth: int,
-        workflow_run_id: str | uuid.UUID | None = None,
         task_id: str | None = None,
+        workflow_run_id: str | uuid.UUID | None = None,
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[Layer] = (),
@@ -172,8 +180,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         streaming: bool = True,
         call_depth: int = 0,
-        workflow_run_id: str | uuid.UUID | None = None,
         task_id: str | None = None,
+        workflow_run_id: str | uuid.UUID | None = None,
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[Layer] = (),
@@ -265,7 +273,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 workflow_triggered_from = WorkflowRunTriggeredFrom.DEBUGGING
             else:
                 workflow_triggered_from = WorkflowRunTriggeredFrom.APP_RUN
-            workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
+            workflow_execution_repository = WorkflowRepositoryFactory.create_workflow_execution_repository(
                 session_factory=session_factory,
                 tenant_id=app_model.tenant_id,
                 user=user,
@@ -273,12 +281,13 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 triggered_from=workflow_triggered_from,
             )
             # Create workflow node execution repository
-            workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+            workflow_node_execution_repository = WorkflowRepositoryFactory.create_workflow_node_execution_repository(
                 session_factory=session_factory,
                 tenant_id=app_model.tenant_id,
                 user=user,
                 app_id=application_generate_entity.app_config.app_id,
                 triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+                files=build_file_service(session_factory=session_factory),
             )
 
             return self._generate(
@@ -515,7 +524,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         # Create session factory
         session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
         # Create workflow execution(aka workflow run) repository
-        workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
+        workflow_execution_repository = WorkflowRepositoryFactory.create_workflow_execution_repository(
             session_factory=session_factory,
             tenant_id=app_model.tenant_id,
             user=user,
@@ -523,12 +532,13 @@ class WorkflowAppGenerator(BaseAppGenerator):
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
         )
         # Create workflow node execution repository
-        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        workflow_node_execution_repository = WorkflowRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=session_factory,
             tenant_id=app_model.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+            files=build_file_service(session_factory=session_factory),
         )
         draft_var_srv = WorkflowDraftVariableService(session)
         draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user.id)
@@ -609,7 +619,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         # Create session factory
         session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
         # Create workflow execution(aka workflow run) repository
-        workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
+        workflow_execution_repository = WorkflowRepositoryFactory.create_workflow_execution_repository(
             session_factory=session_factory,
             tenant_id=app_model.tenant_id,
             user=user,
@@ -617,12 +627,13 @@ class WorkflowAppGenerator(BaseAppGenerator):
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
         )
         # Create workflow node execution repository
-        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        workflow_node_execution_repository = WorkflowRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=session_factory,
             tenant_id=app_model.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+            files=build_file_service(session_factory=session_factory),
         )
         draft_var_srv = WorkflowDraftVariableService(session)
         draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user.id)
@@ -665,7 +676,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :param flask_app: Flask app
         :param application_generate_entity: application generate entity
         :param queue_manager: queue manager
-        :param workflow_thread_pool_id: workflow thread pool id
         :return:
         """
         with preserve_flask_contexts(flask_app, context_vars=context):
@@ -706,6 +716,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 runner = WorkflowAppRunner(
                     application_generate_entity=application_generate_entity,
                     execution_driver=self._execution_driver,
+                    knowledge_retrieval=self._knowledge_retrieval,
                     queue_manager=queue_manager,
                     variable_loader=variable_loader,
                     workflow=workflow,

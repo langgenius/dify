@@ -32,6 +32,8 @@ class LoginAccountSnapshot:
 
 @dataclass(frozen=True, slots=True)
 class LoginInvitation:
+    account_id: str
+    workspace_id: str
     email: str
 
 

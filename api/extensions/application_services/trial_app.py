@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from sqlalchemy.orm import Session, sessionmaker
 
 from repositories.trial_app_repository import TrialAppRepository
+from services.app_generate_service import AppGenerateService
 from services.trial_app_access_service import TrialAppAccessService
 from services.trial_app_generation_adapters import AppGenerateServiceRuntime
 from services.trial_app_generation_service import TrialAppGenerationService
@@ -19,12 +20,19 @@ class TrialAppServices:
 
 
 def build_trial_app_services(
-    *, database_client: sessionmaker[Session], trial_apps: TrialAppRepository
+    *,
+    database_client: sessionmaker[Session],
+    trial_apps: TrialAppRepository,
+    app_generation: AppGenerateService,
 ) -> TrialAppServices:
     return TrialAppServices(
         access=TrialAppAccessService(apps=trial_apps),
         generation=TrialAppGenerationService(
-            runtime=AppGenerateServiceRuntime(session_factory=database_client), usage=trial_apps
+            runtime=AppGenerateServiceRuntime(
+                session_factory=database_client,
+                app_generation=app_generation,
+            ),
+            usage=trial_apps,
         ),
         usage=trial_apps,
     )

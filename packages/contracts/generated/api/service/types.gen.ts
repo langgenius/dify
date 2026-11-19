@@ -618,6 +618,11 @@ export type DatasetBoundTagResponse = {
   name: string
 }
 
+export type DatasetConcurrentUpdateError = ErrorResponse & {
+  code: 'dataset_concurrent_update'
+  status: 409
+}
+
 export type DatasetCreatePayload = {
   description?: string
   embedding_model?: string | null
@@ -810,6 +815,11 @@ export type DatasetMetadataResponse = {
 export type DatasetNameDuplicateError = ErrorResponse & {
   code: 'dataset_name_duplicate'
   status: 409
+}
+
+export type DatasetNotInitializedError = ErrorResponse & {
+  code: 'dataset_not_initialized'
+  status: 400
 }
 
 export type DatasetRerankingModelResponse = {
@@ -1154,6 +1164,15 @@ export type EventStreamResponse = string
 
 export type ExecutionContentType = 'human_input'
 
+export type ExternalHitTestingRecordResponse = {
+  content?: string | null
+  metadata?: {
+    [key: string]: unknown
+  } | null
+  score?: number | null
+  title?: string | null
+}
+
 export type FeedbackListQuery = {
   limit?: number
   page?: number
@@ -1263,6 +1282,12 @@ export type HitTestingDocument = {
   name: string
 }
 
+export type HitTestingExternalRetrievalModel = {
+  score_threshold?: number | null
+  score_threshold_enabled?: boolean | null
+  top_k?: number | null
+}
+
 export type HitTestingFile = {
   extension: string
   id: string
@@ -1274,11 +1299,7 @@ export type HitTestingFile = {
 
 export type HitTestingPayload = {
   attachment_ids?: Array<string> | null
-  external_retrieval_model?: {
-    score_threshold?: number
-    score_threshold_enabled?: boolean
-    top_k?: number
-  } | null
+  external_retrieval_model?: HitTestingExternalRetrievalModel | null
   query: string
   retrieval_model?: RetrievalModel | null
 }
@@ -1298,7 +1319,7 @@ export type HitTestingRecord = {
 
 export type HitTestingResponse = {
   query: HitTestingQuery
-  records: Array<HitTestingRecord>
+  records: Array<HitTestingRecord | ExternalHitTestingRecordResponse>
 }
 
 export type HitTestingSegment = {
@@ -5527,6 +5548,7 @@ export type PatchDatasetsByDatasetIdErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  409: DatasetConcurrentUpdateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5555,8 +5577,10 @@ export type PostDatasetsByDatasetIdDocumentCreateByFileData = {
 export type PostDatasetsByDatasetIdDocumentCreateByFileErrors = {
   400:
     | FilenameNotExistsError
+    | ModelCurrentlyNotSupportError
     | NoFileUploadedError
     | ProviderNotInitializeError
+    | ProviderQuotaExceededError
     | TooManyFilesError
     | ErrorResponse
   401: ErrorResponse
@@ -5587,7 +5611,11 @@ export type PostDatasetsByDatasetIdDocumentCreateByTextData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByTextErrors = {
-  400: ProviderNotInitializeError | ErrorResponse
+  400:
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -5620,8 +5648,10 @@ export type PostDatasetsByDatasetIdDocumentCreateByFile2Data = {
 export type PostDatasetsByDatasetIdDocumentCreateByFile2Errors = {
   400:
     | FilenameNotExistsError
+    | ModelCurrentlyNotSupportError
     | NoFileUploadedError
     | ProviderNotInitializeError
+    | ProviderQuotaExceededError
     | TooManyFilesError
     | ErrorResponse
   401: ErrorResponse
@@ -5652,7 +5682,11 @@ export type PostDatasetsByDatasetIdDocumentCreateByText2Data = {
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByText2Errors = {
-  400: ProviderNotInitializeError | ErrorResponse
+  400:
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -5880,7 +5914,13 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdData = {
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
-  400: FilenameNotExistsError | ProviderNotInitializeError | TooManyFilesError | ErrorResponse
+  400:
+    | FilenameNotExistsError
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | TooManyFilesError
+    | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -6059,7 +6099,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData 
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors = {
-  400: ProviderNotInitializeError | ErrorResponse
+  400: InvalidActionError | ProviderNotInitializeError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -6220,7 +6260,13 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileErrors = {
-  400: FilenameNotExistsError | ProviderNotInitializeError | TooManyFilesError | ErrorResponse
+  400:
+    | FilenameNotExistsError
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | TooManyFilesError
+    | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -6251,7 +6297,11 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextErrors = {
-  400: ProviderNotInitializeError | ErrorResponse
+  400:
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -6283,7 +6333,13 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Data = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Errors = {
-  400: FilenameNotExistsError | ProviderNotInitializeError | TooManyFilesError | ErrorResponse
+  400:
+    | FilenameNotExistsError
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | TooManyFilesError
+    | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -6314,7 +6370,11 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Data = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Errors = {
-  400: ProviderNotInitializeError | ErrorResponse
+  400:
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -6344,6 +6404,7 @@ export type PostDatasetsByDatasetIdHitTestingData = {
 export type PostDatasetsByDatasetIdHitTestingErrors = {
   400:
     | CompletionRequestError
+    | DatasetNotInitializedError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
@@ -6352,6 +6413,7 @@ export type PostDatasetsByDatasetIdHitTestingErrors = {
   403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  503: ErrorResponse
   default: ErrorResponse
 }
 
@@ -6623,6 +6685,7 @@ export type PostDatasetsByDatasetIdRetrieveData = {
 export type PostDatasetsByDatasetIdRetrieveErrors = {
   400:
     | CompletionRequestError
+    | DatasetNotInitializedError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
@@ -6631,6 +6694,7 @@ export type PostDatasetsByDatasetIdRetrieveErrors = {
   403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  503: ErrorResponse
   default: ErrorResponse
 }
 

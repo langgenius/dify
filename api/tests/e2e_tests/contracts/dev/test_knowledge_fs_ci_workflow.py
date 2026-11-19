@@ -92,6 +92,8 @@ def test_dify_gate_target_collection_includes_all_owned_integration_files(tmp_pa
     assert {
         "api/tests/e2e_tests/contracts/dev/test_knowledge_fs_ci_workflow.py",
         "api/tests/unit_tests/services/knowledge_fs/test_service_query_image_upload.py",
+        "api/tests/unit_tests/services/workspace/test_member_service.py",
+        "api/tests/unit_tests/services/workspace/test_provisioning_service.py",
     } <= tests
     assert all((ROOT / path).is_file() for path in production | tests)
     for name in (

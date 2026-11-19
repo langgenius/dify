@@ -2,12 +2,12 @@ import pytest
 from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
-from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.tools import ToolFile
-from repositories.file_grant_repository import FileGrantRepository
+from repositories.file.file_grant_repository import FileGrantRepository
 from services.entities.file_grant_entities import FileGrantContext, FileKind, FileRef, ResolvedFile
 
 _TENANT_ID = "22222222-2222-4222-8222-222222222222"

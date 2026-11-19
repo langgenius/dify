@@ -5,6 +5,7 @@ from typing import Any, Protocol
 
 import click
 from celery import current_app, shared_task
+from redis.exceptions import RedisError
 from sqlalchemy import select
 
 from configs import dify_config
@@ -17,12 +18,20 @@ from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document
 from models.enums import IndexingStatus
 from services.feature_service import FeatureService
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.indexing.adapters.execution import build_document_indexing_service
 from services.knowledge.indexing.errors import DocumentIsPausedError
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.indexing.locks import KnowledgeIndexingLeaseLostError, KnowledgeIndexingLockBusyError
 from tasks.generate_summary_index_task import generate_summary_index_task
 
 logger = logging.getLogger(__name__)
+_ACTIVE_INDEXING_STATUSES = (
+    IndexingStatus.WAITING,
+    IndexingStatus.PARSING,
+    IndexingStatus.CLEANING,
+    IndexingStatus.SPLITTING,
+    IndexingStatus.INDEXING,
+)
 
 
 class CeleryTaskLike(Protocol):
@@ -31,7 +40,12 @@ class CeleryTaskLike(Protocol):
     def apply_async(self, *args: Any, **kwargs: Any) -> Any: ...
 
 
-@shared_task(queue="dataset")
+@shared_task(
+    queue="dataset",
+    autoretry_for=(KnowledgeIndexingLockBusyError, KnowledgeIndexingLeaseLostError, RedisError),
+    retry_backoff=True,
+    max_retries=None,
+)
 def document_indexing_task(dataset_id: str, document_ids: list):
     """
     Async process document
@@ -63,13 +77,32 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
         if not dataset:
             logger.info(click.style(f"Dataset is not found: {dataset_id}", fg="yellow"))
             return
+        pending_ids = set(
+            session.scalars(
+                select(Document.id).where(
+                    Document.dataset_id == dataset_id,
+                    Document.tenant_id == dataset.tenant_id,
+                    Document.id.in_(document_ids),
+                    Document.indexing_status.in_(_ACTIVE_INDEXING_STATUSES),
+                )
+            )
+        )
+        pending_document_ids = tuple(
+            document_id for document_id in dict.fromkeys(document_ids) if document_id in pending_ids
+        )
+        if not pending_document_ids:
+            # Completion may have committed just before lease loss. The replay
+            # still owes the existing summary-dispatch phase for those members.
+            session.rollback()
+            _queue_document_summaries(dataset_id, document_ids)
+            return
         # check document limit
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             features = FeatureService.get_features(dataset.tenant_id)
             try:
                 vector_space = features.vector_space
                 assert vector_space is not None
-                count = len(document_ids)
+                count = len(pending_document_ids)
                 batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
                 if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
                     raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
@@ -81,7 +114,7 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
                         "your subscription."
                     )
             except Exception as e:
-                for document_id in document_ids:
+                for document_id in pending_document_ids:
                     document = session.scalar(
                         select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
                     )
@@ -97,14 +130,19 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
     with session_factory.create_session() as session, session.begin():
         documents: list[Document] = list(
             session.scalars(
-                select(Document).where(Document.id.in_(document_ids), Document.dataset_id == dataset_id)
+                select(Document).where(
+                    Document.id.in_(pending_document_ids),
+                    Document.dataset_id == dataset_id,
+                    Document.indexing_status.in_(_ACTIVE_INDEXING_STATUSES),
+                )
             ).all()
         )
 
         for document in documents:
-            document.indexing_status = IndexingStatus.PARSING
-            document.processing_started_at = naive_utc_now()
-            session.add(document)
+            if document.indexing_status == IndexingStatus.WAITING:
+                document.indexing_status = IndexingStatus.PARSING
+                document.processing_started_at = naive_utc_now()
+                session.add(document)
 
     # Phase 2: Execute indexing without holding locks from the parsing-status update.
     has_error = False
@@ -120,86 +158,109 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
 
             documents = list(
                 session.scalars(
-                    select(Document).where(Document.id.in_(document_ids), Document.dataset_id == dataset_id)
+                    select(Document).where(
+                        Document.id.in_(pending_document_ids),
+                        Document.dataset_id == dataset_id,
+                        Document.indexing_status.in_(_ACTIVE_INDEXING_STATUSES),
+                    )
                 ).all()
             )
 
-            document_refs = [DatasetRef(doc.tenant_id, doc.dataset_id).document(doc.id) for doc in documents]
+            pending = {
+                doc.id: (DatasetRef(doc.tenant_id, doc.dataset_id).document(doc.id), doc.indexing_status)
+                for doc in documents
+            }
             session.commit()
-            indexing_service.run(document_refs)
+            # Completed members remain published when a later member loses its
+            # lease. Replays resume each remaining member at its persisted phase.
+            for document_id in pending_document_ids:
+                if document_id not in pending:
+                    continue
+                ref, status = pending[document_id]
+                if status == IndexingStatus.INDEXING:
+                    indexing_service.run_in_indexing_status(ref)
+                elif status == IndexingStatus.SPLITTING:
+                    indexing_service.run_in_splitting_status(ref)
+                else:
+                    indexing_service.run([ref])
 
         end_at = time.perf_counter()
         logger.info(click.style(f"Processed dataset: {dataset_id} latency: {end_at - start_at}", fg="green"))
     except DocumentIsPausedError as ex:
         logger.info(click.style(str(ex), fg="yellow"))
         has_error = True
+    except (KnowledgeIndexingLockBusyError, KnowledgeIndexingLeaseLostError, RedisError):
+        raise
     except Exception:
         logger.exception("Document indexing task failed, dataset_id: %s", dataset_id)
         has_error = True
 
     if not has_error:
-        with session_factory.create_session() as session:
-            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
-            if not dataset:
-                logger.warning("Dataset %s not found after indexing", dataset_id)
-                return
+        _queue_document_summaries(dataset_id, document_ids)
 
-            if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-                summary_index_setting = dataset.summary_index_setting
-                if summary_index_setting and summary_index_setting.get("enable"):
-                    # Check each document's indexing status and trigger summary generation if completed
 
-                    documents = list(
-                        session.scalars(
-                            select(Document).where(Document.id.in_(document_ids), Document.dataset_id == dataset_id)
-                        ).all()
-                    )
+def _queue_document_summaries(dataset_id: str, document_ids: Sequence[str]) -> None:
+    with session_factory.create_session() as session:
+        dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
+        if not dataset:
+            logger.warning("Dataset %s not found after indexing", dataset_id)
+            return
 
-                    for document in documents:
-                        if document:
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
+            summary_index_setting = dataset.summary_index_setting
+            if summary_index_setting and summary_index_setting.get("enable"):
+                # Check each document's indexing status and trigger summary generation if completed
+
+                documents = list(
+                    session.scalars(
+                        select(Document).where(Document.id.in_(document_ids), Document.dataset_id == dataset_id)
+                    ).all()
+                )
+
+                for document in documents:
+                    if document:
+                        logger.info(
+                            "Checking document %s for summary generation: status=%s, doc_form=%s, need_summary=%s",
+                            document.id,
+                            document.indexing_status,
+                            document.doc_form,
+                            document.need_summary,
+                        )
+                        if (
+                            document.indexing_status == IndexingStatus.COMPLETED
+                            and document.doc_form != IndexStructureType.QA_INDEX
+                            and document.need_summary is True
+                        ):
+                            try:
+                                generate_summary_index_task.delay(dataset.id, document.id, None)
+                                logger.info(
+                                    "Queued summary index generation task for document %s in dataset %s "
+                                    "after indexing completed",
+                                    document.id,
+                                    dataset.id,
+                                )
+                            except Exception:
+                                logger.exception(
+                                    "Failed to queue summary index generation task for document %s",
+                                    document.id,
+                                )
+                                # Don't fail the entire indexing process if summary task queuing fails
+                        else:
                             logger.info(
-                                "Checking document %s for summary generation: status=%s, doc_form=%s, need_summary=%s",
+                                "Skipping summary generation for document %s: status=%s, doc_form=%s, need_summary=%s",
                                 document.id,
                                 document.indexing_status,
                                 document.doc_form,
                                 document.need_summary,
                             )
-                            if (
-                                document.indexing_status == IndexingStatus.COMPLETED
-                                and document.doc_form != IndexStructureType.QA_INDEX
-                                and document.need_summary is True
-                            ):
-                                try:
-                                    generate_summary_index_task.delay(dataset.id, document.id, None)
-                                    logger.info(
-                                        "Queued summary index generation task for document %s in dataset %s "
-                                        "after indexing completed",
-                                        document.id,
-                                        dataset.id,
-                                    )
-                                except Exception:
-                                    logger.exception(
-                                        "Failed to queue summary index generation task for document %s",
-                                        document.id,
-                                    )
-                                    # Don't fail the entire indexing process if summary task queuing fails
-                            else:
-                                logger.info(
-                                    "Skipping summary generation for document %s: "
-                                    "status=%s, doc_form=%s, need_summary=%s",
-                                    document.id,
-                                    document.indexing_status,
-                                    document.doc_form,
-                                    document.need_summary,
-                                )
-                        else:
-                            logger.warning("Document %s not found after indexing", document.id)
-            else:
-                logger.info(
-                    "Summary index generation skipped for dataset %s: indexing_technique=%s (not 'high_quality')",
-                    dataset.id,
-                    dataset.indexing_technique,
-                )
+                    else:
+                        logger.warning("Document %s not found after indexing", document.id)
+        else:
+            logger.info(
+                "Summary index generation skipped for dataset %s: indexing_technique=%s (not 'high_quality')",
+                dataset.id,
+                dataset.indexing_technique,
+            )
 
 
 def _document_indexing_with_tenant_queue(
@@ -207,6 +268,9 @@ def _document_indexing_with_tenant_queue(
 ) -> None:
     try:
         _document_indexing(dataset_id, document_ids)
+    except (KnowledgeIndexingLockBusyError, KnowledgeIndexingLeaseLostError, RedisError):
+        # Retain the tenant's queue slot until this batch has actually finished.
+        raise
     except Exception:
         logger.exception(
             "Error processing document indexing %s for tenant %s: %s",
@@ -215,36 +279,40 @@ def _document_indexing_with_tenant_queue(
             document_ids,
             exc_info=True,
         )
-    finally:
-        tenant_isolated_task_queue = TenantIsolatedTaskQueue(tenant_id, "document_indexing")
+    tenant_isolated_task_queue = TenantIsolatedTaskQueue(tenant_id, "document_indexing")
 
-        # Check if there are waiting tasks in the queue
-        # Use rpop to get the next task from the queue (FIFO order)
-        next_tasks = tenant_isolated_task_queue.pull_tasks(count=dify_config.TENANT_ISOLATED_TASK_CONCURRENCY)
+    # Check if there are waiting tasks in the queue
+    # Use rpop to get the next task from the queue (FIFO order)
+    next_tasks = tenant_isolated_task_queue.pull_tasks(count=dify_config.TENANT_ISOLATED_TASK_CONCURRENCY)
 
-        logger.info("document indexing tenant isolation queue %s next tasks: %s", tenant_id, next_tasks)
+    logger.info("document indexing tenant isolation queue %s next tasks: %s", tenant_id, next_tasks)
 
-        if next_tasks:
-            with current_app.producer_or_acquire() as producer:  # type: ignore
-                for next_task in next_tasks:
-                    document_task = DocumentTask(**next_task)
-                    # Keep the flag set to indicate a task is running
-                    tenant_isolated_task_queue.set_task_waiting_time()
-                    task_func.apply_async(
-                        kwargs={
-                            "tenant_id": document_task.tenant_id,
-                            "dataset_id": document_task.dataset_id,
-                            "document_ids": document_task.document_ids,
-                        },
-                        producer=producer,
-                    )
+    if next_tasks:
+        with current_app.producer_or_acquire() as producer:  # type: ignore
+            for next_task in next_tasks:
+                document_task = DocumentTask(**next_task)
+                # Keep the flag set to indicate a task is running
+                tenant_isolated_task_queue.set_task_waiting_time()
+                task_func.apply_async(
+                    kwargs={
+                        "tenant_id": document_task.tenant_id,
+                        "dataset_id": document_task.dataset_id,
+                        "document_ids": document_task.document_ids,
+                    },
+                    producer=producer,
+                )
 
-        else:
-            # No more waiting tasks, clear the flag
-            tenant_isolated_task_queue.delete_task_key()
+    else:
+        # No more waiting tasks, clear the flag
+        tenant_isolated_task_queue.delete_task_key()
 
 
-@shared_task(queue="dataset")
+@shared_task(
+    queue="dataset",
+    autoretry_for=(KnowledgeIndexingLockBusyError, KnowledgeIndexingLeaseLostError, RedisError),
+    retry_backoff=True,
+    max_retries=None,
+)
 def normal_document_indexing_task(tenant_id: str, dataset_id: str, document_ids: Sequence[str]):
     """
     Async process document
@@ -258,7 +326,12 @@ def normal_document_indexing_task(tenant_id: str, dataset_id: str, document_ids:
     _document_indexing_with_tenant_queue(tenant_id, dataset_id, document_ids, normal_document_indexing_task)
 
 
-@shared_task(queue="priority_dataset")
+@shared_task(
+    queue="priority_dataset",
+    autoretry_for=(KnowledgeIndexingLockBusyError, KnowledgeIndexingLeaseLostError, RedisError),
+    retry_backoff=True,
+    max_retries=None,
+)
 def priority_document_indexing_task(tenant_id: str, dataset_id: str, document_ids: Sequence[str]):
     """
     Priority async process document

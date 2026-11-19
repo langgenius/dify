@@ -7,11 +7,12 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import Select
 
+from enums.creator import CreatorUserRole
 from models import ToolFile, UploadFile
-from models.enums import CreatorUserRole
+from services.entities.file_access import FileAccessScopeView
 
 from .protocols import FileAccessControllerProtocol
-from .scope import FileAccessScope, get_current_file_access_scope
+from .scope import get_current_file_access_scope
 
 
 class DatabaseFileAccessController(FileAccessControllerProtocol):
@@ -23,17 +24,19 @@ class DatabaseFileAccessController(FileAccessControllerProtocol):
     current execution context.
     """
 
-    _scope_getter: Callable[[], FileAccessScope | None]
+    _scope_getter: Callable[[], FileAccessScopeView | None]
 
     def __init__(
         self,
         *,
-        scope_getter: Callable[[], FileAccessScope | None] = get_current_file_access_scope,
+        scope_getter: Callable[[], FileAccessScopeView | None] = get_current_file_access_scope,
     ) -> None:
+        """Accept a trusted scope provider; retain it without reading or changing grants."""
         self._scope_getter = scope_getter
 
     @override
-    def current_scope(self) -> FileAccessScope | None:
+    def current_scope(self) -> FileAccessScopeView | None:
+        """Read the configured provider; return its current scope without changing grants."""
         return self._scope_getter()
 
     @override
@@ -41,8 +44,9 @@ class DatabaseFileAccessController(FileAccessControllerProtocol):
         self,
         stmt: Select[tuple[UploadFile]],
         *,
-        scope: FileAccessScope | None = None,
+        scope: FileAccessScopeView | None = None,
     ) -> Select[tuple[UploadFile]]:
+        """Constrain an upload query using trusted scope facts; preserve all existing predicates."""
         resolved_scope = scope or self.current_scope()
         if resolved_scope is None:
             return stmt
@@ -70,8 +74,9 @@ class DatabaseFileAccessController(FileAccessControllerProtocol):
         self,
         stmt: Select[tuple[ToolFile]],
         *,
-        scope: FileAccessScope | None = None,
+        scope: FileAccessScopeView | None = None,
     ) -> Select[tuple[ToolFile]]:
+        """Constrain a tool-file query using trusted scope facts; preserve all existing predicates."""
         resolved_scope = scope or self.current_scope()
         if resolved_scope is None:
             return stmt
@@ -97,8 +102,9 @@ class DatabaseFileAccessController(FileAccessControllerProtocol):
         *,
         session: Session,
         file_id: str,
-        scope: FileAccessScope | None = None,
+        scope: FileAccessScopeView | None = None,
     ) -> UploadFile | None:
+        """Given an open session and trusted scope, return the authorized upload or None without writes."""
         resolved_scope = scope or self.current_scope()
         if resolved_scope is None:
             return session.get(UploadFile, file_id)
@@ -115,8 +121,9 @@ class DatabaseFileAccessController(FileAccessControllerProtocol):
         *,
         session: Session,
         file_id: str,
-        scope: FileAccessScope | None = None,
+        scope: FileAccessScopeView | None = None,
     ) -> ToolFile | None:
+        """Given an open session and trusted scope, return the authorized tool file or None without writes."""
         resolved_scope = scope or self.current_scope()
         if resolved_scope is None:
             return session.get(ToolFile, file_id)

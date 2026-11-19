@@ -1,4 +1,5 @@
 import pytest
+from pydantic import ValidationError
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from services.knowledge.entities.knowledge_entities import KnowledgeConfig
@@ -16,3 +17,9 @@ def test_indexing_technique_preserves_enum_and_json(technique: IndexTechniqueTyp
     assert config.model_dump(mode="json")["indexing_technique"] == wire_value
     assert KnowledgeConfig.model_validate({"indexing_technique": wire_value}).indexing_technique is technique
     assert KnowledgeConfig.model_validate_json(config.model_dump_json()).indexing_technique is technique
+
+
+def test_indexing_technique_rejects_invalid_request_value() -> None:
+    """Invalid wire values fail admission before reaching document-creation policy."""
+    with pytest.raises(ValidationError, match="indexing_technique"):
+        KnowledgeConfig.model_validate({"indexing_technique": "invalid"})

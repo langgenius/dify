@@ -4,7 +4,6 @@ from typing import Literal, NotRequired, TypedDict
 from pydantic import AliasChoices, ConfigDict, Field, JsonValue, field_validator, with_config
 
 from core.entities.agent_entities import PlanningStrategy
-from core.rag.entities.metadata_entities import SupportedComparisonOperator
 from core.rag.rerank.rerank_type import RerankMode
 from core.tools.entities.tool_entities import ToolProviderType
 from fields.base import ResponseModel
@@ -12,6 +11,7 @@ from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMMode
 from libs.helper import to_timestamp
 from models.enums import PromptType
+from services.knowledge.entities.metadata import SupportedComparisonOperator
 
 
 class AppEnabledConfigResponse(TypedDict):

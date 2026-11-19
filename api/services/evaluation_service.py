@@ -79,6 +79,14 @@ from services.evaluation_template_i18n import EvaluationTemplateCopy, get_evalua
 from services.snippet_service import SnippetService
 from services.workflow_service import WorkflowService
 
+
+def _evaluation_snippets(session: Session) -> SnippetService:
+    """Use configured repositories while retaining the caller's transaction ownership."""
+    from extensions.ext_application_services import application_services
+
+    return application_services().snippets.with_session(session)
+
+
 logger = logging.getLogger(__name__)
 
 KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE = "knowledge-retrieval-v2"
@@ -275,7 +283,7 @@ class EvaluationService:
             return input_fields
 
         # Fallback to workflow's user_input_form
-        snippet_service = SnippetService(session=session)
+        snippet_service = _evaluation_snippets(session)
         workflow = snippet_service.get_published_workflow(snippet=snippet)
         if not workflow:
             workflow = snippet_service.get_draft_workflow(snippet=snippet)
@@ -1437,7 +1445,7 @@ class EvaluationService:
             )
             if snippet is None:
                 return None
-            return SnippetService(session=session).get_published_workflow_by_id(snippet, workflow_id)
+            return _evaluation_snippets(session).get_published_workflow_by_id(snippet, workflow_id)
 
         app = session.scalar(
             select(App).where(
@@ -2420,7 +2428,7 @@ class EvaluationService:
     ) -> Workflow | None:
         """Resolve only the published workflow for the target (no draft fallback)."""
         if target_type == EvaluationTargetType.SNIPPETS.value and isinstance(target, CustomizedSnippet):
-            return SnippetService(session=session).get_published_workflow(snippet=target)
+            return _evaluation_snippets(session).get_published_workflow(snippet=target)
         if target_type == EvaluationTargetType.APPS.value and isinstance(target, App):
             return WorkflowService().get_published_workflow(app_model=target, session=session)
         return None
@@ -2434,7 +2442,7 @@ class EvaluationService:
     ) -> Workflow | None:
         """Resolve the *published* (preferred) or *draft* workflow for the target."""
         if target_type == EvaluationTargetType.SNIPPETS.value and isinstance(target, CustomizedSnippet):
-            snippet_service = SnippetService(session=session)
+            snippet_service = _evaluation_snippets(session)
             workflow = snippet_service.get_published_workflow(snippet=target)
             if not workflow:
                 workflow = snippet_service.get_draft_workflow(snippet=target)
@@ -2628,12 +2636,11 @@ class EvaluationService:
         from core.app.apps.workflow.app_generator import WorkflowAppGenerator
         from core.app.entities.app_invoke_entities import InvokeFrom
         from core.evaluation.runners import get_service_account_for_app, get_service_account_for_snippet
+        from extensions.ext_application_services import application_services
         from services.workflow_execution_identity import build_workflow_execution_identity
         from services.workflow_run_agg import WorkflowRunAgg
 
         if target_type == EvaluationTargetType.SNIPPETS.value:
-            from services.snippet_generate_service import SnippetGenerateService
-
             snippet = session.scalar(
                 select(CustomizedSnippet).where(
                     CustomizedSnippet.id == target_id,
@@ -2645,7 +2652,7 @@ class EvaluationService:
 
             service_account = get_service_account_for_snippet(session, target_id, tenant_id)
 
-            pinned_workflow = SnippetService(session=session).get_published_workflow_by_id(
+            pinned_workflow = _evaluation_snippets(session).get_published_workflow_by_id(
                 snippet,
                 target_workflow_version_id,
             )
@@ -2655,12 +2662,11 @@ class EvaluationService:
                 )
 
             try:
-                return SnippetGenerateService.run_published(
+                return application_services().snippet_generation.run_published(
                     snippet=snippet,
                     user=service_account,
                     args={"inputs": item.inputs},
                     invoke_from=InvokeFrom.SERVICE_API,
-                    session_maker=session_factory.get_session_maker(),
                     workflow_id=target_workflow_version_id,
                     task_id=task_id,
                     capture_agent_evaluation_trace=True,
@@ -2698,7 +2704,10 @@ class EvaluationService:
                     f"Pinned workflow version {target_workflow_version_id} no longer exists for app {target_id}."
                 )
 
-            response: Mapping[str, object] = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
+            response: Mapping[str, object] = WorkflowAppGenerator(
+                execution_driver=WorkflowRunAgg.run,
+                knowledge_retrieval=application_services().knowledge.retrieval,
+            ).generate(
                 execution_identity=build_workflow_execution_identity(service_account),
                 app_model=app,
                 workflow=workflow,
@@ -3159,9 +3168,11 @@ class EvaluationService:
 
         def _worker(item: EvaluationDatasetInput) -> NodeRunResult:
             with flask_app.app_context():
+                from extensions.ext_application_services import application_services
+                from machinery.context import RequestContext
                 from models.account import Account, TenantAccountJoin
                 from models.dataset import Dataset
-                from services.hit_testing_service import HitTestingService
+                from services.knowledge.hit_testing.entities import HitTestingRequest
 
                 with session_factory.create_session() as thread_session:
                     dataset = thread_session.scalar(
@@ -3186,15 +3197,13 @@ class EvaluationService:
                     account.set_tenant_id_with_session(tenant_id, session=thread_session)
 
                     query = str(item.inputs.get("query", ""))
-                    response = HitTestingService.retrieve(
-                        session=thread_session,
-                        dataset=dataset,
-                        query=query,
-                        account=account,
-                        retrieval_model=None,
-                        external_retrieval_model={},
-                        limit=10,
-                    )
+                response = application_services().knowledge.hit_testing.retrieve(
+                    RequestContext("", None, account_id, tenant_id),
+                    dataset_id=dataset_id,
+                    request=HitTestingRequest(
+                        query=query, retrieval_model=None, external_retrieval_model=None, attachment_ids=None
+                    ),
+                )
 
                 records = response.get("records", [])
                 result_list: list[dict[str, Any]] = []

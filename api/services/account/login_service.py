@@ -21,6 +21,7 @@ from services.entities.account_login_entities import (
     RefreshAccountStatus,
 )
 from services.entities.auth_audit_entities import LoginFailureReason
+from services.errors.workspace import WorkspacesLimitExceededError
 
 _BANNED_ACCOUNT_STATUS = "banned"
 _EMAIL_DOMAIN_SUSPENDED = "email_domain_suspended"
@@ -40,6 +41,14 @@ class ConsoleAuthWorkspaceQuery(Protocol):
 
 class ConsoleAuthInvitationGateway(Protocol):
     def resolve(self, *, email: str, token: str) -> LoginInvitation | None: ...
+
+    def check_membership_quota(self, workspace_id: str) -> None: ...
+
+    def ensure_membership(self, *, account_id: str, email: str, token: str) -> bool: ...
+
+
+class WorkspaceInvitationQuota(Protocol):
+    def check_invitation_quota(self, workspace_id: str) -> None: ...
 
 
 class ConsoleAuthPolicyGateway(Protocol):
@@ -190,22 +199,37 @@ class ConsoleAuthenticationService:
                 ip_address=command.ip_address,
             )
 
-        invitation_token = self._resolve_invitation_token(command.email, command.invite_token, command.ip_address)
+        invitation = self._resolve_invitation(command.email, command.invite_token, command.ip_address)
+        invitation_token = command.invite_token if invitation is not None else None
         account = None
         for candidate in self._accounts.list_for_login(command.email):
+            candidate_invitation_token = (
+                invitation_token if invitation is not None and invitation.account_id == candidate.id else None
+            )
             completion = self._password_login_completion(
                 candidate,
                 command,
-                invitation_token=invitation_token,
+                invitation_token=candidate_invitation_token,
                 normalized_email=normalized_email,
             )
-            if completion is not None and self._accounts.complete_password_login(completion):
+            if completion is None:
+                continue
+            if invitation is not None and invitation.account_id == candidate.id:
+                # Admission follows credential validation but precedes account activation
+                # and the membership token's one-time consumption.
+                if completion.activate_pending_account and not self._policies.has_account_capacity():
+                    raise account_errors.LoginInvitationQuotaError(seats=True)
+                if not self._workspaces.has_active_for_account(candidate.id):
+                    self._invitations.check_membership_quota(invitation.workspace_id)
+            if self._accounts.complete_password_login(completion):
                 account = candidate
                 break
         if account is None:
             self._invalid_credentials(normalized_email, command.ip_address)
 
-        if invitation_token is None and not self._workspaces.has_active_for_account(account.id):
+        if (invitation is None or invitation.account_id != account.id) and not self._workspaces.has_active_for_account(
+            account.id
+        ):
             if self._policies.is_workspace_creation_allowed() and not self._policies.has_workspace_capacity():
                 raise account_errors.LoginWorkspaceLimitError
             return PasswordLoginResult(tokens=None, workspace_found=False)
@@ -290,13 +314,18 @@ class ConsoleAuthenticationService:
         account = self._preferred_account(command.email)
         self._ensure_account_not_banned(account, normalized_email, command.ip_address)
         if account is not None:
-            invitation_token = self._resolve_invitation_token(command.email, command.invite_token, command.ip_address)
-            if invitation_token is None and not self._workspaces.has_active_for_account(account.id):
+            invitation = self._resolve_invitation(command.email, command.invite_token, command.ip_address)
+            if (
+                invitation is None or invitation.account_id != account.id
+            ) and not self._workspaces.has_active_for_account(account.id):
                 if not self._policies.has_workspace_capacity():
                     raise account_errors.LoginWorkspaceLimitError
                 if not self._policies.is_workspace_creation_allowed():
                     raise account_errors.LoginWorkspaceCreationNotAllowedError
-                self._workspace_provisioning.ensure_owner_workspace(account.id)
+                try:
+                    self._workspace_provisioning.ensure_owner_workspace(account.id)
+                except WorkspacesLimitExceededError as error:
+                    raise account_errors.LoginWorkspaceLimitError from error
             account_id = account.id
         else:
             if not self._policies.is_registration_allowed():
@@ -308,13 +337,16 @@ class ConsoleAuthenticationService:
             if not self._policies.has_workspace_capacity():
                 raise account_errors.LoginWorkspaceLimitError
             interface_language = get_valid_language(command.language)
-            account_id = self._account_provisioning.create_with_owner_workspace(
-                email=normalized_email,
-                name=normalized_email,
-                interface_language=interface_language,
-                timezone=command.timezone or language_timezone_mapping.get(interface_language, "UTC"),
-                ip_address=command.ip_address,
-            )
+            try:
+                account_id = self._account_provisioning.create_with_owner_workspace(
+                    email=normalized_email,
+                    name=normalized_email,
+                    interface_language=interface_language,
+                    timezone=command.timezone or language_timezone_mapping.get(interface_language, "UTC"),
+                    ip_address=command.ip_address,
+                )
+            except WorkspacesLimitExceededError as error:
+                raise account_errors.LoginWorkspaceLimitError from error
 
         tokens = self._issue_session(
             account_id=account_id,
@@ -392,7 +424,7 @@ class ConsoleAuthenticationService:
             raise account_errors.AccountNotFoundError
         return self._sessions.issue(account_id)
 
-    def _resolve_invitation_token(self, email: str, invite_token: str | None, ip_address: str) -> str | None:
+    def _resolve_invitation(self, email: str, invite_token: str | None, ip_address: str) -> LoginInvitation | None:
         """Return the invitation token when it is live for ``email``; ``None`` when absent or stale.
 
         Raises:
@@ -411,7 +443,7 @@ class ConsoleAuthenticationService:
                 reason=LoginFailureReason.INVALID_INVITATION_EMAIL,
                 ip_address=ip_address,
             )
-        return invite_token
+        return invitation
 
     def _ensure_email_eligible(self, email: str, ip_address: str) -> None:
         freeze_type = self._policies.get_email_freeze_type(email)

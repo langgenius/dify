@@ -5,8 +5,8 @@ from typing import override
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from enums.creator import CreatorUserRole
 from graphon.file import helpers as file_helpers
-from models.enums import CreatorUserRole
 from models.model import UploadFile
 from services.account_ports import AccountAvatarFileGateway
 

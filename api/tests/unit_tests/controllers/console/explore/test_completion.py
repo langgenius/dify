@@ -26,6 +26,7 @@ from tests.unit_tests.controllers.console.explore.test_installed_app_admission i
     _Harness,
     _set_app_mode,
 )
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 _installed_app_completion_all__ = ["harness"]
 
@@ -439,7 +440,10 @@ class TestInstalledAppCompletionCases:
             installed_apps=_InstalledAppCompletionInstalledappservices(
                 generation=InstalledAppGenerationService(
                     usage=SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory),
-                    runtime=AppGenerateServiceRuntime(session_factory=sqlite_session_factory),
+                    runtime=AppGenerateServiceRuntime(
+                        session_factory=sqlite_session_factory,
+                        app_generation=AppGenerateService(knowledge_retrieval=make_knowledge_retriever()),
+                    ),
                 )
             )
         )
@@ -830,7 +834,10 @@ class TestCompletionCases:
             installed_apps=_CompletionInstalledAppServices(
                 generation=InstalledAppGenerationService(
                     usage=SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory),
-                    runtime=AppGenerateServiceRuntime(session_factory=sqlite_session_factory),
+                    runtime=AppGenerateServiceRuntime(
+                        session_factory=sqlite_session_factory,
+                        app_generation=AppGenerateService(knowledge_retrieval=make_knowledge_retriever()),
+                    ),
                 )
             )
         )

@@ -53,7 +53,7 @@ from models.model import AppMode, Message
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.api_workflow_node_execution_repository import WorkflowNodeExecutionSnapshot
 from repositories.entities.workflow_pause import WorkflowPauseEntity
-from repositories.factory import DifyAPIRepositoryFactory
+from repositories.workflow.factory import WorkflowRepositoryFactory
 from services.app_task_service import AppTaskService
 from services.workflow_pause_service import WorkflowPauseSnapshot, load_workflow_pause_snapshot
 
@@ -104,8 +104,8 @@ def build_workflow_event_stream(
     building the snapshot never changes form recipients or their tokens.
     """
     topic = MessageGenerator.get_response_topic(app_mode, workflow_run.id)
-    workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
-    node_execution_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(session_maker)
+    workflow_run_repo = WorkflowRepositoryFactory.create_api_workflow_run_repository(session_maker)
+    node_execution_repo = WorkflowRepositoryFactory.create_api_workflow_node_execution_repository(session_maker)
 
     pause_entity: WorkflowPauseEntity | None = None
     if workflow_run.status == WorkflowExecutionStatus.PAUSED:

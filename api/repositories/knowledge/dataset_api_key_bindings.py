@@ -27,12 +27,25 @@ from dataclasses import dataclass, field
 from sqlalchemy import ColumnElement, Select, delete, or_, select
 from sqlalchemy.orm import Session
 
+from models.account import Tenant
 from models.dataset import Dataset
 from models.enums import ApiTokenBindingResourceType, ApiTokenType
 from models.knowledge_fs import KnowledgeFSControlSpace, KnowledgeFSControlSpaceState
 from models.model import ApiToken, DatasetApiTokenBinding
 
 _UNBINDABLE_SPACE_STATES = (KnowledgeFSControlSpaceState.DELETING, KnowledgeFSControlSpaceState.DELETED)
+
+
+@dataclass(frozen=True, slots=True)
+class DeletedDatasetApiKey:
+    id: str
+    token: str
+    type: ApiTokenType
+
+
+def lock_workspace(session: Session, workspace_id: str) -> bool:
+    """Serialize dataset-key creation and dataset deletion in one workspace."""
+    return session.scalar(select(Tenant.id).where(Tenant.id == workspace_id).with_for_update()) is not None
 
 
 @dataclass(frozen=True)
@@ -157,11 +170,20 @@ def list_bindings_by_token(session: Session, token_ids: Iterable[str]) -> dict[s
 
 
 def find_unknown_dataset_ids(session: Session, dataset_ids: list[str], tenant_id: str) -> list[str]:
-    """Return the dataset ids that do not belong to the tenant (preserving order)."""
+    """Return dataset ids that do not belong to the tenant, using a current read.
+
+    Key creation calls this after locking the tenant row. The shared locks make a
+    creator that waited for dataset deletion observe the deletion under MySQL's
+    ``REPEATABLE READ`` isolation instead of an older consistent-read snapshot.
+    """
     if not dataset_ids:
         return []
     existing = set(
-        session.scalars(select(Dataset.id).where(Dataset.id.in_(dataset_ids), Dataset.tenant_id == tenant_id)).all()
+        session.scalars(
+            select(Dataset.id)
+            .where(Dataset.id.in_(dataset_ids), Dataset.tenant_id == tenant_id)
+            .with_for_update(read=True)
+        ).all()
     )
     return [dataset_id for dataset_id in dataset_ids if dataset_id not in existing]
 
@@ -177,11 +199,13 @@ def find_unknown_knowledge_space_ids(session: Session, control_space_ids: list[s
     existing = {
         str(control_space_id)
         for control_space_id in session.scalars(
-            select(KnowledgeFSControlSpace.id).where(
+            select(KnowledgeFSControlSpace.id)
+            .where(
                 KnowledgeFSControlSpace.id.in_(control_space_ids),
                 KnowledgeFSControlSpace.tenant_id == tenant_id,
                 KnowledgeFSControlSpace.state.notin_(_UNBINDABLE_SPACE_STATES),
             )
+            .with_for_update(read=True)
         ).all()
     }
     return [control_space_id for control_space_id in control_space_ids if control_space_id not in existing]
@@ -249,7 +273,33 @@ def _delete_keys_bound_only_to(
     return orphan_ids
 
 
-def delete_keys_scoped_only_to(session: Session, dataset_id: str) -> list[str]:
+def _tokens_for_cleanup(*, tenant_id: str) -> Select[tuple[ApiToken]]:
+    return (
+        select(ApiToken)
+        .where(
+            ApiToken.tenant_id == tenant_id,
+            ApiToken.type == ApiTokenType.DATASET,
+        )
+        .order_by(ApiToken.id)
+        .with_for_update()
+    )
+
+
+def _bindings_for_current_scope(locked_key_ids: tuple[str, ...]) -> Select[tuple[str, str | None]]:
+    return (
+        select(DatasetApiTokenBinding.api_token_id, DatasetApiTokenBinding.dataset_id)
+        .where(DatasetApiTokenBinding.api_token_id.in_(locked_key_ids))
+        .order_by(DatasetApiTokenBinding.api_token_id, DatasetApiTokenBinding.dataset_id)
+        .with_for_update()
+    )
+
+
+def delete_keys_scoped_only_to(
+    session: Session,
+    dataset_id: str,
+    *,
+    tenant_id: str | None = None,
+) -> list[DeletedDatasetApiKey]:
     """Delete dataset API keys whose only binding is ``dataset_id``.
 
     A deleted knowledge base cascades its bindings away. A key bound solely to it
@@ -260,16 +310,44 @@ def delete_keys_scoped_only_to(session: Session, dataset_id: str) -> list[str]:
     and survive.
 
     Must run before the dataset row is deleted (so the bindings still exist).
-    Returns the deleted api_token ids; the caller controls the transaction.
+    Returns revoked token values for post-commit cache invalidation. Lock every
+    affected key before inspecting its bindings so concurrent dataset deletions
+    cannot both leave the same key with zero bindings.
     """
-    return _delete_keys_bound_only_to(
-        session,
-        is_target_binding=DatasetApiTokenBinding.dataset_id == dataset_id,
-        is_other_binding=or_(
-            DatasetApiTokenBinding.dataset_id.is_(None),
-            DatasetApiTokenBinding.dataset_id != dataset_id,
-        ),
-    )
+    # Lock every dataset token in the tenant without joining its bindings. The
+    # locking read is current on MySQL and its tenant/type range lock also
+    # serializes a concurrent key insert. Starting from a plain binding query
+    # would be unsafe when the caller already owns an older REPEATABLE READ
+    # snapshot: a newly committed binding could be omitted and then cascaded
+    # away with the dataset, leaving its key unrestricted.
+    if tenant_id is None:
+        tenant_id = session.scalar(select(Dataset.tenant_id).where(Dataset.id == dataset_id).with_for_update(read=True))
+    if tenant_id is None:
+        return []
+    bound_keys = session.scalars(_tokens_for_cleanup(tenant_id=tenant_id)).all()
+    locked_key_ids = tuple(key.id for key in bound_keys)
+    if not locked_key_ids:
+        return []
+
+    # This must be a locking current read. A normal SELECT can reuse an older
+    # REPEATABLE READ snapshot established by the caller before it waited for
+    # the token lock, missing a binding deleted by the transaction that won the
+    # lock. Both concurrent dataset deletions could then preserve the key and
+    # leave it with zero bindings, which means unrestricted access.
+    binding_rows = session.execute(_bindings_for_current_scope(locked_key_ids)).all()
+    scopes_by_key: dict[str, set[str]] = {key_id: set() for key_id in locked_key_ids}
+    for key_id, bound_dataset_id in binding_rows:
+        scopes_by_key[str(key_id)].add(str(bound_dataset_id))
+    orphan_ids = {key_id for key_id, scope in scopes_by_key.items() if scope == {dataset_id}}
+    if orphan_ids:
+        session.execute(
+            delete(ApiToken).where(
+                ApiToken.id.in_(orphan_ids), ApiToken.tenant_id == tenant_id, ApiToken.type == ApiTokenType.DATASET
+            )
+        )
+    return [
+        DeletedDatasetApiKey(id=key.id, token=key.token, type=key.type) for key in bound_keys if key.id in orphan_ids
+    ]
 
 
 def delete_keys_scoped_only_to_knowledge_space(session: Session, control_space_id: str) -> list[str]:

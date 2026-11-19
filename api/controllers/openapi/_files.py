@@ -26,7 +26,7 @@ from controllers.common.errors import BlockedFileExtensionError, FileTooLargeErr
 from controllers.openapi._errors import FilenameNotExists, InvalidFilePart
 from extensions.ext_application_services import application_services
 from graphon.file import FileTransferMethod, standardize_file_type
-from models.model import UploadFile
+from services.entities.upload_file import FileUploadActor, UploadFileRecord
 
 FileMapping = dict[str, Any]
 
@@ -41,7 +41,8 @@ def end_read_transaction(session: Session) -> None:
     session.commit()
 
 
-def upload(part: FileStorage, caller: Any) -> UploadFile:
+def upload(part: FileStorage, *, actor: FileUploadActor, tenant_id: str) -> UploadFileRecord:
+    """Upload under the creator and resource tenant resolved by admission."""
     if not part.mimetype:
         raise UnsupportedFileTypeError()
     if not part.filename:
@@ -51,7 +52,8 @@ def upload(part: FileStorage, caller: Any) -> UploadFile:
             filename=part.filename,
             content=part.stream.read(),
             mimetype=part.mimetype,
-            user=caller,
+            actor=actor,
+            tenant_id=tenant_id,
         )
     except services.errors.file.FileTooLargeError as exc:
         raise FileTooLargeError(exc.description) from exc
@@ -63,27 +65,36 @@ def upload(part: FileStorage, caller: Any) -> UploadFile:
         raise BadRequest(str(exc)) from exc
 
 
-def _mapping(part: FileStorage, caller: Any) -> FileMapping:
-    uploaded = upload(part, caller)
+def _mapping(part: FileStorage, *, actor: FileUploadActor, tenant_id: str) -> FileMapping:
+    uploaded = upload(part, actor=actor, tenant_id=tenant_id)
+    mime_type = uploaded.mime_type or part.mimetype
+    if mime_type is None:
+        raise UnsupportedFileTypeError()
     return {
         "transfer_method": FileTransferMethod.LOCAL_FILE,
         "upload_file_id": uploaded.id,
-        "type": standardize_file_type(extension="." + uploaded.extension, mime_type=uploaded.mime_type),
+        "type": standardize_file_type(extension="." + uploaded.extension, mime_type=mime_type),
     }
 
 
-def materialize(value: FileStorage | list[FileStorage], caller: Any) -> FileMapping | list[FileMapping]:
+def materialize(
+    value: FileStorage | list[FileStorage], *, actor: FileUploadActor, tenant_id: str
+) -> FileMapping | list[FileMapping]:
     if isinstance(value, list):
-        return [_mapping(part, caller) for part in value]
-    return _mapping(value, caller)
+        return [_mapping(part, actor=actor, tenant_id=tenant_id) for part in value]
+    return _mapping(value, actor=actor, tenant_id=tenant_id)
 
 
 def merge_files(
-    inputs: Mapping[str, Any], files: Mapping[str, FileStorage | list[FileStorage]] | None, caller: Any
+    inputs: Mapping[str, Any],
+    files: Mapping[str, FileStorage | list[FileStorage]] | None,
+    *,
+    actor: FileUploadActor,
+    tenant_id: str,
 ) -> dict[str, Any]:
     merged = dict(inputs)
     for name, value in (files or {}).items():
         if name in merged:
             raise InvalidFilePart(f"files[{name}]: {name} is also given in inputs")
-        merged[name] = materialize(value, caller)
+        merged[name] = materialize(value, actor=actor, tenant_id=tenant_id)
     return merged

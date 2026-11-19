@@ -16,6 +16,7 @@ from models.agent import (
 )
 from models.agent_config_entities import AgentSoulConfig
 from repositories.agent_version_queries import visible_version_ids
+from repositories.file.upload_file_repository import lock_and_validate_owned_upload_files_in_session
 from services.agent.version_store import (
     AgentVersionDetail,
     AgentVersionRestored,
@@ -24,6 +25,7 @@ from services.agent.version_store import (
     AgentVersionUnavailableError,
     VersionAgentNotFoundError,
 )
+from services.file_reference_parser import added_trusted_upload_file_ids
 
 
 def _agent(session: Session, tenant_id: str, agent_id: str) -> Agent:
@@ -120,7 +122,11 @@ class SQLAlchemyAgentVersionRepository:
     def restore_version(
         self, *, tenant_id: str, agent_id: str, version_id: str, account_id: str
     ) -> AgentVersionRestored:
-        """Commit the visible snapshot and its home reference to the Agent's shared draft."""
+        """Restore an owned, visible snapshot after validating its new upload references.
+
+        Success commits the shared draft and its home reference atomically. An
+        unavailable snapshot or upload leaves the previous draft unchanged.
+        """
         with self._session_factory.begin() as session:
             agent = _agent(session, tenant_id, agent_id)
             visible_ids = visible_version_ids(tenant_id=tenant_id, agent_id=agent_id, agent=agent)
@@ -143,8 +149,17 @@ class SQLAlchemyAgentVersionRepository:
                     AgentConfigDraft.account_id.is_(None),
                 )
                 .limit(1)
+                .with_for_update()
             )
             config = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
+            file_ids = added_trusted_upload_file_ids(
+                previous=draft.config_snapshot_dict if draft is not None else None,
+                current=config.model_dump(mode="json"),
+            )
+            if file_ids:
+                lock_and_validate_owned_upload_files_in_session(
+                    session, tenant_id=tenant_id, upload_file_ids=tuple(file_ids)
+                )
             if draft is None:
                 draft = AgentConfigDraft(
                     tenant_id=tenant_id,

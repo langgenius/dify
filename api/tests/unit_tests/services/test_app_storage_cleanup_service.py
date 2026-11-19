@@ -9,7 +9,10 @@ from botocore.exceptions import ClientError
 from sqlalchemy.orm import Session
 
 from core.workflow.node_execution_process_data import WORKFLOW_TOOL_ROOT_APP_ID_KEY
-from extensions.storage.clickzetta_volume.clickzetta_volume_storage import ClickZettaVolumeStorage
+from extensions.storage.clickzetta_volume.clickzetta_volume_storage import (
+    ClickZettaVolumeConfig,
+    ClickZettaVolumeStorage,
+)
 from extensions.storage.huawei_obs_storage import HuaweiObsStorage
 from extensions.storage.storage_type import StorageType
 from graphon.entities.pause_reason import PauseReasonType
@@ -397,7 +400,7 @@ def test_pause_files_and_reasons_are_removed_only_after_storage_success(
 
 
 @pytest.mark.parametrize("fails", [False, True])
-def test_end_user_files_are_cleaned_before_owner_records(
+def test_end_user_tool_files_are_cleaned_before_owner_records_but_uploads_wait_for_liveness_check(
     sqlite_session: Session, storage: MagicMock, fails: bool
 ) -> None:
     user = _end_user(sqlite_session)
@@ -428,7 +431,7 @@ def test_end_user_files_are_cleaned_before_owner_records(
         cleanup.cleanup_app_storage("tenant-1", "app-1")
     sqlite_session.expire_all()
     assert (sqlite_session.get(ToolFile, tool_id) is not None) == fails
-    assert (sqlite_session.get(UploadFile, file_id) is not None) == fails
+    assert sqlite_session.get(UploadFile, file_id) is not None
     assert sqlite_session.get(EndUser, user.id) is not None
 
 
@@ -617,8 +620,8 @@ def test_message_reference_protection_for_tools_and_uploads(
     retained = message_owner != "app-1"
     sqlite_session.expire_all()
     assert (sqlite_session.get(ToolFile, tool_id) is not None) == retained
-    assert (sqlite_session.get(UploadFile, file_id) is not None) == retained
-    assert sorted(deleted_keys) == ([] if retained else ["tools/reference.json", "uploads/reference.json"])
+    assert sqlite_session.get(UploadFile, file_id) is not None
+    assert sorted(deleted_keys) == ([] if retained else ["tools/reference.json"])
 
 
 @pytest.mark.parametrize("reference", ["offload", "draft", "foreign_tenant"])
@@ -655,3 +658,63 @@ def test_end_user_upload_reference_and_tenant_protection(
     sqlite_session.expire_all()
     assert sqlite_session.get(UploadFile, file_id) is not None
     assert deleted_keys == []
+
+
+def test_clickzetta_failed_delete_preserves_retry_references(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    file_id, offload_id = _offload(sqlite_session, "app-1", "owned.json")
+    config = ClickZettaVolumeConfig(
+        username="test-user",
+        password="test-password",
+        instance="test-instance",
+        volume_type="user",
+        dify_prefix="dify",
+        permission_check=False,
+    )
+    monkeypatch.setattr(ClickZettaVolumeStorage, "_init_connection", lambda _storage: None)
+    monkeypatch.setattr(ClickZettaVolumeStorage, "_init_permission_manager", lambda _storage: None)
+    backend = ClickZettaVolumeStorage(config)
+
+    def fail_execute(*_args: object, **_kwargs: object) -> None:
+        raise RuntimeError("backend unavailable")
+
+    monkeypatch.setattr(backend, "_execute_sql", fail_execute)
+    monkeypatch.setattr(cleanup, "storage", backend)
+    with pytest.raises(RuntimeError, match="backend unavailable"):
+        cleanup.cleanup_app_storage("tenant-1", "app-1")
+    sqlite_session.expire_all()
+    assert sqlite_session.get(UploadFile, file_id) is not None
+    assert sqlite_session.get(WorkflowNodeExecutionOffload, offload_id) is not None
+
+
+def test_app_upload_cleanup_retains_snippet_owned_image(
+    sqlite_session: Session,
+    storage: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from models.snippet import CustomizedSnippet
+
+    user = _end_user(sqlite_session)
+    file_id, offload_id = _offload(sqlite_session, "app-1", "upload_files/shared.png")
+    offload = sqlite_session.get_one(WorkflowNodeExecutionOffload, offload_id)
+    sqlite_session.delete(offload)
+    upload = sqlite_session.get_one(UploadFile, file_id)
+    upload.created_by_role = CreatorUserRole.END_USER
+    upload.created_by = user.id
+    sqlite_session.add(
+        CustomizedSnippet(
+            tenant_id="tenant-1",
+            name="Shared image",
+            created_by="account-1",
+            icon_info={"icon_type": "image", "icon": file_id},
+        )
+    )
+    sqlite_session.commit()
+    monkeypatch.setattr(cleanup, "delete_upload_blob", storage.delete)
+    cleanup.cleanup_app_uploads("tenant-1", "app-1")
+    cleanup.cleanup_app_uploads("tenant-1", "app-1")
+    sqlite_session.expire_all()
+    assert sqlite_session.get(UploadFile, file_id) is not None
+    storage.delete.assert_not_called()

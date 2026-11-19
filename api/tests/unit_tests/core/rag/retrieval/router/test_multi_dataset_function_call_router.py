@@ -3,11 +3,10 @@ from unittest.mock import Mock
 import pytest
 
 from core.app.apps.exc import ModerationInvocationError
-from core.rag.retrieval.router.multi_dataset_function_call_router import FunctionCallMultiDatasetRouter
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.entities.message_entities import PromptMessageTool
+from services.knowledge.retrieval.multi_dataset_function_call_router import FunctionCallMultiDatasetRouter
 from services.moderation_service import ModerationPhase
-from tests.helpers.unit.core.model_fixtures import make_model_config
 from tests.helpers.unit.core.model_moderation_fixtures import make_failing_moderated_model
 
 
@@ -18,7 +17,6 @@ class TestFunctionCallMultiDatasetRouter:
         dataset_id, usage = router.invoke(
             query="python",
             dataset_tools=[],
-            model_config=Mock(),
             model_instance=Mock(),
         )
 
@@ -34,7 +32,6 @@ class TestFunctionCallMultiDatasetRouter:
             FunctionCallMultiDatasetRouter().invoke(
                 query="content",
                 dataset_tools=tools,
-                model_config=make_model_config(provider="test-provider", model="test-model", mode="chat"),
                 model_instance=model,
             )
         assert rejected.value.error_code == ("moderation_unavailable" if unavailable else "moderation_rejected")
@@ -51,7 +48,6 @@ class TestFunctionCallMultiDatasetRouter:
         dataset_id, usage = router.invoke(
             query="python",
             dataset_tools=[tool],
-            model_config=Mock(),
             model_instance=Mock(),
         )
 
@@ -75,7 +71,6 @@ class TestFunctionCallMultiDatasetRouter:
         dataset_id, returned_usage = router.invoke(
             query="python",
             dataset_tools=[tool_1, tool_2],
-            model_config=Mock(),
             model_instance=model_instance,
         )
 
@@ -98,7 +93,6 @@ class TestFunctionCallMultiDatasetRouter:
         dataset_id, usage = router.invoke(
             query="python",
             dataset_tools=[tool_1, tool_2],
-            model_config=Mock(),
             model_instance=model_instance,
         )
 
@@ -117,7 +111,6 @@ class TestFunctionCallMultiDatasetRouter:
         dataset_id, usage = router.invoke(
             query="python",
             dataset_tools=[tool_1, tool_2],
-            model_config=Mock(),
             model_instance=model_instance,
         )
 

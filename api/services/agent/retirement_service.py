@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterable
 
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.db.session_factory import session_factory
@@ -19,7 +19,7 @@ from models.agent import (
     AgentWorkspaceBinding,
     WorkflowAgentNodeBinding,
 )
-from models.model import App, AppMode
+from models.model import App, AppMode, Site
 from models.workflow import Workflow
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.workspace_service import AgentWorkspaceService
@@ -112,13 +112,24 @@ class WorkflowAgentRetirementService:
                         )
                     )
                 if backing_app_ids:
-                    session.execute(
-                        delete(App).where(
+                    backing_apps = session.scalars(
+                        select(App)
+                        .where(
                             App.tenant_id == tenant_id,
                             App.id.in_(backing_app_ids),
                             App.mode == AppMode.AGENT,
                         )
-                    )
+                        .order_by(App.icon, App.id)
+                    ).all()
+                    stored_app_ids = tuple(app.id for app in backing_apps)
+                    if stored_app_ids:
+                        sites = session.scalars(
+                            select(Site).where(Site.app_id.in_(stored_app_ids)).order_by(Site.icon, Site.id)
+                        ).all()
+                        for site in sites:
+                            session.delete(site)
+                        for app in backing_apps:
+                            session.delete(app)
                 session.commit()
         except Exception:
             logger.exception(

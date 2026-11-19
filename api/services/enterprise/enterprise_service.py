@@ -113,6 +113,11 @@ class EnterpriseService:
     @classmethod
     @ttl_cache(ttl=5)
     def get_info(cls):
+        return cls.get_uncached_info()
+
+    @classmethod
+    def get_uncached_info(cls):
+        """Read current enterprise state for write admission decisions."""
         return EnterpriseRequest.send_request("GET", "/info")
 
     @classmethod

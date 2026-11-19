@@ -26,14 +26,18 @@ import libs.login as login_module
 import services.app_task_service as app_task_module
 from controllers.console.explore.installed_app_admission import get_installed_app
 from controllers.console.flask_admission import console_account_admission
-from enums import DeploymentEdition, WebAppAccessMode
+from enums import (
+    DeploymentEdition,
+    WebAppAccessMode,
+)
+from enums.creator import CreatorUserRole
 from extensions.ext_login import DifyLoginManager, unauthorized_handler
 from graphon.enums import WorkflowExecutionStatus
 from libs.external_api import ExternalApi
 from machinery.context import RequestContext
 from models import Account, App, AppMode, InstalledApp, Tenant, WorkflowRun
 from models.account import AccountStatus
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from services.app_task_service import AppTaskControlService

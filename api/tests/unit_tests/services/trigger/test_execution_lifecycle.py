@@ -44,15 +44,17 @@ from repositories.sqlalchemy_workflow_trigger_log_repository import (
     SQLAlchemyWorkflowTriggerExecutionRepository,
 )
 from services.errors.app import WorkflowNotFoundError
+from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 from services.trigger.execution_gateway import WorkflowTriggerExecutionGateway
 from services.trigger.execution_layer import TriggerPostLayer
 from services.trigger.execution_service import TriggerExecutionService
 from services.trigger.execution_store import TriggerExecution, TriggerExecutionRef
-from services.workflow.entities import ScheduleTriggerData, TriggerActor
+from services.workflow.entities import ScheduleTriggerData, TriggerActor, WorkflowTaskData
 from tasks.async_workflow_tasks import execute_workflow_professional, execute_workflow_sandbox, execute_workflow_team
 from tests.helpers.unit.model_factories import make_workflow
 from tests.unit_tests.controllers.console.workspace import test_trigger_oauth_client as oauth_tests
 from tests.unit_tests.controllers.console.workspace.test_trigger_oauth_client import _Harness
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 application_redis = oauth_tests.application_redis
 harness = oauth_tests.harness
@@ -498,15 +500,19 @@ def test_end_user_runtime_hydration_is_scoped(
 
 
 @pytest.mark.parametrize("task", [execute_workflow_professional, execute_workflow_team, execute_workflow_sandbox])
-def test_each_worker_entrypoint_uses_injected_execution_service(
+def test_each_worker_entrypoint_uses_injected_retrieval_with_reliable_execution(
     app: Flask,
     sqlite_session_factory: sessionmaker[Session],
-    logs: SQLAlchemyWorkflowTriggerExecutionRepository,
     execution: TriggerExecution,
+    monkeypatch: pytest.MonkeyPatch,
     task: Task[[dict[str, object]], None],
 ) -> None:
-    calls: list[TriggerExecution] = []
-    service = TriggerExecutionService(logs=logs, run=lambda value, _at: calls.append(value))
+    calls: list[tuple[WorkflowTaskData, KnowledgeRetriever]] = []
+    # Keep the PR's lease-protected retry pipeline; verify its composed retrieval dependency.
+    monkeypatch.setattr(
+        "tasks.async_workflow_tasks._execute_workflow_common",
+        lambda value, *, knowledge_retrieval: calls.append((value, knowledge_retrieval)),
+    )
     redis = RedisClientWrapper()
     client = Redis()
     redis.initialize(client)
@@ -517,7 +523,7 @@ def test_each_worker_entrypoint_uses_injected_execution_service(
         redis=redis,
     )
     previous = app.extensions.get("application_services")
-    app.extensions["application_services"] = replace(services, triggers=replace(services.triggers, executions=service))
+    app.extensions["application_services"] = services
     try:
         task.run({"workflow_trigger_log_id": execution.log.id})
     finally:
@@ -527,7 +533,7 @@ def test_each_worker_entrypoint_uses_injected_execution_service(
         else:
             app.extensions["application_services"] = previous
     assert len(calls) == 1
-    assert calls[0].log == execution.log
+    assert calls[0] == (WorkflowTaskData(workflow_trigger_log_id=execution.log.id), services.knowledge.retrieval)
 
 
 @pytest.mark.parametrize("actor_role", [CreatorUserRole.ACCOUNT, CreatorUserRole.END_USER])
@@ -566,7 +572,9 @@ def test_real_generator_runs_with_detached_models(
         )
     execution = replace(execution, data=execution.data.model_copy(update={"root_node_id": "start", "inputs": {}}))
     assert logs.start(execution.log.id) is not None
-    gateway = WorkflowTriggerExecutionGateway(models=logs, logs=logs, session_factory=sqlite_session_factory)
+    gateway = WorkflowTriggerExecutionGateway(
+        models=logs, logs=logs, session_factory=sqlite_session_factory, knowledge_retrieval=make_knowledge_retriever()
+    )
 
     def run() -> None:
         with harness.app.app_context(), use_workflow_file_runtime(create_dify_workflow_file_runtime()):

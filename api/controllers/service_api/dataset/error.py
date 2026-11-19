@@ -19,6 +19,12 @@ class DatasetNameDuplicateError(BaseHTTPException):
     code = 409
 
 
+class DatasetConcurrentUpdateError(BaseHTTPException):
+    error_code = "dataset_concurrent_update"
+    description = "The dataset changed while it was being updated. Please retry the request."
+    code = 409
+
+
 class InvalidActionError(BaseHTTPException):
     error_code = "invalid_action"
     description = "Invalid action."

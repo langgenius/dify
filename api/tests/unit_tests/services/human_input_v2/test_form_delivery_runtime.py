@@ -24,6 +24,7 @@ from core.human_input_v2.entities import EmailProviderType, IMProvider
 from core.human_input_v2.im_integration.adapters.entities import MessageAccepted, StaticCardIntent
 from core.human_input_v2.im_integration.adapters.message_locator import MessageLocator
 from core.human_input_v2.shared.values import AccountId, ContactId, NormalizedEmail, RecipientId, TenantId
+from core.workflow.node_runtime import build_knowledge_index_files
 from core.workflow.nodes.human_input.entities import HumanInputNodeDataFull
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input_v2.entities import (
@@ -36,10 +37,10 @@ from core.workflow.nodes.human_input_v2.entities import (
 from core.workflow.nodes.human_input_v2.migration import MemberContactSnapshot, convert_legacy_human_input_node_data
 from core.workflow.nodes.human_input_v2.runtime import HumanInputDeliveryError, PreparedForm
 from enums import DeploymentEdition
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import VariablePool
 from libs.datetime_utils import naive_utc_now
-from models import CreatorUserRole
 from models.account import Account, TenantAccountJoin
 from models.enums import EndUserType
 from models.human_input_v2 import (
@@ -106,6 +107,7 @@ from tests.helpers.unit.services.human_input_v2.form_runtime import (
 from tests.helpers.unit.services.human_input_v2.form_runtime import (
     make_form_node as _node,
 )
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 CreatedIMCards = tuple[str, str, set[str], Mock, list[dict[str, str]], list[dict[str, object]]]
 
@@ -284,6 +286,8 @@ def test_factory_runs_v2_and_reuses_persisted_approval(
             call_depth=0,
         ),
         RuntimeState(workflow_id="workflow", variable_pool=pool, start_at=0),
+        knowledge_retrieval=make_knowledge_retriever(),
+        knowledge_index_files=build_knowledge_index_files(),
     )
     node_data = _node(Initiator()).model_dump(mode="json")
     if selected is not None:
@@ -3250,9 +3254,12 @@ def test_initial_delivery_results_control_graph_failure_and_approval(
     ]
     if include_initiator:
         recipients[0] = Initiator()
-    approval = DifyNodeFactory(params, state).create_node(
-        {"id": "approval", "data": _node(*recipients).model_dump(mode="json")}
-    )
+    approval = DifyNodeFactory(
+        params,
+        state,
+        knowledge_retrieval=make_knowledge_retriever(),
+        knowledge_index_files=build_knowledge_index_files(),
+    ).create_node({"id": "approval", "data": _node(*recipients).model_dump(mode="json")})
     start = StartNode(
         node_id="start",
         data=StartNodeData(title="Start", variables=[]),

@@ -63,7 +63,6 @@ from services.agent.roster_package_reader import RosterAgentPackageReader
 from services.app_dsl_service import AppDslService
 from services.app_service import AppService
 from services.feature_service import FeatureService
-from services.file_service import FileService
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.recommended_app_package_service import RecommendedAgentPackageSource
 
@@ -749,7 +748,7 @@ def test_import_validates_all_file_limits_before_staging(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     storage = _MemoryStorage()
-    monkeypatch.setattr(FileService, "file_size_limit", lambda **_kwargs: 1)
+    monkeypatch.setattr("services.agent.package_resource_importer.file_size_limit", lambda **_kwargs: 1)
 
     with pytest.raises(InvalidRosterAgentPackageError, match="file size limit"):
         RosterAgentPackageImporter(storage_backend=storage).import_package(

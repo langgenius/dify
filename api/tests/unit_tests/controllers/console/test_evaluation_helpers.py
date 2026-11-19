@@ -2,9 +2,11 @@
 
 import json
 from collections.abc import Callable
+from dataclasses import replace
 from datetime import datetime
 from functools import partial
 from inspect import unwrap
+from unittest.mock import MagicMock, create_autospec
 from uuid import UUID, uuid4
 
 import pytest
@@ -16,8 +18,7 @@ from controllers.console import evaluation as controller
 from core.evaluation.entities.config_entity import EvaluationFrameworkEnum
 from core.evaluation.entities.evaluation_entity import DefaultMetric, NodeInfo
 from core.evaluation.exceptions import EvaluationErrorCode, new_public_evaluation_error
-from models.account import Account
-from models.dataset import Dataset
+from extensions.ext_application_services import ApplicationServices
 from models.evaluation import (
     EvaluationConfiguration,
     EvaluationRun,
@@ -36,10 +37,27 @@ from services.errors.evaluation import (
     EvaluationNotFoundError,
 )
 from services.evaluation_service import EvaluationService
-from services.knowledge.dataset_service import DatasetService
+from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
+from services.knowledge.datasets.application import DatasetApplicationService
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.rbac.contracts import MyPermissionsResponse, ResourceWhitelistResources
 from services.workflow_service import WorkflowService
 from tests.helpers.unit.model_factories import make_account, make_app, make_dataset, make_upload_file, make_workflow
+
+
+@pytest.fixture(autouse=True)
+def knowledge_datasets(monkeypatch: pytest.MonkeyPatch, account_application_services: ApplicationServices) -> MagicMock:
+    """Keep evaluation routing behind the configured knowledge application port."""
+    datasets = create_autospec(DatasetApplicationService, instance=True, spec_set=True)
+    datasets.require_accessible.side_effect = lambda context, dataset_id: DatasetRef(
+        context.active_workspace_id, dataset_id
+    )
+    services = replace(
+        account_application_services,
+        knowledge=replace(account_application_services.knowledge, datasets=datasets),
+    )
+    monkeypatch.setattr(controller, "application_services", lambda: services)
+    return datasets
 
 
 def _evaluation_run(
@@ -286,33 +304,24 @@ def test_available_workflow_response_requires_a_timestamp() -> None:
 
 
 def test_accessible_dataset_checks_tenant_and_permission(
-    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+    sqlite_session: Session,
+    knowledge_datasets: MagicMock,
 ) -> None:
     dataset_id = str(uuid4())
-    dataset = make_dataset(dataset_id=dataset_id)
-    sqlite_session.add(dataset)
-    sqlite_session.flush()
     account = make_account()
-    monkeypatch.setattr(controller.dify_config, "RBAC_ENABLED", False)
-    checked_datasets: list[str] = []
+    result = controller._get_accessible_dataset(sqlite_session, UUID(dataset_id), account, "tenant-1")
+    assert result.id == dataset_id
+    assert result.workspace_id == "tenant-1"
+    context, requested_id = knowledge_datasets.require_accessible.call_args.args
+    assert requested_id == dataset_id
+    assert context.account_id == account.id
+    assert context.active_workspace_id == "tenant-1"
 
-    def check_permission(dataset: object, user: Account, session: Session) -> None:
-        assert session is sqlite_session
-        assert user is account
-        assert isinstance(dataset, Dataset)
-        checked_datasets.append(dataset.id)
-
-    monkeypatch.setattr(DatasetService, "check_dataset_permission", check_permission)
-    assert controller._get_accessible_dataset(sqlite_session, UUID(dataset_id), account, "tenant-1") is dataset
-    assert checked_datasets == [dataset_id]
-
+    knowledge_datasets.require_accessible.side_effect = DatasetNotFoundError()
     with pytest.raises(NotFound):
         controller._get_accessible_dataset(sqlite_session, UUID(dataset_id), account, "other-tenant")
 
-    def deny_permission(_dataset: object, _user: Account, _session: Session) -> None:
-        raise NoPermissionError("access denied")
-
-    monkeypatch.setattr(DatasetService, "check_dataset_permission", deny_permission)
+    knowledge_datasets.require_accessible.side_effect = DatasetAccessDeniedError("access denied")
     with pytest.raises(Forbidden, match="access denied"):
         controller._get_accessible_dataset(sqlite_session, UUID(dataset_id), account, "tenant-1")
 
@@ -638,7 +647,6 @@ def test_evaluation_configuration_routes_report_invalid_target_configuration(
     sqlite_session.flush()
     monkeypatch.setattr(controller, "current_account_with_tenant", lambda: (account, "tenant-1"))
     monkeypatch.setattr(controller.dify_config, "RBAC_ENABLED", False)
-    monkeypatch.setattr(DatasetService, "check_dataset_permission", lambda *_args: None)
 
     def invalid_config(*_args: object, **_kwargs: object) -> None:
         raise ValueError("invalid evaluation configuration")
@@ -685,7 +693,6 @@ def test_dataset_routes_scope_config_runs_and_files_to_the_dataset(
     assert config is not None
     monkeypatch.setattr(controller, "current_account_with_tenant", lambda: (account, "tenant-1"))
     monkeypatch.setattr(controller.dify_config, "RBAC_ENABLED", False)
-    monkeypatch.setattr(DatasetService, "check_dataset_permission", lambda *_args: None)
     monkeypatch.setattr(controller.storage, "load_once", lambda _key: b"index,query\n1,hello\n")
     template_languages: list[str] = []
 

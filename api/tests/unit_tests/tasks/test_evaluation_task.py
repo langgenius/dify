@@ -40,6 +40,7 @@ from core.evaluation.exceptions import (
 from core.evaluation.runners.agent_evaluation_runner import AgentEvaluationRunner
 from core.evaluation.runners.llm_evaluation_runner import LLMEvaluationRunner
 from core.evaluation.runners.retrieval_evaluation_runner import RetrievalEvaluationRunner
+from extensions.ext_application_services import ApplicationServices
 from graphon.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
 from models.account import TenantAccountJoin, TenantAccountRole
@@ -159,7 +160,7 @@ def test_delete_stored_result_file_ignores_storage_failure(monkeypatch: pytest.M
 
 
 def test_customized_workflow_uses_pinned_version_and_keeps_row_errors(
-    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+    account_application_services: ApplicationServices, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from core.app.apps.workflow.app_generator import WorkflowAppGenerator
     from models.model import AppMode
@@ -190,6 +191,10 @@ def test_customized_workflow_uses_pinned_version_and_keeps_row_errors(
     monkeypatch.setattr(
         "services.workflow_service.WorkflowService",
         partial(WorkflowService, session_maker=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)),
+    )
+    monkeypatch.setattr(
+        "tasks.evaluation_task.application_services",
+        lambda: account_application_services,
     )
     generated: list[dict[str, object]] = []
 

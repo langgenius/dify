@@ -14,6 +14,7 @@ from flask import Flask
 from controllers.common.errors import (
     BlockedFileExtensionError,
     FileTooLargeError,
+    ForbiddenError,
     RemoteFileAccessDeniedError,
     RemoteFileInvalidResponseError,
     RemoteFileInvalidUrlError,
@@ -23,10 +24,12 @@ from controllers.common.errors import (
     UnsupportedFileTypeError,
 )
 from controllers.console import remote_files as remote_files_module
+from enums.creator import CreatorUserRole
 from libs.exception import BaseHTTPException
 from machinery.context import RequestContext
-from models import Account
+from models import Account, Tenant
 from models.account import AccountStatus, TenantAccountRole
+from services.entities.upload_file import FileUploadActor
 from services.errors.file import (
     BlockedFileExtensionError as ServiceBlockedFileExtensionError,
 )
@@ -59,7 +62,7 @@ REMOTE_FILE_ERROR_CASES: tuple[tuple[type[RemoteFileError], type[BaseHTTPExcepti
 )
 
 
-def _account() -> Account:
+def _account(*, tenant_id: str | None = "tenant-1") -> Account:
     account = Account(
         name="Test User",
         email="user@example.com",
@@ -67,7 +70,15 @@ def _account() -> Account:
     )
     account.id = "account-1"
     account.role = TenantAccountRole.OWNER
+    if tenant_id is not None:
+        tenant = Tenant(name="Test Tenant")
+        tenant.id = tenant_id
+        account._current_tenant = tenant
     return account
+
+
+def _actor() -> FileUploadActor:
+    return FileUploadActor(id="account-1", creator_role=CreatorUserRole.ACCOUNT)
 
 
 def _upload_result() -> RemoteFileUploadResult:
@@ -173,11 +184,30 @@ class TestRemoteFileUpload:
         assert response["created_at"] == 1704067200
         upload.assert_called_once_with(
             url="https://example.com/report.txt",
-            current_user=account,
+            actor=_actor(),
+            tenant_id="tenant-1",
         )
 
-    def test_helper_preserves_explicit_resource_tenant(self, app: Flask) -> None:
-        account = _account()
+    def test_controller_rejects_account_without_active_tenant(self, app: Flask) -> None:
+        api = remote_files_module.RemoteFileUpload()
+        handler = unwrap(api.post)
+        account = _account(tenant_id=None)
+
+        with (
+            app.test_request_context("/remote-files/upload", method="POST"),
+            patch.object(remote_files_module, "upload_remote_file") as upload,
+            pytest.raises(ForbiddenError),
+        ):
+            handler(
+                api,
+                remote_files_module.RemoteFileUploadPayload(url="https://example.com/report.txt"),
+                account,
+            )
+
+        upload.assert_not_called()
+
+    def test_helper_passes_admitted_actor_and_tenant(self, app: Flask) -> None:
+        actor = _actor()
         remote_files = MagicMock()
         remote_files.upload_from_url.return_value = _upload_result()
 
@@ -187,14 +217,14 @@ class TestRemoteFileUpload:
         ):
             result = remote_files_module.upload_remote_file(
                 url="https://example.com/report.txt",
-                current_user=account,
-                resource_tenant_id="app-tenant-id",
+                actor=actor,
+                tenant_id="app-tenant-id",
             )
 
         assert result == _upload_result()
         remote_files.upload_from_url.assert_called_once_with(
             url="https://example.com/report.txt",
-            user=account,
+            actor=actor,
             tenant_id="app-tenant-id",
         )
 
@@ -218,7 +248,8 @@ class TestRemoteFileUpload:
         ):
             remote_files_module.upload_remote_file(
                 url="https://example.com/report.txt",
-                current_user=_account(),
+                actor=_actor(),
+                tenant_id="tenant-1",
             )
 
         assert error_info.value.__cause__ is service_error
@@ -228,13 +259,18 @@ class TestRemoteFileUpload:
         assert "sensitive upstream details" not in error_info.value.data["message"]
 
     @pytest.mark.parametrize(
-        ("service_error", "http_error"),
+        ("service_error", "http_error", "expected_message"),
         [
-            (ServiceFileTooLargeError("size exceeded"), FileTooLargeError),
-            (ServiceUnsupportedFileTypeError(), UnsupportedFileTypeError),
+            (ServiceFileTooLargeError("sensitive upstream details"), FileTooLargeError, "File size exceeded."),
             (
-                ServiceBlockedFileExtensionError("File extension '.exe' is not allowed"),
+                ServiceUnsupportedFileTypeError("sensitive upstream details"),
+                UnsupportedFileTypeError,
+                "File type not allowed.",
+            ),
+            (
+                ServiceBlockedFileExtensionError("sensitive upstream details"),
                 BlockedFileExtensionError,
+                "The file extension is blocked for security reasons.",
             ),
         ],
     )
@@ -242,7 +278,8 @@ class TestRemoteFileUpload:
         self,
         app: Flask,
         service_error: Exception,
-        http_error: type[Exception],
+        http_error: type[BaseHTTPException],
+        expected_message: str,
     ) -> None:
         remote_files = MagicMock()
         remote_files.upload_from_url.side_effect = service_error
@@ -254,7 +291,11 @@ class TestRemoteFileUpload:
         ):
             remote_files_module.upload_remote_file(
                 url="https://example.com/report.txt",
-                current_user=_account(),
+                actor=_actor(),
+                tenant_id="tenant-1",
             )
 
         assert error_info.value.__cause__ is service_error
+        assert error_info.value.data is not None
+        assert error_info.value.data["message"] == expected_message
+        assert "sensitive upstream details" not in error_info.value.data["message"]

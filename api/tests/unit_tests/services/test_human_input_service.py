@@ -168,7 +168,7 @@ def test_enqueue_resume_dispatches_task_for_workflow(
     workflow_run_repo = MagicMock()
     workflow_run_repo.get_workflow_run_by_id_without_tenant.return_value = workflow_run
     mocker.patch(
-        "services.human_input_service.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
+        "services.human_input_service.WorkflowRepositoryFactory.create_api_workflow_run_repository",
         return_value=workflow_run_repo,
     )
 
@@ -212,7 +212,7 @@ def test_enqueue_resume_dispatches_task_for_advanced_chat(
     workflow_run_repo = MagicMock()
     workflow_run_repo.get_workflow_run_by_id_without_tenant.return_value = workflow_run
     mocker.patch(
-        "services.human_input_service.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
+        "services.human_input_service.WorkflowRepositoryFactory.create_api_workflow_run_repository",
         return_value=workflow_run_repo,
     )
 
@@ -239,7 +239,7 @@ def test_enqueue_resume_skips_unsupported_app_mode(
     workflow_run_repo = MagicMock()
     workflow_run_repo.get_workflow_run_by_id_without_tenant.return_value = workflow_run
     mocker.patch(
-        "services.human_input_service.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
+        "services.human_input_service.WorkflowRepositoryFactory.create_api_workflow_run_repository",
         return_value=workflow_run_repo,
     )
 
@@ -323,7 +323,7 @@ def test_resolve_form_inputs_uses_runtime_select_options(
     workflow_run_repo = MagicMock()
     workflow_run_repo.get_workflow_pause.return_value = pause
     mocker.patch(
-        "services.human_input_service.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
+        "services.human_input_service.WorkflowRepositoryFactory.create_api_workflow_run_repository",
         return_value=workflow_run_repo,
     )
     service = HumanInputService(unbound_session_factory)
@@ -719,7 +719,7 @@ def test_enqueue_resume_workflow_not_found(
     workflow_run_repo = MagicMock()
     workflow_run_repo.get_workflow_run_by_id_without_tenant.return_value = None
     mocker.patch(
-        "services.human_input_service.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
+        "services.human_input_service.WorkflowRepositoryFactory.create_api_workflow_run_repository",
         return_value=workflow_run_repo,
     )
 
@@ -740,7 +740,7 @@ def test_enqueue_resume_app_not_found(
     workflow_run_repo = MagicMock()
     workflow_run_repo.get_workflow_run_by_id_without_tenant.return_value = workflow_run
     mocker.patch(
-        "services.human_input_service.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
+        "services.human_input_service.WorkflowRepositoryFactory.create_api_workflow_run_repository",
         return_value=workflow_run_repo,
     )
     resume_task = mocker.patch("services.human_input_service.resume_app_execution")

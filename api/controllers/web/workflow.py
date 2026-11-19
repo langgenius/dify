@@ -24,11 +24,11 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from extensions.ext_application_services import application_services
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.external_api import error_responses
 from models.model import App, AppMode, EndUser
-from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.app import (
     TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
@@ -79,7 +79,7 @@ class WorkflowRunApi(WebApiResource):
         args = payload.model_dump(exclude_none=True)
 
         try:
-            response = AppGenerateService.generate(
+            response = application_services().app_generation.generate(
                 session=session,
                 app_model=app_model,
                 user=end_user,

@@ -5,7 +5,7 @@ import threading
 import time
 from collections.abc import Callable, Generator, Mapping, Sequence
 from datetime import UTC, datetime
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, Protocol, cast
 from uuid import uuid4
 
 from sqlalchemy import func, select
@@ -30,8 +30,6 @@ from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasour
 from core.datasource.website_crawl.website_crawl_plugin import WebsiteCrawlDatasourcePlugin
 from core.helper import marketplace
 from core.rag.entities import DatasourceCompletedEvent, DatasourceErrorEvent, DatasourceProcessingEvent
-from core.repositories.factory import DifyCoreRepositoryFactory
-from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.llm_environment_variable import validate_llm_environment_model_references
 from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping
 from core.workflow.system_variables import (
@@ -75,8 +73,11 @@ from models.workflow import (
     WorkflowRun,
     WorkflowType,
 )
-from repositories.factory import DifyAPIRepositoryFactory
-from repositories.knowledge.dataset_read_repository import get_pipeline_dataset
+from repositories.file.upload_file_repository import lock_and_validate_owned_upload_files_in_session
+from repositories.knowledge.document_query_repository import get_documents_by_ids
+from repositories.knowledge.pipeline_query_repository import get_pipeline_dataset
+from repositories.workflow.factory import WorkflowRepositoryFactory
+from repositories.workflow.upload_file_references import lock_new_workflow_upload_file_references
 from services.credentials.query import CredentialQuery
 from services.data_source.provider_service import DatasourceProviderService
 from services.entities.knowledge_entities.rag_pipeline_entities import (
@@ -85,7 +86,17 @@ from services.entities.knowledge_entities.rag_pipeline_entities import (
 )
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
-from services.knowledge.resource_scope import DatasetRef
+from services.file_adapters import build_file_service
+from services.file_reference_parser import added_trusted_upload_file_ids, trusted_upload_file_ids
+from services.knowledge.datasets.application import prepare_rag_pipeline_dataset_update
+from services.knowledge.datasets.contracts import (
+    DatasetConcurrentUpdateError,
+    DatasetUpdateSnapshot,
+    PreparedRagPipelineDatasetUpdate,
+    RagPipelineDatasetSettings,
+)
+from services.knowledge.datasets.model_configuration import KnowledgeModelConfigurationGateway
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.rag_pipeline.pipeline_template.pipeline_template_factory import PipelineTemplateRetrievalFactory
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
@@ -100,6 +111,9 @@ from services.workflow_run_agg import WorkflowRunAgg
 
 logger = logging.getLogger(__name__)
 
+if TYPE_CHECKING:
+    from services.knowledge.retrieval.retrieval import KnowledgeRetriever
+
 
 def _build_seeded_variable_pool(variables: Sequence[Variable]) -> VariablePool:
     variable_pool = VariablePool()
@@ -107,18 +121,42 @@ def _build_seeded_variable_pool(variables: Sequence[Variable]) -> VariablePool:
     return variable_pool
 
 
+class RagPipelineDatasetUpdates(Protocol):
+    """Dataset mutations required while publishing a RAG pipeline workflow."""
+
+    def get_update_snapshot(self, dataset_ref: DatasetRef) -> DatasetUpdateSnapshot | None: ...
+
+    def stage_rag_pipeline_dataset_settings(
+        self,
+        session: Session,
+        *,
+        change: PreparedRagPipelineDatasetUpdate,
+    ) -> bool: ...
+
+
 class RagPipelineService:
     _session: Session
 
-    def __init__(self, session: Session, session_maker: sessionmaker | None = None):
+    def __init__(
+        self,
+        session: Session,
+        *,
+        session_maker: sessionmaker[Session],
+        datasets: RagPipelineDatasetUpdates,
+    ):
         """Initialize RagPipelineService with repository dependencies."""
         self._session = session
-        if session_maker is None:
-            session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-        self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+        self._files = build_file_service(session_factory=session_maker)
+        self._node_execution_service_repo = WorkflowRepositoryFactory.create_api_workflow_node_execution_repository(
             session_maker
         )
-        self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+        self._workflow_run_repo = WorkflowRepositoryFactory.create_api_workflow_run_repository(session_maker)
+        self._datasets = datasets
+
+    def _knowledge_retrieval(self) -> "KnowledgeRetriever":
+        from extensions.ext_application_services import application_services
+
+        return application_services().knowledge.retrieval
 
     @staticmethod
     def get_pipeline_by_id(pipeline_id: str, tenant_id: str, *, session: Session) -> Pipeline | None:
@@ -220,6 +258,7 @@ class RagPipelineService:
                 PipelineCustomizedTemplate.id == template_id,
                 PipelineCustomizedTemplate.tenant_id == current_tenant_id,
             )
+            .with_for_update()
             .limit(1)
         )
         if not customized_template:
@@ -238,9 +277,17 @@ class RagPipelineService:
             )
             if template:
                 raise ValueError("Template name is already exists")
+        icon_info = template_info.icon_info.model_dump()
+        lock_and_validate_owned_upload_files_in_session(
+            session,
+            tenant_id=current_tenant_id,
+            upload_file_ids=tuple(
+                sorted(added_trusted_upload_file_ids(previous=customized_template.icon, current=icon_info))
+            ),
+        )
         customized_template.name = template_info.name
         customized_template.description = template_info.description
-        customized_template.icon = template_info.icon_info.model_dump()
+        customized_template.icon = icon_info
         customized_template.updated_by = current_user.id
         session.commit()
         return customized_template
@@ -266,12 +313,12 @@ class RagPipelineService:
         session.delete(customized_template)
         session.commit()
 
-    def get_draft_workflow(self, pipeline: Pipeline) -> Workflow | None:
+    def get_draft_workflow(self, pipeline: Pipeline, *, for_update: bool = False) -> Workflow | None:
         """
         Get draft workflow
         """
         # fetch draft workflow by rag pipeline
-        workflow = self._session.scalar(
+        stmt = (
             select(Workflow)
             .where(
                 Workflow.tenant_id == pipeline.tenant_id,
@@ -280,6 +327,9 @@ class RagPipelineService:
             )
             .limit(1)
         )
+        if for_update:
+            stmt = stmt.with_for_update()
+        workflow = self._session.scalar(stmt)
 
         # return draft workflow
         return workflow
@@ -379,7 +429,10 @@ class RagPipelineService:
         :raises WorkflowHashNotEqualError
         """
         # fetch draft workflow by app_model
-        workflow = self.get_draft_workflow(pipeline=pipeline)
+        workflow = self.get_draft_workflow(pipeline=pipeline, for_update=True)
+        previous_upload_file_payloads = (
+            (workflow.graph, workflow._conversation_variables) if workflow is not None else ()
+        )
 
         if workflow and workflow.unique_hash != unique_hash:
             raise WorkflowHashNotEqualError()
@@ -409,6 +462,12 @@ class RagPipelineService:
             workflow.environment_variables = environment_variables
             workflow.conversation_variables = conversation_variables
             workflow.rag_pipeline_variables = rag_pipeline_variables
+        lock_new_workflow_upload_file_references(
+            self._session,
+            tenant_id=pipeline.tenant_id,
+            previous_payloads=previous_upload_file_payloads,
+            current_payloads=(workflow.graph, workflow._conversation_variables),
+        )
         # commit db session changes
         self._session.commit()
 
@@ -436,7 +495,10 @@ class RagPipelineService:
         if not source_workflow:
             raise WorkflowNotFoundError("Workflow not found.")
 
-        draft_workflow = self.get_draft_workflow(pipeline=pipeline)
+        draft_workflow = self.get_draft_workflow(pipeline=pipeline, for_update=True)
+        previous_upload_file_payloads = (
+            (draft_workflow.graph, draft_workflow._conversation_variables) if draft_workflow is not None else ()
+        )
         draft_workflow, is_new_draft = apply_published_workflow_snapshot_to_draft(
             tenant_id=pipeline.tenant_id,
             app_id=pipeline.id,
@@ -451,6 +513,13 @@ class RagPipelineService:
             self._session.flush()
             pipeline.workflow_id = draft_workflow.id
 
+        lock_new_workflow_upload_file_references(
+            self._session,
+            tenant_id=pipeline.tenant_id,
+            previous_payloads=previous_upload_file_payloads,
+            current_payloads=(draft_workflow.graph, draft_workflow._conversation_variables),
+        )
+
         self._session.commit()
 
         return draft_workflow
@@ -462,10 +531,14 @@ class RagPipelineService:
         pipeline: Pipeline,
         account: Account,
     ) -> Workflow:
-        draft_workflow_stmt = select(Workflow).where(
-            Workflow.tenant_id == pipeline.tenant_id,
-            Workflow.app_id == pipeline.id,
-            Workflow.version == "draft",
+        draft_workflow_stmt = (
+            select(Workflow)
+            .where(
+                Workflow.tenant_id == pipeline.tenant_id,
+                Workflow.app_id == pipeline.id,
+                Workflow.version == "draft",
+            )
+            .with_for_update()
         )
         draft_workflow = session.scalar(draft_workflow_stmt)
         if not draft_workflow:
@@ -491,13 +564,9 @@ class RagPipelineService:
             marked_name="",
             marked_comment="",
         )
-        # commit db session changes
-        session.add(workflow)
-
         graph = workflow.graph_dict
         nodes = graph.get("nodes", [])
-        # dataset_service imports RagPipelineService, so defer this reverse dependency.
-        from services.knowledge.dataset_service import DatasetService
+        prepared_dataset_updates: list[PreparedRagPipelineDatasetUpdate] = []
 
         for node in nodes:
             if node.get("data", {}).get("type") == "knowledge-index":
@@ -508,12 +577,44 @@ class RagPipelineService:
                 dataset = get_pipeline_dataset(pipeline, session=session)
                 if not dataset:
                     raise ValueError("Dataset not found")
-                DatasetService.update_rag_pipeline_dataset_settings(
-                    session=session,
-                    dataset=dataset,
-                    knowledge_configuration=knowledge_configuration,
+                dataset_ref = DatasetRef(dataset.tenant_id, dataset.id)
+                # Provider-backed model validation can perform remote I/O. Read
+                # a detached optimistic snapshot first, then let the short
+                # staging transaction lock, refresh, compare, and write.
+                snapshot = self._datasets.get_update_snapshot(dataset_ref)
+                if snapshot is None:
+                    raise ValueError("Dataset not found")
+                change = prepare_rag_pipeline_dataset_update(
+                    tenant_id=dataset.tenant_id,
+                    dataset_id=dataset.id,
+                    actor_id=account.id,
+                    snapshot=snapshot,
+                    settings=RagPipelineDatasetSettings(
+                        chunk_structure=knowledge_configuration.chunk_structure,
+                        indexing_technique=knowledge_configuration.indexing_technique,
+                        embedding_model_provider=knowledge_configuration.embedding_model_provider or None,
+                        embedding_model=knowledge_configuration.embedding_model or None,
+                        keyword_number=knowledge_configuration.keyword_number,
+                        retrieval_model=knowledge_configuration.retrieval_model.model_dump(),
+                        summary_index_setting=knowledge_configuration.summary_index_setting,
+                    ),
                     has_published=pipeline.is_published,
+                    models=KnowledgeModelConfigurationGateway(),
                 )
+                prepared_dataset_updates.append(change)
+
+        # No provider-backed preparation remains after this point. Keep the
+        # write/lock phase short and refresh each optimistic snapshot before
+        # mutating persisted state.
+        lock_new_workflow_upload_file_references(
+            session,
+            tenant_id=pipeline.tenant_id,
+            current_payloads=(workflow.graph, workflow._conversation_variables),
+        )
+        session.add(workflow)
+        for change in prepared_dataset_updates:
+            if not self._datasets.stage_rag_pipeline_dataset_settings(session, change=change):
+                raise DatasetConcurrentUpdateError("Dataset changed while publication was being prepared")
         # return new workflow
         return workflow
 
@@ -601,6 +702,7 @@ class RagPipelineService:
 
         workflow_node_execution = self._handle_node_run_result(
             getter=lambda: WorkflowEntry.single_step_run(
+                knowledge_retrieval=self._knowledge_retrieval(),
                 execution_driver=WorkflowRunAgg.run,
                 workflow=draft_workflow,
                 node_id=node_id,
@@ -627,12 +729,13 @@ class RagPipelineService:
 
         # Create repository and save the node execution
 
-        repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        repository = WorkflowRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=db.engine,
             tenant_id=pipeline.tenant_id,
             user=account,
             app_id=pipeline.id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+            files=self._files,
         )
         repository.save(workflow_node_execution)
 
@@ -651,6 +754,7 @@ class RagPipelineService:
                 enclosing_node_id=enclosing_node_id,
                 node_execution_id=workflow_node_execution.id,
                 user=account,
+                files=self._files,
             )
             draft_var_saver.save(
                 process_data=workflow_node_execution.process_data,
@@ -939,6 +1043,7 @@ class RagPipelineService:
                 tenant_id=tenant_id,
                 user_id=user_id,
                 user_inputs=user_inputs,
+                knowledge_retrieval=self._knowledge_retrieval(),
             ),
             start_at=start_at,
             tenant_id=tenant_id,
@@ -1070,13 +1175,13 @@ class RagPipelineService:
                         if dataset:
                             dataset_ref = DatasetRef(tenant_id=dataset.tenant_id, dataset_id=dataset.id)
                             document_ref = dataset_ref.document(document_id.value)
-                            # dataset_service imports RagPipelineService; importing here avoids the cycle.
-                            from services.knowledge.dataset_service import DocumentService
-
                             document = next(
                                 iter(
-                                    DocumentService.get_documents_by_ids(
-                                        document_ref.dataset, [document_ref.document_id], self._session
+                                    get_documents_by_ids(
+                                        self._session,
+                                        tenant_id=document_ref.dataset.tenant_id,
+                                        dataset_id=document_ref.dataset.dataset_id,
+                                        document_ids=(document_ref.document_id,),
                                     )
                                 ),
                                 None,
@@ -1334,10 +1439,16 @@ class RagPipelineService:
 
         rag_pipeline_dsl_service = RagPipelineDslService(session)
         dsl = rag_pipeline_dsl_service.export_rag_pipeline_dsl(pipeline=pipeline, include_secret=True)
+        icon_info = args["icon_info"]
+        lock_and_validate_owned_upload_files_in_session(
+            session,
+            tenant_id=pipeline.tenant_id,
+            upload_file_ids=tuple(sorted(trusted_upload_file_ids(icon_info))),
+        )
         pipeline_customized_template = PipelineCustomizedTemplate(
             name=args["name"],
             description=args["description"],
-            icon=args["icon_info"],
+            icon=icon_info,
             tenant_id=pipeline.tenant_id,
             yaml_content=dsl,
             install_count=0,
@@ -1402,6 +1513,7 @@ class RagPipelineService:
 
         workflow_node_execution = self._handle_node_run_result(
             getter=lambda: WorkflowEntry.single_step_run(
+                knowledge_retrieval=self._knowledge_retrieval(),
                 execution_driver=WorkflowRunAgg.run,
                 workflow=draft_workflow,
                 node_id=node_id,
@@ -1427,17 +1539,22 @@ class RagPipelineService:
         workflow_node_execution.workflow_id = draft_workflow.id
 
         # Create repository and save the node execution
-        repository = SQLAlchemyWorkflowNodeExecutionRepository(
+        repository = WorkflowRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=db.engine,
             tenant_id=pipeline.tenant_id,
             user=current_user,
             app_id=pipeline.id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+            files=self._files,
         )
         repository.save(workflow_node_execution)
 
         # Convert node_execution to WorkflowNodeExecution after save
-        workflow_node_execution_db_model = repository._to_db_model(workflow_node_execution)  # type: ignore
+        workflow_node_execution_db_model = self._node_execution_service_repo.get_execution_by_id(
+            workflow_node_execution.id
+        )
+        if workflow_node_execution_db_model is None:
+            raise ValueError("Workflow node execution not found")
 
         with sessionmaker(bind=db.engine).begin() as session:
             draft_var_saver = DraftVariableSaver(
@@ -1449,6 +1566,7 @@ class RagPipelineService:
                 enclosing_node_id=enclosing_node_id,
                 node_execution_id=workflow_node_execution.id,
                 user=current_user,
+                files=self._files,
             )
             draft_var_saver.save(
                 process_data=workflow_node_execution.process_data,
@@ -1512,7 +1630,12 @@ class RagPipelineService:
         }
 
     def retry_error_document(
-        self, dataset: Dataset, document: Document, user: Account | EndUser, *, generator: PipelineGenerator
+        self,
+        dataset: Dataset,
+        document: Document,
+        user: Account | EndUser,
+        *,
+        generator: PipelineGenerator,
     ):
         """
         Retry error document

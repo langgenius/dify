@@ -37,6 +37,7 @@ type ApiJob = {
 
 const strictZodSchemaNames = new Set([
   'AccountProfilePatchPayload',
+  'ExternalHitTestingRecordResponse',
   'Parameters',
   'AppTextInputPayload',
   'AppSelectInputPayload',
@@ -305,6 +306,10 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
         object: (ctx) => {
           const objectSchema = ctx.nodes.base(ctx)
           const additionalProperties = ctx.schema.additionalProperties
+          // Scraped pages retain provider-specific fields in the backend response.
+          if (ctx.path['~ref'].some((segment) => segment === 'ScrapedPage'))
+            return objectSchema.attr('passthrough').call()
+
           // Shaped objects otherwise discard the backend's typed JSON extensions.
           if (
             additionalProperties &&

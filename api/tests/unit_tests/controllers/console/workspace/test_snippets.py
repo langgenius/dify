@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
@@ -8,7 +9,7 @@ import pytest
 from flask import Flask
 from pydantic import ValidationError
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.console.workspace import snippets as snippets_module
@@ -18,6 +19,27 @@ from services.snippet_dsl_service import ImportStatus, SnippetImportInfo
 from services.tag_application_service import TagApplicationService
 from tests.helpers.unit.controllers.error_body import raised_error
 from tests.helpers.unit.model_factories import make_account
+from tests.unit_tests.services.snippet_test_utils import make_snippet_service
+
+
+@dataclass(frozen=True)
+class _SnippetApplicationServices:
+    snippets: object
+    tags: object
+
+
+@pytest.fixture(autouse=True)
+def snippet_application_services(
+    application_tags: object,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    """Expose the composed snippet service through the controller boundary."""
+    services = _SnippetApplicationServices(
+        snippets=make_snippet_service(sqlite_session_factory),
+        tags=application_tags,
+    )
+    monkeypatch.setattr(snippets_module, "application_services", lambda: services)
 
 
 def _account(account_id: str = "account-1") -> Account:

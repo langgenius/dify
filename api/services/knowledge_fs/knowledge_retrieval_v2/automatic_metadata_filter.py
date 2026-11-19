@@ -22,15 +22,6 @@ from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
 from core.prompt.simple_prompt_transform import ModelMode
-from core.rag.retrieval.template_prompts import (
-    METADATA_FILTER_ASSISTANT_PROMPT_1,
-    METADATA_FILTER_ASSISTANT_PROMPT_2,
-    METADATA_FILTER_COMPLETION_PROMPT,
-    METADATA_FILTER_SYSTEM_PROMPT,
-    METADATA_FILTER_USER_PROMPT_1,
-    METADATA_FILTER_USER_PROMPT_2,
-    METADATA_FILTER_USER_PROMPT_3,
-)
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
     PromptMessage,
@@ -40,6 +31,15 @@ from graphon.model_runtime.entities.message_entities import (
 from graphon.nodes.llm.entities import ModelConfig
 from graphon.nodes.llm.protocols import CredentialsProvider
 from libs.json_in_md_parser import parse_and_check_json_markdown
+from services.knowledge.retrieval.template_prompts import (
+    METADATA_FILTER_ASSISTANT_PROMPT_1,
+    METADATA_FILTER_ASSISTANT_PROMPT_2,
+    METADATA_FILTER_COMPLETION_PROMPT,
+    METADATA_FILTER_SYSTEM_PROMPT,
+    METADATA_FILTER_USER_PROMPT_1,
+    METADATA_FILTER_USER_PROMPT_2,
+    METADATA_FILTER_USER_PROMPT_3,
+)
 from services.knowledge_fs.retrieval_contracts import (
     KnowledgeFSMetadataFieldResponse,
     KnowledgeFSRetrievalCustomMetadataCondition,

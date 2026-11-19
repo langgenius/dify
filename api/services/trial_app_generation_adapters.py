@@ -22,8 +22,14 @@ logger = logging.getLogger(__name__)
 
 
 class AppGenerateServiceRuntime(TrialAppGenerationRuntime):
-    def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
+    def __init__(
+        self,
+        *,
+        session_factory: sessionmaker[Session],
+        app_generation: AppGenerateService,
+    ) -> None:
         self._session_factory: sessionmaker[Session] = session_factory
+        self._app_generation = app_generation
 
     @override
     def generate(
@@ -46,7 +52,7 @@ class AppGenerateServiceRuntime(TrialAppGenerationRuntime):
             # Release context reads before quota/provider I/O. Legacy generation
             # receives its own session, never the admission or usage transaction.
             with self._session_factory(expire_on_commit=False) as session:
-                generated_response: GenerationResponse = AppGenerateService.generate(
+                generated_response: GenerationResponse = self._app_generation.generate(
                     app_model=app_model,
                     user=account,
                     args=args,

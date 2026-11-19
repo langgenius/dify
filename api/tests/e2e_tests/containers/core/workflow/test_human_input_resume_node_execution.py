@@ -16,6 +16,7 @@ from core.workflow.nodes.human_input.callback import (
 from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.system_variables import build_system_variables
+from enums.creator import CreatorUserRole
 from graphon.engine import Engine
 from graphon.engine.command import InMemoryChannel
 from graphon.enums import WorkflowType
@@ -30,11 +31,12 @@ from graphon.runtime import RuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.account import AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import WorkflowRunTriggeredFrom
 from models.human_input import HumanInputDelivery, HumanInputForm, HumanInputFormRecipient
 from models.model import App, AppMode, IconType
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from models.workflow import WorkflowType as ModelWorkflowType
+from services.file_adapters import build_file_service
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from services.workflow_run_index import WorkflowRunIndex
 from tests.workflow_test_utils import build_test_graph_init_params
@@ -261,6 +263,7 @@ class TestHumanInputResumeNodeExecutionIntegration:
         )
         node_execution_repo = SQLAlchemyWorkflowNodeExecutionRepository(
             session_factory=session_factory,
+            files=build_file_service(session_factory=session_factory),
             tenant_id=self.tenant.id,
             user=self.account,
             app_id=self.app.id,

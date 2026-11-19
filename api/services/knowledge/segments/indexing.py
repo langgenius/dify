@@ -16,15 +16,17 @@ from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.processor.paragraph_index_processor import ParagraphIndexProcessor
 from core.rag.index_processor.processor.parent_child_index_processor import ParentChildIndexProcessor
 from core.rag.models.document import Document
+from core.workflow.file_reference import build_file_reference
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.datetime_utils import naive_utc_now
 from models.enums import SegmentType
 from repositories.knowledge.segment_repository import SegmentIndexingSnapshot, SQLAlchemySegmentRepository
 from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
+from services.knowledge.entities.resource_scope import DocumentRef, SegmentRef
 from services.knowledge.entities.segments import ChildChunkRecord
-from services.knowledge.resource_scope import DocumentRef, SegmentRef
 from services.knowledge.segments.adapters import RedisSegmentClient
-from services.knowledge.segments.application import ChildChunkState, SegmentDatasetRecord, SegmentIndexTarget
+from services.knowledge.segments.contracts import ChildChunkState, SegmentDatasetRecord, SegmentIndexTarget
 from services.knowledge.summaries.adapters import SummaryIndexAdapter
 
 logger = logging.getLogger(__name__)
@@ -51,15 +53,18 @@ class SegmentIndexingGateway:
         self._disable_task = disable_task
 
     def count_tokens(self, dataset: SegmentDatasetRecord, text: str) -> int:
+        return self.count_tokens_many(dataset, [text])[0]
+
+    def count_tokens_many(self, dataset: SegmentDatasetRecord, texts: Sequence[str]) -> list[int]:
         if dataset.indexing_technique != "high_quality":
-            return 0
+            return [0] * len(texts)
         model = ModelManager.for_tenant(tenant_id=dataset.workspace_id).get_model_instance(
             tenant_id=dataset.workspace_id,
             provider=dataset.embedding_model_provider or "",
             model_type=ModelType.TEXT_EMBEDDING,
             model=dataset.embedding_model or "",
         )
-        return model.get_text_embedding_num_tokens(texts=[text])[0]
+        return model.get_text_embedding_num_tokens(texts=list(texts))
 
     @staticmethod
     def _vector(snapshot: SegmentIndexingSnapshot) -> Vector:
@@ -78,6 +83,23 @@ class SegmentIndexingGateway:
                 "doc_type": DocType.TEXT,
             },
         )
+
+    def _summary_images(self, segment_ref: SegmentRef) -> list[File]:
+        return [
+            File(
+                file_id=file.id,
+                filename=file.name,
+                extension=f".{file.extension}",
+                mime_type=file.mime_type,
+                file_type=FileType.IMAGE,
+                transfer_method=FileTransferMethod.LOCAL_FILE,
+                remote_url=file.source_url,
+                reference=build_file_reference(record_id=file.id),
+                size=file.size,
+                storage_key=file.storage_key,
+            )
+            for file in self._segments.get_summary_image_files(segment_ref)
+        ]
 
     @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
     def create_many(
@@ -113,13 +135,15 @@ class SegmentIndexingGateway:
                 )
             ]
             if attachments and first.dataset.indexing_technique == "high_quality":
-                self._vector(first).create_multimodal(attachments, upload_files=files)
+                self._vector(first).create_multimodal(
+                    attachments, upload_file_keys={file_id: file.key for file_id, file in files.items()}
+                )
 
     @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
     def create(self, segment_ref: SegmentRef, *, keywords: Sequence[str] | None, attachment_ids: Sequence[str]) -> None:
         snapshot = self._segments.get_indexing_snapshot(segment_ref)
         files = self._uploads.get_files(workspace_id=segment_ref.document.dataset.tenant_id, file_ids=attachment_ids)
-        self._segments.replace_attachments(segment_ref, tuple(files))
+        self._segments.replace_attachments(segment_ref, attachment_ids)
         if snapshot.document.doc_form == "hierarchical_model":
             self._regenerate_children(segment_ref, snapshot, replace_existing=False)
         elif snapshot.dataset.indexing_technique == "high_quality":
@@ -128,7 +152,8 @@ class SegmentIndexingGateway:
             self._update_keywords(segment_ref, snapshot, keywords, replace_existing=False)
         if files and snapshot.dataset.is_multimodal:
             self._vector(snapshot).create_multimodal(
-                self._attachment_documents(snapshot, files.values()), upload_files=files
+                self._attachment_documents(snapshot, files.values()),
+                upload_file_keys={file_id: file.key for file_id, file in files.items()},
             )
 
     @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
@@ -226,10 +251,37 @@ class SegmentIndexingGateway:
         for child in (*updated, *deleted):
             assert child.index_node_id is not None
             deleted_ids.append(child.index_node_id)
-        if deleted_ids:
-            vector.delete_by_ids(deleted_ids)
-        if documents:
-            vector.add_texts(documents, duplicate_check=True)
+        previous = self._segments.get_children(segment_ref) or ()
+        previous_documents = [
+            Document(
+                page_content=child.data.content,
+                metadata={
+                    "doc_id": child.index_node_id,
+                    "doc_hash": child.index_node_hash,
+                    "document_id": segment_ref.document.document_id,
+                    "dataset_id": segment_ref.document.dataset.dataset_id,
+                },
+            )
+            for child in previous
+            if child.index_node_id in deleted_ids
+        ]
+        attempted_ids = [str(document.metadata["doc_id"]) for document in documents]
+        try:
+            if deleted_ids:
+                vector.delete_by_ids(deleted_ids)
+            if documents:
+                vector.add_texts(documents, duplicate_check=True)
+        except Exception:
+            # A failed add may already have written a subset of its nodes.
+            # Rebuild the previously published representation before returning.
+            try:
+                if attempted_ids:
+                    vector.delete_by_ids(attempted_ids)
+                if previous_documents:
+                    vector.add_texts(previous_documents, duplicate_check=True)
+            except Exception:
+                logger.exception("Failed to restore child vectors after publication failure: %s", segment_ref)
+            raise
 
     @staticmethod
     def _attachment_documents(snapshot: SegmentIndexingSnapshot, files) -> list[Document]:
@@ -252,14 +304,19 @@ class SegmentIndexingGateway:
         snapshot = self._segments.get_indexing_snapshot(segment_ref)
         if snapshot.dataset.indexing_technique != "high_quality" or set(snapshot.attachment_ids) == set(attachment_ids):
             return
+        self._segments.replace_attachments(segment_ref, attachment_ids)
         files = self._uploads.get_files(workspace_id=snapshot.dataset.tenant_id, file_ids=attachment_ids)
-        if snapshot.dataset.is_multimodal:
-            vector = self._vector(snapshot)
-            if snapshot.attachment_ids:
-                vector.delete_by_ids(list(snapshot.attachment_ids))
-            if files:
-                vector.create_multimodal(self._attachment_documents(snapshot, files.values()), upload_files=files)
-        self._segments.replace_attachments(segment_ref, tuple(files))
+        # Attachment vectors use the physical attachment id as their
+        # dataset-wide identity and may be shared by multiple bindings. An
+        # owner-level replacement has no exclusion boundary with other binding
+        # writers, so it must not delete the physical vector. The current
+        # binding graph filters removed attachments on reads; a whole-dataset
+        # index cleanup owns physical vector reclamation.
+        if snapshot.dataset.is_multimodal and files:
+            self._vector(snapshot).create_multimodal(
+                self._attachment_documents(snapshot, files.values()),
+                upload_file_keys={file_id: file.key for file_id, file in files.items()},
+            )
 
     def update_summary(self, segment_ref: SegmentRef, *, summary: str | None, content_changed: bool) -> None:
         if summary is None and not content_changed:
@@ -279,7 +336,7 @@ class SegmentIndexingGateway:
                     snapshot.segment.content,
                     setting,
                     document_language=snapshot.document.doc_language,
-                    image_loader=lambda: self._segments.get_summary_images(segment_ref),
+                    image_loader=lambda: self._summary_images(segment_ref),
                 )
                 if not summary.strip():
                     raise ValueError("Generated summary is empty")
@@ -287,12 +344,13 @@ class SegmentIndexingGateway:
                 self._segments.save_summary(segment_ref, previous.summary_content or "", error=str(error))
                 raise
         if not summary.strip():
-            if previous and previous.summary_index_node_id:
+            previous_node_id = previous.summary_index_node_id if previous else None
+            self._segments.save_summary(segment_ref, None)
+            if previous_node_id:
                 try:
-                    self._vector(snapshot).delete_by_ids([previous.summary_index_node_id])
+                    self._vector(snapshot).delete_by_ids([previous_node_id])
                 except Exception:
                     logger.exception("Failed to delete summary vector for %s", segment_ref.segment_id)
-            self._segments.save_summary(segment_ref, None)
             return
         record = self._segments.save_summary(segment_ref, summary)
         assert record is not None

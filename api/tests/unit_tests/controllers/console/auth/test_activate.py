@@ -29,7 +29,6 @@ from services.account_errors import (
     FrozenAccountError,
     InvalidInvitationError,
     InvitationAccountMismatchError,
-    InvitationWorkspaceFullError,
 )
 from services.entities.account_activation_entities import (
     ActivationCheckData,
@@ -37,6 +36,7 @@ from services.entities.account_activation_entities import (
     ActivationCommand,
     InvitationLookup,
 )
+from services.errors.workspace import WorkspaceInvitationQuotaError
 
 
 @pytest.fixture
@@ -216,7 +216,8 @@ class TestActivateApi:
             (InvitationAccountMismatchError(), InvitationAccountMismatchHTTPError),
             (FrozenAccountError(), AccountInFreezeError),
             (EmailDomainSuspendedRegistrationError(), EmailDomainSuspendedHTTPError),
-            (InvitationWorkspaceFullError(), InvitationWorkspaceMemberLimitError),
+            (WorkspaceInvitationQuotaError(), InvitationWorkspaceMemberLimitError),
+            (WorkspaceInvitationQuotaError(seats=True), InvitationWorkspaceMemberLimitError),
         ],
     )
     def test_translates_application_errors(

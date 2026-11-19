@@ -3,26 +3,24 @@
 import logging
 import re
 import uuid
+from collections.abc import Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, TypedDict, override
 
-import pandas as pd
 from flask import Flask
 from flask.globals import app_ctx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.datastructures import FileStorage
 
 from core.app.apps.exc import ModerationInvocationError
 from core.entities.knowledge_entities import PreviewDetail
 from core.llm_generator.llm_generator import LLMGenerator
+from core.model_manager import ModelInstance
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.embedding.token_counter import calculate_segment_token_counts
 from core.rag.entities import Rule
-from core.rag.extractor.entity.extract_setting import ExtractSetting
-from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor, SummaryIndexSettingDict
 from core.rag.models.document import AttachmentDocument, Document, QAStructureChunk
@@ -44,38 +42,38 @@ class QAFormatPreviewDict(TypedDict):
 
 class QAIndexProcessor(BaseIndexProcessor):
     @override
-    def extract(self, extract_setting: ExtractSetting, *, session: Session, **kwargs) -> list[Document]:
-        text_docs = ExtractProcessor.extract(
-            extract_setting=extract_setting,
-            is_automatic=(
-                kwargs.get("process_rule_mode") == "automatic" or kwargs.get("process_rule_mode") == "hierarchical"
-            ),
-            session=session,
-        )
-        return text_docs
-
-    @override
     def transform(
-        self, documents: list[Document], current_user: Account | None = None, *, session: Session, **kwargs
+        self,
+        documents: list[Document],
+        current_user: Account | None = None,
+        *,
+        process_rule: Mapping[str, object],
+        tenant_id: str,
+        on_upload_file_created: Callable[[str], None],
+        session: Session,
+        embedding_model_instance: ModelInstance | None = None,
+        doc_language: str = "English",
+        preview: bool = False,
     ) -> list[Document]:
         """Generate QA chunks, propagating moderation failures from preview and bounded workers.
 
         No partial result is returned after a failed moderation check. Ordinary
         generation failures retain the formatter's existing best-effort behavior.
         """
-        preview = kwargs.get("preview")
-        process_rule = kwargs.get("process_rule")
         if not process_rule:
             raise ValueError("No process rule found.")
+        mode = process_rule.get("mode")
+        if not isinstance(mode, str):
+            raise ValueError("Invalid process rule mode.")
         if not process_rule.get("rules"):
             raise ValueError("No rules found in process rule.")
         rules = Rule.model_validate(process_rule.get("rules"))
         splitter = self._get_splitter(
-            processing_rule_mode=process_rule.get("mode"),
+            processing_rule_mode=mode,
             max_tokens=rules.segmentation.max_tokens if rules.segmentation else 0,
             chunk_overlap=rules.segmentation.chunk_overlap if rules.segmentation else 0,
             separator=rules.segmentation.separator if rules.segmentation else "",
-            embedding_model_instance=kwargs.get("embedding_model_instance"),
+            embedding_model_instance=embedding_model_instance,
         )
 
         # Split the text documents into nodes.
@@ -83,7 +81,7 @@ class QAIndexProcessor(BaseIndexProcessor):
         all_qa_documents: list[Document] = []
         for document in documents:
             # document clean
-            document_text = CleanProcessor.clean(document.page_content, kwargs.get("process_rule") or {})
+            document_text = CleanProcessor.clean(document.page_content, dict(process_rule))
             document.page_content = document_text
 
             # parse document to nodes
@@ -101,7 +99,6 @@ class QAIndexProcessor(BaseIndexProcessor):
                     document_node.page_content = remove_leading_symbols(page_content)
                     split_documents.append(document_node)
             all_documents.extend(split_documents)
-        tenant_id = kwargs.get("tenant_id")
         if not isinstance(tenant_id, str) or not tenant_id:
             raise ValueError("tenant_id is required for QA generation")
         flask_app = app_ctx.app
@@ -111,7 +108,7 @@ class QAIndexProcessor(BaseIndexProcessor):
                 tenant_id,
                 all_documents[0],
                 all_qa_documents,
-                kwargs.get("doc_language", "English"),
+                doc_language,
             )
         else:
             with ThreadPoolExecutor(max_workers=10) as executor:
@@ -123,32 +120,13 @@ class QAIndexProcessor(BaseIndexProcessor):
                             tenant_id,
                             document,
                             all_qa_documents,
-                            kwargs.get("doc_language", "English"),
+                            doc_language,
                         )
                         for document in all_documents[start : start + 10]
                     ]
                     for future in futures:
                         future.result()
         return all_qa_documents
-
-    def format_by_template(self, file: FileStorage, **kwargs) -> list[Document]:
-        # check file type
-        if not file.filename or not file.filename.lower().endswith(".csv"):
-            raise ValueError("Invalid file type. Only CSV files are allowed")
-
-        try:
-            # Skip the first row
-            df = pd.read_csv(file)  # type: ignore
-            text_docs = []
-            for _, row in df.iterrows():
-                data = Document(page_content=row.iloc[0], metadata={"answer": row.iloc[1]})
-                text_docs.append(data)
-            if len(text_docs) == 0:
-                raise ValueError("The CSV file is empty.")
-
-        except Exception as e:
-            raise ValueError(str(e)) from e
-        return text_docs
 
     @override
     def load(
@@ -159,7 +137,6 @@ class QAIndexProcessor(BaseIndexProcessor):
         with_keywords: bool = True,
         *,
         session: Session,
-        **kwargs,
     ) -> None:
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             vector = Vector(dataset, session=session)
@@ -169,14 +146,21 @@ class QAIndexProcessor(BaseIndexProcessor):
 
     @override
     def clean(
-        self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, *, session: Session, **kwargs
+        self,
+        dataset: Dataset,
+        node_ids: list[str] | None,
+        with_keywords: bool = True,
+        *,
+        session: Session,
+        delete_summaries: bool = False,
+        delete_child_chunks: bool = False,
+        precomputed_child_node_ids: list[str] | None = None,
     ) -> None:
         # Note: Summary indexes are now disabled (not deleted) when segments are disabled.
         # This method is called for actual deletion scenarios (e.g., when segment is deleted).
         # For disable operations, disable_summaries_for_segments is called directly in the task.
         # Note: qa_model doesn't generate summaries, but we clean them for completeness
         # Only delete summaries if explicitly requested (e.g., when segment is actually deleted)
-        delete_summaries = kwargs.get("delete_summaries", False)
         if delete_summaries:
             if node_ids:
                 # Find segments by index_node_id

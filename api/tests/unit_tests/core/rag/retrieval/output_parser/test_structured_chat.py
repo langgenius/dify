@@ -2,8 +2,8 @@ import json
 
 import pytest
 
-from core.rag.retrieval.output_parser.react_output import ReactAction, ReactFinish
-from core.rag.retrieval.output_parser.structured_chat import StructuredChatOutputParser
+from services.knowledge.retrieval.react_output import ReactAction, ReactFinish
+from services.knowledge.retrieval.structured_chat import StructuredChatOutputParser
 
 
 class TestStructuredChatOutputParser:

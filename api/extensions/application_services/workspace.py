@@ -1,6 +1,7 @@
 """Compose workspace use cases with the shared account and workspace repositories."""
 
 from dataclasses import dataclass
+from functools import partial
 
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -12,6 +13,7 @@ from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepositor
 from repositories.workspace.resource_cleanup_repository import WorkspaceResourceCleanupRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.account.adapters import RedisInvitationTokenStore
+from services.api_token_service import ApiTokenCache
 from services.file_service import FileService
 from services.plugin.plugin_parameter_gateway import DaemonPluginParameterGateway
 from services.plugin.plugin_parameter_service import PluginParameterService, PluginParameterSubscriptions
@@ -23,6 +25,7 @@ from services.workspace.gateways import (
     DeploymentWorkspaceMemberAccessGateway,
     DeploymentWorkspaceMemberRoleResolver,
     DeploymentWorkspacePlanGateway,
+    RedisWorkspaceQuotaGuard,
     WorkspaceFileGateway,
     WorkspaceIdentityGateway,
     WorkspaceInvitationGateway,
@@ -66,7 +69,7 @@ def build_workspace_membership_services(
     members = WorkspaceMemberService(
         workspaces=workspaces,
         accounts=accounts,
-        access=DeploymentWorkspaceMemberAccessGateway(),
+        access=DeploymentWorkspaceMemberAccessGateway(invitations=invitation_tokens),
         invitation_links=WorkspaceInvitationGateway(tokens=invitation_tokens, redis=redis),
     )
     provisioning = WorkspaceProvisioningService(
@@ -74,6 +77,7 @@ def build_workspace_membership_services(
         provisioning=workspaces,
         effects=WorkspaceProvisioningEffectsGateway(),
         policies=DeploymentWorkspaceCreationPolicy(),
+        quota_guard=RedisWorkspaceQuotaGuard(redis=redis),
         memberships=workspaces,
         members=members,
     )
@@ -90,7 +94,7 @@ def build_workspace_services(
     members: WorkspaceMemberService,
     provisioning: WorkspaceProvisioningService,
     registration: InvitedAccountRegistration,
-    invitation_tokens: RedisInvitationTokenStore,
+    invitation_gateway: WorkspaceInvitationGateway,
     credentials: CredentialQueryRepository,
     trigger_subscriptions: PluginParameterSubscriptions,
     trigger_builders: TriggerSubscriptionBuilderQuery,
@@ -119,13 +123,16 @@ def build_workspace_services(
             accounts=registration,
             workspaces=workspaces,
             members=members,
-            invitations=WorkspaceInvitationGateway(tokens=invitation_tokens, redis=redis),
+            invitations=invitation_gateway,
         ),
         identity=WorkspaceIdentityGateway(workspaces=workspaces),
         resource_cleanup=WorkspaceResourceCleanupService(
             session_factory=database_client,
             apps=ConsoleAppRepository(session_factory=database_client),
-            datasets=SQLAlchemyDatasetRepository(session_factory=database_client),
+            datasets=SQLAlchemyDatasetRepository(
+                session_factory=database_client,
+                revoke_keys_after_commit=partial(ApiTokenCache.delete_after_commit, scope="dataset"),
+            ),
             agent_resources=WorkspaceResourceCleanupRepository(session_factory=database_client),
         ),
         plugin_parameters=PluginParameterService(

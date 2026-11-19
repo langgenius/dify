@@ -44,12 +44,12 @@ from core.errors.error import (
 )
 from core.helper.trace_id_helper import get_external_trace_id, get_trace_session_id, omit_trace_session_id_from_payload
 from enums import CloudPlan, DeploymentEdition
+from extensions.ext_application_services import application_services
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.external_api import error_responses
 from libs.helper import UUIDStrOrEmpty
 from models.model import App, AppMode, EndUser
-from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.billing_service import BillingService
 from services.conversation_service import ConversationService
@@ -251,7 +251,7 @@ class CompletionApi(Resource):
         args["auto_generate_name"] = False
 
         try:
-            response = AppGenerateService.generate(
+            response = application_services().app_generation.generate(
                 session=session,
                 app_model=app_model,
                 user=end_user,
@@ -443,7 +443,7 @@ class ChatApi(Resource):
                     session=session,
                 )
 
-            response = AppGenerateService.generate(
+            response = application_services().app_generation.generate(
                 session=session,
                 app_model=app_model,
                 user=end_user,

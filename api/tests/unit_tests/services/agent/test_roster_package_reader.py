@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
 from configs import dify_config
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
 from models.agent import (
@@ -31,7 +32,7 @@ from models.agent import (
     AgentStatus,
 )
 from models.agent_config_entities import AgentSoulConfig
-from models.enums import AppStatus, CreatorUserRole, CustomizeTokenStrategy
+from models.enums import AppStatus, CustomizeTokenStrategy
 from models.model import App, AppMode, IconType, Site
 from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion, SkillVersionManifest
 from models.tools import ToolFile

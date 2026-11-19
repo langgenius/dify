@@ -12,9 +12,10 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowExecutionStatus
 from libs.archive_storage import ArchiveStorage
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowArchiveLog, WorkflowRun
 from models.workflow import WorkflowType as ModelWorkflowType
 from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_NAME, ARCHIVE_SCHEMA_VERSION

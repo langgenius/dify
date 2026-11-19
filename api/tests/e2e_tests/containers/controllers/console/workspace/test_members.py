@@ -295,13 +295,19 @@ class TestOwnerTransferApiWithContainers:
             role=TenantAccountRole.NORMAL,
         )
         token = factory.create_owner_transfer_token(current_user)
+        tenant_id = tenant.id
+        tenant_name = tenant.name
+        current_user_id = current_user.id
+        current_user_email = current_user.email
+        member_id = member.id
+        member_email = member.email
 
         with (
             flask_app_with_containers.test_request_context("/", json={"token": token}),
             patch.object(gateways.send_new_owner_transfer_notify_email_task, "delay") as notify_new,
             patch.object(gateways.send_old_owner_transfer_notify_email_task, "delay") as notify_old,
         ):
-            result = method(api, RequestContext("test", None, current_user.id, tenant.id), member.id)
+            result = method(api, RequestContext("test", None, current_user_id, tenant_id), member_id)
 
         assert result["result"] == "success"
         assert (
@@ -311,7 +317,15 @@ class TestOwnerTransferApiWithContainers:
             factory.get_join(db_session_with_containers, tenant=tenant, account=current_user).role
             == TenantAccountRole.NORMAL
         )
-        notify_new.assert_called_once_with(language="en-US", to=member.email, workspace=tenant.name)
+
+        notify_new.assert_called_once_with(
+            language="en-US",
+            to=member_email,
+            workspace=tenant_name,
+        )
         notify_old.assert_called_once_with(
-            language="en-US", to=current_user.email, workspace=tenant.name, new_owner_email=member.email
+            language="en-US",
+            to=current_user_email,
+            workspace=tenant_name,
+            new_owner_email=member_email,
         )

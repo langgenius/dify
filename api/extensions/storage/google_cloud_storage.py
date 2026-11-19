@@ -3,6 +3,7 @@ import io
 from collections.abc import Generator
 from typing import Any, override
 
+from google.api_core.exceptions import NotFound
 from google.cloud import storage as google_cloud_storage  # type: ignore
 from pydantic import TypeAdapter
 
@@ -70,9 +71,14 @@ class GoogleCloudStorage(BaseStorage):
         return blob.exists()
 
     @override
-    def delete(self, filename: str):
-        bucket = self.client.get_bucket(self.bucket_name)
-        bucket.delete_blob(filename)
+    def delete(self, filename: str) -> None:
+        try:
+            bucket = self.client.get_bucket(self.bucket_name)
+            bucket.delete_blob(filename)
+        except NotFound:
+            # Storage deletion is idempotent. Callers use it for retryable
+            # compensation after an ambiguous provisioning response.
+            return
 
     @override
     def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:

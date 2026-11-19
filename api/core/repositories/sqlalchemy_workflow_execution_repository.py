@@ -4,25 +4,28 @@ SQLAlchemy implementation of the WorkflowExecutionRepository.
 
 import json
 import logging
-from typing import override
+from collections.abc import Callable
+from typing import TypeVar, override
 
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
-from core.repositories.factory import WorkflowExecutionRepository
+from enums.creator import CreatorUserRole
 from graphon.entities import WorkflowExecution
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import (
     Account,
-    CreatorUserRole,
     EndUser,
     WorkflowRun,
 )
 from models.enums import WorkflowRunTriggeredFrom
 from repositories.entities.workflow_execution import WorkflowExecution as TimedWorkflowExecution
+from repositories.workflow.upload_file_references import lock_new_workflow_upload_file_references
+from services.workflow.persistence import WorkflowExecutionRepository
 
 logger = logging.getLogger(__name__)
+_SaveResult = TypeVar("_SaveResult")
 
 
 class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
@@ -195,6 +198,24 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
         Args:
             execution: The WorkflowExecution domain entity to persist
         """
+        self._save(execution)
+
+    def save_with_model_callback(
+        self,
+        execution: WorkflowExecution,
+        callback: Callable[[Session, WorkflowRun], _SaveResult],
+    ) -> _SaveResult:
+        """Persist and invoke a thin hook on the exact model being committed."""
+        result = self._save(execution, callback)
+        if result is None:
+            raise AssertionError("workflow execution save callback did not return a result")
+        return result
+
+    def _save(
+        self,
+        execution: WorkflowExecution,
+        callback: Callable[[Session, WorkflowRun], _SaveResult] | None = None,
+    ) -> _SaveResult | None:
         # Convert domain model to database model using tenant context and other attributes
         db_model = self._to_db_model(execution)
 
@@ -209,20 +230,36 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
                     existing_model.stop_requested_at is not None
                     and existing_model.status == WorkflowExecutionStatus.STOPPED
                 ):
-                    return
+                    result = callback(session, existing_model) if callback is not None else None
+                    session.commit()
+                    self._execution_cache[existing_model.id] = existing_model
+                    return result
                 # Preserve the original start time for pause/resume flows.
                 db_model.created_at = existing_model.created_at
                 # The control repository owns these fields. Dataclass defaults must not clear them on merge.
                 db_model.task_id = existing_model.task_id
                 db_model.stop_requested_at = existing_model.stop_requested_at
 
+            lock_new_workflow_upload_file_references(
+                session,
+                tenant_id=self._tenant_id,
+                previous_payloads=(
+                    existing_model.graph if existing_model is not None else None,
+                    existing_model.inputs if existing_model is not None else None,
+                    existing_model.outputs if existing_model is not None else None,
+                ),
+                current_payloads=(db_model.graph, db_model.inputs, db_model.outputs),
+            )
+
             # SQLAlchemy merge intelligently handles both insert and update operations
             # based on the presence of the primary key
-            session.merge(db_model)
+            persisted_model = session.merge(db_model)
+            result = callback(session, persisted_model) if callback is not None else None
             session.commit()
 
             # Update the in-memory cache for faster subsequent lookups
-            self._execution_cache[db_model.id] = db_model
+            self._execution_cache[persisted_model.id] = persisted_model
+            return result
 
     @override
     def save_synchronously(self, execution: WorkflowExecution) -> None:

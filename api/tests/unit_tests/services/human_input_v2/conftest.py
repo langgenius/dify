@@ -12,9 +12,9 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import ConnectionPoolEntry
 
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import naive_utc_now
-from models import CreatorUserRole
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import WorkflowRunTriggeredFrom
 from models.human_input_v2 import ContactSubjectType, HumanInputContactIdentity

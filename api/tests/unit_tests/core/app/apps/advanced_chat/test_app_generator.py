@@ -11,7 +11,7 @@ from decimal import Decimal
 from functools import partial
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
 from dify_trace_sdk.emitter import TraceScope
@@ -91,10 +91,12 @@ from models.workflow import WorkflowType
 from repositories.human_input_v2.form_repository import Form, FormCreateParams
 from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
 from services.errors.conversation import ConversationNotExistsError
+from services.file_service import UploadFileCreator
 from services.human_input_v2.submission_service import HumanInputSubmissionService
 from services.workflow_run_agg import WorkflowRunAgg
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_upload_file
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -282,7 +284,9 @@ def _stub_advanced_chat_generate_pipeline(
 
 class TestAdvancedChatAppGeneratorValidation:
     def test_generate_requires_query(self, unbound_session: Session):
-        generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+        generator = AdvancedChatAppGenerator(
+            execution_driver=WorkflowRunAgg.run, knowledge_retrieval=make_knowledge_retriever()
+        )
 
         with pytest.raises(ValueError, match="query is required"):
             generator.generate(
@@ -297,7 +301,9 @@ class TestAdvancedChatAppGeneratorValidation:
             )
 
     def test_generate_requires_string_query(self, unbound_session: Session):
-        generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+        generator = AdvancedChatAppGenerator(
+            execution_driver=WorkflowRunAgg.run, knowledge_retrieval=make_knowledge_retriever()
+        )
 
         with pytest.raises(ValueError, match="query must be a string"):
             generator.generate(
@@ -312,7 +318,9 @@ class TestAdvancedChatAppGeneratorValidation:
             )
 
     def test_single_iteration_generate_validates_args(self, unbound_session: Session):
-        generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+        generator = AdvancedChatAppGenerator(
+            execution_driver=WorkflowRunAgg.run, knowledge_retrieval=make_knowledge_retriever()
+        )
 
         with pytest.raises(ValueError, match="node_id is required"):
             generator.single_iteration_generate(
@@ -337,7 +345,9 @@ class TestAdvancedChatAppGeneratorValidation:
             )
 
     def test_single_loop_generate_validates_args(self, unbound_session: Session):
-        generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+        generator = AdvancedChatAppGenerator(
+            execution_driver=WorkflowRunAgg.run, knowledge_retrieval=make_knowledge_retriever()
+        )
 
         with pytest.raises(ValueError, match="node_id is required"):
             generator.single_loop_generate(
@@ -377,7 +387,9 @@ class TestAdvancedChatAppGeneratorInternals:
     def test_generate_loads_conversation_and_files(
         self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session, sqlite_engine: _app_generator_Engine
     ):
-        generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+        generator = AdvancedChatAppGenerator(
+            execution_driver=WorkflowRunAgg.run, knowledge_retrieval=make_knowledge_retriever()
+        )
         app_config = self._build_app_config()
 
         conversation = _make_conversation()
@@ -404,11 +416,11 @@ class TestAdvancedChatAppGeneratorInternals:
             lambda **kwargs: app_config,
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+            "core.app.apps.advanced_chat.app_generator.WorkflowRepositoryFactory.create_workflow_execution_repository",
             lambda **kwargs: SimpleNamespace(),
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+            "core.app.apps.advanced_chat.app_generator.WorkflowRepositoryFactory.create_workflow_node_execution_repository",
             lambda **kwargs: SimpleNamespace(),
         )
         monkeypatch.setattr(
@@ -471,7 +483,9 @@ class TestAdvancedChatAppGeneratorInternals:
         assert application_generate_entity.extras["trace_session_id"] == "session-1"
 
     def test_resume_delegates_to_generate(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
-        generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+        generator = AdvancedChatAppGenerator(
+            execution_driver=WorkflowRunAgg.run, knowledge_retrieval=make_knowledge_retriever()
+        )
         existing_trace_scope = _trace_scope()
         application_generate_entity = AdvancedChatAppGenerateEntity.model_construct(
             task_id="task",
@@ -520,7 +534,9 @@ class TestAdvancedChatAppGeneratorInternals:
     def test_single_iteration_generate_builds_debug_task(
         self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session, sqlite_engine: _app_generator_Engine
     ):
-        generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+        generator = AdvancedChatAppGenerator(
+            execution_driver=WorkflowRunAgg.run, knowledge_retrieval=make_knowledge_retriever()
+        )
         app_config = self._build_app_config()
         captured: dict[str, object] = {}
         prefill_calls: list[object] = []
@@ -534,11 +550,11 @@ class TestAdvancedChatAppGeneratorInternals:
             lambda **kwargs: app_config,
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+            "core.app.apps.advanced_chat.app_generator.WorkflowRepositoryFactory.create_workflow_execution_repository",
             lambda **kwargs: SimpleNamespace(repo="execution"),
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+            "core.app.apps.advanced_chat.app_generator.WorkflowRepositoryFactory.create_workflow_node_execution_repository",
             lambda **kwargs: SimpleNamespace(repo="node"),
         )
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.DraftVarLoader", lambda **kwargs: var_loader)
@@ -583,7 +599,9 @@ class TestAdvancedChatAppGeneratorInternals:
     def test_single_loop_generate_builds_debug_task(
         self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session, sqlite_engine: _app_generator_Engine
     ):
-        generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+        generator = AdvancedChatAppGenerator(
+            execution_driver=WorkflowRunAgg.run, knowledge_retrieval=make_knowledge_retriever()
+        )
         app_config = self._build_app_config()
         captured: dict[str, object] = {}
         prefill_calls: list[object] = []
@@ -597,11 +615,11 @@ class TestAdvancedChatAppGeneratorInternals:
             lambda **kwargs: app_config,
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+            "core.app.apps.advanced_chat.app_generator.WorkflowRepositoryFactory.create_workflow_execution_repository",
             lambda **kwargs: SimpleNamespace(repo="execution"),
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+            "core.app.apps.advanced_chat.app_generator.WorkflowRepositoryFactory.create_workflow_node_execution_repository",
             lambda **kwargs: SimpleNamespace(repo="node"),
         )
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.DraftVarLoader", lambda **kwargs: var_loader)
@@ -646,7 +664,9 @@ class TestAdvancedChatAppGeneratorInternals:
     def test_generate_internal_flow_initial_conversation_with_pause_layer(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: _app_generator_Engine
     ):
-        generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+        generator = AdvancedChatAppGenerator(
+            execution_driver=WorkflowRunAgg.run, knowledge_retrieval=make_knowledge_retriever()
+        )
         generator._dialogue_count = 0
         app_config = self._build_app_config()
 
@@ -777,7 +797,9 @@ class TestAdvancedChatAppGeneratorInternals:
         single_run: str | None,
         expect_retire: bool,
     ) -> None:
-        generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+        generator = AdvancedChatAppGenerator(
+            execution_driver=WorkflowRunAgg.run, knowledge_retrieval=make_knowledge_retriever()
+        )
         app_config = self._build_app_config()
         entity_fields: dict[str, Any] = {
             "task_id": "task",
@@ -854,7 +876,9 @@ class TestAdvancedChatAppGeneratorInternals:
         sqlite_session: Session,
         sqlite_engine: _app_generator_Engine,
     ) -> None:
-        generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+        generator = AdvancedChatAppGenerator(
+            execution_driver=WorkflowRunAgg.run, knowledge_retrieval=make_knowledge_retriever()
+        )
         app_config = self._build_app_config()
         application_generate_entity = AdvancedChatAppGenerateEntity.model_construct(
             task_id="task",
@@ -916,7 +940,9 @@ class TestAdvancedChatAppGeneratorInternals:
         resuming: bool,
         sqlite_session_factory: sessionmaker[Session],
     ) -> None:
-        generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+        generator = AdvancedChatAppGenerator(
+            execution_driver=WorkflowRunAgg.run, knowledge_retrieval=make_knowledge_retriever()
+        )
         generator._dialogue_count = 0
         app_config = self._build_app_config()
         default_file = make_upload_file(tenant_id=app_config.tenant_id)
@@ -1084,7 +1110,9 @@ class TestAdvancedChatAppGeneratorInternals:
     def test_generate_worker_publishes_error_when_workflow_not_found(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: _app_generator_Engine
     ) -> None:
-        generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+        generator = AdvancedChatAppGenerator(
+            execution_driver=WorkflowRunAgg.run, knowledge_retrieval=make_knowledge_retriever()
+        )
         generator._dialogue_count = 1
         app_config = self._build_app_config()
 
@@ -1147,7 +1175,9 @@ class TestAdvancedChatAppGeneratorInternals:
     def test_generate_worker_publishes_error_when_app_not_found_for_internal_call(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: _app_generator_Engine
     ) -> None:
-        generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+        generator = AdvancedChatAppGenerator(
+            execution_driver=WorkflowRunAgg.run, knowledge_retrieval=make_knowledge_retriever()
+        )
         generator._dialogue_count = 1
         app_config = self._build_app_config()
 
@@ -1212,7 +1242,9 @@ class TestAdvancedChatAppGeneratorInternals:
     def test_generate_worker_handles_stopped_error(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: _app_generator_Engine
     ):
-        generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+        generator = AdvancedChatAppGenerator(
+            execution_driver=WorkflowRunAgg.run, knowledge_retrieval=make_knowledge_retriever()
+        )
         generator._dialogue_count = 1
         app_config = self._build_app_config()
 
@@ -1278,7 +1310,9 @@ class TestAdvancedChatAppGeneratorInternals:
     def test_generate_worker_handles_validation_error(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: _app_generator_Engine
     ):
-        generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+        generator = AdvancedChatAppGenerator(
+            execution_driver=WorkflowRunAgg.run, knowledge_retrieval=make_knowledge_retriever()
+        )
         generator._dialogue_count = 1
         app_config = self._build_app_config()
 
@@ -1368,7 +1402,9 @@ class TestAdvancedChatAppGeneratorInternals:
             return _Runner
 
         for raised_error in [ValueError("bad input"), RuntimeError("unexpected")]:
-            generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+            generator = AdvancedChatAppGenerator(
+                execution_driver=WorkflowRunAgg.run, knowledge_retrieval=make_knowledge_retriever()
+            )
             generator._dialogue_count = 1
             application_generate_entity = AdvancedChatAppGenerateEntity.model_construct(
                 task_id="task",
@@ -1415,7 +1451,9 @@ class TestAdvancedChatAppGeneratorInternals:
             queue_manager.publish_error.assert_called_once()
 
     def test_handle_response_closed_file_raises_stopped(self, monkeypatch: pytest.MonkeyPatch):
-        generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+        generator = AdvancedChatAppGenerator(
+            execution_driver=WorkflowRunAgg.run, knowledge_retrieval=make_knowledge_retriever()
+        )
         generator._dialogue_count = 1
 
         app_config = WorkflowUIBasedAppConfig(
@@ -1473,7 +1511,9 @@ class TestAdvancedChatAppGeneratorInternals:
     def test_handle_response_re_raises_value_error(
         self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
     ):
-        generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+        generator = AdvancedChatAppGenerator(
+            execution_driver=WorkflowRunAgg.run, knowledge_retrieval=make_knowledge_retriever()
+        )
         generator._dialogue_count = 1
         app_config = self._build_app_config()
         application_generate_entity = AdvancedChatAppGenerateEntity.model_construct(
@@ -1523,7 +1563,9 @@ class TestAdvancedChatAppGeneratorInternals:
     def test_generate_worker_handles_invoke_auth_error(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: _app_generator_Engine
     ):
-        generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+        generator = AdvancedChatAppGenerator(
+            execution_driver=WorkflowRunAgg.run, knowledge_retrieval=make_knowledge_retriever()
+        )
         generator._dialogue_count = 1
 
         app_config = WorkflowUIBasedAppConfig(
@@ -1595,7 +1637,9 @@ class TestAdvancedChatAppGeneratorInternals:
     def test_generate_debugger_enables_retrieve_source(
         self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session, sqlite_engine: _app_generator_Engine
     ):
-        generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+        generator = AdvancedChatAppGenerator(
+            execution_driver=WorkflowRunAgg.run, knowledge_retrieval=make_knowledge_retriever()
+        )
 
         app_config = WorkflowUIBasedAppConfig(
             tenant_id="tenant",
@@ -1615,11 +1659,11 @@ class TestAdvancedChatAppGeneratorInternals:
             lambda features_dict, is_vision=False: None,
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+            "core.app.apps.advanced_chat.app_generator.WorkflowRepositoryFactory.create_workflow_execution_repository",
             lambda **kwargs: SimpleNamespace(),
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+            "core.app.apps.advanced_chat.app_generator.WorkflowRepositoryFactory.create_workflow_node_execution_repository",
             lambda **kwargs: SimpleNamespace(),
         )
         monkeypatch.setattr(
@@ -1657,7 +1701,9 @@ class TestAdvancedChatAppGeneratorInternals:
     def test_generate_service_api_sets_parent_message_id(
         self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session, sqlite_engine: _app_generator_Engine
     ):
-        generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+        generator = AdvancedChatAppGenerator(
+            execution_driver=WorkflowRunAgg.run, knowledge_retrieval=make_knowledge_retriever()
+        )
 
         app_config = WorkflowUIBasedAppConfig(
             tenant_id="tenant",
@@ -1677,11 +1723,11 @@ class TestAdvancedChatAppGeneratorInternals:
             lambda features_dict, is_vision=False: None,
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+            "core.app.apps.advanced_chat.app_generator.WorkflowRepositoryFactory.create_workflow_execution_repository",
             lambda **kwargs: SimpleNamespace(),
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+            "core.app.apps.advanced_chat.app_generator.WorkflowRepositoryFactory.create_workflow_node_execution_repository",
             lambda **kwargs: SimpleNamespace(),
         )
         monkeypatch.setattr(
@@ -1730,7 +1776,9 @@ class TestAdvancedChatAppGeneratorResume:
     def test_resume_recreates_trace_scope_when_missing(
         self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
     ) -> None:
-        generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+        generator = AdvancedChatAppGenerator(
+            execution_driver=WorkflowRunAgg.run, knowledge_retrieval=make_knowledge_retriever()
+        )
         application_generate_entity = AdvancedChatAppGenerateEntity.model_construct(
             task_id="task",
             app_config=self._build_app_config(),
@@ -1789,7 +1837,9 @@ class TestAdvancedChatAppGeneratorResume:
     def test_resume_preserves_existing_trace_scope(
         self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
     ) -> None:
-        generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+        generator = AdvancedChatAppGenerator(
+            execution_driver=WorkflowRunAgg.run, knowledge_retrieval=make_knowledge_retriever()
+        )
         existing_trace_scope = _trace_scope()
         application_generate_entity = AdvancedChatAppGenerateEntity.model_construct(
             task_id="task",
@@ -1902,7 +1952,9 @@ def test_init_generate_records_sets_conversation_metadata(sqlite_session: Sessio
     app_config = _make_app_config()
     entity = _make_generate_entity(app_config)
 
-    generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+    generator = AdvancedChatAppGenerator(
+        execution_driver=WorkflowRunAgg.run, knowledge_retrieval=make_knowledge_retriever()
+    )
 
     conversation, _ = generator._init_generate_records(
         entity,
@@ -1941,7 +1993,9 @@ def test_init_generate_records_marks_existing_conversation(sqlite_session: Sessi
     sqlite_session.add(existing_conversation)
     sqlite_session.flush()
 
-    generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+    generator = AdvancedChatAppGenerator(
+        execution_driver=WorkflowRunAgg.run, knowledge_retrieval=make_knowledge_retriever()
+    )
 
     conversation, _ = generator._init_generate_records(
         entity,
@@ -1997,11 +2051,11 @@ def test_generate_falls_back_to_new_conversation_when_conversation_missing(
 
     monkeypatch.setattr(app_generator_module, "create_trace_scope", create_trace_scope)
     monkeypatch.setattr(
-        "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+        "core.app.apps.advanced_chat.app_generator.WorkflowRepositoryFactory.create_workflow_execution_repository",
         lambda **_kwargs: SimpleNamespace(),
     )
     monkeypatch.setattr(
-        "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+        "core.app.apps.advanced_chat.app_generator.WorkflowRepositoryFactory.create_workflow_node_execution_repository",
         lambda **_kwargs: SimpleNamespace(),
     )
 
@@ -2014,7 +2068,9 @@ def test_generate_falls_back_to_new_conversation_when_conversation_missing(
 
     monkeypatch.setattr(AdvancedChatAppGenerator, "_generate", fake_generate)
 
-    result = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
+    result = AdvancedChatAppGenerator(
+        execution_driver=WorkflowRunAgg.run, knowledge_retrieval=make_knowledge_retriever()
+    ).generate(
         app_model=app_model,
         workflow=workflow,
         user=user,
@@ -2202,6 +2258,8 @@ def _build_graph(runtime_state: RuntimeState, *, pause_on: str | None) -> Graph:
     node_factory = DifyNodeFactory(
         init_params=params,
         runtime_state=runtime_state,
+        knowledge_retrieval=make_knowledge_retriever(),
+        knowledge_index_files=create_autospec(UploadFileCreator, instance=True),
     )
 
     return Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
@@ -2345,7 +2403,10 @@ def test_workflow_app_pause_resume_matches_baseline(mocker: MockerFixture):
 
     resumed_state = RuntimeState.from_snapshot(snapshot)
 
-    generator = wf_app_gen_module.WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
+    generator = wf_app_gen_module.WorkflowAppGenerator(
+        execution_driver=WorkflowRunAgg.run,
+        knowledge_retrieval=make_knowledge_retriever(),
+    )
 
     def _fake_generate(**kwargs):
         state: RuntimeState = kwargs["graph_runtime_state"]
@@ -2385,7 +2446,9 @@ def test_advanced_chat_pause_resume_matches_baseline(mocker: MockerFixture, unbo
 
     resumed_state = RuntimeState.from_snapshot(snapshot)
 
-    generator = adv_app_gen_module.AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+    generator = adv_app_gen_module.AdvancedChatAppGenerator(
+        execution_driver=WorkflowRunAgg.run, knowledge_retrieval=make_knowledge_retriever()
+    )
 
     def _fake_generate(**kwargs):
         state: RuntimeState = kwargs["graph_runtime_state"]

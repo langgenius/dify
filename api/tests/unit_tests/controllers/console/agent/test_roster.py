@@ -1,4 +1,5 @@
 from collections.abc import Callable, Generator
+from dataclasses import dataclass
 from datetime import datetime
 from inspect import getsource, unwrap
 from typing import Any, Self, cast
@@ -42,6 +43,7 @@ from enums import DeploymentEdition
 from models.account import Account, TenantAccountRole
 from models.agent import Agent, AgentConfigDraftType, AgentScope, AgentSource
 from models.model import App, AppMode, IconType
+from services.app_generate_service import AppGenerateService
 from services.entities.agent_entities import (
     ComposerSavePayload,
     ComposerSaveStrategy,
@@ -51,11 +53,24 @@ from services.entities.agent_entities import (
 )
 from tests.helpers.unit.model_factories import make_account
 from tests.helpers.unit.rbac_fakes import RBACDomain
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 
 @pytest.fixture(autouse=True)
 def rbac_services(monkeypatch: pytest.MonkeyPatch, rbac_domain: RBACDomain) -> None:
     monkeypatch.setattr(roster_controller, "application_services", lambda: rbac_domain)
+
+
+@dataclass
+class _ApplicationServicesStub:
+    app_generation: AppGenerateService
+
+
+@pytest.fixture
+def app_generation(monkeypatch: pytest.MonkeyPatch) -> AppGenerateService:
+    service = AppGenerateService(knowledge_retrieval=make_knowledge_retriever())
+    monkeypatch.setattr(completion_controller, "application_services", lambda: _ApplicationServicesStub(service))
+    return service
 
 
 def _version_response(version_id: str = "version-1") -> dict[str, object]:
@@ -857,7 +872,11 @@ def test_agent_build_chat_finalize_route_resolves_app_from_agent_id(
 
 
 def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str, unbound_session: Session
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    account_id: str,
+    unbound_session: Session,
+    app_generation: AppGenerateService,
 ) -> None:
     app_model = _app_detail_obj(id="app-1", tenant_id="tenant-1", mode=AppMode.AGENT)
     captured: dict[str, object] = {}
@@ -875,7 +894,7 @@ def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
     monkeypatch.setattr(
         completion_controller, "_resolve_current_user_agent_debug_conversation_id", resolve_debug_conversation
     )
-    monkeypatch.setattr(completion_controller.AppGenerateService, "generate", generate)
+    monkeypatch.setattr(app_generation, "generate", generate)
     with app.test_request_context(headers={"X-Trace-Id": "trace-1"}):
         result = completion_controller._create_build_chat_finalization_message(
             current_tenant_id="tenant-1",
@@ -897,6 +916,7 @@ def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
     generate_call = cast(dict[str, object], captured["generate"])
     assert generate_call["app_model"] is app_model
     assert generate_call["streaming"] is True
+    assert "external_retrieval" not in generate_call
     args = cast(dict[str, object], generate_call["args"])
     assert args["draft_type"] == "debug_build"
     assert args["response_mode"] == "streaming"
@@ -966,6 +986,7 @@ def test_agent_chat_helper_resolves_scoped_conversation_and_forces_streaming(
     expected_draft_type: AgentConfigDraftType,
     expected_start_new: bool,
     unbound_session: Session,
+    app_generation: AppGenerateService,
     config_overrides: Callable[..., None],
 ) -> None:
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
@@ -981,7 +1002,7 @@ def test_agent_chat_helper_resolves_scoped_conversation_and_forces_streaming(
         captured["resolve_debug_conversation"] = kwargs
         return "00000000-0000-0000-0000-000000000001"
 
-    monkeypatch.setattr(completion_controller.AppGenerateService, "generate", generate)
+    monkeypatch.setattr(app_generation, "generate", generate)
     monkeypatch.setattr(
         completion_controller,
         "_resolve_current_user_agent_debug_conversation_id",
@@ -1001,6 +1022,7 @@ def test_agent_chat_helper_resolves_scoped_conversation_and_forces_streaming(
     assert captured["app_model"] is app_model
     assert captured["user"] is current_user
     assert captured["streaming"] is True
+    assert "external_retrieval" not in captured
     args = cast(dict[str, object], captured["args"])
     assert args["response_mode"] == "streaming"
     assert args["conversation_id"] == "00000000-0000-0000-0000-000000000001"
@@ -1016,6 +1038,7 @@ def test_agent_chat_helper_ignores_private_exit_intent_payload_key(
     monkeypatch: pytest.MonkeyPatch,
     account_id: str,
     unbound_session: Session,
+    app_generation: AppGenerateService,
     config_overrides: Callable[..., None],
 ) -> None:
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
@@ -1027,7 +1050,7 @@ def test_agent_chat_helper_ignores_private_exit_intent_payload_key(
         captured.update(kwargs)
         return {"answer": "ok"}
 
-    monkeypatch.setattr(completion_controller.AppGenerateService, "generate", generate)
+    monkeypatch.setattr(app_generation, "generate", generate)
     monkeypatch.setattr(
         completion_controller,
         "_resolve_current_user_agent_debug_conversation_id",
@@ -1055,6 +1078,7 @@ def test_agent_chat_helper_ignores_private_exit_intent_payload_key(
 
     assert result == {"response": {"answer": "ok"}}
     assert captured["streaming"] is True
+    assert "external_retrieval" not in captured
     args = cast(dict[str, object], captured["args"])
     assert args["response_mode"] == "streaming"
     assert args["conversation_id"] == "debug-conversation-1"
@@ -1075,13 +1099,14 @@ def test_agent_chat_helper_rejects_foreign_debug_conversation_before_generation(
     payload_extra: dict[str, str],
     expected_draft_type: AgentConfigDraftType,
     unbound_session: Session,
+    app_generation: AppGenerateService,
     config_overrides: Callable[..., None],
 ) -> None:
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     app_model = _app_detail_obj(id="app-1", tenant_id="tenant-1", mode=AppMode.AGENT)
     generate = MagicMock()
     resolve_debug_conversation = MagicMock(return_value="owned-conversation")
-    monkeypatch.setattr(completion_controller.AppGenerateService, "generate", generate)
+    monkeypatch.setattr(app_generation, "generate", generate)
     monkeypatch.setattr(
         completion_controller,
         "_resolve_current_user_agent_debug_conversation_id",
@@ -1246,9 +1271,10 @@ def test_agent_chat_helper_maps_generation_errors(
     error: Exception,
     expected: type[Exception],
     unbound_session: Session,
+    app_generation: AppGenerateService,
 ) -> None:
     app_model = _app_detail_obj(id="app-1", mode=AppMode.CHAT)
-    monkeypatch.setattr(completion_controller.AppGenerateService, "generate", lambda **_: (_ for _ in ()).throw(error))
+    monkeypatch.setattr(app_generation, "generate", lambda **_: (_ for _ in ()).throw(error))
     with app.test_request_context(json={"inputs": {}, "query": "hello"}):
         with pytest.raises(expected):
             completion_controller._create_chat_message(

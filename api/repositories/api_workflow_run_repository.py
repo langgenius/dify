@@ -19,10 +19,10 @@ Usage:
 
 Example:
     ```python
-    from repositories.dify_api_repository_factory import DifyAPIRepositoryFactory
+    from repositories.workflow.factory import WorkflowRepositoryFactory
 
     session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-    repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+    repo = WorkflowRepositoryFactory.create_api_workflow_run_repository(session_maker)
 
     # Get paginated workflow runs
     runs = repo.get_paginated_workflow_runs(
@@ -42,10 +42,11 @@ from typing import Protocol, TypedDict
 from sqlalchemy.orm import Session
 
 from core.workflow.nodes.human_input.pause_reason import PauseReason as DifyPauseReason
+from enums.creator import CreatorUserRole
 from graphon.entities.pause_reason import PauseReason as GraphonPauseReason
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowAppLog, WorkflowArchiveLog, WorkflowPause, WorkflowPauseReason, WorkflowRun
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.types import (

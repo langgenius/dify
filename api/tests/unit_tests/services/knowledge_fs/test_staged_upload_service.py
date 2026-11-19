@@ -9,9 +9,9 @@ from typing import cast, override
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
-from models.enums import CreatorUserRole
 from models.knowledge_fs import (
     KnowledgeFSControlSpace,
     KnowledgeFSControlSpaceState,
@@ -19,7 +19,8 @@ from models.knowledge_fs import (
     KnowledgeFSStagedUploadStatus,
 )
 from models.model import Account, UploadFile
-from services import file_service as file_service_module
+from services import file_adapters
+from services.entities.upload_file import FileUploadActor, UploadFileRecord
 from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
 from services.file_scan import FileScanService, ScanErrorCode, ScanOutcome, ScanScope
 from services.knowledge_fs import staged_upload_service as staged_upload_module
@@ -84,15 +85,15 @@ class FakeStorage:
         return sorted(key for key in self.objects if key.startswith(path))
 
 
-class FakeFileService:
+class FakeUploadFileCreator:
     """Records upload requests and returns the configured upload or raises the configured error."""
 
-    def __init__(self, *, upload_file: UploadFile | None = None) -> None:
+    def __init__(self, *, upload_file: UploadFileRecord | None = None) -> None:
         self.result = upload_file
         self.failure: Exception | None = None
         self.upload_calls: list[dict[str, object]] = []
 
-    def upload_file(self, **kwargs: object) -> UploadFile:
+    def upload_file(self, **kwargs: object) -> UploadFileRecord:
         self.upload_calls.append(kwargs)
         if self.failure is not None:
             raise self.failure
@@ -183,6 +184,31 @@ def _upload_file(
     return upload_file
 
 
+def _upload_file_record(
+    *,
+    tenant_id: str = _TENANT_ID,
+    account_id: str = _ACCOUNT_ID,
+    upload_file_id: str = _UPLOAD_FILE_ID,
+    name: str = "guide.pdf",
+    mime_type: str = "application/pdf",
+) -> UploadFileRecord:
+    return UploadFileRecord(
+        id=upload_file_id,
+        tenant_id=tenant_id,
+        storage_type=StorageType.LOCAL.value,
+        key=_SOURCE_PATH,
+        name=name,
+        size=len(_BODY),
+        extension=name.rsplit(".", 1)[-1],
+        mime_type=mime_type,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=account_id,
+        created_at=datetime(2026, 8, 10, tzinfo=UTC),
+        hash=None,
+        source_url="",
+    )
+
+
 def _control_space(
     *,
     control_space_id: str = _CONTROL_SPACE_ID,
@@ -258,22 +284,21 @@ def service_context(
     service = KnowledgeFSStagedUploadService(
         sqlite_session_factory,
         facade=cast(KnowledgeFSDataFacade, facade),
+        files=FakeUploadFileCreator(),
         object_storage=KnowledgeFSObjectStorageService(backend=backend),
     )
     return service, facade, backend
 
 
-def test_stage_persists_workspace_owned_upload(
-    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_stage_persists_workspace_owned_upload(sqlite_session_factory: sessionmaker[Session]) -> None:
     upload_file = _upload_file()
     with sqlite_session_factory.begin() as session:
         session.add(upload_file)
-    file_service = FakeFileService(upload_file=upload_file)
-    monkeypatch.setattr(staged_upload_module, "FileService", lambda _: file_service)
+    files = FakeUploadFileCreator(upload_file=_upload_file_record())
     service = KnowledgeFSStagedUploadService(
         sqlite_session_factory,
         facade=cast(KnowledgeFSDataFacade, FakeFacade()),
+        files=files,
     )
     account = _account()
 
@@ -290,14 +315,13 @@ def test_stage_persists_workspace_owned_upload(
     assert response.content_type == "application/pdf"
     assert response.size_bytes == len(_BODY)
     assert response.status == "uploaded"
-    assert file_service.upload_calls == [
+    assert files.upload_calls == [
         {
             "filename": "guide.pdf",
             "content": _BODY,
             "mimetype": "application/pdf",
-            "user": account,
+            "actor": FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
             "tenant_id": _TENANT_ID,
-            "source": "knowledge_fs",
             "default_file_size_limit": 15,
         }
     ]
@@ -317,7 +341,6 @@ def test_stage_persists_workspace_owned_upload(
 )
 def test_stage_canonicalizes_content_type_from_the_supported_extension(
     sqlite_session_factory: sessionmaker[Session],
-    monkeypatch: pytest.MonkeyPatch,
     file_name: str,
     content_type: str,
     expected_content_type: str,
@@ -328,11 +351,11 @@ def test_stage_canonicalizes_content_type_from_the_supported_extension(
     upload_file.mime_type = expected_content_type
     with sqlite_session_factory.begin() as session:
         session.add(upload_file)
-    file_service = FakeFileService(upload_file=upload_file)
-    monkeypatch.setattr(staged_upload_module, "FileService", lambda _: file_service)
+    files = FakeUploadFileCreator(upload_file=_upload_file_record(name=file_name, mime_type=expected_content_type))
     service = KnowledgeFSStagedUploadService(
         sqlite_session_factory,
         facade=cast(KnowledgeFSDataFacade, FakeFacade()),
+        files=files,
     )
     account = _account()
 
@@ -346,14 +369,13 @@ def test_stage_canonicalizes_content_type_from_the_supported_extension(
     )
 
     assert response.content_type == expected_content_type
-    assert file_service.upload_calls == [
+    assert files.upload_calls == [
         {
             "filename": file_name,
             "content": _BODY,
             "mimetype": expected_content_type,
-            "user": account,
+            "actor": FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
             "tenant_id": _TENANT_ID,
-            "source": "knowledge_fs",
             "default_file_size_limit": 15,
         }
     ]
@@ -382,14 +404,15 @@ def test_stage_accepts_knowledge_fs_document_formats_with_the_real_file_service(
     body: bytes,
 ) -> None:
     backend = FakeStorage()
-    monkeypatch.setattr(file_service_module, "storage", backend)
+    monkeypatch.setattr(file_adapters, "storage", backend)
     monkeypatch.setattr(staged_upload_module, "storage", backend)
-    monkeypatch.setattr(file_service_module.file_helpers, "get_signed_file_url", lambda **_: "signed")
+    monkeypatch.setattr(file_adapters.file_helpers, "get_signed_file_url", lambda **_: "signed")
     account = Account(name="KnowledgeFS tester", email="knowledge-fs@example.com")
     account.id = _ACCOUNT_ID
     service = KnowledgeFSStagedUploadService(
         sqlite_session_factory,
         facade=cast(KnowledgeFSDataFacade, FakeFacade()),
+        files=file_adapters.build_file_service(session_factory=sqlite_session_factory),
     )
 
     response = service.stage(
@@ -417,14 +440,15 @@ def test_stage_rejects_an_unsupported_filename_with_the_real_file_service(
     sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch, file_name: str
 ) -> None:
     backend = FakeStorage()
-    monkeypatch.setattr(file_service_module, "storage", backend)
+    monkeypatch.setattr(file_adapters, "storage", backend)
     monkeypatch.setattr(staged_upload_module, "storage", backend)
-    monkeypatch.setattr(file_service_module.file_helpers, "get_signed_file_url", lambda **_: "signed")
+    monkeypatch.setattr(file_adapters.file_helpers, "get_signed_file_url", lambda **_: "signed")
     account = Account(name="KnowledgeFS tester", email="knowledge-fs@example.com")
     account.id = _ACCOUNT_ID
     service = KnowledgeFSStagedUploadService(
         sqlite_session_factory,
         facade=cast(KnowledgeFSDataFacade, FakeFacade()),
+        files=file_adapters.build_file_service(session_factory=sqlite_session_factory),
     )
 
     with pytest.raises(KnowledgeFSStagedUploadInvalidError, match="invalid"):
@@ -440,14 +464,12 @@ def test_stage_rejects_an_unsupported_filename_with_the_real_file_service(
     assert backend.objects == {}
 
 
-def test_stage_rejects_empty_and_maps_file_service_errors(
-    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    file_service = FakeFileService()
-    monkeypatch.setattr(staged_upload_module, "FileService", lambda _: file_service)
+def test_stage_rejects_empty_and_maps_file_service_errors(sqlite_session_factory: sessionmaker[Session]) -> None:
+    files = FakeUploadFileCreator()
     service = KnowledgeFSStagedUploadService(
         sqlite_session_factory,
         facade=cast(KnowledgeFSDataFacade, FakeFacade()),
+        files=files,
     )
     account = _account()
 
@@ -461,7 +483,7 @@ def test_stage_rejects_empty_and_maps_file_service_errors(
             file_size_limit_mb=15,
         )
 
-    file_service.failure = FileTooLargeError("too large")
+    files.failure = FileTooLargeError("too large")
     with pytest.raises(KnowledgeFSStagedUploadTooLargeError):
         service.stage(
             tenant_id=_TENANT_ID,
@@ -472,12 +494,12 @@ def test_stage_rejects_empty_and_maps_file_service_errors(
             file_size_limit_mb=1,
         )
 
-    file_service.failure = UnsupportedFileTypeError("unsupported")
+    files.failure = UnsupportedFileTypeError("unsupported")
     with pytest.raises(KnowledgeFSStagedUploadInvalidError, match="invalid"):
         service.stage(
             tenant_id=_TENANT_ID,
             account=account,
-            file_name="guide.exe",
+            file_name="guide.pdf",
             content_type="application/octet-stream",
             body=_BODY,
             file_size_limit_mb=15,
@@ -494,8 +516,7 @@ def test_stage_removes_file_when_staging_row_cannot_commit(
     if persisted_upload_file:
         with sqlite_session_factory.begin() as session:
             session.add(upload_file)
-    file_service = FakeFileService(upload_file=upload_file)
-    monkeypatch.setattr(staged_upload_module, "FileService", lambda _: file_service)
+    files = FakeUploadFileCreator(upload_file=_upload_file_record())
     backend = FakeStorage()
     backend.save(_SOURCE_PATH, _BODY)
     monkeypatch.setattr(staged_upload_module, "storage", backend)
@@ -513,6 +534,7 @@ def test_stage_removes_file_when_staging_row_cannot_commit(
     service = KnowledgeFSStagedUploadService(
         cast(sessionmaker[Session], session_maker_with_failure),
         facade=cast(KnowledgeFSDataFacade, FakeFacade()),
+        files=files,
     )
 
     with pytest.raises(RuntimeError, match="database unavailable"):

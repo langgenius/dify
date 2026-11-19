@@ -124,6 +124,7 @@ def _workflow_tool(name: str = "workflow_tool", *, tenant_id: str | None = None)
             parameters=[],
         ),
         runtime=ToolRuntime(tenant_id=app.tenant_id),
+        knowledge_retrieval=None,
         workflow_app_id=app.id,
         workflow_id=workflow.id,
         version="1",

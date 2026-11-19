@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
 
+from controllers.web import workflow as workflow_module
 from controllers.web.error import (
     NotWorkflowAppError,
     ProviderNotInitializeError,
@@ -16,10 +18,25 @@ from controllers.web.error import (
 from controllers.web.workflow import WorkflowRunApi, WorkflowTaskStopApi
 from core.errors.error import ProviderTokenNotInitError, QuotaExceededError
 from models.model import App, AppMode, EndUser
+from services.app_generate_service import AppGenerateService
 from services.errors.app import (
     TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
 )
 from tests.helpers.unit.model_factories import make_end_user
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
+
+
+@dataclass(frozen=True, slots=True)
+class _ApplicationServicesStub:
+    app_generation: AppGenerateService
+
+
+@pytest.fixture(autouse=True)
+def app_generation(monkeypatch: pytest.MonkeyPatch) -> AppGenerateService:
+    service = AppGenerateService(knowledge_retrieval=make_knowledge_retriever())
+    services = _ApplicationServicesStub(app_generation=service)
+    monkeypatch.setattr(workflow_module, "application_services", lambda: services)
+    return service
 
 
 def _workflow_app() -> App:
@@ -44,9 +61,15 @@ class TestWorkflowRunApi:
                 WorkflowRunApi().post(_chat_app(), _end_user())
 
     @patch("controllers.web.workflow.helper.compact_generate_response", return_value={"result": "ok"})
-    @patch("controllers.web.workflow.AppGenerateService.generate")
+    @patch("services.app_generate_service.AppGenerateService.generate")
     @patch("controllers.web.workflow.web_ns")
-    def test_happy_path(self, mock_ns: MagicMock, mock_gen: MagicMock, mock_compact: MagicMock, app: Flask) -> None:
+    def test_happy_path(
+        self,
+        mock_ns: MagicMock,
+        mock_gen: MagicMock,
+        mock_compact: MagicMock,
+        app: Flask,
+    ) -> None:
         mock_ns.payload = {"inputs": {"key": "val"}}
         mock_gen.return_value = "response"
 
@@ -54,9 +77,10 @@ class TestWorkflowRunApi:
             result = WorkflowRunApi().post(_workflow_app(), _end_user())
 
         assert result == {"result": "ok"}
+        assert "external_retrieval" not in mock_gen.call_args.kwargs
 
     @patch(
-        "controllers.web.workflow.AppGenerateService.generate",
+        "services.app_generate_service.AppGenerateService.generate",
         side_effect=ProviderTokenNotInitError(description="not init"),
     )
     @patch("controllers.web.workflow.web_ns")
@@ -69,7 +93,7 @@ class TestWorkflowRunApi:
                 WorkflowRunApi().post(_workflow_app(), _end_user())
 
     @patch(
-        "controllers.web.workflow.AppGenerateService.generate",
+        "services.app_generate_service.AppGenerateService.generate",
         side_effect=TriggerWorkflowServiceModeUnavailableServiceError(),
     )
     @patch("controllers.web.workflow.web_ns")
@@ -90,7 +114,7 @@ class TestWorkflowRunApi:
         assert exc_info.value.error_code == "trigger_workflow_service_mode_unavailable"
 
     @patch(
-        "controllers.web.workflow.AppGenerateService.generate",
+        "services.app_generate_service.AppGenerateService.generate",
         side_effect=QuotaExceededError(),
     )
     @patch("controllers.web.workflow.web_ns")

@@ -5,16 +5,20 @@ from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import delete, event
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from core.workflow.file_reference import build_file_reference
 from models.dataset import ChildChunk, Dataset, DatasetKeywordTable, Document, DocumentSegment, DocumentSegmentSummary
 from models.enums import DataSourceType, DocumentCreatedFrom
+from models.model import UploadFile
 from services.knowledge.indexing.adapters import cleanup
 from services.knowledge.summaries import adapters as summaries
 from tasks.batch_clean_document_task import batch_clean_document_task
 from tasks.clean_document_task import clean_document_task
 from tasks.clean_notion_document_task import clean_notion_document_task
+from tests.helpers.unit.model_factories import make_dataset, make_document, make_upload_file
 
 
 @pytest.fixture
@@ -108,13 +112,9 @@ def test_tasks_delete_summary_and_body_indexes_without_an_open_transaction(
     document.doc_form = doc_form
     dataset.chunk_structure = doc_form
     ids = (dataset.id, document.id, segment.id, summary.id, child.id)
-    if task_kind != "notion":
-        sqlite_session.delete(document)
+    sqlite_session.delete(document)
     sqlite_session.commit()
     monkeypatch.setattr("tasks.clean_document_task.schedule_billing_vector_space_refresh", lambda _tenant_id: None)
-    monkeypatch.setattr(
-        "tasks.batch_clean_document_task.schedule_billing_vector_space_refresh", lambda _tenant_id: None
-    )
 
     if task_kind == "single":
         clean_document_task(ids[1], ids[0], doc_form, None)
@@ -130,6 +130,142 @@ def test_tasks_delete_summary_and_body_indexes_without_an_open_transaction(
     assert sqlite_session.get(DocumentSegmentSummary, ids[3]) is None
     assert sqlite_session.get(ChildChunk, ids[4]) is None
     assert sqlite_session.get(DocumentSegment, ids[2]) is None
+
+
+def test_cleanup_infers_tenant_after_dataset_and_document_are_deleted(
+    graph: tuple[Dataset, Document, DocumentSegment, DocumentSegmentSummary, ChildChunk],
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    dataset, document, segment, summary, child = graph
+    upload = make_upload_file(tenant_id=dataset.tenant_id, key="uploads/orphaned-image")
+    segment.content = f"![image](/files/{upload.id}/image-preview)"
+    sqlite_session.add(upload)
+    sqlite_session.commit()
+    ids = (dataset.id, document.id, segment.id, summary.id, child.id, upload.id)
+
+    sqlite_session.execute(delete(Document).where(Document.id == document.id))
+    sqlite_session.execute(delete(Dataset).where(Dataset.id == dataset.id))
+    sqlite_session.commit()
+
+    deleted_keys: list[str] = []
+    monkeypatch.setattr("tasks.clean_document_task.storage.delete", deleted_keys.append)
+
+    clean_document_task(ids[1], ids[0], "text_model", ids[5])
+
+    sqlite_session.expire_all()
+    assert sqlite_session.get(DocumentSegment, ids[2]) is None
+    assert sqlite_session.get(DocumentSegmentSummary, ids[3]) is None
+    assert sqlite_session.get(ChildChunk, ids[4]) is None
+    assert sqlite_session.get(UploadFile, ids[5]) is None
+    assert deleted_keys == ["uploads/orphaned-image"]
+
+
+@pytest.mark.parametrize("kind", ["single", "batch", "notion", "dataset"])
+@pytest.mark.parametrize("shared", [False, True])
+@pytest.mark.parametrize("reference_kind", ["markdown", "canonical"])
+def test_cleanup_reclaims_child_only_files_after_vector_cleanup(
+    graph: tuple[Dataset, Document, DocumentSegment, DocumentSegmentSummary, ChildChunk],
+    sqlite_session: Session,
+    vector: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+    kind: str,
+    shared: bool,
+    reference_kind: str,
+) -> None:
+    import tasks.clean_dataset_task as dataset_task
+
+    dataset, document, _, _, child = graph
+    upload_key = "uploads/child-only"
+    upload = make_upload_file(tenant_id=dataset.tenant_id, key=upload_key)
+    image = (
+        f"![child](/files/{upload.id}/image-preview)"
+        if reference_kind == "markdown"
+        else build_file_reference(record_id=upload.id)
+    )
+    child.content = image
+    document.doc_form = IndexStructureType.PARENT_CHILD_INDEX
+    dataset.chunk_structure = IndexStructureType.PARENT_CHILD_INDEX
+    sqlite_session.add(upload)
+    if shared:
+        other_dataset = make_dataset(dataset_id=str(uuid4()), tenant_id=dataset.tenant_id)
+        other_document = make_document(
+            document_id=str(uuid4()), dataset_id=other_dataset.id, tenant_id=dataset.tenant_id
+        )
+        other_segment = DocumentSegment(
+            tenant_id=dataset.tenant_id,
+            dataset_id=other_dataset.id,
+            document_id=other_document.id,
+            position=1,
+            content=image,
+            word_count=1,
+            tokens=1,
+            created_by="admin",
+        )
+        sqlite_session.add_all([other_dataset, other_document, other_segment])
+    sqlite_session.commit()
+    dataset_id, tenant_id, document_id, child_id, file_id = (
+        dataset.id,
+        dataset.tenant_id,
+        document.id,
+        child.id,
+        upload.id,
+    )
+    deleted: list[str] = []
+    monkeypatch.setattr("tasks.clean_document_task.storage.delete", deleted.append)
+    monkeypatch.setattr("tasks.clean_document_task.schedule_billing_vector_space_refresh", lambda _tenant_id: None)
+    monkeypatch.setattr(dataset_task, "schedule_billing_vector_space_refresh", lambda _tenant_id: None)
+    monkeypatch.setattr(dataset_task, "cleanup_dataset_crawl_cache", lambda *_args: None)
+    monkeypatch.setattr(
+        "core.rag.index_processor.processor.parent_child_index_processor.Vector",
+        lambda *_args, **_kwargs: vector,
+    )
+
+    if kind == "dataset":
+        sqlite_session.delete(dataset)
+        sqlite_session.commit()
+        dataset_task.clean_dataset_task.run(
+            dataset_id,
+            tenant_id,
+            "high_quality",
+            '{"type":"pgvector"}',
+            None,
+            IndexStructureType.PARENT_CHILD_INDEX,
+        )
+    elif kind == "notion":
+        clean_notion_document_task.run([document_id], dataset_id)
+    else:
+        sqlite_session.delete(document)
+        sqlite_session.commit()
+        if kind == "single":
+            clean_document_task.run(document_id, dataset_id, IndexStructureType.PARENT_CHILD_INDEX, None)
+        else:
+            batch_clean_document_task.run([document_id], dataset_id, IndexStructureType.PARENT_CHILD_INDEX, [])
+
+    sqlite_session.expire_all()
+    assert sqlite_session.get(ChildChunk, child_id) is None
+    assert sqlite_session.get(Document, document_id) is None
+    assert (sqlite_session.get(UploadFile, file_id) is not None) is shared
+    assert deleted == ([] if shared else [upload_key])
+
+
+def test_cleanup_fails_closed_when_fallback_tenant_evidence_conflicts(
+    graph: tuple[Dataset, Document, DocumentSegment, DocumentSegmentSummary, ChildChunk],
+    sqlite_session: Session,
+) -> None:
+    dataset, document, segment, _, _ = graph
+    conflicting_upload = make_upload_file(tenant_id=str(uuid4()), key="uploads/wrong-tenant")
+    sqlite_session.add(conflicting_upload)
+    sqlite_session.execute(delete(Document).where(Document.id == document.id))
+    sqlite_session.execute(delete(Dataset).where(Dataset.id == dataset.id))
+    sqlite_session.commit()
+
+    with pytest.raises(ValueError, match="ownership is ambiguous"):
+        clean_document_task(document.id, dataset.id, "text_model", conflicting_upload.id)
+
+    sqlite_session.expire_all()
+    assert sqlite_session.get(DocumentSegment, segment.id) is not None
+    assert sqlite_session.get(UploadFile, conflicting_upload.id) is not None
 
 
 def test_failed_vector_cleanup_preserves_records_for_retry(
@@ -148,6 +284,67 @@ def test_failed_vector_cleanup_preserves_records_for_retry(
     assert sqlite_session.get(ChildChunk, child.id) is not None
 
 
+def test_parent_child_cleanup_refreshes_billing_before_relational_commit_failure_and_retry(
+    graph: tuple[Dataset, Document, DocumentSegment, DocumentSegmentSummary, ChildChunk],
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    vector: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import tasks.clean_document_task as task_module
+
+    dataset, document, segment, summary, child = graph
+    upload = make_upload_file(tenant_id=dataset.tenant_id, key="uploads/removed-image")
+    child.content = f"![image](/files/{upload.id}/image-preview)"
+    sqlite_session.add(upload)
+    ids = (dataset.id, dataset.tenant_id, document.id, segment.id, summary.id, child.id, upload.id)
+    sqlite_session.delete(document)
+    sqlite_session.commit()
+
+    events: list[str] = []
+
+    def fail_relational_commit(session: Session) -> None:
+        if "refresh" in events and not session.in_nested_transaction():
+            raise RuntimeError("database unavailable")
+
+    monkeypatch.setattr(task_module.storage, "delete", lambda _key: events.append("delete"))
+    monkeypatch.setattr(
+        task_module, "schedule_billing_vector_space_refresh", lambda _tenant_id: events.append("refresh")
+    )
+
+    def clean() -> None:
+        task_module._clean_documents(
+            document_ids=(ids[2],),
+            dataset_id=ids[0],
+            doc_form=IndexStructureType.PARENT_CHILD_INDEX,
+            file_ids=(),
+        )
+
+    event.listen(sqlite_session_factory.class_, "before_commit", fail_relational_commit)
+    try:
+        with pytest.raises(RuntimeError, match="database unavailable"):
+            clean()
+    finally:
+        event.remove(sqlite_session_factory.class_, "before_commit", fail_relational_commit)
+
+    assert events == ["refresh"]
+    vector.delete_by_ids.assert_called_once_with(["summary-node", "child-node"])
+    with sqlite_session_factory() as session:
+        assert session.get(DocumentSegmentSummary, ids[4]) is None
+        assert session.get(ChildChunk, ids[5]) is not None
+        assert session.get(DocumentSegment, ids[3]) is not None
+        assert session.get(UploadFile, ids[6]) is not None
+
+    clean()
+
+    assert events == ["refresh", "refresh", "delete"]
+    assert vector.delete_by_ids.call_args_list[1].args[0] == ["child-node"]
+    assert vector.delete_by_ids.call_count == 2
+    with sqlite_session_factory() as session:
+        assert session.get(DocumentSegment, ids[3]) is None
+        assert session.get(UploadFile, ids[6]) is None
+
+
 @pytest.mark.parametrize("task_kind", ["single", "batch", "notion"])
 def test_cleanup_retries_summaries_after_segments_have_been_deleted(
     graph: tuple[Dataset, Document, DocumentSegment, DocumentSegmentSummary, ChildChunk],
@@ -161,9 +358,6 @@ def test_cleanup_retries_summaries_after_segments_have_been_deleted(
     sqlite_session.delete(segment)
     sqlite_session.commit()
     monkeypatch.setattr("tasks.clean_document_task.schedule_billing_vector_space_refresh", lambda _tenant_id: None)
-    monkeypatch.setattr(
-        "tasks.batch_clean_document_task.schedule_billing_vector_space_refresh", lambda _tenant_id: None
-    )
     if task_kind == "single":
         clean_document_task(document.id, dataset.id, "text_model", None)
     elif task_kind == "batch":

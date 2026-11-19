@@ -86,6 +86,7 @@ from services.account_activation_service import (
     AccountActivationRepository,
     AccountActivationService,
     InvitationTokenStore,
+    WorkspaceInvitationAdmission,
 )
 from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
 from services.account_avatar_service import AccountAvatarService
@@ -187,6 +188,7 @@ def build_account_services(
     passwords: DefaultAccountPasswordHasher,
     invitation_tokens: RedisInvitationTokenStore,
     activation_accounts: SQLAlchemyAccountActivationRepository,
+    invitation_quotas: WorkspaceInvitationAdmission,
 ) -> AccountServices:
     lifecycle = AccountService(
         security=RedisConsoleAuthSecurityGateway(redis=redis),
@@ -204,6 +206,7 @@ def build_account_services(
         eligibility=BillingAccountActivationEligibility(
             enabled=deployment_edition == DeploymentEdition.CLOUD,
         ),
+        invitation_admission=invitation_quotas,
         membership_cache=BillingWorkspaceMembershipCache(
             enabled=deployment_edition == DeploymentEdition.CLOUD,
         ),
@@ -229,6 +232,8 @@ def build_account_services(
             invitations=AccountActivationConsoleAuthInvitationGateway(
                 tokens=invitation_tokens,
                 accounts=activation_accounts,
+                activation=activation,
+                quotas=invitation_quotas,
             ),
             policies=DeploymentConsoleAuthPolicyGateway(
                 billing_enabled=deployment_edition == DeploymentEdition.CLOUD,
@@ -270,7 +275,7 @@ def build_account_services(
         ),
         email_registration=AccountEmailRegistrationService(
             accounts=accounts,
-            tokens=TokenManagerEmailRegistrationTokenGateway(),
+            tokens=TokenManagerEmailRegistrationTokenGateway(redis=redis),
             codes=SecureEmailRegistrationCodeGenerator(),
             notifications=CeleryEmailRegistrationNotificationGateway(),
             send_limits=RateLimiterEmailRegistrationSendLimiter(

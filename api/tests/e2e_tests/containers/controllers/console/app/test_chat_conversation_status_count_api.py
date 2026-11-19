@@ -8,6 +8,7 @@ from flask.testing import FlaskClient
 from sqlalchemy.orm import Session
 
 from constants import HEADER_NAME_CSRF_TOKEN
+from enums.creator import CreatorUserRole
 from extensions.ext_application_services import application_services
 from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import naive_utc_now
@@ -17,7 +18,6 @@ from models.account import AccountStatus, TenantAccountRole, TenantStatus
 from models.enums import (
     ConversationFromSource,
     ConversationStatus,
-    CreatorUserRole,
     MessageStatus,
     WorkflowRunTriggeredFrom,
 )

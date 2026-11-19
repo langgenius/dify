@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from core.rag.models.document import AttachmentDocument, Document
 from models.dataset import ChildChunk, Dataset, DocumentSegment, SegmentAttachmentBinding
 from models.enums import SegmentType
+from repositories.file.upload_file_repository import lock_and_validate_owned_upload_files_in_session
 
 
 class DatasetDocumentStore:
@@ -249,6 +250,12 @@ class DatasetDocumentStore:
         self, segment_id: str, multimodel_documents: list[AttachmentDocument] | None, session: Session
     ):
         if multimodel_documents and self._document_id is not None:
+            attachment_ids = tuple(document.metadata["doc_id"] for document in multimodel_documents)
+            lock_and_validate_owned_upload_files_in_session(
+                session,
+                tenant_id=self._dataset.tenant_id,
+                upload_file_ids=attachment_ids,
+            )
             for multimodel_document in multimodel_documents:
                 binding = SegmentAttachmentBinding(
                     tenant_id=self._dataset.tenant_id,

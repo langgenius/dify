@@ -31,12 +31,12 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from enums.creator import CreatorUserRole
 from extensions.ext_application_services import application_services
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.external_api import error_responses
 from machinery.context import RequestContext
-from models.enums import CreatorUserRole
 from models.model import AppMode
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError

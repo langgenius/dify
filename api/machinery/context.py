@@ -29,6 +29,7 @@ class RequestContext(NamedTuple):
     active_workspace_id: str
     remote_ip: str | None = None
     resource_app_ids: frozenset[str] | None = None
+    resource_dataset_ids: frozenset[str] | None = None
     personal_app_ids: IdScope = UNRESTRICTED
 
 

@@ -30,8 +30,8 @@ from models.application_trace import ApplicationTraceBatch, ApplicationTraceInvo
 from models.enums import MessageStatus
 from models.model import App, AppMode, Conversation, Message, TraceAppConfig
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowRun
-from repositories.factory import DifyAPIRepositoryFactory
 from repositories.tracing_store_errors import tracing_store_errors
+from repositories.workflow.factory import WorkflowRepositoryFactory
 from services.tracing.collection import AppTracingSnapshot, SourceMessage, TraceApp, TraceAppMode, TraceRun
 from services.tracing.collection_ports import LockedTraceRun, TraceRunQuery, TraceRunRepository, TraceSourceQuery
 from services.tracing.errors import TraceCollectionConflictError
@@ -241,10 +241,12 @@ class ApplicationTraceRepository(TraceRunRepository, TraceRunQuery, TraceSourceQ
         source: WorkflowRun | WorkflowNodeExecutionModel | None
         with tracing_store_errors():
             if kind == "workflow":
-                repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._sessions)
+                repository = WorkflowRepositoryFactory.create_api_workflow_run_repository(self._sessions)
                 source = repository.get_workflow_run_by_id(tenant_id=tenant_id, app_id=app_id, run_id=source_id)
             else:
-                node_repository = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(self._sessions)
+                node_repository = WorkflowRepositoryFactory.create_api_workflow_node_execution_repository(
+                    self._sessions
+                )
                 source = node_repository.get_execution_by_id(execution_id=source_id, tenant_id=tenant_id)
         # The node reader has no app filter. Check the entire chain on either
         # backend's result before exposing a destination or authorizing a retry.

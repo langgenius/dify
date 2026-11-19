@@ -20,6 +20,7 @@ from services.entities.account_login_entities import (
     RefreshAccountStatus,
 )
 from services.entities.auth_audit_entities import LoginFailureReason
+from services.errors.workspace import WorkspacesLimitExceededError
 
 TOKENS = AccountSessionTokens(access_token="access", refresh_token="refresh", csrf_token="csrf")
 LOGIN_TIME = datetime(2026, 8, 24, 12, 0, 0)
@@ -60,9 +61,26 @@ class FakeWorkspaces:
 class FakeInvitations:
     invitation: LoginInvitation | None = None
 
+    ensured: list[tuple[str, str, str]] = field(default_factory=list)
+    quota_checks: list[str] = field(default_factory=list)
+    quota_error: account_errors.LoginInvitationQuotaError | None = None
+    restored_workspace: FakeWorkspaces | None = None
+
     def resolve(self, *, email: str, token: str) -> LoginInvitation | None:
         _ = email, token
         return self.invitation
+
+    def check_membership_quota(self, workspace_id: str) -> None:
+        self.quota_checks.append(workspace_id)
+        if self.quota_error is not None:
+            raise self.quota_error
+
+    def ensure_membership(self, *, account_id: str, email: str, token: str) -> bool:
+        self.ensured.append((account_id, email, token))
+        if self.restored_workspace is None:
+            return False
+        self.restored_workspace.active = True
+        return True
 
 
 @dataclass
@@ -72,6 +90,7 @@ class FakePolicies:
     workspace_creation_allowed: bool = True
     workspace_capacity: bool = True
     account_capacity: bool = True
+    account_capacity_checks: int = 0
 
     def get_email_freeze_type(self, email: str) -> str | None:
         _ = email
@@ -87,6 +106,7 @@ class FakePolicies:
         return self.workspace_capacity
 
     def has_account_capacity(self) -> bool:
+        self.account_capacity_checks += 1
         return self.account_capacity
 
 
@@ -176,6 +196,7 @@ class FakeRefreshPreparation:
 @dataclass
 class FakeAccountProvisioning:
     calls: list[dict[str, str]] = field(default_factory=list)
+    failure: Exception | None = None
 
     def create_with_owner_workspace(
         self,
@@ -195,15 +216,20 @@ class FakeAccountProvisioning:
                 "ip_address": ip_address,
             }
         )
+        if self.failure is not None:
+            raise self.failure
         return "new-account"
 
 
 @dataclass
 class FakeWorkspaceProvisioning:
     account_ids: list[str] = field(default_factory=list)
+    failure: Exception | None = None
 
     def ensure_owner_workspace(self, account_id: str) -> None:
         self.account_ids.append(account_id)
+        if self.failure is not None:
+            raise self.failure
 
 
 @dataclass
@@ -386,7 +412,9 @@ def test_password_login_rejects_account_removed_during_session_preparation() -> 
 def test_invitation_login_sets_missing_password() -> None:
     dependencies = Dependencies()
     dependencies.accounts.candidates = [_account(password=False, status="pending")]
-    dependencies.invitations.invitation = LoginInvitation(email="USER@example.com")
+    dependencies.invitations.invitation = LoginInvitation(
+        email="USER@example.com", account_id="account-1", workspace_id="workspace-1"
+    )
     dependencies.workspaces.active = True
 
     dependencies.service().login_with_password(_password_command(password="password123", invite_token="invite"))
@@ -404,7 +432,9 @@ def test_invitation_login_sets_missing_password() -> None:
 def test_invitation_login_rejects_empty_password_without_completing_account() -> None:
     dependencies = Dependencies()
     dependencies.accounts.candidates = [_account(password=False, status="pending")]
-    dependencies.invitations.invitation = LoginInvitation(email="USER@example.com")
+    dependencies.invitations.invitation = LoginInvitation(
+        email="USER@example.com", account_id="account-1", workspace_id="workspace-1"
+    )
 
     with pytest.raises(account_errors.InvalidLoginCredentialsError):
         dependencies.service().login_with_password(_password_command(password="", invite_token="invite"))
@@ -428,7 +458,9 @@ def test_invitation_login_does_not_initialize_password_when_token_is_unknown() -
 def test_invitation_login_applies_new_password_policy_before_completion() -> None:
     dependencies = Dependencies()
     dependencies.accounts.candidates = [_account(password=False, status="pending")]
-    dependencies.invitations.invitation = LoginInvitation(email="USER@example.com")
+    dependencies.invitations.invitation = LoginInvitation(
+        email="USER@example.com", account_id="account-1", workspace_id="workspace-1"
+    )
     dependencies.passwords.hash_error = account_errors.InvalidAccountPasswordError(
         "Password must contain letters and numbers"
     )
@@ -455,7 +487,9 @@ def test_invalid_password_records_rate_limit_and_audit() -> None:
 def test_wrong_password_does_not_restore_invited_membership() -> None:
     dependencies = Dependencies()
     dependencies.accounts.candidates = [_account()]
-    dependencies.invitations.invitation = LoginInvitation(email="user@example.com")
+    dependencies.invitations.invitation = LoginInvitation(
+        email="user@example.com", account_id="account-1", workspace_id="workspace-1"
+    )
     dependencies.passwords.valid = False
 
     with pytest.raises(account_errors.InvalidLoginCredentialsError):
@@ -509,7 +543,9 @@ def test_password_login_rejects_banned_account() -> None:
 
 def test_password_login_rejects_invitation_for_another_email() -> None:
     dependencies = Dependencies()
-    dependencies.invitations.invitation = LoginInvitation(email="invited@example.com")
+    dependencies.invitations.invitation = LoginInvitation(
+        email="invited@example.com", account_id="account-1", workspace_id="workspace-1"
+    )
 
     with pytest.raises(account_errors.InvalidLoginInvitationEmailError):
         dependencies.service().login_with_password(_password_command(invite_token="invite"))
@@ -551,7 +587,9 @@ def test_password_login_returns_no_workspace_without_creating_one() -> None:
 def test_password_login_with_invitation_issues_a_session_without_a_workspace() -> None:
     dependencies = Dependencies()
     dependencies.accounts.candidates = [_account()]
-    dependencies.invitations.invitation = LoginInvitation(email="user@example.com")
+    dependencies.invitations.invitation = LoginInvitation(
+        email="user@example.com", account_id="account-1", workspace_id="workspace-1"
+    )
     dependencies.policies.workspace_capacity = False
 
     result = dependencies.service().login_with_password(_password_command(invite_token="invite"))
@@ -570,13 +608,15 @@ def test_password_login_does_not_restore_membership_for_an_existing_workspace(in
     dependencies.accounts.candidates = [_account()]
     dependencies.workspaces.active = True
     if invite_token is not None:
-        dependencies.invitations.invitation = LoginInvitation(email="user@example.com")
+        dependencies.invitations.invitation = LoginInvitation(
+            email="user@example.com", account_id="account-1", workspace_id="workspace-1"
+        )
 
     result = dependencies.service().login_with_password(_password_command(invite_token=invite_token))
 
     assert result.workspace_found
     assert result.tokens == TOKENS
-    assert dependencies.workspaces.checks == ([] if invite_token else ["account-1"])
+    assert dependencies.workspaces.checks == ["account-1"]
 
 
 def test_password_login_enforces_workspace_capacity() -> None:
@@ -857,7 +897,9 @@ def test_email_code_login_with_invitation_issues_a_session_without_provisioning(
     dependencies.accounts.candidates = [_account(status="pending", password=False)]
     dependencies.policies.workspace_creation_allowed = workspace_creation_allowed
     dependencies.policies.workspace_capacity = workspace_capacity
-    dependencies.invitations.invitation = LoginInvitation(email="user@example.com")
+    dependencies.invitations.invitation = LoginInvitation(
+        email="user@example.com", account_id="account-1", workspace_id="workspace-1"
+    )
 
     result = dependencies.service().login_with_email_code(_email_code_command(invite_token="invite-token"))
 
@@ -871,7 +913,9 @@ def test_email_code_login_ignores_invitation_when_account_already_has_a_workspac
     dependencies = Dependencies()
     dependencies.accounts.candidates = [_account()]
     dependencies.workspaces.active = True
-    dependencies.invitations.invitation = LoginInvitation(email="user@example.com")
+    dependencies.invitations.invitation = LoginInvitation(
+        email="user@example.com", account_id="account-1", workspace_id="workspace-1"
+    )
 
     dependencies.service().login_with_email_code(_email_code_command(invite_token="invite-token"))
 
@@ -890,7 +934,9 @@ def test_email_code_login_falls_back_to_provisioning_when_invitation_is_stale() 
 def test_email_code_login_rejects_invitation_for_another_email() -> None:
     dependencies = Dependencies()
     dependencies.accounts.candidates = [_account()]
-    dependencies.invitations.invitation = LoginInvitation(email="other@example.com")
+    dependencies.invitations.invitation = LoginInvitation(
+        email="other@example.com", account_id="account-1", workspace_id="workspace-1"
+    )
 
     with pytest.raises(account_errors.InvalidLoginInvitationEmailError):
         dependencies.service().login_with_email_code(_email_code_command(invite_token="invite-token"))
@@ -963,3 +1009,97 @@ def test_refresh_rejects_invalid_account_state(
         dependencies.service().refresh("old-refresh")
 
     assert dependencies.sessions.rotations == []
+
+
+def _invitation(email: str = "user@example.com") -> LoginInvitation:
+    return LoginInvitation(account_id="account-1", workspace_id="workspace-1", email=email)
+
+
+def test_invitation_login_only_initializes_the_account_named_by_the_invitation() -> None:
+    dependencies = Dependencies()
+    dependencies.accounts.candidates = [
+        _account(account_id="mixed-case", password=False, status="pending", email="User@example.com"),
+        _account(account_id="account-1", password=False, status="pending"),
+    ]
+    dependencies.invitations.invitation = _invitation()
+    dependencies.workspaces.active = True
+
+    dependencies.service().login_with_password(_password_command(password="password123", invite_token="invite"))
+
+    assert [completion.account_id for completion in dependencies.accounts.completions] == ["account-1"]
+    assert dependencies.passwords.hashed_passwords == ["password123"]
+
+
+def test_invitation_login_checks_seat_capacity_before_activating_pending_account() -> None:
+    dependencies = Dependencies()
+    dependencies.accounts.candidates = [_account(password=False, status="pending")]
+    dependencies.invitations.invitation = _invitation()
+    dependencies.policies.account_capacity = False
+    dependencies.workspaces.active = True
+
+    with pytest.raises(account_errors.LoginInvitationQuotaError) as raised:
+        dependencies.service().login_with_password(_password_command(password="password123", invite_token="invite"))
+
+    assert raised.value.seats is True
+    assert dependencies.accounts.completions == []
+    assert dependencies.invitations.ensured == []
+    assert dependencies.invitations.quota_checks == []
+    assert dependencies.policies.account_capacity_checks == 1
+    assert dependencies.sessions.issued == []
+
+
+def test_password_login_admits_invited_account_without_granting_membership() -> None:
+    dependencies = Dependencies()
+    dependencies.accounts.candidates = [_account()]
+    dependencies.invitations.invitation = _invitation()
+    dependencies.invitations.restored_workspace = dependencies.workspaces
+    dependencies.policies.workspace_capacity = False
+
+    result = dependencies.service().login_with_password(_password_command(invite_token="invite"))
+
+    assert dependencies.invitations.ensured == []
+    assert dependencies.invitations.quota_checks == ["workspace-1"]
+    assert dependencies.workspaces.checks == ["account-1"]
+    assert result.workspace_found
+    assert result.tokens == TOKENS
+    assert dependencies.sessions.issued == ["account-1"]
+    assert dependencies.security.resets == ["user@example.com"]
+
+
+def test_password_login_checks_member_quota_before_completing_or_restoring_membership() -> None:
+    dependencies = Dependencies()
+    dependencies.accounts.candidates = [_account()]
+    dependencies.invitations.invitation = _invitation()
+    dependencies.invitations.quota_error = account_errors.LoginInvitationQuotaError(seats=False)
+
+    with pytest.raises(account_errors.LoginInvitationQuotaError) as raised:
+        dependencies.service().login_with_password(_password_command(invite_token="invite"))
+
+    assert raised.value.seats is False
+    assert dependencies.accounts.completions == []
+    assert dependencies.invitations.quota_checks == ["workspace-1"]
+    assert dependencies.invitations.ensured == []
+    assert dependencies.sessions.issued == []
+
+
+def test_email_code_login_translates_locked_workspace_capacity_rejection() -> None:
+    dependencies = Dependencies()
+    dependencies.accounts.candidates = [_account()]
+    dependencies.workspaces_provisioning.failure = WorkspacesLimitExceededError()
+
+    with pytest.raises(account_errors.LoginWorkspaceLimitError):
+        dependencies.service().login_with_email_code(_email_code_command())
+
+    assert dependencies.workspaces_provisioning.account_ids == ["account-1"]
+    assert dependencies.sessions.issued == []
+
+
+def test_email_code_login_translates_locked_new_account_capacity_rejection() -> None:
+    dependencies = Dependencies()
+    dependencies.accounts_provisioning.failure = WorkspacesLimitExceededError()
+
+    with pytest.raises(account_errors.LoginWorkspaceLimitError):
+        dependencies.service().login_with_email_code(_email_code_command())
+
+    assert len(dependencies.accounts_provisioning.calls) == 1
+    assert dependencies.sessions.issued == []

@@ -19,7 +19,7 @@ from services.workspace.member_service import (
     WorkspaceMemberAccessGateway,
     WorkspaceMemberService,
 )
-from services.workspace.provisioning_service import WorkspaceProvisioningService
+from services.workspace.provisioning_service import WorkspaceProvisioningService, WorkspaceQuotaGuard
 
 
 @dataclass
@@ -51,6 +51,8 @@ def build_account_domain(session_factory: sessionmaker[Session]) -> AccountDomai
     access.rbac_enabled = False
     access.permission_keys.return_value = {"workspace.member.manage", "workspace.role.manage"}
     access.is_owner.return_value = False
+    access.can_replay_member_removal.return_value = False
+    access.acquire_invitation_admission.side_effect = lambda _workspace_id: nullcontext(object())
     delivery = create_autospec(WorkspaceInvitationDelivery, instance=True)
     delivery.requires_capacity_check = False
     delivery.create.return_value = "invitation-token"
@@ -59,11 +61,14 @@ def build_account_domain(session_factory: sessionmaker[Session]) -> AccountDomai
     members = WorkspaceMemberService(
         workspaces=workspaces, accounts=repository, access=access, invitation_links=delivery
     )
+    quota_guard = create_autospec(WorkspaceQuotaGuard, instance=True)
+    quota_guard.acquire.side_effect = lambda: nullcontext(lambda: None)
     provisioning = WorkspaceProvisioningService(
         owners=repository,
         provisioning=workspaces,
         effects=WorkspaceProvisioningEffectsGateway(),
         policies=policy,
+        quota_guard=quota_guard,
         memberships=workspaces,
         members=members,
     )

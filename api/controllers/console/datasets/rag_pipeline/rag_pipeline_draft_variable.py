@@ -34,6 +34,7 @@ from controllers.console.wraps import (
 from core.app.file_access import DatabaseFileAccessController
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable, environment_variable_value_type
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from extensions.application_services.rag_pipeline import build_rag_pipeline_service
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping, build_from_mappings
 from factories.variable_factory import build_segment_with_type
@@ -50,7 +51,6 @@ from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
 from models.dataset import Pipeline
-from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.workflow_draft_variable_service import WorkflowDraftVariableList, WorkflowDraftVariableService
 
 logger = logging.getLogger(__name__)
@@ -114,7 +114,7 @@ class RagPipelineVariableCollectionApi(Resource):
         """
 
         # fetch draft workflow by app_model
-        rag_pipeline_service = RagPipelineService(db.session())
+        rag_pipeline_service = build_rag_pipeline_service(session=db.session())
         workflow_exist = rag_pipeline_service.is_workflow_exist(pipeline=pipeline)
         if not workflow_exist:
             raise DraftWorkflowNotExist()
@@ -335,7 +335,7 @@ class RagPipelineVariableResetApi(Resource):
             session=session,
         )
 
-        rag_pipeline_service = RagPipelineService(session)
+        rag_pipeline_service = build_rag_pipeline_service(session=session)
         draft_workflow = rag_pipeline_service.get_draft_workflow(pipeline=pipeline)
         if draft_workflow is None:
             raise NotFoundError(
@@ -403,7 +403,7 @@ class RagPipelineEnvironmentVariableCollectionApi(Resource):
         Get draft workflow
         """
         # fetch draft workflow by app_model
-        rag_pipeline_service = RagPipelineService(db.session())
+        rag_pipeline_service = build_rag_pipeline_service(session=db.session())
         workflow = rag_pipeline_service.get_draft_workflow(pipeline=pipeline)
         if workflow is None:
             raise DraftWorkflowNotExist()

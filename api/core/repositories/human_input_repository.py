@@ -40,7 +40,7 @@ from models.human_input import (
     RecipientType,
     StandaloneWebAppRecipientPayload,
 )
-from repositories.human_input_errors import FormAlreadyHandledError
+from services.errors.human_input import FormAlreadyHandledError
 
 
 @dataclasses.dataclass(frozen=True)
@@ -736,20 +736,22 @@ class HumanInputFormSubmissionRepository:
         timeout_status: HumanInputFormStatus,
         reason: str | None = None,
     ) -> HumanInputFormRecord:
+        if timeout_status not in {HumanInputFormStatus.TIMEOUT, HumanInputFormStatus.EXPIRED}:
+            raise _InvalidTimeoutStatusError(f"invalid timeout status: {timeout_status}")
+
         with session_factory.create_session() as session, session.begin():
-            form_model = session.get(HumanInputForm, form_id)
+            form_model = session.get(HumanInputForm, form_id, with_for_update=True)
             if form_model is None:
                 raise FormNotFoundError(f"form not found, id={form_id}")
 
-            if timeout_status not in {HumanInputFormStatus.TIMEOUT, HumanInputFormStatus.EXPIRED}:
-                raise _InvalidTimeoutStatusError(f"invalid timeout status: {timeout_status}")
-
-            # already handled or submitted
+            # Repeating the winning timeout transition is idempotent. Any
+            # other terminal state belongs to a concurrent handler.
             if form_model.status in {HumanInputFormStatus.TIMEOUT, HumanInputFormStatus.EXPIRED}:
                 return HumanInputFormRecord.from_models(form_model, None)
-
-            if form_model.submitted_at is not None or form_model.status == HumanInputFormStatus.SUBMITTED:
-                raise FormNotFoundError(f"form already submitted, id={form_id}")
+            if form_model.submitted_at is not None:
+                raise FormAlreadyHandledError(HumanInputFormStatus.SUBMITTED)
+            if form_model.status != HumanInputFormStatus.WAITING:
+                raise FormAlreadyHandledError(form_model.status)
 
             form_model.status = timeout_status
             form_model.selected_action_id = None

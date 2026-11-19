@@ -93,7 +93,6 @@ from models.workflow import Workflow, WorkflowKind
 from repositories.workflow_collaboration_repository import WORKFLOW_ONLINE_USERS_PREFIX
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.app.access import resolve_app_access_filter
-from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.evaluation import EvaluationEntitlementUnavailableError, EvaluationPlanRequiredError
@@ -765,7 +764,7 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
             args["external_trace_id"] = external_trace_id
 
         try:
-            response = AppGenerateService.generate(
+            response = application_services().app_generation.generate(
                 session=session,
                 app_model=app_model,
                 user=current_user,
@@ -816,7 +815,7 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
         args = payload.model_dump(exclude_none=True)
 
         try:
-            response = AppGenerateService.generate_single_iteration(
+            response = application_services().app_generation.generate_single_iteration(
                 app_model=app_model,
                 user=current_user,
                 node_id=node_id,
@@ -865,7 +864,7 @@ class WorkflowDraftRunIterationNodeApi(Resource):
         args = payload.model_dump(exclude_none=True)
 
         try:
-            response = AppGenerateService.generate_single_iteration(
+            response = application_services().app_generation.generate_single_iteration(
                 app_model=app_model,
                 user=current_user,
                 node_id=node_id,
@@ -909,7 +908,7 @@ class AdvancedChatDraftRunLoopNodeApi(Resource):
         """
 
         try:
-            response = AppGenerateService.generate_single_loop(
+            response = application_services().app_generation.generate_single_loop(
                 app_model=app_model,
                 user=current_user,
                 node_id=node_id,
@@ -957,7 +956,7 @@ class WorkflowDraftRunLoopNodeApi(Resource):
         """
 
         try:
-            response = AppGenerateService.generate_single_loop(
+            response = application_services().app_generation.generate_single_loop(
                 app_model=app_model,
                 user=current_user,
                 node_id=node_id,
@@ -1213,7 +1212,7 @@ class DraftWorkflowRunApi(Resource):
             args["external_trace_id"] = external_trace_id
 
         try:
-            response = AppGenerateService.generate(
+            response = application_services().app_generation.generate(
                 session=session,
                 app_model=app_model,
                 user=current_user,
@@ -1296,6 +1295,7 @@ class DraftWorkflowNodeRunApi(Resource):
         workflow_service = WorkflowService()
 
         workflow_node_execution = workflow_service.run_draft_workflow_node(
+            knowledge_retrieval=application_services().knowledge.retrieval,
             app_model=app_model,
             draft_workflow=draft_workflow,
             node_id=node_id,
@@ -1884,7 +1884,7 @@ class DraftWorkflowTriggerRunApi(Resource):
             if not event:
                 return jsonable_encoder({"status": "waiting", "retry_in": LISTENING_RETRY_IN})
             return helper.compact_generate_response(
-                AppGenerateService.generate(
+                application_services().app_generation.generate(
                     session=session,
                     app_model=app_model,
                     user=current_user,
@@ -1970,6 +1970,7 @@ class DraftWorkflowTriggerNodeApi(Resource):
         files = _parse_file(draft_workflow, raw_files if isinstance(raw_files, list) else None)
         try:
             node_execution = workflow_service.run_draft_workflow_node(
+                knowledge_retrieval=application_services().knowledge.retrieval,
                 app_model=app_model,
                 draft_workflow=draft_workflow,
                 node_id=node_id,
@@ -2038,7 +2039,7 @@ class DraftWorkflowTriggerRunAllApi(Resource):
             return jsonable_encoder({"status": "waiting", "retry_in": LISTENING_RETRY_IN})
 
         try:
-            response = AppGenerateService.generate(
+            response = application_services().app_generation.generate(
                 session=session,
                 app_model=app_model,
                 user=current_user,

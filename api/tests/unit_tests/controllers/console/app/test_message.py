@@ -8,12 +8,12 @@ from flask import Flask
 from sqlalchemy.orm import Session
 
 from controllers.console.app import message as message_module
+from enums.creator import CreatorUserRole
 from fields.conversation_fields import MessageResponseSource
 from models.account import Account
 from models.enums import (
     ConversationFromSource,
     ConversationStatus,
-    CreatorUserRole,
     FeedbackFromSource,
     FeedbackRating,
 )

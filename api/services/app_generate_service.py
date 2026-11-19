@@ -31,6 +31,7 @@ from services.errors.app import (
     WorkflowNotFoundError,
 )
 from services.errors.llm import InvokeRateLimitError
+from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 from services.quota_service import QuotaService, unlimited
 from services.workflow_execution_identity import build_workflow_execution_identity
 from services.workflow_run_agg import WorkflowRunAgg
@@ -74,6 +75,9 @@ def _release_session_connection(session: Session) -> None:
 
 
 class AppGenerateService:
+    def __init__(self, *, knowledge_retrieval: KnowledgeRetriever) -> None:
+        self._knowledge_retrieval = knowledge_retrieval
+
     @staticmethod
     def _build_streaming_task_on_subscribe(
         start_task: Callable[[], None],
@@ -117,10 +121,9 @@ class AppGenerateService:
 
         return _on_subscribe
 
-    @classmethod
     @trace_span(AppGenerateHandler)
     def generate(
-        cls,
+        self,
         app_model: App,
         user: Account | EndUser,
         args: Mapping[str, Any],
@@ -139,10 +142,10 @@ class AppGenerateService:
         :param streaming: streaming
         :return:
         """
-        return cls._run_with_guardrails(
+        return self._run_with_guardrails(
             app_model=app_model,
             streaming=streaming,
-            action=lambda rate_limit, request_id: cls._dispatch_generate(
+            action=lambda rate_limit, request_id: self._dispatch_generate(
                 app_model=app_model,
                 user=user,
                 args=args,
@@ -189,9 +192,8 @@ class AppGenerateService:
             if not streaming:
                 rate_limit.exit(request_id)
 
-    @classmethod
     def _dispatch_generate(
-        cls,
+        self,
         *,
         app_model: App,
         user: Account | EndUser,
@@ -212,7 +214,7 @@ class AppGenerateService:
             case AppMode.COMPLETION:
                 return rate_limit.generate(
                     CompletionAppGenerator.convert_to_event_stream(
-                        CompletionAppGenerator().generate(
+                        CompletionAppGenerator(knowledge_retrieval=self._knowledge_retrieval).generate(
                             session=session,
                             app_model=app_model,
                             user=user,
@@ -226,7 +228,10 @@ class AppGenerateService:
             case AppMode.AGENT_CHAT:
                 return rate_limit.generate(
                     AgentChatAppGenerator.convert_to_event_stream(
-                        AgentChatAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
+                        AgentChatAppGenerator(
+                            execution_driver=WorkflowRunAgg.run,
+                            knowledge_retrieval=self._knowledge_retrieval,
+                        ).generate(
                             session=session,
                             app_model=app_model,
                             user=user,
@@ -254,7 +259,7 @@ class AppGenerateService:
             case AppMode.CHAT:
                 return rate_limit.generate(
                     ChatAppGenerator.convert_to_event_stream(
-                        ChatAppGenerator().generate(
+                        ChatAppGenerator(knowledge_retrieval=self._knowledge_retrieval).generate(
                             session=session,
                             app_model=app_model,
                             user=user,
@@ -267,7 +272,7 @@ class AppGenerateService:
                 )
             case AppMode.ADVANCED_CHAT:
                 workflow_id = args.get("workflow_id")
-                workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
+                workflow = self._get_workflow(app_model, invoke_from, workflow_id, session=session)
 
                 if streaming:
                     # Streaming mode: subscribe to SSE and enqueue the execution on first subscriber
@@ -286,7 +291,7 @@ class AppGenerateService:
                     def on_subscribe():
                         workflow_based_app_execution_task.delay(payload_json)
 
-                    on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
+                    on_subscribe = self._build_streaming_task_on_subscribe(on_subscribe)
                     return rate_limit.generate(
                         AdvancedChatAppGenerator.convert_to_event_stream(
                             AdvancedChatAppGenerator.retrieve_events(
@@ -304,7 +309,10 @@ class AppGenerateService:
                     session_factory=session_factory.get_session_maker(),
                     state_owner_user_id=workflow.created_by,
                 )
-                advanced_generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+                advanced_generator = AdvancedChatAppGenerator(
+                    execution_driver=WorkflowRunAgg.run,
+                    knowledge_retrieval=self._knowledge_retrieval,
+                )
                 return rate_limit.generate(
                     advanced_generator.convert_to_event_stream(
                         advanced_generator.generate(
@@ -323,8 +331,8 @@ class AppGenerateService:
                 )
             case AppMode.WORKFLOW:
                 workflow_id = args.get("workflow_id")
-                workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
-                cls._ensure_workflow_service_mode_available(workflow=workflow, invoke_from=invoke_from)
+                workflow = self._get_workflow(app_model, invoke_from, workflow_id, session=session)
+                self._ensure_workflow_service_mode_available(workflow=workflow, invoke_from=invoke_from)
                 if streaming:
                     payload = AppExecutionParams.new(
                         app_model=app_model,
@@ -342,7 +350,7 @@ class AppGenerateService:
                     def on_subscribe():
                         workflow_based_app_execution_task.delay(payload_json)
 
-                    on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
+                    on_subscribe = self._build_streaming_task_on_subscribe(on_subscribe)
                     return rate_limit.generate(
                         WorkflowAppGenerator.convert_to_event_stream(
                             MessageBasedAppGenerator.retrieve_events(
@@ -362,7 +370,10 @@ class AppGenerateService:
                 _release_session_connection(session)
                 return rate_limit.generate(
                     WorkflowAppGenerator.convert_to_event_stream(
-                        WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
+                        WorkflowAppGenerator(
+                            execution_driver=WorkflowRunAgg.run,
+                            knowledge_retrieval=self._knowledge_retrieval,
+                        ).generate(
                             app_model=app_model,
                             workflow=workflow,
                             user=user,
@@ -406,9 +417,8 @@ class AppGenerateService:
         limits = [limit for limit in [app_limit, config_limit] if limit > 0]
         return min(limits) if limits else 0
 
-    @classmethod
     def generate_single_iteration(
-        cls,
+        self,
         app_model: App,
         user: Account,
         node_id: str,
@@ -421,9 +431,12 @@ class AppGenerateService:
             case AppMode.COMPLETION | AppMode.CHAT | AppMode.AGENT_CHAT:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
             case AppMode.ADVANCED_CHAT:
-                workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
+                workflow = self._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
                 return AdvancedChatAppGenerator.convert_to_event_stream(
-                    AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run).single_iteration_generate(
+                    AdvancedChatAppGenerator(
+                        execution_driver=WorkflowRunAgg.run,
+                        knowledge_retrieval=self._knowledge_retrieval,
+                    ).single_iteration_generate(
                         app_model=app_model,
                         workflow=workflow,
                         node_id=node_id,
@@ -434,9 +447,12 @@ class AppGenerateService:
                     )
                 )
             case AppMode.WORKFLOW:
-                workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
+                workflow = self._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
                 return AdvancedChatAppGenerator.convert_to_event_stream(
-                    WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).single_iteration_generate(
+                    WorkflowAppGenerator(
+                        execution_driver=WorkflowRunAgg.run,
+                        knowledge_retrieval=self._knowledge_retrieval,
+                    ).single_iteration_generate(
                         app_model=app_model,
                         workflow=workflow,
                         node_id=node_id,
@@ -452,9 +468,8 @@ class AppGenerateService:
             case _:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
 
-    @classmethod
     def generate_single_loop(
-        cls,
+        self,
         app_model: App,
         user: Account,
         node_id: str,
@@ -467,9 +482,12 @@ class AppGenerateService:
             case AppMode.COMPLETION | AppMode.CHAT | AppMode.AGENT_CHAT:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
             case AppMode.ADVANCED_CHAT:
-                workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
+                workflow = self._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
                 return AdvancedChatAppGenerator.convert_to_event_stream(
-                    AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run).single_loop_generate(
+                    AdvancedChatAppGenerator(
+                        execution_driver=WorkflowRunAgg.run,
+                        knowledge_retrieval=self._knowledge_retrieval,
+                    ).single_loop_generate(
                         app_model=app_model,
                         workflow=workflow,
                         node_id=node_id,
@@ -480,9 +498,12 @@ class AppGenerateService:
                     )
                 )
             case AppMode.WORKFLOW:
-                workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
+                workflow = self._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
                 return AdvancedChatAppGenerator.convert_to_event_stream(
-                    WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).single_loop_generate(
+                    WorkflowAppGenerator(
+                        execution_driver=WorkflowRunAgg.run,
+                        knowledge_retrieval=self._knowledge_retrieval,
+                    ).single_loop_generate(
                         app_model=app_model,
                         workflow=workflow,
                         node_id=node_id,

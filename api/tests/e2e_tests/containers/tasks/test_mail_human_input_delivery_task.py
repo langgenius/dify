@@ -19,11 +19,12 @@ from core.workflow.human_input_adapter import (
     MemberRecipient,
 )
 from core.workflow.nodes.human_input.entities import HumanInputNodeData
+from enums.creator import CreatorUserRole
 from extensions.ext_storage import storage
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import RuntimeState, VariablePool
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import WorkflowRunTriggeredFrom
 from models.human_input import HumanInputDelivery, HumanInputForm, HumanInputFormRecipient
 from models.model import AppMode
 from models.workflow import WorkflowPause, WorkflowRun, WorkflowType

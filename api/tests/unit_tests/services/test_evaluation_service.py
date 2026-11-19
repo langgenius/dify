@@ -3,7 +3,9 @@
 import io
 import json
 from collections.abc import Callable
+from dataclasses import replace
 from functools import partial
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
 from openpyxl import load_workbook
@@ -29,6 +31,7 @@ from core.evaluation.evaluation_manager import EvaluationManager
 from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
 from core.evaluation.runners.retrieval_evaluation_runner import RetrievalEvaluationRunner
 from core.rbac import RBACPermission, RBACResourceScope
+from extensions.ext_application_services import ApplicationServices
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
@@ -57,6 +60,7 @@ from services.agent.evaluation_target_service import ResolvedAgentEvaluationTarg
 from services.errors.base import NoPermissionError
 from services.errors.evaluation import EvaluationDatasetInvalidError
 from services.evaluation_service import EvaluationService
+from services.knowledge.hit_testing.application import HitTestingApplicationService
 from services.variable_truncator import VariableTruncator
 from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_service import WorkflowService
@@ -85,6 +89,19 @@ def _agent() -> Agent:
         scope=AgentScope.ROSTER,
         source=AgentSource.AGENT_APP,
     )
+
+
+@pytest.fixture
+def evaluation_hit_testing(
+    monkeypatch: pytest.MonkeyPatch, account_application_services: ApplicationServices
+) -> MagicMock:
+    hit_testing = create_autospec(HitTestingApplicationService, instance=True, spec_set=True)
+    services = replace(
+        account_application_services,
+        knowledge=replace(account_application_services.knowledge, hit_testing=hit_testing),
+    )
+    monkeypatch.setattr("extensions.ext_application_services.application_services", lambda: services)
+    return hit_testing
 
 
 def _workflow_with_nodes(nodes: list[tuple[str, dict[str, object]]]) -> Workflow:
@@ -2429,6 +2446,7 @@ def test_start_agent_run_persists_and_dispatches_agent_snapshot(
     assert _dispatched_inputs(dispatched_payload)[0]["inputs"] == {"query": "hello"}
 
 
+@pytest.mark.usefixtures("evaluation_hit_testing")
 def test_run_single_app_target_loads_pinned_workflow_version(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
@@ -2594,12 +2612,10 @@ def test_execute_targets_propagates_missing_pinned_workflow_and_stops_tasks(monk
     assert stopped == [("run-1", [7])]
 
 
-def test_execute_retrieval_targets_sets_account_tenant_with_worker_session(
-    monkeypatch: pytest.MonkeyPatch,
+def test_execute_retrieval_targets_preserves_worker_account_and_tenant_scope(
+    evaluation_hit_testing: MagicMock,
     sqlite_session: Session,
 ) -> None:
-    from services.hit_testing_service import HitTestingService
-
     account = make_account()
     tenant = make_tenant()
     membership = TenantAccountJoin(
@@ -2610,18 +2626,10 @@ def test_execute_retrieval_targets_sets_account_tenant_with_worker_session(
     dataset = make_dataset()
     sqlite_session.add_all([account, tenant, membership, dataset])
     sqlite_session.commit()
-    retrievals: list[tuple[Session, Account]] = []
-
-    def retrieve(**kwargs: object) -> dict[str, list[dict[str, object]]]:
-        thread_session = kwargs["session"]
-        service_account = kwargs["account"]
-        assert isinstance(thread_session, Session)
-        assert isinstance(service_account, Account)
-        retrievals.append((thread_session, service_account))
-        assert service_account.current_tenant_id == tenant.id
-        return {"records": [{"segment": {"content": "matched content"}, "score": 0.9}]}
-
-    monkeypatch.setattr(HitTestingService, "retrieve", retrieve)
+    evaluation_hit_testing.retrieve.return_value = {
+        "query": {"content": "hello"},
+        "records": [{"segment": {"content": "matched content"}, "score": 0.9}],
+    }
 
     results, errors = EvaluationService.execute_retrieval_test_targets(
         tenant_id="tenant-1",
@@ -2634,6 +2642,10 @@ def test_execute_retrieval_targets_sets_account_tenant_with_worker_session(
     assert errors == [None]
     assert results[0] is not None
     assert results[0].outputs == {"result": [{"content": "matched content", "score": 0.9}]}
-    assert len(retrievals) == 1
-    assert retrievals[0][0] is not sqlite_session
-    assert retrievals[0][1].id == account.id
+    evaluation_hit_testing.retrieve.assert_called_once()
+    context = evaluation_hit_testing.retrieve.call_args.args[0]
+    assert context.account_id == account.id
+    assert context.active_workspace_id == tenant.id
+    kwargs = evaluation_hit_testing.retrieve.call_args.kwargs
+    assert kwargs["dataset_id"] == dataset.id
+    assert kwargs["request"].query == "hello"

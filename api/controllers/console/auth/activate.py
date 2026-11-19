@@ -28,6 +28,7 @@ from services.account_errors import (
     InvitationWorkspaceFullError,
 )
 from services.entities.account_activation_entities import ActivationCommand, InvitationLookup
+from services.errors.workspace import WorkspaceInvitationQuotaError
 
 
 class ActivateCheckQuery(BaseModel):
@@ -167,7 +168,7 @@ class ActivateApi(Resource):
             raise EmailDomainSuspendedError() from None
         except FrozenAccountError:
             raise AccountInFreezeError() from None
-        except InvitationWorkspaceFullError:
+        except (WorkspaceInvitationQuotaError, InvitationWorkspaceFullError):
             raise InvitationWorkspaceMemberLimitError() from None
 
         return dump_response(ActivationResponse, {"result": "success"})

@@ -15,7 +15,7 @@ class UnsupportedStoredSourceError(IndexingInputSourceError):
         super().__init__(f"unsupported data source type: {source_type}")
 
 
-class SourceCredentialUnavailableError(IndexingInputSourceError):
+class SourceCredentialUnavailableError(IndexingInputError):
     """Raised when a datasource cannot resolve its required credential policy."""
 
 
