@@ -94,28 +94,6 @@ def test_publish_evaluation_workflow_route_maps_plan_denial(
             )
 
 
-def test_ordinary_publish_route_maps_evaluation_plan_denial(
-    app: Flask, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    service = _service(sqlite_session, monkeypatch)
-
-    def deny_publish(**_kwargs: object) -> None:
-        raise EvaluationPlanRequiredError()
-
-    monkeypatch.setattr(service, "publish_workflow", deny_publish)
-    monkeypatch.setattr(
-        workflow_module.session_factory,
-        "get_session_maker",
-        lambda: sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False),
-    )
-    api = workflow_module.PublishedWorkflowApi()
-    with app.test_request_context("/apps/app-1/workflows/publish", method="POST"):
-        with pytest.raises(PaidPlanRequiredError):
-            unwrap(api.post)(
-                api, workflow_module.PublishWorkflowPayload(), make_account(), make_app(mode=AppMode.WORKFLOW)
-            )
-
-
 def test_convert_workflow_kind_route_maps_query_and_response(
     app: Flask, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:

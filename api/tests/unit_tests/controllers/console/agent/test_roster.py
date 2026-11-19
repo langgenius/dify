@@ -7,8 +7,9 @@ from unittest.mock import MagicMock
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import InternalServerError, NotFound
 
+from controllers.common.errors import InternalServerError
+from controllers.common.errors import NotFoundError as NotFound
 from controllers.console import console_ns
 from controllers.console.agent import composer as composer_controller
 from controllers.console.agent import roster as roster_controller
@@ -54,7 +55,7 @@ from tests.helpers.unit.rbac_fakes import RBACDomain
 
 
 @pytest.fixture(autouse=True)
-def rbac_services(monkeypatch: pytest.MonkeyPatch, rbac_domain: RBACDomain) -> None:
+def rbac_services(monkeypatch: pytest.MonkeyPatch, rbac_domain: RBACDomain, workflow_application) -> None:
     monkeypatch.setattr(roster_controller, "application_services", lambda: rbac_domain)
 
 

@@ -20,6 +20,7 @@ from models.workflow import WorkflowRun
 from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from repositories.tools.provider_repository import ToolProviderRepository
 from services.app_service import AppService, CreateAppParams
 from services.workflow_run_service import WorkflowRunService
 from tests.e2e_tests.containers.helpers import accounts as account_fixtures
@@ -41,6 +42,7 @@ class TestWorkflowRunService:
             node_executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
                 session_maker=session_factory
             ),
+            tool_providers=ToolProviderRepository(session_factory),
         )
 
     @pytest.fixture

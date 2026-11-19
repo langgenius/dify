@@ -16,17 +16,9 @@ import pytest
 from sqlalchemy.orm import Session
 
 from core.workflow.file_reference import build_file_reference
-from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingBundle
+from enums.agent import WorkflowAgentBindingType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
-from models.agent import (
-    Agent,
-    AgentConfigSnapshot,
-    AgentScope,
-    AgentSource,
-    AgentStatus,
-    WorkflowAgentBindingType,
-    WorkflowAgentNodeBinding,
-)
+from models.agent import Agent, AgentConfigSnapshot, AgentScope, AgentSource, AgentStatus, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
     AgentSoulConfig,
     DeclaredArrayItem,
@@ -34,6 +26,7 @@ from models.agent_config_entities import (
     DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
+from models.agent_runtime_contracts import WorkflowAgentBindingBundle
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App
 from models.workflow import (

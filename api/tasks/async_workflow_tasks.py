@@ -16,11 +16,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
-from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
 from core.app.layers.timeslice_layer import TimeSliceLayer
 from core.repositories import DifyCoreRepositoryFactory
+from extensions.application_services.workflow import build_workflow_execution_dependencies
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from graphon.runtime import RuntimeState
@@ -29,6 +29,7 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, EndUser, Tenant
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
+from repositories.workflow.definition_repository import workflow_snapshot
 from services.app_task_service import AppTaskService
 from services.errors.app import WorkflowNotFoundError
 from services.human_input_v2.submission_service import HumanInputSubmissionService
@@ -37,6 +38,7 @@ from services.workflow.entities import (
     WorkflowResumeTaskData,
     WorkflowTaskData,
 )
+from services.workflow.execution.adapters.workflow.app_generator import WorkflowAppGenerator
 from services.workflow_run_agg import WorkflowRunAgg
 from tasks.workflow_cfs_scheduler.cfs_scheduler import AsyncWorkflowCFSPlanEntity, AsyncWorkflowCFSPlanScheduler
 from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue, AsyncWorkflowSystemStrategy
@@ -150,7 +152,9 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
         state_owner_user_id=workflow.created_by,
     )
 
-    generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
+    generator = WorkflowAppGenerator(
+        runtime=build_workflow_execution_dependencies(session_factory), execution_driver=WorkflowRunAgg.run
+    )
     start_time = datetime.now(UTC)
     graph_engine_layers = []
     trigger_logs = application_services().triggers.execution_logs
@@ -177,7 +181,7 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
 
     generator.resume(
         app_model=app_model,
-        workflow=workflow,
+        workflow=workflow_snapshot(workflow),
         user=user,
         application_generate_entity=generate_entity,
         graph_runtime_state=graph_runtime_state,

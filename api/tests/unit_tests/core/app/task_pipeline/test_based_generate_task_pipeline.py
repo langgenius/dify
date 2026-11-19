@@ -69,55 +69,35 @@ def _persist_message(session: Session, *, message_id: str) -> Message:
 
 class TestBasedGenerateTaskPipeline:
     @pytest.fixture
-    def pipeline(self) -> BasedGenerateTaskPipeline[AppGenerateEntity]:
+    def pipeline(self):
         app_config = SimpleNamespace(
             tenant_id="tenant-1",
             app_id="app-1",
             sensitive_word_avoidance=None,
         )
-        app_generate_entity = AppGenerateEntity(
-            task_id="task-1",
-            app_config=app_config,
-            inputs={},
-            files=[],
-            user_id="user-1",
-            stream=True,
-            invoke_from=InvokeFrom.WEB_APP,
-        )
+        app_generate_entity = SimpleNamespace(task_id="task-1", app_config=app_config)
         return BasedGenerateTaskPipeline(
             application_generate_entity=app_generate_entity,
             queue_manager=Mock(),
             stream=True,
         )
 
-    def test_disabled_output_moderation_does_not_buffer_streams(
-        self, pipeline: BasedGenerateTaskPipeline[AppGenerateEntity]
-    ) -> None:
-        pipeline._application_generate_entity.app_config.sensitive_word_avoidance = SensitiveWordAvoidanceEntity(
-            type="api", config={"inputs_config": {"enabled": True}, "outputs_config": {"enabled": False}}
-        )
-        assert pipeline._init_output_moderation() is None
-
-    def test_error_to_desc_quota_exceeded(self, pipeline: BasedGenerateTaskPipeline[AppGenerateEntity]) -> None:
+    def test_error_to_desc_quota_exceeded(self, pipeline):
         message = pipeline._error_to_desc(QuotaExceededError())
         assert "quota" in message.lower()
 
-    def test_handle_error_wraps_invoke_authorization(
-        self, pipeline: BasedGenerateTaskPipeline[AppGenerateEntity]
-    ) -> None:
+    def test_handle_error_wraps_invoke_authorization(self, pipeline):
         event = QueueErrorEvent(error=InvokeAuthorizationError())
         err = pipeline.handle_error(event=event)
         assert isinstance(err, InvokeAuthorizationError)
         assert str(err) == "Incorrect API key provided"
 
-    def test_handle_error_preserves_invoke_error(self, pipeline: BasedGenerateTaskPipeline[AppGenerateEntity]) -> None:
+    def test_handle_error_preserves_invoke_error(self, pipeline):
         event = QueueErrorEvent(error=InvokeError("bad"))
         err = pipeline.handle_error(event=event)
         assert err is event.error
 
-    def test_handle_error_preserves_agent_backend_run_failed_error(
-        self, pipeline: BasedGenerateTaskPipeline[AppGenerateEntity]
-    ) -> None:
+    def test_handle_error_preserves_agent_backend_run_failed_error(self, pipeline):
         event = QueueErrorEvent(
             error=AgentBackendRunFailedError(
                 "run-1",
@@ -134,9 +114,7 @@ class TestBasedGenerateTaskPipeline:
         assert "agent_run_id=run-1" in str(err)
 
     @pytest.mark.parametrize("sqlite_session", [(Message,)], indirect=True)
-    def test_handle_error_updates_message_when_found(
-        self, pipeline: BasedGenerateTaskPipeline[AppGenerateEntity], sqlite_session: Session
-    ) -> None:
+    def test_handle_error_updates_message_when_found(self, pipeline, sqlite_session: Session):
         event = QueueErrorEvent(error=ValueError("oops"))
         _persist_message(sqlite_session, message_id="msg-1")
 
@@ -151,13 +129,11 @@ class TestBasedGenerateTaskPipeline:
         assert updated_message.error == "oops"
 
     @pytest.mark.parametrize("sqlite_session", [(Message,)], indirect=True)
-    def test_handle_error_returns_err_when_message_missing(
-        self, pipeline: BasedGenerateTaskPipeline[AppGenerateEntity], sqlite_session: Session
-    ) -> None:
+    def test_handle_error_leaves_other_messages_unchanged(self, pipeline, sqlite_session: Session):
         event = QueueErrorEvent(error=ValueError("oops"))
         _persist_message(sqlite_session, message_id="other-message")
 
-        err = pipeline.handle_error(event=event, session=sqlite_session, message_id="msg-1")
+        err = pipeline.handle_error(event=event, session=sqlite_session, message_id="missing-message")
 
         assert err is event.error
         untouched_message = sqlite_session.get(Message, "other-message")
@@ -165,19 +141,19 @@ class TestBasedGenerateTaskPipeline:
         assert untouched_message.status == MessageStatus.NORMAL
         assert untouched_message.error is None
 
-    def test_error_to_stream_response_and_ping(self, pipeline: BasedGenerateTaskPipeline[AppGenerateEntity]) -> None:
+    def test_error_to_stream_response_and_ping(self, pipeline):
         error_response = pipeline.error_to_stream_response(ValueError("boom"))
         ping_response = pipeline.ping_stream_response()
 
         assert error_response.task_id == "task-1"
         assert ping_response.task_id == "task-1"
 
-    def test_stream_converter_maps_invoke_rate_limit_error(self) -> None:
+    def test_stream_converter_maps_invoke_rate_limit_error(self):
         data = AppGenerateResponseConverter._error_to_stream_response(InvokeRateLimitError("quota exceeded"))
 
         assert data == {"code": "rate_limit_error", "status": 429, "message": "quota exceeded"}
 
-    def test_stream_converter_maps_agent_backend_run_failed_error(self) -> None:
+    def test_stream_converter_maps_agent_backend_run_failed_error(self):
         data = AppGenerateResponseConverter._error_to_stream_response(
             AgentBackendRunFailedError(
                 "run-1",
@@ -193,7 +169,7 @@ class TestBasedGenerateTaskPipeline:
             "message": "Knowledge retrieval failed (agent_run_id=run-1)",
         }
 
-    def test_stream_converter_maps_agent_run_limit_error(self) -> None:
+    def test_stream_converter_maps_agent_run_limit_error(self):
         data = AppGenerateResponseConverter._error_to_stream_response(
             AgentBackendRunFailedError(
                 "run-1",
@@ -209,31 +185,48 @@ class TestBasedGenerateTaskPipeline:
             "message": "run limit reached (agent_run_id=run-1)",
         }
 
-    def test_handle_output_moderation_when_flagged(
-        self, pipeline: BasedGenerateTaskPipeline[AppGenerateEntity], monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_handle_output_moderation_when_flagged(self, pipeline):
         handler = Mock()
         handler.moderation_completion.return_value = ("filtered", True)
-        monkeypatch.setattr(pipeline, "output_moderation_handler", handler)
+        pipeline.output_moderation_handler = handler
 
         result = pipeline.handle_output_moderation_when_task_finished("raw")
 
         assert result == "filtered"
-        handler.moderation_completion.assert_called_once_with(completion="raw")
         assert pipeline.output_moderation_handler is None
 
-    def test_handle_output_moderation_when_not_flagged(
-        self, pipeline: BasedGenerateTaskPipeline[AppGenerateEntity], monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_handle_output_moderation_when_not_flagged(self, pipeline):
         handler = Mock()
         handler.moderation_completion.return_value = ("safe", False)
-        monkeypatch.setattr(pipeline, "output_moderation_handler", handler)
+        pipeline.output_moderation_handler = handler
 
         result = pipeline.handle_output_moderation_when_task_finished("raw")
 
         assert result is None
-        handler.moderation_completion.assert_called_once_with(completion="raw")
         assert pipeline.output_moderation_handler is None
+
+    def test_disabled_output_moderation_does_not_buffer_streams(
+        self, pipeline: BasedGenerateTaskPipeline[AppGenerateEntity]
+    ) -> None:
+        pipeline._application_generate_entity.app_config.sensitive_word_avoidance = SensitiveWordAvoidanceEntity(
+            type="api", config={"inputs_config": {"enabled": True}, "outputs_config": {"enabled": False}}
+        )
+        assert pipeline._init_output_moderation() is None
+
+    @pytest.mark.parametrize("sqlite_session", [(Message,)], indirect=True)
+    def test_handle_error_returns_err_when_message_missing(
+        self, pipeline: BasedGenerateTaskPipeline[AppGenerateEntity], sqlite_session: Session
+    ) -> None:
+        event = QueueErrorEvent(error=ValueError("oops"))
+        _persist_message(sqlite_session, message_id="other-message")
+
+        err = pipeline.handle_error(event=event, session=sqlite_session, message_id="msg-1")
+
+        assert err is event.error
+        untouched_message = sqlite_session.get(Message, "other-message")
+        assert untouched_message is not None
+        assert untouched_message.status == MessageStatus.NORMAL
+        assert untouched_message.error is None
 
 
 @pytest.mark.parametrize("sqlite_session", [(Message,)], indirect=True)

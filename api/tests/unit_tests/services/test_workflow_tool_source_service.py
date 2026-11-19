@@ -22,7 +22,7 @@ def test_nested_tools_reject_v2_human_input_without_disabling_top_level_v2(versi
         workflow_kind=WorkflowKind.STANDARD,
     )
     repository.get_by_provider_ids.return_value = [source]
-    service = WorkflowToolSourceService(repository)
+    service = WorkflowToolSourceService(repository, workflow_runtime=None, draft_variable_saver=None)
     # A top-level V2 node remains available in the same execution context.
     assert service.load(tenant_id="tenant", graph_config=form_graph).sources == {}
     tool_graph = {"nodes": [{"data": {"type": "tool", "provider_type": "workflow", "provider_id": "provider"}}]}

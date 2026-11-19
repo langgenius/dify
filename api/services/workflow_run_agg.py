@@ -20,8 +20,6 @@ from core.app.layers.pause_state_persist_layer import (
 from core.db.session_factory import session_factory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.tools.workflow_as_tool.repository import WorkflowToolSource
-from core.workflow.node_factory import DifyNodeFactory
-from core.workflow.node_runtime import resolve_dify_run_context
 from core.workflow.nodes.agent_v2.workspace_retirement_layer import build_workflow_agent_workspace_retirement_layer
 from core.workflow.nodes.human_input.pause_reason import PauseReason
 from core.workflow.nodes.human_input.session_binding import default_session_binding
@@ -56,6 +54,8 @@ from repositories.knowledge.document_repository import SQLAlchemyDocumentReposit
 from repositories.sqlalchemy_api_workflow_run_repository import WorkflowPauseStoppedError
 from repositories.workflow_tool_source_repository import SQLAlchemyWorkflowToolSourceRepository
 from services.workflow.execution.adapters.human_input_events import build_human_input_pause_reason
+from services.workflow.execution.adapters.node_factory import DifyNodeFactory
+from services.workflow.execution.adapters.node_runtime import resolve_dify_run_context
 from services.workflow.execution.contracts import PreparedWorkflowRun, WorkflowRunRunner
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from services.workflow_run_index import WorkflowRunIndex
@@ -95,8 +95,18 @@ class WorkflowRunAgg:
             if _WORKFLOW_TOOL_SNAPSHOT_KEY in extras
             else None
         )
+        node_factory = self._entry.graph_engine.graph.node_factory
+        workflow_runtime = node_factory.workflow_runtime if isinstance(node_factory, DifyNodeFactory) else None
+        draft_variable_saver = node_factory.draft_variable_saver if isinstance(node_factory, DifyNodeFactory) else None
+        tool_source_repository = SQLAlchemyWorkflowToolSourceRepository(
+            session_factory.get_session_maker(),
+            workflow_runtime=workflow_runtime,
+            draft_variable_saver=draft_variable_saver,
+        )
         materialized_tools = WorkflowToolSourceService(
-            SQLAlchemyWorkflowToolSourceRepository(session_factory.get_session_maker())
+            tool_source_repository,
+            workflow_runtime=workflow_runtime,
+            draft_variable_saver=draft_variable_saver,
         ).load(
             tenant_id=self._run_context.tenant_id,
             graph_config=self._entry.graph_config,
@@ -120,7 +130,6 @@ class WorkflowRunAgg:
             # The generate entity is serialized by both durable pause/resume paths.
             # Capture every reachable provider before any node can pause or republish it.
             extras[_WORKFLOW_TOOL_SNAPSHOT_KEY] = materialized_tools.snapshot().model_dump(mode="json")
-        node_factory = self._entry.graph_engine.graph.node_factory
         if isinstance(node_factory, DifyNodeFactory):
             node_factory.workflow_tools.update(materialized_tools.tools)
         self._human_input_v2_forms: dict[str, PreparedForm] = {}

@@ -17,13 +17,14 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
-from models.workflow import Workflow
 from repositories.agent.runtime_repository import WorkflowAgentBindingResolver
+from repositories.workflow.definition_repository import workflow_snapshot
 from services.workflow.execution.adapters.agent_v2.agent_node import DifyAgentNode
 from services.workflow.execution.adapters.agent_v2.runtime_request_builder import build_knowledge_layer_config
 from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
 from services.workflow.execution.ports import WorkflowRuntime
 from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.model_factories import make_workflow
 
 
 class DraftInputs:
@@ -100,8 +101,8 @@ def test_single_step_preloads_owned_agent_metadata_filters(
                 ),
             ]
         )
-    workflow = Workflow(
-        id="workflow",
+    workflow = make_workflow(
+        workflow_id="workflow",
         tenant_id="tenant",
         app_id="app",
         graph=json.dumps(
@@ -122,7 +123,7 @@ def test_single_step_preloads_owned_agent_metadata_filters(
     if not inject_resolver:
         with pytest.raises(ValueError, match="Dify Agent nodes require an injected binding resolver"):
             WorkflowEntry.single_step_run(
-                workflow=workflow,
+                workflow=workflow_snapshot(workflow),
                 node_id="node",
                 user_id="user",
                 user_inputs={},
@@ -134,7 +135,7 @@ def test_single_step_preloads_owned_agent_metadata_filters(
         assert inputs.requested == []
     else:
         node, events = WorkflowEntry.single_step_run(
-            workflow=workflow,
+            workflow=workflow_snapshot(workflow),
             node_id="node",
             user_id="user",
             user_inputs={},

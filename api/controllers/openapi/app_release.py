@@ -19,29 +19,30 @@ from controllers.openapi.app_run import draft_test_hint
 from controllers.openapi.app_workflow import VERSION_READ_GUARDS, require_draft
 from controllers.openapi.auth.context import Context
 from extensions.ext_application_services import application_services
+from factories import variable_factory
 from graphon.enums import WorkflowExecutionStatus
 from models import AppMode, WorkflowRunTriggeredFrom
-from models.workflow import Workflow, WorkflowRun
+from models.workflow import WorkflowRun
+from services.workflow.contracts import WorkflowOwner, WorkflowRecord
 from services.workflow.graph_check import check_graph, credential_check
 from services.workflow.graph_diff import WorkflowSnapshot, diff_workflows, same_graph
-from services.workflow_service import WorkflowService
 
 
-def _snapshot(workflow: Workflow) -> WorkflowSnapshot:
+def _snapshot(workflow: WorkflowRecord) -> WorkflowSnapshot:
     return WorkflowSnapshot(
-        graph=workflow.graph_dict,
-        features=workflow.features_dict,
+        graph=workflow.graph,
+        features=workflow.features,
         environment_variable_names=frozenset(v.name for v in workflow.environment_variables),
     )
 
 
-def passed_on_draft(run: WorkflowRun | None, draft: Workflow) -> bool:
+def passed_on_draft(run: WorkflowRun | None, draft: WorkflowRecord) -> bool:
     """The run passed on this draft. A run keeps only its graph, so a draft saved after the run started
     (environment variables, conversation variables, features) counts as untested."""
     return (
         run is not None
         and run.status == WorkflowExecutionStatus.SUCCEEDED
-        and same_graph(run.graph_dict, draft.graph_dict)
+        and same_graph(run.graph_dict, draft.graph)
         and draft.updated_at <= run.created_at
     )
 
@@ -59,12 +60,19 @@ class ReleaseCheckApi(Resource):
     def get(self, ctx: Context, app_id: str):
         draft = require_draft(ctx)
         mode = AppMode(ctx.app.mode)
-        service = WorkflowService()
-        environment = {v.name: v for v in draft.environment_variables}
+        environment = {
+            variable.name: variable
+            for variable in (
+                variable_factory.build_environment_variable_from_mapping(value)
+                for value in application_services().console_workflow_variables.environment(
+                    ctx.request_context, WorkflowOwner(ctx.app.id)
+                )
+            )
+        }
         issues = check_graph(
-            draft.graph_dict,
+            draft.graph,
             mode=mode,
-            resources=credential_check(ctx.workspace.id, environment, ctx.session),
+            resources=credential_check(ctx.workspace.id, environment, application_services().credential_queries),
         )
         runs = (
             application_services()
@@ -77,7 +85,7 @@ class ReleaseCheckApi(Resource):
             .data
         )
         tested = passed_on_draft(runs[0] if runs else None, draft)
-        published = service.get_published_workflow(ctx.app, session=ctx.session)
+        published = application_services().console_workflows.published(ctx.request_context, ctx.app.id)
         diff = diff_workflows(_snapshot(published) if published else None, _snapshot(draft))
         checks = [
             ReleaseCheckRow(

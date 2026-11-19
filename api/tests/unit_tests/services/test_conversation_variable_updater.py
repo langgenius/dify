@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from graphon.variables import StringVariable
 from models import ConversationVariable
-from services.conversation_variable_updater import ConversationVariableUpdater
+from repositories.workflow.conversation_variable_repository import WorkflowConversationVariableRepository
 
 
 @pytest.mark.parametrize("sqlite_session", [(ConversationVariable,)], indirect=True)
@@ -24,7 +24,7 @@ def test_runtime_update_preserves_authored_id_and_other_conversations(
     ]
     sqlite_session.add_all(rows)
     sqlite_session.commit()
-    updater = ConversationVariableUpdater(sessionmaker(bind=sqlite_session.get_bind()))
+    updater = WorkflowConversationVariableRepository(sessionmaker(bind=sqlite_session.get_bind()))
 
     updater.update(conversation_id, variable.model_copy(update={"value": "updated"}))
 

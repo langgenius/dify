@@ -2,12 +2,13 @@ import logging
 
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.errors import ToolProviderNotFoundError
-from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from events.app_event import app_draft_workflow_was_synced
+from extensions.ext_application_services import application_services
 from graphon.nodes import BuiltinNodeTypes
 from graphon.nodes.tool.entities import ToolEntity
+from services.tools.tool_manager import ToolManager
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,8 @@ def handle(sender, **kwargs):
                 tool_entity = ToolEntity.model_validate(adapted_node_data["data"])
                 provider_type = ToolProviderType(tool_entity.provider_type.value)
                 tool_runtime = ToolManager.get_tool_runtime(
+                    tool_providers=application_services().tools.tool_providers,
+                    workflow_queries=application_services().tools.workflow_queries,
                     provider_type=provider_type,
                     provider_id=tool_entity.provider_id,
                     tool_name=tool_entity.tool_name,

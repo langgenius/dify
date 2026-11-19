@@ -3,7 +3,7 @@ from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import cast, override
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, create_autospec, patch
 from uuid import UUID, uuid4
 
 import pytest
@@ -32,7 +32,7 @@ from pydantic_ai.messages import (
     ToolCallPart,
     ToolReturnPart,
 )
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from clients.agent_backend import (
     AgentBackendInternalEventType,
@@ -47,14 +47,8 @@ from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunC
 from core.app.llm.model_access import ModelRuntimeProfile
 from core.workflow.agent_log_events import AgentLogEvent, NodeRunAgentLogEvent
 from core.workflow.file_reference import build_file_reference
-from core.workflow.nodes.agent_v2 import DifyAgentNode
-from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingBundle, WorkflowAgentBindingResolver
 from core.workflow.nodes.agent_v2.entities import DifyAgentNodeData
 from core.workflow.nodes.agent_v2.output_adapter import STREAM_EXHAUSTED_ERROR, WorkflowAgentOutputAdapter
-from core.workflow.nodes.agent_v2.runtime_request_builder import (
-    WorkflowAgentRuntimeBuildContext,
-    WorkflowAgentRuntimeRequestBuilder,
-)
 from core.workflow.nodes.agent_v2.session_store import (
     StoredWorkflowAgentSession,
     WorkflowAgentSessionScope,
@@ -87,8 +81,16 @@ from models.agent_config_entities import (
     DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
+from models.agent_runtime_contracts import WorkflowAgentBindingBundle
+from models.tool_runtime_contracts import WorkflowToolQueries
+from repositories.agent.runtime_repository import WorkflowAgentBindingResolver
 from services.agent.workspace_service import AgentWorkspaceNotFoundError
-from services.workflow.execution.adapters.agent_v2.agent_node import DifyAgentNode as ServiceDifyAgentNode
+from services.workflow.execution.adapters.agent_v2.agent_node import DifyAgentNode
+from services.workflow.execution.adapters.agent_v2.dify_tools_builder import WorkflowAgentDifyToolsBuilder
+from services.workflow.execution.adapters.agent_v2.runtime_request_builder import (
+    WorkflowAgentRuntimeBuildContext,
+    WorkflowAgentRuntimeRequestBuilder,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -618,6 +620,7 @@ def _collect_event_stream(node: DifyAgentNode, *, stream_text: bool):
 
 def _node(
     *,
+    tool_providers,
     scenario: FakeAgentBackendScenario = FakeAgentBackendScenario.SUCCESS,
     session_store: FakeSessionStore | None = None,
     declared_outputs: list[dict[str, object]] | None = None,
@@ -685,7 +688,13 @@ def _node(
             ),
         ),
         binding_resolver=binding_resolver,
-        runtime_request_builder=runtime_request_builder or WorkflowAgentRuntimeRequestBuilder(),
+        runtime_request_builder=runtime_request_builder
+        or WorkflowAgentRuntimeRequestBuilder(
+            dify_tools_builder=WorkflowAgentDifyToolsBuilder(
+                tool_providers=tool_providers,
+                workflow_queries=create_autospec(WorkflowToolQueries, instance=True),
+            )
+        ),
         agent_backend_client=client,
         event_adapter=AgentBackendRunEventAdapter(),
         output_adapter=WorkflowAgentOutputAdapter(),
@@ -714,11 +723,12 @@ def test_extract_variable_selector_to_variable_mapping_uses_frontend_agent_task_
     }
 
 
-def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():
-    events = list(_node(agent_backend_client=PlainTextOutputBackendClient())._run())
+def test_agent_node_run_maps_successful_agent_backend_run_to_node_result(tool_providers):
+    events = list(_node(tool_providers=tool_providers, agent_backend_client=PlainTextOutputBackendClient())._run())
 
     assert len(events) == 1
-    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert isinstance(events[0], StreamCompletedEvent)
+    result = events[0].node_run_result
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs == {"text": "hello agent"}
     agent_log = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]
@@ -732,9 +742,10 @@ def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():
     assert "evaluation_trace" not in agent_log
 
 
-def test_agent_node_captures_trace_only_for_evaluation_execution() -> None:
+def test_agent_node_captures_trace_only_for_evaluation_execution(tool_providers) -> None:
     events = list(
         _node(
+            tool_providers=tool_providers,
             agent_backend_client=AgentMessageDeltaBackendClient(),
             capture_agent_evaluation_trace=True,
         )._run()
@@ -752,9 +763,10 @@ def test_agent_node_captures_trace_only_for_evaluation_execution() -> None:
     assert trace["trajectory"]["steps"][-1]["content"] == "hello agent"
 
 
-def test_agent_node_structured_success_preserves_text_and_checks_only_custom_outputs():
+def test_agent_node_structured_success_preserves_text_and_checks_only_custom_outputs(tool_providers):
     events = list(
         _node(
+            tool_providers=tool_providers,
             declared_outputs=[{"name": "summary", "type": DeclaredOutputType.STRING}],
             agent_backend_client=FileOutputBackendClient(
                 output_payload={"text": "hello agent", "summary": "Short summary"}
@@ -779,9 +791,10 @@ def test_agent_node_structured_success_preserves_text_and_checks_only_custom_out
     }
 
 
-def test_agent_node_structured_output_type_failure_stops_the_node():
+def test_agent_node_structured_output_type_failure_stops_the_node(tool_providers):
     events = list(
         _node(
+            tool_providers=tool_providers,
             declared_outputs=[{"name": "summary", "type": DeclaredOutputType.STRING}],
             agent_backend_client=FileOutputBackendClient(output_payload={"summary": 42}),
         )._run()
@@ -794,11 +807,11 @@ def test_agent_node_structured_output_type_failure_stops_the_node():
     assert agent_log["output_failure_decision"] == "fail_node"
 
 
-def test_agent_node_uses_resolved_backend_binding_before_backend_invocation() -> None:
+def test_agent_node_uses_resolved_backend_binding_before_backend_invocation(tool_providers) -> None:
     client = FakeAgentBackendRunClient()
     store = FakeSessionStore(binding_id="binding-2", backend_binding_ref="backend-binding-2")
 
-    events = list(_node(agent_backend_client=client, session_store=store)._run())
+    events = list(_node(tool_providers=tool_providers, agent_backend_client=client, session_store=store)._run())
 
     assert len(events) == 1
     assert client.request is not None
@@ -808,7 +821,7 @@ def test_agent_node_uses_resolved_backend_binding_before_backend_invocation() ->
     assert len(store.resolved_scopes) == 1
 
 
-def test_agent_node_resume_resolves_the_generation_from_the_persisted_execution() -> None:
+def test_agent_node_resume_resolves_the_generation_from_the_persisted_execution(tool_providers) -> None:
     binding_resolver = FakeBindingResolver()
     store = FakeSessionStore()
     store.loaded_session = StoredWorkflowAgentSession(
@@ -828,7 +841,7 @@ def test_agent_node_resume_resolves_the_generation_from_the_persisted_execution(
         backend_binding_ref="backend-binding-1",
         session_snapshot=None,
     )
-    node = _node(binding_resolver=binding_resolver, session_store=store)
+    node = _node(tool_providers=tool_providers, binding_resolver=binding_resolver, session_store=store)
 
     events = list(node._run())
 
@@ -839,7 +852,11 @@ def test_agent_node_resume_resolves_the_generation_from_the_persisted_execution(
     assert binding_resolver.calls[0]["conversation_id"] == "conversation-1"
 
 
-def test_agent_node_workflow_tool_does_not_resolve_outer_conversation_participant(sqlite_session: Session) -> None:
+def test_agent_node_workflow_tool_does_not_resolve_outer_conversation_participant(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    tool_providers,
+) -> None:
     binding_resolver = FakeBindingResolver()
     binding_resolver.agent.scope = AgentScope.WORKFLOW_ONLY
     binding_resolver.agent.source = AgentSource.WORKFLOW
@@ -849,12 +866,17 @@ def test_agent_node_workflow_tool_does_not_resolve_outer_conversation_participan
     sqlite_session.commit()
     store = FakeSessionStore()
     node = _node(
+        tool_providers=tool_providers,
         binding_resolver=binding_resolver,
         session_store=store,
         workflow_tool_invocation_id="tool-call-1",
     )
     with (
-        patch.object(binding_resolver, "resolve", wraps=WorkflowAgentBindingResolver().resolve),
+        patch.object(
+            binding_resolver,
+            "resolve",
+            wraps=WorkflowAgentBindingResolver(sqlite_session_factory).resolve,
+        ),
         patch.object(
             WorkflowAgentWorkspaceStore,
             "load_active_participant",
@@ -875,25 +897,31 @@ def test_agent_node_workflow_tool_does_not_resolve_outer_conversation_participan
     assert scope.workspace_owner.owner_id == "workflow-run-1"
 
 
-def test_agent_node_maps_persisted_participant_lookup_error_to_node_failure() -> None:
+def test_agent_node_maps_persisted_participant_lookup_error_to_node_failure(tool_providers) -> None:
     class _UnavailableParticipantStore(FakeSessionStore):
         def load_existing_node_execution_scope(self, **kwargs: object) -> WorkflowAgentSessionScope | None:
             del kwargs
             raise AgentWorkspaceNotFoundError("Workflow node participant Binding is unavailable")
 
-    events = list(_node(session_store=_UnavailableParticipantStore())._run())
+    events = list(_node(tool_providers=tool_providers, session_store=_UnavailableParticipantStore())._run())
 
     assert len(events) == 1
-    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert isinstance(events[0], StreamCompletedEvent)
+    result = events[0].node_run_result
     assert result.status == WorkflowNodeExecutionStatus.FAILED
     assert result.error == "Workflow node participant Binding is unavailable"
     assert result.error_type == "agent_workflow_node_runtime_error"
 
 
-def test_agent_node_passes_execution_id_to_session_store_and_runtime_request_builder() -> None:
+def test_agent_node_passes_execution_id_to_session_store_and_runtime_request_builder(tool_providers) -> None:
     store = FakeSessionStore()
-    request_builder = WorkflowAgentRuntimeRequestBuilder()
-    node = _node(session_store=store, runtime_request_builder=request_builder)
+    request_builder = WorkflowAgentRuntimeRequestBuilder(
+        dify_tools_builder=WorkflowAgentDifyToolsBuilder(
+            tool_providers=tool_providers,
+            workflow_queries=create_autospec(WorkflowToolQueries, instance=True),
+        )
+    )
+    node = _node(tool_providers=tool_providers, session_store=store, runtime_request_builder=request_builder)
     execution_id = node.execution_id
 
     with patch.object(request_builder, "build", wraps=request_builder.build) as build:
@@ -910,8 +938,8 @@ def test_agent_node_passes_execution_id_to_session_store_and_runtime_request_bui
     assert context.node_execution_id == execution_id
 
 
-def test_agent_node_run_streams_agent_message_delta_as_text_chunks():
-    events = list(_node(agent_backend_client=AgentMessageDeltaBackendClient())._run())
+def test_agent_node_run_streams_agent_message_delta_as_text_chunks(tool_providers):
+    events = list(_node(tool_providers=tool_providers, agent_backend_client=AgentMessageDeltaBackendClient())._run())
 
     assert events[:2] == [
         StreamChunkEvent(selector=["agent-node", "text"], chunk="hello ", is_final=False),
@@ -927,23 +955,26 @@ def test_agent_node_run_streams_agent_message_delta_as_text_chunks():
     assert agent_backend["agent_message_delta_length"] == len("hello ")
 
 
-def test_agent_node_structured_run_keeps_agent_message_delta_out_of_text_stream():
+def test_agent_node_structured_run_keeps_agent_message_delta_out_of_text_stream(tool_providers):
     events = list(
         _node(
+            tool_providers=tool_providers,
             declared_outputs=[{"name": "summary", "type": DeclaredOutputType.STRING}],
             agent_backend_client=AgentMessageDeltaBackendClient(),
         )._run()
     )
 
     assert len(events) == 1
-    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert isinstance(events[0], StreamCompletedEvent)
+    result = events[0].node_run_result
     agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
     assert agent_backend["agent_message_delta_count"] == 1
 
 
-def test_agent_node_default_value_plain_run_keeps_agent_message_delta_out_of_text_stream():
+def test_agent_node_default_value_plain_run_keeps_agent_message_delta_out_of_text_stream(tool_providers):
     events = list(
         _node(
+            tool_providers=tool_providers,
             error_strategy=ErrorStrategy.DEFAULT_VALUE,
             agent_backend_client=AgentMessageDeltaBackendClient(),
         )._run()
@@ -951,13 +982,14 @@ def test_agent_node_default_value_plain_run_keeps_agent_message_delta_out_of_tex
 
     assert not any(isinstance(event, StreamChunkEvent) for event in events)
     assert len(events) == 1
-    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert isinstance(events[0], StreamCompletedEvent)
+    result = events[0].node_run_result
     assert result.outputs == {"text": "hello agent"}
     agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
     assert agent_backend["agent_message_delta_count"] == 1
 
 
-def test_agent_node_run_normalizes_declared_file_output_with_canonical_mapping():
+def test_agent_node_run_normalizes_declared_file_output_with_canonical_mapping(tool_providers):
     tool_reference = build_file_reference(record_id="tool-file-1")
     with patch(
         "core.workflow.nodes.agent_v2.output_adapter.build_from_mapping",
@@ -965,6 +997,7 @@ def test_agent_node_run_normalizes_declared_file_output_with_canonical_mapping()
     ):
         events = list(
             _node(
+                tool_providers=tool_providers,
                 declared_outputs=[{"name": "report", "type": DeclaredOutputType.FILE}],
                 agent_backend_client=FileOutputBackendClient(
                     output_payload={"report": {"transfer_method": "tool_file", "reference": tool_reference}}
@@ -978,7 +1011,7 @@ def test_agent_node_run_normalizes_declared_file_output_with_canonical_mapping()
     assert report.value.reference == tool_reference
 
 
-def test_agent_node_run_normalizes_declared_datasource_file_output_with_canonical_mapping():
+def test_agent_node_run_normalizes_declared_datasource_file_output_with_canonical_mapping(tool_providers):
     datasource_reference = build_file_reference(record_id="datasource-file-1")
     with patch(
         "core.workflow.nodes.agent_v2.output_adapter.build_from_mapping",
@@ -989,6 +1022,7 @@ def test_agent_node_run_normalizes_declared_datasource_file_output_with_canonica
     ):
         events = list(
             _node(
+                tool_providers=tool_providers,
                 declared_outputs=[{"name": "report", "type": DeclaredOutputType.FILE}],
                 agent_backend_client=FileOutputBackendClient(
                     output_payload={"report": {"transfer_method": "datasource_file", "reference": datasource_reference}}
@@ -1003,11 +1037,12 @@ def test_agent_node_run_normalizes_declared_datasource_file_output_with_canonica
     assert report.value.reference == datasource_reference
 
 
-def test_agent_node_run_normalizes_declared_remote_url_file_output_with_canonical_mapping():
+def test_agent_node_run_normalizes_declared_remote_url_file_output_with_canonical_mapping(tool_providers):
     remote_url = "https://example.com/report.pdf"
 
     events = list(
         _node(
+            tool_providers=tool_providers,
             declared_outputs=[{"name": "report", "type": DeclaredOutputType.FILE}],
             agent_backend_client=FileOutputBackendClient(
                 output_payload={"report": {"transfer_method": "remote_url", "url": remote_url}}
@@ -1022,7 +1057,7 @@ def test_agent_node_run_normalizes_declared_remote_url_file_output_with_canonica
     assert report.value.remote_url == remote_url
 
 
-def test_agent_node_run_normalizes_declared_array_file_output_with_canonical_mappings():
+def test_agent_node_run_normalizes_declared_array_file_output_with_canonical_mappings(tool_providers):
     first_reference = build_file_reference(record_id="tool-file-1")
     second_reference = build_file_reference(record_id="tool-file-2")
     with patch(
@@ -1034,6 +1069,7 @@ def test_agent_node_run_normalizes_declared_array_file_output_with_canonical_map
     ):
         events = list(
             _node(
+                tool_providers=tool_providers,
                 declared_outputs=[
                     {
                         "name": "attachments",
@@ -1058,23 +1094,26 @@ def test_agent_node_run_normalizes_declared_array_file_output_with_canonical_map
     assert [item.reference for item in attachments.value] == [first_reference, second_reference]
 
 
-def test_agent_node_run_maps_failed_agent_backend_run_to_node_result():
+def test_agent_node_run_maps_failed_agent_backend_run_to_node_result(tool_providers):
     store = FakeSessionStore()
-    events = list(_node(scenario=FakeAgentBackendScenario.FAILED, session_store=store)._run())
+    events = list(
+        _node(tool_providers=tool_providers, scenario=FakeAgentBackendScenario.FAILED, session_store=store)._run()
+    )
 
     assert len(events) == 1
-    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert isinstance(events[0], StreamCompletedEvent)
+    result = events[0].node_run_result
     assert result.status == WorkflowNodeExecutionStatus.FAILED
     assert result.error == "fake failure"
     assert result.error_type == "unit_test"
     assert store.saved[0][2] == SessionSnapshot(layers={})
 
 
-def test_agent_node_saves_success_snapshot_and_reuses_existing_snapshot():
+def test_agent_node_saves_success_snapshot_and_reuses_existing_snapshot(tool_providers):
     existing_snapshot = SessionSnapshot(layers={})
     store = FakeSessionStore(snapshot=existing_snapshot)
     client = FakeAgentBackendRunClient()
-    node = _node(agent_backend_client=client, session_store=store)
+    node = _node(tool_providers=tool_providers, agent_backend_client=client, session_store=store)
 
     events = list(node._run())
 
@@ -1088,16 +1127,17 @@ def test_agent_node_saves_success_snapshot_and_reuses_existing_snapshot():
     assert client.request.session_snapshot is existing_snapshot
 
 
-def test_agent_node_run_when_session_store_save_raises_records_persist_error_in_metadata():
+def test_agent_node_run_when_session_store_save_raises_records_persist_error_in_metadata(tool_providers):
     """A DB-side write failure must not crash the node; it should set
     ``session_snapshot_persist_error`` in the agent_backend metadata so the
     incident is observable from the workflow_node_executions record."""
 
     store = ExplodingSessionStore()
-    events = list(_node(session_store=store)._run())
+    events = list(_node(tool_providers=tool_providers, session_store=store)._run())
 
     assert len(events) == 1
-    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert isinstance(events[0], StreamCompletedEvent)
+    result = events[0].node_run_result
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
     assert agent_backend["session_snapshot_persisted"] is False
@@ -1105,7 +1145,7 @@ def test_agent_node_run_when_session_store_save_raises_records_persist_error_in_
 
 
 @pytest.mark.parametrize("failure_kind", ["backend", "transport"])
-def test_agent_node_snapshot_save_failure_preserves_original_failure(failure_kind: str) -> None:
+def test_agent_node_snapshot_save_failure_preserves_original_failure(tool_providers, failure_kind: str) -> None:
     store = ExplodingSessionStore()
     client = (
         FakeAgentBackendRunClient(scenario=FakeAgentBackendScenario.FAILED)
@@ -1113,7 +1153,7 @@ def test_agent_node_snapshot_save_failure_preserves_original_failure(failure_kin
         else FailingStreamBackendClient()
     )
 
-    events = list(_node(agent_backend_client=client, session_store=store)._run())
+    events = list(_node(tool_providers=tool_providers, agent_backend_client=client, session_store=store)._run())
 
     result = cast(StreamCompletedEvent, events[0]).node_run_result
     assert result.status == WorkflowNodeExecutionStatus.FAILED
@@ -1129,11 +1169,14 @@ def test_agent_node_snapshot_save_failure_preserves_original_failure(failure_kin
 
 
 @pytest.mark.parametrize("terminal_type", ["failed", "cancelled"])
-def test_agent_node_terminal_without_snapshot_preserves_prior_session_without_write(terminal_type: str) -> None:
+def test_agent_node_terminal_without_snapshot_preserves_prior_session_without_write(
+    tool_providers, terminal_type: str
+) -> None:
     store = FakeSessionStore()
 
     events = list(
         _node(
+            tool_providers=tool_providers,
             agent_backend_client=TerminalWithoutSnapshotBackendClient(terminal_type=terminal_type),
             session_store=store,
         )._run()
@@ -1144,7 +1187,7 @@ def test_agent_node_terminal_without_snapshot_preserves_prior_session_without_wr
     assert store.saved == []
 
 
-def test_agent_node_unexpected_post_resolution_failure_keeps_binding_identity():
+def test_agent_node_unexpected_post_resolution_failure_keeps_binding_identity(tool_providers):
     class _FailingSessionStore(FakeSessionStore):
         def load_or_create_node_execution_session(
             self,
@@ -1155,10 +1198,11 @@ def test_agent_node_unexpected_post_resolution_failure_keeps_binding_identity():
             del scope, home_snapshot_id
             raise RuntimeError("session store failed")
 
-    events = list(_node(session_store=_FailingSessionStore())._run())
+    events = list(_node(tool_providers=tool_providers, session_store=_FailingSessionStore())._run())
 
     assert len(events) == 1
-    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert isinstance(events[0], StreamCompletedEvent)
+    result = events[0].node_run_result
     assert result.status == WorkflowNodeExecutionStatus.FAILED
     assert result.error == "session store failed"
     assert result.error_type == "agent_workflow_node_runtime_error"
@@ -1169,9 +1213,9 @@ def test_agent_node_unexpected_post_resolution_failure_keeps_binding_identity():
     }
 
 
-def test_agent_node_cancels_backend_run_when_stream_fails():
+def test_agent_node_cancels_backend_run_when_stream_fails(tool_providers):
     client = FailingStreamBackendClient()
-    node = _node(agent_backend_client=client)
+    node = _node(tool_providers=tool_providers, agent_backend_client=client)
 
     terminal, failure = _drain_event_stream(node, stream_text=True)
 
@@ -1183,9 +1227,9 @@ def test_agent_node_cancels_backend_run_when_stream_fails():
     assert client.cancel_requests[0].reason == "event_stream_failed"
 
 
-def test_agent_node_forwards_last_stream_cursor_when_cancelling_after_failure() -> None:
+def test_agent_node_forwards_last_stream_cursor_when_cancelling_after_failure(tool_providers) -> None:
     client = FailingAfterStartedStreamBackendClient()
-    node = _node(agent_backend_client=client)
+    node = _node(tool_providers=tool_providers, agent_backend_client=client)
 
     terminal, failure = _drain_event_stream(node, stream_text=True)
 
@@ -1195,9 +1239,9 @@ def test_agent_node_forwards_last_stream_cursor_when_cancelling_after_failure() 
     assert client.cancel_after == ["cursor-1"]
 
 
-def test_agent_node_cancels_backend_run_when_stream_ends_without_terminal_event():
+def test_agent_node_cancels_backend_run_when_stream_ends_without_terminal_event(tool_providers):
     client = EmptyStreamBackendClient()
-    node = _node(agent_backend_client=client)
+    node = _node(tool_providers=tool_providers, agent_backend_client=client)
 
     terminal, failure = _drain_event_stream(node, stream_text=True)
 
@@ -1207,9 +1251,9 @@ def test_agent_node_cancels_backend_run_when_stream_ends_without_terminal_event(
     assert client.cancel_requests[0].reason == "stream_ended_without_terminal_event"
 
 
-def test_agent_node_cancels_backend_run_when_stream_raises_unexpected_error():
+def test_agent_node_cancels_backend_run_when_stream_raises_unexpected_error(tool_providers):
     client = GenericFailingStreamBackendClient()
-    node = _node(agent_backend_client=client)
+    node = _node(tool_providers=tool_providers, agent_backend_client=client)
 
     terminal, failure = _drain_event_stream(node, stream_text=True)
 
@@ -1221,9 +1265,9 @@ def test_agent_node_cancels_backend_run_when_stream_raises_unexpected_error():
     assert client.cancel_requests[0].reason == "event_stream_failed"
 
 
-def test_agent_node_uses_graph_abort_reason_when_cancel_request_fails(caplog):
+def test_agent_node_uses_graph_abort_reason_when_cancel_request_fails(tool_providers, caplog):
     client = CancelFailingStreamBackendClient()
-    node = _node(agent_backend_client=client)
+    node = _node(tool_providers=tool_providers, agent_backend_client=client)
     node.runtime_state.graph_execution = SimpleNamespace(aborted=True)
 
     terminal, failure = _drain_event_stream(node, stream_text=True)
@@ -1237,9 +1281,9 @@ def test_agent_node_uses_graph_abort_reason_when_cancel_request_fails(caplog):
     assert "Failed to finish cancelling Workflow Agent backend run" in caplog.text
 
 
-def test_agent_node_cancels_backend_run_for_unexpected_internal_event():
+def test_agent_node_cancels_backend_run_for_unexpected_internal_event(tool_providers):
     client = FakeAgentBackendRunClient()
-    node = _node(agent_backend_client=client)
+    node = _node(tool_providers=tool_providers, agent_backend_client=client)
     node._agent_backend_client.cancel_run_and_wait = MagicMock(  # type: ignore[method-assign]
         return_value=RunCancelledEvent(run_id="run-1")
     )
@@ -1308,8 +1352,8 @@ def test_agent_node_records_only_trusted_knowledge_sources_and_deduplicates():
     assert sources[0]["knowledge_fs_citation"]["id"] == citation["id"]
 
 
-def test_agent_node_projects_tool_activity_into_agent_log_events():
-    node = _node(agent_backend_client=ToolActivityBackendClient())
+def test_agent_node_projects_tool_activity_into_agent_log_events(tool_providers):
+    node = _node(tool_providers=tool_providers, agent_backend_client=ToolActivityBackendClient())
     events = list(node._run())
 
     agent_logs = [event for event in events if isinstance(event, AgentLogEvent)]
@@ -1341,8 +1385,10 @@ def test_agent_node_projects_tool_activity_into_agent_log_events():
     assert result.outputs == {"text": "hello agent"}
 
 
-def test_agent_node_projects_early_started_running_and_succeeded_tool_activity():
-    events = list(_node(agent_backend_client=ToolActivityBackendClient(early_start=True))._run())
+def test_agent_node_projects_early_started_running_and_succeeded_tool_activity(tool_providers):
+    events = list(
+        _node(tool_providers=tool_providers, agent_backend_client=ToolActivityBackendClient(early_start=True))._run()
+    )
 
     agent_logs = [event for event in events if isinstance(event, AgentLogEvent)]
     assert [log.status for log in agent_logs] == ["started", "running", "succeeded"]
@@ -1358,8 +1404,8 @@ def test_agent_node_projects_early_started_running_and_succeeded_tool_activity()
     assert all(events.index(log) < final_chunk_index for log in agent_logs)
 
 
-def test_agent_node_dispatch_maps_agent_log_to_legacy_node_run_event():
-    node = _node()
+def test_agent_node_dispatch_maps_agent_log_to_legacy_node_run_event(tool_providers):
+    node = _node(tool_providers=tool_providers)
     payload = AgentLogEvent(
         message_id="fake-run-1:call-1",
         label="shell_run",
@@ -1383,9 +1429,10 @@ def test_agent_node_dispatch_maps_agent_log_to_legacy_node_run_event():
     assert dispatched.metadata == {"agent_node_version": "2", "kind": "tool"}
 
 
-def test_agent_node_structured_run_suppresses_tool_activity_and_stream_chunks():
+def test_agent_node_structured_run_suppresses_tool_activity_and_stream_chunks(tool_providers):
     events = list(
         _node(
+            tool_providers=tool_providers,
             declared_outputs=[{"name": "summary", "type": DeclaredOutputType.STRING}],
             agent_backend_client=ToolActivityBackendClient(
                 output={"text": "hello agent", "summary": "Short summary"},
@@ -1407,9 +1454,10 @@ def test_agent_node_structured_run_suppresses_tool_activity_and_stream_chunks():
     assert agent_backend["status"] == "succeeded"
 
 
-def test_agent_node_default_value_strategy_suppresses_tool_activity_and_stream_chunks():
+def test_agent_node_default_value_strategy_suppresses_tool_activity_and_stream_chunks(tool_providers):
     events = list(
         _node(
+            tool_providers=tool_providers,
             error_strategy=ErrorStrategy.DEFAULT_VALUE,
             agent_backend_client=ToolActivityBackendClient(early_start=True),
         )._run()
@@ -1424,7 +1472,7 @@ def test_agent_node_default_value_strategy_suppresses_tool_activity_and_stream_c
     assert result.outputs == {"text": "hello agent"}
 
 
-def test_agent_node_output_routes_suppress_tool_activity_and_stream_chunks():
+def test_agent_node_output_routes_suppress_tool_activity_and_stream_chunks(tool_providers):
     resolver = FakeBindingResolver()
     resolver.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
         {
@@ -1436,6 +1484,7 @@ def test_agent_node_output_routes_suppress_tool_activity_and_stream_chunks():
     )
     events = list(
         _node(
+            tool_providers=tool_providers,
             binding_resolver=resolver,
             agent_backend_client=ToolActivityBackendClient(
                 output={"text": "hello agent", "switch": "route-1"},
@@ -1454,9 +1503,9 @@ def test_agent_node_output_routes_suppress_tool_activity_and_stream_chunks():
     assert result.outputs == {"text": "hello agent", "switch": "route-1"}
 
 
-def test_agent_node_non_stream_run_consumes_tool_events_without_logs():
+def test_agent_node_non_stream_run_consumes_tool_events_without_logs(tool_providers):
     events, (terminal, failure) = _collect_event_stream(
-        _node(agent_backend_client=ToolActivityBackendClient(early_start=True)),
+        _node(tool_providers=tool_providers, agent_backend_client=ToolActivityBackendClient(early_start=True)),
         stream_text=False,
     )
 
@@ -1467,9 +1516,9 @@ def test_agent_node_non_stream_run_consumes_tool_events_without_logs():
 
 
 @pytest.mark.parametrize("stream_text", [True, False])
-def test_agent_node_transport_failure_closes_unfinished_tool_calls(stream_text: bool):
+def test_agent_node_transport_failure_closes_unfinished_tool_calls(tool_providers, stream_text: bool):
     events, (terminal, failure) = _collect_event_stream(
-        _node(agent_backend_client=ToolCallThenFailingStreamBackendClient()),
+        _node(tool_providers=tool_providers, agent_backend_client=ToolCallThenFailingStreamBackendClient()),
         stream_text=stream_text,
     )
 
@@ -1486,9 +1535,9 @@ def test_agent_node_transport_failure_closes_unfinished_tool_calls(stream_text: 
 
 
 @pytest.mark.parametrize("stream_text", [True, False])
-def test_agent_node_cancelled_run_closes_unfinished_tool_calls(stream_text: bool):
+def test_agent_node_cancelled_run_closes_unfinished_tool_calls(tool_providers, stream_text: bool):
     events, (terminal, failure) = _collect_event_stream(
-        _node(agent_backend_client=ToolCallThenCancelledBackendClient()),
+        _node(tool_providers=tool_providers, agent_backend_client=ToolCallThenCancelledBackendClient()),
         stream_text=stream_text,
     )
 
@@ -1503,9 +1552,9 @@ def test_agent_node_cancelled_run_closes_unfinished_tool_calls(stream_text: bool
 
 
 @pytest.mark.parametrize("stream_text", [True, False])
-def test_agent_node_stream_end_without_terminal_fails_unfinished_tool_calls(stream_text: bool):
+def test_agent_node_stream_end_without_terminal_fails_unfinished_tool_calls(tool_providers, stream_text: bool):
     events, (terminal, failure) = _collect_event_stream(
-        _node(agent_backend_client=ToolCallThenUncancellableStreamEndBackendClient()),
+        _node(tool_providers=tool_providers, agent_backend_client=ToolCallThenUncancellableStreamEndBackendClient()),
         stream_text=stream_text,
     )
 
@@ -1519,8 +1568,12 @@ def test_agent_node_stream_end_without_terminal_fails_unfinished_tool_calls(stre
     assert failure is None
 
 
-def test_agent_node_stream_end_without_terminal_run_fails_with_stream_exhausted_error():
-    events = list(_node(agent_backend_client=ToolCallThenUncancellableStreamEndBackendClient())._run())
+def test_agent_node_stream_end_without_terminal_run_fails_with_stream_exhausted_error(tool_providers):
+    events = list(
+        _node(
+            tool_providers=tool_providers, agent_backend_client=ToolCallThenUncancellableStreamEndBackendClient()
+        )._run()
+    )
 
     agent_logs = [event for event in events if isinstance(event, AgentLogEvent)]
     assert [log.status for log in agent_logs] == ["running", "failed"]
@@ -1540,7 +1593,7 @@ def test_agent_node_stream_end_without_terminal_run_fails_with_stream_exhausted_
         (True, 2, {"text": "hello", "switch": "route-1"}, "route-1"),
     ],
 )
-def test_agent_node_selects_the_configured_success_exit(enabled, count, output, expected_handle):
+def test_agent_node_selects_the_configured_success_exit(tool_providers, enabled, count, output, expected_handle):
     resolver = FakeBindingResolver()
     resolver.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
         {
@@ -1550,7 +1603,11 @@ def test_agent_node_selects_the_configured_success_exit(enabled, count, output, 
             }
         }
     )
-    node = _node(binding_resolver=resolver, agent_backend_client=FileOutputBackendClient(output_payload=output))
+    node = _node(
+        tool_providers=tool_providers,
+        binding_resolver=resolver,
+        agent_backend_client=FileOutputBackendClient(output_payload=output),
+    )
     result = list(node._run())[-1].node_run_result
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.edge_source_handle == expected_handle
@@ -1568,6 +1625,7 @@ def test_agent_node_selects_the_configured_success_exit(enabled, count, output, 
     ],
 )
 def test_agent_routes_initialize_through_workflow_node_factory(
+    tool_providers,
     enabled: bool,
     error_strategy: ErrorStrategy | None,
     expected_execution_type: NodeExecutionType | None,
@@ -1578,7 +1636,7 @@ def test_agent_routes_initialize_through_workflow_node_factory(
 
     config_overrides(AGENT_BACKEND_USE_FAKE=True)
     binding_resolver = FakeBindingResolver()
-    template = _node(binding_resolver=binding_resolver)
+    template = _node(tool_providers=tool_providers, binding_resolver=binding_resolver)
     factory = DifyNodeFactory(
         template.init_params,
         template.runtime_state,
@@ -1601,12 +1659,12 @@ def test_agent_routes_initialize_through_workflow_node_factory(
         return
 
     node = factory.create_node(node_config)
-    assert isinstance(node, ServiceDifyAgentNode)
+    assert isinstance(node, DifyAgentNode)
     assert node.execution_type == expected_execution_type
     assert node.node_data.agent_output_routes.enabled is enabled
 
 
-def test_agent_routes_use_the_successful_retry_to_fan_out_and_skip_other_branches():
+def test_agent_routes_use_the_successful_retry_to_fan_out_and_skip_other_branches(tool_providers):
     from graphon.engine.scheduler import Scheduler
     from graphon.engine_events.traversal import GraphEdgeSkippedEvent, GraphEdgeTakenEvent
     from graphon.enums import NodeState
@@ -1638,7 +1696,11 @@ def test_agent_routes_use_the_successful_retry_to_fan_out_and_skip_other_branche
             },
         }
     )
-    node = _node(binding_resolver=resolver, agent_backend_client=RetryingBackendClient(output_payload={}))
+    node = _node(
+        tool_providers=tool_providers,
+        binding_resolver=resolver,
+        agent_backend_client=RetryingBackendClient(output_payload={}),
+    )
     result = list(node._run())[-1].node_run_result
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs["score"] == 42
@@ -1673,7 +1735,7 @@ def test_agent_routes_use_the_successful_retry_to_fan_out_and_skip_other_branche
 
 
 @pytest.mark.parametrize("output", ["plain text", {}, {"switch": None}, {"switch": 1}, {"switch": "unknown"}])
-def test_agent_node_rejects_invalid_route_selection_without_custom_outputs(output):
+def test_agent_node_rejects_invalid_route_selection_without_custom_outputs(tool_providers, output):
     resolver = FakeBindingResolver()
     resolver.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
         {
@@ -1683,7 +1745,11 @@ def test_agent_node_rejects_invalid_route_selection_without_custom_outputs(outpu
             }
         }
     )
-    node = _node(binding_resolver=resolver, agent_backend_client=FileOutputBackendClient(output_payload=output))
+    node = _node(
+        tool_providers=tool_providers,
+        binding_resolver=resolver,
+        agent_backend_client=FileOutputBackendClient(output_payload=output),
+    )
     result = list(node._run())[-1].node_run_result
     assert result.status == WorkflowNodeExecutionStatus.FAILED
     assert result.error_type == "output_route_selection_failed"
@@ -1717,7 +1783,7 @@ def test_agent_route_conditions_load_variables_only_when_routing_is_enabled(enab
     assert mapping == expected
 
 
-def test_disabled_routes_continue_through_graphon_default_values():
+def test_disabled_routes_continue_through_graphon_default_values(tool_providers):
     from graphon.engine.event.node_failure import NodeFailureHandler
     from graphon.engine.scheduler import Scheduler
     from graphon.engine_events.node import NodeRunExceptionEvent, NodeRunFailedEvent
@@ -1726,7 +1792,7 @@ def test_disabled_routes_continue_through_graphon_default_values():
     from graphon.node_events import NodeRunResult
     from graphon.runtime.execution import GraphExecution
 
-    node = _node(error_strategy=ErrorStrategy.DEFAULT_VALUE)
+    node = _node(tool_providers=tool_providers, error_strategy=ErrorStrategy.DEFAULT_VALUE)
     edges = {target: Edge(id=target, tail="agent-node", head=target) for target in ["next-a", "next-b"]}
     graph = Graph(root_node=node, nodes={"agent-node": node}, edges=edges, out_edges={"agent-node": list(edges)})
     failure = NodeRunFailedEvent(
@@ -1748,7 +1814,7 @@ def test_disabled_routes_continue_through_graphon_default_values():
     assert [event.edge_id for event in traversed] == ["next-a", "next-b"]
 
 
-def test_enabled_routes_reject_default_value_before_execution():
+def test_enabled_routes_reject_default_value_before_execution(tool_providers):
     resolver = FakeBindingResolver()
     resolver.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
         {
@@ -1759,4 +1825,4 @@ def test_enabled_routes_reject_default_value_before_execution():
         }
     )
     with pytest.raises(ValueError, match="default-value"):
-        _node(binding_resolver=resolver, error_strategy=ErrorStrategy.DEFAULT_VALUE)
+        _node(tool_providers=tool_providers, binding_resolver=resolver, error_strategy=ErrorStrategy.DEFAULT_VALUE)

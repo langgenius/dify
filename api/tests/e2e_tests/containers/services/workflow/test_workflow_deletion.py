@@ -1,20 +1,20 @@
-"""Testcontainers integration tests for WorkflowService.delete_workflow."""
+"""Testcontainers integration tests for WorkflowDefinitionStore.delete_workflow."""
 
 import json
 from uuid import uuid4
 
 import pytest
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from enums.account import TenantAccountRole
-from extensions.ext_database import db
 from models.account import Account, Tenant, TenantAccountJoin
 from models.model import App, AppMode, IconType
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
 from models.workflow import WorkflowType as ModelWorkflowType
+from repositories.workflow.definition_repository import WorkflowDefinitionStore
+from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from services.workflow_ref_service import WorkflowRef
-from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 
 
 class TestWorkflowDeletion:
@@ -112,13 +112,13 @@ class TestWorkflowDeletion:
         db_session_with_containers.commit()
         workflow_id = workflow.id
 
-        service = WorkflowService(sessionmaker(bind=db.engine))
-        result = service.delete_workflow(
+        result = WorkflowDefinitionStore.delete_workflow(
             session=db_session_with_containers,
             workflow_ref=WorkflowRef(tenant_id=tenant.id, owner_id=app.id, workflow_id=workflow_id),
         )
 
         assert result == []
+        db_session_with_containers.flush()
         db_session_with_containers.expire_all()
         assert db_session_with_containers.get(Workflow, workflow_id) is None
 
@@ -130,9 +130,8 @@ class TestWorkflowDeletion:
         )
         db_session_with_containers.commit()
 
-        service = WorkflowService(sessionmaker(bind=db.engine))
         with pytest.raises(DraftWorkflowDeletionError):
-            service.delete_workflow(
+            WorkflowDefinitionStore.delete_workflow(
                 session=db_session_with_containers,
                 workflow_ref=WorkflowRef(tenant_id=tenant.id, owner_id=app.id, workflow_id=workflow.id),
             )
@@ -147,9 +146,8 @@ class TestWorkflowDeletion:
         app.workflow_id = workflow.id
         db_session_with_containers.commit()
 
-        service = WorkflowService(sessionmaker(bind=db.engine))
         with pytest.raises(WorkflowInUseError, match="currently in use by app"):
-            service.delete_workflow(
+            WorkflowDefinitionStore.delete_workflow(
                 session=db_session_with_containers,
                 workflow_ref=WorkflowRef(tenant_id=tenant.id, owner_id=app.id, workflow_id=workflow.id),
             )
@@ -163,9 +161,8 @@ class TestWorkflowDeletion:
         self._create_tool_provider(db_session_with_containers, tenant=tenant, app=app, account=account, version="1.0")
         db_session_with_containers.commit()
 
-        service = WorkflowService(sessionmaker(bind=db.engine))
         with pytest.raises(WorkflowInUseError, match="published as a tool"):
-            service.delete_workflow(
+            WorkflowDefinitionStore.delete_workflow(
                 session=db_session_with_containers,
                 workflow_ref=WorkflowRef(tenant_id=tenant.id, owner_id=app.id, workflow_id=workflow.id),
             )

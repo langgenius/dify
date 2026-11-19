@@ -7,6 +7,8 @@ update_features persists those flags as a new app_model_config version without
 touching model / prompt / agent_mode.
 """
 
+from unittest.mock import create_autospec
+
 import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
@@ -19,6 +21,7 @@ from models.enums import AppStatus
 from models.model import App, AppMode, AppModelConfig
 from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.app.agent_app_feature_gateway import AgentAppFeatureValidator
+from services.workflow.variable_contracts import WorkflowExecutionVariables
 from tests.helpers.unit.rbac_fakes import RBACDomain
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
@@ -112,7 +115,9 @@ def test_feature_save_is_atomic(
     agent_app: App, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], rbac_domain: RBACDomain
 ) -> None:
     service = build_agent_app_services(
-        database_client=sqlite_session_factory, rbac_members=rbac_domain.rbac.members
+        database_client=sqlite_session_factory,
+        variables=create_autospec(WorkflowExecutionVariables, instance=True, spec_set=True),
+        rbac_members=rbac_domain.rbac.members,
     ).features
     context = RequestContext("request", None, ACCOUNT_ID, TENANT_ID)
     calls: list[str] = []
@@ -148,7 +153,9 @@ def test_feature_validation_failure_does_not_write(
     agent_app: App, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], rbac_domain: RBACDomain
 ) -> None:
     service = build_agent_app_services(
-        database_client=sqlite_session_factory, rbac_members=rbac_domain.rbac.members
+        database_client=sqlite_session_factory,
+        variables=create_autospec(WorkflowExecutionVariables, instance=True, spec_set=True),
+        rbac_members=rbac_domain.rbac.members,
     ).features
     with pytest.raises(ValueError, match="opening_statement"):
         service.update_features(
@@ -181,7 +188,9 @@ def test_features_require_owned_active_agent_app(
         agent.status = AgentStatus.ARCHIVED
     sqlite_session.commit()
     service = build_agent_app_services(
-        database_client=sqlite_session_factory, rbac_members=rbac_domain.rbac.members
+        database_client=sqlite_session_factory,
+        variables=create_autospec(WorkflowExecutionVariables, instance=True, spec_set=True),
+        rbac_members=rbac_domain.rbac.members,
     ).features
     with pytest.raises(AgentAppNotFoundError):
         service.update_features(RequestContext("request", None, ACCOUNT_ID, TENANT_ID), "agent", {})

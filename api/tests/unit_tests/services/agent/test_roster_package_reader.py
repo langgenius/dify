@@ -30,13 +30,13 @@ from models.agent import (
     AgentSource,
     AgentStatus,
 )
-from models.agent_config_entities import AgentSoulConfig
+from models.agent_config_entities import AgentPackageMetadata, AgentSoulConfig
 from models.enums import AppStatus, CreatorUserRole, CustomizeTokenStrategy
 from models.model import App, AppMode, IconType, Site
 from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion, SkillVersionManifest
 from models.tools import ToolFile
 from services.agent import roster_package_exporter as roster_package_exporter_module
-from services.agent.dsl_entities import AgentAppDsl, AgentPackage, AgentPackageMetadata, make_agent_app_dsl
+from services.agent.dsl_entities import AgentAppDsl, AgentPackage, make_agent_app_dsl
 from services.agent.errors import (
     AgentVersionNotFoundError,
     InvalidRosterAgentPackageError,

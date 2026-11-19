@@ -6,7 +6,7 @@ from typing import Any
 
 from celery.signals import worker_shutdown, worker_shutting_down
 
-from core.app.apps.workflow.active_workflow_tasks import (
+from services.workflow.execution.adapters.workflow.active_workflow_tasks import (
     get_active_workflow_task_count,
     reset_active_workflow_tasks,
 )

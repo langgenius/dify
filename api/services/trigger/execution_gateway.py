@@ -9,14 +9,16 @@ from typing import Protocol
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from models.account import Account
 from models.model import App, EndUser
 from models.workflow import Workflow
+from repositories.workflow.definition_repository import workflow_snapshot
 from services.trigger.execution_layer import TriggerPostLayer
 from services.trigger.execution_store import TriggerExecution, TriggerExecutionStore
+from services.workflow.execution.adapters.workflow.app_generator import WorkflowAppGenerator
+from services.workflow.execution.ports import WorkflowRuntime
 from services.workflow_execution_identity import build_workflow_execution_identity
 from services.workflow_run_agg import WorkflowRunAgg
 
@@ -27,18 +29,24 @@ class TriggerExecutionModels(Protocol):
 
 class WorkflowTriggerExecutionGateway:
     def __init__(
-        self, *, models: TriggerExecutionModels, logs: TriggerExecutionStore, session_factory: sessionmaker[Session]
+        self,
+        *,
+        models: TriggerExecutionModels,
+        logs: TriggerExecutionStore,
+        session_factory: sessionmaker[Session],
+        runtime: WorkflowRuntime,
     ) -> None:
+        self._runtime = runtime
         self._models = models
         self._logs = logs
         self._session_factory = session_factory
 
     def run(self, execution: TriggerExecution, started_at: datetime) -> None:
         app_model, workflow, actor = self._models.get_execution_models(execution)
-        generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
+        generator = WorkflowAppGenerator(runtime=self._runtime, execution_driver=WorkflowRunAgg.run)
         generator.generate(
             app_model=app_model,
-            workflow=workflow,
+            workflow=workflow_snapshot(workflow),
             user=actor,
             execution_identity=build_workflow_execution_identity(actor),
             args={"inputs": dict(execution.data.inputs), "files": list(execution.data.files)},

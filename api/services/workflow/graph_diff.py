@@ -14,6 +14,7 @@ from graphon.variables import SecretVariable, VariableBase
 from libs import helper
 from models.model import App
 from models.workflow import Workflow
+from repositories.workflow.definition_repository import WorkflowDefinitionStore
 from services.workflow.node_defaults import fill_node_data
 
 _DATA_UI_KEYS: Final = frozenset({"selected", "_connectedSourceHandleIds", "_connectedTargetHandleIds"})
@@ -98,13 +99,11 @@ def draft_token(draft: Workflow) -> str:
 
 def current_draft_token(tenant_id: str, app_id: str) -> str | None:
     """The app draft's `draft_token`, read in its own session; None when the app has no draft."""
-    from services.workflow_service import WorkflowService
-
     with session_factory.create_session() as session:
         app = session.get(App, app_id)
         if app is None or app.tenant_id != tenant_id:
             return None
-        draft = WorkflowService.get_draft_workflow(app, session=session)
+        draft = WorkflowDefinitionStore.get_draft_workflow(app, session=session)
         return draft_token(draft) if draft else None
 
 

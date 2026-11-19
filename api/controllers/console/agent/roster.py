@@ -2,12 +2,13 @@ from http import HTTPStatus
 from typing import Literal
 from uuid import UUID
 
-from flask import abort, request
+from flask import request
 from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from controllers.common.errors import AccessDeniedError, InvalidRequestError
 from controllers.common.rbac import AgentId, RBACCheck, Workspace
 from controllers.common.schema import (
     query_params_from_model,
@@ -410,7 +411,14 @@ def _serialize_agent_app_detail(
 
     roster_service = _agent_roster_service(session)
     payload = GenericAppDetailWithSite.model_validate(
-        AppResponseView(app_model, session=session, account=current_user, access_mode=access_mode),
+        AppResponseView(
+            app_model,
+            tool_providers=application_services().tools.tool_providers,
+            workflow_queries=application_services().tools.workflow_queries,
+            session=session,
+            account=current_user,
+            access_mode=access_mode,
+        ),
         from_attributes=True,
     ).model_dump(mode="json")
     agent = (
@@ -994,7 +1002,7 @@ class AgentLogsApi(Resource):
         except AgentObservabilityNotFoundError as exc:
             raise AgentNotFoundError from exc
         except ValueError as exc:
-            abort(HTTPStatus.BAD_REQUEST, description=str(exc))
+            raise InvalidRequestError(str(exc)) from exc
         return dump_response(AgentLogListResponse, payload)
 
 
@@ -1014,7 +1022,7 @@ class AgentLogMessagesApi(Resource):
         except AgentObservabilityNotFoundError as exc:
             raise AgentNotFoundError from exc
         except ValueError as exc:
-            abort(HTTPStatus.BAD_REQUEST, description=str(exc))
+            raise InvalidRequestError(str(exc)) from exc
         return dump_response(AgentLogMessageListResponse, payload)
 
 
@@ -1054,7 +1062,7 @@ class AgentStatisticsSummaryApi(Resource):
         except AgentObservabilityNotFoundError as exc:
             raise AgentNotFoundError from exc
         except ValueError as exc:
-            abort(HTTPStatus.BAD_REQUEST, description=str(exc))
+            raise InvalidRequestError(str(exc)) from exc
         return dump_response(AgentStatisticSummaryEnvelopeResponse, payload)
 
 
@@ -1106,5 +1114,5 @@ class AgentRosterVersionRestoreApi(Resource):
         except AgentVersionUnavailableError as exc:
             raise AgentVersionNotFoundError from exc
         except AgentVersionPlanRequiredError:
-            abort(HTTPStatus.FORBIDDEN, description="This feature requires a paid plan.")
+            raise AccessDeniedError("This feature requires a paid plan.")
         return dump_response(AgentConfigSnapshotRestoreResponse, restored)

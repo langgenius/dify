@@ -6,6 +6,8 @@ Test objectives:
 2. Verify span attribute mapping correctness
 """
 
+from unittest.mock import create_autospec
+
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from sqlalchemy.orm import Session
@@ -14,6 +16,8 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.otel.decorators.handlers.generate_handler import AppGenerateHandler
 from extensions.otel.semconv import DifySpanAttributes, GenAIAttributes
 from models import Account, App
+from services.app.generation.runtime import AppGenerationRuntime
+from services.workflow.variable_contracts import WorkflowExecutionVariables
 from tests.helpers.unit.config_override import config_overrides_context
 
 
@@ -45,6 +49,8 @@ class TestAppGenerateHandler:
             user=mock_account_user,
             args={"workflow_id": "test-wf-123"},
             invoke_from=InvokeFrom.DEBUGGER,
+            variables=create_autospec(WorkflowExecutionVariables, instance=True, spec_set=True),
+            runtime=create_autospec(AppGenerationRuntime, instance=True, spec_set=True),
             streaming=True,
             root_node_id=None,
         )
@@ -77,8 +83,13 @@ class TestAppGenerateHandler:
         mock_account_user.id = test_user_id
 
         def dummy_func(
-            app_model: App, user: Account, args: dict[str, object], invoke_from: InvokeFrom, streaming: bool = True
+            app_model: App,
+            user: Account,
+            args: dict[str, object],
+            invoke_from: InvokeFrom,
+            streaming: bool = True,
         ) -> str:
+            del app_model, user, args, invoke_from, streaming
             return "result"
 
         handler.wrapper(

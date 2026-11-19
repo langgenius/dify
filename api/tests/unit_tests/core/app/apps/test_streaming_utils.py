@@ -5,14 +5,13 @@ import queue
 from collections.abc import Callable, Generator
 
 import pytest
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.apps.draft_variable_saver import NoopDraftVariableSaver
-from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.apps.streaming_utils import STREAM_COMPLETE_SIGNAL, _normalize_terminal_events, stream_topic_events
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
@@ -312,13 +311,15 @@ def test_stream_completion_signal_ends_stream_when_public_terminal_events_are_di
     assert subscription.closed is True
 
 
-def test_annotation_shaped_response_stream_completes_without_workflow_events(monkeypatch: pytest.MonkeyPatch):
+def test_annotation_shaped_response_stream_completes_without_workflow_events(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+):
     topic = FakeTopic()
 
     def fake_get_response_topic(cls, app_mode, workflow_run_id):
         return topic
 
-    monkeypatch.setattr(MessageBasedAppGenerator, "get_response_topic", classmethod(fake_get_response_topic))
+    monkeypatch.setattr(WorkflowEventStream, "get_response_topic", classmethod(fake_get_response_topic))
     subscription = topic.subscribe()
 
     def runtime_responses() -> Generator[ChatbotAppStreamResponse]:
@@ -352,6 +353,10 @@ def test_annotation_shaped_response_stream_completes_without_workflow_events(mon
         workflow_id="workflow-id",
         inputs={},
         started_reason=WorkflowStartReason.INITIAL,
+        sessions=sqlite_session_factory,
+        tenant_id="tenant-id",
+        app_id="app-id",
+        agent_snapshot=False,
     )
 
     # Two public events plus transport completion must be queued before consumption.
@@ -377,6 +382,7 @@ def test_annotation_shaped_response_stream_completes_without_workflow_events(mon
 def test_input_moderation_direct_reply_completes_without_workflow_events(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
     workflow_runtime: WorkflowExecutionDependencies,
 ):
     """A moderation text/stop queue saves the reply and reaches EOF without a workflow or annotation."""
@@ -456,7 +462,7 @@ def test_input_moderation_direct_reply_completes_without_workflow_events(
     converted = AdvancedChatAppGenerateResponseConverter.convert(runtime_responses, InvokeFrom.WEB_APP)
     assert isinstance(converted, Generator)
     topic = FakeTopic()
-    monkeypatch.setattr(MessageBasedAppGenerator, "get_response_topic", lambda *_args, **_kwargs: topic)
+    monkeypatch.setattr(WorkflowEventStream, "get_response_topic", lambda *_args, **_kwargs: topic)
     subscription = topic.subscribe()
 
     _publish_streaming_response(
@@ -466,6 +472,10 @@ def test_input_moderation_direct_reply_completes_without_workflow_events(
         workflow_id=app_config.workflow_id,
         inputs={},
         started_reason=WorkflowStartReason.INITIAL,
+        sessions=sqlite_session_factory,
+        tenant_id="tenant-id",
+        app_id="app-id",
+        agent_snapshot=False,
     )
 
     # A queued completion signal makes EOF independent of the idle timeout.

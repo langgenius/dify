@@ -27,9 +27,10 @@ from models.agent import (
     AgentIconType,
     AgentSource,
 )
-from models.agent_config_entities import AgentSoulConfig
+from models.agent_config_entities import AgentPackageMetadata, AgentSoulConfig
 from models.model import App, AppMode, AppModelConfig, IconType, UploadFile
-from services.agent.dsl_entities import AgentAppDsl, AgentPackage, AgentPackageMetadata
+from repositories.app.creation_records import create_installed_app_record, create_site_record
+from services.agent.dsl_entities import AgentAppDsl, AgentPackage
 from services.agent.dsl_service import AgentDslService
 from services.agent.errors import (
     AgentNameConflictError,
@@ -43,7 +44,6 @@ from services.agent.roster_package_entities import AgentPackageResources, Packag
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.agent.roster_package_reader import RosterAgentPackageReader
 from services.agent.roster_service import AgentRosterService
-from services.app_creation_records import create_installed_app_record, create_site_record
 from services.app_dsl_service import AppDslService
 from services.app_import_source import download_app_import_source
 from services.app_service import AppService

@@ -6,7 +6,7 @@ import copy
 from collections.abc import Callable, Sequence
 from contextlib import AbstractContextManager
 from dataclasses import dataclass, replace
-from typing import Any, BinaryIO, Final, Literal, override
+from typing import TYPE_CHECKING, Any, BinaryIO, Final, Literal, override
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
@@ -22,16 +22,16 @@ from events.app_event import app_was_updated
 from graphon.enums import BuiltinNodeTypes
 from graphon.model_runtime.entities.llm_entities import LLMMode
 from graphon.model_runtime.entities.message_entities import PromptMessageRole
-from libs.datetime_utils import naive_utc_now
 from machinery.context import RequestContext
 from models.account import Account
 from models.agent import Agent, AgentIconType, AgentStatus
 from models.model import App, AppMode
-from models.tools import WorkflowToolProvider
+from models.tool_runtime_contracts import WorkflowToolQueries, WorkflowToolStore
 from repositories.app.agent_app_queries import get_roster_agent_app
 from repositories.app.console_repository import ConsoleAppRepository, console_app_actor, require_console_app
 from repositories.app.response import app_record
 from repositories.resource_access_token_repository import ResourceAccessTokenCleanupRepository
+from repositories.workflow.definition_repository import WorkflowDefinitionStore
 from services.agent.errors import AgentNameConflictError, AgentNotFoundError
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.roster_package_entities import RosterAgentPackageExport
@@ -83,10 +83,14 @@ from services.rbac import contracts as rbac_contracts
 from services.rbac.members import MemberService
 from services.recommended_app_package_service import RecommendedAppPackageService
 from services.system_feature_service import SystemFeatureService
-from services.tools.legacy_workflow_tools_manage_service import WorkflowToolManageService
-from services.workflow_service import WorkflowService
+from services.tools.provider_queries import ToolProviders
+from services.tools.workflow_tools_manage_service import WorkflowToolManageService
+from services.workflow.contracts import PreparedDraftSync
 from services.workflow_tool_references import WorkflowToolTarget
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
+
+if TYPE_CHECKING:
+    from services.data_migration.import_service import WorkflowPublisher
 
 # Positions as the console editor lays out its templates (START_INITIAL_POSITION and
 # NODE_WIDTH_X_OFFSET in web/app/components/workflow/constants.ts).
@@ -276,6 +280,8 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
         agent_packages: RosterAgentPackageExporter,
         agent_importer: RosterAgentPackageImporter,
         recommended_packages: RecommendedAppPackageService,
+        workflow_tools: WorkflowToolStore,
+        workflow_publisher: WorkflowPublisher,
     ) -> None:
         self._session_factory = session_factory
         self._dsl_factory = dsl_factory
@@ -283,6 +289,9 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
         self._agent_packages = agent_packages
         self._agent_importer = agent_importer
         self._recommended_packages = recommended_packages
+        self._workflow_tool_queries = workflow_tools
+        self._workflow_tools = WorkflowToolManageService(workflow_tools)
+        self._workflow_publisher = workflow_publisher
 
     @override
     def download_import(self, url: str) -> AbstractContextManager[BinaryIO]:
@@ -431,19 +440,11 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
         workspace_id = context.active_workspace_id
         with self._session_factory() as session:
             account = console_app_actor(session, context)
-            existing = {
-                provider.id: provider.name
-                for provider in session.scalars(
-                    select(WorkflowToolProvider).where(
-                        WorkflowToolProvider.tenant_id == workspace_id,
-                        WorkflowToolProvider.id.in_([tool.provider_id for tool in tools]),
-                    )
-                )
-            }
-            taken_names = set(
-                session.scalars(select(WorkflowToolProvider.name).where(WorkflowToolProvider.tenant_id == workspace_id))
-            )
             can_manage_tools = account.is_admin_or_owner
+        providers = self._workflow_tool_queries.providers(tenant_id=workspace_id)
+        requested_ids = {tool.provider_id for tool in tools}
+        existing = {provider.id: provider.name for provider in providers if provider.id in requested_ids}
+        taken_names = {provider.name for provider in providers}
         missing = [tool for tool in tools if tool.provider_id not in existing]
         if missing and dify_config.RBAC_ENABLED:
             can_manage_tools = rbac_service.RBACService.CheckAccess.check(
@@ -469,14 +470,8 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
         self, context: RequestContext, *, app_id: str, tool: PackagedWorkflowTool, target: WorkflowToolTarget
     ) -> None:
         """Publish an imported workflow and expose it as the Workflow Tool its callers already reference."""
-        with self._session_factory.begin() as session:
-            account = console_app_actor(session, context)
-            app = require_console_app(session, context, app_id)
-            workflow = WorkflowService().publish_workflow(session=session, app_model=app, account=account)
-            app.workflow_id = workflow.id
-            app.updated_by = account.id
-            app.updated_at = naive_utc_now()
-        WorkflowToolManageService.create_workflow_tool(
+        self._workflow_publisher.publish(context, app_id, marked_name="", marked_comment="")
+        self._workflow_tools.create_workflow_tool(
             user_id=context.account_id,
             tenant_id=context.active_workspace_id,
             workflow_app_id=app_id,
@@ -552,8 +547,15 @@ class AppLifecycleGateway(AppLifecycle):
     the App transaction; notification and resource cleanup run after it closes.
     """
 
-    def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
+    def __init__(
+        self,
+        *,
+        session_factory: sessionmaker[Session],
+        tool_providers: ToolProviders,
+        workflow_queries: WorkflowToolQueries,
+    ) -> None:
         self._session_factory = session_factory
+        self._responses = AppResponseGateway(tool_providers=tool_providers, workflow_queries=workflow_queries)
 
     @override
     def create(self, context: RequestContext, params: CreateAppParams, settings: AppCreationSettings) -> AppRecord:
@@ -583,15 +585,14 @@ class AppLifecycleGateway(AppLifecycle):
 
     @override
     def create_draft(self, context: RequestContext, app_id: str) -> None:
-        with self._session_factory() as session:
+        with self._session_factory.begin() as session:
             app = require_console_app(session, context, app_id)
-            WorkflowService(self._session_factory).sync_draft_workflow(
+            WorkflowDefinitionStore.sync_draft_workflow(
                 app_model=app,
                 graph=copy.deepcopy(_STARTER_DRAFT_GRAPHS[AppMode(app.mode)]),
                 features=copy.deepcopy(_STARTER_DRAFT_FEATURES),
-                unique_hash=None,
-                account=console_app_actor(session, context),
-                environment_variables=[],
+                account_id=context.account_id,
+                prepared=PreparedDraftSync(source=None, environment=None),
                 conversation_variables=[],
                 session=session,
             )
@@ -738,21 +739,22 @@ class AppLifecycleGateway(AppLifecycle):
 
     @override
     def deleted(self, context: RequestContext, deleted: AppDeletion) -> None:
-        AppService.notify_deleted_app(deleted, account_id=context.account_id)
+        AppService.notify_deleted_app(deleted, account_id=context.account_id, sessions=self._session_factory)
 
     @override
     def present(self, context: RequestContext, app: AppRecord, *, mask_credentials: bool = False) -> AppRecord:
         app = replace(
             app, deleted_tools=AppResponseGateway.find_deleted_tools(context.active_workspace_id, app.tool_references)
         )
-        return AppResponseGateway.mask_record(context, app) if mask_credentials else app
+        return self._responses.mask_record(context, app) if mask_credentials else app
 
 
 class AgentAppDetailPresentationGateway:
     """Resolve Agent detail metadata without holding the App persistence session."""
 
-    def __init__(self, *, members: MemberService) -> None:
+    def __init__(self, *, members: MemberService, responses: AppResponseGateway) -> None:
         self._members = members
+        self._responses = responses
 
     def present(self, context: RequestContext, detail: AgentAppDetail) -> AgentAppDetail:
         """Enrich a detached App record with access mode, permissions and tool availability."""
@@ -771,7 +773,7 @@ class AgentAppDetailPresentationGateway:
         app = (
             AppResponseGateway.mask_agent_mode(context, app)
             if detail.should_mask_agent_mode
-            else AppResponseGateway.mask_record(context, app)
+            else self._responses.mask_record(context, app)
         )
         permissions = self._members.permissions(
             context.active_workspace_id, context.account_id, agent_id=detail.agent_id

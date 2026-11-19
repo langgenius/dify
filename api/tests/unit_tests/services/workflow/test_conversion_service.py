@@ -1,300 +1,280 @@
-"""Workflow conversion preserves post-commit WebApp access policy."""
+"""Real conversion, isolated persistence, and failures at the atomic write boundary."""
 
-from collections.abc import Iterator, Mapping
-from dataclasses import dataclass
-from uuid import uuid4
+import json
+from collections.abc import Mapping
 
 import pytest
-from sqlalchemy import Engine, event, func, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import event, func, select
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 
-from core.app.app_config.entities import (
-    AppAdditionalFeatures,
-    EasyUIBasedAppConfig,
-    EasyUIBasedAppModelConfigFrom,
-    ModelConfigEntity,
-    PromptTemplateEntity,
-)
-from enums import DeploymentEdition
 from machinery.context import RequestContext
 from models.account import TenantAccountJoin, TenantAccountRole
+from models.api_based_extension import APIBasedExtension
 from models.model import App, AppMode, AppModelConfig, InstalledApp, Site
 from models.workflow import Workflow
-from models.workflow_conversion import ConversionExtension, ConvertedWorkflow, WorkflowConversionSource
 from repositories.app.console_repository import ConsoleAppRepository
-from services.app.console_gateway import EnterpriseConsoleAppAccess
-from services.app_service import AppService
-from services.enterprise.enterprise_service import EnterpriseRequest
-from services.errors.enterprise import EnterpriseServiceError
+from services.app.console_service import ConsoleAppNotFoundError
+from services.entities.app_entities import AppEvent
+from services.errors.workflow_service import WorkflowConversionError
 from services.workflow.conversion_service import WorkflowConversionService
-from tests.helpers.unit.config_override import apply_config_overrides
+from services.workflow.workflow_converter import WorkflowConverter
 from tests.helpers.unit.model_factories import make_account, make_app, make_tenant
-from tests.helpers.unit.rbac_fakes import RBACDomain
 
-
-@dataclass(frozen=True)
-class ConversionSource:
-    context: RequestContext
-    app_id: str
-    apps: ConsoleAppRepository
-
-
-@dataclass(frozen=True)
-class ConversionBuilder:
-    failure: Exception | None = None
-
-    def app_config(self, source: WorkflowConversionSource) -> EasyUIBasedAppConfig:
-        return EasyUIBasedAppConfig(
-            tenant_id=source.tenant_id,
-            app_id=source.id,
-            app_mode=source.mode,
-            app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
-            app_model_config_id=source.model_config_id,
-            app_model_config_dict=source.model_config or {},
-            model=ModelConfigEntity(provider="test-provider", model="test-model", mode="chat"),
-            prompt_template=PromptTemplateEntity(
-                prompt_type=PromptTemplateEntity.PromptType.SIMPLE,
-                simple_prompt_template="Hello",
-            ),
-            additional_features=AppAdditionalFeatures(),
-            variables=[],
-        )
-
-    def convert(
-        self, app_config: EasyUIBasedAppConfig, extensions: Mapping[str, ConversionExtension]
-    ) -> ConvertedWorkflow:
-        assert extensions == {}
-        if self.failure is not None:
-            raise self.failure
-        target_mode = AppMode.ADVANCED_CHAT if app_config.app_mode == AppMode.CHAT else AppMode.WORKFLOW
-        return ConvertedWorkflow(
-            mode=target_mode,
-            graph={"nodes": [], "edges": []},
-            features={},
-        )
+CONTEXT = RequestContext("conversion", None, "account-1", "tenant-1")
 
 
 @pytest.fixture
-def checked_out_connections(sqlite_engine: Engine) -> Iterator[set[object]]:
-    connections: set[object] = set()
+def sessions(sqlite_engine: Engine) -> sessionmaker[Session]:
+    class ConversionSession(Session):
+        pass
 
-    def checkout(connection: object, *_args: object) -> None:
-        connections.add(connection)
-
-    def checkin(connection: object, *_args: object) -> None:
-        connections.remove(connection)
-
-    event.listen(sqlite_engine, "checkout", checkout)
-    event.listen(sqlite_engine, "checkin", checkin)
-    try:
-        yield connections
-        assert not connections
-    finally:
-        event.remove(sqlite_engine, "checkout", checkout)
-        event.remove(sqlite_engine, "checkin", checkin)
-
-
-def persist_conversion_source(sessions: sessionmaker[Session], source_mode: AppMode = AppMode.CHAT) -> ConversionSource:
-    actor_id, workspace_id, app_id = str(uuid4()), str(uuid4()), str(uuid4())
-    account = make_account(account_id=actor_id, name="Creator", email=f"{actor_id}@example.com")
-    tenant = make_tenant(tenant_id=workspace_id, name="Workspace")
-    app = make_app(
-        app_id=app_id,
-        tenant_id=workspace_id,
-        name="Source",
-        mode=source_mode,
-        created_by=actor_id,
-        maintainer=actor_id,
+    factory = sessionmaker(sqlite_engine, class_=ConversionSession, expire_on_commit=False)
+    extension = APIBasedExtension(
+        tenant_id="tenant-1", name="Weather", api_endpoint="https://example.com/weather", api_key="encrypted"
     )
-    config = AppModelConfig(app_id=app_id, model="{}")
-    with sessions.begin() as session:
+    extension.id = "extension-1"
+    with factory.begin() as session:
         session.add_all(
             [
-                account,
-                tenant,
+                make_account(),
+                make_tenant(),
                 TenantAccountJoin(
-                    tenant_id=workspace_id,
-                    account_id=actor_id,
+                    tenant_id=CONTEXT.active_workspace_id,
+                    account_id=CONTEXT.account_id,
                     role=TenantAccountRole.OWNER,
+                    current=True,
                 ),
-                app,
-                config,
+                make_app(name="Source", app_model_config_id="config-1", api_rpm=10, api_rph=100),
+                (
+                    config := AppModelConfig(
+                        app_id="app-1",
+                        model=json.dumps(
+                            {
+                                "provider": "openai",
+                                "name": "gpt-4",
+                                "mode": "chat",
+                                "completion_params": {"stop": ["stop"]},
+                            }
+                        ),
+                        pre_prompt="Hello {{name}}: {{weather}}",
+                        user_input_form=json.dumps([{"text-input": {"variable": "name", "label": "Name"}}]),
+                        external_data_tools=json.dumps(
+                            [
+                                {
+                                    "enabled": True,
+                                    "variable": "weather",
+                                    "type": "api",
+                                    "config": {"api_based_extension_id": "extension-1"},
+                                }
+                            ]
+                        ),
+                        dataset_configs=json.dumps(
+                            {
+                                "retrieval_model": "multiple",
+                                "top_k": 3,
+                                "datasets": {"datasets": [{"dataset": {"enabled": True, "id": "dataset-1"}}]},
+                            }
+                        ),
+                        dataset_query_variable="name",
+                        opening_statement="Welcome",
+                    )
+                ),
+                extension,
             ]
         )
-        session.flush()
-        app.app_model_config_id = config.id
-    return ConversionSource(
-        RequestContext("request", None, actor_id, workspace_id),
-        app_id,
+        config.id = "config-1"
+    return factory  # type: ignore[return-value]
+
+
+@pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.COMPLETION])
+@pytest.mark.parametrize("agent_enabled", [False, True])
+def test_conversion_releases_reads_and_commits_target_once(
+    sessions: sessionmaker[Session], mode: AppMode, agent_enabled: bool
+) -> None:
+    with sessions.begin() as session:
+        source = session.get(App, "app-1")
+        config = session.get(AppModelConfig, "config-1")
+        assert source is not None
+        assert config is not None
+        source.mode = mode
+        config.agent_mode = json.dumps({"enabled": agent_enabled, "strategy": "react"})
+        original_config = config.to_dict(annotation_reply={"enabled": False})
+    active: set[Session] = set()
+    commits = []
+    event.listen(sessions.class_, "after_begin", lambda session, *_: active.add(session))
+
+    def end_transaction(session: Session, transaction: SessionTransaction) -> None:
+        if transaction.parent is None:
+            active.discard(session)
+
+    event.listen(sessions.class_, "after_transaction_end", end_transaction)
+    event.listen(sessions.class_, "after_commit", lambda session: commits.append(session))
+    notifications = []
+
+    def decrypt(tenant_id: str, token: str) -> str:
+        assert not active
+        assert (tenant_id, token) == ("tenant-1", "encrypted")
+        return "decrypted"
+
+    def created(*, event: AppEvent, account_id: str, backing_agent_id: str | None) -> None:
+        assert not active
+        assert len(commits) == 1
+        assert (account_id, backing_agent_id) == (CONTEXT.account_id, None)
+        with sessions() as session:
+            assert session.scalar(select(Workflow).where(Workflow.app_id == event.id)) is not None
+            assert session.scalar(select(Site).where(Site.app_id == event.id)) is not None
+            assert session.scalar(select(InstalledApp).where(InstalledApp.app_id == event.id)) is not None
+        notifications.append(event)
+
+    service = WorkflowConversionService(
         ConsoleAppRepository(session_factory=sessions),
+        converter=WorkflowConverter(),
+        decrypt_token=decrypt,
+        notify_created=created,
+        inherit_access=lambda *_: None,
     )
-
-
-def decrypt_token(_workspace_id: str, token: str) -> str:
-    return token
-
-
-def conversion_service(
-    source: ConversionSource,
-    access: EnterpriseConsoleAppAccess,
-    *,
-    builder: ConversionBuilder | None = None,
-) -> WorkflowConversionService:
-    return WorkflowConversionService(
-        source.apps,
-        converter=builder or ConversionBuilder(),
-        decrypt_token=decrypt_token,
-        notify_created=AppService.notify_created_app,
-        inherit_access=access.inherit_access,
-    )
-
-
-@pytest.mark.parametrize("source_mode", [AppMode.CHAT, AppMode.COMPLETION])
-@pytest.mark.parametrize("source_access", ["public", "private", "private_all", "sso_verified"])
-def test_convert_inherits_webapp_access_after_default_initialization(
-    sqlite_session_factory: sessionmaker[Session],
-    checked_out_connections: set[object],
-    rbac_domain: RBACDomain,
-    monkeypatch: pytest.MonkeyPatch,
-    source_mode: AppMode,
-    source_access: str,
-) -> None:
-    source = persist_conversion_source(sqlite_session_factory, source_mode)
-    apply_config_overrides(
-        monkeypatch,
-        DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE,
-        RBAC_ENABLED=False,
-    )
-    calls: list[tuple[str, str, dict[str, object]]] = []
-
-    def request(method: str, endpoint: str, **kwargs: object) -> dict[str, object]:
-        assert not checked_out_connections, "Enterprise I/O must run after conversion commits"
-        payload = kwargs.get("json") or kwargs.get("params")
-        assert isinstance(payload, dict)
-        calls.append((method, endpoint, payload))
-        if method == "GET":
-            assert payload == {"appId": source.app_id}
-            return {"accessMode": source_access}
-        return {"result": True}
-
-    monkeypatch.setattr(EnterpriseRequest, "send_request", request)
-    access = EnterpriseConsoleAppAccess(members=rbac_domain.rbac.members)
-
-    target_id = conversion_service(source, access).convert(
-        source.context,
-        source.app_id,
-        {"name": "Converted"},
-    )
-
-    assert calls == [
-        ("POST", "/webapp/access-mode", {"appId": target_id, "accessMode": "private"}),
-        ("GET", "/webapp/access-mode/id", {"appId": source.app_id}),
-        ("POST", "/webapp/access-mode", {"appId": target_id, "accessMode": source_access}),
-    ]
-    expected_mode = AppMode.ADVANCED_CHAT if source_mode == AppMode.CHAT else AppMode.WORKFLOW
-    with sqlite_session_factory() as session:
-        target = session.get(App, target_id)
+    new_id = service.convert(CONTEXT, "app-1", {"name": "", "icon_type": "", "icon": "", "icon_background": ""})
+    assert len(notifications) == 1
+    assert notifications[0].id == new_id
+    with sessions() as session:
+        target = session.get(App, new_id)
+        source = session.get(App, "app-1")
+        config = session.get(AppModelConfig, "config-1")
         assert target is not None
-        assert target.mode == expected_mode
-        assert session.scalar(select(func.count()).select_from(Workflow).where(Workflow.app_id == target_id)) == 1
-        assert session.scalar(select(func.count()).select_from(Site).where(Site.app_id == target_id)) == 1
-        assert (
-            session.scalar(select(func.count()).select_from(InstalledApp).where(InstalledApp.app_id == target_id)) == 1
+        assert source is not None
+        assert config is not None
+        assert target.name == "Source(workflow)"
+        assert target.mode == (AppMode.WORKFLOW if mode == AppMode.COMPLETION else AppMode.ADVANCED_CHAT)
+        assert (target.icon_type, target.icon, target.icon_background) == (
+            source.icon_type,
+            source.icon,
+            source.icon_background,
         )
-
-
-def test_convert_skips_webapp_access_when_authentication_is_disabled(
-    sqlite_session_factory: sessionmaker[Session],
-    rbac_domain: RBACDomain,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    source = persist_conversion_source(sqlite_session_factory)
-    apply_config_overrides(
-        monkeypatch,
-        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
-        RBAC_ENABLED=False,
-    )
-
-    def unexpected_request(*_args: object, **_kwargs: object) -> dict[str, object]:
-        raise AssertionError("disabled WebApp authentication must not call Enterprise")
-
-    monkeypatch.setattr(EnterpriseRequest, "send_request", unexpected_request)
-    access = EnterpriseConsoleAppAccess(members=rbac_domain.rbac.members)
-
-    target_id = conversion_service(source, access).convert(source.context, source.app_id, {"name": "Converted"})
-
-    assert target_id != source.app_id
-
-
-def test_conversion_failure_does_not_create_or_inherit_access(
-    sqlite_session_factory: sessionmaker[Session],
-    rbac_domain: RBACDomain,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    source = persist_conversion_source(sqlite_session_factory)
-    apply_config_overrides(
-        monkeypatch,
-        DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE,
-        RBAC_ENABLED=False,
-    )
-
-    def unexpected_request(*_args: object, **_kwargs: object) -> dict[str, object]:
-        raise AssertionError("failed conversion must not call Enterprise")
-
-    monkeypatch.setattr(EnterpriseRequest, "send_request", unexpected_request)
-    access = EnterpriseConsoleAppAccess(members=rbac_domain.rbac.members)
-    failure = RuntimeError("conversion failed")
-
-    with pytest.raises(RuntimeError) as raised:
-        conversion_service(source, access, builder=ConversionBuilder(failure)).convert(
-            source.context,
-            source.app_id,
-            {"name": "Converted"},
+        assert (target.api_rpm, target.api_rph, target.enable_site, target.enable_api) == (10, 100, True, True)
+        assert (target.created_by, target.maintainer, target.updated_by) == (CONTEXT.account_id,) * 3
+        assert source.mode == mode
+        assert config.to_dict(annotation_reply={"enabled": False}) == original_config
+        assert session.scalar(select(Workflow.id).where(Workflow.app_id == source.id)) is None
+        workflow = session.scalar(select(Workflow).where(Workflow.app_id == new_id))
+        assert workflow is not None
+        assert workflow.version == Workflow.VERSION_DRAFT
+        nodes = json.loads(workflow.graph)["nodes"]
+        assert [node["id"] for node in nodes] == [
+            "start",
+            "http_request_1",
+            "code_1",
+            "knowledge_retrieval",
+            "llm",
+            "end" if mode == AppMode.COMPLETION else "answer",
+        ]
+        http = nodes[1]["data"]
+        assert http["authorization"]["config"]["api_key"] == "decrypted"
+        params = json.loads(http["body"]["data"])["params"]
+        assert params["app_id"] == source.id
+        assert params["query"] == ("{{#sys.query#}}" if mode == AppMode.CHAT else "")
+        assert nodes[3]["data"]["query_variable_selector"] == (
+            ["sys", "query"] if mode == AppMode.CHAT else ["start", "name"]
         )
+        assert "{{#code_1.result#}}" in json.dumps(nodes[4])
+        features = json.loads(workflow.features)
+        if mode == AppMode.CHAT:
+            assert features["opening_statement"] == "Welcome"
+            assert "retriever_resource" in features
+        else:
+            assert set(features) == {"text_to_speech", "file_upload", "sensitive_word_avoidance"}
 
-    assert raised.value is failure
-    with sqlite_session_factory() as session:
+
+@pytest.mark.parametrize("failed_record", [InstalledApp, Workflow])
+def test_failed_conversion_rolls_back_entire_target(sessions: sessionmaker[Session], failed_record: type) -> None:
+    def fail_write(session: Session, *_: object) -> None:
+        if any(isinstance(row, failed_record) for row in session.new):
+            raise RuntimeError("write failed")
+
+    event.listen(sessions.class_, "before_flush", fail_write)
+    notifications = []
+    service = WorkflowConversionService(
+        ConsoleAppRepository(session_factory=sessions),
+        converter=WorkflowConverter(),
+        decrypt_token=lambda *_: "key",
+        notify_created=lambda **kwargs: notifications.append(kwargs),
+        inherit_access=lambda *_: None,
+    )
+    with pytest.raises(RuntimeError, match="write failed"):
+        service.convert(CONTEXT, "app-1", {})
+    assert notifications == []
+    with sessions() as session:
+        assert session.scalar(select(func.count()).select_from(App)) == 1
+        for model in (Workflow, Site, InstalledApp):
+            assert session.scalar(select(func.count()).select_from(model)) == 0
+
+
+@pytest.mark.parametrize(
+    "invalid", ["mode", "missing_config", "foreign_config", "foreign_extension", "missing_extension"]
+)
+def test_conversion_rejects_invalid_owned_data_before_creating_target(
+    sessions: sessionmaker[Session], invalid: str
+) -> None:
+    with sessions.begin() as session:
+        source = session.get(App, "app-1")
+        config = session.get(AppModelConfig, "config-1")
+        extension = session.get(APIBasedExtension, "extension-1")
+        assert source is not None
+        assert config is not None
+        assert extension is not None
+        if invalid == "mode":
+            source.mode = AppMode.WORKFLOW
+        elif invalid == "missing_config":
+            source.app_model_config_id = None
+        elif invalid == "foreign_config":
+            config.app_id = "another-app"
+        elif invalid == "foreign_extension":
+            extension.tenant_id = "another-tenant"
+        else:
+            session.delete(extension)
+    notifications: list[Mapping[str, object]] = []
+    decryptions: list[tuple[object, ...]] = []
+    service = WorkflowConversionService(
+        ConsoleAppRepository(session_factory=sessions),
+        converter=WorkflowConverter(),
+        decrypt_token=lambda *args: decryptions.append(args) or "key",
+        notify_created=lambda **kwargs: notifications.append(kwargs),
+        inherit_access=lambda *_: None,
+    )
+    with pytest.raises(WorkflowConversionError):
+        service.convert(CONTEXT, "app-1", {})
+    assert notifications == []
+    assert decryptions == []
+    with sessions() as session:
         assert session.scalar(select(func.count()).select_from(App)) == 1
         assert session.scalar(select(func.count()).select_from(Workflow)) == 0
 
 
-def test_inherit_failure_propagates_after_converted_app_commits(
-    sqlite_session_factory: sessionmaker[Session],
-    rbac_domain: RBACDomain,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    source = persist_conversion_source(sqlite_session_factory)
-    apply_config_overrides(
-        monkeypatch,
-        DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE,
-        RBAC_ENABLED=False,
+def test_conversion_rejects_other_tenant(sessions: sessionmaker[Session]) -> None:
+    service = WorkflowConversionService(
+        ConsoleAppRepository(session_factory=sessions),
+        converter=WorkflowConverter(),
+        decrypt_token=lambda *_: "key",
+        notify_created=lambda **_: None,
+        inherit_access=lambda *_: None,
     )
-    target_id: str | None = None
-    failure = EnterpriseServiceError("write failed")
+    with pytest.raises(ConsoleAppNotFoundError):
+        service.convert(CONTEXT._replace(active_workspace_id="other-tenant"), "app-1", {})
 
-    def request(method: str, endpoint: str, **kwargs: object) -> dict[str, object]:
-        nonlocal target_id
-        payload = kwargs.get("json") or kwargs.get("params")
-        assert isinstance(payload, dict)
-        if method == "GET":
-            assert endpoint == "/webapp/access-mode/id"
-            return {"accessMode": "private_all"}
-        assert endpoint == "/webapp/access-mode"
-        if target_id is None:
-            target_id = str(payload["appId"])
-            return {"result": True}
-        raise failure
 
-    monkeypatch.setattr(EnterpriseRequest, "send_request", request)
-    access = EnterpriseConsoleAppAccess(members=rbac_domain.rbac.members)
+def test_decryption_failure_creates_no_target(sessions: sessionmaker[Session]) -> None:
+    def fail(*_: str) -> str:
+        raise RuntimeError("key service unavailable")
 
-    with pytest.raises(EnterpriseServiceError) as raised:
-        conversion_service(source, access).convert(source.context, source.app_id, {"name": "Converted"})
-
-    assert raised.value is failure
-    assert target_id is not None
-    with sqlite_session_factory() as session:
-        target = session.get(App, target_id)
-        assert target is not None
-        assert target.name == "Converted"
-        assert session.scalar(select(func.count()).select_from(Workflow).where(Workflow.app_id == target_id)) == 1
+    service = WorkflowConversionService(
+        ConsoleAppRepository(session_factory=sessions),
+        converter=WorkflowConverter(),
+        decrypt_token=fail,
+        notify_created=lambda **_: None,
+        inherit_access=lambda *_: None,
+    )
+    with pytest.raises(RuntimeError, match="key service unavailable"):
+        service.convert(CONTEXT, "app-1", {})
+    with sessions() as session:
+        assert session.scalar(select(func.count()).select_from(App)) == 1
+        assert session.scalar(select(func.count()).select_from(Workflow)) == 0

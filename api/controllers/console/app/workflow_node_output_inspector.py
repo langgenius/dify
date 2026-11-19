@@ -44,6 +44,7 @@ from controllers.console.wraps import (
     setup_required,
 )
 from core.db.session_factory import sessionmaker_for
+from extensions.ext_application_services import application_services
 from libs.exception import BaseHTTPException, RelayedHTTPError
 from libs.external_api import error_responses
 from libs.login import login_required
@@ -84,7 +85,7 @@ register_response_schema_models(
 
 def _service() -> NodeOutputInspectorService:
     """One-line factory so tests can monkeypatch a stub if needed."""
-    return NodeOutputInspectorService()
+    return NodeOutputInspectorService(binding_resolver=application_services().workflow_agent_bindings)
 
 
 def _serve_snapshot(session: Session, app_model: App, run_id: UUID) -> dict:

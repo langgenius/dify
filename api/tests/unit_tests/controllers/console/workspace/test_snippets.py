@@ -9,8 +9,8 @@ from flask import Flask
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import BadRequest, NotFound
 
+from controllers.common.errors import InvalidRequestError, NotFoundError
 from controllers.console.workspace import snippets as snippets_module
 from models.account import Account, TenantAccountRole
 from models.snippet import CustomizedSnippet
@@ -198,12 +198,8 @@ def test_create_snippet_returns_database_defaults_without_committing(
     assert sqlite_session.scalar(select(CustomizedSnippet).where(CustomizedSnippet.id == snippet_id)) is None
 
 
-def test_create_snippet_rejects_forbidden_nodes(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
+def test_create_snippet_rejects_forbidden_nodes(app: Flask, sqlite_session: Session):
     user = _account("account-1")
-    create_snippet = Mock()
-    monkeypatch.setattr(snippets_module.SnippetService, "create_snippet", create_snippet)
 
     req_data = snippets_module.CreateSnippetPayload(
         name="snippet with invalid node",
@@ -236,10 +232,8 @@ def test_create_snippet_rejects_forbidden_nodes(
         response, status_code = raised_error(lambda: handler(api, req_data, sqlite_session, "tenant-1", user))
 
     assert status_code == 400
-    message = response["message"]
-    assert isinstance(message, str)
-    assert "knowledge-retrieval" in message
-    create_snippet.assert_not_called()
+    assert "knowledge-retrieval" in response["message"]
+    assert sqlite_session.query(CustomizedSnippet).count() == 0
 
 
 def test_get_snippet_detail_raises_when_missing(
@@ -251,7 +245,7 @@ def test_get_snippet_detail_raises_when_missing(
     handler = unwrap(api.get)
 
     with app.test_request_context("/workspaces/current/customized-snippets/snippet-1"):
-        with pytest.raises(NotFound, match="Snippet not found"):
+        with pytest.raises(NotFoundError, match="Snippet not found"):
             handler(api, sqlite_session, "tenant-1", snippet_id="snippet-1")
 
 
@@ -423,7 +417,7 @@ def test_patch_snippet_does_not_persist_a_rejected_update(
         method="PATCH",
         json={"name": "New"},
     ):
-        with pytest.raises(BadRequest, match="name already in use"):
+        with pytest.raises(InvalidRequestError, match="name already in use"):
             patch_through_decorator(api, snippet_id="snippet-1")
 
     assert _persisted_name(sqlite_session) == "Snippet"
@@ -501,7 +495,7 @@ def test_export_snippet_returns_yaml_attachment(
     monkeypatch.setattr(snippets_module.SnippetService, "get_snippet_by_id", Mock(return_value=snippet))
     monkeypatch.setattr(
         snippets_module,
-        "SnippetDslService",
+        "build_snippet_dsl_service",
         Mock(return_value=SimpleNamespace(export_snippet_dsl=export_snippet_dsl)),
     )
 
@@ -529,7 +523,7 @@ def test_export_snippet_raises_not_found_for_missing_workflow(
     monkeypatch.setattr(snippets_module.SnippetService, "get_snippet_by_id", Mock(return_value=snippet))
     monkeypatch.setattr(
         snippets_module,
-        "SnippetDslService",
+        "build_snippet_dsl_service",
         Mock(
             return_value=SimpleNamespace(
                 export_snippet_dsl=Mock(side_effect=ValueError("Missing published workflow workflow-1"))
@@ -540,7 +534,7 @@ def test_export_snippet_raises_not_found_for_missing_workflow(
     handler = unwrap(api.get)
 
     with app.test_request_context("/workspaces/current/customized-snippets/snippet-1/export?workflow_id=workflow-1"):
-        with pytest.raises(NotFound, match="Missing published workflow workflow-1"):
+        with pytest.raises(NotFoundError, match="Missing published workflow workflow-1"):
             handler(api, sqlite_session, "tenant-1", snippet_id="snippet-1")
 
 
@@ -553,7 +547,7 @@ def test_import_snippet_returns_202_for_pending_confirmation(
     import_snippet = Mock(return_value=result)
     monkeypatch.setattr(
         snippets_module,
-        "SnippetDslService",
+        "build_snippet_dsl_service",
         Mock(return_value=SimpleNamespace(import_snippet=import_snippet)),
     )
 
@@ -583,7 +577,7 @@ def test_import_snippet_returns_400_for_failed_import(
     import_snippet = Mock(return_value=result)
     monkeypatch.setattr(
         snippets_module,
-        "SnippetDslService",
+        "build_snippet_dsl_service",
         Mock(return_value=SimpleNamespace(import_snippet=import_snippet)),
     )
 
@@ -612,7 +606,7 @@ def test_import_confirm_returns_200_for_completed_import(
     confirm_import = Mock(return_value=result)
     monkeypatch.setattr(
         snippets_module,
-        "SnippetDslService",
+        "build_snippet_dsl_service",
         Mock(return_value=SimpleNamespace(confirm_import=confirm_import)),
     )
 
@@ -639,7 +633,7 @@ def test_check_dependencies_raises_when_snippet_missing(
     handler = unwrap(api.get)
 
     with app.test_request_context("/workspaces/current/customized-snippets/snippet-1/check-dependencies"):
-        with pytest.raises(NotFound, match="Snippet not found"):
+        with pytest.raises(NotFoundError, match="Snippet not found"):
             handler(api, sqlite_session, "tenant-1", snippet_id="snippet-1")
 
 
@@ -653,7 +647,7 @@ def test_check_dependencies_returns_dependency_result(
     monkeypatch.setattr(snippets_module.SnippetService, "get_snippet_by_id", Mock(return_value=snippet))
     monkeypatch.setattr(
         snippets_module,
-        "SnippetDslService",
+        "build_snippet_dsl_service",
         Mock(return_value=SimpleNamespace(check_dependencies=check_dependencies)),
     )
 
@@ -680,7 +674,7 @@ def test_increment_use_count_raises_when_snippet_missing(
         "/workspaces/current/customized-snippets/snippet-1/use-count/increment",
         method="POST",
     ):
-        with pytest.raises(NotFound, match="Snippet not found"):
+        with pytest.raises(NotFoundError, match="Snippet not found"):
             handler(api, sqlite_session, "tenant-1", snippet_id="snippet-1")
 
 

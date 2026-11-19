@@ -52,7 +52,7 @@ class DummyTool(Tool):
 
     def _invoke(
         self,
-        session: Any,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
@@ -84,31 +84,6 @@ class DummyTool(Tool):
         )
 
 
-def _text_body(message: ToolInvokeMessage) -> ToolInvokeMessage.TextMessage:
-    assert isinstance(message.message, ToolInvokeMessage.TextMessage)
-    return message.message
-
-
-def _file_body(message: ToolInvokeMessage) -> ToolInvokeMessage.FileMessage:
-    assert isinstance(message.message, ToolInvokeMessage.FileMessage)
-    return message.message
-
-
-def _blob_body(message: ToolInvokeMessage) -> ToolInvokeMessage.BlobMessage:
-    assert isinstance(message.message, ToolInvokeMessage.BlobMessage)
-    return message.message
-
-
-def _json_body(message: ToolInvokeMessage) -> ToolInvokeMessage.JsonMessage:
-    assert isinstance(message.message, ToolInvokeMessage.JsonMessage)
-    return message.message
-
-
-def _variable_body(message: ToolInvokeMessage) -> ToolInvokeMessage.VariableMessage:
-    assert isinstance(message.message, ToolInvokeMessage.VariableMessage)
-    return message.message
-
-
 def _build_tool(runtime: ToolRuntime | None = None) -> DummyTool:
     entity = ToolEntity(
         identity=ToolIdentity(author="test", name="dummy", label=I18nObject(en_US="dummy"), provider="test"),
@@ -120,7 +95,7 @@ def _build_tool(runtime: ToolRuntime | None = None) -> DummyTool:
     return DummyTool(entity=entity, runtime=runtime)
 
 
-def test_invoke_supports_single_message_and_parameter_casting(sqlite_session: Session) -> None:
+def test_invoke_supports_single_message_and_parameter_casting(unbound_session: Session):
     runtime = ToolRuntime(
         tenant_id="tenant-1",
         invoke_from=InvokeFrom.DEBUGGER,
@@ -138,7 +113,7 @@ def test_invoke_supports_single_message_and_parameter_casting(sqlite_session: Se
 
     messages = list(
         tool.invoke(
-            session=sqlite_session,
+            session=unbound_session,
             user_id="user-1",
             tool_parameters={"age": "18", "raw": "keep"},
             conversation_id="conv-1",
@@ -148,7 +123,7 @@ def test_invoke_supports_single_message_and_parameter_casting(sqlite_session: Se
     )
 
     assert len(messages) == 1
-    assert _text_body(messages[0]).text == "ok"
+    assert messages[0].message.text == "ok"
     assert tool.last_invocation == {
         "user_id": "user-1",
         "tool_parameters": {"age": "cast:18", "raw": "keep", "from_runtime": "runtime-value"},
@@ -158,7 +133,7 @@ def test_invoke_supports_single_message_and_parameter_casting(sqlite_session: Se
     }
 
 
-def test_invoke_preserves_multiple_select_values(sqlite_session: Session) -> None:
+def test_invoke_preserves_multiple_select_values(unbound_session: Session):
     tool = _build_tool()
     parameter = ToolParameter.get_simple_instance(
         name="choice",
@@ -170,31 +145,31 @@ def test_invoke_preserves_multiple_select_values(sqlite_session: Session) -> Non
     parameter.multiple = True
     tool.entity.parameters = [parameter]
 
-    list(tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={"choice": ["a", "b"]}))
+    list(tool.invoke(session=unbound_session, user_id="user-1", tool_parameters={"choice": ["a", "b"]}))
 
     assert tool.last_invocation is not None
     assert tool.last_invocation["tool_parameters"] == {"choice": ["a", "b"]}
     # A legacy comma-separated string is normalized, not rejected (#45003).
-    list(tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={"choice": "a,b"}))
+    list(tool.invoke(session=unbound_session, user_id="user-1", tool_parameters={"choice": "a,b"}))
     assert tool.last_invocation["tool_parameters"] == {"choice": ["a", "b"]}
     # A non-list, non-string value is still rejected.
     with pytest.raises(ValueError, match="must be a list"):
-        tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={"choice": 1})
+        tool.invoke(session=unbound_session, user_id="user-1", tool_parameters={"choice": 1})
 
 
-def test_invoke_supports_list_and_generator_results(sqlite_session: Session) -> None:
+def test_invoke_supports_list_and_generator_results(unbound_session: Session):
     tool = _build_tool()
     tool.result = [tool.create_text_message("a"), tool.create_text_message("b")]
-    list_messages = list(tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={}))
-    assert [_text_body(msg).text for msg in list_messages] == ["a", "b"]
+    list_messages = list(tool.invoke(session=unbound_session, user_id="user-1", tool_parameters={}))
+    assert [msg.message.text for msg in list_messages] == ["a", "b"]
 
     def _message_generator() -> Generator[ToolInvokeMessage]:
         yield tool.create_text_message("g1")
         yield tool.create_text_message("g2")
 
     tool.result = _message_generator()
-    generated_messages = list(tool.invoke(session=sqlite_session, user_id="user-2", tool_parameters={}))
-    assert [_text_body(msg).text for msg in generated_messages] == ["g1", "g2"]
+    generated_messages = list(tool.invoke(session=unbound_session, user_id="user-2", tool_parameters={}))
+    assert [msg.message.text for msg in generated_messages] == ["g1", "g2"]
 
 
 def test_fork_tool_runtime_returns_new_tool_with_copied_entity() -> None:
@@ -402,6 +377,31 @@ def test_message_factory_helpers() -> None:
     assert _variable_body(variable_message).stream is False
 
 
-def test_base_abstract_invoke_placeholder_returns_none(sqlite_session: Session) -> None:
+def test_base_abstract_invoke_placeholder_returns_none(unbound_session: Session):
     tool = _build_tool()
-    assert Tool._invoke(tool, session=sqlite_session, user_id="u", tool_parameters={}) is None
+    assert Tool._invoke(tool, session=unbound_session, user_id="u", tool_parameters={}) is None
+
+
+def _text_body(message: ToolInvokeMessage) -> ToolInvokeMessage.TextMessage:
+    assert isinstance(message.message, ToolInvokeMessage.TextMessage)
+    return message.message
+
+
+def _file_body(message: ToolInvokeMessage) -> ToolInvokeMessage.FileMessage:
+    assert isinstance(message.message, ToolInvokeMessage.FileMessage)
+    return message.message
+
+
+def _blob_body(message: ToolInvokeMessage) -> ToolInvokeMessage.BlobMessage:
+    assert isinstance(message.message, ToolInvokeMessage.BlobMessage)
+    return message.message
+
+
+def _json_body(message: ToolInvokeMessage) -> ToolInvokeMessage.JsonMessage:
+    assert isinstance(message.message, ToolInvokeMessage.JsonMessage)
+    return message.message
+
+
+def _variable_body(message: ToolInvokeMessage) -> ToolInvokeMessage.VariableMessage:
+    assert isinstance(message.message, ToolInvokeMessage.VariableMessage)
+    return message.message

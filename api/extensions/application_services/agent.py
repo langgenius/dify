@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from core.app.file_access import DatabaseFileAccessController
 from enums import CloudPlan, DeploymentEdition
+from extensions.application_services.workflow import build_workflow_execution_dependencies
 from repositories.agent_observability_repository import SQLAlchemyAgentObservabilityRepository
 from repositories.agent_roster_repository import SQLAlchemyAgentRosterRepository
 from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
@@ -16,10 +17,12 @@ from repositories.app.agent_app_repository import AgentAppRepository
 from repositories.app.agent_sandbox_repository import AgentSandboxRepository
 from repositories.app.generation_repository import AppGenerationRepository
 from repositories.tools.provider_repository import ToolProviderRepository
+from repositories.tools.workflow_repository import WorkflowToolRepository
 from services.agent.invite_options import AgentInviteOptionsService
 from services.agent.log_file_gateway import AgentLogFileGateway
 from services.agent.log_service import AgentLogService
 from services.agent.observability_contracts import AgentObservability
+from services.agent.tool_invocation_service import AgentToolInnerService
 from services.agent.version_service import AgentVersionService
 from services.app.agent_app_feature_gateway import AgentAppFeatureValidator
 from services.app.agent_app_sandbox_service import AgentAppSandboxService
@@ -37,16 +40,18 @@ from services.app.console_gateway import (
     AppLifecycleGateway,
     notify_agent_app_updated,
 )
+from services.app.response_gateway import AppResponseGateway
 from services.feature_service import FeatureService
 from services.file_request_service import FileRequestService
 from services.rbac.agent_list_gateway import AgentListVisibilityGateway
 from services.rbac.members import MemberService
+from services.tools.agent_invocation_gateway import AgentToolInvocationGateway
 from services.tools.tool_manager import ToolManager
+from services.workflow.variable_contracts import WorkflowExecutionVariables
 
 
 @dataclass(frozen=True, slots=True)
 class AgentAppServices:
-    logs: AgentLogService
     access: AgentAppAccessService
     api_access: AgentApiAccessService
     lifecycle: AgentAppDeletionService
@@ -54,6 +59,8 @@ class AgentAppServices:
     collection: AgentAppCollectionService
     features: AgentAppFeatureConfigService
     sandbox: AgentAppSandboxService
+    tools: AgentToolInnerService
+    logs: AgentLogService
 
 
 def _can_restore_version(tenant_id: str, *, edition: DeploymentEdition, get_plan: Callable[[str], CloudPlan]) -> bool:
@@ -62,18 +69,31 @@ def _can_restore_version(tenant_id: str, *, edition: DeploymentEdition, get_plan
 
 
 def build_agent_app_services(
-    *, database_client: sessionmaker[Session], rbac_members: MemberService
+    *, database_client: sessionmaker[Session], rbac_members: MemberService, variables: WorkflowExecutionVariables
 ) -> AgentAppServices:
     apps = AgentAppRepository(session_factory=database_client)
-    lifecycle = AppLifecycleGateway(session_factory=database_client)
+    providers = ToolProviderRepository(database_client)
+    workflow_tools = WorkflowToolRepository(database_client)
+    lifecycle = AppLifecycleGateway(
+        session_factory=database_client, tool_providers=providers, workflow_queries=workflow_tools
+    )
     detail = AgentAppDetailService(
-        runtime=lifecycle, presentation=AgentAppDetailPresentationGateway(members=rbac_members)
+        runtime=lifecycle,
+        presentation=AgentAppDetailPresentationGateway(
+            members=rbac_members, responses=AppResponseGateway(providers, workflow_tools)
+        ),
     )
     return AgentAppServices(
         logs=AgentLogService(
             records=AppGenerationRepository(database_client),
-            icons=partial(ToolManager.get_tool_icon, tool_providers=ToolProviderRepository(database_client)),
+            icons=partial(ToolManager.get_tool_icon, tool_providers=providers),
             files=AgentLogFileGateway(sessions=database_client, access=DatabaseFileAccessController()),
+        ),
+        tools=AgentToolInnerService(
+            apps=apps,
+            tools=AgentToolInvocationGateway(
+                variables=variables, runtime=build_workflow_execution_dependencies(database_client)
+            ),
         ),
         access=AgentAppAccessService(references=apps),
         api_access=AgentApiAccessService(store=apps, notify_updated=notify_agent_app_updated),
