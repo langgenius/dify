@@ -56,12 +56,15 @@ class IMWebhookIngressService:
             if route is None:
                 return WebhookResponse(404, (), b"")
             if not isinstance(route.scope, WorkspaceScope):
-                # Deployment credential provisioning has an independent owner.
-                # Never decrypt a deployment envelope with a workspace key.
-                raise IMCredentialError("Deployment IM credentials are unavailable")
-            cipher = TenantBoundCredentialCipher(self._key_provider, str(route.scope.id))
-            credentials = IMCredentialCodec(cipher).load(route.channel.provider, route.channel.encrypted_credentials)
-            adapter = build_im_provider_adapter(credentials)
+                from services.enterprise.human_input_im import build_deployment_im_adapter
+
+                adapter = build_deployment_im_adapter(route.channel)
+            else:
+                cipher = TenantBoundCredentialCipher(self._key_provider, str(route.scope.id))
+                credentials = IMCredentialCodec(cipher).load(
+                    route.channel.provider, route.channel.encrypted_credentials
+                )
+                adapter = build_im_provider_adapter(credentials)
             try:
                 sink = IMMessageInboxSink(
                     channel_id=IMChannelId(str(route.channel.id)),

@@ -104,6 +104,16 @@ def build_im_contact_sync_application(
     deployment_adapter_factory: IMChannelAdapterFactory | None = None,
 ) -> IMContactSyncApplication:
     sessions = session_maker or sessionmaker(bind=db.engine, expire_on_commit=False)
+    from services.feature_service import FeatureService
+
+    if FeatureService.is_im_centrally_managed():
+        from services.enterprise.human_input_contact_composition import build_enterprise_organization_contact_reader
+        from services.enterprise.human_input_im import build_deployment_im_adapter
+
+        deployment_contact_reader_factory = (
+            deployment_contact_reader_factory or build_enterprise_organization_contact_reader
+        )
+        deployment_adapter_factory = deployment_adapter_factory or build_deployment_im_adapter
     sync_service = IMSyncService(
         sessions, _resolve_channel, _dispatch, account_query=SQLAlchemyAccountRepository(sessions)
     )

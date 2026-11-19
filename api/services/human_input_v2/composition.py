@@ -19,6 +19,8 @@ from core.workflow.system_variables import SystemVariableKey, get_system_text
 from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from libs.datetime_utils import ensure_naive_utc
 from models.workflow import WorkflowRun
+from services.enterprise.human_input_im import build_deployment_im_adapter
+from services.feature_service import FeatureService
 
 from .delivery_service import HumanInputDeliveryService
 from .email_client import build_email_client
@@ -34,6 +36,7 @@ def build_human_input_delivery_service(
     return HumanInputDeliveryService(
         session_factory=session_factory,
         email_client=build_email_client(tenant_id=tenant_id, session_factory=session_factory),
+        im_adapter_factory=build_deployment_im_adapter if FeatureService.is_im_centrally_managed() else None,
     )
 
 
