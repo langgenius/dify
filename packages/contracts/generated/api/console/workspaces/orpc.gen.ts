@@ -2446,13 +2446,23 @@ export const enable2 = {
   patch: patch5,
 }
 
+/**
+ * Validate a parsed payload for the current tenant using the request session
+ *
+ * Only privileged accounts may validate credentials. Report provider validation
+ * failures in the existing response shape; the decorator closes the read-only
+ * session on success or error.
+ */
 export const post34 = oc
   .route({
+    description:
+      'Only privileged accounts may validate credentials. Report provider validation\nfailures in the existing response shape; the decorator closes the read-only\nsession on success or error.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId:
       'postWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsCredentialsValidate',
     path: '/workspaces/current/model-providers/{provider}/models/load-balancing-configs/credentials-validate',
+    summary: 'Validate a parsed payload for the current tenant using the request session',
     tags: ['console'],
   })
   .input(
@@ -2470,13 +2480,23 @@ export const credentialsValidate = {
   post: post34,
 }
 
+/**
+ * Validate a parsed payload for the current tenant using the request session
+ *
+ * Only privileged accounts may validate credentials. Report provider validation
+ * failures in the existing response shape; the decorator closes the read-only
+ * session on success or error.
+ */
 export const post35 = oc
   .route({
+    description:
+      'Only privileged accounts may validate credentials. Report provider validation\nfailures in the existing response shape; the decorator closes the read-only\nsession on success or error.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId:
       'postWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsByConfigIdCredentialsValidate',
     path: '/workspaces/current/model-providers/{provider}/models/load-balancing-configs/{config_id}/credentials-validate',
+    summary: 'Validate a parsed payload for the current tenant using the request session',
     tags: ['console'],
   })
   .input(

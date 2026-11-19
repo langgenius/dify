@@ -16404,6 +16404,12 @@ Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/model-providers/{provider}/models/load-balancing-configs/credentials-validate
+**Validate a parsed payload for the current tenant using the request session**
+
+Only privileged accounts may validate credentials. Report provider validation
+failures in the existing response shape; the decorator closes the read-only
+session on success or error.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -16424,6 +16430,12 @@ Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/model-providers/{provider}/models/load-balancing-configs/{config_id}/credentials-validate
+**Validate a parsed payload for the current tenant using the request session**
+
+Only privileged accounts may validate credentials. Report provider validation
+failures in the existing response shape; the decorator closes the read-only
+session on success or error.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
