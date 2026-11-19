@@ -1,6 +1,6 @@
 """Console conversation lists through real account admission, services and SQLite."""
 
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, Generator, Iterator, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -25,6 +25,7 @@ from controllers.console.app.conversation import (
     ChatConversationApi,
     CompletionConversationApi,
     ConversationLogExportApi,
+    ConversationLogExportFileApi,
     ConversationLogExportPreviewApi,
     ConversationLogExportTaskApi,
 )
@@ -33,6 +34,7 @@ from enums.account import TenantAccountRole
 from extensions.ext_database import db
 from extensions.ext_login import DifyLoginManager, unauthorized_handler
 from extensions.ext_redis import RedisClientWrapper
+from extensions.storage.storage_type import StorageType
 from fields.conversation_fields import (
     ConversationPagination,
     ConversationResponseSource,
@@ -43,11 +45,12 @@ from libs.helper import dump_response
 from libs.token import generate_csrf_token
 from models import Account, Tenant, TenantAccountJoin
 from models.enums import ConversationFromSource, FeedbackFromSource, FeedbackRating
-from models.model import App, AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
+from models.model import App, AppMode, Conversation, DifySetup, Message, MessageAnnotation, MessageFeedback
 from models.utils.file_input_compat import restore_input_files
 from repositories.conversation_repository import ConversationRepository, RedisConversationLogExportTasks
 from services.conversation_query_service import ConversationQueryService
 from services.message_query_adapters import MessageFileResolver
+from services.retention.conversation import log_export_adapters
 from services.retention.conversation.log_export_service import (
     ConversationLogExportService,
     ConversationLogExportStatus,
@@ -104,6 +107,11 @@ class _Harness:
         client, headers = self._client(authenticated=True, csrf=True)
         return client.get(f"/apps/{self.target.id}/conversation-log-exports/{task_id}", headers=headers)
 
+    def get_export_file(self, task_id: str, *, authenticated: bool = True) -> TestResponse:
+        """Navigate to the export download with a session cookie and no CSRF header."""
+        client, _ = self._client(authenticated=authenticated, csrf=False)
+        return client.get(f"/console/api/apps/{self.target.id}/conversation-log-exports/{task_id}/file")
+
     def _client(self, *, authenticated: bool, csrf: bool) -> tuple[FlaskClient, dict[str, str]]:
         """Return a test client and any headers for the requested admission state."""
         client = self.app.test_client()
@@ -132,6 +140,7 @@ def harness(
 ) -> Iterator[_Harness]:
     config_overrides(
         DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        STORAGE_TYPE=StorageType.LOCAL,
         LOGIN_DISABLED=False,
         RBAC_ENABLED=False,
         SECRET_KEY="conversation-http-tests-key-at-least-32-bytes",
@@ -193,6 +202,7 @@ def harness(
             tasks=RedisConversationLogExportTasks(redis=state.redis),
             dispatch=state.dispatch,
             store_csv=Mock(),
+            open_csv=log_export_adapters.open_conversation_log_export_csv,
         ),
     )
     api = ExternalApi(app)
@@ -201,6 +211,9 @@ def harness(
     api.add_resource(ConversationLogExportPreviewApi, "/apps/<uuid:app_id>/conversation-log-exports/preview")
     api.add_resource(ConversationLogExportApi, "/apps/<uuid:app_id>/conversation-log-exports")
     api.add_resource(ConversationLogExportTaskApi, "/apps/<uuid:app_id>/conversation-log-exports/<uuid:task_id>")
+    api.add_resource(
+        ConversationLogExportFileApi, "/console/api/apps/<uuid:app_id>/conversation-log-exports/<uuid:task_id>/file"
+    )
     yield state
     with app.app_context():
         db.session.remove()
@@ -567,6 +580,7 @@ def test_get_conversation_log_export_status_requires_a_live_scoped_task(
     harness.redis.get.assert_called_once_with(key)
 
 
+@pytest.mark.parametrize("file_download", [False, True], ids=["status", "file"])
 @pytest.mark.parametrize(
     ("role", "paid", "error_code"),
     [
@@ -580,6 +594,7 @@ def test_get_conversation_log_export_status_checks_access_before_redis(
     role: TenantAccountRole,
     paid: bool,
     error_code: str,
+    file_download: bool,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Deny polling after a role or entitlement change without reading the task."""
@@ -591,11 +606,154 @@ def test_get_conversation_log_export_status_checks_access_before_redis(
         membership.role = role
     monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", lambda _: paid)
 
-    response = harness.get_export_status(task.task_id)
+    response = harness.get_export_file(task.task_id) if file_download else harness.get_export_status(task.task_id)
 
     assert response.status_code == 403
     assert response.get_json()["code"] == error_code
     harness.redis.get.assert_not_called()
+
+
+def test_download_conversation_log_export_redirects_to_storage(
+    harness: _Harness,
+    created_export: tuple[str, ConversationLogExportTask],
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> None:
+    """Authorize the navigation and sign the stored key without reading the CSV."""
+    config_overrides(STORAGE_TYPE=StorageType.S3)
+    key, task = created_export
+    storage_key = "private/export.csv"
+    url = "https://storage.example.test/export.csv?signature=signed"
+    harness.redis.get.return_value = task.model_copy(
+        update={"status": ConversationLogExportStatus.READY, "storage_key": storage_key}
+    ).model_dump_json()
+    sign = Mock(return_value=url)
+    exists = Mock(return_value=True)
+    load = Mock()
+    monkeypatch.setattr(log_export_adapters.storage, "generate_presigned_url", sign)
+    monkeypatch.setattr(log_export_adapters.storage, "exists", exists)
+    monkeypatch.setattr(log_export_adapters.storage, "load", load)
+
+    response = harness.get_export_file(task.task_id)
+
+    assert response.status_code == 302
+    assert response.headers["Location"] == url
+    assert response.cache_control.no_store
+    harness.redis.get.assert_called_once_with(key)
+    sign.assert_called_once_with(
+        storage_key,
+        expires_in=3600,
+        content_type="text/csv; charset=utf-8",
+        download_filename=f"conversation-logs-{task.task_id}.csv",
+    )
+    exists.assert_called_once_with(storage_key)
+    load.assert_not_called()
+
+
+def test_download_conversation_log_export_requires_login(
+    harness: _Harness, created_export: tuple[str, ConversationLogExportTask]
+) -> None:
+    """Refuse to resolve a download for a browser without a Console session."""
+    _, task = created_export
+
+    response = harness.get_export_file(task.task_id, authenticated=False)
+
+    assert response.status_code == 401
+    harness.redis.get.assert_not_called()
+
+
+def test_download_conversation_log_export_streams_and_closes_the_csv(
+    harness: _Harness,
+    created_export: tuple[str, ConversationLogExportTask],
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> None:
+    """Stream a self-hosted export even when its S3 endpoint is private."""
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, STORAGE_TYPE=StorageType.S3)
+    with harness.factory.begin() as session:
+        session.add(DifySetup(version="test"))
+    key, task = created_export
+    storage_key = "private/export.csv"
+    harness.redis.get.return_value = task.model_copy(
+        update={"status": ConversationLogExportStatus.READY, "storage_key": storage_key}
+    ).model_dump_json()
+    closed = False
+    header = b"\xef\xbb\xbfmessage_id,user_input\r\n"
+
+    def chunks() -> Generator[bytes]:
+        nonlocal closed
+        try:
+            yield header
+            yield b"message-id,hello\r\n"
+        finally:
+            closed = True
+
+    load = Mock(return_value=chunks())
+    monkeypatch.setattr(log_export_adapters.storage, "load", load)
+
+    with harness.get_export_file(task.task_id) as response:
+        assert response.status_code == 200
+        assert response.mimetype == "text/csv"
+        assert response.headers["Content-Disposition"] == f"attachment; filename=conversation-logs-{task.task_id}.csv"
+        assert response.cache_control.no_store
+        assert next(iter(response.response)) == header
+        assert not closed
+
+    assert closed
+    harness.redis.get.assert_called_once_with(key)
+    load.assert_called_once_with(storage_key, stream=True)
+
+
+@pytest.mark.parametrize(
+    "status",
+    [ConversationLogExportStatus.PENDING, ConversationLogExportStatus.PROCESSING, ConversationLogExportStatus.FAILED],
+)
+def test_download_conversation_log_export_requires_a_ready_task(
+    harness: _Harness,
+    created_export: tuple[str, ConversationLogExportTask],
+    status: ConversationLogExportStatus,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> None:
+    """Reject unfinished exports without opening storage."""
+    config_overrides(STORAGE_TYPE=StorageType.S3)
+    _, task = created_export
+    harness.redis.get.return_value = task.model_copy(update={"status": status}).model_dump_json()
+    sign = Mock()
+    monkeypatch.setattr(log_export_adapters.storage, "generate_presigned_url", sign)
+    response = harness.get_export_file(task.task_id)
+
+    assert response.status_code == 409
+    assert response.get_json()["code"] == "conversation_log_export_task_not_ready"
+    sign.assert_not_called()
+
+
+@pytest.mark.parametrize("signed", [True, False], ids=["storage-url", "stream"])
+def test_download_conversation_log_export_reports_missing_csv(
+    harness: _Harness,
+    created_export: tuple[str, ConversationLogExportTask],
+    monkeypatch: pytest.MonkeyPatch,
+    signed: bool,
+    config_overrides: Callable[..., None],
+) -> None:
+    """Return a scoped file-not-found error before committing any download headers."""
+    _, task = created_export
+    harness.redis.get.return_value = task.model_copy(
+        update={"status": ConversationLogExportStatus.READY, "storage_key": "private/export.csv"}
+    ).model_dump_json()
+    if signed:
+        config_overrides(STORAGE_TYPE=StorageType.S3)
+        sign = Mock()
+        monkeypatch.setattr(log_export_adapters.storage, "generate_presigned_url", sign)
+        monkeypatch.setattr(log_export_adapters.storage, "exists", Mock(return_value=False))
+    else:
+        monkeypatch.setattr(log_export_adapters.storage, "load", Mock(side_effect=FileNotFoundError))
+    response = harness.get_export_file(task.task_id)
+
+    assert response.status_code == 404
+    assert response.get_json()["code"] == "conversation_log_export_file_not_found"
+    if signed:
+        sign.assert_not_called()
 
 
 @pytest.mark.parametrize(

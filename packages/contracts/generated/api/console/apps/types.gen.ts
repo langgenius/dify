@@ -658,6 +658,18 @@ export type ConversationLogExportTaskNotFoundError = ErrorResponse & {
   status: 404
 }
 
+export type BinaryFileResponse = Blob | File
+
+export type ConversationLogExportFileNotFoundError = ErrorResponse & {
+  code: 'conversation_log_export_file_not_found'
+  status: 404
+}
+
+export type ConversationLogExportTaskNotReadyError = ErrorResponse & {
+  code: 'conversation_log_export_task_not_ready'
+  status: 409
+}
+
 export type PaginatedConversationVariableResponse = {
   data: Array<ConversationVariableResponse>
   has_more: boolean
@@ -6724,6 +6736,37 @@ export type GetAppsByAppIdConversationLogExportsByTaskIdResponses = {
 
 export type GetAppsByAppIdConversationLogExportsByTaskIdResponse =
   GetAppsByAppIdConversationLogExportsByTaskIdResponses[keyof GetAppsByAppIdConversationLogExportsByTaskIdResponses]
+
+export type GetAppsByAppIdConversationLogExportsByTaskIdFileData = {
+  body?: never
+  path: {
+    app_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/conversation-log-exports/{task_id}/file'
+}
+
+export type GetAppsByAppIdConversationLogExportsByTaskIdFileErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404:
+    | AppNotFoundError
+    | ConversationLogExportFileNotFoundError
+    | ConversationLogExportTaskNotFoundError
+    | ErrorResponse
+  409: ConversationLogExportTaskNotReadyError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdConversationLogExportsByTaskIdFileError =
+  GetAppsByAppIdConversationLogExportsByTaskIdFileErrors[keyof GetAppsByAppIdConversationLogExportsByTaskIdFileErrors]
+
+export type GetAppsByAppIdConversationLogExportsByTaskIdFileResponses = {
+  200: BinaryFileResponse
+}
+
+export type GetAppsByAppIdConversationLogExportsByTaskIdFileResponse =
+  GetAppsByAppIdConversationLogExportsByTaskIdFileResponses[keyof GetAppsByAppIdConversationLogExportsByTaskIdFileResponses]
 
 export type GetAppsByAppIdConversationVariablesData = {
   body?: never

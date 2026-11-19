@@ -682,6 +682,37 @@ export const zConversationLogExportTaskNotFoundError = zErrorResponse.and(
 )
 
 /**
+ * BinaryFileResponse
+ */
+export const zBinaryFileResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
+
+/**
+ * ConversationLogExportFileNotFoundError
+ *
+ * Conversation log export file not found.
+ */
+export const zConversationLogExportFileNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_log_export_file_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * ConversationLogExportTaskNotReadyError
+ *
+ * The conversation log export is not ready for download.
+ */
+export const zConversationLogExportTaskNotReadyError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_log_export_task_not_ready'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * ConvertToWorkflowPayload
  */
 export const zConvertToWorkflowPayload = z.object({
@@ -7616,6 +7647,16 @@ export const zGetAppsByAppIdConversationLogExportsByTaskIdPath = z.object({
  */
 export const zGetAppsByAppIdConversationLogExportsByTaskIdResponse =
   zConversationLogExportStatusResponse
+
+export const zGetAppsByAppIdConversationLogExportsByTaskIdFilePath = z.object({
+  app_id: z.uuid(),
+  task_id: z.uuid(),
+})
+
+/**
+ * CSV attachment
+ */
+export const zGetAppsByAppIdConversationLogExportsByTaskIdFileResponse = zBinaryFileResponse
 
 export const zGetAppsByAppIdConversationVariablesPath = z.object({
   app_id: z.uuid(),

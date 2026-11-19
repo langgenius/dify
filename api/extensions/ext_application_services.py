@@ -221,6 +221,7 @@ from services.remote_file_service import RemoteFileService
 from services.resource_access_token_service import ResourceAccessTokenService
 from services.retention.conversation.log_export_adapters import (
     dispatch_conversation_log_export,
+    open_conversation_log_export_csv,
     store_conversation_log_export_csv,
 )
 from services.retention.conversation.log_export_service import ConversationLogExportService
@@ -700,6 +701,7 @@ def build_application_services(
             tasks=RedisConversationLogExportTasks(redis=redis),
             dispatch=dispatch_conversation_log_export,
             store_csv=store_conversation_log_export_csv,
+            open_csv=open_conversation_log_export_csv,
         ),
         accounts=account_services,
         apps=apps,

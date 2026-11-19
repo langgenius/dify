@@ -26,6 +26,18 @@ class ConversationLogExportTaskNotFoundHTTPError(BaseHTTPException):
     code = HTTPStatus.NOT_FOUND
 
 
+class ConversationLogExportTaskNotReadyHTTPError(BaseHTTPException):
+    error_code = "conversation_log_export_task_not_ready"
+    description = "The conversation log export is not ready for download."
+    code = HTTPStatus.CONFLICT
+
+
+class ConversationLogExportFileNotFoundHTTPError(BaseHTTPException):
+    error_code = "conversation_log_export_file_not_found"
+    description = "Conversation log export file not found."
+    code = HTTPStatus.NOT_FOUND
+
+
 class AppTriggerNotFoundError(BaseHTTPException):
     error_code = "app_trigger_not_found"
     description = "Trigger not found."

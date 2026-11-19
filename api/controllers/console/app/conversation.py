@@ -1,9 +1,10 @@
 from datetime import datetime
 from http import HTTPStatus
+from itertools import chain
 from typing import Literal
 from uuid import UUID
 
-from flask import request
+from flask import Response, request
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
@@ -15,6 +16,7 @@ from controllers.common.errors import (
     PaidPlanRequiredError,
     UnauthorizedError,
 )
+from controllers.common.fields import BinaryFileResponse
 from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import (
     query_params_from_model,
@@ -23,7 +25,12 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
-from controllers.console.app.error import AppNotFoundError, ConversationLogExportTaskNotFoundHTTPError
+from controllers.console.app.error import (
+    AppNotFoundError,
+    ConversationLogExportFileNotFoundHTTPError,
+    ConversationLogExportTaskNotFoundHTTPError,
+    ConversationLogExportTaskNotReadyHTTPError,
+)
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import RBACPermission, is_cloud_edition_billing_paid_plan, validate_request
 from enums import DeploymentEdition
@@ -60,8 +67,10 @@ from services.entities.conversation_entities import (
 from services.errors.base import NoPermissionError
 from services.errors.conversation import ConversationNotExistsError
 from services.retention.conversation.log_export_service import (
+    ConversationLogExportFileNotFoundError,
     ConversationLogExportStatus,
     ConversationLogExportTaskNotFoundError,
+    ConversationLogExportTaskNotReadyError,
     UnsupportedConversationLogExportModeError,
 )
 
@@ -204,6 +213,7 @@ register_response_schema_models(
     ConversationLogExportPreviewResponse,
     ConversationLogExportTaskResponse,
     ConversationLogExportStatusResponse,
+    BinaryFileResponse,
 )
 
 
@@ -437,6 +447,53 @@ class ConversationLogExportTaskApi(Resource):
         except ConversationLogExportTaskNotFoundError as exc:
             raise ConversationLogExportTaskNotFoundHTTPError() from exc
         return dump_response(ConversationLogExportStatusResponse, task)
+
+
+@console_ns.route("/apps/<uuid:app_id>/conversation-log-exports/<uuid:task_id>/file")
+class ConversationLogExportFileApi(Resource):
+    @error_responses(
+        AppNotFoundError,
+        ConversationLogExportTaskNotFoundHTTPError,
+        ConversationLogExportTaskNotReadyHTTPError,
+        ConversationLogExportFileNotFoundHTTPError,
+        ForbiddenError,
+        PaidPlanRequiredError,
+    )
+    @console_ns.doc("download_conversation_log_export")
+    @console_ns.doc(description="Download a completed CSV directly from object storage or from the Console API")
+    @console_ns.doc(params={"app_id": "Application ID", "task_id": "Export task ID"})
+    @console_ns.produces(["text/csv"])
+    @console_ns.response(HTTPStatus.OK, "CSV attachment", console_ns.models[BinaryFileResponse.__name__])
+    @console_ns.response(
+        HTTPStatus.FOUND,
+        "Redirect to a pre-signed CSV download URL",
+        headers={"Location": {"description": "Pre-signed object storage URL", "type": "string"}},
+    )
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.APP_LOG_AND_ANNOTATION, PlainApp()),))
+    def get(self, request_context: RequestContext, app_id: UUID, task_id: UUID) -> Response:
+        """Admit the app and ready task before redirecting or streaming the CSV."""
+        scope = _resolve_log_export_scope(request_context, app_id)
+        filename = f"conversation-logs-{task_id}.csv"
+        try:
+            download = application_services().conversation_log_exports.download_csv(
+                scope=scope, task_id=str(task_id), filename=filename
+            )
+        except ConversationLogExportTaskNotFoundError as exc:
+            raise ConversationLogExportTaskNotFoundHTTPError() from exc
+        except ConversationLogExportTaskNotReadyError as exc:
+            raise ConversationLogExportTaskNotReadyHTTPError() from exc
+        except ConversationLogExportFileNotFoundError as exc:
+            raise ConversationLogExportFileNotFoundHTTPError() from exc
+        if isinstance(download, str):
+            response = Response(status=HTTPStatus.FOUND, headers={"Location": download})
+        else:
+            first_chunk, stream = download
+            response = Response(chain((first_chunk,), stream), mimetype="text/csv")
+            response.headers.set("Content-Disposition", "attachment", filename=filename)
+            response.call_on_close(stream.close)
+        response.cache_control.no_store = True
+        # response-contract:ignore signed redirect or streamed CSV attachment
+        return response
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-conversations/<uuid:conversation_id>")

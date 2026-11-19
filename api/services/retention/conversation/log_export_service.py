@@ -2,7 +2,7 @@
 
 import csv
 import logging
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Generator, Iterable
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from typing import Protocol, TextIO
@@ -23,8 +23,10 @@ from services.entities.conversation_entities import (
 logger = logging.getLogger(__name__)
 
 type StoreLogExportFile = Callable[[str, Callable[[TextIO], int]], None]
+type LogExportDownload = str | tuple[bytes, Generator[bytes]]
 
 _LOG_EXPORT_TASK_TTL = timedelta(days=1)
+_LOG_EXPORT_DOWNLOAD_URL_TTL_SECONDS = 3600
 _LOG_CSV_APP_TYPES = {"chat": "Chatbot", "advanced-chat": "Chatflow", "agent-chat": "Agent"}
 _LOG_CSV_COLUMNS = (
     "app_id",
@@ -78,6 +80,14 @@ class ConversationLogExportTaskNotFoundError(Exception):
     """The task is unavailable for the admitted app."""
 
 
+class ConversationLogExportTaskNotReadyError(Exception):
+    """The admitted export task has no completed CSV."""
+
+
+class ConversationLogExportFileNotFoundError(Exception):
+    """The completed export's CSV could not be opened."""
+
+
 class ConversationLogExportTaskStore(Protocol):
     def save(self, task: ConversationLogExportTask) -> None:
         """Persist a new task and its expiration before publishing it."""
@@ -116,12 +126,14 @@ class ConversationLogExportService:
         tasks: ConversationLogExportTaskStore,
         dispatch: Callable[[ConversationLogExportTask], None],
         store_csv: StoreLogExportFile,
+        open_csv: Callable[[str, int, str], LogExportDownload],
     ) -> None:
         """Bind scoped log reads, export task state, delivery and file storage."""
         self._conversations = conversations
         self._tasks = tasks
         self._dispatch = dispatch
         self._store_csv = store_csv
+        self._open_csv = open_csv
 
     def create_task(
         self, *, scope: ConsoleConversationScope, requested_by: str, filters: ConsoleConversationLogFilters
@@ -157,6 +169,17 @@ class ConversationLogExportService:
         if task is None:
             raise ConversationLogExportTaskNotFoundError()
         return task
+
+    def download_csv(self, *, scope: ConsoleConversationScope, task_id: str, filename: str) -> LogExportDownload:
+        """Serve a live, ready export as a short-lived storage URL or an opened CSV stream."""
+        task = self.get_task(scope=scope, task_id=task_id)
+        if task.status is not ConversationLogExportStatus.READY or not task.storage_key:
+            raise ConversationLogExportTaskNotReadyError()
+        remaining_seconds = int((task.expires_at - utc_now()).total_seconds())
+        if remaining_seconds < 1:
+            raise ConversationLogExportTaskNotFoundError()
+        expires_in = min(_LOG_EXPORT_DOWNLOAD_URL_TTL_SECONDS, remaining_seconds)
+        return self._open_csv(task.storage_key, expires_in, filename)
 
     def prepare_task(self, *, tenant_id: str, app_id: str, task_id: str) -> None:
         """Claim a live pending task and store its CSV before setting ready.

@@ -2,6 +2,7 @@ import logging
 from collections.abc import Generator
 from pathlib import Path
 from typing import override
+from urllib.parse import quote
 
 import boto3
 from boto3.s3.transfer import TransferConfig
@@ -118,10 +119,13 @@ class AwsS3Storage(BaseStorage):
         *,
         expires_in: int,
         content_type: str | None = None,
+        download_filename: str | None = None,
     ) -> str:
         params = {"Bucket": self.bucket_name, "Key": filename}
         if content_type:
             params["ResponseContentType"] = content_type
+        if download_filename:
+            params["ResponseContentDisposition"] = f"attachment; filename*=UTF-8''{quote(download_filename)}"
 
         return self.client.generate_presigned_url(
             "get_object",

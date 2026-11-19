@@ -3342,6 +3342,29 @@ Get the current status of a chat app's CSV export task
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ConversationLogExportTaskNotFoundError](#conversationlogexporttasknotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /apps/{app_id}/conversation-log-exports/{task_id}/file
+**Admit the app and ready task before redirecting or streaming the CSV**
+
+Download a completed CSV directly from object storage or from the Console API
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| task_id | path | Export task ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | CSV attachment | **text/csv**: [BinaryFileResponse](#binaryfileresponse)<br> |
+| 302 | Redirect to a pre-signed CSV download URL<br>**Headers:**<br>**Location**: Pre-signed object storage URL<br> |  |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ConversationLogExportFileNotFoundError](#conversationlogexportfilenotfounderror)<br>[ConversationLogExportTaskNotFoundError](#conversationlogexporttasknotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConversationLogExportTaskNotReadyError](#conversationlogexporttasknotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /apps/{app_id}/conversation-variables
 Get conversation variables for an application
 
@@ -24910,6 +24933,14 @@ The conversation has no message from which to generate a name.
 | sort_by | string, <br>**Available values:** "-created_at", "-updated_at", "created_at", "updated_at", <br>**Default:** -updated_at | Sort field and direction<br>*Enum:* `"-created_at"`, `"-updated_at"`, `"created_at"`, `"updated_at"` | No |
 | start | string | Start date (YYYY-MM-DD HH:MM) | No |
 
+#### ConversationLogExportFileNotFoundError
+
+Conversation log export file not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConversationLogExportFileNotFoundError |  | Conversation log export file not found. |  |
+
 #### ConversationLogExportPreviewResponse
 
 | Name | Type | Description | Required |
@@ -24936,6 +24967,14 @@ Conversation log export task not found.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ConversationLogExportTaskNotFoundError |  | Conversation log export task not found. |  |
+
+#### ConversationLogExportTaskNotReadyError
+
+The conversation log export is not ready for download.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConversationLogExportTaskNotReadyError |  | The conversation log export is not ready for download. |  |
 
 #### ConversationLogExportTaskResponse
 

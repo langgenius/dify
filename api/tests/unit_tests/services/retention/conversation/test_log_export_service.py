@@ -54,7 +54,9 @@ def test_prepare_export_records_only_claimed_work(outcome: Literal["claim_lost",
     tasks.get.return_value = task
     tasks.transition.return_value = outcome != "claim_lost"
     store_csv = Mock(side_effect=OSError("upload failed") if outcome == "failed" else None)
-    service = ConversationLogExportService(conversations=Mock(), tasks=tasks, dispatch=Mock(), store_csv=store_csv)
+    service = ConversationLogExportService(
+        conversations=Mock(), tasks=tasks, dispatch=Mock(), store_csv=store_csv, open_csv=Mock()
+    )
 
     if outcome == "failed":
         with pytest.raises(OSError, match="upload failed"):
@@ -190,7 +192,11 @@ def test_console_log_csv_exports_all_turns_of_matching_conversations_in_batches(
     )
     repository = ConversationRepository(session_factory=sqlite_session_factory)
     service = ConversationLogExportService(
-        conversations=repository, tasks=Mock(spec=ConversationLogExportTaskStore), dispatch=Mock(), store_csv=Mock()
+        conversations=repository,
+        tasks=Mock(spec=ConversationLogExportTaskStore),
+        dispatch=Mock(),
+        store_csv=Mock(),
+        open_csv=Mock(),
     )
     pool = sqlite_engine.pool
     assert isinstance(pool, QueuePool)

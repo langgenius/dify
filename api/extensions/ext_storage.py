@@ -130,11 +130,13 @@ class Storage:
         *,
         expires_in: int,
         content_type: str | None = None,
+        download_filename: str | None = None,
     ) -> str:
         return self.storage_runner.generate_presigned_url(
             filename,
             expires_in=expires_in,
             content_type=content_type,
+            download_filename=download_filename,
         )
 
     def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:

@@ -42,6 +42,7 @@ class BaseStorage(ABC):
         *,
         expires_in: int,
         content_type: str | None = None,
+        download_filename: str | None = None,
     ) -> str:
         """Generate a temporary direct-download URL when the backend supports it."""
         raise NotImplementedError("This storage backend doesn't support presigned URLs")
