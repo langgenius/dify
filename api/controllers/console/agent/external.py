@@ -108,9 +108,33 @@ class ExternalAgentListResponse(ResponseModel):
     disabled_count: int
 
 
+class ExternalConnectionSaverResponse(ResponseModel):
+    id: str
+    name: str | None = Field(
+        description="Current account display name, or null if unavailable; stored author ID remains."
+    )
+
+
+class ExternalAgentConnectionResponse(ResponseModel):
+    revision_id: str
+    endpoint: str
+    interface_url: str
+    auth_type: str
+    has_credential: bool
+    auth_check: str
+    verified_at: datetime
+    saved_by: ExternalConnectionSaverResponse
+    saved_at: datetime = Field(
+        description="Save time of this immutable connection revision; independent of Verify and asset edits."
+    )
+    profile: str
+    card: dict[str, Any]
+    capabilities: dict[str, Any]
+
+
 class ExternalAgentDetailResponse(ResponseModel):
     asset: ExternalAgentAssetResponse
-    connection: dict[str, Any]
+    connection: ExternalAgentConnectionResponse
 
 
 class ExternalAgentConnectionWarningsResponse(ResponseModel):
@@ -160,6 +184,8 @@ register_response_schema_models(
     console_ns,
     ExternalAgentAssetResponse,
     ExternalAgentListResponse,
+    ExternalConnectionSaverResponse,
+    ExternalAgentConnectionResponse,
     ExternalAgentDetailResponse,
     ExternalAgentVerificationResponse,
     ExternalAgentConnectionWarningsResponse,

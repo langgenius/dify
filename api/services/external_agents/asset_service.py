@@ -199,6 +199,8 @@ class ExternalAssetService:
                 "has_credential": bool(connection.credential_ciphertext),
                 "auth_check": connection.auth_check,
                 "verified_at": connection.verified_at,
+                "saved_by": asdict(connection.saved_by),
+                "saved_at": connection.saved_at,
                 "profile": connection.profile,
                 "card": {k: connection.card[k] for k in card_keys if k in connection.card},
                 "capabilities": connection.capabilities,

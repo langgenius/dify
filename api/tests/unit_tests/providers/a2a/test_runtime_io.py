@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from providers.a2a.runtime_io import ExternalOutputNormalizer, ExternalRequestPartsBuilder, file_scope
-from services.external_agents.contracts import ConnectionRevision
+from services.external_agents.contracts import ConnectionRevision, ConnectionSaver
 from services.external_agents.io_contracts import (
     ExternalIOError,
     FileBlob,
@@ -85,6 +85,8 @@ class InMemoryRevisions:
             capabilities={},
             auth_check="not_exercised",
             verified_at=NOW,
+            saved_by=ConnectionSaver(id="actor", name="Owner"),
+            saved_at=NOW,
         )
 
     def get_connection(self, *, tenant_id: str, agent_id: str, revision_id: str) -> ConnectionRevision:

@@ -83,9 +83,7 @@ export type VerificationFailedError = ErrorResponse & {
 
 export type ExternalAgentDetailResponse = {
   asset: ExternalAgentAssetResponse
-  connection: {
-    [key: string]: unknown
-  }
+  connection: ExternalAgentConnectionResponse
 }
 
 export type ExternalAgentConnectionPayload = {
@@ -237,6 +235,25 @@ export type ExternalAgentVerificationFailureDetailsResponse = {
   reason: VerificationFailureReason
 }
 
+export type ExternalAgentConnectionResponse = {
+  auth_check: string
+  auth_type: string
+  capabilities: {
+    [key: string]: unknown
+  }
+  card: {
+    [key: string]: unknown
+  }
+  endpoint: string
+  has_credential: boolean
+  interface_url: string
+  profile: string
+  revision_id: string
+  saved_at: string
+  saved_by: ExternalConnectionSaverResponse
+  verified_at: string
+}
+
 export type ExternalMetricDayResponse = {
   date: string
   metrics: ExternalMetricValuesResponse
@@ -295,6 +312,11 @@ export type VerificationFailureReason =
   | 'connection_failed'
   | 'invalid_agent_card'
   | 'unsupported_protocol'
+
+export type ExternalConnectionSaverResponse = {
+  id: string
+  name: string | null
+}
 
 export type ExternalAgentJsonValue =
   | boolean

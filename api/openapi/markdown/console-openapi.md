@@ -27951,6 +27951,23 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | idempotency_key | string |  | Yes |
 | verification_id | string (uuid) |  | Yes |
 
+#### ExternalAgentConnectionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| auth_check | string |  | Yes |
+| auth_type | string |  | Yes |
+| capabilities | object |  | Yes |
+| card | object |  | Yes |
+| endpoint | string |  | Yes |
+| has_credential | boolean |  | Yes |
+| interface_url | string |  | Yes |
+| profile | string |  | Yes |
+| revision_id | string |  | Yes |
+| saved_at | dateTime | Save time of this immutable connection revision; independent of Verify and asset edits. | Yes |
+| saved_by | [ExternalConnectionSaverResponse](#externalconnectionsaverresponse) |  | Yes |
+| verified_at | dateTime |  | Yes |
+
 #### ExternalAgentConnectionWarningsResponse
 
 | Name | Type | Description | Required |
@@ -27971,7 +27988,7 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | asset | [ExternalAgentAssetResponse](#externalagentassetresponse) |  | Yes |
-| connection | object |  | Yes |
+| connection | [ExternalAgentConnectionResponse](#externalagentconnectionresponse) |  | Yes |
 
 #### ExternalAgentInfoPayload
 
@@ -28082,6 +28099,13 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | keyword | string | Search keyword | No |
 | limit | integer, <br>**Default:** 20 | Number of items per page | No |
 | page | integer, <br>**Default:** 1 | Page number | No |
+
+#### ExternalConnectionSaverResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| name | string | Current account display name, or null if unavailable; stored author ID remains. | Yes |
 
 #### ExternalContactCreateRequest
 
