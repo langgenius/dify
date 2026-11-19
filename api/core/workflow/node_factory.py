@@ -475,6 +475,8 @@ class DifyNodeFactory(NodeFactory):
             service=external.runtime,
             store=external.repository,
             bindings=external.repository,
+            usage=external.execution_usage,
+            now=external.clock.now,
             enqueue=external.enqueue,
             enabled=external.enabled,
             root_app_id=self._human_input_run_context.app_id,

@@ -2137,7 +2137,13 @@ class WorkflowService:
             return node, node_run_result, run_succeeded, error
 
     def _apply_error_strategy(self, node: Node, node_run_result: NodeRunResult) -> NodeRunResult:
-        """Apply error strategy when node execution fails."""
+        """Apply configured failure outputs, retaining External execution facts.
+
+        Preconditions: node_run_result is the failed result of this node.
+        Postconditions: explicit External nodes retain their frozen inputs and
+        reported-usage metadata while selecting error handling. Other node
+        profiles keep their existing metadata behavior; no execution is retried.
+        """
         # TODO(Novice): Maybe we should apply error strategy to node level?
         error_outputs = {
             "error_message": node_run_result.error,
@@ -2148,11 +2154,14 @@ class WorkflowService:
         if node.error_strategy is ErrorStrategy.DEFAULT_VALUE:
             error_outputs.update(node.default_value_dict)
 
+        metadata = {WorkflowNodeExecutionMetadataKey.ERROR_STRATEGY: node.error_strategy}
+        if is_external_node(node.node_data.model_dump()):
+            metadata = {**node_run_result.metadata, **metadata}
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.EXCEPTION,
             error=node_run_result.error,
             inputs=node_run_result.inputs,
-            metadata={WorkflowNodeExecutionMetadataKey.ERROR_STRATEGY: node.error_strategy},
+            metadata=metadata,
             outputs=error_outputs,
         )
 

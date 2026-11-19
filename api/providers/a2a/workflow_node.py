@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
@@ -39,12 +40,14 @@ from models.external_agent import ExternalAgentCommand
 from models.external_agent_trace import ExternalAgentDataTombstone
 from models.workflow import WorkflowNodeExecutionModel, WorkflowPause, WorkflowRun
 from services.external_agents.contracts import ExternalOrigin
+from services.external_agents.execution_usage import ExternalExecutionUsageQuery
 from services.external_agents.file_profile import render_task_value
 from services.external_agents.invocation_service import ExternalInvocationService
 from services.external_agents.io_contracts import ExternalActorRole, JsonObject, JsonValue, OutputField
 from services.external_agents.output_mapping import normalize_node_defaults
 from services.external_agents.runtime_contracts import (
     ExecutionIdentity,
+    Invocation,
     InvocationDraft,
     InvocationStore,
     LocalState,
@@ -59,6 +62,96 @@ from services.external_agents.workflow_runtime import (
     ExternalWorkflowRuntime,
     WorkflowBindingReader,
 )
+
+logger = logging.getLogger(__name__)
+
+
+def last_run_inputs(parts: tuple[JsonObject, ...]) -> JsonObject:
+    """Project admitted frozen parts without loading files or rerendering variables.
+
+    Preconditions: parts come from the selected persisted Invocation.
+    Postconditions: text is
+    joined in its original order; file references retain their relative order
+    and expose only the stored ID and supported reference kind. Extra fields,
+    bytes, URLs and credentials never enter the Last Run projection.
+    """
+    texts: list[str] = []
+    files: list[JsonValue] = []
+    for part in parts:
+        text = part.get("text")
+        if isinstance(text, str):
+            texts.append(text)
+        reference = part.get("fileRef")
+        if isinstance(reference, dict):
+            identifier, kind = reference.get("file_id"), reference.get("kind")
+            if (
+                isinstance(identifier, str)
+                and identifier
+                and isinstance(kind, str)
+                and kind in {"upload", "tool", "datasource"}
+            ):
+                files.append({"file_id": identifier, "kind": kind})
+    result: JsonObject = {"agent_task": "".join(texts)}
+    if files:
+        result["file_refs"] = files
+    return result
+
+
+def _terminal_metadata(
+    *,
+    usage: ExternalExecutionUsageQuery,
+    invocation: Invocation,
+    agent_log: JsonObject,
+    existing: Mapping[WorkflowNodeExecutionMetadataKey, object],
+    now: datetime,
+) -> dict[WorkflowNodeExecutionMetadataKey, object]:
+    """Replace a terminal projection's usage; never add it to previous totals.
+
+    Preconditions: invocation identifies the admitted persisted execution and
+    existing metadata belongs to that caller. A complete reported call total,
+    including zero, is published at the standard metadata key. Unknown usage
+    or query failure adds no total and cannot change the business result.
+    Recognized unrelated metadata survives every idempotent terminal projection; this
+    projection replaces its owned total rather than retaining a stale number.
+    """
+    metadata = {
+        **{key: value for key, value in existing.items() if key != WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS},
+        WorkflowNodeExecutionMetadataKey.AGENT_LOG: agent_log,
+    }
+    try:
+        total = usage.total_tokens(invocation.scope, invocation.id, now=now)
+    except Exception:
+        logger.warning("External execution usage could not be read: invocation_id=%s", invocation.id)
+        total = None
+    if total is not None:
+        metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] = total
+    return metadata
+
+
+def _retained_node_metadata(
+    metadata: Mapping[str, object], *, invocation_id: str
+) -> dict[WorkflowNodeExecutionMetadataKey, object]:
+    """Retain legal metadata without making unsupported legacy keys executable.
+
+    Preconditions: metadata is the existing caller's decoded JSON object.
+    Postconditions: recognized metadata survives except the replaced token total.
+    Unknown legacy keys retain the old projection's omission behavior and emit
+    a bounded diagnostic with only an Invocation ID and field count. They never
+    fail terminal publication or widen Graphon's closed metadata contract.
+    """
+    known = {key.value: key for key in WorkflowNodeExecutionMetadataKey}
+    unknown_count = sum(key not in known for key in metadata)
+    if unknown_count:
+        logger.warning(
+            "External terminal metadata omitted unsupported fields: invocation_id=%s unsupported_field_count=%s",
+            invocation_id,
+            unknown_count,
+        )
+    return {
+        known[key]: value
+        for key, value in metadata.items()
+        if key in known and key != WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS
+    }
 
 
 class ExternalAgentNodeData(BaseNodeData):
@@ -168,6 +261,8 @@ class ExternalAgentNodeDependencies:
     service: ExternalInvocationService
     store: InvocationStore
     bindings: WorkflowBindingReader
+    usage: ExternalExecutionUsageQuery
+    now: Callable[[], datetime]
     enqueue: Callable[[], None]
     enabled: bool
     root_app_id: str
@@ -195,6 +290,7 @@ class ExternalAgentNode(Node[ExternalAgentNodeData]):
         self._runtime = ExternalWorkflowRuntime(dependencies.service, dependencies.store)
         self._store = dependencies.store
         self._bindings = dependencies.bindings
+        self._usage, self._now = dependencies.usage, dependencies.now
         self._enqueue = dependencies.enqueue
         self._enabled = dependencies.enabled
         self._default_forbidden = False
@@ -298,7 +394,9 @@ class ExternalAgentNode(Node[ExternalAgentNodeData]):
                 agent_id=binding.agent_id or "",
                 identity=identity,
                 message_id=str(uuid4()),
-                parts=task_parts(binding.job.agent_task, self.runtime_state.variable_pool),
+                parts=existing.parts
+                if existing is not None
+                else task_parts(binding.job.agent_task, self.runtime_state.variable_pool),
                 policy=binding.job.external_wait.policy(),
                 declared_outputs=binding.job.output_fields(),
                 job=grants,
@@ -316,7 +414,15 @@ class ExternalAgentNode(Node[ExternalAgentNodeData]):
                     )
                 )
                 return
-            metadata = {WorkflowNodeExecutionMetadataKey.AGENT_LOG: result.metadata}
+            invocation = self._store.get(scope, result.invocation_id)
+            inputs = last_run_inputs(invocation.parts)
+            metadata = _terminal_metadata(
+                usage=self._usage,
+                invocation=invocation,
+                agent_log=result.metadata,
+                existing={},
+                now=self._now(),
+            )
             if result.state == LocalState.SUCCEEDED:
                 values = result.outputs or {}
                 outputs = {
@@ -327,6 +433,7 @@ class ExternalAgentNode(Node[ExternalAgentNodeData]):
                 yield StreamCompletedEvent(
                     node_run_result=NodeRunResult(
                         status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                        inputs=inputs,
                         outputs=outputs,
                         metadata=metadata,
                         process_data={"external_invocation_id": result.invocation_id},
@@ -337,6 +444,7 @@ class ExternalAgentNode(Node[ExternalAgentNodeData]):
                 yield StreamCompletedEvent(
                     node_run_result=NodeRunResult(
                         status=WorkflowNodeExecutionStatus.FAILED,
+                        inputs=inputs,
                         outputs={},
                         metadata=metadata,
                         error=result.error_message or "External execution ended without a result.",
@@ -377,9 +485,11 @@ class DifyExternalWorkflowWake:
         *,
         sessions: sessionmaker[Session],
         enqueue_resume: Callable[[str], None],
+        usage: ExternalExecutionUsageQuery,
         now: Callable[[], datetime] | None = None,
     ) -> None:
         self._sessions, self._enqueue_resume = sessions, enqueue_resume
+        self._usage = usage
         self._now = now or (lambda: datetime.now(UTC))
 
     def wake(self, scope: RuntimeScope, invocation) -> bool:
@@ -504,7 +614,14 @@ class DifyExternalWorkflowWake:
         )
 
     def _finish_node_debug(self, scope: RuntimeScope, invocation) -> bool:
-        """Project one durable standalone result into the existing Last Run row."""
+        """Project a durable terminal result into its exact standalone caller.
+
+        Preconditions: the runtime supplies an admitted, persisted terminal
+        Invocation. Owner, deletion and finalized-invocation fences still hold.
+        Postconditions: SQL and the configured terminal append carry identical
+        frozen inputs and metadata. Replay replaces totals without another Send;
+        unavailable usage cannot change business status or inferred token use.
+        """
         from core.repositories import DifyCoreRepositoryFactory
         from graphon.entities import WorkflowNodeExecution
         from models.account import Account
@@ -515,6 +632,21 @@ class DifyExternalWorkflowWake:
         app_id = scope.app_id
         if not isinstance(job, dict) or app_id is None:
             return True
+        terminal_metadata = _terminal_metadata(
+            usage=self._usage,
+            invocation=invocation,
+            existing={},
+            agent_log={
+                "invocation_id": invocation.id,
+                "agent_id": invocation.agent_id,
+                "asset_snapshot": invocation.asset_snapshot,
+                "external_task_id": invocation.remote_task_id,
+                "external_task_status": invocation.remote_state,
+                "submission_state": invocation.submission_state.value,
+                "cancellation_state": invocation.cancel_state.value,
+            },
+            now=self._now(),
+        )
         with self._sessions() as session, session.begin():
             if self._parent_deleted(session, scope, invocation):
                 return True
@@ -560,24 +692,17 @@ class DifyExternalWorkflowWake:
                         outputs.update(defaults)
                     status = WorkflowNodeExecutionStatus.EXCEPTION
             row.status = status
+            row.inputs = json.dumps(last_run_inputs(invocation.parts), ensure_ascii=False, allow_nan=False)
             row.outputs = json.dumps(outputs, ensure_ascii=False, allow_nan=False)
             row.error = error if status == WorkflowNodeExecutionStatus.FAILED else None
             finished_at = (invocation.local_wait_ended_at or datetime.now(UTC)).replace(tzinfo=None)
             row.finished_at = finished_at
             row.elapsed_time = max((finished_at - row.created_at).total_seconds(), 0)
-            row.execution_metadata = json.dumps(
-                {
-                    WorkflowNodeExecutionMetadataKey.AGENT_LOG: {
-                        "invocation_id": invocation.id,
-                        "agent_id": invocation.agent_id,
-                        "asset_snapshot": invocation.asset_snapshot,
-                        "external_task_id": invocation.remote_task_id,
-                        "external_task_status": invocation.remote_state,
-                        "submission_state": invocation.submission_state.value,
-                        "cancellation_state": invocation.cancel_state.value,
-                    }
-                }
-            )
+            metadata = {
+                **_retained_node_metadata(row.execution_metadata_dict, invocation_id=invocation.id),
+                **terminal_metadata,
+            }
+            row.execution_metadata = json.dumps(metadata, ensure_ascii=False, allow_nan=False)
             latest = session.scalar(
                 select(WorkflowNodeExecutionModel.id)
                 .where(
@@ -624,7 +749,7 @@ class DifyExternalWorkflowWake:
                 inputs=row.inputs_dict,
                 process_data=row.process_data_dict,
                 outputs=outputs,
-                metadata={WorkflowNodeExecutionMetadataKey.AGENT_LOG: row.execution_metadata_dict["agent_log"]},
+                metadata=metadata,
                 status=row.status,
                 error=row.error,
                 elapsed_time=row.elapsed_time,

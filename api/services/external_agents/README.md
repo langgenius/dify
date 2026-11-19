@@ -141,6 +141,17 @@ independent of `verified_at` and asset creation/profile/availability/Tracing edi
 keeps the same revision and save metadata. After a stale-revision conflict, reload the existing detail endpoint
 to display the latest connection saver/time and verify against its current revision before saving again.
 
+Terminal Workflow node and standalone Last Run results expose `inputs.agent_task` from the persisted Invocation's
+resolved text parts. When files are present, `inputs.file_refs` retains their order and includes only `file_id` and
+`kind`; file contents, remote URLs and credentials are excluded. Resumption does not rerender the current variable
+pool. `execution_metadata.total_tokens` uses the complete owned retry chain through the selected attempt: only
+actual dispatched calls count, and every such attempt must have a trustworthy retained usage summary. A known zero
+is included; missing, expired, deleted or incomplete usage stays unknown and clears a stale projected total.
+Terminal replay replaces this metadata without another business Send and preserves recognized node metadata.
+Unsupported legacy metadata keys keep their previous omission behavior with a value-free diagnostic; they cannot
+block a terminal result or widen the graph runtime's closed metadata contract.
+Usage is committed before the runtime publishes the terminal wake; a usage-query failure affects statistics only.
+
 Traceability recognizes the exact declared A2A Traceability carrier. The v1 specification and Python sample dialect
 are normalized explicitly, including their different timestamp representations; neither is accepted as the private
 AgentTraceBatch or native OTLP. Parseable incomplete steps remain visible. Raw data is bounded and redacted before

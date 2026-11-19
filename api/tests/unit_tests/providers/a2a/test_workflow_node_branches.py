@@ -35,11 +35,13 @@ from providers.a2a.workflow_node import (
     task_parts,
     workflow_scope,
 )
+from repositories.external_agents.observability_repository import ExternalObservabilityRepository
 from services.external_agents.contracts import ExternalOrigin
 from services.external_agents.invocation_service import ExternalInvocationService
 from services.external_agents.io_contracts import OutputField, OutputFieldKind
 from services.external_agents.protocol import GatewayPort, GatewayReceipt, GatewayReceiptKind
 from services.external_agents.runtime_contracts import RuntimeError
+from services.external_agents.traceability import TraceLimits
 from tests.unit_tests.repositories.external_agents import test_runtime_repository as runtime_fixtures
 from tests.unit_tests.repositories.external_agents.test_runtime_repository import (
     Clock,
@@ -69,7 +71,7 @@ def node_case(
 ) -> tuple[ExternalAgentNode, ExternalInvocationService, Clock]:
     """Bind a real persisted workflow to one server-owned execution and runtime."""
     db_domain, identity, workflow_id, job = owned
-    repo, _, scope, _, _ = db_domain
+    repo, sessions, scope, _, _ = db_domain
     runtime, clock, _, _ = service(db_domain, remote or RemoteAgent(direct=True))
     pool = VariablePool()
     if not debug:
@@ -95,6 +97,8 @@ def node_case(
             service=runtime,
             store=repo,
             bindings=repo,
+            usage=ExternalObservabilityRepository(sessions=sessions, limits=TraceLimits()),
+            now=clock.now,
             enqueue=lambda: None,
             enabled=enabled,
             root_app_id=required_id(scope.app_id),
@@ -301,7 +305,12 @@ def test_failed_node_debug_projects_error_handling_to_its_exact_sql_caller(
     assert isinstance(list(node._run())[0], PauseRequestedEvent)
     invocation = present(repo.for_execution(scope, replace(identity, workflow_run_id=None)))
     command(debug_domain, runtime, clock, "dispatch")
-    wake = DifyExternalWorkflowWake(sessions=sessions, enqueue_resume=lambda _run: None, now=clock.now)
+    wake = DifyExternalWorkflowWake(
+        sessions=sessions,
+        usage=ExternalObservabilityRepository(sessions=sessions, limits=TraceLimits()),
+        enqueue_resume=lambda _run: None,
+        now=clock.now,
+    )
     assert wake.wake(scope, repo.get(scope, invocation.id))
     with sessions() as session:
         caller = stored(session, WorkflowNodeExecutionModel, identity.execution_id)
@@ -374,7 +383,12 @@ def test_debug_wake_cannot_reanimate_an_expired_owner_or_overwrite_another_invoc
             caller.outputs = '{"text":"newer-result"}'
         if boundary == "deleted_actor":
             session.delete(stored(session, Account, scope.initiator_id))
-    wake = DifyExternalWorkflowWake(sessions=sessions, enqueue_resume=lambda _run: None, now=clock.now)
+    wake = DifyExternalWorkflowWake(
+        sessions=sessions,
+        usage=ExternalObservabilityRepository(sessions=sessions, limits=TraceLimits()),
+        enqueue_resume=lambda _run: None,
+        now=clock.now,
+    )
     assert wake.wake(scope, invocation)
     with sessions() as session:
         caller = session.get(WorkflowNodeExecutionModel, identity.execution_id)
