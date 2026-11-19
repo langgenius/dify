@@ -430,6 +430,53 @@ def test_existing_managed_credential_skips_remote_bootstrap(
     remote_bootstrap.assert_not_called()
 
 
+def test_staging_signup_does_not_make_native_tokener_the_default(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    integration = _persist_integration(sqlite_session)
+    snapshot = _snapshot(integration)
+    monkeypatch.setattr(task_module.ModelBillingProfileService, "resolve", lambda _: SimpleNamespace(uses_tokener=True))
+    monkeypatch.setattr(task_module, "_begin_attempt", lambda _: snapshot)
+    monkeypatch.setattr(task_module, "signup_used_staging_package", lambda _: True)
+    install = MagicMock()
+    ensure_credential = MagicMock(return_value="unit-managed-id")
+    set_default = MagicMock()
+    publish = MagicMock()
+    monkeypatch.setattr(task_module, "_ensure_plugin_installed", install)
+    monkeypatch.setattr(task_module, "_ensure_managed_credential", ensure_credential)
+    monkeypatch.setattr(task_module, "_set_default_llm", set_default)
+    monkeypatch.setattr(task_module, "_update_integration", publish)
+
+    task_module._run_bootstrap(integration.tenant_id)
+
+    install.assert_called_once_with(snapshot)
+    ensure_credential.assert_called_once_with(snapshot)
+    set_default.assert_not_called()
+    assert publish.call_args.kwargs["status"] == TenantTokenerIntegrationStatus.READY
+    assert publish.call_args.kwargs["provider_credential_id"] == "unit-managed-id"
+
+
+def test_canary_install_uses_marketplace_without_changing_shared_package_policy(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    integration = _persist_integration(sqlite_session)
+    integration.plugin_unique_identifier = "langgenius/tokener-staging:0.4.4@signup-test"
+    sqlite_session.commit()
+    apply_config_overrides(monkeypatch, TOKENER_PLUGIN_INSTALL_SOURCE="package")
+    monkeypatch.setattr(task_module.PluginService, "list", MagicMock(return_value=[]))
+    marketplace_install = MagicMock(return_value=SimpleNamespace(all_installed=True, task_id=None))
+    local_install = MagicMock()
+    monkeypatch.setattr(PluginInstallationService, "install_from_marketplace_pkg", marketplace_install)
+    monkeypatch.setattr(PluginInstallationService, "install_from_local_pkg", local_install)
+
+    task_module._ensure_plugin_installed(_snapshot(integration))
+
+    marketplace_install.assert_called_once_with(
+        AdmittedPluginInstallationCaller(integration.tenant_id), [integration.plugin_unique_identifier]
+    )
+    local_install.assert_not_called()
+
+
 def test_find_managed_credential_returns_none_when_no_managed_credentials(
     sqlite_session: Session,
 ) -> None:

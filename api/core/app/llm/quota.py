@@ -217,6 +217,10 @@ def reserve_model_quota_for_model(
     if provider_configuration.using_provider_type != ProviderType.SYSTEM:
         return reservation
 
+    if provider_configuration.system_configuration.tokener_funded:
+        reservation.settlement_backend = "tokener"
+        return reservation
+
     from core.model_invocation_routing import RoutedModelCredentials, routed_credentials
 
     if invocation_credentials is None:

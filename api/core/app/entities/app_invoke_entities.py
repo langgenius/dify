@@ -184,8 +184,9 @@ class ModelConfigWithCredentialsEntity(BaseModel):
     @classmethod
     def preserve_trusted_invocation_binding(cls, value: Any, handler: ValidatorFunctionWrapHandler) -> dict[str, Any]:
         from core.model_invocation_routing import LegacyModelCredentials, RoutedModelCredentials
+        from services.entities.hosted_model_routing import TokenerHostedModelCredentials
 
-        if isinstance(value, (LegacyModelCredentials, RoutedModelCredentials)):
+        if isinstance(value, (LegacyModelCredentials, RoutedModelCredentials, TokenerHostedModelCredentials)):
             return value
         return handler(value)
 

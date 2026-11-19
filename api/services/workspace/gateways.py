@@ -561,8 +561,8 @@ class WorkspaceProvisioningEffectsGateway:
             tokener_plugin_unique_identifier=dify_config.TOKENER_PLUGIN_UNIQUE_IDENTIFIER.strip() or None,
         )
 
-    def signup_enrollment(self) -> TokenerSignupEnrollment | None:
-        return configured_signup_enrollment()
+    def signup_enrollment(self, email: str) -> TokenerSignupEnrollment | None:
+        return configured_signup_enrollment(email)
 
     def bind_owner(self, workspace_id: str, account_id: str) -> None:
         if not dify_config.RBAC_ENABLED:

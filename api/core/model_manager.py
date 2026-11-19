@@ -992,8 +992,10 @@ class ModelManager:
 
         from core.model_invocation_routing import has_compatibility_route, migration_routing_state
 
-        if ModelBillingProfileService.resolve(configuration.tenant_id).uses_tokener and not has_compatibility_route(
-            migration_routing_state(configuration.tenant_id)
+        if (
+            not configuration.system_configuration.tokener_funded
+            and ModelBillingProfileService.resolve(configuration.tenant_id).uses_tokener
+            and not has_compatibility_route(migration_routing_state(configuration.tenant_id))
         ):
             raise ModelCurrentlyNotSupportError(
                 f"Hosted SYSTEM model {model_type.value}/{model} is disabled for this workspace."
@@ -1018,7 +1020,11 @@ class ModelManager:
 
     @staticmethod
     def _model_instance_class(provider_model_bundle: ProviderModelBundle, model_type: ModelType) -> type[ModelInstance]:
-        if provider_model_bundle.configuration.using_provider_type == ProviderType.SYSTEM:
+        configuration = provider_model_bundle.configuration
+        if (
+            configuration.using_provider_type == ProviderType.SYSTEM
+            and not configuration.system_configuration.tokener_funded
+        ):
             return QuotaManagedModelInstance
         return ModelInstance
 
