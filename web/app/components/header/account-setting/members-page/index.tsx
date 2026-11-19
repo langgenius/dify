@@ -19,9 +19,14 @@ import { Dialog, DialogContent, DialogTrigger } from '@langgenius/dify-ui/dialog
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { safe } from '@orpc/client'
-import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import {
+  useMutation,
+  useQueryClient,
+  useSuspenseQueries,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useRef, useState } from 'react'
+import { Suspense, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
@@ -42,6 +47,8 @@ import { InviteModal } from './invite-modal'
 import { InvitedRow } from './invited-row'
 import { MemberDetailsContent } from './member-details-content'
 import { MemberRow } from './member-row'
+import { MembersHeaderCard } from './members-header-card'
+import { MembersPageSkeleton } from './members-page-skeleton'
 
 type RevocationOutcome =
   | { status: 'revoked' }
@@ -70,7 +77,9 @@ const MembersPageContent = () => {
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const { data } = useQuery(
+  const {
+    data: { accounts },
+  } = useSuspenseQuery(
     consoleQuery.workspaces.current.members.get.queryOptions({ input: { query: { language } } }),
   )
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -89,10 +98,9 @@ const MembersPageContent = () => {
       context: { silent: true },
     }),
   )
-  const accounts = data?.accounts || []
   const joinedAccounts = accounts.filter((account) => account.status !== 'pending')
   const deploymentEdition = systemFeatures.deployment_edition
-  const { data: features } = useQuery(
+  const { data: features } = useSuspenseQuery(
     consoleQuery.features.get.queryOptions({
       select: (data) => ({
         plan: data.billing.subscription.plan,
@@ -102,17 +110,19 @@ const MembersPageContent = () => {
     }),
   )
 
-  const isNotUnlimitedMemberPlan =
-    deploymentEdition === 'CLOUD' && features !== undefined && features.plan !== 'team'
+  const isNotUnlimitedMemberPlan = deploymentEdition === 'CLOUD' && features.plan !== 'team'
   const detailsActionsRef = useRef<DialogActions>(null)
 
   const canManageMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
-  const { data: invitations } = useQuery({
-    ...consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.get.queryOptions({
+  const invitationQuery =
+    consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.get.queryOptions({
       input: { params: { workspace_id: currentWorkspace.id } },
-    }),
-    enabled: canManageMembers && Boolean(currentWorkspace.id),
-    select: (data) => data.invitations,
+    })
+  const invitationQueries: Array<typeof invitationQuery> =
+    canManageMembers && currentWorkspace.id ? [invitationQuery] : []
+  const invitations = useSuspenseQueries({
+    queries: invitationQueries,
+    combine: (results) => results.flatMap(({ data }) => data.invitations),
   })
   const invitees: Invitee[] = [
     ...accounts
@@ -123,7 +133,7 @@ const MembersPageContent = () => {
         roleName: account.roles?.[0]?.name ?? account.role,
         memberId: account.id,
       })),
-    ...(invitations ?? []).map((invitation) => ({
+    ...invitations.map((invitation) => ({
       email: invitation.email,
       role: invitation.role,
       roleName: invitation.role,
@@ -132,12 +142,9 @@ const MembersPageContent = () => {
   ]
   const usedSeats = joinedAccounts.length + invitees.length
   const isMemberFull =
-    features !== undefined &&
-    features.plan !== 'team' &&
-    isQuotaReached({ usage: usedSeats, limit: features.members.limit })
+    features.plan !== 'team' && isQuotaReached({ usage: usedSeats, limit: features.members.limit })
   const [revokeDialog] = useState(() => createAlertDialogHandle<Invitee>())
   const queryClient = useQueryClient()
-  // Resolve documented outcomes instead of throwing so each one keeps its contract type.
   const revocation = useMutation({
     mutationFn: async (invitee: Invitee): Promise<RevocationOutcome> => {
       const [error, , isDefined] = invitee.memberId
@@ -155,11 +162,9 @@ const MembersPageContent = () => {
           )
       if (!error) return { status: 'revoked' }
       if (!isDefined) throw error
-      // Accepted, expired or revoked elsewhere: nothing is left to revoke.
       if (error.code === 'pending_invitation_not_found') return { status: 'gone' }
       return { status: 'failed', message: error.message }
     },
-    // The list is stale after every outcome, including an invitation that no longer exists.
     onSettled: () => {
       void queryClient.invalidateQueries({
         queryKey: consoleQuery.workspaces.current.members.get.key(),
@@ -200,7 +205,7 @@ const MembersPageContent = () => {
       {({ payload: member }) => (
         <>
           <div className="flex flex-col">
-            <div className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border-s-[0.5px] border-t-[0.5px] border-divider-subtle bg-linear-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 py-2 ps-2 pe-5 rtl:bg-linear-to-l">
+            <MembersHeaderCard>
               <div className="flex min-w-0 grow basis-48 items-center gap-3">
                 <WorkspaceAvatar name={currentWorkspace.name} size="2xl" className="shrink-0" />
                 <div className="min-w-0 grow">
@@ -293,14 +298,11 @@ const MembersPageContent = () => {
                 {isMemberFull && <UpgradeBtn className="shrink-0" loc="member-invite" />}
                 {canManageMembers && (
                   <div className="shrink-0">
-                    <InviteModal
-                      isEmailSetup={systemFeatures.is_email_setup}
-                      onSend={(emails) => setInvitedEmails(new Set(emails))}
-                    />
+                    <InviteModal onSend={(emails) => setInvitedEmails(new Set(emails))} />
                   </div>
                 )}
               </div>
-            </div>
+            </MembersHeaderCard>
             <div
               ref={listRef}
               tabIndex={-1}
@@ -347,11 +349,10 @@ const MembersPageContent = () => {
                           fallbackFocus: { current: null },
                         })
                       }}
-                      roles={account.roles ?? []}
                       isCurrentUser={userProfileEmail === account.email}
                       canManage={canManageMembers}
                       canTransferOwnership={
-                        isCurrentWorkspaceOwner && features?.is_allow_transfer_workspace === true
+                        isCurrentWorkspaceOwner && features.is_allow_transfer_workspace
                       }
                       allowMultipleRoles={systemFeatures.rbac_enabled}
                     />
@@ -610,5 +611,9 @@ const MembersPageContent = () => {
 }
 
 export function MembersPage() {
-  return <MembersPageContent />
+  return (
+    <Suspense fallback={<MembersPageSkeleton />}>
+      <MembersPageContent />
+    </Suspense>
+  )
 }

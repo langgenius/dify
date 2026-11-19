@@ -12,7 +12,7 @@ const member: AccountWithRoleResponse = {
   avatar: '',
   avatar_url: '',
   role: 'normal',
-  roles: [],
+  roles: [{ id: 'role-1', name: 'Editor' }],
   last_active_at: 1731000000,
   last_login_at: 1731000000,
   created_at: 1731000000,
@@ -29,7 +29,6 @@ const renderMemberRow = (onRemove = vi.fn()) => {
               <MemberRow
                 onRemove={onRemove}
                 member={member}
-                roles={[{ id: 'role-1', name: 'Editor' }]}
                 isCurrentUser={false}
                 canManage
                 canTransferOwnership={false}

@@ -35,7 +35,6 @@ import { RoleSelector } from './role-selector'
 
 type InvitationResults = MemberInviteResponse['invitation_results']
 type InviteModalProps = {
-  isEmailSetup: boolean
   onSend: (emails: string[]) => void
 }
 
@@ -74,7 +73,6 @@ function InviteForm({
   const { t } = useTranslation(['workspaceMembers'])
   const { data: features } = useQuery(consoleQuery.features.get.queryOptions())
   const workspaceId = useAtomValue(currentWorkspaceAtom).id
-  // Live invitations reserve seats that the member count does not include yet.
   const { data: reservedSeats = 0 } = useQuery({
     ...consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.get.queryOptions({
       input: { params: { workspace_id: workspaceId } },
@@ -239,15 +237,20 @@ function InviteForm({
   )
 }
 
-export function InviteModal({ isEmailSetup, onSend }: InviteModalProps) {
+export function InviteModal({ onSend }: InviteModalProps) {
   const { t } = useTranslation(['common', 'workspaceMembers'])
   const locale = useLocale()
   const queryClient = useQueryClient()
   const actionsRef = useRef<DialogActions>(null)
   const formRef = useRef<HTMLFormElement>(null)
-  const { data: deploymentEdition } = useSuspenseQuery({
+  const {
+    data: { deploymentEdition, isEmailSetup },
+  } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
-    select: ({ deployment_edition }) => deployment_edition,
+    select: ({ deployment_edition, is_email_setup }) => ({
+      deploymentEdition: deployment_edition,
+      isEmailSetup: is_email_setup,
+    }),
   })
   const showsInvitationLinks = (results: InvitationResults) =>
     deploymentEdition !== 'CLOUD' && results.some(({ status }) => status === 'success')

@@ -17,7 +17,6 @@ export type Invitee = {
   role: string
   roleName: string
   expiresAt?: string
-  // Present for people who were joined as unactivated members before invitations became records.
   memberId?: string
 }
 
@@ -77,7 +76,6 @@ export const InvitedRow = ({ ref, invitee, canManage, onRevoke }: InvitedRowProp
           return
         }
         if (result?.status === 'already_member') {
-          // They joined while the list was open; refresh so the row becomes a member.
           void queryClient.invalidateQueries({
             queryKey: consoleQuery.workspaces.current.members.get.key(),
           })
