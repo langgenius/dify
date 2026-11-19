@@ -1,3 +1,4 @@
+from core.app.apps.exc import ModerationInvocationError
 from core.credit_usage import CreditUsageCreatedBy
 from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelInstance
@@ -13,9 +14,10 @@ class FunctionCallMultiDatasetRouter:
         dataset_tools: list[PromptMessageTool],
         model_instance: ModelInstance,
     ) -> tuple[str | None, LLMUsage]:
-        """Given input, decided what to do.
-        Returns:
-            Action specifying what tool to use.
+        """Select a dataset or return no match for ordinary routing failures.
+
+        Moderation failures always propagate to the caller. They are not an
+        empty retrieval result, and consumed model usage is never refunded.
         """
         if len(dataset_tools) == 0:
             return None, LLMUsage.empty_usage()
@@ -38,5 +40,7 @@ class FunctionCallMultiDatasetRouter:
                 # get retrieval model config
                 return result.message.tool_calls[0].function.name, usage
             return None, usage
+        except ModerationInvocationError:
+            raise
         except Exception:
             return None, LLMUsage.empty_usage()

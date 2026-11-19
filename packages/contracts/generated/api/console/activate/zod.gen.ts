@@ -62,13 +62,13 @@ export const zEmailDomainSuspendedError = zErrorResponse.and(
 )
 
 /**
- * LimitExceededError
+ * WorkspaceMemberLimitReachedError
  *
- * Unable to create account because the licensed seats limit was exceeded
+ * The workspace has reached its member limit, so this invitation cannot be accepted right now.
  */
-export const zLimitExceededError = zErrorResponse.and(
+export const zWorkspaceMemberLimitReachedError = zErrorResponse.and(
   z.object({
-    code: z.literal('limit_exceeded'),
+    code: z.literal('workspace_member_limit_reached'),
     status: z.literal(400),
   }),
 )

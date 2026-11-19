@@ -249,23 +249,95 @@ def test_generated_template_uses_provided_column_names() -> None:
         [
             {"name": "index", "type": "number"},
             {"name": "customer_question", "type": "string"},
+            {"name": "Answer : expected_output", "type": "string"},
+            {"name": "Knowledge : expected_output", "type": "string"},
+            {"name": "Agent : success_criteria", "type": "string"},
+            {"name": "Agent : expected_tool_calls", "type": "string"},
         ],
         "App",
+        frozenset({"Knowledge : expected_output"}),
+        language="zh-Hans",
     )
     worksheet = load_workbook(io.BytesIO(content)).active
 
     assert worksheet is not None
-    assert [cell.value for cell in worksheet[1]] == ["index", "customer_question"]
+    assert [cell.value for cell in worksheet[1]] == [
+        "index",
+        "customer_question",
+        "Answer : expected_output",
+        "Knowledge : expected_output",
+        "Agent : success_criteria",
+        "Agent : expected_tool_calls",
+        None,
+    ]
+    assert [cell.value for cell in worksheet[2]] == [
+        "填写不重复的整数作为本条测试的序号，方便定位评测结果。",
+        "填写本条测试的输入内容，例如用户问题、指令或该字段要求的值。",
+        "填写该节点对本条输入应给出的参考答案，用于对照实际输出。",
+        "填写本条问题的参考答案或关键事实，用于评估检索内容的相关性和覆盖程度。",
+        "填写 Agent 完成任务必须满足的条件，每行一条；评测会逐条判断。没有额外条件可留空。",
+        "以 JSON 数组填写 Agent 预期调用的工具和参数。",
+        "该行为示例说明请删除本行后进行上传评估。",
+    ]
+    assert worksheet["A2"].alignment.wrap_text
+
+
+@pytest.mark.parametrize(
+    ("language", "expected_help", "expected_notice"),
+    [
+        (
+            "en-US",
+            "Enter the input for this test row, such as a question, instruction, or value required by this field.",
+            "This row contains example explanations. Delete this row before uploading the dataset for evaluation.",
+        ),
+        (
+            "fr-FR",
+            "Saisissez l’entrée de cette ligne, par exemple une question, "
+            "une instruction ou la valeur attendue par ce champ.",
+            "Cette ligne contient des explications à titre d’exemple. "
+            "Supprimez-la avant de téléverser le jeu de données pour l’évaluation.",
+        ),
+        (
+            "unsupported",
+            "Enter the input for this test row, such as a question, instruction, or value required by this field.",
+            "This row contains example explanations. Delete this row before uploading the dataset for evaluation.",
+        ),
+    ],
+)
+def test_generated_template_uses_requested_language(language: str, expected_help: str, expected_notice: str) -> None:
+    content = EvaluationService._generate_xlsx_template(
+        [{"name": "index", "type": "number"}, {"name": "input", "type": "string"}],
+        "App",
+        language=language,
+    )
+    worksheet = load_workbook(io.BytesIO(content)).active
+
+    assert worksheet is not None
+    assert worksheet["B2"].value == expected_help
+    assert worksheet["C2"].value == expected_notice
 
 
 def test_retrieval_dataset_template_has_query_and_reference_columns() -> None:
-    content, filename = EvaluationService.generate_retrieval_dataset_template()
-    worksheet = load_workbook(io.BytesIO(content)).active
+    content, filename = EvaluationService.generate_retrieval_dataset_template("zh-Hans")
+    workbook = load_workbook(io.BytesIO(content))
+    worksheet = workbook.active
 
     assert filename == "retrieval-evaluation-dataset.xlsx"
     assert worksheet is not None
-    assert [cell.value for cell in worksheet[1]] == ["index", "query", "expected_output"]
-    assert [cell.value for cell in worksheet[2]] == [1, None, None]
+    assert [cell.value for cell in worksheet[1]] == ["index", "query", "expected_output", None]
+    assert worksheet["C2"].value == "填写本条问题的参考答案或关键事实，用于评估检索内容的相关性和覆盖程度。"
+    assert worksheet["D2"].value == "该行为示例说明请删除本行后进行上传评估。"
+    with pytest.raises(EvaluationDatasetInvalidError, match="headers must not be empty"):
+        EvaluationService._parse_dataset(content, "dataset.xlsx")
+
+    worksheet.delete_rows(2)
+    worksheet.append([1, "What is the price?", "59 USD"])
+    uploaded = io.BytesIO()
+    workbook.save(uploaded)
+    items = EvaluationService._parse_dataset(uploaded.getvalue(), "dataset.xlsx")
+    assert len(items) == 1
+    assert items[0].inputs == {"query": "What is the price?"}
+    assert items[0].expected_output == "59 USD"
 
 
 def test_generated_template_includes_reference_columns_for_selected_metrics(
@@ -288,15 +360,28 @@ def test_generated_template_includes_reference_columns_for_selected_metrics(
                 DefaultMetric(
                     metric="answer_correctness",
                     node_info_list=[NodeInfo(node_id="llm-1", type="llm", title="Answer")],
-                )
+                ),
+                DefaultMetric(
+                    metric="context_precision",
+                    node_info_list=[NodeInfo(node_id="retrieval-1", type="knowledge-retrieval", title="Knowledge")],
+                ),
             ],
         ),
         sqlite_session,
+        language="zh-Hans",
     )
     worksheet = load_workbook(io.BytesIO(content)).active
 
     assert worksheet is not None
-    assert [cell.value for cell in worksheet[1]] == ["index", "input", "Answer : expected_output"]
+    assert [cell.value for cell in worksheet[1]] == [
+        "index",
+        "input",
+        "Answer : expected_output",
+        "Knowledge : expected_output",
+        None,
+    ]
+    assert worksheet["C2"].value == "填写该节点对本条输入应给出的参考答案，用于对照实际输出。"
+    assert worksheet["D2"].value == "填写本条问题的参考答案或关键事实，用于评估检索内容的相关性和覆盖程度。"
 
 
 def test_evaluation_framework_request_defaults_to_ragas_and_rejects_none() -> None:
@@ -380,6 +465,11 @@ def test_parse_dataset_preserves_node_title_scoped_expected_tool_calls() -> None
             '[{"arguments": {"city": "Paris"}, "name": "weather"}]',
         )
     ]
+
+
+def test_parse_dataset_rejects_empty_header_between_data_columns() -> None:
+    with pytest.raises(EvaluationDatasetInvalidError, match="headers must not be empty"):
+        EvaluationService._rows_to_dataset_items([["index", "", "query", None], [1, "unused", "question", None]])
 
 
 def test_parse_dataset_preserves_optional_agent_success_criteria() -> None:
@@ -626,15 +716,19 @@ def test_standalone_agent_template_uses_plain_success_criteria_column(sqlite_ses
             ],
         ),
         sqlite_session,
+        language="zh-Hans",
     )
     workbook = load_workbook(io.BytesIO(content))
     worksheet = workbook.active
 
     assert worksheet is not None
-    assert [cell.value for cell in worksheet[1]] == ["index", "query", "success_criteria"]
+    assert [cell.value for cell in worksheet[1]] == ["index", "query", "success_criteria", None]
+    assert worksheet["C2"].value == (
+        "填写 Agent 完成任务必须满足的条件，每行一条；评测会逐条判断。没有额外条件可留空。"
+    )
 
-    worksheet.cell(row=2, column=2, value="Find the weather")
-    worksheet.cell(row=2, column=3, value="Use real weather data")
+    worksheet.delete_rows(2)
+    worksheet.append([1, "Find the weather", "Use real weather data"])
     uploaded = io.BytesIO()
     workbook.save(uploaded)
     items = EvaluationService._parse_dataset(uploaded.getvalue(), "dataset.xlsx")
@@ -2479,7 +2573,9 @@ def test_execute_targets_preserves_row_order_and_reports_target_failures(monkeyp
     assert errors[0] is None
     assert "no workflow run ID" in (errors[1] or "")
     assert "no successful node results" in (errors[2] or "")
-    assert errors[3] == "provider unavailable"
+    assert errors[3] is not None
+    assert errors[3].startswith("EVAL_TARGET_FAILED:")
+    assert "provider unavailable" not in errors[3]
     assert task_ids == {
         index: EvaluationService.workflow_task_id("run-1", "target", position)
         for index, position in zip((10, 20, 30, 40), (3, 4, 5, 6), strict=True)

@@ -1914,7 +1914,7 @@ def test_mixed_human_input_versions_preserve_order_and_wire_payloads(sqlite_paus
             title="Frozen V2",
             legacy_form_content="Choose",
             actions=(),
-            parts=(SelectInput(output_variable_name="choice", options=("Frozen",), default_value=None),),
+            parts=(SelectInput(output_variable_name="choice", options=("Frozen",), resolved_default_value=None),),
         ),
     )
     v1_reason = HumanInputRequired(

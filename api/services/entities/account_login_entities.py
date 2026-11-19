@@ -74,6 +74,8 @@ class EmailCodeSendCommand:
 
 @dataclass(frozen=True, slots=True)
 class EmailCodeLoginCommand:
+    """Email-code sign-in; ``invite_token`` is the invitation link being accepted, or ``None``."""
+
     email: str
     code: str
     token: str
@@ -81,6 +83,7 @@ class EmailCodeLoginCommand:
     language: str | None
     timezone: str | None
     ip_address: str
+    invite_token: str | None
 
 
 @dataclass(frozen=True, slots=True)

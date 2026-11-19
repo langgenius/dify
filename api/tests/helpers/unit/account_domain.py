@@ -53,7 +53,14 @@ def build_account_domain(session_factory: sessionmaker[Session]) -> AccountDomai
     access.is_owner.return_value = False
     access.can_replay_member_removal.return_value = False
     access.acquire_invitation_admission.side_effect = lambda _workspace_id: nullcontext(object())
-    members = WorkspaceMemberService(workspaces=workspaces, accounts=repository, access=access)
+    delivery = create_autospec(WorkspaceInvitationDelivery, instance=True)
+    delivery.requires_capacity_check = False
+    delivery.create.return_value = "invitation-token"
+    delivery.list_pending.return_value = ()
+    delivery.acquire.return_value = nullcontext()
+    members = WorkspaceMemberService(
+        workspaces=workspaces, accounts=repository, access=access, invitation_links=delivery
+    )
     quota_guard = create_autospec(WorkspaceQuotaGuard, instance=True)
     quota_guard.acquire.side_effect = lambda: nullcontext(lambda: None)
     provisioning = WorkspaceProvisioningService(
@@ -76,10 +83,6 @@ def build_account_domain(session_factory: sessionmaker[Session]) -> AccountDomai
         security=security,
         now=lambda: datetime(2026, 1, 1),
     )
-    delivery = create_autospec(WorkspaceInvitationDelivery, instance=True)
-    delivery.requires_capacity_check = False
-    delivery.acquire.side_effect = lambda _workspace_id: nullcontext(object())
-    delivery.create.return_value = "invitation-token"
     invitations = WorkspaceInvitationService(
         accounts=accounts, workspaces=workspaces, members=members, invitations=delivery
     )

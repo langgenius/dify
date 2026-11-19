@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import datetime
 from functools import wraps
 from typing import Any, ParamSpec, TypeVar
@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound, TooManyRequests
 
 from configs import dify_config
+from constants.languages import get_valid_language, languages
 from controllers.common.fields import BinaryFileResponse
 from controllers.common.rbac import AgentId, DatasetId, PlainApp, RBACCheck, Workspace, enforce_rbac_checks
 from controllers.common.schema import (
@@ -43,6 +44,7 @@ from core.evaluation.entities.evaluation_entity import (
     NodeInfo,
 )
 from core.evaluation.entities.judgment_entity import JudgmentConfig
+from core.evaluation.exceptions import safe_evaluation_error_text
 from extensions.ext_application_services import application_services
 from extensions.ext_storage import storage
 from fields.base import ResponseModel
@@ -156,6 +158,16 @@ class EvaluationRunResponse(ResponseModel):
     completed_at: int | None = None
     created_at: int | None = None
 
+    @field_validator("error", mode="before")
+    @classmethod
+    def _safe_error(cls, value: str | None) -> str | None:
+        """Keep only approved diagnostics in run API responses.
+
+        Precondition: value comes from a persisted run and may contain legacy text.
+        Postcondition: the response never returns an unapproved raw exception.
+        """
+        return safe_evaluation_error_text(value)
+
     @field_validator("started_at", "completed_at", "created_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
@@ -183,6 +195,38 @@ class EvaluationRunItemResponse(ResponseModel):
     )
     error: str | None = None
     overall_score: float | None = None
+
+    @field_validator("error", mode="before")
+    @classmethod
+    def _safe_error(cls, value: str | None) -> str | None:
+        """Keep only approved diagnostics in item API responses.
+
+        Precondition: value comes from a persisted row and may contain legacy text.
+        Postcondition: the response never returns an unapproved raw exception.
+        """
+        return safe_evaluation_error_text(value)
+
+    @field_validator("judgment", mode="before")
+    @classmethod
+    def _safe_judgment_errors(cls, value: dict[str, Any]) -> dict[str, Any]:
+        """Mask legacy exception text in nested condition diagnostics.
+
+        Precondition: ``value`` is a decoded judgment object from a run item.
+        Postcondition: condition errors contain only approved public text and
+        all other judgment fields retain their original values.
+        """
+        conditions = value.get("condition_results")
+        if not isinstance(conditions, list):
+            return value
+        return {
+            **value,
+            "condition_results": [
+                {**condition, "error": safe_evaluation_error_text(condition.get("error"))}
+                if isinstance(condition, Mapping)
+                else condition
+                for condition in conditions
+            ],
+        }
 
 
 class EvaluationRunPaginationResponse(ResponseModel):
@@ -621,6 +665,12 @@ def _xlsx_response(content: bytes, filename: str) -> Response:
     return response
 
 
+def _evaluation_template_language(account: Account) -> str:
+    """Use the current UI locale when valid, then the saved account language."""
+    cookie_locale = request.cookies.get("locale")
+    return cookie_locale if cookie_locale in languages else get_valid_language(account.interface_language)
+
+
 @console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/dataset-template/download")
 class EvaluationDatasetTemplateDownloadApi(EvaluationEditionResource):
     @console_ns.expect(console_ns.models[EvaluationConfigPayload.__name__])
@@ -644,9 +694,12 @@ class EvaluationDatasetTemplateDownloadApi(EvaluationEditionResource):
         snippet_permission=RBACPermission.SNIPPETS_CREATE_AND_MODIFY,
     )
     def post(self, session: Session, target: EvaluationTarget, target_type: str) -> Response:
+        current_user, _ = current_account_with_tenant()
         payload = EvaluationConfigPayload.model_validate(console_ns.payload or {})
         try:
-            content, filename = EvaluationService.generate_dataset_template(target, target_type, payload, session)
+            content, filename = EvaluationService.generate_dataset_template(
+                target, target_type, payload, session, language=_evaluation_template_language(current_user)
+            )
         except ValueError as exc:
             raise BadRequest(str(exc)) from exc
         return _xlsx_response(content, filename)
@@ -1089,7 +1142,9 @@ class DatasetEvaluationTemplateDownloadApi(EvaluationEditionResource):
     def post(self, session: Session, dataset_id: UUID) -> Response:
         current_user, tenant_id = current_account_with_tenant()
         _get_accessible_dataset(session, dataset_id, current_user, tenant_id)
-        content, filename = EvaluationService.generate_retrieval_dataset_template()
+        content, filename = EvaluationService.generate_retrieval_dataset_template(
+            language=_evaluation_template_language(current_user)
+        )
         return _xlsx_response(content, filename)
 
 

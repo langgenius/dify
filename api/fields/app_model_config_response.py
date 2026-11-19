@@ -20,8 +20,10 @@ class AppEnabledConfigResponse(TypedDict):
 
 @with_config(ConfigDict(extra="allow"))
 class AppModelSelectionResponse(TypedDict, total=False):
-    provider: str
-    name: str
+    """Readable model selection; missing or null identifiers mean it is not fully configured."""
+
+    provider: str | None
+    name: str | None
     mode: LLMMode | Literal[""]
     completion_params: dict[str, JsonValue]
 

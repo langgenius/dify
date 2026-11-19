@@ -83,7 +83,7 @@ class SQLAlchemySummaryRepository:
     @staticmethod
     def _owns_command(row: DocumentSegmentSummary, command: SummaryVectorInput) -> bool:
         return (
-            row.summary_content == command.content
+            (row.summary_content or "") == command.content
             and row.summary_index_node_id == command.previous_node_id
             and row.updated_at == command.expected_updated_at
             and str(row.status) == command.expected_status

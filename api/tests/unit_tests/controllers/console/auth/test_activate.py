@@ -14,8 +14,7 @@ from controllers.console.auth.error import InvitationAccountMismatchError as Inv
 from controllers.console.error import (
     AccountInFreezeError,
     AlreadyActivateError,
-    SeatsLimitExceeded,
-    WorkspaceMembersLimitExceeded,
+    InvitationWorkspaceMemberLimitError,
 )
 from controllers.console.error import (
     EmailDomainSuspendedError as EmailDomainSuspendedHTTPError,
@@ -23,11 +22,14 @@ from controllers.console.error import (
 from enums import DeploymentEdition
 from extensions.ext_application_services import build_application_services
 from extensions.ext_redis import RedisClientWrapper
-from libs.login import AccountWithTenant
 from models.account import Account
 from services.account_activation_service import AccountActivationService
 from services.account_errors import AccountEmailDomainSuspendedError as EmailDomainSuspendedRegistrationError
-from services.account_errors import FrozenAccountError, InvalidInvitationError, InvitationAccountMismatchError
+from services.account_errors import (
+    FrozenAccountError,
+    InvalidInvitationError,
+    InvitationAccountMismatchError,
+)
 from services.entities.account_activation_entities import (
     ActivationCheckData,
     ActivationCheckResult,
@@ -163,11 +165,8 @@ class TestActivateApi:
             ),
             patch("controllers.console.auth.activate.extract_access_token", return_value="access-token"),
             patch(
-                "controllers.console.auth.activate.current_account_with_tenant",
-                return_value=AccountWithTenant(
-                    account=account,
-                    tenant_id="workspace-123",
-                ),
+                "controllers.console.auth.activate.current_account_with_tenant_optional",
+                return_value=(account, None),
             ),
         ):
             response = ActivateApi().post()
@@ -199,7 +198,7 @@ class TestActivateApi:
                 return_value=_services(activation_service),
             ),
             patch("controllers.console.auth.activate.extract_access_token", return_value=None),
-            patch("controllers.console.auth.activate.current_account_with_tenant") as resolve_account,
+            patch("controllers.console.auth.activate.current_account_with_tenant_optional") as resolve_account,
         ):
             response = ActivateApi().post()
 
@@ -217,8 +216,8 @@ class TestActivateApi:
             (InvitationAccountMismatchError(), InvitationAccountMismatchHTTPError),
             (FrozenAccountError(), AccountInFreezeError),
             (EmailDomainSuspendedRegistrationError(), EmailDomainSuspendedHTTPError),
-            (WorkspaceInvitationQuotaError(), WorkspaceMembersLimitExceeded),
-            (WorkspaceInvitationQuotaError(seats=True), SeatsLimitExceeded),
+            (WorkspaceInvitationQuotaError(), InvitationWorkspaceMemberLimitError),
+            (WorkspaceInvitationQuotaError(seats=True), InvitationWorkspaceMemberLimitError),
         ],
     )
     def test_translates_application_errors(

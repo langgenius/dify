@@ -10,6 +10,7 @@ from services.account_errors import (
     FrozenAccountError,
     InvalidInvitationError,
     InvitationAccountMismatchError,
+    InvitationWorkspaceFullError,
 )
 from services.entities.account_activation_entities import (
     AccountInvitation,
@@ -94,6 +95,12 @@ class WorkspaceMemberAccessSync(Protocol):
     def sync(self, workspace_id: str, account_id: str) -> None: ...
 
 
+class WorkspaceMemberCapacity(Protocol):
+    def acquire(self, workspace_id: str) -> AbstractContextManager[object]: ...
+
+    def can_join(self, workspace_id: str, account_id: str) -> bool: ...
+
+
 class AccountActivationService:
     def __init__(
         self,
@@ -105,6 +112,7 @@ class AccountActivationService:
         invitation_admission: WorkspaceInvitationAdmission,
         membership_cache: WorkspaceMembershipCache,
         member_access_sync: WorkspaceMemberAccessSync,
+        capacity: WorkspaceMemberCapacity,
     ) -> None:
         self._tokens = tokens
         self._accounts = accounts
@@ -113,6 +121,7 @@ class AccountActivationService:
         self._invitation_admission = invitation_admission
         self._membership_cache = membership_cache
         self._member_access_sync = member_access_sync
+        self._capacity = capacity
 
     def check(self, invitation: InvitationLookup) -> ActivationCheckResult:
         resolved = self._resolve(invitation)
@@ -132,6 +141,21 @@ class AccountActivationService:
         )
 
     def activate(self, command: ActivationCommand, *, authenticated_account_id: str | None) -> None:
+        """Accept an invitation, creating the membership when the workspace still has room.
+
+        On success the membership exists and is the account's current workspace, then the link
+        is retired. A failed write leaves the link valid for a retry.
+
+        Raises:
+            InvalidInvitationError: The invitation is missing, stale, or lacks setup data.
+            InvitationAccountMismatchError: The session belongs to another account.
+            AccountEmailDomainSuspendedError: The email domain is suspended.
+            FrozenAccountError: The email is frozen after a recent deletion.
+            InvitationWorkspaceFullError: The workspace reached its member limit; the link stays valid.
+
+        The link is resolved again under the workspace lock, so a link revoked or replaced by a
+        resend after the first read never grants membership.
+        """
         invitation = self._resolve(command.invitation)
         if invitation is None:
             raise InvalidInvitationError
@@ -155,7 +179,7 @@ class AccountActivationService:
         persistence_committed = False
         result: ActivationPersistenceResult | None = None
         try:
-            with self._invitation_admission.acquire(invitation.workspace_id):
+            with self._capacity.acquire(invitation.workspace_id):
                 current = self._resolve(lookup)
                 if current is None or not self._same_invitation(invitation, current):
                     raise InvalidInvitationError
@@ -164,6 +188,8 @@ class AccountActivationService:
                 membership_consumed = self._tokens.is_membership_consumed(lookup)
                 create_membership = not membership_consumed and not current.membership_exists
                 if create_membership:
+                    if not self._capacity.can_join(current.workspace_id, current.account_id):
+                        raise InvitationWorkspaceFullError
                     self._invitation_admission.check_invitation_quota(current.workspace_id)
                 if current.account_status == _PENDING_ACCOUNT_STATUS and setup is not None:
                     if not self._eligibility.has_account_capacity():
@@ -205,7 +231,7 @@ class AccountActivationService:
         persistence_committed = False
         result: ActivationPersistenceResult | None = None
         try:
-            with self._invitation_admission.acquire(invitation.workspace_id):
+            with self._capacity.acquire(invitation.workspace_id):
                 current = self._resolve(lookup)
                 if (
                     current is None

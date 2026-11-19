@@ -68,7 +68,7 @@ _RESET_PASSWORD_RATE_LIMIT_SECONDS = 60
 
 
 class AccountActivationConsoleAuthInvitationGateway(ConsoleAuthInvitationGateway):
-    """Resolve login invitations and restore invited membership through activation."""
+    """Resolve login invitations to the invited account's email."""
 
     def __init__(
         self,

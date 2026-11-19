@@ -10,7 +10,9 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.trace import StatusCode, get_current_span
 
+from core.app.apps.exc import ModerationInvocationError
 from core.rag.models.document import Document
+from graphon.nodes.llm.entities import ModelConfig
 from libs.datetime_utils import Timing
 from services.knowledge.admission.application import DatasetAdmissionLimits
 from services.knowledge.entities.metadata import Condition
@@ -28,6 +30,9 @@ from services.knowledge.retrieval.retrieval import (
     ExternalDatasetRetriever,
     RetrievalDatasetSnapshot,
 )
+from services.knowledge.retrieval.routing_model import RoutingModelConfig
+from services.moderation_service import ModerationPhase
+from tests.helpers.unit.core.model_moderation_fixtures import make_failing_moderated_model
 
 
 @pytest.fixture
@@ -300,3 +305,27 @@ def test_retriever_thread_exception_emits_skip_event_when_requested(
     assert skip_event.attributes["dataset_id"] == retrieval_dataset.id
     assert skip_event.attributes["error.message"] == "retrieval failed"
     assert documents == []
+
+
+@pytest.mark.parametrize("phase", ["input", "output"])
+@pytest.mark.parametrize("unavailable", [False, True])
+def test_automatic_filters_propagate_model_moderation(
+    monkeypatch: pytest.MonkeyPatch, phase: ModerationPhase, unavailable: bool
+) -> None:
+    model, provider = make_failing_moderated_model(phase=phase, unavailable=unavailable)
+    planner = MetadataFilterPlanner(repository=EmptyRetrievalRepository())
+    config = RoutingModelConfig(mode="chat", parameters={}, stop=[])
+    monkeypatch.setattr(planner, "_fetch_model_config", lambda *_args, **_kwargs: (model, config))
+    with pytest.raises(ModerationInvocationError) as rejected:
+        planner._automatic_filters(
+            dataset_ids=["dataset-1"],
+            query="content",
+            tenant_id="test-tenant-id",
+            user_id="user-1",
+            model=ModelConfig(provider="test-provider", name="test-model", mode="chat"),
+        )
+    assert rejected.value.error_code == ("moderation_unavailable" if unavailable else "moderation_rejected")
+    assert provider.invocations == (0 if phase == "input" else 1)
+    assert len(model.reservations) == (0 if phase == "input" else 1)
+    if model.reservations:
+        assert model.reservations[0].commits

@@ -227,6 +227,52 @@ class TestCurrentContextInjection:
         login_required.assert_called_once()
         account_initialization_required.assert_called_once()
 
+    @pytest.mark.parametrize(
+        ("status", "admitted"),
+        [(AccountStatus.ACTIVE, True), (AccountStatus.UNINITIALIZED, False)],
+    )
+    def test_console_account_admission_without_active_workspace(self, status: AccountStatus, admitted: bool):
+        current_user = make_account()
+        current_user.status = status
+
+        with (
+            patch("controllers.console.flask_admission.setup_required", side_effect=lambda view: view),
+            patch("controllers.console.flask_admission.login_required", side_effect=lambda view: view),
+            patch(
+                "controllers.console.flask_admission.account_initialization_required", side_effect=lambda view: view
+            ) as account_initialization_required,
+            patch(
+                "controllers.console.flask_admission.current_account_with_tenant_optional",
+                return_value=(current_user, None),
+            ),
+            patch("controllers.console.flask_admission.current_account_with_tenant") as with_tenant,
+            patch("controllers.console.flask_admission.get_request_id", return_value="request-1"),
+            patch("controllers.console.flask_admission.get_trace_id", return_value="trace-1"),
+        ):
+
+            class Handler:
+                @flask_admission.console_account_admission(require_active_workspace=False)
+                def get(self, request_context: RequestContext):
+                    return request_context
+
+            with Flask(__name__).test_request_context():
+                if admitted:
+                    result = Handler().get()
+                    assert result.account_id == current_user.id
+                    assert result.active_workspace_id == ""
+                else:
+                    with pytest.raises(AccountNotInitializedError):
+                        Handler().get()
+
+        with_tenant.assert_not_called()
+        account_initialization_required.assert_not_called()
+
+    def test_console_account_admission_without_active_workspace_rejects_role_checks(self):
+        with pytest.raises(ValueError, match="active workspace"):
+            flask_admission.console_account_admission(
+                require_active_workspace=False, allowed_roles=frozenset({TenantAccountRole.OWNER})
+            )
+
     def test_console_email_registration_admission_checks_features_once(self):
         with (
             patch(
@@ -970,7 +1016,7 @@ class TestBillingPaidPlanRequired:
         with (
             patch(
                 "controllers.console.wraps.current_account_with_tenant",
-                side_effect=AssertionError("no tenant lookup"),
+                return_value=(MockUser("test_user"), "tenant123"),
             ),
             patch("controllers.console.wraps.BillingService.get_info", side_effect=AssertionError("no billing")),
         ):

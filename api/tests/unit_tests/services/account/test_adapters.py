@@ -53,6 +53,7 @@ from services.errors.billing import (
     UnknownErrorReason,
 )
 from tests.helpers.unit.account_domain import AccountDomain
+from tests.helpers.unit.redis_commands import RedisCommandEmulator
 
 
 def test_invitation_token_store_reads_workspace_invitation_key(
@@ -203,6 +204,7 @@ class _InvitationRedis:
 
     def __init__(self) -> None:
         self.values: dict[str, str] = {}
+        self.index = RedisCommandEmulator()
         self.ttls: dict[str, int] = {}
         self.script_key_counts: list[int] = []
         self.failing: set[tuple[str, str]] = set()
@@ -227,6 +229,8 @@ class _InvitationRedis:
             return self._scripts[str(args[0])](keys[0], [str(arg) for arg in args[2 + key_count :]])
         key = str(args[0])
         self._fail_if_requested(operation, key)
+        if operation.startswith("Z") or operation == "EXPIRE":
+            return self.index(operation, *args)
         match operation:
             case "GET":
                 value = self.values.get(key)
@@ -1004,3 +1008,144 @@ def test_education_gateway_leaves_generic_reasons_to_billing_errors(
         BillingAccountEducationGateway().status("account-1")
 
     assert exc_info.value is error
+
+
+def _payload(email: str, role: str = "normal", *, requires_setup: bool = False) -> bytes:
+    return (
+        f'{{"account_id":"account-1","email":"{email}","workspace_id":"workspace-1",'
+        f'"role":"{role}","requires_setup":{str(requires_setup).lower()}}}'
+    ).encode()
+
+
+@pytest.fixture
+def redis_commands(redis_transport: tuple[RedisClientWrapper, MagicMock]) -> RedisCommandEmulator:
+    commands = RedisCommandEmulator()
+    redis_transport[1].side_effect = commands
+    return commands
+
+
+def test_pending_invitations_show_latest_live_unconsumed_link(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    redis_commands: RedisCommandEmulator,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("services.account.adapters.time", lambda: 100.0)
+    key = "member_invite:pending:workspace-1"
+    redis_commands.sorted_sets[key] = {
+        "expired": 90.0,
+        "old": 110.0,
+        "latest": 120.0,
+        "redeemed": 130.0,
+        "revoked": 140.0,
+    }
+    redis_commands.values.update(
+        {
+            "member_invite:token:expired": _payload("expired@example.com"),
+            "member_invite:token:old": _payload("invitee@example.com", "admin"),
+            "member_invite:token:latest": _payload("Invitee@example.com", "editor"),
+            "member_invite:token:redeemed": _payload("accepted@example.com"),
+            "member_invite:token:redeemed:membership_used": b"1",
+        }
+    )
+
+    (invitation,) = RedisInvitationTokenStore(redis=redis_transport[0]).list_pending("workspace-1")
+
+    assert invitation.email == "Invitee@example.com"
+    assert invitation.role == TenantAccountRole.EDITOR
+    assert invitation.expires_at == datetime.fromtimestamp(120, UTC)
+
+
+@pytest.mark.usefixtures("redis_commands")
+def test_pending_invitations_include_new_email_invitations(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    store = RedisInvitationTokenStore(redis=redis_transport[0])
+    store.create(InvitationToken("account-1", "new@example.com", "workspace-1", "normal", True))
+
+    (invitation,) = store.list_pending("workspace-1")
+
+    assert invitation.email == "new@example.com"
+    assert invitation.role == TenantAccountRole.NORMAL
+
+
+def test_issuing_a_link_fails_and_leaves_nothing_live_when_it_cannot_be_indexed(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    redis_commands: RedisCommandEmulator,
+) -> None:
+    redis_commands.failing.add("ZADD")
+    store = RedisInvitationTokenStore(redis=redis_transport[0])
+
+    with pytest.raises(RedisError):
+        store.create(InvitationToken("account-1", "new@example.com", "workspace-1", "normal", True))
+
+    assert redis_commands.values == {}
+
+
+def test_revoking_pending_invitations_invalidates_every_link_for_the_email(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    redis_commands: RedisCommandEmulator,
+) -> None:
+    store = RedisInvitationTokenStore(redis=redis_transport[0])
+    first = store.create(InvitationToken("account-1", "Invitee@example.com", "workspace-1", "normal", True))
+    second = store.create(InvitationToken("account-1", "invitee@example.com", "workspace-1", "editor", True))
+    other = store.create(InvitationToken("account-2", "other@example.com", "workspace-1", "normal", True))
+    redis_commands.values["member_invite:token:legacy"] = _payload("invitee@example.com", requires_setup=True)
+
+    store.revoke_pending("workspace-1", "INVITEE@example.com", account_id="account-1", keep_token=None)
+
+    def live(token: str) -> bool:
+        return store.find(InvitationLookup(workspace_id=None, email=None, token=token)) is not None
+
+    assert not live(first)
+    assert not live(second)
+    assert not live("legacy")
+    assert live(other)
+    assert [invitation.email for invitation in store.list_pending("workspace-1")] == ["other@example.com"]
+
+    reissued = store.create(InvitationToken("account-1", "invitee@example.com", "workspace-1", "normal", True))
+    assert live(reissued)
+
+
+def test_workspace_scoped_legacy_links_stop_working_after_revoke_or_resend(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    redis_commands: RedisCommandEmulator,
+) -> None:
+    store = RedisInvitationTokenStore(redis=redis_transport[0])
+    lookup = InvitationLookup(workspace_id="workspace-1", email="invitee@example.com", token="legacy")
+    email_hash = sha256(b"invitee@example.com").hexdigest()
+    redis_commands.values[f"member_invite_token:workspace-1, {email_hash}:legacy"] = b"account-1"
+    assert store.find(lookup) is not None
+
+    store.revoke_pending("workspace-1", "invitee@example.com", account_id="account-1", keep_token=None)
+
+    assert store.find(lookup) is None
+    reissued = store.create(InvitationToken("account-1", "invitee@example.com", "workspace-1", "normal", True))
+    assert store.find(InvitationLookup(workspace_id=None, email=None, token=reissued)) is not None
+
+
+@pytest.mark.usefixtures("redis_commands")
+def test_reissuing_keeps_the_new_link_and_retires_the_rest(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    store = RedisInvitationTokenStore(redis=redis_transport[0])
+    old = store.create(InvitationToken("account-1", "invitee@example.com", "workspace-1", "normal", True))
+    new = store.create(InvitationToken("account-1", "invitee@example.com", "workspace-1", "editor", True))
+
+    store.revoke_pending("workspace-1", "invitee@example.com", account_id="account-1", keep_token=new)
+
+    assert store.find(InvitationLookup(workspace_id=None, email=None, token=old)) is None
+    assert store.find(InvitationLookup(workspace_id=None, email=None, token=new)) is not None
+    assert [invitation.role for invitation in store.list_pending("workspace-1")] == [TenantAccountRole.EDITOR]
+
+
+def test_discarding_a_link_removes_it_from_the_index(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    redis_commands: RedisCommandEmulator,
+) -> None:
+    store = RedisInvitationTokenStore(redis=redis_transport[0])
+    token = store.create(InvitationToken("account-1", "invitee@example.com", "workspace-1", "normal", True))
+
+    store.discard("workspace-1", token)
+
+    assert store.find(InvitationLookup(workspace_id=None, email=None, token=token)) is None
+    assert redis_commands.sorted_sets["member_invite:pending:workspace-1"] == {}

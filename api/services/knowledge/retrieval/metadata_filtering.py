@@ -7,6 +7,7 @@ from collections.abc import Generator, Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from core.app.apps.exc import ModerationInvocationError
 from core.entities.model_entities import ModelStatus
 from core.model_manager import ModelInstance, ModelManager
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
@@ -176,6 +177,8 @@ class MetadataFilterPlanner:
                 if item.get("metadata_field_name") in fields
             ]
             return filters, usage
+        except ModerationInvocationError:
+            raise
         except Exception as error:
             logger.warning(error, exc_info=True)
             return None, usage

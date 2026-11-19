@@ -7,7 +7,7 @@ import {
   zAlreadyActivateError,
   zEmailDomainSuspendedError,
   zInvitationAccountMismatchError,
-  zLimitExceededError,
+  zWorkspaceMemberLimitReachedError,
 } from './zod.gen.ts'
 import {
   zGetActivateCheckQuery,
@@ -61,7 +61,7 @@ export const post = oc
     already_activate: { status: 403, data: zAlreadyActivateError },
     email_domain_suspended: { status: 400, data: zEmailDomainSuspendedError },
     invitation_account_mismatch: { status: 403, data: zInvitationAccountMismatchError },
-    limit_exceeded: { status: 400, data: zLimitExceededError },
+    workspace_member_limit_reached: { status: 400, data: zWorkspaceMemberLimitReachedError },
   })
 
 export const activate = {

@@ -10,6 +10,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import set_committed_value
 
+from core.app.apps.exc import ModerationInvocationError
 from core.credit_usage import CreditUsageCreatedBy
 from core.db.session_factory import session_factory
 from core.model_context import with_credit_usage_created_by
@@ -465,7 +466,7 @@ class SummaryIndexAdapter:
             if generation_command is not None:
                 SQLAlchemySummaryRepository(new_session=session_factory.create_session).failed(
                     generation_command,
-                    f"Summary generation failed: {e}",
+                    str(e) if isinstance(e, ModerationInvocationError) else f"Summary generation failed: {e}",
                 )
             raise
 

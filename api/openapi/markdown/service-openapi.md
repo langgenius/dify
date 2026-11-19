@@ -5531,6 +5531,14 @@ Optional per-request overrides for an external knowledge provider.
 | tokens | integer |  | Yes |
 | word_count | integer |  | Yes |
 
+#### HumanInputActionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| button_style | [ButtonStyle](#buttonstyle) |  | Yes |
+| id | string |  | Yes |
+| title | string |  | Yes |
+
 #### HumanInputContent
 
 | Name | Type | Description | Required |
@@ -5540,6 +5548,27 @@ Optional per-request overrides for an external knowledge provider.
 | submitted | boolean |  | Yes |
 | type | [ExecutionContentType](#executioncontenttype) |  | No |
 | workflow_run_id | string |  | Yes |
+
+#### HumanInputFileListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | Yes |
+| allowed_file_types | [ [FileType](#filetype) ] |  | Yes |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | Yes |
+| number_limits | integer |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | Yes |
+
+#### HumanInputFileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | Yes |
+| allowed_file_types | [ [FileType](#filetype) ] |  | Yes |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | Yes |
 
 #### HumanInputFormDefinition
 
@@ -5563,9 +5592,9 @@ Optional per-request overrides for an external knowledge provider.
 | ---- | ---- | ----------- | -------- |
 | expiration_time | integer |  | No |
 | form_content | string |  | Yes |
-| inputs | [ [FormInputConfig](#forminputconfig) ] |  | Yes |
+| inputs | [ [HumanInputResponse](#humaninputresponse) ] |  | Yes |
 | resolved_default_values | object |  | Yes |
-| user_actions | [ [UserActionConfig](#useractionconfig) ] |  | Yes |
+| user_actions | [ [HumanInputActionResponse](#humaninputactionresponse) ] |  | Yes |
 
 #### HumanInputFormExpiredError
 
@@ -5615,6 +5644,44 @@ This form has already been submitted by another user, form_id={form_id}
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | HumanInputFormSubmittedError |  | This form has already been submitted by another user, form_id={form_id} |  |
+
+#### HumanInputParagraphResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default | [HumanInputStringSourceResponse](#humaninputstringsourceresponse) |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | Yes |
+
+#### HumanInputResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| HumanInputResponse | [HumanInputParagraphResponse](#humaninputparagraphresponse)<br>[HumanInputSelectResponse](#humaninputselectresponse)<br>[HumanInputFileResponse](#humaninputfileresponse)<br>[HumanInputFileListResponse](#humaninputfilelistresponse) |  |  |
+
+#### HumanInputSelectResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| option_source | [HumanInputStringListSourceResponse](#humaninputstringlistsourceresponse) |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | Yes |
+
+#### HumanInputStringListSourceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| selector | [ string ] | Deprecated. Retained for compatibility; use the resolved options in value instead. | Yes |
+| type | [ValueSourceType](#valuesourcetype) |  | Yes |
+| value | [ string ] |  | Yes |
+
+#### HumanInputStringSourceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| selector | [ string ] | Deprecated. Retained for compatibility; use the server-resolved default value instead. | Yes |
+| type | [ValueSourceType](#valuesourcetype) |  | Yes |
+| value | string |  | Yes |
 
 #### IndexInfoResponse
 

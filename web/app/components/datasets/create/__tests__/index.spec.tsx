@@ -61,6 +61,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'features.vectorSpace.get': () => ({ size: 0, limit: -1 }),
       'auth.plugin.datasource.defaultList.get': api.sources,
       'notion.preImport.pages.get': async () => ({
         notion_info: [

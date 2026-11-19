@@ -25,6 +25,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.byWorkspaceId.members.pendingInvitations.get': async () => ({ invitations: [] }),
       'workspaces.current.members.get': async () => ({
         accounts: [
           {

@@ -17,6 +17,7 @@ from werkzeug.exceptions import BadRequest, Forbidden, NotFound, TooManyRequests
 from controllers.console import evaluation as controller
 from core.evaluation.entities.config_entity import EvaluationFrameworkEnum
 from core.evaluation.entities.evaluation_entity import DefaultMetric, NodeInfo
+from core.evaluation.exceptions import EvaluationErrorCode, new_public_evaluation_error
 from extensions.ext_application_services import ApplicationServices
 from models.evaluation import (
     EvaluationConfiguration,
@@ -262,6 +263,32 @@ def test_run_response_accepts_database_timestamps(sqlite_session: Session) -> No
     sqlite_session.flush()
     response = controller.EvaluationRunResponse.model_validate(run)
     assert response.started_at is not None
+
+
+def test_run_detail_response_masks_legacy_exception_text(sqlite_session: Session) -> None:
+    run = _evaluation_run(sqlite_session)
+    raw_error = "PluginInvokeError: {'args': 'provider-response-secret'}"
+    run.error = raw_error
+    item = EvaluationRunItem(
+        evaluation_run_id=run.id,
+        item_index=1,
+        error=raw_error,
+        judgment=json.dumps({"condition_results": [{"error": raw_error, "passed": False}]}),
+    )
+
+    run_response = controller.EvaluationRunResponse.model_validate(run)
+    item_response = controller.EvaluationRunItemResponse.model_validate(item)
+
+    assert run_response.error == "Evaluation failed. Please retry or contact support."
+    assert item_response.error == run_response.error
+    assert item_response.judgment["condition_results"][0]["error"] == run_response.error
+    assert "provider-response-secret" not in str(item_response.model_dump())
+
+    public_error = new_public_evaluation_error(EvaluationErrorCode.MODEL_REQUEST_FAILED)
+    item.error = public_error.text
+    assert controller.EvaluationRunItemResponse.model_validate(item).error == public_error.text
+    item.error = f"{public_error.text} {raw_error}"
+    assert controller.EvaluationRunItemResponse.model_validate(item).error == run_response.error
 
 
 def test_available_workflow_response_requires_a_timestamp() -> None:
@@ -528,10 +555,17 @@ def test_available_metrics_route_uses_selected_framework() -> None:
     assert "faithfulness" in response["metrics"]
 
 
+def test_template_language_ignores_unsupported_locale_cookie() -> None:
+    account = make_account(interface_language="fr-FR")
+    flask_app = Flask(__name__)
+    with flask_app.test_request_context("/", headers={"Cookie": "locale=unsupported"}):
+        assert controller._evaluation_template_language(account) == "fr-FR"
+
+
 def test_app_configuration_and_metadata_routes_use_service_contracts(
     sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    account = make_account()
+    account = make_account(interface_language="fr-FR")
     app = make_app(app_id="target-1", mode=AppMode.WORKFLOW)
     upload = make_upload_file(file_id=str(uuid4()), name="dataset.csv")
     sqlite_session.add_all([app, upload])
@@ -540,7 +574,13 @@ def test_app_configuration_and_metadata_routes_use_service_contracts(
     assert config is not None
     monkeypatch.setattr(controller, "current_account_with_tenant", lambda: (account, "tenant-1"))
     monkeypatch.setattr(controller.storage, "load_once", lambda _key: b"index,query\n1,hello\n")
-    monkeypatch.setattr(EvaluationService, "generate_dataset_template", lambda *_args: (b"template", "template.xlsx"))
+    template_languages: list[str] = []
+
+    def generate_template(*_args: object, language: str) -> tuple[bytes, str]:
+        template_languages.append(language)
+        return b"template", "template.xlsx"
+
+    monkeypatch.setattr(EvaluationService, "generate_dataset_template", generate_template)
     monkeypatch.setattr(
         EvaluationService,
         "get_dataset_column_names",
@@ -557,7 +597,9 @@ def test_app_configuration_and_metadata_routes_use_service_contracts(
     monkeypatch.setattr(EvaluationService, "get_nodes_for_metrics", lambda *_args: {"llm": [node]})
     flask_app = Flask(__name__)
 
-    with flask_app.test_request_context("/?evaluation_framework=ragas", json={"file_id": upload.id}):
+    with flask_app.test_request_context(
+        "/?evaluation_framework=ragas", json={"file_id": upload.id}, headers={"Cookie": "locale=ja-JP"}
+    ):
         template = unwrap(controller.EvaluationDatasetTemplateDownloadApi.post)(
             controller.EvaluationDatasetTemplateDownloadApi(), sqlite_session, app, "apps"
         )
@@ -579,6 +621,7 @@ def test_app_configuration_and_metadata_routes_use_service_contracts(
         )
 
     assert template.data == b"template"
+    assert template_languages == ["ja-JP"]
     assert saved_config["evaluation_framework"] == "ragas"
     assert columns["columns"] == [{"name": "query", "type": "string"}]
     assert started["id"] == run.id
@@ -598,7 +641,7 @@ def test_evaluation_configuration_routes_report_invalid_target_configuration(
     monkeypatch.setattr(controller, "current_account_with_tenant", lambda: (account, "tenant-1"))
     monkeypatch.setattr(controller.dify_config, "RBAC_ENABLED", False)
 
-    def invalid_config(*_args: object) -> None:
+    def invalid_config(*_args: object, **_kwargs: object) -> None:
         raise ValueError("invalid evaluation configuration")
 
     monkeypatch.setattr(EvaluationService, "generate_dataset_template", invalid_config)
@@ -627,7 +670,7 @@ def test_evaluation_configuration_routes_report_invalid_target_configuration(
 def test_dataset_routes_scope_config_runs_and_files_to_the_dataset(
     sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    account = make_account()
+    account = make_account(interface_language="fr-FR")
     dataset = make_dataset(dataset_id=str(uuid4()))
     upload = make_upload_file(file_id=str(uuid4()), name="dataset.csv")
     sqlite_session.add_all([dataset, upload])
@@ -644,7 +687,13 @@ def test_dataset_routes_scope_config_runs_and_files_to_the_dataset(
     monkeypatch.setattr(controller, "current_account_with_tenant", lambda: (account, "tenant-1"))
     monkeypatch.setattr(controller.dify_config, "RBAC_ENABLED", False)
     monkeypatch.setattr(controller.storage, "load_once", lambda _key: b"index,query\n1,hello\n")
-    monkeypatch.setattr(EvaluationService, "generate_retrieval_dataset_template", lambda: (b"template", "dataset.xlsx"))
+    template_languages: list[str] = []
+
+    def generate_retrieval_template(*, language: str) -> tuple[bytes, str]:
+        template_languages.append(language)
+        return b"template", "dataset.xlsx"
+
+    monkeypatch.setattr(EvaluationService, "generate_retrieval_dataset_template", generate_retrieval_template)
     monkeypatch.setattr(EvaluationService, "save_evaluation_config", lambda *_args: config)
     monkeypatch.setattr(EvaluationService, "start_evaluation_run", lambda **_kwargs: run)
     monkeypatch.setattr(EvaluationService, "retry_evaluation_run", lambda **_kwargs: run)
@@ -688,6 +737,7 @@ def test_dataset_routes_scope_config_runs_and_files_to_the_dataset(
         )
 
     assert template.data == b"template"
+    assert template_languages == ["fr-FR"]
     assert detail["evaluation_framework"] == "ragas"
     assert saved["evaluation_framework"] == "ragas"
     assert logs["data"][0]["id"] == run.id

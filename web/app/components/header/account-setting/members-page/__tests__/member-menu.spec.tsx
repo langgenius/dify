@@ -3,7 +3,7 @@ import type { Role } from '@/models/access-control'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
-import MemberMenu from '../member-menu'
+import { MemberMenu } from '../member-menu'
 
 const { mockWorkspaceRoleListHook, mockUpdateRolesOfMember } = vi.hoisted(() => ({
   mockWorkspaceRoleListHook: vi.fn(),

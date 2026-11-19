@@ -26,10 +26,10 @@ const zEmailDomainSuspendedError = /* @__PURE__ */ (() =>
     }),
   ))()
 
-const zLimitExceededError = /* @__PURE__ */ (() =>
+const zWorkspaceMemberLimitReachedError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
-      code: z.literal('limit_exceeded'),
+      code: z.literal('workspace_member_limit_reached'),
       status: z.literal(400),
     }),
   ))()
@@ -55,5 +55,5 @@ export const postErrors = {
   already_activate: { status: 403, data: zAlreadyActivateError },
   email_domain_suspended: { status: 400, data: zEmailDomainSuspendedError },
   invitation_account_mismatch: { status: 403, data: zInvitationAccountMismatchError },
-  limit_exceeded: { status: 400, data: zLimitExceededError },
+  workspace_member_limit_reached: { status: 400, data: zWorkspaceMemberLimitReachedError },
 }

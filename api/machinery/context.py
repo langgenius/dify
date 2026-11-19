@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from typing import NamedTuple
 
+from machinery.scope import UNRESTRICTED, IdScope
+
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class AppRequestContext:
@@ -16,8 +18,9 @@ class RequestContext(NamedTuple):
     """Framework-neutral request metadata and admitted identity.
 
     Anonymous admission uses empty ``account_id`` and ``active_workspace_id`` values.
-    Resource scopes are absent for account callers; an empty set admits no resources.
-    ``personal_app_ids`` limits account visibility to PAT selections; None adds no restriction.
+    ``resource_app_ids`` is absent for account callers; an empty set admits no apps.
+    ``personal_app_ids`` limits account visibility to PAT selections; ``UNRESTRICTED`` adds no restriction
+    and an empty set admits no apps.
     """
 
     request_id: str
@@ -27,7 +30,7 @@ class RequestContext(NamedTuple):
     remote_ip: str | None = None
     resource_app_ids: frozenset[str] | None = None
     resource_dataset_ids: frozenset[str] | None = None
-    personal_app_ids: frozenset[str] | None = None
+    personal_app_ids: IdScope = UNRESTRICTED
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

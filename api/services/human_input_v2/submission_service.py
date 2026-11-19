@@ -89,7 +89,7 @@ class HumanInputFormError(Exception):
 
 @dataclass(frozen=True, slots=True)
 class WebAppFormActor:
-    """App-owned EndUser established by the Web App passport boundary."""
+    """App-owned EndUser established by passport or OpenAPI authentication."""
 
     tenant_id: TenantId
     app_id: str
@@ -146,6 +146,57 @@ class HumanInputSubmissionService:
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
+    def get_openapi_form(
+        self,
+        *,
+        actor: AccountId | WebAppFormActor,
+        form_token: str,
+        ip_address: str | None = None,
+    ) -> Form:
+        """Read an admitted caller's active initiator form using existing recipient rules.
+
+        Reject unknown tokens, other owners, and terminal forms before recording
+        a view. Successful reads retain the frozen presentation and refresh URLs.
+        """
+        form = self.authorize_openapi_form(actor=actor, form_token=form_token)
+        self._record_form_view(form, ip_address=ip_address)
+        return replace(form, resolved_form=refresh_form_file_urls(form.resolved_form))
+
+    def authorize_openapi_form(self, *, actor: AccountId | WebAppFormActor, form_token: str) -> Form:
+        """Authorize an active initiator form before OpenAPI stores uploaded files.
+
+        Return its authorized snapshot without audit writes or resume. Unknown,
+        unauthorized, terminal, and expired forms fail without external effects.
+        """
+        token_hash = hashlib.sha256(form_token.encode()).hexdigest()
+        with self._session_factory() as session:
+            form = self._authorize_openapi(session, actor=actor, token_hash=token_hash).form
+        if naive_utc_now() >= min(form.expiration_time, form.global_timeout_deadline):
+            raise HumanInputFormError(HumanInputFormErrorCode.EXPIRED)
+        return form
+
+    def submit_openapi_form(
+        self,
+        *,
+        actor: AccountId | WebAppFormActor,
+        form_token: str,
+        action: str,
+        inputs: Mapping[str, JsonValue],
+    ) -> Form:
+        """Accept an authorized initiator decision and return its committed form.
+
+        Recheck recipient authorization in the first-success transaction;
+        rejected submissions leave the form intact and never enqueue resume.
+        """
+        token_hash = hashlib.sha256(form_token.encode()).hexdigest()
+
+        def authorize(session: Session) -> _AuthorizedForm:
+            return self._authorize_openapi(session, actor=actor, token_hash=token_hash)
+
+        form = self._submit_form(authorize=authorize, action=action, inputs=inputs)
+        self._enqueue_resume(form)
+        return form
+
     def grant_submitted_file_access(self, *, app_id: str, workflow_run_id: str) -> None:
         """Restore accepted HITL file grants inside the initiating EndUser's scope.
 
@@ -184,11 +235,27 @@ class HumanInputSubmissionService:
     def get_service_api_form(
         self, *, actor: ServiceAPIFormActor, form_token: str, ip_address: str | None = None
     ) -> Form:
+        """Read an authorized waiting form unless its owning run has stopped.
+
+        Denied reads return no definition and record no form-view audit. Recheck
+        the run in case it stopped after authorization read the form snapshot.
+        """
         token_hash = hashlib.sha256(form_token.encode()).hexdigest()
         with self._session_factory() as session:
             form = self._authorize_service_api(session, actor=actor, token_hash=token_hash).form
+        self._ensure_run_not_stopped(form)
         self._record_form_view(form, ip_address=ip_address)
         return form
+
+    def _ensure_run_not_stopped(self, form: Form) -> None:
+        """Reject an already-authorized form's stopped run without changing state."""
+        if form.workflow_run_id is not None:
+            repository = WorkflowRepositoryFactory.create_api_workflow_run_repository(self._session_factory)
+            run = repository.get_workflow_run_by_id(
+                tenant_id=form.tenant_id, app_id=form.app_id, run_id=form.workflow_run_id
+            )
+            if run is not None and run.status == WorkflowExecutionStatus.STOPPED:
+                raise HumanInputFormError(HumanInputFormErrorCode.EXPIRED, form_id=form.id)
 
     def submit_service_api_form(
         self,
@@ -384,8 +451,15 @@ class HumanInputSubmissionService:
         after_submission: Callable[[Session, Form, Recipient], None] | None = None,
         input_validation_mode: _InputValidationMode = _InputValidationMode.STRICT,
     ) -> Form:
+        """Validate authorized inputs, then accept once under the run/form locks.
+
+        Runtime forms require a paused run with an active checkpoint; a stopped
+        run expires its pending approval. Rejected inputs or state checks must
+        not save a submission, append its success audit, or resume execution.
+        """
         with self._session_factory() as session:
             form = authorize(session).form
+        self._ensure_run_not_stopped(form)
         # File reconstruction can access storage or remote URLs. Keep it outside
         # the write transaction, then recheck authorization and terminal state.
         try:
@@ -409,6 +483,8 @@ class HumanInputSubmissionService:
                 )
                 if run is None:
                     raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+                if run.status == WorkflowExecutionStatus.STOPPED:
+                    raise HumanInputFormError(HumanInputFormErrorCode.EXPIRED, form_id=form.id)
                 if run.status != WorkflowExecutionStatus.PAUSED:
                     raise HumanInputFormError(HumanInputFormErrorCode.WORKFLOW_NOT_ACTIVE)
                 # PAUSED can be persisted before the checkpoint. Accept only
@@ -466,6 +542,21 @@ class HumanInputSubmissionService:
             from tasks.app_generate.workflow_execute_task import resume_app_execution
 
             resume_app_execution.apply_async(kwargs={"payload": {"workflow_run_id": form.workflow_run_id}})
+
+    @staticmethod
+    def _authorize_openapi(session: Session, *, actor: AccountId | WebAppFormActor, token_hash: str) -> _AuthorizedForm:
+        """Authorize initiator entries using the existing Console or EndUser rules.
+
+        Notification and Email-proof tokens are not OpenAPI approval authority.
+        Account identity is global; the Console rule resolves its current Contact
+        in the delivery's workspace. EndUsers retain their app-owned context.
+        """
+        delivery = SQLAlchemyDeliveryRepository(session).get_delivery_by_token_hash(token_hash)
+        if delivery is None or not isinstance(delivery.target_snapshot, InitiatorSnapshot):
+            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+        if isinstance(actor, WebAppFormActor):
+            return HumanInputSubmissionService._authorize_web_app(session, actor=actor, token_hash=token_hash)
+        return HumanInputSubmissionService._authorize_console(session, account_id=actor, token_hash=token_hash)
 
     @staticmethod
     def _authorize_service_api(

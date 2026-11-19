@@ -37,6 +37,10 @@ class InvalidInvitationError(AccountApplicationError):
     """The invitation is invalid, stale, or missing required activation data."""
 
 
+class InvitationWorkspaceFullError(AccountApplicationError):
+    """The invited workspace reached its member limit, so the invitation cannot be accepted yet."""
+
+
 class InvitationAccountMismatchError(AccountApplicationError):
     """An authenticated account attempted to consume another account's invitation."""
 

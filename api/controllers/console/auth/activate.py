@@ -1,6 +1,7 @@
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
+from werkzeug.exceptions import Unauthorized
 
 from constants.languages import supported_language
 from controllers.common.schema import query_params_from_model, register_schema_models
@@ -10,17 +11,22 @@ from controllers.console.error import (
     AccountInFreezeError,
     AlreadyActivateError,
     EmailDomainSuspendedError,
-    SeatsLimitExceeded,
-    WorkspaceMembersLimitExceeded,
+    InvitationWorkspaceMemberLimitError,
 )
+from controllers.console.flask_admission import console_account_only_identity
 from controllers.console.wraps import model_validate
 from extensions.ext_application_services import application_services
 from libs.external_api import error_responses
 from libs.helper import EmailStr, dump_response, timezone
-from libs.login import current_account_with_tenant
+from libs.login import current_account_with_tenant_optional
 from libs.token import extract_access_token
 from services.account_errors import AccountEmailDomainSuspendedError as EmailDomainSuspendedRegistrationError
-from services.account_errors import FrozenAccountError, InvalidInvitationError, InvitationAccountMismatchError
+from services.account_errors import (
+    FrozenAccountError,
+    InvalidInvitationError,
+    InvitationAccountMismatchError,
+    InvitationWorkspaceFullError,
+)
 from services.entities.account_activation_entities import ActivationCommand, InvitationLookup
 from services.errors.workspace import WorkspaceInvitationQuotaError
 
@@ -108,13 +114,13 @@ class ActivateCheckApi(Resource):
 
 @console_ns.route("/activate")
 class ActivateApi(Resource):
+    @console_account_only_identity
     @error_responses(
         AccountInFreezeError,
         AlreadyActivateError,
         EmailDomainSuspendedError,
         InvitationAccountMismatchHTTPError,
-        SeatsLimitExceeded,
-        WorkspaceMembersLimitExceeded,
+        InvitationWorkspaceMemberLimitError,
     )
     @console_ns.doc("activate_account")
     @console_ns.doc(description="Activate account with invitation token")
@@ -135,7 +141,10 @@ class ActivateApi(Resource):
         """
         authenticated_account_id: str | None = None
         if extract_access_token(request) is not None:
-            authenticated_account_id = current_account_with_tenant().account.id
+            account, _ = current_account_with_tenant_optional()
+            if account is None:
+                raise Unauthorized()
+            authenticated_account_id = account.id
 
         try:
             application_services().accounts.activation.activate(
@@ -159,9 +168,7 @@ class ActivateApi(Resource):
             raise EmailDomainSuspendedError() from None
         except FrozenAccountError:
             raise AccountInFreezeError() from None
-        except WorkspaceInvitationQuotaError as error:
-            if error.seats:
-                raise SeatsLimitExceeded() from None
-            raise WorkspaceMembersLimitExceeded() from None
+        except (WorkspaceInvitationQuotaError, InvitationWorkspaceFullError):
+            raise InvitationWorkspaceMemberLimitError() from None
 
         return dump_response(ActivationResponse, {"result": "success"})
