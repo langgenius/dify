@@ -37,24 +37,37 @@ describe('human input form upload services', () => {
     vi.useRealTimers()
   })
 
-  it.each(['1', '2'] as const)('routes a v%s projected form upload by the returned storage grant', async (version) => {
-    const { uploadHumanInputFormRemoteFileInfo } = await import('../share')
-    mockPostPublic.mockResolvedValueOnce({
-      upload_token: 'hitl_v2_upload_signed',
-      expires_at: Math.floor(Date.now() / 1000) + 60,
-    })
-    mockUpload.mockResolvedValueOnce({ id: 'uploaded-file' })
+  it.each(['1', '2'] as const)(
+    'routes a v%s projected form upload by the returned storage grant',
+    async (version) => {
+      const { uploadHumanInputFormRemoteFileInfo } = await import('../share')
+      mockPostPublic.mockResolvedValueOnce({
+        upload_token: 'hitl_v2_upload_signed',
+        expires_at: Math.floor(Date.now() / 1000) + 60,
+      })
+      mockUpload.mockResolvedValueOnce({ id: 'uploaded-file' })
 
-    await uploadHumanInputFormRemoteFileInfo(`projected-form-${version}`, 'https://example.com/file.txt', version)
+      await uploadHumanInputFormRemoteFileInfo(
+        `projected-form-${version}`,
+        'https://example.com/file.txt',
+        version,
+      )
 
-    expect(mockPostPublic).toHaveBeenCalledWith(version === '2'
-      ? '/form/human-input/v2/projected-form-2/upload-token'
-      : '/form/human_input/projected-form-1/upload-token')
-    expect(mockUpload).toHaveBeenCalledWith(expect.objectContaining({
-      url: expect.stringMatching(/\/human-input\/v2\/files$/),
-      headers: { Authorization: 'bearer hitl_v2_upload_signed' },
-    }), true, '/human-input/v2/files')
-  })
+      expect(mockPostPublic).toHaveBeenCalledWith(
+        version === '2'
+          ? '/form/human-input/v2/projected-form-2/upload-token'
+          : '/form/human_input/projected-form-1/upload-token',
+      )
+      expect(mockUpload).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: expect.stringMatching(/\/human-input\/v2\/files$/),
+          headers: { Authorization: 'bearer hitl_v2_upload_signed' },
+        }),
+        true,
+        '/human-input/v2/files',
+      )
+    },
+  )
 
   it('should preserve the legacy underscore definition and submit endpoints', async () => {
     const { getHumanInputForm, submitHumanInputForm } = await import('../share')

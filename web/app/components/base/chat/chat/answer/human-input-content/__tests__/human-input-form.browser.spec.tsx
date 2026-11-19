@@ -4,6 +4,7 @@ import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { WorkflowHumanInputForm } from '@/features/human-input/form/loaded-form-content'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
@@ -13,8 +14,25 @@ import { UnsubmittedHumanInputContent } from '../unsubmitted'
 
 // oxlint-disable-next-line typescript/no-deprecated -- The production file picker still uses the XHR upload transport.
 const upload = vi.hoisted(() => vi.fn<typeof import('@/service/base').upload>())
+const postPublic = vi.hoisted(() => vi.fn())
 
-vi.mock('@/service/base', () => ({ upload }))
+vi.mock('@/service/base', () => ({
+  upload,
+  postPublic,
+  del: vi.fn(),
+  get: vi.fn(),
+  patch: vi.fn(),
+  post: vi.fn(),
+  delPublic: vi.fn(),
+  getPublic: vi.fn(),
+  patchPublic: vi.fn(),
+  request: vi.fn(),
+  ssePost: vi.fn(),
+}))
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  ENABLE_HITL_IM: true,
+}))
 vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/chat' }))
 
 const currentTimestamp = Math.floor(Date.now() / 1000)
@@ -50,11 +68,85 @@ async function renderWithQueries(ui: React.ReactElement) {
 }
 
 beforeEach(() => {
+  postPublic.mockReset()
   upload.mockReset().mockImplementation(async ({ data }) => ({
     id: `uploaded-${(data.get('file') as File).name}`,
   }))
   onTestFinished(guardUnexpectedFetch())
 })
+
+it.each(['1', '2'] as const)(
+  'uploads selected files through the v%s form grant in chatflow and workflow',
+  async (version) => {
+    window.history.replaceState({}, '', '/environment/chat/approval-app')
+    onTestFinished(() => window.history.replaceState({}, '', '/'))
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    for (const [surface, Form] of [
+      ['chatflow', HumanInputForm],
+      ['workflow', WorkflowHumanInputForm],
+    ] as const) {
+      const token = `${surface}-upload-${version}`
+      postPublic.mockResolvedValueOnce({
+        upload_token: 'hitl_' + 'v2_upload_signed-ui-grant',
+        expires_at: currentTimestamp + 3600,
+      })
+      const view = await renderWithQueries(
+        <Form
+          formData={formData({
+            form_token: token,
+            form_version: version,
+            form_content: '{{#$output.evidence#}}',
+            inputs: [
+              {
+                type: InputVarType.singleFile,
+                output_variable_name: 'evidence',
+                allowed_file_extensions: ['.png'],
+                allowed_file_types: [SupportUploadFileTypes.image],
+                allowed_file_upload_methods: [TransferMethod.local_file],
+              },
+            ],
+          })}
+          onSubmit={onSubmit}
+        />,
+      )
+      const picker = page.elementLocator(
+        document.querySelector<HTMLInputElement>('input[type="file"]')!,
+      )
+      await picker.upload(new File(['evidence'], 'review.png', { type: 'image/png' }))
+      await expect
+        .poll(() => postPublic.mock.calls.at(-1)?.[0])
+        .toBe(
+          version === '2'
+            ? `/form/human-input/v2/${token}/upload-token`
+            : `/form/human_input/${token}/upload-token`,
+        )
+      await expect.poll(() => upload.mock.calls.length).toBe(surface === 'chatflow' ? 1 : 2)
+      await expect.element(page.getByRole('button', { name: 'Approve' })).toBeEnabled()
+      expect(postPublic).toHaveBeenLastCalledWith(
+        version === '2'
+          ? `/form/human-input/v2/${token}/upload-token`
+          : `/form/human_input/${token}/upload-token`,
+      )
+      expect(upload).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          url: expect.stringMatching(/\/human-input\/v2\/files$/),
+          headers: { Authorization: 'bearer hitl_' + 'v2_upload_signed-ui-grant' },
+        }),
+        true,
+        '/human-input/v2/files',
+      )
+      await page.getByRole('button', { name: 'Approve' }).click()
+      expect(onSubmit).toHaveBeenLastCalledWith(
+        token,
+        expect.objectContaining({
+          form_version: version,
+          inputs: { evidence: expect.objectContaining({ upload_file_id: 'uploaded-review.png' }) },
+        }),
+      )
+      await view.unmount()
+    }
+  },
+)
 
 it('submits the visible form values and keeps them available after a failed attempt', async () => {
   const firstAttempt = createDeferred<void>()

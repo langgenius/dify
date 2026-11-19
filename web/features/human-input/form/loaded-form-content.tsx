@@ -28,6 +28,7 @@ import {
   UserActionButtonType,
 } from '@/app/components/workflow/nodes/human-input/types'
 import BrandingFooter from './branding-footer'
+import { HumanInputFormUploadContext } from './upload-context'
 
 type LoadedFormContentProps = {
   definition: HumanInputFormDefinition
@@ -389,38 +390,40 @@ export const WorkflowHumanInputForm = ({
   showDebugModeTip = false,
   onSubmit,
 }: UnsubmittedHumanInputContentProps) => (
-  <div>
-    <FormBody
-      definition={{
-        formContent: formData.form_content,
-        inputs: formData.inputs,
-        resolvedDefaultValues: formData.resolved_default_values || {},
-        actions: formData.actions,
-        expirationTime: formData.expiration_time || 0,
-      }}
-      layout="workflow"
-      isSubmitting={false}
-      actionsDisabled={!formData.form_token}
-      onSubmit={async (inputs, action) => {
-        if (formData.form_token)
-          await onSubmit?.(formData.form_token, {
-            inputs,
-            action,
-            form_version: formData.form_version,
-          })
-      }}
-    />
-    {(showEmailTip || showDebugModeTip) && (
-      <Tips
-        showEmailTip={showEmailTip}
-        isEmailDebugMode={isEmailDebugMode}
-        showDebugModeTip={showDebugModeTip}
+  <HumanInputFormUploadContext formData={formData}>
+    <div>
+      <FormBody
+        definition={{
+          formContent: formData.form_content,
+          inputs: formData.inputs,
+          resolvedDefaultValues: formData.resolved_default_values || {},
+          actions: formData.actions,
+          expirationTime: formData.expiration_time || 0,
+        }}
+        layout="workflow"
+        isSubmitting={false}
+        actionsDisabled={!formData.form_token}
+        onSubmit={async (inputs, action) => {
+          if (formData.form_token)
+            await onSubmit?.(formData.form_token, {
+              inputs,
+              action,
+              form_version: formData.form_version,
+            })
+        }}
       />
-    )}
-    {typeof formData.expiration_time === 'number' && (
-      <ExpirationTime expirationTime={formData.expiration_time * 1000} />
-    )}
-  </div>
+      {(showEmailTip || showDebugModeTip) && (
+        <Tips
+          showEmailTip={showEmailTip}
+          isEmailDebugMode={isEmailDebugMode}
+          showDebugModeTip={showDebugModeTip}
+        />
+      )}
+      {typeof formData.expiration_time === 'number' && (
+        <ExpirationTime expirationTime={formData.expiration_time * 1000} />
+      )}
+    </div>
+  </HumanInputFormUploadContext>
 )
 
 const LoadedFormContent = ({

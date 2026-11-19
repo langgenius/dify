@@ -7,6 +7,7 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ENABLE_HITL_IM } from '@/config'
+import { HumanInputFormUploadContext } from '@/features/human-input/form/upload-context'
 import { HumanInputSubmissionPreparationError } from '@/service/human-input-submission'
 import ContentItem from './content-item'
 import {
@@ -100,7 +101,11 @@ const HumanInputForm = (props: HumanInputFormProps) => {
       </p>
     )
   }
-  return <HumanInputFormContent {...props} />
+  return (
+    <HumanInputFormUploadContext formData={props.formData}>
+      <HumanInputFormContent {...props} />
+    </HumanInputFormUploadContext>
+  )
 }
 
 export default React.memo(HumanInputForm)

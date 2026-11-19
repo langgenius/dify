@@ -664,18 +664,17 @@ const getHumanInputFormUploadToken = async (
   formToken: string,
   formVersion?: WorkflowHumanInputFormData['form_version'],
 ) => {
-  const tokenPath = formVersion === '2'
-    ? `/form/human-input/v2/${encodeURIComponent(formToken)}/upload-token`
-    : `/form/human_input/${encodeURIComponent(formToken)}/upload-token`
+  const tokenPath =
+    formVersion === '2'
+      ? `/form/human-input/v2/${encodeURIComponent(formToken)}/upload-token`
+      : `/form/human_input/${encodeURIComponent(formToken)}/upload-token`
   const cachedToken = humanInputFormUploadTokenCache.get(tokenPath)
   const now = Math.floor(Date.now() / 1000)
 
   if (cachedToken && cachedToken.expires_at > now + UPLOAD_TOKEN_REFRESH_BUFFER_SECONDS)
     return cachedToken.upload_token
 
-  const tokenResponse = await post<HumanInputFormUploadTokenResponse>(
-    tokenPath,
-  )
+  const tokenResponse = await post<HumanInputFormUploadTokenResponse>(tokenPath)
   humanInputFormUploadTokenCache.set(tokenPath, tokenResponse)
   return tokenResponse.upload_token
 }
