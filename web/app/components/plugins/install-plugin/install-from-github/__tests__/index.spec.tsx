@@ -1,4 +1,5 @@
 import type { ComponentProps } from 'react'
+import { Dialog } from '@langgenius/dify-ui/dialog'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createHttpError } from '@/service/http-error'
@@ -6,7 +7,33 @@ import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createPluginDeclarationFixture, createPluginEntity } from '@/test/fixtures/plugin'
 import { TaskStatus } from '../../../types'
-import InstallFromGitHub from '../index'
+import useHideLogic from '../../hooks/use-hide-logic'
+import { GitHubInstallContent } from '../dialog'
+import Installer from '../index'
+
+function InstallFromGitHub(
+  props: Omit<ComponentProps<typeof Installer>, 'onStartInstalling' | 'onFinishInstalling'>,
+) {
+  const { popupRef, foldAnimInto, handleStartToInstall, setIsInstalling } = useHideLogic(
+    props.onClose,
+  )
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) foldAnimInto()
+      }}
+    >
+      <GitHubInstallContent popupRef={popupRef}>
+        <Installer
+          {...props}
+          onStartInstalling={handleStartToInstall}
+          onFinishInstalling={() => setIsInstalling(false)}
+        />
+      </GitHubInstallContent>
+    </Dialog>
+  )
+}
 
 const { fetchReleases, upload, install, pollTask, refresh, notify, installed, upgrade } =
   vi.hoisted(() => ({

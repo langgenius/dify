@@ -13,7 +13,6 @@ from controllers.console import console_ns
 from controllers.console.app.error import AppNotFoundError, AppTriggerNotFoundError, WebhookTriggerNotFoundError
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import RBACPermission, model_validate
-from core.trigger.utils.endpoint import generate_webhook_trigger_endpoint
 from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
@@ -21,6 +20,7 @@ from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from models.enums import AppTriggerType
+from models.utils.trigger_endpoint import generate_webhook_trigger_endpoint
 from services.app.console_service import ConsoleAppNotFoundError
 from services.trigger.app_trigger_store import (
     AppTriggerNotFoundError as AppTriggerMissing,

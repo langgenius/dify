@@ -8,6 +8,7 @@ import pytest
 from flask import has_app_context
 from sqlalchemy import Engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import QueuePool
 
 from core import provider_manager as provider_manager_module
 from core.entities.model_entities import (
@@ -30,7 +31,7 @@ from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from core.provider_manager import ProviderConfigurationCacheSource, ProviderManager
-from enums import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
@@ -384,14 +385,22 @@ def test_to_system_configuration_uses_owned_session_for_cloud_credit_pools() -> 
             "core.plugin.plugin_service.PluginService.is_plugin_verified",
             return_value=True,
         ),
+        patch("core.provider_manager.FeatureService.get_workspace_plan") as get_workspace_plan,
         patch(
             "services.credit_pool_service.CreditPoolService.get_pool",
             side_effect=[trial_pool, paid_pool],
         ) as get_pool,
     ):
+        get_workspace_plan.side_effect = [CloudPlan.SANDBOX, CloudPlan.TEAM]
         with ThreadPoolExecutor(max_workers=1) as executor:
             assert executor.submit(has_app_context).result() is False
             configuration = executor.submit(
+                manager._to_system_configuration,
+                "tenant-id",
+                provider_entity,
+                [_build_trial_provider_record()],
+            ).result()
+            executor.submit(
                 manager._to_system_configuration,
                 "tenant-id",
                 provider_entity,
@@ -403,9 +412,7 @@ def test_to_system_configuration_uses_owned_session_for_cloud_credit_pools() -> 
         ProviderQuotaType.TRIAL,
         ProviderQuotaType.PAID,
     ]
-    owned_sessions = [call.kwargs["session"] for call in get_pool.call_args_list]
-    assert all(isinstance(session, Session) for session in owned_sessions)
-    assert owned_sessions[0] is owned_sessions[1]
+    assert all(isinstance(call.kwargs["session"], Session) for call in get_pool.call_args_list)
 
 
 def test_to_system_configuration_preserves_marketplace_behavior() -> None:
@@ -1002,9 +1009,9 @@ def test_update_default_model_record_updates_existing_record(provider_db: Sessio
     with patch.object(manager, "get_configurations", return_value=provider_configurations):
         result = manager.update_default_model_record("tenant-id", ModelType.LLM, "openai", "gpt-3.5-turbo")
 
-    assert result is existing_default_model
-    assert existing_default_model.provider_name == "openai"
-    assert existing_default_model.model_name == "gpt-3.5-turbo"
+    assert result.id == existing_default_model.id
+    assert result.provider_name == "openai"
+    assert result.model_name == "gpt-3.5-turbo"
     provider_db.expire_all()
     persisted_default = provider_db.get(TenantDefaultModel, existing_default_model.id)
     assert persisted_default is not None
@@ -1039,6 +1046,50 @@ def test_update_default_model_record_creates_record_with_origin_model_type(provi
     assert result.model_type == ModelType.LLM
     persisted_defaults = list(provider_db.scalars(select(TenantDefaultModel)).all())
     assert {record.tenant_id for record in persisted_defaults} == {"tenant-id", "other-tenant"}
+
+
+def test_get_default_model_leaves_no_connection_checked_out(provider_db: Session, sqlite_engine: Engine) -> None:
+    provider_db.add(
+        TenantDefaultModel(
+            tenant_id="other-tenant",
+            provider_name="openai",
+            model_name="gpt-4",
+            model_type=ModelType.LLM,
+        )
+    )
+    provider_db.commit()
+
+    result = _build_provider_manager().get_default_model("tenant-id", ModelType.LLM)
+
+    assert result is None
+    pool = sqlite_engine.pool
+    assert isinstance(pool, QueuePool)
+    assert pool.checkedout() == 0
+
+
+def test_update_default_model_record_does_not_commit_the_callers_pending_work(provider_db: Session) -> None:
+    manager = _build_provider_manager()
+    provider_db.add(
+        TenantDefaultModel(
+            tenant_id="other-tenant",
+            provider_name="anthropic",
+            model_name="claude",
+            model_type=ModelType.LLM,
+        )
+    )
+
+    with (
+        patch.object(manager, "get_configurations", return_value={}),
+        patch.object(manager, "_validate_default_model"),
+    ):
+        manager.update_default_model_record("tenant-id", ModelType.LLM, "openai", "gpt-4")
+
+    provider_db.rollback()
+    persisted = {
+        (record.tenant_id, record.provider_name, record.model_name)
+        for record in provider_db.scalars(select(TenantDefaultModel))
+    }
+    assert persisted == {("tenant-id", "openai", "gpt-4")}
 
 
 @pytest.mark.parametrize("clear_all", [False, True])

@@ -4,7 +4,7 @@ import json
 from collections.abc import Generator, Iterator
 from dataclasses import replace
 from decimal import Decimal
-from typing import Literal, override
+from typing import override
 
 import pytest
 from sqlalchemy import Connection, Engine, create_engine, event, select
@@ -35,7 +35,7 @@ from services.app.generation.message_records import MessageBasedAppGenerator
 from services.app.generation.ports import MessageIdentity, MessageUpdate
 from services.errors.message import MessageNotExistsError
 from tests.helpers.unit.model_factories import make_app, make_message
-from tests.unit_tests.core.app.apps.test_message_based_app_generator import DummyModelConf, _make_app_config
+from tests.unit_tests.core.app.apps.test_message_based_app_generator import _make_app_config, _make_model_conf
 
 type GenerateEntityType = (
     type[ChatAppGenerateEntity]
@@ -96,10 +96,6 @@ def message_store(monkeypatch: pytest.MonkeyPatch) -> Iterator[MessageStore]:
         engine.dispose()
 
 
-class ChatDummyModelConf(DummyModelConf):
-    mode: Literal["chat"] = "chat"
-
-
 class QueueRedisStub:
     def setex(self, key: str, timeout: int, value: object) -> bool:
         assert key == "generate_task_belong:task"
@@ -122,7 +118,7 @@ def initialize(
     conversation: Conversation | None = None,
 ) -> tuple[MessageIdentity, EasyUIBasedGenerateTaskPipeline]:
     config = _make_app_config(mode)
-    model = ChatDummyModelConf()
+    model = _make_model_conf()
     entity = entity_type.model_construct(
         task_id="task",
         app_config=config,

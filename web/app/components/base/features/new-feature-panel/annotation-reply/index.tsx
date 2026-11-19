@@ -2,6 +2,7 @@ import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { AnnotationReplyConfig } from '@/models/debug'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog } from '@langgenius/dify-ui/dialog'
 import { RiEqualizer2Line, RiExternalLinkLine } from '@remixicon/react'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -11,7 +12,7 @@ import { useFeatures, useFeaturesStore } from '@/app/components/base/features/ho
 import ConfigParamModal from '@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal'
 import useAnnotationConfig from '@/app/components/base/features/new-feature-panel/annotation-reply/use-annotation-config'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
-import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
+import AnnotationFullContent from '@/app/components/billing/annotation-full/modal'
 import { toast } from '@/app/notifications'
 import { ANNOTATION_DEFAULT } from '@/config'
 import Link from '@/next/link'
@@ -179,12 +180,9 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
           annotationConfig={annotationReply as any}
         />
       )}
-      {isShowAnnotationFullModal && (
-        <AnnotationFullModal
-          show={isShowAnnotationFullModal}
-          onHide={() => setIsShowAnnotationFullModal(false)}
-        />
-      )}
+      <Dialog open={isShowAnnotationFullModal} onOpenChange={setIsShowAnnotationFullModal}>
+        <AnnotationFullContent />
+      </Dialog>
     </>
   )
 }

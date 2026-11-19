@@ -2,29 +2,32 @@ import type { AgentLogResponse } from '@dify/contracts/api/console/apps/types.ge
 import type { ComponentProps } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { userEvent } from 'vite-plus/test/browser'
+import { toast } from '@/app/notifications'
 import { createHttpError } from '@/service/http-error'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import AgentLogDetail from '../detail'
 import { renderAgentLog } from './browser-test-env'
 
-const toastMock = vi.hoisted(() => ({ error: vi.fn() }))
 const fetchAgentLogDetail = vi.hoisted(() => vi.fn())
 
+vi.unmock('react-i18next')
+// boundary: Monaco workers do not run in the Browser test bundle; readonly editor values stay real.
 vi.mock('@monaco-editor/react', async () => {
   const { createMonacoEditorModuleMock } = await import('@/test/monaco-editor-mock')
   return createMonacoEditorModuleMock()
 })
 
-vi.mock('@/service/console', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/console')>()),
-  consoleClient: { apps: { byAppId: { agent: { logs: { get: fetchAgentLogDetail } } } } },
-}))
-
-vi.mock('@/app/notifications', () => ({ toast: toastMock }))
-
-vi.mock('@/hooks/use-timestamp', () => ({
-  default: () => ({ formatTime: (timestamp: number, format: string) => `${timestamp}-${format}` }),
-}))
+// boundary: agent log records come from Console HTTP; the modal, timestamp and notification stay real.
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.agent.logs.get': fetchAgentLogDetail,
+    }),
+  }
+})
 
 const log: IChatItem = {
   id: 'msg-id',
@@ -83,6 +86,7 @@ async function renderDetail(props: Partial<ComponentProps<typeof AgentLogDetail>
 
 beforeEach(() => {
   onTestFinished(guardUnexpectedFetch())
+  toast.dismiss()
   fetchAgentLogDetail.mockReset()
 })
 
@@ -103,19 +107,20 @@ it('renders the requested inputs, outputs and execution metadata in real readonl
   for (const editor of editors) await expect.element(editor).toHaveAttribute('readonly')
   await expect.element(screen.getByRole('status')).toMatchTextContent('100 Tokens')
   await expect.element(screen.getByText('tool1')).toBeVisible()
+  await expect.element(screen.getByText('01/01/2023 08:00:00 AM')).toBeVisible()
 })
 
 it('switches between detail and tracing with native keyboard focus without refetching', async () => {
   fetchAgentLogDetail.mockResolvedValue(createResponse())
   const { screen } = await renderDetail()
-  const detail = screen.getByRole('button', { name: 'runLog.detail' })
-  const tracing = screen.getByRole('button', { name: 'runLog.tracing' })
+  const detail = screen.getByRole('button', { name: 'DETAIL' })
+  const tracing = screen.getByRole('button', { name: 'TRACING' })
   await expect.element(screen.getByText('User')).toBeVisible()
   await detail.click()
   await userEvent.keyboard('{Tab}')
   await expect.element(tracing).toHaveFocus()
   await userEvent.keyboard('{Enter}')
-  await expect.element(screen.getByText('appLog.agentLogDetail.finalProcessing')).toBeVisible()
+  await expect.element(screen.getByText('Final Processing')).toBeVisible()
   await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
   await expect.element(detail).toHaveFocus()
   await userEvent.keyboard('{Enter}')
@@ -128,9 +133,9 @@ it('shows a failed execution consistently in its summary and metadata', async ()
   failed.meta.status = 'failed'
   fetchAgentLogDetail.mockResolvedValue(failed)
   const { screen } = await renderDetail()
-  await expect.element(screen.getByText('appLog.status.failed')).toBeVisible()
+  await expect.element(screen.getByText('Failure')).toBeVisible()
   await expect.element(screen.getByText('FAILED')).toBeVisible()
-  await expect.element(screen.getByText('appLog.status.succeeded')).not.toBeInTheDocument()
+  await expect.element(screen.getByText('Success')).not.toBeInTheDocument()
 })
 
 it('removes loading and reports the service error', async () => {
@@ -138,7 +143,7 @@ it('removes loading and reports the service error', async () => {
     createHttpError(new Response(null, { status: 500 }), { message: 'API Error' }),
   )
   const { screen } = await renderDetail()
-  await expect.poll(() => toastMock.error).toHaveBeenCalledWith('API Error')
+  await expect.element(screen.getByRole('dialog', { name: 'API Error' })).toBeVisible()
   await expect.element(screen.getByRole('progressbar')).not.toBeInTheDocument()
 })
 

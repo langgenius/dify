@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from typing import ClassVar
 
 from core.app.apps.base_app_generate_response_converter import AppGenerateResponseConverter
+from core.app.apps.exc import AppGenerateError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import (
     AppStreamResponse,
@@ -14,10 +16,10 @@ from graphon.enums import WorkflowExecutionStatus
 
 
 class _DummyConverter(AppGenerateResponseConverter[WorkflowAppBlockingResponse]):
-    blocking_full_calls: list[WorkflowAppBlockingResponse] = []
-    blocking_simple_calls: list[WorkflowAppBlockingResponse] = []
-    stream_full_calls: list[Generator[AppStreamResponse]] = []
-    stream_simple_calls: list[Generator[AppStreamResponse]] = []
+    blocking_full_calls: ClassVar[list[WorkflowAppBlockingResponse]] = []
+    blocking_simple_calls: ClassVar[list[WorkflowAppBlockingResponse]] = []
+    stream_full_calls: ClassVar[list[Generator[AppStreamResponse]]] = []
+    stream_simple_calls: ClassVar[list[Generator[AppStreamResponse]]] = []
 
     @classmethod
     def reset(cls) -> None:
@@ -88,6 +90,14 @@ def test_convert_routes_blocking_response_by_invoke_from() -> None:
     assert simple_result == {"kind": "blocking-simple", "task_id": "task-1"}
     assert _DummyConverter.blocking_full_calls == [blocking_response]
     assert _DummyConverter.blocking_simple_calls == [blocking_response]
+
+
+def test_unmapped_app_error_uses_the_generic_stream_error_contract() -> None:
+    assert AppGenerateResponseConverter._error_to_stream_response(AppGenerateError("Invalid input")) == {
+        "code": "invalid_param",
+        "message": "Invalid input",
+        "status": 400,
+    }
 
 
 def test_convert_routes_stream_response_by_invoke_from() -> None:
