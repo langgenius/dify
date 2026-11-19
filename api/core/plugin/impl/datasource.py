@@ -1,5 +1,5 @@
 from collections.abc import Callable, Generator, Mapping
-from typing import Any
+from typing import Any, Protocol
 
 from pydantic import BaseModel, ConfigDict
 
@@ -73,6 +73,28 @@ class PluginDatasourceListPayload(PluginDatasourcePayloadModel):
     data: list[PluginDatasourceProviderPayload] | None = None
 
 
+class DatasourceProviderListRequester(Protocol):
+    """Request and transform a tenant's raw datasource-provider list response."""
+
+    def request(
+        self,
+        *,
+        tenant_id: str,
+        transformer: Callable[[dict[str, Any]], PluginDatasourceListPayload],
+    ) -> list[PluginDatasourceProviderEntity]:
+        """Return provider entities after applying the supplied boundary transformer.
+
+        Inputs: ``tenant_id`` identifies the requesting tenant; ``transformer``
+        validates and normalizes a raw JSON response from the daemon.
+        Preconditions: The tenant ID is non-empty and the transformer accepts a
+        daemon JSON object.
+        Result and side effects: Returns the validated provider entities; implementations
+        may perform the external request and must apply the transformer to its raw JSON.
+        Failure behavior: Request and transformer errors propagate to the caller.
+        """
+        ...
+
+
 class PluginDatasourceSinglePayload(PluginDatasourcePayloadModel):
     """The ``data`` section of a daemon single-provider response."""
 
@@ -85,25 +107,67 @@ class PluginDatasourceManager(BasePluginClient):
         *,
         plugin_unique_identifier: str | None = None,
         get_plugin_icon_url: Callable[[str, str], str] = PluginService.get_plugin_icon_url,
+        datasource_provider_list_requester: DatasourceProviderListRequester | None = None,
     ) -> None:
-        """Configure the plugin icon URL callback used for datasource providers.
+        """Configure callbacks and the optional datasource-list request port.
 
         Inputs: ``plugin_unique_identifier`` is ``None`` or a non-empty identifier;
-        ``get_plugin_icon_url`` accepts a tenant ID and icon filename.
-        Preconditions: The callback is callable with those two string arguments.
-        Result and side effects: The callback is stored for later provider repacking
-        and is not invoked during construction; base identifier validation remains
-        in effect.
+        ``get_plugin_icon_url`` accepts a tenant ID and icon filename;
+        ``datasource_provider_list_requester`` implements the provider-list request
+        boundary, or ``None`` selects the plugin daemon HTTP request.
+        Preconditions: The URL callback accepts two string arguments; an injected
+        requester implements ``request`` and applies the supplied transformer to
+        the daemon JSON response.
+        Result and side effects: Stores the callbacks without invoking them; base
+        identifier validation remains in effect.
         Failure behavior: An empty ``plugin_unique_identifier`` raises the same
-        ``ValueError`` as ``BasePluginClient`` and no instance is returned. Errors
-        from the callback propagate when provider fetching later invokes it.
+        ``ValueError`` as ``BasePluginClient`` and no instance is returned. Callback,
+        request, and transformer errors propagate when provider fetching invokes them.
         """
         super().__init__(plugin_unique_identifier=plugin_unique_identifier)
         self._get_plugin_icon_url = get_plugin_icon_url
+        self._datasource_provider_list_requester = datasource_provider_list_requester
+
+    def _request_datasource_provider_list(
+        self,
+        tenant_id: str,
+        transformer: Callable[[dict[str, Any]], PluginDatasourceListPayload],
+    ) -> list[PluginDatasourceProviderEntity]:
+        """Request and transform datasource providers for one tenant.
+
+        Inputs: ``tenant_id`` scopes the request; ``transformer`` validates and
+        normalizes the daemon response object.
+        Preconditions: ``tenant_id`` is non-empty and the transformer accepts the
+        daemon's JSON object shape.
+        Result and side effects: Uses the injected requester when configured, or
+        otherwise sends the existing GET request to the plugin daemon with the
+        established path, response type, and pagination parameters.
+        Failure behavior: Request, parsing, and transformer errors propagate from
+        the selected request boundary.
+        """
+        if self._datasource_provider_list_requester is not None:
+            return self._datasource_provider_list_requester.request(tenant_id=tenant_id, transformer=transformer)
+
+        return self._request_with_plugin_daemon_response(
+            "GET",
+            f"plugin/{tenant_id}/management/datasources",
+            list[PluginDatasourceProviderEntity],
+            params={"page": 1, "page_size": 256},
+            transformer=transformer,
+        )
 
     def fetch_datasource_providers(self, tenant_id: str) -> list[PluginDatasourceProviderEntity]:
-        """
-        Fetch datasource providers for the given tenant.
+        """Fetch, repack, and normalize all datasource providers for a tenant.
+
+        Inputs: ``tenant_id`` scopes the plugin-daemon list request and icon
+        resolution.
+        Preconditions: The tenant ID is non-empty; any injected requester applies
+        the manager's transformer to the daemon response.
+        Result and side effects: Returns the local-file provider followed by the
+        daemon providers after schema resolution, icon repacking, and provider-name
+        normalization.
+        Failure behavior: Request, validation, schema-resolution, and repacking
+        errors propagate; malformed response data is rejected by Pydantic.
         """
 
         def transformer(json_response: dict[str, Any]) -> PluginDatasourceListPayload:
@@ -120,13 +184,7 @@ class PluginDatasourceManager(BasePluginClient):
                             datasource.output_schema = resolve_dify_schema_refs(output_schema)
             return payload
 
-        response = self._request_with_plugin_daemon_response(
-            "GET",
-            f"plugin/{tenant_id}/management/datasources",
-            list[PluginDatasourceProviderEntity],
-            params={"page": 1, "page_size": 256},
-            transformer=transformer,
-        )
+        response = self._request_datasource_provider_list(tenant_id, transformer)
         local_file_datasource_provider = PluginDatasourceProviderEntity.model_validate(
             self._get_local_file_datasource_provider()
         )
@@ -147,8 +205,16 @@ class PluginDatasourceManager(BasePluginClient):
         return all_response
 
     def fetch_installed_datasource_providers(self, tenant_id: str) -> list[PluginDatasourceProviderEntity]:
-        """
-        Fetch datasource providers for the given tenant.
+        """Fetch, repack, and normalize daemon-installed providers for a tenant.
+
+        Inputs: ``tenant_id`` scopes the plugin-daemon list request and icon
+        resolution.
+        Preconditions: The tenant ID is non-empty; any injected requester applies
+        the manager's transformer to the daemon response.
+        Result and side effects: Returns only daemon providers after schema
+        resolution, icon repacking, and provider-name normalization.
+        Failure behavior: Request, validation, schema-resolution, and repacking
+        errors propagate; malformed response data is rejected by Pydantic.
         """
 
         def transformer(json_response: dict[str, Any]) -> PluginDatasourceListPayload:
@@ -165,13 +231,7 @@ class PluginDatasourceManager(BasePluginClient):
                             datasource.output_schema = resolve_dify_schema_refs(output_schema)
             return payload
 
-        response = self._request_with_plugin_daemon_response(
-            "GET",
-            f"plugin/{tenant_id}/management/datasources",
-            list[PluginDatasourceProviderEntity],
-            params={"page": 1, "page_size": 256},
-            transformer=transformer,
-        )
+        response = self._request_datasource_provider_list(tenant_id, transformer)
 
         for provider in response:
             ToolTransformService.repack_provider(

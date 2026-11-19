@@ -29,15 +29,77 @@ from tests.helpers.unit.core.datasource.factories import (
 
 
 class PluginDatasourceListRequestKwargs(TypedDict):
-    """Keyword arguments the manager passes when listing providers."""
+    """Keyword arguments accepted by a mocked list request helper."""
 
     transformer: Callable[[dict[str, object]], PluginDatasourceListPayload]
 
 
 class PluginDatasourceSingleRequestKwargs(TypedDict):
-    """Keyword arguments the manager passes when resolving one provider."""
+    """Keyword arguments accepted by a mocked single-provider request helper."""
 
     transformer: Callable[[dict[str, object]], PluginDatasourceSinglePayload]
+
+
+class _DatasourceProviderListRequesterFake:
+    """Apply the production response transformer to a canned daemon payload."""
+
+    def __init__(self, response: dict[str, object], providers: list[PluginDatasourceProviderEntity]) -> None:
+        """Store the raw response and entity result used by each fake request.
+
+        Inputs: ``response`` is a daemon-shaped JSON object and ``providers`` is
+        the complete entity list returned after transformation.
+        Preconditions: The response is accepted by the manager's transformer.
+        Result and side effects: Stores the supplied values and initializes empty
+        request and transformed-response records.
+        Failure behavior: No runtime validation occurs at construction; the
+        transformer may reject the response when ``request`` is called.
+        """
+        self.response = response
+        self.providers = providers
+        self.tenant_ids: list[str] = []
+        self.transformed_payloads: list[PluginDatasourceListPayload] = []
+
+    def request(
+        self,
+        *,
+        tenant_id: str,
+        transformer: Callable[[dict[str, object]], PluginDatasourceListPayload],
+    ) -> list[PluginDatasourceProviderEntity]:
+        """Record a tenant request, run the production transformer, and return entities.
+
+        Inputs: ``tenant_id`` is the request scope; ``transformer`` validates and
+        normalizes a raw daemon JSON object.
+        Preconditions: The transformer accepts ``self.response``.
+        Result and side effects: Records the tenant and transformed payload, then
+        returns deep copies of the complete provider entities supplied at construction
+        so manager mutations do not leak between requests.
+        Failure behavior: Transformer errors propagate and no provider list is returned.
+        """
+        self.tenant_ids.append(tenant_id)
+        transformed = transformer(self.response)
+        self.transformed_payloads.append(transformed)
+        return [provider.model_copy(deep=True) for provider in self.providers]
+
+
+def _plugin_datasource_provider(name: str = "provider") -> PluginDatasourceProviderEntity:
+    """Build a complete plugin datasource provider entity for manager tests.
+
+    Inputs: ``name`` is the daemon-declared provider name.
+    Preconditions: ``name`` is non-empty.
+    Result and side effects: Returns a validated provider entity with one datasource;
+    no external requests or shared state are modified.
+    Failure behavior: Pydantic validation errors propagate if the constructed entity
+    violates its model contract.
+    """
+    declaration = datasource_provider_entity(DatasourceProviderType.ONLINE_DOCUMENT)
+    declaration.identity.name = name
+    declaration.datasources = [datasource_entity("documents")]
+    return PluginDatasourceProviderEntity(
+        provider=name,
+        plugin_unique_identifier="org/plugin@1.0.0",
+        plugin_id="org/plugin",
+        declaration=declaration,
+    )
 
 
 def _datasource_provider(name: str = "provider") -> SimpleNamespace:
@@ -131,90 +193,86 @@ class TestPluginDatasourceManager:
         )
 
     def test_fetch_datasource_provider_local_and_remote(self, mocker: MockerFixture) -> None:
+        """Exercise local and remote provider reads through the HTTP transport.
+
+        Inputs: The local-file provider ID bypasses transport; the remote provider ID
+        receives a valid plugin-daemon response with an output-schema reference.
+        Preconditions: The test HTTPX client is configured with an in-memory transport.
+        Result and side effects: Returns normalized provider entities and records one
+        GET request to the existing single-provider endpoint.
+        Failure behavior: HTTP, payload validation, and schema-transform errors fail
+        the test through the existing manager boundary.
+        """
         manager = PluginDatasourceManager()
+        requests: list[httpx.Request] = []
 
         local = manager.fetch_datasource_provider("tenant-1", "langgenius/file/file")
         assert local.plugin_id == "langgenius/file"
 
-        remote = _datasource_provider("provider")
-        mocker.patch("core.plugin.impl.datasource.resolve_dify_schema_refs", return_value={"resolved": True})
+        remote = _plugin_datasource_provider("provider")
+        remote.declaration.datasources[0].output_schema = {"$ref": "#/x"}
+        daemon_response = {"code": 0, "message": "", "data": remote.model_dump(mode="json")}
+        resolver = mocker.patch("core.plugin.impl.datasource.resolve_dify_schema_refs", return_value={"resolved": True})
 
-        def fake_request(
-            method: str, path: str, type_: object, **kwargs: Unpack[PluginDatasourceSingleRequestKwargs]
-        ) -> SimpleNamespace:
-            transformer = kwargs["transformer"]
-            transformed = transformer(
-                {
-                    "data": {
-                        "declaration": {
-                            "datasources": [{"identity": {"provider": "old"}, "output_schema": {"$ref": "#/x"}}]
-                        }
-                    }
-                }
-            )
-            assert transformed.data is not None
-            declaration = transformed.data.declaration
-            assert declaration is not None
-            datasources = declaration.datasources
-            assert datasources is not None
-            assert datasources[0].output_schema == {"resolved": True}
-            return remote
+        def handle(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            return httpx.Response(200, json=daemon_response)
 
-        request_mock = mocker.patch.object(manager, "_request_with_plugin_daemon_response", side_effect=fake_request)
+        with httpx.Client(transport=httpx.MockTransport(handle)) as http_client:
+            mocker.patch.object(plugin_client_module, "_httpx_client", http_client)
+            result = manager.fetch_datasource_provider("tenant-1", "org/plugin/provider")
 
-        result = manager.fetch_datasource_provider("tenant-1", "org/plugin/provider")
-
-        assert request_mock.call_count == 1
+        assert len(requests) == 1
+        assert requests[0].method == "GET"
+        assert requests[0].url.path == "/plugin/tenant-1/management/datasource"
+        assert dict(requests[0].url.params) == {"provider": "provider", "plugin_id": "org/plugin"}
         assert result.declaration.identity.name == "org/plugin/provider"
         assert result.declaration.datasources[0].identity.provider == "org/plugin/provider"
+        assert result.declaration.datasources[0].output_schema == {"resolved": True}
+        resolver.assert_called_once_with({"$ref": "#/x"})
 
-    def test_list_transformers_keep_providers_without_declaration_or_identity(self, mocker: MockerFixture) -> None:
-        transformed_payloads: list[PluginDatasourceListPayload] = []
+    def test_list_transformers_keep_providers_without_declaration_or_identity(self) -> None:
+        """Verify the injected requester applies sparse daemon payload normalization.
+
+        Inputs: The fake requester receives raw JSON containing absent declarations,
+        absent identities, and providers with or without names.
+        Preconditions: The manager's list transformer accepts these sparse shapes.
+        Result and side effects: Both list paths return the complete provider entity
+        while retaining the existing sparse-field and provider-name assertions; no
+        network or global request patch is used.
+        Failure behavior: Any transformer or provider-model validation failure fails
+        the test directly.
+        """
 
         def get_plugin_icon_url(tenant_id: str, filename: str) -> str:
+            """Return a deterministic icon URL for this provider-list test."""
             return f"https://custom-icon-resolver.example/{tenant_id}/{filename}"
 
-        def make_provider() -> PluginDatasourceProviderEntity:
-            declaration = datasource_provider_entity(DatasourceProviderType.ONLINE_DOCUMENT)
-            declaration.identity.name = "remote"
-            declaration.datasources = [datasource_entity("documents")]
-            return PluginDatasourceProviderEntity(
-                provider="remote",
-                plugin_unique_identifier="org/plugin@1.0.0",
-                plugin_id="org/plugin",
-                declaration=declaration,
-            )
-
-        def fake_request(
-            method: str, path: str, type_: object, **kwargs: Unpack[PluginDatasourceListRequestKwargs]
-        ) -> list[PluginDatasourceProviderEntity]:
-            transformed = kwargs["transformer"](
+        response = {
+            "data": [
+                {},
+                {"declaration": {}},
+                {"declaration": {"identity": {}, "datasources": [{"identity": {"provider": "old"}}]}},
                 {
-                    "data": [
-                        {},
-                        {"declaration": {}},
-                        {"declaration": {"identity": {}, "datasources": [{"identity": {"provider": "old"}}]}},
-                        {
-                            "declaration": {
-                                "identity": {"name": "remote"},
-                                "datasources": [{"identity": {"provider": "old"}}],
-                            }
-                        },
-                    ]
-                }
-            )
-            transformed_payloads.append(transformed)
-            return [make_provider()]
-
-        manager = PluginDatasourceManager(get_plugin_icon_url=get_plugin_icon_url)
-        request_mock = mocker.patch.object(manager, "_request_with_plugin_daemon_response", side_effect=fake_request)
+                    "declaration": {
+                        "identity": {"name": "remote"},
+                        "datasources": [{"identity": {"provider": "old"}}],
+                    }
+                },
+            ]
+        }
+        requester = _DatasourceProviderListRequesterFake(response, [_plugin_datasource_provider("remote")])
+        manager = PluginDatasourceManager(
+            get_plugin_icon_url=get_plugin_icon_url,
+            datasource_provider_list_requester=requester,
+        )
 
         listed_providers = manager.fetch_datasource_providers("tenant-1")
         installed_providers = manager.fetch_installed_datasource_providers("tenant-1")
 
-        assert request_mock.call_count == 2
-        assert len(transformed_payloads) == 2
-        for transformed in transformed_payloads:
+        assert requester.tenant_ids == ["tenant-1", "tenant-1"]
+        assert len(requester.transformed_payloads) == 2
+        for transformed in requester.transformed_payloads:
             providers = transformed.data
             assert providers is not None
             assert providers[0].declaration is None
@@ -233,7 +291,9 @@ class TestPluginDatasourceManager:
             assert named.datasources[0].identity.provider == "remote"
             assert "output_schema" not in named.datasources[0].model_dump(exclude_unset=True)
 
+        assert len(listed_providers) == 2
         assert listed_providers[1].declaration.identity.name == "org/plugin/remote"
+        assert len(installed_providers) == 1
         assert installed_providers[0].declaration.identity.name == "org/plugin/remote"
 
     def test_list_and_installed_provider_paths_use_custom_icon_resolver(self, mocker: MockerFixture) -> None:
