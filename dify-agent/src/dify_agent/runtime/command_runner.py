@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from typing import Literal
@@ -58,7 +59,17 @@ async def execute_complete_with_commands(
                 incomplete_reason = "output_limit"
                 break
             if result.truncated:
-                result = await commands.read_output(result.job_id, offset=result.offset)
+                remaining_time = _remaining_time(deadline)
+                if remaining_time <= 0.0:
+                    incomplete_reason = "timeout"
+                    break
+                try:
+                    # Unlike run/wait, output replay has no provider timeout argument.
+                    async with asyncio.timeout(remaining_time):
+                        result = await commands.read_output(result.job_id, offset=result.offset)
+                except TimeoutError:
+                    incomplete_reason = "timeout"
+                    break
                 continue
             if result.done:
                 break
