@@ -46,8 +46,8 @@ beforeEach(() => {
   fake = installRoleApi()
   onTestFinished(fake)
 })
-async function setup(canManage = true) {
-  const view = await renderRolePage(canManage)
+async function setup(options?: Parameters<typeof renderRolePage>[0]) {
+  const view = await renderRolePage(options)
   onTestFinished(() => view.queryClient.clear())
   return view.screen
 }
@@ -67,7 +67,7 @@ async function openCreate(screen: Awaited<ReturnType<typeof setup>>) {
 }
 
 it('keeps management actions disabled for members without role management permission', async () => {
-  const screen = await setup(false)
+  const screen = await setup({ canManage: false })
   await expect.element(screen.getByText('Custom manager')).toBeVisible()
   await expect
     .element(screen.getByRole('button', { name: 'permission.role.addRole' }))
@@ -126,7 +126,7 @@ it('preserves trimmed role fields and permission selection across a pending fail
   })
   const screen = await setup()
   const dialog = await openCreate(screen)
-  await dialog.getByRole('checkbox', { name: /permissionKeys.workspace.member.manage/ }).click()
+  await dialog.getByRole('button', { name: 'permission.permissionList.selectAll' }).click()
   const confirm = dialog.getByRole('button', { name: 'common.operation.confirm' })
   await confirm.click()
   await expect.element(confirm).toBeDisabled()
@@ -155,7 +155,8 @@ it('preserves trimmed role fields and permission selection across a pending fail
   await expect.element(screen.getByText('Support team', { exact: true })).toBeVisible()
 })
 
-it('updates the selected role and preserves its existing permission selection', async () => {
+it('preserves hidden IP policy grants when clearing the visible permissions of an Enterprise role', async () => {
+  roles = [{ ...customRole, permission_keys: ['workspace.member.manage', 'ip_policy.view'] }]
   const screen = await setup()
   await screen.getByRole('button', { name: 'common.operation.moreActions' }).click()
   await screen.getByRole('menuitem', { name: 'common.operation.edit' }).click()
@@ -164,8 +165,10 @@ it('updates the selected role and preserves its existing permission selection', 
     .element(dialog.getByRole('checkbox', { name: /permissionKeys.workspace.member.manage/ }))
     .toBeChecked()
   await expect
-    .element(dialog.getByRole('button', { name: /permission.group.workspace_management/ }))
+    .element(dialog.getByRole('button', { name: /permission.group.workspace/ }))
     .toHaveAttribute('aria-expanded', 'true')
+  expect(dialog.getByRole('checkbox', { name: /IP Policies/ }).all()).toHaveLength(0)
+  await dialog.getByRole('button', { name: 'permission.permissionList.clearAll' }).click()
   await dialog
     .getByRole('textbox', { name: 'permission.role.modal.nameLabel' })
     .fill('Updated manager')
@@ -183,8 +186,18 @@ it('updates the selected role and preserves its existing permission selection', 
       body: {
         name: 'Updated manager',
         description: 'Updated description',
-        permission_keys: customRole.permission_keys,
+        permission_keys: ['ip_policy.view'],
       },
     }),
   )
+})
+
+it('offers both IP policy permissions when creating a Cloud role', async () => {
+  const screen = await setup({ deploymentEdition: 'CLOUD' })
+  await screen.getByRole('button', { name: 'permission.role.addRole' }).click()
+  const dialog = screen.getByRole('dialog')
+  await expect.element(dialog.getByRole('checkbox', { name: /View IP Policies/ })).toBeVisible()
+  await expect
+    .element(dialog.getByRole('checkbox', { name: /Create, Edit and Delete IP Policies/ }))
+    .toBeVisible()
 })

@@ -1,6 +1,7 @@
 import type { NetworkAccessGroupListResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Resource } from 'i18next'
 import type { AccountSettingTab } from '../constants'
+import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { Suspense, useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
@@ -56,13 +57,16 @@ function Settings({ initialTab }: { initialTab: AccountSettingTab }) {
   )
 }
 
-function renderSettings(initialTab: AccountSettingTab = ACCOUNT_SETTING_TAB.MEMBERS) {
+function renderSettings(
+  initialTab: AccountSettingTab = ACCOUNT_SETTING_TAB.MEMBERS,
+  systemFeatures: ConsoleQueryTestOptions['systemFeatures'] = {},
+) {
   const queryClient = createConsoleQueryClient()
   const { wrapper: Wrapper } = createConsoleQueryWrapper({
     queryClient,
     currentWorkspace: { id: workspaceId, name: 'Workspace', role: 'owner' },
     workspacePermissionKeys: ['workspace.member.manage'],
-    systemFeatures: { deployment_edition: 'CLOUD', is_email_setup: true },
+    systemFeatures: { deployment_edition: 'CLOUD', is_email_setup: true, ...systemFeatures },
     features: { billing: { subscription: { plan: 'team' } } },
   })
   return render(
@@ -139,7 +143,7 @@ const installSettingsApi = () =>
                         name: 'Admin',
                         type: 'workspace',
                         is_builtin: true,
-                        permission_keys: ['app.create'],
+                        permission_keys: ['app.create', 'ip_policy.view', 'ip_policy.manage'],
                       },
                     ],
                   }),
@@ -252,7 +256,10 @@ describe('Settings content loading', () => {
 
   it('keeps member details usable while the role permission translations load', async () => {
     const { started, finishLoading } = deferNamespace('permissionKeys')
-    await renderSettings()
+    await renderSettings(ACCOUNT_SETTING_TAB.MEMBERS, {
+      deployment_edition: 'ENTERPRISE',
+      rbac_enabled: true,
+    })
     await page.getByRole('button', { name: 'Ada', exact: true }).click()
     const details = page.getByRole('dialog', { name: 'Member details' })
     await details.getByRole('button', { name: 'Admin', exact: true }).click()
@@ -261,6 +268,7 @@ describe('Settings content loading', () => {
     await expect.element(page.getByText('Loading settings')).not.toBeInTheDocument()
     finishLoading()
     await expect.element(page.getByText('app.create', { exact: true })).toBeVisible()
+    await expect.element(page.getByText(/ip_policy\./)).not.toBeInTheDocument()
     await userEvent.keyboard('{Escape}')
     await expect.element(page.getByText('app.create', { exact: true })).not.toBeInTheDocument()
     await expect.element(details).toBeVisible()
