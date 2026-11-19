@@ -1190,6 +1190,8 @@ export type AgentLogConversationItemResponse = {
   conversation_id: string
   created_at?: number | null
   end_user_id?: string | null
+  from_account_name?: string | null
+  from_end_user_session_id?: string | null
   id: string
   message_count: number
   operation_rate?: number | null
