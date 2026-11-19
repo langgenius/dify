@@ -19,7 +19,7 @@ from repositories.human_input_v2.channel_credentials import ChannelEncryptedCred
 class ResendCredentials(BaseModel):
     """Complete authentication credentials stored inside the Channel envelope."""
 
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True, hide_input_in_errors=True)
+    model_config = ConfigDict(extra="allow", frozen=True, strict=True, hide_input_in_errors=True)
 
     api_key: str = Field(repr=False)
 

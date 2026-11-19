@@ -1,4 +1,5 @@
 import json
+from collections.abc import Callable
 from datetime import UTC, datetime
 from decimal import Decimal
 from unittest.mock import patch
@@ -8,8 +9,10 @@ import pytest
 from sqlalchemy import inspect, select
 from sqlalchemy.orm import Session
 
+from core.tools.signature import sign_upload_file_preview_url
 from core.workflow.file_reference import build_file_reference
 from graphon.file import FILE_MODEL_IDENTITY, FileTransferMethod
+from graphon.file.helpers import get_signed_file_url
 from models.account import Account, Tenant
 from models.base import Base, TypeBase
 from models.dataset import DatasetCollectionBinding
@@ -2054,16 +2057,10 @@ def _build_local_file_mapping(record_id: str, *, tenant_id: str | None = None) -
 
 
 class TestModelCases:
-    @staticmethod
     @pytest.fixture(autouse=True)
-    def patch_file_helpers(monkeypatch: pytest.MonkeyPatch) -> None:
-        """
-        Patch file_helpers.get_signed_file_url to a deterministic stub.
-        """
-        monkeypatch.setattr(
-            "graphon.file.helpers.get_signed_file_url",
-            lambda file_id: f"https://signed.example/{file_id}",
-        )
+    @staticmethod
+    def file_signature_config(config_overrides: Callable[..., None]) -> None:
+        config_overrides(SECRET_KEY="unit-secret", FILES_URL="https://files.example.com")
 
     @staticmethod
     def test_file_preview_valid_replaced() -> None:
@@ -2073,11 +2070,11 @@ class TestModelCases:
         - Replace the original URL with the signed URL
         """
         upload_id = "abc-123"
-        url = f"/files/{upload_id}/file-preview?timestamp=111&nonce=222&sign=333"
+        url = get_signed_file_url(upload_id)
         msg = Message(answer=_wrap_md(url))
 
         out = msg.re_sign_file_url_answer
-        assert f"https://signed.example/{upload_id}" in out
+        assert f"https://files.example.com/files/{upload_id}/file-preview" in out
         assert url not in out
 
     @staticmethod
@@ -2102,11 +2099,11 @@ class TestModelCases:
         Valid image-preview URL must be re-signed.
         """
         upload_id = "img-789"
-        url = f"/files/{upload_id}/image-preview?timestamp=123&nonce=456&sign=789"
+        url = sign_upload_file_preview_url(upload_id, ".png")
         msg = Message(answer=_wrap_md(url))
 
         out = msg.re_sign_file_url_answer
-        assert f"https://signed.example/{upload_id}" in out
+        assert f"https://files.example.com/files/{upload_id}/file-preview" in out
         assert url not in out
 
     @staticmethod
@@ -2200,11 +2197,11 @@ class TestModelCases:
         [text](url) markdown form, so the bare URL kept INTERNAL_FILES_URL.
         """
         upload_id = "bare-1"
-        url = f"/files/{upload_id}/file-preview?timestamp=1&nonce=2&sign=3"
+        url = get_signed_file_url(upload_id)
         msg = Message(answer=url)  # bare, no markdown wrapping
 
         out = msg.re_sign_file_url_answer
-        assert f"https://signed.example/{upload_id}" in out
+        assert f"https://files.example.com/files/{upload_id}/file-preview" in out
         assert url not in out
 
     @staticmethod
@@ -2216,11 +2213,11 @@ class TestModelCases:
         stayed on INTERNAL_FILES_URL.
         """
         upload_id = "tick-2"
-        url = f"/files/{upload_id}/file-preview?timestamp=10&nonce=20&sign=30"
+        url = get_signed_file_url(upload_id)
         msg = Message(answer=f"see `{url}` for details")
 
         out = msg.re_sign_file_url_answer
-        assert f"https://signed.example/{upload_id}" in out
+        assert f"https://files.example.com/files/{upload_id}/file-preview" in out
         assert url not in out
 
     @staticmethod
@@ -2231,14 +2228,12 @@ class TestModelCases:
         and markdown — without double-signing or skipping any.
         """
         upload_ids = ["mix-a", "mix-b", "mix-c"]
-        bare = f"/files/{upload_ids[0]}/file-preview?timestamp=1&nonce=2&sign=3"
-        tick = f"/files/{upload_ids[1]}/file-preview?timestamp=10&nonce=20&sign=30"
-        md = f"/files/{upload_ids[2]}/file-preview?timestamp=100&nonce=200&sign=300"
+        bare, tick, md = (get_signed_file_url(file_id) for file_id in upload_ids)
         msg = Message(answer=f"raw {bare} ` {tick} ` and [file]({md})")
 
         out = msg.re_sign_file_url_answer
         for uid in upload_ids:
-            assert f"https://signed.example/{uid}" in out
+            assert f"https://files.example.com/files/{uid}/file-preview" in out
         for url in (bare, tick, md):
             assert url not in out
 

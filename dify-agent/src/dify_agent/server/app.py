@@ -140,6 +140,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
                 plugin_daemon_api_key=resolved_settings.plugin_daemon_api_key,
                 inner_api_url=resolved_settings.inner_api_url,
                 inner_api_key=resolved_settings.inner_api_key or "",
+                agent_file_upload_max_bytes=resolved_settings.stub_upload_file_size_limit * 1024 * 1024,
                 runtime_backend_profile=runtime_backend_profile,
                 shell_redact_patterns=resolved_settings.get_shell_redact_patterns(),
                 agent_stub_api_base_url=resolved_settings.agent_stub_api_base_url,

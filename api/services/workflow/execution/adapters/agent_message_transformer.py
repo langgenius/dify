@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from core.app.file_access import DatabaseFileAccessController
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
-from core.workflow.nodes.agent.events import AgentLogEvent
+from core.workflow.agent_log_events import AgentLogEvent
 from core.workflow.nodes.agent.exceptions import AgentNodeError, AgentVariableTypeError, ToolFileNotFoundError
 from core.workflow.nodes.agent.think_tags import ThinkStreamState
 from extensions.ext_database import db

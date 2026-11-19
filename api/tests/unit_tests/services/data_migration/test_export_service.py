@@ -18,7 +18,7 @@ _OTHER_TENANT_ID = "22222222-2222-2222-2222-222222222222"
 _USER_ID = "33333333-3333-3333-3333-333333333333"
 
 
-def test_export_config_parser_accepts_new_scripted_shape():
+def test_export_config_parser_accepts_new_scripted_shape() -> None:
     selection = ExportConfigParser().parse(
         {
             "source_tenant": {"mode": "single", "name": "admin's Workspace"},
@@ -50,7 +50,7 @@ def test_export_config_parser_accepts_new_scripted_shape():
     assert selection.import_options.conflict_strategy == ConflictStrategy.FAIL
 
 
-def test_export_config_parser_defaults_to_secret_free_all_apps():
+def test_export_config_parser_defaults_to_secret_free_all_apps() -> None:
     selection = ExportConfigParser().parse(
         {
             "source_tenant": {"name": "source"},
@@ -63,12 +63,12 @@ def test_export_config_parser_defaults_to_secret_free_all_apps():
     assert selection.include_secrets is False
 
 
-def test_export_config_parser_requires_explicit_source_tenant_name_for_new_shape():
+def test_export_config_parser_requires_explicit_source_tenant_name_for_new_shape() -> None:
     with pytest.raises(MigrationDataError, match="source_tenant.name"):
         ExportConfigParser().parse({"source_tenant": {"mode": "single"}, "apps": {"all": True}})
 
 
-def test_export_config_parser_accepts_limited_backwards_draft_shape():
+def test_export_config_parser_accepts_limited_backwards_draft_shape() -> None:
     selection = ExportConfigParser().parse(
         {
             "tenant_name": "legacy-source",
@@ -88,7 +88,7 @@ def test_export_config_parser_accepts_limited_backwards_draft_shape():
     assert selection.include_secrets is False
 
 
-def test_export_config_parser_rejects_unsupported_app_modes():
+def test_export_config_parser_rejects_unsupported_app_modes() -> None:
     with pytest.raises(MigrationDataError, match="Unsupported app modes"):
         ExportConfigParser().parse(
             {

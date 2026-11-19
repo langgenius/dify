@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any, cast, override
 
 import pytest
 from sqlalchemy.orm import Session
@@ -68,12 +68,13 @@ class DummyTool(Tool):
         }
         return self.result
 
+    @override
     def get_runtime_parameters(
         self,
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ):
+    ) -> list[ToolParameter]:
         if self.runtime_parameter_overrides is not None:
             return self.runtime_parameter_overrides
         return super().get_runtime_parameters(
@@ -171,7 +172,7 @@ def test_invoke_supports_list_and_generator_results(unbound_session: Session):
     assert [msg.message.text for msg in generated_messages] == ["g1", "g2"]
 
 
-def test_fork_tool_runtime_returns_new_tool_with_copied_entity():
+def test_fork_tool_runtime_returns_new_tool_with_copied_entity() -> None:
     tool = _build_tool()
     new_runtime = ToolRuntime(tenant_id="tenant-2", invoke_from=InvokeFrom.EXPLORE, runtime_parameters={})
 
@@ -184,7 +185,7 @@ def test_fork_tool_runtime_returns_new_tool_with_copied_entity():
     assert forked.entity is not tool.entity
 
 
-def test_get_runtime_parameters_and_merge_runtime_parameters():
+def test_get_runtime_parameters_and_merge_runtime_parameters() -> None:
     tool = _build_tool()
     original = DummyParameter(
         name="temperature",
@@ -226,7 +227,7 @@ def test_get_runtime_parameters_and_merge_runtime_parameters():
     assert original.input_schema == {"type": "string"}
 
 
-def test_get_llm_parameters_json_schema_uses_effective_runtime_parameters():
+def test_get_llm_parameters_json_schema_uses_effective_runtime_parameters() -> None:
     tool = _build_tool()
     query_parameter = ToolParameter.get_simple_instance(
         name="query",
@@ -338,44 +339,69 @@ def test_get_llm_parameters_json_schema_uses_effective_runtime_parameters():
     }
 
 
-def test_message_factory_helpers():
+def test_message_factory_helpers() -> None:
     tool = _build_tool()
 
     image_message = tool.create_image_message("https://example.com/image.png")
     assert image_message.type == ToolInvokeMessage.MessageType.IMAGE
-    assert image_message.message.text == "https://example.com/image.png"
+    assert _text_body(image_message).text == "https://example.com/image.png"
 
     file_obj = object()
     file_message = tool.create_file_message(file_obj)  # type: ignore[arg-type]
     assert file_message.type == ToolInvokeMessage.MessageType.FILE
-    assert file_message.message.file_marker == "file_marker"
+    assert _file_body(file_message).file_marker == "file_marker"
     assert file_message.meta == {"file": file_obj}
 
     link_message = tool.create_link_message("https://example.com")
     assert link_message.type == ToolInvokeMessage.MessageType.LINK
-    assert link_message.message.text == "https://example.com"
+    assert _text_body(link_message).text == "https://example.com"
 
     text_message = tool.create_text_message("hello")
     assert text_message.type == ToolInvokeMessage.MessageType.TEXT
-    assert text_message.message.text == "hello"
+    assert _text_body(text_message).text == "hello"
 
     blob_message = tool.create_blob_message(b"blob", meta={"source": "unit-test"})
     assert blob_message.type == ToolInvokeMessage.MessageType.BLOB
-    assert blob_message.message.blob == b"blob"
+    assert _blob_body(blob_message).blob == b"blob"
     assert blob_message.meta == {"source": "unit-test"}
 
     json_message = tool.create_json_message({"k": "v"}, suppress_output=True)
     assert json_message.type == ToolInvokeMessage.MessageType.JSON
-    assert json_message.message.json_object == {"k": "v"}
-    assert json_message.message.suppress_output is True
+    assert _json_body(json_message).json_object == {"k": "v"}
+    assert _json_body(json_message).suppress_output is True
 
     variable_message = tool.create_variable_message("answer", 42, stream=False)
     assert variable_message.type == ToolInvokeMessage.MessageType.VARIABLE
-    assert variable_message.message.variable_name == "answer"
-    assert variable_message.message.variable_value == 42
-    assert variable_message.message.stream is False
+    assert _variable_body(variable_message).variable_name == "answer"
+    assert _variable_body(variable_message).variable_value == 42
+    assert _variable_body(variable_message).stream is False
 
 
 def test_base_abstract_invoke_placeholder_returns_none(unbound_session: Session):
     tool = _build_tool()
     assert Tool._invoke(tool, session=unbound_session, user_id="u", tool_parameters={}) is None
+
+
+def _text_body(message: ToolInvokeMessage) -> ToolInvokeMessage.TextMessage:
+    assert isinstance(message.message, ToolInvokeMessage.TextMessage)
+    return message.message
+
+
+def _file_body(message: ToolInvokeMessage) -> ToolInvokeMessage.FileMessage:
+    assert isinstance(message.message, ToolInvokeMessage.FileMessage)
+    return message.message
+
+
+def _blob_body(message: ToolInvokeMessage) -> ToolInvokeMessage.BlobMessage:
+    assert isinstance(message.message, ToolInvokeMessage.BlobMessage)
+    return message.message
+
+
+def _json_body(message: ToolInvokeMessage) -> ToolInvokeMessage.JsonMessage:
+    assert isinstance(message.message, ToolInvokeMessage.JsonMessage)
+    return message.message
+
+
+def _variable_body(message: ToolInvokeMessage) -> ToolInvokeMessage.VariableMessage:
+    assert isinstance(message.message, ToolInvokeMessage.VariableMessage)
+    return message.message

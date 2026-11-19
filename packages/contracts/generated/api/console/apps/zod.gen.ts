@@ -1353,6 +1353,17 @@ export const zWorkflowCommentResolve = z.object({
 })
 
 /**
+ * WorkflowKindConvertResponse
+ */
+export const zWorkflowKindConvertResponse = z.object({
+  kind: z.string(),
+  result: z.string(),
+  type: z.string(),
+  updated_at: z.int(),
+  workflow_id: z.string(),
+})
+
+/**
  * DefaultBlockConfigResponse
  */
 export const zDefaultBlockConfigResponse = z.record(z.string(), z.unknown())
@@ -1746,6 +1757,8 @@ export const zWorkflowPartial = z.object({
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   id: z.string(),
+  kind: z.string().nullish(),
+  type: z.string(),
   updated_at: z.int().nullish(),
   updated_by: z.string().nullish(),
 })
@@ -3898,31 +3911,6 @@ export const zWorkflowRunForLogResponse = z.object({
 })
 
 /**
- * WorkflowAppLogPartialResponse
- */
-export const zWorkflowAppLogPartialResponse = z.object({
-  created_at: z.int().nullish(),
-  created_by_account: zSimpleAccountResponse.nullish(),
-  created_by_end_user: zSimpleEndUser.nullish(),
-  created_by_role: z.string().nullish(),
-  created_from: z.string().nullish(),
-  details: z.unknown().optional(),
-  id: z.string(),
-  workflow_run: zWorkflowRunForLogResponse.nullish(),
-})
-
-/**
- * WorkflowAppLogPaginationResponse
- */
-export const zWorkflowAppLogPaginationResponse = z.object({
-  data: z.array(zWorkflowAppLogPartialResponse),
-  has_more: z.boolean(),
-  limit: z.int(),
-  page: z.int(),
-  total: z.int(),
-})
-
-/**
  * MemberRoleSummaryResponse
  */
 export const zMemberRoleSummaryResponse = z.object({
@@ -4377,12 +4365,14 @@ export const zLlmMode = z.enum(['chat', 'completion'])
 
 /**
  * AppModelSelectionResponse
+ *
+ * Readable model selection; missing or null identifiers mean it is not fully configured.
  */
 export const zAppModelSelectionResponse = z.object({
   completion_params: z.record(z.string(), zJsonValue).optional(),
   mode: z.union([zLlmMode, z.literal('')]).optional(),
-  name: z.string().optional(),
-  provider: z.string().optional(),
+  name: z.string().nullish(),
+  provider: z.string().nullish(),
 })
 
 /**
@@ -4427,6 +4417,8 @@ export const zAppPartial = z.object({
   updated_by: z.string().nullish(),
   use_icon_as_answer_icon: z.boolean().nullish(),
   workflow: zWorkflowPartial.nullish(),
+  workflow_kind: z.string().nullish(),
+  workflow_type: z.string().nullish(),
 })
 
 /**
@@ -4816,6 +4808,51 @@ export const zAppUserInputFormPayload = z.union([
   zAppCheckboxInputPayload,
   zAppExternalDataInputPayload,
 ])
+
+/**
+ * WorkflowAppLogEvaluationNodeInfoResponse
+ */
+export const zWorkflowAppLogEvaluationNodeInfoResponse = z.object({
+  node_id: z.string(),
+  title: z.string(),
+  type: z.string(),
+})
+
+/**
+ * WorkflowAppLogEvaluationItemResponse
+ */
+export const zWorkflowAppLogEvaluationItemResponse = z.object({
+  details: z.record(z.string(), z.unknown()).optional(),
+  name: z.string(),
+  node_info: zWorkflowAppLogEvaluationNodeInfoResponse.nullish(),
+  value: z.unknown().optional(),
+})
+
+/**
+ * WorkflowAppLogPartialResponse
+ */
+export const zWorkflowAppLogPartialResponse = z.object({
+  created_at: z.int().nullish(),
+  created_by_account: zSimpleAccountResponse.nullish(),
+  created_by_end_user: zSimpleEndUser.nullish(),
+  created_by_role: z.string().nullish(),
+  created_from: z.string().nullish(),
+  details: z.unknown().optional(),
+  evaluation: z.array(zWorkflowAppLogEvaluationItemResponse).optional(),
+  id: z.string(),
+  workflow_run: zWorkflowRunForLogResponse.nullish(),
+})
+
+/**
+ * WorkflowAppLogPaginationResponse
+ */
+export const zWorkflowAppLogPaginationResponse = z.object({
+  data: z.array(zWorkflowAppLogPartialResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
 
 /**
  * WorkflowFileUploadTransferPayload
@@ -5526,6 +5563,8 @@ export const zAppDetailWithSite = z.object({
   updated_by: z.string().nullable(),
   use_icon_as_answer_icon: z.boolean(),
   workflow: zWorkflowPartial.nullable(),
+  workflow_kind: z.string().nullish(),
+  workflow_type: z.string().nullish(),
 })
 
 /**
@@ -5552,6 +5591,8 @@ export const zAppDetail = z.object({
   updated_by: z.string().nullable(),
   use_icon_as_answer_icon: z.boolean(),
   workflow: zWorkflowPartial.nullable(),
+  workflow_kind: z.string().nullish(),
+  workflow_type: z.string().nullish(),
 })
 
 /**
@@ -6372,6 +6413,8 @@ export const zAppPartialWritable = z.object({
   updated_by: z.string().nullish(),
   use_icon_as_answer_icon: z.boolean().nullish(),
   workflow: zWorkflowPartial.nullish(),
+  workflow_kind: z.string().nullish(),
+  workflow_type: z.string().nullish(),
 })
 
 /**
@@ -6446,6 +6489,8 @@ export const zAppDetailWithSiteWritable = z.object({
   updated_by: z.string().nullable(),
   use_icon_as_answer_icon: z.boolean(),
   workflow: zWorkflowPartial.nullable(),
+  workflow_kind: z.string().nullish(),
+  workflow_type: z.string().nullish(),
 })
 
 /**
@@ -6775,6 +6820,18 @@ export const zGetAppsByAppIdAdvancedChatWorkflowRunsCountQuery = z.object({
  * Workflow runs count retrieved successfully
  */
 export const zGetAppsByAppIdAdvancedChatWorkflowRunsCountResponse = zWorkflowRunCountResponse
+
+export const zPostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetirePath = z.object(
+  {
+    app_id: z.uuid(),
+  },
+)
+
+/**
+ * Workspaces retired
+ */
+export const zPostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetireResponse =
+  z.void()
 
 export const zPostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewBody =
   zHumanInputFormPreviewPayload
@@ -8283,6 +8340,19 @@ export const zGetAppsByAppIdWorkflowsQuery = z.object({
  */
 export const zGetAppsByAppIdWorkflowsResponse = zWorkflowPaginationResponse
 
+export const zPostAppsByAppIdWorkflowsConvertTypePath = z.object({
+  app_id: z.uuid(),
+})
+
+export const zPostAppsByAppIdWorkflowsConvertTypeQuery = z.object({
+  target_type: z.enum(['evaluation', 'workflow']),
+})
+
+/**
+ * Workflow kind converted successfully
+ */
+export const zPostAppsByAppIdWorkflowsConvertTypeResponse = zWorkflowKindConvertResponse
+
 export const zGetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsPath = z.object({
   app_id: z.uuid(),
 })
@@ -8791,6 +8861,17 @@ export const zPostAppsByAppIdWorkflowsPublishPath = z.object({
  * Workflow published successfully
  */
 export const zPostAppsByAppIdWorkflowsPublishResponse = zWorkflowPublishResponse
+
+export const zPostAppsByAppIdWorkflowsPublishEvaluationBody = zPublishWorkflowPayload
+
+export const zPostAppsByAppIdWorkflowsPublishEvaluationPath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * Evaluation workflow published successfully
+ */
+export const zPostAppsByAppIdWorkflowsPublishEvaluationResponse = zWorkflowPublishResponse
 
 export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsPath = z.object({
   app_id: z.uuid(),

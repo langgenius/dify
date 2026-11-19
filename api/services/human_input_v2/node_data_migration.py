@@ -11,7 +11,7 @@ from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData
 from core.workflow.nodes.human_input_v2.migration import (
     LegacyDeliveryParseIssue,
     LegacyNodeDataPreflight,
-    MemberEmailSnapshot,
+    MemberContactSnapshot,
     MigrationBlockerCode,
     NodeMigrationConversion,
     convert_legacy_human_input_node_data,
@@ -20,14 +20,14 @@ from models.human_input_delivery import EmailDeliveryMethod, MemberRecipient
 from models.human_input_entities import HumanInputNodeDataFull
 
 
-class WorkspaceMemberEmailLookup(Protocol):
-    """Read the currently usable Account Emails for one workspace scope."""
+class WorkspaceMemberContactLookup(Protocol):
+    """Read existing Contact identities within the requested workspace."""
 
-    def find_member_emails(self, tenant_id: TenantId, account_ids: Sequence[str]) -> MemberEmailSnapshot: ...
+    def find_member_contacts(self, tenant_id: TenantId, member_ids: Sequence[str]) -> MemberContactSnapshot: ...
 
 
 type NodeDataConverter = Callable[
-    [HumanInputNodeDataFull, MemberEmailSnapshot],
+    [HumanInputNodeDataFull, MemberContactSnapshot],
     NodeMigrationConversion,
 ]
 
@@ -94,20 +94,25 @@ class HumanInputNodeDataMigrationService:
     def __init__(
         self,
         *,
-        member_email_lookup: WorkspaceMemberEmailLookup,
+        member_contact_lookup: WorkspaceMemberContactLookup,
         converter: NodeDataConverter = convert_legacy_human_input_node_data,
     ) -> None:
-        self._member_email_lookup = member_email_lookup
+        self._member_contact_lookup = member_contact_lookup
         self._converter = converter
 
     def migrate(self, *, tenant_id: TenantId, nodes: Sequence[MigrationNode]) -> NodeDataMigrationOutcome:
+        """Convert validated nodes using one current workspace Contact snapshot.
+
+        Load the workspace Contact snapshot before conversion. Return the complete
+        ordered batch or all blockers; never write workflow or Contact state.
+        """
         member_ids = self._collect_member_ids(nodes)
-        member_email_snapshot = self._member_email_lookup.find_member_emails(tenant_id, member_ids)
+        member_contact_snapshot = self._member_contact_lookup.find_member_contacts(tenant_id, member_ids)
 
         migrated_nodes: list[MigratedNode] = []
         blockers: list[NodeDataMigrationBlocker] = []
         for node in nodes:
-            conversion = self._converter(node.node_data, member_email_snapshot)
+            conversion = self._converter(node.node_data, member_contact_snapshot)
             blockers.extend(self._ordered_node_blockers(node, conversion))
             if conversion.node_data is not None:
                 migrated_nodes.append(MigratedNode(node.node_id, conversion.node_data))

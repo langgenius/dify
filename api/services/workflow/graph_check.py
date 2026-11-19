@@ -10,7 +10,7 @@ from typing import Any, Final
 
 from pydantic import ValidationError
 
-from core.trigger.constants import TRIGGER_NODE_TYPES
+from constants.trigger import TRIGGER_NODE_TYPES
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from core.workflow.variable_prefixes import ROOT_VARIABLE_NODE_IDS
 from graphon.entities.graph_config import NodeConfigDictAdapter

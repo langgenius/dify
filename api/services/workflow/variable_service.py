@@ -56,7 +56,7 @@ class DebugVariableStore(DraftVariableReader, DraftVariableWriter, Protocol):
         self, app_id: str, page: int, limit: int, user_id: str, *, exclude_node_ids: Set[str] | None
     ) -> WorkflowDraftVariableList: ...
     def list_node_variables(self, app_id: str, node_id: str, user_id: str) -> WorkflowDraftVariableList: ...
-    def get_node_variable(self, app_id: str, node_id: str, name: str, user_id: str) -> WorkflowDraftVariable | None: ...
+    def get_node_variable_value(self, app_id: str, node_id: str, name: str, user_id: str) -> Segment | None: ...
     def conversation_exists(self, app_id: str, conversation_id: str) -> bool: ...
     def add_conversation(self, conversation: Conversation) -> str: ...
     def update_variable(
@@ -128,21 +128,19 @@ class WorkflowVariableService:
         self._cleanup_or_defer(self._repository.delete_variables(app_id, user_id=user_id, node_id=node_id))
 
     def _get_conversation_id_from_draft_variable(self, app_id: str, user_id: str) -> str | None:
-        draft_var = self._repository.get_node_variable(
+        segment = self._repository.get_node_variable_value(
             app_id=app_id,
             node_id=SYSTEM_VARIABLE_NODE_ID,
             name=str(SystemVariableKey.CONVERSATION_ID),
             user_id=user_id,
         )
-        if draft_var is None:
+        if segment is None:
             return None
-        segment = draft_var.get_value()
         if not isinstance(segment, StringSegment):
             logger.warning(
-                "sys.conversation_id variable is not a string: app_id=%s, user_id=%s, id=%s",
+                "sys.conversation_id variable is not a string: app_id=%s, user_id=%s",
                 app_id,
                 user_id,
-                draft_var.id,
             )
             return None
         return segment.value

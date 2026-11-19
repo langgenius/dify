@@ -166,11 +166,10 @@ class WorkflowDraftVariableRepository:
             )
             return WorkflowDraftVariableList(variables=variables)
 
-    def get_node_variable(self, app_id: str, node_id: str, name: str, user_id: str) -> WorkflowDraftVariable | None:
+    def get_node_variable_value(self, app_id: str, node_id: str, name: str, user_id: str) -> Segment | None:
         with self._sessions() as session:
-            return session.scalar(
+            variable = session.scalar(
                 select(WorkflowDraftVariable)
-                .options(orm.selectinload(WorkflowDraftVariable.variable_file))
                 .where(
                     WorkflowDraftVariable.app_id == app_id,
                     WorkflowDraftVariable.node_id == node_id,
@@ -178,6 +177,7 @@ class WorkflowDraftVariableRepository:
                     WorkflowDraftVariable.user_id == user_id,
                 )
             )
+            return variable.get_value(session=session) if variable is not None else None
 
     def conversation_exists(self, app_id: str, conversation_id: str) -> bool:
         with self._sessions() as session:

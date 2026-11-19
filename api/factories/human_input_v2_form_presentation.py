@@ -1,7 +1,7 @@
 """Project frozen forms into the shared Dify form-rendering contract."""
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import assert_never
 
 from core.human_input_v2.resolved_form import (
@@ -74,10 +74,10 @@ def build_form_presentation(form: ResolvedForm) -> FormPresentation:
                 # including when the frozen form has no configured default.
                 default = StringSource(
                     type=ValueSourceType.CONSTANT,
-                    value=part.default_value if part.default_value is not None else "",
+                    value=part.resolved_default_value if part.resolved_default_value is not None else "",
                 )
-                if part.default_value is not None:
-                    defaults[name] = part.default_value
+                if part.resolved_default_value is not None:
+                    defaults[name] = part.resolved_default_value
                 inputs.append(ParagraphInputConfig(output_variable_name=name, default=default))
             case SelectInput():
                 inputs.append(
@@ -89,8 +89,8 @@ def build_form_presentation(form: ResolvedForm) -> FormPresentation:
                         ),
                     )
                 )
-                if part.default_value is not None:
-                    defaults[name] = part.default_value
+                if part.resolved_default_value is not None:
+                    defaults[name] = part.resolved_default_value
             case FileInput():
                 inputs.append(
                     FileInputConfig(
@@ -121,6 +121,43 @@ def build_form_presentation(form: ResolvedForm) -> FormPresentation:
     )
 
 
+def build_service_api_form_presentation(form: ResolvedForm) -> FormPresentation:
+    """Preserve v1 default metadata and expose only variable-resolved defaults.
+
+    Source metadata is captured at compilation; this projection never reads
+    workflow configuration or resolves selectors from a persisted form.
+    """
+    presentation = build_form_presentation(form)
+    paragraphs = {part.output_variable_name: part for part in form.parts if isinstance(part, ParagraphInput)}
+    inputs: list[FormInputConfig] = []
+    for item in presentation.inputs:
+        if isinstance(item, ParagraphInputConfig):
+            source = paragraphs[item.output_variable_name].default_config
+            inputs.append(
+                ParagraphInputConfig(
+                    output_variable_name=item.output_variable_name,
+                    default=(
+                        StringSource(type=source.type, selector=source.selector, value=source.value)
+                        if source is not None
+                        else None
+                    ),
+                )
+            )
+        else:
+            inputs.append(item)
+    return replace(
+        presentation,
+        inputs=inputs,
+        resolved_default_values={
+            name: part.resolved_default_value
+            for name, part in paragraphs.items()
+            if part.default_config is not None
+            and part.default_config.type is ValueSourceType.VARIABLE
+            and part.resolved_default_value is not None
+        },
+    )
+
+
 def render_filled_content(form: ResolvedForm, inputs: Mapping[str, Segment]) -> str:
     """Render accepted inputs consistently across workflow events and delivery channels."""
     # Render source-ordered parts once: submitted text containing output markers
@@ -134,7 +171,9 @@ def render_filled_content(form: ResolvedForm, inputs: Mapping[str, Segment]) -> 
         if segment is None or segment.to_object() is None:
             continue
         match part:
-            case ParagraphInput() | SelectInput():
+            case ParagraphInput():
+                fragments.append(str(segment.to_object()))
+            case SelectInput():
                 fragments.append(segment.text)
             case FileInput():
                 fragments.append("[file]")

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import queue
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
@@ -13,26 +13,52 @@ from core.app.apps.draft_variable_saver import NoopDraftVariableSaver
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.apps.streaming_utils import STREAM_COMPLETE_SIGNAL, _normalize_terminal_events, stream_topic_events
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
-from core.app.entities.queue_entities import QueueStopEvent, QueueTextChunkEvent
+from core.app.entities.queue_entities import (
+    QueueStopEvent,
+    QueueTextChunkEvent,
+    QueueWorkflowFailedEvent,
+    QueueWorkflowPartialSuccessEvent,
+    QueueWorkflowStartedEvent,
+    QueueWorkflowSucceededEvent,
+)
 from core.app.entities.task_entities import (
+    ChatbotAppBlockingResponse,
     ChatbotAppStreamResponse,
     MessageEndStreamResponse,
     MessageStreamResponse,
     StreamEvent,
 )
+from core.workflow.system_variables import build_system_variables
+from enums import DeploymentEdition
+from extensions.application_services.app_moderation import AppModeration
+from extensions.application_services.moderation import build_llm_moderation_guard
 from extensions.application_services.workflow import WorkflowExecutionDependencies
 from graphon.entities import WorkflowStartReason
+from graphon.enums import WorkflowType
+from graphon.model_runtime.entities.message_entities import UserPromptMessage
+from graphon.runtime import RuntimeState
 from libs.broadcast_channel.channel import SupportsPreparedSubscription
+from machinery.context import AppRequestContext
 from models.enums import ConversationFromSource, MessageStatus
 from models.model import AppMode, EndUser, Message
+from services.app.generation.input_adapter import AppInputAdapter
 from services.app.generation.ports import ConversationSnapshot, MessageSnapshot, WorkflowSnapshot
+from services.moderation_adapters import HostedOpenAIModerationGateway
+from services.moderation_invocation_errors import (
+    ModerationUnavailableInvocationError,
+    PlatformModerationRejectedInvocationError,
+)
+from services.moderation_service import ModerationPhase, ModerationRule, ModerationService
+from services.workflow.execution.adapters.chatflow.app_config_manager import AdvancedChatAppConfigManager
 from services.workflow.execution.adapters.chatflow.generate_response_converter import (
     AdvancedChatAppGenerateResponseConverter,
 )
 from services.workflow.execution.adapters.chatflow.generate_task_pipeline import AdvancedChatAppGenerateTaskPipeline
 from services.workflow.execution.adapters.response_stream import WorkflowEventStream
 from tasks.app_generate.workflow_execute_task import _publish_streaming_response
-from tests.helpers.unit.model_factories import make_app, make_conversation
+from tests.helpers.unit.core.model_moderation_fixtures import RecordingHostedModerationClient, make_moderated_model
+from tests.helpers.unit.model_factories import make_app, make_conversation, make_message, make_workflow
+from tests.workflow_test_utils import build_test_variable_pool
 
 
 class FakeSubscription:
@@ -471,3 +497,187 @@ def test_input_moderation_direct_reply_completes_without_workflow_events(
     assert message.answer == moderation_reply
     assert message.status == MessageStatus.NORMAL
     assert message.workflow_run_id is None
+
+
+@pytest.mark.parametrize(
+    ("phase", "previous_answer", "configured", "invoke_from", "unavailable", "stream", "terminal_status"),
+    [
+        ("input", "", True, InvokeFrom.WEB_APP, False, True, "failed"),
+        ("output", "approved prefix", True, InvokeFrom.WEB_APP, False, True, "failed"),
+        ("input", "", True, InvokeFrom.WEB_APP, True, True, "failed"),
+        ("input", "", True, InvokeFrom.SERVICE_API, False, False, "failed"),
+        ("output", "approved prefix", True, InvokeFrom.SERVICE_API, True, False, "failed"),
+        ("input", "", True, InvokeFrom.WEB_APP, False, True, "succeeded"),
+        ("output", "approved prefix", False, InvokeFrom.WEB_APP, False, True, "partial-succeeded"),
+        ("input", "", True, InvokeFrom.WEB_APP, True, True, "succeeded"),
+        ("output", "", True, InvokeFrom.WEB_APP, True, True, "partial-succeeded"),
+    ],
+)
+def test_chatflow_model_failures_do_not_override_graphon_results(
+    monkeypatch: pytest.MonkeyPatch,
+    workflow_runtime,
+    app_records,
+    sqlite_session: Session,
+    config_overrides: Callable[..., None],
+    phase: ModerationPhase,
+    previous_answer: str,
+    configured: bool,
+    invoke_from: InvokeFrom,
+    unavailable: bool,
+    stream: bool,
+    terminal_status: str,
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, HOSTED_MODERATION_ENABLED=True)
+    monkeypatch.setattr("core.app.task_pipeline.based_generate_task_pipeline.get_app_moderation", AppModeration)
+    app = make_app(tenant_id="test-tenant-id", mode=AppMode.ADVANCED_CHAT)
+    workflow = make_workflow(
+        workflow_id="workflow-1",
+        app_id=app.id,
+        tenant_id=app.tenant_id,
+        workflow_type=WorkflowType.CHAT,
+        version="published",
+        graph={"nodes": [{"id": "start", "data": {"type": "start", "variables": []}}], "edges": []},
+        features={
+            "sensitive_word_avoidance": {
+                "enabled": configured,
+                "type": "openai_moderation",
+                "config": {
+                    "inputs_config": {"enabled": True, "preset_response": "App input refusal"},
+                    "outputs_config": {"enabled": True, "preset_response": "App output refusal"},
+                },
+            }
+        },
+    )
+    config = AdvancedChatAppConfigManager.get_app_config(app_model=app, workflow=workflow)
+    user = EndUser(id="end-user-1", tenant_id=app.tenant_id, type="session", session_id="session-id")
+    conversation = make_conversation(app_id=app.id, mode=app.mode, from_source=ConversationFromSource.API)
+    message = make_message(
+        app_id=app.id,
+        conversation_id=conversation.id,
+        query="blocked" if phase == "input" else "safe",
+        message={},
+        answer="",
+        invoke_from=invoke_from,
+        from_source=ConversationFromSource.API,
+        from_end_user_id=user.id,
+    )
+    sqlite_session.add_all([app, conversation, message])
+    sqlite_session.commit()
+    entity = AdvancedChatAppGenerateEntity(
+        task_id="task-1",
+        app_config=config,
+        query=message.query,
+        inputs={},
+        files=[],
+        user_id=user.id,
+        stream=stream,
+        invoke_from=invoke_from,
+        workflow_run_id="workflow-run-1",
+        extras={"auto_generate_conversation_name": False},
+    )
+    queue_manager = MessageBasedAppQueueManager(
+        task_id=entity.task_id,
+        user_id=user.id,
+        invoke_from=invoke_from,
+        conversation_id=conversation.id,
+        app_mode=app.mode,
+        message_id=message.id,
+    )
+    queue_manager.graph_runtime_state = RuntimeState(
+        workflow_id=workflow.id,
+        variable_pool=build_test_variable_pool(
+            variables=build_system_variables(workflow_execution_id=entity.workflow_run_id)
+        ),
+        start_at=0.0,
+        node_run_steps=2,
+    )
+    pipeline = AdvancedChatAppGenerateTaskPipeline(
+        contexts=workflow_runtime.contexts,
+        tool_providers=workflow_runtime.tool_providers,
+        chat_records=app_records,
+        application_generate_entity=entity,
+        workflow=WorkflowSnapshot.from_workflow(workflow),
+        queue_manager=queue_manager,
+        conversation=ConversationSnapshot.from_conversation(conversation),
+        message=MessageSnapshot.from_message(message),
+        user=user,
+        stream=stream,
+        dialogue_count=1,
+        draft_var_saver_factory=AppInputAdapter()._get_draft_var_saver_factory(
+            invoke_from, user, tenant_id=app.tenant_id
+        ),
+    )
+    client = RecordingHostedModerationClient()
+    if unavailable:
+        client.error = RuntimeError("Private moderation backend failure")
+    service = ModerationService(
+        gateway=HostedOpenAIModerationGateway(
+            client=client,
+            credentials={"openai_api_key": "platform-key"},
+            plugin_unique_identifier="langgenius/openai:1.0.0@checksum",
+        )
+    )
+    guard = build_llm_moderation_guard(
+        AppRequestContext(tenant_id=app.tenant_id, app_id=app.id),
+        service=service,
+        rule=ModerationRule(
+            type="openai_moderation",
+            config={
+                "inputs_config": {"enabled": not unavailable or phase == "input"},
+                "outputs_config": {"enabled": True},
+            },
+        ),
+        platform=True,
+    )
+    model, provider = make_moderated_model(quota=True, parts=["blocked"], moderation=guard)
+
+    def invoke() -> None:
+        list(model.invoke_llm([UserPromptMessage(content=entity.query)], stream=True))
+
+    error_type = ModerationUnavailableInvocationError if unavailable else PlatformModerationRejectedInvocationError
+    with pytest.raises(error_type):
+        invoke()
+    queue_manager.publish(QueueWorkflowStartedEvent(), PublishFrom.APPLICATION_MANAGER)
+    pipeline._task_state.answer = previous_answer
+    queue_manager.publish(
+        QueueTextChunkEvent(text="recovered", from_variable_selector=[]), PublishFrom.APPLICATION_MANAGER
+    )
+    terminals = {
+        "succeeded": QueueWorkflowSucceededEvent(outputs={}),
+        "partial-succeeded": QueueWorkflowPartialSuccessEvent(outputs={}, exceptions_count=1),
+        "failed": QueueWorkflowFailedEvent(error="Unrelated terminal failure", exceptions_count=1),
+    }
+    terminal = terminals[terminal_status]
+    queue_manager.publish(terminal, PublishFrom.APPLICATION_MANAGER)
+    failed = terminal_status == "failed"
+    expected_answer = previous_answer + "recovered"
+    if not stream:
+        if failed:
+            with pytest.raises(ValueError, match="Run failed: Unrelated terminal failure") as failure:
+                pipeline.process()
+            assert type(failure.value) is ValueError
+        else:
+            response = pipeline.process()
+            assert isinstance(response, ChatbotAppBlockingResponse)
+            assert response.data.answer == expected_answer
+    else:
+        runtime_responses = pipeline.process()
+        assert isinstance(runtime_responses, Generator)
+        converted = AdvancedChatAppGenerateResponseConverter.convert(runtime_responses, invoke_from)
+        assert isinstance(converted, Generator)
+        public_events = [event for event in converted if isinstance(event, dict)]
+        assert not any(event["event"] == "message_replace" for event in public_events)
+        assert [event["answer"] for event in public_events if event["event"] == "message"] == ["recovered"]
+        [finished] = [event for event in public_events if event["event"] == "workflow_finished"]
+        assert finished["data"]["status"] == terminal_status
+        assert finished["data"]["error"] == ("Unrelated terminal failure" if failed else None)
+        errors = [event for event in public_events if event["event"] == "error"]
+        assert len(errors) == int(failed)
+        if failed:
+            assert errors[0]["code"] == "invalid_param"
+        assert "Private" not in json.dumps(public_events)
+    assert provider.invocations == (0 if phase == "input" else 1)
+    sqlite_session.refresh(message)
+    assert message.answer == ("" if failed else expected_answer)
+    assert message.status == (MessageStatus.ERROR if failed else MessageStatus.NORMAL)
+    assert message.error == ("Run failed: Unrelated terminal failure" if failed else None)

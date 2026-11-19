@@ -1,4 +1,3 @@
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
@@ -6,6 +5,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { $createParagraphNode, $getRoot } from 'lexical'
 import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
+import { TestLexicalComposer } from '@/test/lexical'
 import { $createCurrentBlockNode, CurrentBlockNode } from '../node'
 
 it.each([
@@ -18,7 +18,7 @@ it.each([
     const onParentClick = vi.fn()
     render(
       <div role="presentation" onClick={onParentClick}>
-        <LexicalComposer
+        <TestLexicalComposer
           initialConfig={{
             namespace: 'current-block',
             nodes: [CurrentBlockNode],
@@ -37,7 +37,7 @@ it.each([
             placeholder={null}
             ErrorBoundary={LexicalErrorBoundary}
           />
-        </LexicalComposer>
+        </TestLexicalComposer>
       </div>,
     )
     await user.click(await screen.findByText(label))

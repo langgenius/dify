@@ -7,7 +7,7 @@ import time
 from functools import partial
 from pathlib import Path
 from unittest.mock import AsyncMock, create_autospec
-from urllib.parse import urlencode
+from urllib.parse import parse_qs, urlencode
 from uuid import uuid4
 
 import pytest
@@ -299,6 +299,39 @@ def test_signed_callback_is_committed_before_ack_then_submitted_by_worker(
     with context.sessions() as session:
         assert session.get_one(IMMessageEvent, published[0]).processed_at is not None
     assert resumed == [context.execution.workflow_run_id]
+
+
+def test_additive_callback_roundtrip_preserves_the_persisted_payload(
+    context: Context,
+    approval: tuple[str, IMChannelId],
+    callback_app: tuple[DifyApp, list[str]],
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    from tasks.app_generate.workflow_execute_task import resume_app_execution
+
+    form_id, _ = approval
+    app, published = callback_app
+    monkeypatch.setattr(resume_app_execution, "apply_async", lambda **_kwargs: None)
+    callback = json.loads(parse_qs(_request_body().decode())["payload"][0])
+    for button in (callback["actions"][0], callback["message"]["blocks"][-1]["elements"][0]):
+        metadata = json.loads(button["value"])
+        button["value"] = json.dumps({**metadata, "future_optional": None, "future_metadata": {"nested": None}})
+    payload = json.dumps(callback)
+    body = urlencode({"payload": payload}).encode()
+    assert app.test_client().post(_PATH, data=body, headers=_headers(body)).status_code == 200
+    with context.sessions() as session:
+        persisted_payload = session.get_one(IMMessageEvent, published[0]).payload
+        assert json.loads(persisted_payload) == callback
+
+    with app.app_context():
+        process_im_message_inbox_record.run(published[0])
+    with context.sessions() as session:
+        record = session.get_one(IMMessageEvent, published[0])
+        assert record.processed_at is not None
+        assert record.payload == persisted_payload
+        assert session.get_one(HumanInputForm, form_id).status == HumanInputFormStatus.SUBMITTED
+    assert _TOKEN not in caplog.text
 
 
 @pytest.mark.parametrize("matching_actor", [True, False], ids=["recipient", "another-user"])

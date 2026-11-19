@@ -1,10 +1,5 @@
+from controllers.common.errors import PaidPlanRequiredError  # noqa: F401 - Preserve the Console import path.
 from libs.exception import BaseHTTPException
-
-
-class PaidPlanRequiredError(BaseHTTPException):
-    error_code = "paid_plan_required"
-    description = "This feature requires a paid plan."
-    code = 403
 
 
 class AlreadySetupError(BaseHTTPException):
@@ -55,6 +50,12 @@ class NotAllowedCreateWorkspace(BaseHTTPException):
 class WorkspaceMembersLimitExceeded(BaseHTTPException):
     error_code = "limit_exceeded"
     description = "Unable to add member because the maximum workspace's member limit was exceeded"
+    code = 400
+
+
+class InvitationWorkspaceMemberLimitError(BaseHTTPException):
+    error_code = "workspace_member_limit_reached"
+    description = "The workspace has reached its member limit, so this invitation cannot be accepted right now."
     code = 400
 
 

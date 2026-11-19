@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfoNotFoundError
 
 import pytest
 
-from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
+from constants.trigger import TRIGGER_SCHEDULE_NODE_TYPE
 from core.workflow.nodes.trigger_schedule.entities import TriggerScheduleNodeData, VisualConfig
 from core.workflow.nodes.trigger_schedule.exc import ScheduleConfigError
 from graphon.entities.graph_config import NodeConfigDict
@@ -82,7 +82,7 @@ class TestScheduleService(unittest.TestCase):
         cron_expr = "30 10 * * *"
         timezone = "Invalid/Timezone"
 
-        with pytest.raises(ZoneInfoNotFoundError):
+        with pytest.raises(ValueError, match=re.escape(f"Invalid timezone: {timezone!r}")):
             calculate_next_run_at(cron_expr, timezone)
 
     def test_calculate_next_run_at_malformed_timezone(self) -> None:

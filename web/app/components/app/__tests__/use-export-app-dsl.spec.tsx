@@ -414,7 +414,7 @@ describe('useExportWorkflowAppDsl', () => {
       return (
         <>
           <button onClick={() => setOpen(true)}>Reopen</button>
-          <ExportAppDialog appDetail={app} open={open} onOpenChange={setOpen} />
+          <ExportAppDialog appDetail={app} open={open} onClose={() => setOpen(false)} />
         </>
       )
     }
