@@ -44,6 +44,11 @@ jobs:
           persist-credentials: false
           # Pull requests diff the merge commit against its base-branch parent.
           fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 1 }}
+      - name: Setup UV and Python
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version: '3.13'
+          enable-cache: false
       - name: Choose test scope
         id: scope
         run: |
@@ -55,30 +60,20 @@ jobs:
           [[ "$API_TEST_MODE" == baseline ]] && shards='["all"]'
           select=false
           if [[ "$API_TEST_MODE" == pull-request ]]; then
-            select=true
-            # testmon follows the Python code a test runs. Any other input, such as the lockfile,
-            # pytest.ini, fixtures, Docker files, workflows or scripts, runs the full suites.
-            while IFS= read -r path; do
-              case "$path" in
-                api/*.py | *.md | web/* | packages/* | e2e/* | cli/* | sdks/* | skills/* | images/* | docs/*) ;;
-                *)
-                  select=false
-                  echo "Running every API unit and controller test: testmon does not track \`$path\`." >> "$GITHUB_STEP_SUMMARY"
-                  break
-                  ;;
-              esac
-            done < <(git diff --name-only HEAD^1 HEAD)
+            # testmon links tests only to code that runs inside them, so changes to import-time code
+            # or to anything other than Python run the full suites. See api/dev/testmon_scope.py.
+            reason=$(uv run --project api --no-sync python api/dev/testmon_scope.py HEAD^1 HEAD)
+            if [[ -z "$reason" ]]; then
+              select=true
+            else
+              echo "Running every API unit and controller test: $reason." >> "$GITHUB_STEP_SUMMARY"
+            fi
           fi
           {
             echo "shard-total=$shard_total"
             echo "shard-indexes=$shards"
             echo "testmon-select=$select"
           } >> "$GITHUB_OUTPUT"
-      - name: Setup UV and Python
-        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
-        with:
-          python-version: '3.13'
-          enable-cache: false
       - name: Download shared timing baseline
         # Public statistics are independent of PR refs and require no credentials.
         run: |
