@@ -115,24 +115,14 @@ it('selects highlighted options with Enter and submits the confirmed preferences
 
     await expect.element(language).toHaveTextContent('简体中文')
     await language.click()
-    const languageSearch = screen
-      .getByRole('dialog', { name: login.interfaceLanguage })
-      .getByRole('combobox', { name: common['operation.search'] })
-    await expect.element(languageSearch).toHaveFocus()
-    await languageSearch.fill('unknown language')
-    await expect.element(screen.getByText(common['dynamicSelect.noData'])).toBeVisible()
-    await userEvent.keyboard('{Escape}')
-    await expect.element(language).toHaveTextContent('简体中文')
-    await expect.element(language).toHaveFocus()
-
-    await language.click()
-    await languageSearch.fill('United States')
+    await expect
+      .element(screen.getByRole('option', { name: '简体中文', selected: true }))
+      .toHaveFocus()
+    await expectListAlignedWithForm()
+    await userEvent.keyboard('{Home}')
     await expect
       .element(screen.getByRole('option', { name: 'English (United States)' }))
-      .toBeVisible()
-    await expectListAlignedWithForm()
-    await userEvent.keyboard('{ArrowDown}')
-    await expect.element(languageSearch).toHaveAttribute('aria-activedescendant')
+      .toHaveFocus()
     await userEvent.keyboard('{Enter}')
     await expect.element(language).toHaveTextContent('English (United States)')
     expect(mocks.activate).not.toHaveBeenCalled()
@@ -171,59 +161,45 @@ it('selects highlighted options with Enter and submits the confirmed preferences
   }
 })
 
-it.each([
-  {
-    field: login.interfaceLanguage,
-    searchLabel: common['operation.search'],
-    query: 'United States',
-    visibleResult: 'English (United States)',
-  },
-  {
-    field: login.timezone,
-    searchLabel: accountSettings['account.timezoneSearchPlaceholder'],
-    query: 'no-such-timezone',
-    visibleResult: accountSettings['account.timezoneNoResults'],
-  },
-])(
-  'keeps Enter in the $field picker until focus returns to the form',
-  async ({ field, searchLabel, query, visibleResult }) => {
-    const { screen, queryClient } = await renderInvitation()
-    try {
-      const name = screen.getByRole('textbox', { name: login.name })
-      await name.fill('邀请测试')
-      const picker = screen.getByRole('combobox', { name: field, exact: true })
-      await userEvent.tab()
-      if (field === login.timezone) await userEvent.tab()
-      await expect.element(picker).toHaveFocus()
-      await userEvent.keyboard('{Enter}')
-      const search = screen
-        .getByRole('dialog', { name: field, exact: true })
-        .getByRole('combobox', { name: searchLabel })
-      await expect.element(search).toHaveFocus()
-      await search.fill(query)
-      await expect.element(screen.getByText(visibleResult, { exact: true })).toBeVisible()
-      await expect.element(search).not.toHaveAttribute('aria-activedescendant')
+it('keeps Enter in the timezone search until focus returns to the form', async () => {
+  const { screen, queryClient } = await renderInvitation()
+  try {
+    const name = screen.getByRole('textbox', { name: login.name })
+    await name.fill('邀请测试')
+    const timezone = screen.getByRole('combobox', { name: login.timezone, exact: true })
+    await userEvent.tab()
+    await userEvent.tab()
+    await expect.element(timezone).toHaveFocus()
+    await userEvent.keyboard('{Enter}')
+    const search = screen
+      .getByRole('dialog', { name: login.timezone })
+      .getByRole('combobox', { name: accountSettings['account.timezoneSearchPlaceholder'] })
+    await expect.element(search).toHaveFocus()
+    await search.fill('no-such-timezone')
+    await expect
+      .element(screen.getByText(accountSettings['account.timezoneNoResults']))
+      .toBeVisible()
+    await expect.element(search).not.toHaveAttribute('aria-activedescendant')
 
-      await userEvent.keyboard('{Enter}')
-      await expect.element(search).toHaveFocus()
-      expect(mocks.activate).not.toHaveBeenCalled()
-      await userEvent.keyboard('{Escape}')
-      await expect.element(picker).toHaveFocus()
+    await userEvent.keyboard('{Enter}')
+    await expect.element(search).toHaveFocus()
+    expect(mocks.activate).not.toHaveBeenCalled()
+    await userEvent.keyboard('{Escape}')
+    await expect.element(timezone).toHaveFocus()
 
-      await name.fill('邀请测试')
-      await userEvent.keyboard('{Enter}')
-      await expect.poll(() => mocks.replace.mock.calls.length).toBe(1)
-      expect(mocks.activate).toHaveBeenCalledExactlyOnceWith({
-        body: {
-          token: 'invite-token',
-          name: '邀请测试',
-          interface_language: 'zh-Hans',
-          timezone: 'Asia/Taipei',
-        },
-      })
-    } finally {
-      await screen.unmount()
-      queryClient.clear()
-    }
-  },
-)
+    await name.fill('邀请测试')
+    await userEvent.keyboard('{Enter}')
+    await expect.poll(() => mocks.replace.mock.calls.length).toBe(1)
+    expect(mocks.activate).toHaveBeenCalledExactlyOnceWith({
+      body: {
+        token: 'invite-token',
+        name: '邀请测试',
+        interface_language: 'zh-Hans',
+        timezone: 'Asia/Taipei',
+      },
+    })
+  } finally {
+    await screen.unmount()
+    queryClient.clear()
+  }
+})
