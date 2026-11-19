@@ -460,7 +460,7 @@ class HumanInputDeliveryService:
                 else IMMessageType.LINK
             )
             auth_type = SubmissionAuthType.IM if message_type == IMMessageType.CARD else context.auth_type
-            token = SecretStr(secrets.token_urlsafe(32))
+            token = generate_form_link_token()
             snapshot = IMUserTargetSnapshot(
                 im_provider=channel.provider,
                 im_tenant_id=channel.provider_tenant_id,
