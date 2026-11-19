@@ -39,6 +39,7 @@ from models.enums import CreatorUserRole, DatasetQuerySource
 from models.model import App
 from repositories.knowledge.dataset_read_repository import authorize_retrieved_segment
 from repositories.knowledge.external_retrieval_repository import prepare_external_retrieval
+from repositories.knowledge.retrieval_source_repository import get_retrieval_source_documents
 from repositories.knowledge.segment_read_adapter import sign_segment_content
 from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalKnowledgeApiSetting
 from services.errors.knowledge_retrieval import (
@@ -382,8 +383,6 @@ class KnowledgeRetrievalRepository:
                 dataset_ids = [i.segment.dataset_id for i in records]
                 document_ids = [i.segment.document_id for i in records]
                 datasets = retrieval_session.scalars(select(Dataset).where(Dataset.id.in_(dataset_ids))).all()
-                from repositories.knowledge.retrieval_source_repository import get_retrieval_source_documents
-
                 documents = get_retrieval_source_documents(
                     tenant_id=request.tenant_id,
                     dataset_ids=available_datasets_ids,
@@ -515,7 +514,6 @@ class KnowledgeRetrievalRepository:
                 if show_retrieve_source:
                     dataset_ids = [record.segment.dataset_id for record in authorized_records]
                     document_ids = [record.segment.document_id for record in authorized_records]
-                    from repositories.knowledge.retrieval_source_repository import get_retrieval_source_documents
 
                     documents = get_retrieval_source_documents(
                         tenant_id=tenant_id,
