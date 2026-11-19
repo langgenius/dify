@@ -59,28 +59,24 @@ def validate_plugin_daemon_json_value(value: object) -> JsonValue:
     return _PLUGIN_DAEMON_JSON_VALUE_ADAPTER.validate_python(value)
 
 
-def as_plugin_daemon_json_object(value: JsonValue) -> dict[str, JsonValue] | None:
-    """Narrow a parsed JSON value to a mutable object, or return None.
+def as_plugin_daemon_json_object(value: JsonValue) -> dict[str, JsonValue]:
+    """Return a mutable object or a detached empty object for malformed branches.
 
     Preconditions: ``value`` is JSON data parsed by the raw response model.
-    Postcondition: a non-None result has string keys and only JSON values; the
-    original object is returned so transformer mutations affect the envelope.
+    Postcondition: valid objects are returned by identity; mutating a fallback
+    cannot affect the response envelope.
     """
-    if isinstance(value, dict):
-        return value
-    return None
+    return value if isinstance(value, dict) else {}
 
 
-def as_plugin_daemon_json_array(value: JsonValue) -> list[JsonValue] | None:
-    """Narrow a parsed JSON value to an array, or return None.
+def as_plugin_daemon_json_array(value: JsonValue) -> list[JsonValue]:
+    """Return an array or an empty array for malformed branches.
 
     Preconditions: ``value`` is JSON data parsed by the raw response model.
-    Postcondition: a non-None result contains only JSON values and is the
-    original mutable array, so transformer mutations remain in the envelope.
+    Postcondition: valid arrays are returned by identity; invalid values iterate
+    as empty arrays and do not affect the response envelope.
     """
-    if isinstance(value, list):
-        return value
-    return None
+    return value if isinstance(value, list) else []
 
 
 class InstallPluginMessage(BaseModel):

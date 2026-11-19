@@ -1,6 +1,7 @@
 from collections.abc import Callable
 from types import SimpleNamespace
 
+from pydantic import JsonValue
 from pytest_mock import MockerFixture
 
 from core.plugin.entities.plugin_daemon import CredentialType, PluginDaemonRawResponse
@@ -20,6 +21,10 @@ def _tool_provider(name: str = "provider") -> SimpleNamespace:
 _Transformer = Callable[[PluginDaemonRawResponse], PluginDaemonRawResponse]
 
 
+def _raw_response(data: JsonValue) -> PluginDaemonRawResponse:
+    return PluginDaemonRawResponse(code=0, message="", data=data)
+
+
 class TestPluginToolManager:
     def test_fetch_tool_providers(self, mocker: MockerFixture) -> None:
         manager = PluginToolManager()
@@ -34,19 +39,15 @@ class TestPluginToolManager:
             transformer: _Transformer,
             **kwargs: object,
         ) -> list[SimpleNamespace]:
-            payload = PluginDaemonRawResponse.model_validate(
-                {
-                    "code": 0,
-                    "message": "",
-                    "data": [
-                        {
-                            "declaration": {
-                                "identity": {"name": "remote"},
-                                "tools": [{"identity": {"provider": "old"}, "output_schema": {"$ref": "#/x"}}],
-                            }
+            payload = _raw_response(
+                [
+                    {
+                        "declaration": {
+                            "identity": {"name": "remote"},
+                            "tools": [{"identity": {"provider": "old"}, "output_schema": {"$ref": "#/x"}}],
                         }
-                    ],
-                }
+                    }
+                ]
             )
             transformed = transformer(payload)
             assert transformed.data == [
@@ -80,14 +81,8 @@ class TestPluginToolManager:
             transformer: _Transformer,
             **kwargs: object,
         ) -> SimpleNamespace:
-            payload = PluginDaemonRawResponse.model_validate(
-                {
-                    "code": 0,
-                    "message": "",
-                    "data": {
-                        "declaration": {"tools": [{"identity": {"provider": "old"}, "output_schema": {"$ref": "#/x"}}]}
-                    },
-                }
+            payload = _raw_response(
+                {"declaration": {"tools": [{"identity": {"provider": "old"}, "output_schema": {"$ref": "#/x"}}]}}
             )
             transformed = transformer(payload)
             assert transformed.data == {

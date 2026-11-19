@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from typing import Literal
 
 import pytest
+from pydantic import JsonValue
 from pytest_mock import MockerFixture
 from werkzeug import Request
 
@@ -67,6 +68,10 @@ def _subscription_call_kwargs(method_name: str) -> dict[str, object]:
 _Transformer = Callable[[PluginDaemonRawResponse], PluginDaemonRawResponse]
 
 
+def _raw_response(data: JsonValue) -> PluginDaemonRawResponse:
+    return PluginDaemonRawResponse(code=0, message="", data=data)
+
+
 class TestPluginTriggerClient:
     def test_fetch_trigger_providers(self, mocker: MockerFixture) -> None:
         client = PluginTriggerClient()
@@ -75,18 +80,14 @@ class TestPluginTriggerClient:
         def fake_request(
             method: str, path: str, type_: object, *, transformer: _Transformer, **kwargs: object
         ) -> list[SimpleNamespace]:
-            payload = PluginDaemonRawResponse.model_validate(
-                {
-                    "code": 0,
-                    "message": "",
-                    "data": [
-                        {
-                            "plugin_id": "org/plugin",
-                            "provider": "remote",
-                            "declaration": {"events": [{"identity": {"provider": "old"}}]},
-                        }
-                    ],
-                }
+            payload = _raw_response(
+                [
+                    {
+                        "plugin_id": "org/plugin",
+                        "provider": "remote",
+                        "declaration": {"events": [{"identity": {"provider": "old"}}]},
+                    }
+                ]
             )
             transformed = transformer(payload)
             assert transformed.data == [
@@ -113,13 +114,7 @@ class TestPluginTriggerClient:
         def fake_request(
             method: str, path: str, type_: object, *, transformer: _Transformer, **kwargs: object
         ) -> SimpleNamespace:
-            payload = PluginDaemonRawResponse.model_validate(
-                {
-                    "code": 0,
-                    "message": "",
-                    "data": {"declaration": {"events": [{"identity": {"provider": "old"}}]}},
-                }
-            )
+            payload = _raw_response({"declaration": {"events": [{"identity": {"provider": "old"}}]}})
             transformed = transformer(payload)
             assert transformed.data == {"declaration": {"events": [{"identity": {"provider": "org/plugin/provider"}}]}}
             return provider

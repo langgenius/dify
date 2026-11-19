@@ -21,29 +21,14 @@ class PluginAgentClient(BasePluginClient):
         """
 
         def transformer(json_response: PluginDaemonRawResponse) -> PluginDaemonRawResponse:
-            """Enrich parsed agent-provider identities in place.
-
-            Precondition: the daemon envelope has passed Pydantic validation.
-            Postcondition: valid nested identities are updated; malformed branches are untouched;
-            the same response is returned.
-            """
-            providers = as_plugin_daemon_json_array(json_response.data)
-            if providers is not None:
-                for provider_value in providers:
-                    provider = as_plugin_daemon_json_object(provider_value)
-                    if provider is not None:
-                        declaration = as_plugin_daemon_json_object(provider.get("declaration"))
-                        if declaration is not None:
-                            identity = as_plugin_daemon_json_object(declaration.get("identity"))
-                            provider_name = identity.get("name") if identity is not None else None
-                            strategies = as_plugin_daemon_json_array(declaration.get("strategies"))
-                            if strategies is not None:
-                                for strategy_value in strategies:
-                                    strategy = as_plugin_daemon_json_object(strategy_value)
-                                    if strategy is not None:
-                                        strategy_identity = as_plugin_daemon_json_object(strategy.get("identity"))
-                                        if strategy_identity is not None:
-                                            strategy_identity["provider"] = provider_name
+            """Precondition: validated envelope. Postcondition: enrich valid identities and return it."""
+            for provider_value in as_plugin_daemon_json_array(json_response.data):
+                provider = as_plugin_daemon_json_object(provider_value)
+                declaration = as_plugin_daemon_json_object(provider.get("declaration"))
+                provider_name = as_plugin_daemon_json_object(declaration.get("identity")).get("name")
+                for strategy_value in as_plugin_daemon_json_array(declaration.get("strategies")):
+                    strategy = as_plugin_daemon_json_object(strategy_value)
+                    as_plugin_daemon_json_object(strategy.get("identity"))["provider"] = provider_name
 
             return json_response
 
@@ -71,23 +56,13 @@ class PluginAgentClient(BasePluginClient):
         agent_provider_id = GenericProviderID(provider)
 
         def transformer(json_response: PluginDaemonRawResponse) -> PluginDaemonRawResponse:
-            """Enrich parsed agent-provider identities in place.
-
-            Precondition: the daemon envelope has passed Pydantic validation.
-            Postcondition: valid nested identities are updated; malformed branches are untouched;
-            the same response is returned.
-            """
-            # Skip when the daemon has no provider declaration (for example, an error envelope).
-            data = as_plugin_daemon_json_object(json_response.data)
-            declaration = as_plugin_daemon_json_object(data.get("declaration")) if data is not None else None
-            strategies = as_plugin_daemon_json_array(declaration.get("strategies")) if declaration is not None else None
-            if strategies is not None:
-                for strategy_value in strategies:
-                    strategy = as_plugin_daemon_json_object(strategy_value)
-                    if strategy is not None:
-                        strategy_identity = as_plugin_daemon_json_object(strategy.get("identity"))
-                        if strategy_identity is not None:
-                            strategy_identity["provider"] = agent_provider_id.provider_name
+            """Precondition: validated envelope. Postcondition: enrich valid identities and return it."""
+            declaration = as_plugin_daemon_json_object(
+                as_plugin_daemon_json_object(json_response.data).get("declaration")
+            )
+            for strategy_value in as_plugin_daemon_json_array(declaration.get("strategies")):
+                strategy = as_plugin_daemon_json_object(strategy_value)
+                as_plugin_daemon_json_object(strategy.get("identity"))["provider"] = agent_provider_id.provider_name
 
             return json_response
 

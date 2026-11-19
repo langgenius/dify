@@ -1,6 +1,7 @@
 from collections.abc import Callable
 from types import SimpleNamespace
 
+from pydantic import JsonValue
 from pytest_mock import MockerFixture
 
 from core.datasource.entities.datasource_entities import (
@@ -13,6 +14,10 @@ from core.plugin.entities.plugin_daemon import PluginDaemonRawResponse
 from core.plugin.impl.datasource import PluginDatasourceManager
 
 _Transformer = Callable[[PluginDaemonRawResponse], PluginDaemonRawResponse]
+
+
+def _raw_response(data: JsonValue) -> PluginDaemonRawResponse:
+    return PluginDaemonRawResponse(code=0, message="", data=data)
 
 
 def _datasource_provider(name: str = "provider") -> SimpleNamespace:
@@ -35,19 +40,15 @@ class TestPluginDatasourceManager:
         def fake_request(
             method: str, path: str, type_: object, *, transformer: _Transformer, **kwargs: object
         ) -> list[SimpleNamespace]:
-            payload = PluginDaemonRawResponse.model_validate(
-                {
-                    "code": 0,
-                    "message": "",
-                    "data": [
-                        {
-                            "declaration": {
-                                "identity": {"name": "remote"},
-                                "datasources": [{"identity": {"provider": "old"}, "output_schema": {"$ref": "#/doc"}}],
-                            }
+            payload = _raw_response(
+                [
+                    {
+                        "declaration": {
+                            "identity": {"name": "remote"},
+                            "datasources": [{"identity": {"provider": "old"}, "output_schema": {"$ref": "#/doc"}}],
                         }
-                    ],
-                }
+                    }
+                ]
             )
             transformed = transformer(payload)
             assert transformed.data == [
@@ -80,19 +81,15 @@ class TestPluginDatasourceManager:
         def fake_request(
             method: str, path: str, type_: object, *, transformer: _Transformer, **kwargs: object
         ) -> list[SimpleNamespace]:
-            payload = PluginDaemonRawResponse.model_validate(
-                {
-                    "code": 0,
-                    "message": "",
-                    "data": [
-                        {
-                            "declaration": {
-                                "identity": {"name": "remote"},
-                                "datasources": [{"identity": {"provider": "old"}, "output_schema": {"$ref": "#/doc"}}],
-                            }
+            payload = _raw_response(
+                [
+                    {
+                        "declaration": {
+                            "identity": {"name": "remote"},
+                            "datasources": [{"identity": {"provider": "old"}, "output_schema": {"$ref": "#/doc"}}],
                         }
-                    ],
-                }
+                    }
+                ]
             )
             transformed = transformer(payload)
             assert transformed.data == [
@@ -127,16 +124,8 @@ class TestPluginDatasourceManager:
         def fake_request(
             method: str, path: str, type_: object, *, transformer: _Transformer, **kwargs: object
         ) -> SimpleNamespace:
-            payload = PluginDaemonRawResponse.model_validate(
-                {
-                    "code": 0,
-                    "message": "",
-                    "data": {
-                        "declaration": {
-                            "datasources": [{"identity": {"provider": "old"}, "output_schema": {"$ref": "#/x"}}]
-                        }
-                    },
-                }
+            payload = _raw_response(
+                {"declaration": {"datasources": [{"identity": {"provider": "old"}, "output_schema": {"$ref": "#/x"}}]}}
             )
             transformed = transformer(payload)
             assert transformed.data == {
