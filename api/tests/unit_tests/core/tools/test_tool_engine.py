@@ -241,7 +241,7 @@ def test_extract_binary_messages_treat_an_empty_mimetype_as_missing(mime_type: s
     ]
 
 
-def test_extract_binary_messages_keep_an_explicit_mimetype():
+def test_extract_binary_messages_keep_an_explicit_mimetype() -> None:
     messages = [
         ToolInvokeMessage(
             type=ToolInvokeMessage.MessageType.IMAGE,
