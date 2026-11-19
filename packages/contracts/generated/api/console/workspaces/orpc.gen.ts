@@ -35,6 +35,7 @@ import {
   zOwnerTransferLimitError,
   zOwnerTransferRateLimitExceededError,
   zPaidPlanRequiredError,
+  zPendingInvitationNotFoundError,
   zPluginError,
   zRoleAlreadyAssignedError,
   zTooManyFilesError,
@@ -104,6 +105,8 @@ import {
   zDeleteWorkspacesCurrentTriggerProviderByProviderOauthClientResponse,
   zGetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangPath,
   zGetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangResponse,
+  zGetWorkspacesByWorkspaceIdMembersPendingInvitationsPath,
+  zGetWorkspacesByWorkspaceIdMembersPendingInvitationsResponse,
   zGetWorkspacesCurrentAgentProviderByProviderNamePath,
   zGetWorkspacesCurrentAgentProviderByProviderNameResponse,
   zGetWorkspacesCurrentAgentProvidersResponse,
@@ -387,6 +390,9 @@ import {
   zPatchWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdBody,
   zPatchWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdPath,
   zPatchWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdResponse,
+  zPostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeBody,
+  zPostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokePath,
+  zPostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeResponse,
   zPostWorkspacesCurrentCustomizedSnippetsBody,
   zPostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementPath,
   zPostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementResponse,
@@ -6463,7 +6469,65 @@ export const byTenantId = {
   modelProviders: modelProviders2,
 }
 
+/**
+ * Revoke an email's invitation: links stop working, a pending member is removed, the seat is freed
+ */
+export const post96 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspacesByWorkspaceIdMembersPendingInvitationsRevoke',
+    path: '/workspaces/{workspace_id}/members/pending-invitations/revoke',
+    summary:
+      "Revoke an email's invitation: links stop working, a pending member is removed, the seat is freed",
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeBody,
+      params: zPostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokePath,
+    }),
+  )
+  .output(zPostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeResponse)
+  .errors({
+    forbidden: { status: 403, data: zForbiddenError },
+    pending_invitation_not_found: { status: 404, data: zPendingInvitationNotFoundError },
+  })
+
+export const revoke = {
+  post: post96,
+}
+
+/**
+ * List pending invitations for the active workspace
+ */
 export const get138 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesByWorkspaceIdMembersPendingInvitations',
+    path: '/workspaces/{workspace_id}/members/pending-invitations',
+    summary: 'List pending invitations for the active workspace',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetWorkspacesByWorkspaceIdMembersPendingInvitationsPath }))
+  .output(zGetWorkspacesByWorkspaceIdMembersPendingInvitationsResponse)
+  .errors({ forbidden: { status: 403, data: zForbiddenError } })
+
+export const pendingInvitations = {
+  get: get138,
+  revoke,
+}
+
+export const members4 = {
+  pendingInvitations,
+}
+
+export const byWorkspaceId = {
+  members: members4,
+}
+
+export const get139 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -6474,12 +6538,13 @@ export const get138 = oc
   .output(zGetWorkspacesResponse)
 
 export const workspaces = {
-  get: get138,
+  get: get139,
   current,
   customConfig,
   info: info4,
   switch: switch3,
   byTenantId,
+  byWorkspaceId,
 }
 
 export const contract = {

@@ -7,7 +7,7 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createDeferred } from '@/test/deferred'
 import { apiError, installFakeApi } from '@/test/fake-api'
-import MembersPage from '../index'
+import { MembersPage } from '../index'
 
 const flags = vi.hoisted(() => ({ contactsEnabled: vi.fn(() => false) }))
 // boundary: switch the deployment feature flag per scenario.
@@ -39,6 +39,7 @@ afterEach(() => vi.unstubAllGlobals())
 async function setup(ids: string[]) {
   let accounts = ids.map(member)
   const { queryClient } = createConsoleQueryWrapper({
+    currentWorkspace: { id: '74e6f5f1-621e-4ca0-910f-94c686e4ada1', role: 'owner' },
     systemFeatures: { deployment_edition: 'COMMUNITY' },
     workspacePermissionKeys: ['workspace.member.manage'],
   })
@@ -47,6 +48,9 @@ async function setup(ids: string[]) {
     console: {
       features: { get: async () => features },
       workspaces: {
+        byWorkspaceId: {
+          members: { pendingInvitations: { get: async () => ({ invitations: [] }) } },
+        },
         current: {
           members: {
             get: async () => ({ accounts }),

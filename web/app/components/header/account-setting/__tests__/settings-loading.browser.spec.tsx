@@ -19,6 +19,8 @@ const mocks = vi.hoisted(() => ({ loadResource: vi.fn() }))
 // boundary: defer the external translation load while keeping i18next and its consumers real.
 vi.mock('@/i18n/load-resource', () => ({ loadI18nResource: mocks.loadResource }))
 
+// Workspace routes take a UUID path parameter.
+const workspaceId = '74e6f5f1-621e-4ca0-910f-94c686e4ada1'
 const resources: Resource = {
   'en-US': {
     appLog: {},
@@ -66,7 +68,7 @@ function renderSettings() {
   })
   const { wrapper: Wrapper } = createConsoleQueryWrapper({
     queryClient,
-    currentWorkspace: { id: 'workspace-1', name: 'Workspace', role: 'owner' },
+    currentWorkspace: { id: workspaceId, name: 'Workspace', role: 'owner' },
     workspacePermissionKeys: ['workspace.member.manage'],
     systemFeatures: { deployment_edition: 'CLOUD', is_email_setup: true },
     features: { billing: { subscription: { plan: 'team' } } },
@@ -167,6 +169,9 @@ beforeEach(() => {
     installFakeApi({
       console: {
         workspaces: {
+          byWorkspaceId: {
+            members: { pendingInvitations: { get: () => ({ invitations: [] }) } },
+          },
           current: {
             members: {
               get: () => ({

@@ -4379,11 +4379,6 @@
       "count": 4
     }
   },
-  "web/app/components/workflow/nodes/human-input/components/delivery-method/recipient/member-list.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    }
-  },
   "web/app/components/workflow/nodes/human-input/components/delivery-method/test-email-sender.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3

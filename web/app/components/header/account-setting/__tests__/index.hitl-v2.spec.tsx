@@ -100,6 +100,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
   const query = withConsoleResponses(actual.consoleQuery, {
+    'workspaces.byWorkspaceId.members.pendingInvitations.get': async () => ({ invitations: [] }),
     'workspaces.current.members.get': async () => ({ accounts: [] }),
   })
   return {
