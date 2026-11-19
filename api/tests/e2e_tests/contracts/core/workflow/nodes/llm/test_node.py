@@ -1580,8 +1580,10 @@ def test_invoke_llm_dispatches_to_expected_model_method(
     prompt_messages = [UserPromptMessage(content="hello")]
     file_saver = _build_file_saver()
 
-    mocker.patch.object(model_instance, "invoke_llm", return_value=iter([]))
-    mocker.patch.object(model_instance, "invoke_llm_with_structured_output", return_value=iter([]))
+    invoke_llm = mocker.patch.object(model_instance, "invoke_llm", return_value=iter([]))
+    invoke_llm_with_structured_output = mocker.patch.object(
+        model_instance, "invoke_llm_with_structured_output", return_value=iter([])
+    )
 
     with (
         mock.patch.object(LLMNode, "handle_invoke_result", return_value=iter(["handled"])) as mock_handle,
@@ -1603,23 +1605,23 @@ def test_invoke_llm_dispatches_to_expected_model_method(
 
     assert result == ["handled"]
     if structured_output_enabled:
-        model_instance.invoke_llm_with_structured_output.assert_called_once_with(
+        invoke_llm_with_structured_output.assert_called_once_with(
             prompt_messages=prompt_messages,
             json_schema={"type": "object", "properties": {"answer": {"type": "string"}}},
             model_parameters={},
             stop=("STOP",),
             stream=True,
         )
-        model_instance.invoke_llm.assert_not_called()
+        invoke_llm.assert_not_called()
     else:
-        model_instance.invoke_llm.assert_called_once_with(
+        invoke_llm.assert_called_once_with(
             prompt_messages=prompt_messages,
             model_parameters={},
             tools=None,
             stop=("STOP",),
             stream=True,
         )
-        model_instance.invoke_llm_with_structured_output.assert_not_called()
+        invoke_llm_with_structured_output.assert_not_called()
 
     assert mock_handle.call_args.kwargs["request_start_time"] == 10.0
 
