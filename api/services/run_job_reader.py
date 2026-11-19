@@ -119,10 +119,11 @@ def _unstored_ids(ids: JobIds, stored: JobIds) -> dict[str, str]:
 
 @dataclass(slots=True)
 class _Reading:
-    """What one reader has stored so far, and the misfit events it has reported."""
+    """What one reader has stored so far, the misfit events it has reported, and an ending it could not save."""
 
     stored: JobIds = field(default_factory=JobIds)
     reported: set[str | None] = field(default_factory=set)
+    unsaved: JobEnding | None = None
 
 
 def _report(job_id: str, misfit: Misfit, reading: _Reading) -> None:
@@ -138,7 +139,8 @@ def _consume(frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper
 
     Precondition: the job exists; reading.stored holds the ids already written.
     Postcondition: ids and status from the frame are stored and reading.stored names them; ids count as stored only
-    after the store accepted them, so a failed save is retried by the next frame that carries them; a pending stop
+    after the store accepted them, so a failed save is retried by the next frame that carries them; an ending stays
+    in reading.unsaved until the store accepted it, so a failed save is retried when the stream ends; a pending stop
     is sent once when the task id is first stored. A frame that does not fit core's model changes nothing and is
     reported.
     """
@@ -163,8 +165,11 @@ def _consume(frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper
     if handler is None:
         return
     ending = handler(_FrameContext(record=record, frame=read))
-    if ending is not None:
-        store.settle(job_id, ending)
+    if ending is None:
+        return
+    reading.unsaved = ending
+    store.settle(job_id, ending)
+    reading.unsaved = None
 
 
 def _consume_safely(frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper, reading: _Reading) -> None:
@@ -179,14 +184,17 @@ def _consume_safely(frame: str, *, job_id: str, store: RunJobStore, stopper: Job
         logger.exception("Run job %s frame handling failed", job_id)
 
 
-def _end_of_stream(job_id: str, store: RunJobStore) -> None:
+def _end_of_stream(job_id: str, store: RunJobStore, unsaved: JobEnding | None) -> None:
     """Record how the reader ended, then let go of the alive key.
 
-    Precondition: the stream ended or raised.
-    Postcondition: a MESSAGE job without an ending is FAILED for NO_RESULT; a GRAPH job without a run id is FAILED
-    for RUN_NOT_CONFIRMED; a GRAPH job with a run id is left to its run. The alive key is deleted last, so a viewer
-    that finds it gone reads this reader's final writes.
+    Precondition: the stream ended or raised; unsaved is the ending read from the stream that the store refused.
+    Postcondition: unsaved is saved first, so it is the job's ending unless the job had one; then a MESSAGE job
+    without an ending is FAILED for NO_RESULT; a GRAPH job without a run id is FAILED for RUN_NOT_CONFIRMED; a GRAPH
+    job with a run id is left to its run. The alive key is deleted last, so a viewer that finds it gone reads this
+    reader's final writes.
     """
+    if unsaved is not None:
+        store.settle(job_id, unsaved)
     record = store.get(job_id)
     if record is None:
         return
@@ -233,10 +241,10 @@ def read_to_end(
     """Consume a run's SSE frames and record them as job state.
 
     Precondition: the job exists.
-    Postcondition: every frame was consumed, ids are stored, the ending rule of _end_of_stream was applied, and
-    frames is closed when it has a close method. The first frame of each event name that does not fit core's model
-    is logged as an error. While frames are read, whether or not they arrive, the alive key
-    is refreshed every alive_refresh_seconds; the refresh stops and the key is deleted before it returns. A frame
+    Postcondition: every frame was consumed, ids are stored, an ending the store refused at its frame is saved, the
+    ending rule of _end_of_stream was applied, and frames is closed when it has a close method. The first frame of
+    each event name that does not fit core's model is logged as an error. While frames are read, whether or not they
+    arrive, the alive key is refreshed every alive_refresh_seconds; the refresh stops and the key is deleted before it returns. A frame
     whose handling raises is logged and skipped; a stream that raises is logged and treated as ended.
     """
     stop = threading.Event()
@@ -257,4 +265,4 @@ def read_to_end(
         stop.set()
         alive.join()
         close_frames(frames)
-    _end_of_stream(job_id, store)
+    _end_of_stream(job_id, store, reading.unsaved)
