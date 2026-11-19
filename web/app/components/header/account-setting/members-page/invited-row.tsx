@@ -21,7 +21,7 @@ export type Invitee = {
   memberId?: string
 }
 
-export const InvitedStatus = ({ expiresAt }: { expiresAt?: string }) => {
+const InvitedStatus = ({ expiresAt }: { expiresAt?: string }) => {
   const { t } = useTranslation(['workspaceMembers'])
   const locale = useLocale()
 
