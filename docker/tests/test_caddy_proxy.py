@@ -12,18 +12,23 @@ CADDY_DIR = DOCKER_DIR / "caddy"
 CADDY_IMAGE = "caddy:2.11-alpine"
 
 
-def translate(**settings: str) -> dict[str, str]:
-    """Run proxy-env.sh with only the given settings and return the exported DIFY_PROXY_* values."""
+def run_translation(**settings: str) -> subprocess.CompletedProcess[str]:
     env = {"PATH": os.environ["PATH"], **settings}
-    result = subprocess.run(
+    return subprocess.run(
         ["sh", "-c", '. "$1" && dify_proxy_env && env', "sh", str(CADDY_DIR / "proxy-env.sh")],
         env=env,
         text=True,
         capture_output=True,
-        check=True,
+        check=False,
     )
-    values = dict(line.split("=", 1) for line in result.stdout.splitlines() if line.startswith("DIFY_PROXY_"))
-    return values
+
+
+def translate(**settings: str) -> dict[str, str]:
+    """Run proxy-env.sh with only the given settings and return the exported DIFY_PROXY_* values."""
+    result = run_translation(**settings)
+    if result.returncode != 0:
+        raise AssertionError(result.stderr)
+    return dict(line.split("=", 1) for line in result.stdout.splitlines() if line.startswith("DIFY_PROXY_"))
 
 
 def docker_available() -> bool:
@@ -44,6 +49,7 @@ class ProxySettingsTests(unittest.TestCase):
         self.assertEqual(values["DIFY_PROXY_SOCKET_IO_UPSTREAM"], "api_websocket:5001")
         self.assertEqual(values["DIFY_PROXY_HTTPS"], "off")
         self.assertEqual(values["DIFY_PROXY_ACME_CHALLENGE"], "off")
+        self.assertEqual(values["DIFY_PROXY_CLIENT_IP"], "direct")
 
     def test_sizes_keep_nginx_binary_units(self):
         for nginx_value, caddy_value in {
@@ -100,6 +106,21 @@ class ProxySettingsTests(unittest.TestCase):
         self.assertEqual(translate(NGINX_ENABLE_CERTBOT_CHALLENGE="true")["DIFY_PROXY_ACME_CHALLENGE"], "on")
         self.assertEqual(translate(NGINX_ENABLE_CERTBOT_CHALLENGE="false")["DIFY_PROXY_ACME_CHALLENGE"], "off")
 
+    def test_trusted_proxies_enable_client_ip_resolution(self):
+        values = translate(
+            CADDY_TRUSTED_PROXIES="192.0.2.10/32,198.51.100.0/24", CADDY_CLIENT_IP_HEADERS="CF-Connecting-IP"
+        )
+        self.assertEqual(values["DIFY_PROXY_CLIENT_IP"], "trusted")
+        self.assertEqual(values["DIFY_PROXY_TRUSTED_PROXIES"], "192.0.2.10/32 198.51.100.0/24")
+        self.assertEqual(values["DIFY_PROXY_CLIENT_IP_HEADERS"], "CF-Connecting-IP")
+
+    def test_trusting_every_address_is_refused(self):
+        for value in ("0.0.0.0/0", "10.0.0.0/8 ::/0"):
+            with self.subTest(value=value):
+                result = run_translation(CADDY_TRUSTED_PROXIES=value)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("must not contain", result.stderr)
+
 
 @unittest.skipUnless(docker_available(), "needs a Docker daemon to run Caddy")
 class CaddyfileTests(unittest.TestCase):
@@ -143,6 +164,14 @@ class CaddyfileTests(unittest.TestCase):
         self.assertEqual(loaded["certificate"], "/etc/ssl/dify.crt")
         self.assertEqual(loaded["key"], "/etc/ssl/dify.key")
         self.assertIn("/.well-known/acme-challenge/*", json.dumps(config))
+
+    def test_trusted_proxies_reach_every_server(self):
+        config = self.adapt(NGINX_HTTPS_ENABLED="true", CADDY_TRUSTED_PROXIES="192.0.2.10/32")
+        for server in config["apps"]["http"]["servers"].values():
+            self.assertEqual(server["trusted_proxies"], {"ranges": ["192.0.2.10/32"], "source": "static"})
+            self.assertEqual(server["client_ip_headers"], ["X-Forwarded-For"])
+            self.assertTrue(server["trusted_proxies_strict"])
+        self.assertIn('"X-Forwarded-For": ["{http.vars.client_ip}"]', json.dumps(config))
 
 
 if __name__ == "__main__":

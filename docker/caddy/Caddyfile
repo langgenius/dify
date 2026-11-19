@@ -9,6 +9,7 @@
 	auto_https off
 	servers {
 		protocols h1 h2
+		import client-ip-{$DIFY_PROXY_CLIENT_IP}.caddy
 		timeouts {
 			idle {$DIFY_PROXY_IDLE_TIMEOUT}
 		}
@@ -22,6 +23,9 @@
 		# Like the Nginx map: the port from the Host header, so the API's
 		# ProxyFix(x_port=1) keeps the external port. ProxyFix ignores an empty value.
 		header_up X-Forwarded-Port {http.request.port}
+		# Like Nginx's "X-Forwarded-For $remote_addr": one address, the visitor's as
+		# resolved from trusted proxies (or the peer). The API trusts exactly one value.
+		header_up X-Forwarded-For {client_ip}
 		# The API trusts X-Forwarded-For and X-Forwarded-Port only.
 		header_up -X-Forwarded-Host
 		header_up -Via

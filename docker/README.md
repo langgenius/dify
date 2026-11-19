@@ -422,9 +422,9 @@ Weaviate. Update that value if you need different profiles.
 routes on the same ports and reads the same settings: the `NGINX_*` values in root
 `.env` and `envs/infrastructure/nginx.env`, the certificates in `nginx/ssl` or the
 Certbot volume, and `NGINX_HTTPS_ENABLED`. Caddy is written in Go, a memory-safe
-language. Files you added under `nginx/conf.d`, such as the `real-ip.conf` described
-in [Client IP and trusted proxies](#client-ip-and-trusted-proxies), are not read; stay
-on Nginx if you rely on them.
+language. Files you added under `nginx/conf.d` are not read; for a `real-ip.conf`,
+set `CADDY_TRUSTED_PROXIES` instead, as described in
+[Client IP and trusted proxies](#client-ip-and-trusted-proxies).
 
 To switch, remove the Nginx container, add the overlay to root `.env`, and start
 the services:
@@ -659,6 +659,26 @@ proxy range. Reload Nginx after updating its configuration. See the
 [Nginx real-IP module](https://nginx.org/en/docs/http/ngx_http_realip_module.html),
 [Cloudflare IP ranges](https://www.cloudflare.com/ips/), and
 [Cloudflare origin protection](https://developers.cloudflare.com/fundamentals/security/protect-your-origin-server/).
+
+### Cloudflare or another load balancer before Caddy
+
+With [Caddy as the reverse proxy](#use-caddy-as-the-reverse-proxy-preview), set the
+trusted proxy addresses in `envs/infrastructure/nginx.env` or root `.env` instead of
+adding `real-ip.conf`. Separate several addresses or CIDR ranges with spaces:
+
+```dotenv
+# Replace this documentation address with the actual trusted proxy address/CIDR.
+CADDY_TRUSTED_PROXIES=192.0.2.10/32
+CADDY_CLIENT_IP_HEADERS=X-Forwarded-For
+```
+
+Caddy then reads the visitor address from that header only on requests from those
+addresses, right to left, stopping at the first address that is not trusted, like
+`real_ip_recursive on`. It forwards that single address to Dify. For Cloudflare
+connecting directly to Caddy, set `CADDY_CLIENT_IP_HEADERS=CF-Connecting-IP` and list
+Cloudflare's current ranges. The advice above on restricting origin access applies
+unchanged. Caddy refuses to start with `0.0.0.0/0` or `::/0`. Apply changes with
+`docker compose up -d caddy`.
 
 ### Kubernetes
 

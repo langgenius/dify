@@ -66,6 +66,20 @@ dify_proxy_env() {
 		fi
 	fi
 
+	# Visitor address from trusted proxies (CDN, load balancer), like Nginx's real_ip module.
+	DIFY_PROXY_CLIENT_IP=direct
+	DIFY_PROXY_TRUSTED_PROXIES=$(echo "${CADDY_TRUSTED_PROXIES:-}" | tr ',' ' ')
+	DIFY_PROXY_CLIENT_IP_HEADERS=$(echo "${CADDY_CLIENT_IP_HEADERS:-X-Forwarded-For}" | tr ',' ' ')
+	for range in $DIFY_PROXY_TRUSTED_PROXIES; do
+		case $range in
+			0.0.0.0/0 | ::/0 | 0::/0)
+				echo "CADDY_TRUSTED_PROXIES must not contain $range: any client could choose its own IP." >&2
+				return 1
+				;;
+		esac
+		DIFY_PROXY_CLIENT_IP=trusted
+	done
+
 	DIFY_PROXY_ACME_CHALLENGE=off
 	if [ "${NGINX_ENABLE_CERTBOT_CHALLENGE:-false}" = "true" ]; then
 		DIFY_PROXY_ACME_CHALLENGE=on
@@ -73,5 +87,6 @@ dify_proxy_env() {
 
 	export DIFY_PROXY_MAX_BODY_SIZE DIFY_PROXY_READ_TIMEOUT DIFY_PROXY_SEND_TIMEOUT DIFY_PROXY_IDLE_TIMEOUT \
 		DIFY_PROXY_TLS_PROTOCOLS DIFY_PROXY_SOCKET_IO_UPSTREAM DIFY_PROXY_HTTPS DIFY_PROXY_TLS_CERT \
-		DIFY_PROXY_TLS_KEY DIFY_PROXY_ACME_CHALLENGE
+		DIFY_PROXY_TLS_KEY DIFY_PROXY_ACME_CHALLENGE DIFY_PROXY_CLIENT_IP DIFY_PROXY_TRUSTED_PROXIES \
+		DIFY_PROXY_CLIENT_IP_HEADERS
 }

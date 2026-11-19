@@ -18,3 +18,9 @@ NGINX_PROXY_SEND_TIMEOUT=${NGINX_PROXY_SEND_TIMEOUT:-3600s}
 NGINX_ENABLE_CERTBOT_CHALLENGE=${NGINX_ENABLE_CERTBOT_CHALLENGE:-false}
 NGINX_SOCKET_IO_UPSTREAM=${NGINX_SOCKET_IO_UPSTREAM:-api_websocket:5001}
 CERTBOT_DOMAIN=${CERTBOT_DOMAIN:-}
+# Caddy only (docker-compose.caddy.yaml): addresses or CIDR ranges of the proxies in
+# front of Dify, separated by spaces. Their client-IP header is trusted; empty trusts none.
+# See README.md#client-ip-and-trusted-proxies before setting it.
+CADDY_TRUSTED_PROXIES=${CADDY_TRUSTED_PROXIES:-}
+# Header carrying the visitor address from those proxies, e.g. CF-Connecting-IP for Cloudflare.
+CADDY_CLIENT_IP_HEADERS=${CADDY_CLIENT_IP_HEADERS:-X-Forwarded-For}

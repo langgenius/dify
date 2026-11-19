@@ -1,0 +1,6 @@
+# CADDY_TRUSTED_PROXIES is set: take the visitor address from CADDY_CLIENT_IP_HEADERS
+# when the request comes from one of those proxies. Strict mode reads the header
+# right to left and stops at the first untrusted address (Nginx: real_ip_recursive on).
+trusted_proxies static {$DIFY_PROXY_TRUSTED_PROXIES}
+client_ip_headers {$DIFY_PROXY_CLIENT_IP_HEADERS}
+trusted_proxies_strict

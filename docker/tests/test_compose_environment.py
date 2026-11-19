@@ -1162,6 +1162,8 @@ class ComposeEnvironmentTests(unittest.TestCase):
         self.assertEqual(caddy["environment"]["NGINX_PROXY_READ_TIMEOUT"], "900s")
         for key, value in nginx["environment"].items():
             self.assertEqual(caddy["environment"].get(key), value, key)
+        self.assertEqual(caddy["environment"]["CADDY_TRUSTED_PROXIES"], "")
+        self.assertEqual(caddy["environment"]["CADDY_CLIENT_IP_HEADERS"], "X-Forwarded-For")
 
         # Nginx stays available on request, e.g. to compare behaviour before switching.
         with_nginx = self.render(
