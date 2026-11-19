@@ -34,6 +34,8 @@ jobs:
               - docker/docker-compose-template.yaml
               - docker/docker-compose.yaml
               - docker/docker-compose.e2b.yaml
+              - docker/docker-compose.caddy.yaml
+              - docker/caddy/**
               - docker/envs/**
               - docker/tests/**
             api:

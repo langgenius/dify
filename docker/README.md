@@ -416,6 +416,37 @@ This separate workflow requires `--env-file middleware.env`. The template define
 `COMPOSE_PROFILES=${DB_TYPE:-postgresql},weaviate`, which selects the database and
 Weaviate. Update that value if you need different profiles.
 
+## Use Caddy as the reverse proxy (preview)
+
+[Caddy](https://caddyserver.com/) can replace the bundled Nginx. It serves the same
+routes on the same ports and reads the same settings: the `NGINX_*` values in root
+`.env` and `envs/infrastructure/nginx.env`, the certificates in `nginx/ssl` or the
+Certbot volume, and `NGINX_HTTPS_ENABLED`. Caddy is written in Go, a memory-safe
+language. Files you added under `nginx/conf.d`, such as the `real-ip.conf` described
+in [Client IP and trusted proxies](#client-ip-and-trusted-proxies), are not read; stay
+on Nginx if you rely on them.
+
+To switch, remove the Nginx container, add the overlay to root `.env`, and start
+the services:
+
+```bash
+docker compose rm -sf nginx
+echo 'COMPOSE_FILE=docker-compose.yaml:docker-compose.caddy.yaml' >> .env
+docker compose up -d
+```
+
+Size and time settings keep Nginx's units: `NGINX_CLIENT_MAX_BODY_SIZE=100M` still
+means 100 MiB, and a bare number of seconds is accepted. `NGINX_WORKER_PROCESSES` has
+no Caddy equivalent and is ignored. After renewing certificates or changing a setting,
+apply it without dropping connections:
+
+```bash
+docker compose exec caddy sh /etc/caddy/docker-entrypoint.sh reload
+```
+
+To return to Nginx, run `docker compose rm -sf caddy` first, then delete the
+`COMPOSE_FILE` line and run `docker compose up -d --remove-orphans`.
+
 ## Configure HTTPS and telemetry
 
 For HTTPS certificates, follow the [Certbot guide](certbot/README.md).

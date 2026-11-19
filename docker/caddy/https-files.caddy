@@ -1,0 +1,8 @@
+# NGINX_HTTPS_ENABLED=true: serve the same routes on the TLS port with the
+# certificate from Certbot's live directory or docker/nginx/ssl.
+https://:{$NGINX_SSL_PORT} {
+	tls {$DIFY_PROXY_TLS_CERT} {$DIFY_PROXY_TLS_KEY} {
+		protocols {$DIFY_PROXY_TLS_PROTOCOLS}
+	}
+	import dify_routes
+}

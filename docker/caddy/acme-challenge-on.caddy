@@ -1,0 +1,5 @@
+# NGINX_ENABLE_CERTBOT_CHALLENGE=true: answer Certbot's webroot challenge.
+handle /.well-known/acme-challenge/* {
+	root * /var/www/html
+	file_server
+}

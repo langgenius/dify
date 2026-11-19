@@ -63,6 +63,16 @@ Then, reload the nginx container if necessary.
 docker compose exec nginx nginx -s reload
 ```
 
+## With Caddy
+
+If you use [Caddy as the reverse proxy](../README.md#use-caddy-as-the-reverse-proxy-preview),
+the same settings and steps apply. Replace `nginx` with `caddy` in the `up` commands,
+and reload with:
+
+```shell
+docker compose exec caddy sh /etc/caddy/docker-entrypoint.sh reload
+```
+
 ## For legacy servers
 
 To use cert files dir `nginx/ssl` as before, simply launch containers WITHOUT `--profile certbot` option.

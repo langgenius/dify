@@ -1141,6 +1141,34 @@ class ComposeEnvironmentTests(unittest.TestCase):
         self.assertEqual(values["DIFY_AGENT_E2B_API_KEY"], "service-api-key")
         self.assertEqual(values["DIFY_AGENT_E2B_TEMPLATE"], "custom-template")
 
+    def test_caddy_overlay_replaces_nginx_with_the_same_settings(self):
+        self.copy_template("docker-compose.caddy.yaml", "docker-compose.caddy.yaml")
+        self.copy_template(
+            "envs/infrastructure/nginx.defaults",
+            "envs/infrastructure/nginx.env",
+            {"NGINX_CLIENT_MAX_BODY_SIZE": "200M", "NGINX_PROXY_READ_TIMEOUT": "600s"},
+        )
+        self.override_root({"NGINX_PROXY_READ_TIMEOUT": "900s", "EXPOSE_NGINX_PORT": "8080", "NGINX_PORT": "8081"})
+        nginx = self.render(all_profiles=False)["nginx"]
+        services = self.render("-f", "docker-compose.yaml", "-f", "docker-compose.caddy.yaml", all_profiles=False)
+
+        self.assertNotIn("nginx", services)
+        caddy = services["caddy"]
+        self.assertEqual(caddy["ports"], nginx["ports"])
+        self.assertEqual(caddy["ports"][0]["published"], "8080")
+        self.assertEqual(caddy["ports"][0]["target"], 8081)
+        self.assertEqual(caddy["environment"]["NGINX_PORT"], "8081")
+        self.assertEqual(caddy["environment"]["NGINX_CLIENT_MAX_BODY_SIZE"], "200M")
+        self.assertEqual(caddy["environment"]["NGINX_PROXY_READ_TIMEOUT"], "900s")
+        for key, value in nginx["environment"].items():
+            self.assertEqual(caddy["environment"].get(key), value, key)
+
+        # Nginx stays available on request, e.g. to compare behaviour before switching.
+        with_nginx = self.render(
+            "-f", "docker-compose.yaml", "-f", "docker-compose.caddy.yaml", "--profile", "nginx", all_profiles=False
+        )
+        self.assertIn("nginx", with_nginx)
+
     def test_generator_creates_only_root_env_and_preserves_edits(self):
         for source in (
             "generate_docker_compose",
