@@ -161,13 +161,17 @@ function InviteForm({
         {exceedsRemainingSeats && (
           <Alert type="warning">
             <AlertTitle>
-              {t(($) => $['members.seatsRemaining'], {
-                ns: 'workspaceMembers',
-                count: remainingSeats,
-              })}
+              {remainingSeats === 0
+                ? t(($) => $['members.seatsFull'], { ns: 'workspaceMembers' })
+                : t(($) => $['members.seatsRemaining'], {
+                    ns: 'workspaceMembers',
+                    count: remainingSeats,
+                  })}
             </AlertTitle>
             <AlertDescription>
-              {t(($) => $['members.recipientCountExceedsSeats'], { ns: 'workspaceMembers' })}
+              {remainingSeats === 0
+                ? t(($) => $['members.seatsFullTip'], { ns: 'workspaceMembers' })
+                : t(($) => $['members.recipientCountExceedsSeats'], { ns: 'workspaceMembers' })}
             </AlertDescription>
           </Alert>
         )}

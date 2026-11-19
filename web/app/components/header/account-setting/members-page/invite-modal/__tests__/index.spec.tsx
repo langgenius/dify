@@ -441,6 +441,19 @@ describe('InviteModal', () => {
     await waitFor(() => expect(inviteMember).toHaveBeenCalled())
   })
 
+  it('says the workspace is full and points to revoking or upgrading when no seat is left', async () => {
+    const user = userEvent.setup()
+    await renderModal({ workspaceMembers: { enabled: true, size: 10, limit: 10 } })
+
+    await addRecipients(user, 'one@example.com')
+    await selectAdminRole(user)
+
+    expect(screen.getByText(/members\.seatsFull$/i)).toBeInTheDocument()
+    expect(screen.getByText(/members\.seatsFullTip/i)).toBeInTheDocument()
+    expect(screen.queryByText(/members\.recipientCountExceedsSeats/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /members\.sendInvite/i })).toBeEnabled()
+  })
+
   it('counts a manually typed recipient list before it is committed', async () => {
     const user = userEvent.setup()
     await renderModal({ workspaceMembers: { enabled: true, size: 9, limit: 10 } })
