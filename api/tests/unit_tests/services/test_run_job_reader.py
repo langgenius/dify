@@ -497,11 +497,11 @@ class SettleFailsOnceStore(RedisRunJobStore):
         self.failures_left = 1
 
     @override
-    def settle(self, job_id: str, ending: JobEnding) -> None:
+    def settle(self, job_id: str, ending: JobEnding) -> bool:
         if self.failures_left > 0:
             self.failures_left -= 1
             raise ConnectionError("redis blip")
-        super().settle(job_id, ending)
+        return super().settle(job_id, ending)
 
 
 def test_a_chat_ending_whose_save_failed_is_saved_when_the_stream_ends(

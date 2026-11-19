@@ -244,8 +244,8 @@ def read_to_end(
     Postcondition: every frame was consumed, ids are stored, an ending the store refused at its frame is saved, the
     ending rule of _end_of_stream was applied, and frames is closed when it has a close method. The first frame of
     each event name that does not fit core's model is logged as an error. While frames are read, whether or not they
-    arrive, the alive key is refreshed every alive_refresh_seconds; the refresh stops and the key is deleted before it returns. A frame
-    whose handling raises is logged and skipped; a stream that raises is logged and treated as ended.
+    arrive, the alive key is refreshed every alive_refresh_seconds; the refresh stops and the key is deleted before it
+    returns. A frame whose handling raises is logged and skipped; a stream that raises is logged and treated as ended.
     """
     stop = threading.Event()
     alive = threading.Thread(
