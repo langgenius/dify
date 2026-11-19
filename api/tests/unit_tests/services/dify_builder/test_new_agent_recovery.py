@@ -69,8 +69,11 @@ AGENT_GRAPH = {
 
 @pytest.fixture(autouse=True)
 def _no_model_metadata_io(monkeypatch: pytest.MonkeyPatch) -> None:
+    from core.app.llm.model_access import ModelRuntimeProfile
+
     monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.resolve_model_context_window", lambda **_kwargs: None
+        "core.app.llm.model_access.resolve_model_runtime_profile",
+        lambda **_kwargs: ModelRuntimeProfile(context_window_tokens=None, supported_modalities=[]),
     )
 
 

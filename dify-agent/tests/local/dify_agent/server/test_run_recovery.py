@@ -30,13 +30,13 @@ def test_lookup_has_same_bearer_and_returns_only_acceptance_with_no_store():
 
 
 def test_lookup_missing_conflict_invalid_and_anonymous_mode_never_dispatch():
-    from dify_agent.storage.redis_run_store import RunCreateConflictError, RunNotFoundError
+    from dify_agent.storage.redis_run_store import IdempotencyConflictError, RunNotFoundError
 
     class Store:
         async def lookup_run(self, selection):
             if selection.idempotency_key == "missing":
                 raise RunNotFoundError("missing")
-            raise RunCreateConflictError("private detail")
+            raise IdempotencyConflictError("private detail")
 
     app = FastAPI()
     app.include_router(create_runs_router(lambda: Store(), lambda: None, enable_lookup=True))

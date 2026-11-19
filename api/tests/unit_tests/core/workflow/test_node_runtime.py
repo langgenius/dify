@@ -112,8 +112,14 @@ from models.tools import ToolFile
 from runtime_contracts.builder.execution import ConfirmedToolExecutionContext, context_digest
 from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
 from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService, ServiceConfirmedToolGuard
+from services.moderation_invocation_errors import (
+    ModerationRejectedInvocationError,
+    ModerationUnavailableInvocationError,
+)
+from services.moderation_service import ModerationPhase
 from services.workflow_runtime.node_factory import DifyNodeFactory
 from tests.helpers.unit.core.model_fixtures import make_model_config, make_model_instance
+from tests.helpers.unit.core.model_moderation_fixtures import RecordingPollingRuntime, make_failing_moderated_model
 from tests.helpers.unit.core.workflow.nodes.parameter_extractor.fixtures.model import get_mocked_fetch_model_instance
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_run_context, build_test_variable_pool
 
@@ -1445,6 +1451,10 @@ class _ModelTypeInstanceStub(LargeLanguageModel):
 
 
 class _ModelInstanceStub:
+    @property
+    def moderation(self) -> None:
+        return None
+
     def __init__(
         self,
         *,
@@ -3162,3 +3172,52 @@ def test_guard_and_factory_together_are_refused(mocker) -> None:
             confirmed_guard=_confirmed_guard(mocker=mocker),
             confirmed_guard_factory=_GuardFactory([], mocker=mocker),
         )
+
+
+@pytest.mark.parametrize("phase", ["input", "output"])
+@pytest.mark.parametrize("unavailable", [False, True])
+@pytest.mark.parametrize("immediate", [False, True])
+def test_polling_moderation_stops_delivery_without_refunding_consumed_usage(
+    phase: ModerationPhase, unavailable: bool, immediate: bool
+) -> None:
+    instance, provider = make_failing_moderated_model(phase=phase, unavailable=unavailable)
+    usage = LLMUsage.empty_usage().model_copy(update={"total_tokens": 7})
+    running = LLMPollingResult(status=LLMPollingStatus.RUNNING, plugin_state={"task_id": "task-1"})
+    terminal = LLMPollingResult(
+        status=LLMPollingStatus.SUCCEEDED,
+        result=node_runtime.LLMResult(
+            model="test-model", message=_node_runtime_AssistantPromptMessage(content="output"), usage=usage
+        ),
+    )
+    runtime = RecordingPollingRuntime(initial=terminal if immediate else running, terminal=terminal)
+    provider.model_runtime = runtime
+    prepared = DifyPreparedPollingLLM(instance)
+    expected_error = ModerationUnavailableInvocationError if unavailable else ModerationRejectedInvocationError
+
+    def start() -> LLMPollingResult:
+        return prepared.start_llm_polling(
+            prompt_messages=[UserPromptMessage(content="input")],
+            model_parameters={},
+            tools=None,
+            stop=None,
+            json_schema=None,
+        )
+
+    if phase == "input" or immediate:
+        with pytest.raises(expected_error):
+            start()
+    else:
+        assert start() == running
+        with pytest.raises(expected_error):
+            prepared.check_llm_polling(plugin_state={"task_id": "task-1"})
+
+    assert provider.invocations == 0
+    if phase == "input":
+        assert runtime.starts == 0
+        assert not instance.reservations
+    else:
+        assert runtime.starts == 1
+        assert runtime.checks == (0 if immediate else 1)
+        assert len(instance.reservations) == 1
+        assert instance.reservations[0].commits == [usage]
+        assert instance.reservations[0].released

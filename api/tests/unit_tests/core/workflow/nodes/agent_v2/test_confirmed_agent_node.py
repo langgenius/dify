@@ -336,6 +336,7 @@ def test_node_recovers_terminal_child_after_lost_continue_ack_without_second_con
     )
     protected = _protected(parent, event="100-0")
     wait = protected.wait
+    assert wait is not None
     _installed_spy_15 = installed_mock(commands.load_wait)
     _installed_spy_15.return_value = protected
     resumed = RunResumedEvent(id="101-0", run_id="original-child", data=RunResumedEventData(generation=3))

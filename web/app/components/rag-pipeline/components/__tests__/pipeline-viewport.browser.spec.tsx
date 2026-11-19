@@ -37,35 +37,47 @@ vi.mock('@/service/workflow', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/workflow')>()),
   fetchAllInspectVars: async () => [],
 }))
+// boundary: node bodies load per-type panels and queries; fixed-size boxes keep canvas geometry real.
 vi.mock('@/app/components/workflow/nodes', () => ({
   default: ({ data }: { data: { title: string } }) => (
     <div style={{ width: 200, height: 100 }}>{data.title}</div>
   ),
 }))
+// boundary: candidate-node placement is outside the viewport autosave path.
 vi.mock('@/app/components/workflow/candidate-node', () => ({ default: () => null }))
+// boundary: comments read collaboration data that this pipeline canvas does not load.
 vi.mock('@/app/components/workflow/comment-manager', () => ({ default: () => null }))
+// boundary: comment placement is outside the viewport autosave path.
 vi.mock('@/app/components/workflow/comment/placement-preview', () => ({
   CommentPlacementPreview: () => null,
 }))
+// boundary: comment threads come from the console comment API; the canvas sees none.
 vi.mock('@/app/components/workflow/hooks/use-workflow-comment', () => ({
   useWorkflowComment: () => ({ comments: [] }),
 }))
+// boundary: canvas search registers global shortcuts that this zoom spec does not use.
 vi.mock('@/app/components/workflow/hooks/use-workflow-search', () => ({
   useWorkflowSearch: () => {},
 }))
+// boundary: node locating is outside the viewport autosave path.
 vi.mock('@/app/components/workflow/hooks/use-locate-node', () => ({ useLocateNode: () => {} }))
+// boundary: there are no edges; edge editing is outside the viewport autosave path.
 vi.mock('@/app/components/workflow/hooks/use-edges-interactions', () => ({
   useEdgesInteractions: () => ({}),
 }))
+// boundary: selection editing is outside the viewport autosave path.
 vi.mock('@/app/components/workflow/hooks/use-selection-interactions', () => ({
   useSelectionInteractions: () => ({ handleSelectionCancel: () => {} }),
 }))
+// boundary: side panels are not opened by zoom controls.
 vi.mock('@/app/components/workflow/hooks/use-panel-interactions', () => ({
   usePanelInteractions: () => ({}),
 }))
+// boundary: auto-layout is outside the viewport autosave path.
 vi.mock('@/app/components/workflow/hooks/use-workflow-organize', () => ({
   useWorkflowOrganize: () => ({ handleLayout: () => {} }),
 }))
+// boundary: render only the real zoom control; other operator tools need the full app shell.
 vi.mock('@/app/components/workflow/operator', () => ({
   default: () => (
     <div style={{ position: 'absolute', bottom: 10, right: 10, zIndex: 10 }}>
@@ -73,9 +85,11 @@ vi.mock('@/app/components/workflow/operator', () => ({
     </div>
   ),
 }))
+// boundary: the context menu loads block catalogs that zoom controls never open.
 vi.mock('@/app/components/workflow/workflow-contextmenu', () => ({
   WorkflowContextmenu: ({ children }: { children: React.ReactNode }) => children,
 }))
+// boundary: schema type definitions come from plugin queries that this canvas does not load.
 vi.mock(
   '@/app/components/workflow/nodes/_base/components/variable/use-match-schema-type',
   async (importOriginal) => ({
@@ -85,6 +99,7 @@ vi.mock(
     default: () => ({ schemaTypeDefinitions: [] }),
   }),
 )
+// boundary: inspect-variable reads stop at the console transport; no run has happened.
 vi.mock('@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars', () => ({
   useSetWorkflowVarsWithValue: () => ({ fetchInspectVars: async () => {} }),
 }))

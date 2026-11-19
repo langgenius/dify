@@ -237,7 +237,9 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
     from extensions.ext_database import db
 
     merge_revision = "7d95a2e61346"
-    current_head = "c34e2f7b5a10"
+    canvas_head = "c34e2f7b5a10"
+    evaluation_head = "f8b6e2c4a901"
+    current_head = "430a56d97885"
     main_head = "53c10126d551"
     fix_intents_head = "6c84f1d90235"
     writer_head = "5b73e0c8f124"
@@ -257,7 +259,10 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
     config.set_main_option("script_location", str(Path(__file__).parents[5] / "migrations"))
     scripts = ScriptDirectory.from_config(config)
     assert scripts.get_heads() == [current_head]
-    canvas_revision = scripts.get_revision(current_head)
+    main_sync_revision = scripts.get_revision(current_head)
+    assert main_sync_revision is not None
+    assert main_sync_revision.down_revision == (canvas_head, evaluation_head)
+    canvas_revision = scripts.get_revision(canvas_head)
     assert canvas_revision is not None
     assert canvas_revision.down_revision == merge_revision
     main_merge = scripts.get_revision(merge_revision)
@@ -755,7 +760,7 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
                 include_fix_intents=True,
             )
 
-        # Only the retained final merge is empty. Splitting/rejoining it must
+        # The retained final Builder merge is empty. Splitting/rejoining it must
         # preserve schema and historical execution-evidence witnesses.
         final_before = final_witness()
         final_ledger = native_ledger_witness()
@@ -767,9 +772,9 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
         assert final_witness() == final_before
         assert native_ledger_witness() == final_ledger
         assert archive_witness() == archive_before
-        assert migrate("head") == (current_head,)
+        assert migrate(canvas_head) == (canvas_head,)
         previous_request = final_before[request_table]
-        assert final_witness() == {
+        expected_final: dict[str, _TableWitness] = {
             **final_before,
             request_table: {
                 **previous_request,
@@ -777,6 +782,16 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
                 "rows": [(*row, None) for row in previous_request["rows"]],
             },
         }
+        assert final_witness() == expected_final
+
+        # Main's Evaluation/PAT/file-scan line has its own migration qualification
+        # and touches no Builder table. With its merge stamped beside the Builder
+        # head, the empty main-sync merge only consolidates version rows.
+        main_line = MigrationContext.configure(connection, opts={"version_table_schema": schema})
+        main_line.stamp(scripts, evaluation_head)
+        assert set(main_line.get_current_heads()) == {canvas_head, evaluation_head}
+        assert migrate("head") == (current_head,)
+        assert final_witness() == expected_final
 
 
 @pytest.mark.parametrize(

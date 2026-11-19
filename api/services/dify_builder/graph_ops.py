@@ -14,9 +14,9 @@ from collections.abc import Callable
 from contextlib import suppress
 from typing import Any, NamedTuple
 
+from constants.trigger import TRIGGER_NODE_TYPES
 from core.dify_builder.models import Graph, MutationIntent
 from core.dify_builder.node_defaults import default_config_or_empty
-from core.trigger.constants import TRIGGER_NODE_TYPES
 from services.dify_builder import credentials
 from services.workflow_generation.graph_normalizers import declared_branch_handles, heal_nodes_for_preflight
 

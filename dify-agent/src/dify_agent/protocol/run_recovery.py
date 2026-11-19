@@ -22,13 +22,16 @@ class LookupRunRequest(BaseModel):
 
 
 def create_run_fingerprint(request: CreateRunRequest) -> str:
-    """SHA256 of complete canonical validated request, excluding only its key."""
+    """SHA256 of complete canonical validated request, excluding only its key.
+
+    This is the server's create-admission fingerprint (``RunRecord.idempotency_fingerprint``).
+    Its canonical JSON keeps the encoding of previously stored admission
+    fingerprints, so records retained across an upgrade replay, not conflict.
+    """
     validated = CreateRunRequest.model_validate(request.model_dump(mode="json"))
     payload = validated.model_dump(mode="json", exclude={"idempotency_key"})
-    raw = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode(
-        "utf-8"
-    )
-    return hashlib.sha256(raw).hexdigest()
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode()).hexdigest()
 
 
 __all__ = ["LookupRunRequest", "create_run_fingerprint"]

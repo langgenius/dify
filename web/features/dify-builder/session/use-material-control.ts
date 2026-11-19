@@ -4,6 +4,7 @@ import type { DifyBuilderAttachmentPayload } from '@dify/contracts/api/console/d
 import type { SessionControllerContext } from './controller-types'
 import { useSetAtom, useStore } from 'jotai'
 import { useCallback } from 'react'
+import { v4 as uuid4 } from 'uuid'
 import { sendSessionMessage } from './client'
 import { requestErrorMessage, requestErrorStatus, UNEXPECTED_EOF_ERROR } from './errors'
 import {
@@ -55,7 +56,7 @@ export function useDifyBuilderMaterialControl({
         return false
       const controller = new AbortController()
       materialAbortRef.current = controller
-      const clientTurnId = globalThis.crypto.randomUUID()
+      const clientTurnId = uuid4()
       const material = { phase: 'pending' as const, clientTurnId, text, attachments }
       store.set(difyBuilderMaterialControlAtom, material)
       setLastError('')

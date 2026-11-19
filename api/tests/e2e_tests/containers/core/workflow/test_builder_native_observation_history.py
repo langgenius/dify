@@ -321,7 +321,7 @@ def saved(
             "_create_truncator",
             lambda: VariableTruncator(max_size_bytes=48, string_length_limit=8, array_element_limit=2),
         )
-        nodes.save_execution_data(node)
+        nodes._save_execution_data(node)
     else:
         nodes.save(node)
     assert node.outputs == {"private": CANARY}

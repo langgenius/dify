@@ -1244,6 +1244,7 @@ def test_seal_revalidates_constructed_preworker_origin(owned: Owned, invalid: st
         facts.update(worker_finished=True, worker_exit="policy_refused")
     else:
         facts["worker_exit"] = "policy_refused"
+    # pyrefly: ignore[bad-argument-type]  # forged completion bypasses validation on purpose
     forged = domain.TrustedExecutionCompletion.model_construct(_fields_set=None, **facts)
     service = service_module().BuilderExecutionPolicyService(owned[0])
     with pytest.raises(domain.BuilderExecutionPolicyError, match="invalid_execution_completion"):

@@ -6,7 +6,8 @@ import pytest
 from dify_agent.protocol.snapshot import SessionSnapshot
 from sqlalchemy import event, inspect
 from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
-from sqlalchemy.sql import Executable
+from sqlalchemy.sql import ClauseElement
+from typing_extensions import TypedDict
 
 from core.workflow.nodes.agent_v2.session_store import WorkflowAgentSessionScope, WorkflowAgentWorkspaceStore
 from graphon.enums import WorkflowNodeExecutionStatus
@@ -43,10 +44,29 @@ CHATFLOW_MODELS = (
 )
 
 
+class _ResolveIds(TypedDict, closed=True):
+    """Keyword arguments that pin one workflow Agent node for ``WorkflowAgentBindingResolver.resolve``."""
+
+    tenant_id: str
+    app_id: str
+    workflow_id: str
+    node_id: str
+
+
+class _ConversationIds(TypedDict, closed=True):
+    """``_ResolveIds`` plus the Chatflow conversation that owns the participant."""
+
+    tenant_id: str
+    app_id: str
+    workflow_id: str
+    node_id: str
+    conversation_id: str
+
+
 def _conversation_participant(
     session: Session,
     *,
-    ids: dict[str, str],
+    ids: _ConversationIds,
     binding: WorkflowAgentNodeBinding,
     snapshot: AgentConfigSnapshot,
 ) -> AgentWorkspaceBinding:
@@ -86,7 +106,7 @@ def test_chatflow_keeps_participant_config_and_home_after_agent_update(
     monkeypatch: pytest.MonkeyPatch,
     binding_type: WorkflowAgentBindingType,
 ) -> None:
-    ids = {**_resolve_ids(), "conversation_id": str(uuid4())}
+    ids = _conversation_ids()
     is_roster = binding_type == WorkflowAgentBindingType.ROSTER_AGENT
     agent = _agent(
         tenant_id=ids["tenant_id"],
@@ -121,7 +141,8 @@ def test_chatflow_keeps_participant_config_and_home_after_agent_update(
     continuing = resolver.resolve(**ids)
     assert continuing.snapshot.id == original.id
     assert continuing.snapshot.home_snapshot_id == original.home_snapshot_id
-    assert resolver.resolve(**{**ids, "conversation_id": str(uuid4())}).snapshot.id == published.id
+    other_conversation: _ConversationIds = {**ids, "conversation_id": str(uuid4())}
+    assert resolver.resolve(**other_conversation).snapshot.id == published.id
     assert (
         resolver.resolve(
             tenant_id=ids["tenant_id"],
@@ -180,7 +201,7 @@ def test_chatflow_pin_is_scoped_to_active_conversation_node_participant(
     sqlite_session: Session,
     mismatch: str,
 ) -> None:
-    ids = {**_resolve_ids(), "conversation_id": str(uuid4())}
+    ids = _conversation_ids()
     agent = _agent(tenant_id=ids["tenant_id"], scope=AgentScope.ROSTER, source=AgentSource.ROSTER)
     sqlite_session.add(agent)
     sqlite_session.flush()
@@ -221,7 +242,7 @@ def test_chatflow_never_falls_back_from_invalid_pinned_generation(
     sqlite_session: Session,
     version_kind: AgentConfigVersionKind,
 ) -> None:
-    ids = {**_resolve_ids(), "conversation_id": str(uuid4())}
+    ids = _conversation_ids()
     agent = _agent(tenant_id=ids["tenant_id"], scope=AgentScope.ROSTER, source=AgentSource.ROSTER)
     sqlite_session.add(agent)
     sqlite_session.flush()
@@ -249,12 +270,23 @@ def test_chatflow_never_falls_back_from_invalid_pinned_generation(
     assert exc_info.value.error_code == expected
 
 
-def _resolve_ids() -> dict[str, str]:
+def _resolve_ids() -> _ResolveIds:
     return {
         "tenant_id": str(uuid4()),
         "app_id": str(uuid4()),
         "workflow_id": str(uuid4()),
         "node_id": "agent-node",
+    }
+
+
+def _conversation_ids() -> _ConversationIds:
+    ids = _resolve_ids()
+    return {
+        "tenant_id": ids["tenant_id"],
+        "app_id": ids["app_id"],
+        "workflow_id": ids["workflow_id"],
+        "node_id": ids["node_id"],
+        "conversation_id": str(uuid4()),
     }
 
 
@@ -312,7 +344,7 @@ def _snapshot(*, tenant_id: str, agent_id: str) -> AgentConfigSnapshot:
 
 
 def _binding(
-    *, ids: dict[str, str], agent_id: str, snapshot_id: str, binding_type: WorkflowAgentBindingType
+    *, ids: _ResolveIds | _ConversationIds, agent_id: str, snapshot_id: str, binding_type: WorkflowAgentBindingType
 ) -> WorkflowAgentNodeBinding:
     return WorkflowAgentNodeBinding(
         tenant_id=ids["tenant_id"],
@@ -330,12 +362,14 @@ def _binding(
 
 
 @pytest.fixture
-def orm_statements(sqlite_session_factory: sessionmaker[Session]) -> Iterator[list[Executable]]:
+def orm_statements(sqlite_session_factory: sessionmaker[Session]) -> Iterator[list[ClauseElement]]:
     """Record statements executed by the service-owned SQLite sessions."""
-    scalar_statements: list[Executable] = []
+    scalar_statements: list[ClauseElement] = []
 
     def record_statement(execute_state: ORMExecuteState) -> None:
-        scalar_statements.append(execute_state.statement)
+        statement = execute_state.statement
+        assert isinstance(statement, ClauseElement)
+        scalar_statements.append(statement)
 
     event.listen(sqlite_session_factory.class_, "do_orm_execute", record_statement)
     try:
@@ -412,7 +446,7 @@ def test_binding_resolver_uses_active_snapshot_for_roster_agent(
 @pytest.mark.parametrize("sqlite_session", [RESOLVER_MODELS], indirect=True)
 def test_binding_resolver_uses_pinned_snapshot_for_existing_node_execution(
     sqlite_session: Session,
-    orm_statements: list[Executable],
+    orm_statements: list[ClauseElement],
     binding_type: WorkflowAgentBindingType,
     scope: AgentScope,
     source: AgentSource,
@@ -444,8 +478,12 @@ def test_binding_resolver_uses_pinned_snapshot_for_existing_node_execution(
     )
 
     assert bundle.snapshot.id == pinned_snapshot.id
-    assert binding.id in orm_statements[0].compile().params.values()
-    assert pinned_snapshot.id in orm_statements[-1].compile().params.values()
+    first_params = orm_statements[0].compile().params
+    last_params = orm_statements[-1].compile().params
+    assert first_params is not None
+    assert last_params is not None
+    assert binding.id in first_params.values()
+    assert pinned_snapshot.id in last_params.values()
 
 
 @pytest.mark.parametrize("sqlite_session", [RESOLVER_MODELS], indirect=True)

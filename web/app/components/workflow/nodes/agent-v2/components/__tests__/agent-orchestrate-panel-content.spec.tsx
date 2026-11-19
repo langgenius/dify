@@ -143,21 +143,20 @@ const restartButton = () => screen.getByRole('button', { name: `${prefix}.previe
 function renderWorkspace({
   composer = createComposer(),
   open = true,
-  edition = 'CLOUD',
+  previewEnabled = true,
   canCreate = true,
   onSaveInlineToRoster,
 }: {
   composer?: WorkflowAgentComposerResponse | null
   open?: boolean
-  edition?: 'CLOUD' | 'COMMUNITY'
+  previewEnabled?: boolean
   canCreate?: boolean
   onSaveInlineToRoster?: () => void
 } = {}) {
   const { queryClient } = createConsoleQueryWrapper({
     workspacePermissionKeys: canCreate ? ['agent.create'] : [],
-    systemFeatures: { deployment_edition: edition },
   })
-  seedFeatures(queryClient)
+  seedFeatures(queryClient, { agent_preview_enabled: previewEnabled })
   seedAppDetail(queryClient, createAppDetailFixture({ id: 'app-1', mode: 'workflow' }))
   seedModelProviderQueries(queryClient)
   seedToolProviders(queryClient, {
@@ -418,8 +417,8 @@ describe('Inline Agent configure workspace', () => {
     expect(promptEditor()).toHaveTextContent('Help with workflow tasks.')
   })
 
-  it('disables preview in community edition', async () => {
-    renderWorkspace({ edition: 'COMMUNITY' })
+  it('disables preview when the agent preview capability is unavailable', async () => {
+    renderWorkspace({ previewEnabled: false })
     expect(
       await screen.findByRole('radio', { name: `${prefix}.rightPanel.preview` }),
     ).toBeDisabled()

@@ -11,6 +11,8 @@ can persist the run record. Request-shaped execution failures are left to
 ``AgentRunRunner`` so bad compositions, prompts,
 structured-output schemas, or session snapshots become asynchronous
 ``run_failed`` outcomes instead of synchronous HTTP rejections.
+Keyed admission delegates atomic claim/replay to storage across processes;
+only newly created runs start a local task. Replays return the retained status.
 """
 
 import asyncio
@@ -70,7 +72,7 @@ from dify_agent.runtime.native_continuation import (
 )
 from dify_agent.runtime.observability import AgentObservability, ApplicationAgentObservability
 from dify_agent.runtime.runner import DEFAULT_AGENT_RUN_TIMEOUT_SECONDS, AgentRunRunner
-from dify_agent.server.schemas import RunCreateClaim, RunRecord
+from dify_agent.server.schemas import RunRecord
 
 logger = logging.getLogger(__name__)
 
@@ -85,11 +87,15 @@ class RunCancellationConflictError(RuntimeError):
 
 @runtime_checkable
 class IdempotentRunStore(Protocol):
-    """Existing keyed-create storage API needed for capability advertisement."""
+    """Keyed-create storage API needed for capability advertisement."""
 
-    async def claim_run(
-        self, *, selection: LookupRunRequest, identity: AgentRuntimeIdentitySeed | None = None
-    ) -> RunCreateClaim: ...
+    async def create_run_idempotent(
+        self,
+        *,
+        idempotency_key: str,
+        request_fingerprint: str,
+        identity: AgentRuntimeIdentitySeed | None = None,
+    ) -> tuple[RunRecord, bool]: ...
 
     async def lookup_run(self, selection: LookupRunRequest) -> CreateRunResponse: ...
 
@@ -113,14 +119,25 @@ class RunStore(RunEventSink, Protocol):
     ) -> ContinuationClaim: ...
     async def start_continuation(self, claim: ContinuationClaim) -> bool: ...
 
-    async def claim_run(
-        self, *, selection: LookupRunRequest, identity: AgentRuntimeIdentitySeed | None = None
-    ) -> RunCreateClaim:
-        """Atomically admit one keyed create; an existing record never schedules."""
-        ...
-
     async def create_run(self, *, identity: AgentRuntimeIdentitySeed | None = None) -> RunRecord:
         """Persist a new run record and return it with status ``running``."""
+        ...
+
+    async def create_run_idempotent(
+        self,
+        *,
+        idempotency_key: str,
+        request_fingerprint: str,
+        identity: AgentRuntimeIdentitySeed | None = None,
+    ) -> tuple[RunRecord, bool]:
+        """Atomically return ``(record, created)`` across clients sharing storage.
+
+        A retained matching request replays its current record without extending
+        retention. A different fingerprint raises ``IdempotencyConflictError``
+        from the storage adapter. Persist only digests and run metadata; active
+        writes refresh absent or same-run claims without overwriting a new owner.
+        An existing record never schedules again.
+        """
         ...
 
     async def request_cancellation(self, run_id: str, request: CancelRunRequest) -> RunStatus:
@@ -241,7 +258,7 @@ class RunScheduler:
         if (
             self.services.confirmed_api_http_client is not None
             and isinstance(self.store, IdempotentRunStore)
-            and callable(self.store.claim_run)
+            and callable(self.store.create_run_idempotent)
             and callable(self.store.lookup_run)
         ):
             return capabilities.model_copy(update={"features": capabilities.features | {"create-idempotency-v1"}})
@@ -344,12 +361,15 @@ class RunScheduler:
             await self._run_record(record, prepared.request, native_prepared=prepared)
 
     async def create_run(self, request: CreateRunRequest) -> RunRecord:
-        """Persist and schedule one run in the current process.
+        """Admit a new run or replay a retained run with its current status.
 
-        The returned record is already ``running``. The background task is removed
-        from ``active_tasks`` when it finishes, regardless of success or failure.
+        New records are ``running`` and scheduled locally. Their background task
+        is removed from ``active_tasks`` on completion, regardless of outcome.
         Request-shaped runtime failures are intentionally deferred to the runner so
-        callers can observe them through the normal event/status stream.
+        callers can observe them through the normal event/status stream. A request
+        with an idempotency key reuses the original record without scheduling a
+        second task or refreshing retention; a normalized payload mismatch raises
+        the store's ``IdempotencyConflictError``.
         """
         if request.execution_mode == "builder_test":
             require_native_test_capabilities(self.native_capabilities, profile=request.native_test_profile)
@@ -367,15 +387,12 @@ class RunScheduler:
             if request.idempotency_key is None:
                 record = await self.store.create_run(identity=identity)
             else:
-                claim = await self.store.claim_run(
-                    selection=LookupRunRequest(
-                        idempotency_key=request.idempotency_key,
-                        request_digest=create_run_fingerprint(request),
-                    ),
+                record, created = await self.store.create_run_idempotent(
+                    idempotency_key=request.idempotency_key,
+                    request_fingerprint=create_run_fingerprint(request),
                     identity=identity,
                 )
-                record = claim.record
-                if not claim.inserted:
+                if not created:
                     # Retention proves acceptance, not worker liveness. Never
                     # replay even if the winner crashed before task registration.
                     return record

@@ -141,6 +141,7 @@ def _install_paused_marker(
     mocker.spy(repository, "resume_workflow_pause")
     mocker.patch.object(module.DifyAPIRepositoryFactory, "create_api_workflow_run_repository", return_value=repository)
     state = WorkflowResumptionContext.model_construct(
+        # pyrefly: ignore[bad-argument-type]  # the fixture entity is a generic AppGenerateEntity on purpose
         generate_entity=_WorkflowGenerateEntityWrapper.model_construct(entity=entity),
         serialized_graph_runtime_state="{}",
     )
@@ -346,6 +347,7 @@ def test_json_resume_refuses_before_trace_or_graph_restore(
             app_model=App(id=marker.app_id, tenant_id=marker.tenant_id, mode=AppMode.WORKFLOW),
             workflow=Workflow(id=marker.workflow_id),
             user=Account(name="Owner", email="owner@example.invalid"),
+            # pyrefly: ignore[missing-argument]  # partial entity: refusal happens before other fields are read
             application_generate_entity=WorkflowAppGenerateEntity.model_construct(builder_execution=marker),
             graph_runtime_state=RuntimeState(workflow_id=marker.workflow_id, variable_pool=VariablePool(), start_at=0),
             workflow_execution_repository=workflow_repositories[0],
@@ -809,6 +811,7 @@ def test_native_worker_outer_finally_acknowledges_context_entry_failure(
         yield
 
     monkeypatch.setattr(module, "preserve_flask_contexts", broken_context)
+    # pyrefly: ignore[missing-argument]  # partial entity: the worker fails before other fields are read
     entity = WorkflowAppGenerateEntity.model_construct(
         builder_execution=marker, workflow_execution_id="allocated", task_id="task"
     )

@@ -401,6 +401,7 @@ def test_ordinary_resume_cannot_rebuild_trace_for_native_marked_entity(mocker: p
         "services.workflow_runtime.workflow_generator.create_trace_scope",
         side_effect=AssertionError("eager trace credentials"),
     )
+    # pyrefly: ignore[missing-argument]  # partial entity: only native-test fields are read
     entity = app_generator.WorkflowAppGenerateEntity.model_construct(
         native_test_required=True, native_test_ref=None, builder_execution=None, trace_scope=None
     )

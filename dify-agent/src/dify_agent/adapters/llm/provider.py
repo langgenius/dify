@@ -9,7 +9,8 @@ this provider.
 from __future__ import annotations
 
 import json
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
+from contextlib import aclosing
 from dataclasses import dataclass, field
 from itertools import count
 from typing import TYPE_CHECKING, NoReturn, Protocol, cast, override
@@ -130,7 +131,12 @@ class DifyLLMClient(Protocol):
         tools: list[PromptMessageTool] | None,
         stop: list[str] | None,
         stream: bool,
-    ) -> AsyncIterator[LLMResultChunk]: ...
+    ) -> AsyncGenerator[LLMResultChunk, None]:
+        """Yield chunks while holding an active gateway HTTP stream.
+
+        Callers stopping before exhaustion must await the generator's ``aclose()``.
+        """
+        ...
 
 
 class PluginDaemonBasicResponse(BaseModel):
@@ -165,7 +171,7 @@ class DifyApiLLMClient:
         tools: list[PromptMessageTool] | None,
         stop: list[str] | None,
         stream: bool,
-    ) -> AsyncIterator[LLMResultChunk]:
+    ) -> AsyncGenerator[LLMResultChunk, None]:
         arguments = {
             "provider": provider,
             "model": model,
@@ -176,8 +182,10 @@ class DifyApiLLMClient:
             "stream": stream,
         }
         if self.native_effects is None:
-            async for chunk in self._iter_llm_result_chunks(**arguments):
-                yield chunk
+            # Propagate aclose() to the inner generator so the HTTP stream closes deterministically.
+            async with aclosing(self._iter_llm_result_chunks(**arguments)) as stream_chunks:
+                async for chunk in stream_chunks:
+                    yield chunk
             return
         # The existing API gateway always invokes a stream, including requests
         # from a non-streaming consumer. Freeze that actual effective argument.
@@ -185,8 +193,9 @@ class DifyApiLLMClient:
 
         async def invoke(_permit) -> JsonValue:
             receipt = ProtectedModelChunkReceipt()
-            async for chunk in self._iter_llm_result_chunks(**arguments):
-                receipt.append(chunk)
+            async with aclosing(self._iter_llm_result_chunks(**arguments)) as stream_chunks:
+                async for chunk in stream_chunks:
+                    receipt.append(chunk)
             return receipt.value
 
         state = self.native_effects.continuation
@@ -227,7 +236,7 @@ class DifyApiLLMClient:
         tools: list[PromptMessageTool] | None,
         stop: list[str] | None,
         stream: bool,
-    ) -> AsyncIterator[LLMResultChunk]:
+    ) -> AsyncGenerator[LLMResultChunk, None]:
         call_index = next(self._call_counter)
         invocation_id = str(uuid5(NAMESPACE_URL, f"dify-agent:{self.agent_run_id}:llm:{call_index}"))
         context = self.execution_context
@@ -286,41 +295,54 @@ class DifyApiLLMClient:
         headers["Content-Type"] = "application/json"
 
         try:
-            async with self.http_client.stream("POST", url, headers=headers, json=payload) as response:
-                if response.is_error:
-                    if self.native_effects is not None:
-                        raise NativePolicyStopped("native_model_transport_unavailable")
-                    body = (await response.aread()).decode("utf-8", errors="replace")
-                    _raise_agent_gateway_http_error(
-                        model_name=model,
-                        status_code=response.status_code,
-                        body=body,
-                    )
-
-                async for raw_line in response.aiter_lines():
-                    line = raw_line.strip()
-                    if not line:
-                        continue
-                    if line.startswith("data:"):
-                        line = line[5:].strip()
-                    wrapped = PluginDaemonBasicResponse.model_validate_json(line)
-                    if wrapped.code != 0:
-                        error = decode_plugin_daemon_error_payload(wrapped.message)
-                        if error is not None:
-                            resolved_error = unwrap_plugin_daemon_error(
-                                error_type=error["error_type"],
-                                message=error["message"],
-                            )
-                            _raise_plugin_daemon_error(
+            primary_error: BaseException | None = None
+            try:
+                async with self.http_client.stream("POST", url, headers=headers, json=payload) as response:
+                    try:
+                        if response.is_error:
+                            if self.native_effects is not None:
+                                raise NativePolicyStopped("native_model_transport_unavailable")
+                            body = (await response.aread()).decode("utf-8", errors="replace")
+                            _raise_agent_gateway_http_error(
                                 model_name=model,
-                                error_type=resolved_error["error_type"],
-                                message=resolved_error["message"],
-                                body=resolved_error,
+                                status_code=response.status_code,
+                                body=body,
                             )
-                        raise ModelAPIError(model, wrapped.message)
-                    if wrapped.data is None:
-                        raise UnexpectedModelBehavior("Agent LLM Gateway returned an empty stream item")
-                    yield LLMResultChunk.model_validate(wrapped.data)
+
+                        async for raw_line in response.aiter_lines():
+                            line = raw_line.strip()
+                            if not line:
+                                continue
+                            if line.startswith("data:"):
+                                line = line[5:].strip()
+                            wrapped = PluginDaemonBasicResponse.model_validate_json(line)
+                            if wrapped.code != 0:
+                                error = decode_plugin_daemon_error_payload(wrapped.message)
+                                if error is not None:
+                                    resolved_error = unwrap_plugin_daemon_error(
+                                        error_type=error["error_type"],
+                                        message=error["message"],
+                                    )
+                                    _raise_plugin_daemon_error(
+                                        model_name=model,
+                                        error_type=resolved_error["error_type"],
+                                        message=resolved_error["message"],
+                                        body=resolved_error,
+                                    )
+                                raise ModelAPIError(model, wrapped.message)
+                            if wrapped.data is None:
+                                raise UnexpectedModelBehavior("Agent LLM Gateway returned an empty stream item")
+                            yield LLMResultChunk.model_validate(wrapped.data)
+                    except BaseException as exc:
+                        if not isinstance(exc, GeneratorExit):
+                            primary_error = exc
+                        raise
+            except Exception as close_error:
+                # HTTPX closes on context exit; keep read failures and cancellation ahead of cleanup errors.
+                if primary_error is None or close_error is primary_error:
+                    raise
+                primary_error.add_note(f"Closing the Dify LLM stream also failed: {close_error!r}")
+                raise primary_error
         except (httpx.InvalidURL, httpx.UnsupportedProtocol) as exc:
             raise UserError(f"Agent LLM Gateway is misconfigured: {exc}") from exc
         except httpx.TimeoutException as exc:

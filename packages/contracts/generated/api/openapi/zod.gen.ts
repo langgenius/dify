@@ -293,6 +293,13 @@ export const zBinaryFileResponse = z.custom<Blob | File>(
 )
 
 /**
+ * ButtonStyle
+ *
+ * Button styles for user actions.
+ */
+export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
+
+/**
  * ChatAppInfo
  */
 export const zChatAppInfo = z.object({
@@ -669,6 +676,44 @@ export const zFileResponse = z.object({
 })
 
 /**
+ * FileTransferMethod
+ */
+export const zFileTransferMethod = z.enum([
+  'datasource_file',
+  'local_file',
+  'remote_url',
+  'tool_file',
+])
+
+/**
+ * FileType
+ */
+export const zFileType = z.enum(['audio', 'custom', 'document', 'image', 'video'])
+
+/**
+ * FileInputConfig
+ */
+export const zFileInputConfig = z.object({
+  allowed_file_extensions: z.array(z.string()).optional(),
+  allowed_file_types: z.array(zFileType).optional(),
+  allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
+  output_variable_name: z.string(),
+  type: z.literal('file').optional().default('file'),
+})
+
+/**
+ * FileListInputConfig
+ */
+export const zFileListInputConfig = z.object({
+  allowed_file_extensions: z.array(z.string()).optional(),
+  allowed_file_types: z.array(zFileType).optional(),
+  allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
+  number_limits: z.int().gte(0).optional().default(0),
+  output_variable_name: z.string(),
+  type: z.literal('file-list').optional().default('file-list'),
+})
+
+/**
  * FileUploadPayload
  */
 export const zFileUploadPayload = z.object({
@@ -754,6 +799,26 @@ export const zErrorBody = z.object({
 })
 
 /**
+ * AlreadySubmittedError
+ */
+export const zAlreadySubmittedError = zErrorBody.and(
+  z.object({
+    code: z.literal('already_submitted'),
+    status: z.literal(409),
+  }),
+)
+
+/**
+ * ExpiredError
+ */
+export const zExpiredError = zErrorBody.and(
+  z.object({
+    code: z.literal('expired'),
+    status: z.literal(410),
+  }),
+)
+
+/**
  * FormSubmitResponse
  *
  * 200 body for POST /apps/<id>/human-input-forms/<token>:submit: the hint to follow the
@@ -762,17 +827,6 @@ export const zErrorBody = z.object({
  */
 export const zFormSubmitResponse = z.object({
   hints: z.array(zHint).optional(),
-})
-
-/**
- * HumanInputFormDefinitionResponse
- */
-export const zHumanInputFormDefinitionResponse = z.object({
-  expiration_time: z.int().nullish(),
-  form_content: z.string(),
-  inputs: z.array(z.record(z.string(), z.unknown())).optional(),
-  resolved_default_values: z.record(z.string(), z.string()),
-  user_actions: z.array(z.record(z.string(), z.unknown())).optional(),
 })
 
 /**
@@ -812,6 +866,16 @@ export const zImport = z.object({
   status: zImportStatus,
   warnings: z.array(zDslImportWarning).optional(),
 })
+
+/**
+ * InvalidInputError
+ */
+export const zInvalidInputError = zErrorBody.and(
+  z.object({
+    code: z.literal('invalid_input'),
+    status: z.literal(400),
+  }),
+)
 
 export const zJsonValue = z.unknown()
 
@@ -1516,6 +1580,18 @@ export const zOpenApiFormSubmitPayload = z.object({
 })
 
 /**
+ * PaidPlanRequiredError
+ *
+ * This feature requires a paid plan.
+ */
+export const zPaidPlanRequiredError = zErrorBody.and(
+  z.object({
+    code: z.literal('paid_plan_required'),
+    status: z.literal(403),
+  }),
+)
+
+/**
  * PermittedExternalAppsListResponse
  */
 export const zPermittedExternalAppsListResponse = z.object({
@@ -1787,6 +1863,18 @@ export const zServiceApi = z.object({
   base_url: z.string(),
   enabled: z.boolean(),
 })
+
+/**
+ * ServiceApiDisabledError
+ *
+ * This app's Service API is turned off.
+ */
+export const zServiceApiDisabledError = zErrorBody.and(
+  z.object({
+    code: z.literal('service_api_disabled'),
+    status: z.literal(403),
+  }),
+)
 
 /**
  * ServiceApiPatch
@@ -2216,6 +2304,86 @@ export const zMessageMetadata = z.object({
 })
 
 /**
+ * UserActionConfig
+ *
+ * User action configuration.
+ */
+export const zUserActionConfig = z.object({
+  button_style: zButtonStyle.optional().default('default'),
+  id: z
+    .string()
+    .max(20)
+    .regex(/^[A-Za-z_][A-Za-z0-9_]*$/),
+  title: z.string().max(100),
+})
+
+/**
+ * ValueSourceType
+ *
+ * ValueSourceType records whether the value comes from a static setting
+ * in form definition, or a variable while the workflow is running.
+ */
+export const zValueSourceType = z.enum(['constant', 'variable'])
+
+/**
+ * StringListSource
+ */
+export const zStringListSource = z.object({
+  selector: z.array(z.string()).optional(),
+  type: zValueSourceType,
+  value: z.array(z.string()).optional(),
+})
+
+/**
+ * SelectInputConfig
+ */
+export const zSelectInputConfig = z.object({
+  option_source: zStringListSource,
+  output_variable_name: z.string(),
+  type: z.literal('select').optional().default('select'),
+})
+
+/**
+ * StringSource
+ *
+ * Default configuration for form inputs.
+ */
+export const zStringSource = z.object({
+  selector: z.array(z.string()).optional(),
+  type: zValueSourceType,
+  value: z.string().optional().default(''),
+})
+
+/**
+ * ParagraphInputConfig
+ *
+ * Form input definition.
+ */
+export const zParagraphInputConfig = z.object({
+  default: zStringSource.nullish(),
+  output_variable_name: z.string(),
+  type: z.literal('paragraph').optional().default('paragraph'),
+})
+
+export const zFormInputConfig = z.discriminatedUnion('type', [
+  zParagraphInputConfig,
+  zSelectInputConfig,
+  zFileInputConfig,
+  zFileListInputConfig,
+])
+
+/**
+ * HumanInputFormDefinitionResponse
+ */
+export const zHumanInputFormDefinitionResponse = z.object({
+  expiration_time: z.int().nullish(),
+  form_content: z.string(),
+  inputs: z.array(zFormInputConfig).optional(),
+  resolved_default_values: z.record(z.string(), z.string()),
+  user_actions: z.array(zUserActionConfig).optional(),
+})
+
+/**
  * VersionListQuery
  */
 export const zVersionListQuery = z.object({
@@ -2338,6 +2506,16 @@ export const zReleaseCheckResponse = z.object({
   ready: z.boolean(),
   state: zReleaseState,
 })
+
+/**
+ * WorkflowNotActiveError
+ */
+export const zWorkflowNotActiveError = zErrorBody.and(
+  z.object({
+    code: z.literal('workflow_not_active'),
+    status: z.literal(409),
+  }),
+)
 
 /**
  * WorkflowRunData
@@ -3960,3 +4138,12 @@ export const zGetWorkspacesByWorkspaceIdToolsQuery = z.object({
  * Tools
  */
 export const zGetWorkspacesByWorkspaceIdToolsResponse = zToolListResponse
+
+export const zPostWorkspacesByWorkspaceIdSwitchPath = z.object({
+  workspace_id: z.string(),
+})
+
+/**
+ * Workspace detail
+ */
+export const zPostWorkspacesByWorkspaceIdSwitchResponse = zWorkspaceDetailResponse

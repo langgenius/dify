@@ -5,17 +5,22 @@ SQLAlchemy implementation of WorkflowTriggerLogRepository.
 import json
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime, timedelta
-from typing import cast, override
+from typing import Any, cast, override
 
-from sqlalchemy import and_, delete, func, select, update
+from pydantic import TypeAdapter
+from sqlalchemy import and_, case, delete, func, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
 
 from graphon.enums import WorkflowExecutionStatus
-from models.enums import WorkflowRunTriggeredFrom, WorkflowTriggerStatus
+from models.account import Account, Tenant, TenantAccountJoin
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom, WorkflowTriggerStatus
+from models.model import App, EndUser
 from models.trigger import WorkflowTriggerLog
-from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun, WorkflowType
+from models.workflow import Workflow, WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun, WorkflowType
 from repositories.workflow_trigger_log_repository import WorkflowTriggerLogRepository
+from services.errors.app import WorkflowNotFoundError
+from services.trigger.execution_store import TriggerExecution, TriggerExecutionRef
 from services.workflow.entities import TriggerActor, TriggerData, TriggerWorkflowSnapshot
 
 
@@ -148,11 +153,12 @@ class SQLAlchemyWorkflowTriggerLogRepository(WorkflowTriggerLogRepository):
         return int(count or 0)
 
 
-class SQLAlchemyWorkflowTriggerDispatchRepository:
-    """Transaction-owning trigger log writes for producers.
+class SQLAlchemyWorkflowTriggerExecutionRepository:
+    """Transaction-owning producer and worker lifecycle operations.
 
-    Runtime and retention code still borrow a caller session through the repository
-    above. These producer operations close their sessions before broker or billing I/O.
+    Retention code still borrows a caller session through the repository above.
+    All operations close their sessions before broker, billing or runtime I/O.
+    TODO: Remove the borrowed-session implementation when retention migrates.
     """
 
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
@@ -175,6 +181,7 @@ class SQLAlchemyWorkflowTriggerDispatchRepository:
                     WorkflowTriggerLog.id == log_id,
                     WorkflowTriggerLog.tenant_id == tenant_id,
                     WorkflowTriggerLog.app_id == app_id,
+                    WorkflowTriggerLog.status == WorkflowTriggerStatus.PENDING,
                 )
                 .values(status=status, error=error)
             )
@@ -188,7 +195,15 @@ class SQLAlchemyWorkflowTriggerDispatchRepository:
                     WorkflowTriggerLog.tenant_id == tenant_id,
                     WorkflowTriggerLog.app_id == app_id,
                 )
-                .values(status=WorkflowTriggerStatus.QUEUED, celery_task_id=task_id, triggered_at=datetime.now(UTC))
+                .values(
+                    # Publication may return after the worker has already advanced the log.
+                    status=case(
+                        (WorkflowTriggerLog.status == WorkflowTriggerStatus.PENDING, WorkflowTriggerStatus.QUEUED),
+                        else_=WorkflowTriggerLog.status,
+                    ),
+                    celery_task_id=func.coalesce(WorkflowTriggerLog.celery_task_id, task_id),
+                    triggered_at=func.coalesce(WorkflowTriggerLog.triggered_at, datetime.now(UTC)),
+                )
             )
 
     def record_invocation_failure(
@@ -270,3 +285,144 @@ class SQLAlchemyWorkflowTriggerDispatchRepository:
             elapsed_time=None,
             total_tokens=None,
         )
+
+    def start(self, log_id: str) -> TriggerExecution | None:
+        """Claim a pending task once; missing or already claimed logs return None."""
+        with self._session_factory.begin() as session:
+            result = session.execute(
+                update(WorkflowTriggerLog)
+                .where(
+                    WorkflowTriggerLog.id == log_id,
+                    WorkflowTriggerLog.status.in_([WorkflowTriggerStatus.PENDING, WorkflowTriggerStatus.QUEUED]),
+                )
+                .values(status=WorkflowTriggerStatus.RUNNING)
+            )
+            assert isinstance(result, CursorResult)
+            if not result.rowcount:
+                return None
+            row = session.get(WorkflowTriggerLog, log_id)
+            assert row is not None
+            data = TriggerData.model_validate_json(row.trigger_data)
+            execution = TriggerExecution(
+                log=self._ref(row),
+                workflow_id=row.workflow_id,
+                actor=TriggerActor(id=row.created_by, role=row.created_by_role),
+                data=data,
+            )
+            return execution
+
+    def find_for_run(self, *, tenant_id: str, app_id: str, workflow_run_id: str) -> TriggerExecutionRef | None:
+        with self._session_factory() as session:
+            row = session.scalar(
+                select(WorkflowTriggerLog)
+                .where(
+                    WorkflowTriggerLog.tenant_id == tenant_id,
+                    WorkflowTriggerLog.app_id == app_id,
+                    WorkflowTriggerLog.workflow_run_id == workflow_run_id,
+                )
+                .order_by(WorkflowTriggerLog.created_at.desc())
+                .limit(1)
+            )
+            return self._ref(row) if row else None
+
+    def fail(self, *, log: TriggerExecutionRef, error: str, finished_at: datetime, elapsed_time: float) -> None:
+        with self._session_factory.begin() as session:
+            session.execute(
+                update(WorkflowTriggerLog)
+                .where(
+                    WorkflowTriggerLog.id == log.id,
+                    WorkflowTriggerLog.tenant_id == log.tenant_id,
+                    WorkflowTriggerLog.app_id == log.app_id,
+                    WorkflowTriggerLog.status == WorkflowTriggerStatus.RUNNING,
+                )
+                .values(
+                    status=WorkflowTriggerStatus.FAILED, error=error, finished_at=finished_at, elapsed_time=elapsed_time
+                )
+            )
+
+    def finish(
+        self,
+        *,
+        log: TriggerExecutionRef,
+        status: WorkflowTriggerStatus,
+        workflow_run_id: str,
+        outputs: Mapping[str, Any],
+        total_tokens: int,
+        finished_at: datetime,
+        elapsed_time: float,
+        abort_reason: str | None,
+    ) -> bool:
+        # Serialize before acquiring a database connection.
+        serialized_outputs = TypeAdapter(dict[str, Any]).dump_json(dict(outputs)).decode()
+        statement = (
+            update(WorkflowTriggerLog)
+            .where(
+                WorkflowTriggerLog.id == log.id,
+                WorkflowTriggerLog.tenant_id == log.tenant_id,
+                WorkflowTriggerLog.app_id == log.app_id,
+                # HITL resumes the same run without invoking start() again.
+                WorkflowTriggerLog.status.in_([WorkflowTriggerStatus.RUNNING, WorkflowTriggerStatus.PAUSED]),
+            )
+            .values(
+                status=status,
+                workflow_run_id=workflow_run_id,
+                outputs=serialized_outputs,
+                total_tokens=total_tokens,
+                finished_at=finished_at,
+                elapsed_time=func.coalesce(WorkflowTriggerLog.elapsed_time, 0) + elapsed_time,
+            )
+        )
+        if abort_reason is not None:
+            statement = statement.values(error=abort_reason)
+        with self._session_factory.begin() as session:
+            result = session.execute(statement)
+            assert isinstance(result, CursorResult)
+            return bool(result.rowcount)
+
+    def get_execution_models(self, execution: TriggerExecution) -> tuple[App, Workflow, Account | EndUser]:
+        """Load the legacy generator's scalar ORM fields, then detach before runtime I/O.
+
+        This compatibility return is consumed only by the generator gateway; application
+        services and graph layers receive the immutable execution identity instead.
+        """
+        log = execution.log
+        with self._session_factory() as session:
+            app = session.scalar(select(App).where(App.id == log.app_id, App.tenant_id == log.tenant_id))
+            if app is None:
+                raise WorkflowNotFoundError(f"App not found: {log.app_id}")
+            workflow = session.scalar(
+                select(Workflow).where(
+                    Workflow.id == execution.workflow_id,
+                    Workflow.tenant_id == log.tenant_id,
+                    Workflow.app_id == log.app_id,
+                )
+            )
+            if workflow is None:
+                raise WorkflowNotFoundError(f"Workflow not found: {execution.workflow_id}")
+            tenant = session.get(Tenant, log.tenant_id)
+            if tenant is None:
+                raise WorkflowNotFoundError(f"Tenant not found: {log.tenant_id}")
+            actor: Account | EndUser | None
+            if execution.actor.role == CreatorUserRole.ACCOUNT:
+                actor = session.scalar(
+                    select(Account)
+                    .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
+                    .where(Account.id == execution.actor.id, TenantAccountJoin.tenant_id == log.tenant_id)
+                )
+                if actor is not None:
+                    actor.set_current_tenant_with_session(tenant, session=session)
+            else:
+                actor = session.scalar(
+                    select(EndUser).where(
+                        EndUser.id == execution.actor.id,
+                        EndUser.tenant_id == log.tenant_id,
+                        EndUser.app_id == log.app_id,
+                    )
+                )
+            if actor is None:
+                raise WorkflowNotFoundError(f"User not found: {execution.actor.id}")
+            return app, workflow, actor
+
+    @staticmethod
+    def _ref(row: WorkflowTriggerLog) -> TriggerExecutionRef:
+        return TriggerExecutionRef(id=row.id, tenant_id=row.tenant_id, app_id=row.app_id, queue_name=row.queue_name)

@@ -758,6 +758,7 @@ def test_concurrent_json_launch_claim_dispatches_at_most_once(
 
     def compete(index: int) -> None:
         launch = _BuilderExecutionLaunch(service, context)
+        # pyrefly: ignore[missing-argument]  # partial entity: only admission fields are read
         entity = WorkflowAppGenerateEntity.model_construct(
             builder_execution=context,
             files=[],
@@ -768,6 +769,7 @@ def test_concurrent_json_launch_claim_dispatches_at_most_once(
                 app_id=app.id,
                 tenant_id=actor.tenant_id,
                 workflow_id=workflow.id,
+                # pyrefly: ignore[bad-argument-type]  # raw stored mode value
                 app_mode="workflow",
             ),
             user_id=actor.account_id,

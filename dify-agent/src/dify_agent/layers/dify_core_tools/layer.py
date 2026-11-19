@@ -32,7 +32,6 @@ from dify_agent.layers.dify_core_tools.configs import (
 )
 from dify_agent.layers.dify_plugin.tool_client import DifyPluginToolClientError
 from dify_agent.layers.dify_plugin.tools_layer import (
-    _DifyPluginToolFileClient,
     _PluginToolFileContext,
     _prepare_tool_arguments,
     _require_native_file_dependencies,
@@ -79,11 +78,6 @@ class Toolset(FunctionToolset[Deps]):
                 http_client=http_client,
             )
             file_context = _PluginToolFileContext(
-                file_client=_DifyPluginToolFileClient(
-                    base_url=ctx.deps.services.inner_api_url,
-                    api_key=ctx.deps.services.inner_api_key,
-                    http_client=http_client,
-                ),
                 execution_context=execution_context,
                 deps=ctx.deps,
                 shell=config.shell,

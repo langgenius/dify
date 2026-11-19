@@ -25,6 +25,7 @@ import { useSetAtom, useStore } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { v4 as uuid4 } from 'uuid'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { consoleQuery } from '@/service/console'
 import {
@@ -1236,7 +1237,7 @@ export function useDifyBuilderSessionController(
           receiptSnapshot,
         ])
         if (pendingActionRef.current?.signature !== signature)
-          pendingActionRef.current = { signature, id: globalThis.crypto.randomUUID() }
+          pendingActionRef.current = { signature, id: uuid4() }
         clientActionId = pendingActionRef.current.id
       }
       let requestView = view
@@ -1348,7 +1349,7 @@ export function useDifyBuilderSessionController(
         requestedTurnId?.trim() ||
         (pending?.sessionId === view.session_id && pending.text === normalizedText
           ? pending.turnId
-          : globalThis.crypto.randomUUID())
+          : uuid4())
       const retryableMessage = store.get(difyBuilderRetryableMessageAtom)
       const retrying =
         retryableMessage?.sessionId === view.session_id && retryableMessage.turnId === clientTurnId

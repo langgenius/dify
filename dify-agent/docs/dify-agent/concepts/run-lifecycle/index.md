@@ -163,17 +163,20 @@ fingerprint of the complete validated request, excluding only the key. Use
 fingerprint includes metadata and native ownership/profile fields; the existing
 native executable-request digest keeps its separate meaning.
 
-The server maps a hashed key to a versioned private UUIDv5 namespace and writes
-one RunRecord with `SET NX EX`. Only the inserted claim schedules an initial
-supervisor. Repeating an identical retained create returns its current acceptance;
-changed request content returns 409. Unkeyed creates keep fresh UUID4 identities.
-Keys and configuration are not exposed by lookup or stored as create payloads;
-only private key/request digests join the existing record.
+The server's shared keyed admission (see the server guide) atomically claims the
+hashed key and writes one RunRecord with a fresh UUID4 run id; only a newly
+created run schedules an initial supervisor. Repeating an identical retained
+create returns its current acceptance; changed request content returns 409.
+Native record writes (waiting, continuation claim/start, policy stop, confirmed
+recovery) refresh the claim like other active writes. Keys and configuration are
+not exposed by lookup or stored as create payloads; only private key/request
+digests join the existing record.
 
 With service bearer authentication configured, `POST /runs/lookup` accepts only
 `LookupRunRequest(idempotency_key=..., request_digest=...)` and returns the same
-`CreateRunResponse` fields with `Cache-Control: no-store`. It returns 404 for a
-missing/expired record and 409 for conflicting or corrupt retained identity. The
+`CreateRunResponse` fields with `Cache-Control: no-store`. It reads through the
+admission claim and returns 404 for a missing/expired claim or record and 409 for
+conflicting or corrupt retained identity. The
 SDK's `lookup_run` and `lookup_run_sync` each make one lookup POST and never
 create, enqueue, retry or fall back. Lookup does not retrieve execution
 configuration or refresh retention. Anonymous migration mode omits this route.

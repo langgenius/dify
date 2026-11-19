@@ -380,7 +380,7 @@ class EffectsWitness:
         self.dispatches: list[OperationKey] = []
         self.failed: set[OperationKey] = set()
         self.bound_associations: dict[OperationKey, NativeNodePreparation] = {}
-        self.owner: BoundaryOwnerState
+        self.owner: BoundaryOwnerState | None = None
         self.lock = Lock()
 
     def enter(self, association: NativeNodePreparation, inputs: object) -> None:
@@ -404,6 +404,7 @@ class EffectsWitness:
                 self.failed.add(key)
             if first:
                 raise RuntimeError("synthetic ordinary failure")
+        assert self.owner is not None
         assert self.owner.dispatch_admissible
         with self.lock:
             self.dispatches.append(key)

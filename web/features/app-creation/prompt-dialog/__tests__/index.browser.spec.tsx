@@ -5,6 +5,7 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import CreateAppPromptDialog from '..'
 import { promptDefaultModel, promptModelProviders } from '../../__tests__/model-fixtures'
 
+// boundary: load the real en-US copy so layout checks measure production text lengths.
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
   const { default: app } = await import('@/i18n/locales/en-US/app.json')

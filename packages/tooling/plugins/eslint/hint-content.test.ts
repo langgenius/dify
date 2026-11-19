@@ -367,3 +367,20 @@ it('enforces the same contracts for relative imports in design system stories', 
   )
   expect(diagnostics).toHaveLength(3)
 })
+
+it('allows segmented control layout and reserves the selection surface for the primitive', () => {
+  const diagnostics = lintFixture(`
+    import { SegmentedControl, SegmentedControlItem, SegmentedControlDivider } from '@langgenius/dify-ui/segmented-control'
+    import { RadioItem } from '@langgenius/dify-ui/radio-group'
+    const example = <>
+      <SegmentedControl className="mt-2 w-full bg-transparent">
+        <SegmentedControlItem className="grow w-7 focus-visible:ring-inset data-checked:shadow-none focus-visible:ring-0" />
+        <SegmentedControlDivider className="bg-transparent" />
+      </SegmentedControl>
+      <RadioItem className="data-checked:shadow-none" />
+    </>
+  `)
+  expect(diagnostics).toHaveLength(4)
+  for (const className of ['bg-transparent', 'data-checked:shadow-none', 'focus-visible:ring-0'])
+    expect(diagnostics.some(({ message }) => message.includes(`"${className}"`))).toBe(true)
+})

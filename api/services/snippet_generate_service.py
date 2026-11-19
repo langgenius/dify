@@ -58,6 +58,7 @@ class _SnippetAsApp:
     - mode: hardcoded to AppMode.WORKFLOW since snippets always run as workflows
     - max_active_requests: defaults to 0 (no limit) for snippet debugging
     - app_model_config_id: None (snippets don't have app model configs)
+    - tracing: None (snippets have no app-level tracing configuration)
     """
 
     id: str
@@ -65,6 +66,7 @@ class _SnippetAsApp:
     mode: str
     max_active_requests: int
     app_model_config_id: str | None
+    tracing: str | None
 
     def __init__(self, snippet: CustomizedSnippet) -> None:
         self.id = snippet.id
@@ -72,6 +74,7 @@ class _SnippetAsApp:
         self.mode = AppMode.WORKFLOW.value
         self.max_active_requests = 0
         self.app_model_config_id = None
+        self.tracing = None
 
 
 class SnippetGenerateService:
@@ -191,6 +194,9 @@ class SnippetGenerateService:
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         session_maker: sessionmaker[Session] | None = None,
+        workflow_id: str | None = None,
+        task_id: str | None = None,
+        capture_agent_evaluation_trace: bool = False,
     ) -> Mapping[str, Any]:
         """
         Run a snippet's published workflow in non-streaming (blocking) mode.
@@ -207,7 +213,11 @@ class SnippetGenerateService:
         :raises ValueError: If the snippet has no published workflow
         """
         snippet_service = SnippetService(session_maker)
-        workflow = snippet_service.get_published_workflow(snippet)
+        workflow = (
+            snippet_service.get_published_workflow_by_id(snippet, workflow_id)
+            if workflow_id
+            else snippet_service.get_published_workflow(snippet)
+        )
         if not workflow:
             raise ValueError("No published workflow found for snippet")
 
@@ -225,6 +235,8 @@ class SnippetGenerateService:
             invoke_from=invoke_from,
             streaming=False,
             call_depth=0,
+            task_id=task_id,
+            capture_agent_evaluation_trace=capture_agent_evaluation_trace,
         )
         return response
 

@@ -78,10 +78,13 @@ class RunComposition(BaseModel):
 class CreateRunRequest(BaseModel):
     """Create a run using current Config and an optional state-only snapshot.
 
-    The model slot is named llm, history and output are optional reserved slots.
-    Product
-    binding/workspace lifecycle and state storage are owned by the API caller.
+    The model slot is named llm; history and output are optional reserved slots.
+    Product binding/workspace lifecycle and state storage are owned by the API caller.
     Native capabilities always release operation resources at run exit.
+
+    An optional nonblank idempotency key is preserved verbatim. Within run
+    retention, the same key and normalized request (excluding the key) replay
+    the original run and its current status; a different request conflicts.
     """
 
     execution_mode: Literal["ordinary", "builder_test"] = "ordinary"
@@ -117,6 +120,14 @@ class CreateRunRequest(BaseModel):
             raise ValueError("native parent reference mismatch")
         return self
 
+    @field_validator("idempotency_key")
+    @classmethod
+    def idempotency_key_must_not_be_blank(cls, value: str | None) -> str | None:
+        """Reject blank keys without changing nonblank caller-provided keys."""
+        if value is not None and not value.strip():
+            raise ValueError("idempotency_key must not be blank")
+        return value
+
 
 class CancelRunRequest(BaseModel):
     """Request body for cancelling a run.
@@ -133,7 +144,7 @@ class CancelRunRequest(BaseModel):
 
 
 class CreateRunResponse(BaseModel):
-    """Response returned after a run has been persisted and scheduled locally."""
+    """Accepted run id and current status, including completed idempotent replays."""
 
     run_id: str
     status: RunStatus

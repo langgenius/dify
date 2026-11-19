@@ -499,7 +499,7 @@ def test_config_pull_waits_before_shell_io(monkeypatch):
         monkeypatch.setattr(ShellSession, "run_remote_script", run)
         context = _ConfigContext(Config(), State(), shell)
         with pytest.raises(NativeApprovalSuspended):
-            await context._run_mentioned_pull(script="dify-agent config files pull --json file", target_kind="file")
+            await context._run_pull(script="dify-agent config files pull --json file", target_kind="file")
         assert calls == []
 
     asyncio.run(exercise())

@@ -107,6 +107,10 @@ vi.mock('reactflow', () => {
 vi.mock('@/app/components/workflow', () => ({
   Workflow: ({ children }: { children: ReactNode }) => children,
 }))
+// Human Input migration reads the live canvas graph; App Builder creation does not use it.
+vi.mock('@/app/components/workflow/nodes/human-input-v2/migration/provider', () => ({
+  default: ({ children }: { children: ReactNode }) => children,
+}))
 vi.mock('@/features/dify-builder/panel', () => ({
   default: () => <aside aria-label="App Builder" />,
 }))

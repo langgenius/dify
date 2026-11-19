@@ -107,6 +107,7 @@ def test_stop_preserves_typed_reason_without_disclosing_it_in_diagnostics() -> N
     [
         None,
         {"kind": "dispatch", "permit_id": "forged"},
+        # pyrefly: ignore[bad-argument-type]  # unsupported wait reason on purpose
         ApprovalWait.model_construct(pending_operation_id="pending", wait_reason="unsupported"),
         PolicyStop.model_construct(reason_code="secret exception text"),
         RecordedResult.model_construct(operation_id="operation", result_ref=""),
@@ -123,7 +124,11 @@ def test_malformed_decision_is_private_stop_before_any_dispatch(decision: object
 def test_malformed_decision_never_logs_serializer_input_values() -> None:
     module = native_control
     malformed = DispatchPermit.model_construct(
-        permit_id={"secret": "token"}, attempt_id="attempt", operation_id="operation", expires_at="2030-01-01T00:00:00Z"
+        # pyrefly: ignore[bad-argument-type]  # malformed permit on purpose
+        permit_id={"secret": "token"},
+        attempt_id="attempt",
+        operation_id="operation",
+        expires_at="2030-01-01T00:00:00Z",
     )
     with warnings.catch_warnings(record=True) as logged:
         warnings.simplefilter("always")
@@ -134,7 +139,10 @@ def test_malformed_decision_never_logs_serializer_input_values() -> None:
 
 def test_malformed_owner_ref_is_rejected_without_warnings_or_canary_in_exception() -> None:
     malformed = NativeTestContextRef.model_construct(
-        request_id={"secret": "nw3_owner_ref_canary"}, invocation_id="invocation", context_digest="a" * 64
+        # pyrefly: ignore[bad-argument-type]  # malformed ref on purpose
+        request_id={"secret": "nw3_owner_ref_canary"},
+        invocation_id="invocation",
+        context_digest="a" * 64,
     )
     with warnings.catch_warnings(record=True) as logged:
         warnings.simplefilter("always")

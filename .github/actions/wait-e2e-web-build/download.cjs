@@ -2,8 +2,8 @@ const { execFile } = require('node:child_process')
 const { appendFile, mkdtemp, rm } = require('node:fs/promises')
 const os = require('node:os')
 const path = require('node:path')
-const { promisify } = require('node:util')
 const { setTimeout: delay } = require('node:timers/promises')
+const { promisify } = require('node:util')
 const waitForBuild = require('./wait.cjs')
 
 const execFileAsync = promisify(execFile)
@@ -53,6 +53,19 @@ async function downloadWebBuild({
       }
     }
   }
+  // An artifact can be listed for the run before its own endpoint and download are
+  // readable (seen as a 404 right after upload), so retry those reads briefly.
+  const withRetry = async (operation) => {
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await operation()
+      } catch (error) {
+        if (attempt >= 3) throw error
+        console.log(`Web build artifact not readable yet (attempt ${attempt}): ${error.message}`)
+        await sleep(attempt * 5_000)
+      }
+    }
+  }
   const prefix = `repos/${repository}/actions`
   let summary = ''
   const artifactId = await waitForBuild({
@@ -89,15 +102,27 @@ async function downloadWebBuild({
     runAttempt,
   })
 
-  const artifact = await api(`${prefix}/artifacts/${artifactId}`)
+  const artifact = await withRetry(() => api(`${prefix}/artifacts/${artifactId}`))
   const directory = await mkdtemp(path.join(os.tmpdir(), 'dify-e2e-web-build-'))
   try {
     // Artifact names are immutable within a run. Use the name selected by wait.cjs,
     // including its matching upload timestamp when only consumer jobs are rerun.
-    await run(
-      'gh',
-      ['run', 'download', runId, '--repo', repository, '--name', artifact.name, '--dir', directory],
-      300_000,
+    await withRetry(() =>
+      run(
+        'gh',
+        [
+          'run',
+          'download',
+          runId,
+          '--repo',
+          repository,
+          '--name',
+          artifact.name,
+          '--dir',
+          directory,
+        ],
+        300_000,
+      ),
     )
     await run('tar', ['-xf', path.join(directory, 'e2e-web-build.tar'), '-C', webDir])
     console.log(`Web build artifact ${artifactId} extracted and ready.`)

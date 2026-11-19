@@ -814,7 +814,7 @@ def test_confirmed_scheduler_advances_restored_shell_owner_generation_and_reject
                 generation = 0
                 started = False
 
-                async def claim_run(self, **kwargs):
+                async def create_run_idempotent(self, **kwargs):
                     raise AssertionError("continuation must not create a Run")
 
                 async def lookup_run(self, **kwargs):
@@ -1028,7 +1028,7 @@ def test_confirmed_wrap_run_stage_consumes_restored_decision_once(monkeypatch, b
             return saved_result
 
         monkeypatch.setattr(ShellSession, "_run_internal_script_complete", bootstrap)
-        monkeypatch.setattr(_ConfigContext, "_run_mentioned_pull_unchecked", pull)
+        monkeypatch.setattr(_ConfigContext, "_run_pull_unchecked", pull)
         async with AgentRuntimeHTTPClient(
             api_url="http://api", api_token="service", transport=httpx.MockTransport(transport)
         ) as client:

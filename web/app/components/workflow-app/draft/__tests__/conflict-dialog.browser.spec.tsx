@@ -14,6 +14,7 @@ import WorkflowDraftConflict from '../conflict-dialog'
 const { fetchDraft } = vi.hoisted(() => ({ fetchDraft: vi.fn() }))
 
 vi.mock('@/service/workflow', () => ({ fetchWorkflowDraft: fetchDraft }))
+// boundary: load the real fr-FR workflow copy so the long discard label is measured at its production length.
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
   const { default: workflow } = await import('@/i18n/locales/fr-FR/workflow.json')

@@ -672,7 +672,13 @@ def runtime_owner(protected_owner: ProtectedOwner, redis_endpoint: tuple[str, in
                 "request_digest": prepared.config_digest,
             }
         )
-        claim = portal.call(lambda: store.claim_run(selection=selection, identity=identity))
+        record, _created = portal.call(
+            lambda: store.create_run_idempotent(
+                idempotency_key=selection.idempotency_key,
+                request_fingerprint=selection.request_digest,
+                identity=identity,
+            )
+        )
         base_url = "http://127.0.0.1:" + str(listener.getsockname()[1])
         http_client = resources.enter_context(httpx.Client())
         client = resources.enter_context(Client(base_url=base_url, sync_http_client=http_client))
@@ -702,9 +708,7 @@ def runtime_owner(protected_owner: ProtectedOwner, redis_endpoint: tuple[str, in
             INNER_API_KEY_FOR_PLUGIN="different-plugin",
             INNER_API_KEY="different-inner",
         ):
-            yield RuntimeOwner(
-                store, http, client, claim.record.run_id, http_client, base_url, recovery_selection, requests
-            )
+            yield RuntimeOwner(store, http, client, record.run_id, http_client, base_url, recovery_selection, requests)
             assert not any(
                 method == "POST" and (path == "/runs" or path.endswith("/continue")) for method, path in requests
             )

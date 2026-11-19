@@ -25,7 +25,7 @@ const api = vi.hoisted(() => ({
   features: vi.fn<typeof consoleClient.features.get>(),
   push: vi.fn(),
 }))
-vi.mock('react-i18next', async (importOriginal) => importOriginal())
+vi.unmock('react-i18next')
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
   useRouter: () => ({ push: api.push, replace: vi.fn() }),

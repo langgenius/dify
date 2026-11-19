@@ -3,6 +3,7 @@
 import type { SessionControllerContext } from './controller-types'
 import { useSetAtom, useStore } from 'jotai'
 import { useCallback } from 'react'
+import { v4 as uuid4 } from 'uuid'
 import { controlSessionConversation, getSession } from './client'
 import { requestErrorStatus, UNEXPECTED_EOF_ERROR } from './errors'
 import {
@@ -63,7 +64,7 @@ export function useDifyBuilderLifecycleControl({
       const body = {
         base_version: view.version,
         expected_task_id: view.task_id ?? '',
-        client_action_id: globalThis.crypto.randomUUID(),
+        client_action_id: uuid4(),
       }
       let control = {
         operation,

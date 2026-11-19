@@ -5,6 +5,7 @@ export type ClientOptions = {
 }
 
 export type FeatureModel = {
+  agent_preview_enabled: boolean
   annotation_quota_limit: LimitationModel
   api_rate_limit: Quota
   apps: LimitationModel
@@ -13,8 +14,11 @@ export type FeatureModel = {
   dify_builder_enabled: boolean
   documents_upload_quota: LimitationModel
   education: EducationModel
+  enable_file_scan: boolean
   enable_knowledge_fs: boolean
   enable_skill: boolean
+  evaluation_enabled: boolean
+  evaluation_upgrade_available: boolean
   human_input_email_delivery_enabled: boolean
   im_centrally_managed: boolean
   is_allow_transfer_workspace: boolean
@@ -24,6 +28,7 @@ export type FeatureModel = {
   trigger_event: Quota
   webapp_copyright_enabled: boolean
   workflow_collaboration_enabled: boolean
+  workflow_collaboration_upgrade_available: boolean
   workspace_members: LicenseLimitationModel
 }
 

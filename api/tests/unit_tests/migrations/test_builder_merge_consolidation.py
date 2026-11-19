@@ -18,7 +18,11 @@ from alembic.script.revision import RevisionMap
 
 _MIGRATIONS = Path(__file__).resolve().parents[3] / "migrations"
 _MERGE = "7d95a2e61346"
-_HEAD = "c34e2f7b5a10"
+_CANVAS_PATH = "c34e2f7b5a10"
+_MAIN_EVALUATION_MERGE = "f8b6e2c4a901"
+# Empty merge from the 2026-11-19 main sync; it joins the Builder line with main's
+# Evaluation/PAT/file-scan line and is not one of the consolidated feature merges.
+_HEAD = "430a56d97885"
 _REMOVED = {
     "733e4c46f90e": ("a9cc8d552db4", "e7b2a9c4d601"),
     "f9a3c62de418": ("d82f9a6c31e0", "a8c9e2f1b704"),
@@ -112,7 +116,8 @@ def test_only_final_feature_merge_is_retained() -> None:
     current = _metadata()
     assert not _REMOVED.keys() & current.keys()
     assert current[_MERGE]["down_revision"] == ("6c84f1d90235", "53c10126d551")
-    assert current[_HEAD]["down_revision"] == _MERGE
+    assert current[_CANVAS_PATH]["down_revision"] == _MERGE
+    assert current[_HEAD]["down_revision"] == (_CANVAS_PATH, _MAIN_EVALUATION_MERGE)
     assert _directory(current).get_heads() == [_HEAD]
 
 

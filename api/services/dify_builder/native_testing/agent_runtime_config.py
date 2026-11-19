@@ -154,10 +154,10 @@ class NativeAgentRuntimeConfigBuilder:
             from core.agent.publish_visibility import (
                 workflow_callable_active_snapshot_filter,
             )
-            from services.agent.roster_service import AgentRosterService
+            from repositories.agent_roster_queries import build_roster_agents_stmt
 
             eligible = session.scalar(
-                AgentRosterService._build_roster_agents_stmt(tenant_id=context.tenant_id, keyword=None).where(
+                build_roster_agents_stmt(tenant_id=context.tenant_id, keyword=None).where(
                     Agent.id == agent_id,
                     Agent.active_config_has_model.is_(True),
                     workflow_callable_active_snapshot_filter(),

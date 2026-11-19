@@ -345,7 +345,7 @@ def test_native_save_execution_data_does_not_mutate_operational_domain(
     bind(c)
     raw = node(c)
     monkeypatch.setattr(c.nodes, "_truncate_and_upload", lambda *_args: None)
-    c.nodes.save_execution_data(raw)
+    c.nodes._save_execution_data(raw)
     assert raw.outputs == {SENTINEL: SENTINEL}
     saved = c.sql.required((WorkflowNodeExecutionModel, "row"))
     assert saved.outputs is not None
@@ -603,7 +603,7 @@ def test_native_actual_truncation_uploads_only_safe_data_then_cache_has_no_secon
 
     monkeypatch.setattr(c.nodes._file_service, "upload_file", upload)
     raw = node(c)
-    c.nodes.save_execution_data(raw)
+    c.nodes._save_execution_data(raw)
     assert len(files) == 3
     assert raw.outputs == {SENTINEL: SENTINEL}
     stored = c.sql.required((WorkflowNodeExecutionModel, "row"))

@@ -28,6 +28,7 @@ from core.human_input_v2.im_integration import (
     SyncReconciler,
 )
 from core.human_input_v2.im_integration.adapters import DirectoryEntry, ProviderUserId
+from core.human_input_v2.im_integration.sync_records import AccountIMSyncInitiator
 from core.human_input_v2.shared import (
     AccountId,
     ContactId,
@@ -114,7 +115,7 @@ def test_sync_run_captures_complete_channel_revision() -> None:
         sync_run_id=IMSyncRunId("run-1"),
         channel_revision=_RUN.channel_revision,
         provider=IMProvider.FEISHU,
-        started_by_account_id=AccountId("account-1"),
+        started_by=AccountIMSyncInitiator(AccountId("account-1")),
         now=_NOW,
     )
 

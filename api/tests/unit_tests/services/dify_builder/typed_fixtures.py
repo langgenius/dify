@@ -39,7 +39,7 @@ def strings(value: object) -> list[str]:
 
 
 class _GraphNodeWithParent(GraphNodeDict):
-    parentId: NotRequired[str]
+    parentId: NotRequired[str]  # noqa: N815  # Public graph field name.
 
 
 def graph_node(node_id: str, data: dict[str, object], *, parent_id: str | None = None) -> GraphNodeDict:

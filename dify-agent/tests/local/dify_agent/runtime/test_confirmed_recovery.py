@@ -198,8 +198,9 @@ async def scenario(redis, url, objects, *, completed_pending=False, history_case
     old_request, new_request = configuration("old-binding-ref"), configuration("new-binding-ref")
     old_digest, new_digest = executable_request_digest(old_request), executable_request_digest(new_request)
     selection = LookupRunRequest(idempotency_key="original-create", request_digest=create_run_fingerprint(old_request))
-    accepted = await store.claim_run(
-        selection=selection,
+    accepted, created = await store.create_run_idempotent(
+        idempotency_key=selection.idempotency_key,
+        request_fingerprint=selection.request_digest,
         identity=AgentRuntimeIdentitySeed(
             execution_mode="builder_test",
             native_test_profile="confirmed",
@@ -207,7 +208,8 @@ async def scenario(redis, url, objects, *, completed_pending=False, history_case
             request_digest=old_digest,
         ),
     )
-    run_id = accepted.record.run_id
+    assert created
+    run_id = accepted.run_id
     cp = checkpoint(run_id, old_digest)
     if history_case is not None:
         cp = reviewed_pending_history(cp, history_case)
@@ -427,17 +429,20 @@ def test_confirmed_handoff_real_redis(failure):
             assert selected.operation_cursor == cp.operation_cursor
             assert selected.session_snapshot.layers["shell"]["initialized"] is False
             assert (await store.lookup_run(selection)).run_id == cp.run_id
-            assert (await store.get_run(cp.run_id)).create_request_digest == selection.request_digest
-            from dify_agent.storage.redis_run_store import RunCreateConflictError
+            assert (await store.get_run(cp.run_id)).idempotency_fingerprint == selection.request_digest
+            from dify_agent.storage.redis_run_store import IdempotencyConflictError
 
-            with pytest.raises(RunCreateConflictError):
+            with pytest.raises(IdempotencyConflictError):
                 await store.lookup_run(
                     LookupRunRequest(
                         idempotency_key=selection.idempotency_key,
                         request_digest=create_run_fingerprint(configuration("new-binding-ref")),
                     )
                 )
-            assert not (await store.claim_run(selection=selection)).inserted
+            replay, created = await store.create_run_idempotent(
+                idempotency_key=selection.idempotency_key, request_fingerprint=selection.request_digest
+            )
+            assert not created and replay.run_id == cp.run_id
             with pytest.raises(NativeContinuationConflict):
                 await store.read_run_identity(
                     run_id=cp.run_id,

@@ -533,7 +533,7 @@ def test_inert_composer_uses_real_layer_dtos_without_model_schema_or_session(
         calls.append("forbidden")
         raise AssertionError("ordinary model schema/credential call")
 
-    monkeypatch.setattr(model_access, "resolve_model_context_window", forbidden)
+    monkeypatch.setattr(model_access, "resolve_model_runtime_profile", forbidden)
 
     def prepare(**_kwargs: object) -> PreparedAgentToolDeclarations:
         return PreparedAgentToolDeclarations(None, None, ())

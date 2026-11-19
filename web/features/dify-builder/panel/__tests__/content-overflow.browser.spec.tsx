@@ -15,6 +15,7 @@ import {
 } from '../../session/state'
 import { difyBuilderCanvasAppliedViewAtom, difyBuilderRuntimeAtom } from '../../state'
 
+// boundary: the panel's close action writes to the workflow app store, which needs the full canvas host.
 vi.mock('@/app/components/workflow-app/store/workflow', () => ({
   useWorkflowAppSelector: <T,>(
     selector: (state: { setShowDifyBuilderPanel: (show: boolean) => void }) => T,

@@ -386,11 +386,13 @@ describe('Builder run event handlers', () => {
         }),
       )
     })
+    // The shared stream mapping stores each stream `id` as `message_id`.
+    const entry = { node_id: 'answer', node_execution_id: 'exec-1', label: 'Tool' }
     expect(
       workflow.getState().workflowRunningData?.tracing?.[0]?.execution_metadata?.agent_log,
     ).toEqual([
-      { ...log.data, message_id: 'log-1', status: 'success', data: { output: 'answer' } },
-      { ...log.data, id: 'log-2', message_id: 'log-2' },
+      { ...entry, message_id: 'log-1', status: 'success', data: { output: 'answer' } },
+      { ...entry, message_id: 'log-2', status: 'started', data: { input: 'query' } },
     ])
   })
 

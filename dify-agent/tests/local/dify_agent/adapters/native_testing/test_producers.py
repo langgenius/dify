@@ -9,11 +9,13 @@ import pytest
 from dify_agent.adapters.native_testing.transport import AgentRuntimeHTTPClient, bind_runtime_identity
 from dify_agent.layers.dify_core_tools.client import DifyCoreToolsClient
 from dify_agent.layers.dify_core_tools.configs import DifyCoreToolConfig
-from dify_agent.layers.dify_plugin.tools_layer import _DifyPluginToolFileClient
+from dify_agent.agent_stub.protocol import AgentStubFileMapping, file_reference
+from dify_agent.layers.agent_files import request_agent_file_download
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.knowledge.client import DifyKnowledgeBaseClient
 from dify_agent.layers.knowledge.configs import DifyKnowledgeMetadataFilteringConfig, DifyKnowledgeRetrievalConfig
 from dify_agent.protocol.native_testing import AgentRuntimeIdentity
+from dify_agent.runtime.context import Deps, Services
 
 
 def context():
@@ -25,6 +27,9 @@ def context():
         agent_mode="workflow_run",
         invoke_from="service-api",
     )
+
+
+file_ref = file_reference("2f0f7f3a-30ab-4a4c-9e83-7a14f4a8f0a1")
 
 
 def identity():
@@ -62,7 +67,7 @@ def test_direct_producers_preserve_wire_and_results_on_strict_routes(producer):
                     },
                 )
             assert request.url.path == "/inner/api/agent/runtime/files/download-request"
-            assert body["file"] == {"transfer_method": "tool_file", "reference": "dify-file-ref:file"}
+            assert body["file"] == {"transfer_method": "tool_file", "reference": file_ref}
             return httpx.Response(
                 200,
                 json={
@@ -109,13 +114,15 @@ def test_direct_producers_preserve_wire_and_results_on_strict_routes(producer):
                     assert result.results[0].content == "answer"
                     assert result.usage == {"tokens": 2}
                 else:
-                    result = await _DifyPluginToolFileClient(
-                        base_url="http://api", api_key="", http_client=http
-                    ).request_download(
-                        execution_context=context(),
-                        file_mapping={"transfer_method": "tool_file", "reference": "dify-file-ref:file"},
+                    deps = Deps(
+                        layers={},
+                        services=Services(http, http, inner_api_url="http://api"),
+                        run_id="actual-run",
                     )
-                    assert result.download_url == "https://files/file"
+                    result = await request_agent_file_download(
+                        deps, context(), AgentStubFileMapping(transfer_method="tool_file", reference=file_ref)
+                    )
+                    assert result.download_uri == "https://files/file"
                     assert result.size == 7
         assert len(seen) == 1
 

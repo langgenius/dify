@@ -41,7 +41,7 @@ def _run(
 ) -> AsyncTriggerResponse:
     def invoke() -> AsyncTriggerResponse:
         with harness.app.app_context(), config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD):
-            return application_services().workspaces.workflow_dispatch.trigger_workflow_async(
+            return application_services().triggers.workflow_dispatch.trigger_workflow_async(
                 actor=actor or TriggerActor(id=harness.account_id, role=CreatorUserRole.ACCOUNT),
                 trigger_data=ScheduleTriggerData(
                     tenant_id=tenant_id or harness.tenant_id,

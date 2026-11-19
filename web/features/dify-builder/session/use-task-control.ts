@@ -3,6 +3,7 @@
 import type { SessionControllerContext } from './controller-types'
 import { useSetAtom, useStore } from 'jotai'
 import { useCallback } from 'react'
+import { v4 as uuid4 } from 'uuid'
 import {
   difyBuilderCanvasReadyAtom,
   difyBuilderLocalInteractionResponseAtom,
@@ -197,7 +198,7 @@ export function useDifyBuilderTaskControl({
             operation,
             body: {
               base_version: Math.max(latest?.version ?? 0, command?.version ?? 0),
-              client_action_id: globalThis.crypto.randomUUID(),
+              client_action_id: uuid4(),
               ...(operation === 'resume' && latest?.app_revision
                 ? { base_app_revision: latest.app_revision.current }
                 : {}),

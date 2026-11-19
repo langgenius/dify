@@ -1,6 +1,7 @@
 import type { SessionView } from '../../types'
 import { createStore, Provider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -24,11 +25,13 @@ it('expands a long draft, keeps the actions outside its scroll area, and shrinks
   store.set(queryClientAtom, queryClient)
   const screen = await render(
     <Wrapper>
-      <Provider store={store}>
-        <div className="flex h-120 w-100 flex-col justify-end">
-          <DifyBuilderComposer />
-        </div>
-      </Provider>
+      <NuqsTestingAdapter>
+        <Provider store={store}>
+          <div className="flex h-120 w-100 flex-col justify-end">
+            <DifyBuilderComposer />
+          </div>
+        </Provider>
+      </NuqsTestingAdapter>
     </Wrapper>,
   )
   const input = screen.getByRole('textbox', { name: 'difyBuilder.messagePlaceholder' })
@@ -104,11 +107,13 @@ it('retains native focus through Stop loading and the transition to Resume', asy
   store.set(difyBuilderRuntimeAtom, createDifyBuilderRuntime({ session: { stopTask } }))
   const screen = await render(
     <Wrapper>
-      <Provider store={store}>
-        <div className="flex w-100 flex-col bg-background-body py-4">
-          <DifyBuilderComposer />
-        </div>
-      </Provider>
+      <NuqsTestingAdapter>
+        <Provider store={store}>
+          <div className="flex w-100 flex-col bg-background-body py-4">
+            <DifyBuilderComposer />
+          </div>
+        </Provider>
+      </NuqsTestingAdapter>
     </Wrapper>,
   )
   try {

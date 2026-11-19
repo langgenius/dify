@@ -27,6 +27,17 @@ def test_fingerprint_binds_metadata_and_snapshot_but_not_key_or_object_order():
     )
 
 
+def test_fingerprint_keeps_the_stored_admission_encoding_for_non_ascii_requests():
+    import hashlib
+    import json
+
+    recovery = importlib.import_module("dify_agent.protocol.run_recovery")
+    original = request(idempotency_key="key", metadata={"title": "季度报告"})
+    payload = original.model_dump(mode="json", exclude={"idempotency_key"})
+    stored = hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    assert recovery.create_run_fingerprint(original) == stored
+
+
 @pytest.mark.parametrize(
     "changes",
     [

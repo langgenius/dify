@@ -727,6 +727,7 @@ def test_large_private_content_projects_to_bounded_shape(policy: NativeHttpObser
 def test_missing_nonempty_file_or_unknown_metadata_objects_do_not_pass(policy: NativeHttpObservationPolicy) -> None:
     native = NodeRunSucceededEvent(id="execution", node_id="http", node_type="http-request", start_at=NOW)
     for poisoned in (
+        # pyrefly: ignore[bad-argument-type]  # hostile segment value on purpose
         NodeRunResult().model_copy(update={"outputs": {"files": ArrayFileSegment.model_construct(value=[Hostile()])}}),
         NodeRunResult().model_copy(update={"metadata": {Metadata.TOOL_INFO: Hostile()}}),
     ):

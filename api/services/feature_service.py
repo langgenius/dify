@@ -19,6 +19,11 @@ class FeatureService:
         """Cloud uses tenant Email Channels instead of the global mail client."""
         return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
 
+    @staticmethod
+    def is_agent_preview_enabled() -> bool:
+        """Agent App preview runs are available on Cloud and Enterprise deployments only."""
+        return dify_config.DEPLOYMENT_EDITION in {DeploymentEdition.CLOUD, DeploymentEdition.ENTERPRISE}
+
     @classmethod
     def can_import_premium_site_settings(cls, tenant_id: str) -> bool:
         """Keep Cloud-only Web app customization out of free workspace imports."""
@@ -45,14 +50,34 @@ class FeatureService:
             return False
         return (plan if plan is not None else cls.get_workspace_plan(tenant_id)).is_paid
 
+    @staticmethod
+    def is_evaluation_supported() -> bool:
+        """Return whether this deployment ships Evaluation; Cloud workspaces still need a paid plan."""
+        return dify_config.DEPLOYMENT_EDITION in {DeploymentEdition.ENTERPRISE, DeploymentEdition.CLOUD}
+
+    @classmethod
+    def can_use_evaluation(cls, tenant_id: str, *, plan: CloudPlan | None = None) -> bool:
+        """Return the workspace entitlement using its loaded plan, or propagate billing failures."""
+        if not cls.is_evaluation_supported():
+            return False
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return True
+        if not tenant_id:
+            return False
+        return (plan if plan is not None else cls.get_workspace_plan(tenant_id)).is_paid
+
     @classmethod
     def get_features(cls, tenant_id: str, exclude_vector_space: bool = False) -> feature_entities.FeatureModel:
         features = feature_entities.FeatureModel()
         features.im_centrally_managed = cls.is_im_centrally_managed()
+        features.agent_preview_enabled = cls.is_agent_preview_enabled()
         if exclude_vector_space:
             features.vector_space = None
 
         cls._fulfill_params_from_env(features)
+
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            cls._lift_plan_quotas(features)
 
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and tenant_id:
             cls._fulfill_params_from_billing_api(
@@ -70,14 +95,27 @@ class FeatureService:
             features=features,
             tenant_id=tenant_id,
         )
-        features.workflow_collaboration_enabled = cls.can_use_workflow_collaboration(
-            tenant_id, plan=features.billing.subscription.plan
+        plan = features.billing.subscription.plan
+        features.workflow_collaboration_enabled = cls.can_use_workflow_collaboration(tenant_id, plan=plan)
+        features.workflow_collaboration_upgrade_available = (
+            dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
+            and plan == CloudPlan.SANDBOX
+            and cls.can_use_workflow_collaboration(tenant_id, plan=CloudPlan.PROFESSIONAL)
+        )
+        features.evaluation_enabled = cls.can_use_evaluation(tenant_id, plan=plan)
+        features.evaluation_upgrade_available = (
+            dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
+            and plan == CloudPlan.SANDBOX
+            and cls.can_use_evaluation(tenant_id, plan=CloudPlan.PROFESSIONAL)
         )
 
         return features
 
     @classmethod
     def get_vector_space(cls, tenant_id: str) -> feature_entities.VectorSpaceLimitationModel:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return feature_entities.VectorSpaceLimitationModel(size=0, limit=-1)
+
         vector_space = feature_entities.VectorSpaceLimitationModel(size=0, limit=5)
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and tenant_id:
             billing_vector_space = BillingService.get_vector_space(tenant_id)
@@ -154,6 +192,19 @@ class FeatureService:
         features.dify_builder_enabled = dify_config.DIFY_BUILDER_ENABLED
         features.skill_learning_policy = dify_config.DIFY_BUILDER_SKILL_LEARNING_POLICY
         features.enable_knowledge_fs = get_knowledge_fs_features().enabled
+        features.enable_file_scan = dify_config.FILE_SCAN_ENABLED
+
+    @classmethod
+    def _lift_plan_quotas(cls, features: feature_entities.FeatureModel):
+        """Subscription quotas only exist on Cloud; other editions report them as unlimited."""
+        features.members = feature_entities.LimitationModel(size=0, limit=0)
+        features.apps = feature_entities.LimitationModel(size=0, limit=0)
+        features.annotation_quota_limit = feature_entities.LimitationModel(size=0, limit=0)
+        features.documents_upload_quota = feature_entities.LimitationModel(size=0, limit=0)
+        if features.vector_space is not None:
+            features.vector_space = feature_entities.LimitationModel(size=0, limit=-1)
+        features.trigger_event = feature_entities.Quota(usage=0, limit=-1, reset_date=-1)
+        features.api_rate_limit = feature_entities.Quota(usage=0, limit=-1, reset_date=-1)
 
     @classmethod
     def _fulfill_params_from_workspace_info(cls, features: feature_entities.FeatureModel, tenant_id: str):

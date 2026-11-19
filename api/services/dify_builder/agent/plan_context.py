@@ -8,13 +8,13 @@ subscription identifiers or parameter values.
 import json
 from collections.abc import Mapping, Sequence
 
-from core.dify_builder.models import Graph
-from core.trigger.constants import (
+from constants.trigger import (
     TRIGGER_NODE_TYPES,
     TRIGGER_PLUGIN_NODE_TYPE,
     TRIGGER_SCHEDULE_NODE_TYPE,
     TRIGGER_WEBHOOK_NODE_TYPE,
 )
+from core.dify_builder.models import Graph
 
 _BOUNDARY_TYPES = TRIGGER_NODE_TYPES | {"start", "end", "answer"}
 _FIELD_KEYS = ("name", "variable", "label", "type", "required", "description")

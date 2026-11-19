@@ -34,6 +34,7 @@ from dify_agent.layers.knowledge_fs import layer as knowledge_fs_module
 from dify_agent.layers.knowledge_fs.history import without_historical_knowledge_evidence
 from dify_agent.layers.output import output_layer as output_module
 from dify_agent.layers.prompt import layer as prompt_module
+from dify_agent.layers.read_media.history import without_historical_read_media_content
 from dify_agent.layers.user_prompt import layer as user_prompt_module
 from dify_agent.protocol.native_testing import (
     NATIVE_TEST_CAPABILITIES,
@@ -370,6 +371,7 @@ class AgentRunRunner:
             if message_history:
                 # Also strip when knowledge was removed from the new Soul.
                 message_history = without_historical_knowledge_evidence(message_history)
+                message_history = without_historical_read_media_content(message_history)
             output = modules.get("output")
             if output is not None and not isinstance(output, output_module.Capability):
                 raise ValueError("The output slot must provide the output module")

@@ -96,12 +96,12 @@ describe('Configure page loading and access', () => {
     expect(view.onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('source')).toBe('shared-link')
   })
 
-  it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
-    'uses the %s edition to gate Preview independently of the license',
-    async (edition) => {
-      createEnvironment({ edition }).render('?mode=preview')
+  it.each([false, true])(
+    'gates Preview on the agent preview capability (enabled: %s)',
+    async (previewEnabled) => {
+      createEnvironment({ previewEnabled }).render('?mode=preview')
       await screen.findByRole('textbox', { name: `${prefix}.prompt.label` })
-      if (edition === 'COMMUNITY') {
+      if (!previewEnabled) {
         expect(modeButton('preview')).toBeDisabled()
         expect(modeButton('build')).toBeChecked()
         expect(

@@ -715,7 +715,7 @@ def test_catalog_public_version_matches_native_visible_history_with_hidden_revis
     sqlite_session: sqlalchemy.orm.Session, monkeypatch: pytest.MonkeyPatch, origin: str
 ) -> None:
     from models.agent import AgentConfigRevision, AgentConfigRevisionOperation, AgentSource
-    from services.agent.roster_service import AgentRosterService
+    from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
     from services.dify_builder.agent import resources
     from services.dify_builder.native_testing.agent_catalog import AgentCatalogService, project_published_agent
     from tests.builder_agent_fixtures import make_case
@@ -769,20 +769,20 @@ def test_catalog_public_version_matches_native_visible_history_with_hidden_revis
     active = snapshots[3]
     case.agent.active_config_snapshot_id = active.id
     sqlite_session.commit()
-    versions = AgentRosterService(sqlite_session).list_agent_versions(
-        tenant_id=case.actor.tenant_id, agent_id=case.agent.id
-    )
-    native_active = next(version for version in versions if version["id"] == active.id)
-    assert native_active["display_version"] == 2
-    assert native_active["snapshot_version"] == 3
+    versions = SQLAlchemyAgentVersionRepository(
+        session_factory=sqlalchemy.orm.sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
+    ).list_versions(tenant_id=case.actor.tenant_id, agent_id=case.agent.id)
+    native_active = next(version for version in versions if version.id == active.id)
+    assert native_active.display_version == 2
+    assert native_active.snapshot_version == 3
     assert len(versions) == 3
 
     candidate = AgentCatalogService(sqlite_session).list_candidates(
         tenant_id=case.actor.tenant_id, actor_id=case.actor.account_id, app_id=None, query=None
     )[0]
 
-    assert candidate.display_version == native_active["display_version"]
-    assert candidate.snapshot_version == native_active["snapshot_version"]
+    assert candidate.display_version == native_active.display_version
+    assert candidate.snapshot_version == native_active.snapshot_version
     # Display numbering must not change the confirmed snapshot binding/digest.
     assert candidate.resource_id == project_published_agent(agent=case.agent, snapshot=active).resource_id
     monkeypatch.setattr(resources, "db", PortDatabase(sqlite_session.get_bind()))
@@ -800,7 +800,7 @@ def test_catalog_without_native_visible_version_labels_only_the_snapshot_revisio
     sqlite_session: sqlalchemy.orm.Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from models.agent import AgentSource
-    from services.agent.roster_service import AgentRosterService
+    from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
     from services.dify_builder.agent import resources
     from tests.builder_agent_fixtures import make_case
 
@@ -810,7 +810,9 @@ def test_catalog_without_native_visible_version_labels_only_the_snapshot_revisio
     sqlite_session.commit()
     # Direct roster eligibility is valid even without a user-facing version entry.
     assert (
-        AgentRosterService(sqlite_session).list_agent_versions(tenant_id=case.actor.tenant_id, agent_id=case.agent.id)
+        SQLAlchemyAgentVersionRepository(
+            session_factory=sqlalchemy.orm.sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
+        ).list_versions(tenant_id=case.actor.tenant_id, agent_id=case.agent.id)
         == []
     )
     monkeypatch.setattr(resources, "db", PortDatabase(sqlite_session.get_bind()))

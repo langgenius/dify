@@ -295,6 +295,9 @@ def test_agent_system_schema_example_validates_with_native_owners() -> None:
     job = WorkflowNodeJobConfig.model_validate(
         {"declared_outputs": config["agent_declared_outputs"], "output_routes": config["agent_output_routes"]}
     )
-    assert any(output.type == "array" and output.array_item.type == "string" for output in job.declared_outputs)
+    assert any(
+        output.type == "array" and output.array_item is not None and output.array_item.type == "string"
+        for output in job.declared_outputs
+    )
     assert any(output.type == "object" and output.children for output in job.declared_outputs)
     assert snippet in get_node_builder_system_prompt("agent")

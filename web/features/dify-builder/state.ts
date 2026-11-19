@@ -12,6 +12,7 @@ import type {
 } from './types'
 import { atom } from 'jotai'
 import { atomWithMutation, queryClientAtom } from 'jotai-tanstack-query'
+import { v4 as uuid4 } from 'uuid'
 import { shouldStartBuildSession } from './editor/initial-draft'
 import {
   createOptimisticInteractionResponse,
@@ -390,7 +391,7 @@ const startDifyBuilderPromptAtom = atom(
 
     const startsBuild = shouldStartBuildSession(runtime.getCanvasSnapshot())
     const deriveAppName = startsBuild && get(difyBuilderDeriveAppNameAtom)
-    const localId = globalThis.crypto.randomUUID()
+    const localId = uuid4()
     set(difyBuilderLocalUserMessageAtom, {
       afterSequence: -1,
       localId,
@@ -598,7 +599,7 @@ export const difyBuilderSubmitActionAtom = atom(
             payload: actionPayload,
           })
         : null
-    const localId = optimisticPayload ? globalThis.crypto.randomUUID() : null
+    const localId = optimisticPayload ? uuid4() : null
     if (view && optimisticPayload && localId) {
       set(difyBuilderLocalInteractionResponseAtom, {
         afterSequence: view.conversation_last_seq,

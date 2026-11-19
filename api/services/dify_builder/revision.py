@@ -7,8 +7,8 @@ from copy import deepcopy
 from operator import itemgetter
 from typing import TYPE_CHECKING
 
+from constants.trigger import TRIGGER_NODE_TYPES
 from core.dify_builder.models import Graph
-from core.trigger.constants import TRIGGER_NODE_TYPES
 from graphon.enums import BuiltinNodeTypes
 from runtime_contracts.builder.execution import canonical_digest
 

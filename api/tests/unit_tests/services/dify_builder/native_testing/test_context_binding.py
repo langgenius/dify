@@ -71,6 +71,7 @@ def test_unmarked_ordinary_run_does_not_load_native_state(monkeypatch: pytest.Mo
 def test_unknown_policy_never_reaches_owner(monkeypatch: pytest.MonkeyPatch) -> None:
     error, resolve = NativeContextUnavailable, resolve_native_context
     state, calls = stored_context_boundary(monkeypatch)
+    # pyrefly: ignore[bad-argument-type]  # unknown policy version on purpose
     ref = NativeTestContextRef.model_construct(**{**REF_DATA, "policy_version": "unknown"})
     with pytest.raises(error, match="^native_context_version$"):
         resolve(required=True, ref=ref, state=state)

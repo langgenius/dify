@@ -57,16 +57,21 @@ def test_unbound_dispatch_keeps_legacy_headers_without_refetch(monkeypatch: pyte
     assert headers == {"X-Plugin-ID": PLUGIN_ID}
 
 
-def test_dispatch_rejects_cross_plugin_identity() -> None:
+@pytest.mark.parametrize("path", ["plugin/tenant-a/dispatch/tool/invoke", "v2/invoke/dispatch/moderation/invoke"])
+def test_dispatch_rejects_cross_plugin_identity(path: str) -> None:
     with pytest.raises(ValueError, match="does not match"):
-        prepare_dispatch_identity(
-            "plugin/tenant-a/dispatch/tool/invoke", {"X-Plugin-ID": "langgenius/other"}, IDENTIFIER
-        )
+        prepare_dispatch_identity(path, {"X-Plugin-ID": "langgenius/other"}, IDENTIFIER)
 
 
-def test_pinned_dispatch_requires_plugin_id() -> None:
+@pytest.mark.parametrize("path", ["plugin/tenant-a/dispatch/tool/invoke", "v2/invoke/dispatch/moderation/invoke"])
+def test_pinned_dispatch_requires_plugin_id(path: str) -> None:
     with pytest.raises(ValueError, match="X-Plugin-ID is required"):
-        prepare_dispatch_identity("plugin/tenant-a/dispatch/tool/invoke", {}, IDENTIFIER)
+        prepare_dispatch_identity(path, {}, IDENTIFIER)
+
+
+def test_direct_dispatch_cannot_fall_back_to_installation_resolution() -> None:
+    with pytest.raises(ValueError, match="identifier is required"):
+        prepare_dispatch_identity("v2/invoke/dispatch/moderation/invoke", {"X-Plugin-ID": PLUGIN_ID}, None)
 
 
 def test_explicit_empty_identifier_cannot_fall_back_to_legacy_dispatch() -> None:

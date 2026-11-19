@@ -42,6 +42,7 @@ from runtime_contracts.builder.native.contracts import ID, Counter, NativeTestCo
 from services.app_task_service import AppTaskService
 from services.dify_builder.application.execution_policy import BuilderExecutionContextValue, BuilderExecutionPolicyError
 from services.dify_builder.native_testing.native_execution import dispatch_native_worker
+from services.human_input_v2.submission_service import HumanInputSubmissionService
 from services.tools.draft_tool_setup import admit_draft_tool_setup, admit_resumed_draft_tool_setup
 from services.workflow_execution_identity import build_workflow_execution_identity
 from services.workflow_ref_service import WorkflowRef
@@ -188,7 +189,10 @@ class _AppRunner:
 
         user = self._resolve_user()
 
-        with self._setup_flask_context(user), self._session_factory(expire_on_commit=False) as session:
+        with (
+            self._setup_flask_context(user),
+            self._session_factory(expire_on_commit=False) as session,
+        ):
             try:
                 response = self._run_app(
                     app=app,
@@ -801,6 +805,11 @@ def _resume_advanced_chat(
             graph_runtime_state=graph_runtime_state,
             pause_state_config=pause_state_config,
             response_stream_filter=response_stream_filter,
+            restore_file_access=partial(
+                HumanInputSubmissionService(session_factory=session_factory).grant_submitted_file_access,
+                app_id=app_model.id,
+                workflow_run_id=workflow_run_id,
+            ),
             session=session,
         )
     except Exception:
@@ -868,6 +877,11 @@ def _resume_workflow(
             workflow_node_execution_repository=workflow_node_execution_repository,
             pause_state_config=pause_state_config,
             response_stream_filter=response_stream_filter,
+            restore_file_access=partial(
+                HumanInputSubmissionService(session_factory=session_factory).grant_submitted_file_access,
+                app_id=app_model.id,
+                workflow_run_id=workflow_run_id,
+            ),
         )
     except Exception:
         logger.exception("Failed to resume workflow execution for workflow run %s", workflow_run_id)

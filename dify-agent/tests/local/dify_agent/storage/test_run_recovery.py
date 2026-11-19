@@ -13,50 +13,59 @@ from dify_agent.storage.redis_run_store import RedisRunStore
 @pytest.mark.integration
 @pytest.mark.skipif(not os.environ.get("DIFY_AGENT_NATIVE_TEST_REDIS_URL"), reason="normal CI Redis only")
 def test_real_redis_keyed_claim_lookup_conflict_expiry_and_corrupt_state():
+    import hashlib
+
     from dify_agent.protocol.run_recovery import LookupRunRequest
-    from dify_agent.storage.redis_run_store import RunCreateConflictError, RunNotFoundError
-    from dify_agent.storage.redis_keys import run_record_key
+    from dify_agent.storage.redis_keys import run_idempotency_key, run_record_key
+    from dify_agent.storage.redis_run_store import IdempotencyConflictError, RunNotFoundError
 
     async def exercise():
         redis = Redis.from_url(os.environ["DIFY_AGENT_NATIVE_TEST_REDIS_URL"])
         prefix = "create-ci-" + uuid4().hex
         store = RedisRunStore(redis, prefix=prefix)
         selection = LookupRunRequest(idempotency_key="private-key", request_digest="a" * 64)
+        claim_key = run_idempotency_key(prefix, hashlib.sha256(b"private-key").hexdigest())
         try:
             claims = await asyncio.gather(
-                *(RedisRunStore(redis, prefix=prefix).claim_run(selection=selection) for _ in range(12))
+                *(
+                    RedisRunStore(redis, prefix=prefix).create_run_idempotent(
+                        idempotency_key=selection.idempotency_key, request_fingerprint=selection.request_digest
+                    )
+                    for _ in range(12)
+                )
             )
-            assert sum(claim.inserted for claim in claims) == 1
-            assert len({claim.record.run_id for claim in claims}) == 1
-            run_id = claims[0].record.run_id
-            assert UUID(run_id).version == 5
-            assert await redis.keys(prefix + "*") == [run_record_key(prefix, run_id).encode()]
+            assert sum(created for _, created in claims) == 1
+            assert len({record.run_id for record, _ in claims}) == 1
+            run_id = claims[0][0].run_id
+            assert UUID(run_id).version == 4
+            assert set(await redis.keys(prefix + "*")) == {claim_key.encode(), run_record_key(prefix, run_id).encode()}
             raw = await redis.get(run_record_key(prefix, run_id))
             assert b"private-key" not in raw
             restarted = RedisRunStore(redis, prefix=prefix)
             result = await restarted.lookup_run(selection)
             assert (result.run_id, result.status) == (run_id, "running")
             conflict = selection.model_copy(update={"request_digest": "b" * 64})
-            with pytest.raises(RunCreateConflictError):
-                await restarted.claim_run(selection=conflict)
-            with pytest.raises(RunCreateConflictError):
+            with pytest.raises(IdempotencyConflictError):
+                await restarted.create_run_idempotent(
+                    idempotency_key=conflict.idempotency_key, request_fingerprint=conflict.request_digest
+                )
+            with pytest.raises(IdempotencyConflictError):
                 await restarted.lookup_run(conflict)
             assert await redis.get(run_record_key(prefix, run_id)) == raw
             assert 0 < await redis.ttl(run_record_key(prefix, run_id)) <= store.run_retention_seconds
             await redis.set(run_record_key(prefix, run_id), "corrupt", ex=60)
-            with pytest.raises(RunCreateConflictError):
+            with pytest.raises(IdempotencyConflictError):
                 await restarted.lookup_run(selection)
-            with pytest.raises(RunCreateConflictError):
-                await restarted.claim_run(selection=selection)
             await redis.delete(run_record_key(prefix, run_id))
             await redis.rpush(run_record_key(prefix, run_id), "wrong Redis type")
-            with pytest.raises(RunCreateConflictError):
+            with pytest.raises(IdempotencyConflictError):
                 await restarted.lookup_run(selection)
             await redis.pexpire(run_record_key(prefix, run_id), 1)
             await asyncio.sleep(0.02)
             with pytest.raises(RunNotFoundError):
                 await restarted.lookup_run(selection)
-            assert not await redis.keys(prefix + "*")
+            # Only the admission claim remains; its expired record admits a new run.
+            assert await redis.keys(prefix + "*") == [claim_key.encode()]
             assert UUID((await restarted.create_run()).run_id).version == 4
         finally:
             keys = await redis.keys(prefix + "*")
@@ -69,7 +78,7 @@ def test_real_redis_keyed_claim_lookup_conflict_expiry_and_corrupt_state():
 
 @pytest.mark.integration
 @pytest.mark.skipif(not os.environ.get("DIFY_AGENT_NATIVE_TEST_REDIS_URL"), reason="normal CI Redis only")
-def test_real_redis_two_schedulers_and_lost_set_ack_do_not_replay():
+def test_real_redis_two_schedulers_and_lost_admission_ack_do_not_replay():
     import httpx
     from redis.exceptions import ConnectionError as RedisConnectionError
     from dify_agent.protocol.run_recovery import LookupRunRequest, create_run_fingerprint
@@ -93,8 +102,8 @@ def test_real_redis_two_schedulers_and_lost_set_ack_do_not_replay():
                 await release.wait()
 
         class LostAck:
-            async def set(self, *args, **kwargs):
-                await redis.set(*args, **kwargs)
+            async def eval(self, *args, **kwargs):
+                await redis.eval(*args, **kwargs)
                 raise RedisConnectionError("accepted write, response lost")
 
         async with httpx.AsyncClient() as http:

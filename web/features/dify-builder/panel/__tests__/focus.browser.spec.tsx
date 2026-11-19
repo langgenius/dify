@@ -15,10 +15,13 @@ import { difyBuilderRuntimeAtom } from '../../state'
 
 // Conversation rendering and the disabled composer have independent owner tests.
 // Keep the production panel, header, interaction, and animation real.
+// boundary: conversation rendering has its own owner tests; this spec measures panel focus only.
 vi.mock('../../conversation', () => ({ DifyBuilderConversation: () => null }))
+// boundary: the disabled composer has its own owner tests; a native textarea keeps the focus order real.
 vi.mock('../../composer', () => ({
   default: () => <textarea aria-label="Message" disabled />,
 }))
+// boundary: the panel's close action writes to the workflow app store, which needs the full canvas host.
 vi.mock('@/app/components/workflow-app/store/workflow', () => ({
   useWorkflowAppSelector: <T,>(
     selector: (state: { setShowDifyBuilderPanel: (show: boolean) => void }) => T,

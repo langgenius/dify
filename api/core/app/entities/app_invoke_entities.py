@@ -134,6 +134,7 @@ class DifyRunContext(BaseModel):
     created_by: CreditUsageCreatedBy | None = None
     trace_session_id: str | None = None
     workflow_tool_invocation_id: str | None = None
+    capture_agent_evaluation_trace: bool = False
 
     @field_validator("builder_execution", mode="before")
     @classmethod
@@ -165,6 +166,7 @@ def build_dify_run_context(
     app_type: CreditUsageAppTypeInput = None,
     created_by: CreditUsageCreatedByInput = None,
     trace_session_id: str | None = None,
+    capture_agent_evaluation_trace: bool = False,
     extra_context: Mapping[str, Any] | None = None,
     builder_execution: BuilderExecutionContext | ConfirmedToolExecutionContext | JsonToolExecutionContext | None = None,
     native_test_required: bool = False,
@@ -197,6 +199,7 @@ def build_dify_run_context(
         app_type=normalize_credit_usage_app_type(app_type) if app_type is not None else None,
         created_by=normalize_credit_usage_created_by(created_by) if created_by is not None else None,
         trace_session_id=trace_session_id,
+        capture_agent_evaluation_trace=capture_agent_evaluation_trace,
     )
     if isinstance(builder_tool_credential_bindings, dict):
         # This server-owned run map is also held by the generation entity.
@@ -225,9 +228,7 @@ class ModelConfigWithCredentialsEntity(BaseModel):
 
 
 class AppGenerateEntity(BaseModel):
-    """
-    App Generate Entity.
-    """
+    """Admitted generation data and process-local tracing context."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 

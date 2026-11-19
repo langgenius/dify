@@ -12,10 +12,10 @@ from typing import Any, TypedDict
 
 import json_repair
 
+from constants.trigger import TRIGGER_NODE_TYPES
 from core.dify_builder.errors import ProposalWouldRunWrongError
 from core.dify_builder.models import MutationIntent, NodeOutput, Run
 from core.dify_builder.node_defaults import default_config_or_empty
-from core.trigger.constants import TRIGGER_NODE_TYPES
 from core.workflow.generator.prompts.builder_prompts import (
     CODE_FAILURE_POLICY_RULES,
     TOOL_PARAMETER_SEMANTICS_RULES,

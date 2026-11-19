@@ -17,6 +17,7 @@ from sqlalchemy import Engine
 from extensions.otel.decorators.handlers.workflow_app_runner_handler import WorkflowAppRunnerHandler
 from extensions.otel.semconv import DifySpanAttributes, GenAIAttributes
 from services.workflow_run_agg import WorkflowRunAgg
+from services.workflow_runtime.workflow_runner import WorkflowAppRunner
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.unit_tests.services.test_workflow_run_agg import make_workflow_runner
 
@@ -115,7 +116,7 @@ def test_marked_native_driver_does_not_emit_workflow_span(sqlite_engine: Engine)
     provider = TracerProvider()
     provider.add_span_processor(SimpleSpanProcessor(exporter))
 
-    def marked_execution(runner) -> None:
+    def marked_execution(runner: WorkflowAppRunner) -> None:
         assert runner.application_generate_entity.native_test_required
 
     try:

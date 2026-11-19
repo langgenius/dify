@@ -8,6 +8,7 @@ import type { SessionControllerContext } from './controller-types'
 import type { DifyBuilderLifecycleControl } from './state'
 import { useSetAtom, useStore } from 'jotai'
 import { useCallback } from 'react'
+import { v4 as uuid4 } from 'uuid'
 import { prepareSessionFix, runSessionAction } from './client'
 import { UNEXPECTED_EOF_ERROR } from './errors'
 import { isActiveView } from './projection'
@@ -96,7 +97,7 @@ export function useDifyBuilderFixControl({
       const body: DifyBuilderFixIntentPayload = {
         ...source,
         base_version: version,
-        client_action_id: globalThis.crypto.randomUUID(),
+        client_action_id: uuid4(),
       }
       store.set(difyBuilderLifecycleControlAtom, {
         operation: 'fix',
@@ -169,7 +170,7 @@ export function useDifyBuilderFixControl({
       lifecycleAbortRef.current = controller
       setLastError('')
       const actionPayload = { ...action.payload, ...payload }
-      const clientActionId = globalThis.crypto.randomUUID()
+      const clientActionId = uuid4()
       const control: DifyBuilderLifecycleControl = {
         operation: selected,
         phase: 'pending',

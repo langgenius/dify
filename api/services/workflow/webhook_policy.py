@@ -3,7 +3,7 @@
 from collections.abc import Mapping
 from typing import Any
 
-from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
+from constants.trigger import TRIGGER_WEBHOOK_NODE_TYPE
 
 MAX_WEBHOOK_NODES_PER_WORKFLOW = 5
 

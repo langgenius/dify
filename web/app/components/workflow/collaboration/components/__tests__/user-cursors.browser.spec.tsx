@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({ viewport: { x: 40, y: 50, zoom: 2 } }))
 let onCursorUpdate: (cursors: Record<string, CursorPosition>) => void
 
 vi.mock('reactflow', () => ({ useViewport: () => mocks.viewport }))
+// boundary: cursor updates arrive over a realtime connection; the test pushes them directly.
 vi.mock('../../core/collaboration-manager', () => ({
   collaborationManager: {
     onCursorUpdate: (callback: typeof onCursorUpdate) => {

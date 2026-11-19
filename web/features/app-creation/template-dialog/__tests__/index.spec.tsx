@@ -27,9 +27,11 @@ vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push }), useParams: ()
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { createFeaturesFixture } = await import('@/test/console/query-data')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'features.get': () => createFeaturesFixture(),
       'explore.apps.get': () => ({ recommended_apps: [template], categories: ['Assistant'] }),
       'explore.apps.byAppId.get': () => ({
         id: 'catalog-app',

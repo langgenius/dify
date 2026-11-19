@@ -212,7 +212,7 @@ const assistantMessageEvents = (
       }),
     ]
   const text = item.payload.reply_text ?? ''
-  if (typeof text !== 'string') throw new Error('native streamed replies must be literal text')
+  if (typeof text !== 'string') throw new TypeError('native streamed replies must be literal text')
   const splitAt = Math.ceil(text.length / 2)
   const chunks = text ? [text.slice(0, splitAt), text.slice(splitAt)].filter(Boolean) : []
   let textBytes = 0

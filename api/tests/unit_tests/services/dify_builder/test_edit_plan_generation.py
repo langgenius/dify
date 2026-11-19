@@ -6,8 +6,8 @@ from copy import deepcopy
 
 import pytest
 
+from constants.trigger import TRIGGER_PLUGIN_NODE_TYPE, TRIGGER_SCHEDULE_NODE_TYPE, TRIGGER_WEBHOOK_NODE_TYPE
 from core.dify_builder.models import Graph
-from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE, TRIGGER_SCHEDULE_NODE_TYPE, TRIGGER_WEBHOOK_NODE_TYPE
 from graphon.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
 from services.dify_builder.agent import edit
 

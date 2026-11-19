@@ -674,6 +674,7 @@ def test_completed_shell_config_read_refuses_uncertain_or_foreign_authority(
             changed = endpoint.config.model_copy(update={"config_ref": "foreign-after-status"})
             monkeypatch.setattr(service, "_endpoint", lambda _ref: replace(endpoint, config=changed))
         if failure == "unknown":
+            # pyrefly: ignore[bad-argument-type]  # unknown backend status on purpose
             return AgentShellJobStatus.model_construct(job_id="job-one", status="unknown", done=False, exit_code=None)
         return AgentShellJobStatus(
             job_id="other-job" if failure == "wrong-job" else "job-one",

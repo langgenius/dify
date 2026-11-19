@@ -199,7 +199,7 @@ class UnitRunRepository(SQLAlchemyWorkflowExecutionRepository):
 
 
 class UnitNodeRepository(SQLAlchemyWorkflowNodeExecutionRepository):
-    """Real save/save_execution_data/truncation/offload with memory ports only."""
+    """Real save/_save_execution_data/truncation/offload with memory ports only."""
 
     def __init__(self) -> None:
         self.sql = MemorySQLPort()
@@ -230,9 +230,9 @@ class UnitNodeRepository(SQLAlchemyWorkflowNodeExecutionRepository):
         super().save(execution)
 
     @override
-    def save_execution_data(self, execution: WorkflowNodeExecution) -> None:
+    def _save_execution_data(self, execution: WorkflowNodeExecution) -> None:
         self.sql.current_id = execution.id
-        super().save_execution_data(execution)
+        super()._save_execution_data(execution)
 
     @override
     def get_by_workflow_execution(
@@ -266,6 +266,7 @@ def make_layer(
         start_at=0.0,
     )
     runtime.variable_pool.add(["sys", "query"], SENTINEL)
+    # pyrefly: ignore[missing-argument]  # partial entity: user_from is not read on this path
     entity = WorkflowAppGenerateEntity.model_construct(
         task_id="task",
         app_config=WorkflowUIBasedAppConfig(
@@ -275,6 +276,7 @@ def make_layer(
         files=[],
         user_id="actor",
         stream=False,
+        # pyrefly: ignore[bad-argument-type]  # no invoke source on purpose
         invoke_from=None,
         trace_scope=None,
         workflow_execution_id="run",

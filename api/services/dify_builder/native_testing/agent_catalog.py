@@ -11,9 +11,10 @@ from sqlalchemy.orm import Session, aliased
 from core.agent.publish_visibility import workflow_callable_active_snapshot_filter
 from models.agent import Agent, AgentConfigRevision, AgentConfigRevisionOperation, AgentConfigSnapshot
 from models.agent_config_entities import AgentSoulConfig
+from repositories.agent_roster_queries import build_roster_agents_stmt
+from repositories.agent_version_queries import visible_version_operations
 from runtime_contracts.builder.execution import canonical_digest
 from services.agent import access_service
-from services.agent.roster_service import AgentRosterService
 
 
 @dataclass(frozen=True)
@@ -166,7 +167,7 @@ class AgentCatalogService:
         )
         # Same native publication/model predicates as list_invite_options. Join the
         # snapshot by its complete owner chain, rather than its globally unique ID.
-        stmt = AgentRosterService._build_roster_agents_stmt(tenant_id=tenant_id, keyword=query).where(
+        stmt = build_roster_agents_stmt(tenant_id=tenant_id, keyword=query).where(
             Agent.active_config_has_model.is_(True), workflow_callable_active_snapshot_filter()
         )
         if access.accessible_agent_ids is not None:
@@ -212,11 +213,11 @@ class AgentCatalogService:
         The roster API numbers distinct visible snapshots by snapshot revision,
         not publication audit entries. Count only visible snapshots at or before
         each active snapshot; a restored older version retains its original rank.
-        Source-specific visibility remains owned by AgentRosterService.
+        Source-specific visibility remains owned by the shared roster version queries.
         """
         operations_by_agents: dict[frozenset[AgentConfigRevisionOperation], list[str]] = {}
         for agent in agents:
-            operations = frozenset(AgentRosterService._visible_version_operations(agent))
+            operations = frozenset(visible_version_operations(agent))
             operations_by_agents.setdefault(operations, []).append(agent.id)
         active = aliased(AgentConfigSnapshot)
         rows = self.session.execute(

@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
 from models.trigger import TriggerSubscription
-from repositories.trigger.subscription_repository import TriggerSubscriptionRepository
+from repositories.trigger.subscription_repository import TriggerSubscriptionRepository, build_trigger_refresh_lock_key
 from services.trigger.subscription_refresh_service import TriggerSubscriptionRefreshRef
 from tests.unit_tests.repositories.trigger.test_subscription_repository import _persist, _snapshot
 
@@ -76,3 +76,7 @@ def test_cursor_keeps_later_candidates_when_earlier_rows_are_renewed(
         )
         == ()
     )
+
+
+def test_refresh_reservation_key_keeps_existing_worker_contract() -> None:
+    assert build_trigger_refresh_lock_key("tenant-1", "sub-1") == "trigger_provider_refresh_lock:tenant-1_sub-1"

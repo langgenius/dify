@@ -12,15 +12,13 @@ from dify_agent.server.schemas import RunRecord
 
 def test_existing_keyed_record_is_never_scheduled_even_after_worker_loss():
     async def exercise():
-        from dify_agent.server.schemas import RunCreateClaim
-
         record = RunRecord(run_id="existing", status="running")
 
         class Store:
-            async def claim_run(self, *, selection, identity):
-                assert selection.idempotency_key == "accepted"
-                assert len(selection.request_digest) == 64
-                return RunCreateClaim(record=record, inserted=False)
+            async def create_run_idempotent(self, *, idempotency_key, request_fingerprint, identity):
+                assert idempotency_key == "accepted"
+                assert len(request_fingerprint) == 64
+                return record, False
 
         scheduler = RunScheduler(
             store=Store(),

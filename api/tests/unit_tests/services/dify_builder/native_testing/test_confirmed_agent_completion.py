@@ -1016,6 +1016,7 @@ def declining(
         )
     protected = _protected(owner, execution_id)
     parent, wait = protected.association.parent_node, protected.wait
+    assert wait is not None
     from graphon.runtime import RuntimeState
 
     paused = OwnedParentPause(

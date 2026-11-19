@@ -580,6 +580,7 @@ def test_approval_only_resumes_the_eligible_saved_wait(
     )
     current = saved.model_copy(update={"generation": int(case == "newer_wait"), "can_resume": case != "blocked"})
     running = current.model_copy(update={"status": "running", "generation": 1, "pending": (), "can_resume": False})
+
     def unexpected_profile() -> Never:
         pytest.fail("the patched command must not resolve a runtime profile")
 

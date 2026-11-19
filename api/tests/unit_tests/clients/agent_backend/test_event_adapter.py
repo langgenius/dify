@@ -21,8 +21,10 @@ from clients.agent_backend import (
     AgentBackendRunCancelledInternalEvent,
     AgentBackendRunEventAdapter,
     AgentBackendRunFailedInternalEvent,
+    AgentBackendRunResumedInternalEvent,
     AgentBackendRunStartedInternalEvent,
     AgentBackendRunSucceededInternalEvent,
+    AgentBackendRunWaitingInternalEvent,
     AgentBackendStreamInternalEvent,
 )
 
@@ -35,11 +37,13 @@ def test_event_adapter_preserves_wait_identity_without_converting_it_to_failure(
     )
     adapted = AgentBackendRunEventAdapter().adapt(event)
     assert len(adapted) == 1
-    assert adapted[0].type == "run_waiting"
-    assert adapted[0].run_id == "child-1"
-    assert adapted[0].source_event_id == "waiting-1"
-    assert adapted[0].generation == 3
-    assert adapted[0].pending_actions == ()
+    waiting = adapted[0]
+    assert isinstance(waiting, AgentBackendRunWaitingInternalEvent)
+    assert waiting.type == "run_waiting"
+    assert waiting.run_id == "child-1"
+    assert waiting.source_event_id == "waiting-1"
+    assert waiting.generation == 3
+    assert waiting.pending_actions == ()
 
 
 def test_event_adapter_preserves_resumption_generation() -> None:
@@ -49,8 +53,10 @@ def test_event_adapter_preserves_resumption_generation() -> None:
         RunResumedEvent(id="resumed-1", run_id="child-1", data=RunResumedEventData(generation=4))
     )
     assert len(adapted) == 1
-    assert adapted[0].type == "run_resumed"
-    assert adapted[0].generation == 4
+    resumed = adapted[0]
+    assert isinstance(resumed, AgentBackendRunResumedInternalEvent)
+    assert resumed.type == "run_resumed"
+    assert resumed.generation == 4
 
 
 def test_event_adapter_maps_run_started() -> None:

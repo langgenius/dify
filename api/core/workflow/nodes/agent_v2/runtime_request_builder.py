@@ -50,7 +50,7 @@ from clients.agent_backend import (
 )
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
-from core.app.llm.model_access import resolve_model_context_window, resolve_model_supports_vision
+from core.app.llm import model_access
 from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
 from core.workflow.system_variables import SystemVariableKey, get_system_text, get_system_value
 from extensions.tracing import application_tracing_hooks
@@ -96,6 +96,7 @@ from .dify_tools_builder import (
 )
 from .output_failure_orchestrator import retry_idempotency_key
 from .runtime_feature_manifest import build_runtime_feature_manifest
+from .tool_snapshot import AgentRuntimeToolDefinition, build_runtime_tool_definitions
 
 _DENIED_PERMISSION_STATUSES = frozenset({"unauthorized", "denied", "forbidden", "invalid", "unavailable"})
 _DANGEROUS_FLAG_KEYS = ("dangerous", "dangerous_command", "requires_confirmation")
@@ -155,6 +156,7 @@ class WorkflowAgentRuntimeRequest:
     agent_soul: AgentSoulConfig
     node_job: WorkflowNodeJobConfig
     metadata: dict[str, Any]
+    available_tools: tuple[AgentRuntimeToolDefinition, ...] = ()
 
 
 class WorkflowAgentRuntimeRequestBuilder:
@@ -234,7 +236,7 @@ class WorkflowAgentRuntimeRequestBuilder:
             knowledge_fs_config = build_knowledge_fs_layer_config(agent_soul, run_context=context.dify_context)
         except KnowledgeFsError as exc:
             raise WorkflowAgentRuntimeRequestBuildError(exc.code, exc.message) from exc
-        context_window_tokens = resolve_model_context_window(
+        model_profile = model_access.resolve_model_runtime_profile(
             run_context=context.dify_context,
             provider_name=agent_soul.model.model_provider,
             model_name=agent_soul.model.model,
@@ -243,6 +245,7 @@ class WorkflowAgentRuntimeRequestBuilder:
             ModelProviderID(agent_soul.model.model_provider),
             agent_soul.model.plugin_id,
         )
+        shell_config = build_shell_layer_config(agent_soul)
 
         tracing_hooks = application_tracing_hooks()
         request = self._request_builder.build_for_workflow_node(
@@ -252,7 +255,8 @@ class WorkflowAgentRuntimeRequestBuilder:
                     model_provider=model_provider,
                     model=agent_soul.model.model,
                     model_settings=agent_soul.model.model_settings.model_dump(mode="json", exclude_none=True),
-                    context_window_tokens=context_window_tokens,
+                    context_window_tokens=model_profile.context_window_tokens,
+                    supported_modalities=model_profile.supported_modalities,
                 ),
                 # The execution-context layer is now the only public protocol
                 # carrier for Dify tenant/user/run identifiers. ``user_id`` and
@@ -290,9 +294,8 @@ class WorkflowAgentRuntimeRequestBuilder:
                 user_prompt=user_prompt,
                 user_images=self._build_user_images(
                     context,
-                    agent_soul.model.model_provider,
-                    agent_soul.model.model,
                     effective_node_job.previous_node_output_refs,
+                    supports_vision="vision" in model_profile.supported_modalities,
                 ),
                 output=self._build_output_config(
                     node_job.declared_outputs, node_job.output_routes, context.variable_pool
@@ -303,7 +306,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                 knowledge_fs=knowledge_fs_config,
                 config_layer_config=config_layer_config,
                 include_shell=dify_config.AGENT_SHELL_ENABLED,
-                shell_config=build_shell_layer_config(agent_soul),
+                shell_config=shell_config,
                 session_snapshot=context.session_snapshot,
                 idempotency_key=self._idempotency_key(context),
                 metadata=metadata,
@@ -329,18 +332,27 @@ class WorkflowAgentRuntimeRequestBuilder:
             agent_soul=agent_soul,
             node_job=node_job,
             metadata=metadata,
+            available_tools=(
+                build_runtime_tool_definitions(
+                    tool_layers=tool_layers,
+                    include_shell=dify_config.AGENT_SHELL_ENABLED,
+                )
+                if context.dify_context.capture_agent_evaluation_trace
+                else ()
+            ),
         )
 
     @staticmethod
     def _build_user_images(
         context: WorkflowAgentRuntimeBuildContext,
-        provider_name: str,
-        model_name: str,
         previous_node_output_refs: Sequence[WorkflowPreviousNodeOutputRef],
+        *,
+        supports_vision: bool,
     ) -> list[DifyUserPromptImageConfig]:
         """Convert uploaded and explicitly referenced images for vision models.
 
-        Inputs are trusted workflow File values; serialized mappings are not rebuilt.
+        Inputs are trusted workflow File values and the already resolved model's
+        vision capability; no additional schema query or mapping rebuild occurs.
         Text references remain unchanged, and each transport/reference pair is sent
         once. Missing/invalid refs and unsupported image transports fail the run.
         Non-vision models return no image content and perform no file conversion.
@@ -360,9 +372,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                     )
                     images_by_reference.setdefault((file.transfer_method, reference), file)
         images = list(images_by_reference.values())
-        if not images or not resolve_model_supports_vision(
-            run_context=context.dify_context, provider_name=provider_name, model_name=model_name
-        ):
+        if not images or not supports_vision:
             return []
         result: list[DifyUserPromptImageConfig] = []
         for file in images:
