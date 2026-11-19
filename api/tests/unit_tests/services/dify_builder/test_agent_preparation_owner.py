@@ -588,6 +588,11 @@ def test_inert_composer_uses_real_layer_dtos_without_model_schema_or_session(
     assert request.native_parent_node.execution_id == PARENT.execution_id
     assert request.session_snapshot is None
     assert not calls
+    # read_media has no native boundary, so Builder test runs never carry its layer
+    # (main's ordinary workflow-node requests still do).
+    layer_names = [layer.name for layer in request.composition.layers]
+    assert "read_media" not in layer_names
+    assert {"llm", "shell", "runtime"} <= set(layer_names)
     config: dict[str, JsonValue] = request.model_dump(mode="json", include={"composition", "session_snapshot"})
     assert state.NativeExecutionStateStore._agent_executable_config(config, PARENT) == config
     raw: dict[str, JsonValue] = {

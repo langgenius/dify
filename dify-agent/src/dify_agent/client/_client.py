@@ -76,6 +76,7 @@ from dify_agent.protocol.native_testing import (
     ReadAgentRuntimeIdentity,
     require_native_test_capabilities,
 )
+from dify_agent.protocol.schemas import NATIVE_TEST_REQUEST_FIELDS
 
 _ResponseModelT = TypeVar("_ResponseModelT", bound=BaseModel)
 _TERMINAL_EVENT_TYPES = {"run_succeeded", "run_failed", "run_cancelled"}
@@ -1298,15 +1299,7 @@ def _parse_native_checkpoint_response(
 def _create_run_json(request: CreateRunRequest) -> str:
     """Preserve the strict pre-native ordinary wire, including its old defaults."""
     if request.execution_mode == "ordinary":
-        return request.model_dump_json(
-            exclude={
-                "execution_mode",
-                "native_test_ref",
-                "native_test_protocol_version",
-                "native_parent_node",
-                "native_test_profile",
-            }
-        )
+        return request.model_dump_json(exclude=set(NATIVE_TEST_REQUEST_FIELDS))
     return request.model_dump_json()
 
 

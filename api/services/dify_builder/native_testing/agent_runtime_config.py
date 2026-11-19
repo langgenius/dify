@@ -13,6 +13,7 @@ from pydantic import JsonValue, TypeAdapter
 from sqlalchemy import select
 
 from clients.agent_backend.request_builder import (
+    DIFY_READ_MEDIA_LAYER_ID,
     AgentBackendModelConfig,
     AgentBackendOutputConfig,
     AgentBackendRunRequestBuilder,
@@ -329,9 +330,16 @@ class NativeAgentRuntimeConfigBuilder:
                 shell_config=build_shell_layer_config(soul),
             )
         )
+        payload = request.model_dump(mode="json")
+        # Main's workflow-node builder always adds read_media for ordinary runs. Builder test
+        # runs refuse file inputs and stop on any tool without a native boundary, which
+        # read_media lacks, so the native composition leaves that layer out.
+        payload["composition"]["layers"] = [
+            layer for layer in payload["composition"]["layers"] if layer["name"] != DIFY_READ_MEDIA_LAYER_ID
+        ]
         return CreateRunRequest.model_validate(
             {
-                **request.model_dump(mode="json"),
+                **payload,
                 "execution_mode": "builder_test",
                 "native_test_profile": self.profile,
                 "idempotency_key": canonical_digest(
