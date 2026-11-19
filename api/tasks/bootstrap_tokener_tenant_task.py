@@ -324,20 +324,6 @@ def _ensure_managed_credential(snapshot: _IntegrationSnapshot) -> str:
     )
 
 
-def _set_default_llm(tenant_id: str) -> None:
-    try:
-        ModelProviderService().initialize_default_llm(
-            tenant_id=tenant_id,
-            pinned=(dify_config.TOKENER_PROVIDER_NAME, dify_config.TOKENER_DEFAULT_LLM_MODEL),
-        )
-    except Exception:
-        raise _BootstrapStepError(
-            "tokener_default_model_configuration_failed",
-            retryable=True,
-            stage=TenantTokenerIntegrationStatus.CONFIGURING_PROVIDER,
-        ) from None
-
-
 def _run_bootstrap(tenant_id: str) -> None:
     try:
         model_billing = build_model_billing_profiles().resolve(tenant_id)
@@ -363,7 +349,8 @@ def _run_bootstrap(tenant_id: str) -> None:
 
     _ensure_plugin_installed(snapshot)
     credential_id = _ensure_managed_credential(snapshot)
-    _set_default_llm(snapshot.tenant_id)
+    # The normal Marketplace default-plugin task configures the source
+    # provider independently. The settlement backend never chooses the App model.
     _update_integration(
         snapshot.tenant_id,
         status=TenantTokenerIntegrationStatus.READY,

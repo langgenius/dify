@@ -53,6 +53,39 @@ class TokenerBootstrapRepository:
             )
             return credential_id, active is not None
 
+    def ready_dispatch_binding(self, tenant_id: str, provider: str) -> tuple[str, str, str] | None:
+        """Return the current installed-package pin and encrypted managed credential.
+
+        Only an active Tokener profile with a ready integration for this tenant
+        can dispatch. The user's active provider credential is deliberately not
+        consulted. No decrypted data is returned and no state is changed.
+        """
+        with self._sessions() as session:
+            row = session.execute(
+                select(
+                    TenantTokenerIntegration.plugin_unique_identifier,
+                    ProviderCredential.id,
+                    ProviderCredential.encrypted_config,
+                )
+                .join(ProviderCredential, ProviderCredential.id == TenantTokenerIntegration.provider_credential_id)
+                .join(
+                    TenantModelBillingProfile, TenantModelBillingProfile.tenant_id == TenantTokenerIntegration.tenant_id
+                )
+                .where(
+                    TenantTokenerIntegration.tenant_id == tenant_id,
+                    TenantTokenerIntegration.status == TenantTokenerIntegrationStatus.READY,
+                    TenantModelBillingProfile.model_billing_source == "tokener",
+                    ProviderCredential.tenant_id == tenant_id,
+                    ProviderCredential.provider_name == provider,
+                )
+            ).one_or_none()
+            if row is None:
+                return None
+            identifier, credential_id, encrypted = row
+            if not identifier or not encrypted:
+                return None
+            return identifier, credential_id, encrypted
+
     def bind_encrypted_credential(
         self, tenant_id: str, provider: str, credential_name: str, encrypted: Mapping[str, JsonValue]
     ) -> str:

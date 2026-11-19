@@ -26,7 +26,6 @@ from core.plugin.entities.plugin_daemon import (
 from core.tools.entities.common_entities import I18nObject
 from enums.model_billing import TenantTokenerIntegrationStatus
 from extensions.ext_redis import RedisClientWrapper
-from graphon.model_runtime.entities.model_entities import ModelType
 from models.account import Tenant
 from models.model import TenantCreditPool
 from models.model_billing import TenantModelBillingProfile
@@ -53,7 +52,6 @@ def native_configuration(monkeypatch: pytest.MonkeyPatch) -> None:
         TOKENER_PLUGIN_UNIQUE_IDENTIFIER=PLUGIN_UID,
         TOKENER_PROVIDER_NAME=PROVIDER,
         TOKENER_ENDPOINT_URL=ENDPOINT,
-        TOKENER_DEFAULT_LLM_MODEL="gpt-4o-mini",
     )
 
 
@@ -99,7 +97,6 @@ def ready_response(tenant_id: str) -> TokenerTenantBootstrapResponse:
 class NativeProviderEffects:
     validation_inputs: list[dict[str, str]] = field(default_factory=list)
     activated: list[tuple[str, str]] = field(default_factory=list)
-    defaults: list[tuple[str, str, str]] = field(default_factory=list)
 
 
 @pytest.fixture
@@ -139,21 +136,9 @@ def provider_effects(mocker: MockerFixture, sqlite_session_factory: sessionmaker
                 row.credential_id, row.is_valid = credential_id, True
         effects.activated.append((tenant_id, credential_id))
 
-    def set_default(*, tenant_id: str, pinned: tuple[str, str]) -> None:
-        provider, model = pinned
-        assert provider == PROVIDER
-        with sqlite_session_factory.begin() as session:
-            session.add(
-                TenantDefaultModel(
-                    tenant_id=tenant_id, provider_name=provider, model_name=model, model_type=ModelType.LLM
-                )
-            )
-        effects.defaults.append((tenant_id, provider, model))
-
     mocker.patch.object(module.ModelProviderService, "_get_provider_configuration", side_effect=configuration)
     mocker.patch.object(ProviderConfiguration, "validate_provider_credentials", side_effect=validate)
     mocker.patch.object(module.ModelProviderService, "activate_unselected_provider_credential", side_effect=activate)
-    mocker.patch.object(module.ModelProviderService, "initialize_default_llm", side_effect=set_default)
     return effects
 
 
@@ -190,7 +175,10 @@ def test_native_ready_consumes_key_binds_encrypted_credential_and_sets_exact_def
     assert "data_plane_api_key" not in response
     assert module._find_managed_credential(integration.tenant_id) == (credential.id, True)
     assert provider_effects.validation_inputs == [{"api_key": TEST_KEY, "endpoint_url": ENDPOINT}]
-    assert provider_effects.defaults == [(integration.tenant_id, PROVIDER, "gpt-4o-mini")]
+    assert (
+        sqlite_session.scalar(select(TenantDefaultModel).where(TenantDefaultModel.tenant_id == integration.tenant_id))
+        is None
+    )
     assert (
         sqlite_session.scalar(select(TenantCreditPool).where(TenantCreditPool.tenant_id == integration.tenant_id))
         is None
@@ -209,12 +197,7 @@ def test_native_ready_replay_does_not_repeat_remote_provision_or_credential_writ
     module._run_bootstrap(integration.tenant_id)
     module._run_bootstrap(integration.tenant_id)
     upstream.assert_called_once()
-    assert (
-        len(provider_effects.validation_inputs)
-        == len(provider_effects.activated)
-        == len(provider_effects.defaults)
-        == 1
-    )
+    assert len(provider_effects.validation_inputs) == len(provider_effects.activated) == 1
     assert len(list(sqlite_session.scalars(select(ProviderCredential)))) == 1
 
 
@@ -282,7 +265,13 @@ def test_unexpected_error_remains_pending_and_sweep_recovers_committed_credentia
         module.BillingService, "bootstrap_tokener_tenant", return_value=ready_response(integration.tenant_id)
     )
     install_immediately(mocker)
-    fault = mocker.patch.object(module, "_set_default_llm", side_effect=RuntimeError(TEST_KEY))
+    configure = module._ensure_managed_credential
+
+    def fail_when_completing(snapshot: module._IntegrationSnapshot) -> str:
+        configure(snapshot)
+        raise RuntimeError(TEST_KEY)
+
+    fault = mocker.patch.object(module, "_ensure_managed_credential", side_effect=fail_when_completing)
     redis, _commands = redis_transport
     monkeypatch.setattr(module, "redis_client", redis)
     mocker.patch.object(Lock, "acquire", return_value=True)

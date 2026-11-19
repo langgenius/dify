@@ -160,8 +160,13 @@ class FeatureService:
 
     @classmethod
     def get_trial_models(cls, tenant_id: str) -> list[str]:
-        """Return hosted credit providers filtered by the workspace subscription plan."""
+        """Expose hosted providers under the workspace's billing policy."""
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return cls._fulfill_trial_models_from_env()
+
+        if cls.get_model_billing_resolution(tenant_id).uses_tokener:
+            # For Tokener these flags describe the hosted catalog, not old
+            # credit plans. Tokener enforces the actual balance at invocation.
             return cls._fulfill_trial_models_from_env()
 
         subscription_plan = cls.get_workspace_plan(tenant_id)

@@ -89,6 +89,9 @@ class SystemConfiguration(BaseModel):
     current_quota_type: ProviderQuotaType | None = None
     quota_configurations: list[QuotaConfiguration] = []
     credentials: dict[str, Any] | None = Field(default=None)
+    # The hosted model catalog still belongs to the source provider. Only
+    # execution and settlement belong to Tokener for this SYSTEM selection.
+    tokener_funded: bool = False
 
 
 class CustomProviderConfiguration(BaseModel):

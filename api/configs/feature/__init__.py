@@ -356,7 +356,6 @@ class PluginConfig(BaseSettings):
     TOKENER_PLUGIN_UNIQUE_IDENTIFIER: str = Field(default="")
     TOKENER_PLUGIN_INSTALL_SOURCE: Literal["marketplace", "package"] = Field(default="marketplace")
     TOKENER_PROVIDER_NAME: str = Field(default="langgenius/tokener/tokener")
-    TOKENER_DEFAULT_LLM_MODEL: str = Field(default="gpt-4o-mini")
     TOKENER_ENDPOINT_URL: str = Field(default="")
     ENABLE_TOKENER_BOOTSTRAP_RECOVERY_TASK: bool = Field(default=False)
     TOKENER_BOOTSTRAP_RECOVERY_TASK_INTERVAL: PositiveInt = Field(default=5)

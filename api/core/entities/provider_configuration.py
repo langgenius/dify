@@ -23,12 +23,14 @@ from core.entities.provider_entities import (
     SystemConfiguration,
     SystemConfigurationStatus,
 )
+from core.errors.error import ModelCurrentlyNotSupportError
 from core.helper import encrypter
 from core.helper.model_provider_cache import (
     ProviderCredentialsCache,
     ProviderCredentialsCacheType,
 )
 from core.plugin.impl.model_runtime_factory import create_model_type_instance, create_plugin_model_assembly
+from enums import DeploymentEdition
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from graphon.model_runtime.entities.provider_entities import (
     ConfigurateMethod,
@@ -54,6 +56,8 @@ from models.provider import (
     TenantPreferredModelProvider,
 )
 from models.provider_ids import ModelProviderID
+from models.tokener import TenantTokenerIntegration
+from services.entities.hosted_model_routing import TokenerHostedModelCredentials
 
 logger = logging.getLogger(__name__)
 
@@ -204,6 +208,31 @@ class ProviderConfiguration(BaseModel):
                         raise ValueError(f"Model {model} is disabled.")
 
         if self.using_provider_type == ProviderType.SYSTEM:
+            if self.system_configuration.tokener_funded:
+                quota = next(
+                    (
+                        q
+                        for q in self.system_configuration.quota_configurations
+                        if q.quota_type == self.system_configuration.current_quota_type
+                    ),
+                    None,
+                )
+                # Existing env allowlists are name-only even for non-LLM types.
+                # The installed provider still owns the admitted model type and
+                # resolves the requested model schema before execution.
+                if (
+                    model_type not in self.provider.supported_model_types
+                    or quota is None
+                    or (quota.restrict_models and not any(m.model == model for m in quota.restrict_models))
+                ):
+                    raise ModelCurrentlyNotSupportError(f"System model {model_type.value}/{model} is not allowed.")
+                return TokenerHostedModelCredentials(
+                    tenant_id=self.tenant_id,
+                    provider=self.provider.provider,
+                    model_type=model_type.value,
+                    model=model,
+                )
+
             restrict_models = []
             for quota_configuration in self.system_configuration.quota_configurations:
                 if self.system_configuration.current_quota_type != quota_configuration.quota_type:
@@ -646,6 +675,25 @@ class ProviderConfiguration(BaseModel):
         )
         return new_credential_id
 
+    def _reject_managed_tokener_credential_mutation(self, session: Session, credential_id: str) -> None:
+        """Keep the integration's dedicated billing key out of ordinary user edits.
+
+        Preconditions: a provider mutation is scoped to this tenant.
+        A BYOK credential, even one using the managed label, remains editable.
+        """
+        if (
+            dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
+            and self.provider.provider == dify_config.TOKENER_PROVIDER_NAME
+            and session.scalar(
+                select(TenantTokenerIntegration.id).where(
+                    TenantTokenerIntegration.tenant_id == self.tenant_id,
+                    TenantTokenerIntegration.provider_credential_id == credential_id,
+                )
+            )
+            is not None
+        ):
+            raise ValueError("A platform-managed credential cannot be changed.")
+
     def update_provider_credential(
         self,
         credentials: dict[str, Any],
@@ -661,6 +709,7 @@ class ProviderConfiguration(BaseModel):
         :return:
         """
         with Session(db.engine) as pre_session:
+            self._reject_managed_tokener_credential_mutation(pre_session, credential_id)
             if credential_name and self._check_provider_credential_name_exists(
                 credential_name=credential_name, session=pre_session, exclude_id=credential_id
             ):
@@ -766,6 +815,7 @@ class ProviderConfiguration(BaseModel):
         preferred_model_providers_changed = False
         load_balancing_configs_changed = False
         with Session(db.engine) as session:
+            self._reject_managed_tokener_credential_mutation(session, credential_id)
             stmt = select(ProviderCredential).where(
                 ProviderCredential.id == credential_id,
                 ProviderCredential.tenant_id == self.tenant_id,

@@ -3,7 +3,7 @@ from enum import StrEnum
 from typing import Any, Literal
 
 from dify_trace_sdk.emitter import TraceScope
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, ValidatorFunctionWrapHandler, field_validator
 
 from constants import UUID_NIL
 from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
@@ -21,6 +21,7 @@ from graphon.file import File, FileUploadConfig
 from graphon.model_runtime.entities.model_entities import AIModelEntity
 from models.model import AppMode
 from repositories.entities.workflow_execution import WorkflowExecutionTiming
+from services.entities.hosted_model_routing import TokenerHostedModelCredentials
 
 DIFY_RUN_CONTEXT_KEY = "_dify"
 
@@ -167,6 +168,14 @@ class ModelConfigWithCredentialsEntity(BaseModel):
     credentials: dict[str, Any] = Field(default_factory=dict)
     parameters: dict[str, Any] = Field(default_factory=dict)
     stop: list[str] = Field(default_factory=list)
+
+    @field_validator("credentials", mode="wrap")
+    @classmethod
+    def preserve_hosted_route(cls, value: Any, handler: ValidatorFunctionWrapHandler) -> dict[str, Any]:
+        """Keep the server-only reference during assembly, not when decoding JSON credentials."""
+        if isinstance(value, TokenerHostedModelCredentials):
+            return value
+        return handler(value)
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())

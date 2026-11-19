@@ -932,7 +932,7 @@ class ModelManager:
     """Resolves :class:`ModelInstance` objects for a tenant and provider.
 
     When ``enable_credentials_cache`` is ``True``, resolved credentials for each
-    ``(tenant_id, provider, model_type, model)`` are stored in
+    ``(tenant_id, provider, model_type, model, provider_type, tokener_funded)`` are stored in
     ``_credentials_cache`` and reused. That can return **stale** credentials after
     API keys or provider settings change, so a manager constructed with
     ``enable_credentials_cache=True`` should not be kept for the lifetime of a
@@ -960,8 +960,8 @@ class ModelManager:
         """
         self._provider_manager = provider_manager
         self._moderation = moderation
-        self._credentials_cache: dict[tuple[str, str, str, str], Any] = {}
-        self._credential_ids_cache: dict[tuple[str, str, str, str], str | None] = {}
+        self._credentials_cache: dict[tuple[str, str, str, str, ProviderType, bool], Any] = {}
+        self._credential_ids_cache: dict[tuple[str, str, str, str, ProviderType, bool], str | None] = {}
         self._enable_credentials_cache = enable_credentials_cache
         self._request_metadata = dict(request_metadata) if request_metadata else None
 
@@ -1065,7 +1065,17 @@ class ModelManager:
         effective_request_metadata = self._resolve_request_metadata(request_metadata)
         moderation = self._moderation if model_type == ModelType.LLM else None
 
-        cred_cache_key = (tenant_id, provider, model_type.value, model)
+        configuration = provider_model_bundle.configuration
+        # A cached SYSTEM selection must never replace newly selected BYOK, or
+        # resurrect the original vendor credentials after a billing handoff.
+        cred_cache_key = (
+            tenant_id,
+            provider,
+            model_type.value,
+            model,
+            configuration.using_provider_type,
+            configuration.system_configuration.tokener_funded,
+        )
 
         if cred_cache_key in self._credentials_cache:
             return model_instance_class(

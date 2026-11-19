@@ -23,6 +23,8 @@ from core.entities.provider_entities import (
     CustomProviderConfiguration,
     ModelSettings,
     ProviderQuotaType,
+    QuotaUnit,
+    RestrictModel,
     SystemConfiguration,
 )
 from core.helper.model_provider_cache import ProviderCredentialsCacheType
@@ -1677,15 +1679,17 @@ def test_get_all_provider_load_balancing_configs_populates_cache_and_groups_conf
     assert "other-provider" not in result
 
 
-def test_native_signup_uses_custom_providers_without_hosted_initialization(
+def test_tokener_profile_reuses_hosted_catalog_without_legacy_credits(
     sqlite_session: Session,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    from core.errors.error import ModelCurrentlyNotSupportError
     from core.plugin.impl.model import PluginModelClient
     from core.plugin.plugin_service import PluginService
     from models.account import Tenant
     from models.model_billing import TenantModelBillingProfile
     from services.entities.feature_entities import FeatureModel
+    from services.entities.hosted_model_routing import TokenerHostedModelCredentials
     from services.feature_service import FeatureService
     from tests.helpers.unit.config_override import apply_config_overrides
 
@@ -1696,13 +1700,19 @@ def test_native_signup_uses_custom_providers_without_hosted_initialization(
     sqlite_session.flush()
     sqlite_session.add(TenantModelBillingProfile(tenant_id=tenant.id, model_billing_source="tokener"))
     sqlite_session.commit()
-    provider = PluginModelProviderDeclaration(
-        provider="langgenius/tokener/tokener",
-        plugin_unique_identifier="langgenius/tokener:0.4.4@native-fixture",
-        installation_source=PluginInstallationSource.Marketplace,
-        label=I18nObject(en_US="Tokener"),
-        supported_model_types=[ModelType.LLM],
-        configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+    provider = _build_plugin_provider_declaration(PluginInstallationSource.Marketplace)
+    permitted = RestrictModel(model="gpt-4o-mini", model_type=ModelType.LLM)
+    monkeypatch.setattr(
+        provider_manager_module.ext_hosting_provider.hosting_configuration,
+        "provider_map",
+        {
+            provider.provider: HostingProvider(
+                enabled=True,
+                credentials={"api_key": "never-send-source-fixture"},
+                quota_unit=QuotaUnit.CREDITS,
+                quotas=[TrialHostingQuota(restrict_models=[permitted])],
+            )
+        },
     )
 
     def installed(
@@ -1724,14 +1734,19 @@ def test_native_signup_uses_custom_providers_without_hosted_initialization(
     # billing cohort still comes from the real profile repository above.
     monkeypatch.setattr(FeatureService, "get_features", classmethod(features))
     monkeypatch.setattr(ProviderManager, "_init_trial_provider_records", forbidden)
-    monkeypatch.setattr(ProviderManager, "_to_system_configuration", forbidden)
+    monkeypatch.setattr(FeatureService, "get_workspace_plan", forbidden)
+    monkeypatch.setattr(PluginService, "is_plugin_verified", classmethod(lambda *_args: True))
     manager = ProviderManager(model_runtime=create_plugin_model_runtime(tenant_id=tenant.id))
     configuration = manager.get_configurations(tenant.id).get(provider.provider)
     assert configuration is not None
-    assert configuration.preferred_provider_type == ProviderType.CUSTOM
-    assert configuration.using_provider_type == ProviderType.CUSTOM
-    assert not configuration.system_configuration.enabled
-    assert configuration.get_current_credentials(ModelType.LLM, "gpt-4o-mini") is None
+    assert configuration.preferred_provider_type == ProviderType.SYSTEM
+    assert configuration.using_provider_type == ProviderType.SYSTEM
+    assert configuration.system_configuration.tokener_funded
+    credentials = configuration.get_current_credentials(ModelType.LLM, permitted.model)
+    assert isinstance(credentials, TokenerHostedModelCredentials)
+    assert dict(credentials) == {}
+    with pytest.raises(ModelCurrentlyNotSupportError, match="not allowed"):
+        configuration.get_current_credentials(ModelType.TEXT_EMBEDDING, permitted.model)
     assert (
         list(
             sqlite_session.scalars(
