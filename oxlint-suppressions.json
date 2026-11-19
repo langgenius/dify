@@ -4083,9 +4083,6 @@
     }
   },
   "web/app/components/workflow/nodes/_base/components/variable/var-reference-vars.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 11
-    },
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
     },

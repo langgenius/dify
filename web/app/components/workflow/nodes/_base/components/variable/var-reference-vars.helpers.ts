@@ -1,6 +1,7 @@
 import type { Field, StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { VAR_SHOW_NAME_MAP } from '@/app/components/workflow/constants'
+import { VarType } from '@/app/components/workflow/types'
 import { checkKeys } from '@/utils/var'
 import { isSpecialVar } from './utils'
 
@@ -63,6 +64,44 @@ export const getValueSelector = ({
   if (isSys || isEnv || isChatVar || isRagVariable)
     return [...objPath, ...itemData.variable.split('.')]
   return [nodeId, ...objPath, itemData.variable]
+}
+
+// The selector a picked variable resolves to: system, environment, conversation
+// and RAG variables carry their namespace in the name (`sys.query`), every
+// other variable is addressed through the node that outputs it.
+export const resolveValueSelector = ({
+  itemData,
+  isFlat,
+  isSupportFileVar,
+  nodeId,
+  objPath,
+}: {
+  itemData: Var
+  isFlat?: boolean
+  isSupportFileVar?: boolean
+  nodeId: string
+  objPath: string[]
+}) => {
+  const isStructureOutput =
+    itemData.type === VarType.object && (itemData.children as StructuredOutput)?.schema?.properties
+  const isFile = itemData.type === VarType.file && !isStructureOutput
+  const isSys = itemData.variable.startsWith('sys.')
+  const isEnv = itemData.variable.startsWith('env.')
+  const isChatVar = itemData.variable.startsWith('conversation.')
+  const isRagVariable = itemData.isRagVariable
+
+  return getValueSelector({
+    itemData,
+    isFlat,
+    isSupportFileVar,
+    isFile,
+    isSys,
+    isEnv,
+    isChatVar,
+    isRagVariable,
+    nodeId,
+    objPath,
+  })
 }
 
 const getVisibleChildren = (vars: Var[]) => {

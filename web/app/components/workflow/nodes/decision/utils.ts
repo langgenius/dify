@@ -2,10 +2,12 @@ import type {
   DecisionGenerateOutcomeResponse,
   DecisionGenerateResponse,
 } from '@dify/contracts/api/console/decision-generate/types.gen'
+import type { NodeOutPutVar } from '../../types'
 import type { ComparisonOperator, Condition } from '../if-else/types'
 import type { DecisionExtra, DecisionNodeType, Outcome, RuleGroup } from './types'
 import { v4 as uuid4 } from 'uuid'
 import { VarType } from '../../types'
+import { resolveValueSelector } from '../_base/components/variable/var-reference-vars.helpers'
 import { genDefaultRuleGroup } from './types'
 
 // Mirrors the backend `DecisionExtra.name` contract: a Python-style identifier
@@ -117,3 +119,36 @@ export const hasRulesToLose = (outcomes: Outcome[]) =>
     if (typeof outcome.when === 'string') return outcome.when.trim() !== ''
     return !!outcome.when && outcome.when.conditions.length > 0
   })
+
+// Flattened view of the variables this node can read, in the shape the
+// generator expects, capped at `limit` entries. Each selector is the one the
+// variable picker would write (`sys.query` becomes `['sys', 'query']`, a node
+// output `['node', 'name']`), so a generated rule reads a variable that exists.
+// The map keeps the workflow type of each selector (joined with `.`) so a
+// generated condition can carry the `varType` the condition editor needs.
+export const toGeneratorVariables = (availableVars: NodeOutPutVar[], limit: number) => {
+  const types = new Map<string, VarType>()
+  const variables = availableVars
+    .flatMap((nodeVars) =>
+      nodeVars.vars.flatMap((variable) => {
+        const valueSelector = resolveValueSelector({
+          itemData: variable,
+          isFlat: nodeVars.isFlat,
+          isSupportFileVar: true,
+          nodeId: nodeVars.nodeId,
+          objPath: [],
+        })
+        if (!valueSelector) return []
+        return [
+          {
+            value_selector: valueSelector,
+            type: variable.type,
+            description: variable.des ?? '',
+          },
+        ]
+      }),
+    )
+    .slice(0, limit)
+  variables.forEach((variable) => types.set(variable.value_selector.join('.'), variable.type))
+  return { availableVariables: variables, varTypesBySelector: types }
+}

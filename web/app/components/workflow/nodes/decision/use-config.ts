@@ -22,7 +22,12 @@ import { getOperators } from '@/app/components/workflow/nodes/if-else/utils'
 import { consoleQuery } from '@/service/console'
 import { VarType } from '../../types'
 import { DecideBy, genDefaultRuleGroup, genOutcomeId, OTHERWISE_HANDLE_ID } from './types'
-import { getExtraNameError, hasRulesToLose, toGeneratedDecision } from './utils'
+import {
+  getExtraNameError,
+  hasRulesToLose,
+  toGeneratedDecision,
+  toGeneratorVariables,
+} from './utils'
 
 const filterAllVars = () => true
 
@@ -485,25 +490,11 @@ const useConfig = (id: string, payload: DecisionNodeType) => {
     }
   }, [inputs.model, defaultModel])
 
-  // Flattened view of everything this node can read, in the shape the
-  // generator expects. The map keeps the workflow type of each selector so a
-  // generated condition can carry the `varType` the condition editor needs.
-  const { availableVariables, varTypesBySelector } = useMemo(() => {
-    const types = new Map<string, VarType>()
-    const variables = availableVars
-      .flatMap((nodeVars) =>
-        nodeVars.vars.map((variable) => ({
-          value_selector: [nodeVars.nodeId, variable.variable],
-          type: variable.type,
-          description: variable.des ?? '',
-        })),
-      )
-      .slice(0, MAX_AVAILABLE_VARIABLES)
-    variables.forEach((variable) =>
-      types.set(variable.value_selector.join('.'), variable.type as VarType),
-    )
-    return { availableVariables: variables, varTypesBySelector: types }
-  }, [availableVars])
+  // Everything this node can read, in the shape the generator expects.
+  const { availableVariables, varTypesBySelector } = useMemo(
+    () => toGeneratorVariables(availableVars, MAX_AVAILABLE_VARIABLES),
+    [availableVars],
+  )
 
   const [suggestedReason, setSuggestedReason] = useState('')
   const [generateFeedback, setGenerateFeedback] = useState<GenerateFeedback>(null)

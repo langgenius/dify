@@ -1,8 +1,15 @@
 import type { DecisionExtra } from '../types'
+import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import { VarType } from '@/app/components/workflow/types'
 import { ComparisonOperator } from '../../if-else/types'
 import { DecideBy } from '../types'
-import { getExtraNameError, hasExtraNameError, hasRulesToLose, toGeneratedDecision } from '../utils'
+import {
+  getExtraNameError,
+  hasExtraNameError,
+  hasRulesToLose,
+  toGeneratedDecision,
+  toGeneratorVariables,
+} from '../utils'
 
 const extra = (overrides: Partial<DecisionExtra> = {}): DecisionExtra => ({
   name: 'note',
@@ -163,5 +170,70 @@ describe('decision/utils toGeneratedDecision', () => {
     expect(generated.extras).toEqual([
       { name: 'note', from: 'fixed', values: { refund: '42' }, hint: '' },
     ])
+  })
+})
+
+describe('decision/utils toGeneratorVariables', () => {
+  // The shape the available-variable list has in a Chatflow: special variables
+  // carry their namespace in the name and sit under the start node or a
+  // namespace group, ordinary outputs sit under the node that writes them.
+  const chatflowVars: NodeOutPutVar[] = [
+    {
+      nodeId: 'start',
+      title: 'Start',
+      isStartNode: true,
+      vars: [
+        { variable: 'amount', type: VarType.number },
+        { variable: 'sys.query', type: VarType.string },
+        { variable: 'sys.files', type: VarType.arrayFile },
+      ],
+    },
+    {
+      nodeId: 'code',
+      title: 'Code',
+      vars: [{ variable: 'priority', type: VarType.string, des: 'ticket priority' }],
+    },
+    {
+      nodeId: 'env',
+      title: 'ENVIRONMENT',
+      vars: [{ variable: 'env.threshold', type: VarType.number }],
+    },
+    {
+      nodeId: 'conversation',
+      title: 'CONVERSATION',
+      vars: [{ variable: 'conversation.customer', type: VarType.string }],
+    },
+    {
+      nodeId: 'global',
+      title: 'SYSTEM',
+      vars: [{ variable: 'sys.user_id', type: VarType.string }],
+    },
+  ]
+
+  it('sends the selectors the variable picker would write, keyed the same way for types', () => {
+    const { availableVariables, varTypesBySelector } = toGeneratorVariables(chatflowVars, 200)
+
+    expect(availableVariables).toEqual([
+      { value_selector: ['start', 'amount'], type: VarType.number, description: '' },
+      { value_selector: ['sys', 'query'], type: VarType.string, description: '' },
+      { value_selector: ['sys', 'files'], type: VarType.arrayFile, description: '' },
+      {
+        value_selector: ['code', 'priority'],
+        type: VarType.string,
+        description: 'ticket priority',
+      },
+      { value_selector: ['env', 'threshold'], type: VarType.number, description: '' },
+      { value_selector: ['conversation', 'customer'], type: VarType.string, description: '' },
+      { value_selector: ['sys', 'user_id'], type: VarType.string, description: '' },
+    ])
+    expect(varTypesBySelector.get('sys.query')).toBe(VarType.string)
+    expect(varTypesBySelector.get('env.threshold')).toBe(VarType.number)
+    expect(varTypesBySelector.get('conversation.customer')).toBe(VarType.string)
+    expect(varTypesBySelector.get('code.priority')).toBe(VarType.string)
+    expect(varTypesBySelector.has('start.sys.query')).toBe(false)
+  })
+
+  it('caps the list at the given limit', () => {
+    expect(toGeneratorVariables(chatflowVars, 2).availableVariables).toHaveLength(2)
   })
 })

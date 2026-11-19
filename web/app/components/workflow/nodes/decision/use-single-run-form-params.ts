@@ -3,6 +3,7 @@ import type { Condition } from '../if-else/types'
 import type { DecisionNodeType, RuleGroup } from './types'
 import type { InputVar, ValueSelector, Variable } from '@/app/components/workflow/types'
 import { useCallback } from 'react'
+import { getInputVars as getTemplateSelectors } from '@/app/components/base/prompt-editor/constants'
 import { DecideBy } from './types'
 
 type Params = {
@@ -56,33 +57,55 @@ const useSingleRunFormParams = ({
     return vars
   }
 
-  const getInputVarsFromRuleGroup = (ruleGroup: RuleGroup): InputVar[] => {
-    const vars: InputVar[] = []
+  // Template text a condition value carries; the backend resolves
+  // `{{#node.var#}}` references in it before comparing.
+  const getTemplatesFromRuleGroup = (ruleGroup: RuleGroup): string[] => {
+    const templates: string[] = []
     ruleGroup.conditions?.forEach((condition) => {
-      if (condition.value && typeof condition.value === 'string')
-        vars.push(...getInputVars([condition.value]))
+      if (condition.value && typeof condition.value === 'string') templates.push(condition.value)
 
       if (condition.sub_variable_condition && condition.sub_variable_condition.conditions?.length)
-        vars.push(...getInputVarsFromRuleGroup(condition.sub_variable_condition))
+        templates.push(...getTemplatesFromRuleGroup(condition.sub_variable_condition))
+    })
+    return templates
+  }
+
+  // Every template the current mode reads, as the backend extracts them for
+  // single-step debugging: rule values in `rules` mode; outcome descriptions,
+  // the glossary and the prompt in `llm` mode.
+  const templates = (() => {
+    if (payload.decide_by === DecideBy.llm)
+      return [
+        ...(payload.outcomes ?? []).flatMap((outcome) =>
+          typeof outcome.when === 'string' ? [outcome.when] : [],
+        ),
+        payload.context?.glossary ?? '',
+        payload.context?.prompt ?? '',
+      ]
+
+    return (payload.outcomes ?? []).flatMap((outcome) =>
+      typeof outcome.when === 'object' && outcome.when !== null
+        ? getTemplatesFromRuleGroup(outcome.when)
+        : [],
+    )
+  })()
+
+  const getRuleSelectors = () => {
+    const vars: ValueSelector[] = []
+    payload.outcomes?.forEach((outcome) => {
+      if (typeof outcome.when === 'object' && outcome.when !== null)
+        vars.push(...getVarSelectorsFromRuleGroup(outcome.when))
     })
     return vars
   }
 
   const forms = (() => {
-    let varInputs: InputVar[] = []
-
-    if (payload.decide_by === DecideBy.llm) varInputs = toVarInputs(payload.inputs || [])
-    else {
-      const allInputs: ValueSelector[] = []
-      const inputVarsFromValue: InputVar[] = []
-      payload.outcomes?.forEach((outcome) => {
-        if (typeof outcome.when === 'object' && outcome.when !== null) {
-          allInputs.push(...getVarSelectorsFromRuleGroup(outcome.when))
-          inputVarsFromValue.push(...getInputVarsFromRuleGroup(outcome.when))
-        }
-      })
-      varInputs = [...varSelectorsToVarInputs(allInputs), ...inputVarsFromValue]
-    }
+    const varInputs: InputVar[] = [
+      ...(payload.decide_by === DecideBy.llm
+        ? toVarInputs(payload.inputs || [])
+        : varSelectorsToVarInputs(getRuleSelectors())),
+      ...getInputVars(templates),
+    ]
 
     // remove duplicate inputs
     const existVarsKey: Record<string, boolean> = {}
@@ -105,15 +128,14 @@ const useSingleRunFormParams = ({
   })()
 
   const getDependentVars = () => {
+    const templateSelectors = templates.flatMap((template) => getTemplateSelectors(template))
     if (payload.decide_by === DecideBy.llm)
-      return (payload.inputs || []).map((variable) => variable.value_selector)
+      return [
+        ...(payload.inputs || []).map((variable) => variable.value_selector),
+        ...templateSelectors,
+      ]
 
-    const vars: ValueSelector[] = []
-    payload.outcomes?.forEach((outcome) => {
-      if (typeof outcome.when === 'object' && outcome.when !== null)
-        vars.push(...getVarSelectorsFromRuleGroup(outcome.when))
-    })
-    return vars
+    return [...getRuleSelectors(), ...templateSelectors]
   }
 
   const getDependentVar = (variable: string) => {

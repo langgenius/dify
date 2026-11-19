@@ -21,7 +21,7 @@ import {
   NODE_WIDTH_X_OFFSET,
   START_INITIAL_POSITION,
 } from '../constants'
-import { OTHERWISE_HANDLE_ID } from '../nodes/decision/types'
+import { OTHERWISE_HANDLE_ID, withDecisionDefaults } from '../nodes/decision/types'
 import { branchNameCorrect } from '../nodes/if-else/utils'
 import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
@@ -259,17 +259,18 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
     }
 
     if (node.data.type === BlockEnum.Decision) {
-      const nodeData = node.data as DecisionNodeType
-      node.data._targetBranches = [
-        ...(nodeData.outcomes || []).map((outcome) => ({
+      const nodeData = withDecisionDefaults(node.data as DecisionNodeType)
+      nodeData._targetBranches = [
+        ...nodeData.outcomes.map((outcome) => ({
           id: outcome.id,
           name: outcome.label,
         })),
         {
           id: OTHERWISE_HANDLE_ID,
-          name: nodeData.otherwise?.label ?? '',
+          name: nodeData.otherwise.label,
         },
       ]
+      node.data = nodeData
     }
 
     if (hasAgentV2OutputRoutes(node.data))

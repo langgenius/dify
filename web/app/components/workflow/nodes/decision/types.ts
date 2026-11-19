@@ -56,3 +56,39 @@ export const genDefaultRuleGroup = (): RuleGroup => ({
   logical_operator: 'and',
   conditions: [],
 })
+
+// The backend fills these defaults when it validates node data
+// (`DecisionNodeData` in api/core/workflow/nodes/decision/entities.py) but
+// stores the graph as written, so an imported DSL may omit any of them. Fill
+// them once on load so every reader sees the same data the backend runs.
+export const withDecisionDefaults = (data: DecisionNodeType): DecisionNodeType => ({
+  ...data,
+  intent: data.intent ?? '',
+  decide_by: data.decide_by ?? DecideBy.rules,
+  outcomes: (data.outcomes ?? []).map((outcome) => ({
+    ...outcome,
+    label: outcome.label ?? '',
+    ...(typeof outcome.when === 'object' && outcome.when !== null
+      ? {
+          when: {
+            ...outcome.when,
+            logical_operator: outcome.when.logical_operator ?? 'and',
+            conditions: outcome.when.conditions ?? [],
+          },
+        }
+      : {}),
+  })),
+  otherwise: { ...data.otherwise, label: data.otherwise?.label ?? '' },
+  inputs: data.inputs ?? [],
+  context: {
+    ...data.context,
+    glossary: data.context?.glossary ?? '',
+    prompt: data.context?.prompt ?? '',
+  },
+  extras: (data.extras ?? []).map((extra) => ({
+    ...extra,
+    from: extra.from ?? 'fixed',
+    values: extra.values ?? {},
+    hint: extra.hint ?? '',
+  })),
+})

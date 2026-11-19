@@ -6,6 +6,7 @@ import { useNodes } from 'reactflow'
 import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { initialNodes } from '@/app/components/workflow/utils/workflow-init'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { seedToolProviders } from '@/test/console/tool-providers'
@@ -294,5 +295,32 @@ describe('decision panel', () => {
     expect(nameInput).toHaveAttribute('aria-invalid', 'true')
     const error = document.getElementById(nameInput.getAttribute('aria-describedby')!)
     expect(error).toHaveTextContent('workflow.nodes.decision.extraNameErrorReserved')
+  })
+
+  it('opens a node loaded from a trimmed DSL with the backend defaults', () => {
+    // The backend accepts node data without `otherwise`, `inputs`, `context`
+    // or `extras` and stores the graph as written.
+    const [loaded] = initialNodes(
+      [
+        createNode({
+          id: 'node',
+          data: {
+            type: BlockEnum.Decision,
+            title: 'Decision',
+            desc: '',
+            decide_by: DecideBy.rules,
+            outcomes: [{ id: 'refund', label: 'Refund', when: { logical_operator: 'and' } }],
+          },
+        }),
+      ],
+      [],
+    )
+    renderPanel(loaded!.data as unknown as DecisionNodeType)
+
+    expect(screen.getByRole('textbox', { name: 'workflow.nodes.decision.intent' })).toHaveValue('')
+    expect(
+      screen.getByRole('textbox', { name: 'workflow.nodes.decision.otherwiseLabel' }),
+    ).toHaveValue('')
+    expect(readExtras()).toEqual([])
   })
 })

@@ -19,48 +19,13 @@ import ManageInputField from './manage-input-field'
 import { varTypeToStructType } from './utils'
 import {
   filterReferenceVars,
-  getValueSelector,
   getVariableCategory,
   getVariableDisplayName,
+  resolveValueSelector,
 } from './var-reference-vars.helpers'
 
 const VAR_SEARCH_INPUT_CLASS_NAME = 'var-search-input'
 export const VAR_REFERENCE_CHILD_POPUP_CLASS_NAME = 'var-reference-vars-child-popup'
-
-const resolveValueSelector = ({
-  itemData,
-  isFlat,
-  isSupportFileVar,
-  nodeId,
-  objPath,
-}: {
-  itemData: Var
-  isFlat?: boolean
-  isSupportFileVar?: boolean
-  nodeId: string
-  objPath: string[]
-}) => {
-  const isStructureOutput =
-    itemData.type === VarType.object && (itemData.children as StructuredOutput)?.schema?.properties
-  const isFile = itemData.type === VarType.file && !isStructureOutput
-  const isSys = itemData.variable.startsWith('sys.')
-  const isEnv = itemData.variable.startsWith('env.')
-  const isChatVar = itemData.variable.startsWith('conversation.')
-  const isRagVariable = itemData.isRagVariable
-
-  return getValueSelector({
-    itemData,
-    isFlat,
-    isSupportFileVar,
-    isFile,
-    isSys,
-    isEnv,
-    isChatVar,
-    isRagVariable,
-    nodeId,
-    objPath,
-  })
-}
 
 type ItemProps = {
   nodeId: string
@@ -216,12 +181,12 @@ const Item: FC<ItemProps> = ({
     <div
       ref={itemRef}
       className={cn(
-        isObj || isStructureOutput ? 'pr-1' : 'pr-4.5',
+        isObj || isStructureOutput ? 'pe-1' : 'pe-4.5',
         (isHovering || isSelected) &&
           (isObj || isStructureOutput
             ? 'bg-components-panel-on-panel-item-bg-hover'
             : 'bg-state-base-hover'),
-        'relative flex h-6 w-full cursor-pointer items-center rounded-md pl-3 outline-hidden focus:outline-hidden focus-visible:outline-hidden',
+        'relative flex h-6 w-full cursor-pointer items-center rounded-md ps-3 outline-hidden focus:outline-hidden focus-visible:outline-hidden',
         className,
       )}
       data-selected={isSelected ? 'true' : 'false'}
@@ -246,7 +211,7 @@ const Item: FC<ItemProps> = ({
         {!isEnv && !isChatVar && !isRagVariable && (
           <div
             title={itemData.variable}
-            className="ml-1 w-0 grow truncate system-sm-medium text-text-secondary"
+            className="ms-1 w-0 grow truncate system-sm-medium text-text-secondary"
           >
             {varName}
           </div>
@@ -254,7 +219,7 @@ const Item: FC<ItemProps> = ({
         {isEnv && (
           <div
             title={itemData.variable}
-            className="ml-1 w-0 grow truncate system-sm-medium text-text-secondary"
+            className="ms-1 w-0 grow truncate system-sm-medium text-text-secondary"
           >
             {itemData.variable.replace('env.', '')}
           </div>
@@ -262,7 +227,7 @@ const Item: FC<ItemProps> = ({
         {isChatVar && (
           <div
             title={itemData.des}
-            className="ml-1 w-0 grow truncate system-sm-medium text-text-secondary"
+            className="ms-1 w-0 grow truncate system-sm-medium text-text-secondary"
           >
             {itemData.variable.replace('conversation.', '')}
           </div>
@@ -270,20 +235,20 @@ const Item: FC<ItemProps> = ({
         {isRagVariable && (
           <div
             title={itemData.des}
-            className="ml-1 w-0 grow truncate system-sm-medium text-text-secondary"
+            className="ms-1 w-0 grow truncate system-sm-medium text-text-secondary"
           >
             {itemData.variable.split('.').slice(-1)[0]}
           </div>
         )}
       </div>
-      <div className="ml-1 shrink-0 text-xs font-normal text-text-tertiary capitalize">
+      <div className="ms-1 shrink-0 text-xs font-normal text-text-tertiary capitalize">
         {preferSchemaType && itemData.schemaType ? itemData.schemaType : itemData.type}
       </div>
       {(isObj || isStructureOutput) && (
         <span
           aria-hidden
           className={cn(
-            'ml-0.5 i-custom-vender-line-arrows-chevron-right size-3 text-text-quaternary',
+            'ms-0.5 i-custom-vender-line-arrows-chevron-right size-3 text-text-quaternary',
             isHovering && 'text-text-tertiary',
           )}
         />
@@ -547,7 +512,7 @@ const VarReferenceVars: FC<Props> = ({
             )}
           </InputGroup>
           <div
-            className="relative -left-1 h-[0.5px] bg-black/5"
+            className="relative -inset-s-1 h-[0.5px] bg-black/5"
             style={{
               width: 'calc(100% + 8px)',
             }}
@@ -607,7 +572,7 @@ const VarReferenceVars: FC<Props> = ({
           ))}
         </div>
       ) : (
-        <div className="mt-2 pl-3 text-xs leading-4.5 font-medium text-gray-500 uppercase">
+        <div className="mt-2 ps-3 text-xs leading-4.5 font-medium text-gray-500 uppercase">
           {t(($) => $['common.noVar'], { ns: 'workflow' })}
         </div>
       )}
