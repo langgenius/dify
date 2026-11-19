@@ -60,11 +60,15 @@ const revealRow = (row: HTMLTableRowElement | null) => row?.scrollIntoView({ blo
 type MembersLanguage = ReturnType<typeof getAccessControlTemplateLanguage>
 
 const membersQueryOptions = (language: MembersLanguage) =>
-  consoleQuery.workspaces.current.members.get.queryOptions({ input: { query: { language } } })
+  consoleQuery.workspaces.current.members.get.queryOptions({
+    input: { query: { language } },
+    staleTime: 0,
+  })
 
 const pendingInvitationsQueryOptions = (workspaceId: string) =>
   consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.get.queryOptions({
     input: { params: { workspace_id: workspaceId } },
+    staleTime: 0,
   })
 
 const PendingInvitationsPrefetch = ({ workspaceId }: { workspaceId: string }) => {
