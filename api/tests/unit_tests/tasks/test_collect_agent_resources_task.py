@@ -1,3 +1,5 @@
+from typing import Protocol, runtime_checkable
+
 import pytest
 
 from services.agent.deletion_service import AgentDeletionService
@@ -9,8 +11,14 @@ from tasks.collect_agent_resources_task import (
 )
 
 
+@runtime_checkable
+class _TaskWithQueue(Protocol):
+    queue: str
+
+
 def test_collection_task_uses_retention_queue() -> None:
-    assert getattr(collect_agent_resources, "queue", None) == "retention"
+    assert isinstance(collect_agent_resources, _TaskWithQueue)
+    assert collect_agent_resources.queue == "retention"
 
 
 def test_enqueue_deduplicates_ids_and_skips_empty_input(monkeypatch: pytest.MonkeyPatch) -> None:
