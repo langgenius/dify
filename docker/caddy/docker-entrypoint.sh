@@ -9,7 +9,10 @@ set -eu
 dify_proxy_env
 
 case "${1:-run}" in
-	run) exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile ;;
+	run)
+		dify_proxy_check_nginx_conf
+		exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
+		;;
 	reload) exec caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile ;;
 	*) exec "$@" ;;
 esac

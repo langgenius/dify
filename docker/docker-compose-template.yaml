@@ -842,31 +842,25 @@ services:
     entrypoint: ["/docker-entrypoint.sh"]
     command: ["tail", "-f", "/dev/null"]
 
-  # The nginx reverse proxy.
-  # used for reverse proxying the API service and Web service.
-  nginx:
+  # The reverse proxy for the web app, APIs, WebSocket API and plugin endpoints.
+  # Caddy reads the NGINX_* settings; to run Nginx instead, see README.md.
+  caddy:
     env_file:
       - path: ./envs/infrastructure/nginx.env
         required: false
       - ./envs/infrastructure/nginx.defaults
-    image: nginx:latest
+    image: caddy:2.11-alpine
     restart: always
     volumes:
-      - ./nginx/nginx.conf.template:/etc/nginx/nginx.conf.template
-      - ./nginx/proxy.conf.template:/etc/nginx/proxy.conf.template
-      - ./nginx/https.conf.template:/etc/nginx/https.conf.template
-      - ./nginx/conf.d:/etc/nginx/conf.d
-      - ./nginx/docker-entrypoint.sh:/docker-entrypoint-mount.sh
-      - ./nginx/ssl:/etc/ssl # cert dir (legacy)
-      - ./volumes/certbot/conf/live:/etc/letsencrypt/live # cert dir (with certbot container)
-      - ./volumes/certbot/conf:/etc/letsencrypt
-      - ./volumes/certbot/www:/var/www/html
-    entrypoint:
-      [
-        "sh",
-        "-c",
-        "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh",
-      ]
+      - ./caddy:/etc/caddy:ro
+      - ./nginx/conf.d:/etc/dify/nginx-conf.d:ro # checked for Nginx-only files on upgrade
+      - ./nginx/ssl:/etc/ssl:ro # cert dir (legacy)
+      - ./volumes/certbot/conf/live:/etc/letsencrypt/live:ro # cert dir (with certbot container)
+      - ./volumes/certbot/conf:/etc/letsencrypt:ro
+      - ./volumes/certbot/www:/var/www/html:ro
+      - ./volumes/caddy/config:/config
+      - ./volumes/caddy/data:/data
+    entrypoint: ["sh", "/etc/caddy/docker-entrypoint.sh"]
     environment:
       NGINX_SSL_PORT: ${NGINX_SSL_PORT:-443}
       NGINX_PORT: ${NGINX_PORT:-80}

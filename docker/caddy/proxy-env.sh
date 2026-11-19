@@ -106,3 +106,28 @@ dify_proxy_env() {
 		DIFY_PROXY_TLS_KEY DIFY_PROXY_ACME_CHALLENGE DIFY_PROXY_CLIENT_IP DIFY_PROXY_TRUSTED_PROXIES \
 		DIFY_PROXY_CLIENT_IP_HEADERS DIFY_PROXY_AUTO_HTTPS DIFY_PROXY_ACME_CA DIFY_PROXY_ACME_SITES
 }
+
+# Nginx loads every file in nginx/conf.d; Caddy reads none of them. Refuse to start
+# when an upgrade from Nginx left files there (for example real-ip.conf), so those
+# settings are not dropped silently.
+dify_proxy_check_nginx_conf() {
+	[ "${CADDY_IGNORE_NGINX_CONF:-false}" = "true" ] && return 0
+	found=""
+	for file in "${DIFY_PROXY_NGINX_CONF_DIR:-/etc/dify/nginx-conf.d}"/*; do
+		[ -f "$file" ] || continue
+		case ${file##*/} in
+			default.conf | default.conf.template) ;;
+			*) found="$found ${file##*/}" ;;
+		esac
+	done
+	[ -z "$found" ] && return 0
+	cat >&2 <<MESSAGE
+Dify now uses Caddy as its reverse proxy. Caddy does not read these Nginx files
+in docker/nginx/conf.d:$found
+Move their settings to Caddy (for real-ip.conf, set CADDY_TRUSTED_PROXIES; see
+docker/README.md#client-ip-and-trusted-proxies) and delete the files, or keep
+Nginx with docker-compose.nginx.yaml (docker/README.md#run-nginx-instead-of-caddy).
+Set CADDY_IGNORE_NGINX_CONF=true to start Caddy without them.
+MESSAGE
+	return 1
+}

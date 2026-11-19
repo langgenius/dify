@@ -1,39 +1,5 @@
-# Use Caddy instead of Nginx as the reverse proxy.
-#
-# Enable it by adding this line to docker/.env:
-#   COMPOSE_FILE=docker-compose.yaml:docker-compose.caddy.yaml
-# or pass both files: docker compose -f docker-compose.yaml -f docker-compose.caddy.yaml up -d
-#
-# Caddy serves the same routes and ports and reads the same NGINX_* settings
-# (envs/infrastructure/nginx.env). Files added under nginx/conf.d are not read.
-services:
-  nginx:
-    # Kept out of the default deployment while Caddy holds its ports.
-    profiles:
-      - nginx
-
-  caddy:
-    env_file:
-      - path: ./envs/infrastructure/nginx.env
-        required: false
-      - ./envs/infrastructure/nginx.defaults
-    image: caddy:2.11-alpine
-    restart: always
-    volumes:
-      - ./caddy:/etc/caddy:ro
-      - ./nginx/ssl:/etc/ssl:ro # cert dir (legacy)
-      - ./volumes/certbot/conf/live:/etc/letsencrypt/live:ro # cert dir (with certbot container)
-      - ./volumes/certbot/conf:/etc/letsencrypt:ro
-      - ./volumes/certbot/www:/var/www/html:ro
-      - ./volumes/caddy/config:/config
-      - ./volumes/caddy/data:/data
-    entrypoint: ["sh", "/etc/caddy/docker-entrypoint.sh"]
-    environment:
-      NGINX_SSL_PORT: ${NGINX_SSL_PORT:-443}
-      NGINX_PORT: ${NGINX_PORT:-80}
-    depends_on:
-      - api
-      - web
-    ports:
-      - "${EXPOSE_NGINX_PORT:-80}:${NGINX_PORT:-80}"
-      - "${EXPOSE_NGINX_SSL_PORT:-443}:${NGINX_SSL_PORT:-443}"
+# Caddy is now the default reverse proxy (see docker-compose.yaml), so this overlay
+# no longer changes anything. It is kept so that an existing
+# COMPOSE_FILE=docker-compose.yaml:docker-compose.caddy.yaml setting keeps working;
+# you can remove that setting. To run Nginx instead, use docker-compose.nginx.yaml.
+services: {}

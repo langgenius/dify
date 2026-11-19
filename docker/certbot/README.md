@@ -28,7 +28,7 @@ Run the following commands from `docker/`. The optional `certbot` profile obtain
    ```
    execute command:
    ```shell
-   docker compose --profile certbot up -d --no-deps --force-recreate nginx
+   docker compose --profile certbot up -d --no-deps --force-recreate caddy
    ```
    Then you can access your server with HTTPS.\
    [https://your_domain.com](https://your_domain.com)
@@ -39,7 +39,7 @@ For SSL certificates renewal, execute commands below:
 
 ```shell
 docker compose exec -it certbot /bin/sh /update-cert.sh
-docker compose exec nginx nginx -s reload
+docker compose exec caddy sh /etc/caddy/docker-entrypoint.sh reload
 ```
 
 ## Options for certbot
@@ -57,22 +57,18 @@ docker compose --profile certbot up -d --no-deps --force-recreate certbot
 docker compose exec -it certbot /bin/sh /update-cert.sh
 ```
 
-Then, reload the nginx container if necessary.
-
-```shell
-docker compose exec nginx nginx -s reload
-```
-
-## With Caddy
-
-If you use [Caddy as the reverse proxy](../README.md#use-caddy-as-the-reverse-proxy-preview),
-you can skip Certbot and [let Caddy obtain the certificates](../README.md#let-caddy-obtain-https-certificates).
-To keep Certbot, the same settings and steps apply. Replace `nginx` with `caddy` in the `up` commands,
-and reload with:
+Then, reload the reverse proxy if necessary.
 
 ```shell
 docker compose exec caddy sh /etc/caddy/docker-entrypoint.sh reload
 ```
+
+## Without Certbot or with Nginx
+
+Caddy can also [obtain the certificates itself](../README.md#let-caddy-obtain-https-certificates),
+which makes Certbot unnecessary. When [running Nginx instead of Caddy](../README.md#run-nginx-instead-of-caddy),
+replace `caddy` with `nginx` in the `up` commands above and reload with
+`docker compose exec nginx nginx -s reload`.
 
 ## For legacy servers
 

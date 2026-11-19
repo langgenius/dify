@@ -15,5 +15,5 @@ else
   certbot certonly --noninteractive --webroot --webroot-path=/var/www/html --email ${EMAIL} --agree-tos --no-eff-email -d ${DOMAIN} ${OPTIONS}
 fi
 echo "Certificate operation successful"
-# Note: Nginx reload should be handled outside this container
-echo "Please ensure to reload Nginx to apply any certificate changes."
+# Note: the reverse proxy reload should be handled outside this container
+echo "Please reload the reverse proxy to apply any certificate changes."

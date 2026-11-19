@@ -1,4 +1,4 @@
-# Defaults for nginx. Copy this file to nginx.env to customize it.
+# Defaults for the reverse proxy: Caddy, or Nginx with docker-compose.nginx.yaml.
 # Edit the settings below in the copy; docker/.env takes precedence.
 # Optional application settings are commented to retain their application defaults.
 
@@ -31,3 +31,6 @@ CADDY_AUTO_HTTPS_DOMAINS=${CADDY_AUTO_HTTPS_DOMAINS:-}
 # ACME directory for those certificates; defaults to Let's Encrypt. For trials, use
 # https://acme-staging-v02.api.letsencrypt.org/directory to avoid rate limits.
 CADDY_ACME_CA=${CADDY_ACME_CA:-}
+# Caddy refuses to start while docker/nginx/conf.d holds files only Nginx reads (for
+# example real-ip.conf); set to true after moving their settings to Caddy.
+CADDY_IGNORE_NGINX_CONF=${CADDY_IGNORE_NGINX_CONF:-false}

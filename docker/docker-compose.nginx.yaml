@@ -1,0 +1,46 @@
+# Run Nginx instead of Caddy as the reverse proxy.
+#
+# Enable it by adding this line to docker/.env:
+#   COMPOSE_FILE=docker-compose.yaml:docker-compose.nginx.yaml
+# or pass both files: docker compose -f docker-compose.yaml -f docker-compose.nginx.yaml up -d
+#
+# Nginx serves the same routes and ports from the same NGINX_* settings, and also
+# loads extra files placed in nginx/conf.d (for example real-ip.conf).
+services:
+  caddy:
+    # Kept out of the deployment while Nginx holds its ports.
+    profiles:
+      - caddy
+
+  nginx:
+    env_file:
+      - path: ./envs/infrastructure/nginx.env
+        required: false
+      - ./envs/infrastructure/nginx.defaults
+    image: nginx:latest
+    restart: always
+    volumes:
+      - ./nginx/nginx.conf.template:/etc/nginx/nginx.conf.template
+      - ./nginx/proxy.conf.template:/etc/nginx/proxy.conf.template
+      - ./nginx/https.conf.template:/etc/nginx/https.conf.template
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/docker-entrypoint.sh:/docker-entrypoint-mount.sh
+      - ./nginx/ssl:/etc/ssl # cert dir (legacy)
+      - ./volumes/certbot/conf/live:/etc/letsencrypt/live # cert dir (with certbot container)
+      - ./volumes/certbot/conf:/etc/letsencrypt
+      - ./volumes/certbot/www:/var/www/html
+    entrypoint:
+      [
+        "sh",
+        "-c",
+        "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh",
+      ]
+    environment:
+      NGINX_SSL_PORT: ${NGINX_SSL_PORT:-443}
+      NGINX_PORT: ${NGINX_PORT:-80}
+    depends_on:
+      - api
+      - web
+    ports:
+      - "${EXPOSE_NGINX_PORT:-80}:${NGINX_PORT:-80}"
+      - "${EXPOSE_NGINX_SSL_PORT:-443}:${NGINX_SSL_PORT:-443}"

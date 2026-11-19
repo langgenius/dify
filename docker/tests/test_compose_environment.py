@@ -893,7 +893,7 @@ class ComposeEnvironmentTests(unittest.TestCase):
         cases = [
             (
                 "infrastructure/nginx",
-                "nginx",
+                "caddy",
                 "NGINX_CLIENT_MAX_BODY_SIZE",
                 "NGINX_CLIENT_MAX_BODY_SIZE",
                 "200M",
@@ -1141,7 +1141,8 @@ class ComposeEnvironmentTests(unittest.TestCase):
         self.assertEqual(values["DIFY_AGENT_E2B_API_KEY"], "service-api-key")
         self.assertEqual(values["DIFY_AGENT_E2B_TEMPLATE"], "custom-template")
 
-    def test_caddy_overlay_replaces_nginx_with_the_same_settings(self):
+    def test_caddy_is_the_default_proxy_and_nginx_overlay_restores_nginx(self):
+        self.copy_template("docker-compose.nginx.yaml", "docker-compose.nginx.yaml")
         self.copy_template("docker-compose.caddy.yaml", "docker-compose.caddy.yaml")
         self.copy_template(
             "envs/infrastructure/nginx.defaults",
@@ -1149,32 +1150,33 @@ class ComposeEnvironmentTests(unittest.TestCase):
             {"NGINX_CLIENT_MAX_BODY_SIZE": "200M", "NGINX_PROXY_READ_TIMEOUT": "600s"},
         )
         self.override_root({"NGINX_PROXY_READ_TIMEOUT": "900s", "EXPOSE_NGINX_PORT": "8080", "NGINX_PORT": "8081"})
-        nginx = self.render(all_profiles=False)["nginx"]
-        services = self.render("-f", "docker-compose.yaml", "-f", "docker-compose.caddy.yaml", all_profiles=False)
+        services = self.render(all_profiles=False)
 
         self.assertNotIn("nginx", services)
         caddy = services["caddy"]
-        self.assertEqual(caddy["ports"], nginx["ports"])
         self.assertEqual(caddy["ports"][0]["published"], "8080")
         self.assertEqual(caddy["ports"][0]["target"], 8081)
         self.assertEqual(caddy["environment"]["NGINX_PORT"], "8081")
         self.assertEqual(caddy["environment"]["NGINX_CLIENT_MAX_BODY_SIZE"], "200M")
         self.assertEqual(caddy["environment"]["NGINX_PROXY_READ_TIMEOUT"], "900s")
-        for key, value in nginx["environment"].items():
-            self.assertEqual(caddy["environment"].get(key), value, key)
         self.assertEqual(caddy["environment"]["CADDY_TRUSTED_PROXIES"], "")
         self.assertEqual(caddy["environment"]["CADDY_CLIENT_IP_HEADERS"], "X-Forwarded-For")
         self.assertEqual(caddy["environment"]["CADDY_AUTO_HTTPS_DOMAINS"], "")
-        self.assertIn(
-            "./volumes/caddy/data",
-            {volume.get("source", "").replace(str(self.project), ".") for volume in caddy["volumes"]},
-        )
+        self.assertEqual(caddy["environment"]["CADDY_IGNORE_NGINX_CONF"], "false")
+        sources = {volume.get("source", "").replace(str(self.project), ".") for volume in caddy["volumes"]}
+        self.assertIn("./volumes/caddy/data", sources)
+        self.assertIn("./nginx/conf.d", sources)
 
-        # Nginx stays available on request, e.g. to compare behaviour before switching.
-        with_nginx = self.render(
-            "-f", "docker-compose.yaml", "-f", "docker-compose.caddy.yaml", "--profile", "nginx", all_profiles=False
-        )
-        self.assertIn("nginx", with_nginx)
+        # Nginx returns with the overlay, on the same ports and settings.
+        with_nginx = self.render("-f", "docker-compose.yaml", "-f", "docker-compose.nginx.yaml", all_profiles=False)
+        self.assertNotIn("caddy", with_nginx)
+        nginx = with_nginx["nginx"]
+        self.assertEqual(nginx["ports"], caddy["ports"])
+        self.assertEqual(nginx["environment"], caddy["environment"])
+
+        # The overlay from the opt-in period no longer changes anything.
+        legacy = self.render("-f", "docker-compose.yaml", "-f", "docker-compose.caddy.yaml", all_profiles=False)
+        self.assertEqual(legacy, services)
 
     def test_generator_creates_only_root_env_and_preserves_edits(self):
         for source in (
@@ -1240,7 +1242,7 @@ class ComposeEnvironmentTests(unittest.TestCase):
         services = self.render()
         self.assertEqual(services["web"]["environment"]["NEXT_PUBLIC_ENABLE_HITL_IM"], "true")
         self.assertEqual(services["api"]["environment"]["PASSWORD_PEPPER"], "api-only-test-secret")
-        for name in ("web", "plugin_daemon", "nginx", "db_postgres", "agent_backend"):
+        for name in ("web", "plugin_daemon", "caddy", "db_postgres", "agent_backend"):
             self.assertNotIn("PASSWORD_PEPPER", services[name]["environment"], name)
 
     def test_generated_compose_matches_template(self):

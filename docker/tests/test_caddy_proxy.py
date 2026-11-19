@@ -137,6 +137,27 @@ class ProxySettingsTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("not both", result.stderr)
 
+    def test_leftover_nginx_files_stop_caddy(self):
+        with tempfile.TemporaryDirectory() as conf_dir:
+            check = 'set -e; . "$1"; dify_proxy_check_nginx_conf'
+            script = str(CADDY_DIR / "proxy-env.sh")
+
+            def run(**settings: str) -> subprocess.CompletedProcess[str]:
+                env = {"PATH": os.environ["PATH"], "DIFY_PROXY_NGINX_CONF_DIR": conf_dir, **settings}
+                return subprocess.run(["sh", "-c", check, "sh", script], env=env, text=True, capture_output=True)
+
+            # A stock checkout: the template and the file the Nginx entrypoint generates.
+            Path(conf_dir, "default.conf.template").write_text("server {}")
+            Path(conf_dir, "default.conf").write_text("server {}")
+            self.assertEqual(run().returncode, 0)
+
+            Path(conf_dir, "real-ip.conf").write_text("set_real_ip_from 192.0.2.10/32;")
+            result = run()
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("real-ip.conf", result.stderr)
+            self.assertIn("CADDY_TRUSTED_PROXIES", result.stderr)
+            self.assertEqual(run(CADDY_IGNORE_NGINX_CONF="true").returncode, 0)
+
 
 @unittest.skipUnless(docker_available(), "needs a Docker daemon to run Caddy")
 class CaddyfileTests(unittest.TestCase):

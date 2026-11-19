@@ -35,6 +35,7 @@ jobs:
               - docker/docker-compose.yaml
               - docker/docker-compose.e2b.yaml
               - docker/docker-compose.caddy.yaml
+              - docker/docker-compose.nginx.yaml
               - docker/caddy/**
               - docker/envs/**
               - docker/tests/**

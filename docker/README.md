@@ -95,7 +95,7 @@ Find settings in:
 - [Vector stores](envs/vectorstores/): bundled and external vector databases,
   including their API/worker client settings. Providers without a dedicated
   template are documented in `api-worker.defaults`.
-- [Infrastructure](envs/infrastructure/): nginx, Certbot, proxies, and supporting services.
+- [Infrastructure](envs/infrastructure/): the reverse proxy (`nginx.defaults`), Certbot, proxies, and supporting services.
 
 ### Change public URLs
 
@@ -128,7 +128,7 @@ and can differ from the public URL. Run `docker compose up -d` after changes.
 
 ### Change a service setting
 
-For example, to set nginx's upload limit to `200M`:
+For example, to set the reverse proxy's upload limit to `200M`:
 
 1. Create the optional override file if it does not already exist:
 
@@ -145,14 +145,14 @@ For example, to set nginx's upload limit to `200M`:
    Leave expressions under `Container variable mappings` unchanged. They translate
    input names such as `SANDBOX_WORKER_TIMEOUT` into the container's `WORKER_TIMEOUT`.
 
-3. Apply the change and inspect nginx's active configuration:
+3. Apply the change and inspect the proxy's active setting:
 
    ```bash
    docker compose up -d
-   docker compose exec -T nginx nginx -T 2>&1 | grep client_max_body_size
+   docker compose exec -T caddy printenv NGINX_CLIENT_MAX_BODY_SIZE
    ```
 
-   The output should contain `client_max_body_size 200M;`.
+   The output should be `200M`.
 
 Use `docker compose up -d` after editing configuration files. Compose recreates
 containers whose configuration changed. `docker compose restart` does not reload
@@ -282,7 +282,7 @@ For services that load root `.env`, precedence is:
 2. Optional service `.env` overrides.
 3. Tracked `.defaults` values, followed by application defaults for unset settings.
 
-Other services, including databases, vector stores, and nginx, receive root values
+Other services, including databases, vector stores, and the reverse proxy, receive root values
 only through `${...}` expressions in their defaults or explicit Compose mappings.
 For those inputs, root `.env` takes precedence over the service file. Arbitrary
 native container variables do not inherit this precedence: for example, put
@@ -311,7 +311,7 @@ Validate the Compose configuration and inspect the affected services:
 ```bash
 docker compose config --quiet
 docker compose ps --all
-docker compose logs --tail=100 api worker nginx
+docker compose logs --tail=100 api worker caddy
 ```
 
 Replace the service names in the logs command with the service you are diagnosing.
@@ -335,6 +335,13 @@ files; a copied service file can pin values from an older release.
 Review any saved `OPENSEARCH_VERIFY_CERTS=false`: it stays in effect after an
 upgrade. Remove the assignment or set it to `true` to enable certificate
 verification.
+
+The bundled reverse proxy is now Caddy instead of Nginx. It serves the same routes and
+ports from the same `NGINX_*` settings and certificates; see
+[Reverse proxy](#reverse-proxy). If you upgrade without `docker compose down` first,
+run `docker compose up -d --remove-orphans` so the old Nginx container releases its
+ports. Caddy does not start while `nginx/conf.d` holds files you added for Nginx,
+such as `real-ip.conf`; move their settings or keep Nginx as described there.
 
 Bundled service templates now use the `.defaults` extension. Root `.env.example`
 remains the only required starting template, and the Compose generator creates
@@ -416,36 +423,30 @@ This separate workflow requires `--env-file middleware.env`. The template define
 `COMPOSE_PROFILES=${DB_TYPE:-postgresql},weaviate`, which selects the database and
 Weaviate. Update that value if you need different profiles.
 
-## Use Caddy as the reverse proxy (preview)
+## Reverse proxy
 
-[Caddy](https://caddyserver.com/) can replace the bundled Nginx. It serves the same
-routes on the same ports and reads the same settings: the `NGINX_*` values in root
-`.env` and `envs/infrastructure/nginx.env`, the certificates in `nginx/ssl` or the
-Certbot volume, and `NGINX_HTTPS_ENABLED`. Caddy is written in Go, a memory-safe
-language. Files you added under `nginx/conf.d` are not read; for a `real-ip.conf`,
-set `CADDY_TRUSTED_PROXIES` instead, as described in
-[Client IP and trusted proxies](#client-ip-and-trusted-proxies).
+[Caddy](https://caddyserver.com/) receives all traffic on `EXPOSE_NGINX_PORT` and
+`EXPOSE_NGINX_SSL_PORT` and routes it to the web app, the APIs, the WebSocket API and
+plugin endpoints. It is written in Go, a memory-safe language. Its settings keep their
+`NGINX_*` names from the Nginx proxy that earlier releases used: set them in root
+`.env` or `envs/infrastructure/nginx.env`. Certificates are read from `nginx/ssl` or
+the Certbot volume when `NGINX_HTTPS_ENABLED=true`.
 
-To switch, remove the Nginx container, add the overlay to root `.env`, and start
-the services:
-
-```bash
-docker compose rm -sf nginx
-echo 'COMPOSE_FILE=docker-compose.yaml:docker-compose.caddy.yaml' >> .env
-docker compose up -d
-```
-
-Size and time settings keep Nginx's units: `NGINX_CLIENT_MAX_BODY_SIZE=100M` still
-means 100 MiB, and a bare number of seconds is accepted. `NGINX_WORKER_PROCESSES` has
-no Caddy equivalent and is ignored. After renewing certificates or changing a setting,
+Size and time settings keep Nginx's units: `NGINX_CLIENT_MAX_BODY_SIZE=100M` means
+100 MiB, and a bare number of seconds is accepted. `NGINX_WORKER_PROCESSES` has no
+Caddy equivalent and is ignored. After renewing certificates or changing a setting,
 apply it without dropping connections:
 
 ```bash
 docker compose exec caddy sh /etc/caddy/docker-entrypoint.sh reload
 ```
 
-To return to Nginx, run `docker compose rm -sf caddy` first, then delete the
-`COMPOSE_FILE` line and run `docker compose up -d --remove-orphans`.
+Caddy reads none of the files in `nginx/conf.d`. It refuses to start while that
+directory holds files other than the bundled template and the `default.conf` that Nginx
+generates, so settings added there for Nginx are not lost silently. For `real-ip.conf`,
+set `CADDY_TRUSTED_PROXIES` instead, as described in
+[Client IP and trusted proxies](#client-ip-and-trusted-proxies), then delete the file
+or set `CADDY_IGNORE_NGINX_CONF=true`.
 
 ### Let Caddy obtain HTTPS certificates
 
@@ -464,9 +465,27 @@ as Let's Encrypt's staging directory while trying the setup. Plain HTTP keeps se
 Dify, as it does with Nginx. Apply the change with `docker compose up -d caddy` and
 check `docker compose logs caddy` for `certificate obtained successfully`.
 
+### Run Nginx instead of Caddy
+
+Nginx is still available with the same routes, ports and settings, and it loads extra
+files from `nginx/conf.d`. Remove the Caddy container, add the overlay to root `.env`,
+and start the services:
+
+```bash
+docker compose rm -sf caddy
+echo 'COMPOSE_FILE=docker-compose.yaml:docker-compose.nginx.yaml' >> .env
+docker compose up -d
+```
+
+To return to Caddy, run `docker compose rm -sf nginx` first, then delete the
+`COMPOSE_FILE` line and run `docker compose up -d --remove-orphans`. An existing
+`COMPOSE_FILE` line that names `docker-compose.caddy.yaml` from the opt-in period can
+stay; that overlay no longer changes anything.
+
 ## Configure HTTPS and telemetry
 
-For HTTPS certificates, follow the [Certbot guide](certbot/README.md).
+For HTTPS certificates, [let Caddy obtain them](#let-caddy-obtain-https-certificates)
+or follow the [Certbot guide](certbot/README.md).
 
 For OpenTelemetry, create `envs/core-services/api-worker.env` from `api-worker.defaults`
 if it does not exist. Uncomment `ENABLE_OTEL` and set it to `true`; uncomment
@@ -503,7 +522,7 @@ removing its consumers. See the [complete rollout sequence](../api/providers/tra
 ## Enable the KnowledgeFS integration
 
 The optional `knowledge-fs` Compose profile starts the internal KnowledgeFS API service and the
-dedicated Dataset upgrade worker. The API service publishes no host port and has no nginx route.
+dedicated Dataset upgrade worker. The API service publishes no host port and has no reverse-proxy route.
 Model, datasource, and object-storage calls go through Dify's inner API.
 Dify resolves active Workspace/plugin configuration and remains the only owner of physical
 storage credentials. `KNOWLEDGE_FS_ENABLED` remains `false`, so starting the container does not
@@ -620,16 +639,17 @@ checkpoints and require no additional migration.
 ## Client IP and trusted proxies
 
 Dify uses the request's resolved client IP for rate limits and audit records. The
-bundled Nginx overwrites `X-Forwarded-For` with `$remote_addr`, and Compose enables
+bundled reverse proxy overwrites `X-Forwarded-For` with the connecting address (Caddy's
+client IP, Nginx's `$remote_addr`), and Compose enables
 `RESPECT_XFORWARD_HEADERS_ENABLED` for the API and WebSocket API services. Dify's
 proxy middleware trusts one forwarded value, so different visitors keep separate
-IP buckets while caller-supplied IP headers cannot override Nginx's address.
+IP buckets while caller-supplied IP headers cannot override the proxy's address.
 
 The middleware does not authenticate the proxy. Keep the API port private and
 restrict direct API connections to trusted callers. Compose does not publish that
 port, but services on its shared Docker networks can still connect directly,
 including the code sandbox on `ssrf_proxy_network`. Those connections bypass
-Nginx's header replacement. If those workloads are untrusted, enforce network or
+the proxy's header replacement. If those workloads are untrusted, enforce network or
 firewall isolation and route their API calls through a sanitizing gateway before
 enabling forwarded-header trust. Merely setting a Docker network to `internal`
 does not isolate containers from each other.
@@ -645,11 +665,35 @@ by `api-worker.env` to one of those override locations if you need to preserve t
 After establishing the trusted ingress boundary, enable the setting to retain
 visitor IPs.
 
+### Cloudflare or another load balancer before Caddy
+
+With an upstream proxy, tell Caddy which addresses to trust. Otherwise the connecting
+address is the upstream proxy's, and its visitors share a rate-limit bucket. Set the
+addresses in `envs/infrastructure/nginx.env` or root `.env`, separating several
+addresses or CIDR ranges with spaces:
+
+```dotenv
+# Replace this documentation address with the actual trusted proxy address/CIDR.
+CADDY_TRUSTED_PROXIES=192.0.2.10/32
+CADDY_CLIENT_IP_HEADERS=X-Forwarded-For
+```
+
+Caddy then reads the visitor address from that header only on requests from those
+addresses, right to left, stopping at the first address that is not trusted, like
+`real_ip_recursive on`. It forwards that single address to Dify. For Cloudflare
+connecting directly to Caddy, set `CADDY_CLIENT_IP_HEADERS=CF-Connecting-IP` and list
+Cloudflare's current ranges. Restrict origin access to the intended Cloudflare path; a
+Tunnel or Authenticated Origin Pulls with your own certificate can authenticate your
+zone. Cloudflare IP ranges alone identify its network, not your zone. If another load
+balancer sits between Cloudflare and Caddy, validate the source and sanitize headers at
+that load balancer too. Caddy refuses to start with `0.0.0.0/0` or `::/0`. Apply changes with
+`docker compose up -d caddy`.
+
 ### Cloudflare or another load balancer before Nginx
 
-With an upstream proxy, configure Nginx to resolve the visitor address before
-forwarding it. Otherwise `$remote_addr` is the upstream proxy's address, and its
-visitors share a rate-limit bucket. Add an operator-managed
+When [running Nginx instead of Caddy](#run-nginx-instead-of-caddy), configure Nginx
+to resolve the visitor address before forwarding it. Otherwise `$remote_addr` is the
+upstream proxy's address, and its visitors share a rate-limit bucket. Add an operator-managed
 `docker/nginx/conf.d/real-ip.conf`; the existing mount and Nginx include load this
 file without changes to the entrypoint.
 
@@ -676,26 +720,6 @@ proxy range. Reload Nginx after updating its configuration. See the
 [Nginx real-IP module](https://nginx.org/en/docs/http/ngx_http_realip_module.html),
 [Cloudflare IP ranges](https://www.cloudflare.com/ips/), and
 [Cloudflare origin protection](https://developers.cloudflare.com/fundamentals/security/protect-your-origin-server/).
-
-### Cloudflare or another load balancer before Caddy
-
-With [Caddy as the reverse proxy](#use-caddy-as-the-reverse-proxy-preview), set the
-trusted proxy addresses in `envs/infrastructure/nginx.env` or root `.env` instead of
-adding `real-ip.conf`. Separate several addresses or CIDR ranges with spaces:
-
-```dotenv
-# Replace this documentation address with the actual trusted proxy address/CIDR.
-CADDY_TRUSTED_PROXIES=192.0.2.10/32
-CADDY_CLIENT_IP_HEADERS=X-Forwarded-For
-```
-
-Caddy then reads the visitor address from that header only on requests from those
-addresses, right to left, stopping at the first address that is not trusted, like
-`real_ip_recursive on`. It forwards that single address to Dify. For Cloudflare
-connecting directly to Caddy, set `CADDY_CLIENT_IP_HEADERS=CF-Connecting-IP` and list
-Cloudflare's current ranges. The advice above on restricting origin access applies
-unchanged. Caddy refuses to start with `0.0.0.0/0` or `::/0`. Apply changes with
-`docker compose up -d caddy`.
 
 ### Kubernetes
 
