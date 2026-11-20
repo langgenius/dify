@@ -117,6 +117,36 @@ def test_extract_keywords_asks_for_top_k_and_returns_expanded_keywords(
     assert keywords == {"alpha-beta", "alpha", "beta", "during", "gamma"}
 
 
+def test_extract_keywords_without_limit_keeps_meaningful_keywords_of_a_long_query() -> None:
+    # Query-time scoring (weighted rerank, keyword score) passes None. The distinctive
+    # terms rank below the filler in jieba's TF-IDF order, so a top-10 cap drops them.
+    long_query = (
+        "Hi team, our production cluster has been running fine for months, but yesterday customers started "
+        "seeing browser warnings and our monitoring dashboard showed alerts from several services. "
+        "After some investigation the operations engineers believe the problem is related to an expired "
+        "certificate. Could you explain step by step how do I rotate the Kubernetes ingress TLS certificate "
+        "without downtime, and what we should check afterwards to verify everything works?"
+    )
+    handler = JiebaKeywordTableHandler()
+
+    keywords = handler.extract_keywords(long_query, None)
+
+    assert len(keywords) > 10
+    assert {"Kubernetes", "ingress", "TLS", "rotate", "certificate"} <= keywords
+
+
+def test_fallback_tfidf_returns_every_keyword_when_top_k_is_none(
+    fake_jieba: Callable[..., types.ModuleType],
+) -> None:
+    fake_jieba()
+
+    handler = JiebaKeywordTableHandler()
+
+    assert handler._tfidf.extract_tags(" ".join(f"word{i}" for i in range(25)), topK=None) == [
+        f"word{i}" for i in range(25)
+    ]
+
+
 def test_expand_tokens_with_subtokens_filters_stopwords_from_subtokens() -> None:
     handler = JiebaKeywordTableHandler()
 
