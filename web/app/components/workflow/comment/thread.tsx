@@ -100,13 +100,6 @@ function ThreadMessage({ author, createdAt, content, mentionNames }: ThreadMessa
   )
 }
 
-// An edit field opens with its text ready to extend.
-const focusAtEnd = (textarea: HTMLTextAreaElement | null) => {
-  if (!textarea) return
-  textarea.focus()
-  textarea.setSelectionRange(textarea.value.length, textarea.value.length)
-}
-
 /**
  * The open comment's thread popup. Render it in the canvas's comment thread
  * `Popover`: the header (delete, resolve, previous, next, close) lasts as long
@@ -449,6 +442,16 @@ function CommentThreadSession({
     deletingReplyId !== null && !loading && !replies.some((reply) => reply.id === deletingReplyId)
   const isOwnComment = comment.created_by_account?.id === currentUserId
   const messageListRef = useRef<HTMLDivElement>(null)
+  // Choosing "Edit" unmounts the row menu; the edit field takes focus as it mounts, so that
+  // menu must not hand focus back to the marker it falls back to.
+  const editOpeningRef = useRef(false)
+  const menuFinalFocus = () => !editOpeningRef.current
+  const attachEditField = useCallback((textarea: HTMLTextAreaElement | null) => {
+    if (!textarea) return
+    editOpeningRef.current = false
+    textarea.focus()
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length)
+  }, [])
   const previousReplyCountRef = useRef<number | undefined>(undefined)
 
   // Close menu when scrolling
@@ -493,11 +496,16 @@ function CommentThreadSession({
               >
                 <RiMoreFill className="size-4" />
               </MenuTrigger>
-              <MenuContent align="end" className="w-36 backdrop-blur-[10px]">
+              <MenuContent
+                align="end"
+                className="w-36 backdrop-blur-[10px]"
+                finalFocus={menuFinalFocus}
+              >
                 <MenuItem
                   className="px-3"
                   onClick={(e) => {
                     e.stopPropagation()
+                    editOpeningRef.current = true
                     handleStartCommentEdit()
                   }}
                 >
@@ -525,7 +533,7 @@ function CommentThreadSession({
               <div className="min-w-0 flex-1">
                 <CommentComposerFrame>
                   <MentionInput
-                    ref={focusAtEnd}
+                    ref={attachEditField}
                     value={editingCommentContent}
                     onChange={setEditingCommentContent}
                     onSubmit={handleCommentEditSubmit}
@@ -576,10 +584,12 @@ function CommentThreadSession({
                         align="end"
                         className="w-36 backdrop-blur-[10px]"
                         data-reply-menu
+                        finalFocus={menuFinalFocus}
                       >
                         <MenuItem
                           onClick={(event) => {
                             event.stopPropagation()
+                            editOpeningRef.current = true
                             handleStartEdit(reply)
                           }}
                         >
@@ -621,7 +631,7 @@ function CommentThreadSession({
                       <div className="min-w-0 flex-1">
                         <CommentComposerFrame>
                           <MentionInput
-                            ref={focusAtEnd}
+                            ref={attachEditField}
                             value={editingReply?.content ?? ''}
                             onChange={(newContent) =>
                               setEditingReply((prev) =>

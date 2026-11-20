@@ -108,3 +108,35 @@ it('returns to the selected reply on cancel and the composer after deleting that
   await expect.element(screen.getByText('A reply')).toBeVisible()
   await expect.element(replyInput).toHaveFocus()
 })
+
+it('moves focus into the edit field when a reply is edited from its menu, and back on Escape', async () => {
+  await page.viewport(1200, 800)
+  const { queryClient } = createConsoleQueryWrapper({
+    accountProfile: { id: 'author', name: 'Alice', avatar_url: null },
+  })
+  const screen = await render(<Fixture onDelete={() => {}} />, {
+    queryClient,
+    initialStoreState: { mentionableUsersCache: { 'app-1': [] } },
+  })
+  await expect.element(screen.getByRole('textbox')).toHaveFocus()
+  // Focus the marker first, as a keyboard user who opened the thread from it would have.
+  screen.getByRole('button', { name: 'Marker' }).element().focus()
+  const trigger = screen
+    .getByRole('button', { name: 'workflowComments.comments.aria.replyActions' })
+    .last()
+  ;(trigger.element() as HTMLElement).focus()
+  await userEvent.keyboard('{Enter}')
+  const edit = screen.getByRole('menuitem', { name: 'workflowComments.comments.actions.editReply' })
+  await expect.element(edit).toHaveFocus()
+  await userEvent.keyboard('{Enter}')
+
+  const editField = screen.getByPlaceholder('workflowComments.comments.placeholder.editReply')
+  await expect.element(editField).toHaveFocus()
+  await new Promise((resolve) => setTimeout(resolve, 100))
+  await expect.element(editField).toHaveFocus()
+  expect((editField.element() as HTMLTextAreaElement).selectionStart).toBe('A second reply'.length)
+
+  await userEvent.keyboard('{Escape}')
+  await expect.element(editField).not.toBeInTheDocument()
+  await expect.element(screen.getByRole('dialog')).toBeVisible()
+})
