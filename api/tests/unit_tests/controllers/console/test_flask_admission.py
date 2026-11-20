@@ -18,6 +18,7 @@ from extensions.ext_application_services import build_application_services
 from extensions.ext_redis import RedisClientWrapper
 from libs.passport import PassportService
 from libs.token import generate_csrf_token
+from machinery.context import RequestContext
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from services.billing_client import saas
 from services.entities.account_login_entities import LoginMode
@@ -150,6 +151,39 @@ def test_password_login_prepares_workspace_only_for_console(
     assert [workspace.name for workspace in workspaces] == expected_names
     assert browser.get(PROFILE_PATH).status_code == profile_status
     assert browser.get(END_USER_PROFILE_PATH).status_code == 200
+
+
+@pytest.mark.parametrize("team_status", [TenantStatus.NORMAL, TenantStatus.ARCHIVE], ids=["active", "archived"])
+def test_cloud_invitee_provisions_only_if_console_login_needs_a_workspace(
+    cloud_console: tuple[DifyApp, AccountDomain],
+    sqlite_session_factory: sessionmaker[Session],
+    team_status: TenantStatus,
+) -> None:
+    """A new invitee keeps the team membership; only Console login can bootstrap a replacement."""
+    app, account_domain = cloud_console
+    inviter = account_domain.accounts.create_account("owner@example.com", "Owner", "en-US")
+    team = account_domain.provisioning.create(name="Team", owner_email=inviter.email)
+    invitee = account_domain.invitations.invite(
+        RequestContext("request", None, inviter.id, team.id), "invitee@example.com", "en-US"
+    )
+    assert account_domain.workspaces.list_ids_for_account(invitee.account_id) == (team.id,)
+    account_domain.accounts.reset_password(invitee.account_id, PASSWORD, email=invitee.email)
+    with sqlite_session_factory.begin() as session:
+        persisted_team = session.get(Tenant, team.id)
+        assert persisted_team is not None
+        persisted_team.status = team_status
+
+    browser = app.test_client()
+    end_user_login = _password_login(browser, invitee.email, mode=LoginMode.END_USER)
+    assert end_user_login.status_code == 200, end_user_login.json
+    assert account_domain.workspaces.list_ids_for_account(invitee.account_id) == (team.id,)
+
+    console_login = _password_login(browser, invitee.email)
+    assert console_login.status_code == 200, console_login.json
+    assert browser.get(PROFILE_PATH).status_code == 200
+    active_workspaces = account_domain.workspaces.list_for_account(invitee.account_id)
+    expected_names = [team.name] if team_status == TenantStatus.NORMAL else ["invitee's Workspace"]
+    assert [workspace.name for workspace in active_workspaces] == expected_names
 
 
 def test_workspace_less_session_uses_end_user_profile(cloud_console: tuple[DifyApp, AccountDomain]) -> None:

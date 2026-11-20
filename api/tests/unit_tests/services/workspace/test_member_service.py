@@ -254,9 +254,10 @@ class TestMemberServiceCases:
                 account_domain.members.remove(workspace_id, member_id, owner_id)
 
     @staticmethod
-    def test_new_invitation_normalizes_email_and_sets_current_workspace(
+    def test_new_invitation_sets_current_workspace_without_provisioning_personal_workspace(
         account_domain: AccountDomain, members: tuple[str, str, str]
     ) -> None:
+        """Inviting a new email creates a pending member, not a workspace or Builder origin."""
         workspace_id, owner_id, _ = members
         result = account_domain.invitations.invite(
             RequestContext("request", None, owner_id, workspace_id), "New@Example.com", "en-US", "editor"
@@ -269,6 +270,8 @@ class TestMemberServiceCases:
         assert invitee is not None
         assert result.account_id == invitee.id
         assert invitee.status == "pending"
+        assert invitee.first_workspace_created_at is None
+        assert account_domain.workspaces.list_ids_for_account(invitee.id) == (workspace_id,)
         assert account_domain.members.get_role(workspace_id, invitee.id) == _member_service_TenantAccountRole.EDITOR
         membership = account_domain.workspaces.find_membership(invitee.id, workspace_id)
         assert membership is not None
@@ -653,20 +656,7 @@ class TestMemberServiceCases:
         if status == AccountStatus.ACTIVE and already_joined:
             assert replace.calls == []
         else:
-            assignments = [item for item in replace.calls if item.tenant_id == workspace_id]
-            assert len(assignments) == 1
-            assert assignments[0].account_id == owner_id
-            assert assignments[0].member_account_id == invited.id
-            assert assignments[0].role_ids == ["custom-role-id"]
-            if status is None:
-                # Registration also provisions the invitee's own workspace.
-                assert len(replace.calls) == 2
-                personal_workspace = replace.calls[0]
-                assert personal_workspace.tenant_id != workspace_id
-                assert personal_workspace.member_account_id == invited.id
-                assert personal_workspace.role_ids == ["role-owner"]
-            else:
-                assert len(replace.calls) == 1
+            assert replace.calls == [RoleAssignment(workspace_id, owner_id, invited.id, ["custom-role-id"])]
         if status == AccountStatus.ACTIVE:
             assert results[0].status == "already_member"
             account_domain.delivery.create.assert_not_called()

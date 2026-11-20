@@ -322,8 +322,14 @@ class InvitedAccountRegistration(Protocol):
         language: str | None,
         status: str,
         is_setup: bool,
+        create_workspace_required: bool,
         check_normalized_email: bool,
-    ) -> AccountSnapshot: ...
+    ) -> AccountSnapshot:
+        """Register under account policy, skipping personal provisioning when not requested.
+
+        Skipping provisioning does not suppress the Enterprise default workspace join.
+        """
+        ...
 
 
 class InvitationWorkspaceStore(Protocol):
@@ -417,6 +423,13 @@ class WorkspaceInvitationService:
         language: str | None,
         role: str = "normal",
     ) -> WorkspaceInvitation:
+        """Issue an invitation for an authorized inviter and an existing workspace.
+
+        A new invitee is registered as pending and joined to the inviting workspace.
+        This flow never creates a personal workspace: automatic provisioning, when
+        needed, belongs to Console sign-in. Permission, registration, membership,
+        and delivery failures propagate to the caller.
+        """
         workspace_id = context.active_workspace_id
         inviter_id = context.account_id
         inviter = self._accounts.get_account_by_id(inviter_id)
@@ -438,6 +451,7 @@ class WorkspaceInvitationService:
                 language=language,
                 status="pending",
                 is_setup=True,
+                create_workspace_required=False,
                 check_normalized_email=True,
             )
             self._members.join_member(
