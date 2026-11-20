@@ -135,14 +135,18 @@ class TransferBytesApi(Resource):
 
     def get(self, transfer_id: str):
         """Precondition: ``token`` in the query string. Postcondition: 200 with the parked file as an attachment
-        while its download link works. Refusals: 404 unknown, wrong token or an upload, 410 link expired,
-        429 when every slot is taken.
+        while its download link works; the token is checked before a slot is taken. Refusals: 404 unknown,
+        wrong token or an upload, 410 link expired, 429 when every slot is taken.
         """
+        transfers = application_services().file_transfers
+        token = request.args.get(TOKEN_PARAM, "")
+        try:
+            transfers.open_for_download(transfer_id, token)
+        except FileTransferError as error:
+            raise refusal_of(error) from None
         hold_slot()
         try:
-            transfer, content = application_services().file_transfers.download(
-                transfer_id, request.args.get(TOKEN_PARAM, "")
-            )
+            transfer, content = transfers.download(transfer_id, token)
         except FileTransferError as error:
             raise refusal_of(error) from None
         file = transfer.file

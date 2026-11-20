@@ -185,12 +185,19 @@ class FileTransferService:
         only = TransferFile(path=file.name, name=file.name, mime_type=file.mime_type, content=content)
         return LoadedTransfer(transfer=transfer, files=(only,))
 
+    def open_for_download(self, transfer_id: str, token: str) -> Transfer:
+        """Postcondition: the outgoing transfer the token opens, while its download link works. Reads no bytes.
+
+        Raises ``TransferNotFoundError`` or ``TransferLinkExpiredError``.
+        """
+        return self._opened(transfer_id, token, TransferDirection.OUT, self._limits.download_link_life)
+
     def download(self, transfer_id: str, token: str) -> tuple[Transfer, bytes]:
         """Postcondition: the outgoing transfer the token opens and its bytes, while its download link works.
 
         Raises ``TransferNotFoundError`` or ``TransferLinkExpiredError``.
         """
-        transfer = self._opened(transfer_id, token, TransferDirection.OUT, self._limits.download_link_life)
+        transfer = self.open_for_download(transfer_id, token)
         return transfer, self._stored_bytes(transfer_id)
 
     def purge_expired(self, *, limit: int) -> int:
