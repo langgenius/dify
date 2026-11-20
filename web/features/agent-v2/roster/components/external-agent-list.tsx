@@ -100,10 +100,11 @@ function ExternalAgentCard({
         <div className="flex w-full items-center gap-3 ps-3.5 pe-4 pt-3.5 pb-2">
           <AppIcon
             size="xl"
+            shape="circle"
             icon={agent.icon}
             fallback={{
-              content: <span className="i-ri-robot-2-line size-7 text-text-tertiary" />,
-              background: 'var(--color-text-primary-on-surface)',
+              content: '🔗',
+              background: 'var(--color-components-icon-bg-midnight-soft)',
             }}
           />
           <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">

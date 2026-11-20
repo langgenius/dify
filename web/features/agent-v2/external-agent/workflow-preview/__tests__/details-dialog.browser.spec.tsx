@@ -1,10 +1,18 @@
+import type { WorkflowAgentComposerResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { ExternalAgentWorkflowPreviewNodeData } from '../types'
 import type { AgentV2NodeType } from '@/app/components/workflow/nodes/agent-v2/types'
 import type { WorkflowDataUpdater } from '@/app/components/workflow/types'
+import { zWorkflowAgentComposerResponse } from '@dify/contracts/api/console/apps/zod.gen'
+import { ORPCError } from '@orpc/client'
 import { page } from 'vite-plus/test/browser'
 import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
+import {
+  isAgentV2NodeData,
+  needsInlineAgentBindingCreation,
+} from '@/app/components/workflow/nodes/agent-v2/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { consoleClient } from '@/service/console'
+import { createDeferred } from '@/test/deferred'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import {
   createExternalAgentWorkflowGraph,
@@ -15,6 +23,11 @@ import 'reactflow/dist/style.css'
 
 // boundary: use the fixture's real I18nextProvider resources instead of the global translator double.
 vi.mock('react-i18next', async (importOriginal) => importOriginal())
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({ appId: 'external-preview-app' }),
+  usePathname: () => '/app/external-preview-app/workflow',
+}))
 
 const draftApi = vi.hoisted(() => ({
   save: vi.fn<typeof import('@/service/console').consoleClient.apps.byAppId.workflows.draft.post>(),
@@ -41,6 +54,13 @@ vi.mock('@/service/console', async (importOriginal) => {
       ...createWorkflowExternalResponses(),
       'apps.byAppId.workflows.draft.externalAgentBindings.byNodeId.rebind.post': draftApi.rebind,
       'apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put': draftApi.createInline,
+      'agent.byAgentId.buildDraft.get': () => {
+        throw new ORPCError('NOT_FOUND')
+      },
+      'workspaces.current.agents.byAgentId.skills.get': () => ({
+        agent_id: 'inline-agent',
+        data: [],
+      }),
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'apps.byAppId.workflows.draft.post': draftApi.save,
@@ -303,9 +323,42 @@ it('uses the same Change picker on a Dify node to select an external agent', asy
   expect(draftApi.rebind).not.toHaveBeenCalled()
 })
 
-it('creates an inline Dify agent from the Change picker', async () => {
-  draftApi.createInline.mockImplementation(() => new Promise(() => {}))
+it('keeps the inline editor open after Start from Scratch replaces an external agent', async () => {
+  const binding = {
+    binding_type: 'inline_agent',
+    agent_id: 'inline-agent',
+    current_snapshot_id: 'snapshot-1',
+  } as const
+  const composer = zWorkflowAgentComposerResponse.parse({
+    variant: 'workflow',
+    agent_soul: { schema_version: 1, prompt: { system_prompt: 'Follow the request' } },
+    node_job: {},
+    save_options: [],
+    soul_lock: { locked: false },
+    agent: {
+      id: binding.agent_id,
+      name: 'Inline Agent',
+      description: '',
+      scope: 'workflow_only',
+      status: 'active',
+    },
+    binding: { ...binding, id: 'binding-1', node_id: 'external-agent', workflow_id: 'workflow-1' },
+  } satisfies WorkflowAgentComposerResponse)
+  const created = createDeferred<typeof composer>()
+  draftApi.createInline.mockReturnValue(created.promise)
+  const save = draftApi.save.getMockImplementation()!
+  draftApi.save.mockImplementation(async (input) => {
+    const node = (input.body.graph as WorkflowDataUpdater).nodes.find(
+      (node) => node.id === 'external-agent',
+    )
+    // The draft validator rejects an incomplete inline binding over the existing external row.
+    if (node && isAgentV2NodeData(node.data) && needsInlineAgentBindingCreation(node.data))
+      throw new ORPCError('BAD_REQUEST')
+    return save(input)
+  })
   const { panel } = await setup()
+  const task = 'Keep the existing workflow task.'
+  await panel.getByRole('textbox', { name: 'Agent task', exact: true }).fill(task)
   await panel.getByRole('button', { name: 'Change', exact: true }).click()
   const picker = page.getByRole('dialog', { name: 'Select an agent', exact: true })
   await picker.getByRole('button', { name: 'Start from Scratch', exact: true }).click()
@@ -316,6 +369,12 @@ it('creates an inline Dify agent from the Change picker', async () => {
       body: expect.objectContaining({ save_strategy: 'node_job_only' }),
     }),
   )
+  await expect.element(picker).not.toBeInTheDocument()
+  await expect.element(panel.getByRole('button', { name: 'Change', exact: true })).toBeDisabled()
+  created.resolve(composer)
+
+  const editor = page.getByRole('dialog', { name: 'Inline Agent', exact: true })
+  await expect.element(editor.getByText('Follow the request', { exact: true })).toBeVisible()
   await expect
     .poll(async () => {
       const draft = await readDraft()
@@ -324,11 +383,14 @@ it('creates an inline Dify agent from the Change picker', async () => {
     })
     .toMatchObject({
       agent_node_kind: 'dify_agent',
-      agent_binding: { binding_type: 'inline_agent' },
+      agent_binding: binding,
+      agent_task: task,
     })
+  await editor.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect.element(editor).not.toBeInTheDocument()
 })
 
-it('restores external settings when inline Dify agent creation fails', async () => {
+it('keeps the external agent and its settings when inline creation fails', async () => {
   draftApi.createInline.mockRejectedValue(new Error('Unable to create agent'))
   const originalOutputs = [{ name: 'external_summary', type: 'string' as const, required: false }]
   const { panel } = await setup({
@@ -342,7 +404,9 @@ it('restores external settings when inline Dify agent creation fails', async () 
     .getByRole('button', { name: 'Start from Scratch', exact: true })
     .click()
   await expect.poll(() => draftApi.createInline.mock.calls.length).toBe(1)
-  await expect.element(panel).toBeVisible()
+  await expect
+    .element(panel.getByText('Could not change the agent. Your task and settings have been kept.'))
+    .toBeVisible()
   await saveDraft({
     agent_node_kind: 'external_a2a',
     agent_task: 'Keep this task',

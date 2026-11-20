@@ -40,7 +40,6 @@ import { Trans, useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { IconPicker, IconPickerContent, IconPickerTrigger } from '@/app/components/base/icon-picker'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { toExternalAgentListItem } from '@/features/agent-v2/external-agent/model'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
@@ -126,9 +125,7 @@ function EditAgentInfo({
                 shape="circle"
                 className="size-16"
                 fallback={{
-                  content: (
-                    <span aria-hidden className="i-ri-robot-2-line size-8 text-text-tertiary" />
-                  ),
+                  content: '🔗',
                   background: 'var(--color-components-icon-bg-midnight-soft)',
                 }}
               />
@@ -396,7 +393,7 @@ export function ExternalAgentActions({
                     </p>
                   </AlertDialogDescription>
                 )}
-                {references.isPending && <SkeletonRectangle className="h-20 w-full" />}
+                {references.isPending && <LoadingPlaceholder className="h-20" />}
               </>
             ) : (
               <AlertDialogDescription>

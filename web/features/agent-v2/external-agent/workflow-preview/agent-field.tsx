@@ -72,13 +72,12 @@ export function ExternalAgentField({
             <span className="flex size-6 shrink-0 items-center justify-center">
               <AppIcon
                 size="tiny"
-                className="size-5 rounded-md"
+                shape="circle"
+                className="size-5"
                 icon={overview?.agent.icon}
                 fallback={{
-                  content: (
-                    <span aria-hidden className="i-ri-robot-2-line size-3.5 text-text-accent" />
-                  ),
-                  background: 'var(--color-background-default)',
+                  content: '🔗',
+                  background: 'var(--color-components-icon-bg-midnight-soft)',
                 }}
               />
             </span>

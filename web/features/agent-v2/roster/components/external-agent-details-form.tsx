@@ -78,8 +78,9 @@ export function ExternalAgentDetailsForm({
             <AppIcon
               icon={iconUrl ? { icon_type: 'link', icon: iconUrl } : undefined}
               size="medium"
+              shape="circle"
               fallback={{
-                content: <span className="i-ri-robot-2-line size-5 text-text-tertiary" />,
+                content: '🔗',
                 background: 'var(--color-components-icon-bg-midnight-soft)',
               }}
             />
