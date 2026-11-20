@@ -45,14 +45,12 @@ export default function CollaborationDemoPage() {
         <DemoCanvasCorner />
         {step === 'playing' && <DemoPlayback />}
       </WorkflowPreview>
-      {step !== 'playing' && (
-        <DemoStepGuide
-          step={step}
-          target={step === 'members' ? membersTarget : commentTarget}
-          onAction={() => setStep(step === 'members' ? 'comment' : 'playing')}
-          onExit={exitDemo}
-        />
-      )}
+      <DemoStepGuide
+        step={step}
+        target={step === 'members' ? membersTarget : commentTarget}
+        onAction={() => setStep(step === 'members' ? 'comment' : 'playing')}
+        onExit={exitDemo}
+      />
     </div>
   )
 }
