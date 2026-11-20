@@ -11,8 +11,7 @@ import app from '@/i18n/locales/en-US/app.json'
 import common from '@/i18n/locales/en-US/common.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
-import { createDeferred } from '@/test/deferred'
-import { installFakeApi } from '@/test/fake-api'
+import { hold, installFakeApi } from '@/test/fake-api'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import RosterPage from '../roster/page'
 
@@ -110,13 +109,8 @@ it('focuses the next agent after deletion and keeps the next canceled action key
   const target = agent('target', 'Research Agent')
   const remaining = agent('remaining', 'Writing Agent')
   const { screen, queryClient, openDelete, actions, fake } = await setup([target, remaining])
-  const pending = createDeferred<void>()
   const deleteRequest = fake.console.agent.byAgentId.delete
-  const deleteAgent = deleteRequest.getMockImplementation()!
-  deleteRequest.mockImplementationOnce(async (input) => {
-    await pending.promise
-    return deleteAgent(input)
-  })
+  const pending = hold(deleteRequest)
   try {
     const deletedCard = screen.getByRole('link', { name: target.name, exact: true }).element()
     await openDelete(target.name)
@@ -127,7 +121,7 @@ it('focuses the next agent after deletion and keeps the next canceled action key
     await userEvent.keyboard('{Enter}')
     await expect.poll(() => deleteRequest.mock.calls.length).toBe(1)
     await expect.element(input).toHaveFocus()
-    pending.resolve()
+    pending.release()
     await expect.poll(() => deletedCard.isConnected).toBe(false)
     await expect.poll(() => dialog.isConnected).toBe(false)
     await expect
@@ -144,7 +138,6 @@ it('focuses the next agent after deletion and keeps the next canceled action key
     await expect.element(screen.getByRole('menu')).toBeVisible()
     expect(deleteRequest).toHaveBeenCalledExactlyOnceWith({ params: { agent_id: target.id } })
   } finally {
-    pending.resolve()
     queryClient.clear()
   }
 })

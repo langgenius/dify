@@ -5,8 +5,7 @@ import type {
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { createDeferred } from '@/test/deferred'
-import { apiError, setupFakeApi } from '@/test/fake-api'
+import { apiError, hold, setupFakeApi } from '@/test/fake-api'
 import { FileScanProviderDialog } from '../scanner-dialog'
 
 // Provider ids are UUIDs in the contract.
@@ -238,8 +237,7 @@ it('keeps the stored key of a custom endpoint whose address is unchanged', async
 })
 
 it('keeps save busy during the live check and shows the backend reason when it fails', async () => {
-  const check = createDeferred<FileScanProviderResponse>()
-  fake.console.fileScan.providers.post.mockReturnValueOnce(check.promise)
+  const check = hold(fake.console.fileScan.providers.post)
   const { onSaved } = await renderDialog()
 
   await typeCard('Scanii').click()

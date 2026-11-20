@@ -9,7 +9,7 @@ import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, hold, installFakeApi } from '@/test/fake-api'
 import { createPluginDeclarationFixture } from '@/test/fixtures/plugin'
 import MarketplaceUpdateDialog from '../from-market-place'
 
@@ -120,9 +120,8 @@ it('shows an immediate task failure and lets the user retry successfully', async
 })
 
 it('waits for exclusion before downgrading and keeps the warning modal locked until completion', async () => {
-  const exclusion = createDeferred<{ success: boolean }>()
   const pending = createDeferred<PluginInstallTaskStartResponse>()
-  pluginApi.autoUpgrade.exclude.post.mockReturnValueOnce(exclusion.promise)
+  const exclusion = hold(pluginApi.autoUpgrade.exclude.post)
   pluginApi.upgrade.marketplace.post.mockReturnValueOnce(pending.promise)
   await renderUpdate(true)
   await page

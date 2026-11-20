@@ -3,8 +3,7 @@ import { createDialogHandle } from '@langgenius/dify-ui/dialog'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { createDeferred } from '@/test/deferred'
-import { installFakeApi } from '@/test/fake-api'
+import { hold, installFakeApi } from '@/test/fake-api'
 import { PluginCategoryEnum } from '../../../types'
 import { GitHubInstallDialog } from '../dialog'
 
@@ -44,11 +43,9 @@ it('keeps a reopened GitHub update and its automatic fold independent of the bac
     },
   })
   onTestFinished(fake)
-  const first = createDeferred<{ all_installed: boolean; task_id: string }>()
-  const second = createDeferred<{ all_installed: boolean; task_id: string }>()
-  fake.console.workspaces.current.plugin.upgrade.github.post
-    .mockReturnValueOnce(first.promise)
-    .mockReturnValueOnce(second.promise)
+  const upgrade = fake.console.workspaces.current.plugin.upgrade.github.post
+  const first = hold(upgrade)
+  const second = hold(upgrade)
   const handle = createDialogHandle<UpdatePluginPayload>()
   const onUpdated = vi.fn()
   const { wrapper } = createConsoleQueryWrapper()

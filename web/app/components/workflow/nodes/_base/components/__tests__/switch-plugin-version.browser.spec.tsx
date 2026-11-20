@@ -7,8 +7,7 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { createDeferred } from '@/test/deferred'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, hold, installFakeApi } from '@/test/fake-api'
 import { createPluginEntity } from '@/test/fixtures/plugin'
 import { SwitchPluginVersion } from '../switch-plugin-version'
 
@@ -85,8 +84,7 @@ it('keeps the version badge but cannot switch versions when Marketplace is disab
 
 it('restores focus to the version menu after cancelling and after installing a version', async () => {
   const { trigger, detail, upgrade } = await setup()
-  const result = createDeferred<Awaited<ReturnType<typeof upgrade>>>()
-  upgrade.mockReturnValueOnce(result.promise)
+  const result = hold(upgrade)
   const dialog = page.getByRole('dialog')
   const openInstall = async () => {
     await trigger.click()
@@ -130,9 +128,8 @@ it.each(['success', 'failed'] as const)(
   'waits for the queued upgrade to reach %s before refreshing installed tools',
   async (status) => {
     const { queryClient, trigger, detail, upgrade, task } = await setup()
-    const taskResult = createDeferred<Awaited<ReturnType<typeof task>>>()
     upgrade.mockResolvedValueOnce({ all_installed: false, task_id: 'upgrade-job' })
-    task.mockReturnValueOnce(taskResult.promise)
+    const taskResult = hold(task)
     const toolsKey = consoleQuery.workspaces.current.tools.builtin.get.queryKey()
     queryClient.setQueryData(toolsKey, [])
     await trigger.click()

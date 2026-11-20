@@ -5,7 +5,7 @@ import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createDeferred } from '@/test/deferred'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, hold, installFakeApi } from '@/test/fake-api'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { DatasetACLPermission } from '@/utils/permission'
 import Datasets from '../datasets'
@@ -89,17 +89,14 @@ describe('Classic dataset deletion', () => {
   it('removes the confirmed item and restores focus before the list refresh completes', async () => {
     const { screen, open, fake } = await setup(['Alpha', 'Beta'])
     await open('Alpha')
-    const getDatasets = fake.console.datasets.get
-    const list = getDatasets.getMockImplementation()!
-    const refresh = createDeferred<Awaited<ReturnType<typeof list>>>()
-    getDatasets.mockReturnValueOnce(refresh.promise)
+    const refresh = hold(fake.console.datasets.get)
     await screen.getByRole('button', { name: 'common.operation.confirm' }).click()
     await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
     await expect
       .element(screen.getByRole('link', { name: 'Alpha', exact: true }))
       .not.toBeInTheDocument()
     await expect.element(screen.getByRole('link', { name: 'Beta', exact: true })).toHaveFocus()
-    refresh.resolve(await list({ query: { page: 1, limit: 30, include_all: false } }))
+    refresh.release()
   })
 
   it('reports a failed usage check without changing the confirmation action', async () => {
@@ -157,8 +154,7 @@ describe('Classic dataset deletion', () => {
   })
   it('retains focus while pending and leaves a failed deletion retryable', async () => {
     const { screen, open, fake } = await setup(['Alpha'])
-    const request = createDeferred<void>()
-    fake.console.datasets.byDatasetId.delete.mockReturnValueOnce(request.promise)
+    const request = hold(fake.console.datasets.byDatasetId.delete)
     await open('Alpha')
     const confirm = screen.getByRole('button', { name: 'common.operation.confirm' })
     await confirm.click()

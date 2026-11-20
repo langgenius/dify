@@ -389,6 +389,25 @@ describe('hold', () => {
   })
 })
 
+describe('hold release', () => {
+  it('answers the held request with the regular implementation once released', async () => {
+    let groups = [createNetworkAccessGroupFixture()]
+    const fake = installFakeApi({
+      console: {
+        workspaces: { current: { networkAccessGroups: { get: () => ({ ...groupList, groups }) } } },
+      },
+    })
+    const request = hold(fake.console.workspaces.current.networkAccessGroups.get)
+    const response = consoleClient.workspaces.current.networkAccessGroups.get({})
+    await request.arrived
+    groups = []
+    request.release()
+
+    expect((await response).groups).toEqual([])
+    fake()
+  })
+})
+
 describe('wrap', () => {
   it('builds a new implementation on the current one, for every call or just the next', async () => {
     let groups = [createNetworkAccessGroupFixture()]

@@ -1,6 +1,5 @@
 import { page, userEvent } from 'vite-plus/test/browser'
-import { createDeferred } from '@/test/deferred'
-import { apiError, setupFakeApi } from '@/test/fake-api'
+import { apiError, hold, setupFakeApi } from '@/test/fake-api'
 import { renderTokenPage, token, tokenList } from './browser-test-env'
 
 vi.unmock('react-i18next')
@@ -21,8 +20,7 @@ beforeEach(async () => {
 })
 
 it('clears the one-time secret and name after closing and reopening creation', async () => {
-  const pending = createDeferred<typeof token & { secret: string }>()
-  fake.console.account.personalAccessTokens.post.mockReturnValueOnce(pending.promise)
+  const pending = hold(fake.console.account.personalAccessTokens.post)
   const { screen } = await renderTokenPage()
   const create = screen.getByRole('button', { name: 'Create token' })
   await create.click()

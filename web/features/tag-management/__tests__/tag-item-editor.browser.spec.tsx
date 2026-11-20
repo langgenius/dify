@@ -1,8 +1,7 @@
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { toast } from '@/app/notifications'
-import { createDeferred } from '@/test/deferred'
-import { apiError, setupFakeApi } from '@/test/fake-api'
+import { apiError, hold, setupFakeApi } from '@/test/fake-api'
 import { TagManagementModal } from '../components/tag-management-modal'
 import { renderWithTags } from './render-browser'
 
@@ -112,12 +111,7 @@ it('removes an unbound tag from the real list without a success notification', a
 it('keeps a pending deletion single-submission and removes the tag only after completion', async () => {
   vi.useFakeTimers({ shouldAdvanceTime: true })
   try {
-    const pending = createDeferred<void>()
-    const deleteTag = fake.console.tags.byTagId.delete.getMockImplementation()!
-    fake.console.tags.byTagId.delete.mockImplementationOnce(async (input) => {
-      await pending.promise
-      return deleteTag(input)
-    })
+    const pending = hold(fake.console.tags.byTagId.delete)
     await renderEditor('0')
     await remove().click()
     await vi.advanceTimersByTimeAsync(200)
@@ -126,7 +120,7 @@ it('keeps a pending deletion single-submission and removes the tag only after co
     await remove().click()
     await vi.advanceTimersByTimeAsync(200)
     expect(fake.console.tags.byTagId.delete).toHaveBeenCalledOnce()
-    pending.resolve()
+    pending.release()
     await expect.element(page.getByText('Frontend', { exact: true })).not.toBeInTheDocument()
     await expect.element(page.getByText('Backend', { exact: true })).toBeVisible()
   } finally {

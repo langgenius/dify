@@ -1,4 +1,3 @@
-import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
@@ -9,7 +8,7 @@ import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { apiError, setupFakeApi } from '@/test/fake-api'
+import { apiError, hold, setupFakeApi } from '@/test/fake-api'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import CreateAppModal from '../index'
 
@@ -300,8 +299,7 @@ it('submits the final selected app type after switching between advanced and beg
 })
 
 it('keeps an in-flight create request single-submission until it succeeds', async () => {
-  const pending = createDeferred<AppDetailWithSite>()
-  fake.console.apps.post.mockReturnValueOnce(pending.promise)
+  const pending = hold(fake.console.apps.post)
   await renderModal()
   await nameInput().fill('Slow App')
   await createButton().click()

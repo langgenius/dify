@@ -8,8 +8,7 @@ import { AppToaster } from '@/app/notifications/app-toaster'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
-import { createDeferred } from '@/test/deferred'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, hold, installFakeApi } from '@/test/fake-api'
 import { KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
 import { QueryTestingAdapter } from '@/test/query-state-testing-adapter'
 import { DocumentResultsSurface } from '../results/surface'
@@ -157,8 +156,7 @@ describe('Knowledge document deletion', () => {
   })
   it('holds focus and prevents dismissal while deletion is pending', async () => {
     const { screen, open, remove } = await setup(['Alpha'])
-    const request = createDeferred<Awaited<ReturnType<typeof remove>>>()
-    remove.mockReturnValueOnce(request.promise)
+    const request = hold(remove)
     await open('Alpha')
     const confirm = screen.getByRole('button', { name: 'common.operation.delete', exact: true })
     await confirm.click()

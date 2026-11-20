@@ -4,8 +4,7 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
-import { createDeferred } from '@/test/deferred'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, hold, installFakeApi } from '@/test/fake-api'
 import { NewKnowledgeList } from '../new-knowledge-list'
 
 type KnowledgeFsSpaceListItemResponse = Awaited<
@@ -100,16 +99,14 @@ describe('Knowledge space deletion', () => {
   it('removes the confirmed item and restores focus before the list refresh completes', async () => {
     const { screen, open, list } = await setup(['Alpha', 'Beta'])
     await open('Alpha')
-    const listSpaces = list.getMockImplementation()!
-    const refresh = createDeferred<Awaited<ReturnType<typeof listSpaces>>>()
-    list.mockReturnValueOnce(refresh.promise)
+    const refresh = hold(list)
     await screen.getByRole('button', { name: 'common.operation.confirm' }).click()
     await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
     await expect
       .element(screen.getByRole('link', { name: 'Alpha', exact: true }))
       .not.toBeInTheDocument()
     await expect.element(screen.getByRole('link', { name: 'Beta', exact: true })).toHaveFocus()
-    refresh.resolve(await listSpaces(list.mock.lastCall![0]))
+    refresh.release()
   })
 
   it.each([
@@ -132,8 +129,7 @@ describe('Knowledge space deletion', () => {
   })
   it('retains focus while pending and leaves a failed deletion retryable', async () => {
     const { screen, open, remove } = await setup(['Alpha'])
-    const request = createDeferred<void>()
-    remove.mockReturnValueOnce(request.promise)
+    const request = hold(remove)
     await open('Alpha')
     const confirm = screen.getByRole('button', { name: 'common.operation.confirm' })
     await confirm.click()

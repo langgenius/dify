@@ -10,7 +10,7 @@ import navigation from '@/i18n/locales/en-US/navigation.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createDeferred } from '@/test/deferred'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, hold, installFakeApi } from '@/test/fake-api'
 import { timezones } from '@/utils/timezone'
 import { ACCOUNT_SETTING_TAB } from '../../constants'
 import AccountSetting from '../../index'
@@ -82,9 +82,8 @@ it.each(['Time Zone', 'Display Language'])(
   async (field) => {
     // Chromium exposes lost popup return focus and disabled controls skipped by native Tab.
     const { screen, queryClient, profile, profileApi } = await renderPreferencesSettings()
-    const save = createDeferred<GetAccountProfileResponse>()
     const refetch = createDeferred<GetAccountProfileResponse>()
-    profileApi.patch.mockReturnValueOnce(save.promise)
+    const save = hold(profileApi.patch)
     const appearance = screen.getByRole('combobox', { name: 'Appearance', exact: true })
     const language = screen.getByRole('combobox', { name: 'Display Language', exact: true })
     const timezone = screen.getByRole('combobox', { name: 'Time Zone', exact: true })

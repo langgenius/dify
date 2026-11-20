@@ -656,6 +656,8 @@ export type HeldRequest<F> = {
   arrived: Promise<SpyInput<F>>
   resolve: (value: SpyOutput<F>) => void
   reject: (error: unknown) => void
+  /** Answer the held request with the spy's regular implementation, as if it was never held. */
+  release: () => void
 }
 
 /**
@@ -687,6 +689,16 @@ export function hold<F extends AnyFunction>(spy: Mock<F>): HeldRequest<F> {
     arrived,
     resolve: (value) => finish({ ok: true, value }),
     reject: (error) => finish({ ok: false, error }),
+    release: () => {
+      const regular = spy.getMockImplementation()
+      if (!regular) throw new Error('Fake API: release needs a spy with an implementation')
+      void arrived
+        .then((input) => (regular as AnyFunction)(input as never))
+        .then(
+          (value) => finish({ ok: true, value }),
+          (error: unknown) => finish({ ok: false, error }),
+        )
+    },
   }
 }
 

@@ -1,6 +1,5 @@
 import { userEvent } from 'vite-plus/test/browser'
-import { createDeferred } from '@/test/deferred'
-import { apiError, route, setupFakeApi } from '@/test/fake-api'
+import { apiError, hold, route, setupFakeApi } from '@/test/fake-api'
 import { renderDevicePage } from '../../__tests__/device-page-fixture'
 
 const api = vi.hoisted(() => ({ search: new URLSearchParams() }))
@@ -99,9 +98,8 @@ it('retains the SSO identity on approval failure and succeeds after retry', asyn
 })
 
 it('keeps focus on the pending approval so a keyboard retry works after failure', async () => {
-  const pending = createDeferred<unknown>()
   const request = fake.route('POST', 'origin', approveExternalPath)
-  request.mockReturnValueOnce(pending.promise)
+  const pending = hold(request)
   const { screen } = await renderDevicePage()
   await expect.element(screen.getByText(context.subject_email)).toBeVisible()
   const approve = screen.getByRole('button', { name: 'deviceFlow.authorize.approve' })

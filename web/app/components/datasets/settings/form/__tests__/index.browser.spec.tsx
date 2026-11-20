@@ -14,8 +14,7 @@ import fileScan from '@/i18n/locales/en-US/file-scan.json'
 import { consoleQuery } from '@/service/console'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { createDeferred } from '@/test/deferred'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, hold, installFakeApi } from '@/test/fake-api'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { DatasetACLPermission } from '@/utils/permission'
 import Form from '../index'
@@ -137,13 +136,7 @@ async function setup(
 
 it('saves edited basic information once while pending and refreshes the dataset title', async () => {
   const screen = await setup()
-  const pending =
-    createDeferred<Awaited<ReturnType<typeof fake.console.datasets.byDatasetId.patch>>>()
-  const saveResponse = fake.console.datasets.byDatasetId.patch.getMockImplementation()!
-  fake.console.datasets.byDatasetId.patch.mockImplementationOnce(async (...args) => {
-    await pending.promise
-    return saveResponse(...args)
-  })
+  const pending = hold(fake.console.datasets.byDatasetId.patch)
   await screen.getByRole('textbox', { name: 'Knowledge Name', exact: true }).fill('Updated Dataset')
   await screen
     .getByRole('textbox', { name: 'Description', exact: true })
@@ -164,7 +157,7 @@ it('saves edited basic information once while pending and refreshes the dataset 
     }),
   )
   expect(document.title).toContain('Test Dataset')
-  pending.resolve(createDatasetFixture({ id: DATASET_ID }))
+  pending.release()
   await expect.element(screen.getByText('Modified successfully')).toBeVisible()
   await expect.poll(() => document.title).toContain('Updated Dataset')
   await expect.element(save).not.toHaveAttribute('aria-disabled', 'true')

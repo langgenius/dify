@@ -1,7 +1,6 @@
 import type { Role } from '@/models/access-control'
 import { userEvent } from 'vite-plus/test/browser'
-import { createDeferred } from '@/test/deferred'
-import { apiError, setupFakeApi } from '@/test/fake-api'
+import { apiError, hold, setupFakeApi } from '@/test/fake-api'
 import {
   builtinRole as builtinRoleFixture,
   customRole as customRoleFixture,
@@ -112,13 +111,8 @@ it('keeps the selected built-in role read-only across grouped rows', async () =>
 })
 
 it('preserves trimmed role fields and permission selection across a pending failure, then refreshes the list on retry', async () => {
-  const pending = createDeferred<void>()
   const createRole = fake.console.workspaces.current.rbac.roles.post
-  const create = createRole.getMockImplementation()!
-  createRole.mockImplementationOnce(async (...args) => {
-    await pending.promise
-    return create(...args)
-  })
+  const pending = hold(createRole)
   const screen = await setup()
   const dialog = await openCreate(screen)
   await dialog.getByRole('button', { name: 'permission.permissionList.selectAll' }).click()

@@ -4,8 +4,7 @@ import type {
   PersonalAccessTokenWorkspaceResponse,
 } from '@dify/contracts/api/console/account/types.gen'
 import { page, userEvent } from 'vite-plus/test/browser'
-import { createDeferred } from '@/test/deferred'
-import { apiError, setupFakeApi } from '@/test/fake-api'
+import { apiError, hold, setupFakeApi } from '@/test/fake-api'
 import { renderTokenPage, token, tokenList } from './browser-test-env'
 
 vi.unmock('react-i18next')
@@ -150,14 +149,9 @@ it('keeps a selected resource through loading, failure, and retry with no remain
     resources: [app],
     workspaces: [],
   })
-  const request = createDeferred<{
-    data: PersonalAccessTokenResourceResponse[]
-    next_cursor: null
-    has_more: false
-  }>()
-  fake.console.account.personalAccessTokenResources.get
-    .mockReturnValueOnce(request.promise)
-    .mockResolvedValue({ data: [], next_cursor: null, has_more: false })
+  const resources = fake.console.account.personalAccessTokenResources.get
+  const request = hold(resources)
+  resources.mockResolvedValue({ data: [], next_cursor: null, has_more: false })
   const { screen } = await renderTokenPage()
   await screen.getByRole('button', { name: 'Edit', exact: true }).click()
   const dialog = screen.getByRole('dialog')

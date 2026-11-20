@@ -5,8 +5,7 @@ import { render } from 'vitest-browser-react'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
-import { createDeferred } from '@/test/deferred'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, hold, installFakeApi } from '@/test/fake-api'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { DatasetACLPermission } from '@/utils/permission'
 import Documents from '../index'
@@ -108,17 +107,14 @@ describe('Classic document deletion', () => {
   it('removes the item before a slow list refresh completes', async () => {
     const { screen, open, fake } = await setup(['Alpha', 'Beta'])
     await open('Alpha')
-    const getDocuments = fake.console.datasets.byDatasetId.documents.get
-    const list = getDocuments.getMockImplementation()!
-    const refresh = createDeferred<Awaited<ReturnType<typeof list>>>()
-    getDocuments.mockReturnValueOnce(refresh.promise)
+    const refresh = hold(fake.console.datasets.byDatasetId.documents.get)
     await screen.getByRole('button', { name: 'common.operation.sure' }).click()
     await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
     await expect
       .element(screen.getByRole('link', { name: 'Alpha', exact: true }))
       .not.toBeInTheDocument()
     await expect.element(screen.getByRole('link', { name: 'Beta', exact: true })).toHaveFocus()
-    refresh.resolve(await list({ params: { dataset_id: DATASET_ID } }))
+    refresh.release()
   })
 
   it.each([
@@ -141,8 +137,7 @@ describe('Classic document deletion', () => {
   })
   it('retains focus while pending and leaves a failed deletion retryable', async () => {
     const { screen, open, fake } = await setup(['Alpha'])
-    const request = createDeferred<void>()
-    fake.console.datasets.byDatasetId.documents.delete.mockReturnValueOnce(request.promise)
+    const request = hold(fake.console.datasets.byDatasetId.documents.delete)
     await open('Alpha')
     const confirm = screen.getByRole('button', { name: 'common.operation.sure' })
     await confirm.click()

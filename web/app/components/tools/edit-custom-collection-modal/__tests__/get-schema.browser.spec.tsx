@@ -3,8 +3,7 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { createDeferred } from '@/test/deferred'
-import { installFakeApi } from '@/test/fake-api'
+import { hold, installFakeApi } from '@/test/fake-api'
 import examples from '../examples'
 import GetSchema from '../get-schema'
 
@@ -44,8 +43,7 @@ async function setup() {
 
 it('validates the URL, prevents duplicate imports, then replaces the editable schema', async () => {
   const { screen, importSchema } = await setup()
-  const pending = createDeferred<{ schema: string }>()
-  importSchema.mockReturnValueOnce(pending.promise)
+  const pending = hold(importSchema)
   const trigger = screen.getByRole('button', { name: 'tools.createTool.importFromUrl' })
   const schema = screen.getByRole('textbox', { name: 'Tool schema' })
   await trigger.click()

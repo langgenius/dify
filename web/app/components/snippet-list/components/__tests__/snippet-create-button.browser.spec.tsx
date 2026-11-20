@@ -2,8 +2,7 @@ import { detectPlatform } from '@tanstack/react-hotkeys'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { createDeferred } from '@/test/deferred'
-import { setupFakeApi } from '@/test/fake-api'
+import { hold, setupFakeApi } from '@/test/fake-api'
 import { createSnippetFixture } from '@/test/fixtures/snippet'
 import SnippetCreateButton from '../snippet-create-button'
 
@@ -66,8 +65,7 @@ it('hides creation without workspace permission', async () => {
 it('creates trimmed values and saves the draft before navigating, blocking duplicate shortcuts while pending', async () => {
   const createSnippet = fake.console.workspaces.current.customizedSnippets.post
   const saveDraft = fake.console.snippets.bySnippetId.workflows.draft.post
-  const sync = createDeferred<Awaited<ReturnType<typeof saveDraft>>>()
-  saveDraft.mockReturnValueOnce(sync.promise)
+  const sync = hold(saveDraft)
   await setup()
   const dialog = await openCreate()
   const name = dialog.getByRole('textbox', { name: 'workflow.snippet.nameLabel' })

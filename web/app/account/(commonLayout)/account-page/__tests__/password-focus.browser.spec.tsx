@@ -3,18 +3,17 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createDeferred } from '@/test/deferred'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, hold, installFakeApi } from '@/test/fake-api'
 import { createTestQueryClient } from '@/test/query-client'
 import { ChangePasswordDialog } from '../change-password-dialog'
 
 it('keeps native submit focus during password saving and supports retry without leaving the dialog', async () => {
   // Chromium proves native Enter submission and focus preservation when pending controls change.
   type Profile = Awaited<ReturnType<typeof consoleClient.account.password.post>>
-  const firstSave = createDeferred<Profile>()
   const retry = createDeferred<Profile>()
   const fake = installFakeApi({ console: { account: { password: { post: () => retry.promise } } } })
   onTestFinished(fake)
-  fake.console.account.password.post.mockReturnValueOnce(firstSave.promise)
+  const firstSave = hold(fake.console.account.password.post)
   const screen = await render(
     <QueryClientProvider client={createTestQueryClient()}>
       <ChangePasswordDialog isPasswordSet />

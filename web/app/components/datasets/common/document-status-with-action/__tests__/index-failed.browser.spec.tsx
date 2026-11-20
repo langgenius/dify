@@ -3,7 +3,7 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { apiError, setupFakeApi } from '@/test/fake-api'
+import { apiError, hold, setupFakeApi } from '@/test/fake-api'
 import RetryButton from '../index-failed'
 
 const DATASET_ID = '7d9c1f3e-4a1b-4c2d-8e3f-1a2b3c4d5e6f'
@@ -46,11 +46,10 @@ const fake = setupFakeApi(() => ({
 }))
 
 it('reveals settled failures, blocks repeated native activation and disappears after refresh', async () => {
-  const statusResponse = createDeferred<typeof errors>()
   const retryResponse = createDeferred<void>()
-  fake.console.datasets.byDatasetId.errorDocs.get
-    .mockReturnValueOnce(statusResponse.promise)
-    .mockResolvedValue(noErrors)
+  const errorDocs = fake.console.datasets.byDatasetId.errorDocs.get
+  const statusResponse = hold(errorDocs)
+  errorDocs.mockResolvedValue(noErrors)
   fake.console.datasets.byDatasetId.retry.post.mockReturnValue(retryResponse.promise)
   const screen = await renderRetryButton()
 

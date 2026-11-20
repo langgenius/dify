@@ -1,12 +1,10 @@
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { consoleClient } from '@/service/console'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
-import { createDeferred } from '@/test/deferred'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, hold, installFakeApi } from '@/test/fake-api'
 import { MembersPage } from '../index'
 
 const flags = vi.hoisted(() => ({ contactsEnabled: vi.fn(() => false) }))
@@ -98,17 +96,14 @@ it('returns focus after deleting a member with Contacts enabled, using the suppo
 it('removes the member before a slow list refresh completes', async () => {
   const { screen, open, fake } = await setup(['Alpha', 'Beta'])
   await open('Alpha')
-  const members = fake.console.workspaces.current.members.get
-  const list = members.getMockImplementation()!
-  const refresh = createDeferred<Awaited<ReturnType<typeof list>>>()
-  members.mockReturnValueOnce(refresh.promise)
+  const refresh = hold(fake.console.workspaces.current.members.get)
   await screen.getByRole('button', { name: /operation\.confirm$/ }).click()
   await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
   await expect
     .element(screen.getByRole('button', { name: 'Alpha', exact: true }))
     .not.toBeInTheDocument()
   await expect.element(screen.getByRole('button', { name: 'Beta', exact: true })).toHaveFocus()
-  refresh.resolve(await list({}))
+  refresh.release()
 })
 
 it.each([
@@ -132,11 +127,7 @@ it.each([
 
 it('keeps focus and blocks Escape/cancel during removal, then reports a retryable failure', async () => {
   const { screen, open, fake } = await setup(['Alpha'])
-  const request =
-    createDeferred<
-      Awaited<ReturnType<typeof consoleClient.workspaces.current.members.byMemberId.delete>>
-    >()
-  fake.console.workspaces.current.members.byMemberId.delete.mockReturnValueOnce(request.promise)
+  const request = hold(fake.console.workspaces.current.members.byMemberId.delete)
   await open('Alpha')
   const confirm = screen.getByRole('button', { name: /operation\.confirm$/ })
   await confirm.click()

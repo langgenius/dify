@@ -4,8 +4,7 @@ import type {
 } from '@dify/contracts/api/console/account/types.gen'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { consoleQuery } from '@/service/console'
-import { createDeferred } from '@/test/deferred'
-import { apiError, setupFakeApi } from '@/test/fake-api'
+import { apiError, hold, setupFakeApi } from '@/test/fake-api'
 import { renderTokenPage, token, tokenList } from './browser-test-env'
 
 vi.unmock('react-i18next')
@@ -74,8 +73,7 @@ it('returns to the edit trigger when cancelling during a background list refresh
   await edit.click()
   const dialog = screen.getByRole('dialog')
   await expect.element(dialog.getByRole('textbox', { name: 'Name' })).toBeVisible()
-  const refresh = createDeferred<ReturnType<typeof tokenList>>()
-  fake.console.account.personalAccessTokens.get.mockReturnValueOnce(refresh.promise)
+  const refresh = hold(fake.console.account.personalAccessTokens.get)
   const refetch = queryClient.invalidateQueries({
     queryKey: consoleQuery.account.personalAccessTokens.get.key(),
   })
@@ -142,8 +140,7 @@ it('keeps an expired editing draft readable and blocks further saving after the 
 })
 
 it('keeps deletion open after failure and removes the row after retry', async () => {
-  const pending = createDeferred()
-  fake.console.account.personalAccessTokens.byTokenId.delete.mockReturnValueOnce(pending.promise)
+  const pending = hold(fake.console.account.personalAccessTokens.byTokenId.delete)
   const { screen } = await renderTokenPage()
   await screen.getByRole('button', { name: 'Delete', exact: true }).click()
   const dialog = screen.getByRole('alertdialog')

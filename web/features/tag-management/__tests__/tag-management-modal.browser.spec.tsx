@@ -1,9 +1,8 @@
-import type { TagResponse, TagType } from '@dify/contracts/api/console/tags/types.gen'
+import type { TagType } from '@dify/contracts/api/console/tags/types.gen'
 import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { toast } from '@/app/notifications'
-import { createDeferred } from '@/test/deferred'
-import { apiError, setupFakeApi } from '@/test/fake-api'
+import { apiError, hold, setupFakeApi } from '@/test/fake-api'
 import { TagManagementModal } from '../components/tag-management-modal'
 import { renderWithTags } from './render-browser'
 
@@ -55,8 +54,7 @@ it.each(['app', 'knowledge', 'snippet'] as const)(
 )
 
 it('submits on blur and locks the pending draft against edits and duplicate submission', async () => {
-  const pending = createDeferred<TagResponse>()
-  fake.console.tags.post.mockReturnValueOnce(pending.promise)
+  const pending = hold(fake.console.tags.post)
   await renderModal()
   await expect.element(page.getByText('Frontend', { exact: true })).toBeVisible()
   await expect.element(page.getByText('Backend', { exact: true })).toBeVisible()
