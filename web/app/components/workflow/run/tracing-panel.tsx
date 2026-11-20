@@ -83,7 +83,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
       return (
         <div
           key={node.id}
-          className="relative mb-2 ml-4"
+          className="relative ms-4 mb-2"
           data-parallel-id={node.id}
           onMouseEnter={() => handleParallelMouseEnter(node.id)}
           onMouseLeave={handleParallelMouseLeave}
@@ -96,7 +96,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
               aria-label={parallelDetail.parallelTitle}
               onClick={() => toggleCollapse(node.id)}
               className={cn(
-                'mr-2 transition-colors',
+                'me-2 transition-colors',
                 isHovered
                   ? 'rounded-sm border-components-button-primary-border bg-components-button-primary-bg text-text-primary-on-surface'
                   : 'text-text-secondary hover:text-text-primary',
@@ -119,10 +119,10 @@ const TracingPanel: FC<TracingPanelProps> = ({
               }}
             ></div>
           </div>
-          <div id={`${node.id}-children`} hidden={isCollapsed} className="relative pl-2">
+          <div id={`${node.id}-children`} hidden={isCollapsed} className="relative ps-2">
             <div
               className={cn(
-                'absolute top-0 bottom-0 left-1.25 w-0.5',
+                'absolute inset-s-1.25 top-0 bottom-0 w-0.5',
                 isHovered ? 'bg-text-accent-secondary' : 'bg-divider-subtle',
               )}
             ></div>
@@ -136,7 +136,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
         <div key={node.id}>
           <div
             className={cn(
-              '-mb-1.5 pl-4 system-2xs-medium-uppercase',
+              '-mb-1.5 ps-4 system-2xs-medium-uppercase',
               isHovered ? 'text-text-tertiary' : 'text-text-quaternary',
             )}
           >

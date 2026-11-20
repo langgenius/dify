@@ -106,7 +106,7 @@ function AgentWorkingDirectoryBreadcrumbItem({
       onClick={onClick}
       aria-current={active ? 'location' : undefined}
       className={cn(
-        'flex min-w-0 items-center justify-center gap-1 rounded-md py-0.5 pr-1 pl-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+        'flex min-w-0 items-center justify-center gap-1 rounded-md py-0.5 ps-0.5 pe-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
         active && 'text-text-secondary',
       )}
     >

@@ -26,7 +26,7 @@ export function AgentTemplateOrchestration({
   return (
     <section
       aria-labelledby={headingId}
-      className="flex min-w-0 basis-1/2 flex-col overflow-hidden bg-components-panel-bg pt-1 pr-1 pb-1 @max-[599px]/agent-preview:h-[65dvh] @max-[599px]/agent-preview:flex-none"
+      className="flex min-w-0 basis-1/2 flex-col overflow-hidden bg-components-panel-bg pe-1 pt-1 pb-1 @max-[599px]/agent-preview:h-[65dvh] @max-[599px]/agent-preview:flex-none"
     >
       <h2
         id={headingId}

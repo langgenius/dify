@@ -232,7 +232,7 @@ function SkillBuilderMessageAttachments({
         ) : (
           <div
             key={attachment.id}
-            className="flex max-w-56 items-center gap-2 rounded-lg border border-divider-subtle bg-background-default px-2.5 py-2 text-left text-text-secondary shadow-xs"
+            className="flex max-w-56 items-center gap-2 rounded-lg border border-divider-subtle bg-background-default px-2.5 py-2 text-start text-text-secondary shadow-xs"
             title={attachment.name}
           >
             <span aria-hidden className="i-ri-file-line size-4 shrink-0 text-text-tertiary" />
@@ -821,7 +821,7 @@ export function SkillBuilderPanel({
   return (
     <section
       aria-labelledby={titleId}
-      className="relative my-1 mr-1 flex w-99 shrink-0 flex-col overflow-hidden rounded-lg inset-ring-[0.5px] inset-ring-divider-subtle"
+      className="relative my-1 me-1 flex w-99 shrink-0 flex-col overflow-hidden rounded-lg inset-ring-[0.5px] inset-ring-divider-subtle"
     >
       <div
         aria-hidden
@@ -829,13 +829,13 @@ export function SkillBuilderPanel({
       />
       <SkillBuilderGridTexture
         aria-hidden
-        className="pointer-events-none absolute top-0 left-0 z-2"
+        className="pointer-events-none absolute inset-s-0 top-0 z-2"
       />
       <SkillBuilderGridTexture
         aria-hidden
-        className="pointer-events-none absolute bottom-0 left-0 z-1 origin-center scale-y-[-1]"
+        className="pointer-events-none absolute inset-s-0 bottom-0 z-1 origin-center scale-y-[-1]"
       />
-      <div className="relative z-10 flex h-12 shrink-0 items-center justify-between gap-2 pr-3 pl-4">
+      <div className="relative z-10 flex h-12 shrink-0 items-center justify-between gap-2 ps-4 pe-3">
         <h2 id={titleId} className="system-xs-semibold-uppercase text-text-secondary">
           {t(($) => $['skillManagement.detail.builder.title'])}
         </h2>
@@ -879,7 +879,7 @@ export function SkillBuilderPanel({
                 message.role === 'user' ? (
                   <div
                     key={message.id}
-                    className="flex w-full max-w-180 flex-col items-end gap-1 self-end pl-8"
+                    className="flex w-full max-w-180 flex-col items-end gap-1 self-end ps-8"
                   >
                     {!!message.attachments?.length && (
                       <SkillBuilderMessageAttachments attachments={message.attachments} />
@@ -956,7 +956,7 @@ export function SkillBuilderPanel({
                               <button
                                 key={suggestion}
                                 type="button"
-                                className="max-w-full cursor-pointer rounded-md border-[0.5px] border-divider-subtle bg-background-default px-2 py-1 text-right system-xs-medium text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
+                                className="max-w-full cursor-pointer rounded-md border-[0.5px] border-divider-subtle bg-background-default px-2 py-1 text-end system-xs-medium text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
                                 disabled={
                                   isSending || isUploadingAttachment || !canSendBuilderMessage
                                 }
@@ -980,7 +980,7 @@ export function SkillBuilderPanel({
               )}
             </div>
           ) : (
-            <div className="flex flex-col gap-3 px-3 text-left">
+            <div className="flex flex-col gap-3 px-3 text-start">
               <div className="flex flex-col items-start gap-3">
                 <SkillBuilderEmptyIcon />
                 <div className="flex w-full flex-col gap-1">
@@ -1004,7 +1004,7 @@ export function SkillBuilderPanel({
                     <button
                       key={suggestion}
                       type="button"
-                      className="inline-flex min-h-6 max-w-full cursor-pointer items-center rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-1.5 py-1 text-left shadow-xs outline-hidden hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex min-h-6 max-w-full cursor-pointer items-center rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-1.5 py-1 text-start shadow-xs outline-hidden hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
                       disabled={isSending || isUploadingAttachment || !canSendBuilderMessage}
                       onClick={() => handleSend(suggestion)}
                     >
@@ -1090,7 +1090,7 @@ export function SkillBuilderPanel({
                     onSelect={setSelectedModel}
                   />
                 </div>
-                <div className="ml-auto flex shrink-0 items-center gap-2">
+                <div className="ms-auto flex shrink-0 items-center gap-2">
                   <div className="flex items-center gap-0.5">
                     <button
                       type="button"

@@ -56,7 +56,7 @@ export function RAGToolRecommendations({
     <div className="flex flex-col p-1">
       <button
         type="button"
-        className="flex w-full items-center rounded-md px-3 pt-1 pb-0.5 text-left text-text-tertiary focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
+        className="flex w-full items-center rounded-md px-3 pt-1 pb-0.5 text-start text-text-tertiary focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
         aria-expanded={!isCollapsed}
         onClick={() => setIsCollapsed((prev) => !prev)}
       >
@@ -66,7 +66,7 @@ export function RAGToolRecommendations({
         <span
           aria-hidden="true"
           className={cn(
-            'ml-1 i-custom-vender-solid-arrows-arrow-down-round-fill size-4 text-text-tertiary transition-transform motion-reduce:transition-none',
+            'ms-1 i-custom-vender-solid-arrows-arrow-down-round-fill size-4 text-text-tertiary transition-transform motion-reduce:transition-none',
             isCollapsed && '-rotate-90',
           )}
         />
@@ -111,10 +111,10 @@ export function RAGToolRecommendations({
               <Button
                 variant="ghost"
                 size="medium"
-                className="w-full justify-start pr-2 pl-3 text-left focus-visible:ring-inset"
+                className="w-full justify-start ps-3 pe-2 text-start focus-visible:ring-inset"
                 onClick={onLoadMore}
               >
-                <div className="pl-1">
+                <div className="ps-1">
                   <span
                     aria-hidden="true"
                     className="i-ri-more-line block size-4 text-text-tertiary"

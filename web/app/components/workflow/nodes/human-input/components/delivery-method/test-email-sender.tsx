@@ -420,7 +420,7 @@ const EmailSenderContent = ({
                       <button
                         type="button"
                         onClick={jumpToEmailConfigModal}
-                        className="inline cursor-pointer border-none bg-transparent p-0 text-left system-xs-regular text-text-accent"
+                        className="inline cursor-pointer border-none bg-transparent p-0 text-start system-xs-regular text-text-accent"
                       />
                     ),
                   }}
@@ -438,10 +438,10 @@ const EmailSenderContent = ({
                 <button
                   type="button"
                   aria-expanded={!collapsed}
-                  className="group flex h-6 cursor-pointer items-center border-none bg-transparent p-0 text-left"
+                  className="group flex h-6 cursor-pointer items-center border-none bg-transparent p-0 text-start"
                   onClick={() => setCollapsed(!collapsed)}
                 >
-                  <div className="mr-1 system-sm-semibold-uppercase text-text-secondary">
+                  <div className="me-1 system-sm-semibold-uppercase text-text-secondary">
                     {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.vars`], {
                       ns: 'workflowHumanInput',
                     })}
