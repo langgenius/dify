@@ -1,3 +1,5 @@
+import io
+from pathlib import Path
 from types import SimpleNamespace
 
 import pandas as pd
@@ -33,6 +35,7 @@ class _FakeSheet:
         self._header_rows = header_rows
         self._data_rows = data_rows
         self._images = images or []
+        self.max_row = len(header_rows) + len(data_rows)
 
     def iter_rows(self, min_row=1, max_row=None, max_col=None, values_only=False):
         if values_only:
@@ -242,6 +245,59 @@ class TestExcelExtractor:
         assert first_docs[0].page_content == expected_page_content
         assert second_docs[0].page_content == expected_page_content
         assert len(saves) == 1
+
+    def test_extract_xlsx_keeps_trailing_image_only_rows_from_real_workbook(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        database_session_maker: sessionmaker[Session],
+    ) -> None:
+        import openpyxl
+        from openpyxl.drawing.image import Image as WorksheetImage
+        from PIL import Image as PILImage
+
+        png = io.BytesIO()
+        PILImage.new("RGB", (4, 4), "red").save(png, format="PNG")
+        image_bytes = png.getvalue()
+
+        path = tmp_path / "images.xlsx"
+        workbook = openpyxl.Workbook()
+        sheet = workbook.active
+        assert sheet is not None
+        sheet.append(["Question", "Answer", "Image"])
+        sheet.append(["Q1", "A1", None])
+        # Row 3 is just past the populated cells; row 12 is past the 10-row header scan.
+        sheet.add_image(WorksheetImage(io.BytesIO(image_bytes)), "C3")
+        sheet.add_image(WorksheetImage(io.BytesIO(image_bytes)), "C12")
+        workbook.save(path)
+        workbook.close()
+        saves = _patch_image_persistence(monkeypatch)
+
+        extractor = ExcelExtractor(
+            str(path),
+            tenant_id="tenant-1",
+            user_id="user-1",
+            source_file_id="source-file-1",
+        )
+        first_docs = extractor.extract()
+        second_docs = extractor.extract()
+        upload_files = _get_upload_files(database_session_maker)
+
+        upload_ids = {
+            row: next(upload_file.id for upload_file in upload_files if f"_r{row}_c3_" in upload_file.key)
+            for row in (3, 12)
+        }
+        expected_page_contents = [
+            '"Question":"Q1";"Answer":"A1";"Image":""',
+            *(
+                f'"Question":"";"Answer":"";"Image":"![image](http://files.local/files/{upload_ids[row]}/file-preview)"'
+                for row in (3, 12)
+            ),
+        ]
+        assert [doc.page_content for doc in first_docs] == expected_page_contents
+        assert [doc.page_content for doc in second_docs] == expected_page_contents
+        assert len(upload_files) == 2
+        assert sorted(saves) == sorted((upload_file.key, image_bytes) for upload_file in upload_files)
 
     def test_extract_xls_path(self, monkeypatch: pytest.MonkeyPatch):
         class FakeExcelFile:

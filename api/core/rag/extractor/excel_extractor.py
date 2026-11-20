@@ -96,7 +96,12 @@ class ExcelExtractor(BaseExtractor):
                         valid_columns={column_idx + 1 for column_idx in column_map},
                         min_row=start_row,
                     )
-                    for row in sheet.iter_rows(min_row=start_row, max_col=max_col_idx, values_only=False):
+                    # Image-only rows below the last populated cell have no cells of their own.
+                    image_rows = [anchor_row for anchor_row, _ in sheet_image_map]
+                    max_row = max([sheet.max_row or 0, *image_rows]) if image_rows else None
+                    for row in sheet.iter_rows(
+                        min_row=start_row, max_row=max_row, max_col=max_col_idx, values_only=False
+                    ):
                         page_content = []
                         row_has_content = False
                         for col_idx, cell in enumerate(row):
