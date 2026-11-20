@@ -49,11 +49,11 @@ import traceback
 from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+from enum import StrEnum
 from pathlib import Path
 from select import select as wait_readable
 from threading import Barrier, Event, Lock, Thread, get_ident
 from time import monotonic, sleep, time
-from typing import Literal
 from uuid import uuid4
 
 import pytest
@@ -78,6 +78,7 @@ from core.dify_builder.real_call_consent import (
     CredentialReference,
     GmailReadParameters,
     InstalledToolBinding,
+    RealCallDecision,
     confirmed_dispatch_headers,
 )
 from core.dify_builder.state import PcState
@@ -130,6 +131,7 @@ from models.enums import PermissionEnum
 from models.model import App, AppMode, DifySetup
 from models.tools import BuiltinToolProvider, ToolOAuthTenantClient
 from models.workflow import Workflow, WorkflowDraftVariable, WorkflowNodeExecutionModel, WorkflowRun
+from runtime_contracts.builder.execution import WorkflowExecutionTransport
 from schedule.dify_builder_reconcile_task import reconcile_interrupted_sessions
 from services.app_generate_service import AppGenerateService
 from services.dify_builder import real_call_consent_service, real_call_metadata, session_lock, wiring
@@ -170,6 +172,12 @@ from tests.e2e_tests.containers.core.workflow.test_builder_restricted_native imp
 from tests.e2e_tests.containers.core.workflow.test_builder_restricted_native import (
     native_owner as native_owner,  # noqa: PLC0414 - shared pytest fixture
 )
+
+
+class CrashPhase(StrEnum):
+    REFRESH = "refresh"
+    INVOKE = "invoke"
+
 
 FIXTURE = "gmail_confirmed_read.yml"
 TOOL_NODE = "gmail"
@@ -405,7 +413,7 @@ class Boundary:
     on_cache_delete: Callable[[], None] | None = None
     cache_error: Exception | None = None
     # Set only in a forked crash child: the process exits at that boundary.
-    crash_at: Literal["refresh", "invoke"] | None = None
+    crash_at: CrashPhase | None = None
     crash_fd: int | None = None
     lock: Lock = field(default_factory=Lock)
 
@@ -438,7 +446,7 @@ class Boundary:
                 "model_calls": len(self.model_calls) - models,
             }
 
-    def crash(self, phase: Literal["refresh", "invoke"]) -> None:
+    def crash(self, phase: CrashPhase) -> None:
         """Kill this forked child at ``phase`` without unwinding: no ``finally`` or outcome callback runs."""
         if self.crash_at != phase:
             return
@@ -634,7 +642,13 @@ def _write_report_frame(fd: int, report: dict[str, object]) -> None:
         remaining = remaining[os.write(fd, remaining) :]
 
 
-ReportStatus = Literal["complete", "timeout", "incomplete", "closed", "oversize", "malformed"]
+class ReportStatus(StrEnum):
+    COMPLETE = "complete"
+    TIMEOUT = "timeout"
+    INCOMPLETE = "incomplete"
+    CLOSED = "closed"
+    OVERSIZE = "oversize"
+    MALFORMED = "malformed"
 
 
 def _read_report_frame(fd: int, deadline: float) -> tuple[ReportStatus, dict[str, object] | None]:
@@ -653,17 +667,17 @@ def _read_report_frame(fd: int, deadline: float) -> tuple[ReportStatus, dict[str
         if len(buffer) >= _REPORT_HEADER.size:
             (length,) = _REPORT_HEADER.unpack_from(buffer)
             if length > _HOST_REPORT_BYTES:
-                return "oversize", None
+                return ReportStatus.OVERSIZE, None
             end = _REPORT_HEADER.size + length
             if len(buffer) >= end:
                 try:
                     decoded = json.loads(bytes(buffer[_REPORT_HEADER.size : end]).decode("utf-8"))
                 except ValueError:
-                    return "malformed", None
-                return ("complete", decoded) if isinstance(decoded, dict) else ("malformed", None)
+                    return ReportStatus.MALFORMED, None
+                return (ReportStatus.COMPLETE, decoded) if isinstance(decoded, dict) else (ReportStatus.MALFORMED, None)
         remaining = deadline - monotonic()
         if remaining <= 0:
-            return ("incomplete" if buffer else "timeout"), None
+            return (ReportStatus.INCOMPLETE if buffer else ReportStatus.TIMEOUT), None
         nothing: list[int] = []
         readable, _, _ = wait_readable([fd], nothing, nothing, remaining)
         if not readable:
@@ -673,7 +687,7 @@ def _read_report_frame(fd: int, deadline: float) -> tuple[ReportStatus, dict[str
         except BlockingIOError:
             continue
         if not chunk:
-            return ("incomplete" if buffer else "closed"), None
+            return (ReportStatus.INCOMPLETE if buffer else ReportStatus.CLOSED), None
         buffer += chunk
 
 
@@ -719,7 +733,7 @@ def _supervise_host(target: Callable[[int], None], *, name: str, seconds: float 
 
     host = ctx.Process(target=host_main, name=f"test-host-{name}", daemon=True)
     started = monotonic()
-    status: ReportStatus = "timeout"
+    status: ReportStatus = ReportStatus.TIMEOUT
     report: dict[str, object] | None = None
     host_alive = False
     exitcode: int | None = None
@@ -900,7 +914,7 @@ class Gmail:
             actor=self.actor,
             session_id=self.session_id,
             consent_id=prepared.consent_id,
-            decision="confirm",
+            decision=RealCallDecision.CONFIRM,
             scope_digest=prepared.scope_digest,
             at_version=prepared.at_version,
             idempotency_key=key,
@@ -1284,7 +1298,7 @@ def gmail(
         boundary.mark("refresh")
         assert method == "POST"
         boundary.refresh_calls.append(_call(path, kwargs))
-        boundary.crash("refresh")
+        boundary.crash(CrashPhase.REFRESH)
         if boundary.on_refresh is not None:
             boundary.on_refresh()
         return iter([PluginOAuthCredentialsResponse(credentials=REFRESHED, expires_at=int(time()) + 3600)])
@@ -1292,7 +1306,7 @@ def gmail(
     def invoke_stream(
         _self: PluginToolManager, method: str, path: str, _type: type, **kwargs: object
     ) -> Iterator[ToolInvokeMessage]:
-        boundary.crash("invoke")
+        boundary.crash(CrashPhase.INVOKE)
         boundary.mark("invoke")
         assert method == "POST"
         assert path.endswith("/dispatch/tool/invoke"), path
@@ -1716,7 +1730,7 @@ def test_ordinary_native_gmail_workflow_stays_ordinary(gmail: Gmail) -> None:
             InvokeFrom.DEBUGGER,
             session=session,
             streaming=True,
-            workflow_execution_mode="in_process",
+            workflow_execution_mode=WorkflowExecutionTransport.IN_PROCESS,
         )
     native_id = ""
     try:
@@ -2034,7 +2048,11 @@ def test_duplicate_native_launches_create_one_run(gmail: Gmail) -> None:
     assert len(observed.invoke_calls) == 1
 
 
-_STALLED_REPORT: dict[str, ReportStatus] = {"silent": "timeout", "partial_frame": "incomplete", "oversize": "oversize"}
+_STALLED_REPORT: dict[str, ReportStatus] = {
+    "silent": ReportStatus.TIMEOUT,
+    "partial_frame": ReportStatus.INCOMPLETE,
+    "oversize": ReportStatus.OVERSIZE,
+}
 
 
 def _stalled_host(kind: str) -> Callable[[int], None]:
@@ -2197,7 +2215,7 @@ def test_completion_of_a_dispatched_phase_after_expiry_is_recorded(gmail: Gmail)
 # -- crash boundaries (forked children killed mid-call) -------------------------------------------
 
 
-def _crash_in_child(gmail: Gmail, reserved: ConsentReceipt, phase: Literal["refresh", "invoke"]) -> dict[str, object]:
+def _crash_in_child(gmail: Gmail, reserved: ConsentReceipt, phase: CrashPhase) -> dict[str, object]:
     """Run the real port in a forked child that is killed (``os._exit``) at ``phase``; return its facts.
 
     Process death is the crash: no ``finally``, outcome callback, seal or settlement runs in the
@@ -2277,7 +2295,7 @@ def test_crash_after_refresh_claim_before_persistence_settles_unknown_once(gmail
     reserved = gmail.reserved()
     assert reserved.execution_request_id is not None
     before = gmail.credential().encrypted_credentials
-    facts = _crash_in_child(gmail, reserved, "refresh")
+    facts = _crash_in_child(gmail, reserved, CrashPhase.REFRESH)
     assert (facts.get("refresh_calls"), facts.get("invoke_calls")) == (1, 0)
 
     row = gmail.consent(reserved.consent_id)
@@ -2300,7 +2318,7 @@ def test_crash_after_refresh_claim_before_persistence_settles_unknown_once(gmail
 def test_crash_after_business_claim_before_transport_settles_unknown_once(gmail: Gmail) -> None:
     reserved = gmail.reserved()
     assert reserved.execution_request_id is not None
-    facts = _crash_in_child(gmail, reserved, "invoke")
+    facts = _crash_in_child(gmail, reserved, CrashPhase.INVOKE)
     assert (facts.get("refresh_calls"), facts.get("invoke_calls")) == (0, 0)
 
     row = gmail.consent(reserved.consent_id)

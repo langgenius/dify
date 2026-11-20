@@ -10,6 +10,14 @@ be written straight into a draft workflow.
 from enum import StrEnum
 from typing import Literal, NotRequired, TypedDict
 
+from runtime_contracts.builder.string_enum import BuilderStringEnum
+
+
+class WorkflowGraphMode(BuilderStringEnum):
+    WORKFLOW = "workflow"
+    ADVANCED_CHAT = "advanced-chat"
+
+
 WorkflowGenerationMode = Literal["workflow", "advanced-chat"]
 
 # The mode accepted at the API boundary. ``auto`` is a sentinel that delegates

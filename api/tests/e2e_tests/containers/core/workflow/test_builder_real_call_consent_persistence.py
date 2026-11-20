@@ -46,6 +46,7 @@ from core.dify_builder.real_call_consent import (
     GmailReadParameters,
     InstalledToolBinding,
     Phase,
+    RealCallDecision,
 )
 from core.dify_builder.state import PcState
 from core.plugin.entities.plugin_daemon import CredentialType
@@ -225,7 +226,7 @@ class World:
             actor=self.actor,
             session_id=self.session_id,
             consent_id=prepared.consent_id,
-            decision="confirm",
+            decision=RealCallDecision.CONFIRM,
             scope_digest=prepared.scope_digest,
             at_version=prepared.at_version,
             idempotency_key="confirm-1",
@@ -660,7 +661,7 @@ def test_postgres_spend_blocked_on_row_lock_across_expiry_is_refused(world: Worl
         reserved, binding = world.claimed()
 
         def spend_with(service: BuilderRealCallConsentService) -> object:
-            service.claim_phase(binding=binding, phase="business", final_parameters=APPROVED)
+            service.claim_phase(binding=binding, phase=Phase.BUSINESS, final_parameters=APPROVED)
             return "spent"
 
     expires_at = world.consent(reserved.consent_id).expires_at.replace(tzinfo=UTC)
@@ -724,7 +725,7 @@ def test_postgres_spend_blocked_on_row_lock_across_expiry_is_refused(world: Worl
 def test_postgres_refresh_cas_never_overwrites_same_timestamp_rotation(world: World) -> None:
     reserved, binding = world.claimed()
     initial = world.reference_revision()
-    world.service().claim_phase(binding=binding, phase="refresh", final_parameters=None)
+    world.service().claim_phase(binding=binding, phase=Phase.REFRESH, final_parameters=None)
     rotated = '{"access_token":"rotated-by-native-writer"}'
 
     def finish() -> str:
@@ -755,7 +756,7 @@ def test_postgres_concurrent_client_change_never_admits_a_stale_business_claim(w
     reserved, binding = world.claimed()
 
     def spend() -> str:
-        world.service().claim_phase(binding=binding, phase="business", final_parameters=APPROVED)
+        world.service().claim_phase(binding=binding, phase=Phase.BUSINESS, final_parameters=APPROVED)
         return "spent"
 
     def change_client() -> str:

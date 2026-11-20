@@ -12,6 +12,7 @@ from core.app.features.rate_limiting import RateLimit
 from models.enums import EndUserType
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow
+from runtime_contracts.builder.execution import WorkflowExecutionTransport
 from services.app_generate_service import AppGenerateService
 from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
 from tests.unit_tests.services.dify_builder.native_testing.test_agent_context import marker
@@ -42,7 +43,9 @@ def test_confirmed_agent_refuses_unsupported_entry_before_guardrails(
             args={"inputs": {}},
             invoke_from=InvokeFrom.SERVICE_API if case == "published" else InvokeFrom.DEBUGGER,
             session=session,
-            workflow_execution_mode="celery" if case == "celery" else "in_process",
+            workflow_execution_mode=WorkflowExecutionTransport.CELERY
+            if case == "celery"
+            else WorkflowExecutionTransport.IN_PROCESS,
             builder_execution=context() if case == "restricted" else None,
             builder_agent_execution=marker(),
         )
@@ -82,7 +85,7 @@ def test_confirmed_agent_server_context_and_preallocated_run_reach_workflow(
                 args={"inputs": {}, "builder_agent_execution": marker().model_dump(mode="json")},
                 invoke_from=InvokeFrom.DEBUGGER,
                 session=session,
-                workflow_execution_mode="in_process",
+                workflow_execution_mode=WorkflowExecutionTransport.IN_PROCESS,
                 builder_agent_execution=context,
             )
         )
@@ -114,7 +117,7 @@ def test_effective_agent_mode_cannot_drop_context(monkeypatch: pytest.MonkeyPatc
             session=Session(),
             rate_limit=RateLimit("app", 0),
             request_id="request",
-            workflow_execution_mode="in_process",
+            workflow_execution_mode=WorkflowExecutionTransport.IN_PROCESS,
             builder_agent_execution=marker(),
         )
     assert calls == []

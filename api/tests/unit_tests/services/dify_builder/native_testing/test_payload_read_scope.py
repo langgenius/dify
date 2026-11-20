@@ -267,8 +267,8 @@ def waiting_read_case(owned: Owned, state_case: AgentStateCase, monkeypatch: pyt
         objects.append(receipt)
         return receipt
 
-    context_object = save("context", "context", context.model_dump(mode="json"))
-    inputs = save("result", "node-input:" + c.parent.execution_id, {"typed": [True, 1, "1"]})
+    context_object = save(PayloadKind.CONTEXT, "context", context.model_dump(mode="json"))
+    inputs = save(PayloadKind.RESULT, "node-input:" + c.parent.execution_id, {"typed": [True, 1, "1"]})
     parent = AgentParentNodeRef(
         ref=ref,
         execution_id=c.parent.execution_id,
@@ -306,7 +306,7 @@ def waiting_read_case(owned: Owned, state_case: AgentStateCase, monkeypatch: pyt
     }
     config = store._agent_executable_config(config, parent)
     config_object = save(
-        "result",
+        PayloadKind.RESULT,
         store._agent_key("agent-config", parent),
         {
             "schema": "agent-config-v2",
@@ -327,7 +327,9 @@ def waiting_read_case(owned: Owned, state_case: AgentStateCase, monkeypatch: pyt
         home_snapshot_id="home",
         workspace=workspace,
     )
-    association_object = save("result", store._agent_key("agent-bind", parent), association.model_dump(mode="json"))
+    association_object = save(
+        PayloadKind.RESULT, store._agent_key("agent-bind", parent), association.model_dump(mode="json")
+    )
     backend_checkpoint: dict[str, JsonValue] = {
         "run_id": association.agent_run_id,
         "ref": ref.model_dump(mode="json"),
@@ -336,7 +338,7 @@ def waiting_read_case(owned: Owned, state_case: AgentStateCase, monkeypatch: pyt
         "generation": 0,
     }
     agent_checkpoint = save(
-        "result",
+        PayloadKind.RESULT,
         store._agent_key("agent-cp", parent, 0),
         {
             "schema": "agent-checkpoint-v1",
@@ -377,7 +379,7 @@ def waiting_read_case(owned: Owned, state_case: AgentStateCase, monkeypatch: pyt
         ),
     )
     checkpoint = save(
-        "checkpoint",
+        PayloadKind.CHECKPOINT,
         "waiting",
         NativeCheckpointPayload(
             schema_version="1",
@@ -422,7 +424,7 @@ def waiting_read_case(owned: Owned, state_case: AgentStateCase, monkeypatch: pyt
         destructive=False,
     )
     save(
-        "result",
+        PayloadKind.RESULT,
         "agent-intent:" + operation_digest(key),
         {
             "intent": intent.model_dump(mode="json"),
@@ -857,7 +859,7 @@ def test_scope_byte_limit_falls_back_to_uncached_read(state_case: AgentStateCase
     receipt = c.store.prepare_object(
         ref=c.ref,
         tenant_id="tenant",
-        kind="result",
+        kind=PayloadKind.RESULT,
         logical_key="large",
         payload="x" * (store_module._PAYLOAD_READ_MAX_BYTES // 2),
     )

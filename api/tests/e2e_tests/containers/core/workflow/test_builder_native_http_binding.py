@@ -10,14 +10,15 @@ whole-run Graphon trace/privacy/driver activation.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Literal, NotRequired, Unpack
+from typing import TYPE_CHECKING, NotRequired, Unpack
 
 from pydantic import JsonValue
 from typing_extensions import TypedDict
 
 from models.workflow import Workflow
-from runtime_contracts.builder.native.contracts import DispatchPermit, NativeTestContextRef
+from runtime_contracts.builder.native.contracts import DispatchPermit, NativeTestContextRef, Outcome
 from runtime_contracts.builder.native.runtime_contracts import NodeJournalState
+from services.dify_builder.native_testing.authorization import EffectApprovalDecision
 from services.dify_builder.native_testing.control import NativeControlRecord
 from services.dify_builder.native_testing.runtime_bridge import NativeNodePreparation
 from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import (
@@ -472,7 +473,7 @@ def test_real_http_current_config_drift_stops_before_dispatch(
         c.auth.decide(
             ref=c.ref,
             intent=intent,
-            decision="approved",
+            decision=EffectApprovalDecision.APPROVED,
             max_calls=1,
             max_dispatches=1,
             max_cost_units=1,
@@ -648,7 +649,7 @@ def test_real_http_qualified_same_workflow_child_uses_local_generation_and_ances
 
 @pytest.mark.parametrize("outcome", ["completed", "unknown"])
 def test_real_http_one_accounting_unit_and_native_correlation_spent_once(
-    http_case: HttpBindingCase, outcome: Literal["completed", "failed", "unknown", "not_dispatched"]
+    http_case: HttpBindingCase, outcome: Outcome
 ) -> None:
     from models.dify_builder_native_tests import NativeEffectAttempt
     from runtime_contracts.builder.native.contracts import RecordedResult
@@ -660,7 +661,7 @@ def test_real_http_one_accounting_unit_and_native_correlation_spent_once(
     c.auth.decide(
         ref=c.ref,
         intent=intent,
-        decision="approved",
+        decision=EffectApprovalDecision.APPROVED,
         max_calls=1,
         max_dispatches=1,
         max_cost_units=1,
@@ -674,7 +675,7 @@ def test_real_http_one_accounting_unit_and_native_correlation_spent_once(
     c.auth.decide(
         ref=c.ref,
         intent=intent,
-        decision="approved",
+        decision=EffectApprovalDecision.APPROVED,
         max_calls=1,
         max_dispatches=1,
         max_cost_units=1,
@@ -689,7 +690,7 @@ def test_real_http_one_accounting_unit_and_native_correlation_spent_once(
     c.auth.decide(
         ref=c.ref,
         intent=intent,
-        decision="approved",
+        decision=EffectApprovalDecision.APPROVED,
         max_calls=1,
         max_dispatches=1,
         max_cost_units=1,
@@ -787,7 +788,7 @@ def _confirmed_http_resume(
     command: PublicDecisionArguments = {
         "ref": c.ref,
         "intent": resolved.intent,
-        "decision": "approved",
+        "decision": EffectApprovalDecision.APPROVED,
         "max_calls": guard.terms.max_calls,
         "max_dispatches": guard.terms.max_dispatches,
         "max_cost_units": guard.terms.max_cost_units,
@@ -853,7 +854,7 @@ def _complete_confirmed_http(c: HttpBindingCase, prepared: PreparedHttpCase) -> 
         c.auth.claim_dispatch(ref=c.ref, intent=restored.binding.intent, permit=permit)
     # Local complete result witness: this SQL test invokes no HTTP transport.
     result_ref = c.store.store_result(ref=c.ref, key=restored.binding.intent.key, result={"closed": True})
-    c.auth.record_outcome(permit=permit, outcome="completed", result_ref=result_ref)
+    c.auth.record_outcome(permit=permit, outcome=Outcome.COMPLETED, result_ref=result_ref)
     assert cursor.before_call(intent=restored.binding.intent) == RecordedResult(
         operation_id=permit.operation_id, result_ref=result_ref
     )

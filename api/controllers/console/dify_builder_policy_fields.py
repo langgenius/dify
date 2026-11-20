@@ -1,11 +1,29 @@
 """Safe Workspace policy DTOs: native references and ordinary generation controls."""
 
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StringConstraints, model_validator
 
 from fields.base import ResponseModel
-from services.dify_builder.application.cognition_policy import CognitionModel, CognitionPolicy
+from runtime_contracts.builder.string_enum import BuilderStringEnum
+from services.dify_builder.application.cognition_policy import (
+    CognitionModel,
+    CognitionModelHealth,
+    CognitionPolicy,
+    CognitionPolicySource,
+)
+
+
+class CognitionModelMode(BuilderStringEnum):
+    CHAT = "chat"
+    COMPLETION = "completion"
+
+
+class CognitionPolicyReason(BuilderStringEnum):
+    BUILDER_DISABLED = "builder_disabled"
+    MODEL_UNAVAILABLE = "model_unavailable"
+    MODEL_AVAILABILITY_UNKNOWN = "model_availability_unknown"
+
 
 Reference = Annotated[str, StringConstraints(min_length=1, max_length=255)]
 
@@ -15,7 +33,7 @@ class CognitionModelPayload(BaseModel):
     id: Reference
     provider: Reference
     name: Reference
-    mode: Literal["chat", "completion"]
+    mode: CognitionModelMode
     completion_params: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")
@@ -39,7 +57,7 @@ class DifyBuilderPolicyPayload(BaseModel):
             self.default_model_id,
             tuple(self.fallback_model_ids),
             0,
-            "explicit",
+            CognitionPolicySource.EXPLICIT,
         )
 
 
@@ -49,7 +67,7 @@ class CognitionModelResponse(ResponseModel):
     name: str
     mode: str
     completion_params: dict[str, Any]
-    health: Literal["configured", "unavailable", "unknown"]
+    health: CognitionModelHealth
 
 
 class DifyBuilderPolicyResponse(ResponseModel):
@@ -58,9 +76,9 @@ class DifyBuilderPolicyResponse(ResponseModel):
     default_model_id: str | None
     fallback_model_ids: list[str]
     revision: int
-    source: Literal["explicit", "workspace_default"]
+    source: CognitionPolicySource
     available: bool
-    reason_code: Literal["builder_disabled", "model_unavailable", "model_availability_unknown"] | None
+    reason_code: CognitionPolicyReason | None
 
 
 class DifyBuilderAvailabilityResponse(DifyBuilderPolicyResponse):

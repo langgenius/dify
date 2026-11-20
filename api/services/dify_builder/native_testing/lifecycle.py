@@ -8,6 +8,7 @@ Qualified native adapters must supply actual execution/termination evidence.
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
+from enum import StrEnum
 from re import fullmatch
 from typing import TYPE_CHECKING, Literal, Protocol, Self
 
@@ -66,6 +67,13 @@ from services.dify_builder.native_testing.transitions import (
     validate_pending_history,
 )
 
+
+class NativeRecoveryEvidence(StrEnum):
+    NOT_STARTED = "not_started"
+    STOPPED = "stopped"
+    UNKNOWN = "unknown"
+
+
 if TYPE_CHECKING:
     from services.dify_builder.native_testing.agent_recovery import RecoveryPendingState
     from services.dify_builder.native_testing.host_capacity import NativeHostCapacity
@@ -122,7 +130,7 @@ def revoke_request_authority(session, *, request_id: str, tenant_id: str, cancel
 class NativePendingResolution(FrozenDTO):
     """Facts from the actual configuration/form owner, never client completion flags."""
 
-    category: Literal["configuration", "interaction"]
+    category: Literal[WaitReason.CONFIGURATION, WaitReason.INTERACTION]
     invocation_id: ID
     pending_action_id: ID
     owner_ref: ID
@@ -172,9 +180,7 @@ class NativeRuntimePort(Protocol):
         """Legacy generic C03 receipt; production uses exact capacity SQL ACKs instead."""
         ...
 
-    def recovery_evidence(
-        self, *, context: ResolvedNativeTestContext, dispatch_id: str
-    ) -> Literal["not_started", "stopped", "unknown"]:
+    def recovery_evidence(self, *, context: ResolvedNativeTestContext, dispatch_id: str) -> NativeRecoveryEvidence:
         """Fence the complete native subtree, never infer proof from a lease timeout.
 
         'stopped' proves neither the old root nor any child execution can continue.
@@ -497,7 +503,7 @@ class NativeTestLifecycleService:
             ):
                 raise BuilderExecutionPolicyError("native_wait_conflict")
             reasons = {row.category for row in rows}
-            priority: tuple[WaitReason, ...] = ("configuration", "interaction", "approval")
+            priority: tuple[WaitReason, ...] = (WaitReason.CONFIGURATION, WaitReason.INTERACTION, WaitReason.APPROVAL)
             reason = next(reason for reason in priority if reason in reasons)
             state.state, state.checkpoint_id = "waiting", checkpoint.checkpoint_id
             state.pending_ids, state.wait_reason = list(pending_operation_ids), reason

@@ -32,6 +32,43 @@ from runtime_contracts.builder.native.contracts import (
     FrozenDTO,
     WaitReason,
 )
+from runtime_contracts.builder.native.runtime_contracts import NativeTestMode
+from runtime_contracts.builder.string_enum import BuilderStringEnum
+
+
+class NativeTestDecision(BuilderStringEnum):
+    CONFIRM = "confirm"
+    DENY = "deny"
+
+
+class DecisionStatus(BuilderStringEnum):
+    AWAITING_DECISION = "awaiting_decision"
+    CONFIRMED = "confirmed"
+    DENIED = "denied"
+    EXPIRED = "expired"
+    EXHAUSTED = "exhausted"
+
+
+class NativePublicStatus(BuilderStringEnum):
+    PREPARED = "prepared"
+    RUNNING = "running"
+    WAITING = "waiting"
+    TERMINAL = "terminal"
+
+
+class NativePublicOutcome(BuilderStringEnum):
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+    UNKNOWN = "unknown"
+
+
+class ResumeBlockedReason(BuilderStringEnum):
+    NOT_WAITING = "not_waiting"
+    APPROVAL_REQUIRED = "approval_required"
+    NATIVE_RESOLUTION_UNAVAILABLE = "native_resolution_unavailable"
+    STATE_UNAVAILABLE = "state_unavailable"
+    NATIVE_EXPIRED = "native_expired"
 
 
 class NativeTestInputBinding(FrozenDTO):
@@ -49,14 +86,14 @@ class NativeTestStartPayload(FrozenDTO):
     schema_version: Literal["builder-native-test-v1"]
     test_input_id: ID
     expected_version: Counter
-    mode: Literal["native", "mock"]
+    mode: NativeTestMode
     idempotency_key: ID
 
 
 class NativeTestDecisionPayload(FrozenDTO):
     schema_version: Literal["builder-native-test-v1"]
     pending_operation_id: ID
-    decision: Literal["confirm", "deny"]
+    decision: NativeTestDecision
     scope_digest: Digest
     expected_version: Counter
     idempotency_key: ID
@@ -86,8 +123,8 @@ class PendingActionDisclosure(FrozenDTO):
     required_configuration: tuple[ID, ...]
     native_form_ref: ID | None
     approval_limits: NativeApprovalTerms | None
-    decision: Literal["confirm", "deny"] | None = None
-    decision_status: Literal["awaiting_decision", "confirmed", "denied", "expired", "exhausted"] | None = None
+    decision: NativeTestDecision | None = None
+    decision_status: DecisionStatus | None = None
     continuation_blocked_reason: Literal["native_resolution_unavailable"] | None = None
 
     @model_validator(mode="after")
@@ -112,21 +149,16 @@ class NativeTestPublicReceipt(FrozenDTO):
     request_id: ID
     generation: Counter
     version: Counter
-    status: Literal["prepared", "running", "waiting", "terminal"]
+    status: NativePublicStatus
     wait_reason: WaitReason | None
     native_run_id: ID | None
     native_status: str | None
     pending: tuple[PendingActionDisclosure, ...]
-    outcome: Literal["succeeded", "failed", "cancelled", "unknown"] | None
+    outcome: NativePublicOutcome | None
     evidence_refs: tuple[ID, ...]
     canvas_path: NativeCanvasPath | None = None
     cancellation: CancellationReceipt | None = None
     # Order with generation; version retains its existing execution semantics.
     decision_public_revision: Counter = 0
     can_resume: bool = False
-    resume_blocked_reason: (
-        Literal[
-            "not_waiting", "approval_required", "native_resolution_unavailable", "state_unavailable", "native_expired"
-        ]
-        | None
-    ) = "state_unavailable"
+    resume_blocked_reason: ResumeBlockedReason | None = ResumeBlockedReason.STATE_UNAVAILABLE

@@ -8,9 +8,10 @@ from collections.abc import Generator
 from contextlib import AbstractContextManager, contextmanager
 from dataclasses import dataclass
 from datetime import datetime
+from enum import StrEnum
 from functools import cache
 from sys import exc_info
-from typing import Any, ClassVar, Literal, Protocol, runtime_checkable
+from typing import Any, ClassVar, Protocol, runtime_checkable
 from uuid import uuid4
 
 from pydantic import ValidationError
@@ -112,7 +113,17 @@ class NativeControlSink(Protocol):
     def record_control(self, *, record: NativeControlRecord) -> NativeControlAccepted | NativeControlRefused: ...
 
 
-BoundaryStatus = Literal["OPEN", "CONTROL_PENDING", "WAIT_RECORDED", "STOP_RECORDED", "UNKNOWN_NONRESUMABLE"]
+class NativeNodePhase(StrEnum):
+    RUN = "run"
+    RESUME_CONTAINER = "resume_container"
+
+
+class BoundaryStatus(StrEnum):
+    OPEN = "OPEN"
+    CONTROL_PENDING = "CONTROL_PENDING"
+    WAIT_RECORDED = "WAIT_RECORDED"
+    STOP_RECORDED = "STOP_RECORDED"
+    UNKNOWN_NONRESUMABLE = "UNKNOWN_NONRESUMABLE"
 
 
 class NativeNodeOwnership(Protocol):
@@ -122,7 +133,7 @@ class NativeNodeOwnership(Protocol):
     scope exit. This port grants no dispatch, checkpoint or wait authority.
     """
 
-    def node_scope(self, *, node: Node, phase: Literal["run", "resume_container"]) -> AbstractContextManager[None]: ...
+    def node_scope(self, *, node: Node, phase: NativeNodePhase) -> AbstractContextManager[None]: ...
 
 
 class BoundaryOwnerState:
@@ -163,15 +174,15 @@ class BoundaryOwnerState:
     @property
     def status(self) -> BoundaryStatus:
         if self._reason_code is not None:
-            return "UNKNOWN_NONRESUMABLE"
+            return BoundaryStatus.UNKNOWN_NONRESUMABLE
         if any(
             isinstance(record.control, NativePolicyStop) and record.carrier_ref in self._accepted
             for record in self._records
         ):
-            return "STOP_RECORDED"
+            return BoundaryStatus.STOP_RECORDED
         if len(self._accepted) != len(self._records):
-            return "CONTROL_PENDING"
-        return "WAIT_RECORDED" if self._records else "OPEN"
+            return BoundaryStatus.CONTROL_PENDING
+        return BoundaryStatus.WAIT_RECORDED if self._records else BoundaryStatus.OPEN
 
     def _begin(self, record: NativeControlRecord) -> None:
         # Retain facts and deny new dispatch before calling host code. Each
@@ -265,7 +276,7 @@ class _NativeControlBoundary:
         )
 
     @contextmanager
-    def _observe_node(self, phase: Literal["run", "resume_container"]) -> Generator[bool]:
+    def _observe_node(self, phase: NativeNodePhase) -> Generator[bool]:
         """Contain observer failures only, ignoring any exception suppression.
 
         Entry is lazy and follows execution binding validation. The scope stays
@@ -300,7 +311,7 @@ class _NativeControlBoundary:
         execution_id = self._control_execution_id()
         if execution_id is None:
             return
-        with self._observe_node("run") as entered:
+        with self._observe_node(NativeNodePhase.RUN) as entered:
             if not entered:
                 return
             try:
@@ -312,7 +323,7 @@ class _NativeControlBoundary:
         execution_id = self._control_execution_id()
         if execution_id is None:
             return
-        with self._observe_node("resume_container") as entered:
+        with self._observe_node(NativeNodePhase.RESUME_CONTAINER) as entered:
             if not entered:
                 return
             try:

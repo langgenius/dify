@@ -26,6 +26,7 @@ from runtime_contracts.builder.execution import (
     BuilderExecutionObservation,
     BuilderExecutionPolicyError,
     BuilderExecutionRecorder,
+    ExecutionObservationKind,
     canonical_digest,
 )
 from services.dify_builder.application.execution_policy import (
@@ -267,7 +268,7 @@ class RestrictedHttpClient:
     def _record(
         self,
         *,
-        kind: Literal["effect_blocked", "fixture_served"],
+        kind: Literal[ExecutionObservationKind.EFFECT_BLOCKED, ExecutionObservationKind.FIXTURE_SERVED],
         reason: str,
         invocation_id: str,
         request_hmac: str | None = None,
@@ -289,13 +290,19 @@ class RestrictedHttpClient:
         )
 
     def deny_file(self) -> NoReturn:
-        self._record(kind="effect_blocked", reason="http_file_capability", invocation_id=str(uuid4()))
+        self._record(
+            kind=ExecutionObservationKind.EFFECT_BLOCKED, reason="http_file_capability", invocation_id=str(uuid4())
+        )
         raise PolicyTransportError("execution_policy: http_file_capability")
 
     def _respond(self, method: str, url: str, kwargs: Mapping[str, Any]) -> HttpResponse:
         invocation_id = str(uuid4())
         if method not in {"GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"} or not _valid_request(url, kwargs):
-            self._record(kind="effect_blocked", reason="http_request_arguments", invocation_id=invocation_id)
+            self._record(
+                kind=ExecutionObservationKind.EFFECT_BLOCKED,
+                reason="http_request_arguments",
+                invocation_id=invocation_id,
+            )
             raise PolicyTransportError("execution_policy: http_request_arguments")
         request = canonical_digest(
             {
@@ -311,14 +318,17 @@ class RestrictedHttpClient:
         fixture = next((fixture for fixture in self._context.http_fixtures if fixture.node_id == self._node_id), None)
         if fixture is None:
             self._record(
-                kind="effect_blocked",
+                kind=ExecutionObservationKind.EFFECT_BLOCKED,
                 reason="http_fixture_missing",
                 invocation_id=invocation_id,
                 request_hmac=request_hmac,
             )
             raise PolicyTransportError("execution_policy: http_fixture_missing")
         self._record(
-            kind="fixture_served", reason="http_fixture_served", invocation_id=invocation_id, request_hmac=request_hmac
+            kind=ExecutionObservationKind.FIXTURE_SERVED,
+            reason="http_fixture_served",
+            invocation_id=invocation_id,
+            request_hmac=request_hmac,
         )
         return HttpResponse(
             status_code=fixture.status_code,

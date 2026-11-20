@@ -7,6 +7,7 @@ credentials and client-declared grants are not part of this protocol.
 
 import re
 from datetime import datetime, timedelta
+from enum import StrEnum
 from typing import Annotated, Literal
 
 from pydantic import (
@@ -28,6 +29,37 @@ from runtime_contracts.builder.execution import (
     canonical_digest,
     canonical_json,
 )
+from runtime_contracts.builder.string_enum import BuilderStringEnum
+
+
+class NativeAgentTestProfile(StrEnum):
+    ISOLATED = "isolated"
+    CONFIRMED = "confirmed"
+
+
+class EffectKind(BuilderStringEnum):
+    CODE = "code"
+    MODEL = "model"
+    HTTP = "http"
+    TOOL = "tool"
+    OAUTH = "oauth"
+    KNOWLEDGE = "knowledge"
+    FILE = "file"
+    SHELL = "shell"
+    BOOTSTRAP = "bootstrap"
+
+
+class ResumeStatus(BuilderStringEnum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    WAITING = "waiting"
+    TERMINAL = "terminal"
+
+
+class CancellationStatus(BuilderStringEnum):
+    CANCELLING = "cancelling"
+    CANCELLED = "cancelled"
+    UNKNOWN = "unknown"
 
 
 def _utf8(value: str) -> str:
@@ -48,8 +80,19 @@ def _finite_json(value: object) -> JsonValue:
 
 
 FiniteJSON = Annotated[JsonValue, BeforeValidator(_finite_json)]
-Outcome = Literal["completed", "failed", "unknown", "not_dispatched"]
-WaitReason = Literal["approval", "configuration", "interaction"]
+
+
+class Outcome(BuilderStringEnum):
+    COMPLETED = "completed"
+    FAILED = "failed"
+    UNKNOWN = "unknown"
+    NOT_DISPATCHED = "not_dispatched"
+
+
+class WaitReason(BuilderStringEnum):
+    APPROVAL = "approval"
+    CONFIGURATION = "configuration"
+    INTERACTION = "interaction"
 
 
 def _utc_timestamp(value: str) -> str:
@@ -90,7 +133,7 @@ class OperationKey(FrozenDTO):
 
 class EffectIntent(FrozenDTO):
     key: OperationKey
-    kind: Literal["code", "model", "http", "tool", "oauth", "knowledge", "file", "shell", "bootstrap"]
+    kind: EffectKind
     resource_ref: ID
     implementation_revision: ID
     account_ref: ID | None
@@ -111,7 +154,7 @@ class DispatchPermit(FrozenDTO):
 class ApprovalWait(FrozenDTO):
     kind: Literal["waiting"] = "waiting"
     pending_operation_id: ID
-    wait_reason: WaitReason = "approval"
+    wait_reason: WaitReason = WaitReason.APPROVAL
 
 
 class RecordedResult(FrozenDTO):
@@ -153,13 +196,13 @@ class ResumeReceipt(FrozenDTO):
     request_id: ID
     generation: Counter
     dispatch_id: ID
-    status: Literal["queued", "running", "waiting", "terminal"]
+    status: ResumeStatus
 
 
 class CancellationReceipt(FrozenDTO):
     request_id: ID
     generation: Counter
-    status: Literal["cancelling", "cancelled", "unknown"]
+    status: CancellationStatus
     # Public outcome projection, never private queued/claimed ledger states.
     operation_states: Annotated[dict[ID, Outcome], Field(max_length=4096)]
 

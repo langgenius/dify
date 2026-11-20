@@ -6,6 +6,7 @@ Explicit queue/runtime counters prove orchestration, not native Graphon reconstr
 from __future__ import annotations
 
 from collections.abc import Callable, Generator
+from enum import StrEnum
 from multiprocessing.connection import Connection as ProcessConnection
 from typing import TYPE_CHECKING, Literal, Never, Unpack, override
 
@@ -13,7 +14,16 @@ from pydantic import JsonValue
 from sqlalchemy import Engine
 
 from models.workflow import Workflow
-from runtime_contracts.builder.native.contracts import ApprovalWait, DispatchPermit, EffectIntent, RecordedResult
+from runtime_contracts.builder.native.contracts import (
+    ApprovalWait,
+    DispatchPermit,
+    EffectIntent,
+    Outcome,
+    RecordedResult,
+)
+from runtime_contracts.builder.native.runtime_contracts import NativeWorkflowStatus
+from services.dify_builder.native_testing.lifecycle import NativeRecoveryEvidence
+from services.dify_builder.native_testing.repository import EffectApprovalScope
 from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import (
     NativeDeliveryMessage,
     NativeRuntimeWitness,
@@ -47,6 +57,7 @@ from runtime_contracts.builder.native.contracts import (
     CheckpointRef,
     NativeTestContextRef,
     ResumeReceipt,
+    WaitReason,
 )
 from runtime_contracts.builder.native.runtime_contracts import NativeWorkflowOutcome
 
@@ -124,6 +135,12 @@ from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger 
 )
 
 
+class ChildTerminalStatus(StrEnum):
+    COMPLETED = "completed"
+    STOPPED = "stopped"
+    CANCELLED = "cancelled"
+
+
 @pytest.fixture(scope="module", autouse=True)
 def migrated_continuation_tables(flask_app_with_containers: DifyApp, migrated_native_tables: None) -> None:
     from extensions.ext_database import db
@@ -152,7 +169,7 @@ class ResolutionOwner:
         assert pending.tenant_id == owned.tenant_id
         assert pending.category in ("configuration", "interaction")
         return NativePendingResolution(
-            category=pending.category,
+            category=WaitReason.CONFIGURATION if pending.category == "configuration" else WaitReason.INTERACTION,
             invocation_id=pending.invocation_id,
             pending_action_id=pending.id,
             owner_ref=pending.owner_ref,
@@ -338,7 +355,7 @@ def test_result_owner_digest_and_completed_effect_replay(continuation_case: Cont
     c.ledger.confirm()
     permit = c.ledger.guard.before_call(ref=c.ref, intent=c.ledger.intent)
     c.ledger.guard.record_outcome(
-        permit=require_instance(permit, DispatchPermit), outcome="completed", result_ref=result_ref
+        permit=require_instance(permit, DispatchPermit), outcome=Outcome.COMPLETED, result_ref=result_ref
     )
     replay = c.ledger.guard.before_call(ref=c.ref, intent=c.ledger.intent)
     assert c.store.load_result(ref=c.ref, result_ref=require_instance(replay, RecordedResult).result_ref) == {
@@ -446,7 +463,7 @@ def test_node_inputs_real_storage_idempotence_conflict_and_cursor_zero_result(
     permit = c.ledger.guard.before_call(ref=c.ref, intent=c.ledger.intent)
     result_ref = c.store.store_result(ref=c.ref, key=c.ledger.intent.key, result={"completed": True})
     c.ledger.guard.record_outcome(
-        permit=require_instance(permit, DispatchPermit), outcome="completed", result_ref=result_ref
+        permit=require_instance(permit, DispatchPermit), outcome=Outcome.COMPLETED, result_ref=result_ref
     )
     with c.factory() as session:
         input_row = session.get(NativePayloadObject, input_ref)
@@ -886,7 +903,7 @@ def test_cancellation_stops_tree_and_projects_claimed_unknown(continuation_case:
     # Already-spent effects retain their C02 settlement path after cancellation.
     late_ref = c.store.store_result(ref=c.ref, key=c.ledger.intent.key, result={"accepted": True})
     c.ledger.guard.record_outcome(
-        permit=require_instance(permit, DispatchPermit), outcome="completed", result_ref=late_ref
+        permit=require_instance(permit, DispatchPermit), outcome=Outcome.COMPLETED, result_ref=late_ref
     )
     assert c.ledger.dispatched_attempt_count() == 1
 
@@ -1193,17 +1210,17 @@ def test_claim_recovery_requires_native_fencing_proof(continuation_case: Continu
     c.lifecycle.reconcile()
 
     class RuntimeOwner(NativeRuntimeWitness):
-        proof: Literal["not_started", "stopped", "unknown"] = "unknown"
+        proof: NativeRecoveryEvidence = NativeRecoveryEvidence.UNKNOWN
 
         @override
-        def recovery_evidence(self, **_kwargs: object) -> Literal["not_started", "stopped", "unknown"]:
+        def recovery_evidence(self, **_kwargs: object) -> NativeRecoveryEvidence:
             return self.proof
 
     owner = RuntimeOwner()
     c.lifecycle.runtime = owner
     with pytest.raises(BuilderExecutionPolicyError, match="native_recovery_unproven"):
         c.lifecycle.recover_dispatch(ref=c.ref, dispatch_id=receipt.dispatch_id)
-    owner.proof = "not_started"
+    owner.proof = NativeRecoveryEvidence.NOT_STARTED
     c.lifecycle.recover_dispatch(ref=c.ref, dispatch_id=receipt.dispatch_id)
     assert c.lifecycle.claim_dispatch(ref=c.ref, generation=receipt.generation, dispatch_id=receipt.dispatch_id)
     assert c.ledger.dispatched_attempt_count() == 0
@@ -1837,7 +1854,7 @@ def _bind_child_effect(
     c: ContinuationCase,
     ref: NativeTestContextRef,
     *,
-    approval_scope: Literal["operation", "batch"] = "batch",
+    approval_scope: EffectApprovalScope = EffectApprovalScope.BATCH,
     input_digest: str | None = None,
 ) -> EffectIntent:
     from models.dify_builder_native_tests import NativeTestInvocation
@@ -2097,7 +2114,7 @@ def test_spent_result_write_survives_membership_revocation_but_read_does_not(
         )
         session.delete(membership)
     result = c.store.store_result(ref=c.ref, key=c.ledger.intent.key, result={"spent": True})
-    c.ledger.guard.record_outcome(permit=permit, outcome="completed", result_ref=result)
+    c.ledger.guard.record_outcome(permit=permit, outcome=Outcome.COMPLETED, result_ref=result)
     with pytest.raises(BuilderExecutionPolicyError):
         c.store.load_result(ref=c.ref, result_ref=result)
     assert c.ledger.guard.before_call(ref=c.ref, intent=c.ledger.intent).kind == "stop"
@@ -2329,7 +2346,9 @@ def test_child_dispatch_recovery_requires_controlling_ancestor_fence(
         quarantine_during_child_proof = False
 
         @override
-        def recovery_evidence(self, *, context: ResolvedNativeTestContext, dispatch_id: str) -> Literal["stopped"]:
+        def recovery_evidence(
+            self, *, context: ResolvedNativeTestContext, dispatch_id: str
+        ) -> Literal[NativeRecoveryEvidence.STOPPED]:
             self.calls.append((context.ref.invocation_id, dispatch_id))
             if context.ref == child and self.quarantine_during_child_proof:
                 assert c.lifecycle.claim_dispatch(
@@ -2340,7 +2359,7 @@ def test_child_dispatch_recovery_requires_controlling_ancestor_fence(
                         session.get(NativeDispatch, root_dispatch.dispatch_id), NativeDispatch
                     ).claim_expires_at = datetime.now(UTC) - timedelta(seconds=1)
                 c.lifecycle.reconcile()
-            return "stopped"
+            return NativeRecoveryEvidence.STOPPED
 
     runtime = RuntimeOwner()
     c.lifecycle.runtime = runtime
@@ -2383,7 +2402,7 @@ def test_child_dispatch_recovery_requires_controlling_ancestor_fence(
     permit = c.ledger.guard.before_call(ref=child, intent=effect)
     assert permit.kind == "dispatch"
     result = c.store.store_result(ref=child, key=effect.key, result={"settled": True})
-    c.ledger.guard.record_outcome(permit=permit, outcome="completed", result_ref=result)
+    c.ledger.guard.record_outcome(permit=permit, outcome=Outcome.COMPLETED, result_ref=result)
     assert c.ledger.dispatched_attempt_count() == 1
 
 
@@ -2420,12 +2439,15 @@ def test_child_claim_rechecks_unknown_ancestor_even_with_stale_active_delivery(
 
 
 def _spent_child_outcome(
-    c: ContinuationCase, child: NativeTestContextRef, effect: EffectIntent, status: Literal["completed", "stopped"]
+    c: ContinuationCase,
+    child: NativeTestContextRef,
+    effect: EffectIntent,
+    status: Literal[NativeWorkflowStatus.COMPLETED, NativeWorkflowStatus.STOPPED],
 ) -> tuple[NativeWorkflowOutcome, str]:
     permit = c.ledger.guard.before_call(ref=child, intent=effect)
     assert permit.kind == "dispatch"
     result_ref = c.store.store_result(ref=child, key=effect.key, result={"settled": True})
-    c.ledger.guard.record_outcome(permit=permit, outcome="completed", result_ref=result_ref)
+    c.ledger.guard.record_outcome(permit=permit, outcome=Outcome.COMPLETED, result_ref=result_ref)
     return NativeWorkflowOutcome(
         status=status,
         ref=child,
@@ -2497,7 +2519,7 @@ def _assert_terminal_child_recovery_retained(
         NativeChildInvocationService,
         NativeWorkflowOutcome,
     ],
-    status: Literal["completed", "stopped", "cancelled"],
+    status: ChildTerminalStatus,
     outcome: NativeWorkflowOutcome,
     result_ref: str,
     saved: dict[str, list[dict[str, object]]],
@@ -2547,7 +2569,7 @@ def _assert_terminal_child_recovery_retained(
 
 @pytest.mark.parametrize("status", ["completed", "stopped"])
 def test_terminal_child_dispatch_stays_terminal_after_ancestor_recovery(
-    continuation_case: ContinuationCase, status: Literal["completed", "stopped"]
+    continuation_case: ContinuationCase, status: Literal[NativeWorkflowStatus.COMPLETED, NativeWorkflowStatus.STOPPED]
 ) -> None:
     c = continuation_case
     case = _root_with_child_dispatch(c, claimed=True)
@@ -2561,8 +2583,8 @@ def test_terminal_child_dispatch_stays_terminal_after_ancestor_recovery(
 
     class RuntimeOwner(NativeRuntimeWitness):
         @override
-        def recovery_evidence(self, **_kwargs: object) -> Literal["not_started", "stopped", "unknown"]:
-            return "stopped"
+        def recovery_evidence(self, **_kwargs: object) -> NativeRecoveryEvidence:
+            return NativeRecoveryEvidence.STOPPED
 
         @override
         def resume(self, **_kwargs: object) -> Never:
@@ -2575,30 +2597,34 @@ def test_terminal_child_dispatch_stays_terminal_after_ancestor_recovery(
     assert saved["dify_builder_native_invocation_states"][0]["state"] == status
     with pytest.raises(BuilderExecutionPolicyError):
         c.lifecycle.recover_dispatch(ref=child, dispatch_id=child_id)
-    _assert_terminal_child_recovery_retained(c, case, status, outcome, result_ref, saved)
+    _assert_terminal_child_recovery_retained(c, case, ChildTerminalStatus(status), outcome, result_ref, saved)
 
 
 @pytest.mark.parametrize("status", ["completed", "stopped", "cancelled"])
 def test_child_terminal_settlement_while_recovery_proof_is_held(
-    continuation_case: ContinuationCase, status: Literal["completed", "stopped", "cancelled"]
+    continuation_case: ContinuationCase, status: ChildTerminalStatus
 ) -> None:
     from flask.globals import app_ctx
 
     c = continuation_case
     case = _root_with_child_dispatch(c, claimed=True)
     child, child_id, _, root_dispatch, _, effect, service, _ = case
-    outcome, result_ref = _spent_child_outcome(c, child, effect, "stopped" if status == "cancelled" else status)
+    outcome, result_ref = _spent_child_outcome(
+        c, child, effect, NativeWorkflowStatus.COMPLETED if status == "completed" else NativeWorkflowStatus.STOPPED
+    )
     _quarantine_root_dispatch(c, root_dispatch)
     proof_entered, release_proof = Event(), Event()
 
     class RuntimeOwner(NativeRuntimeWitness):
         @override
-        def recovery_evidence(self, *, context: ResolvedNativeTestContext, dispatch_id: str) -> Literal["stopped"]:
+        def recovery_evidence(
+            self, *, context: ResolvedNativeTestContext, dispatch_id: str
+        ) -> Literal[NativeRecoveryEvidence.STOPPED]:
             if context.ref == child:
                 assert dispatch_id == child_id
                 proof_entered.set()
                 assert release_proof.wait(10), "terminal settlement blocked while external proof held"
-            return "stopped"
+            return NativeRecoveryEvidence.STOPPED
 
         @override
         def resume(self, **_kwargs: object) -> Never:
@@ -2629,7 +2655,7 @@ def test_child_terminal_settlement_while_recovery_proof_is_held(
             release_proof.set()
         with pytest.raises(BuilderExecutionPolicyError):
             recovery.result(timeout=15)
-    _assert_terminal_child_recovery_retained(c, case, status, outcome, result_ref, saved)
+    _assert_terminal_child_recovery_retained(c, case, ChildTerminalStatus(status), outcome, result_ref, saved)
 
 
 class _ForwardArguments712(TypedDict, closed=True):

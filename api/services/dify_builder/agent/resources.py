@@ -19,8 +19,8 @@ configuration proves runtime health or a supplier lifecycle state.
 
 import logging
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Literal
+from enum import Enum, StrEnum
+from typing import Any
 
 from pydantic import JsonValue
 from sqlalchemy import func, select
@@ -46,6 +46,13 @@ from services.dify_builder import trace_diagnostics as diagnostics
 from services.dify_builder.api_tool_output_context import format_selected_plugin_tool_output_context
 from services.entities.model_provider_entities import ProviderWithModelsResponse
 from services.model_provider.service import ModelProviderService
+
+
+class OutputSchemaState(StrEnum):
+    UNKNOWN = "unknown"
+    ABSENT = "absent"
+    DECLARED = "declared"
+
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +85,7 @@ class ResourceRef:
     # None means this source supplied no action parameter schema.
     parameter_contract: list[dict[str, JsonValue]] | None = None
     model_contract: dict[str, JsonValue] = field(default_factory=dict)
-    output_schema_state: Literal["unknown", "absent", "declared"] = "unknown"
+    output_schema_state: OutputSchemaState = OutputSchemaState.UNKNOWN
 
 
 @dataclass(frozen=True)
@@ -333,7 +340,11 @@ def _tool_ref(entry: ToolCatalogueEntry, authorized: set[str] | None) -> Resourc
         meta=meta,
         readiness=readiness,
         output_schema_state=(
-            "unknown" if not isinstance(output_schema, dict) else "declared" if output_schema else "absent"
+            OutputSchemaState.UNKNOWN
+            if not isinstance(output_schema, dict)
+            else OutputSchemaState.DECLARED
+            if output_schema
+            else OutputSchemaState.ABSENT
         ),
         description=description,
         capability=tool_capability_text(entry),

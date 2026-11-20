@@ -10,6 +10,7 @@ from models.dify_builder import DifyBuilderSession, DifyBuilderSessionCommit
 from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 from runtime_contracts.builder.native.contracts import DispatchPermit, decode_native_ref
+from runtime_contracts.builder.native.runtime_contracts import NativeTestMode
 from services.dify_builder.native_testing.authorization import EffectAuthorizationService
 from services.dify_builder.native_testing.context_binding import NativeAdmissionCompilation, NativeRuntimeProfile
 from services.dify_builder.native_testing.host_capacity import NativeHostCapacity
@@ -63,7 +64,7 @@ def test_saved_unlaunched_start_retry_cannot_enqueue_after_task_stop(
         session_id: str,
         test_input_id: str,
         expected_version: int,
-        mode: Literal["native", "mock"],
+        mode: NativeTestMode,
         request_id: str,
         invocation_id: str,
         native_run_id: str,
@@ -92,7 +93,7 @@ def test_saved_unlaunched_start_retry_cannot_enqueue_after_task_stop(
             session_id="session",
             test_input_id="input",
             expected_version=1,
-            mode="native",
+            mode=NativeTestMode.NATIVE,
             idempotency_key="cancel-composed-start",
         )
     assert c.rows[NativeDispatch] == []

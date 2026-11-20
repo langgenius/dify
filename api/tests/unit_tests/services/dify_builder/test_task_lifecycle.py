@@ -10,6 +10,7 @@ from core.dify_builder.models import (
     Action,
     Actor,
     ChangeSet,
+    ContextTaskStatus,
     DifyBuilderContext,
     EntryMode,
     NodeOutput,
@@ -17,6 +18,7 @@ from core.dify_builder.models import (
     Run,
     RunVerification,
     Session,
+    TaskSummaryOutcome,
     Turn,
 )
 from core.dify_builder.state import PcState
@@ -61,8 +63,8 @@ def test_completion_is_idempotent_and_survives_serde_without_claiming_verificati
     from services.dify_builder import task_lifecycle
 
     env, session, context = task_env()
-    task_lifecycle.record_task_completion(env, session, context, "kept_draft")
-    task_lifecycle.record_task_completion(env, session, context, "kept_draft")
+    task_lifecycle.record_task_completion(env, session, context, TaskSummaryOutcome.KEPT_DRAFT)
+    task_lifecycle.record_task_completion(env, session, context, TaskSummaryOutcome.KEPT_DRAFT)
     restored = context_from_dict(context_to_dict(context))
     assert restored.task_status == "completed"
     assert len(restored.task_summaries) == 1
@@ -75,7 +77,7 @@ def test_completion_is_idempotent_and_survives_serde_without_claiming_verificati
     assert summary.completion_version == 8
     assert context_from_dict({}).task_summaries == []
     with pytest.raises(ValueError, match="task completion outcome changed"):
-        task_lifecycle.record_task_completion(env, session, context, "published")
+        task_lifecycle.record_task_completion(env, session, context, TaskSummaryOutcome.PUBLISHED)
 
 
 def test_summary_redacts_repeated_secrets_and_never_copies_native_content() -> None:
@@ -106,7 +108,7 @@ def test_summary_redacts_repeated_secrets_and_never_copies_native_content() -> N
     )
     env.repo.save_run(session.id, run)
     context.verify_run_id = "run"
-    task_lifecycle.record_task_completion(env, session, context, "kept_draft")
+    task_lifecycle.record_task_completion(env, session, context, TaskSummaryOutcome.KEPT_DRAFT)
     summary = context.task_summaries[0]
     serialized = json.dumps(asdict(summary))
     assert secret not in serialized
@@ -129,7 +131,7 @@ def test_completed_history_is_bounded_and_older_task_evidence_does_not_become_cu
     for ordinal in range(10):
         context.goal_text = "x" * 10_000
         context.verify_run_id = "old-run" if ordinal else ""
-        task_lifecycle.record_task_completion(env, session, context, "kept_draft")
+        task_lifecycle.record_task_completion(env, session, context, TaskSummaryOutcome.KEPT_DRAFT)
         if ordinal < 9:
             task_lifecycle.advance_task_identity(session, context, EntryMode.EDIT)
     assert len(context.task_summaries) == 8
@@ -143,7 +145,7 @@ def test_summary_scope_is_independent_of_execution_generation_and_grants_no_auth
     from services.dify_builder import task_lifecycle
 
     env, session, context = task_env()
-    task_lifecycle.record_task_completion(env, session, context, "kept_draft")
+    task_lifecycle.record_task_completion(env, session, context, TaskSummaryOutcome.KEPT_DRAFT)
     with task_lifecycle.task_summary_scope(context.task_summaries):
         prompt = task_lifecycle.append_task_summaries("Latest goal")
     assert "Summarize reports" in prompt
@@ -247,7 +249,7 @@ def test_another_run_acceptance_cannot_claim_this_run_passed() -> None:
         ),
     )
     context.verify_run_id = "run"
-    record_task_completion(env, session, context, "kept_draft")
+    record_task_completion(env, session, context, TaskSummaryOutcome.KEPT_DRAFT)
     assert context.task_summaries[0].test_evidence.business_acceptance_state == "unverified"
 
 
@@ -258,7 +260,7 @@ def test_existing_llm_requests_receive_history_without_a_summary_model_call(json
     from tests.unit_tests.services.dify_builder.test_agent_llm import _FakeInstance
 
     env, session, context = task_env()
-    record_task_completion(env, session, context, "kept_draft")
+    record_task_completion(env, session, context, TaskSummaryOutcome.KEPT_DRAFT)
     model = _FakeInstance(['{"ok": true}' if json_reply else "Ready"])
     with task_summary_scope(context.task_summaries):
         if json_reply:
@@ -282,7 +284,7 @@ def test_large_latest_summary_still_supplies_goal_and_evidence_within_prompt_bud
         changed_nodes=[f"node-{index}-" + "x" * 110 for index in range(64)], diff="diff " * 500
     )
     context.plan_output_summary = "contract " * 200
-    record_task_completion(env, session, context, "kept_draft")
+    record_task_completion(env, session, context, TaskSummaryOutcome.KEPT_DRAFT)
     with task_summary_scope(context.task_summaries):
         prompt = append_task_summaries("New request")
     assert "Latest goal" in prompt
@@ -307,7 +309,7 @@ def test_sealed_proof_for_another_native_run_is_not_this_runs_verification() -> 
         ),
     )
     context.verify_run_id = "run"
-    record_task_completion(env, session, context, "kept_draft")
+    record_task_completion(env, session, context, TaskSummaryOutcome.KEPT_DRAFT)
     evidence = context.task_summaries[0].test_evidence
     assert evidence.status == "succeeded"
     assert not evidence.sealed
@@ -320,7 +322,7 @@ def test_legacy_invalid_active_mode_cannot_break_a_successful_completion() -> No
 
     env, session, context = task_env()
     context.active_entry_mode = "obsolete-mode"
-    record_task_completion(env, session, context, "kept_draft")
+    record_task_completion(env, session, context, TaskSummaryOutcome.KEPT_DRAFT)
     assert context.task_summaries[0].entry_mode == EntryMode.BUILD
 
 
@@ -388,7 +390,7 @@ def test_memory_abandoned_activation_is_scoped_idempotent_and_appends_goal_once(
     from core.dify_builder.errors import ConflictError, NotFoundError
 
     env, session, context = task_env()
-    context.task_status = "abandoned"
+    context.task_status = ContextTaskStatus.ABANDONED
     context.paused = True
     context.task_control = {"generation": 4, "settlement": "settled"}
     env.repo.create_session(session, context, [])

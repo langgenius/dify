@@ -12,6 +12,7 @@ from services.dify_builder.application.cognition_policy import (
     CognitionModel,
     CognitionPolicy,
     CognitionPolicyDeniedError,
+    CognitionPolicySource,
 )
 from services.dify_builder.repository import SqlDifyBuilderRepository
 
@@ -25,7 +26,9 @@ def test_concurrent_first_policy_writes_have_one_winner(db_session_with_containe
     db_session_with_containers.commit()
     factory = sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
     repository = SqlDifyBuilderRepository(factory)
-    policy = CognitionPolicy(True, (CognitionModel("one", "openai", "gpt", "chat", {}),), "one", (), 0, "explicit")
+    policy = CognitionPolicy(
+        True, (CognitionModel("one", "openai", "gpt", "chat", {}),), "one", (), 0, CognitionPolicySource.EXPLICIT
+    )
     barrier = Barrier(2)
 
     def write() -> str:

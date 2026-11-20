@@ -16,6 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 from contextvars import ContextVar
 from copy import deepcopy
 from dataclasses import asdict, dataclass
+from enum import StrEnum
 from typing import Literal
 from uuid import uuid4
 
@@ -57,9 +58,21 @@ from services.dify_builder.task_controls import ExecutionFence, execution_scope
 from services.workflow_service import WorkflowService
 from tests.unit_tests.services.dify_builder.test_service import FakeSessionLock
 
+
+class RaceRole(StrEnum):
+    WORKER = "worker"
+    STOP = "stop"
+
+
 _TIMEOUT = 15
 _GENERATION = 7
-Mutation = Literal["restore", "repair"]
+
+
+class Mutation(StrEnum):
+    RESTORE = "restore"
+    REPAIR = "repair"
+
+
 type Enqueued = tuple[str, Action, Actor, str]
 
 
@@ -327,7 +340,7 @@ def test_stop_commits_before_old_worker_actual_draft_write(task_world: TaskWorld
 def test_old_worker_draft_commit_before_stop_is_retained(task_world: TaskWorld, mutation: Mutation) -> None:
     world = task_world
     worker_has_lock, finish_worker, stop_attempting_lock = (threading.Event() for _ in range(3))
-    role: ContextVar[Literal["worker", "stop"] | None] = ContextVar("sql_role", default=None)
+    role: ContextVar[RaceRole | None] = ContextVar("sql_role", default=None)
     pids: dict[str, int] = {}
     worker_locks: list[str] = []
 
@@ -352,11 +365,11 @@ def test_old_worker_draft_commit_before_stop_is_retained(task_world: TaskWorld, 
             worker_locks.append("workflow")
 
     def worker() -> object:
-        role.set("worker")
+        role.set(RaceRole.WORKER)
         return world.mutate(mutation)
 
     def stop() -> SessionView:
-        role.set("stop")
+        role.set(RaceRole.STOP)
         return world.stop()
 
     engine = world.factory.kw["bind"]

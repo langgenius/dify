@@ -1,9 +1,21 @@
 """Presentation facts for the edges taken by one Native Test Run."""
 
 from dataclasses import dataclass
-from typing import Literal
 
-type NativeCanvasNodeStatus = Literal["running", "retry", "paused", "succeeded", "failed", "exception", "stopped"]
+from runtime_contracts.builder.string_enum import BuilderStringEnum
+
+
+class NativeCanvasStatus(BuilderStringEnum):
+    RUNNING = "running"
+    RETRY = "retry"
+    PAUSED = "paused"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    EXCEPTION = "exception"
+    STOPPED = "stopped"
+
+
+type NativeCanvasNodeStatus = NativeCanvasStatus
 
 
 @dataclass(frozen=True, slots=True)

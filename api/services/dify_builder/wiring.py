@@ -39,6 +39,7 @@ from runtime_contracts.builder.execution import canonical_digest
 from services.dify_builder import app_naming, progress_bus, session_lock
 from services.dify_builder.application.cognition_policy import CognitionPolicyDeniedError
 from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
+from services.dify_builder.attachment_extraction import AttachmentExtractionStatus
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.execution_policy_service import check_app_permissions
 from services.dify_builder.native_testing.public_contracts import (
@@ -199,7 +200,7 @@ def build_attachment_intake(repo):
 
     def extract(upload):
         if upload.size > byte_limit:
-            return ExtractedContext("rejected", reason="byte_limit")
+            return ExtractedContext(AttachmentExtractionStatus.REJECTED, reason="byte_limit")
         return extract_local_context(upload.extension, storage.load_stream(upload.key), max_bytes=byte_limit)
 
     return BuilderAttachmentIntake(repo, extract)

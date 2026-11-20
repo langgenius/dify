@@ -39,6 +39,7 @@ from models.enums import EndUserType, PermissionEnum
 from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowRun, WorkflowType
+from runtime_contracts.builder.execution import WorkflowExecutionTransport
 from services.app_generate_service import AppGenerateService
 from services.workflow_service import WorkflowService
 from tests.unit_tests.services.dify_builder.draft_tool_inventory import (
@@ -349,7 +350,7 @@ def invoke(
         invoke_from,
         session=session,
         streaming=False,
-        workflow_execution_mode="in_process",
+        workflow_execution_mode=WorkflowExecutionTransport.IN_PROCESS,
     )
 
 
@@ -599,7 +600,7 @@ def test_published_execution_keeps_normal_credential_delegation(
             invoke_from=invoke_from,
             session=sqlite_session,
             streaming=False,
-            workflow_execution_mode="in_process",
+            workflow_execution_mode=WorkflowExecutionTransport.IN_PROCESS,
         )
     assert native_draft.tools.forbidden == []
 

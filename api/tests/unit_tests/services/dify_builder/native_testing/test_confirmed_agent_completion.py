@@ -17,7 +17,14 @@ from sqlalchemy.orm import sessionmaker
 
 from clients.agent_backend import DifyAgentBackendRunClient
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
-from core.dify_builder.contract import AssistantTurnItem, ExecutionActivity, ExecutionProgress
+from core.dify_builder.contract import (
+    AssistantTurnItem,
+    ExecutionActivity,
+    ExecutionActivityKind,
+    ExecutionActivityState,
+    ExecutionProgress,
+    ExecutionProgressStatus,
+)
 from core.dify_builder.models import Actor, DifyBuilderContext, EntryMode, Run, Session
 from core.dify_builder.state import PcState
 from extensions.ext_redis import RedisClientWrapper
@@ -42,7 +49,11 @@ from runtime_contracts.builder.native.agent_contracts import (
     AgentTestWorkspaceRef,
     AgentWaitAssociation,
 )
-from runtime_contracts.builder.native.canvas_path import NativeCanvasEdge, NativeCanvasPath
+from runtime_contracts.builder.native.canvas_path import (
+    NativeCanvasEdge,
+    NativeCanvasPath,
+    NativeCanvasStatus,
+)
 from runtime_contracts.builder.native.contracts import CheckpointRef, NativeTestContextRef
 from runtime_contracts.builder.native.runtime_contracts import (
     NativeCheckpointPayload,
@@ -62,7 +73,7 @@ from services.dify_builder.native_testing.confirmed_agent_continuation import (
     OwnedParentPause,
 )
 from services.dify_builder.native_testing.private_reads import PrivateReadOwner
-from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
+from services.dify_builder.native_testing.public_contracts import NativeTestDecision, NativeTestPublicReceipt
 from services.dify_builder.native_testing.repository import OwnedNativeTest, native_workflow_revision
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.revision import executable_graph_revision, execution_revision
@@ -260,12 +271,24 @@ def completed(
                 turn_id="waiting-test",
                 stage_id=str(PcState.BUILD_TEST_AND_REPAIR),
                 execution=ExecutionProgress(
-                    status="stopped",
+                    status=ExecutionProgressStatus.STOPPED,
                     activities=[
-                        ExecutionActivity("build-prepare-test", "Prepare test", "done"),
-                        ExecutionActivity("build-run-test", "Run workflow", "stopped"),
-                        ExecutionActivity("node:start", "Start", "done", "node", "build-run-test"),
-                        ExecutionActivity("node:agent", "Agent", "stopped", "node", "build-run-test"),
+                        ExecutionActivity("build-prepare-test", "Prepare test", ExecutionActivityState.DONE),
+                        ExecutionActivity("build-run-test", "Run workflow", ExecutionActivityState.STOPPED),
+                        ExecutionActivity(
+                            "node:start",
+                            "Start",
+                            ExecutionActivityState.DONE,
+                            ExecutionActivityKind.NODE,
+                            "build-run-test",
+                        ),
+                        ExecutionActivity(
+                            "node:agent",
+                            "Agent",
+                            ExecutionActivityState.STOPPED,
+                            ExecutionActivityKind.NODE,
+                            "build-run-test",
+                        ),
                     ],
                 ),
             ).to_item(seq=context.next_seq, at_version=2)
@@ -454,7 +477,17 @@ def test_terminal_public_read_closes_same_builder_run_and_review_without_dispatc
     path = NativeCanvasPath(
         owner.native_id,
         3,
-        (NativeCanvasEdge("agent-end", "agent", "end", "source", "target", "succeeded", "succeeded"),),
+        (
+            NativeCanvasEdge(
+                "agent-end",
+                "agent",
+                "end",
+                "source",
+                "target",
+                NativeCanvasStatus.SUCCEEDED,
+                NativeCanvasStatus.SUCCEEDED,
+            ),
+        ),
     )
     with owner.factory.begin() as sql:
         request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
@@ -2097,7 +2130,7 @@ def test_declined_result_cannot_publish_and_preserves_graph_and_original_ids(dec
         session_id=owner.session.id,
         request_id=owner.request_id,
         pending_operation_id="original-pending",
-        decision="deny",
+        decision=NativeTestDecision.DENY,
         scope_digest="c" * 64,
         expected_version=2,
         idempotency_key="deny-original",

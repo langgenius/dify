@@ -7,7 +7,6 @@ exact reserved IDs; it never starts a replacement scope.
 
 import logging
 from datetime import UTC, datetime, timedelta
-from typing import Literal
 
 from dify_agent.protocol import CreateExecutionBindingRequest, DestroyExecutionBindingRequest
 from dify_agent.protocol.execution_binding import CreateExecutionBindingResponse
@@ -28,9 +27,19 @@ from models.dify_builder_native_tests import NativeTestInvocation
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest
 from runtime_contracts.builder.native.agent_contracts import AgentTestWorkspaceRef
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
+from runtime_contracts.builder.string_enum import BuilderStringEnum
 from services.agent.workspace_service import AgentWorkspaceService
 from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
+
+
+class WorkspaceAllocationPhase(BuilderStringEnum):
+    ALLOCATING = "allocating"
+    READY = "ready"
+    RETIRING = "retiring"
+    RETIRED = "retired"
+    QUARANTINED = "quarantined"
+
 
 _ALLOCATION = "_agent_workspace_v1"
 logger = logging.getLogger(__name__)
@@ -49,7 +58,7 @@ class AgentWorkspaceAllocation(BaseModel):
     pinned_snapshot_id: str
     home_snapshot_id: str
     native_scope: NativeScopeSpec
-    phase: Literal["allocating", "ready", "retiring", "retired", "quarantined"]
+    phase: WorkspaceAllocationPhase
 
     @property
     def backend_ref(self) -> str:

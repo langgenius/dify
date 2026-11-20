@@ -34,9 +34,11 @@ from graphon.variable_loader import DUMMY_VARIABLE_LOADER
 from models.account import Account
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
+from runtime_contracts.builder.execution import WorkerExit
 from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
 from services.dify_builder.native_testing.checkpoint_bridge import NativeCheckpointBridge
 from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
+from services.dify_builder.native_testing.host_lifetime import CloseReason
 from services.dify_builder.native_testing.runtime_bridge import NativePreparedInputs, NativeRuntimeBridge
 from services.workflow_runtime.entry import WorkflowEntry
 from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
@@ -153,7 +155,7 @@ def test_generation_bound_before_actual_thread_and_stream_never_joins_it(monkeyp
         try:
             assert release.wait(3)
         finally:
-            case.host.worker_finished(worker=current_thread(), exit_kind="returned")
+            case.host.worker_finished(worker=current_thread(), exit_kind=WorkerExit.RETURNED)
 
     monkeypatch.setattr(generator, "_generate_worker", worker)
     monkeypatch.setattr(generator, "_join_worker_thread", lambda _worker: pytest.fail("ordinary join used"))
@@ -217,7 +219,11 @@ def test_owned_worker_preserves_bound_entity_and_reports_finally_on_actual_threa
     finished = []
     original = case.host.worker_finished
 
-    def finished_port(*, worker: Thread, exit_kind: Literal["returned", "policy_refused", "stopped", "failed"]) -> None:
+    def finished_port(
+        *,
+        worker: Thread,
+        exit_kind: Literal[WorkerExit.RETURNED, WorkerExit.POLICY_REFUSED, WorkerExit.STOPPED, WorkerExit.FAILED],
+    ) -> None:
         finished.append((worker, exit_kind, worker.is_alive()))
         original(worker=worker, exit_kind=exit_kind)
 
@@ -327,7 +333,7 @@ def test_ordinary_none_path_still_uses_existing_worker_join(monkeypatch: pytest.
 def test_prestart_host_refusal_never_runs_actual_worker(monkeypatch: pytest.MonkeyPatch) -> None:
     case = LaunchCase()
     generator, arguments = generate_fixture(case, monkeypatch)
-    case.host.request_close(reason="cancel")
+    case.host.request_close(reason=CloseReason.CANCEL)
     entered = Event()
     monkeypatch.setattr(generator, "_generate_worker", lambda **_kwargs: entered.set())
     with Flask(__name__).app_context(), pytest.raises(ValueError, match="native_host_admission_closed"):
@@ -463,7 +469,9 @@ def test_native_guardrails_bind_actual_release_without_ordinary_early_exit(
         del rate_limit, request_id
         if fails:
             raise RuntimeError("fixture setup failure")
-        worker = Thread(target=lambda: case.host.worker_finished(worker=current_thread(), exit_kind="returned"))
+        worker = Thread(
+            target=lambda: case.host.worker_finished(worker=current_thread(), exit_kind=WorkerExit.RETURNED)
+        )
         workers.append(worker)
         case.host.start_worker(worker=worker)
         return "fixture stream"
@@ -486,7 +494,7 @@ def test_native_guardrails_bind_actual_release_without_ordinary_early_exit(
     if not fails:
         workers[0].join(2)
         assert not workers[0].is_alive()
-        case.host.request_close(reason="exhausted")
+        case.host.request_close(reason=CloseReason.EXHAUSTED)
         context = case.state.context
         case.lifetime.consume_cleanup(ref=context.ref, generation=context.generation, dispatch_id="dispatch")
         case.host.retire()
@@ -654,7 +662,7 @@ def test_actual_runner_passes_same_host_filter_runtime_and_wrapped_combined_chan
         except BaseException as error:
             errors.append(error)
         finally:
-            case.host.worker_finished(worker=current_thread(), exit_kind="returned")
+            case.host.worker_finished(worker=current_thread(), exit_kind=WorkerExit.RETURNED)
 
     worker = Thread(target=run)
     case.host.start_worker(worker=worker)
@@ -685,7 +693,7 @@ def test_marked_non_stream_response_refuses_without_ordinary_join(monkeypatch: p
     monkeypatch.setattr(
         generator,
         "_generate_worker",
-        lambda **_kwargs: case.host.worker_finished(worker=current_thread(), exit_kind="returned"),
+        lambda **_kwargs: case.host.worker_finished(worker=current_thread(), exit_kind=WorkerExit.RETURNED),
     )
     monkeypatch.setattr(module.WorkflowAppGenerateResponseConverter, "convert", lambda **_kwargs: {})
     monkeypatch.setattr(generator, "_join_worker_thread", lambda _worker: pytest.fail("ordinary join used"))

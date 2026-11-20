@@ -25,8 +25,9 @@ from collections.abc import Callable, Generator
 from contextlib import ExitStack
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
+from enum import StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import httpx
@@ -125,6 +126,12 @@ from services.dify_builder.native_testing.repository import native_workflow_revi
 from tests.integration_tests.services.dify_builder.test_agent_recovery_postgres import ephemeral_postgres
 from tests.unit_tests.core.workflow.nodes.agent_v2.test_session_store import _execution_row
 
+
+class InspectionAdapter(StrEnum):
+    LOCAL = "local"
+    ENTERPRISE = "enterprise"
+
+
 if TYPE_CHECKING:
     from dify_agent.protocol.confirmed_recovery import AgentRecoverySuccessor, InstallConfirmedRecoverySuccessorReceipt
     from dify_agent.protocol.native_continuation import AgentCheckpoint
@@ -166,7 +173,7 @@ def pinned_home(request: pytest.FixtureRequest) -> bool:
 
 
 @pytest.fixture(params=["local"])
-def inspection_adapter(request: pytest.FixtureRequest) -> Literal["local", "enterprise"]:
+def inspection_adapter(request: pytest.FixtureRequest) -> InspectionAdapter:
     if request.param == "enterprise":
         return "enterprise"
     assert request.param == "local"
@@ -180,7 +187,7 @@ def protected_owner(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     pinned_home: bool,
-    inspection_adapter: Literal["local", "enterprise"],
+    inspection_adapter: InspectionAdapter,
 ) -> Generator[ProtectedOwner]:
     """Compose real SQL owner, FS storage and RSA provider; restore globals on exit."""
     from sqlalchemy import Table
@@ -1192,7 +1199,7 @@ def allocated_successor(
     substitution: str,
     model_pending: bool = False,
     core_tool_pending: bool = False,
-    inspection_adapter: Literal["local", "enterprise"] = "local",
+    inspection_adapter: InspectionAdapter = InspectionAdapter.LOCAL,
 ) -> AllocatedRecovery:
     """Acknowledge actual immutable graph bytes for the unactivated finalizer only.
 

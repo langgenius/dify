@@ -43,6 +43,7 @@ from graphon.nodes.base.node import Node
 from graphon.runtime import RuntimeState, VariablePool
 from libs import sensitive_http_telemetry as telemetry
 from models.workflow import Workflow
+from runtime_contracts.builder.execution import WorkerExit
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
 from runtime_contracts.builder.native.observation import NativeObservationError
 from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
@@ -50,7 +51,11 @@ from services.dify_builder.native_testing.authorization import EffectAuthorizati
 from services.dify_builder.native_testing.checkpoint_bridge import NativeCheckpointBridge
 from services.dify_builder.native_testing.context_runtime import NativeGraphRuntimeState
 from services.dify_builder.native_testing.host_execution import NativeHostLaunch
-from services.dify_builder.native_testing.host_lifetime import NativeHostLifetime, NativeHostLifetimeRegistry
+from services.dify_builder.native_testing.host_lifetime import (
+    CloseReason,
+    NativeHostLifetime,
+    NativeHostLifetimeRegistry,
+)
 from services.dify_builder.native_testing.http_binding import build_native_http_profile
 from services.dify_builder.native_testing.observation_adapters import NativeObservationGuard
 from services.dify_builder.native_testing.observation_privacy import NativeHttpObservationPolicy
@@ -306,7 +311,7 @@ def test_actual_generate_passes_same_guard_to_queue_and_pipeline_before_worker(m
             assert queue.native_observation is guard
             seen.append("worker")
         finally:
-            case.host.worker_finished(worker=current_thread(), exit_kind="returned")
+            case.host.worker_finished(worker=current_thread(), exit_kind=WorkerExit.RETURNED)
             done.set()
 
     def response(**kwargs: object) -> Iterator[dict[str, str]]:
@@ -826,7 +831,7 @@ def test_host_retains_unknown_live_dispatcher_logging_lease_until_actual_exit(mo
         assert entered.wait(2)
         assert len(case.host._dispatcher_log_leases) == 1
         assert case.host._dispatcher_log_leases[0].thread is dispatcher
-        case.host.request_close(reason="failed")
+        case.host.request_close(reason=CloseReason.FAILED)
         assert case.lifetime.settle() == "unknown"
         with pytest.raises(NativeObservationError):
             case.host.release_dispatcher_logs()

@@ -564,7 +564,9 @@ def test_saved_result_reference_never_overrides_current_denial() -> None:
 def test_late_completed_receipt_survives_conflicting_unknown_attempt() -> None:
     case = Case()
     case.dispatch_error = OSError("response lost")
-    case.authorization.settlement_hook = lambda: case.authorization.outcomes.update({0: ("completed", "late-result")})
+    case.authorization.settlement_hook = lambda: case.authorization.outcomes.update(
+        {0: (Outcome.COMPLETED, "late-result")}
+    )
     assert_unknown(case)
     assert case.calls == 1
     assert case.authorization.outcomes == {0: ("completed", "late-result")}

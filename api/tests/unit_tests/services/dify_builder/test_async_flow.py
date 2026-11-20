@@ -37,7 +37,11 @@ from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import Base
 from services.dify_builder import service as service_mod
 from services.dify_builder import session_lock
-from services.dify_builder.application.cognition_policy import CognitionModel, CognitionPolicyService
+from services.dify_builder.application.cognition_policy import (
+    CognitionModel,
+    CognitionPolicyService,
+    CognitionPolicySource,
+)
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.service import DifyBuilderService
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, StubAgent
@@ -336,7 +340,7 @@ def test_policy_revoked_after_queue_prevents_worker_cognition_without_failing_hi
         ),
         [],
     )
-    repo.put_policy(_actor(), CognitionPolicy(False, (), None, (), 0, "explicit"), 0)
+    repo.put_policy(_actor(), CognitionPolicy(False, (), None, (), 0, CognitionPolicySource.EXPLICIT), 0)
     token = session_lock.acquire(session.id)
     assert token is not None
     # The direct delivery represents a command already admitted by dispatch.
@@ -358,7 +362,7 @@ def test_native_verify_remains_available_when_builder_cognition_disabled(
 
     service, _, _ = _wire(monkeypatch, repo)
     view = service.create_fix_session(APP_ID, _actor(), failed_run_id="TR-1")
-    repo.put_policy(_actor(), CognitionPolicy(False, (), None, (), 0, "explicit"), 0)
+    repo.put_policy(_actor(), CognitionPolicy(False, (), None, (), 0, CognitionPolicySource.EXPLICIT), 0)
     assert view.app_revision is not None
     view = service.submit_action(
         view.session_id,
@@ -395,7 +399,7 @@ def test_historical_empty_locale_native_verify_uses_real_guarded_agent_while_dis
         current_state=PcState.FIX_AWAIT_VERIFY,
     )
     repo.create_session(session, DifyBuilderContext(goal_text="historical nonempty goal", reply_language=""), [])
-    repo.put_policy(_actor(), CognitionPolicy(False, (), None, (), 0, "explicit"), 0)
+    repo.put_policy(_actor(), CognitionPolicy(False, (), None, (), 0, CognitionPolicySource.EXPLICIT), 0)
     token = session_lock.acquire(session.id)
     assert token is not None
     # The direct delivery represents a command already admitted by dispatch.

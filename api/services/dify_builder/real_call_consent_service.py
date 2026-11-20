@@ -50,6 +50,7 @@ import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+from enum import StrEnum
 from itertools import starmap
 from typing import Any, Literal, TypeGuard
 from uuid import UUID, uuid4
@@ -77,6 +78,7 @@ from core.dify_builder.real_call_consent import (
     GmailReadParameters,
     InstalledToolBinding,
     Phase,
+    RealCallDecision,
     confirmed_dispatch_headers,
     scope_digest,
     validate_phase,
@@ -118,6 +120,13 @@ from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.revision import executable_graph_revision, execution_revision
 from services.dify_builder.serde import context_from_dict
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
+
+
+class RefreshState(StrEnum):
+    UNSPENT = "unspent"
+    CLAIMED = "claimed"
+    RECORDED = "recorded"
+
 
 __all__ = ["CONSENT_LIFETIME", "BuilderRealCallConsentService", "ServiceConfirmedToolGuard", "StrandedObservation"]
 
@@ -332,20 +341,10 @@ class StrandedObservation:
 
 
 def _state(row: DifyBuilderRealCallConsent) -> ConsentState:
-    state = row.state
-    if state not in (
-        "prepared",
-        "confirmed",
-        "claimed",
-        "completed",
-        "failed",
-        "unknown",
-        "declined",
-        "expired",
-        "invalidated",
-    ):
-        raise _refuse("consent_record_invalid")
-    return state
+    try:
+        return ConsentState(row.state)
+    except ValueError:
+        raise _refuse("consent_record_invalid") from None
 
 
 def _stored_binding(row: DifyBuilderRealCallConsent) -> ConsentBinding:
@@ -916,7 +915,7 @@ class BuilderRealCallConsentService:
         actor: Actor,
         session_id: str,
         consent_id: str,
-        decision: Literal["confirm", "decline"],
+        decision: RealCallDecision,
         scope_digest: str,
         at_version: int,
         idempotency_key: str,
@@ -936,7 +935,7 @@ class BuilderRealCallConsentService:
                 "actor_id": actor.account_id,
                 "session_id": session_id,
                 "consent_id": consent_id,
-                "decision": decision,
+                "decision": decision.value if isinstance(decision, RealCallDecision) else decision,
                 "scope_digest": supplied_scope,
                 "at_version": at_version,
             }
@@ -2076,7 +2075,7 @@ class ServiceConfirmedToolGuard:
         self.binding = _verify_binding(binding)
         self._service = service
         self._runtime: _ClaimedRuntime | None = None
-        self._refresh: Literal["unspent", "claimed", "recorded"] = "unspent"
+        self._refresh: RefreshState = RefreshState.UNSPENT
         self._parameters: GmailReadParameters | None = None
         self._results: list[dict[str, object]] = []
         self._finished = False
@@ -2094,8 +2093,8 @@ class ServiceConfirmedToolGuard:
             raise _refuse("phase_order_invalid")
         if self._refresh != "unspent":
             raise _refuse("phase_already_claimed")
-        self._service.claim_phase(binding=self.binding, phase="refresh", final_parameters=None)
-        self._refresh = "claimed"
+        self._service.claim_phase(binding=self.binding, phase=Phase.REFRESH, final_parameters=None)
+        self._refresh = RefreshState.CLAIMED
 
     def persist_refresh(self, encrypted_credentials: str, expires_at: int) -> str:
         if self._refresh != "claimed":
@@ -2106,7 +2105,7 @@ class ServiceConfirmedToolGuard:
             encrypted_credentials=encrypted_credentials,
             expires_at=expires_at,
         )
-        self._refresh = "recorded"
+        self._refresh = RefreshState.RECORDED
         return derived
 
     def before_invoke(self, parameters: Mapping[str, object]) -> None:
@@ -2116,9 +2115,9 @@ class ServiceConfirmedToolGuard:
             final = gmail_read_policy.normalize_get_message_parameters(parameters)
         except BuilderExecutionPolicyError as error:
             # A widened or malformed final envelope is a known denial; nothing was sent.
-            self._service.refuse_phase(binding=self.binding, phase="business", reason_code=error.reason_code)
+            self._service.refuse_phase(binding=self.binding, phase=Phase.BUSINESS, reason_code=error.reason_code)
             raise
-        self._service.claim_phase(binding=self.binding, phase="business", final_parameters=final)
+        self._service.claim_phase(binding=self.binding, phase=Phase.BUSINESS, final_parameters=final)
         self._parameters = final
 
     def observe_json(self, message: Mapping[str, object]) -> None:

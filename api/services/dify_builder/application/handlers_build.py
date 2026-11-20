@@ -17,10 +17,12 @@ from typing import Any
 
 from core.dify_builder.contract import (
     DecisionItem,
+    ExecutionProgressStatus,
     FormCard,
     FormField,
     ResourceSelectCard,
     TestResultCard,
+    TestResultStatus,
 )
 from core.dify_builder.errors import DraftWouldNotStartError, HashMismatchError, NotFoundError
 from core.dify_builder.input_schema import schema_hash, validate_runtime_inputs
@@ -33,6 +35,7 @@ from core.dify_builder.models import (
     Run,
     Session,
     Snapshot,
+    TaskSummaryOutcome,
     TestInput,
     Turn,
 )
@@ -418,7 +421,7 @@ def _planning_failed(
 ) -> StepResult:
     """Keep the accepted context and waiting gate when no replacement exists."""
     progress.fail_step(step_id)
-    execution = progress.finish(status="error")
+    execution = progress.finish(status=ExecutionProgressStatus.ERROR)
     form_items = []
     if waiting_state == PcState.BUILD_GOAL_ANALYSIS:
         # Reload projects the latest durable form, so reoffer accepted values
@@ -920,7 +923,9 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBui
     offered_knowledge = fc.resource_selection.get("offered_knowledge_ids", [])
     if not isinstance(offered_knowledge, list) or not set(requested_knowledge).issubset(offered_knowledge):
         progress.fail_step("build-bind-resources")
-        return _knowledge_wait(env, s, fc, unavailable=True, execution=progress.finish(status="error"))
+        return _knowledge_wait(
+            env, s, fc, unavailable=True, execution=progress.finish(status=ExecutionProgressStatus.ERROR)
+        )
     if (
         not requested_knowledge
         and not _knowledge_waived(fc)
@@ -933,7 +938,7 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBui
         )
     ):
         progress.fail_step("build-bind-resources")
-        progress.finish(status="error")
+        progress.finish(status=ExecutionProgressStatus.ERROR)
         return _ask_knowledge_decision(env, turn, s, fc)
     try:
         plan = env.agent.reconcile_resource_plan(
@@ -946,7 +951,7 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBui
     except AgentSnapshotChanged:
         fc.resource_selection = {"refresh_required": True}
         progress.fail_step("build-bind-resources")
-        execution = progress.finish(status="error")
+        execution = progress.finish(status=ExecutionProgressStatus.ERROR)
         items = append_assistant(
             env,
             s,
@@ -972,7 +977,7 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBui
             "blocked_capability": "knowledge_retrieval_phase_two",
         }
         progress.fail_step("build-bind-resources")
-        progress.finish(status="error")
+        progress.finish(status=ExecutionProgressStatus.ERROR)
         return _ask_knowledge_decision(env, turn, s, fc)
     store_plan(fc, plan)
     decision = fc.resource_selection.get("knowledge_scope_decision") if _knowledge_waived(fc) else None
@@ -1021,7 +1026,7 @@ def _graph_not_applied(
 
     The unchanged draft needs no graph notification."""
     progress.fail_step("build-apply-graph")
-    execution = progress.finish(status="error")
+    execution = progress.finish(status=ExecutionProgressStatus.ERROR)
     turn_items = append_assistant(
         env, s, fc, text_parts(title, ": ", body, "\n", reply_text), execution=execution, turn_id=progress.operation_id
     )
@@ -1108,7 +1113,7 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
             extra={"session_id": s.id, "app_id": s.app_id, "diagnostics": build_result.diagnostics},
         )
         progress.fail_step("build-generate-graph")
-        execution = progress.finish(status="error")
+        execution = progress.finish(status=ExecutionProgressStatus.ERROR)
         turn_items = append_assistant(
             env,
             s,
@@ -1428,7 +1433,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
         return wait_for_native_approval(env, s, fc, progress, run, PcState.BUILD_AWAIT_REPAIR)
 
     if status == "running":
-        progress.finish(status="stopped")
+        progress.finish(status=ExecutionProgressStatus.STOPPED)
     else:
         if status == "succeeded":
             progress.complete("build-run-test")
@@ -1487,7 +1492,9 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
             fc,
             result_card(run, reply_language=fc.reply_language)
             if run.verification
-            else TestResultCard(status="failed", failure_reason=NO_OUTPUT_BODY, dify_run_id=run.dify_run_id),
+            else TestResultCard(
+                status=TestResultStatus.FAILED, failure_reason=NO_OUTPUT_BODY, dify_run_id=run.dify_run_id
+            ),
         )
         execution = progress.finish()
         turn_items = append_assistant(
@@ -1949,7 +1956,7 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
     if kind == "keep_draft":
         from services.dify_builder.task_lifecycle import record_task_completion
 
-        record_task_completion(env, s, fc, "kept_draft")
+        record_task_completion(env, s, fc, TaskSummaryOutcome.KEPT_DRAFT)
         decision_items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.LABELS_KEPT_THE_DRAFT)))
         turn_items = append_assistant(
             env,
@@ -2007,7 +2014,7 @@ def handle_publish(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
     )
     from services.dify_builder.task_lifecycle import record_task_completion
 
-    record_task_completion(env, s, fc, "published")
+    record_task_completion(env, s, fc, TaskSummaryOutcome.PUBLISHED)
     return StepResult(next=PcState.BUILD_COMPLETE, context=fc, items=items)
 
 

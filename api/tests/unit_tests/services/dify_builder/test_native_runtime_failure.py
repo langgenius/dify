@@ -5,7 +5,7 @@ import pytest_mock
 from pydantic import ValidationError
 
 from core.dify_builder.models import Graph, NodeOutput, Run, RunVerification
-from runtime_contracts.builder.execution import ExecutionEvidenceSummary
+from runtime_contracts.builder.execution import ExecutionEvidenceSummary, FailureResourceKind
 from services.dify_builder.application import handlers_build, handlers_edit, handlers_fix
 from services.dify_builder.application.verification import result_card
 
@@ -359,7 +359,7 @@ def test_observed_native_request_id_envelope_is_classified() -> None:
     from services.dify_builder.native_runtime_failure import _native_reason
 
     error = "req_id: abc12345678 " + native_auth_error(401, "authentication_error").removeprefix("Run failed: ")
-    assert _native_reason(error, "model") == "authentication"
+    assert _native_reason(error, FailureResourceKind.MODEL) == "authentication"
 
 
 @pytest.mark.parametrize("node_type", ["llm", "code"])

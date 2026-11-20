@@ -2,7 +2,7 @@
 
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from typing import Literal, Never
+from typing import Never
 
 import pytest
 from pydantic import ValidationError
@@ -16,6 +16,7 @@ from core.dify_builder.models import Actor
 from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt, PendingActionDisclosure
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.service import DifyBuilderService
+from services.dify_builder.test_actions import NativeTestCommandMethod
 from services.dify_builder.test_actions import TestCommand as NativeCommand
 from tests.unit_tests.services.dify_builder.test_service import FakeSessionLock
 
@@ -288,7 +289,7 @@ def test_native_command_keeps_owner_authorization_after_metadata_check(
     action_case: ActionCase,
     sqlite_session_factory: sessionmaker[SqlSession],
     mocker: MockerFixture,
-    method: Literal["decide", "resume", "cancel"],
+    method: NativeTestCommandMethod,
 ) -> None:
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
     from services.dify_builder.native_testing.confirmed_agent_commands import ProfiledNativeTestCommands
@@ -399,7 +400,7 @@ def test_native_metadata_read_selects_only_current_owned_input(
             actor=actor,
             session_id=sid,
             test_input_id=input_id,
-            command=NativeCommand("resume", ids[0], {"expected_generation": 0}),
+            command=NativeCommand(NativeTestCommandMethod.RESUME, ids[0], {"expected_generation": 0}),
             idempotency_key="stale-command",
         )
 

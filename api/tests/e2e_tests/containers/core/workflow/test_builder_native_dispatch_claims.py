@@ -11,13 +11,13 @@ from collections.abc import Callable, Generator
 from multiprocessing.connection import Connection as ProcessConnection
 from multiprocessing.process import BaseProcess
 from multiprocessing.synchronize import Event as ProcessEvent
-from typing import TYPE_CHECKING, Literal, override
+from typing import TYPE_CHECKING, override
 
 from pydantic import JsonValue
 from sqlalchemy import Engine, Table
 from sqlalchemy.orm import Session
 
-from runtime_contracts.builder.native.contracts import EffectIntent
+from runtime_contracts.builder.native.contracts import EffectIntent, Outcome
 from services.dify_builder.native_testing.repository import OwnedNativeTest
 from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import require_instance
 
@@ -467,9 +467,7 @@ def test_blocked_ancestor_prevents_child_claim(claim_case: tuple[LedgerCase, Dis
 
 
 @pytest.mark.parametrize("outcome", ["completed", "failed", "unknown", "not_dispatched"])
-def test_settlement_cannot_replay_physical_io(
-    claim_case: tuple[LedgerCase, DispatchPermit], outcome: Literal["completed", "failed", "unknown", "not_dispatched"]
-) -> None:
+def test_settlement_cannot_replay_physical_io(claim_case: tuple[LedgerCase, DispatchPermit], outcome: Outcome) -> None:
     case, permit = claim_case
     observed = []
     _claim(case, permit, io=lambda: observed.append("io"))

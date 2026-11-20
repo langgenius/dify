@@ -35,7 +35,7 @@ from models.dify_builder import (
 )
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowRun, WorkflowType
-from runtime_contracts.builder.execution import BuilderExecutionRecorder
+from runtime_contracts.builder.execution import BuilderExecutionRecorder, WorkflowExecutionTransport
 from services.dify_builder.application.execution_policy import (
     BuilderExecutionContext,
     BuilderExecutionContextValue,
@@ -621,7 +621,7 @@ def test_ordinary_native_scalar_execution_remains_ordinary(native_owner: NativeO
             InvokeFrom.DEBUGGER,
             session=session,
             streaming=True,
-            workflow_execution_mode="in_process",
+            workflow_execution_mode=WorkflowExecutionTransport.IN_PROCESS,
         )
     native_id = ""
     try:

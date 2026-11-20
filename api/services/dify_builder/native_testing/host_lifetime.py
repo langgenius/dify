@@ -14,16 +14,17 @@ from __future__ import annotations
 from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
+from enum import StrEnum
 from math import isfinite
 from threading import Condition, RLock, Thread, current_thread
 from time import monotonic
-from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from graphon.nodes.base.node import Node
 from graphon.runtime import RuntimeState
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
 from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
-from services.dify_builder.native_testing.control import NativeControlRecord
+from services.dify_builder.native_testing.control import NativeControlRecord, NativeNodePhase
 
 if TYPE_CHECKING:
     from services.dify_builder.native_testing.sandbox.host import (
@@ -31,9 +32,25 @@ if TYPE_CHECKING:
         NativeCodeHostOwner,
     )
 
-ThreadRole = Literal["worker", "reader", "dispatcher"]
-CloseReason = Literal["cancel", "consumer_closed", "exhausted", "failed"]
-Settlement = Literal["settled", "unknown"]
+
+class ThreadRole(StrEnum):
+    WORKER = "worker"
+    READER = "reader"
+    DISPATCHER = "dispatcher"
+
+
+class CloseReason(StrEnum):
+    CANCEL = "cancel"
+    CONSUMER_CLOSED = "consumer_closed"
+    EXHAUSTED = "exhausted"
+    FAILED = "failed"
+
+
+class Settlement(StrEnum):
+    SETTLED = "settled"
+    UNKNOWN = "unknown"
+
+
 RefKey = tuple[str, str, str, str]
 
 
@@ -67,7 +84,7 @@ class NativeHostNodeScope:
     node: Node
     runtime_state: RuntimeState
     execution_id: str
-    phase: Literal["run", "resume_container"]
+    phase: NativeNodePhase
     thread: Thread
 
 
@@ -368,7 +385,7 @@ class NativeHostLifetime:
                 )
             ):
                 raise ValueError("native_host_reader_registration_refused")
-            self._threads.append(_ThreadOwnership(thread=thread, role="reader"))
+            self._threads.append(_ThreadOwnership(thread=thread, role=ThreadRole.READER))
             self._closing_reader = thread
             self._invalidate_settlement()
 
@@ -418,7 +435,7 @@ class NativeHostLifetime:
             if any(item.thread is thread for item in self._threads):
                 return
             self._require_open()
-            self._threads.append(_ThreadOwnership(thread=thread, role="dispatcher", attempted=True))
+            self._threads.append(_ThreadOwnership(thread=thread, role=ThreadRole.DISPATCHER, attempted=True))
 
     def bind_runtime(self, *, runtime_state: RuntimeState) -> None:
         """Observe actual root/frame runtime, including late current work.
@@ -433,7 +450,7 @@ class NativeHostLifetime:
             self._invalidate_settlement()
 
     @contextmanager
-    def node_scope(self, *, node: Node, phase: Literal["run", "resume_container"]) -> Generator[None]:
+    def node_scope(self, *, node: Node, phase: NativeNodePhase) -> Generator[None]:
         # Observation remains available for late native siblings after control.
         # It grants no IO; C02 owns common wait/replay and callback_scope gates
         # actual new physical entry. Consumed/noncurrent owners still refuse.
@@ -722,11 +739,11 @@ class NativeHostLifetime:
                         self._settled_in_time = True
                     elif not self._settled_in_time:
                         self._unknown = True
-                    return "unknown" if self._unknown else "settled"
+                    return Settlement.UNKNOWN if self._unknown else Settlement.SETTLED
                 remaining = deadline - monotonic()
                 if remaining <= 0 or any(item.thread is current_thread() for item in self._threads):
                     self._unknown = True
-                    return "unknown"
+                    return Settlement.UNKNOWN
                 self._condition.wait(timeout=min(remaining, 0.01) if self._code_participants else remaining)
 
     def consume_cleanup(self, *, ref: NativeTestContextRef, generation: int, dispatch_id: str) -> None:

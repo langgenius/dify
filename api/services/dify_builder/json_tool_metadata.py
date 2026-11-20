@@ -14,6 +14,7 @@ from core.plugin.impl.plugin import PluginInstaller
 from core.plugin.impl.tool import PluginToolManager
 from runtime_contracts.builder.execution import (
     BuilderExecutionPolicyError,
+    JsonToolRuntimeType,
     QualifiedJsonToolBinding,
     canonical_digest,
 )
@@ -100,7 +101,9 @@ class InstalledJsonParse:
             checksum=binding.checksum,
             provider_schema_digest=binding.provider_schema_digest,
             tool_schema_digest=binding.tool_schema_digest,
-            runtime_type=binding.runtime_type,
+            runtime_type=binding.runtime_type.value
+            if isinstance(binding.runtime_type, JsonToolRuntimeType)
+            else binding.runtime_type,
             qualification_digest=binding.qualification_digest,
         )
 

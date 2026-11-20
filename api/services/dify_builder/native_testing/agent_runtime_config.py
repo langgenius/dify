@@ -5,7 +5,7 @@ node-job config own declarations; the workspace service alone owns allocation.
 """
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.protocol.schemas import CreateRunRequest
@@ -35,7 +35,7 @@ from runtime_contracts.builder.native.agent_contracts import (
     AgentParentNodeRef,
     AgentTestWorkspaceRef,
 )
-from runtime_contracts.builder.native.contracts import FiniteJSON
+from runtime_contracts.builder.native.contracts import FiniteJSON, NativeAgentTestProfile
 from services.dify_builder.native_testing.agent_binding import (
     AgentBindingService,
     native_node_data,
@@ -71,7 +71,7 @@ class NativeAgentRuntimeConfigBuilder:
         *,
         loader: "OwnedNativeTestLoader",
         declarations: AgentToolDeclarationService | None = None,
-        profile: Literal["isolated", "confirmed"] = "isolated",
+        profile: NativeAgentTestProfile = NativeAgentTestProfile.ISOLATED,
     ):
         self.loader = loader
         self.declarations = declarations or AgentToolDeclarationService()
@@ -346,7 +346,9 @@ class NativeAgentRuntimeConfigBuilder:
                     {
                         "parent": parent_node.model_dump(mode="json"),
                         "snapshot": definition.snapshot_id,
-                        "profile": self.profile,
+                        "profile": self.profile.value
+                        if isinstance(self.profile, NativeAgentTestProfile)
+                        else self.profile,
                     }
                 )
                 if self.profile == "confirmed"

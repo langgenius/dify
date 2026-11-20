@@ -61,20 +61,20 @@ def _model_failure(stage: NativeModelFailureStage, error: Exception) -> NativeMo
     from dify_agent.runtime.native_continuation import NativePolicyStopped
 
     categories: dict[type[Exception], NativeModelFailureCategory] = {
-        QuotaExceededError: "quota_exceeded",
-        InvokeAuthorizationError: "authentication",
-        InvokeBadRequestError: "bad_request",
-        InvokeRateLimitError: "rate_limit",
-        InvokeConnectionError: "connection",
-        ConnectionError: "connection",
-        ConnectionRefusedError: "connection",
-        TimeoutError: "timeout",
-        InvokeServerUnavailableError: "service_unavailable",
-        ValidationError: "invalid_response",
+        QuotaExceededError: NativeModelFailureCategory.QUOTA_EXCEEDED,
+        InvokeAuthorizationError: NativeModelFailureCategory.AUTHENTICATION,
+        InvokeBadRequestError: NativeModelFailureCategory.BAD_REQUEST,
+        InvokeRateLimitError: NativeModelFailureCategory.RATE_LIMIT,
+        InvokeConnectionError: NativeModelFailureCategory.CONNECTION,
+        ConnectionError: NativeModelFailureCategory.CONNECTION,
+        ConnectionRefusedError: NativeModelFailureCategory.CONNECTION,
+        TimeoutError: NativeModelFailureCategory.TIMEOUT,
+        InvokeServerUnavailableError: NativeModelFailureCategory.SERVICE_UNAVAILABLE,
+        ValidationError: NativeModelFailureCategory.INVALID_RESPONSE,
     }
-    category = categories.get(type(error), "internal_unknown")
+    category = categories.get(type(error), NativeModelFailureCategory.INTERNAL_UNKNOWN)
     if stage == "receipt_append" and type(error) is NativePolicyStopped:
-        category = "result_too_large"
+        category = NativeModelFailureCategory.RESULT_TOO_LARGE
     return NativeModelFailureDiagnostic(stage=stage, category=category)
 
 

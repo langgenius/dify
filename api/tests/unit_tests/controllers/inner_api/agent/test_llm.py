@@ -568,23 +568,23 @@ def test_native_model_failure_codec_preserves_all_fixed_stage_category_pairs() -
     )
 
     stages: tuple[NativeModelFailureStage, ...] = (
-        "invoke",
-        "receipt_append",
-        "result_store",
-        "outcome_complete",
-        "unknown_settlement",
+        NativeModelFailureStage.INVOKE,
+        NativeModelFailureStage.RECEIPT_APPEND,
+        NativeModelFailureStage.RESULT_STORE,
+        NativeModelFailureStage.OUTCOME_COMPLETE,
+        NativeModelFailureStage.UNKNOWN_SETTLEMENT,
     )
     categories: tuple[NativeModelFailureCategory, ...] = (
-        "quota_exceeded",
-        "authentication",
-        "bad_request",
-        "rate_limit",
-        "connection",
-        "timeout",
-        "service_unavailable",
-        "invalid_response",
-        "result_too_large",
-        "internal_unknown",
+        NativeModelFailureCategory.QUOTA_EXCEEDED,
+        NativeModelFailureCategory.AUTHENTICATION,
+        NativeModelFailureCategory.BAD_REQUEST,
+        NativeModelFailureCategory.RATE_LIMIT,
+        NativeModelFailureCategory.CONNECTION,
+        NativeModelFailureCategory.TIMEOUT,
+        NativeModelFailureCategory.SERVICE_UNAVAILABLE,
+        NativeModelFailureCategory.INVALID_RESPONSE,
+        NativeModelFailureCategory.RESULT_TOO_LARGE,
+        NativeModelFailureCategory.INTERNAL_UNKNOWN,
     )
     for stage in stages:
         for category in categories:

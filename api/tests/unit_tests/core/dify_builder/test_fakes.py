@@ -18,6 +18,7 @@ from core.dify_builder.errors import ConflictError, NotFoundError
 from core.dify_builder.models import (
     Actor,
     Checkpoint,
+    ContextTaskStatus,
     ConversationItem,
     Diagnosis,
     DifyBuilderContext,
@@ -464,7 +465,7 @@ def _pending_memory_clear(
         repo.save_run(run.session_id or session.id, run)
     cleared = DifyBuilderContext(
         paused=True,
-        task_status="abandoned",
+        task_status=ContextTaskStatus.ABANDONED,
         last_command_id="clear",
         task_control={
             "conversation_clear": {"version": 2, "seq_floor": 0},

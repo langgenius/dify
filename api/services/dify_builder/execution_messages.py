@@ -7,7 +7,7 @@ from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 from runtime_contracts.builder.copy_ids import BuilderCopyId
-from runtime_contracts.builder.execution import ExecutionEvidenceSummary
+from runtime_contracts.builder.execution import ExecutionEvidenceSummary, FailureResourceKind
 from runtime_contracts.builder.presentation import BuilderText, copy_text, text_parts
 from services.dify_builder.native_launch_observation import FailureResource
 
@@ -229,7 +229,7 @@ def tool_credential_failure_message(
         return None
     return _resource_setup_guidance(
         reason=reason,
-        resource=("tool", provider, name),
+        resource=(FailureResourceKind.TOOL, provider, name),
         node_ids=(failed[0].node_id,),
         reply_language=reply_language,
     )

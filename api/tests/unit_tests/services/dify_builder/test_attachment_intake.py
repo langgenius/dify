@@ -17,7 +17,7 @@ from extensions.storage.storage_type import StorageType
 from models.base import Base
 from models.enums import CreatorUserRole
 from models.model import UploadFile
-from services.dify_builder.attachment_extraction import ExtractedContext
+from services.dify_builder.attachment_extraction import AttachmentExtractionStatus, ExtractedContext
 from services.dify_builder.attachment_intake import MaterialReceipt, NativeContextUpload
 from services.dify_builder.repository import SqlDifyBuilderRepository
 
@@ -203,7 +203,7 @@ def test_stopped_extraction_cannot_commit_late_results(queued: Queued) -> None:
     def extract(_upload: NativeContextUpload) -> ExtractedContext:
         stopped = replace(context, paused=True, task_control={"generation": 1})
         repo.compare_and_advance(session.id, 1, session.current_state, stopped, [])
-        return ExtractedContext("ready", "Late results", "a" * 64)
+        return ExtractedContext(AttachmentExtractionStatus.READY, "Late results", "a" * 64)
 
     intake = BuilderAttachmentIntake(repo, extract)
     with pytest.raises(ConflictError):
@@ -264,7 +264,7 @@ def test_test_stage_upload_is_only_a_candidate_and_does_not_bind_or_approve(queu
     receipt = queue(repo, session, upload_id)
     assert receipt.test_candidate
     updated, material, invalidated = BuilderAttachmentIntake(
-        repo, lambda _upload: ExtractedContext("ready", "Test rows")
+        repo, lambda _upload: ExtractedContext(AttachmentExtractionStatus.READY, "Test rows")
     ).consume(session, context, ACTOR)
     assert updated.current_state == PcState.BUILD_AWAIT_TESTDATA
     assert not invalidated
@@ -279,7 +279,9 @@ def test_consumption_persists_ordered_user_supplements_in_conversation(queued: Q
     repo, session, context, _ = queued
     queue(repo, session, None, turn="first", text="First supplement")
     queue(repo, session, None, turn="second", text="Second supplement")
-    BuilderAttachmentIntake(repo, lambda _upload: ExtractedContext("rejected")).consume(session, context, ACTOR)
+    BuilderAttachmentIntake(repo, lambda _upload: ExtractedContext(AttachmentExtractionStatus.REJECTED)).consume(
+        session, context, ACTOR
+    )
     users = [item.payload for item in repo.list_conversation(session.id) if item.kind == "user"]
     assert [(item["turn_id"], item["text"]) for item in users] == [
         ("first", "First supplement"),
@@ -314,7 +316,9 @@ def test_queued_edit_material_reanalyzes_and_never_uses_old_plan_approval(queued
             analyzed.append(goal_text)
             return {"fields": [{"key": "decision", "type": "text", "label": "Decision"}], "values": {}}
 
-    intake = BuilderAttachmentIntake(repo, lambda _upload: ExtractedContext("ready", "New policy"))
+    intake = BuilderAttachmentIntake(
+        repo, lambda _upload: ExtractedContext(AttachmentExtractionStatus.READY, "New policy")
+    )
     env = Env(dify=port, agent=Agent(), repo=repo, now=lambda: datetime.min, consume_material=intake.consume)
     Runner(env, edit_registry()).advance(
         session.id, Turn(actor=ACTOR, action=Action(kind="approve_edit_plan", base_version=session.version))
@@ -345,7 +349,9 @@ def test_create_persists_upload_association_before_initial_dispatch(queued: Queu
         FakeSessionLock(),
         enqueue,
         cognition_policy_fn=lambda _actor, _config: {},
-        attachment_intake=BuilderAttachmentIntake(repo, lambda _upload: ExtractedContext("ready", "Rules")),
+        attachment_intake=BuilderAttachmentIntake(
+            repo, lambda _upload: ExtractedContext(AttachmentExtractionStatus.READY, "Rules")
+        ),
     )
     if scenario == "build":
         view = service.create_build_session(original.app_id, ACTOR, "", attachments=[upload_id])
@@ -365,7 +371,9 @@ def test_consumed_receipt_reports_escaped_prompt_truncation(queued: Queued) -> N
 
     repo, session, context, upload_id = queued
     queue(repo, session, upload_id)
-    intake = BuilderAttachmentIntake(repo, lambda _upload: ExtractedContext("ready", '"' * 20000))
+    intake = BuilderAttachmentIntake(
+        repo, lambda _upload: ExtractedContext(AttachmentExtractionStatus.READY, '"' * 20000)
+    )
     _, updated, _ = intake.consume(session, context, ACTOR)
     assert repo.list_builder_material(session.id, ACTOR)[0].uploads[0]["status"] == "truncated"
     assert len(json.dumps(updated.attachment_material, ensure_ascii=False)) < 40000
@@ -428,7 +436,9 @@ def test_material_queued_during_handler_survives_its_checkpoint_update(queued: Q
     queue(repo, session, upload_id)
     context.checkpoint_seq = 42
     session.version = repo.compare_and_advance(session.id, 1, session.current_state, context, [])
-    BuilderAttachmentIntake(repo, lambda _upload: ExtractedContext("ready", "Rules")).consume(session, context, ACTOR)
+    BuilderAttachmentIntake(repo, lambda _upload: ExtractedContext(AttachmentExtractionStatus.READY, "Rules")).consume(
+        session, context, ACTOR
+    )
     assert repo.list_builder_material(session.id, ACTOR)[0].status == "consumed"
 
 
@@ -459,9 +469,9 @@ def test_test_stage_text_supplement_invalidates_old_approvals_but_upload_remains
     session.current_state = PcState.BUILD_AWAIT_TESTDATA
     session.version = repo.compare_and_advance(session.id, 1, session.current_state, context, [])
     queue(repo, session, upload_id, text="Change the output format")
-    _, updated, invalidated = BuilderAttachmentIntake(repo, lambda _upload: ExtractedContext("ready", "Rows")).consume(
-        session, context, ACTOR
-    )
+    _, updated, invalidated = BuilderAttachmentIntake(
+        repo, lambda _upload: ExtractedContext(AttachmentExtractionStatus.READY, "Rows")
+    ).consume(session, context, ACTOR)
     assert invalidated
     assert updated.test_input_ref == ""
     assert updated.effect_confirmation == {}
@@ -482,7 +492,9 @@ def test_message_replay_cannot_change_channels_or_input(queued: Queued) -> None:
         repo,
         lock,
         lambda *_args: None,
-        attachment_intake=BuilderAttachmentIntake(repo, lambda _upload: ExtractedContext("ready", "Rules")),
+        attachment_intake=BuilderAttachmentIntake(
+            repo, lambda _upload: ExtractedContext(AttachmentExtractionStatus.READY, "Rules")
+        ),
     )
     service.submit_message(session.id, ACTOR, "Original", session.version, "shared-turn")
     with pytest.raises(ConflictError, match="different input"):
@@ -497,7 +509,7 @@ def test_consumed_material_retry_as_text_does_not_start_partial_chat(queued: Que
 
     repo, session, context, _ = queued
     queue(repo, session, None, text="Supplement")
-    intake = BuilderAttachmentIntake(repo, lambda _upload: ExtractedContext("rejected"))
+    intake = BuilderAttachmentIntake(repo, lambda _upload: ExtractedContext(AttachmentExtractionStatus.REJECTED))
     updated_session, updated_context, _ = intake.consume(session, context, ACTOR)
     repo.compare_and_advance(session.id, updated_session.version, PcState.BUILD_GOAL_ANALYSIS, updated_context, [])
     dispatched: list[bool] = []
@@ -516,7 +528,7 @@ def test_stale_ordinary_message_does_not_reserve_an_unaccepted_input_digest(queu
 
     repo, session, context, _ = queued
     repo.compare_and_advance(session.id, 1, PcState.BUILD_GOAL_ANALYSIS, context, [])
-    intake = BuilderAttachmentIntake(repo, lambda _upload: ExtractedContext("rejected"))
+    intake = BuilderAttachmentIntake(repo, lambda _upload: ExtractedContext(AttachmentExtractionStatus.REJECTED))
     service = DifyBuilderService(repo, FakeSessionLock(), lambda *_args: None, attachment_intake=intake)
     with pytest.raises(ConflictError):
         service.submit_message(session.id, ACTOR, "Rejected old input", 1, "not-admitted")
@@ -564,7 +576,8 @@ def test_lease_completion_during_intake_rechecks_head_and_schedules_pending_mate
             return receipt
 
     intake = BuilderAttachmentIntake(
-        CompletingRepository(repo._session_factory), lambda _upload: ExtractedContext("ready", "Rules")
+        CompletingRepository(repo._session_factory),
+        lambda _upload: ExtractedContext(AttachmentExtractionStatus.READY, "Rules"),
     )
     service = DifyBuilderService(
         repo,
@@ -594,7 +607,9 @@ def test_post_release_pending_dispatch_reuses_existing_lease_and_dedupes_wakeups
         repo,
         lock,
         lambda session_id, action, actor, token: dispatched.append((session_id, action, actor, token)),
-        attachment_intake=BuilderAttachmentIntake(repo, lambda _upload: ExtractedContext("ready", "Rules")),
+        attachment_intake=BuilderAttachmentIntake(
+            repo, lambda _upload: ExtractedContext(AttachmentExtractionStatus.READY, "Rules")
+        ),
     )
     assert service.dispatch_pending_material(session.id, ACTOR)
     assert service.dispatch_pending_material(session.id, ACTOR) == ""
@@ -619,7 +634,7 @@ def test_ordinary_message_keeps_existing_two_commit_retry_and_hidden_chat_receip
     session.version = repo.compare_and_advance(session.id, 1, session.current_state, context, [])
     commands: list[Command] = []
     lock = FakeSessionLock()
-    intake = BuilderAttachmentIntake(repo, lambda _upload: ExtractedContext("rejected"))
+    intake = BuilderAttachmentIntake(repo, lambda _upload: ExtractedContext(AttachmentExtractionStatus.REJECTED))
     service = DifyBuilderService(
         repo,
         lock,

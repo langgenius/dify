@@ -9,7 +9,14 @@ import io
 import zipfile
 from collections.abc import Generator, Iterable
 from dataclasses import dataclass
-from typing import Literal
+from enum import StrEnum
+
+
+class AttachmentExtractionStatus(StrEnum):
+    READY = "ready"
+    TRUNCATED = "truncated"
+    REJECTED = "rejected"
+
 
 MAX_FILE_BYTES = 10 * 1024 * 1024
 MAX_FILE_CHARS = 20_000
@@ -18,7 +25,7 @@ MAX_ZIP_BYTES = 20 * 1024 * 1024
 
 @dataclass(frozen=True)
 class ExtractedContext:
-    status: Literal["ready", "truncated", "rejected"]
+    status: AttachmentExtractionStatus
     text: str = ""
     digest: str = ""
     reason: str = ""
@@ -158,12 +165,12 @@ def extract_local_context(
     """Read at most 10 MiB; extract at most 20k characters or reject honestly."""
     extension = extension.lower().lstrip(".")
     if extension not in {"txt", "md", "markdown", "csv", "pdf", "xlsx"}:
-        return ExtractedContext("rejected", reason="unsupported_format")
+        return ExtractedContext(AttachmentExtractionStatus.REJECTED, reason="unsupported_format")
     data = bytearray()
     try:
         for chunk in chunks:
             if len(data) + len(chunk) > min(MAX_FILE_BYTES, max_bytes):
-                return ExtractedContext("rejected", reason="byte_limit")
+                return ExtractedContext(AttachmentExtractionStatus.REJECTED, reason="byte_limit")
             data.extend(chunk)
         digest = hashlib.sha256(data).hexdigest()
         raw = bytes(data)
@@ -175,17 +182,22 @@ def extract_local_context(
             try:
                 text = raw.decode("utf-8-sig")
             except UnicodeDecodeError:
-                return ExtractedContext("rejected", digest=digest, reason="unsupported_encoding")
+                return ExtractedContext(
+                    AttachmentExtractionStatus.REJECTED, digest=digest, reason="unsupported_encoding"
+                )
         if not text.strip():
-            return ExtractedContext("rejected", digest=digest, reason="no_extractable_text")
+            return ExtractedContext(AttachmentExtractionStatus.REJECTED, digest=digest, reason="no_extractable_text")
         truncated = len(text) > MAX_FILE_CHARS
         return ExtractedContext(
-            "truncated" if truncated else "ready", text[:MAX_FILE_CHARS], digest, "character_limit" if truncated else ""
+            AttachmentExtractionStatus.TRUNCATED if truncated else AttachmentExtractionStatus.READY,
+            text[:MAX_FILE_CHARS],
+            digest,
+            "character_limit" if truncated else "",
         )
     except _RejectedError as exc:
-        return ExtractedContext("rejected", reason=str(exc))
+        return ExtractedContext(AttachmentExtractionStatus.REJECTED, reason=str(exc))
     except Exception:
-        return ExtractedContext("rejected", reason="malformed_file")
+        return ExtractedContext(AttachmentExtractionStatus.REJECTED, reason="malformed_file")
     finally:
         if isinstance(chunks, Generator):
             chunks.close()

@@ -121,7 +121,7 @@ class NativeCallAdapter:
             # has definitely not begun. Preserve that truthful distinction.
             reason = error.reason_code if isinstance(error, BuilderExecutionPolicyError) else "outcome_unknown"
             try:
-                self._authorization.record_outcome(permit=permit, outcome="not_dispatched", result_ref=None)
+                self._authorization.record_outcome(permit=permit, outcome=Outcome.NOT_DISPATCHED, result_ref=None)
             except BaseException:
                 reason = "outcome_unknown"
             raise NativePolicyStop(ref=ref, reason_code=reason) from None
@@ -139,7 +139,9 @@ class NativeCallAdapter:
         except BaseException:
             self._unknown(ref=ref, permit=permit)
         try:
-            receipt = self._authorization.record_outcome(permit=permit, outcome="completed", result_ref=result_ref)
+            receipt = self._authorization.record_outcome(
+                permit=permit, outcome=Outcome.COMPLETED, result_ref=result_ref
+            )
             receipt = EffectReceipt.model_validate(receipt.model_dump(mode="json"))
             if (receipt.operation_id, receipt.attempt_id, receipt.outcome, receipt.result_ref) != (
                 permit.operation_id,
@@ -164,7 +166,7 @@ class NativeCallAdapter:
 
     def _unknown(self, *, ref: NativeTestContextRef, permit: DispatchPermit) -> NoReturn:
         try:
-            self._authorization.record_outcome(permit=permit, outcome="unknown", result_ref=None)
+            self._authorization.record_outcome(permit=permit, outcome=Outcome.UNKNOWN, result_ref=None)
         except BaseException:
             # This is one settlement attempt. A concurrent completed receipt or
             # lost ack stays untouched; the host must retain unknown projection.

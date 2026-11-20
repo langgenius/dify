@@ -2,7 +2,7 @@
 
 import json
 from collections.abc import Callable, Generator
-from typing import Literal, Never
+from typing import Never
 
 import pytest
 import pytest_mock
@@ -14,6 +14,7 @@ from core.app.features.rate_limiting.rate_limit import RateLimit
 from enums import DeploymentEdition
 from models.model import Account, App, AppMode
 from models.workflow import Workflow
+from runtime_contracts.builder.execution import WorkflowExecutionTransport
 from services.app_generate_service import AppGenerateService
 from tests.unit_tests.installed_spies import installed_mock
 
@@ -92,7 +93,7 @@ def test_in_process_stream_does_not_enqueue_a_child_task_and_releases_its_rate_l
             invoke_from=InvokeFrom.DEBUGGER,
             session=session,
             streaming=True,
-            workflow_execution_mode="in_process",
+            workflow_execution_mode=WorkflowExecutionTransport.IN_PROCESS,
         )
 
     assert json.loads(next(response).removeprefix("data: ")) == {
@@ -151,7 +152,7 @@ def test_posted_live_mode_cannot_select_builder_policy(
                 {"inputs": {}, "execution_mode": "live_confirmed", "builder_execution": {"mode": "live_confirmed"}},
                 InvokeFrom.DEBUGGER,
                 session=session,
-                workflow_execution_mode="in_process",
+                workflow_execution_mode=WorkflowExecutionTransport.IN_PROCESS,
                 builder_execution=policy,
                 builder_execution_admit=_RefusalAdmission() if policy else None,
             )
@@ -181,7 +182,7 @@ def test_restricted_dispatch_rejects_other_modes_before_guardrails(
             {"inputs": {}},
             InvokeFrom.DEBUGGER,
             session=session,
-            workflow_execution_mode="in_process",
+            workflow_execution_mode=WorkflowExecutionTransport.IN_PROCESS,
             builder_execution=context(),
             builder_execution_admit=_RefusalAdmission(),
         )
@@ -206,7 +207,7 @@ def test_restricted_marker_cannot_enter_agent_dispatch_of_workflow_app(mocker: p
             session=Session(),
             rate_limit=RateLimit(app.id, 0),
             request_id="request",
-            workflow_execution_mode="in_process",
+            workflow_execution_mode=WorkflowExecutionTransport.IN_PROCESS,
             builder_execution=context(),
             builder_execution_admit=_RefusalAdmission(),
         )
@@ -219,7 +220,7 @@ def test_pre_generator_tool_admission_failure_has_qualified_preparation_boundary
     mocker: pytest_mock.MockerFixture,
     monkeypatch: pytest.MonkeyPatch,
     mode: AppMode,
-    transport: Literal["in_process", "celery"],
+    transport: WorkflowExecutionTransport,
 ) -> None:
     from core.tools.errors import ToolProviderCredentialValidationError
     from services.dify_builder.native_launch_observation import NativeLaunchObservation

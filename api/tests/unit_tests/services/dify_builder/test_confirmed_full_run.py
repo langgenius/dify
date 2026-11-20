@@ -40,7 +40,7 @@ from models.workflow import (
     WorkflowRun,
     WorkflowType,
 )
-from runtime_contracts.builder.execution import canonical_digest
+from runtime_contracts.builder.execution import FailureResourceKind, canonical_digest
 from runtime_contracts.builder.native.agent_context import BuilderAgentExecutionContext
 from runtime_contracts.builder.native.contracts import CheckpointRef, NativeTestContextRef, WaitingReceipt
 from services.dify_builder import dify_port
@@ -871,7 +871,7 @@ def test_preparation_failure_identifies_only_the_observed_resource_nodes(harness
 
     def generate(**_kwargs: object) -> None:
         begin_preparation()
-        with observe_resource("model", "provider", "model"):
+        with observe_resource(FailureResourceKind.MODEL, "provider", "model"):
             raise ConnectionRefusedError("private secret")
 
     harness.generate.side_effect = generate

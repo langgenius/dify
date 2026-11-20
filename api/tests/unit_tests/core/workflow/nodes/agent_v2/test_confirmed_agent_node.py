@@ -33,7 +33,7 @@ from runtime_contracts.builder.native.agent_contracts import (
     AgentTestWorkspaceRef,
     AgentWaitAssociation,
 )
-from runtime_contracts.builder.native.contracts import CheckpointRef, NativeTestContextRef
+from runtime_contracts.builder.native.contracts import CheckpointRef, NativeAgentTestProfile, NativeTestContextRef
 from runtime_contracts.builder.native.runtime_contracts import (
     NativeCheckpointPayload,
     NodeJournalState,
@@ -154,7 +154,7 @@ def _confirmed(
     mocker.patch.object(store, "store_node_inputs", return_value="input-ref")
     raw = Client(base_url="http://127.0.0.1:1")
     backend = DifyAgentBackendRunClient(raw)
-    config_builder = NativeAgentRuntimeConfigBuilder(loader=api.loader, profile="confirmed")
+    config_builder = NativeAgentRuntimeConfigBuilder(loader=api.loader, profile=NativeAgentTestProfile.CONFIRMED)
     preparation = AgentPreparationService(state_store=store, backend=raw, workspace=None, config_builder=config_builder)
     mocker.patch.object(config_builder, "typed_inputs", return_value={"query": "typed", "values": {"prior.number": 42}})
     commands = ConfirmedAgentCommands(api=api, continuation=None, backend=backend, publish=None)

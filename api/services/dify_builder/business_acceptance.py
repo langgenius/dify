@@ -19,14 +19,37 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter, model_validator
 
 from core.dify_builder.errors import BadRequestError, NotFoundError
-from core.dify_builder.models import DifyBuilderContext, Graph, PublicationDecision, Run, Session, TestInput
+from core.dify_builder.models import (
+    BusinessAcceptanceState,
+    DifyBuilderContext,
+    Graph,
+    PublicationDecision,
+    PublicationReason,
+    Run,
+    Session,
+    TestInput,
+)
+from runtime_contracts.builder.string_enum import BuilderStringEnum
 from services.dify_builder.application.verification import publication_decision
 from services.dify_builder.native_docx_evidence import FileAcceptance
 from services.dify_builder.revision import executable_graph_revision
 
+
+class AcceptanceOperator(BuilderStringEnum):
+    EQUALS = "equals"
+    NONNULL = "nonnull"
+    FILE = "file"
+
+
+class CaseExecutionState(BuilderStringEnum):
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    UNKNOWN = "unknown"
+
+
 Identifier = Annotated[str, Field(min_length=1, max_length=128)]
 Digest = Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]
-State = Literal["passed", "failed", "unverified"]
+State = BusinessAcceptanceState
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +60,7 @@ class _ContractModel(BaseModel):
 
 class AcceptanceCheck(_ContractModel):
     path: tuple[Identifier, ...] = Field(min_length=1, max_length=16)
-    operator: Literal["equals", "nonnull", "file"]
+    operator: AcceptanceOperator
     expected: JsonValue = None
     file_type: Literal["docx"] | None = None
 
@@ -106,7 +129,7 @@ class CaseAcceptance(_ContractModel):
     test_input_id: str
     execution_revision: str
     graph_revision: str
-    execution_state: Literal["succeeded", "failed", "unknown"]
+    execution_state: CaseExecutionState
     state: State
     reasons: tuple[str, ...] = ()
 
@@ -152,7 +175,13 @@ def _value(outputs: object, path: tuple[str, ...]) -> tuple[bool, object]:
 
 
 def _aggregate(states: Sequence[State]) -> State:
-    return "failed" if "failed" in states else "unverified" if "unverified" in states else "passed"
+    return (
+        BusinessAcceptanceState.FAILED
+        if "failed" in states
+        else BusinessAcceptanceState.UNVERIFIED
+        if "unverified" in states
+        else BusinessAcceptanceState.PASSED
+    )
 
 
 def evaluate_case(
@@ -188,29 +217,29 @@ def evaluate_case(
         reasons.append(reason)
 
     if not contract.confirmed:
-        record("unverified", "contract_unconfirmed")
+        record(BusinessAcceptanceState.UNVERIFIED, "contract_unconfirmed")
     if contract.task_id != task_id or contract.source_digest != source_digest:
-        record("unverified", "task_source_mismatch")
+        record(BusinessAcceptanceState.UNVERIFIED, "task_source_mismatch")
     if not run.id:
-        record("unverified", "builder_run_unbound")
+        record(BusinessAcceptanceState.UNVERIFIED, "builder_run_unbound")
     if test_input.session_id != session_id or not test_input.id or run.inputs_ref != test_input.id:
-        record("unverified", "test_input_unbound")
+        record(BusinessAcceptanceState.UNVERIFIED, "test_input_unbound")
     if _digest(test_input.inputs) != _digest(case.inputs):
-        record("unverified", "sample_input_mismatch")
+        record(BusinessAcceptanceState.UNVERIFIED, "sample_input_mismatch")
     decision = publication_decision(
         run, session_id=session_id, current_revision=current_revision, current_graph_revision=current_graph_revision
     )
     if not decision.allowed:
-        record("unverified", decision.reason)
+        record(BusinessAcceptanceState.UNVERIFIED, decision.reason)
     if native_graph is None:
-        record("unverified", "native_graph_unavailable")
+        record(BusinessAcceptanceState.UNVERIFIED, "native_graph_unavailable")
         if evidence is not None and evidence.terminal_outputs is None:
-            record("unverified", "terminal_outputs_redacted")
+            record(BusinessAcceptanceState.UNVERIFIED, "terminal_outputs_redacted")
     elif executable_graph_revision(native_graph) != current_graph_revision:
-        record("unverified", "native_graph_mismatch")
+        record(BusinessAcceptanceState.UNVERIFIED, "native_graph_mismatch")
     summary = evidence.execution_evidence if evidence else None
     if summary and summary.simulated_node_ids:
-        record("unverified", "simulated_execution")
+        record(BusinessAcceptanceState.UNVERIFIED, "simulated_execution")
 
     # Unbound or stale observations must not be interpreted as evidence for this
     # case, even if their content happens to match or contradict the contract.
@@ -238,24 +267,24 @@ def evaluate_case(
             ):
                 forbidden_observed = True
         if not set(case.required_node_types) <= types or not set(case.required_tool_ids) <= tools:
-            record("failed", "required_invocation_missing")
+            record(BusinessAcceptanceState.FAILED, "required_invocation_missing")
         if forbidden_observed:
-            record("failed", "forbidden_invocation_observed")
+            record(BusinessAcceptanceState.FAILED, "forbidden_invocation_observed")
         if evidence.terminal_outputs is None:
-            record("unverified", "terminal_outputs_unavailable")
+            record(BusinessAcceptanceState.UNVERIFIED, "terminal_outputs_unavailable")
         else:
             for check in case.checks:
                 present, value = _value(evidence.terminal_outputs, check.path)
                 if not present:
-                    record("failed", "required_output_missing")
+                    record(BusinessAcceptanceState.FAILED, "required_output_missing")
                 elif check.operator == "equals":
                     if not _equal(value, check.expected):
-                        record("failed", "output_mismatch")
+                        record(BusinessAcceptanceState.FAILED, "output_mismatch")
                 elif value is None:
-                    record("failed", "required_output_null")
+                    record(BusinessAcceptanceState.FAILED, "required_output_null")
                 elif check.operator == "file":
                     if file_evidence is None:
-                        record("unverified", "file_bytes_unverified")
+                        record(BusinessAcceptanceState.UNVERIFIED, "file_bytes_unverified")
                     else:
                         file_result = file_evidence(value)
                         record(file_result.state, file_result.reason)
@@ -493,11 +522,13 @@ def context_publication_decision(
             current_graph_revision=current_graph_revision,
         )
     except ValueError:
-        return PublicationDecision(allowed=False, reason="business_acceptance_unverified")
+        return PublicationDecision(allowed=False, reason=PublicationReason.BUSINESS_ACCEPTANCE_UNVERIFIED)
     if coverage.state != "passed":
         return PublicationDecision(
             allowed=False,
-            reason="business_acceptance_failed" if coverage.state == "failed" else "business_acceptance_unverified",
+            reason=PublicationReason.BUSINESS_ACCEPTANCE_FAILED
+            if coverage.state == "failed"
+            else PublicationReason.BUSINESS_ACCEPTANCE_UNVERIFIED,
         )
     return decision
 

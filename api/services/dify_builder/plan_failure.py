@@ -2,7 +2,7 @@
 
 from dataclasses import fields, replace
 
-from core.dify_builder.contract import FormCard
+from core.dify_builder.contract import ExecutionProgressStatus, FormCard
 from core.dify_builder.models import DifyBuilderContext, Session
 from core.dify_builder.progress import ProgressReporter
 from core.dify_builder.state import PcState
@@ -25,7 +25,7 @@ def edit_planning_failed(
 ) -> StepResult:
     """Keep the waiting state; reoffer submitted rules when that gate owns a form."""
     progress.fail_step(step_id)
-    execution = progress.finish(status="error")
+    execution = progress.finish(status=ExecutionProgressStatus.ERROR)
     form_items = []
     if session.current_state == PcState.EDIT_IMPACT_ANALYSIS:
         rendered_fields = edit_rule_form_fields(context)

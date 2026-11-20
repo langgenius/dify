@@ -5,10 +5,18 @@ from types import MappingProxyType
 from typing import TypedDict
 
 import pytest
+from pydantic import TypeAdapter, ValidationError
 from sqlalchemy.orm import Session
 
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest
-from runtime_contracts.builder.native.contracts import EffectIntent, JsonValue, OperationKey
+from runtime_contracts.builder.native.contracts import (
+    ApprovalWait,
+    EffectDecision,
+    EffectIntent,
+    JsonValue,
+    OperationKey,
+    WaitReason,
+)
 from services.dify_builder.native_testing.repository import NativeBinding
 
 
@@ -24,6 +32,29 @@ class BudgetOverrides(TypedDict, total=False):
     invocation_digest: str
     requested: dict[str, int]
     now: datetime
+
+
+def test_wait_decision_preserves_its_discriminator_and_string_payload() -> None:
+    adapter = TypeAdapter(EffectDecision)
+    raw = {"kind": "waiting", "pending_operation_id": "pending"}
+    defaulted = adapter.validate_python(raw, strict=True)
+    assert isinstance(defaulted, ApprovalWait)
+    assert defaulted.wait_reason is WaitReason.APPROVAL
+
+    legacy = {**raw, "wait_reason": "interaction"}
+    decoded = adapter.validate_python(legacy, strict=True)
+    assert isinstance(decoded, ApprovalWait)
+    assert decoded.wait_reason is WaitReason.INTERACTION
+    assert decoded.model_dump() == decoded.model_dump(mode="json") == legacy
+    assert type(decoded.model_dump()["wait_reason"]) is str
+
+    with pytest.raises(ValidationError):
+        adapter.validate_python({**raw, "wait_reason": b"interaction"}, strict=True)
+
+    for mode in ("validation", "serialization"):
+        field = ApprovalWait.model_json_schema(mode=mode)["properties"]["wait_reason"]
+        assert field["enum"] == ["approval", "configuration", "interaction"]
+        assert field["default"] == "approval"
 
 
 def intent() -> EffectIntent:

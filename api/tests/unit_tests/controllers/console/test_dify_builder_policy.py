@@ -14,7 +14,7 @@ from controllers.console import dify_builder_policy as controller
 from controllers.console.dify_builder_policy_fields import DifyBuilderPolicyPayload, DifyBuilderPolicyResponse
 from core.dify_builder.models import Actor
 from machinery.context import RequestContext
-from services.dify_builder.application.cognition_policy import CognitionPolicyDeniedError
+from services.dify_builder.application.cognition_policy import CognitionPolicyDeniedError, CognitionPolicySource
 from tests.helpers.unit.config_override import apply_config_overrides
 
 PAYLOAD: dict[str, object] = {
@@ -154,7 +154,7 @@ def test_admin_policy_routes_serialize_missing_and_unknown_default_status(
     from services.dify_builder.application.cognition_policy import CognitionPolicy, CognitionPolicyStatus
 
     apply_config_overrides(monkeypatch, DIFY_BUILDER_ENABLED=True)
-    policy = CognitionPolicy(True, (), None, (), 0, "workspace_default")
+    policy = CognitionPolicy(True, (), None, (), 0, CognitionPolicySource.WORKSPACE_DEFAULT)
     status = CognitionPolicyStatus(policy, {}, False, reason)
 
     class Service:
