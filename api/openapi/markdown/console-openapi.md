@@ -387,7 +387,7 @@ invitation before the token is consumed or tenant membership is changed.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Account activated successfully | **application/json**: [ActivationResponse](#activationresponse)<br> |
-| 400 | Already activated or invalid token | **application/json**: [AccountInFreezeError](#accountinfreezeerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Already activated or invalid token | **application/json**: [AccountInFreezeError](#accountinfreezeerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[WorkspaceMemberLimitReachedError](#workspacememberlimitreachederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [AlreadyActivateError](#alreadyactivateerror)<br>[InvitationAccountMismatchError](#invitationaccountmismatcherror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -19444,6 +19444,47 @@ Invalid path arguments fail before provider discovery or asset access.
 | 200 | Model provider icon |  |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /workspaces/{workspace_id}/members/pending-invitations
+**List pending invitations for the active workspace**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PendingWorkspaceInvitationListResponse](#pendingworkspaceinvitationlistresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /workspaces/{workspace_id}/members/pending-invitations/revoke
+**Revoke an email's invitation: links stop working, a pending member is removed, the seat is freed**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [PendingInvitationRevokePayload](#pendinginvitationrevokepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [PendingInvitationNotFoundError](#pendinginvitationnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /{evaluate_target_type}/{evaluate_target_id}/dataset-template/download
 #### Parameters
 
@@ -26659,6 +26700,7 @@ Too many incorrect password attempts. Please try again later.
 | ---- | ---- | ----------- | -------- |
 | code | string |  | Yes |
 | email | string |  | Yes |
+| invite_token | string | Invitation link token being accepted. | No |
 | language | string |  | No |
 | timezone | string |  | No |
 | token | string (uuid) |  | Yes |
@@ -27213,6 +27255,8 @@ stays open because ``HTTPException.data`` may carry extra keys.
 
 #### EvaluationRunResponse
 
+Expose the model pinned in the run snapshot, independent of later config edits.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | completed_at | integer |  | No |
@@ -27222,6 +27266,8 @@ stays open because ``HTTPException.data`` may carry extra keys.
 | dataset_file_id | string |  | No |
 | error | string |  | No |
 | evaluation_config_id | string |  | Yes |
+| evaluation_model | string |  | No |
+| evaluation_model_provider | string |  | No |
 | failed_items | integer |  | Yes |
 | id | string |  | Yes |
 | metrics_summary | object |  | No |
@@ -27511,6 +27557,7 @@ Effective feature availability and limits for the current workspace.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| agent_preview_enabled | boolean |  | Yes |
 | annotation_quota_limit | [LimitationModel](#limitationmodel) |  | Yes |
 | api_rate_limit | [Quota](#quota) |  | Yes |
 | apps | [LimitationModel](#limitationmodel) |  | Yes |
@@ -27521,6 +27568,8 @@ Effective feature availability and limits for the current workspace.
 | enable_file_scan | boolean |  | Yes |
 | enable_knowledge_fs | boolean |  | Yes |
 | enable_skill | boolean, <br>**Default:** true |  | Yes |
+| evaluation_enabled | boolean |  | Yes |
+| evaluation_upgrade_available | boolean |  | Yes |
 | human_input_email_delivery_enabled | boolean |  | Yes |
 | im_centrally_managed | boolean |  | Yes |
 | is_allow_transfer_workspace | boolean, <br>**Default:** true |  | Yes |
@@ -27530,6 +27579,7 @@ Effective feature availability and limits for the current workspace.
 | trigger_event | [Quota](#quota) |  | Yes |
 | webapp_copyright_enabled | boolean |  | Yes |
 | workflow_collaboration_enabled | boolean |  | Yes |
+| workflow_collaboration_upgrade_available | boolean |  | Yes |
 | workspace_members | [LicenseLimitationModel](#licenselimitationmodel) |  | Yes |
 
 #### Feedback
@@ -31930,8 +31980,8 @@ Unable to create account because the licensed seats limit was exceeded
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| limit | integer |  | Yes |
-| size | integer |  | Yes |
+| limit | integer | Maximum number of resources allowed; 0 means unlimited | Yes |
+| size | integer | Number of resources already consumed | Yes |
 
 #### ListChannelProvidersResponse
 
@@ -33849,6 +33899,34 @@ Too many password reset emails have been sent. Please try again in {minutes} min
 | node_title | string |  | Yes |
 | pause_type | [HumanInputPauseTypeResponse](#humaninputpausetyperesponse) |  | Yes |
 
+#### PendingInvitationNotFoundError
+
+No live invitation exists for this email in the workspace.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PendingInvitationNotFoundError |  | No live invitation exists for this email in the workspace. |  |
+
+#### PendingInvitationRevokePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | Yes |
+
+#### PendingWorkspaceInvitationListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| invitations | [ [PendingWorkspaceInvitationResponse](#pendingworkspaceinvitationresponse) ] |  | Yes |
+
+#### PendingWorkspaceInvitationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | Yes |
+| expires_at | dateTime |  | Yes |
+| role | [TenantAccountRole](#tenantaccountrole) |  | Yes |
+
 #### Permission
 
 | Name | Type | Description | Required |
@@ -35047,6 +35125,7 @@ Resource types understood by access policies.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| icon_info | [RagPipelineIconInfo](#ragpipelineiconinfo) |  | No |
 | yaml_content | string |  | Yes |
 
 #### RagPipelineDatasourceListResponse
@@ -35073,6 +35152,15 @@ Resource types understood by access policies.
 | datasource_type | string |  | Yes |
 | inputs | object |  | Yes |
 | start_node_id | string |  | Yes |
+
+#### RagPipelineIconInfo
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| icon | string |  | Yes |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| icon_url | string |  | No |
 
 #### RagPipelineImportCheckDependenciesResponse
 
@@ -38389,8 +38477,8 @@ in form definition, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| limit | integer |  | Yes |
-| size | integer |  | Yes |
+| limit | integer | Vector storage allowed, in MB; -1 means unlimited | Yes |
+| size | integer | Vector storage already consumed, in MB | Yes |
 | usage_unknown | boolean |  | No |
 
 #### VerificationTokenResponse
@@ -39835,6 +39923,14 @@ Workflow tool configuration
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | id | string |  | Yes |
+
+#### WorkspaceMemberLimitReachedError
+
+The workspace has reached its member limit, so this invitation cannot be accepted right now.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WorkspaceMemberLimitReachedError |  | The workspace has reached its member limit, so this invitation cannot be accepted right now. |  |
 
 #### WorkspacePaginationResponse
 

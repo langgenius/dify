@@ -5,20 +5,17 @@ import { Spinner } from '@langgenius/dify-ui/spinner'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
-import { useSnippetsAndEvaluationAccess } from './use-snippets-and-evaluation-access'
+import { useEvaluationAccess } from './use-evaluation-access'
 
-type SnippetAndEvaluationPlanGuardProps = {
+type EvaluationPlanGuardProps = {
   children: ReactNode
   fallbackHref: string
 }
 
-const SnippetAndEvaluationPlanGuard = ({
-  children,
-  fallbackHref,
-}: SnippetAndEvaluationPlanGuardProps) => {
+const EvaluationPlanGuard = ({ children, fallbackHref }: EvaluationPlanGuardProps) => {
   const { t } = useTranslation(['common'])
   const router = useRouter()
-  const { isReady, canAccess } = useSnippetsAndEvaluationAccess()
+  const { isReady, canAccess } = useEvaluationAccess()
 
   useEffect(() => {
     if (isReady && !canAccess) router.replace(fallbackHref)
@@ -37,4 +34,4 @@ const SnippetAndEvaluationPlanGuard = ({
   return children
 }
 
-export default SnippetAndEvaluationPlanGuard
+export default EvaluationPlanGuard

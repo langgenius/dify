@@ -6,12 +6,6 @@ import Answer from '../index'
 import { pendingForm } from './answer-form-preset'
 
 vi.unmock('react-i18next')
-// boundary: citation destinations read Next route params outside an application.
-vi.mock('@/next/navigation', () => ({
-  useParams: () => ({}),
-  usePathname: () => '/chat',
-  useRouter: () => ({ push: vi.fn() }),
-}))
 
 beforeEach(async () => {
   await page.viewport(1000, 800)
