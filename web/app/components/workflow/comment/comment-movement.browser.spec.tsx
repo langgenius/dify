@@ -152,8 +152,8 @@ it('keeps the marker size and its tip on the stored point when it becomes select
   const collapsed = marker.element().firstElementChild!.getBoundingClientRect()
   await screen.getByRole('button', { name: 'Toggle selection' }).click()
   await expect
-    .poll(() => getComputedStyle(marker.element().firstElementChild!).boxShadow)
-    .toContain('1.5px')
+    .element(marker.element().firstElementChild as HTMLElement)
+    .toHaveAttribute('data-selected')
   const selected = marker.element().firstElementChild!.getBoundingClientRect()
   expect(selected.width).toBe(collapsed.width)
   expect(selected.height).toBe(collapsed.height)

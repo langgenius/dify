@@ -263,11 +263,11 @@ export const CommentIcon: FC<CommentIconProps> = memo(
           }}
         >
           <div
+            data-selected={isActive || undefined}
             className={cn(
-              'flex min-h-6.75 min-w-6.75 items-center rounded-[13.5px] rounded-es-[3px] bg-components-panel-bg-blur p-[1.5px] shadow-lg backdrop-blur-[5px]',
-              isActive
-                ? 'inset-ring-[1.5px] inset-ring-components-option-card-option-selected-border'
-                : 'inset-ring-[0.5px] inset-ring-components-panel-border',
+              'relative flex min-h-6.75 min-w-6.75 items-center rounded-[13.5px] rounded-es-[3px] bg-components-panel-bg-blur p-[1.5px] shadow-lg backdrop-blur-[5px]',
+              'after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:border-[0.5px] after:border-components-panel-border',
+              'data-selected:after:border-[1.5px] data-selected:after:border-components-option-card-option-selected-border',
               cursorClass,
             )}
             onMouseEnter={handleMouseEnter}

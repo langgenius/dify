@@ -166,7 +166,7 @@ export const CommentInput: FC<CommentInputProps> = memo(
           aria-describedby={moveDescriptionId}
           aria-pressed={keyboardMoving}
           disabled={disabled || !onPositionChange}
-          className="absolute bottom-0 size-auto cursor-move rounded-[13.5px] rounded-es-[3px] bg-components-panel-bg-blur p-[1.5px] shadow-lg inset-ring-[1.5px] inset-ring-components-option-card-option-selected-border backdrop-blur-[5px] hover:bg-components-panel-bg-blur"
+          className="absolute bottom-0 size-auto cursor-move rounded-[13.5px] rounded-es-[3px] bg-components-panel-bg-blur p-[1.5px] shadow-lg backdrop-blur-[5px] after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:border-[1.5px] after:border-components-option-card-option-selected-border hover:bg-components-panel-bg-blur"
           onPointerDown={handleDragPointerDown}
           onClick={(event) => {
             if (event.detail === 0) setKeyboardMoving((value) => !value)
