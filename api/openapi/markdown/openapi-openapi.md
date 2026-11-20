@@ -1,5 +1,5 @@
 # OpenAPI
-User-scoped programmatic API (bearer auth)
+User-scoped programmatic API (bearer auth). A file operation called with the header X-Dify-File-Result: transfer parks its file and answers JSON with a transfer id and a short-lived download link instead of the bytes. Without the header it answers the file itself.
 
 ## Version: 1.0
 
@@ -1563,6 +1563,67 @@ when bearer login is off. ``ping``, notifications and ``dify_find`` have no logi
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [POST] /transfers
+**Precondition: an admitted caller**
+
+Postcondition: 201 with a new incoming transfer the caller owns,
+its upload link and commands. Nothing is stored until a file is sent to the link.
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [UploadPreparePayload](#uploadpreparepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Upload prepared | **application/json**: [UploadPrepared](#uploadprepared)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /transfers/{transfer_id}
+**Precondition: ``token`` in the query string**
+
+Postcondition: 200 with the parked file as an attachment
+while its download link works; the token is checked before a slot is taken. Refusals: 404 unknown,
+wrong token or an upload, 410 link expired, 429 when every slot is taken.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| transfer_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success |  |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /transfers/{transfer_id}
+**Precondition: ``token`` in the query string**
+
+Postcondition: 200 with the received file's facts and
+the next step; the token is checked before the body is read. Refusals: 404 unknown or wrong token,
+410 link expired, 409 different bytes already received, 413 too large, 400 not one file part or a
+folder upload that is not a zip, 429 when every slot is taken.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| transfer_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success |  |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [GET] /workspaces
 #### Parameters
 
@@ -3041,7 +3102,7 @@ gone.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files | object | Local file paths keyed by the file variable name (a start variable or #node.var#); each is uploaded | No |
+| files | object | Files keyed by the file variable name (a start variable or #node.var#) | No |
 | inputs | object | Overrides for what the last draft run saved, keyed by variable reference such as #llm.text# | No |
 | query | string | The user message the node sees as sys.query | No |
 
@@ -3051,10 +3112,10 @@ A chat run against an advanced-chat (chatflow) app, which can also pin a workflo
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| attachments | [ string ] | Local file paths attached to the run itself (the app's `sys.files`), not to a variable | No |
+| attachments | [ string ] | Files attached to the run itself (the app's `sys.files`), not to a variable | No |
 | auto_generate_name | boolean, <br>**Default:** true | Let the server name a new conversation | No |
 | conversation_id | string | Continue an existing conversation | No |
-| files | object | Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable | No |
+| files | object | Files keyed by the app's file variable name; each becomes that variable's value. Give a list for a file-list variable | No |
 | inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
 | query | string | User message | Yes |
 | workflow_id | string | Pin a published workflow version | No |
@@ -3064,10 +3125,10 @@ A chat run against an advanced-chat (chatflow) app, which can also pin a workflo
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| attachments | [ string ] | Local file paths attached to the run itself (the app's `sys.files`), not to a variable | No |
+| attachments | [ string ] | Files attached to the run itself (the app's `sys.files`), not to a variable | No |
 | auto_generate_name | boolean, <br>**Default:** true | Let the server name a new conversation | No |
 | conversation_id | string | Continue an existing conversation | No |
-| files | object | Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable | No |
+| files | object | Files keyed by the app's file variable name; each becomes that variable's value. Give a list for a file-list variable | No |
 | idempotency_key | string | A repeated start with the same key returns the first job | No |
 | inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
 | query | string | User message | Yes |
@@ -3465,10 +3526,10 @@ Button styles for user actions.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| attachments | [ string ] | Local file paths attached to the run itself (the app's `sys.files`), not to a variable | No |
+| attachments | [ string ] | Files attached to the run itself (the app's `sys.files`), not to a variable | No |
 | auto_generate_name | boolean, <br>**Default:** true | Let the server name a new conversation | No |
 | conversation_id | string | Continue an existing conversation | No |
-| files | object | Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable | No |
+| files | object | Files keyed by the app's file variable name; each becomes that variable's value. Give a list for a file-list variable | No |
 | inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
 | query | string | User message | Yes |
 | workspace_id | string | Workspace that owns the app | No |
@@ -3477,10 +3538,10 @@ Button styles for user actions.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| attachments | [ string ] | Local file paths attached to the run itself (the app's `sys.files`), not to a variable | No |
+| attachments | [ string ] | Files attached to the run itself (the app's `sys.files`), not to a variable | No |
 | auto_generate_name | boolean, <br>**Default:** true | Let the server name a new conversation | No |
 | conversation_id | string | Continue an existing conversation | No |
-| files | object | Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable | No |
+| files | object | Files keyed by the app's file variable name; each becomes that variable's value. Give a list for a file-list variable | No |
 | idempotency_key | string | A repeated start with the same key returns the first job | No |
 | inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
 | query | string | User message | Yes |
@@ -3545,8 +3606,8 @@ Button styles for user actions.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| attachments | [ string ] | Local file paths attached to the run itself (the app's `sys.files`), not to a variable | No |
-| files | object | Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable | No |
+| attachments | [ string ] | Files attached to the run itself (the app's `sys.files`), not to a variable | No |
+| files | object | Files keyed by the app's file variable name; each becomes that variable's value. Give a list for a file-list variable | No |
 | inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
 | query | string | Prompt text; most completion apps take their input through `inputs` | No |
 | workspace_id | string | Workspace that owns the app | No |
@@ -3555,8 +3616,8 @@ Button styles for user actions.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| attachments | [ string ] | Local file paths attached to the run itself (the app's `sys.files`), not to a variable | No |
-| files | object | Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable | No |
+| attachments | [ string ] | Files attached to the run itself (the app's `sys.files`), not to a variable | No |
+| files | object | Files keyed by the app's file variable name; each becomes that variable's value. Give a list for a file-list variable | No |
 | idempotency_key | string | A repeated start with the same key returns the first job | No |
 | inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
 | query | string | Prompt text; most completion apps take their input through `inputs` | No |
@@ -3717,8 +3778,8 @@ instead of ``ErrorBody`` because device clients parse it.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| attachments | [ string ] | Local file paths attached to the run itself (the app's `sys.files`), not to a variable | No |
-| files | object | Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable | No |
+| attachments | [ string ] | Files attached to the run itself (the app's `sys.files`), not to a variable | No |
+| files | object | Files keyed by the app's file variable name; each becomes that variable's value. Give a list for a file-list variable | No |
 | inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
 | workspace_id | string | Workspace that owns the app | No |
 
@@ -3870,6 +3931,12 @@ future server adds a code. Formatter tests pin emitted values to the enum.
 | source_url | string |  | No |
 | tenant_id | string |  | No |
 | user_id | string |  | No |
+
+#### FileResultResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| file | [TransferredFile](#transferredfile) |  | Yes |
 
 #### FileTransferMethod
 
@@ -4620,7 +4687,7 @@ Enum class for model type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files | object | Local file paths keyed by the file variable name (a start variable or #node.var#); each is uploaded | No |
+| files | object | Files keyed by the file variable name (a start variable or #node.var#) | No |
 | inputs | object | Overrides for what the last draft run saved, keyed by variable reference such as #llm.text# | No |
 
 #### NodeTypeDetailResponse
@@ -4658,7 +4725,7 @@ The console payload plus local file parts; `_files.merge_files` sets them on `in
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | action | string | ID of the action button the recipient selected. Must match one of the `id` values from the form's `user_actions` list. | Yes |
-| files | object | Local file paths keyed by the form's file input name, same convention as the run ops' `files` | No |
+| files | object | Files keyed by the form's file input name, same convention as the run ops' `files` | No |
 | inputs | object | Submitted human input values keyed by output variable name. Use a string for paragraph or select input values, a file mapping for file inputs, and a list of file mappings for file-list inputs. Local file mappings use `transfer_method=local_file` with `upload_file_id`; remote file mappings use `transfer_method=remote_url` with `url` or `remote_url`. | Yes |
 
 #### PaidPlanRequiredError
@@ -5062,7 +5129,7 @@ Pagination for GET /account/sessions. Strict (extra='forbid').
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | draft_hash | string | From describe.skill; rejects the overwrite if the draft changed since | No |
-| files | object | The skill folder, one part per file; SKILL.md at its root | Yes |
+| files | object | The skill folder; SKILL.md at its root | Yes |
 | skill_id | string | Overwrite this skill's draft; omit to create a new skill | No |
 
 #### SkillImportResponse
@@ -5394,6 +5461,53 @@ Tool provider types a workflow tool node can call; values match the node's provi
 | ---- | ---- | ----------- | -------- |
 | ToolSource | string | Tool provider types a workflow tool node can call; values match the node's provider_type. |  |
 
+#### TransferredFile
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| download_before | string |  | Yes |
+| download_url | string | GET the file here, without a login, until download_before | Yes |
+| expires_at | string |  | Yes |
+| id | string | Pass this id to another operation's file field until expires_at | Yes |
+| name | string | The file name the operation gave its file; empty when it gave none | Yes |
+| sha256 | string |  | Yes |
+| size | integer |  | Yes |
+
+#### UploadCommands
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| powershell | string | Sends the upload from PowerShell | Yes |
+| sh | string | Sends the upload from a POSIX shell | Yes |
+
+#### UploadPreparePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| folder | boolean | Leave out for one file. true when the upload is a zip of a folder's contents; the server unpacks it. | No |
+
+#### UploadPrepared
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expires_at | string | When the id stops working | Yes |
+| id | string | Put this id in the file field of the operation you call next | Yes |
+| max_bytes | integer | The largest file this upload takes | Yes |
+| upload_before | string | When the upload link stops accepting the file | Yes |
+| upload_commands | [UploadCommands](#uploadcommands) |  | Yes |
+| upload_url | string | Send the file here with one multipart request; it needs no login | Yes |
+
+#### UploadReceived
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expires_at | string |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| next | string |  | Yes |
+| sha256 | string |  | Yes |
+| size | integer |  | Yes |
+
 #### UsageInfo
 
 | Name | Type | Description | Required |
@@ -5621,8 +5735,8 @@ Page of published versions, newest first; there is no total, `hints` carries the
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| attachments | [ string ] | Local file paths attached to the run itself (the app's `sys.files`), not to a variable | No |
-| files | object | Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable | No |
+| attachments | [ string ] | Files attached to the run itself (the app's `sys.files`), not to a variable | No |
+| files | object | Files keyed by the app's file variable name; each becomes that variable's value. Give a list for a file-list variable | No |
 | inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
 | workflow_id | string | Pin a published workflow version | No |
 | workspace_id | string | Workspace that owns the app | No |
@@ -5631,8 +5745,8 @@ Page of published versions, newest first; there is no total, `hints` carries the
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| attachments | [ string ] | Local file paths attached to the run itself (the app's `sys.files`), not to a variable | No |
-| files | object | Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable | No |
+| attachments | [ string ] | Files attached to the run itself (the app's `sys.files`), not to a variable | No |
+| files | object | Files keyed by the app's file variable name; each becomes that variable's value. Give a list for a file-list variable | No |
 | idempotency_key | string | A repeated start with the same key returns the first job | No |
 | inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
 | wait_seconds | integer, <br>**Default:** 25 | How long to wait for the result before answering; 0 answers at once | No |
