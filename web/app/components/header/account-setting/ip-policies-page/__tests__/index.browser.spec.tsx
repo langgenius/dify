@@ -18,12 +18,12 @@ import AccountSetting from '../../index'
 
 vi.unmock('react-i18next')
 
-const request = vi.hoisted(() => vi.fn<(path: string) => unknown>())
+const request = vi.hoisted(() => vi.fn<(path: string, input?: unknown) => unknown>())
 
 // boundary: IP-policy reads and writes stop at the generated console transport.
 vi.mock('@/service/console/browser', () => ({
   consoleBrowserLink: {
-    call: (path: readonly string[]) => request(path.join('.')),
+    call: (path: readonly string[], input?: unknown) => request(path.join('.'), input),
   },
 }))
 
@@ -166,6 +166,78 @@ it('keeps policy data readable and keyboard scrollable inside Settings at 320 px
   } finally {
     await screen.unmount()
     queryClient.clear()
+  }
+})
+
+it('restores edit focus to the opener or the heading if its row disappears', async () => {
+  vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
+  try {
+    const { screen, queryClient, groups } = await renderPoliciesSettings(1000)
+    const more = screen.getByRole('button', { name: 'More actions for Internal Network' })
+    await more.click()
+    await screen.getByRole('menuitem', { name: 'Edit', exact: true }).click()
+    const editor = screen.getByRole('dialog', { name: 'Edit IP Policy' })
+    await expect.element(editor.getByRole('button', { name: 'Close', exact: true })).toHaveFocus()
+    await expect.element(screen.getByRole('menu')).not.toBeInTheDocument()
+    await userEvent.keyboard('{Escape}')
+    await expect.element(more).toHaveFocus()
+
+    await screen.getByRole('button', { name: 'Internal Network', exact: true }).click()
+    await expect.element(editor).toBeVisible()
+    seedNetworkAccessGroups(queryClient, { groups: groups.slice(1) })
+    await userEvent.keyboard('{Escape}')
+    await expect.element(editor).not.toBeInTheDocument()
+    await expect.element(screen.getByRole('heading', { name: 'IP Policies' })).toHaveFocus()
+  } finally {
+    vi.unstubAllGlobals()
+  }
+})
+
+it('confirms using the latest policy details and focuses the list after deleting the row', async () => {
+  vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
+  try {
+    const { screen, queryClient, groups } = await renderPoliciesSettings(1000)
+    const originalRequest = request.getMockImplementation()
+    let remainingGroups = groups
+    request.mockImplementation((path) => {
+      if (path === 'workspaces.current.networkAccessGroups.byGroupId.delete') {
+        remainingGroups = groups.slice(1)
+        return
+      }
+      if (path === 'workspaces.current.networkAccessGroups.get')
+        return { tenant_id: 'workspace-1', entitled: true, groups: remainingGroups }
+      return originalRequest?.(path)
+    })
+
+    await screen.getByRole('button', { name: 'More actions for Internal Network' }).click()
+    await screen.getByRole('menuitem', { name: 'Delete', exact: true }).click()
+    const confirmation = screen.getByRole('alertdialog', { name: 'Delete “Internal Network”?' })
+    await expect
+      .element(confirmation.getByText(common['settings.ipPolicyDeleteBoundDescription']))
+      .toBeVisible()
+    const refreshedPolicy = { ...groups[0]!, version: 7, used_by_count: 0 }
+    remainingGroups = [refreshedPolicy, ...groups.slice(1)]
+    seedNetworkAccessGroups(queryClient, { groups: remainingGroups })
+    await expect
+      .element(confirmation.getByText(common['settings.ipPolicyDeleteDescription']))
+      .toBeVisible()
+    await confirmation.getByRole('button', { name: 'Delete', exact: true }).click()
+    expect(request).toHaveBeenCalledWith(
+      'workspaces.current.networkAccessGroups.byGroupId.delete',
+      {
+        params: { group_id: refreshedPolicy.id },
+        query: { expected_version: 7 },
+      },
+    )
+    await expect
+      .element(screen.getByRole('button', { name: 'Internal Network', exact: true }))
+      .not.toBeInTheDocument()
+    await expect.element(confirmation).not.toBeInTheDocument()
+    await expect
+      .element(screen.getByRole('heading', { name: 'IP Policies', exact: true }))
+      .toHaveFocus()
+  } finally {
+    vi.unstubAllGlobals()
   }
 })
 

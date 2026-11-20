@@ -44,6 +44,7 @@
   "invalidInvitationCode": "Mã mời không hợp lệ",
   "invitationCode": "Mã mời",
   "invitationCodePlaceholder": "Nhập mã mời của bạn",
+  "invitationWorkspaceFull": "Không gian làm việc này đã hết chỗ nên bạn chưa thể tham gia. Hãy nhờ người đã mời bạn giải phóng một chỗ hoặc nâng cấp gói.",
   "join": "Tham gia",
   "joinTipEnd": "đội ngũ tại Dify",
   "joinTipStart": "Mời bạn tham gia",

@@ -44,6 +44,7 @@
   "invalidInvitationCode": "유효하지 않은 초대 코드입니다.",
   "invitationCode": "초대 코드",
   "invitationCodePlaceholder": "초대 코드를 입력하세요",
+  "invitationWorkspaceFull": "이 작업 공간에 남은 좌석이 없어 아직 참여할 수 없습니다. 초대한 사람에게 좌석을 비우거나 플랜을 업그레이드해 달라고 요청하세요.",
   "join": "가입하기",
   "joinTipEnd": "팀에 가입하세요.",
   "joinTipStart": "당신을 초대합니다.",

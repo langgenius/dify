@@ -173,6 +173,7 @@ export function ChangePasswordDialog({ isPasswordSet }: { isPasswordSet: boolean
   return (
     <Dialog
       actionsRef={actionsRef}
+      disablePointerDismissal
       onOpenChange={(open, details) => {
         if (!open && updatePassword.isPending && details.reason !== 'imperative-action')
           details.cancel()
