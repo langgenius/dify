@@ -383,13 +383,13 @@ class RunPayloadBase(BaseModel):
     files: UploadParts | None = Field(
         default=None,
         description=(
-            "Local file paths keyed by the app's file variable name; each file is uploaded and becomes "
-            "that variable's value. Give a list of paths for a file-list variable"
+            "Files keyed by the app's file variable name; each becomes that variable's value. "
+            "Give a list for a file-list variable"
         ),
     )
     attachments: list[UploadPart] | None = Field(
         default=None,
-        description="Local file paths attached to the run itself (the app's `sys.files`), not to a variable",
+        description="Files attached to the run itself (the app's `sys.files`), not to a variable",
     )
     workspace_id: UUIDStrOrEmpty | None = Field(default=None, description="Workspace that owns the app")
 
@@ -847,7 +847,7 @@ class OpenApiFormSubmitPayload(HumanInputFormSubmitPayload):
 
     files: UploadParts | None = Field(
         default=None,
-        description="Local file paths keyed by the form's file input name, same convention as the run ops' `files`",
+        description="Files keyed by the form's file input name, same convention as the run ops' `files`",
     )
 
 
@@ -1069,9 +1069,7 @@ class NodeRunPayload(BaseModel):
     )
     files: UploadParts | None = Field(
         default=None,
-        description=(
-            "Local file paths keyed by the file variable name (a start variable or #node.var#); each is uploaded"
-        ),
+        description="Files keyed by the file variable name (a start variable or #node.var#)",
     )
 
 
