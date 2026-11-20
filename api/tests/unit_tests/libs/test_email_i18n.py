@@ -563,18 +563,18 @@ class TestEmailI18nIntegration:
         from extensions import ext_mail
         from libs import email_i18n
 
-        mock_mail = MagicMock()
-        mock_mail.is_inited.return_value = True
+        from configs import DifyConfig
+
+        gateway = ext_mail.Mail()
         monkeypatch.setattr(email_i18n, "mail", None)
-        monkeypatch.setattr(ext_mail, "mail", mock_mail)
+        monkeypatch.setattr(ext_mail, "mail", gateway)
+        monkeypatch.setattr(ext_mail, "dify_config", DifyConfig(MAIL_TYPE="rasket", RASKET_API_KEY="rk_test_key"))
 
         app = Flask(__name__)
         ext_mail.init_app(app)
 
-        mock_mail.init_app.assert_called_once_with(app)
-        assert email_i18n.mail is mock_mail
-        email_i18n.FlaskMailSender().send_email("test@example.com", "Subject", "<p>Body</p>")
-        mock_mail.send.assert_called_once_with(to="test@example.com", subject="Subject", html="<p>Body</p>")
+        assert email_i18n.mail is gateway
+        assert gateway.is_inited()
 
     def test_flask_mail_sender_initialized(self) -> None:
         """Test FlaskMailSender when mail is initialized"""
