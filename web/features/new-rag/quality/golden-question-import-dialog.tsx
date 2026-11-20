@@ -153,7 +153,13 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
           </DialogFooter>
         </>
       ) : (
-        <>
+        <form
+          className="contents"
+          onSubmit={(event) => {
+            event.preventDefault()
+            void submit()
+          }}
+        >
           <DialogBody>
             <label
               htmlFor="golden-question-csv-file"
@@ -224,16 +230,15 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
               {t(($) => $['qualityPage.cancel'], { ns: 'knowledgeQuality' })}
             </Button>
             <Button
-              type="button"
+              type="submit"
               variant="primary"
               loading={mutation.isPending}
               disabled={rows.length === 0 || reading}
-              onClick={() => void submit()}
             >
               {t(($) => $['qualityPage.importCsv'], { ns: 'knowledgeQuality' })}
             </Button>
           </DialogFooter>
-        </>
+        </form>
       )}
     </>
   )

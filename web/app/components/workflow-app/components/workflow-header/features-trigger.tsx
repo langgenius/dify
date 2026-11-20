@@ -15,7 +15,6 @@ import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
 import { AppPublisher } from '@/app/components/app/app-publisher'
 import { useFeatures } from '@/app/components/base/features/hooks'
-import { useEvaluationAccess } from '@/app/components/billing/use-evaluation-access'
 import {
   isChatflowAtom,
   workflowAppIdentityAtom,
@@ -58,7 +57,10 @@ const FeaturesTrigger = () => {
       select: (features) => features.billing.subscription.plan,
     }),
   )
-  const { isVisible: evaluationEnabled } = useEvaluationAccess()
+  // Publishing or switching the workflow kind needs a plan that includes Evaluation, so hide them on Sandbox.
+  const { data: evaluationEnabled = false } = useQuery(
+    consoleQuery.features.get.queryOptions({ select: (features) => features.evaluation_enabled }),
+  )
   const publishedAt = useStore((s) => s.publishedAt)
   const draftUpdatedAt = useStore((s) => s.draftUpdatedAt)
   const toolPublished = useStore((s) => s.toolPublished)
