@@ -19,7 +19,6 @@ from typing import Any, Final
 from constants.oauth_bearer import TokenType
 from controllers.openapi._catalog import Bind, CatalogOp, op_registry
 from controllers.openapi._mcp_call import (
-    FileInputUnsupported,
     OpCall,
     OpResult,
     RouteMismatch,
@@ -381,9 +380,6 @@ def _run_find(arguments: Mapping[str, Any], caller: McpCaller) -> mcp_types.Call
 _REFUSAL_MESSAGES: Final[Mapping[type[Exception], Callable[[Exception], str]]] = {
     UnsafePathValue: lambda exc: f"Nothing ran: the input is not usable ({exc}).",
     RouteMismatch: lambda exc: "Nothing ran: the input does not address this operation.",
-    FileInputUnsupported: lambda exc: (
-        "Nothing ran: this operation takes a file upload, which a tool call cannot carry."
-    ),
 }
 
 
