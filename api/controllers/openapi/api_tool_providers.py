@@ -67,7 +67,7 @@ def _describe(ctx: Context, provider_name: str) -> ApiToolProviderResponse:
         privacy_policy=provider["privacy_policy"],
         custom_disclaimer=provider["custom_disclaimer"],
         labels=list(provider["labels"]),
-        tools=[tool["name"] for tool in provider["tools"]],
+        tools=[tool["operation_id"] or "default_tool" for tool in provider["tools"]],
         description=provider["description"],
     )
 
