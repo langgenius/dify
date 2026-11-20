@@ -1455,34 +1455,31 @@ class EndUserConnectionRepository:
                 session.add(row)
                 session.flush()
             else:
-                result = cast(
-                    CursorResult,
-                    session.execute(
-                        sa.update(EndUserConnection)
-                        .where(
-                            *self._guard(context, attempt.guard),
-                            EndUserConnection.provider == attempt.provider,
-                            EndUserConnection.credential_type == ConnectionCredentialType.OAUTH2,
-                        )
-                        .values(
-                            {
-                                "encrypted_credentials": encrypted_credentials,
-                                "status": ConnectionCredentialStatus.CONNECTED,
-                                "oauth_client_source": client.source,
-                                "oauth_client_configuration_id": client.configuration_id,
-                                "oauth_client_id": client.client_id,
-                                "oauth_client_fingerprint": attempt.client.fingerprint,
-                                "oauth_plugin_unique_identifier": client.plugin_unique_identifier,
-                                "expires_at": expires_at,
-                                "account_label": account_label,
-                                "revision": EndUserConnection.revision + 1,
-                                "updated_at": naive_utc_now(),
-                                "last_active_at": _activity_at_least(naive_utc_now()),
-                            }
-                        )
-                    ),
+                result = session.execute(
+                    sa.update(EndUserConnection)
+                    .where(
+                        *self._guard(context, attempt.guard),
+                        EndUserConnection.provider == attempt.provider,
+                        EndUserConnection.credential_type == ConnectionCredentialType.OAUTH2,
+                    )
+                    .values(
+                        {
+                            "encrypted_credentials": encrypted_credentials,
+                            "status": ConnectionCredentialStatus.CONNECTED,
+                            "oauth_client_source": client.source,
+                            "oauth_client_configuration_id": client.configuration_id,
+                            "oauth_client_id": client.client_id,
+                            "oauth_client_fingerprint": attempt.client.fingerprint,
+                            "oauth_plugin_unique_identifier": client.plugin_unique_identifier,
+                            "expires_at": expires_at,
+                            "account_label": account_label,
+                            "revision": EndUserConnection.revision + 1,
+                            "updated_at": naive_utc_now(),
+                            "last_active_at": _activity_at_least(naive_utc_now()),
+                        }
+                    )
                 )
-                if result.rowcount != 1:
+                if not isinstance(result, CursorResult) or result.rowcount != 1:
                     raise ConnectionConflictError()
                 row = session.scalar(
                     sa.select(EndUserConnection).where(

@@ -73,7 +73,7 @@ const PluginAuth = ({
         {t(($) => $['auth.authorization'], { ns: 'plugin' })}
       </h3>
       <Infotip>
-        <InfotipTrigger aria-labelledby={labelId} className="size-4" />
+        <InfotipTrigger aria-labelledby={labelId} />
         <InfotipContent aria-labelledby={labelId}>
           {t(($) => $['auth.useApiAuthDesc'], { ns: 'plugin' })}
         </InfotipContent>
