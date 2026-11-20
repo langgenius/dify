@@ -1,18 +1,12 @@
 import type { AvatarSize } from '@langgenius/dify-ui/avatar'
 import type { FC } from 'react'
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarGroup,
-  AvatarGroupCount,
-  AvatarImage,
-} from '@langgenius/dify-ui/avatar'
+import { AvatarGroup, AvatarGroupCount } from '@langgenius/dify-ui/avatar'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { uniqBy } from 'es-toolkit'
 import { memo } from 'react'
+import { UserAvatar } from '@/app/components/base/user-avatar'
 import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { getAvatarInitial } from '@/utils/avatar'
 
 type User = {
   id: string
@@ -48,17 +42,15 @@ export const UserAvatarList: FC<UserAvatarListProps> = memo(
           const isCurrentUser = user.id === currentUserId
           const userColor = isCurrentUser ? undefined : getUserColor(user.id)
           return (
-            <Avatar
+            <UserAvatar
               key={user.id}
               role="img"
               aria-label={user.name}
+              name={user.name}
+              src={user.avatar_url}
+              fallbackColor={userColor}
               style={{ zIndex: visibleUsers.length - index }}
-            >
-              <AvatarFallback style={userColor ? { backgroundColor: userColor } : undefined}>
-                {getAvatarInitial(user.name)}
-              </AvatarFallback>
-              <AvatarImage src={user.avatar_url || undefined} alt="" />
-            </Avatar>
+            />
           )
         })}
         {shouldShowCount && remainingCount > 0 && (
