@@ -68,7 +68,10 @@ def test_oauth_cache_reuses_only_matching_snapshots_and_invalidates_both_entries
 
     monkeypatch.setattr("core.helper.encrypter.decrypt_token", decrypt)
     runtime = ProviderToolCredentialRuntime(
-        controller=_controller(), provider_id="org/plugin/provider", console_api_url=""
+        controller=_controller(),
+        provider_id="org/plugin/provider",
+        console_api_url="",
+        oauth_client_resolver=lambda _workspace_id: None,
     )
     old_credentials = {"access_token": "access-old", "refresh_token": "refresh-old"}
     old = ToolRuntimeCredential(
