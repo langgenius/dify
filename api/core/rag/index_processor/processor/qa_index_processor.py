@@ -106,13 +106,16 @@ class QAIndexProcessor(BaseIndexProcessor):
             raise ValueError("tenant_id is required for QA generation")
         flask_app = app_ctx.app
         if preview:
-            self._format_qa_document(
-                flask_app,
-                tenant_id,
-                all_documents[0],
-                all_qa_documents,
-                kwargs.get("doc_language", "English"),
-            )
+            # a source can yield no chunks (empty/whitespace-only text, a blank
+            # PDF, or URL-sourced images); preview the first one only if any
+            if all_documents:
+                self._format_qa_document(
+                    flask_app,
+                    tenant_id,
+                    all_documents[0],
+                    all_qa_documents,
+                    kwargs.get("doc_language", "English"),
+                )
         else:
             with ThreadPoolExecutor(max_workers=10) as executor:
                 for start in range(0, len(all_documents), 10):
