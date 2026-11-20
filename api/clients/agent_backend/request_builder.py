@@ -183,8 +183,10 @@ def _agent_model_settings(settings: Mapping[str, JsonValue]) -> ModelSettings | 
         result["frequency_penalty"] = frequency_penalty
 
     stop = settings.get("stop")
-    if isinstance(stop, list) and stop:
-        result["stop_sequences"] = [item for item in stop if isinstance(item, str)]
+    if isinstance(stop, list):
+        sequences = [item for item in stop if isinstance(item, str)]
+        if sequences:
+            result["stop_sequences"] = sequences
 
     extra_body: dict[str, JsonValue] = {
         key: value

@@ -38,7 +38,7 @@ from clients.agent_backend import (
     AgentBackendWorkflowNodeRunInput,
     redact_for_agent_backend_log,
 )
-from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
+from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID, _agent_model_settings
 from models.agent_config_entities import AgentSoulModelSettings
 
 
@@ -652,3 +652,46 @@ def test_knowledge_fs_requires_shell_and_can_coexist_with_classic_knowledge(mode
         assert "knowledge_fs" in modules
     finally:
         asyncio.run(client.aclose())
+
+
+def test_agent_model_settings_returns_none_for_empty_input():
+    assert _agent_model_settings({}) is None
+
+
+def test_agent_model_settings_maps_known_keys_and_extra_body():
+    result = _agent_model_settings(
+        {
+            "temperature": 0.7,
+            "top_p": 0.9,
+            "presence_penalty": 0.1,
+            "frequency_penalty": 0.2,
+            "max_tokens": 128,
+            "stop": ["END"],
+            "enable_thinking": True,
+            "unused": None,
+        }
+    )
+
+    assert result is not None
+    assert result["temperature"] == 0.7
+    assert result["top_p"] == 0.9
+    assert result["presence_penalty"] == 0.1
+    assert result["frequency_penalty"] == 0.2
+    assert result["max_tokens"] == 128
+    assert result["stop_sequences"] == ["END"]
+    assert result["extra_body"] == {"enable_thinking": True}
+
+
+def test_agent_model_settings_rejects_invalid_value_types():
+    assert (
+        _agent_model_settings(
+            {
+                "temperature": "hot",
+                "max_tokens": True,
+            }
+        )
+        is None
+    )
+    assert _agent_model_settings({"stop": []}) is None
+    assert _agent_model_settings({"stop": "END"}) is None
+    assert _agent_model_settings({"stop": [1]}) is None
