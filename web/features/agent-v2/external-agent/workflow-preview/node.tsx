@@ -35,9 +35,10 @@ export function ExternalAgentWorkflowPreviewNode({
       <div className="flex min-w-0 items-center gap-2 rounded-lg bg-workflow-block-parma-bg p-1">
         <AppIcon
           size="small"
+          shape="circle"
           icon={agent?.icon}
           fallback={{
-            content: <span aria-hidden className="i-ri-robot-2-line size-4 text-text-tertiary" />,
+            content: '🔗',
             background: 'var(--color-components-icon-bg-midnight-soft)',
           }}
         />

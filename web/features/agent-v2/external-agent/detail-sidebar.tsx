@@ -133,7 +133,7 @@ function ExternalAgentSection({ agentId, expand }: { agentId: string; expand: bo
             shape="circle"
             icon={agent.icon}
             fallback={{
-              content: <span className="i-ri-robot-2-line size-5 text-text-tertiary" />,
+              content: '🔗',
               background: 'var(--color-components-icon-bg-midnight-soft)',
             }}
           />

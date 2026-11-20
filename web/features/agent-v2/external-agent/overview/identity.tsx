@@ -16,8 +16,9 @@ export function ExternalAgentIdentity({
       <AppIcon
         icon={agent.icon}
         size="xl"
+        shape="circle"
         fallback={{
-          content: <span aria-hidden className="i-ri-robot-2-line size-7 text-text-tertiary" />,
+          content: '🔗',
           background: 'var(--color-components-icon-bg-midnight-soft)',
         }}
       />

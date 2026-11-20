@@ -66,12 +66,11 @@ export function ExternalAgentOptions({
           >
             <AppIcon
               size="tiny"
+              shape="circle"
               icon={agent.icon}
               fallback={{
-                content: (
-                  <span aria-hidden className="i-ri-robot-2-line size-3.5 text-text-accent" />
-                ),
-                background: 'var(--color-components-icon-bg-indigo-soft)',
+                content: '🔗',
+                background: 'var(--color-components-icon-bg-midnight-soft)',
               }}
             />
             <span className="truncate system-sm-medium text-text-secondary">{agent.name}</span>
