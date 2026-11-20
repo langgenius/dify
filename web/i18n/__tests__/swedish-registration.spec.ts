@@ -16,4 +16,11 @@ describe('Swedish locale registration', () => {
     expect(translations['common.publish']).toBe('Publicera')
     expect(translations['nodes.common.errorHandle.title']).toBe('Felhantering')
   })
+
+  it('falls back to English for namespaces introduced after the Swedish catalog', async () => {
+    const resource = await loadI18nResource('sv-SE', 'navigation')
+    const translations = resource.default as Record<string, string>
+
+    expect(translations['mainNav.home']).toBe('Home')
+  })
 })
