@@ -38,6 +38,7 @@ from core.workflow.nodes.human_input_v2.runtime import HumanInputDeliveryError, 
 from enums import DeploymentEdition
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import VariablePool
+from libs.credential_cipher import BoundCredentialCipher
 from libs.datetime_utils import naive_utc_now
 from models import CreatorUserRole
 from models.account import Account, TenantAccountJoin
@@ -69,6 +70,7 @@ from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFor
 from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
 )
+from services import deployment_credential_composition
 from services.human_input_v2.email_otp_service import AccessChallenge
 from services.human_input_v2.form_service import (
     CreatedForm,
@@ -761,7 +763,6 @@ def test_runtime_delivers_mixed_recipients_with_current_owner_scoped_targets(
     monkeypatch: pytest.MonkeyPatch,
     centrally_managed: bool,
 ) -> None:
-    from core.human_input_v2.im_integration.adapters.protocols import IMProviderAdapter
     from models.human_input_v2 import (
         ContactSubjectType,
         HumanInputContactIdentity,
@@ -770,10 +771,8 @@ def test_runtime_delivers_mixed_recipients_with_current_owner_scoped_targets(
     )
     from repositories.human_input_v2.contact import ExternalContact
     from repositories.human_input_v2.delivery_attempt_repository import DeliveryStatus
-    from repositories.human_input_v2.im_channel_repository import IMChannel
     from services.feature_service import FeatureService
-    from services.human_input_v2.delivery_service import HumanInputDeliveryService
-    from services.human_input_v2.email_client import build_email_client
+    from services.human_input_v2.composition import build_human_input_delivery_service
     from services.human_input_v2.runtime import DifyHumanInputRuntime
 
     recipient_count = 3
@@ -835,18 +834,15 @@ def test_runtime_delivers_mixed_recipients_with_current_owner_scoped_targets(
     event.listen(engine, "commit", lambda conn: active.discard(conn))
     event.listen(engine, "rollback", lambda conn: active.discard(conn))
 
-    def deployment_adapter(channel: IMChannel) -> IMProviderAdapter:
+    def deployment_cipher(**_kwargs: object) -> BoundCredentialCipher:
         assert not active, "Deployment credential I/O must not hold a DB transaction"
-        assert channel.provider_tenant_id == "provider-team"
-        return providers[0]
+        return create_autospec(BoundCredentialCipher, instance=True)
+
+    monkeypatch.setattr(deployment_credential_composition, "build_deployment_credential_cipher", deployment_cipher)
 
     runtime = DifyHumanInputRuntime(
         form_service=context.service,
-        delivery_service=HumanInputDeliveryService(
-            session_factory=context.sessions,
-            email_client=build_email_client(tenant_id=_TENANT, session_factory=context.sessions),
-            im_adapter_factory=deployment_adapter if centrally_managed else None,
-        ),
+        delivery_service=build_human_input_delivery_service(tenant_id=_TENANT, session_factory=context.sessions),
     )
     prepared = runtime.prepare_form(
         node_execution_id=_EXECUTION,
@@ -2546,8 +2542,9 @@ def test_attempt_storage_failure_rolls_back_the_accepted_card_identity(
         assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputDeliveryAttempt)) == 0
 
 
+@pytest.mark.parametrize("centrally_managed", [False, True])
 def test_im_card_update_uses_delivery_identity_when_attempt_history_conflicts(
-    context: Context, created_im_cards: CreatedIMCards
+    context: Context, created_im_cards: CreatedIMCards, monkeypatch: pytest.MonkeyPatch, centrally_managed: bool
 ) -> None:
     from repositories.human_input_v2.delivery_attempt_repository import DeliveryAttemptCreateParams, DeliveryStatus
     from repositories.human_input_v2.sqlalchemy_delivery_attempt_repository import SQLAlchemyDeliveryAttemptRepository
@@ -2568,6 +2565,18 @@ def test_im_card_update_uses_delivery_identity_when_attempt_history_conflicts(
             DeliveryAttemptCreateParams(
                 DeliveryStatus.SUCCEEDED, None, {"accepted": True, "message_locator": "conflicting-card"}
             ),
+        )
+
+    if centrally_managed:
+        from services.feature_service import FeatureService
+
+        with context.sessions.begin() as session:
+            session.scalars(sa.select(HumanInputIMChannel)).one().owner_key = "deployment"
+        monkeypatch.setattr(FeatureService, "is_im_centrally_managed", staticmethod(lambda: True))
+        monkeypatch.setattr(
+            deployment_credential_composition,
+            "build_deployment_credential_cipher",
+            lambda **_kwargs: create_autospec(BoundCredentialCipher, instance=True),
         )
 
     updater = HumanInputIMCardService(session_factory=context.sessions)

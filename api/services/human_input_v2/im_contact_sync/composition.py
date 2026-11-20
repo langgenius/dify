@@ -8,12 +8,10 @@ from dataclasses import dataclass
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.im_integration.adapters import IMProviderAdapter
-from core.human_input_v2.im_integration.adapters.credentials import IMProviderCredentials
-from core.human_input_v2.im_integration.adapters.factory import build_im_provider_adapter
 from core.human_input_v2.shared import DeploymentScope, DirectoryScope, IMSyncRunId, TenantId, WorkspaceScope
 from extensions.ext_database import db
 from extensions.ext_key_provider import key_provider_manager
-from libs.credential_cipher import BoundCredentialCipher, CredentialCipherError
+from libs.credential_cipher import CredentialCipherError
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.human_input_v2.contact import Contact, ContactQuery, ContactType, OrganizationContact
 from repositories.human_input_v2.im_channel_repository import IMChannel
@@ -23,7 +21,8 @@ from repositories.human_input_v2.sqlalchemy_im_channel_repository import (
     WorkspaceIMChannelReader,
 )
 from services.deployment_credential_composition import build_deployment_credential_cipher
-from services.human_input_v2.im_credential_codec import IMCredentialCodec, IMCredentialError
+from services.human_input_v2.im_channel_runtime import DifyIMChannelAdapterFactory
+from services.human_input_v2.im_credential_codec import IMCredentialError
 from services.human_input_v2.im_tenant_credential_cipher import TenantBoundCredentialCipher
 
 from .binding_service import ContactIMBindingService
@@ -45,22 +44,6 @@ class IMContactSyncApplication:
     sync_service: IMSyncService
     binding_service: ContactIMBindingService
     worker: IMContactSyncWorker
-
-
-class DifyIMChannelAdapterFactory:
-    """Recover one Channel's credentials using an already-selected owner cipher."""
-
-    def __init__(
-        self,
-        cipher: BoundCredentialCipher,
-        adapter_builder: Callable[[IMProviderCredentials], IMProviderAdapter] = build_im_provider_adapter,
-    ) -> None:
-        self._cipher = cipher
-        self._adapter_builder = adapter_builder
-
-    def __call__(self, channel: IMChannel) -> IMProviderAdapter:
-        credentials = IMCredentialCodec(self._cipher).load(channel.provider, channel.encrypted_credentials)
-        return self._adapter_builder(credentials)
 
 
 class _WorkspaceContactReader:

@@ -1,31 +1,24 @@
 """Fan out post-submission updates and replace each exact delivered IM card."""
 
 import logging
-from collections.abc import Callable
 from contextlib import closing
 
 from kombu.exceptions import OperationalError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
-from core.human_input_v2.im_integration.adapters import factory as im_adapter_factory_module
 from core.human_input_v2.im_integration.adapters.entities import ReplacementErrorKind, StaticCardIntent
-from core.human_input_v2.im_integration.adapters.protocols import IMProviderAdapter
 from core.human_input_v2.shared.values import TenantId
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
-from extensions.ext_key_provider import key_provider_manager
 from factories.human_input_v2_form_presentation import render_filled_content
 from repositories.human_input_v2.delivery_repository import IMMessageType, IMUserTargetSnapshot
 from repositories.human_input_v2.form_repository import Form
-from repositories.human_input_v2.im_channel_repository import IMChannel
 from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchemyDeliveryRepository
 from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
-from repositories.human_input_v2.sqlalchemy_im_channel_repository import (
-    DeploymentIMChannelReader,
-    WorkspaceIMChannelReader,
+from services.human_input_v2.im_channel_runtime import (
+    build_im_channel_adapter,
+    read_current_im_channel,
+    workspace_runtime_im_scope,
 )
-from services.feature_service import FeatureService
-from services.human_input_v2.im_credential_codec import IMCredentialCodec, IMCredentialError
-from services.human_input_v2.im_tenant_credential_cipher import TenantBoundCredentialCipher
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +28,7 @@ class IMCardUpdateRetryableError(Exception):
 
 
 class HumanInputIMCardService:
-    def __init__(self, *, session_factory: Callable[[], Session]) -> None:
+    def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
     def enqueue_updates(self, form: Form) -> None:
@@ -68,6 +61,8 @@ class HumanInputIMCardService:
                 )
 
     def update_card(self, *, tenant_id: TenantId, form_id: str, delivery_id: str) -> None:
+        """Replace a submitted form's delivered card with its owner-bound current adapter."""
+        owner_scope = workspace_runtime_im_scope(tenant_id)
         with self._session_factory() as session:
             repository = SQLAlchemyFormRepository.for_existing_form(session, tenant_id=tenant_id, form_id=form_id)
             if repository is None:
@@ -87,11 +82,7 @@ class HumanInputIMCardService:
                 or target.message_locator is None
             ):
                 return
-            channel = (
-                DeploymentIMChannelReader(session).get()
-                if FeatureService.is_im_centrally_managed()
-                else WorkspaceIMChannelReader(session, tenant_id).get()
-            )
+            channel = read_current_im_channel(session, owner_scope)
         if (
             channel is None
             or channel.provider != target.im_provider
@@ -106,7 +97,7 @@ class HumanInputIMCardService:
             return
 
         intent = _submitted_card_intent(form)
-        with closing(self._build_adapter(tenant_id, channel)) as adapter:
+        with closing(build_im_channel_adapter(channel, owner_scope, session_maker=self._session_factory)) as adapter:
             cards = adapter.dynamic_card_messaging
             if cards is None:
                 return
@@ -130,14 +121,6 @@ class HumanInputIMCardService:
             )
             if failure.kind == ReplacementErrorKind.UNKNOWN:
                 raise IMCardUpdateRetryableError(f"Human Input IM card update failed delivery_id={delivery_id}")
-
-    def _build_adapter(self, tenant_id: TenantId, channel: IMChannel) -> IMProviderAdapter:
-        if FeatureService.is_im_centrally_managed():
-            # Deployment credentials must never be decrypted with a workspace key.
-            raise IMCredentialError("Deployment IM credentials are unavailable")
-        cipher = TenantBoundCredentialCipher(key_provider_manager.provider, str(tenant_id))
-        credentials = IMCredentialCodec(cipher).load(channel.provider, channel.encrypted_credentials)
-        return im_adapter_factory_module.build_im_provider_adapter(credentials)
 
 
 def _submitted_card_intent(form: Form) -> StaticCardIntent:

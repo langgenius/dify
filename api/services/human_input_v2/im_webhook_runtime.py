@@ -16,21 +16,17 @@ from core.human_input_v2.im_integration.adapters.entities import (
     WebhookRequest,
     WebhookResponse,
 )
-from core.human_input_v2.im_integration.adapters.factory import build_im_provider_adapter
 from core.human_input_v2.im_integration.adapters.protocols import IMCardEventDecoder
 from core.human_input_v2.im_message_inbox.contracts import IMInboxRecord
-from core.human_input_v2.shared import WorkspaceScope
 from dify_app import DifyApp
-from extensions.ext_key_provider import key_provider_manager
-from libs.key_providers.base import BaseKeyProvider
 from repositories.human_input_v2.im_channel_repository import IMChannelId, WebhookId
 from repositories.human_input_v2.sqlalchemy_im_channel_repository import SQLAlchemyIMWebhookChannelRepository
-from services.human_input_v2.im_credential_codec import IMCredentialCodec, IMCredentialError
+from services.human_input_v2.im_channel_runtime import build_im_channel_adapter
+from services.human_input_v2.im_credential_codec import IMCredentialError
 from services.human_input_v2.im_message_inbox.processor import IMInboxProcessor
 from services.human_input_v2.im_message_inbox.sink import IMMessageInboxSink
 from services.human_input_v2.im_message_inbox.storage import IMInboxStorage
 from services.human_input_v2.im_message_inbox.telemetry import OpenTelemetryIMInboxMetrics
-from services.human_input_v2.im_tenant_credential_cipher import TenantBoundCredentialCipher
 from services.human_input_v2.submission_service import (
     HumanInputFormError,
     HumanInputFormErrorCode,
@@ -45,23 +41,17 @@ logger = logging.getLogger(__name__)
 class IMWebhookIngressService:
     """Resolve current routing before recovering Provider credentials."""
 
-    def __init__(self, *, sessions: sessionmaker[Session], key_provider: BaseKeyProvider) -> None:
+    def __init__(self, *, sessions: sessionmaker[Session]) -> None:
         self._sessions = sessions
-        self._key_provider = key_provider
 
     def handle(self, webhook_id: WebhookId, request: WebhookRequest) -> WebhookResponse:
+        """Authenticate with the owner from the stored route before admitting an inbox event."""
         try:
             with self._sessions() as session:
                 route = SQLAlchemyIMWebhookChannelRepository(session).find_by_webhook_id(webhook_id)
             if route is None:
                 return WebhookResponse(404, (), b"")
-            if not isinstance(route.scope, WorkspaceScope):
-                # Deployment credential provisioning has an independent owner.
-                # Never decrypt a deployment envelope with a workspace key.
-                raise IMCredentialError("Deployment IM credentials are unavailable")
-            cipher = TenantBoundCredentialCipher(self._key_provider, str(route.scope.id))
-            credentials = IMCredentialCodec(cipher).load(route.channel.provider, route.channel.encrypted_credentials)
-            adapter = build_im_provider_adapter(credentials)
+            adapter = build_im_channel_adapter(route.channel, route.scope, session_maker=self._sessions)
             try:
                 sink = IMMessageInboxSink(
                     channel_id=IMChannelId(str(route.channel.id)),
@@ -94,10 +84,7 @@ class IMWebhookIngressService:
 
 
 def build_im_webhook_ingress_service() -> IMWebhookIngressService:
-    return IMWebhookIngressService(
-        sessions=session_factory.get_session_maker(),
-        key_provider=key_provider_manager.provider,
-    )
+    return IMWebhookIngressService(sessions=session_factory.get_session_maker())
 
 
 def _card_decoder(provider: IMProvider) -> IMCardEventDecoder | None:
