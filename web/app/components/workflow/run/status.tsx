@@ -10,6 +10,7 @@ import { ENABLE_HITL_IM } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import { resolveConsoleHumanInputFormURL } from '@/features/human-input/console/links'
 import { consoleQuery } from '@/service/console'
+import { formatNumber } from '@/utils/format'
 import { basePath } from '@/utils/var'
 
 type ResultProps = {
@@ -217,7 +218,7 @@ const StatusPanel: FC<ResultProps> = ({
               <span>
                 {preserveUnknownTokens && tokens == null
                   ? t(($) => $['external.overview.testRun.notProvided'], { ns: 'agentRoster' })
-                  : `${tokens ?? 0} Tokens`}
+                  : `${formatNumber(tokens ?? 0)} Tokens`}
               </span>
             )}
           </div>

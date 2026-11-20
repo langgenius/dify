@@ -74,7 +74,7 @@ describe('ResultPanel', () => {
         status={NodeRunningStatus.Succeeded}
         error="boom"
         elapsed_time={2.5}
-        total_tokens={42}
+        total_tokens={40619}
         created_at={1710000000}
         created_by="Alice"
         steps={3}
@@ -105,7 +105,7 @@ describe('ResultPanel', () => {
     ).toBeInTheDocument()
     expect(screen.getByText('Alice')).toBeInTheDocument()
     expect(screen.getAllByText('2.500s')).toHaveLength(2)
-    expect(screen.getAllByText('42 Tokens')).toHaveLength(2)
+    expect(screen.getAllByText('40,619 Tokens')).toHaveLength(2)
     expect(
       screen.getByRole('link', { name: 'workflowDebug.debug.variableInspect.export' }),
     ).toHaveAttribute('href', 'https://example.com/output.json')

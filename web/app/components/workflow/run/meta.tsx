@@ -2,6 +2,7 @@
 import type { FC, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import useTimestamp from '@/hooks/use-timestamp'
+import { formatNumber } from '@/utils/format'
 
 type Props = {
   readonly status: string
@@ -91,7 +92,7 @@ const MetaData: FC<Props> = ({
             <span>
               {preserveUnknownTokens && tokens == null
                 ? t(($) => $['external.overview.testRun.notProvided'], { ns: 'agentRoster' })
-                : `${tokens ?? 0} Tokens`}
+                : `${formatNumber(tokens ?? 0)} Tokens`}
             </span>
           )}
         </MetaDataRow>
