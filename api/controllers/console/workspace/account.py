@@ -45,7 +45,7 @@ from controllers.console.error import (
     EmailSendIpLimitError,
     InvalidAccountPasswordRequestError,
 )
-from controllers.console.flask_admission import console_account_admission, console_account_identity_admission
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.workspace.error import (
     AccountAlreadyInitedError,
     CurrentPasswordIncorrectError,
@@ -56,7 +56,6 @@ from controllers.console.workspace.error import (
 )
 from controllers.console.wraps import (
     email_password_login_enabled,
-    enterprise_license_required,
     model_validate,
     setup_required,
 )
@@ -277,9 +276,8 @@ class AccountInitApi(Resource):
 class AccountProfileApi(Resource):
     @error_responses(AccountNotFound)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountProfileResponse.__name__])
-    @console_account_identity_admission
-    @enterprise_license_required
-    def get(self, request_context: AccountRequestContext):
+    @console_account_admission(require_valid_enterprise_license=True, require_active_workspace=False)
+    def get(self, request_context: RequestContext):
         try:
             account = application_services().accounts.profile.get(request_context)
         except account_errors.AccountNotFoundError as error:

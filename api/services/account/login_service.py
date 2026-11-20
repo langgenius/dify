@@ -42,8 +42,6 @@ class ConsoleAuthWorkspaceQuery(Protocol):
 class ConsoleAuthInvitationGateway(Protocol):
     def resolve(self, *, email: str, token: str) -> LoginInvitation | None: ...
 
-    def ensure_membership(self, *, account_id: str, email: str, token: str) -> bool: ...
-
 
 class ConsoleAuthPolicyGateway(Protocol):
     def get_email_freeze_type(self, email: str) -> str | None: ...
@@ -196,6 +194,13 @@ class ConsoleAuthenticationService:
         self._defer_workspace_creation = defer_workspace_creation
 
     def login_with_password(self, command: PasswordLoginCommand) -> PasswordLoginResult:
+        """Authenticate the requested mode without accepting workspace invitations.
+
+        A live Console invitation permits issuing a session before acceptance. Without
+        one, Console admission requires a workspace unless creation is deferred. End
+        User login rejects invitations and neither queries nor provisions a workspace.
+        Invalid credentials or invitations issue no session.
+        """
         if command.mode == LoginMode.END_USER and command.invite_token is not None:
             raise ValueError("End User login cannot accept a workspace invitation.")
         normalized_email = command.email.lower()
@@ -208,7 +213,7 @@ class ConsoleAuthenticationService:
                 ip_address=command.ip_address,
             )
 
-        invitation_token = self._resolve_invitation_token(command, normalized_email)
+        invitation_token = self._resolve_invitation_token(command.email, command.invite_token, command.ip_address)
         account = None
         for candidate in self._accounts.list_for_login(command.email):
             completion = self._password_login_completion(
@@ -225,17 +230,11 @@ class ConsoleAuthenticationService:
 
         workspace_found = None
         if command.mode == LoginMode.CONSOLE:
-            workspace_found = self._workspaces.has_active_for_account(account.id)
-            if not workspace_found:
-                if invitation_token is not None:
-                    self._invitations.ensure_membership(
-                        account_id=account.id, email=command.email, token=invitation_token
-                    )
-                workspace_found = self._workspaces.has_active_for_account(account.id)
-                if not workspace_found and not self._defer_workspace_creation:
-                    if self._policies.is_workspace_creation_allowed() and not self._policies.has_workspace_capacity():
-                        raise account_errors.LoginWorkspaceLimitError
-                    return PasswordLoginResult(tokens=None, workspace_found=False)
+            workspace_found = invitation_token is not None or self._workspaces.has_active_for_account(account.id)
+            if not workspace_found and not self._defer_workspace_creation:
+                if self._policies.is_workspace_creation_allowed() and not self._policies.has_workspace_capacity():
+                    raise account_errors.LoginWorkspaceLimitError
+                return PasswordLoginResult(tokens=None, workspace_found=False)
 
         tokens = self._issue_session(
             account_id=account.id,
@@ -283,6 +282,19 @@ class ConsoleAuthenticationService:
         )
 
     def login_with_email_code(self, command: EmailCodeLoginCommand) -> AccountSessionTokens:
+        """Verify an email code and issue a session without accepting invitations.
+
+        A live Console invitation for an existing account permits login without joining
+        or provisioning a workspace. Otherwise Console login provisions one unless
+        creation is deferred. End User login rejects invitations and never queries or
+        provisions workspace membership. Failed verification issues no session.
+
+        Raises:
+            InvalidLoginInvitationEmailError: The invitation belongs to another email.
+            LoginWorkspaceLimitError, LoginWorkspaceCreationNotAllowedError: No workspace can be provided.
+        """
+        if command.mode == LoginMode.END_USER and command.invite_token is not None:
+            raise ValueError("End User login cannot accept a workspace invitation.")
         normalized_email = command.email.lower()
         if not self._is_valid_email_code(command.code):
             self._fail(
@@ -306,8 +318,10 @@ class ConsoleAuthenticationService:
         account = self._preferred_account(command.email)
         self._ensure_account_not_banned(account, normalized_email, command.ip_address)
         if account is not None:
+            invitation_token = self._resolve_invitation_token(command.email, command.invite_token, command.ip_address)
             if (
                 command.mode == LoginMode.CONSOLE
+                and invitation_token is None
                 and not self._defer_workspace_creation
                 and not self._workspaces.has_active_for_account(account.id)
             ):
@@ -428,20 +442,26 @@ class ConsoleAuthenticationService:
             raise account_errors.AccountNotFoundError
         return self._sessions.issue(account_id)
 
-    def _resolve_invitation_token(self, command: PasswordLoginCommand, normalized_email: str) -> str | None:
-        if command.invite_token is None:
+    def _resolve_invitation_token(self, email: str, invite_token: str | None, ip_address: str) -> str | None:
+        """Return the invitation token when it is live for ``email``; ``None`` when absent or stale.
+
+        Raises:
+            InvalidLoginInvitationEmailError: The live invitation belongs to another email.
+        """
+        if invite_token is None:
             return None
-        invitation = self._invitations.resolve(email=command.email, token=command.invite_token)
+        invitation = self._invitations.resolve(email=email, token=invite_token)
         if invitation is None:
             return None
+        normalized_email = email.lower()
         if invitation.email.lower() != normalized_email:
             self._fail(
                 account_errors.InvalidLoginInvitationEmailError(),
                 email=normalized_email,
                 reason=LoginFailureReason.INVALID_INVITATION_EMAIL,
-                ip_address=command.ip_address,
+                ip_address=ip_address,
             )
-        return command.invite_token
+        return invite_token
 
     def _ensure_email_eligible(self, email: str, ip_address: str) -> None:
         freeze_type = self._policies.get_email_freeze_type(email)

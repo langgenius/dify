@@ -61,6 +61,7 @@
   "invalidInvitationCode": "Invalid invitation code",
   "invitationCode": "Invitation Code",
   "invitationCodePlaceholder": "Your invitation code",
+  "invitationWorkspaceFull": "This workspace has no seats left, so you can't join it yet. Ask the person who invited you to free up a seat or upgrade the plan.",
   "join": "Join ",
   "joinTipEnd": " team on Dify",
   "joinTipStart": "Invite you join ",

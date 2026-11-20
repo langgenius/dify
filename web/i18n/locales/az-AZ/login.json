@@ -61,6 +61,7 @@
   "invalidInvitationCode": "Etibarsız dəvət kodu",
   "invitationCode": "Dəvət kodu",
   "invitationCodePlaceholder": "Dəvət kodunuz",
+  "invitationWorkspaceFull": "Bu iş sahəsində boş yer qalmayıb, ona görə hələlik qoşula bilməzsiniz. Sizi dəvət edən şəxsdən bir yer boşaltmasını və ya planı yüksəltməsini xahiş edin.",
   "join": "Komandaya qoşulma: ",
   "joinTipEnd": " komandasına qoşulmağa dəvət edirik.",
   "joinTipStart": "Sizi Dify-da ",

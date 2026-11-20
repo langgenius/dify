@@ -234,6 +234,7 @@ export const zEmailCodeSendPayload = z.object({
 export const zEmailCodeLoginPayload = z.object({
   code: z.string(),
   email: z.string(),
+  invite_token: z.string().nullish(),
   language: z.string().nullish(),
   mode: zLoginMode.optional().default('console'),
   timezone: z.string().nullish(),

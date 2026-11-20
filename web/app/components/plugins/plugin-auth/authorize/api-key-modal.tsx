@@ -175,7 +175,7 @@ const ApiKeyModalContent = ({
   )
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} disablePointerDismissal onOpenChange={handleOpenChange}>
       <DialogContent backdropProps={{ forceRender: true }} className="w-160">
         <DialogHeader>
           <DialogTitle>{t(($) => $['auth.useApiAuth'], { ns: 'plugin' })}</DialogTitle>

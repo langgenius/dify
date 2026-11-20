@@ -25,6 +25,7 @@ from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.rbac import RBACCheck, RBACPermission, Workspace
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint
+from controllers.openapi._errors import MemberLicenseExceeded, MemberLimitExceeded
 from controllers.openapi._models import (
     MemberActionResponse,
     MemberInvitePayload,
@@ -59,6 +60,8 @@ from services.errors.workspace import (
     InvalidWorkspaceMemberRoleError,
     MemberNotInTenantError,
     RoleAlreadyAssignedError,
+    WorkspaceInvitationQuotaError,
+    WorkspaceMemberLicenseQuotaError,
     WorkspaceNotLinkedError,
 )
 from services.workspace.contracts import WorkspaceInvitation, WorkspaceMemberRecord, WorkspaceSnapshot
@@ -218,6 +221,12 @@ class WorkspaceMembersApi(Resource):
             raise BadRequest(str(exc)) from exc
         except SeatsLimitExceededError as caught_error:
             raise BadRequest("licensed seats limit exceeded") from caught_error
+        except WorkspaceMemberLicenseQuotaError as caught_error:
+            raise MemberLicenseExceeded() from caught_error
+        except WorkspaceInvitationQuotaError as caught_error:
+            if caught_error.seats:
+                raise BadRequest("licensed seats limit exceeded") from caught_error
+            raise MemberLimitExceeded() from caught_error
         except AccountRegisterError as exc:
             raise BadRequest(str(exc)) from exc
 
