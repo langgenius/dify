@@ -17,13 +17,13 @@ import { DemoEndPanel } from './components/demo-end-panel'
 import { DemoMembers } from './components/demo-members'
 import { DemoStepGuide } from './components/demo-step-guide'
 import { createDemoGraph } from './demo-graph'
-import { getDemoEndState } from './end-state'
+import { getDemoEndState, getTryNowHref } from './end-state'
 import { demoDuration, getPlaybackFrame } from './playback-script'
 import { usePlayback } from './use-playback'
 
 type Step = 'members' | 'comment' | 'playing'
 
-function useHasCollaborativeApps(enabled: boolean) {
+function useCollaborativeAppCounts(enabled: boolean) {
   const query = (mode: 'workflow' | 'advanced-chat') =>
     consoleQuery.apps.get.queryOptions({
       input: { query: { page: 1, limit: 1, mode } },
@@ -32,7 +32,7 @@ function useHasCollaborativeApps(enabled: boolean) {
   const workflows = useQuery(query('workflow'))
   const chatflows = useQuery(query('advanced-chat'))
   if (!workflows.data || !chatflows.data) return undefined
-  return workflows.data.total + chatflows.data.total > 0
+  return { workflows: workflows.data.total, chatflows: chatflows.data.total }
 }
 
 export default function CollaborationDemoPage() {
@@ -61,7 +61,7 @@ export default function CollaborationDemoPage() {
   const features = useQuery(consoleQuery.features.get.queryOptions())
   const role = useAtomValue(currentWorkspaceAtom).role
   const collaborationEnabled = features.data?.workflow_collaboration_enabled === true
-  const hasCollaborativeApps = useHasCollaborativeApps(collaborationEnabled)
+  const appCounts = useCollaborativeAppCounts(collaborationEnabled)
   const endState = getDemoEndState({
     features: features.data
       ? {
@@ -73,7 +73,7 @@ export default function CollaborationDemoPage() {
         ? { status: 'error' }
         : { status: 'pending' },
     role,
-    hasCollaborativeApps,
+    hasCollaborativeApps: appCounts && appCounts.workflows + appCounts.chatflows > 0,
   })
 
   const startPlayback = () => {
@@ -143,7 +143,12 @@ export default function CollaborationDemoPage() {
         )}
 
         {step === 'playing' && playback.finished && (
-          <DemoEndPanel state={endState} onReplay={playback.restart} onClose={exitDemo} />
+          <DemoEndPanel
+            state={endState}
+            tryNowHref={appCounts ? getTryNowHref(appCounts) : '/apps'}
+            onReplay={playback.restart}
+            onClose={exitDemo}
+          />
         )}
 
         {step !== 'playing' && (

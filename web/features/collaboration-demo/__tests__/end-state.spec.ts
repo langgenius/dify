@@ -1,4 +1,4 @@
-import { getDemoEndState } from '../end-state'
+import { getDemoEndState, getTryNowHref } from '../end-state'
 
 const enabled = { status: 'success', collaborationEnabled: true, upgradeAvailable: false } as const
 const upgradable = {
@@ -66,5 +66,16 @@ describe('getDemoEndState', () => {
         hasCollaborativeApps: undefined,
       }),
     ).toBe('unavailable')
+  })
+})
+
+describe('getTryNowHref', () => {
+  it('filters Studio to the only collaborative app type the workspace has', () => {
+    expect(getTryNowHref({ workflows: 2, chatflows: 0 })).toBe('/apps?category=workflow')
+    expect(getTryNowHref({ workflows: 0, chatflows: 3 })).toBe('/apps?category=advanced-chat')
+  })
+
+  it('shows every app when both workflow and chatflow apps exist', () => {
+    expect(getTryNowHref({ workflows: 1, chatflows: 1 })).toBe('/apps')
   })
 })

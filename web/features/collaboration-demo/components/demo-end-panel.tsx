@@ -13,11 +13,12 @@ import Link from '@/next/link'
 
 type DemoEndPanelProps = {
   state: DemoEndState
+  tryNowHref: string
   onReplay: () => void
   onClose: () => void
 }
 
-export function DemoEndPanel({ state, onReplay, onClose }: DemoEndPanelProps) {
+export function DemoEndPanel({ state, tryNowHref, onReplay, onClose }: DemoEndPanelProps) {
   const { t } = useTranslation(['collaborationDemo'])
   const headingRef = useRef<HTMLHeadingElement>(null)
   const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
@@ -76,7 +77,7 @@ export function DemoEndPanel({ state, onReplay, onClose }: DemoEndPanelProps) {
             <Button onClick={onClose}>{t(($) => $['end.close'])}</Button>
           )}
           {state === 'tryNow' && (
-            <Link href="/apps?category=workflow" className={primaryLink}>
+            <Link href={tryNowHref} className={primaryLink}>
               {t(($) => $['end.enabled.action'])}
             </Link>
           )}
