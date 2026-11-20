@@ -62,7 +62,6 @@ from repositories.factory import DifyAPIRepositoryFactory
 from services.app_definition_query_service import ServiceApiEndUserAuthError
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
-from services.billing_service import BillingService
 from services.errors.app import (
     IsDraftWorkflowError,
     WorkflowIdFormatError,
@@ -72,6 +71,7 @@ from services.errors.app import (
     TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
 )
 from services.errors.llm import InvokeRateLimitError
+from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
 
@@ -496,8 +496,7 @@ class WorkflowRunByIdApi(Resource):
             raise NotWorkflowAppError()
 
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
-            billing_info = BillingService.get_info(app_model.tenant_id, exclude_vector_space=True)
-            if billing_info.subscription.plan == CloudPlan.SANDBOX:
+            if FeatureService.get_workspace_plan(app_model.tenant_id) == CloudPlan.SANDBOX:
                 raise WorkflowVersionExecutionNotAllowedError()
 
         payload = WorkflowRunPayload.model_validate(omit_trace_session_id_from_payload(service_api_ns.payload) or {})

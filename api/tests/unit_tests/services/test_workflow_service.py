@@ -33,7 +33,7 @@ from core.workflow.nodes.agent_v2 import DifyAgentNode
 from core.workflow.nodes.agent_v2.session_store import WorkflowAgentWorkspaceStore
 from core.workflow.nodes.human_input.entities import HumanInputNodeData
 from core.workflow.system_variables import SystemVariableKey, get_system_text
-from enums import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from extensions.ext_database import db
 from extensions.logstore.repositories.logstore_workflow_node_execution_repository import (
     LogstoreWorkflowNodeExecutionRepository,
@@ -88,7 +88,6 @@ from services.workflow_service import (
     _rebuild_single_file,
     _setup_variable_pool,
 )
-from tests.helpers import billing_builders as builders
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account, make_app
 from tests.workflow_test_utils import build_test_graph_init_params
@@ -1717,11 +1716,7 @@ class TestWorkflowServiceCases:
             sqlite_session.add(draft)
             sqlite_session.commit()
 
-            with (
-                patch("services.workflow_service.BillingService") as mock_billing_service,
-            ):
-                mock_billing_service.get_info.return_value = builders.subscription_info("sandbox")
-
+            with patch("services.workflow_service.FeatureService.get_workspace_plan", return_value=CloudPlan.SANDBOX):
                 with pytest.raises(TriggerNodeLimitExceededError):
                     workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
 
