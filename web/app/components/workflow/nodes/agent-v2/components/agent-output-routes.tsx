@@ -63,7 +63,10 @@ export function AgentOutputRoutes({ id, data }: NodeProps<AgentV2NodeType>) {
     if (enabled) {
       while (nextList.length < 2)
         nextList.push({
-          id: crypto.randomUUID(),
+          id:
+            typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+              ? crypto.randomUUID()
+              : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`,
           name: '',
           label: defaultLabel(nextList.length + 1),
         })

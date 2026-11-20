@@ -240,3 +240,23 @@ it('keeps routes and connections unchanged on a readonly canvas', async () => {
   expect(nodeData()).toEqual(before)
   expect(edges()).toEqual(['start-agent', 'agent-end'])
 })
+
+it('falls back to a timestamp id when crypto.randomUUID is unavailable', async () => {
+  const randomUUID = crypto.randomUUID
+  // Simulate a non-secure context (plain HTTP), where `crypto.randomUUID` is undefined.
+  // @ts-expect-error - intentionally removing the method to exercise the fallback branch
+  crypto.randomUUID = undefined
+  try {
+    const { user, nodeData } = setup({
+      data: createData({ agent_output_routes: { enabled: false, routes: [accepted] } }),
+    })
+    await user.click(toggle())
+    expect(nodeData().agent_output_routes?.routes).toEqual([
+      accepted,
+      expect.objectContaining({ id: expect.any(String), name: '' }),
+    ])
+    expect(nodeData().agent_output_routes?.routes?.[1]?.id).not.toBe('')
+  } finally {
+    crypto.randomUUID = randomUUID
+  }
+})
