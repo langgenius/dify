@@ -131,6 +131,18 @@ export const zLimitExceededError = zErrorResponse.and(
 )
 
 /**
+ * NotAllowedCreateWorkspaceError
+ *
+ * Workspace not found, please contact system admin to invite you to join in a workspace.
+ */
+export const zNotAllowedCreateWorkspaceError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_allowed_create_workspace'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * AuthenticationFailedError
  *
  * Invalid email or password.

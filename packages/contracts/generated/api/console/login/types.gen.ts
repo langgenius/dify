@@ -72,6 +72,11 @@ export type LimitExceededError = ErrorResponse & {
   status: 400
 }
 
+export type NotAllowedCreateWorkspaceError = ErrorResponse & {
+  code: 'not_allowed_create_workspace'
+  status: 400
+}
+
 export type AuthenticationFailedError = ErrorResponse & {
   code: 'authentication_failed'
   status: 401
@@ -125,6 +130,7 @@ export type PostLoginErrors = {
     | InvalidAccountPasswordError
     | InvalidEmailError
     | LimitExceededError
+    | NotAllowedCreateWorkspaceError
     | ErrorResponse
   401: AuthenticationFailedError | ErrorResponse
   429: EmailCodeLoginLimitError | ErrorResponse

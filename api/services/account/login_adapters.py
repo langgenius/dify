@@ -243,16 +243,21 @@ class RedisAccountSessionGateway(AccountSessionGateway):
 
 
 class SQLAlchemyAccountRefreshPreparationGateway(AccountRefreshPreparationGateway):
-    def __init__(self, *, accounts: SQLAlchemyAccountRepository, defer_workspace_creation: bool = False) -> None:
+    def __init__(self, *, accounts: SQLAlchemyAccountRepository) -> None:
         self._accounts = accounts
-        self._defer_workspace_creation = defer_workspace_creation
 
     @override
     def prepare(self, account_id: str, *, mode: LoginMode = LoginMode.CONSOLE) -> RefreshAccountStatus:
+        """Recheck the Account behind a refresh token before allowing rotation.
+
+        Console refresh requires a usable workspace so it cannot send a caller
+        back to a Console profile that will reject the same session. End User
+        refresh is Account-only. Neither path provisions a workspace.
+        """
         now = naive_utc_now()
         account = (
             self._accounts.get(account_id)
-            if mode == LoginMode.END_USER or self._defer_workspace_creation
+            if mode == LoginMode.END_USER
             else self._accounts.load_identity(account_id, now=now)
         )
         if account is None:
