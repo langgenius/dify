@@ -109,6 +109,8 @@ def test_with_the_header_the_operation_answers_a_transfer(
     assert file["name"] == "skill.zip"
     assert (file["size"], file["sha256"]) == (len(_ZIP), hashlib.sha256(_ZIP).hexdigest())
     assert urlsplit(file["download_url"]).netloc == "dify.example"
+    assert file["download_before"].endswith("Z")
+    assert file["expires_at"].endswith("Z")
     assert datetime.fromisoformat(file["download_before"]) < datetime.fromisoformat(file["expires_at"])
     assert world.get(file["download_url"]).data == _ZIP
 

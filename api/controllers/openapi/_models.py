@@ -5,9 +5,18 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Final, Literal, Protocol, Self
+from typing import Annotated, Any, Final, Literal, Protocol, Self
 
-from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, ValidationInfo, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    PlainSerializer,
+    PrivateAttr,
+    ValidationInfo,
+    field_validator,
+    model_validator,
+)
 
 from constants.languages import supported_language
 from constants.oauth_bearer import SubjectType
@@ -30,6 +39,7 @@ from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.nodes.tool.entities import ToolInputType
 from graphon.variables import SegmentType
+from libs.datetime_utils import to_utc_iso
 from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, alphanumeric, to_timestamp, uuid_value
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode, IconType
@@ -478,6 +488,10 @@ class FileUploadPayload(BaseModel):
     )
 
 
+UtcDateTime = Annotated[datetime, PlainSerializer(to_utc_iso, return_type=str)]
+"""A naive UTC time, written with ``Z`` on the wire."""
+
+
 class UploadPreparePayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -497,8 +511,8 @@ class UploadPrepared(BaseModel):
     id: str = Field(description="Put this id in the file field of the operation you call next")
     upload_url: str = Field(description="Send the file here with one multipart request; it needs no login")
     upload_commands: UploadCommands
-    upload_before: datetime = Field(description="When the upload link stops accepting the file")
-    expires_at: datetime = Field(description="When the id stops working")
+    upload_before: UtcDateTime = Field(description="When the upload link stops accepting the file")
+    expires_at: UtcDateTime = Field(description="When the id stops working")
     max_bytes: int = Field(description="The largest file this upload takes")
 
 
@@ -507,7 +521,7 @@ class UploadReceived(BaseModel):
     name: str
     size: int
     sha256: str
-    expires_at: datetime
+    expires_at: UtcDateTime
     next: str
 
 
@@ -517,8 +531,8 @@ class TransferredFile(BaseModel):
     size: int
     sha256: str
     download_url: str = Field(description="GET the file here, without a login, until download_before")
-    download_before: datetime
-    expires_at: datetime
+    download_before: UtcDateTime
+    expires_at: UtcDateTime
 
 
 class FileResultResponse(BaseModel):
