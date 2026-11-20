@@ -308,6 +308,9 @@ it('shows an inline identity list and previews selections beyond the visible Log
     .element(dialog.getByRole('status'))
     .toHaveTextContent('appLog.export.previewSize:{"conversations":1,"rows":2}')
   await identities.getByRole('checkbox', { name: 'Mia Chen' }).click()
+  await expect
+    .element(dialog.getByRole('button', { name: 'common.operation.clear' }))
+    .not.toBeInTheDocument()
   const search = dialog.getByRole('searchbox', { name: 'common.operation.search' })
   await search.fill(olderEndUser.label)
   await identities.getByRole('checkbox', { name: olderEndUser.label }).click()

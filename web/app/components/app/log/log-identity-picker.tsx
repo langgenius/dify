@@ -56,28 +56,14 @@ export function LogIdentityPicker({
 
   return (
     <div className="rounded-lg border border-divider-regular p-2">
-      <div className="flex items-center gap-2">
-        <SearchInput
-          className="min-w-0 flex-1"
-          value={search}
-          onValueChange={setSearch}
-          disabled={disabled}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && !event.nativeEvent.isComposing) event.preventDefault()
-          }}
-        />
-        {value.length > 0 && (
-          <Button
-            type="button"
-            size="small"
-            variant="ghost"
-            disabled={disabled}
-            onClick={() => onChange([])}
-          >
-            {t(($) => $['operation.clear'], { ns: 'common' })}
-          </Button>
-        )}
-      </div>
+      <SearchInput
+        value={search}
+        onValueChange={setSearch}
+        disabled={disabled}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' && !event.nativeEvent.isComposing) event.preventDefault()
+        }}
+      />
       <div role="group" aria-label={label} className="max-h-40 overflow-y-auto overscroll-contain">
         {matches.map((item) => {
           const key = identityKey(item)
