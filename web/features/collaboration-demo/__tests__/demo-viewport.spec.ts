@@ -28,6 +28,19 @@ describe('getDemoViewport', () => {
     expect(thread.top + 360).toBeLessThanOrEqual(height)
   })
 
+  it.each([
+    [800, 600],
+    [704, 900],
+    [390, 844],
+  ])('never covers the comment marker on a %ix%i canvas', (width, height) => {
+    const pin = toScreen(getDemoViewport(width, height), demoCommentPosition)
+    const thread = getThreadPlacement(pin, { width, height })
+    const overlapsX = thread.left < pin.x + 47 && thread.left + 360 > pin.x
+    const overlapsY = thread.top < pin.y + 27 && thread.top + 360 > pin.y
+
+    expect(overlapsX && overlapsY).toBe(false)
+  })
+
   it('keeps the thread inside a narrow canvas', () => {
     const viewport = getDemoViewport(704, 900)
     const thread = getThreadPlacement(toScreen(viewport, demoCommentPosition), {
