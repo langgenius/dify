@@ -193,36 +193,61 @@ class SimplePromptTransform(PromptTransform):
         image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
         context_files: list["File"] | None = None,
     ) -> tuple[list[PromptMessage], list[str] | None]:
+        """
+        Build the messages for a chat model: system prompt, chat history, last user message.
+
+        Invariant: the system message holds only text that is the same on every turn (pre_prompt and
+        the static context instructions), so the system message and the history after it form a
+        prefix that providers can cache. The retrieved context changes with every query, so it goes
+        in the last user message, wrapped in <context></context> before the query.
+
+        Preconditions: `context` is None when the app has no knowledge base.
+        Postconditions: only the last user message contains `context`. The system message is present
+        only when `query` and the rendered system prompt are both non-empty. The history budget still
+        counts the context, as it did when the context sat in the system message.
+        Side effects: none. Memory is read from saved messages, which store the query without the
+        context.
+        """
         prompt_messages: list[PromptMessage] = []
 
-        # get prompt
-        prompt, _ = self._get_prompt_str_and_rules(
+        prompt, prompt_rules = self._get_prompt_str_and_rules(
             app_mode=app_mode,
             pre_prompt=pre_prompt,
             inputs=inputs,
             query=None,
-            context=context,
+            context=None,
         )
+
+        user_context = ""
+        if context is not None:
+            prompt += prompt_rules["context_instruction_prompt"]
+            user_context = PromptTemplateParser(template=prompt_rules["query_context_prompt"]).format(
+                {"#context#": context}
+            )
 
         if prompt and query:
             prompt_messages.append(SystemPromptMessage(content=prompt))
 
         if memory:
-            prompt_messages = self._append_chat_histories(
-                memory=memory,
-                memory_config=MemoryConfig(
-                    window=MemoryConfig.WindowConfig(
-                        enabled=False,
-                    )
-                ),
-                prompt_messages=prompt_messages,
-                model_config=model_config,
+            history_budget_messages = (
+                [*prompt_messages, UserPromptMessage(content=user_context)] if user_context else prompt_messages
+            )
+            rest_tokens = self._calculate_rest_token(history_budget_messages, model_config=model_config)
+            prompt_messages.extend(
+                self._get_history_messages_list_from_memory(
+                    memory=memory,
+                    memory_config=MemoryConfig(
+                        window=MemoryConfig.WindowConfig(
+                            enabled=False,
+                        )
+                    ),
+                    max_token_limit=rest_tokens,
+                )
             )
 
-        if query:
-            prompt_messages.append(self._get_last_user_message(query, files, image_detail_config, context_files))
-        else:
-            prompt_messages.append(self._get_last_user_message(prompt, files, image_detail_config, context_files))
+        prompt_messages.append(
+            self._get_last_user_message(user_context + (query or prompt), files, image_detail_config, context_files)
+        )
 
         return prompt_messages, None
 
