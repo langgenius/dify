@@ -5,6 +5,22 @@ import { describe, expect, it, vi } from 'vite-plus/test'
 import { renderWorkflowComponent as render } from '../__tests__/workflow-test-env'
 import CommentPreview from './comment-preview'
 
+const mockFetchMentionUsers = vi.hoisted(() =>
+  vi.fn<(...args: unknown[]) => Promise<{ users: unknown[] }>>(async () => ({ users: [] })),
+)
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.workflow.comments.mentionUsers.get': (...args: unknown[]) =>
+        mockFetchMentionUsers(...args),
+    }),
+  }
+})
+
 vi.mock('@/hooks/use-format-time-from-now', () => ({
   useFormatTimeFromNow: () => ({
     formatTimeFromNow: (value: number) => `time:${value}`,
@@ -46,20 +62,17 @@ describe('CommentPreview', () => {
     expect(screen.getByText('time:10000')).toBeInTheDocument()
   })
 
-  it('highlights mentions of known users and shows how many replies the thread has', () => {
+  it('loads mentionable users itself to highlight mentions, and shows the reply count', async () => {
+    mockFetchMentionUsers.mockResolvedValue({
+      users: [{ id: 'user-2', name: 'Bob', email: 'bob@example.com', avatar_url: null }],
+    })
     render(
       <CommentPreview comment={createComment({ content: 'Ping @Bob please', reply_count: 3 })} />,
-      {
-        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
-        initialStoreState: {
-          mentionableUsersCache: {
-            'app-1': [{ id: 'user-2', name: 'Bob', email: 'bob@example.com', avatar_url: null }],
-          },
-        },
-      },
+      { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
     )
 
-    expect(screen.getByText('@Bob')).toHaveClass('text-text-accent')
+    expect(await screen.findByText('@Bob')).toHaveClass('text-text-accent')
+    expect(mockFetchMentionUsers).toHaveBeenCalledTimes(1)
     expect(screen.getByText('workflowComments.comments.replyCount:{"count":3}')).toBeInTheDocument()
   })
 

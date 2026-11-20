@@ -27,6 +27,7 @@
   "comments.placeholder.editReply": "Edit reply",
   "comments.placeholder.reply": "Reply",
   "comments.reply": "Reply",
+  "comments.replyCount_few": "{{count}} răspunsuri",
   "comments.replyCount_one": "{{count}} răspuns",
-  "comments.replyCount_other": "{{count}} răspunsuri"
+  "comments.replyCount_other": "{{count}} de răspunsuri"
 }

@@ -14,6 +14,8 @@ const render = (ui: ReactElement, userId = 'user-1') => {
   })
   return renderWorkflowFlowComponent(ui, {
     queryClient,
+    resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    initialStoreState: { mentionableUsersCache: { 'app-1': [] } },
     reactFlowProps: {
       proOptions: { hideAttribution: true },
       fitView: false,

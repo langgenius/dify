@@ -27,6 +27,8 @@
   "comments.placeholder.editReply": "Edit reply",
   "comments.placeholder.reply": "Reply",
   "comments.reply": "Reply",
+  "comments.replyCount_few": "{{count}} odgovori",
   "comments.replyCount_one": "{{count}} odgovor",
-  "comments.replyCount_other": "{{count}} odgovorov"
+  "comments.replyCount_other": "{{count}} odgovorov",
+  "comments.replyCount_two": "{{count}} odgovora"
 }

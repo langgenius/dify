@@ -434,6 +434,49 @@ it('navigates unresolved comments and deletes a thread only after confirmation',
   )
 })
 
+it('closes the thread through its popover when the last comment is deleted', async () => {
+  const user = userEvent.setup()
+  let comments = [comment('user-1', 'Alice')]
+  api.comments.mockImplementation(async () => ({
+    data: comments.map((item) => ({ ...item, mention_count: 0, reply_count: 0, participants: [] })),
+  }))
+  api.comment.mockImplementation(async ({ params }) =>
+    comments.find((item) => item.id === params.comment_id)!,
+  )
+  api.deleteComment.mockImplementation(async ({ params }) => {
+    comments = comments.filter((item) => item.id !== params.comment_id)
+    return { result: 'success' }
+  })
+  const { store } = renderSubject({
+    collaborationEnabled: true,
+    initialStoreState: { showUserComments: true },
+  })
+  await user.click(
+    await screen.findByRole('button', { name: 'workflow.keyboard.openComment:{"name":"Alice"}' }),
+  )
+  await screen.findByRole('dialog', { name: 'workflowComments.comments.panelTitle' })
+  await user.click(
+    screen.getByRole('button', { name: 'workflowComments.comments.aria.deleteComment' }),
+  )
+  await user.click(
+    within(await screen.findByRole('alertdialog')).getByRole('button', {
+      name: 'common.operation.delete',
+    }),
+  )
+
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('dialog', { name: 'workflowComments.comments.panelTitle' }),
+    ).not.toBeInTheDocument(),
+  )
+  // The detail stayed until the popover finished closing, then the canvas let it go.
+  expect(store.getState().activeCommentId).toBeNull()
+  expect(store.getState().activeCommentDetail).toBeNull()
+  expect(
+    screen.queryByRole('button', { name: 'workflow.keyboard.openComment:{"name":"Alice"}' }),
+  ).not.toBeInTheDocument()
+})
+
 it('deletes a reply through the real thread confirmation and refreshes its content', async () => {
   const user = userEvent.setup()
   const detail = comment('user-1', 'Alice')

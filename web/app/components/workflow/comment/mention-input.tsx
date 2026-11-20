@@ -11,7 +11,6 @@ import {
   PopoverPositioner,
 } from '@langgenius/dify-ui/popover'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import {
   forwardRef,
   memo,
@@ -26,14 +25,12 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
-import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { consoleClient } from '@/service/console'
 import { CollaboratorAvatar } from '../collaboration/components/collaborator-avatar'
-import { useStore, useWorkflowStore } from '../store'
 import { CommentComposerActions } from './comment-composer'
 import { highlightMentions } from './mention-highlight'
 import { toCommentCollaborator } from './participants'
+import { useMentionableUsers } from './use-mentionable-users'
 
 type MentionInputProps = {
   value: string
@@ -71,7 +68,6 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
       ...userProfileQueryOptions(),
       select: (data) => data.profile.id,
     })
-    const appId = useAtomValue(editorAppIdAtom)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const highlightContentRef = useRef<HTMLDivElement>(null)
     const lineProbeRef = useRef<HTMLDivElement>(null)
@@ -81,10 +77,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
     // Expose textarea ref to parent component
     useImperativeHandle(forwardedRef, () => textareaRef.current!, [])
 
-    const workflowStore = useWorkflowStore()
-    const mentionUsersFromStore = useStore((state) =>
-      appId ? state.mentionableUsersCache[appId] : undefined,
-    )
+    const mentionUsersFromStore = useMentionableUsers()
     const mentionUsers = useMemo(
       () => mentionUsersFromStore ?? EMPTY_USERS,
       [mentionUsersFromStore],
@@ -114,30 +107,6 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
       [value, mentionNameList],
     )
 
-    const loadMentionableUsers = useCallback(async () => {
-      if (!appId) return
-
-      const state = workflowStore.getState()
-      if (state.mentionableUsersCache[appId] !== undefined) return
-
-      if (state.mentionableUsersLoading[appId]) return
-
-      state.setMentionableUsersLoading(appId, true)
-      try {
-        const response = await consoleClient.apps.byAppId.workflow.comments.mentionUsers.get({
-          params: { app_id: appId },
-        })
-        workflowStore.getState().setMentionableUsersCache(appId, response.users)
-      } catch (error) {
-        console.error('Failed to load mentionable users:', error)
-      } finally {
-        workflowStore.getState().setMentionableUsersLoading(appId, false)
-      }
-    }, [appId, workflowStore])
-
-    useEffect(() => {
-      loadMentionableUsers()
-    }, [loadMentionableUsers])
     const syncHighlightScroll = useCallback(() => {
       const textarea = textareaRef.current
       const highlightContent = highlightContentRef.current
@@ -173,7 +142,9 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
       )
     }, [mentionUsers, mentionQuery])
 
-    const isMentionMenuOpen = showMentionDropdown && filteredMentionUsers.length > 0
+    // A saving edit is frozen: its text, mention button and mention list all stop changing it.
+    const locked = disabled || (isEditing && loading)
+    const isMentionMenuOpen = !locked && showMentionDropdown && filteredMentionUsers.length > 0
 
     useEffect(() => {
       if (!isMentionMenuOpen) return
@@ -183,7 +154,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
     }, [isMentionMenuOpen, listboxId, selectedMentionIndex])
 
     const shouldDisableMentionButton = useMemo(() => {
-      if (showMentionDropdown) return true
+      if (locked || showMentionDropdown) return true
 
       const textarea = textareaRef.current
       if (!textarea) return false
@@ -191,7 +162,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
       const cursorPosition = textarea.selectionStart || 0
       const textBeforeCursor = value.slice(0, cursorPosition)
       return /@\w*$/.test(textBeforeCursor)
-    }, [showMentionDropdown, value])
+    }, [locked, showMentionDropdown, value])
 
     const handleContentChange = useCallback(
       (newValue: string) => {
@@ -411,7 +382,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
               minRows={isEditing ? 2 : 1}
               maxRows={isEditing || isMultiline ? 4 : 1}
               value={value}
-              disabled={disabled || (isEditing && loading)}
+              disabled={locked}
               onChange={(e) => handleContentChange(e.target.value)}
               aria-controls={isMentionMenuOpen ? listboxId : undefined}
               aria-activedescendant={

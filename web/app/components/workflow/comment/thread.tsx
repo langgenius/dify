@@ -20,10 +20,8 @@ import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/me
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { CollaboratorAvatar } from '../collaboration/components/collaborator-avatar'
@@ -38,6 +36,7 @@ import {
   CommentThreadList,
   CommentThreadPopup,
 } from './thread-view'
+import { useMentionableUsers } from './use-mentionable-users'
 
 type CommentThreadProps = {
   comment: WorkflowCommentDetail
@@ -302,7 +301,6 @@ function CommentThreadSession({
   onReplyEdit,
   onReplyDelete,
 }: CommentThreadSessionProps) {
-  const appId = useAtomValue(editorAppIdAtom)
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
@@ -323,7 +321,7 @@ function CommentThreadSession({
   )
   const focusReply = () => ownReplyInputRef.current?.focus()
 
-  const mentionUsers = useStore((state) => (appId ? state.mentionableUsersCache[appId] : undefined))
+  const mentionUsers = useMentionableUsers()
   const mentionNames = useMemo(
     () =>
       Array.from(

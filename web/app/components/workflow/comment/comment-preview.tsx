@@ -3,16 +3,15 @@
 import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import { memo, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { CollaboratorAvatarStack } from '../collaboration/components/collaborator-avatar'
 import { useStore } from '../store'
 import { highlightMentions } from './mention-highlight'
 import { getCommentParticipants } from './participants'
+import { useMentionableUsers } from './use-mentionable-users'
 
 type CommentPreviewProps = {
   comment: WorkflowCommentBasic
@@ -22,8 +21,7 @@ type CommentPreviewProps = {
 const CommentPreview: FC<CommentPreviewProps> = ({ comment, onClick }) => {
   const { t } = useTranslation(['workflowComments'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  const appId = useAtomValue(editorAppIdAtom)
-  const mentionUsers = useStore((s) => (appId ? s.mentionableUsersCache[appId] : undefined))
+  const mentionUsers = useMentionableUsers()
   const mentionNames = useMemo(
     () => (mentionUsers ?? []).map((user) => user.name).filter(Boolean),
     [mentionUsers],

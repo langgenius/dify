@@ -198,6 +198,11 @@ describe('CommentThread', () => {
     await user.type(editor, ' more')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
     expect(editor).toBeDisabled()
+    // Mentions cannot change the draft either while it saves.
+    const mentionButtons = screen.getAllByRole('button', {
+      name: 'workflowAgent.nodes.agent.task.mention',
+    })
+    expect(mentionButtons[0]).toBeDisabled()
 
     finishSave()
     await waitFor(() => expect(editor).not.toBeInTheDocument())

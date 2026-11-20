@@ -27,6 +27,10 @@
   "comments.placeholder.editReply": "تعديل الرد",
   "comments.placeholder.reply": "رد",
   "comments.reply": "رد",
+  "comments.replyCount_few": "{{count}} ردود",
+  "comments.replyCount_many": "{{count}} ردًا",
   "comments.replyCount_one": "{{count}} رد",
-  "comments.replyCount_other": "{{count}} ردود"
+  "comments.replyCount_other": "{{count}} رد",
+  "comments.replyCount_two": "ردّان ({{count}})",
+  "comments.replyCount_zero": "{{count}} ردود"
 }
