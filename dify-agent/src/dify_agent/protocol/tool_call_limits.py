@@ -46,13 +46,13 @@ class ToolCallLimitMetadata(BaseModel):
 
 
 class ToolCallLimitSnapshot(BaseModel):
-    """Authoritative reservations copied atomically into a terminal run event.
+    """Authoritative reservations sealed by the owner for a terminal run event.
 
     Each hashed native call id maps to its one-based reservation ordinal. A
     reservation without a matching result remains unconfirmed: the summary does
     not claim whether an external side effect occurred. No arguments, credentials
     or tool observations belong to this record. Decimal-text limits are accepted
-    only to decode the exact integer preserved in trusted Redis state.
+    only to decode historical snapshots written from trusted Redis state.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)

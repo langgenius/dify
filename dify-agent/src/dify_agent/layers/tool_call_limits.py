@@ -86,7 +86,7 @@ class ToolCallLimitGuard:
 
     async def available(self, ctx: RunContext[Deps]) -> bool:
         """Read authoritative usage without reserving or changing run retention."""
-        usage = await ctx.deps.services.tool_call_limit_store.usage(
+        usage = await ctx.deps.tool_call_limit_store.usage(
             run_id=ctx.deps.run_id, tool_identity=self.identity, limit=self.limit
         )
         return usage.used < usage.limit
@@ -95,7 +95,7 @@ class ToolCallLimitGuard:
         """After validation, atomically reserve once before the caller dispatches."""
         if ctx.tool_call_id is None:
             raise ValueError("Limited tools require a stable native tool call id")
-        return await ctx.deps.services.tool_call_limit_store.reserve(
+        return await ctx.deps.tool_call_limit_store.reserve(
             run_id=ctx.deps.run_id,
             tool_identity=self.identity,
             tool_call_id=ctx.tool_call_id,

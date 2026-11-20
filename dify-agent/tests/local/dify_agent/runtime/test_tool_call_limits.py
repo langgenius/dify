@@ -3,7 +3,13 @@ from typing import cast
 
 import pytest
 
-from dify_agent.runtime.tool_call_limits import InMemoryToolCallLimitStore, ToolCallReservation, ToolCallUsage
+from dify_agent.runtime.tool_call_limits import (
+    InMemoryToolCallLimitStore,
+    ToolCallLimitRunUnavailable,
+    ToolCallReservation,
+    ToolCallUsage,
+    tool_call_digest,
+)
 
 
 def test_run_and_tool_identity_own_independent_quotas() -> None:
@@ -25,7 +31,7 @@ def test_run_and_tool_identity_own_independent_quotas() -> None:
         assert await store.reserve(
             run_id="run-a", tool_identity="export", tool_call_id="call-4", limit=1
         ) == ToolCallReservation(1, 1, True)
-        assert await store.reserve(
+        assert await InMemoryToolCallLimitStore().reserve(
             run_id="run-b", tool_identity="search", tool_call_id="call-1", limit=3
         ) == ToolCallReservation(1, 3, True)
 
@@ -55,6 +61,41 @@ def test_parallel_calls_cannot_overbook_the_final_slot() -> None:
         )
         assert sum(result.allowed for result in results) == 1
         assert {result.used for result in results} == {1}
+
+    asyncio.run(scenario())
+
+
+def test_owner_closes_admission_before_cleanup_and_seals_a_detached_snapshot() -> None:
+    async def scenario() -> None:
+        store = InMemoryToolCallLimitStore()
+        limit = 2**53 + 123
+        await store.reserve(run_id="run", tool_identity="search", tool_call_id="pending", limit=limit)
+        store.close_admission()
+        with pytest.raises(ToolCallLimitRunUnavailable):
+            await store.reserve(run_id="run", tool_identity="search", tool_call_id="cleanup", limit=limit)
+        snapshot = store.seal()
+        operation = tool_call_digest("search")
+        assert snapshot[operation].limit == limit
+        assert snapshot[operation].used == 1
+        assert snapshot[operation].call_ids == {tool_call_digest("pending"): 1}
+        snapshot[operation].call_ids.clear()
+        snapshot.clear()
+        assert store.seal()[operation].call_ids == {tool_call_digest("pending"): 1}
+        with pytest.raises(ToolCallLimitRunUnavailable):
+            await store.reserve(run_id="run", tool_identity="search", tool_call_id="after", limit=limit)
+        assert await store.usage(run_id="run", tool_identity="search", limit=1) == ToolCallUsage(1, limit)
+
+    asyncio.run(scenario())
+
+
+def test_a_counter_cannot_be_reused_for_another_run_to_reset_allowance() -> None:
+    async def scenario() -> None:
+        store = InMemoryToolCallLimitStore()
+        await store.reserve(run_id="run-a", tool_identity="search", tool_call_id="same", limit=1)
+        with pytest.raises(ToolCallLimitRunUnavailable, match="exactly one run"):
+            await store.reserve(run_id="run-b", tool_identity="search", tool_call_id="same", limit=1)
+        fresh = InMemoryToolCallLimitStore()
+        assert (await fresh.reserve(run_id="run-b", tool_identity="search", tool_call_id="same", limit=1)).allowed
 
     asyncio.run(scenario())
 
