@@ -74,7 +74,7 @@ const CrawledResultItem = ({
         <Button
           size="small"
           onClick={onPreview}
-          className="top-2 right-2 hidden px-1.5 system-xs-medium-uppercase group-hover:absolute group-hover:block"
+          className="inset-e-2 top-2 hidden px-1.5 system-xs-medium-uppercase group-hover:absolute group-hover:block"
         >
           {t(($) => $['stepOne.website.preview'], { ns: 'datasetCreation' })}
         </Button>

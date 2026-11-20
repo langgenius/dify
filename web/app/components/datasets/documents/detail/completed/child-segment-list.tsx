@@ -104,7 +104,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
   const renderCollapseIcon = () => {
     if (!isParagraphMode) return null
     const Icon = collapsed ? RiArrowRightSLine : RiArrowDownSLine
-    return <Icon className={cn('mr-0.5 size-4 text-text-secondary', collapsed && 'opacity-50')} />
+    return <Icon className={cn('me-0.5 size-4 text-text-secondary', collapsed && 'opacity-50')} />
   }
 
   const renderChildChunkItem = (childChunk: ChildChunkResponse) => {
@@ -174,15 +174,15 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
       <div
         className={cn(
           'flex items-center justify-between',
-          isFullDocMode && 'sticky -top-2 left-0 bg-background-default pt-2 pb-3',
+          isFullDocMode && 'sticky inset-s-0 -top-2 bg-background-default pt-2 pb-3',
         )}
       >
         <div
           className={cn(
-            'flex h-7 items-center rounded-lg pr-3 pl-1',
+            'flex h-7 items-center rounded-lg ps-1 pe-3',
             isParagraphMode && 'cursor-pointer',
             isParagraphMode && collapsed && 'bg-dataset-child-chunk-expand-btn-bg',
-            isFullDocMode && 'pl-0',
+            isFullDocMode && 'ps-0',
           )}
           onClick={(event) => {
             event.stopPropagation()
@@ -192,7 +192,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
           {renderCollapseIcon()}
           <span className="system-sm-semibold-uppercase text-text-secondary">{totalText}</span>
           <span
-            className={cn('pl-1.5 text-xs font-medium text-text-quaternary', hoverVisibleClass)}
+            className={cn('ps-1.5 text-xs font-medium text-text-quaternary', hoverVisibleClass)}
           >
             ·
           </span>

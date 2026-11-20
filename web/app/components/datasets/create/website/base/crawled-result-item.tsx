@@ -34,7 +34,7 @@ const CrawledResultItem: FC<Props> = ({
         <label className="flex min-w-0 grow cursor-pointer">
           <div className="flex h-5 items-center">
             <Checkbox
-              className="mr-2 shrink-0"
+              className="me-2 shrink-0"
               checked={isChecked}
               onCheckedChange={(checked) => onCheckChange(checked)}
             />
@@ -50,7 +50,7 @@ const CrawledResultItem: FC<Props> = ({
         </label>
         <Button
           onClick={onPreview}
-          className="top-0 right-0 hidden h-6 px-1.5 text-xs font-medium uppercase group-hover:absolute group-hover:block"
+          className="inset-e-0 top-0 hidden h-6 px-1.5 text-xs font-medium uppercase group-hover:absolute group-hover:block"
         >
           {t(($) => $['stepOne.website.preview'], { ns: 'datasetCreation' })}
         </Button>

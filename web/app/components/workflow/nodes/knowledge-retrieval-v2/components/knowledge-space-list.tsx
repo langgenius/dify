@@ -52,7 +52,7 @@ const KnowledgeSpaceList: FC<Props> = ({ list, onChange, readonly }) => {
               </span>
             </div>
             {!readonly && (
-              <div className="ml-2 shrink-0 opacity-0 group-hover/knowledge-space:opacity-100 focus-within:opacity-100">
+              <div className="ms-2 shrink-0 opacity-0 group-hover/knowledge-space:opacity-100 focus-within:opacity-100">
                 <IconButton
                   aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
                   tone="destructive"

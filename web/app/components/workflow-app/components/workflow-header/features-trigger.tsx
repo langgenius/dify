@@ -1,3 +1,5 @@
+import type { contract } from '@dify/contracts/api/console/apps/orpc.gen'
+import type { ErrorFromErrorMap, InferContractRouterErrorMap } from '@orpc/contract'
 import type {
   AppPublisherPublishOptions,
   AppPublisherPublishParams,
@@ -8,14 +10,14 @@ import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { CommonEdgeType, Node } from '@/app/components/workflow/types'
 import type { WorkflowKind } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
-import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { isDefinedError } from '@orpc/client'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
 import { AppPublisher } from '@/app/components/app/app-publisher'
 import { useFeatures } from '@/app/components/base/features/hooks'
-import { useEvaluationAccess } from '@/app/components/billing/use-evaluation-access'
 import {
   isChatflowAtom,
   workflowAppIdentityAtom,
@@ -33,9 +35,15 @@ import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { BlockEnum, InputVarType, isTriggerNode } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
 import { useInvalidateAppWorkflow, useResetWorkflowVersionHistory } from '@/service/use-workflow'
+
+type PublishWorkflowError = ErrorFromErrorMap<
+  InferContractRouterErrorMap<typeof contract.apps.byAppId.workflows.publish.post>
+>
+
+const isTriggerNodeLimitError = (error: PublishWorkflowError | null) =>
+  isDefinedError(error) && error.code === 'trigger_node_limit_exceeded'
 
 const FeaturesTrigger = () => {
   const { t } = useTranslation(['common', 'workflow'])
@@ -48,18 +56,10 @@ const FeaturesTrigger = () => {
   )
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
   const canReleaseAndVersion = useHooksStore((s) => s.accessControl.canReleaseAndVersion)
-  const { data: deploymentEdition } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: ({ deployment_edition }) => deployment_edition,
-  })
-  const { data: plan } = useQuery(
-    consoleQuery.features.get.queryOptions({
-      enabled: deploymentEdition === 'CLOUD',
-      select: (features) => features.billing.subscription.plan,
-    }),
-  )
   // Publishing or switching the workflow kind needs a plan that includes Evaluation, so hide them on Sandbox.
-  const { canAccess: evaluationEnabled } = useEvaluationAccess()
+  const { data: evaluationEnabled = false } = useQuery(
+    consoleQuery.features.get.queryOptions({ select: (features) => features.evaluation_enabled }),
+  )
   const publishedAt = useStore((s) => s.publishedAt)
   const draftUpdatedAt = useStore((s) => s.draftUpdatedAt)
   const toolPublished = useStore((s) => s.toolPublished)
@@ -135,14 +135,6 @@ const FeaturesTrigger = () => {
   }, [edges, startNodeIds])
   // Track trigger presence so the publisher can adjust UI (e.g. hide missing start section).
   const hasTriggerNode = useMemo(() => nodes.some((node) => isTriggerNode(node.data.type)), [nodes])
-  const startNodeLimitExceeded = useMemo(() => {
-    const entryCount = nodes.reduce((count, node) => {
-      const nodeType = node.data.type as BlockEnum
-      if (nodeType === BlockEnum.Start || isTriggerNode(nodeType)) return count + 1
-      return count
-    }, 0)
-    return deploymentEdition === 'CLOUD' && plan === 'sandbox' && entryCount > 2
-  }, [nodes, plan, deploymentEdition])
 
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
 
@@ -152,9 +144,14 @@ const FeaturesTrigger = () => {
     setShowFeaturesPanel(!showFeaturesPanel)
   }, [workflowStore, getNodesReadOnly])
 
-  const { mutateAsync: publishWorkflow } = useMutation(
-    consoleQuery.apps.byAppId.workflows.publish.post.mutationOptions(),
+  const {
+    error: publishError,
+    mutateAsync: publishWorkflow,
+    reset: resetPublishError,
+  } = useMutation(
+    consoleQuery.apps.byAppId.workflows.publish.post.mutationOptions({ context: { silent: true } }),
   )
+  const triggerNodeLimitExceeded = isTriggerNodeLimitError(publishError)
   const { mutateAsync: publishEvaluationWorkflow } = useMutation(
     consoleQuery.apps.byAppId.workflows.publish.evaluation.post.mutationOptions(),
   )
@@ -196,7 +193,10 @@ const FeaturesTrigger = () => {
         const res =
           publishKind === 'evaluation'
             ? await publishEvaluationWorkflow(input)
-            : await publishWorkflow(input)
+            : await publishWorkflow(input).catch((error: PublishWorkflowError) => {
+                if (!isTriggerNodeLimitError(error)) toast.error(error.message)
+                throw error
+              })
         if (res) {
           // One toast per publish: a warning from the server replaces the success message.
           if (res.warning) toast.warning(res.warning)
@@ -324,9 +324,11 @@ const FeaturesTrigger = () => {
 
   const onPublisherToggle = useCallback(
     (state: boolean) => {
-      if (state) void handleSyncWorkflowDraft(true)
+      if (!state) return
+      resetPublishError()
+      void handleSyncWorkflowDraft(true)
     },
-    [handleSyncWorkflowDraft],
+    [handleSyncWorkflowDraft, resetPublishError],
   )
 
   const handleToolConfigureUpdate = useCallback(() => {
@@ -364,8 +366,8 @@ const FeaturesTrigger = () => {
           alignOffset: 4,
           missingStartNode: !startNode,
           hasTriggerNode,
-          startNodeLimitExceeded,
-          publishDisabled: !hasWorkflowNodes || startNodeLimitExceeded || !canReleaseAndVersion,
+          startNodeLimitExceeded: triggerNodeLimitExceeded,
+          publishDisabled: !hasWorkflowNodes || !canReleaseAndVersion,
         }}
       />
     </>

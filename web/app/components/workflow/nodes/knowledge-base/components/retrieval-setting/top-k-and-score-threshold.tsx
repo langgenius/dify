@@ -74,7 +74,7 @@ export function TopKAndScoreThreshold({
             {topKLabel}
           </FieldLabel>
           <Infotip>
-            <InfotipTrigger aria-labelledby={topKLabelId} className="ml-0.5 size-3.5" />
+            <InfotipTrigger aria-labelledby={topKLabelId} className="ms-0.5" />
             <InfotipContent aria-labelledby={topKLabelId}>{topKTip}</InfotipContent>
           </Infotip>
         </div>
@@ -102,7 +102,7 @@ export function TopKAndScoreThreshold({
             <div className="flex h-6 items-center">
               <FieldLabel className="flex w-full min-w-0 grow cursor-pointer items-center py-0 system-sm-medium text-text-secondary has-data-disabled:cursor-not-allowed">
                 <Switch
-                  className="mr-2"
+                  className="me-2"
                   checked={scoreThresholdEnabled}
                   onCheckedChange={scoreThreshold.onEnabledChange}
                   disabled={readonly}
@@ -112,10 +112,7 @@ export function TopKAndScoreThreshold({
                 </span>
               </FieldLabel>
               <Infotip>
-                <InfotipTrigger
-                  aria-labelledby={scoreThresholdLabelId}
-                  className="ml-0.5 size-3.5"
-                />
+                <InfotipTrigger aria-labelledby={scoreThresholdLabelId} className="ms-0.5" />
                 <InfotipContent aria-labelledby={scoreThresholdLabelId}>
                   {scoreThresholdTip}
                 </InfotipContent>

@@ -65,8 +65,8 @@ export function VersionItem({
         aria-current={isActive ? 'true' : undefined}
         onClick={() => onSelect(version.id)}
         className={cn(
-          'group relative flex w-full items-start gap-1 rounded-lg py-1 pl-2 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
-          onExport || onRestore ? 'pr-8' : 'pr-1.5',
+          'group relative flex w-full items-start gap-1 rounded-lg py-1 ps-2 text-start focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+          onExport || onRestore ? 'pe-8' : 'pe-1.5',
           isActive ? 'bg-state-accent-active' : 'hover:bg-state-base-hover',
         )}
       >
@@ -102,7 +102,7 @@ export function VersionItem({
               <IconButton
                 aria-label={t(($) => $['roster.moreActions'], { ns: 'agentRoster', name: label })}
                 size="sm"
-                className="absolute top-1 right-1 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary data-popup-open:opacity-100 [@media(hover:none)]:opacity-100"
+                className="absolute inset-e-1 top-1 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary data-popup-open:opacity-100 [@media(hover:none)]:opacity-100"
               >
                 <span aria-hidden className="i-ri-more-fill size-4" />
               </IconButton>

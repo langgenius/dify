@@ -84,7 +84,7 @@ const IterationResultPanel: FC<Props> = ({ list, onBack, iterDurationMap, extern
           onBack()
         }}
       >
-        <RiArrowLeftLine className="mr-1 size-4" />
+        <RiArrowLeftLine className="me-1 size-4" />
         <div className="system-sm-medium">
           {t(($) => $[`${i18nPrefix}.back`], { ns: 'workflow' })}
         </div>
@@ -102,7 +102,7 @@ const IterationResultPanel: FC<Props> = ({ list, onBack, iterDurationMap, extern
               className={cn(
                 'flex w-full cursor-pointer items-center justify-between px-3 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
                 expandedIterations[index] ? 'pt-3 pb-2' : 'py-3',
-                'rounded-xl text-left',
+                'rounded-xl text-start',
               )}
               onClick={() => toggleIteration(index)}
             >
