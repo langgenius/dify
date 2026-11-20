@@ -27,15 +27,15 @@ class EducationModel(FeatureResponseModel):
 
 
 class LimitationModel(FeatureResponseModel):
-    size: int = 0
-    limit: int = 0
+    size: int = Field(default=0, description="Number of resources already consumed")
+    limit: int = Field(default=0, description="Maximum number of resources allowed; 0 means unlimited")
 
 
 class VectorSpaceLimitationModel(LimitationModel):
     model_config = ConfigDict(json_schema_serialization_defaults_required=False, protected_namespaces=())
 
-    size: int
-    limit: int
+    size: int = Field(description="Vector storage already consumed, in MB")
+    limit: int = Field(description="Vector storage allowed, in MB; -1 means unlimited")
     usage_unknown: bool = Field(default=False, exclude_if=lambda value: not value)
 
 
@@ -154,6 +154,9 @@ class FeatureModel(FeatureResponseModel):
     enable_file_scan: bool = False
     workflow_collaboration_enabled: bool = False
     workflow_collaboration_upgrade_available: bool = False
+    # Evaluation (including Snippet evaluation) is usable now; the upgrade flag marks Cloud Sandbox.
+    evaluation_enabled: bool = False
+    evaluation_upgrade_available: bool = False
     members: LimitationModel = LimitationModel(size=0, limit=1)
     apps: LimitationModel = LimitationModel(size=0, limit=10)
     # Indexing tasks still consume this internally; Console queries vector usage separately.
@@ -172,6 +175,8 @@ class FeatureModel(FeatureResponseModel):
     # Centrally managed IM channels and default bindings cannot be edited in Console.
     # Workspaces may override bindings without changing the shared channel credentials.
     im_centrally_managed: bool = False
+    # Agent App preview (draft) chat runs; Build chat is not gated by this flag.
+    agent_preview_enabled: bool = False
     knowledge_pipeline: KnowledgePipeline = KnowledgePipeline()
     # Workspace and model-provider credit responses own the public reset-date contract.
     next_credit_reset_date: int = Field(default=0, exclude=True)

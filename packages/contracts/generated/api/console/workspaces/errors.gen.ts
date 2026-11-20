@@ -370,6 +370,14 @@ const zAccountNotLinkTenantError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zPendingInvitationNotFoundError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('pending_invitation_not_found'),
+      status: z.literal(404),
+    }),
+  ))()
+
 export const putErrors = { invalid_request: { status: 400, data: zInvalidRequestError } }
 
 export const get4Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
@@ -618,3 +626,10 @@ export const post92Errors = {
 export const post95Errors = {
   account_not_link_tenant: { status: 403, data: zAccountNotLinkTenantError },
 }
+
+export const post96Errors = {
+  forbidden: { status: 403, data: zForbiddenError },
+  pending_invitation_not_found: { status: 404, data: zPendingInvitationNotFoundError },
+}
+
+export const get138Errors = { forbidden: { status: 403, data: zForbiddenError } }

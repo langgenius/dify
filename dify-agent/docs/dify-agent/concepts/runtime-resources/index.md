@@ -45,6 +45,10 @@ The Shell module consumes `RuntimeLease.commands` and `RuntimeLease.layout`. It
 tracks only request-local shell job ids and offsets.
 Closing a run clears that job state; it does not retire the Binding.
 
+Transient commands share one timeout budget across execution and paginated
+output replay. A replay that exhausts the budget returns incomplete output with
+reason `timeout`; a still-running job is interrupted before its final cleanup.
+
 ## State ownership
 
 Dify API is the lifecycle ledger. It stores three resource records:

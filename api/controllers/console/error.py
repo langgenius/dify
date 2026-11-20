@@ -53,6 +53,12 @@ class WorkspaceMembersLimitExceeded(BaseHTTPException):
     code = 400
 
 
+class InvitationWorkspaceMemberLimitError(BaseHTTPException):
+    error_code = "workspace_member_limit_reached"
+    description = "The workspace has reached its member limit, so this invitation cannot be accepted right now."
+    code = 400
+
+
 class WorkspacesLimitExceeded(BaseHTTPException):
     error_code = "limit_exceeded"
     description = "Unable to create workspace because the maximum workspace limit was exceeded"

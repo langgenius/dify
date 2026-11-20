@@ -87,6 +87,14 @@ const CodeEditor: FC<Props> = ({
   }, [value])
 
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null)
+  const resizeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  useEffect(() => {
+    return () => {
+      clearTimeout(resizeTimer.current)
+      resizeTimer.current = undefined
+    }
+  }, [])
+
   const resizeEditorToContent = () => {
     if (editorRef.current) {
       const contentHeight = editorRef.current.getContentHeight() // Math.max(, minHeight)
@@ -95,10 +103,13 @@ const CodeEditor: FC<Props> = ({
   }
 
   const handleEditorChange = (value: string | undefined) => {
+    if (resizeTimer.current === undefined) {
+      resizeTimer.current = setTimeout(() => {
+        resizeTimer.current = undefined
+        resizeEditorToContent()
+      }, 10)
+    }
     onChange(value || '')
-    setTimeout(() => {
-      resizeEditorToContent()
-    }, 10)
   }
 
   const handleEditorDidMount: OnMount = (editor, monaco) => {

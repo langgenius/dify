@@ -9,8 +9,10 @@ An enabled phase returns only after approval. Any flagged verdict raises
 `ModerationRejectedError`, including API verdicts requesting replacement rather
 than rejection. Backend failures propagate instead of silently approving text.
 Disabled phases perform no moderation I/O. Strict policies are selected when
-assembling models. App OpenAI rules consume typed platform failures to apply
-configured replacement behavior; they never schedule a second OpenAI check.
+assembling models. For a direct app invocation, an admitted Cloud AI-credit LLM
+uses platform moderation. An app OpenAI rule can supply replacement text without
+scheduling another OpenAI check. Other direct app invocations use tenant
+moderation only for the configured app phases.
 
 ## Automatic platform moderation
 
@@ -19,9 +21,7 @@ defaults to false. It takes effect only when `DEPLOYMENT_EDITION=CLOUD`, matchin
 the edition boundary used to assemble AI Credits quotas. Non-Cloud deployments
 ignore the switch. When disabled or outside Cloud, no automatic policy is
 constructed or injected. Explicit model policies and app-level keyword/API
-moderation remain available in every edition. App-level Model Moderation is a
-silent no-op when the model is not admitted for automatic AI-credit moderation;
-enabling its app configuration does not select a tenant moderation provider.
+moderation remain available in every edition.
 
 When enabled,
 Cloud LLMs using a system provider with a current `TRIAL` or `PAID`
@@ -81,16 +81,34 @@ The old
 random input-fragment check is replaced by complete segmented checks.
 
 An explicitly supplied policy supplements enabled platform moderation rather
-than disabling it. When the switch is off, only the explicit policy applies.
+than disabling it. When the switch is off, only the explicit model policy applies at model assembly.
 
 ## App-level ownership and replacement
 
-Each model guard exclusively owns its input
-and output checks. App Model Moderation never proactively invokes OpenAI, selects
-credentials, or caches approved content. Its configuration only selects a reply
-for a real platform rejection. Disabling an app phase does not disable mandatory
-platform checks. Different model invocations remain independent even when their
-text is identical.
+Chatbot, Completion, and legacy Agent Chat use their resolved model bundle to
+select OpenAI moderation. App input and output handling use the same admission
+check as model guard binding:
+
+| Direct app invocation | Platform checks | App OpenAI rule |
+| --- | --- | --- |
+| Cloud, switch on, AI-credit LLM | Input and output, even without an app rule | No independent check; can supply a phase-specific preset |
+| Cloud, switch on, other LLM | None | Tenant OpenAI for enabled phases |
+| Cloud, switch off | None | Tenant OpenAI for enabled phases |
+| Non-Cloud, either switch value | None | Tenant OpenAI for enabled phases |
+
+Tenant OpenAI requires a workspace OpenAI plugin and custom credentials for
+`omni-moderation-latest`. Its model resolution does not fall back to system
+credentials or the platform gateway, even if the workspace prefers a system
+OpenAI provider for other calls. Disabling an app rule or phase does not disable
+mandatory platform checks. Distinct model invocations remain independent even
+when they see identical text.
+
+Chatflows, Workflows, and remote Agent apps do not have a single local model
+bundle representing their response. Per-model guards still apply to eligible
+LLM calls at model assembly (including calls through the Agent LLM gateway).
+This change does not add tenant checks to individual nodes or remote calls.
+App-level OpenAI checks, where supported by those app types, continue to defer
+when the Cloud switch is on; otherwise they use the tenant backend.
 
 App checks and reply selection are stateless functions of admitted app
 configuration. Startup injects a stateless policy port. There is no execution
@@ -131,23 +149,22 @@ replaced answer, so resumption does not lose buffered text or recheck the prefix
 
 Application entry points call the same stateless app adapters; no request wrapper
 is required to enable the correct behavior. Standalone kernel callers without an
-application container retain the keyword/API factory fallback. Their App OpenAI
-toggle is still a no-op and never selects an independent tenant provider.
-Independent use of the OpenAI capability retains tenant credentials, accounting,
-and failure behavior. It is an explicit independent
-operation, not an execution path selected by the App Model Moderation toggle.
+application container retain the factory fallback for keyword, API, and OpenAI
+rules not deferred to the platform. If the caller has no resolved app model
+bundle, only the Cloud deployment switch determines whether to defer OpenAI.
 
 The plugin `/invoke/app` entry uses the same app generator behavior. Invocation
 validates tenant ownership before model work. Nested or subsequent requests have
 no accumulated moderation state to inherit.
 
 Remote Agent LLM gateway calls do not transport local workflow node error types.
-Local App Model Moderation never issues hosted or tenant
-checks and cannot infer a typed remote verdict from text. Other configured app
-rules remain independent. A client-provided approval flag must never skip platform checks.
+App response handling cannot infer a typed remote verdict from text. Other
+configured app rules remain independent. A client-provided approval flag must
+never skip platform checks.
 
-For direct Chatbot and legacy Agent Chat generation, an enabled app OpenAI rule
-uses its nonblank phase-specific preset when the platform rejects the invocation.
+In Cloud, for direct Chatbot and legacy Agent Chat generation, an enabled app
+OpenAI rule uses its nonblank phase-specific preset when the platform rejects
+the invocation.
 These chat modes use the English default `This message can’t be processed.` when
 no matching preset is configured, including when app moderation or its phase is disabled.
 The default is resolved at runtime, not written into the app configuration.
@@ -189,9 +206,10 @@ Application errors carry stable moderation identifiers and safe messages, not
 HTTP status codes or response payloads. HTTP handlers and the SSE response
 converter convert them to dedicated HTTP exceptions only after reply replacement
 has been considered. Those HTTP exceptions own the status, public error code,
-and description, keeping HTTP and SSE mappings consistent. Keyword/API input and output backend failures are
-adapted to the same unavailable error; private diagnostics remain in the cause
-and server logs, never in the client-facing response.
+and description, keeping HTTP and SSE mappings consistent. App input and output
+backend failures (including missing tenant OpenAI credentials) use the same
+unavailable error; private diagnostics remain in the cause and server logs,
+never in the client-facing response.
 
 | Condition | Code | Event status | Message |
 | --- | --- | --- | --- |
@@ -282,7 +300,7 @@ whole-stream buffering mode selected by an omitted limit.
   as independent non-stream segments, so long prompts are fully covered without
   sending one oversized moderation request. Each platform-checked prompt message
   has its own segment sequence. Each model invocation performs its own checks;
-  app response handling does not schedule another moderation request.
+  platform-owned app response handling does not schedule another moderation request.
 - Opaque Agent gateway dictionaries are inspected through validated copies. The
   original payload and provider-specific extension fields are forwarded unchanged.
 - Output checks inspect completion text, tool arguments, and native structured

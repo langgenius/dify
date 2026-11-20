@@ -42,6 +42,7 @@ import {
   IconPickerTrigger,
 } from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
+import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
@@ -141,22 +142,13 @@ function SwitchAppSession({
 }) {
   const formRef = useRef<HTMLFormElement>(null)
   const { t } = useTranslation(['app', 'common', 'explore'])
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-
-  const deploymentEdition = systemFeatures.deployment_edition
   const { data: appQuota } = useQuery(
     consoleQuery.features.get.queryOptions({
-      enabled: deploymentEdition === 'CLOUD',
-      select: (data) => data.apps,
+      select: (data) => getCountQuota(data.apps),
     }),
   )
-  const isAppQuotaUnavailable = deploymentEdition === 'CLOUD' && appQuota === undefined
-  // A limit of 0 means unlimited.
-  const isAppsFull =
-    deploymentEdition === 'CLOUD' &&
-    appQuota !== undefined &&
-    appQuota.limit > 0 &&
-    appQuota.size >= appQuota.limit
+  const isAppQuotaUnavailable = appQuota === undefined
+  const isAppsFull = appQuota !== undefined && isQuotaReached(appQuota)
 
   const appIconType = zIconType.safeParse(sourceApp.icon_type).data
   const [appIcon, setAppIcon] = useState(
