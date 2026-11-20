@@ -9,7 +9,7 @@ from core.rag.extractor.entity.extract_setting import UploadFileExtractionInput
 from models.model import UploadFile
 
 
-def _query_files(session: Session, *, workspace_id: str, file_ids: Sequence[str]) -> dict[str, UploadFile]:
+def query_upload_files(session: Session, *, workspace_id: str, file_ids: Sequence[str]) -> dict[str, UploadFile]:
     if not file_ids:
         return {}
     uploads = session.scalars(
@@ -24,7 +24,7 @@ def query_upload_extraction_inputs(
     """Read detached extraction inputs without changing the caller's session lifecycle."""
     return {
         upload.id: UploadFileExtractionInput.model_validate(upload)
-        for upload in _query_files(session, workspace_id=workspace_id, file_ids=file_ids).values()
+        for upload in query_upload_files(session, workspace_id=workspace_id, file_ids=file_ids).values()
     }
 
 
@@ -32,7 +32,7 @@ class SQLAlchemyKnowledgeUploadRepository:
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
-    def get_by_id(self, *, workspace_id: str, file_id: str) -> UploadFileExtractionInput | None:
+    def get_by_id(self, file_id: str, *, workspace_id: str) -> UploadFileExtractionInput | None:
         return self.get_by_ids(workspace_id=workspace_id, file_ids=(file_id,)).get(file_id)
 
     def get_by_ids(self, *, workspace_id: str, file_ids: Sequence[str]) -> dict[str, UploadFileExtractionInput]:
@@ -41,7 +41,7 @@ class SQLAlchemyKnowledgeUploadRepository:
 
     def get_files(self, *, workspace_id: str, file_ids: Sequence[str]) -> dict[str, UploadFile]:
         with self._session_factory() as session:
-            return _query_files(session, workspace_id=workspace_id, file_ids=file_ids)
+            return query_upload_files(session, workspace_id=workspace_id, file_ids=file_ids)
 
     def get_file_name(self, *, workspace_id: str, upload_file_id: str) -> str | None:
         upload = self.get_files(workspace_id=workspace_id, file_ids=(upload_file_id,)).get(upload_file_id)
