@@ -4,16 +4,24 @@ from datetime import datetime
 from enum import Enum
 from typing import override
 
-from sqlalchemy import and_, func, literal, or_, select
+from sqlalchemy import Select, and_, func, literal, or_, select
 from sqlalchemy.engine import RowMapping
 from sqlalchemy.orm import Session, aliased, sessionmaker
+from sqlalchemy.orm.util import AliasedClass
+from sqlalchemy.sql.elements import ColumnElement
 
 from graphon.enums import WorkflowExecutionStatus
 from libs.helper import escape_like_pattern
+from machinery.context import RequestContext
 from models import Account, EndUser, TenantAccountJoin, WorkflowAppLog, WorkflowRun
 from models.enums import CreatorUserRole
 from models.evaluation import EvaluationRun, EvaluationRunItem, EvaluationRunStatus, EvaluationTargetType
+from models.model import AppMode
 from models.trigger import WorkflowTriggerLog
+from repositories.app.console_repository import find_console_app
+from repositories.log_export_count import execute_log_export_count
+from services.app.console_service import ConsoleAppNotFoundError
+from services.entities.conversation_entities import ConsoleLogIdentity
 from services.workflow_app_log_query_service import (
     WorkflowAppLogAccount,
     WorkflowAppLogEndUser,
@@ -21,12 +29,134 @@ from services.workflow_app_log_query_service import (
     WorkflowAppLogPage,
     WorkflowAppLogQuery,
     WorkflowAppLogRunSummary,
+    WorkflowLogExportFilters,
+    WorkflowLogExportScope,
 )
+
+_LOG_IDENTITY_SEARCH_LIMIT = 20
 
 
 class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    @override
+    def get_log_export_scope(self, context: RequestContext, app_id: str) -> WorkflowLogExportScope:
+        """Resolve an accessible Workflow app using the authenticated workspace."""
+        with self._session_factory() as session:
+            app = find_console_app(session, workspace_id=context.active_workspace_id, app_id=app_id)
+            if app is None or app.mode != AppMode.WORKFLOW:
+                raise ConsoleAppNotFoundError("Workflow app not found.")
+            return WorkflowLogExportScope(tenant_id=app.tenant_id, app_id=app.id)
+
+    @override
+    def count_log_export_rows(self, *, scope: WorkflowLogExportScope, filters: WorkflowLogExportFilters) -> int | None:
+        """Count one CSV row per run with a matching live Logs entry."""
+        with self._session_factory() as session:
+            statement = (
+                select(func.count())
+                .select_from(WorkflowRun)
+                .where(
+                    WorkflowRun.tenant_id == scope.tenant_id,
+                    WorkflowRun.app_id == scope.app_id,
+                    self._matching_export_logs(scope=scope, filters=filters).exists(),
+                )
+            )
+            statement = self._filter_runs(statement, WorkflowRun, keyword=filters.keyword, status=filters.status)
+            result = execute_log_export_count(session, statement)
+            return result[0] if result is not None else None
+
+    @override
+    def search_log_export_identities(
+        self, *, scope: WorkflowLogExportScope, keyword: str
+    ) -> tuple[ConsoleLogIdentity, ...]:
+        """Find identities with a live run in the app by label substring or exact internal ID."""
+        pattern = f"%{escape_like_pattern(keyword)}%"
+        identity_id = self._safe_parse_uuid(keyword)
+        exact_end_user = EndUser.session_id == keyword
+        account_match = Account.name.ilike(pattern, escape="\\")
+        if identity_id is not None:
+            exact_end_user = or_(exact_end_user, EndUser.id == identity_id)
+            account_match = or_(account_match, Account.id == identity_id)
+        visible_logs = (
+            select(1)
+            .select_from(WorkflowAppLog)
+            .join(
+                WorkflowRun,
+                and_(
+                    WorkflowRun.id == WorkflowAppLog.workflow_run_id,
+                    WorkflowRun.tenant_id == WorkflowAppLog.tenant_id,
+                    WorkflowRun.app_id == WorkflowAppLog.app_id,
+                ),
+            )
+            .where(WorkflowAppLog.tenant_id == scope.tenant_id, WorkflowAppLog.app_id == scope.app_id)
+        )
+        with self._session_factory() as session:
+            end_users = session.execute(
+                select(EndUser.id, EndUser.session_id)
+                .where(
+                    EndUser.tenant_id == scope.tenant_id,
+                    or_(exact_end_user, EndUser.session_id.ilike(pattern, escape="\\")),
+                    visible_logs.where(
+                        WorkflowAppLog.created_by_role == CreatorUserRole.END_USER,
+                        WorkflowAppLog.created_by == EndUser.id,
+                    ).exists(),
+                )
+                .order_by(exact_end_user.desc(), EndUser.id)
+                .limit(_LOG_IDENTITY_SEARCH_LIMIT)
+            ).all()
+            accounts = session.execute(
+                select(Account.id, Account.name)
+                .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
+                .where(
+                    TenantAccountJoin.tenant_id == scope.tenant_id,
+                    account_match,
+                    visible_logs.where(
+                        WorkflowAppLog.created_by_role == CreatorUserRole.ACCOUNT,
+                        WorkflowAppLog.created_by == Account.id,
+                    ).exists(),
+                )
+                .order_by(Account.name, Account.id)
+                .limit(_LOG_IDENTITY_SEARCH_LIMIT)
+            ).all()
+            return (
+                *(ConsoleLogIdentity(identity, label or identity, "end-user") for identity, label in end_users),
+                *(ConsoleLogIdentity(identity, label, "account") for identity, label in accounts),
+            )
+
+    def _matching_export_logs(
+        self, *, scope: WorkflowLogExportScope, filters: WorkflowLogExportFilters
+    ) -> Select[tuple[str]]:
+        """Select the current run's published log IDs within the app and requested time and identity filters."""
+        statement = (
+            select(WorkflowAppLog.id)
+            .where(
+                WorkflowAppLog.tenant_id == scope.tenant_id,
+                WorkflowAppLog.app_id == scope.app_id,
+                WorkflowAppLog.workflow_run_id == WorkflowRun.id,
+            )
+            .correlate(WorkflowRun)
+        )
+        candidates: list[ColumnElement[bool]] = []
+        if filters.end_user_ids:
+            candidates.append(
+                and_(
+                    WorkflowAppLog.created_by_role == CreatorUserRole.END_USER,
+                    WorkflowAppLog.created_by.in_(filters.end_user_ids),
+                )
+            )
+        if filters.account_ids:
+            candidates.append(
+                and_(
+                    WorkflowAppLog.created_by_role == CreatorUserRole.ACCOUNT,
+                    WorkflowAppLog.created_by.in_(filters.account_ids),
+                )
+            )
+        if candidates:
+            statement = statement.where(or_(*candidates))
+        return self._filter_log_dates(
+            statement, created_at_before=filters.created_at_before, created_at_after=filters.created_at_after
+        )
 
     @override
     def get_paginated(
@@ -92,34 +222,8 @@ class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
             else:
                 stmt = stmt.add_columns(literal(None).label("trigger_metadata"))
 
-            if keyword:
-                escaped_keyword = escape_like_pattern(keyword[:30])
-                keyword_like_value = f"%{escaped_keyword}%"
-                run_creator = aliased(EndUser)
-                keyword_conditions = (
-                    workflow_run.inputs.ilike(keyword_like_value, escape="\\"),
-                    workflow_run.outputs.ilike(keyword_like_value, escape="\\"),
-                    select(1)
-                    .select_from(run_creator)
-                    .where(
-                        workflow_run.created_by_role == CreatorUserRole.END_USER,
-                        run_creator.id == workflow_run.created_by,
-                        run_creator.session_id.ilike(keyword_like_value, escape="\\"),
-                    )
-                    .exists(),
-                )
-                keyword_uuid = self._safe_parse_uuid(keyword)
-                if keyword_uuid is not None:
-                    stmt = stmt.where(or_(*keyword_conditions, workflow_run.id == keyword_uuid))
-                else:
-                    stmt = stmt.where(or_(*keyword_conditions))
-
-            if status is not None:
-                stmt = stmt.where(workflow_run.status == status)
-            if created_at_before is not None:
-                stmt = stmt.where(WorkflowAppLog.created_at <= created_at_before)
-            if created_at_after is not None:
-                stmt = stmt.where(WorkflowAppLog.created_at >= created_at_after)
+            stmt = self._filter_runs(stmt, workflow_run, keyword=keyword, status=status)
+            stmt = self._filter_log_dates(stmt, created_at_before=created_at_before, created_at_after=created_at_after)
 
             if created_by_end_user_session_id:
                 log_creator = aliased(EndUser)
@@ -203,6 +307,48 @@ class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
                     for row in rows
                 ),
             )
+
+    def _filter_runs[RowT: tuple[object, ...]](
+        self,
+        statement: Select[RowT],
+        workflow_run: type[WorkflowRun] | AliasedClass[WorkflowRun],
+        *,
+        keyword: str | None,
+        status: WorkflowExecutionStatus | None,
+    ) -> Select[RowT]:
+        """Apply the Logs page's run keyword and status filters to a scoped statement."""
+        if keyword:
+            keyword_like_value = f"%{escape_like_pattern(keyword[:30])}%"
+            run_creator = aliased(EndUser)
+            keyword_conditions = [
+                workflow_run.inputs.ilike(keyword_like_value, escape="\\"),
+                workflow_run.outputs.ilike(keyword_like_value, escape="\\"),
+                select(1)
+                .select_from(run_creator)
+                .where(
+                    workflow_run.created_by_role == CreatorUserRole.END_USER,
+                    run_creator.id == workflow_run.created_by,
+                    run_creator.session_id.ilike(keyword_like_value, escape="\\"),
+                )
+                .exists(),
+            ]
+            if keyword_uuid := self._safe_parse_uuid(keyword):
+                keyword_conditions.append(workflow_run.id == keyword_uuid)
+            statement = statement.where(or_(*keyword_conditions))
+        if status is not None:
+            statement = statement.where(workflow_run.status == status)
+        return statement
+
+    @staticmethod
+    def _filter_log_dates[RowT: tuple[object, ...]](
+        statement: Select[RowT], *, created_at_before: datetime | None, created_at_after: datetime | None
+    ) -> Select[RowT]:
+        """Apply optional inclusive Logs creation-time bounds."""
+        if created_at_before is not None:
+            statement = statement.where(WorkflowAppLog.created_at <= created_at_before)
+        if created_at_after is not None:
+            statement = statement.where(WorkflowAppLog.created_at >= created_at_after)
+        return statement
 
     @staticmethod
     def _to_item(

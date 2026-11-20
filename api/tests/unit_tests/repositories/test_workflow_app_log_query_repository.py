@@ -18,7 +18,12 @@ from models.model import EndUser
 from models.trigger import WorkflowTriggerLog
 from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun, WorkflowType
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
-from services.workflow_app_log_query_service import WorkflowAppLogAccount, WorkflowAppLogEndUser
+from services.workflow_app_log_query_service import (
+    WorkflowAppLogAccount,
+    WorkflowAppLogEndUser,
+    WorkflowLogExportFilters,
+    WorkflowLogExportScope,
+)
 
 
 def _log(
@@ -73,6 +78,64 @@ def _run(
     )
     run.created_at = created_at
     return run
+
+
+def test_export_preview_counts_live_runs_once_and_combines_selected_identities(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    """Match the Logs filters while excluding orphan logs and runs outside the app."""
+    timestamp = datetime(2026, 1, 1)
+    user_log = _log("user", created_by="user-id", created_by_role=CreatorUserRole.END_USER, created_at=timestamp)
+    duplicate_log = _log(
+        "duplicate", created_by="user-id", created_by_role=CreatorUserRole.END_USER, created_at=timestamp
+    )
+    duplicate_log.workflow_run_id = user_log.workflow_run_id
+    account_log = _log(
+        "account",
+        created_by="account-id",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_at=timestamp + timedelta(days=1),
+    )
+    foreign_log = _log("foreign", created_by="user-id", created_by_role=CreatorUserRole.END_USER, created_at=timestamp)
+    foreign_run = _run(foreign_log.workflow_run_id, tenant_id="other-workspace")
+    account_run = _run(account_log.workflow_run_id)
+    account_run.status = WorkflowExecutionStatus.FAILED
+
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                user_log,
+                duplicate_log,
+                account_log,
+                foreign_log,
+                foreign_run,
+                _run(user_log.workflow_run_id),
+                account_run,
+                _run("unlogged-debug-run"),
+            ]
+        )
+    scope = WorkflowLogExportScope(tenant_id="tenant-1", app_id="app-1")
+    repository = WorkflowAppLogQueryRepository(session_factory=sqlite_session_factory)
+    filters = WorkflowLogExportFilters(end_user_ids=("user-id",), account_ids=("account-id",))
+    assert repository.count_log_export_rows(scope=scope, filters=filters) == 2
+    assert (
+        repository.count_log_export_rows(
+            scope=scope,
+            filters=WorkflowLogExportFilters(
+                keyword="value",
+                status=WorkflowExecutionStatus.SUCCEEDED,
+                created_at_before=timestamp,
+            ),
+        )
+        == 1
+    )
+    assert (
+        repository.count_log_export_rows(
+            scope=scope,
+            filters=WorkflowLogExportFilters(created_at_after=timestamp + timedelta(days=1), end_user_ids=("user-id",)),
+        )
+        == 0
+    )
 
 
 def test_get_paginated_returns_detached_actor_records_by_role_when_ids_overlap(

@@ -7,10 +7,8 @@ from datetime import datetime
 from typing import TYPE_CHECKING, cast
 from uuid import UUID
 
-from psycopg2.errors import QueryCanceled
 from pydantic import JsonValue
-from sqlalchemy import DateTime, Select, and_, case, exists, func, literal, null, or_, select, text, tuple_, update
-from sqlalchemy.exc import DBAPIError
+from sqlalchemy import DateTime, Select, and_, case, exists, func, literal, null, or_, select, tuple_, update
 from sqlalchemy.orm import InstrumentedAttribute, Session, sessionmaker
 
 from graphon.enums import WorkflowExecutionStatus
@@ -25,6 +23,7 @@ from models.web import PinnedConversation
 from models.workflow import WorkflowRun
 from repositories.app.console_repository import find_console_app
 from repositories.conversation_lifecycle import retire_conversation, retire_debug_conversation_workspaces
+from repositories.log_export_count import execute_log_export_count
 from repositories.message_projection import snapshot_console_message
 from services.app.console_service import ConsoleAppNotFoundError
 from services.entities.conversation_entities import (
@@ -70,7 +69,6 @@ if TYPE_CHECKING:
     from services.retention.conversation.log_export_service import ConversationLogExportStatus
 
 _LOG_IDENTITY_SEARCH_LIMIT = 20
-_LOG_EXPORT_COUNT_TIMEOUT_MS = 1500
 _LOG_EXPORT_BATCH_SIZE = 500
 _TRANSITION_LOG_EXPORT_TASK = """
 local current = redis.call("GET", KEYS[1])
@@ -442,22 +440,13 @@ class ConversationRepository:
             messages_per_conversation = (
                 select(func.count()).where(Message.conversation_id == conversations.c.id).scalar_subquery()
             )
-            counts = (
-                select(func.count(), func.coalesce(func.sum(messages_per_conversation), 0))
-                .select_from(conversations)
-                .prefix_with(f"/*+ MAX_EXECUTION_TIME({_LOG_EXPORT_COUNT_TIMEOUT_MS}) */", dialect="mysql")
+            counts = execute_log_export_count(
+                session,
+                select(func.count(), func.coalesce(func.sum(messages_per_conversation), 0)).select_from(conversations),
             )
-            dialect = session.get_bind().dialect.name
-            try:
-                if dialect == "postgresql":
-                    session.execute(text(f"SET LOCAL statement_timeout = {_LOG_EXPORT_COUNT_TIMEOUT_MS}"))
-                conversation_count, message_count = session.execute(counts).one()
-            except DBAPIError as exc:
-                if isinstance(exc.orig, QueryCanceled) or (
-                    dialect == "mysql" and exc.orig is not None and exc.orig.args and exc.orig.args[0] == 3024
-                ):
-                    return None
-                raise
+            if counts is None:
+                return None
+            conversation_count, message_count = counts
             return ConversationLogExportCounts(
                 conversation_count=int(conversation_count), message_count=int(message_count)
             )
