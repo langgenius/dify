@@ -54,14 +54,15 @@ _RECIPIENT_TOKEN_PRIORITY: dict[RecipientType, int] = {
 # Ordinary Console interaction hands out only the Console token: when a form has
 # no Console recipient it yields no token instead of falling back to the
 # Backstage token, which is reserved for the management (BACKSTAGE) entry.
-# The management entry prefers the Backstage token and falls back to Console so
-# administrative approval links stay available when no Backstage recipient exists.
+# The management (BACKSTAGE) entry hands out only the Backstage token: when a
+# form has no Backstage recipient it yields no token instead of falling back
+# to the Console token, so the two entries never share a token (#46236).
 SELECTABLE_RECIPIENT_TYPES_BY_SURFACE: dict[HumanInputSurface, frozenset[RecipientType]] = {
     HumanInputSurface.SERVICE_API: frozenset({RecipientType.STANDALONE_WEB_APP}),
     HumanInputSurface.CONSOLE: frozenset({RecipientType.CONSOLE}),
     HumanInputSurface.OPENAPI: frozenset({RecipientType.STANDALONE_WEB_APP}),
     HumanInputSurface.WEB_APP: frozenset({RecipientType.STANDALONE_WEB_APP}),
-    HumanInputSurface.BACKSTAGE: frozenset({RecipientType.BACKSTAGE, RecipientType.CONSOLE}),
+    HumanInputSurface.BACKSTAGE: frozenset({RecipientType.BACKSTAGE}),
 }
 
 

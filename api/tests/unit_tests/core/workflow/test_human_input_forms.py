@@ -77,6 +77,18 @@ def test_load_form_tokens_drops_forms_without_actionable_token(sqlite_session: S
 
 
 @pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
+def test_load_form_tokens_backstage_surface_does_not_fall_back_to_console(sqlite_session: Session) -> None:
+    _persist_recipients(
+        sqlite_session,
+        [
+            _recipient("form-1", RecipientType.CONSOLE, "console-token"),
+        ],
+    )
+
+    assert load_form_tokens_by_form_id(["form-1"], session=sqlite_session, surface=HumanInputSurface.BACKSTAGE) == {}
+
+
+@pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
 def test_load_form_tokens_service_api_surface_uses_web_token(sqlite_session: Session) -> None:
     _persist_recipients(
         sqlite_session,
@@ -157,9 +169,10 @@ _EMAIL_EXTERNAL = (RecipientType.EMAIL_EXTERNAL, "t2")
         # A Backstage recipient is not selectable on CONSOLE; its channel is still console.
         ([_BACKSTAGE, _CONSOLE], HumanInputSurface.CONSOLE, FormDisposition("tok_c", [ApprovalChannel.CONSOLE])),
         ([_BACKSTAGE], HumanInputSurface.CONSOLE, FormDisposition(None, [ApprovalChannel.CONSOLE])),
-        # The management entry prefers the Backstage token, falling back to Console.
-        ([_BACKSTAGE, _CONSOLE], HumanInputSurface.BACKSTAGE, FormDisposition("tok_b", [])),
-        ([_CONSOLE], HumanInputSurface.BACKSTAGE, FormDisposition("tok_c", [])),
+        # The management entry hands out only the Backstage token; a Console
+        # recipient is not selectable there, so it yields only its channel.
+        ([_BACKSTAGE, _CONSOLE], HumanInputSurface.BACKSTAGE, FormDisposition("tok_b", [ApprovalChannel.CONSOLE])),
+        ([_CONSOLE], HumanInputSurface.BACKSTAGE, FormDisposition(None, [ApprovalChannel.CONSOLE])),
     ],
 )
 def test_disposition_for_surface_partitions_token_and_channels(

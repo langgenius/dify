@@ -1408,8 +1408,8 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         """Read management tokens for an admitted run's form IDs without changing recipients.
 
         Pause details is the management entry: it hands out the Backstage token
-        when one exists and falls back to the Console token, so administrative
-        approval links stay available independently of ordinary Console interaction.
+        only, with no fallback to the Console token, so the management entry
+        never shares a token with ordinary Console interaction (#46236).
         """
         return load_form_tokens_by_form_id(form_ids, session=session, surface=HumanInputSurface.BACKSTAGE)
 
