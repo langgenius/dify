@@ -21,7 +21,7 @@ import { getUserColor } from '../collaboration/utils/user-color'
 import { useHooksStore } from '../hooks-store'
 
 const OnlineUsers = () => {
-  const { t } = useTranslation(['billing', 'workspaceMembers', 'workflowComments'])
+  const { t } = useTranslation(['billing', 'workspaceMembers', 'workflowComments', 'workflow'])
   const appId = useAtomValue(editorAppIdAtom)
   const upgradeDialog = useAtomValue(collaborationUpgradeDialogAtom)
   const canEdit = useHooksStore((s) => s.accessControl.canEdit)
@@ -120,158 +120,164 @@ const OnlineUsers = () => {
 
   if (!isCollaborationEnabled || !onlineUsers || onlineUsers.length === 0) return null
 
-  // Display logic:
-  // 1-3 users: show all avatars
-  // 4+ users: show 2 avatars + count + arrow
-  const shouldShowCount = onlineUsers.length >= 4
-  const maxVisible = shouldShowCount ? 2 : 3
-  const visibleUsers = onlineUsers.slice(0, maxVisible)
-  const remainingCount = onlineUsers.length - maxVisible
+  const shouldShowCount = onlineUsers.length > 3
+  const visibleUsers = onlineUsers.slice(0, shouldShowCount ? 2 : 3)
+  const remainingCount = onlineUsers.length - visibleUsers.length
 
-  const hasCounter = remainingCount > 0
+  const renderAvatar = (user: OnlineUser) => {
+    const isCurrentUser = user.user_id === currentUserId
+    const userColor = isCurrentUser ? undefined : getUserColor(user.user_id)
+    const avatarUrl = isConnected ? avatarUrls?.[user.sid] : undefined
+    return (
+      <Avatar size="sm" aria-hidden="true" className="ring-1 ring-components-panel-bg">
+        <AvatarFallback style={userColor ? { backgroundColor: userColor } : undefined}>
+          {getAvatarInitial(user.username || fallbackUsername)}
+        </AvatarFallback>
+        <AvatarImage src={avatarUrl || undefined} alt="" />
+      </Avatar>
+    )
+  }
+
+  const renderNameTooltip = (user: OnlineUser) => (
+    <TooltipContent side="bottom" sideOffset={4} className="max-w-55">
+      {user.username || fallbackUsername}
+      {user.user_id === currentUserId && (
+        <span className="font-normal text-text-tertiary">{currentUserSuffix}</span>
+      )}
+    </TooltipContent>
+  )
+
+  const pillClassName =
+    'flex items-center gap-px rounded-2xl border-[0.5px] border-components-panel-border py-1 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]'
+
+  if (!shouldShowCount) {
+    return (
+      <div className={cn(pillClassName, 'bg-components-panel-bg-blur px-1')}>
+        {visibleUsers.map((user, index) => {
+          const isCurrentUser = user.user_id === currentUserId
+          const displayName = user.username || fallbackUsername
+          const triggerClassName = cn(
+            'relative flex size-6 items-center justify-center rounded-full',
+            index > 0 && '-ms-1',
+            !isCurrentUser &&
+              'cursor-pointer transition-transform hover:scale-110 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+          )
+          const triggerStyle = { zIndex: visibleUsers.length - index }
+          return (
+            <Tooltip key={user.sid}>
+              <TooltipTrigger
+                render={
+                  isCurrentUser ? (
+                    <div
+                      role="img"
+                      aria-label={displayName}
+                      className={triggerClassName}
+                      style={triggerStyle}
+                    >
+                      {renderAvatar(user)}
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      aria-label={displayName}
+                      className={triggerClassName}
+                      style={triggerStyle}
+                      onClick={() => jumpToUserCursor(user.user_id)}
+                    >
+                      {renderAvatar(user)}
+                    </button>
+                  )
+                }
+              />
+              {renderNameTooltip(user)}
+            </Tooltip>
+          )
+        })}
+      </div>
+    )
+  }
 
   return (
-    <div
-      className={cn(
-        'flex items-center gap-px rounded-2xl border-[0.5px] border-components-panel-border py-1 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]',
-        hasCounter ? 'bg-components-panel-bg ps-1 pe-1.5' : 'bg-components-panel-bg-blur px-1',
-      )}
+    <Popover
+      open={dropdownOpen}
+      onOpenChange={(open) => {
+        if (open && avatarAppId) void refetchAvatars()
+        setDropdownOpen(open)
+      }}
     >
-      <div className="flex h-6 items-center">
-        <div className="flex items-center">
-          {visibleUsers.map((user, index) => {
-            const isCurrentUser = user.user_id === currentUserId
-            const userColor = isCurrentUser ? undefined : getUserColor(user.user_id)
-            const avatarUrl = isConnected ? avatarUrls?.[user.sid] : undefined
-            const displayName = user.username || fallbackUsername
-            const avatar = (
-              <Avatar size="sm" aria-hidden="true" className="ring-1 ring-components-panel-bg">
+      <PopoverTrigger
+        aria-label={t(($) => $['collaboration.viewCollaborators'], {
+          ns: 'workflow',
+          count: onlineUsers.length,
+        })}
+        className={cn(
+          pillClassName,
+          'cursor-pointer bg-components-panel-bg ps-1 pe-1.5 hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+        )}
+      >
+        {visibleUsers.map((user, index) => (
+          <Tooltip key={user.sid}>
+            <TooltipTrigger
+              render={
+                <span
+                  className={cn('relative flex size-6', index > 0 && '-ms-1')}
+                  style={{ zIndex: visibleUsers.length - index }}
+                />
+              }
+            >
+              {renderAvatar(user)}
+            </TooltipTrigger>
+            {renderNameTooltip(user)}
+          </Tooltip>
+        ))}
+        <span
+          aria-hidden
+          className="-ms-1 flex size-6 items-center justify-center rounded-full bg-components-icon-bg-midnight-solid text-2xs leading-3 font-semibold text-white ring-1 ring-components-panel-bg select-none"
+        >
+          +{remainingCount}
+        </span>
+        <span aria-hidden className="i-ri-arrow-down-s-line size-3 text-text-tertiary" />
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        sideOffset={4}
+        className="flex max-h-50 w-60 flex-col overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[10px]"
+      >
+        {onlineUsers.map((user) => {
+          const isCurrentUser = user.user_id === currentUserId
+          const userColor = isCurrentUser ? undefined : getUserColor(user.user_id)
+          const avatarUrl = isConnected && !isFetchingAvatars ? avatarUrls?.[user.sid] : undefined
+          const displayName = user.username || fallbackUsername
+          return (
+            <button
+              type="button"
+              key={user.sid}
+              disabled={isCurrentUser}
+              className={cn(
+                'flex w-full items-center gap-2 rounded-lg py-1 ps-2 pe-3 text-start focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+                !isCurrentUser && 'cursor-pointer hover:bg-state-base-hover',
+              )}
+              onClick={() => {
+                jumpToUserCursor(user.user_id)
+                setDropdownOpen(false)
+              }}
+            >
+              <Avatar size="sm" aria-hidden="true">
                 <AvatarFallback style={userColor ? { backgroundColor: userColor } : undefined}>
                   {getAvatarInitial(displayName)}
                 </AvatarFallback>
                 <AvatarImage src={avatarUrl || undefined} alt="" />
               </Avatar>
-            )
-            const triggerClassName = cn(
-              'relative flex size-6 items-center justify-center',
-              index > 0 && '-ms-1',
-              !isCurrentUser && 'cursor-pointer transition-transform hover:scale-110',
-            )
-            const triggerStyle = { zIndex: visibleUsers.length - index }
-            return (
-              <Tooltip key={user.sid}>
-                <TooltipTrigger
-                  render={
-                    isCurrentUser ? (
-                      <div
-                        role="img"
-                        aria-label={displayName}
-                        className={triggerClassName}
-                        style={triggerStyle}
-                      >
-                        {avatar}
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        aria-label={displayName}
-                        className={triggerClassName}
-                        style={triggerStyle}
-                        onClick={() => jumpToUserCursor(user.user_id)}
-                      >
-                        {avatar}
-                      </button>
-                    )
-                  }
-                />
-                <TooltipContent side="bottom" sideOffset={4} className="max-w-55">
-                  {displayName}
-                  {isCurrentUser && (
-                    <span className="font-normal text-text-tertiary">{currentUserSuffix}</span>
-                  )}
-                </TooltipContent>
-              </Tooltip>
-            )
-          })}
-          {remainingCount > 0 && (
-            <Popover
-              open={dropdownOpen}
-              onOpenChange={(open) => {
-                if (open && avatarAppId) void refetchAvatars()
-                setDropdownOpen(open)
-              }}
-            >
-              <PopoverTrigger
-                render={
-                  <div className="flex items-center gap-1">
-                    <div
-                      className={cn(
-                        'flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-components-icon-bg-midnight-solid text-2xs leading-3 font-semibold text-white uppercase ring-1 ring-components-panel-bg select-none',
-                        visibleUsers.length > 0 && '-ms-1',
-                      )}
-                    >
-                      +{remainingCount}
-                    </div>
-                    <span
-                      aria-hidden
-                      className="i-ri-arrow-down-s-line size-3 cursor-pointer text-text-tertiary"
-                    />
-                  </div>
-                }
-              />
-              <PopoverContent
-                align="start"
-                alignOffset={-48}
-                className={cn(
-                  'mt-1.5 flex max-h-50 w-60 flex-col overflow-y-auto',
-                  'rounded-xl border-[0.5px] border-components-panel-border',
-                  'bg-components-panel-bg-blur p-1 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[10px]',
-                )}
-              >
-                {onlineUsers.map((user) => {
-                  const isCurrentUser = user.user_id === currentUserId
-                  const userColor = isCurrentUser ? undefined : getUserColor(user.user_id)
-                  const avatarUrl =
-                    isConnected && !isFetchingAvatars ? avatarUrls?.[user.sid] : undefined
-                  const displayName = user.username || fallbackUsername
-                  return (
-                    <button
-                      type="button"
-                      key={user.sid}
-                      disabled={isCurrentUser}
-                      className={cn(
-                        'flex w-full items-center gap-2 rounded-lg py-1 ps-2 pe-3 text-start',
-                        !isCurrentUser && 'cursor-pointer hover:bg-state-base-hover',
-                      )}
-                      onClick={() => {
-                        jumpToUserCursor(user.user_id)
-                        setDropdownOpen(false)
-                      }}
-                    >
-                      <div className="relative">
-                        <Avatar size="sm" aria-hidden="true">
-                          <AvatarFallback
-                            style={userColor ? { backgroundColor: userColor } : undefined}
-                          >
-                            {getAvatarInitial(displayName)}
-                          </AvatarFallback>
-                          <AvatarImage src={avatarUrl || undefined} alt="" />
-                        </Avatar>
-                      </div>
-                      {renderDisplayName(
-                        user,
-                        'system-sm-regular text-text-primary',
-                        'system-xs-regular text-text-tertiary',
-                      )}
-                    </button>
-                  )
-                })}
-              </PopoverContent>
-            </Popover>
-          )}
-        </div>
-      </div>
-    </div>
+              {renderDisplayName(
+                user,
+                'system-sm-regular text-text-primary',
+                'system-xs-regular text-text-tertiary',
+              )}
+            </button>
+          )
+        })}
+      </PopoverContent>
+    </Popover>
   )
 }
 
