@@ -23,6 +23,11 @@ from controllers.common.schema import (
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import enterprise_inner_api_only
 from core.human_input_v2.entities import ChannelKind, IMProvider
+from core.human_input_v2.im_integration.adapters.entities import (
+    CredentialTestFailureKind,
+    CredentialTestRejectedError,
+    IMProviderError,
+)
 from fields.base import ResponseModel
 from fields.timestamp import Timestamp
 from libs.credential_cipher import CredentialCipherError
@@ -190,7 +195,7 @@ class IMChannelsApi(Resource):
             raise RelayedHTTPError(
                 status=409, error_code="conflict", message="IM Channel is already configured"
             ) from None
-        except ChannelProviderError:
+        except (ChannelProviderError, IMProviderError):
             raise RelayedHTTPError(
                 status=400, error_code="bad_request", message="The provider configuration could not be verified"
             ) from None
@@ -256,7 +261,7 @@ class IMChannelApi(Resource):
             raise RelayedHTTPError(
                 status=409, error_code="replacement_required", message="Explicit IM Channel replacement is required"
             ) from None
-        except ChannelProviderError:
+        except (ChannelProviderError, IMProviderError):
             raise RelayedHTTPError(
                 status=400, error_code="bad_request", message="The provider configuration could not be verified"
             ) from None
@@ -320,7 +325,7 @@ class IMChannelReplacementApi(Resource):
             raise RelayedHTTPError(
                 status=409, error_code="provider_configuration_updated", message="IM configuration was updated"
             ) from None
-        except ChannelProviderError:
+        except (ChannelProviderError, IMProviderError):
             raise RelayedHTTPError(
                 status=400, error_code="bad_request", message="The provider configuration could not be verified"
             ) from None
@@ -348,7 +353,7 @@ class IMChannelTestApi(Resource):
         payload = parse_request(IMChannelTestPayload, inner_api_ns.payload or {})
         try:
             build_deployment_im_channel_service().test(payload.credentials.to_owner_credentials())
-        except ChannelProviderError as error:
+        except (ChannelProviderError, IMProviderError) as error:
             return _test_failure(error).model_dump(mode="json")
         return IMChannelTestResponse(status=IMChannelStatus.CONNECTED, status_description="").model_dump(mode="json")
 
@@ -379,7 +384,7 @@ class IMChannelSavedTestApi(Resource):
             raise RelayedHTTPError(
                 status=400, error_code="bad_request", message="The test provider must match the saved Channel"
             ) from None
-        except ChannelProviderError as error:
+        except (ChannelProviderError, IMProviderError) as error:
             return _test_failure(error).model_dump(mode="json")
         except ChannelNotFoundError:
             raise RelayedHTTPError(status=404, error_code="not_found", message="IM Channel was not found") from None
@@ -416,8 +421,16 @@ def _revision(token: str, channel_id: IMChannelId) -> int:
         raise RelayedHTTPError(status=400, error_code="bad_request", message="Invalid configuration version") from None
 
 
-def _test_failure(error: ChannelProviderError) -> IMChannelTestResponse:
-    status = IMChannelStatus(error.kind.value)
+def _test_failure(error: ChannelProviderError | IMProviderError) -> IMChannelTestResponse:
+    """Return the Inner status for an expected provider failure without exposing provider diagnostics."""
+    if isinstance(error, ChannelProviderError):
+        status = IMChannelStatus(error.kind.value)
+    elif isinstance(error, CredentialTestRejectedError) and (
+        error.failure.kind is CredentialTestFailureKind.AUTHENTICATION_REJECTED
+    ):
+        status = IMChannelStatus.INVALID_CREDENTIALS
+    else:
+        status = IMChannelStatus.CONNECTION_FAILURE
     description = (
         "The submitted credentials are invalid."
         if status is IMChannelStatus.INVALID_CREDENTIALS
