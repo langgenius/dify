@@ -48,9 +48,11 @@ class AgentAppServices:
     sandbox: AgentAppSandboxService
 
 
-def _can_restore_version(tenant_id: str, *, edition: DeploymentEdition, get_plan: Callable[[str], CloudPlan]) -> bool:
+def _can_restore_version(
+    tenant_id: str, *, edition: DeploymentEdition, get_plan: Callable[[str], CloudPlan | None]
+) -> bool:
     """Require a paid plan for Cloud restores; other editions do not query billing."""
-    return edition != DeploymentEdition.CLOUD or get_plan(tenant_id).is_paid
+    return edition != DeploymentEdition.CLOUD or ((plan := get_plan(tenant_id)) is not None and plan.is_paid)
 
 
 def build_agent_app_services(

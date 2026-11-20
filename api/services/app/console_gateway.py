@@ -260,9 +260,8 @@ class EnterpriseConsoleAppAccess(ConsoleAppAccess):
 
     @override
     def can_export_version(self, workspace_id: str) -> bool:
-        return (
-            dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD
-            or FeatureService.get_workspace_plan(workspace_id).is_paid
+        return dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD or (
+            (plan := FeatureService.get_workspace_plan(workspace_id)) is not None and plan.is_paid
         )
 
 
