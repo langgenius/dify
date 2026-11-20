@@ -194,6 +194,7 @@ const PermissionSetModal = ({
   return (
     <Dialog
       open={open}
+      disablePointerDismissal
       onOpenChange={(nextOpen) => {
         if (!nextOpen) onClose()
       }}

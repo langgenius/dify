@@ -63,7 +63,7 @@ export function GoldenQuestionDialog({
   sessionKey,
 }: GoldenQuestionDialogProps) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange} disablePointerDismissal>
       <DialogPortal>
         <DialogBackdrop className="bg-[rgba(16,24,40,0.2)]" />
         <DialogViewport className="flex items-center justify-center overflow-hidden p-4">
