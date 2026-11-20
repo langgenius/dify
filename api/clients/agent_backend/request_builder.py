@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
-from typing import ClassVar, Literal, cast
+from typing import ClassVar, Literal
 
 from dify_agent.layers.config import DifyConfigLayerConfig
 from dify_agent.layers.dify_core_tools import DifyCoreToolsLayerConfig
@@ -160,12 +160,31 @@ _AGENT_MODEL_SETTINGS_KNOWN_KEYS = frozenset({*_AGENT_MODEL_SETTINGS_PASSTHROUGH
 
 
 def _agent_model_settings(settings: Mapping[str, JsonValue]) -> ModelSettings | None:
-    sanitized: dict[str, JsonValue] = {
-        key: settings[key] for key in _AGENT_MODEL_SETTINGS_PASSTHROUGH_KEYS if settings.get(key) is not None
-    }
+    result: ModelSettings = {}
+
+    max_tokens = settings.get("max_tokens")
+    if isinstance(max_tokens, int) and not isinstance(max_tokens, bool):
+        result["max_tokens"] = max_tokens
+
+    temperature = settings.get("temperature")
+    if isinstance(temperature, (int, float)) and not isinstance(temperature, bool):
+        result["temperature"] = temperature
+
+    top_p = settings.get("top_p")
+    if isinstance(top_p, (int, float)) and not isinstance(top_p, bool):
+        result["top_p"] = top_p
+
+    presence_penalty = settings.get("presence_penalty")
+    if isinstance(presence_penalty, (int, float)) and not isinstance(presence_penalty, bool):
+        result["presence_penalty"] = presence_penalty
+
+    frequency_penalty = settings.get("frequency_penalty")
+    if isinstance(frequency_penalty, (int, float)) and not isinstance(frequency_penalty, bool):
+        result["frequency_penalty"] = frequency_penalty
+
     stop = settings.get("stop")
     if isinstance(stop, list) and stop:
-        sanitized["stop_sequences"] = stop
+        result["stop_sequences"] = [item for item in stop if isinstance(item, str)]
 
     extra_body: dict[str, JsonValue] = {
         key: value
@@ -173,9 +192,9 @@ def _agent_model_settings(settings: Mapping[str, JsonValue]) -> ModelSettings | 
         if key not in _AGENT_MODEL_SETTINGS_KNOWN_KEYS and value is not None
     }
     if extra_body:
-        sanitized["extra_body"] = extra_body
+        result["extra_body"] = extra_body
 
-    return cast(ModelSettings, sanitized) if sanitized else None
+    return result or None
 
 
 class AgentBackendOutputConfig(BaseModel):
