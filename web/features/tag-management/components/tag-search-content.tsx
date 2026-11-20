@@ -101,7 +101,7 @@ export const TagSearchContentView = ({
             <Button
               variant="ghost"
               size="medium"
-              className="w-full justify-start gap-x-1 px-2 py-1.5 text-left"
+              className="w-full justify-start gap-x-1 px-2 py-1.5 text-start"
               onClick={() => {
                 onOpenTagManagement?.()
                 onClose?.()

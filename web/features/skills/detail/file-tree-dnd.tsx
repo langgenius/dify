@@ -61,7 +61,7 @@ export function SkillUploadStatusPanel({
           'pointer-events-auto relative overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]',
           failedCount > 0 && !hasActiveUpload
             ? 'min-h-18 px-2 py-2'
-            : 'flex h-8 items-center gap-2 py-1 pr-1.5 pl-2',
+            : 'flex h-8 items-center gap-2 py-1 ps-2 pe-1.5',
           !hasActiveUpload &&
             (failedCount > 0
               ? 'before:absolute before:inset-0 before:bg-linear-to-r before:from-state-warning-hover before:to-transparent before:opacity-40'
@@ -70,7 +70,7 @@ export function SkillUploadStatusPanel({
       >
         {hasActiveUpload && (
           <div
-            className="absolute inset-y-0 left-0 border-r-[1.5px] border-state-accent-solid/20 bg-state-accent-hover transition-[width]"
+            className="absolute inset-y-0 inset-s-0 border-e-[1.5px] border-state-accent-solid/20 bg-state-accent-hover transition-[width]"
             style={{ width: `${averageProgress}%` }}
           />
         )}
@@ -96,7 +96,7 @@ export function SkillUploadStatusPanel({
               <div className="truncate system-xs-semibold text-text-primary">
                 {t(($) => $['skillManagement.detail.uploadFailureTitle'])}
               </div>
-              <div className="mt-1 border-l border-divider-subtle pl-2 system-xs-regular text-text-tertiary">
+              <div className="mt-1 border-s border-divider-subtle ps-2 system-xs-regular text-text-tertiary">
                 {t(($) => $['skillManagement.detail.uploadFailureSummary'], {
                   failed: failedCount,
                   total: items.length,
@@ -136,7 +136,7 @@ export function SkillUploadStatusPanel({
               type="button"
               className={cn(
                 'flex size-6 cursor-pointer items-center justify-center rounded-md p-0.5 text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-                failedCount > 0 && 'absolute top-1 right-1',
+                failedCount > 0 && 'absolute inset-e-1 top-1',
               )}
               aria-label={t(($) => $['skillManagement.detail.uploadStatusDismiss'])}
               onClick={onDismiss}

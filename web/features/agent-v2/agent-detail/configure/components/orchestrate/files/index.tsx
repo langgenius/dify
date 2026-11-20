@@ -281,8 +281,8 @@ function AgentFileItem({
               aria-current={selected ? 'true' : undefined}
               disabled={file.isMissing}
               className={cn(
-                'group/file-tree-row relative flex h-full min-w-0 flex-1 cursor-pointer items-center rounded-md pl-2 text-left select-none focus-visible:ring-inset',
-                file.isMissing && 'cursor-default pr-6',
+                'group/file-tree-row relative flex h-full min-w-0 flex-1 cursor-pointer items-center rounded-md ps-2 text-start select-none focus-visible:ring-inset',
+                file.isMissing && 'cursor-default pe-6',
               )}
             />
           }
@@ -318,14 +318,14 @@ function AgentFileItem({
       </Dialog>
       {file.isMissing && (
         <MissingReferenceWarning
-          className="absolute top-1/2 right-1 -translate-y-1/2"
+          className="absolute inset-e-1 top-1/2 -translate-y-1/2"
           label={t(($) => $['agentDetail.configure.files.missing'])}
         />
       )}
       <div
         className={cn(
           'pointer-events-none absolute top-1/2 z-10 flex -translate-y-1/2 items-center justify-end gap-1 opacity-0 group-focus-within/file-row:pointer-events-auto group-focus-within/file-row:opacity-100 group-hover/file-row:pointer-events-auto group-hover/file-row:opacity-100',
-          file.isMissing ? 'right-7' : 'right-1',
+          file.isMissing ? 'inset-e-7' : 'inset-e-1',
         )}
       >
         {!file.isMissing && onDownloadFile && (
@@ -378,7 +378,7 @@ function AgentBuildNoteFileRow() {
       <FileTreeLabel className="w-auto flex-none" title={BUILD_NOTE_FILE_NAME}>
         {BUILD_NOTE_FILE_NAME}
       </FileTreeLabel>
-      <div className="ml-1 flex shrink-0 items-center gap-0.5">
+      <div className="ms-1 flex shrink-0 items-center gap-0.5">
         <AgentBuildNoteBadge />
         <AgentBuildNoteInfotip />
       </div>
@@ -402,7 +402,7 @@ function AgentBuildNoteInfotip() {
 
   return (
     <Infotip>
-      <InfotipTrigger aria-label={BUILD_NOTE_FILE_NAME} iconSize="large" />
+      <InfotipTrigger aria-label={BUILD_NOTE_FILE_NAME} size="lg" />
       <InfotipContent aria-label={BUILD_NOTE_FILE_NAME}>
         <Trans
           i18nKey={($) => $['agentDetail.configure.files.buildNote.richTooltip']}

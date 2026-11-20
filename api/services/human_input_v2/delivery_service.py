@@ -508,7 +508,7 @@ class HumanInputDeliveryService:
         except ValidationError:
             self._warn(context, "invalid_email")
             return None
-        token = SecretStr(secrets.token_urlsafe(32))
+        token = generate_form_link_token()
         delivery = self._prepare_delivery(context, snapshot, context.auth_type, token)
         body = template.body.replace(
             EmailDeliveryConfig.URL_PLACEHOLDER, build_form_request_url(token, context.auth_type)
@@ -533,6 +533,11 @@ class HumanInputDeliveryService:
             context.recipient.id,
             reason,
         )
+
+
+def generate_form_link_token() -> SecretStr:
+    """Generate a 256-bit token that stays literal in a Markdown message."""
+    return SecretStr(secrets.token_hex(32))
 
 
 def build_form_request_url(token: SecretStr, auth_type: SubmissionAuthType) -> str:

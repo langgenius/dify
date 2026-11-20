@@ -1,5 +1,4 @@
 import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
-import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentPermission } from '@/features/agent-v2/acl'
@@ -13,8 +12,7 @@ const mocks = vi.hoisted(() => ({
   deleteAgent: vi.fn(),
   exportAppDsl: vi.fn(),
   pathname: '/agents/agent-1/configure',
-  deploymentEdition: 'ENTERPRISE' as DeploymentEdition,
-  cloudPlan: 'professional' as 'sandbox' | 'professional',
+  evaluation: { evaluation_enabled: true, evaluation_upgrade_available: false },
   queryData: undefined as ReturnType<typeof createAgentFixture> | undefined,
   replace: vi.fn(),
 }))
@@ -76,8 +74,8 @@ const createAgent = (overrides: Partial<AgentAppDetailWithSite> = {}) =>
 
 function renderAgentDetailSection(expand = true) {
   const { queryClient, wrapper } = createConsoleQueryWrapper({
-    systemFeatures: { deployment_edition: mocks.deploymentEdition, rbac_enabled: true },
-    features: { billing: { subscription: { plan: mocks.cloudPlan } } },
+    systemFeatures: { rbac_enabled: true },
+    features: mocks.evaluation,
   })
   queryClient.setQueryData(
     consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
@@ -95,8 +93,7 @@ describe('AgentDetailSection', () => {
     mocks.exportAppDsl.mockResolvedValue(undefined)
     mocks.pathname = '/agents/agent-1/configure'
     mocks.queryData = createAgent()
-    mocks.deploymentEdition = 'ENTERPRISE'
-    mocks.cloudPlan = 'professional'
+    mocks.evaluation = { evaluation_enabled: true, evaluation_upgrade_available: false }
   })
 
   afterEach(() => vi.restoreAllMocks())
@@ -260,9 +257,8 @@ describe('AgentDetailSection', () => {
     expect(screen.queryByText('agentV2.agentDetail.sections.evaluation')).not.toBeInTheDocument()
   })
 
-  it('disables evaluation on a Cloud plan without evaluation instead of redirecting', async () => {
-    mocks.deploymentEdition = 'CLOUD'
-    mocks.cloudPlan = 'sandbox'
+  it('disables evaluation when the workspace can upgrade into it instead of redirecting', async () => {
+    mocks.evaluation = { evaluation_enabled: false, evaluation_upgrade_available: true }
 
     renderAgentDetailSection()
 
@@ -271,8 +267,8 @@ describe('AgentDetailSection', () => {
     ).toBeDisabled()
   })
 
-  it('hides evaluation in the community edition', () => {
-    mocks.deploymentEdition = 'COMMUNITY'
+  it('hides evaluation when the workspace cannot use or upgrade into it', () => {
+    mocks.evaluation = { evaluation_enabled: false, evaluation_upgrade_available: false }
 
     renderAgentDetailSection()
 

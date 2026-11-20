@@ -72,7 +72,7 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
         !isInWebApp &&
         appSourceType !== AppSourceTypeEnum.installedApp &&
         !isResponding && (
-          <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
+          <div className="ms-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
             <IconButton
               aria-label={t(($) => $['operation.log'], { ns: 'common' })}
               disabled={isError || !messageId}
@@ -83,7 +83,7 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
             </IconButton>
           </div>
         )}
-      <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
+      <div className="ms-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
         {moreLikeThis && !isTryApp && (
           <IconButton
             aria-label={t(($) => $['feature.moreLikeThis.title'], { ns: 'appDebug' })}
@@ -133,7 +133,7 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
         )}
       </div>
       {(supportFeedback || isInWebApp) && !isWorkflow && !isTryApp && !isError && messageId && (
-        <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
+        <div className="ms-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
           {!feedback?.rating && (
             <>
               <Toggle

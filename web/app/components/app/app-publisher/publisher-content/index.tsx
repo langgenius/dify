@@ -233,7 +233,7 @@ export function PublisherContent({
                   setKindChangeTarget(targetKind)
                 }
               : undefined,
-            onPublishEvaluation: publish.handlePublishEvaluation,
+            onPublishEvaluation: onPublishEvaluation ? publish.handlePublishEvaluation : undefined,
             marketplaceActionDisabled: !publish.currentPublishedAt,
             isPublishing: publish.isPublishing,
             published: publish.published,
