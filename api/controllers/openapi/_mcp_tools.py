@@ -1,7 +1,7 @@
 """The generic MCP tools over the op catalog: which ops a caller can use, found and described.
 
 A caller's token decides which catalog ops it can call. The filter hides, per entry,
-what an agent could not use anyway (streams, files, internal or deprecated ops) and,
+what an agent could not use anyway (streams, internal or deprecated ops) and,
 when the token kind is known, what the op itself would refuse that kind. The refusal
 stays the op's: an unknown token or none sees every entry that passes the first rules.
 """
@@ -27,6 +27,7 @@ from controllers.openapi._mcp_call import (
     UnsafePathValue,
     call_op,
 )
+from controllers.openapi._upload import is_binary_leaf
 from controllers.openapi.app_start import START_MODES
 from controllers.openapi.auth.spec import Effect, Kind
 from core.mcp import types as mcp_types
@@ -46,7 +47,12 @@ _TOTAL_KEY: Final = "total"
 _QUERY_KEY: Final = "query"
 _OPS_KEY: Final = "ops"
 _INPUT_KEY: Final = "input"
-_HIDDEN_KINDS: Final = frozenset({Kind.SSE.value, Kind.FILE.value})
+_HIDDEN_KINDS: Final = frozenset({Kind.SSE.value})
+UPLOAD_ID_SCHEMA: Final = {
+    "type": "string",
+    "description": "An upload id from prepare.upload, or the id of a file result",
+}
+UPLOAD_ID_EXAMPLE: Final = "<upload id>"
 # A word is a run of letters or digits; everything else separates words.
 _WORD: Final = re.compile(r"[^\W_]+")
 _PLURAL_IES: Final = "ies"
@@ -110,8 +116,8 @@ class McpCaller:
 type _HiddenWhen = Callable[[RegisteredOp, TokenType | None], bool]
 
 
-def _hides_streams_and_files(registered: RegisteredOp, token_type: TokenType | None) -> bool:
-    """Hides ops whose response is a stream or a file: a tool call returns one JSON-text result."""
+def _hides_streams(registered: RegisteredOp, token_type: TokenType | None) -> bool:
+    """Hides ops whose response is a stream: a tool call returns one JSON-text result."""
     return registered.entry["kind"] in _HIDDEN_KINDS
 
 
@@ -122,12 +128,6 @@ def _hides_flagged_ops(registered: RegisteredOp, token_type: TokenType | None) -
     return registered.entry["deprecated"]
 
 
-def _hides_required_file_input(registered: RegisteredOp, token_type: TokenType | None) -> bool:
-    """Hides ops that cannot run without a file upload: a tool call carries JSON only."""
-    required = set(registered.entry["input"]["required"])
-    return bool(required & _file_names(registered.entry))
-
-
 def _hides_refused_kinds(registered: RegisteredOp, token_type: TokenType | None) -> bool:
     """Hides ops the route would refuse for the token kind: its subject, scope or PAT policy answers 403."""
     if token_type is None:
@@ -136,9 +136,8 @@ def _hides_refused_kinds(registered: RegisteredOp, token_type: TokenType | None)
 
 
 _RULES: Final[tuple[_HiddenWhen, ...]] = (
-    _hides_streams_and_files,
+    _hides_streams,
     _hides_flagged_ops,
-    _hides_required_file_input,
     _hides_refused_kinds,
 )
 
@@ -234,27 +233,54 @@ def find_ops(query: str, *, token: str | None) -> dict[str, Any]:
 
 
 def describe_op(op: str, *, token: str | None) -> dict[str, Any]:
-    """One op's input schema and examples, without its file-bound fields.
+    """One op's input schema and examples, with every file shown as an upload id.
 
     Precondition: inside a Flask request. Postcondition: returns
-    ``{"op", "summary", "effect", "tool", "input", "examples"}``; raises ``UnknownOp``
-    when the op is missing or hidden from this token. The shared registry entry is not changed.
+    ``{"op", "summary", "effect", "tool", "input", "examples"}``; every file part in the schema is
+    ``UPLOAD_ID_SCHEMA`` and every string inside an example's file field is ``UPLOAD_ID_EXAMPLE``, the shapes a
+    JSON body carries; raises ``UnknownOp`` when the op is missing or hidden from this token. The shared registry
+    entry is not changed.
     """
     entry = callable_ops(token).get(op)
     if entry is None:
         raise UnknownOp(op)
-    schema = copy.deepcopy(entry["input"])
-    for name in _file_names(entry):
-        schema["properties"].pop(name, None)
-    schema["required"] = [name for name in schema["required"] if name in schema["properties"]]
+    files = _file_names(entry)
+    examples = [{**example, _INPUT_KEY: _example_input(example[_INPUT_KEY], files)} for example in entry["examples"]]
     return {
         _OP_KEY: op,
         "summary": entry["summary"],
         "effect": entry["effect"],
         _TOOL_KEY: _tool_for(entry),
-        _INPUT_KEY: schema,
-        "examples": entry["examples"],
+        _INPUT_KEY: _with_upload_ids(entry["input"]),
+        "examples": examples,
     }
+
+
+def _with_upload_ids(node: Any) -> Any:
+    """Postcondition: a copy of the schema ``node`` with every file part replaced by ``UPLOAD_ID_SCHEMA``."""
+    if isinstance(node, list):
+        return [_with_upload_ids(item) for item in node]
+    if not isinstance(node, Mapping):
+        return copy.deepcopy(node)
+    if is_binary_leaf(node):
+        return dict(UPLOAD_ID_SCHEMA)
+    return {key: _with_upload_ids(value) for key, value in node.items()}
+
+
+def _example_input(input: Mapping[str, Any], files: set[str]) -> dict[str, Any]:
+    """Postcondition: the example input with every string inside a file field replaced by ``UPLOAD_ID_EXAMPLE``,
+    as the parse layer reads every string there as an id; other fields as they are."""
+    return {name: _upload_id_leaves(value) if name in files else value for name, value in input.items()}
+
+
+def _upload_id_leaves(value: Any) -> Any:
+    if isinstance(value, str):
+        return UPLOAD_ID_EXAMPLE
+    if isinstance(value, list):
+        return [_upload_id_leaves(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _upload_id_leaves(item) for key, item in value.items()}
+    return value
 
 
 # The start op an app's mode takes, as dify_find lists them: "workflow app: start.console_app.workflow; ...".
@@ -269,7 +295,7 @@ MCP_INSTRUCTIONS: Final = f"""This server runs operations of a Dify server. Four
 4. Call an operation with the tool that dify_find names for it. dify_destructive operations cannot be undone: confirm with the human first.
 5. To run an app, call the start operation for its mode ({_START_OPS}), then wait.job with the returned job id until the status is final. A status of "paused" means the run needs human input: follow the hints. Repeating an idempotency_key returns the same job, also when it failed (for example as interrupted or not confirmed): to run again, use a new key.
 6. Every result may carry "hints": ready-made next calls. Prefer them over building a call yourself.
-7. A file variable of an app takes a file mapping with a URL in "inputs": {{"transfer_method": "remote_url", "url": "https://...", "type": "document"}}.
+7. Files travel beside a call, never inside it. To send a local file: call prepare.upload, run the returned upload command for your shell before upload_before, then put the returned id in the operation's file field. To send a folder: call prepare.upload with "folder": true; its command zips the folder's contents and sends the zip, and the server unpacks it. For a file variable of an app, the field is "files": {{"<variable name>": "<id>"}} on the start operation. An operation that returns a file answers {{"file": {{"id", "download_url", ...}}}}: pass that id to another operation's file field, or save the file at once with curl -fsSL -o <name> "<download_url>". The link stops working at download_before and the id at expires_at: keep the id, not the link. When an id is refused, the answer says why; usually, prepare and send again. A file variable also takes a URL in "inputs": {{"transfer_method": "remote_url", "url": "https://...", "type": "document"}}.
 8. An operation that dify_find does not list is not available to this login."""  # noqa: E501
 
 FIND_DESCRIPTION: Final = (
