@@ -2,6 +2,7 @@ import type {
   ChannelSummary,
   ListChannelsResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
+import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { QueryClient } from '@tanstack/react-query'
 import { consoleQuery } from '@/service/console'
 
@@ -26,6 +27,10 @@ export const createChannelsQueryClient = (
     status_description: '',
     webhook_url: null,
   }))
+  queryClient.setQueryData(
+    consoleQuery.features.get.queryOptions().queryKey,
+    zGetFeaturesResponse.parse({ im_centrally_managed: false }),
+  )
   queryClient.setQueryData(
     consoleQuery.workspaces.current.humanInput.v2.channels.get.queryOptions().queryKey,
     { channels } satisfies ListChannelsResponse,

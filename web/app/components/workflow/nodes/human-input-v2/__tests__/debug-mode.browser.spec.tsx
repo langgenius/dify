@@ -1,6 +1,8 @@
 import type { ChannelSummary } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { QueryClient } from '@tanstack/react-query'
 import type { HumanInputV2DebugMode } from '../types'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { createInstance } from 'i18next'
 import { useState } from 'react'
 import { I18nextProvider, initReactI18next } from 'react-i18next'
@@ -84,6 +86,22 @@ beforeEach(async () => {
   api.channels.mockReset()
 })
 
+it('uses deployment email capability without requesting workspace channels', async () => {
+  const client = createChannelsQueryClient()
+  client.setQueryData(
+    consoleQuery.features.get.queryOptions().queryKey,
+    zGetFeaturesResponse.parse({
+      im_centrally_managed: true,
+      human_input_email_delivery_enabled: true,
+    }),
+  )
+  await renderOwner({}, undefined, client)
+  await configure().click()
+  await expect.element(channel('email')).toBeVisible()
+  await expect.element(channel('slack')).not.toBeInTheDocument()
+  expect(api.channels).not.toHaveBeenCalled()
+})
+
 it('only offers channels configured in the current workspace', async () => {
   await renderOwner()
   await configure().click()
@@ -146,11 +164,11 @@ it('does not fall back to all channels after a load failure and can retry', asyn
   )
   seeded.clear()
   api.channels.mockRejectedValueOnce(new Error('Service unavailable')).mockResolvedValue(response)
-  await renderOwner(
-    {},
-    undefined,
-    new QueryClient({ defaultOptions: { queries: { retry: false } } }),
-  )
+  const client = createChannelsQueryClient()
+  client.removeQueries({
+    queryKey: consoleQuery.workspaces.current.humanInput.v2.channels.get.queryKey(),
+  })
+  await renderOwner({}, undefined, client)
   await configure().click()
   const error = page.getByRole('alert')
   await expect.element(error).toBeVisible()
