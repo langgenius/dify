@@ -1,7 +1,15 @@
 import binascii
+import json
 from collections.abc import Generator, Sequence
-from typing import IO, Any
+from typing import IO, Any, override
+from uuid import uuid4
 
+from configs import dify_config
+from core.db.session_factory import session_factory
+from core.entities import PluginCredentialType
+from core.entities.provider_entities import TokenerHostedModelCredentials
+from core.helper import encrypter
+from core.helper.credential_utils import runtime_check_credential_policy_compliance
 from core.plugin.entities.plugin_daemon import (
     PluginBasicBooleanResponse,
     PluginDaemonInnerError,
@@ -24,16 +32,120 @@ from graphon.model_runtime.entities.rerank_entities import MultimodalRerankInput
 from graphon.model_runtime.entities.text_embedding_entities import EmbeddingResult
 from graphon.model_runtime.protocols.tts_runtime import TTSModelVoice
 from graphon.model_runtime.utils.encoders import jsonable_encoder
+from models.provider_ids import ModelProviderID
+from repositories.tokener_bootstrap_repository import TokenerBootstrapRepository
 from services.plugin.dispatch_identity import plugin_dispatch_headers
 
 _POLLING_UNSUPPORTED_INVOKE_ERROR_TYPES = frozenset((NotImplementedError.__name__,))
 _POLLING_UNSUPPORTED_ERROR_MESSAGE = "does not support polling"
+_MANAGED_MODEL_ROUTE = "_managed_model_route"
+_HOSTED_REDIRECT_OPERATIONS = frozenset(
+    (
+        "llm/invoke",
+        "llm/num_tokens",
+        "model/polling/start",
+        "model/polling/check",
+        "text_embedding/invoke",
+        "text_embedding/num_tokens",
+        "multimodal_embedding/invoke",
+        "rerank/invoke",
+        "multimodal_rerank/invoke",
+        "tts/invoke",
+        "tts/model/voices",
+        "speech2text/invoke",
+        "moderation/invoke",
+    )
+)
 
 
 class PluginModelClient(BasePluginClient):
+    @override
+    def _prepare_request(
+        self,
+        path: str,
+        headers: dict[str, str] | None,
+        data: bytes | dict[str, Any] | str | None,
+        params: dict[str, Any] | None,
+        files: dict[str, Any] | None,
+    ) -> tuple[str, dict[str, str], bytes | dict[str, Any] | str | None, dict[str, Any] | None, dict[str, Any] | None]:
+        """Resolve an admitted SYSTEM binding or send the untouched normal request.
+
+        The dispatch marker can only be built from typed provider credentials.
+        Failed bindings never fall back to a vendor key or the old meter.
+        """
+        if isinstance(data, dict) and _MANAGED_MODEL_ROUTE in data:
+            route = data[_MANAGED_MODEL_ROUTE]
+            prefix, separator, operation = path.partition("/dispatch/")
+            logical_provider = ModelProviderID(route["provider"])
+            source = data["data"]
+            if (
+                not separator
+                or prefix != f"plugin/{route['tenant_id']}"
+                or operation not in _HOSTED_REDIRECT_OPERATIONS
+                or (headers or {}).get("X-Plugin-ID") != logical_provider.plugin_id
+                or source.get("provider") != logical_provider.provider_name
+                or source.get("model") != route["model"]
+                or source.get("model_type") != route["model_type"]
+                or files is not None
+            ):
+                raise ValueError("Managed model route does not match the invocation.")
+
+            data = {key: value for key, value in data.items() if key != _MANAGED_MODEL_ROUTE}
+            data["redirect"] = self._tokener_target(route["tenant_id"], route["model_type"], route["model"])
+            path = f"{prefix}/dispatch/redirect/v1/{operation}"
+        return super()._prepare_request(path, headers, data, params, files)
+
+    @staticmethod
+    def _tokener_target(tenant_id: str, model_type: str, model: str) -> dict[str, Any]:
+        """Load only the bound managed key, with no fallback and no parameter translation."""
+        try:
+            provider = ModelProviderID(dify_config.TOKENER_PROVIDER_NAME)
+            repository = TokenerBootstrapRepository(sessions=session_factory.create_session)
+            binding = repository.ready_dispatch_binding(tenant_id, str(provider))
+            if binding is None:
+                raise ValueError("No ready binding.")
+            identifier, credential_id, encrypted = binding
+            if identifier.partition(":")[0] != provider.plugin_id:
+                raise ValueError("Invalid target package.")
+            runtime_check_credential_policy_compliance(
+                credential_id=credential_id, provider=str(provider), credential_type=PluginCredentialType.MODEL
+            )
+            values = json.loads(encrypted)
+            encrypted_key = values.get("api_key")
+            if not isinstance(encrypted_key, str) or not encrypted_key:
+                raise ValueError("Missing managed key.")
+            credentials = {"api_key": encrypter.decrypt_token(tenant_id=tenant_id, token=encrypted_key)}
+            endpoint_url = values.get("endpoint_url")
+            if isinstance(endpoint_url, str) and endpoint_url:
+                credentials["endpoint_url"] = endpoint_url
+        except Exception:
+            raise ValueError("Managed model routing is temporarily unavailable.") from None
+        return {
+            "version": 1,
+            "route_id": str(uuid4()),
+            "target": {
+                "plugin_id": provider.plugin_id,
+                "expected_unique_identifier": identifier,
+                "provider": provider.provider_name,
+                "model_type": model_type,
+                "model": model,
+                "credentials": credentials,
+            },
+        }
+
     @staticmethod
     def _dispatch_payload(*, user_id: str | None, data: dict[str, Any], app_id: str | None = None) -> dict[str, Any]:
         payload: dict[str, Any] = {"data": data}
+        credentials = data.get("credentials")
+        if isinstance(credentials, TokenerHostedModelCredentials):
+            payload[_MANAGED_MODEL_ROUTE] = {
+                "tenant_id": credentials.tenant_id,
+                "provider": credentials.provider,
+                "model_type": credentials.model_type,
+                "model": credentials.model,
+            }
+            payload["data"] = {**data, "credentials": {}}
+            payload["user_id"] = ""
         if user_id is not None:
             payload["user_id"] = user_id
         if app_id is not None:
@@ -85,7 +197,9 @@ class PluginModelClient(BasePluginClient):
                     "provider": provider,
                     "model_type": model_type,
                     "model": model,
-                    "credentials": credentials,
+                    # Discovery belongs to the original provider. Do not use
+                    # the target schema to filter the original App parameters.
+                    "credentials": {} if isinstance(credentials, TokenerHostedModelCredentials) else credentials,
                 },
             ),
             headers=plugin_dispatch_headers(plugin_id, plugin_unique_identifier),

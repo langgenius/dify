@@ -65,6 +65,7 @@ export const createProviderSummaryFixture = ({
 export const createModelCreditsFixture = (): Awaited<
   ReturnType<ConsoleClient['workspaces']['current']['modelProviders']['credits']['get']>
 > => ({
+  model_billing_source: 'legacy_message_credits',
   remaining_credits: 100,
   quota_used: 0,
   quota_limit: 100,

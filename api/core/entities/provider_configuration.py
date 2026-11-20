@@ -13,6 +13,7 @@ from sqlalchemy import String, func, literal, select
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import BindParameter
 
+from configs import dify_config
 from constants import HIDDEN_VALUE
 from core.entities import PluginCredentialType
 from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, SimpleModelProviderEntity
@@ -21,13 +22,16 @@ from core.entities.provider_entities import (
     ModelSettings,
     SystemConfiguration,
     SystemConfigurationStatus,
+    TokenerHostedModelCredentials,
 )
+from core.errors.error import ModelCurrentlyNotSupportError
 from core.helper import encrypter
 from core.helper.model_provider_cache import (
     ProviderCredentialsCache,
     ProviderCredentialsCacheType,
 )
 from core.plugin.impl.model_runtime_factory import create_model_type_instance, create_plugin_model_assembly
+from enums import DeploymentEdition
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from graphon.model_runtime.entities.provider_entities import (
     ConfigurateMethod,
@@ -39,6 +43,7 @@ from graphon.model_runtime.model_providers.base.ai_model import AIModel
 from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from graphon.model_runtime.protocols.runtime import ModelRuntime
 from libs.datetime_utils import naive_utc_now
+from models.account import Tenant
 from models.engine import db
 from models.enums import CredentialSourceType
 from models.provider import (
@@ -52,6 +57,7 @@ from models.provider import (
     TenantPreferredModelProvider,
 )
 from models.provider_ids import ModelProviderID
+from models.tokener import TenantTokenerIntegration
 
 logger = logging.getLogger(__name__)
 
@@ -202,6 +208,31 @@ class ProviderConfiguration(BaseModel):
                         raise ValueError(f"Model {model} is disabled.")
 
         if self.using_provider_type == ProviderType.SYSTEM:
+            if self.system_configuration.tokener_funded:
+                quota = next(
+                    (
+                        q
+                        for q in self.system_configuration.quota_configurations
+                        if q.quota_type == self.system_configuration.current_quota_type
+                    ),
+                    None,
+                )
+                # Existing env allowlists are name-only even for non-LLM types.
+                # The installed provider still owns the admitted model type and
+                # resolves the requested model schema before execution.
+                if (
+                    model_type not in self.provider.supported_model_types
+                    or quota is None
+                    or (quota.restrict_models and not any(m.model == model for m in quota.restrict_models))
+                ):
+                    raise ModelCurrentlyNotSupportError(f"System model {model_type.value}/{model} is not allowed.")
+                return TokenerHostedModelCredentials(
+                    tenant_id=self.tenant_id,
+                    provider=self.provider.provider,
+                    model_type=model_type.value,
+                    model=model,
+                )
+
             restrict_models = []
             for quota_configuration in self.system_configuration.quota_configurations:
                 if self.system_configuration.current_quota_type != quota_configuration.quota_type:
@@ -244,6 +275,23 @@ class ProviderConfiguration(BaseModel):
                     for credential_configuration in self.custom_configuration.provider.available_credentials:
                         self._check_credential_policy_once(credential_configuration.credential_id)
             return credentials
+
+    def get_current_provider_credential_id(self, model_type: ModelType, model: str) -> str | None:
+        """Read provider-scope identity from the normal custom selection/fallback.
+
+        This sidecar contains no key and is sampled together with credentials;
+        a model-scope credential is never a provider credential, even if its UUID
+        happens to match one from the separate provider-credential table.
+        """
+        if self.using_provider_type != ProviderType.CUSTOM:
+            return None
+        for configuration in self.custom_configuration.models:
+            if configuration.model_type == model_type and configuration.model == model:
+                if configuration.credentials:
+                    return None
+                break
+        provider = self.custom_configuration.provider
+        return provider.current_credential_id if provider is not None else None
 
     def _check_credential_policy_once(self, credential_id: str) -> None:
         """Check the credential policy the first time this configuration hands a credential out.
@@ -563,6 +611,10 @@ class ProviderConfiguration(BaseModel):
 
         preferred_model_providers_changed = False
         with Session(db.engine) as session:
+            # Serialize the absent-provider case with internal recovery using
+            # the same normal owner; no external validation runs under this lock.
+            if str(ModelProviderID(self.provider.provider)) == str(ModelProviderID(dify_config.TOKENER_PROVIDER_NAME)):
+                session.get(Tenant, self.tenant_id, with_for_update=True)
             provider_record = self._get_provider_record(session)
             try:
                 new_record = ProviderCredential(
@@ -623,6 +675,25 @@ class ProviderConfiguration(BaseModel):
         )
         return new_credential_id
 
+    def _reject_managed_tokener_credential_mutation(self, session: Session, credential_id: str) -> None:
+        """Keep the integration's dedicated billing key out of ordinary user edits.
+
+        Preconditions: a provider mutation is scoped to this tenant.
+        A BYOK credential, even one using the managed label, remains editable.
+        """
+        if (
+            dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
+            and self.provider.provider == dify_config.TOKENER_PROVIDER_NAME
+            and session.scalar(
+                select(TenantTokenerIntegration.id).where(
+                    TenantTokenerIntegration.tenant_id == self.tenant_id,
+                    TenantTokenerIntegration.provider_credential_id == credential_id,
+                )
+            )
+            is not None
+        ):
+            raise ValueError("A platform-managed credential cannot be changed.")
+
     def update_provider_credential(
         self,
         credentials: dict[str, Any],
@@ -638,6 +709,7 @@ class ProviderConfiguration(BaseModel):
         :return:
         """
         with Session(db.engine) as pre_session:
+            self._reject_managed_tokener_credential_mutation(pre_session, credential_id)
             if credential_name and self._check_provider_credential_name_exists(
                 credential_name=credential_name, session=pre_session, exclude_id=credential_id
             ):
@@ -743,6 +815,7 @@ class ProviderConfiguration(BaseModel):
         preferred_model_providers_changed = False
         load_balancing_configs_changed = False
         with Session(db.engine) as session:
+            self._reject_managed_tokener_credential_mutation(session, credential_id)
             stmt = select(ProviderCredential).where(
                 ProviderCredential.id == credential_id,
                 ProviderCredential.tenant_id == self.tenant_id,
@@ -863,6 +936,80 @@ class ProviderConfiguration(BaseModel):
                 raise
         if preferred_model_providers_changed:
             self._invalidate_provider_configuration_cache(preferred_model_providers=True)
+
+    def activate_unselected_provider_credential(self, credential_id: str) -> None:
+        """Recover an owned prevalidated credential without replacing a BYOK selection.
+
+        The internal caller separately proves its durable integration binding.
+        Tenant/provider locks serialize missing-row creation, using the same
+        owner as ordinary credential creation. Preference commits with Provider;
+        cache errors may be retried with this same ID and never need a new key.
+        """
+        with Session(db.engine) as session:
+            if session.get(Tenant, self.tenant_id, with_for_update=True) is None:
+                raise ValueError("Tenant record not found.")
+            credential = session.execute(
+                select(ProviderCredential).where(
+                    ProviderCredential.id == credential_id,
+                    ProviderCredential.tenant_id == self.tenant_id,
+                    ProviderCredential.provider_name.in_(self._get_provider_names()),
+                )
+            ).scalar_one_or_none()
+            if credential is None:
+                raise ValueError("Credential record not found.")
+            provider = session.execute(
+                select(Provider)
+                .where(
+                    Provider.tenant_id == self.tenant_id,
+                    Provider.provider_type == ProviderType.CUSTOM,
+                    Provider.provider_name.in_(self._get_provider_names()),
+                )
+                .with_for_update()
+            ).scalar_one_or_none()
+            if provider is None:
+                provider = Provider(
+                    tenant_id=self.tenant_id,
+                    provider_name=self.provider.provider,
+                    provider_type=ProviderType.CUSTOM,
+                    is_valid=True,
+                    credential_id=credential.id,
+                )
+                session.add(provider)
+            elif provider.credential_id not in (None, credential.id):
+                raise ValueError("A different provider credential is already selected.")
+            provider.credential_id = credential.id
+            provider.is_valid = True
+            provider.updated_at = naive_utc_now()
+            preference = session.execute(
+                select(TenantPreferredModelProvider)
+                .where(
+                    TenantPreferredModelProvider.tenant_id == self.tenant_id,
+                    TenantPreferredModelProvider.provider_name.in_(self._get_provider_names()),
+                )
+                .with_for_update()
+            ).scalar_one_or_none()
+            if preference is None:
+                session.add(
+                    TenantPreferredModelProvider(
+                        tenant_id=self.tenant_id,
+                        provider_name=self.provider.provider,
+                        preferred_provider_type=ProviderType.CUSTOM,
+                    )
+                )
+            else:
+                preference.preferred_provider_type = ProviderType.CUSTOM
+            session.flush()
+            provider_id = provider.id
+            session.commit()
+        ProviderCredentialsCache(
+            tenant_id=self.tenant_id,
+            identity_id=provider_id,
+            cache_type=ProviderCredentialsCacheType.PROVIDER,
+        ).delete()
+        self._invalidate_provider_configuration_cache(
+            provider_credentials=True,
+            preferred_model_providers=True,
+        )
 
     def _get_custom_model_record(
         self,

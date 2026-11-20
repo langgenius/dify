@@ -275,7 +275,10 @@
     "compatible",
     "parsed-vs-wire-output"
   ],
-  "console GET /workspaces/current/model-providers/credits": ["no-input-schema", "compatible"],
+  "console GET /workspaces/current/model-providers/credits": [
+    "no-input-schema",
+    "parsed-vs-wire-output"
+  ],
   "console GET /workspaces/current/model-providers/summary": ["no-input-schema", "compatible"],
   "console GET /workspaces/current/models/model-types/{model_type}": [
     "compatible",

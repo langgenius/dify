@@ -1,5 +1,6 @@
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ModelProviderCreditsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import { zModelProviderCreditsResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { createProviderMeta } from '@/app/components/workflow/__tests__/model-provider-fixtures'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderHookWithConsoleQuery } from '@/test/console/query-data'
@@ -61,7 +62,7 @@ const renderPanelHook = (
   }
   queryClient.setQueryData(
     consoleQuery.workspaces.current.modelProviders.credits.get.queryKey(),
-    credits,
+    zModelProviderCreditsResponse.parse(credits),
   )
   return renderHookWithConsoleQuery(() => useCredentialPanelState(provider), {
     queryClient,

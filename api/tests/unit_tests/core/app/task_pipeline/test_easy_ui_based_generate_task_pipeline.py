@@ -951,9 +951,11 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
         def test_handle_stop_updates_usage(self, monkeypatch: pytest.MonkeyPatch):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
+            resolved_credentials = {"scope": "resolved"}
 
             class _ModelType:
                 def calc_response_usage(self, model, credentials, prompt_tokens, completion_tokens):
+                    assert credentials is resolved_credentials
                     return LLMUsage.from_metadata(
                         {
                             "prompt_tokens": prompt_tokens,
@@ -1000,7 +1002,7 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
 
             class _FakeModelInstance:
                 def __init__(self, provider_model_bundle, model):
-                    pass
+                    self.credentials = resolved_credentials
 
                 def get_llm_num_tokens(self, messages):
                     calls.append(1)

@@ -138,6 +138,18 @@ class TestBillingPortal:
                 AnnualDiscountActiveError,
             ),
             (
+                billing.BillingSubscriptionUpstreamInvalidResponseError(
+                    status_code=409, reason="TOKENER_NATIVE_ACCOUNT_NOT_READY"
+                ),
+                BillingUnavailableError,
+            ),
+            (
+                billing.BillingSubscriptionUpstreamInvalidResponseError(
+                    status_code=409, reason="TOKENER_PAID_GRANTS_DISABLED"
+                ),
+                BillingUnavailableError,
+            ),
+            (
                 billing.BillingSubscriptionUpstreamInvalidResponseError(status_code=400, reason="MISSING_PLAN"),
                 BillingOperationFailedError,
             ),

@@ -603,3 +603,42 @@ def test_deduct_credits_capped_ignores_release_errors_after_successful_deduction
     assert result == 2
     assert pool.quota_used == 9
     redis_lock.release.assert_called_once_with()
+
+
+@pytest.mark.parametrize("operation", ["get", "reserve", "deduct", "capped"])
+def test_native_signup_profile_blocks_new_legacy_quota_io(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    operation: str,
+) -> None:
+    from models.account import Tenant
+    from models.model_billing import TenantModelBillingProfile
+    from services.billing_service import BillingService
+    from services.errors.billing import LegacyCreditPoolManagedByTokenerError
+    from tests.helpers.unit.config_override import apply_config_overrides
+
+    tenant = Tenant(name="Native signup no legacy quota")
+    sqlite_session.add(tenant)
+    sqlite_session.flush()
+    sqlite_session.add(TenantModelBillingProfile(tenant_id=tenant.id, model_billing_source="tokener"))
+    sqlite_session.commit()
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+
+    def forbidden(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("native profile must not call legacy Billing quota APIs")
+
+    monkeypatch.setattr(BillingService, "quota_get_balance", forbidden)
+    monkeypatch.setattr(BillingService, "quota_reserve", forbidden)
+    monkeypatch.setattr(BillingService, "quota_consume_capped", forbidden)
+
+    def invoke() -> object:
+        if operation == "get":
+            return CreditPoolService.get_pool(tenant.id)
+        elif operation == "reserve":
+            return CreditPoolService.reserve_credits(tenant.id, 1, request_id="native-blocked")
+        elif operation == "deduct":
+            return CreditPoolService.check_and_deduct_credits(tenant.id, 1)
+        return CreditPoolService.deduct_credits_capped(tenant.id, 1)
+
+    with pytest.raises(LegacyCreditPoolManagedByTokenerError, match="credits_managed_by_tokener"):
+        invoke()

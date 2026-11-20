@@ -20,6 +20,7 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from enums.model_billing import ModelBillingSource, TenantTokenerIntegrationStatus, TokenerEntitlementStatus
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -107,7 +108,48 @@ class ModelProviderSummaryListResponse(ResponseModel):
     plugins: dict[str, ModelProviderPluginSummaryResponse]
 
 
+class TokenerCurrentMonthAvailableMeteringResponse(ResponseModel):
+    status: Literal["available"]
+    start_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    end_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    billed_usd_micro: str = Field(pattern=r"^\d+$")
+    request_count: str = Field(pattern=r"^\d+$")
+
+
+class TokenerCurrentMonthUnavailableMeteringResponse(ResponseModel):
+    status: Literal["unavailable"]
+    start_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    end_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    error_code: str = Field(pattern=r"^[a-z0-9_]{1,100}$")
+
+
+class TokenerAllowanceMeteringResponse(ResponseModel):
+    window_id: str
+    source_ref: str
+    amount_usd_micro: str = Field(pattern=r"^(0|[1-9]\d*)$")
+    available_usd_micro: str = Field(pattern=r"^(0|[1-9]\d*)$")
+    starts_at: str
+    ends_at: str
+
+
+class TokenerMeteringResponse(ResponseModel):
+    tenant_id: str
+    currency: Literal["USD"]
+    available_usd_micro: str = Field(pattern=r"^-?\d+$")
+    current_month: Annotated[
+        TokenerCurrentMonthAvailableMeteringResponse | TokenerCurrentMonthUnavailableMeteringResponse,
+        Field(discriminator="status"),
+    ]
+    balance_generated_at: str
+    usage_generated_at: str | None = None
+    allowance: TokenerAllowanceMeteringResponse | None = None
+    entitlement_status: TokenerEntitlementStatus | None = None
+    entitlement_error_code: str | None = Field(default=None, pattern=r"^[a-z0-9_]{1,100}$")
+
+
 class ModelProviderCreditsResponse(ResponseModel):
+    model_billing_source: ModelBillingSource = ModelBillingSource.LEGACY_MESSAGE_CREDITS
+    tokener_bootstrap_status: TenantTokenerIntegrationStatus | None = None
     pool_type: Literal["paid", "trial"] | None
     quota_limit: int | None = Field(description="Credit limit for the effective pool; -1 means unlimited.")
     quota_used: int | None
@@ -116,6 +158,7 @@ class ModelProviderCreditsResponse(ResponseModel):
     is_exhausted: bool
     exhausted_at: int | None
     next_credit_reset_date: int | None
+    tokener_metering: TokenerMeteringResponse | None = None
 
 
 class ProviderCredentialsResponse(ResponseModel):
@@ -196,7 +239,7 @@ class ModelProviderCreditsApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def get(self, tenant_id: str):
-        credit_pool = application_services().workspaces.management.get_effective_credit_pool(tenant_id)
+        credit_pool = application_services().workspaces.management.get_model_provider_credits(tenant_id)
         return dump_response(ModelProviderCreditsResponse, credit_pool)
 
 

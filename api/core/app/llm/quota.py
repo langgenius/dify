@@ -164,6 +164,10 @@ def reserve_model_quota_for_model(
         raise QuotaExceededError(f"Model provider {provider} quota exceeded.")
 
     system_configuration = provider_configuration.system_configuration
+    if system_configuration.tokener_funded:
+        # This reservation is a no-op: the redirected invocation has one
+        # settlement owner, Tokener, even on the pre-reservation/direct paths.
+        return reservation
     quota_configuration = _get_current_quota_configuration(system_configuration)
     if quota_configuration is None or quota_configuration.quota_limit == -1:
         return reservation

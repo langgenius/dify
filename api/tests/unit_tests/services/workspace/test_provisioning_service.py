@@ -15,6 +15,7 @@ from sqlalchemy.orm import Mapper, ORMExecuteState, Session, sessionmaker
 from enums import DeploymentEdition
 from models import TenantCreditPool
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantPluginAutoUpgradeStrategy
+from models.tokener import AccountTokenerSignupIntent
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.account_errors import AccountNotFoundError
@@ -351,7 +352,13 @@ def test_initial_workspace_locks_before_preparation_and_publishes_after_commit(
         # PostgreSQL to verify the row-lock clause that SQLite cannot execute.
         statement = execution.statement
         if isinstance(statement, Select) and "FOR UPDATE" in str(statement.compile(dialect=postgresql.dialect())):
-            phases.append("lock")
+            entities = [description["entity"] for description in statement.column_descriptions]
+            if entities == [Account]:
+                phases.append("account_lock")
+            elif entities == [AccountTokenerSignupIntent]:
+                phases.append("intent_lock")
+            else:
+                raise AssertionError("unexpected initial-workspace lock owner")
 
     def prepare(_name: str) -> WorkspaceCreation:
         phases.append("prepare")
@@ -379,7 +386,7 @@ def test_initial_workspace_locks_before_preparation_and_publishes_after_commit(
         event.remove(sqlite_session_factory, "do_orm_execute", record_lock)
         event.remove(sqlite_session_factory, "after_commit", committed)
 
-    assert phases == ["lock", "prepare", "bind", "commit", "publish"]
+    assert phases == ["account_lock", "intent_lock", "prepare", "bind", "commit", "publish"]
 
 
 def _service(

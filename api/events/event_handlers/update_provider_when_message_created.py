@@ -26,6 +26,8 @@ from libs import datetime_utils
 from models.model import Message
 from models.provider import Provider, ProviderType
 from models.provider_ids import ModelProviderID
+from services.feature_service import FeatureService
+from services.model_billing_profile_service import ModelBillingProfileResolutionError
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +94,15 @@ class _CreditDeductionContext(TypedDict, total=False):
     metadata: Mapping[str, object]
 
 
+def _legacy_message_credit_billing_allowed(tenant_id: str) -> bool:
+    """Keep native signup usage out of legacy post-message deductions."""
+    try:
+        return FeatureService.get_model_billing_resolution(tenant_id).uses_legacy_message_credits
+    except ModelBillingProfileResolutionError:
+        logger.error("Legacy credit deduction skipped: billing profile unavailable for %s", tenant_id)  # noqa: TRY400
+        return False
+
+
 @message_was_created.connect
 def handle(sender: Message, **kwargs):
     """
@@ -152,6 +163,7 @@ def handle(sender: Message, **kwargs):
     if (
         not agent_gateway_metered
         and provider_configuration.using_provider_type == ProviderType.SYSTEM
+        and _legacy_message_credit_billing_allowed(tenant_id)
         and provider_configuration.system_configuration
         and provider_configuration.system_configuration.current_quota_type is not None
     ):

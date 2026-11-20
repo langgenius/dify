@@ -74,6 +74,8 @@ def _compliance_download_error(error: billing.BillingComplianceUpstreamError) ->
             | "MISSING_ACCOUNT_ID"
             | "INVALID_ACCOUNT_ID"
             | "MISSING_PREFILLED_EMAIL"
+            | "TOKENER_NATIVE_ACCOUNT_NOT_READY"
+            | "TENANT_BILLING_MODE_UNAVAILABLE"
             | "INVALID_COMPLIANCE_DOWNLOAD_REQUEST"
             | "MISSING_DOC_NAME"
             | "MISSING_IP_ADDRESS"

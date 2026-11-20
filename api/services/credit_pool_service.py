@@ -123,6 +123,19 @@ class CreditPoolReservation:
 
 class CreditPoolService:
     @staticmethod
+    def _ensure_legacy_credits(tenant_id: str) -> None:
+        """Reject native cohorts before any legacy quota I/O or new reservation.
+
+        Existing reservation commit/release retains its original owner. No
+        migration state, redirect, amount or quota is changed by this check.
+        """
+        from services.errors.billing import LegacyCreditPoolManagedByTokenerError
+        from services.feature_service import FeatureService
+
+        if FeatureService.get_model_billing_resolution(tenant_id).uses_tokener:
+            raise LegacyCreditPoolManagedByTokenerError("credits_managed_by_tokener")
+
+    @staticmethod
     def _normalize_pool_type(pool_type: str | ProviderQuotaType) -> str:
         return pool_type.value if isinstance(pool_type, ProviderQuotaType) else str(pool_type)
 
@@ -202,6 +215,7 @@ class CreditPoolService:
     ) -> TenantCreditPool | CreditPoolBalance | None:
         """get tenant credit pool"""
         normalized_pool_type = cls._normalize_pool_type(pool_type)
+        cls._ensure_legacy_credits(tenant_id)
         if cls._use_billing_quota():
             from services.billing_service import BillingService
 
@@ -259,6 +273,8 @@ class CreditPoolService:
             raise ValueError("credits_required must be greater than 0")
         if not request_id:
             raise ValueError("request_id is required")
+
+        cls._ensure_legacy_credits(tenant_id)
 
         normalized_pool_type = cls._normalize_pool_type(pool_type)
         reservation_meta = cls._build_billing_metadata("credit_pool.reservation", meta)
@@ -361,6 +377,7 @@ class CreditPoolService:
         """Deduct exactly the requested credits or raise without mutating the pool."""
         if credits_required <= 0:
             return 0
+        cls._ensure_legacy_credits(tenant_id)
         normalized_pool_type = cls._normalize_pool_type(pool_type)
 
         if cls._use_billing_quota():
@@ -446,6 +463,7 @@ class CreditPoolService:
         """Deduct up to the available balance and return the actual deducted credits."""
         if credits_required <= 0:
             return 0
+        cls._ensure_legacy_credits(tenant_id)
         normalized_pool_type = cls._normalize_pool_type(pool_type)
 
         if cls._use_billing_quota():

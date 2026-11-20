@@ -1,17 +1,41 @@
 import logging
+import re
 from collections.abc import Mapping, Sequence
-from typing import Literal
+from typing import Literal, NotRequired, TypedDict
 from warnings import deprecated
 
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from enums import CloudPlan
+from enums.model_billing import TokenerBootstrapStatus, TokenerEntitlementStatus
 from extensions.ext_redis import redis_client
-from services.billing_client import billing, saas
+from services.billing_client import billing, saas, transport
+from services.entities.tokener_metering import TokenerTenantMeteringResponse
+from services.errors.billing import BillingUpstreamInvalidResponseError, BillingUpstreamUnavailableError
 
 logger = logging.getLogger(__name__)
 
 EmailFreezeType = Literal["freeze", "email_domain_suspended"]
+
+
+class TokenerBootstrapUpstreamError(RuntimeError):
+    """Safe bootstrap failure; remote bodies and keys never cross this boundary."""
+
+    def __init__(self, error_code: str, *, retryable: bool) -> None:
+        super().__init__(error_code)
+        self.error_code = error_code
+        self.retryable = retryable
+
+
+class TokenerTenantBootstrapResponse(TypedDict):
+    tenant_id: str
+    status: TokenerBootstrapStatus
+    retryable: bool
+    data_plane_api_key: NotRequired[str]
+    error_code: NotRequired[str]
+
+
+_tokener_tenant_metering_adapter = TypeAdapter(TokenerTenantMeteringResponse)
 
 
 def _quota_meta(meta: Mapping[str, object] | None) -> dict[str, str]:
@@ -24,6 +48,79 @@ class BillingService:
     _PLAN_CACHE_KEY_PREFIX = "tenant_plan:"
     # Cache TTL: 10 minutes
     _PLAN_CACHE_TTL = 600
+
+    @classmethod
+    def bootstrap_tokener_tenant(cls, tenant_id: str, display_name: str) -> TokenerTenantBootstrapResponse:
+        """Read the admitted signup's durable bootstrap result through generated Billing.
+
+        Only the matching tenant's ready response may deliver a one-time key;
+        pending/failure never invents an amount or falls back to legacy credits.
+        """
+        if not transport.tokener_billing_is_configured():
+            raise TokenerBootstrapUpstreamError("tokener_billing_api_not_configured", retryable=False)
+        try:
+            reply = billing.tokener_bootstrap_tenant(
+                tenant_id=tenant_id,
+                body=billing.TokenerTenantBootstrapPayload(tenant_id=tenant_id, display_name=display_name),
+            )
+        except billing.BillingTokenerUpstreamUnavailableError:
+            raise TokenerBootstrapUpstreamError("tokener_bootstrap_unavailable", retryable=True) from None
+        except billing.BillingTokenerUpstreamInvalidResponseError:
+            raise TokenerBootstrapUpstreamError("tokener_bootstrap_invalid_response", retryable=False) from None
+        key = reply.data_plane_api_key
+        try:
+            if reply.tenant_id != tenant_id or reply.status not in {"pending", "ready"}:
+                raise TokenerBootstrapUpstreamError("tokener_bootstrap_invalid_response", retryable=False)
+            result: TokenerTenantBootstrapResponse = {
+                "tenant_id": tenant_id,
+                "status": TokenerBootstrapStatus(reply.status),
+                "retryable": reply.retryable,
+            }
+            if reply.error_code and re.fullmatch(r"[A-Za-z0-9_-]{1,100}", reply.error_code, flags=re.ASCII):
+                result["error_code"] = reply.error_code
+            if reply.status == "ready":
+                if not isinstance(key, str) or not key:
+                    raise TokenerBootstrapUpstreamError("tokener_bootstrap_key_missing", retryable=True)
+                result["data_plane_api_key"] = key
+            return result
+        finally:
+            reply.data_plane_api_key = None
+            key = None
+
+    @classmethod
+    def get_tokener_metering(cls, tenant_id: str) -> TokenerTenantMeteringResponse:
+        """Read owned native balance/usage, keeping unavailable distinct from zero."""
+        if not transport.tokener_billing_is_configured():
+            raise BillingUpstreamUnavailableError
+        try:
+            reply = billing.tokener_get_tenant_metering(tenant_id=tenant_id)
+        except billing.BillingTokenerUpstreamUnavailableError as error:
+            if error.status_code == 502:
+                raise BillingUpstreamInvalidResponseError from None
+            raise BillingUpstreamUnavailableError from None
+        except billing.BillingTokenerUpstreamInvalidResponseError:
+            raise BillingUpstreamInvalidResponseError from None
+        payload = reply.model_dump(mode="json", by_alias=True, exclude_unset=True)
+        try:
+            entitlement_status = payload.get("entitlement_status")
+            if entitlement_status is not None:
+                payload["entitlement_status"] = TokenerEntitlementStatus(entitlement_status)
+            metering = _tokener_tenant_metering_adapter.validate_python(payload, strict=True)
+            if metering["tenant_id"] != tenant_id:
+                raise ValueError("tenant mismatch")
+            current_month = payload["current_month"]
+            if metering["current_month"]["status"] == "available":
+                if "usage_generated_at" not in metering or "error_code" in current_month:
+                    raise ValueError("incomplete available usage")
+            elif (
+                "billed_usd_micro" in current_month
+                or "request_count" in current_month
+                or "usage_generated_at" in metering
+            ):
+                raise ValueError("unavailable usage must not contain metrics")
+        except (KeyError, TypeError, ValueError):
+            raise BillingUpstreamInvalidResponseError from None
+        return metering
 
     @classmethod
     def get_info(cls, tenant_id: str, exclude_vector_space: bool = False) -> billing.GetSubscriptionInfoReply:

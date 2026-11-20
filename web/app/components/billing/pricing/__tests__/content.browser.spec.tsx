@@ -56,8 +56,8 @@ it('keeps prices and interval selection available while purchases wait for featu
   await screen.getByRole('radio', { name: /billing\.pricing\.annually/ }).click()
   await expect.element(screen.getByText('$590', { exact: true })).toBeInTheDocument()
   await expect.element(purchase).toBeDisabled()
-  const { zGetFeaturesResponse } = await import('@dify/contracts/api/console/features/zod.gen')
-  request.resolve(zGetFeaturesResponse.parse({ billing: { subscription: { plan: 'team' } } }))
+  const { createFeaturesFixture } = await import('@/test/console/features')
+  request.resolve(createFeaturesFixture({ billing: { subscription: { plan: 'team' } } }))
   await expect
     .element(screen.getByRole('button', { name: 'billing.plansCommon.manageSubscription' }))
     .toBeEnabled()
@@ -136,10 +136,10 @@ it('starts cached eligible education accounts on annual pricing with the discoun
 })
 
 it('keeps prices readable after features fail and restores purchases through Retry', async () => {
-  const { zGetFeaturesResponse } = await import('@dify/contracts/api/console/features/zod.gen')
+  const { createFeaturesFixture } = await import('@/test/console/features')
   api.features
     .mockRejectedValueOnce(new Error('Unavailable'))
-    .mockResolvedValue(zGetFeaturesResponse.parse({}))
+    .mockResolvedValue(createFeaturesFixture({}))
   const screen = await setup()
   await expect.element(screen.getByRole('alert')).toMatchTextContent('common.error')
   const purchase = screen.getByRole('button', { name: 'billing.plansCommon.upgradeToProfessional' })

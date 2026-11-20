@@ -19,7 +19,11 @@ from core.entities.provider_configuration import ProviderConfiguration, Provider
 from core.entities.provider_entities import ModelLoadBalancingConfiguration
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError
 from core.model_context import get_credit_usage_metadata
-from core.plugin.impl.model_runtime_factory import bind_model_moderation_policy, create_plugin_provider_manager
+from core.plugin.impl.model_runtime_factory import (
+    bind_model_moderation_policy,
+    bind_native_model_moderation_policy,
+    create_plugin_provider_manager,
+)
 from core.provider_manager import ProviderManager
 from extensions.ext_redis import redis_client
 from graphon.model_runtime.callbacks.base_callback import Callback
@@ -35,6 +39,7 @@ from graphon.model_runtime.model_providers.base.rerank_model import RerankModel
 from graphon.model_runtime.model_providers.base.speech2text_model import Speech2TextModel
 from graphon.model_runtime.model_providers.base.text_embedding_model import TextEmbeddingModel
 from graphon.model_runtime.model_providers.base.tts_model import TTSModel
+from models.enums import CredentialSourceType
 from models.provider import ProviderType
 
 logger = logging.getLogger(__name__)
@@ -77,6 +82,7 @@ class ModelInstance:
         request_metadata: Mapping[str, object] | None = None,
         *,
         moderation: LLMModerationPolicy | None = None,
+        credential_id: str | None = None,
     ) -> None:
         """Assemble a model with an optional tenant-matched LLM policy.
 
@@ -97,7 +103,13 @@ class ModelInstance:
         self.provider = provider_model_bundle.configuration.provider.provider
         if credentials is None:
             credentials = self._fetch_credentials_from_bundle(provider_model_bundle, model)
+            credential_id = provider_model_bundle.configuration.get_current_provider_credential_id(
+                model_type=provider_model_bundle.model_type_instance.model_type, model=model
+            )
         self.credentials = credentials
+        # Explicit raw credentials have no durable identity unless the normal
+        # manager supplies the identity cached with that exact selection.
+        self.credential_id = credential_id
         self._request_metadata = dict(request_metadata) if request_metadata else None
         # Runtime LLM invocation fields.
         self.parameters: Mapping[str, Any] = {}
@@ -108,12 +120,25 @@ class ModelInstance:
             model_type=provider_model_bundle.model_type_instance.model_type,
             model=model,
             credentials=self.credentials,
+            credential_id=self.credential_id,
         )
+        self._direct_moderation: LLMModerationPolicy | None = None
+        self._direct_moderation_bound = False
 
     @property
     def moderation(self) -> LLMModerationPolicy | None:
-        """Return the assembly-bound policy; None means this instance has no moderation policy."""
-        return self._moderation
+        """Bind the fixed credential snapshot for direct/polling consumers.
+
+        Polling uses this instance's base credentials, not round-robin choices.
+        Normal invocation separately binds native checks per actual LB attempt.
+        Keep the direct guard stable between polling input and terminal output.
+        """
+        if not self._direct_moderation_bound:
+            self._direct_moderation = bind_native_model_moderation_policy(
+                self.provider_model_bundle, credential_id=self.credential_id, policy=self._moderation
+            )
+            self._direct_moderation_bound = True
+        return self._direct_moderation
 
     def _resolve_request_metadata(self, request_metadata: Mapping[str, object] | None) -> Mapping[str, object] | None:
         bound_request_metadata = self._request_metadata
@@ -151,7 +176,11 @@ class ModelInstance:
 
     @staticmethod
     def _get_load_balancing_manager(
-        configuration: ProviderConfiguration, model_type: ModelType, model: str, credentials: dict[str, Any]
+        configuration: ProviderConfiguration,
+        model_type: ModelType,
+        model: str,
+        credentials: dict[str, Any],
+        credential_id: str | None = None,
     ) -> Optional["LBModelManager"]:
         """
         Get load balancing model credentials
@@ -179,6 +208,7 @@ class ModelInstance:
                     model=model,
                     load_balancing_configs=current_model_setting.load_balancing_configs,
                     managed_credentials=credentials if configuration.custom_configuration.provider else None,
+                    managed_credential_id=credential_id,
                 )
 
                 return lb_model_manager
@@ -272,26 +302,59 @@ class ModelInstance:
     ) -> LLMResult | Generator:
         """Execute already-admitted LLM inputs; subclasses own accounting before results return.
 
-        Called only by the public guarded invocation path. Provider and load
-        balancing failures propagate; this step performs no moderation itself.
+        The public boundary retains SYSTEM and explicit checks. Native platform
+        checks bind inside each selected-credential attempt, so mixed BYOK load
+        balancing cannot either inherit or bypass managed-credential moderation.
         """
         if not isinstance(self.model_type_instance, LargeLanguageModel):
             raise Exception("Model type instance is not LargeLanguageModel")
         request_metadata = self._resolve_request_metadata(request_metadata)
-        return cast(
-            LLMResult | Generator,
-            self._round_robin_invoke(
-                self.model_type_instance.invoke,
-                model=self.model_name,
-                credentials=self.credentials,
-                prompt_messages=list(prompt_messages),
+        llm = self.model_type_instance
+
+        def invoke(
+            *,
+            model: str,
+            credentials: dict[str, Any],
+            prompt_messages: list[PromptMessage],
+            model_parameters: dict[str, Any] | None,
+            tools: list[PromptMessageTool] | None,
+            stop: list[str] | None,
+            stream: bool,
+            callbacks: list[Callback] | None,
+            request_metadata: Mapping[str, object] | None,
+        ) -> LLMResult | Generator:
+            selected_id = (
+                self.load_balancing_manager.selected_credential_id(credentials)
+                if self.load_balancing_manager is not None
+                else self.credential_id
+            )
+            native_policy = bind_native_model_moderation_policy(self.provider_model_bundle, credential_id=selected_id)
+            if native_policy is not None:
+                native_policy.check_inputs(prompt_messages)
+            response = llm.invoke(
+                model=model,
+                credentials=credentials,
+                prompt_messages=prompt_messages,
                 model_parameters=model_parameters,
-                tools=list(tools) if tools else None,
-                stop=list(stop) if stop else None,
+                tools=tools,
+                stop=stop,
                 stream=stream,
                 callbacks=callbacks,
                 request_metadata=request_metadata,
-            ),
+            )
+            return native_policy.check_output(response) if native_policy is not None else response
+
+        return self._round_robin_invoke(
+            invoke,
+            model=self.model_name,
+            credentials=self.credentials,
+            prompt_messages=list(prompt_messages),
+            model_parameters=model_parameters,
+            tools=list(tools) if tools else None,
+            stop=list(stop) if stop else None,
+            stream=stream,
+            callbacks=callbacks,
+            request_metadata=request_metadata,
         )
 
     def get_llm_num_tokens(
@@ -869,7 +932,7 @@ class ModelManager:
     """Resolves :class:`ModelInstance` objects for a tenant and provider.
 
     When ``enable_credentials_cache`` is ``True``, resolved credentials for each
-    ``(tenant_id, provider, model_type, model, provider_type)`` are stored in
+    ``(tenant_id, provider, model_type, model, provider_type, tokener_funded)`` are stored in
     ``_credentials_cache`` and reused. That can return **stale** credentials after
     API keys or provider settings change, so a manager constructed with
     ``enable_credentials_cache=True`` should not be kept for the lifetime of a
@@ -897,7 +960,8 @@ class ModelManager:
         """
         self._provider_manager = provider_manager
         self._moderation = moderation
-        self._credentials_cache: dict[tuple[str, str, str, str, ProviderType], Any] = {}
+        self._credentials_cache: dict[tuple[str, str, str, str, ProviderType, bool], Any] = {}
+        self._credential_ids_cache: dict[tuple[str, str, str, str, ProviderType, bool], str | None] = {}
         self._enable_credentials_cache = enable_credentials_cache
         self._request_metadata = dict(request_metadata) if request_metadata else None
 
@@ -1006,7 +1070,16 @@ class ModelManager:
         effective_request_metadata = self._resolve_request_metadata(request_metadata)
         moderation = self._moderation if model_type == ModelType.LLM else None
 
-        cred_cache_key = (tenant_id, provider, model_type.value, model, configuration.using_provider_type)
+        # A cached SYSTEM selection must never replace newly selected BYOK, or
+        # resurrect the original vendor credentials after a billing handoff.
+        cred_cache_key = (
+            tenant_id,
+            provider,
+            model_type.value,
+            model,
+            configuration.using_provider_type,
+            configuration.system_configuration.tokener_funded,
+        )
 
         if cred_cache_key in self._credentials_cache:
             return model_instance_class(
@@ -1015,6 +1088,7 @@ class ModelManager:
                 deepcopy(self._credentials_cache[cred_cache_key]),
                 effective_request_metadata,
                 moderation=moderation,
+                credential_id=self._credential_ids_cache.get(cred_cache_key),
             )
 
         ret = model_instance_class(
@@ -1022,6 +1096,7 @@ class ModelManager:
         )
         if self._enable_credentials_cache:
             self._credentials_cache[cred_cache_key] = deepcopy(ret.credentials)
+            self._credential_ids_cache[cred_cache_key] = ret.credential_id
         return ret
 
     def get_default_provider_model_name(self, tenant_id: str, model_type: ModelType) -> tuple[str | None, str | None]:
@@ -1086,6 +1161,7 @@ class LBModelManager:
         model: str,
         load_balancing_configs: list[ModelLoadBalancingConfiguration],
         managed_credentials: dict[str, Any] | None = None,
+        managed_credential_id: str | None = None,
     ):
         """
         Load balancing model manager
@@ -1100,7 +1176,10 @@ class LBModelManager:
         self._provider = provider
         self._model_type = model_type
         self._model = model
-        self._load_balancing_configs = load_balancing_configs
+        # Applying __inherit__ belongs to this instance's credential snapshot;
+        # never mutate the shared provider configuration used by other instances.
+        self._load_balancing_configs = [configuration.model_copy() for configuration in load_balancing_configs]
+        self._managed_credential_id = managed_credential_id
 
         for load_balancing_config in self._load_balancing_configs[:]:  # Iterate over a shallow copy of the list
             if load_balancing_config.name == "__inherit__":
@@ -1109,6 +1188,17 @@ class LBModelManager:
                     self._load_balancing_configs.remove(load_balancing_config)
                 else:
                     load_balancing_config.credentials = managed_credentials
+
+    def selected_credential_id(self, credentials: dict[str, Any]) -> str | None:
+        """Use the selected config's object identity, never equality of plaintext keys."""
+        for configuration in self._load_balancing_configs:
+            if configuration.credentials is credentials:
+                if configuration.name == "__inherit__":
+                    return self._managed_credential_id
+                if configuration.credential_source_type == CredentialSourceType.PROVIDER:
+                    return configuration.credential_id
+                return None
+        return None
 
     def fetch_next(self) -> ModelLoadBalancingConfiguration | None:
         """

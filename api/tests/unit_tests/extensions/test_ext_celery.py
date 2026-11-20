@@ -328,7 +328,7 @@ class TestCelerySslCases:
                 assert result is not None
                 assert result["ssl_cert_reqs"] == ssl.CERT_NONE  # Should default to CERT_NONE
 
-        def test_celery_init_applies_ssl_to_broker_and_backend(self):
+        def test_celery_init_applies_ssl_to_broker_and_backend(self) -> None:
             """Test that SSL options are applied to both broker and backend when using Redis."""
             mock_config = MagicMock()
             mock_config.HUMAN_INPUT_TIMEOUT_TASK_INTERVAL = 1
@@ -346,6 +346,7 @@ class TestCelerySslCases:
 
             # Mock all the scheduler configs
             mock_config.CELERY_BEAT_SCHEDULER_TIME = 1
+            mock_config.ENABLE_TOKENER_BOOTSTRAP_RECOVERY_TASK = False
             mock_config.AGENT_SANDBOX_METERING_ENABLED = False
             mock_config.ENABLE_CONVERSATION_CLEANUP_TASK = False
             mock_config.CONVERSATION_CLEANUP_TASK_INTERVAL = 5
@@ -387,8 +388,9 @@ class TestCelerySslCases:
                 # Check that SSL is also applied to Redis backend
                 assert "redis_backend_use_ssl" in celery_app.conf
                 assert celery_app.conf["redis_backend_use_ssl"] is not None
+                assert "tokener_bootstrap_recovery_sweeper" not in celery_app.conf["beat_schedule"]
 
-        def test_celery_init_registers_required_agent_and_conversation_tasks(self):
+        def test_celery_init_registers_required_agent_and_conversation_tasks(self) -> None:
             mock_config = MagicMock()
             mock_config.BROKER_USE_SSL = False
             mock_config.REDIS_KEY_PREFIX = "enterprise-a"
@@ -400,9 +402,11 @@ class TestCelerySslCases:
             mock_config.LOG_FORMAT = "%(message)s"
             mock_config.LOG_TZ = "UTC"
             mock_config.LOG_FILE = None
-            mock_config.CELERY_TASK_ANNOTATIONS = {}
+            mock_config.CELERY_TASK_ANNOTATIONS = dict[str, object]()
 
             mock_config.CELERY_BEAT_SCHEDULER_TIME = 1
+            mock_config.ENABLE_TOKENER_BOOTSTRAP_RECOVERY_TASK = True
+            mock_config.TOKENER_BOOTSTRAP_RECOVERY_TASK_INTERVAL = 3
             mock_config.AGENT_SANDBOX_METERING_ENABLED = False
             mock_config.ENABLE_EVALUATION_RUN_RECONCILER = True
             mock_config.ENABLE_CONVERSATION_CLEANUP_TASK = True
@@ -460,6 +464,12 @@ class TestCelerySslCases:
             assert celery_app.conf["beat_schedule"]["evaluation-run-reconciler"]["task"] == (
                 "tasks.evaluation_task.reconcile_stale_evaluation_runs"
             )
+            assert "tasks.bootstrap_tokener_tenant_task" in celery_app.conf["imports"]
+            assert celery_app.conf["beat_schedule"]["tokener_bootstrap_recovery_sweeper"] == {
+                "task": "tasks.bootstrap_tokener_tenant_task.sweep_pending_tokener_integrations_task",
+                "schedule": timedelta(minutes=3),
+                "options": {"queue": "plugin"},
+            }
 
 
 class TestCommunityTelemetryCeleryCases:

@@ -651,13 +651,16 @@ class ProviderManager:
         if cached_configurations is not None:
             return cached_configurations
 
+        model_billing = FeatureService.get_model_billing_resolution(tenant_id)
+
         # Get all provider records of the workspace
         provider_name_to_provider_records_dict = self._get_all_providers(tenant_id)
 
         # Initialize trial provider records if not exist
-        provider_name_to_provider_records_dict = self._init_trial_provider_records(
-            tenant_id, provider_name_to_provider_records_dict
-        )
+        if model_billing.uses_legacy_message_credits:
+            provider_name_to_provider_records_dict = self._init_trial_provider_records(
+                tenant_id, provider_name_to_provider_records_dict
+            )
 
         # append providers with langgenius/openai/openai
         provider_name_list = list(provider_name_to_provider_records_dict.keys())
@@ -748,7 +751,12 @@ class ProviderManager:
             )
 
             # Convert to system configuration
-            system_configuration = self._to_system_configuration(tenant_id, provider_entity, provider_records)
+            if model_billing.uses_tokener:
+                system_configuration = self._to_system_configuration(
+                    tenant_id, provider_entity, provider_records, tokener_funded=True
+                )
+            else:
+                system_configuration = self._to_system_configuration(tenant_id, provider_entity, provider_records)
 
             # Get preferred provider type
             preferred_provider_type_record = provider_name_to_preferred_model_provider_records_dict.get(provider_name)
@@ -1497,7 +1505,12 @@ class ProviderManager:
         return credentials
 
     def _to_system_configuration(
-        self, tenant_id: str, provider_entity: ProviderEntity, provider_records: list[Provider]
+        self,
+        tenant_id: str,
+        provider_entity: ProviderEntity,
+        provider_records: list[Provider],
+        *,
+        tokener_funded: bool = False,
     ) -> SystemConfiguration:
         """
         Convert to system configuration.
@@ -1526,6 +1539,46 @@ class ProviderManager:
 
         if not PluginService.is_plugin_verified(tenant_id, plugin_provider_entity.plugin_unique_identifier):
             return SystemConfiguration(enabled=False)
+
+        if tokener_funded:
+            # Build the existing hosted catalog without loading legacy credit
+            # balances, initializing legacy provider rows, or exposing source keys.
+            # Tokener enforces the monetary balance; TRIAL/PAID are catalog inputs
+            # here, not separate entitlements or settlement pools.
+            quota_unit = provider_hosting_configuration.quota_unit
+            hosted_quotas = [
+                quota
+                for quota in provider_hosting_configuration.quotas
+                if quota.quota_type in {ProviderQuotaType.TRIAL, ProviderQuotaType.PAID}
+            ]
+            if quota_unit not in {QuotaUnit.CREDITS, QuotaUnit.TIMES} or not hosted_quotas:
+                return SystemConfiguration(enabled=False)
+            restrict_models = (
+                list(
+                    {
+                        (model.model_type, model.model): model
+                        for quota in hosted_quotas
+                        for model in quota.restrict_models
+                    }.values()
+                )
+                if all(quota.restrict_models for quota in hosted_quotas)
+                else []
+            )
+            return SystemConfiguration(
+                enabled=True,
+                tokener_funded=True,
+                current_quota_type=ProviderQuotaType.PAID,
+                quota_configurations=[
+                    QuotaConfiguration(
+                        quota_type=ProviderQuotaType.PAID,
+                        quota_unit=quota_unit,
+                        quota_used=0,
+                        quota_limit=-1,
+                        is_valid=True,
+                        restrict_models=restrict_models,
+                    )
+                ],
+            )
 
         # Convert provider_records to dict
         quota_type_to_provider_records_dict: dict[ProviderQuotaType, Provider] = {}

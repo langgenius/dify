@@ -49,6 +49,8 @@ class WorkspaceFeatureGateway(Protocol):
 
     def get_effective_credit_pool(self, workspace_id: str) -> EffectiveCreditPool: ...
 
+    def get_model_provider_credits(self, workspace_id: str) -> EffectiveCreditPool: ...
+
     def logo_url(self, workspace_id: str) -> str: ...
 
     def get_permission(self, workspace_id: str) -> WorkspacePermission: ...
@@ -110,6 +112,10 @@ class WorkspaceService:
 
     def get_effective_credit_pool(self, workspace_id: str) -> EffectiveCreditPool:
         return self._features.get_effective_credit_pool(workspace_id)
+
+    def get_model_provider_credits(self, workspace_id: str) -> EffectiveCreditPool:
+        """Read the current tenant's credits or native Tokener usage without money mutation."""
+        return self._features.get_model_provider_credits(workspace_id)
 
     def switch_membership(self, account_id: str, workspace_id: str) -> WorkspaceSnapshot:
         return self._workspaces.switch(account_id=account_id, workspace_id=workspace_id)

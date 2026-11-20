@@ -40,6 +40,7 @@ from controllers.console.workspace.tool_providers import (
 )
 from core.entities.provider_entities import CredentialConfiguration
 from enums import CloudPlan, DeploymentEdition
+from enums.model_billing import ModelBillingSource
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
@@ -59,6 +60,7 @@ from services.entities.model_provider_entities import (
     ProviderResponse,
     SystemConfigurationResponse,
 )
+from services.entities.tokener_metering import TokenerTenantMeteringResponse
 from services.workspace.contracts import EffectiveCreditPool
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.helpers.unit.controllers.rbac_introspection import rbac_checks
@@ -367,12 +369,15 @@ class TestModelProviderCreditsApi:
         with patch(
             "controllers.console.workspace.model_providers.application_services",
         ) as services:
-            get_effective_credit_pool = services.return_value.workspaces.management.get_effective_credit_pool
-            get_effective_credit_pool.return_value = credit_pool
+            get_model_provider_credits = services.return_value.workspaces.management.get_model_provider_credits
+            get_model_provider_credits.return_value = credit_pool
             result = method(api, "tenant1")
 
-        get_effective_credit_pool.assert_called_once_with("tenant1")
+        get_model_provider_credits.assert_called_once_with("tenant1")
         assert result == {
+            "model_billing_source": "legacy_message_credits",
+            "tokener_bootstrap_status": None,
+            "tokener_metering": None,
             "pool_type": "paid",
             "quota_limit": -1,
             "quota_used": 999,
@@ -383,17 +388,48 @@ class TestModelProviderCreditsApi:
             "next_credit_reset_date": 1775001600,
         }
 
-    def test_get_without_effective_pool(self) -> None:
+    @pytest.mark.parametrize("native", [False, True])
+    def test_get_without_legacy_pool(self, native: bool) -> None:
         api = ModelProviderCreditsApi()
         method = unwrap(api.get)
+        metering: TokenerTenantMeteringResponse | None = None
+        if native:
+            metering = {
+                "tenant_id": "tenant1",
+                "currency": "USD",
+                "available_usd_micro": "1000000",
+                "current_month": {
+                    "status": "available",
+                    "start_date": "2026-11-01",
+                    "end_date": "2026-11-30",
+                    "billed_usd_micro": "0",
+                    "request_count": "0",
+                },
+                "balance_generated_at": "2026-11-18T00:00:00Z",
+                "usage_generated_at": "2026-11-18T00:00:00Z",
+            }
+        source = ModelBillingSource.TOKENER if native else ModelBillingSource.LEGACY_MESSAGE_CREDITS
 
         with patch(
             "controllers.console.workspace.model_providers.application_services",
         ) as services:
-            services.return_value.workspaces.management.get_effective_credit_pool.return_value = EffectiveCreditPool()
+            get_model_provider_credits = services.return_value.workspaces.management.get_model_provider_credits
+            get_model_provider_credits.return_value = EffectiveCreditPool(
+                model_billing_source=source,
+                tokener_bootstrap_status="ready" if native else None,
+                tokener_metering=metering,
+            )
             result = method(api, "tenant1")
 
+        get_model_provider_credits.assert_called_once_with("tenant1")
         assert result == {
+            "model_billing_source": source.value,
+            "tokener_bootstrap_status": "ready" if native else None,
+            "tokener_metering": (
+                {**metering, "allowance": None, "entitlement_status": None, "entitlement_error_code": None}
+                if metering is not None
+                else None
+            ),
             "pool_type": None,
             "quota_limit": None,
             "quota_used": None,

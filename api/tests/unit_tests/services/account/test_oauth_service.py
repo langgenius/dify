@@ -251,6 +251,11 @@ class FakeRuntime:
     logins: list[tuple[str, str]] = field(default_factory=list)
     default_workspace_id: str | None = None
     workspace_creation_error: Exception | None = None
+    registration_accounts: list[str] = field(default_factory=list)
+
+    def create_registration_owner_workspace(self, account_id: str) -> None:
+        self.registration_accounts.append(account_id)
+        self.create_owner_workspace(account_id)
 
     def create_owner_workspace(self, account_id: str) -> None:
         self._assert_identity_linked(account_id)
