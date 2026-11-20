@@ -19,6 +19,10 @@ def agent_app_variables_to_user_input_form(app_variables: Sequence[AppVariableCo
         }
         if variable.default is not None:
             form_item["default"] = variable.default
+        if variable.hide:
+            form_item["hide"] = True
+        if form_type == "select" and variable.options:
+            form_item["options"] = variable.options
         user_input_form.append({form_type: form_item})
     return user_input_form
 
@@ -27,10 +31,12 @@ def _form_type_for_agent_variable(variable_type: str) -> str:
     normalized = variable_type.strip().lower()
     if normalized in {"number", "integer", "float"}:
         return "number"
-    if normalized in {"boolean", "bool"}:
+    if normalized in {"boolean", "bool", "checkbox"}:
         return "checkbox"
     if normalized in {"paragraph", "long_text", "multiline"}:
         return "paragraph"
+    if normalized == "select":
+        return "select"
     return "text-input"
 
 

@@ -381,6 +381,40 @@ describe('agent composer store conversions', () => {
     })
   })
 
+  it('should round-trip declared app variables without rewriting untouched ones', () => {
+    const config: AgentSoulConfig = {
+      app_variables: [
+        { name: 'customer_id', type: 'text-input', required: true },
+        { name: 'priority', type: 'select', options: ['low', 'high'], default: 'low' },
+        { name: 'retries', type: 'number' },
+        { name: 'vip', type: 'boolean', default: true },
+        { name: 'employee_id', type: 'text-input', hide: true },
+        { name: 'beta', type: 'checkbox', default: false },
+      ],
+    }
+
+    const formState = agentSoulConfigToFormState(config)
+
+    expect(formState.appVariables.map((variable) => variable.id)).toEqual(
+      agentSoulConfigToFormState(config).appVariables.map((variable) => variable.id),
+    )
+    expect(formStateToAgentSoulConfig({ formState }).app_variables).toEqual([
+      { name: 'customer_id', type: 'text-input', required: true, hide: false },
+      {
+        name: 'priority',
+        type: 'select',
+        required: false,
+        hide: false,
+        default: 'low',
+        options: ['low', 'high'],
+      },
+      { name: 'retries', type: 'number', required: false, hide: false },
+      { name: 'vip', type: 'checkbox', required: false, hide: false, default: true },
+      { name: 'employee_id', type: 'text-input', required: false, hide: true },
+      { name: 'beta', type: 'checkbox', required: false, hide: false, default: false },
+    ])
+  })
+
   it('should enable post-processing when publishing weighted score retrieval', () => {
     const baseConfig = {
       knowledge: {

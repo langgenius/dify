@@ -5,7 +5,7 @@ import { useDocLink } from '@/context/i18n'
 import { DocsLink } from './docs-link'
 
 type AgentConfigureTipContentProps = {
-  type: 'prompt' | 'skills' | 'files' | 'tools' | 'knowledge' | 'env'
+  type: 'prompt' | 'skills' | 'files' | 'tools' | 'knowledge' | 'env' | 'appVariables'
 }
 
 export function AgentConfigureTipContent({ type }: AgentConfigureTipContentProps) {
@@ -33,6 +33,20 @@ export function AgentConfigureTipContent({ type }: AgentConfigureTipContentProps
             docLink: (
               <DocsLink href={docLink('/use-dify/build/new-agent/build#environment-variables')} />
             ),
+          }}
+        />
+      </span>
+    )
+  }
+
+  if (type === 'appVariables') {
+    return (
+      <span className="whitespace-pre-line">
+        <Trans
+          i18nKey={($) => $['agentDetail.configure.advancedSettings.appVariablesEditor.richTip']}
+          ns="agentV2"
+          components={{
+            docLink: <DocsLink href={docLink('/use-dify/publish/webapp/web-app-settings')} />,
           }}
         />
       </span>
