@@ -176,11 +176,11 @@ def test_set_validates_the_url_outside_the_transaction(
 
     class _OrderedSession(_NullSession):
         def __enter__(self) -> "_OrderedSession":
-            return self
-
-        def begin(self) -> "_OrderedSession":
             order.append("session")
             return self
+
+        def commit(self) -> None:
+            return None
 
     service.list_providers.return_value = [SimpleNamespace(id=_PROVIDER_ID)]
     monkeypatch.setattr(mcp_providers, "_service", lambda _session: service)
@@ -257,6 +257,3 @@ class _NullSession:
 
     def __exit__(self, *_a: object) -> None:
         return None
-
-    def begin(self) -> "_NullSession":
-        return self

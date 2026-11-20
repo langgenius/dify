@@ -75,7 +75,7 @@ def _describe(tenant_id: str, provider_id: str) -> McpProviderResponse:
     Raises ProviderNotFound when `provider_id` names no provider of the
     workspace.
     """
-    with _session() as session, session.begin():
+    with _session() as session:
         service = _service(session)
         _require_provider(session, tenant_id, provider_id)
         provider = service.get_provider_by_id(provider_id=provider_id, tenant_id=tenant_id)
@@ -130,7 +130,7 @@ class McpProvidersApi(Resource):
         server URL.
         """
         configuration = body.configuration or MCPConfiguration()
-        with _session() as session, session.begin(), _mcp_errors():
+        with _session() as session, _mcp_errors():
             result = _service(session).create_provider(
                 tenant_id=ctx.workspace.id,
                 user_id=ctx.account.id,
@@ -146,6 +146,7 @@ class McpProvidersApi(Resource):
                 identity_mode=IdentityMode.OFF,
             )
             provider_id = result.id
+            session.commit()
 
         # Best-effort tool fetch in a second, short transaction so the first
         # one holds no locks across network I/O.
@@ -156,10 +157,11 @@ class McpProvidersApi(Resource):
                 timeout=configuration.timeout,
                 sse_read_timeout=configuration.sse_read_timeout,
             )
-            with _session() as session, session.begin():
+            with _session() as session:
                 provider = _service(session).get_provider_by_id(provider_id=provider_id, tenant_id=ctx.workspace.id)
                 provider.authed = reconnect.authed
                 provider.tools = reconnect.tools
+                session.commit()
         except Exception:
             logger.warning("Failed to fetch MCP tools after creation", exc_info=True)
 
@@ -219,7 +221,7 @@ class McpProviderApi(Resource):
         """
         configuration = body.configuration or MCPConfiguration()
 
-        with _session() as session, session.begin(), _mcp_errors():
+        with _session() as session, _mcp_errors():
             _require_provider(session, ctx.workspace.id, provider_id)
             validation_data = _service(session).get_provider_for_url_validation(
                 tenant_id=ctx.workspace.id, provider_id=provider_id
@@ -232,7 +234,7 @@ class McpProviderApi(Resource):
                 validation_data=validation_data,
             )
 
-        with _session() as session, session.begin(), _mcp_errors():
+        with _session() as session, _mcp_errors():
             service = _service(session)
             existing = service.get_provider_by_id(provider_id=provider_id, tenant_id=ctx.workspace.id)
             service.update_provider(
@@ -250,6 +252,7 @@ class McpProviderApi(Resource):
                 validation_result=validation_result,
                 identity_mode=IdentityMode(existing.identity_mode),
             )
+            session.commit()
 
         return _describe(ctx.workspace.id, provider_id)
 
@@ -268,9 +271,10 @@ class McpProviderApi(Resource):
         Apps that used the provider's tools lose them. Answers 404 when
         `provider_id` names no provider.
         """
-        with _session() as session, session.begin(), _mcp_errors():
+        with _session() as session, _mcp_errors():
             _require_provider(session, ctx.workspace.id, provider_id)
             _service(session).delete_provider(tenant_id=ctx.workspace.id, provider_id=provider_id)
+            session.commit()
         return SimpleResultResponse(result="success")
 
 
@@ -292,10 +296,11 @@ class McpProviderRefreshApi(Resource):
         list; the response reports the result. Answers 404 when `provider_id`
         names no provider.
         """
-        with _session() as session, session.begin(), _mcp_errors():
+        with _session() as session, _mcp_errors():
             _require_provider(session, ctx.workspace.id, provider_id)
             _service(session).list_provider_tools(
                 tenant_id=ctx.workspace.id,
                 provider_id=provider_id,
             )
+            session.commit()
         return _describe(ctx.workspace.id, provider_id)
