@@ -3285,6 +3285,27 @@ export const zWorkflowDraftVariableListResponse = z.object({
 })
 
 /**
+ * TriggerNodeLimitDetails
+ */
+export const zTriggerNodeLimitDetails = z.object({
+  count: z.int(),
+  limit: z.int(),
+})
+
+/**
+ * TriggerNodeLimitExceededError
+ *
+ * The workflow has more trigger nodes than the workspace plan allows.
+ */
+export const zTriggerNodeLimitExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trigger_node_limit_exceeded'),
+    details: zTriggerNodeLimitDetails.optional(),
+    status: z.literal(403),
+  }),
+)
+
+/**
  * AppAnnotationReplyDisabledResponse
  */
 export const zAppAnnotationReplyDisabledResponse = z.object({

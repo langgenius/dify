@@ -20,9 +20,9 @@ function EmptyTableHeader() {
           <th
             key={label}
             className={cn(
-              'pr-2 pl-3 text-left',
-              index === 0 && 'rounded-l-lg',
-              index === SKELETON_HEADER_LABELS.length - 1 && 'rounded-r-lg',
+              'ps-3 pe-2 text-start',
+              index === 0 && 'rounded-s-lg',
+              index === SKELETON_HEADER_LABELS.length - 1 && 'rounded-e-lg',
             )}
           >
             <div className="flex h-7 items-center">
@@ -144,22 +144,22 @@ function ActionsSkeleton() {
 function EmptyTableRow({ row }: { row: SkeletonRow }) {
   return (
     <tr className="h-14">
-      <td className="border-b border-divider-subtle pr-2 pl-3">
+      <td className="border-b border-divider-subtle ps-3 pe-2">
         <EnvironmentSkeleton name={row.environment} width={row.environmentWidth} />
       </td>
-      <td className="border-b border-divider-subtle pr-2 pl-3">
+      <td className="border-b border-divider-subtle ps-3 pe-2">
         <VersionSkeleton badge={row.versionBadge} version={row.version} />
       </td>
       <td className="border-b border-divider-subtle px-2">
         <StatusSkeleton label={row.status} />
       </td>
-      <td className="border-b border-divider-subtle pr-2 pl-3">
+      <td className="border-b border-divider-subtle ps-3 pe-2">
         <ActivitySkeleton activity={row.activity} actor={row.actor} />
       </td>
-      <td className="border-b border-divider-subtle pr-2 pl-3">
+      <td className="border-b border-divider-subtle ps-3 pe-2">
         <AccessPointSkeleton activeCount={row.accessPointCount} />
       </td>
-      <td className="border-b border-divider-subtle pr-2 pl-3">
+      <td className="border-b border-divider-subtle ps-3 pe-2">
         <ActionsSkeleton />
       </td>
     </tr>

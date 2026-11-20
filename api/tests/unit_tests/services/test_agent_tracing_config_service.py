@@ -13,6 +13,7 @@ from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfi
 from services.agent_tracing_config_service import AgentTracingConfigService
 from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.app_tracing_config_service import AppTraceSettings, AppTracingConfigService
+from services.evaluation_service import EvaluationService
 from tests.helpers.unit.services.tracing_ports import deployment_provider_configs
 
 type TraceConfigArguments = tuple[()] | tuple[AppTraceSettings] | tuple[str] | tuple[str, dict[str, str]]
@@ -53,7 +54,10 @@ def test_agent_operations_resolve_tenant_owner_before_app_services(
     app_services: AppServices,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    owners = AgentAppRepository(session_factory=sqlite_session_factory)
+    owners = AgentAppRepository(
+        session_factory=sqlite_session_factory,
+        stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup,
+    )
     settings = app_services.console
     configs = AppTracingConfigService(
         configs=SQLAlchemyAppTracingConfigRepository(session_factory=sqlite_session_factory),

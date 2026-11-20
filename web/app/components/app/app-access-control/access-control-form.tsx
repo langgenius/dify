@@ -54,7 +54,7 @@ export function AccessControlForm({
   return (
     <AccessControlDialog show onClose={onClose}>
       <div className="flex flex-col gap-y-3">
-        <div className="pt-6 pr-14 pb-3 pl-6">
+        <div className="ps-6 pe-14 pt-6 pb-3">
           <DialogTitle>{t(($) => $['accessControlDialog.title'], { ns: 'app' })}</DialogTitle>
           <DialogDescription className="mt-1">
             {t(($) => $['accessControlDialog.description'], { ns: 'app' })}
@@ -106,7 +106,7 @@ export function AccessControlForm({
                   <InfotipTrigger
                     aria-labelledby={externalAccessLabelId}
                     className="text-text-warning-secondary hover:text-text-warning-secondary"
-                    iconSize="large"
+                    size="lg"
                   />
                   <InfotipContent aria-labelledby={externalAccessLabelId}>
                     {t(($) => $['accessControlDialog.webAppSSONotEnabledTip'], { ns: 'app' })}
@@ -125,7 +125,7 @@ export function AccessControlForm({
                 <Infotip>
                   <InfotipTrigger
                     aria-labelledby={publicAccessLabelId}
-                    className="h-4 w-4 shrink-0 text-text-warning-secondary hover:text-text-warning-secondary"
+                    className="text-text-warning-secondary hover:text-text-warning-secondary"
                   />
                   <InfotipContent aria-labelledby={publicAccessLabelId}>
                     {t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], {

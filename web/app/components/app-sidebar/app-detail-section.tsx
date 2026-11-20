@@ -3,12 +3,12 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
-import { useQueries } from '@tanstack/react-query'
+import { useQueries, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { Fragment, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getAppIdFromPathname } from '@/app/components/app/app-detail-route'
-import { useEvaluationAccess } from '@/app/components/billing/use-evaluation-access'
+import { selectEvaluationEntry } from '@/app/components/evaluation/entry'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -64,8 +64,11 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
     ],
   })
   const systemFeatures = featuresQuery.data
-  const { isVisible: isEvaluationVisible, requiresUpgrade: evaluationRequiresUpgrade } =
-    useEvaluationAccess()
+  const { data: evaluationEntry } = useQuery(
+    consoleQuery.features.get.queryOptions({ select: selectEvaluationEntry }),
+  )
+  const isEvaluationVisible = evaluationEntry?.visible ?? false
+  const evaluationRequiresUpgrade = evaluationEntry?.requiresUpgrade ?? false
   const currentUserId = profileQuery.data?.profile.id
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures?.rbac_enabled

@@ -107,7 +107,7 @@ export function AppListHeader({
             aria-label={t(($) => $['gotoAnything.actions.searchApplications'], { ns: 'app' })}
           />
         </div>
-        <div className="ml-auto flex max-w-full min-w-0 flex-wrap items-center justify-end gap-2">
+        <div className="ms-auto flex max-w-full min-w-0 flex-wrap items-center justify-end gap-2">
           <StudioListLink
             href={snippetsHref}
             className="inline-flex h-8 cursor-pointer items-center justify-center gap-1 rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3.5 text-[13px] leading-4 font-medium whitespace-nowrap text-components-button-secondary-text shadow-xs outline-hidden backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"

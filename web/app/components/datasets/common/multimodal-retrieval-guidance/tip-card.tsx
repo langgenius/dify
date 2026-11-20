@@ -25,12 +25,12 @@ const renderDescription = (description: string): ReactNode => {
 
 export const TipCard = ({ title, description, dismissLabel, onDismiss }: TipCardProps) => {
   return (
-    <div className="relative flex gap-3 overflow-hidden rounded-xl border border-divider-regular bg-linear-to-b from-components-chat-input-audio-bg-alt to-components-chat-input-audio-bg py-3 pr-0.75 pl-3 shadow-xs">
+    <div className="relative flex gap-3 overflow-hidden rounded-xl border border-divider-regular bg-linear-to-b from-components-chat-input-audio-bg-alt to-components-chat-input-audio-bg py-3 ps-3 pe-0.75 shadow-xs">
       <div className="relative size-9 shrink-0">
         <img
           src={PictureFrame.src}
           alt=""
-          className="absolute -top-1.5 -left-1.5 size-12 max-w-none"
+          className="absolute -inset-s-1.5 -top-1.5 size-12 max-w-none"
           aria-hidden="true"
         />
       </div>

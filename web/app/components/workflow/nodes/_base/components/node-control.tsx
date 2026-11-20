@@ -27,7 +27,7 @@ const NodeControl: FC<NodeControlProps> = ({ id, data, pluginInstallLocked }) =>
   return (
     <div
       className={cn(
-        'pointer-events-none absolute -top-8 right-0 flex h-8 origin-bottom-right pb-1 opacity-0',
+        'pointer-events-none absolute inset-e-0 -top-8 flex h-8 origin-bottom-right pb-1 opacity-0',
         'focus-within:pointer-events-auto focus-within:opacity-100',
         !pluginInstallLocked && 'group-hover:pointer-events-auto group-hover:opacity-100',
         data.selected && 'pointer-events-auto opacity-100',

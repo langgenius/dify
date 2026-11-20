@@ -200,7 +200,7 @@ export function DocumentChunkTreePanel() {
         aria-selected={activeSelectedNodeId === node.id}
         aria-setsize={hasNextPage ? -1 : setSize}
         className={cn(
-          'flex h-7 w-full items-center gap-1.5 rounded-lg px-2 text-left system-xs-regular outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
+          'flex h-7 w-full items-center gap-1.5 rounded-lg px-2 text-start system-xs-regular outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
           activeSelectedNodeId === node.id && 'bg-state-accent-hover text-text-accent',
           treeHasFocus &&
             currentFocusedNodeId === node.id &&
@@ -270,7 +270,7 @@ export function DocumentChunkTreePanel() {
             currentFocusedNodeId ? `document-chunk-treeitem-${currentFocusedNodeId}` : undefined
           }
           aria-labelledby={treeHeadingId}
-          className="min-h-0 flex-1 space-y-0.5 overflow-auto py-1 pr-5 outline-hidden"
+          className="min-h-0 flex-1 space-y-0.5 overflow-auto py-1 pe-5 outline-hidden"
           role="tree"
           tabIndex={0}
           onBlur={() => setTreeHasFocus(false)}

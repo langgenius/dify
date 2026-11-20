@@ -186,7 +186,7 @@ const AddOAuthButton = ({
       <Button
         variant={buttonVariant}
         className={cn(
-          'h-8 min-w-0 flex-1 rounded-r-none p-0 hover:bg-components-button-primary-bg-hover',
+          'h-8 min-w-0 flex-1 rounded-e-none p-0 hover:bg-components-button-primary-bg-hover',
           buttonLeftClassName,
         )}
         disabled={disabled}
@@ -196,7 +196,7 @@ const AddOAuthButton = ({
         {is_oauth_custom_client_enabled && (
           <Badge
             className={cn(
-              'mr-0.5',
+              'me-0.5',
               buttonVariant === 'primary' &&
                 'border-text-primary-on-surface bg-components-badge-bg-dimm text-text-primary-on-surface',
             )}
@@ -216,7 +216,7 @@ const AddOAuthButton = ({
         aria-label={t(($) => $['auth.oauthClientSettings'], { ns: 'plugin' })}
         size="lg"
         className={cn(
-          'shrink-0 rounded-l-none hover:bg-components-button-primary-bg-hover',
+          'shrink-0 rounded-s-none hover:bg-components-button-primary-bg-hover',
           buttonRightClassName,
         )}
         disabled={disabled}
