@@ -42,7 +42,8 @@ _FEATURE_POLICY_MODULES = frozenset(
 )
 _ENUM_MODULES = frozenset({"enums", "api.enums"})
 _FIX_GUIDANCE = (
-    " Reuse or add a named capability in FeatureService or SystemFeatureService."
+    " Reuse or add a named capability in api/services/feature_service.py,"
+    " or use api/services/system_feature_service.py for deployment-wide system policies."
     " See docs/FEATURE_FLAGS.md#fixing-a-lint-error."
 )
 _DEPENDENCY_MESSAGE = (
