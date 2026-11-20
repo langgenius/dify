@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
+from functools import partial
 
 import pytest
 
@@ -62,9 +63,10 @@ class FakeWorkspaces:
 @dataclass
 class FakeInvitations:
     invitation: LoginInvitation | None = None
+    resolutions: list[tuple[str, str]] = field(default_factory=list)
 
     def resolve(self, *, email: str, token: str) -> LoginInvitation | None:
-        _ = email, token
+        self.resolutions.append((email, token))
         return self.invitation
 
 
@@ -1052,6 +1054,7 @@ def test_end_user_password_login_needs_no_workspace() -> None:
     assert result.tokens == TOKENS
     assert result.workspace_found is None
     assert deps.workspaces.checks == []
+    assert deps.invitations.resolutions == []
     assert deps.accounts.completions[0].activate_pending_account is False
 
 
@@ -1072,11 +1075,22 @@ def test_end_user_email_login_does_not_provision_workspace(existing: bool) -> No
     )
 
 
-def test_end_user_mode_rejects_invitation_before_authentication() -> None:
+@pytest.mark.parametrize("email_code", [False, True])
+def test_end_user_mode_rejects_invitation_before_authentication(email_code: bool) -> None:
     deps = Dependencies()
+    service = deps.service()
+    if email_code:
+        login = partial(
+            service.login_with_email_code, _email_code_command(mode=LoginMode.END_USER, invite_token="invitation")
+        )
+    else:
+        login = partial(
+            service.login_with_password, _password_command(mode=LoginMode.END_USER, invite_token="invitation")
+        )
     with pytest.raises(ValueError, match="workspace invitation"):
-        deps.service().login_with_password(_password_command(mode=LoginMode.END_USER, invite_token="invitation"))
+        login()
     assert deps.accounts.completions == []
+    assert deps.invitations.resolutions == []
 
 
 def test_end_user_registration_still_respects_registration_policy() -> None:

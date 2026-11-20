@@ -5,14 +5,18 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import Link from '@/next/link'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
 import { basePath } from '@/utils/var'
 
 export default function CreateWorkspace() {
   const { t } = useTranslation(['common'])
+  const { data: webappUrl } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: (data) => data.webapp_url,
+  })
   const createWorkspace = useMutation(
     consoleQuery.workspaces.activate.post.mutationOptions({
       context: { silent: true },
@@ -84,12 +88,12 @@ export default function CreateWorkspace() {
           >
             {t(($) => $['workspace.create.continue'], { ns: 'common' })}
           </Button>
-          <Link
-            href="/my-apps"
+          <a
+            href={`${webappUrl}/my-apps`}
             className={cn(buttonVariants({ variant: 'ghost' }), 'w-full text-text-tertiary')}
           >
             {t(($) => $['workspace.create.backToMyApps'], { ns: 'common' })}
-          </Link>
+          </a>
         </div>
       </Form>
     </div>

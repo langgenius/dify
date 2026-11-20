@@ -202,6 +202,7 @@ export default function ChangeEmailDialog({ onClose, email, actions }: Props) {
   return (
     <Dialog
       open
+      disablePointerDismissal
       onOpenChange={(open, details) => {
         if (open) return
         if (submissionRef.current) {
