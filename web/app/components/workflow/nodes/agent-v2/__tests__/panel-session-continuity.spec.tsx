@@ -52,4 +52,8 @@ describe('Continue agent session', () => {
     }).render()
     expect(sessionSwitch()).not.toBeChecked()
   })
+  it('cannot change the setting in a read-only canvas', () => {
+    createPanelEnvironment({ resource: chatflow, readonly: true }).render()
+    expect(sessionSwitch()).toHaveAttribute('aria-disabled', 'true')
+  })
 })
