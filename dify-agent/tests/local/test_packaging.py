@@ -7,6 +7,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 CLIENT_SHARED_DTO_DEPENDENCIES = {
+    "httpcore==1.0.9",
     "httpx==0.28.1",
     "httpx2>=2.5.0,<3.0.0",
     "pydantic>=2.12.5,<2.13",
