@@ -37,7 +37,7 @@ def build_rbac_services(
 ) -> RBACServices:
     settings = DeploymentRBACSettings()
     return RBACServices(
-        queries=ResourceQueryService(apps=apps, datasets=datasets),
+        queries=ResourceQueryService(apps=apps, datasets=datasets, skills=workspaces),
         roles=RoleService(
             roles=enterprise.RBACService.KnowledgeFSRoles, catalog=enterprise.RBACService.Catalog, settings=settings
         ),

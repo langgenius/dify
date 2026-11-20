@@ -19,6 +19,36 @@ const mocks = getMocks()
 describe('SkillDetailPage metadata', () => {
   beforeEach(resetDetailPageFixture)
 
+  it.each([
+    { createdBy: 'user-1', globalDelete: false, allowed: true },
+    { createdBy: 'other', globalDelete: false, allowed: false },
+    { createdBy: 'other', globalDelete: true, allowed: true },
+  ])(
+    'handles detail deletion without edit: $createdBy, global=$globalDelete',
+    async ({ createdBy, globalDelete, allowed }) => {
+      mocks.canEdit = false
+      mocks.canDeleteSkill.mockImplementation((creator) => globalDelete || creator === 'user-1')
+      mocks.skillDetail = createSkillDetail({ created_by: createdBy })
+      const user = userEvent.setup()
+      renderSkillDetailPage()
+      await screen.findAllByText('github-actions-failure-debugging')
+      const menuName = 'skill.skillManagement.moreActions:{"name":"Untitled skill"}'
+      if (!allowed) {
+        expect(screen.queryByRole('button', { name: menuName })).not.toBeInTheDocument()
+        return
+      }
+      await user.click(await screen.findByRole('button', { name: menuName }))
+      expect(
+        screen.queryByRole('menuitem', { name: 'common.operation.duplicate' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('menuitem', { name: 'common.operation.rename' }),
+      ).not.toBeInTheDocument()
+      await user.click(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
+      expect(await screen.findByRole('alertdialog')).toBeVisible()
+    },
+  )
+
   it('previews selected workspace tags immediately and saves once when the selector closes', async () => {
     const user = userEvent.setup()
     renderSkillDetailPage()
