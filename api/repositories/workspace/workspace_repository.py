@@ -89,6 +89,7 @@ class WorkspaceRepository(
         owner_id: str | None,
         account: AccountCreation | None = None,
         only_if_no_active_workspace: bool = False,
+        first_workspace_after_joining: str | None = None,
     ) -> CreatedWorkspace | None:
         """Commit the account, workspace, membership and defaults as one aggregate.
 
@@ -101,25 +102,35 @@ class WorkspaceRepository(
 
         A recorded Builder origin is immutable. Migrations backfill historical
         origins; runtime assigns an origin only when committing a first creation.
+        After invitation acceptance, the same lock guards the first creation and
+        the account must still be active and belong only to the invited active
+        workspace. The new owner membership does not become current.
         """
         with self._session_factory.begin() as session:
+            owner = None
             if account is not None:
                 owner_id = SQLAlchemyAccountRepository.add(account, session=session).id
             elif owner_id is not None:
                 owner = session.get(Account, owner_id, with_for_update=True)
                 if owner is None:
                     raise WorkspaceOwnerNotFoundError()
-            if (
-                only_if_no_active_workspace
-                and session.scalar(
+            if first_workspace_after_joining is not None and (
+                owner is None or owner.status != AccountStatus.ACTIVE or owner.first_workspace_created_at is not None
+            ):
+                return None
+            if only_if_no_active_workspace or first_workspace_after_joining is not None:
+                active_workspace_ids = session.scalars(
                     select(Tenant.id)
                     .join(TenantAccountJoin, TenantAccountJoin.tenant_id == Tenant.id)
                     .where(TenantAccountJoin.account_id == owner_id, Tenant.status == TenantStatus.NORMAL)
-                    .limit(1)
-                )
-                is not None
-            ):
-                return None
+                    .limit(2)
+                ).all()
+                if only_if_no_active_workspace and active_workspace_ids:
+                    return None
+                if first_workspace_after_joining is not None and active_workspace_ids != [
+                    first_workspace_after_joining
+                ]:
+                    return None
             creation = prepare()
             tenant = Tenant(name=creation.name, encrypt_public_key=creation.encrypt_public_key)
             tenant.id = creation.id
