@@ -16,7 +16,10 @@ from pydantic_ai.messages import (
     ToolReturnPart,
 )
 
-from clients.agent_backend import AgentBackendRunEventAdapter, AgentBackendStreamInternalEvent
+from clients.agent_backend import (
+    AgentBackendRunEventAdapter,
+    AgentBackendStreamInternalEvent,
+)
 from core.workflow.nodes.agent_v2.tool_activity import (
     _TOOL_FIELD_LIMIT,
     WorkflowAgentToolActivityProjector,
@@ -188,7 +191,14 @@ def test_unrelated_text_and_output_tool_events_are_ignored() -> None:
         projector.handle(
             _internal(
                 "output_tool_call",
-                {"part": {"part_kind": "tool-call", "tool_call_id": "out-1", "tool_name": "final", "args": {}}},
+                {
+                    "part": {
+                        "part_kind": "tool-call",
+                        "tool_call_id": "out-1",
+                        "tool_name": "final",
+                        "args": {},
+                    }
+                },
             )
         )
         == []
@@ -213,16 +223,29 @@ def test_unrelated_text_and_output_tool_events_are_ignored() -> None:
     assert projector.finish("succeeded") == []
 
 
-def test_retry_prompt_result_marks_call_failed() -> None:
+def test_retry_prompt_keeps_call_running_until_a_tool_return() -> None:
     projector = _projector()
 
     projector.handle(_tool_call("call-1", args={"bad": True}))
-    retried = projector.handle(_retry_result("call-1", content="arguments failed validation"))
+    retry_prompt = projector.handle(_retry_result("call-1", content="arguments failed validation"))
 
-    assert len(retried) == 1
-    assert retried[0].status == "failed"
-    assert retried[0].error == "arguments failed validation"
-    assert retried[0].data.tool_output == ""
+    assert len(retry_prompt) == 1
+    assert retry_prompt[0].status == "running"
+    assert retry_prompt[0].error == "arguments failed validation"
+    assert retry_prompt[0].data.tool_output == ""
+
+    retried_call = projector.handle(_tool_call("call-1", args={"command": "pwd"}))
+    assert len(retried_call) == 1
+    assert retried_call[0].status == "running"
+    assert retried_call[0].error is None
+    assert json.loads(retried_call[0].data.tool_input) == {"command": "pwd"}
+
+    succeeded = projector.handle(_tool_result("call-1", content="/workspace"))
+    assert len(succeeded) == 1
+    assert succeeded[0].status == "succeeded"
+    assert succeeded[0].error is None
+    assert succeeded[0].data.tool_output == "/workspace"
+    assert projector.finish("succeeded") == []
 
 
 def test_tool_return_failure_outcome_marks_call_failed_with_output_as_error() -> None:
@@ -282,7 +305,13 @@ def test_early_part_start_rejects_non_shell_and_incomplete_payloads() -> None:
         projector.handle(
             _internal(
                 "part_start",
-                {"part": {"part_kind": "tool-call", "tool_name": "shell_run", "args": {}}},
+                {
+                    "part": {
+                        "part_kind": "tool-call",
+                        "tool_name": "shell_run",
+                        "args": {},
+                    }
+                },
             )
         )
         == []
@@ -291,7 +320,13 @@ def test_early_part_start_rejects_non_shell_and_incomplete_payloads() -> None:
         projector.handle(
             _internal(
                 "part_start",
-                {"part": {"part_kind": "tool-call", "tool_call_id": "call-3", "args": {}}},
+                {
+                    "part": {
+                        "part_kind": "tool-call",
+                        "tool_call_id": "call-3",
+                        "args": {},
+                    }
+                },
             )
         )
         == []
@@ -420,7 +455,13 @@ def test_unmatched_result_without_tool_name_is_rejected() -> None:
         projector.handle(
             _internal(
                 "function_tool_result",
-                {"part": {"part_kind": "tool-return", "tool_call_id": "orphan-2", "content": "no name"}},
+                {
+                    "part": {
+                        "part_kind": "tool-return",
+                        "tool_call_id": "orphan-2",
+                        "content": "no name",
+                    }
+                },
             )
         )
         == []
@@ -445,7 +486,10 @@ def test_finish_closes_unfinished_started_and_running_calls() -> None:
     projector.handle(_tool_result("call-done"))
 
     closed = projector.finish("succeeded")
-    assert [activity.id for activity in closed] == ["run-1:call-preview", "run-1:call-running"]
+    assert [activity.id for activity in closed] == [
+        "run-1:call-preview",
+        "run-1:call-running",
+    ]
     assert [activity.status for activity in closed] == ["failed", "failed"]
     assert all(activity.error == "Tool call did not return a result." for activity in closed)
     assert projector.finish("succeeded") == []
@@ -513,7 +557,13 @@ def test_malformed_payloads_and_missing_ids_are_ignored() -> None:
         projector.handle(
             _internal(
                 "function_tool_call",
-                {"part": {"part_kind": "tool-call", "tool_name": "shell_run", "args": {}}},
+                {
+                    "part": {
+                        "part_kind": "tool-call",
+                        "tool_name": "shell_run",
+                        "args": {},
+                    }
+                },
             )
         )
         == []
@@ -522,7 +572,13 @@ def test_malformed_payloads_and_missing_ids_are_ignored() -> None:
         projector.handle(
             _internal(
                 "function_tool_call",
-                {"part": {"part_kind": "tool-call", "tool_call_id": "call-1", "args": {}}},
+                {
+                    "part": {
+                        "part_kind": "tool-call",
+                        "tool_call_id": "call-1",
+                        "args": {},
+                    }
+                },
             )
         )
         == []
@@ -594,7 +650,11 @@ def test_real_pydantic_ai_stream_events_through_adapter() -> None:
             run_id="run-1",
             created_at=_CREATED_AT,
             data=OutputToolCallEvent(
-                part=ToolCallPart(tool_name="final_result", args={"answer": "done"}, tool_call_id="out-1")
+                part=ToolCallPart(
+                    tool_name="final_result",
+                    args={"answer": "done"},
+                    tool_call_id="out-1",
+                )
             ),
         ),
         PydanticAIStreamRunEvent(
@@ -624,7 +684,7 @@ def test_real_pydantic_ai_stream_events_through_adapter() -> None:
     assert projector.finish("succeeded") == []
 
 
-def test_real_retry_prompt_event_through_adapter_fails_call() -> None:
+def test_real_retry_prompt_event_through_adapter_allows_retry_success() -> None:
     adapter = AgentBackendRunEventAdapter()
     projector = _projector()
 
@@ -642,7 +702,31 @@ def test_real_retry_prompt_event_through_adapter_fails_call() -> None:
             run_id="run-1",
             created_at=_CREATED_AT,
             data=FunctionToolResultEvent(
-                part=RetryPromptPart(content="command must be a string", tool_name="shell_run", tool_call_id="call-7")
+                part=RetryPromptPart(
+                    content="command must be a string",
+                    tool_name="shell_run",
+                    tool_call_id="call-7",
+                )
+            ),
+        ),
+        PydanticAIStreamRunEvent(
+            id="e-3",
+            run_id="run-1",
+            created_at=_CREATED_AT,
+            data=FunctionToolCallEvent(
+                part=ToolCallPart(
+                    tool_name="shell_run",
+                    args={"command": "pwd"},
+                    tool_call_id="call-7",
+                )
+            ),
+        ),
+        PydanticAIStreamRunEvent(
+            id="e-4",
+            run_id="run-1",
+            created_at=_CREATED_AT,
+            data=FunctionToolResultEvent(
+                part=ToolReturnPart(content="/workspace", tool_name="shell_run", tool_call_id="call-7")
             ),
         ),
     ]
@@ -653,5 +737,13 @@ def test_real_retry_prompt_event_through_adapter_fails_call() -> None:
             if isinstance(internal_event, AgentBackendStreamInternalEvent):
                 activities.extend(projector.handle(internal_event))
 
-    assert [a.status for a in activities] == ["running", "failed"]
+    assert [a.status for a in activities] == [
+        "running",
+        "running",
+        "running",
+        "succeeded",
+    ]
     assert activities[1].error == "command must be a string"
+    assert activities[2].error is None
+    assert activities[2].data.tool_input == '{"command": "pwd"}'
+    assert activities[3].data.tool_output == "/workspace"
