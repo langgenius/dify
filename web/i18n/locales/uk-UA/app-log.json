@@ -64,6 +64,7 @@
   "export.last": "Останній експорт",
   "export.noIdentities": "Збігів не знайдено.",
   "export.noMatches": "Немає записів, що відповідають цим фільтрам.",
+  "export.previewRows": "Рядки CSV {{rows}}",
   "export.previewSize": "Бесіди {{conversations}} · Рядки CSV {{rows}}",
   "export.previewUnavailable": "Кількість недоступна. Ви все одно можете експортувати.",
   "export.scope": "Обсяг експорту",

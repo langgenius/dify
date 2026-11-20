@@ -153,6 +153,7 @@ class ConversationLogExportRow:
     app_response: str
     feedback_rating: str | None
     feedback_content: str | None
+    input_variables: dict[str, JsonValue] | None
     status: str | None
 
 

@@ -64,6 +64,7 @@
   "export.last": "آخرین خروجی",
   "export.noIdentities": "نتیجه‌ای یافت نشد.",
   "export.noMatches": "هیچ گزارشی با این فیلترها مطابقت ندارد.",
+  "export.previewRows": "ردیف‌های CSV ‏{{rows}}",
   "export.previewSize": "گفتگوها {{conversations}} · ردیف‌های CSV ‏{{rows}}",
   "export.previewUnavailable": "تعداد در دسترس نیست. همچنان می‌توانید خروجی بگیرید.",
   "export.scope": "محدودهٔ خروجی",

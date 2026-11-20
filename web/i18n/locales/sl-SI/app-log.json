@@ -64,6 +64,7 @@
   "export.last": "Zadnji izvoz",
   "export.noIdentities": "Ni ujemajočih se rezultatov.",
   "export.noMatches": "Noben dnevnik ne ustreza tem filtrom.",
+  "export.previewRows": "Vrstice CSV {{rows}}",
   "export.previewSize": "Pogovori {{conversations}} · Vrstice CSV {{rows}}",
   "export.previewUnavailable": "Število ni na voljo. Izvoz je še vedno mogoč.",
   "export.scope": "Obseg izvoza",

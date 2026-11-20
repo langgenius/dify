@@ -1426,6 +1426,7 @@ export default interface Resources {
     'export.last': 'Last export'
     'export.noIdentities': 'No matches found.'
     'export.noMatches': 'No logs match these filters.'
+    'export.previewRows': 'CSV rows {{rows}}'
     'export.previewSize': 'Conversations {{conversations}} · CSV rows {{rows}}'
     'export.previewUnavailable': 'The count is unavailable. You can still export.'
     'export.scope': 'Export scope'

@@ -1,4 +1,5 @@
 import type {
+  Conversation,
   ConversationLogIdentityResponse,
   ConversationWithSummary,
 } from '@dify/contracts/api/console/apps/types.gen'
@@ -67,7 +68,7 @@ export type LogIdentity = ConversationLogIdentityResponse
 
 export const identityKey = ({ id, source }: LogIdentity) => `${source}:${id}`
 
-export function getLogIdentities(logs: ConversationWithSummary[]): LogIdentity[] {
+export function getLogIdentities(logs: (Conversation | ConversationWithSummary)[]): LogIdentity[] {
   const identities = new Map<string, LogIdentity>()
   for (const log of logs) {
     const identity =

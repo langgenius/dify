@@ -219,13 +219,13 @@ def _log_export_filters(query: ChatConversationFilterQuery, timezone: str) -> Co
 
 
 def _resolve_log_export_scope(request_context: RequestContext, app_id: UUID) -> ConsoleConversationScope:
-    """Require Logs admission, privileged workspace role, an owned chat app and its export entitlement."""
+    """Require Logs admission, privileged workspace role, an owned app and its export entitlement."""
     # Export requires a privileged workspace role even when RBAC is enabled.
     if not TenantAccountRole.is_privileged_role(current_account_with_tenant().account.role):
         raise ForbiddenError()
 
     try:
-        scope = application_services().conversation_queries.get_console_scope(request_context, str(app_id), kind="chat")
+        scope = application_services().conversation_log_exports.get_scope(request_context, str(app_id))
     except ConsoleAppNotFoundError as exc:
         raise AppNotFoundError(str(exc)) from exc
     except NoPermissionError as exc:
@@ -415,7 +415,7 @@ class ChatConversationApi(Resource):
 class ChatConversationIdentityOptionsApi(Resource):
     @error_responses(AppNotFoundError)
     @console_ns.doc("search_chat_conversation_identities")
-    @console_ns.doc(description="Search for end users or workspace accounts with visible chat logs in this app")
+    @console_ns.doc(description="Search for end users or workspace accounts with visible conversation logs in this app")
     @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(ConversationLogIdentitySearchQuery)})
     @console_ns.response(
         HTTPStatus.OK, "Matching identities", console_ns.models[ConversationLogIdentitySearchResponse.__name__]
@@ -425,7 +425,7 @@ class ChatConversationIdentityOptionsApi(Resource):
         rbac_checks=(RBACCheck(RBACPermission.APP_LOG_AND_ANNOTATION, PlainApp()),),
     )
     def get(self, request_context: RequestContext, app_id: UUID) -> dict[str, object]:
-        """Return up to 20 matches per identity type for the admitted chat app."""
+        """Return up to 20 matches per identity type for the admitted app."""
         query = validate_request(ConversationLogIdentitySearchQuery)
         try:
             matches = application_services().conversation_queries.search_console_log_identities(
@@ -440,7 +440,7 @@ class ChatConversationIdentityOptionsApi(Resource):
 class ConversationLogExportPreviewApi(Resource):
     @error_responses(AppNotFoundError, ForbiddenError, PaidPlanRequiredError)
     @console_ns.doc("preview_conversation_log_export")
-    @console_ns.doc(description="Count the conversations and rows that match the application's chat Logs filters")
+    @console_ns.doc(description="Count the conversations and rows that match the application's Logs filters")
     @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(ConversationLogExportPreviewQuery)})
     @console_ns.response(
         HTTPStatus.OK, "Export preview", console_ns.models[ConversationLogExportPreviewResponse.__name__]
@@ -470,7 +470,7 @@ class ConversationLogExportApi(Resource):
         _ConversationLogValidationError,
     )
     @console_ns.doc("create_conversation_log_export")
-    @console_ns.doc(description="Create a pending CSV export task for one chat app")
+    @console_ns.doc(description="Create a pending CSV export task for one conversation app")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[ConversationLogExportCreatePayload.__name__])
     @console_ns.response(
@@ -527,7 +527,7 @@ class ConversationLogExportTaskApi(Resource):
         AppNotFoundError, ConversationLogExportTaskNotFoundHTTPError, ForbiddenError, PaidPlanRequiredError
     )
     @console_ns.doc("get_conversation_log_export_status")
-    @console_ns.doc(description="Get the current status of a chat app's CSV export task")
+    @console_ns.doc(description="Get the current status of the application's CSV export task")
     @console_ns.doc(params={"app_id": "Application ID", "task_id": "Export task ID"})
     @console_ns.response(
         HTTPStatus.OK, "Export task status", console_ns.models[ConversationLogExportStatusResponse.__name__]

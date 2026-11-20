@@ -64,6 +64,7 @@
   "export.last": "การส่งออกครั้งล่าสุด",
   "export.noIdentities": "ไม่พบผลลัพธ์ที่ตรงกัน",
   "export.noMatches": "ไม่มีบันทึกที่ตรงกับตัวกรองนี้",
+  "export.previewRows": "CSV {{rows}} แถว",
   "export.previewSize": "บทสนทนา {{conversations}} รายการ · CSV {{rows}} แถว",
   "export.previewUnavailable": "ไม่สามารถแสดงจำนวนได้ แต่ยังส่งออกได้",
   "export.scope": "ขอบเขตการส่งออก",

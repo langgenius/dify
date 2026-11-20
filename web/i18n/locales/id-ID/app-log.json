@@ -64,6 +64,7 @@
   "export.last": "Ekspor terakhir",
   "export.noIdentities": "Tidak ada hasil yang cocok.",
   "export.noMatches": "Tidak ada log yang cocok dengan filter ini.",
+  "export.previewRows": "Baris CSV {{rows}}",
   "export.previewSize": "Percakapan {{conversations}} · Baris CSV {{rows}}",
   "export.previewUnavailable": "Jumlah tidak tersedia. Anda tetap dapat mengekspor.",
   "export.scope": "Cakupan ekspor",

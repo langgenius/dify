@@ -64,6 +64,7 @@
   "export.last": "上一次导出",
   "export.noIdentities": "没有匹配的结果。",
   "export.noMatches": "没有符合条件的日志。",
+  "export.previewRows": "{{rows}} 行 CSV",
   "export.previewSize": "{{conversations}} 个会话 · {{rows}} 行 CSV",
   "export.previewUnavailable": "暂时无法统计数量，仍可导出。",
   "export.scope": "导出范围",

@@ -64,6 +64,7 @@
   "export.last": "Последний экспорт",
   "export.noIdentities": "Совпадений не найдено.",
   "export.noMatches": "Нет записей, соответствующих этим фильтрам.",
+  "export.previewRows": "Строки CSV {{rows}}",
   "export.previewSize": "Диалоги {{conversations}} · Строки CSV {{rows}}",
   "export.previewUnavailable": "Количество недоступно. Экспорт всё равно возможен.",
   "export.scope": "Область экспорта",

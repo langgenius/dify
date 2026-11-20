@@ -64,6 +64,7 @@
   "export.last": "前回のエクスポート",
   "export.noIdentities": "一致する結果がありません。",
   "export.noMatches": "条件に一致するログはありません。",
+  "export.previewRows": "CSV {{rows}} 行",
   "export.previewSize": "会話 {{conversations}} 件 · CSV {{rows}} 行",
   "export.previewUnavailable": "件数を取得できません。エクスポートは可能です。",
   "export.scope": "エクスポート範囲",

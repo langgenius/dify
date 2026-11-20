@@ -64,6 +64,7 @@
   "export.last": "Letzter Export",
   "export.noIdentities": "Keine passenden Ergebnisse.",
   "export.noMatches": "Keine Protokolle entsprechen diesen Filtern.",
+  "export.previewRows": "CSV-Zeilen {{rows}}",
   "export.previewSize": "Unterhaltungen {{conversations}} · CSV-Zeilen {{rows}}",
   "export.previewUnavailable": "Die Anzahl ist nicht verfügbar. Der Export ist trotzdem möglich.",
   "export.scope": "Exportbereich",

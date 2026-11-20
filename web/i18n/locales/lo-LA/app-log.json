@@ -64,6 +64,7 @@
   "export.last": "ການສົ່ງອອກຄັ້ງຫຼ້າສຸດ",
   "export.noIdentities": "ບໍ່ພົບຜົນທີ່ກົງກັນ.",
   "export.noMatches": "ບໍ່ພົບບັນທຶກທີ່ກົງກັບຕົວກອງນີ້.",
+  "export.previewRows": "ແຖວ CSV {{rows}}",
   "export.previewSize": "ການສົນທະນາ {{conversations}} · ແຖວ CSV {{rows}}",
   "export.previewUnavailable": "ບໍ່ມີຈໍານວນໃຫ້ສະແດງ. ທ່ານຍັງສົ່ງອອກໄດ້.",
   "export.scope": "ຂອບເຂດການສົ່ງອອກ",

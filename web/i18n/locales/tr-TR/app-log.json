@@ -64,6 +64,7 @@
   "export.last": "Son dışa aktarma",
   "export.noIdentities": "Eşleşen sonuç bulunamadı.",
   "export.noMatches": "Bu filtrelerle eşleşen günlük yok.",
+  "export.previewRows": "CSV satırları {{rows}}",
   "export.previewSize": "Konuşmalar {{conversations}} · CSV satırları {{rows}}",
   "export.previewUnavailable": "Sayı kullanılamıyor. Yine de dışa aktarabilirsiniz.",
   "export.scope": "Dışa aktarma kapsamı",

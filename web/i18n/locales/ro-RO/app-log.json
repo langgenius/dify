@@ -64,6 +64,7 @@
   "export.last": "Ultimul export",
   "export.noIdentities": "Niciun rezultat potrivit.",
   "export.noMatches": "Nicio înregistrare nu se potrivește acestor filtre.",
+  "export.previewRows": "Rânduri CSV {{rows}}",
   "export.previewSize": "Conversații {{conversations}} · Rânduri CSV {{rows}}",
   "export.previewUnavailable": "Numărul nu este disponibil. Poți totuși exporta.",
   "export.scope": "Domeniul exportului",

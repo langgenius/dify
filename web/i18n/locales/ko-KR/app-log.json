@@ -64,6 +64,7 @@
   "export.last": "마지막 내보내기",
   "export.noIdentities": "일치하는 결과가 없습니다.",
   "export.noMatches": "필터에 맞는 로그가 없습니다.",
+  "export.previewRows": "CSV {{rows}}행",
   "export.previewSize": "대화 {{conversations}}개 · CSV {{rows}}행",
   "export.previewUnavailable": "개수를 확인할 수 없습니다. 내보내기는 가능합니다.",
   "export.scope": "내보내기 범위",

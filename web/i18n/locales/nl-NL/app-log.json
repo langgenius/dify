@@ -64,6 +64,7 @@
   "export.last": "Laatste export",
   "export.noIdentities": "Geen overeenkomende resultaten.",
   "export.noMatches": "Geen logboeken komen overeen met deze filters.",
+  "export.previewRows": "CSV-rijen {{rows}}",
   "export.previewSize": "Gesprekken {{conversations}} · CSV-rijen {{rows}}",
   "export.previewUnavailable": "Het aantal is niet beschikbaar. Je kunt wel exporteren.",
   "export.scope": "Exportbereik",

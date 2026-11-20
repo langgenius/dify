@@ -64,6 +64,7 @@
   "export.last": "上一次匯出",
   "export.noIdentities": "找不到相符的結果。",
   "export.noMatches": "沒有符合條件的日誌。",
+  "export.previewRows": "{{rows}} 行 CSV",
   "export.previewSize": "{{conversations}} 個對話 · {{rows}} 行 CSV",
   "export.previewUnavailable": "暫時無法統計數量，仍可匯出。",
   "export.scope": "匯出範圍",

@@ -3058,9 +3058,9 @@ Get chat conversations with pagination and filtering
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/chat-conversations/identity-options
-**Return up to 20 matches per identity type for the admitted chat app**
+**Return up to 20 matches per identity type for the admitted app**
 
-Search for end users or workspace accounts with visible chat logs in this app
+Search for end users or workspace accounts with visible conversation logs in this app
 
 #### Parameters
 
@@ -3290,7 +3290,7 @@ Stop a running completion message generation
 ### [POST] /apps/{app_id}/conversation-log-exports
 **Validate an admitted app's export filters and acknowledge the task after publication**
 
-Create a pending CSV export task for one chat app
+Create a pending CSV export task for one conversation app
 
 #### Parameters
 
@@ -3337,7 +3337,7 @@ Read the caller's latest live CSV export and its submitted filters for this app
 ### [GET] /apps/{app_id}/conversation-log-exports/preview
 **Preview a conversation log export for a workspace Owner or Admin with application Logs access**
 
-Count the conversations and rows that match the application's chat Logs filters
+Count the conversations and rows that match the application's Logs filters
 
 #### Parameters
 
@@ -3364,7 +3364,7 @@ Count the conversations and rows that match the application's chat Logs filters
 ### [GET] /apps/{app_id}/conversation-log-exports/{task_id}
 **Return the state of a live export task for an admitted app**
 
-Get the current status of a chat app's CSV export task
+Get the current status of the application's CSV export task
 
 #### Parameters
 

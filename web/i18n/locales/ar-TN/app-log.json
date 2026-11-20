@@ -64,6 +64,7 @@
   "export.last": "آخر تصدير",
   "export.noIdentities": "لا توجد نتائج مطابقة.",
   "export.noMatches": "لا توجد سجلات تطابق عوامل التصفية هذه.",
+  "export.previewRows": "صفوف CSV ‏{{rows}}",
   "export.previewSize": "المحادثات {{conversations}} · صفوف CSV ‏{{rows}}",
   "export.previewUnavailable": "لا يتوفر العدد الآن. لا يزال بإمكانك التصدير.",
   "export.scope": "نطاق التصدير",

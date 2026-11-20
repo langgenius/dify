@@ -1830,18 +1830,19 @@ export const audioToText = {
 }
 
 /**
- * Return up to 20 matches per identity type for the admitted chat app
+ * Return up to 20 matches per identity type for the admitted app
  *
- * Search for end users or workspace accounts with visible chat logs in this app
+ * Search for end users or workspace accounts with visible conversation logs in this app
  */
 export const get24 = oc
   .route({
-    description: 'Search for end users or workspace accounts with visible chat logs in this app',
+    description:
+      'Search for end users or workspace accounts with visible conversation logs in this app',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdChatConversationsIdentityOptions',
     path: '/apps/{app_id}/chat-conversations/identity-options',
-    summary: 'Return up to 20 matches per identity type for the admitted chat app',
+    summary: 'Return up to 20 matches per identity type for the admitted app',
     tags: ['console'],
   })
   .input(
@@ -2172,11 +2173,11 @@ export const latest = {
 /**
  * Preview a conversation log export for a workspace Owner or Admin with application Logs access
  *
- * Count the conversations and rows that match the application's chat Logs filters
+ * Count the conversations and rows that match the application's Logs filters
  */
 export const get32 = oc
   .route({
-    description: "Count the conversations and rows that match the application's chat Logs filters",
+    description: "Count the conversations and rows that match the application's Logs filters",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdConversationLogExportsPreview',
@@ -2244,11 +2245,11 @@ export const file = {
 /**
  * Return the state of a live export task for an admitted app
  *
- * Get the current status of a chat app's CSV export task
+ * Get the current status of the application's CSV export task
  */
 export const get34 = oc
   .route({
-    description: "Get the current status of a chat app's CSV export task",
+    description: "Get the current status of the application's CSV export task",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdConversationLogExportsByTaskId',
@@ -2276,11 +2277,11 @@ export const byTaskId3 = {
 /**
  * Validate an admitted app's export filters and acknowledge the task after publication
  *
- * Create a pending CSV export task for one chat app
+ * Create a pending CSV export task for one conversation app
  */
 export const post24 = oc
   .route({
-    description: 'Create a pending CSV export task for one chat app',
+    description: 'Create a pending CSV export task for one conversation app',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdConversationLogExports',

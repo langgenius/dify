@@ -9,7 +9,7 @@ from uuid import UUID
 
 from psycopg2.errors import QueryCanceled
 from pydantic import JsonValue
-from sqlalchemy import DateTime, Select, and_, case, exists, func, literal, or_, select, text, tuple_, update
+from sqlalchemy import DateTime, Select, and_, case, exists, func, literal, null, or_, select, text, tuple_, update
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import InstrumentedAttribute, Session, sessionmaker
 
@@ -235,6 +235,15 @@ class ConversationRepository:
     def get_console_scope(
         self, context: RequestContext, app_id: str, *, kind: ConsoleConversationKind
     ) -> ConsoleConversationScope:
+        return self._get_console_scope(context, app_id, kind=kind)
+
+    def get_console_log_export_scope(self, context: RequestContext, app_id: str) -> ConsoleConversationScope:
+        """Resolve the owned conversation app's mode and the caller's time zone for log export."""
+        return self._get_console_scope(context, app_id, kind=None)
+
+    def _get_console_scope(
+        self, context: RequestContext, app_id: str, *, kind: ConsoleConversationKind | None
+    ) -> ConsoleConversationScope:
         with self._session_factory() as session:
             app = self._get_console_app(session=session, context=context, app_id=app_id, kind=kind)
             account = session.get(Account, context.account_id)
@@ -290,7 +299,7 @@ class ConversationRepository:
             identity_id = None
 
         with self._session_factory() as session:
-            app = self._get_console_app(session=session, context=context, app_id=app_id, kind="chat")
+            app = self._get_console_app(session=session, context=context, app_id=app_id, kind=None)
             visible_logs, _ = self._filter_console_conversations(
                 select(Conversation.id),
                 app_id=app.id,
@@ -411,9 +420,9 @@ class ConversationRepository:
     def get_console_log_export_counts(
         self, *, scope: ConsoleConversationScope, filters: ConsoleConversationLogFilters
     ) -> ConversationLogExportCounts | None:
-        """Count all matched chat conversations and their messages in one read statement.
+        """Count all matched conversations and their messages in one read statement.
 
-        Require a Console chat log scope. Recheck application ownership and mode before counting.
+        Require a Console conversation log scope. Recheck application ownership and mode before counting.
         Use a statement timeout on PostgreSQL and MySQL. Return None on timeout and release
         the read transaction on all paths.
         """
@@ -424,6 +433,9 @@ class ConversationRepository:
             matching, _ = self._filter_console_conversations(
                 select(Conversation.id), app_id=app.id, mode=app.mode, filters=filters
             )
+            if app.mode == AppMode.COMPLETION and filters.keyword:
+                # Completion list search can return the same conversation for multiple matching messages.
+                matching = matching.distinct()
             conversations = matching.subquery()
             # Count via the conversation_id index. A keyword selects the conversation,
             # and every message in that conversation contributes one export row.
@@ -534,6 +546,8 @@ class ConversationRepository:
                     mode=app.mode,
                     filters=filters,
                 )
+                if app.mode == AppMode.COMPLETION and filters.keyword:
+                    matches = matches.distinct()
                 conversation_ids = tuple(session.scalars(matches))
 
             statuses = (
@@ -583,6 +597,7 @@ class ConversationRepository:
                     Message.answer,
                     MessageFeedback.rating,
                     MessageFeedback.content,
+                    Message._inputs if app.mode == AppMode.COMPLETION else null(),
                 )
                 .select_from(Message)
                 .join(Conversation, Conversation.id == Message.conversation_id)
@@ -980,14 +995,14 @@ class ConversationRepository:
 
     @staticmethod
     def _get_console_app(
-        *, session: Session, context: RequestContext, app_id: str, kind: ConsoleConversationKind
+        *, session: Session, context: RequestContext, app_id: str, kind: ConsoleConversationKind | None
     ) -> App:
         app = find_console_app(session, workspace_id=context.active_workspace_id, app_id=app_id)
-        allowed_modes = (
-            {AppMode.COMPLETION}
-            if kind == "completion"
-            else {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}
-        )
+        allowed_modes = {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}
+        if kind == "completion":
+            allowed_modes = {AppMode.COMPLETION}
+        elif kind is None:
+            allowed_modes.add(AppMode.COMPLETION)
         if app is None:
             raise ConsoleAppNotFoundError("App not found.")
         if app.mode not in allowed_modes:

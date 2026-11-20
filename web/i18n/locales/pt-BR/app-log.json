@@ -64,6 +64,7 @@
   "export.last": "Última exportação",
   "export.noIdentities": "Nenhum resultado correspondente.",
   "export.noMatches": "Nenhum log corresponde a esses filtros.",
+  "export.previewRows": "Linhas CSV {{rows}}",
   "export.previewSize": "Conversas {{conversations}} · Linhas CSV {{rows}}",
   "export.previewUnavailable": "A contagem está indisponível. Você ainda pode exportar.",
   "export.scope": "Escopo da exportação",

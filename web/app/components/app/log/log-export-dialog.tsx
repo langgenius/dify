@@ -186,12 +186,14 @@ function LastLogExport({
 export function LogExportDialog({
   appId,
   appName,
+  isCompletion,
   currentFilters,
   identityOptions,
   planState,
 }: {
   appId: string
   appName: string
+  isCompletion: boolean
   currentFilters: LogExportFilters
   identityOptions: LogIdentity[]
   planState: CloudSandboxPlanState
@@ -275,11 +277,13 @@ export function LogExportDialog({
   if (exporting) summary = actionLabel
   else if (preview.isPending) summary = t(($) => $['detail.loading'], { ns: 'appLog' })
   else if (counts) {
-    summary = t(($) => $['export.previewSize'], {
-      ns: 'appLog',
-      conversations: counts.conversation_count,
-      rows: counts.message_count,
-    })
+    summary = isCompletion
+      ? t(($) => $['export.previewRows'], { ns: 'appLog', rows: counts.message_count })
+      : t(($) => $['export.previewSize'], {
+          ns: 'appLog',
+          conversations: counts.conversation_count,
+          rows: counts.message_count,
+        })
   } else summary = t(($) => $['export.previewUnavailable'], { ns: 'appLog' })
 
   let error

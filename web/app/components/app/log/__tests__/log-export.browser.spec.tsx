@@ -73,7 +73,10 @@ const conversations: ConversationWithSummary[] = [
   },
 ]
 
-async function openExport(hasExistingTask = false) {
+async function openExport(
+  hasExistingTask = false,
+  mode: 'advanced-chat' | 'completion' = 'advanced-chat',
+) {
   const previews: URLSearchParams[] = []
   const requests: ConversationLogExportCreatePayload[] = []
   let task: ConversationLogExportLatestTaskResponse | null = hasExistingTask
@@ -97,6 +100,7 @@ async function openExport(hasExistingTask = false) {
     const route = url.pathname.split(`/apps/${appId}/`)[1]
     switch (route) {
       case 'chat-conversations':
+      case 'completion-conversations':
         return Response.json({ data: conversations, total: 38, page: 2, limit: 10, has_more: true })
       case 'chat-conversations/identity-options':
         return Response.json({
@@ -161,7 +165,7 @@ async function openExport(hasExistingTask = false) {
             <Logs
               appDetail={createAppDetailFixture({
                 id: appId,
-                mode: 'advanced-chat',
+                mode,
                 name: 'Support Assistant',
               })}
             />
@@ -184,6 +188,24 @@ function observeDownloads() {
   onTestFinished(() => followLink.mockRestore())
   return downloadPaths
 }
+
+it('previews CSV rows and submits a Completion export with the selected identity', async () => {
+  const { trigger, dialog, lastExport, requests } = await openExport(false, 'completion')
+  await trigger.click()
+  await dialog.getByRole('combobox', { name: 'appLog.export.scope' }).click()
+  await page.getByRole('option', { name: 'appLog.export.all' }).click()
+  await dialog.getByRole('combobox', { name: 'appLog.table.header.endUser' }).click()
+  await page.getByRole('option', { name: 'appLog.export.identitiesSelected' }).click()
+  await dialog.getByRole('checkbox', { name: 'user-1024' }).click()
+  await expect
+    .element(dialog.getByRole('status'))
+    .toHaveTextContent('appLog.export.previewRows:{"rows":2}')
+  await dialog.getByRole('button', { name: 'appLog.export.submit' }).click()
+  await expect
+    .element(lastExport.getByRole('button', { name: 'common.operation.download' }))
+    .toBeEnabled()
+  expect(requests).toEqual([expect.objectContaining({ end_user_ids: [endUserId] })])
+})
 
 it('can export the same filters again after a CSV is ready', async () => {
   const downloadPaths = observeDownloads()

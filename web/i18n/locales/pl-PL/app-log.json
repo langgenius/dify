@@ -64,6 +64,7 @@
   "export.last": "Ostatni eksport",
   "export.noIdentities": "Brak pasujących wyników.",
   "export.noMatches": "Żadne wpisy nie pasują do tych filtrów.",
+  "export.previewRows": "Wiersze CSV {{rows}}",
   "export.previewSize": "Rozmowy {{conversations}} · Wiersze CSV {{rows}}",
   "export.previewUnavailable": "Liczba wyników jest niedostępna. Eksport jest nadal możliwy.",
   "export.scope": "Zakres eksportu",

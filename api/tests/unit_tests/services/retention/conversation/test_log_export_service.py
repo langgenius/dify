@@ -1,6 +1,7 @@
 """Exercise Console log CSV exports with real conversation queries."""
 
 import csv
+import json
 from datetime import UTC, datetime, timedelta
 from io import StringIO
 from typing import Literal
@@ -33,6 +34,58 @@ from services.retention.conversation.log_export_service import (
     ConversationLogExportTaskStore,
 )
 from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_message
+
+
+def test_completion_csv_writes_saved_inputs_and_counts_each_generation_once(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    """Keep variable values and legacy prompts while matching the export row preview."""
+    account = make_account(timezone="UTC")
+    app = make_app(mode=AppMode.COMPLETION)
+    conversation = make_conversation(
+        app_id=app.id, mode=app.mode, from_source=ConversationFromSource.CONSOLE, from_account_id=account.id
+    )
+    variables = {"topic": "中文标题", "count": 0, "include_tags": False, "empty": None}
+    messages = [
+        make_message(
+            message_id=message_id,
+            app_id=app.id,
+            conversation_id=conversation.id,
+            inputs=inputs,
+            query=query,
+            answer="Generated result",
+            from_source=ConversationFromSource.CONSOLE,
+            created_at=datetime(2026, 1, 15, 6),
+            currency="USD",
+        )
+        for message_id, inputs, query in [("generation-1", variables, ""), ("generation-2", {}, "Legacy prompt")]
+    ]
+    with sqlite_session_factory.begin() as session:
+        session.add_all([account, app, conversation, *messages])
+
+    context = RequestContext(request_id="test", trace_id=None, account_id=account.id, active_workspace_id=app.tenant_id)
+    filters = ConsoleConversationLogFilters(
+        keyword="result", start=None, end=None, annotation_status="all", sort_by="-created_at"
+    )
+    repository = ConversationRepository(session_factory=sqlite_session_factory)
+    export = ConversationLogExportService(
+        conversations=repository, tasks=Mock(), dispatch=Mock(), store_csv=Mock(), open_csv=Mock()
+    )
+    scope = export.get_scope(context, app.id)
+    counts = repository.get_console_log_export_counts(scope=scope, filters=filters)
+    assert counts is not None
+    assert (counts.conversation_count, counts.message_count) == (1, 2)
+
+    output = StringIO(newline="")
+    assert export.write_csv(context, app.id, filters=filters, output=output) == counts.message_count
+    first, second = csv.DictReader(StringIO(output.getvalue().removeprefix("\ufeff")))
+    assert first["app_type"] == "Text Generator"
+    assert first["account_id"] == account.id
+    assert first["message_id"] == "generation-1"
+    assert json.loads(first["user_input"]) == variables
+    assert first["app_response"] == "Generated result"
+    assert second["message_id"] == "generation-2"
+    assert second["user_input"] == "Legacy prompt"
 
 
 @pytest.mark.parametrize("outcome", ["claim_lost", "failed", "ready"])

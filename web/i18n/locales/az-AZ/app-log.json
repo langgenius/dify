@@ -64,6 +64,7 @@
   "export.last": "Son ixrac",
   "export.noIdentities": "Uyğun nəticə yoxdur.",
   "export.noMatches": "Bu filtrlərə uyğun jurnal yoxdur.",
+  "export.previewRows": "CSV sətirləri {{rows}}",
   "export.previewSize": "Söhbətlər {{conversations}} · CSV sətirləri {{rows}}",
   "export.previewUnavailable": "Say mövcud deyil. Buna baxmayaraq ixrac edə bilərsiniz.",
   "export.scope": "İxrac əhatəsi",

@@ -64,6 +64,7 @@
   "export.last": "पिछला निर्यात",
   "export.noIdentities": "कोई मिलान नहीं मिला।",
   "export.noMatches": "इन फ़िल्टर से मेल खाने वाले लॉग नहीं मिले।",
+  "export.previewRows": "CSV पंक्तियाँ {{rows}}",
   "export.previewSize": "बातचीत {{conversations}} · CSV पंक्तियाँ {{rows}}",
   "export.previewUnavailable": "संख्या उपलब्ध नहीं है। आप फिर भी निर्यात कर सकते हैं।",
   "export.scope": "निर्यात का दायरा",

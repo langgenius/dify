@@ -74,6 +74,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const requestQueryParams = { ...debouncedQueryParams, period: effectivePeriod }
   const isChatMode = appDetail.mode !== 'completion'
   const supportsLogExport =
+    !isChatMode ||
     appDetail.mode === 'chat' ||
     appDetail.mode === 'advanced-chat' ||
     appDetail.mode === 'agent-chat'
@@ -105,7 +106,8 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     }),
   )
 
-  const total = isChatMode ? chatConversations?.total : completionConversations?.total
+  const logs = isChatMode ? chatConversations : completionConversations
+  const total = logs?.total
   const totalPages = total ? Math.max(Math.ceil(total / limit), 1) : 1
 
   const handlePageChange = useCallback(
@@ -151,8 +153,9 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
                 key={appDetail.id}
                 appId={appDetail.id}
                 appName={appDetail.name}
+                isCompletion={!isChatMode}
                 currentFilters={toFilters(effectiveQueryParams)}
-                identityOptions={getLogIdentities(chatConversations?.data ?? [])}
+                identityOptions={getLogIdentities(logs?.data ?? [])}
                 planState={cloudSandboxPlanState}
               />
             )
@@ -160,7 +163,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
         />
         <RetentionUpgradeNotice />
         <List
-          logs={isChatMode ? chatConversations : completionConversations}
+          logs={logs}
           appDetail={appDetail}
           onRefresh={isChatMode ? mutateChatList : mutateCompletionList}
         />

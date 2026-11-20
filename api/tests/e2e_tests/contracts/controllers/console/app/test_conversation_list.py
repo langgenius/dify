@@ -468,6 +468,39 @@ def test_log_identity_search_checks_app_and_account_admission(harness: _Harness)
     assert checks[0].locator.param == "app_id"
 
 
+@pytest.mark.parametrize("mode", [AppMode.COMPLETION, AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+def test_app_logs_support_identity_search_preview_and_export(
+    harness: _Harness, monkeypatch: pytest.MonkeyPatch, mode: AppMode
+) -> None:
+    """Use the same scoped endpoints for each exportable app mode."""
+    harness.mode(mode)
+    monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", lambda _: True)
+    log = _conversation(harness)
+    _conversation(harness)
+    end_user_id = str(uuid4())
+    with harness.factory.begin() as session:
+        session.add(
+            make_end_user(
+                end_user_id=end_user_id, tenant_id=harness.tenant.id, app_id=harness.target.id, session_id="writer-001"
+            )
+        )
+        session.get_one(Conversation, log.id).from_end_user_id = end_user_id
+
+    users = harness.get("identity-options", query={"keyword": "001"})
+    assert users.status_code == 200
+    assert users.get_json() == {"data": [{"id": end_user_id, "label": "writer-001", "source": "end-user"}]}
+
+    filters = {"keyword": "First answer", "end_user_ids": [end_user_id]}
+    preview = harness.get("export-preview", query=filters)
+    assert preview.status_code == 200
+    assert preview.get_json() == {"counts": {"conversation_count": 1, "message_count": 1}}
+    result = harness.post_export(filters)
+    assert result.status_code == 202
+    task = harness.dispatch.call_args.args[0]
+    assert task.filters.end_user_ids == (end_user_id,)
+    assert result.get_json() == {"task_id": task.task_id, "status": "pending"}
+
+
 @pytest.mark.parametrize("kind", ["chat", "export-preview"])
 def test_log_identity_filters_require_uuids(harness: _Harness, monkeypatch: pytest.MonkeyPatch, kind: _Kind) -> None:
     monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", lambda _: True)
@@ -482,7 +515,7 @@ def test_log_identity_filters_require_uuids(harness: _Harness, monkeypatch: pyte
     ("mode", "role", "status", "code"),
     [
         (AppMode.ADVANCED_CHAT, TenantAccountRole.EDITOR, 403, "forbidden"),
-        (AppMode.COMPLETION, TenantAccountRole.OWNER, 404, "app_not_found"),
+        (AppMode.COMPLETION, TenantAccountRole.EDITOR, 403, "forbidden"),
         (AppMode.WORKFLOW, TenantAccountRole.OWNER, 404, "app_not_found"),
     ],
 )

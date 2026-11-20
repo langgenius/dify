@@ -64,6 +64,7 @@
   "export.last": "Dernière exportation",
   "export.noIdentities": "Aucun résultat correspondant.",
   "export.noMatches": "Aucun journal ne correspond à ces filtres.",
+  "export.previewRows": "Lignes CSV {{rows}}",
   "export.previewSize": "Conversations {{conversations}} · Lignes CSV {{rows}}",
   "export.previewUnavailable": "Le nombre est indisponible. Vous pouvez quand même exporter.",
   "export.scope": "Périmètre de l’export",

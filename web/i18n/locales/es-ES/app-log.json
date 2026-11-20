@@ -64,6 +64,7 @@
   "export.last": "Última exportación",
   "export.noIdentities": "No se encontraron coincidencias.",
   "export.noMatches": "No hay registros que coincidan con estos filtros.",
+  "export.previewRows": "Filas CSV {{rows}}",
   "export.previewSize": "Conversaciones {{conversations}} · Filas CSV {{rows}}",
   "export.previewUnavailable": "No se pudo obtener el recuento. Puedes exportar de todos modos.",
   "export.scope": "Alcance de la exportación",

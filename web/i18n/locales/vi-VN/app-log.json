@@ -64,6 +64,7 @@
   "export.last": "Lần xuất gần nhất",
   "export.noIdentities": "Không tìm thấy kết quả phù hợp.",
   "export.noMatches": "Không có nhật ký phù hợp với các bộ lọc này.",
+  "export.previewRows": "{{rows}} dòng CSV",
   "export.previewSize": "{{conversations}} cuộc trò chuyện · {{rows}} dòng CSV",
   "export.previewUnavailable": "Không có số liệu đếm. Bạn vẫn có thể xuất.",
   "export.scope": "Phạm vi xuất",

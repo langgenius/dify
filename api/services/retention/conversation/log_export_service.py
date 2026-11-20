@@ -1,6 +1,7 @@
-"""Create export tasks and write CSV for the logs of one Console chat app."""
+"""Create export tasks and write CSV for the logs of one Console conversation app."""
 
 import csv
+import json
 import logging
 from collections.abc import Callable, Generator, Iterable
 from datetime import UTC, datetime, timedelta
@@ -14,7 +15,6 @@ from core.helper.csv_sanitizer import CSVSanitizer
 from libs.datetime_utils import ensure_naive_utc, utc_now
 from machinery.context import RequestContext
 from services.entities.conversation_entities import (
-    ConsoleConversationKind,
     ConsoleConversationLogFilters,
     ConsoleConversationScope,
     ConversationLogExportRow,
@@ -27,7 +27,12 @@ type LogExportDownload = str | tuple[bytes, Generator[bytes]]
 
 _LOG_EXPORT_TASK_TTL = timedelta(days=1)
 _LOG_EXPORT_DOWNLOAD_URL_TTL_SECONDS = 3600
-_LOG_CSV_APP_TYPES = {"chat": "Chatbot", "advanced-chat": "Chatflow", "agent-chat": "Agent"}
+_LOG_CSV_APP_TYPES = {
+    "chat": "Chatbot",
+    "advanced-chat": "Chatflow",
+    "agent-chat": "Agent",
+    "completion": "Text Generator",
+}
 _LOG_CSV_COLUMNS = (
     "app_id",
     "app_type",
@@ -107,10 +112,8 @@ class ConversationLogExportTaskStore(Protocol):
 
 
 class ConversationLogExportStore(Protocol):
-    def get_console_scope(
-        self, context: RequestContext, app_id: str, *, kind: ConsoleConversationKind
-    ) -> ConsoleConversationScope:
-        """Return the owned chat app scope for an admitted Console caller."""
+    def get_console_log_export_scope(self, context: RequestContext, app_id: str) -> ConsoleConversationScope:
+        """Return the owned conversation app scope for an admitted Console caller."""
         ...
 
     def iter_console_log_export_rows(
@@ -138,6 +141,10 @@ class ConversationLogExportService:
         self._dispatch = dispatch
         self._store_csv = store_csv
         self._open_csv = open_csv
+
+    def get_scope(self, context: RequestContext, app_id: str) -> ConsoleConversationScope:
+        """Resolve the app's conversation logs for an admitted caller."""
+        return self._conversations.get_console_log_export_scope(context, app_id)
 
     def create_task(
         self, *, scope: ConsoleConversationScope, requested_by: str, filters: ConsoleConversationLogFilters
@@ -244,12 +251,12 @@ class ConversationLogExportService:
         filters: ConsoleConversationLogFilters,
         output: TextIO,
     ) -> int:
-        """Write the app's filtered chat logs to a UTF-8 text stream and return its data row count.
+        """Write the app's filtered logs to a UTF-8 text stream and return its data row count.
 
         Require an admitted caller and a writable stream opened with newline="". The caller
         owns the stream and publishes it only after success, since a failure may leave partial output.
         """
-        scope = self._conversations.get_console_scope(context, app_id, kind="chat")
+        scope = self.get_scope(context, app_id)
         app_type = _LOG_CSV_APP_TYPES.get(scope.app_mode)
         if app_type is None:
             raise UnsupportedConversationLogExportModeError("App mode does not support conversation log CSV exports.")
@@ -259,6 +266,7 @@ class ConversationLogExportService:
         writer.writerow(_LOG_CSV_COLUMNS)
         row_count = 0
         for row in self._conversations.iter_console_log_export_rows(scope=scope, filters=filters):
+            user_input = json.dumps(row.input_variables, ensure_ascii=False) if row.input_variables else row.user_input
             values = (
                 scope.app_id,
                 app_type,
@@ -269,7 +277,7 @@ class ConversationLogExportService:
                 "",
                 row.message_id,
                 ensure_naive_utc(row.created_at).replace(tzinfo=UTC).isoformat(),
-                row.user_input,
+                user_input,
                 row.app_response,
                 row.feedback_rating,
                 row.feedback_content,
