@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 
 import httpx
 import pytest
-from dify_agent.client import Client
+from dify_agent.client import Client, DifyAgentClientError, DifyAgentHTTPError
 from dify_agent.protocol import DestroyExecutionBindingRequest
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -173,6 +173,63 @@ def test_create_binding_without_home_snapshot_uses_backend_default(
     assert stored_binding.base_home_snapshot_id is None
     request = client.create_execution_binding_sync.call_args.args[0]
     assert request.home_snapshot_ref is None
+
+
+@pytest.mark.parametrize(
+    ("backend_status", "cause"),
+    [
+        (503, DifyAgentHTTPError),
+        (None, DifyAgentClientError),
+    ],
+)
+def test_create_binding_maps_backend_failures_without_writing_rows(
+    backend_status: int | None,
+    cause: type[DifyAgentClientError],
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A failed allocation logs its diagnostic, exposes a safe error, and leaves no ledger rows."""
+    diagnostic = "Failed to provision /internal/sandboxes/worker-1"
+
+    def fail(request: httpx.Request) -> httpx.Response:
+        """Return a backend error or simulate an unreachable allocation endpoint."""
+        assert request.url.path == "/execution-bindings"
+        if backend_status is None:
+            raise httpx.ConnectError(diagnostic, request=request)
+        return httpx.Response(
+            backend_status,
+            json={"detail": {"code": "workspace_unavailable", "message": diagnostic}},
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(fail)) as http_client:
+        monkeypatch.setattr(
+            AgentWorkspaceService,
+            "_client",
+            staticmethod(lambda: Client(base_url="http://agent", sync_http_client=http_client)),
+        )
+        with pytest.raises(AgentWorkspaceError) as caught:
+            AgentWorkspaceService.create_binding(
+                session=sqlite_session,
+                scope=WorkspaceOwnerScope(
+                    tenant_id="tenant-1",
+                    app_id="app-1",
+                    owner_type=AgentWorkspaceOwnerType.BUILD_DRAFT,
+                    owner_id="draft-1",
+                ),
+                agent_id="agent-1",
+                base_home_snapshot_id=None,
+                agent_config_version_id="draft-1",
+                agent_config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+            )
+
+    assert str(caught.value) == "Agent workspace allocation failed."
+    assert type(caught.value.__cause__) is cause
+    assert diagnostic in str(caught.value.__cause__)
+    assert diagnostic in caplog.text
+    sqlite_session.commit()
+    assert sqlite_session.scalars(select(AgentWorkspace)).all() == []
+    assert sqlite_session.scalars(select(AgentWorkspaceBinding)).all() == []
 
 
 def test_create_binding_rejects_missing_explicit_home_snapshot_before_backend_call(

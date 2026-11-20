@@ -18,6 +18,7 @@ from sqlalchemy import select
 
 from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.db.session_factory import session_factory
 from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import ToolProviderType
@@ -25,7 +26,6 @@ from core.tools.errors import ToolProviderCredentialValidationError, ToolProvide
 from core.tools.plugin_tool.tool import PluginTool
 from core.tools.tool_manager import ToolManager
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
-from extensions.ext_database import db
 from models.agent_config_entities import AgentKnowledgeSpaceConfig, AgentSoulDifyToolConfig, AgentSoulToolsConfig
 from models.provider_ids import ToolProviderID
 from models.tools import WorkflowToolProvider
@@ -108,7 +108,11 @@ def _list_provider_tool_names(
     provider_type: ToolProviderType,
     provider_id: str,
 ) -> list[str]:
-    """Tool names a provider currently declares for provider-level Agent entries."""
+    """List names for a tenant's provider-level Agent tool entry.
+
+    Workflow lookup releases its session before the controller loads the pinned
+    workflow. A missing workflow provider raises ToolProviderNotFoundError.
+    """
     match provider_type:
         case ToolProviderType.PLUGIN:
             plugin_provider = ToolManager.get_plugin_provider(provider_id, tenant_id)
@@ -120,14 +124,15 @@ def _list_provider_tool_names(
             api_provider, _ = ToolManager.get_api_provider_controller(tenant_id, provider_id)
             return [tool.entity.identity.name for tool in api_provider.get_tools(tenant_id) or []]
         case ToolProviderType.WORKFLOW:
-            db_provider = db.session.scalar(
-                select(WorkflowToolProvider)
-                .where(
-                    WorkflowToolProvider.id == provider_id,
-                    WorkflowToolProvider.tenant_id == tenant_id,
+            with session_factory.create_session() as session:
+                db_provider = session.scalar(
+                    select(WorkflowToolProvider)
+                    .where(
+                        WorkflowToolProvider.id == provider_id,
+                        WorkflowToolProvider.tenant_id == tenant_id,
+                    )
+                    .limit(1)
                 )
-                .limit(1)
-            )
             if db_provider is None:
                 raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
             workflow_provider = WorkflowToolProviderController.from_db(db_provider)
@@ -140,12 +145,16 @@ def _list_provider_tool_names(
 
 
 def _resolve_mcp_provider_id(*, tenant_id: str, provider_id: str) -> str:
-    """Normalize a persisted MCP provider reference to the runtime-facing server identifier."""
-    service = MCPToolManageService(session=db.session())
+    """Resolve a tenant's persisted MCP reference in a short-lived read session.
+
+    Return the server identifier or raise ToolProviderNotFoundError when missing.
+    """
     try:
-        return service.get_provider_entity_by_persisted_reference(
-            id_or_server_identifier=provider_id, tenant_id=tenant_id
-        ).server_identifier
+        with session_factory.create_session() as session:
+            service = MCPToolManageService(session=session)
+            return service.get_provider_entity_by_persisted_reference(
+                id_or_server_identifier=provider_id, tenant_id=tenant_id
+            ).server_identifier
     except ValueError as exc:
         raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found") from exc
 

@@ -2,8 +2,9 @@
 
 Unlike the legacy ``AgentChatAppRunner`` (which runs an in-process ReAct loop),
 this runner delegates to the Agent backend, consumes the streamed event flow,
-republishes the assistant answer through the existing EasyUI chat task
-pipeline, and saves the latest module state snapshot on the persistent Binding.
+republishes chat answers through the existing EasyUI pipeline, and saves chat
+snapshots on the persistent Binding. Internal finalization reads that history
+but never persists messages, snapshots, or message-level traces.
 """
 
 from __future__ import annotations
@@ -11,6 +12,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+import uuid
 from collections.abc import Mapping
 from decimal import Decimal
 from typing import Any, Literal
@@ -28,7 +30,9 @@ from clients.agent_backend import (
     AgentBackendRunFailedInternalEvent,
     AgentBackendRunSucceededInternalEvent,
     AgentBackendStreamInternalEvent,
+    AgentBackendTimeoutError,
 )
+from configs import dify_config
 from core.app.apps.agent_app.runtime_request_builder import (
     AgentAppRuntimeBuildContext,
     AgentAppRuntimeRequest,
@@ -81,6 +85,31 @@ class _DefaultSessionScopeSnapshotId:
 
 
 _DEFAULT_SESSION_SCOPE_SNAPSHOT_ID = _DefaultSessionScopeSnapshotId()
+_FINALIZATION_CANCEL_WAIT_TIMEOUT_SECONDS = 5.0
+_FINALIZATION_TIMEOUT_MESSAGE = "Build chat finalization timed out."
+
+_BUILD_CHAT_FINALIZATION_QUERY = """Finalize this Build chat configuration for the agent.
+
+This step is only for persisting Agent config changes discovered in the current Build chat. Do not install packages,
+edit workspace files, run validation or debugging commands, make exploratory checks, or perform other work.
+
+Use only the current Build chat message history to identify changes that need to be persisted. Do not inspect, test, or
+validate old config unless the message history already shows that the old config is invalid.
+
+Only update the build-draft config note when the current Build chat contains durable context that later runs need.
+Write the config note in the language used by the message history.
+Do not create, update, delete, inspect, or fill gaps in other Agent config resources, including config files, config
+skills, config env, tools, models, knowledge, or prompt settings.
+
+When updating the config note with the Agent config CLI usage provided in the runtime prompt, record only durable
+context needed by later runs, such as:
+
+- what you installed or configured outside the workspace for this agent,
+- where those external updates live, including CLI tools, packages, and persistent $HOME paths,
+- how the agent should use it in later runs,
+- any setup, authentication, or user action still required.
+
+After config persistence completes, respond FINISHED."""
 
 _AGENT_BACKEND_INVOKE_ERROR_BY_REASON: Mapping[str, type[InvokeError]] = {
     "InvokeAuthorizationError": InvokeAuthorizationError,
@@ -110,6 +139,25 @@ def _agent_backend_failure_to_exception(event: AgentBackendRunFailedInternalEven
         reason=event.reason,
         source_event_id=event.source_event_id,
     )
+
+
+def _raise_for_unsuccessful_terminal(
+    terminal: AgentBackendRunSucceededInternalEvent
+    | AgentBackendRunFailedInternalEvent
+    | AgentBackendRunCancelledInternalEvent
+    | None,
+) -> AgentBackendRunSucceededInternalEvent:
+    """Return a successful terminal or raise the shared backend/provider error.
+
+    Accepts a missing terminal for an exhausted stream; performs no persistence.
+    """
+    if isinstance(terminal, AgentBackendRunSucceededInternalEvent):
+        return terminal
+    if isinstance(terminal, AgentBackendRunFailedInternalEvent):
+        if terminal.error_type is None and terminal.reason == "binding_lost":
+            raise AgentBackendError("The retained agent working environment is no longer available.")
+        raise _agent_backend_failure_to_exception(terminal)
+    raise AgentBackendError("Agent backend run did not complete successfully.")
 
 
 def _prompt_messages_from_query(user_query: str | None) -> list[PromptMessage]:
@@ -626,7 +674,7 @@ def _is_empty_answer_only_thought(row: MessageAgentThought) -> bool:
 
 
 class AgentAppRunner:
-    """Runs one Agent App conversation turn against the Agent backend."""
+    """Drive chat and ephemeral config finalization against the Agent backend."""
 
     def __init__(
         self,
@@ -663,6 +711,11 @@ class AgentAppRunner:
         session_scope_snapshot_id: str | None | _DefaultSessionScopeSnapshotId = _DEFAULT_SESSION_SCOPE_SNAPSHOT_ID,
         build_draft_id: str | None = None,
     ) -> None:
+        """Execute a validated chat turn, publishing and persisting its message state.
+
+        Requires an existing message and its queue. Backend failures propagate after
+        available usage/session state has been saved; success also emits the answer.
+        """
         scope = self._build_session_scope(
             dify_context=dify_context,
             agent_id=agent_id,
@@ -725,13 +778,7 @@ class AgentAppRunner:
                     snapshot=terminal.session_snapshot,
                 )
 
-        if not isinstance(terminal, AgentBackendRunSucceededInternalEvent):
-            if isinstance(terminal, AgentBackendRunFailedInternalEvent):
-                reason = terminal.reason
-                if terminal.error_type is None and reason == "binding_lost":
-                    raise AgentBackendError("The retained agent working environment is no longer available.")
-                raise _agent_backend_failure_to_exception(terminal)
-            raise AgentBackendError("Agent backend run did not complete successfully.")
+        terminal = _raise_for_unsuccessful_terminal(terminal)
 
         answer = self._terminal_output_to_answer(terminal.output)
         try:
@@ -778,6 +825,118 @@ class AgentAppRunner:
                 output=answer,
             )
 
+    def run_finalization(
+        self,
+        *,
+        dify_context: DifyRunContext,
+        agent_id: str,
+        build_draft_id: str,
+        agent_soul: AgentSoulConfig,
+        home_snapshot_id: str | None,
+        conversation_id: str,
+    ) -> None:
+        """Finalize a resolved build draft using its existing chat history.
+
+        Requires a Flask application context and may allocate a draft workspace
+        binding. Releases the request-scoped database session after building the
+        request, before starting the backend run. Run creation and event consumption
+        share the positive app execution budget. After a run is accepted, timeouts
+        and stream errors trigger cancellation under a separate deadline. The runtime may
+        update the config note. Finalization leaves chat records, session history,
+        and message traces untouched.
+
+        Discard terminal.session_snapshot even after success: if build-draft/apply
+        fails, continued Build chat or another Apply must reuse history without the
+        internal finalization prompt and FINISHED answer.
+        """
+        scope = self._build_session_scope(
+            dify_context=dify_context,
+            agent_id=agent_id,
+            agent_config_snapshot_id=build_draft_id,
+            agent_config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+            session_scope_snapshot_id=build_draft_id,
+            build_draft_id=build_draft_id,
+            home_snapshot_id=home_snapshot_id,
+            conversation_id=conversation_id,
+        )
+        stored = self._session_store.load_or_create(scope)
+        runtime = self._build_runtime(
+            dify_context=dify_context,
+            agent_id=agent_id,
+            agent_config_snapshot_id=build_draft_id,
+            agent_config_version_kind="build_draft",
+            agent_soul=agent_soul,
+            binding_id=stored.binding_id,
+            backend_binding_ref=stored.backend_binding_ref,
+            conversation_id=conversation_id,
+            query=_BUILD_CHAT_FINALIZATION_QUERY,
+            inputs={},
+            files=(),
+            image_detail_config=None,
+            idempotency_key=str(uuid.uuid4()),
+            stored=stored,
+            collect_message_trace=False,
+        )
+        # Configuration and tool resolution can use the request-scoped session
+        # independently of the generator's local session.
+        db.session.close()
+
+        execution_timeout = dify_config.APP_MAX_EXECUTION_TIME
+        deadline = time.monotonic() + execution_timeout if execution_timeout > 0 else None
+        create_timeout = float(execution_timeout) if deadline is not None else None
+        try:
+            run_id = self._agent_backend_client.create_run(runtime.request, timeout_seconds=create_timeout).run_id
+        except AgentBackendError as exc:
+            if isinstance(exc, AgentBackendTimeoutError) or (deadline is not None and time.monotonic() >= deadline):
+                raise AgentBackendError(_FINALIZATION_TIMEOUT_MESSAGE) from exc
+            raise
+        remaining = None if deadline is None else deadline - time.monotonic()
+        terminal = None
+        last_event_id: str | None = None
+        stream_error: Exception | None = None
+        if remaining is None or remaining > 0:
+            try:
+                public_events = self._agent_backend_client.stream_events(run_id, timeout_seconds=remaining)
+                while terminal is None and (public_event := next(public_events, None)) is not None:
+                    if public_event.id is not None:
+                        last_event_id = public_event.id
+                    terminal = next(
+                        (
+                            event
+                            for event in self._event_adapter.adapt(public_event)
+                            if isinstance(
+                                event,
+                                AgentBackendRunSucceededInternalEvent
+                                | AgentBackendRunFailedInternalEvent
+                                | AgentBackendRunCancelledInternalEvent,
+                            )
+                        ),
+                        None,
+                    )
+            except Exception as exc:
+                stream_error = exc
+
+        timed_out = (
+            terminal is None
+            and deadline is not None
+            and (time.monotonic() >= deadline or isinstance(stream_error, AgentBackendTimeoutError))
+        )
+        if timed_out or stream_error is not None:
+            cancel_timeout = _FINALIZATION_CANCEL_WAIT_TIMEOUT_SECONDS
+            if execution_timeout > 0:
+                cancel_timeout = min(cancel_timeout, float(execution_timeout))
+            try:
+                self._agent_backend_client.cancel_run_and_wait(
+                    run_id, after=last_event_id, timeout_seconds=cancel_timeout
+                )
+            except Exception:
+                logger.warning("Failed to cancel Agent App finalization run: run_id=%s", run_id, exc_info=True)
+        if timed_out:
+            raise AgentBackendError(_FINALIZATION_TIMEOUT_MESSAGE) from stream_error
+        if stream_error is not None:
+            raise stream_error
+        _raise_for_unsuccessful_terminal(terminal)
+
     def _build_session_scope(
         self,
         *,
@@ -822,7 +981,13 @@ class AgentAppRunner:
         image_detail_config: ImagePromptMessageContent.DETAIL | None,
         idempotency_key: str,
         stored: StoredAgentAppSession,
+        collect_message_trace: bool = True,
     ) -> AgentAppRuntimeRequest:
+        """Build a request from resolved workspace state without changing that state.
+
+        Normal messages collect traces; ephemeral finalization explicitly opts out.
+        Runtime configuration errors propagate before backend execution.
+        """
         session_snapshot = stored.session_snapshot
         return self._request_builder.build(
             AgentAppRuntimeBuildContext(
@@ -840,6 +1005,7 @@ class AgentAppRunner:
                 binding_id=binding_id,
                 backend_binding_ref=backend_binding_ref,
                 session_snapshot=session_snapshot,
+                collect_message_trace=collect_message_trace,
             )
         )
 

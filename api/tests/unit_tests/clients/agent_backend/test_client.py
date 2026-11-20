@@ -1,5 +1,5 @@
 from collections.abc import Callable, Iterator
-from typing import cast, override
+from typing import override
 
 import pytest
 from dify_agent.client import DifyAgentHTTPError, DifyAgentStreamError, DifyAgentTimeoutError, DifyAgentValidationError
@@ -21,13 +21,11 @@ from clients.agent_backend import (
     AgentBackendModelConfig,
     AgentBackendRunRequestBuilder,
     AgentBackendStreamError,
-    AgentBackendTransportError,
+    AgentBackendTimeoutError,
     AgentBackendValidationError,
     AgentBackendWorkflowNodeRunInput,
     DifyAgentBackendRunClient,
 )
-
-_STREAM_TIMEOUT_UNSET = object()
 
 
 def _request() -> CreateRunRequest:
@@ -52,11 +50,14 @@ def _request() -> CreateRunRequest:
 
 
 class _SuccessfulClient:
-    stream_options: tuple[int | None, object, Callable[[], bool] | None] | None = None
+    stream_options: tuple[int | None, float | None, Callable[[], bool] | None] | None = None
     cancel_after: str | None = None
+    cancel_timeout_seconds: float | None = None
+    create_timeout_seconds: float | None = None
 
-    def create_run_sync(self, request: CreateRunRequest) -> CreateRunResponse:
+    def create_run_sync(self, request: CreateRunRequest, *, timeout_seconds: float | None = None) -> CreateRunResponse:
         assert isinstance(request, CreateRunRequest)
+        self.create_timeout_seconds = timeout_seconds
         return CreateRunResponse(run_id="run-1", status="running")
 
     def cancel_run_sync(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
@@ -69,8 +70,10 @@ class _SuccessfulClient:
         request: CancelRunRequest | None = None,
         *,
         after: str | None = None,
+        timeout_seconds: float | None = None,
     ) -> RunCancelledEvent:
         self.cancel_after = after
+        self.cancel_timeout_seconds = timeout_seconds
         request = request or CancelRunRequest()
         return RunCancelledEvent(
             id="2-0",
@@ -84,7 +87,7 @@ class _SuccessfulClient:
         *,
         after: str | None = None,
         max_reconnects: int | None = None,
-        timeout_seconds: float | None = cast(float | None, _STREAM_TIMEOUT_UNSET),
+        timeout_seconds: float | None = None,
         should_stop: Callable[[], bool] | None = None,
     ) -> Iterator[RunEvent]:
         del after
@@ -110,14 +113,15 @@ def test_dify_agent_backend_run_client_delegates_sync_methods() -> None:
     def should_stop() -> bool:
         return False
 
-    created = client.create_run(_request())
+    created = client.create_run(_request(), timeout_seconds=9.0)
     cancelled = client.cancel_run(created.run_id)
     cancelled_event = client.cancel_run_and_wait(
         created.run_id,
         CancelRunRequest(reason="stopped"),
         after="1-0",
+        timeout_seconds=2.5,
     )
-    events = list(client.stream_events(created.run_id, should_stop=should_stop))
+    events = list(client.stream_events(created.run_id, timeout_seconds=7.5, should_stop=should_stop))
     status = client.wait_run(created.run_id)
 
     assert created.run_id == "run-1"
@@ -126,13 +130,17 @@ def test_dify_agent_backend_run_client_delegates_sync_methods() -> None:
     assert events[0].type == "run_started"
     assert status.status == "succeeded"
     assert wrapped.cancel_after == "1-0"
-    assert wrapped.stream_options == (2, _STREAM_TIMEOUT_UNSET, should_stop)
+    assert wrapped.create_timeout_seconds == 9.0
+    assert wrapped.cancel_timeout_seconds == 2.5
+    assert wrapped.stream_options == (2, 7.5, should_stop)
 
 
 def test_dify_agent_backend_run_client_maps_validation_error() -> None:
     class InvalidClient(_SuccessfulClient):
         @override
-        def create_run_sync(self, request: CreateRunRequest) -> CreateRunResponse:
+        def create_run_sync(
+            self, request: CreateRunRequest, *, timeout_seconds: float | None = None
+        ) -> CreateRunResponse:
             raise DifyAgentValidationError(detail={"field": "bad"})
 
     with pytest.raises(AgentBackendValidationError) as exc_info:
@@ -144,7 +152,9 @@ def test_dify_agent_backend_run_client_maps_validation_error() -> None:
 def test_dify_agent_backend_run_client_maps_http_error() -> None:
     class HTTPErrorClient(_SuccessfulClient):
         @override
-        def create_run_sync(self, request: CreateRunRequest) -> CreateRunResponse:
+        def create_run_sync(
+            self, request: CreateRunRequest, *, timeout_seconds: float | None = None
+        ) -> CreateRunResponse:
             raise DifyAgentHTTPError(status_code=503, detail="unavailable")
 
     with pytest.raises(AgentBackendHTTPError) as exc_info:
@@ -160,7 +170,7 @@ def test_dify_agent_backend_run_client_maps_timeout_error() -> None:
         def wait_run_sync(self, run_id: str, *, timeout_seconds: float | None = None) -> RunStatusResponse:
             raise DifyAgentTimeoutError("timeout")
 
-    with pytest.raises(AgentBackendTransportError) as exc_info:
+    with pytest.raises(AgentBackendTimeoutError) as exc_info:
         DifyAgentBackendRunClient(TimeoutClient()).wait_run("run-1")
 
     assert str(exc_info.value) == "timeout"

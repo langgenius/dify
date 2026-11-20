@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13,<4.0"
 dependencies = [
+    "httpcore==1.0.9",
     "httpx==0.28.1",
     "httpx2>=2.5.0,<3.0.0",
     "pydantic>=2.12.5,<2.13",

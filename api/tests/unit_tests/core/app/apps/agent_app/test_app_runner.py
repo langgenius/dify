@@ -1,21 +1,30 @@
-"""Unit tests for the Agent App runner — verifies the agent-backend event
-stream is republished as chat queue events and the conversation snapshot is
-saved, using the deterministic fake backend client (no live stack)."""
+"""Verify chat event publication and persistence using the deterministic backend.
+
+Ephemeral finalization exercises the real workspace store and preserves chat
+records and binding history across successful and unsuccessful backend turns.
+"""
 
 from __future__ import annotations
 
 import json
 from collections.abc import Callable, Iterator
+from contextlib import nullcontext
 from datetime import UTC, datetime
 from decimal import Decimal
+from math import nextafter
 from typing import Any, override
 from unittest.mock import MagicMock
+from uuid import UUID, uuid4
 
 import pytest
+from dify_agent.layers.execution_context import ApplicationTracingContext
+from dify_agent.layers.user_prompt import DifyUserPromptLayerConfig
 from dify_agent.protocol import (
     AgentRunUsage,
     CancelRunRequest,
     CancelRunResponse,
+    CreateRunRequest,
+    CreateRunResponse,
     PydanticAIStreamRunEvent,
     RunCancelledEvent,
     RunCancelledEventData,
@@ -28,6 +37,7 @@ from dify_agent.protocol import (
     RunSucceededEventData,
 )
 from dify_agent.protocol.snapshot import SessionSnapshot
+from flask import Flask
 from pydantic_ai.messages import (
     FunctionToolCallEvent,
     FunctionToolResultEvent,
@@ -46,6 +56,8 @@ from clients.agent_backend import (
     AgentBackendRunFailedError,
     AgentBackendRunFailedInternalEvent,
     AgentBackendStreamInternalEvent,
+    AgentBackendTimeoutError,
+    AgentBackendTransportError,
     FakeAgentBackendRunClient,
     FakeAgentBackendScenario,
 )
@@ -74,8 +86,17 @@ from core.app.entities.queue_entities import (
 )
 from core.app.llm.model_access import ModelRuntimeProfile
 from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentToolLayers
+from extensions.tracing import bind_tracing
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from graphon.model_runtime.errors.invoke import InvokeRateLimitError
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeRateLimitError
+from models.agent import (
+    AgentConfigDraft,
+    AgentConfigDraftType,
+    AgentConfigVersionKind,
+    AgentWorkspace,
+    AgentWorkspaceBinding,
+    AgentWorkspaceOwnerType,
+)
 from models.agent_config_entities import (
     AgentKnowledgeSpaceConfig,
     AgentSoulConfig,
@@ -83,7 +104,11 @@ from models.agent_config_entities import (
 )
 from models.enums import ConversationFromSource
 from models.enums import InvokeFrom as ModelInvokeFrom
-from models.model import AppMode, Message, MessageAgentThought
+from models.model import AppMode, Conversation, Message, MessageAgentThought
+from services.agent.roster_service import AgentRosterService
+from services.tracing.adapters import StoredPolicyTraceScopes
+from tests.helpers.unit.model_factories import make_app, make_conversation
+from tests.helpers.unit.services.tracing_ports import RecordingTracingHooks, untraced_scopes
 
 
 @pytest.fixture(autouse=True)
@@ -150,6 +175,7 @@ class _RecordingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
         super().__init__(**kwargs)
         self.cancelled_run_ids: list[str] = []
         self.cancel_after: list[str | None] = []
+        self.cancel_timeouts: list[float | None] = []
 
     @override
     def cancel_run(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
@@ -163,9 +189,11 @@ class _RecordingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
         request: CancelRunRequest | None = None,
         *,
         after: str | None = None,
+        timeout_seconds: float | None = None,
     ) -> RunCancelledEvent:
         self.cancel_after.append(after)
-        return super().cancel_run_and_wait(run_id, request=request, after=after)
+        self.cancel_timeouts.append(timeout_seconds)
+        return super().cancel_run_and_wait(run_id, request=request, after=after, timeout_seconds=timeout_seconds)
 
 
 class _CancelAndWaitFailingClient(_RecordingFakeAgentBackendRunClient):
@@ -176,8 +204,9 @@ class _CancelAndWaitFailingClient(_RecordingFakeAgentBackendRunClient):
         request: CancelRunRequest | None = None,
         *,
         after: str | None = None,
+        timeout_seconds: float | None = None,
     ) -> RunCancelledEvent:
-        del request
+        del request, timeout_seconds
         self.cancel_after.append(after)
         raise RuntimeError(f"failed to finish cancelling {run_id}")
 
@@ -190,8 +219,9 @@ class _UsageCancellationClient(_RecordingFakeAgentBackendRunClient):
         request: CancelRunRequest | None = None,
         *,
         after: str | None = None,
+        timeout_seconds: float | None = None,
     ) -> RunCancelledEvent:
-        event = super().cancel_run_and_wait(run_id, request=request, after=after)
+        event = super().cancel_run_and_wait(run_id, request=request, after=after, timeout_seconds=timeout_seconds)
         return event.model_copy(
             update={
                 "data": event.data.model_copy(
@@ -208,9 +238,10 @@ class _UsageFailedClient(FakeAgentBackendRunClient):
         run_id: str,
         *,
         after: str | None = None,
+        timeout_seconds: float | None = None,
         should_stop: Callable[[], bool] | None = None,
     ) -> Iterator[RunEvent]:
-        del after, should_stop
+        del after, timeout_seconds, should_stop
         yield RunStartedEvent(id="1-0", run_id=run_id)
         yield RunFailedEvent(
             id="2-0",
@@ -234,9 +265,10 @@ class _RunLimitBindingLostFakeAgentBackendRunClient(FakeAgentBackendRunClient):
         run_id: str,
         *,
         after: str | None = None,
+        timeout_seconds: float | None = None,
         should_stop: Callable[[], bool] | None = None,
     ) -> Iterator[RunEvent]:
-        del after, should_stop
+        del after, timeout_seconds, should_stop
         created_at = datetime(2026, 1, 1, tzinfo=UTC)
         yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
         yield RunFailedEvent(
@@ -262,9 +294,10 @@ class _TerminalWithoutSnapshotFakeAgentBackendRunClient(FakeAgentBackendRunClien
         run_id: str,
         *,
         after: str | None = None,
+        timeout_seconds: float | None = None,
         should_stop: Callable[[], bool] | None = None,
     ) -> Iterator[RunEvent]:
-        del after, should_stop
+        del after, timeout_seconds, should_stop
         created_at = datetime(2026, 1, 1, tzinfo=UTC)
         yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
         if self.terminal_type == "failed":
@@ -290,9 +323,10 @@ class _StreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
         run_id: str,
         *,
         after: str | None = None,
+        timeout_seconds: float | None = None,
         should_stop: Callable[[], bool] | None = None,
     ) -> Iterator[RunEvent]:
-        del after, should_stop
+        del after, timeout_seconds, should_stop
         created_at = datetime(2026, 1, 1, tzinfo=UTC)
         yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
         yield PydanticAIStreamRunEvent(
@@ -344,9 +378,10 @@ class _StreamingStopAfterFirstDeltaFakeAgentBackendRunClient(_RecordingFakeAgent
         run_id: str,
         *,
         after: str | None = None,
+        timeout_seconds: float | None = None,
         should_stop: Callable[[], bool] | None = None,
     ) -> Iterator[RunEvent]:
-        del after, should_stop
+        del after, timeout_seconds, should_stop
         created_at = datetime(2026, 1, 1, tzinfo=UTC)
         yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
         yield PydanticAIStreamRunEvent(
@@ -373,9 +408,10 @@ class _StreamingSingleAgentMessageDeltaFakeAgentBackendRunClient(FakeAgentBacken
         run_id: str,
         *,
         after: str | None = None,
+        timeout_seconds: float | None = None,
         should_stop: Callable[[], bool] | None = None,
     ) -> Iterator[RunEvent]:
-        del after, should_stop
+        del after, timeout_seconds, should_stop
         created_at = datetime(2026, 1, 1, tzinfo=UTC)
         yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
         yield PydanticAIStreamRunEvent(
@@ -403,9 +439,10 @@ class _NullOutputFakeAgentBackendRunClient(FakeAgentBackendRunClient):
         run_id: str,
         *,
         after: str | None = None,
+        timeout_seconds: float | None = None,
         should_stop: Callable[[], bool] | None = None,
     ) -> Iterator[RunEvent]:
-        del after, should_stop
+        del after, timeout_seconds, should_stop
         created_at = datetime(2026, 1, 1, tzinfo=UTC)
         yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
         yield RunSucceededEvent(
@@ -426,9 +463,10 @@ class _StreamingTextNullOutputFakeAgentBackendRunClient(FakeAgentBackendRunClien
         run_id: str,
         *,
         after: str | None = None,
+        timeout_seconds: float | None = None,
         should_stop: Callable[[], bool] | None = None,
     ) -> Iterator[RunEvent]:
-        del after, should_stop
+        del after, timeout_seconds, should_stop
         created_at = datetime(2026, 1, 1, tzinfo=UTC)
         yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
         yield PydanticAIStreamRunEvent(
@@ -456,9 +494,10 @@ class _AgentAnswerStreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
         run_id: str,
         *,
         after: str | None = None,
+        timeout_seconds: float | None = None,
         should_stop: Callable[[], bool] | None = None,
     ) -> Iterator[RunEvent]:
-        del after, should_stop
+        del after, timeout_seconds, should_stop
         created_at = datetime(2026, 1, 1, tzinfo=UTC)
         yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
         yield PydanticAIStreamRunEvent(
@@ -493,9 +532,10 @@ class _ProcessStreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
         run_id: str,
         *,
         after: str | None = None,
+        timeout_seconds: float | None = None,
         should_stop: Callable[[], bool] | None = None,
     ) -> Iterator[RunEvent]:
-        del after, should_stop
+        del after, timeout_seconds, should_stop
         created_at = datetime(2026, 1, 1, tzinfo=UTC)
         yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
         yield PydanticAIStreamRunEvent(
@@ -684,6 +724,17 @@ def _run(runner: AgentAppRunner, qm: _FakeQueueManager) -> None:
     )
 
 
+def _run_finalization(runner: AgentAppRunner) -> None:
+    runner.run_finalization(
+        dify_context=_dify_ctx(),
+        agent_id="agent-1",
+        build_draft_id="build-1",
+        agent_soul=_soul(),
+        home_snapshot_id="home-1",
+        conversation_id="conv-1",
+    )
+
+
 def _message_record() -> Message:
     message = Message(
         app_id="app-1",
@@ -799,17 +850,33 @@ def test_successful_turn_routes_stream_text_to_agent_message_and_uses_terminal_o
 
 
 def test_successful_turn_persists_usage_without_a_queue_consumer(sqlite_session: Session) -> None:
+    """A persisted chat message registers a trace and records usage without a queue consumer."""
     sqlite_session.add(_message_record())
     sqlite_session.flush()
-
-    _run(
-        _runner(_StreamingFakeAgentBackendRunClient(), _FakeSessionStore()),
-        _FakeQueueManager(),
+    hooks = RecordingTracingHooks(
+        ApplicationTracingContext(
+            run_id=uuid4(),
+            invocation_id=uuid4(),
+            trace_id="1" * 32,
+            parent_span_id="2" * 16,
+            session_id="conv-1",
+            capture_content=False,
+        )
     )
+    trace_app = Flask(__name__)
+    bind_tracing(trace_app, scopes=StoredPolicyTraceScopes(untraced_scopes()), hooks=hooks)
+
+    with trace_app.app_context():
+        _run(
+            _runner(_StreamingFakeAgentBackendRunClient(), _FakeSessionStore()),
+            _FakeQueueManager(),
+        )
 
     sqlite_session.expire_all()
     message = sqlite_session.get(Message, "msg-1")
     assert message is not None
+    assert [context.idempotency_key for context in hooks.agent_apps] == [message.id]
+    assert hooks.terminals == [("app-1", message.id, "succeeded")]
     assert message.message_tokens == 3
     assert message.answer_tokens == 5
     assert message.total_price == Decimal("0.000165")
@@ -1667,3 +1734,329 @@ def test_run_forwards_inputs_to_runtime_context(monkeypatch: pytest.MonkeyPatch)
     assert len(contexts) == 1
     assert contexts[0].inputs == inputs
     assert contexts[0].user_query == "hello"
+
+
+class _FinalizationClient(_RecordingFakeAgentBackendRunClient):
+    def __init__(self, outcome: str, *, scoped_session: Session, cancel_fails: bool = False) -> None:
+        super().__init__(run_id="run-1")
+        self.outcome = outcome
+        self.scoped_session = scoped_session
+        self.cancel_fails = cancel_fails
+
+    @override
+    def create_run(self, request: CreateRunRequest, *, timeout_seconds: float | None = None) -> CreateRunResponse:
+        """Accept the runtime request only after its preparation transaction has closed."""
+        assert not self.scoped_session.in_transaction()
+        return super().create_run(request, timeout_seconds=timeout_seconds)
+
+    @override
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        timeout_seconds: float | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
+        del after, timeout_seconds, should_stop
+        assert not self.scoped_session.in_transaction()
+        # These real process events would create thoughts on the normal chat path.
+        process_events = iter(_ProcessStreamingFakeAgentBackendRunClient().stream_events(run_id))
+        yield from (event for event in process_events if not isinstance(event, RunSucceededEvent))
+        snapshot = SessionSnapshot(layers={"history": {"finalization": "FINISHED"}})
+        usage = AgentRunUsage(prompt_tokens=13, completion_tokens=8)
+        if self.outcome == "stream_error":
+            raise RuntimeError("finalization stream interrupted")
+        if self.outcome == "success":
+            yield RunSucceededEvent(
+                id="7-0",
+                run_id=run_id,
+                data=RunSucceededEventData(output="FINISHED", session_snapshot=snapshot, usage=usage),
+            )
+        elif self.outcome == "cancelled":
+            yield RunCancelledEvent(
+                id="7-0", run_id=run_id, data=RunCancelledEventData(session_snapshot=snapshot, usage=usage)
+            )
+        elif self.outcome != "eof":
+            yield RunFailedEvent(
+                id="7-0",
+                run_id=run_id,
+                data=RunFailedEventData(
+                    error="finalization failed",
+                    session_snapshot=snapshot,
+                    usage=usage,
+                    reason={"binding_lost": "binding_lost", "provider_auth": "InvokeAuthorizationError"}.get(
+                        self.outcome
+                    ),
+                ),
+            )
+
+    @override
+    def cancel_run_and_wait(
+        self,
+        run_id: str,
+        request: CancelRunRequest | None = None,
+        *,
+        after: str | None = None,
+        timeout_seconds: float | None = None,
+    ) -> RunCancelledEvent:
+        result = super().cancel_run_and_wait(run_id, request, after=after, timeout_seconds=timeout_seconds)
+        if self.cancel_fails:
+            raise RuntimeError("cancellation failed")
+        return result
+
+
+@pytest.mark.parametrize(
+    ("outcome", "cancel_fails", "expected_error", "expected_message"),
+    [
+        ("success", False, None, None),
+        ("failed", False, AgentBackendRunFailedError, "finalization failed"),
+        ("cancelled", False, AgentBackendError, "Agent backend run did not complete successfully."),
+        (
+            "binding_lost",
+            False,
+            AgentBackendError,
+            "The retained agent working environment is no longer available.",
+        ),
+        ("provider_auth", False, InvokeAuthorizationError, "finalization failed"),
+        ("eof", False, AgentBackendError, "Agent backend run did not complete successfully."),
+        ("stream_error", False, RuntimeError, "finalization stream interrupted"),
+        ("stream_error", True, RuntimeError, "finalization stream interrupted"),
+    ],
+)
+def test_finalization_preserves_chat_records_and_binding_history(
+    outcome: str,
+    cancel_fails: bool,
+    expected_error: type[Exception] | None,
+    expected_message: str | None,
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    config_overrides: Callable[..., None],
+) -> None:
+    """Require each backend outcome's exact error while preserving existing chat state."""
+    config_overrides(APP_MAX_EXECUTION_TIME=60)
+    history = _compatible_session_snapshot()
+    workspace = AgentWorkspace(
+        id="workspace-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        owner_type=AgentWorkspaceOwnerType.BUILD_DRAFT,
+        owner_id="build-1",
+        owner_scope_key="root",
+        backend_workspace_ref="backend-workspace-1",
+    )
+    binding = AgentWorkspaceBinding(
+        id="binding-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workspace_id=workspace.id,
+        agent_id="agent-1",
+        agent_config_version_id="build-1",
+        agent_config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+        base_home_snapshot_id="home-1",
+        backend_binding_ref="backend-binding-1",
+        session_snapshot=history.model_dump_json(),
+    )
+    draft = AgentConfigDraft(
+        id="build-1",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        draft_type=AgentConfigDraftType.DEBUG_BUILD,
+        account_id="user-1",
+        config_snapshot=_soul(),
+        home_snapshot_id="home-1",
+        agent_workspace_binding_id=binding.id,
+    )
+    sqlite_session.add_all(
+        [
+            make_app(mode=AppMode.AGENT),
+            make_conversation(
+                conversation_id="conv-1",
+                mode=AppMode.AGENT,
+                dialogue_count=1,
+                from_source=ConversationFromSource.CONSOLE,
+                from_account_id="user-1",
+            ),
+            _message_record(),
+            workspace,
+            binding,
+            draft,
+        ]
+    )
+    sqlite_session.commit()
+    before = [
+        sqlite_session.execute(select(model.__table__)).all()
+        for model in (Conversation, Message, MessageAgentThought, AgentWorkspaceBinding)
+    ]
+    sqlite_session.rollback()
+
+    def resolve_model_profile(**_kwargs: object) -> ModelRuntimeProfile:
+        """Open a scoped read during runtime assembly, as model and tool resolution may do."""
+        assert sqlite_session.scalar(select(Conversation.id)) == "conv-1"
+        assert sqlite_session.in_transaction()
+        return ModelRuntimeProfile(None, [])
+
+    monkeypatch.setattr("core.app.llm.model_access.resolve_model_runtime_profile", resolve_model_profile)
+    hooks = RecordingTracingHooks(None)
+    trace_app = Flask(__name__)
+    bind_tracing(trace_app, scopes=StoredPolicyTraceScopes(untraced_scopes()), hooks=hooks)
+    client = _FinalizationClient(outcome, scoped_session=sqlite_session, cancel_fails=cancel_fails)
+    runner = AgentAppRunner(
+        request_builder=AgentAppRuntimeRequestBuilder(),
+        agent_backend_client=client,
+        event_adapter=AgentBackendRunEventAdapter(),
+        session_store=AgentAppWorkspaceStore(),
+        text_delta_debounce_seconds=0,
+    )
+    expectation = nullcontext() if expected_error is None else pytest.raises(expected_error, match=expected_message)
+    with trace_app.app_context(), expectation as exc_info:
+        _run_finalization(runner)
+    if expected_error is not None:
+        assert exc_info is not None
+        assert type(exc_info.value) is expected_error
+    assert client.request is not None
+    assert client.request.session_snapshot == history
+    assert UUID(client.request.idempotency_key).version == 4
+    config_layer = next(layer for layer in client.request.composition.layers if layer.name == "config")
+    assert config_layer.config["config_version"] == {"id": "build-1", "kind": "build_draft", "writable": True}
+    prompt_layer = next(layer for layer in client.request.composition.layers if layer.name == "agent_app_user_prompt")
+    prompt = DifyUserPromptLayerConfig.model_validate(prompt_layer.config).text
+    assert "Build chat message history" in prompt
+    assert "update the build-draft config note" in prompt
+    assert "respond FINISHED" in prompt
+    assert client.cancelled_run_ids == (["run-1"] if outcome == "stream_error" else [])
+    assert client.cancel_after == (["5-0"] if outcome == "stream_error" else [])
+    assert client.cancel_timeouts == ([5.0] if outcome == "stream_error" else [])
+    if cancel_fails:
+        assert "Failed to cancel Agent App finalization run: run_id=run-1" in caplog.text
+    assert hooks.agent_apps == []
+    assert hooks.terminals == []
+    assert AgentRosterService(sqlite_session).count_agent_app_debug_conversation_messages(conversation_id="conv-1") == 1
+    after = [
+        sqlite_session.execute(select(model.__table__)).all()
+        for model in (Conversation, Message, MessageAgentThought, AgentWorkspaceBinding)
+    ]
+    assert after == before
+
+
+@pytest.mark.parametrize(
+    ("stream_error", "stream_end"),
+    [
+        (None, 101.0),
+        (AgentBackendTimeoutError("SSE stream exceeded its timeout"), nextafter(101.0, 100.0)),
+    ],
+)
+def test_finalization_cancels_the_created_run_at_its_execution_deadline(
+    stream_error: Exception | None,
+    stream_end: float,
+    config_overrides: Callable[..., None],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Use the budget left after run creation and cancel on either deadline signal."""
+    config_overrides(APP_MAX_EXECUTION_TIME=1)
+    client = _RecordingFakeAgentBackendRunClient(run_id="run-1")
+    now = 100.0
+    monkeypatch.setattr(app_runner_module.time, "monotonic", lambda: now)
+    create = client.create_run
+
+    def create_run(request: CreateRunRequest, *, timeout_seconds: float | None = None) -> CreateRunResponse:
+        nonlocal now
+        assert timeout_seconds == 1.0
+        now = 100.25
+        return create(request, timeout_seconds=timeout_seconds)
+
+    def stream_events(
+        run_id: str,
+        *,
+        after: str | None = None,
+        timeout_seconds: float | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
+        """Report EOF or an SDK deadline just before the runner's clock reaches it."""
+        nonlocal now
+        assert after is None
+        assert timeout_seconds == 0.75
+        assert should_stop is None
+        yield RunStartedEvent(id="3-0", run_id=run_id)
+        now = stream_end
+        if stream_error is not None:
+            raise stream_error
+
+    monkeypatch.setattr(client, "create_run", create_run)
+    monkeypatch.setattr(client, "stream_events", stream_events)
+    store = _FakeSessionStore()
+    with pytest.raises(AgentBackendError, match=r"^Build chat finalization timed out\.$") as caught:
+        _run_finalization(_runner(client, store))
+    assert caught.value.__cause__ is stream_error
+    assert client.cancelled_run_ids == ["run-1"]
+    assert client.cancel_after == ["3-0"]
+    assert client.cancel_timeouts == [1.0]
+    assert store.saved == []
+
+
+def test_finalization_skips_event_stream_after_run_creation_exhausts_budget(
+    config_overrides: Callable[..., None], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The accepted run is cancelled without subscribing if creation used the budget."""
+    config_overrides(APP_MAX_EXECUTION_TIME=10)
+    client = _RecordingFakeAgentBackendRunClient(run_id="run-1")
+    now = 100.0
+    create = client.create_run
+
+    def create_run(request: CreateRunRequest, *, timeout_seconds: float | None = None) -> CreateRunResponse:
+        nonlocal now
+        assert timeout_seconds == 10.0
+        now = 110.0
+        return create(request, timeout_seconds=timeout_seconds)
+
+    def unexpected_stream(*_args: object, **_kwargs: object) -> Iterator[RunEvent]:
+        pytest.fail("An expired run must be cancelled without opening its event stream")
+
+    monkeypatch.setattr(app_runner_module.time, "monotonic", lambda: now)
+    monkeypatch.setattr(client, "create_run", create_run)
+    monkeypatch.setattr(client, "stream_events", unexpected_stream)
+
+    with pytest.raises(AgentBackendError, match=r"^Build chat finalization timed out\.$"):
+        _run_finalization(_runner(client, _FakeSessionStore()))
+
+    assert client.cancelled_run_ids == ["run-1"]
+    assert client.cancel_after == [None]
+    assert client.cancel_timeouts == [5.0]
+
+
+@pytest.mark.parametrize(
+    ("error_type", "finished_at"),
+    [(AgentBackendTimeoutError, 100.5), (AgentBackendTransportError, 101.0)],
+)
+def test_finalization_maps_create_run_timeout_without_streaming_or_cancelling(
+    error_type: type[AgentBackendError],
+    finished_at: float,
+    config_overrides: Callable[..., None],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Creation failure before a run ID is known returns the public timeout error."""
+    config_overrides(APP_MAX_EXECUTION_TIME=1)
+    client = _RecordingFakeAgentBackendRunClient()
+    now = 100.0
+    error = error_type("create_run_sync timed out")
+
+    def create_run(_request: CreateRunRequest, *, timeout_seconds: float | None = None) -> CreateRunResponse:
+        nonlocal now
+        assert timeout_seconds == 1.0
+        now = finished_at
+        raise error
+
+    def unexpected_stream(*_args: object, **_kwargs: object) -> Iterator[RunEvent]:
+        pytest.fail("Failed creation leaves no run to stream")
+
+    monkeypatch.setattr(app_runner_module.time, "monotonic", lambda: now)
+    monkeypatch.setattr(client, "create_run", create_run)
+    monkeypatch.setattr(client, "stream_events", unexpected_stream)
+
+    with pytest.raises(AgentBackendError, match=r"^Build chat finalization timed out\.$") as caught:
+        _run_finalization(_runner(client, _FakeSessionStore()))
+
+    assert caught.value.__cause__ is error
+    assert client.cancelled_run_ids == []
+    assert client.cancel_timeouts == []
