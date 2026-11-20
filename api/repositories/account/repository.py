@@ -104,12 +104,8 @@ class SQLAlchemyAccountRepository(AccountRepository, ConsoleAuthAccountRepositor
                 ).scalar_one_or_none()
             return account
 
-    def load_identity(self, account_id: str, *, now: datetime, require_workspace: bool = True) -> Account | None:
-        """Materialize identity and any active workspace before closing the Session.
-
-        Account-only Cloud admission can opt out of the workspace requirement;
-        tenant-scoped callers still enforce their own active workspace boundary.
-        """
+    def load_identity(self, account_id: str, *, now: datetime) -> Account | None:
+        """Resolve an active workspace and materialize the Flask identity before closing its Session."""
         with self._session_factory(expire_on_commit=False) as session:
             account = session.get(Account, account_id)
             if account is None or account.status == AccountStatus.BANNED:
@@ -142,7 +138,7 @@ class SQLAlchemyAccountRepository(AccountRepository, ConsoleAuthAccountRepositor
                 )
                 if membership is None:
                     session.commit()
-                    return None if require_workspace else account
+                    return None
                 membership.current = True
                 membership.last_opened_at = now
                 session.commit()

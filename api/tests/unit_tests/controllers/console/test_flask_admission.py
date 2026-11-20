@@ -201,7 +201,7 @@ def test_workspace_less_session_uses_end_user_profile(cloud_console: tuple[DifyA
     assert console_profile.status_code == 401
     assert console_profile.get_json() == {
         "code": "unauthorized",
-        "message": "An active workspace is required.",
+        "message": "Unauthorized.",
         "status": 401,
     }
     assert not console_profile.headers.getlist("Set-Cookie")
@@ -225,14 +225,14 @@ def test_workspace_less_session_uses_end_user_profile(cloud_console: tuple[DifyA
     ],
 )
 def test_workspace_required_reads_do_not_provision(cloud_console: tuple[DifyApp, AccountDomain], path: str) -> None:
-    """Parallel Console reads must not upgrade a workspace-less session while the profile probe rejects it."""
+    """Parallel Console reads reject a workspace-less session with 401 and do not provision."""
     app, account_domain = cloud_console
     account = account_domain.accounts.create_account("end-user@example.com", "End User", "en-US")
 
     response = _browser_session(app, account.id).get(path)
 
-    assert response.status_code == 403, response.json
-    assert response.get_json()["code"] == "active_workspace_required"
+    assert response.status_code == 401, response.json
+    assert response.get_json()["code"] == "unauthorized"
     assert account_domain.workspaces.list_ids_for_account(account.id) == ()
 
 

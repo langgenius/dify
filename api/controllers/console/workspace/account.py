@@ -45,10 +45,7 @@ from controllers.console.error import (
     EmailSendIpLimitError,
     InvalidAccountPasswordRequestError,
 )
-from controllers.console.flask_admission import (
-    console_account_admission,
-    console_workspace_profile_admission,
-)
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.workspace.error import (
     AccountAlreadyInitedError,
     CurrentPasswordIncorrectError,
@@ -303,7 +300,7 @@ class AccountProfileApi(Resource):
     @console_ns.doc(description="Get the Console Account profile. A session without an active workspace returns 401.")
     @error_responses(AccountNotFound)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountProfileResponse.__name__])
-    @console_workspace_profile_admission
+    @console_account_admission(require_valid_enterprise_license=True)
     def get(self, request_context: RequestContext):
         """Return the profile for an admitted Console workspace without provisioning one."""
         return dump_response(AccountProfileResponse, _load_account_profile(request_context))

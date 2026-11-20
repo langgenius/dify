@@ -159,6 +159,7 @@ NOW = datetime(2026, 1, 1)
     ("scenario", "expected_status"),
     [
         ("success", 200),
+        ("non_cloud", 404),
         ("missing_csrf", 401),
         ("anonymous", 401),
         ("banned", 401),
@@ -186,7 +187,7 @@ def test_cloud_workspace_activation_accepts_workspace_less_accounts_with_csrf(
     from services.workspace.provisioning_service import WorkspaceProvisioningEffects
 
     config_overrides(
-        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY if scenario == "non_cloud" else DeploymentEdition.CLOUD,
         SECRET_KEY="workspace-activation-test-key-with-32-bytes",
         CONSOLE_WEB_URL="https://console.example.com",
         CONSOLE_API_URL="https://console.example.com",
@@ -218,6 +219,7 @@ def test_cloud_workspace_activation_accepts_workspace_less_accounts_with_csrf(
     app.register_blueprint(console_bp)
     ext_login.init_app(app)
     ext_login.bind_account_loader(app, identity.load_user)
+    ext_login.bind_account_only_loader(app, identity.load_account)
     monkeypatch.setattr(ext_login.session_factory, "create_session", account_domain.repository._session_factory)
     tokens = RedisAccountSessionGateway(redis=redis).issue(account.id)
     client = app.test_client()
