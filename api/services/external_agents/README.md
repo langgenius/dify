@@ -138,8 +138,26 @@ Detail exposes `connection.saved_by: {id, name}` and `connection.saved_at` from 
 revision. The stored author ID always remains; the current Account name is null if unavailable, and removing
 workspace membership does not erase the historical saver. `saved_at` is the revision's actual save time,
 independent of `verified_at` and asset creation/profile/availability/Tracing edit times. A no-op connection save
-keeps the same revision and save metadata. After a stale-revision conflict, reload the existing detail endpoint
-to display the latest connection saver/time and verify against its current revision before saving again.
+keeps the same revision and save metadata.
+
+Editing clients must handle HTTP 409 from both `POST /external-agents/verify` and
+`PUT /external-agents/{id}/connection`. The conflict response is an error envelope,
+not a latest-configuration snapshot. Reload `GET /external-agents/{id}` and show its
+current connection, saver and save time beside the caller's non-credential edits.
+Treat the transport status as authoritative; a typed client may expose `CONFLICT`
+instead of the wire error code `conflict`.
+
+- **Use latest configuration** adopts that detail revision and its endpoint/authentication settings.
+- **Keep my edits** retains the edited endpoint/authentication settings and explicitly rebases them on that revision.
+
+Both choices invalidate the old Verify result and clear any replacement credential.
+Credentials are write-only: `has_credential` is only a compatibility hint, never a
+replacement token. Require a new credential if the chosen authentication cannot
+keep the latest saved one. A subsequent save requires Verify against the selected
+current revision and an explicit save action; conflict recovery never auto-saves.
+If the latest detail cannot be loaded, keep edits and offer a read retry without
+enabling either recovery action. Another concurrent save repeats the same conflict
+flow rather than bypassing the revision fence.
 
 Terminal Workflow node and standalone Last Run results expose `inputs.agent_task` from the persisted Invocation's
 resolved text parts. When files are present, `inputs.file_refs` retains their order and includes only `file_id` and
