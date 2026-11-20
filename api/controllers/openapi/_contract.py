@@ -31,6 +31,7 @@ from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.schema import query_params_from_model, query_params_from_request
 from controllers.openapi import openapi_ns
 from controllers.openapi._errors import ErrorBody, RequestOverRouteLimits
+from controllers.openapi._files import end_read_transaction
 from controllers.openapi._hints import next_page_hint, page_after
 from controllers.openapi._models import PaginationEnvelope
 from controllers.openapi._multipart import body_from_request
@@ -113,6 +114,14 @@ def _read_body(body_file_fields: frozenset[str]) -> dict[str, Any]:
         ) from exc
 
 
+def _end_admission_read(ctx: object) -> None:
+    """Postcondition: on a route whose handler gets the ORM context, the login step's read transaction is
+    ended, so the body's files (multipart parts or transfers) are never read while it holds a connection.
+    """
+    if isinstance(ctx, Context):
+        end_read_transaction(ctx.session)
+
+
 def _list_fields(model: type[BaseModel]) -> tuple[str, ...]:
     """Query fields typed as a list, which a repeated parameter fills."""
     return tuple(
@@ -134,6 +143,8 @@ def accepts(*, query: type[BaseModel] | None = None, body: type[BaseModel] | Non
             try:
                 if query is not None:
                     kwargs["query"] = query_params_from_request(query, list_fields=query_list_fields)
+                if body_file_fields:
+                    _end_admission_read(kwargs.get("ctx"))
                 if body is not None:
                     kwargs["body"] = body.model_validate(_read_body(body_file_fields))
             except ValidationError as exc:
