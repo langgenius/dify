@@ -167,7 +167,11 @@ describe('MainNavLayout', () => {
     expect(main).toHaveTextContent('content')
   })
 
-  it.each(['/datasets/dataset-1/documents', '/datasets/dataset-1/documents/document-1/settings'])(
+  it.each([
+    '/datasets/dataset-1/documents',
+    '/datasets/dataset-1/documents/document-1/settings',
+    '/collaboration-demo',
+  ])(
     'renders the detail sidebar slot outside the single skip navigation target on route %s',
     (pathname) => {
       ;(usePathname as Mock).mockReturnValue(pathname)
@@ -194,7 +198,7 @@ describe('MainNavLayout', () => {
     },
   )
 
-  it.each(['/datasets/new/knowledge-1/sources', '/datasets/new/create', '/collaboration-demo'])(
+  it.each(['/datasets/new/knowledge-1/sources', '/datasets/new/create'])(
     'hides global navigation and ignores a retained legacy detail sidebar on New Knowledge route %s',
     (pathname) => {
       ;(usePathname as Mock).mockReturnValue(pathname)

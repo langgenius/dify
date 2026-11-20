@@ -13,12 +13,12 @@ export type DemoNodeTitles = {
 }
 
 export const demoNodePositions = {
-  start: { x: 60, y: 300 },
-  checkOrder: { x: 380, y: 260 },
-  lookupRefund: { x: 720, y: 140 },
-  generateReply: { x: 720, y: 440 },
-  refundStatus: { x: 1040, y: 140 },
-  askOrder: { x: 1040, y: 440 },
+  start: { x: 40, y: 300 },
+  checkOrder: { x: 360, y: 260 },
+  lookupRefund: { x: 680, y: 140 },
+  generateReply: { x: 680, y: 440 },
+  refundStatus: { x: 1000, y: 140 },
+  askOrder: { x: 1000, y: 700 },
 } as const
 
 export type DemoNodeId = keyof typeof demoNodePositions

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
 export function usePlayback(duration: number) {
-  const [playback, setPlayback] = useState({ seconds: 0, playing: false })
+  const [playback, setPlayback] = useState({ seconds: 0, playing: true })
 
   useEffect(() => {
     if (!playback.playing) return

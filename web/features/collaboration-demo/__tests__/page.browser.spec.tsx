@@ -1,0 +1,145 @@
+import type { GetAppsData } from '@dify/contracts/api/console/apps/types.gen'
+import type { TenantAccountRole } from '@dify/contracts/api/console/workspaces/types.gen'
+import { HotkeysProvider } from '@tanstack/react-hotkeys'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { page, userEvent } from 'vite-plus/test/browser'
+import { render } from 'vitest-browser-react'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
+import { seedFeatures } from '@/test/console/query-data'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { createTestQueryClient } from '@/test/query-client'
+import CollaborationDemoPage from '../page'
+
+const api = vi.hoisted(() => ({
+  apps: vi.fn<(input: Pick<GetAppsData, 'query'>) => unknown>(),
+  replace: vi.fn(),
+}))
+
+// boundary: Next's app router is unavailable in the standalone Vitest browser page.
+vi.mock('@/next/navigation', () => ({ useRouter: () => ({ replace: api.replace }) }))
+
+// boundary: only generated service responses are replaced; queries and overlays stay real.
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, { 'apps.get': api.apps }),
+  }
+})
+
+const appPage = (app?: { id: string; name: string; updated_at: number }) => ({
+  data: app ? [{ ...app, mode: 'workflow' as const, icon_url: null }] : [],
+  has_more: false,
+  limit: 1,
+  page: 1,
+  total: app ? 1 : 0,
+})
+
+async function renderDemo(role: TenantAccountRole) {
+  await page.viewport(1440, 900)
+  const queryClient = createTestQueryClient()
+  seedAccountProfileQuery(queryClient)
+  seedCurrentWorkspaceQuery(queryClient, { role })
+  seedFeatures(queryClient, { workflow_collaboration_enabled: true })
+  return render(
+    <QueryClientTestProvider queryClient={queryClient}>
+      <NuqsTestingAdapter>
+        <HotkeysProvider>
+          <div className="h-[900px]">
+            <CollaborationDemoPage />
+          </div>
+        </HotkeysProvider>
+      </NuqsTestingAdapter>
+    </QueryClientTestProvider>,
+  )
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  api.apps.mockImplementation(async (input) =>
+    input.query?.mode === 'workflow'
+      ? appPage({ id: 'workflow-1', name: 'Older workflow', updated_at: 10 })
+      : appPage({ id: 'chatflow-1', name: 'Refund assistant', updated_at: 20 }),
+  )
+})
+
+it('walks the guide, playback and end panel from the keyboard', async () => {
+  const screen = await renderDemo('editor')
+
+  await expect
+    .element(screen.getByRole('heading', { name: /collaborationDemo\.steps\.members\.title/ }))
+    .toHaveFocus()
+  await userEvent.keyboard('{Tab}{Tab}')
+  await expect
+    .element(screen.getByRole('button', { name: 'collaborationDemo.steps.members.action' }))
+    .toHaveFocus()
+  await userEvent.keyboard('{Enter}')
+
+  await expect
+    .element(screen.getByRole('heading', { name: /collaborationDemo\.steps\.comment\.title/ }))
+    .toHaveFocus()
+  await userEvent.keyboard('{Tab}{Tab}{Tab}')
+  const commentTool = screen.getByRole('button', { name: 'collaborationDemo.commentTool' })
+  await expect.element(commentTool).toHaveFocus()
+  await expect.element(commentTool).toHaveAttribute('aria-pressed', 'false')
+  await userEvent.keyboard('{Enter}')
+
+  await expect
+    .element(screen.getByRole('button', { name: 'collaborationDemo.playback.pause' }))
+    .toHaveFocus()
+  await expect.element(commentTool).toHaveAttribute('aria-pressed', 'true')
+  await userEvent.keyboard('{Escape}')
+  await expect
+    .element(screen.getByRole('button', { name: 'collaborationDemo.playback.resume' }))
+    .toHaveFocus()
+  await userEvent.keyboard('{Tab}')
+  await userEvent.keyboard('{Enter}')
+
+  const endPanel = screen.getByRole('region', { name: 'collaborationDemo.end.enabled.title' })
+  await expect
+    .element(endPanel.getByRole('heading', { name: 'collaborationDemo.end.enabled.title' }))
+    .toHaveFocus()
+  await expect
+    .element(endPanel.getByText(/collaborationDemo\.end\.enabled\.latestApp/))
+    .toMatchTextContent(/Refund assistant/)
+  await expect
+    .element(endPanel.getByRole('link', { name: 'collaborationDemo.end.enabled.action' }))
+    .toHaveAttribute('href', '/app/chatflow-1/workflow')
+
+  await userEvent.keyboard('{Tab}{Tab}')
+  await expect
+    .element(endPanel.getByRole('button', { name: 'collaborationDemo.end.close' }))
+    .toHaveFocus()
+  await userEvent.keyboard('{Enter}')
+  expect(api.replace).toHaveBeenCalledWith('/apps')
+
+  await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
+  await userEvent.keyboard('{Enter}')
+  await expect
+    .element(screen.getByRole('button', { name: 'collaborationDemo.playback.pause' }))
+    .toHaveFocus()
+})
+
+it('explains read-only access without looking up apps', async () => {
+  const screen = await renderDemo('normal')
+
+  await expect
+    .element(screen.getByRole('heading', { name: /collaborationDemo\.steps\.members\.title/ }))
+    .toHaveFocus()
+  await userEvent.keyboard('{Tab}{Tab}{Enter}')
+  await expect
+    .element(screen.getByRole('heading', { name: /collaborationDemo\.steps\.comment\.title/ }))
+    .toHaveFocus()
+  await userEvent.keyboard('{Tab}{Tab}{Enter}')
+  await expect
+    .element(screen.getByRole('button', { name: 'collaborationDemo.playback.pause' }))
+    .toHaveFocus()
+  await userEvent.keyboard('{Tab}{Enter}')
+
+  const endPanel = screen.getByRole('region', { name: 'collaborationDemo.end.enabled.title' })
+  await expect.element(endPanel.getByText('collaborationDemo.end.readOnly.normal')).toBeVisible()
+  await expect.element(endPanel.getByRole('link')).not.toBeInTheDocument()
+  expect(api.apps).not.toHaveBeenCalled()
+})

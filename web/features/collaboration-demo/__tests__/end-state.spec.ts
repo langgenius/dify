@@ -1,4 +1,4 @@
-import { getDemoEndState, getTryNowHref } from '../end-state'
+import { canEditApps, getDemoEndState, pickLatestApp } from '../end-state'
 
 const enabled = { status: 'success', collaborationEnabled: true, upgradeAvailable: false } as const
 const upgradable = {
@@ -6,76 +6,92 @@ const upgradable = {
   collaborationEnabled: false,
   upgradeAvailable: true,
 } as const
+const app = { id: 'app-1', name: 'Refund assistant', updated_at: 20 }
+const loadedApps = { status: 'success', latest: app } as const
+const pendingApps = { status: 'pending' } as const
 
 describe('getDemoEndState', () => {
   it('holds the primary action while entitlements load', () => {
     expect(
-      getDemoEndState({
-        features: { status: 'pending' },
-        role: 'owner',
-        hasCollaborativeApps: undefined,
-      }),
-    ).toBe('loading')
-    expect(
-      getDemoEndState({ features: enabled, role: 'owner', hasCollaborativeApps: undefined }),
-    ).toBe('loading')
+      getDemoEndState({ features: { status: 'pending' }, role: 'owner', apps: pendingApps }),
+    ).toEqual({ kind: 'loading' })
   })
 
-  it('sends collaborators with apps to try it', () => {
-    expect(getDemoEndState({ features: enabled, role: 'normal', hasCollaborativeApps: true })).toBe(
-      'tryNow',
-    )
+  it('holds Try it now while the latest app loads', () => {
+    expect(getDemoEndState({ features: enabled, role: 'owner', apps: pendingApps })).toEqual({
+      kind: 'appsLoading',
+    })
   })
 
-  it('lets creators create an app when none are available', () => {
-    expect(
-      getDemoEndState({ features: enabled, role: 'editor', hasCollaborativeApps: false }),
-    ).toBe('createApp')
-    expect(
-      getDemoEndState({ features: enabled, role: 'normal', hasCollaborativeApps: false }),
-    ).toBe('noApps')
+  it.each(['owner', 'admin', 'editor'])('opens the latest app for %s', (role) => {
+    expect(getDemoEndState({ features: enabled, role, apps: loadedApps })).toEqual({
+      kind: 'tryNow',
+      app,
+    })
   })
 
-  it('explains that dataset operators cannot edit apps', () => {
+  it('sends editors to Studio when the apps query fails', () => {
     expect(
-      getDemoEndState({ features: enabled, role: 'dataset_operator', hasCollaborativeApps: true }),
-    ).toBe('noAccess')
+      getDemoEndState({ features: enabled, role: 'editor', apps: { status: 'error' } }),
+    ).toEqual({ kind: 'appsError' })
+  })
+
+  it('offers to create a workflow when the workspace has none', () => {
+    expect(
+      getDemoEndState({ features: enabled, role: 'owner', apps: { status: 'success' } }),
+    ).toEqual({ kind: 'createApp' })
+  })
+
+  it('explains read-only roles before looking at apps', () => {
+    expect(getDemoEndState({ features: enabled, role: 'normal', apps: pendingApps })).toEqual({
+      kind: 'readOnly',
+      role: 'normal',
+    })
+    expect(
+      getDemoEndState({ features: enabled, role: 'dataset_operator', apps: loadedApps }),
+    ).toEqual({ kind: 'readOnly', role: 'datasetOperator' })
   })
 
   it('offers upgrade only to billing managers', () => {
-    expect(
-      getDemoEndState({ features: upgradable, role: 'admin', hasCollaborativeApps: undefined }),
-    ).toBe('upgrade')
-    expect(
-      getDemoEndState({ features: upgradable, role: 'editor', hasCollaborativeApps: undefined }),
-    ).toBe('upgradeContactAdmin')
+    expect(getDemoEndState({ features: upgradable, role: 'admin', apps: pendingApps })).toEqual({
+      kind: 'upgrade',
+    })
+    expect(getDemoEndState({ features: upgradable, role: 'editor', apps: pendingApps })).toEqual({
+      kind: 'upgradeContactAdmin',
+    })
   })
 
-  it('falls back to the workspace when entitlements are unavailable', () => {
+  it('falls back to the workspace when collaboration is unavailable', () => {
     expect(
-      getDemoEndState({
-        features: { status: 'error' },
-        role: 'owner',
-        hasCollaborativeApps: undefined,
-      }),
-    ).toBe('unavailable')
+      getDemoEndState({ features: { status: 'error' }, role: 'owner', apps: pendingApps }),
+    ).toEqual({ kind: 'unavailable' })
     expect(
       getDemoEndState({
         features: { status: 'success', collaborationEnabled: false, upgradeAvailable: false },
         role: 'owner',
-        hasCollaborativeApps: undefined,
+        apps: pendingApps,
       }),
-    ).toBe('unavailable')
+    ).toEqual({ kind: 'unavailable' })
   })
 })
 
-describe('getTryNowHref', () => {
-  it('filters Studio to the only collaborative app type the workspace has', () => {
-    expect(getTryNowHref({ workflows: 2, chatflows: 0 })).toBe('/apps?category=workflow')
-    expect(getTryNowHref({ workflows: 0, chatflows: 3 })).toBe('/apps?category=advanced-chat')
+describe('pickLatestApp', () => {
+  it('picks the most recently modified workflow or chatflow', () => {
+    const chatflow = { id: 'chatflow', name: 'Chatflow', updated_at: 30 }
+    expect(pickLatestApp(app, chatflow)).toBe(chatflow)
+    expect(pickLatestApp(app, undefined)).toBe(app)
+    expect(pickLatestApp(undefined, undefined)).toBeUndefined()
   })
+})
 
-  it('shows every app when both workflow and chatflow apps exist', () => {
-    expect(getTryNowHref({ workflows: 1, chatflows: 1 })).toBe('/apps')
+describe('canEditApps', () => {
+  it('allows only roles that edit every app in the workspace', () => {
+    expect(['owner', 'admin', 'editor', 'normal', 'dataset_operator'].map(canEditApps)).toEqual([
+      true,
+      true,
+      true,
+      false,
+      false,
+    ])
   })
 })

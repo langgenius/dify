@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next'
 import {
   Coachmark,
   CoachmarkArrow,
-  CoachmarkClose,
   CoachmarkDescription,
   CoachmarkPopup,
   CoachmarkPortal,
@@ -18,20 +17,15 @@ import {
 type DemoStepGuideProps = {
   step: 'members' | 'comment'
   target: HTMLElement | null
-  highlightSelectors?: string[]
   onAction: () => void
   onExit: () => void
 }
 
-export function DemoStepGuide({
-  step,
-  target,
-  highlightSelectors,
-  onAction,
-  onExit,
-}: DemoStepGuideProps) {
+const focusOnMount = (element: HTMLElement | null) => element?.focus()
+
+export function DemoStepGuide({ step, target, onAction, onExit }: DemoStepGuideProps) {
   const { t } = useTranslation(['collaborationDemo'])
-  const primaryActionRef = useRef<HTMLButtonElement>(null)
+  const titleRef = useRef<HTMLHeadingElement>(null)
   const copy =
     step === 'members'
       ? {
@@ -52,43 +46,53 @@ export function DemoStepGuide({
   return (
     <Coachmark
       target={target}
-      highlightSelectors={highlightSelectors}
+      highlightSelectors={step === 'members' ? ['[data-collaboration-demo-members]'] : undefined}
       step={step}
       payload={copy}
       interaction="target-only"
-      onOpenChange={(open, { reason }) => {
-        if (!open && (reason === 'escape-key' || reason === 'close-press')) onExit()
-      }}
     >
       {({ payload, stale }) => (
         <CoachmarkPortal>
           <CoachmarkSpotlight />
           <CoachmarkPositioner side={payload.side}>
-            <CoachmarkPopup initialFocus={primaryActionRef} className="min-h-39.5">
+            <CoachmarkPopup initialFocus={titleRef} className="min-h-39.5">
               <CoachmarkArrow />
               <div
                 key={payload.index}
-                className="transition-opacity duration-200 motion-reduce:transition-none starting:opacity-0"
+                className="motion-safe:transition-opacity motion-safe:duration-200 motion-safe:starting:opacity-0"
               >
-                <div className="pb-0.5 system-2xs-semibold-uppercase text-text-tertiary">
-                  {t(($) => $['steps.label'], { current: payload.index, total: 2 })}
-                </div>
-                <CoachmarkTitle className="mt-1 system-md-medium text-text-primary">
+                <CoachmarkTitle
+                  ref={payload.index === 1 ? titleRef : focusOnMount}
+                  tabIndex={-1}
+                  className="system-md-medium text-text-primary outline-hidden"
+                >
+                  <span className="block pb-1.5 system-2xs-semibold-uppercase text-text-secondary">
+                    {t(($) => $['steps.label'], { current: payload.index, total: 2 })}
+                  </span>
                   {payload.title}
                 </CoachmarkTitle>
                 <CoachmarkDescription className="mt-1 system-xs-regular text-text-secondary">
                   {payload.description}
                 </CoachmarkDescription>
               </div>
-              <div className="mt-auto flex h-12 items-center justify-between gap-3 pt-4">
-                <CoachmarkClose className="shrink-0 cursor-pointer rounded-md border-none bg-transparent p-0 text-start system-sm-regular text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid">
+              <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-4">
+                <button
+                  type="button"
+                  className="min-h-6 shrink-0 cursor-pointer rounded-md border-none bg-transparent p-0 text-start system-sm-regular text-text-secondary outline-hidden hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                  onClick={onExit}
+                >
                   {t(($) => $.exit)}
-                </CoachmarkClose>
+                </button>
                 <Button
-                  ref={primaryActionRef}
                   variant="primary"
                   className="min-w-20 px-3"
                   onClick={stale ? undefined : onAction}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Tab' || event.shiftKey || step !== 'comment' || !target)
+                      return
+                    event.preventDefault()
+                    target.focus()
+                  }}
                 >
                   {payload.action}
                 </Button>
