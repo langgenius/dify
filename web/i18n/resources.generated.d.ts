@@ -175,6 +175,7 @@ export default interface Resources {
     'resourceAccessToken.total': '{{total}} total'
   }
   agentRoster: {
+    'roster.clearFilters': 'Clear filters'
     'roster.createAgent': 'Create agent'
     'roster.createDialog.description': 'Create a reusable Agent in this workspace.'
     'roster.createDialog.title': 'Create agent'
@@ -200,6 +201,7 @@ export default interface Resources {
     'roster.editInfo': 'Edit Info'
     'roster.empty': 'No agent yet'
     'roster.emptySearch': 'No matching agents'
+    'roster.emptySearchDescription': 'Try another search or clear the current filters.'
     'roster.filters.all': 'All'
     'roster.filters.createdByMe': 'Created by me'
     'roster.filters.drafts': 'Drafts'
@@ -2095,7 +2097,10 @@ export default interface Resources {
     'tag.failed': 'Tag creation failed'
     'tag.manageTags': 'Manage Tags'
     'tag.noTag': 'No tags'
+    'tag.noTagsYet': 'No tags yet.'
+    'tag.noTagsYetCreateHint': 'No tags yet. Type a name to create one.'
     'tag.placeholder': 'Tags'
+    'tag.searchTags': 'Search tags'
     'tag.selectorPlaceholder': 'Type to search or create'
     'tag.tags': 'Tags'
     'theme.dark': 'Dark'

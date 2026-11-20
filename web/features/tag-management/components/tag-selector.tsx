@@ -95,7 +95,7 @@ export const TagSelector = ({
   const { isPending: isCreatingTag, mutateAsync: createTag } = useMutation(
     consoleQuery.tags.post.mutationOptions({ context: { silent: true } }),
   )
-  const { data: tagList = EMPTY_TAGS } = useQuery({
+  const { data: tagList = EMPTY_TAGS, isSuccess: hasLoadedTags } = useQuery({
     ...consoleQuery.tags.get.queryOptions({
       input: {
         query: {
@@ -301,6 +301,7 @@ export const TagSelector = ({
           >
             <TagSearchContent
               type={type}
+              isTagCatalogEmpty={hasLoadedTags && items.length === 0}
               canBindOrUnbindTags={canBindOrUnbindTags}
               requiresTargetEditPermission={requiresTargetEditPermission}
               onOpenTagManagement={onOpenTagManagement}

@@ -144,13 +144,26 @@ describe('AgentRosterList', () => {
     expect(screen.queryByText('agentRoster.roster.status.active')).not.toBeInTheDocument()
   })
 
-  it('shows the filtered empty state when no agents match', () => {
-    renderList([], { emptyState: 'filtered' })
+  it('explains how to recover from a filtered empty result', () => {
+    renderList([], { emptyState: { type: 'filtered', onClearFilters: vi.fn() } })
 
     expect(
       screen.getByRole('heading', { name: 'agentRoster.roster.emptySearch' }),
     ).toBeInTheDocument()
+    expect(screen.getByText('agentRoster.roster.emptySearchDescription')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'agentRoster.roster.clearFilters' }),
+    ).toBeInTheDocument()
+  })
+
+  it('shows the initial empty roster without offering to clear filters', () => {
+    renderList([])
+
+    expect(screen.getByRole('heading', { name: 'agentRoster.roster.empty' })).toBeInTheDocument()
     expect(screen.queryByText('agentRoster.roster.emptySearchDescription')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'agentRoster.roster.clearFilters' }),
+    ).not.toBeInTheDocument()
   })
 
   it('announces a loading error and lets the user retry', async () => {

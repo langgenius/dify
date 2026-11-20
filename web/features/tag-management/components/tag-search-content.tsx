@@ -1,6 +1,7 @@
 import type { TagType } from '@dify/contracts/api/console/tags/types.gen'
 import type { TagComboboxItem } from './tag-combobox-item'
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   ComboboxEmpty,
   ComboboxInput,
@@ -20,6 +21,7 @@ import { isCreateTagOption } from './tag-combobox-item'
 
 type TagSearchContentProps = {
   type: TagType
+  isTagCatalogEmpty?: boolean
   onOpenTagManagement?: () => void
   onClose?: () => void
   canBindOrUnbindTags?: boolean
@@ -34,6 +36,7 @@ type TagSearchContentViewProps = TagSearchContentProps & {
 
 export const TagSearchContentView = ({
   type,
+  isTagCatalogEmpty = false,
   onOpenTagManagement,
   onClose,
   canBindOrUnbindTags = false,
@@ -47,9 +50,18 @@ export const TagSearchContentView = ({
     ? canBindOrUnbindTags
     : canBindOrUnbindTags || canManageTags
   const canCreate = allowCreate && canManageTags
+  const isCardTagSelector = allowCreate && (type === 'agent' || type === 'app')
   const placeholder = canCreate
     ? t(($) => $['tag.selectorPlaceholder'], { ns: 'common' })
-    : t(($) => $['placeholder.search'], { ns: 'common' })
+    : isCardTagSelector
+      ? t(($) => $['tag.searchTags'], { ns: 'common' })
+      : t(($) => $['placeholder.search'], { ns: 'common' })
+  const showEmptyCatalog = isCardTagSelector && isTagCatalogEmpty
+  const emptyMessage = showEmptyCatalog
+    ? canCreate
+      ? t(($) => $['tag.noTagsYetCreateHint'])
+      : t(($) => $['tag.noTagsYet'])
+    : t(($) => $['tag.noTag'])
 
   return (
     <>
@@ -92,12 +104,17 @@ export const TagSearchContentView = ({
       <ComboboxEmpty className="p-1">
         <div className="flex flex-col items-center gap-y-1 p-3">
           <span
-            className="i-custom-vender-line-financeAndECommerce-tag-01 size-6 text-text-quaternary"
+            className={cn(
+              'size-6 text-text-quaternary',
+              showEmptyCatalog
+                ? 'i-ri-price-tag-3-line'
+                : 'i-custom-vender-line-financeAndECommerce-tag-01',
+            )}
             aria-hidden="true"
           />
-          <div className="system-xs-regular text-text-tertiary">
-            {t(($) => $['tag.noTag'], { ns: 'common' })}
-          </div>
+          <p className="text-center system-xs-regular wrap-break-word text-text-tertiary">
+            {emptyMessage}
+          </p>
         </div>
       </ComboboxEmpty>
       {canManageTags && showTagManagement && (

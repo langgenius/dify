@@ -8,6 +8,7 @@ import { renderWithTags } from './render-browser'
 
 const mocks = vi.hoisted(() => ({
   tags: [] as Tag[],
+  list: vi.fn<() => Promise<Tag[]>>(),
   bind: vi.fn(),
   unbind: vi.fn(),
   create: vi.fn(),
@@ -27,7 +28,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       ) => mocks.unbind(input),
     }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'tags.get': async () => mocks.tags,
+      'tags.get': mocks.list,
       'tags.post': mocks.create,
     }),
   }
@@ -54,6 +55,7 @@ function renderSelector(permissions = ['app.tag.manage'], canBindOrUnbindTags = 
 }
 beforeEach(() => {
   mocks.tags = tags
+  mocks.list.mockReset().mockImplementation(async () => mocks.tags)
   mocks.bind.mockReset().mockResolvedValue(undefined)
   mocks.unbind.mockReset().mockResolvedValue(undefined)
   mocks.create.mockReset().mockImplementation(async ({ body }) => ({ id: 'new-tag', ...body }))
@@ -157,6 +159,61 @@ it('creates a knowledge tag without binding it implicitly', async () => {
   expect(mocks.bind).not.toHaveBeenCalled()
 })
 
+it.each(['agent', 'app'] as const)(
+  'offers to create the first %s tag only after the workspace catalog loads',
+  async (type) => {
+    const catalog = createDeferred<Tag[]>()
+    mocks.list.mockReturnValue(catalog.promise)
+    await renderWithTags(
+      <TagSelector type={type} targetId="card-1" value={[]} canBindOrUnbindTags />,
+      undefined,
+      [`${type}.tag.manage`],
+    )
+    await page.getByRole('combobox', { name: 'common.tag.addTag' }).click()
+    await expect.element(search()).toBeVisible()
+    const hint = page.getByText('common.tag.noTagsYetCreateHint', { exact: true })
+    await expect.element(hint).not.toBeInTheDocument()
+
+    catalog.resolve([])
+    await expect.element(hint).toBeVisible()
+    await search().fill('Research')
+    await expect
+      .element(page.getByRole('option', { name: /common\.tag\.create.*Research/ }))
+      .toBeVisible()
+    await expect.element(hint).not.toBeInTheDocument()
+  },
+)
+
+it('shows an empty tag catalog without inviting a binding-only editor to create a tag', async () => {
+  mocks.tags = []
+  await renderWithTags(
+    <TagSelector type="agent" targetId="agent-1" value={[]} canBindOrUnbindTags />,
+    mocks.tags,
+    [],
+  )
+  await page.getByRole('combobox', { name: 'common.tag.addTag' }).click()
+  await expect.element(page.getByText('common.tag.noTagsYet', { exact: true })).toBeVisible()
+  await expect
+    .element(page.getByText('common.tag.noTagsYetCreateHint', { exact: true }))
+    .not.toBeInTheDocument()
+})
+
+it('does not offer to create the first tag when the Studio App catalog request fails', async () => {
+  mocks.list.mockRejectedValue(new Error('Tag catalog unavailable'))
+  const { queryClient } = await renderWithTags(
+    <TagSelector type="app" targetId="app-1" value={[]} canBindOrUnbindTags />,
+    undefined,
+    ['app.tag.manage'],
+  )
+  await expect.poll(() => mocks.list.mock.calls.length).toBe(1)
+  await expect.poll(() => queryClient.isFetching()).toBe(0)
+  await page.getByRole('combobox', { name: 'common.tag.addTag' }).click()
+  await expect.element(search()).toBeVisible()
+  await expect
+    .element(page.getByText('common.tag.noTagsYetCreateHint', { exact: true }))
+    .not.toBeInTheDocument()
+})
+
 it.each(['before', 'after'] as const)(
   'saves a new Agent tag alongside the draft when closing %s creation completes',
   async (close) => {
@@ -232,7 +289,7 @@ it('allows existing tag bindings without management permission but never offers 
   await expect
     .element(page.getByRole('button', { name: 'common.tag.manageTags' }))
     .not.toBeInTheDocument()
-  const searchExistingTags = page.getByRole('combobox', { name: 'common.placeholder.search' })
+  const searchExistingTags = page.getByRole('combobox', { name: 'common.tag.searchTags' })
   await searchExistingTags.fill('BrandNewTag')
   await expect.element(page.getByRole('option', { name: /BrandNewTag/ })).not.toBeInTheDocument()
   await searchExistingTags.fill('Back')
