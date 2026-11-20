@@ -32,25 +32,23 @@ const CommentPreview: FC<CommentPreviewProps> = ({ comment, onClick }) => {
 
   return (
     <div
-      className="w-80 cursor-pointer rounded-3xl rounded-es-[3px] border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4 shadow-lg backdrop-blur-[10px] transition-colors hover:bg-components-panel-on-panel-item-bg-hover"
+      className="flex w-70 cursor-pointer flex-col gap-2 rounded-3xl rounded-es-[3px] border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4 shadow-lg backdrop-blur-[5px] transition-colors hover:bg-components-panel-on-panel-item-bg-hover"
       onClick={onClick}
       onMouseEnter={() => setCommentPreviewHovering(true)}
       onMouseLeave={() => setCommentPreviewHovering(false)}
     >
-      <div className="mb-3 flex items-center justify-between">
-        <UserAvatarList users={participants} maxVisible={3} size="sm" />
-      </div>
-
-      <div className="mb-2 flex items-start">
-        <div className="flex min-w-0 items-center gap-2">
-          <div className="truncate system-sm-medium text-text-primary">{authorName}</div>
-          <div className="shrink-0 system-2xs-regular text-text-tertiary">
+      <UserAvatarList users={participants} maxVisible={3} size="sm" />
+      <div className="flex flex-col gap-1">
+        <div className="flex min-w-0 items-center gap-1">
+          <div className="truncate system-xs-medium text-text-primary">{authorName}</div>
+          <div className="shrink-0 system-xs-regular text-text-tertiary">
             {formatTimeFromNow((comment.updated_at ?? comment.created_at ?? 0) * 1000)}
           </div>
         </div>
+        <div className="system-xs-regular wrap-break-word text-text-secondary">
+          {comment.content}
+        </div>
       </div>
-
-      <div className="system-sm-regular wrap-break-word text-text-secondary">{comment.content}</div>
     </div>
   )
 }

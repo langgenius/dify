@@ -134,7 +134,7 @@ function ThreadMessage({
 
       const mentionEnd = nextMatchStart + matchedName.length + 1
       segments.push(
-        <span key={`mention-${nextMatchStart}`} className="text-primary-600">
+        <span key={`mention-${nextMatchStart}`} className="text-text-accent">
           {content.slice(nextMatchStart, mentionEnd)}
         </span>,
       )
@@ -151,23 +151,23 @@ function ThreadMessage({
   }, [content, mentionableNames])
 
   return (
-    <div className={cn('flex gap-3 pt-1', className)}>
+    <div className={cn('flex gap-3', className)}>
       <div className="shrink-0">
-        <Avatar size="md" aria-hidden="true">
+        <Avatar size="sm" aria-hidden="true">
           <AvatarFallback style={userColor ? { backgroundColor: userColor } : undefined}>
             {getAvatarInitial(authorName)}
           </AvatarFallback>
           <AvatarImage src={avatarUrl || undefined} alt="" />
         </Avatar>
       </div>
-      <div className="min-w-0 flex-1 pb-4 text-text-primary last:pb-0">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <div className="flex flex-wrap items-center gap-x-1">
           <span className="system-sm-medium text-text-primary">{authorName}</span>
-          <span className="system-2xs-regular text-text-tertiary">
+          <span className="system-xs-regular text-text-tertiary">
             {formatTimeFromNow(createdAt * 1000)}
           </span>
         </div>
-        <div className="mt-1 system-sm-regular wrap-break-word whitespace-pre-wrap text-text-secondary">
+        <div className="body-sm-regular leading-4.5 wrap-break-word whitespace-pre-wrap text-text-secondary">
           {highlightedContent}
         </div>
       </div>
@@ -434,7 +434,7 @@ function CommentThreadComponent({
     <div
       className="absolute z-30 w-90 max-w-90"
       style={{
-        left: canvasPosition.x + 40,
+        left: canvasPosition.x + 62,
         top: canvasPosition.y,
         transform: 'translateY(-20%)',
       }}
@@ -451,15 +451,15 @@ function CommentThreadComponent({
           event.stopPropagation()
           onClose()
         }}
-        className="relative flex h-90 flex-col overflow-hidden rounded-2xl border border-components-panel-border bg-components-panel-bg shadow-xl"
+        className="relative flex max-h-100 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl backdrop-blur-[5px]"
         role="dialog"
         aria-labelledby="comment-thread-title"
       >
-        <div className="flex items-center justify-between rounded-t-2xl border-b border-components-panel-border bg-components-panel-bg-blur px-4 py-3">
-          <div id="comment-thread-title" className="font-semibold text-text-primary uppercase">
+        <div className="flex shrink-0 items-center justify-between border-b border-divider-subtle py-1 ps-4 pe-2">
+          <div id="comment-thread-title" className="system-sm-semibold text-text-primary uppercase">
             {t(($) => $['comments.panelTitle'], { ns: 'workflowComments' })}
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center">
             <Tooltip>
               <TooltipTrigger
                 render={
@@ -467,7 +467,7 @@ function CommentThreadComponent({
                     type="button"
                     disabled={loading}
                     className={cn(
-                      'flex size-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
+                      'flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
                     )}
                     onClick={onDelete}
                     aria-label={t(($) => $['comments.aria.deleteComment'], {
@@ -489,7 +489,7 @@ function CommentThreadComponent({
                     type="button"
                     disabled={comment.resolved || loading}
                     className={cn(
-                      'flex size-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
+                      'flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
                     )}
                     onClick={onResolve}
                     aria-label={t(($) => $['comments.aria.resolveComment'], {
@@ -516,7 +516,7 @@ function CommentThreadComponent({
                     type="button"
                     disabled={!canGoPrev || loading}
                     className={cn(
-                      'flex size-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
+                      'flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
                     )}
                     onClick={onPrev}
                     aria-label={t(($) => $['comments.aria.previousComment'], {
@@ -538,7 +538,7 @@ function CommentThreadComponent({
                     type="button"
                     disabled={!canGoNext || loading}
                     className={cn(
-                      'flex size-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
+                      'flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
                     )}
                     onClick={onNext}
                     aria-label={t(($) => $['comments.aria.nextComment'], {
@@ -555,7 +555,7 @@ function CommentThreadComponent({
             </Tooltip>
             <button
               type="button"
-              className="flex size-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+              className="flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
               onClick={onClose}
               aria-label={t(($) => $['comments.aria.closeComment'], { ns: 'workflowComments' })}
             >
@@ -563,15 +563,15 @@ function CommentThreadComponent({
             </button>
           </div>
         </div>
-        <div ref={messageListRef} className="relative mt-2 flex-1 overflow-y-auto px-4 pb-4">
-          <div className="group relative -mx-4 rounded-lg px-4 py-2 transition-colors hover:bg-components-panel-on-panel-item-bg-hover">
+        <div ref={messageListRef} className="relative min-h-0 flex-1 overflow-y-auto">
+          <div className="group relative py-3 ps-4 pe-3 transition-colors hover:bg-components-panel-on-panel-item-bg-hover">
             {isOwnComment && !isCommentEditing && (
               <Menu
                 open={activeReplyMenuId === comment.id}
                 onOpenChange={(open) => setActiveReplyMenuId(open ? comment.id : null)}
               >
                 <MenuTrigger
-                  className="absolute inset-e-1 top-1 flex size-6 items-center justify-center rounded-md text-text-tertiary opacity-0 group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus:opacity-100 data-popup-open:opacity-100 [@media(hover:none)]:opacity-100"
+                  className="absolute inset-e-2 top-2 flex size-6 items-center justify-center rounded-md text-text-tertiary opacity-0 group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus:opacity-100 data-popup-open:opacity-100 [@media(hover:none)]:opacity-100"
                   aria-label={t(($) => $['comments.aria.commentActions'], {
                     ns: 'workflowComments',
                   })}
@@ -592,9 +592,9 @@ function CommentThreadComponent({
               </Menu>
             )}
             {isCommentEditing ? (
-              <div className="flex gap-3 pt-1">
+              <div className="flex gap-3">
                 <div className="shrink-0">
-                  <Avatar size="md" aria-hidden="true">
+                  <Avatar size="sm" aria-hidden="true">
                     <AvatarFallback>
                       {getAvatarInitial(
                         comment.created_by_account?.name ||
@@ -605,7 +605,7 @@ function CommentThreadComponent({
                   </Avatar>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-1 shadow-md backdrop-blur-[10px]">
+                  <div className="rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-1 shadow-md backdrop-blur-[5px]">
                     <MentionInput
                       value={editingCommentContent}
                       onChange={setEditingCommentContent}
@@ -617,7 +617,6 @@ function CommentThreadComponent({
                       disabled={loading}
                       loading={isSubmittingEdit}
                       isEditing={true}
-                      className="system-sm-regular"
                       autoFocus
                     />
                   </div>
@@ -638,14 +637,14 @@ function CommentThreadComponent({
             )}
           </div>
           {replies.length > 0 && (
-            <div className="mt-2 space-y-3 pt-3">
+            <div>
               {replies.map((reply) => {
                 const isReplyEditing = editingReply?.id === reply.id
                 const isOwnReply = reply.created_by_account?.id === currentUserId
                 return (
                   <div
                     key={reply.id}
-                    className="group relative -mx-4 rounded-lg px-4 py-2 transition-colors hover:bg-components-panel-on-panel-item-bg-hover"
+                    className="group relative py-3 ps-4 pe-3 transition-colors hover:bg-components-panel-on-panel-item-bg-hover"
                   >
                     {isOwnReply && !isReplyEditing && (
                       <Menu
@@ -655,7 +654,7 @@ function CommentThreadComponent({
                         }}
                       >
                         <MenuTrigger
-                          className="absolute inset-e-1 top-1 flex size-6 items-center justify-center rounded-md text-text-tertiary opacity-0 group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus:opacity-100 data-popup-open:opacity-100 [@media(hover:none)]:opacity-100"
+                          className="absolute inset-e-2 top-2 flex size-6 items-center justify-center rounded-md text-text-tertiary opacity-0 group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus:opacity-100 data-popup-open:opacity-100 [@media(hover:none)]:opacity-100"
                           data-reply-menu
                           aria-label={t(($) => $['comments.aria.replyActions'], {
                             ns: 'workflowComments',
@@ -694,9 +693,9 @@ function CommentThreadComponent({
                       </Menu>
                     )}
                     {isReplyEditing ? (
-                      <div className="flex gap-3 pt-1">
+                      <div className="flex gap-3">
                         <div className="shrink-0">
-                          <Avatar size="md" aria-hidden="true">
+                          <Avatar size="sm" aria-hidden="true">
                             <AvatarFallback>
                               {getAvatarInitial(
                                 reply.created_by_account?.name ||
@@ -710,7 +709,7 @@ function CommentThreadComponent({
                           </Avatar>
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-1 shadow-md backdrop-blur-[10px]">
+                          <div className="rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-1 shadow-md backdrop-blur-[5px]">
                             <MentionInput
                               value={editingReply?.content ?? ''}
                               onChange={(newContent) =>
@@ -726,7 +725,6 @@ function CommentThreadComponent({
                               disabled={loading}
                               loading={replyUpdating || isSubmittingEdit}
                               isEditing={true}
-                              className="system-sm-regular"
                               autoFocus
                             />
                           </div>
@@ -757,15 +755,17 @@ function CommentThreadComponent({
           </div>
         )}
         {onReply && (
-          <div className="border-t border-components-panel-border px-4 py-3">
-            <div className="flex items-center gap-3">
-              <Avatar size="md" aria-hidden="true">
-                <AvatarFallback>
-                  {getAvatarInitial(userProfile?.name || t(($) => $.you, { ns: 'common' }))}
-                </AvatarFallback>
-                <AvatarImage src={userProfile?.avatar_url || undefined} alt="" />
-              </Avatar>
-              <div className="flex-1 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-0.5 shadow-sm">
+          <div className="shrink-0 border-t-[0.5px] border-divider-subtle bg-linear-to-b from-background-gradient-bg-fill-chat-bg-1 to-background-gradient-bg-fill-chat-bg-2 py-3 ps-4 pe-3">
+            <div className="flex items-start gap-3">
+              <div className="shrink-0 py-2">
+                <Avatar size="sm" aria-hidden="true">
+                  <AvatarFallback>
+                    {getAvatarInitial(userProfile?.name || t(($) => $.you, { ns: 'common' }))}
+                  </AvatarFallback>
+                  <AvatarImage src={userProfile?.avatar_url || undefined} alt="" />
+                </Avatar>
+              </div>
+              <div className="min-w-0 flex-1 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-1 shadow-md backdrop-blur-[5px]">
                 <MentionInput
                   ref={replyInputRef}
                   value={replyContent}

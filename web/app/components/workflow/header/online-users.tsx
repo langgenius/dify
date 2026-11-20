@@ -1,7 +1,6 @@
 'use client'
 
 import type { OnlineUser } from '../collaboration/types/collaboration'
-import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
@@ -73,7 +72,7 @@ const OnlineUsers = () => {
     const isCurrentUser = user.user_id === currentUserId
 
     return (
-      <span className={cn('inline-flex min-w-0 items-center gap-1', baseClassName)}>
+      <span className={cn('inline-flex min-w-0 items-center', baseClassName)}>
         <span className="truncate">{baseName}</span>
         {isCurrentUser && (
           <span className={cn('shrink-0', suffixClassName)}>{currentUserSuffix}</span>
@@ -134,9 +133,8 @@ const OnlineUsers = () => {
   return (
     <div
       className={cn(
-        'flex h-8 items-center rounded-full border-[0.5px] border-components-panel-border',
-        'bg-components-panel-bg py-1 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[10px]',
-        hasCounter ? 'min-w-21.75 gap-px ps-1 pe-1.5' : 'gap-1 px-1.5',
+        'flex items-center gap-px rounded-2xl border-[0.5px] border-components-panel-border py-1 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]',
+        hasCounter ? 'bg-components-panel-bg ps-1 pe-1.5' : 'bg-components-panel-bg-blur px-1',
       )}
     >
       <div className="flex h-6 items-center">
@@ -156,7 +154,7 @@ const OnlineUsers = () => {
             )
             const triggerClassName = cn(
               'relative flex size-6 items-center justify-center',
-              index > 0 && '-ms-1.5',
+              index > 0 && '-ms-1',
               !isCurrentUser && 'cursor-pointer transition-transform hover:scale-110',
             )
             const triggerStyle = { zIndex: visibleUsers.length - index }
@@ -189,7 +187,7 @@ const OnlineUsers = () => {
                 <TooltipContent side="bottom" sideOffset={4} className="max-w-55">
                   {displayName}
                   {isCurrentUser && (
-                    <span className="ms-1 text-text-quaternary">{currentUserSuffix}</span>
+                    <span className="font-normal text-text-tertiary">{currentUserSuffix}</span>
                   )}
                 </TooltipContent>
               </Tooltip>
@@ -214,7 +212,10 @@ const OnlineUsers = () => {
                     >
                       +{remainingCount}
                     </div>
-                    <ChevronDownIcon className="size-3 cursor-pointer text-gray-500" />
+                    <span
+                      aria-hidden
+                      className="i-ri-arrow-down-s-line size-3 cursor-pointer text-text-tertiary"
+                    />
                   </div>
                 }
               />
@@ -239,9 +240,8 @@ const OnlineUsers = () => {
                       key={user.sid}
                       disabled={isCurrentUser}
                       className={cn(
-                        'flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-start',
-                        !isCurrentUser &&
-                          'cursor-pointer hover:bg-components-panel-on-panel-item-bg-hover',
+                        'flex w-full items-center gap-2 rounded-lg py-1 ps-2 pe-3 text-start',
+                        !isCurrentUser && 'cursor-pointer hover:bg-state-base-hover',
                       )}
                       onClick={() => {
                         jumpToUserCursor(user.user_id)
@@ -260,8 +260,8 @@ const OnlineUsers = () => {
                       </div>
                       {renderDisplayName(
                         user,
-                        'system-xs-medium text-text-secondary',
-                        'text-text-tertiary',
+                        'system-sm-regular text-text-primary',
+                        'system-xs-regular text-text-tertiary',
                       )}
                     </button>
                   )

@@ -84,13 +84,18 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
     const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([])
     const resolvedPlaceholder =
       placeholder ?? t(($) => $['comments.placeholder.add'], { ns: 'workflowComments' })
-    const BASE_PADDING = 4
+    const BASE_PADDING_INLINE = 8
+    const BASE_PADDING_BLOCK = 7
     const [shouldReserveButtonGap, setShouldReserveButtonGap] = useState(isEditing)
     const [shouldReserveHorizontalSpace, setShouldReserveHorizontalSpace] = useState(
       () => !isEditing,
     )
-    const [paddingRight, setPaddingRight] = useState(() => BASE_PADDING + (isEditing ? 0 : 48))
-    const [paddingBottom, setPaddingBottom] = useState(() => BASE_PADDING + (isEditing ? 32 : 0))
+    const [paddingRight, setPaddingRight] = useState(
+      () => BASE_PADDING_INLINE + (isEditing ? 0 : 72),
+    )
+    const [paddingBottom, setPaddingBottom] = useState(
+      () => BASE_PADDING_BLOCK + (isEditing ? 32 : 0),
+    )
 
     const mentionNameList = useMemo(() => {
       const names = mentionUsers
@@ -139,7 +144,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
 
         const mentionEnd = nextMatchStart + matchedName.length + 1
         segments.push(
-          <span key={`mention-${nextMatchStart}`} className="text-primary-600">
+          <span key={`mention-${nextMatchStart}`} className="text-text-accent">
             {value.slice(nextMatchStart, mentionEnd)}
           </span>,
         )
@@ -193,7 +198,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
       const textarea = textareaRef.current
       if (!textarea) return
 
-      const extraBottom = Math.max(0, paddingBottom - BASE_PADDING)
+      const extraBottom = Math.max(0, paddingBottom - BASE_PADDING_BLOCK)
       const effectiveClientHeight = textarea.clientHeight - extraBottom
 
       if (baseTextareaHeightRef.current === null)
@@ -216,13 +221,13 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
       else if (rect) actionWidth = Math.ceil(rect.width)
 
       const actionHeight = rect ? Math.ceil(rect.height) : 0
-      const fallbackWidth = Math.max(0, paddingRight - BASE_PADDING)
-      const fallbackHeight = Math.max(0, paddingBottom - BASE_PADDING)
+      const fallbackWidth = Math.max(0, paddingRight - BASE_PADDING_INLINE)
+      const fallbackHeight = Math.max(0, paddingBottom - BASE_PADDING_BLOCK)
       const effectiveWidth = actionWidth > 0 ? actionWidth : fallbackWidth
       const effectiveHeight = actionHeight > 0 ? actionHeight : fallbackHeight
 
-      const nextRight = BASE_PADDING + (shouldReserveHorizontalSpace ? effectiveWidth : 0)
-      const nextBottom = BASE_PADDING + (shouldReserveButtonGap ? effectiveHeight : 0)
+      const nextRight = BASE_PADDING_INLINE + (shouldReserveHorizontalSpace ? effectiveWidth : 0)
+      const nextBottom = BASE_PADDING_BLOCK + (shouldReserveButtonGap ? effectiveHeight : 0)
 
       setPaddingRight((prev) => (prev === nextRight ? prev : nextRight))
       setPaddingBottom((prev) => (prev === nextBottom ? prev : nextBottom))
@@ -528,13 +533,15 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
 
     return (
       <>
-        <div className={cn('relative flex items-center', className)}>
+        <div
+          className={cn(
+            'relative flex items-center body-sm-regular leading-4.5 pointer-coarse:text-base pointer-coarse:leading-6',
+            className,
+          )}
+        >
           <div
             aria-hidden
-            className={cn(
-              'pointer-events-none absolute inset-0 z-0 overflow-hidden p-1 leading-6 wrap-break-word whitespace-pre-wrap',
-              'body-lg-regular text-text-primary',
-            )}
+            className="pointer-events-none absolute inset-0 z-0 overflow-hidden px-2 py-1.75 wrap-break-word whitespace-pre-wrap text-text-secondary"
             style={{ paddingRight, paddingBottom }}
           >
             <div
@@ -548,8 +555,8 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
           <Textarea
             ref={textareaRef}
             className={cn(
-              'relative z-10 w-full resize-none bg-transparent p-1 body-lg-regular leading-6 text-transparent caret-primary-500 outline-hidden',
-              'placeholder:text-text-tertiary',
+              'relative z-10 w-full resize-none bg-transparent px-2 py-1.75 text-transparent caret-primary-500 outline-hidden',
+              'placeholder:text-components-input-text-placeholder',
             )}
             style={{ paddingRight, paddingBottom }}
             placeholder={resolvedPlaceholder}
@@ -566,7 +573,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
           {!isEditing && (
             <div
               ref={setActionContainerRef}
-              className="absolute inset-e-1 bottom-0 z-20 flex items-end gap-1"
+              className="absolute inset-e-0 bottom-0 z-20 flex items-end gap-2"
             >
               <IconButton
                 aria-label={t(($) => $['nodes.agent.task.mention'], { ns: 'workflowAgent' })}
@@ -579,7 +586,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
               </IconButton>
               <IconButton
                 aria-label={t(($) => $['operation.send'], { ns: 'common' })}
-                className="z-20 ms-2"
+                className="z-20"
                 size="lg"
                 variant="primary"
                 disabled={!value.trim() || disabled || loading}
@@ -603,7 +610,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
           {isEditing && (
             <div
               ref={setActionContainerRef}
-              className="absolute inset-x-1 bottom-0 z-20 flex items-end justify-between"
+              className="absolute inset-x-0 bottom-0 z-20 flex items-end justify-between"
             >
               <IconButton
                 aria-label={t(($) => $['nodes.agent.task.mention'], { ns: 'workflowAgent' })}
@@ -642,7 +649,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
           typeof document !== 'undefined' &&
           createPortal(
             <div
-              className="fixed max-h-62 w-70 overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg/95 shadow-lg backdrop-blur-[10px]"
+              className="fixed max-h-62 w-70 overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[10px]"
               style={{
                 left: dropdownPosition.x,
                 [dropdownPosition.placement === 'top' ? 'bottom' : 'top']:
@@ -656,7 +663,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
                 <div
                   key={user.id}
                   className={cn(
-                    'flex cursor-pointer items-center gap-2 rounded-md py-1 ps-2 pe-3 hover:bg-state-base-hover',
+                    'flex cursor-pointer items-center gap-2 rounded-lg py-1 ps-2 pe-3 hover:bg-state-base-hover',
                     index === selectedMentionIndex && 'bg-state-base-hover',
                   )}
                   onClick={() => insertMention(user)}
@@ -666,10 +673,10 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
                     <AvatarImage src={user.avatar_url || undefined} alt="" />
                   </Avatar>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium text-text-primary">
-                      {user.name}
+                    <div className="truncate system-xs-medium text-text-primary">{user.name}</div>
+                    <div className="truncate system-xs-regular text-text-tertiary">
+                      {user.email}
                     </div>
-                    <div className="truncate text-xs text-text-tertiary">{user.email}</div>
                   </div>
                 </div>
               ))}

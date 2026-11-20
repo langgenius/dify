@@ -2,6 +2,7 @@
 
 import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC, PointerEvent as ReactPointerEvent } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useId, useMemo, useRef, useState } from 'react'
@@ -211,22 +212,6 @@ export const CommentIcon: FC<CommentIconProps> = memo(
       return [author, ...rest]
     }, [comment.created_by_account, comment.participants])
 
-    // Calculate dynamic width based on number of participants
-    const participantCount = participants.length
-    const maxVisible = Math.min(3, participantCount)
-    const showCount = participantCount > 3
-    const avatarSize = 24
-    const avatarSpacing = 4 // -space-x-1 is about 4px overlap
-
-    // Width calculation: first avatar + (additional avatars * (size - spacing)) + padding
-    const dynamicWidth = Math.max(
-      40, // minimum width
-      8 +
-        avatarSize +
-        Math.max(0, showCount ? 2 : maxVisible - 1) * (avatarSize - avatarSpacing) +
-        8,
-    )
-
     const pointerEventHandlers = useMemo(
       () => ({
         onPointerDown: handlePointerDown,
@@ -244,11 +229,10 @@ export const CommentIcon: FC<CommentIconProps> = memo(
             name: comment.created_by_account?.name ?? '',
           })}
           aria-describedby={isAuthor && onPositionUpdate ? descriptionId : undefined}
-          className="nokey absolute z-10 h-auto w-auto border-0 bg-transparent p-0"
+          className="nokey absolute z-10 size-auto -translate-y-full rounded-[13.5px] rounded-es-[3px] p-0 hover:bg-transparent"
           style={{
             left: canvasPosition.x,
             top: canvasPosition.y,
-            transform: 'translate(-50%, -50%)',
           }}
           data-role="comment-marker"
           id={`workflow-comment-marker-${comment.id}`}
@@ -279,26 +263,17 @@ export const CommentIcon: FC<CommentIconProps> = memo(
           }}
         >
           <div
-            className={cursorClass}
+            className={cn(
+              'flex min-h-7 min-w-7 items-center rounded-[13.5px] rounded-es-[3px] bg-components-panel-bg-blur p-[1.5px] shadow-lg backdrop-blur-[5px]',
+              isActive
+                ? 'border-[1.5px] border-components-option-card-option-selected-border'
+                : 'border-[0.5px] border-components-panel-border',
+              cursorClass,
+            )}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
           >
-            <div
-              className="relative h-10 rounded-ee-full rounded-t-full"
-              style={{ width: dynamicWidth }}
-            >
-              <div
-                className={`absolute inset-1.5 overflow-hidden rounded-ss-full rounded-se-full rounded-ee-full border bg-components-panel-bg transition-shadow ${
-                  isActive
-                    ? 'border-primary-500 ring-1 ring-primary-500'
-                    : 'border-components-panel-border'
-                }`}
-              >
-                <div className="flex size-full items-center justify-center px-1">
-                  <UserAvatarList users={participants} maxVisible={3} size="sm" />
-                </div>
-              </div>
-            </div>
+            <UserAvatarList users={participants} maxVisible={2} size="sm" />
           </div>
         </IconButton>
         {isAuthor && onPositionUpdate && (
@@ -311,11 +286,10 @@ export const CommentIcon: FC<CommentIconProps> = memo(
         {/* Preview panel */}
         {showPreview && !isActive && (
           <div
-            className="absolute z-20"
+            className="absolute z-20 -translate-y-full"
             style={{
-              left: effectiveScreenPosition.x - containerLeft - dynamicWidth / 2,
-              top: effectiveScreenPosition.y - containerTop + 20,
-              transform: 'translateY(-100%)',
+              left: canvasPosition.x,
+              top: canvasPosition.y,
             }}
             data-role="comment-preview"
             {...pointerEventHandlers}

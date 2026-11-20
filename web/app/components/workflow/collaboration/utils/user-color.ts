@@ -5,16 +5,17 @@
 export const getUserColor = (id: string): string => {
   const colors = [
     '#155AEF',
-    '#0BA5EC',
+    '#026AA2',
     '#444CE7',
     '#7839EE',
-    '#4CA30D',
-    '#0E9384',
-    '#DD2590',
-    '#FF4405',
+    '#3B7C0F',
+    '#107569',
+    '#C11574',
+    '#BC1B06',
     '#D92D20',
-    '#F79009',
-    '#828DAD',
+    '#E31B54',
+    '#B54708',
+    '#5D698D',
   ]
   const hash = id.split('').reduce((a, b) => {
     a = (a << 5) - a + b.charCodeAt(0)
