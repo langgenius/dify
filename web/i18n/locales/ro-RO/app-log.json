@@ -77,7 +77,7 @@
   "export.submit": "Exportă CSV",
   "export.timeRange": "Interval de timp",
   "export.title": "Exportă jurnalele",
-  "export.upgradeDescription": "Exportă jurnalele aplicației ca CSV folosind un plan plătit.",
+  "export.upgradeDescription": "Treci la un plan superior pentru a exporta jurnalele acestei aplicații în format CSV. Importă jurnalele în foi de calcul sau instrumente BI pentru a verifica activitatea, a identifica tendințe și a crea rapoarte de audit sau operaționale.",
   "export.upgradeTitle": "Treci la un plan superior pentru a exporta jurnalele",
   "filter.annotation.all": "Toate",
   "filter.annotation.annotated": "Îmbunătățiri annotate ({{count}} elemente)",

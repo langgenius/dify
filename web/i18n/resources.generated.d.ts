@@ -1439,7 +1439,7 @@ export default interface Resources {
     'export.submit': 'Export CSV'
     'export.timeRange': 'Time range'
     'export.title': 'Export logs'
-    'export.upgradeDescription': 'Export app logs as CSV with a paid plan.'
+    'export.upgradeDescription': 'Upgrade to unlock CSV exports for this app. Bring your logs into spreadsheets or BI tools to review activity, spot trends, and create audit or operations reports.'
     'export.upgradeTitle': 'Upgrade to export logs'
     'filter.annotation.all': 'All'
     'filter.annotation.annotated': 'Annotated Improvements ({{count}} items)'

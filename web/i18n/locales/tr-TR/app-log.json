@@ -77,7 +77,7 @@
   "export.submit": "CSV olarak dışa aktar",
   "export.timeRange": "Zaman aralığı",
   "export.title": "Günlükleri dışa aktar",
-  "export.upgradeDescription": "Ücretli bir planla uygulama günlüklerini CSV olarak dışa aktarın.",
+  "export.upgradeDescription": "Bu uygulamanın günlüklerini CSV olarak dışa aktarmak için planınızı yükseltin. Etkinlikleri incelemek, eğilimleri belirlemek ve denetim veya operasyon raporları oluşturmak için günlüklerinizi e-tablolara veya BI araçlarına aktarın.",
   "export.upgradeTitle": "Günlükleri dışa aktarmak için planı yükseltin",
   "filter.annotation.all": "Hepsi",
   "filter.annotation.annotated": "Açıklamalı İyileştirmeler ({{count}} öğe)",

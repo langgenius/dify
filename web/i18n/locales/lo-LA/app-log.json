@@ -77,7 +77,7 @@
   "export.submit": "ສົ່ງອອກ CSV",
   "export.timeRange": "ຊ່ວງເວລາ",
   "export.title": "ສົ່ງອອກບັນທຶກ",
-  "export.upgradeDescription": "ສົ່ງອອກບັນທຶກແອັບເປັນ CSV ດ້ວຍແຜນແບບຈ່າຍເງິນ.",
+  "export.upgradeDescription": "ອັບເກຣດແຜນເພື່ອສົ່ງອອກບັນທຶກຂອງແອັບນີ້ເປັນ CSV. ນຳເຂົ້າບັນທຶກໃນສະເປຣດຊີດ ຫຼື ເຄື່ອງມື BI ເພື່ອກວດເບິ່ງກິດຈະກຳ, ລະບຸແນວໂນ້ມ ແລະ ສ້າງລາຍງານການກວດສອບ ຫຼື ການດຳເນີນງານ.",
   "export.upgradeTitle": "ອັບເກຣດເພື່ອສົ່ງອອກບັນທຶກ",
   "filter.annotation.all": "ທັງໝົດ",
   "filter.annotation.annotated": "ການປັບປຸງທີ່ໝາຍເຫດໄວ້ ({{count}} ລາຍການ)",

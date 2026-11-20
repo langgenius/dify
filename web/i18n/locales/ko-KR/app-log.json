@@ -77,7 +77,7 @@
   "export.submit": "CSV 내보내기",
   "export.timeRange": "기간",
   "export.title": "로그 내보내기",
-  "export.upgradeDescription": "유료 플랜에서 앱 로그를 CSV로 내보낼 수 있습니다.",
+  "export.upgradeDescription": "이 앱의 로그를 CSV로 내보내려면 요금제를 업그레이드하세요. 로그를 스프레드시트나 BI 도구로 가져와 활동을 검토하고, 추세를 파악하고, 감사 또는 운영 보고서를 작성할 수 있습니다.",
   "export.upgradeTitle": "업그레이드하여 로그 내보내기",
   "filter.annotation.all": "모두",
   "filter.annotation.annotated": "향상 주석 ({{count}} 개 항목)",

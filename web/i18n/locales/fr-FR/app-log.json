@@ -77,7 +77,7 @@
   "export.submit": "Exporter en CSV",
   "export.timeRange": "Période",
   "export.title": "Exporter les journaux",
-  "export.upgradeDescription": "Un forfait payant permet d’exporter les journaux de l’application en CSV.",
+  "export.upgradeDescription": "Passez à une offre supérieure pour exporter les journaux de cette application au format CSV. Importez vos journaux dans des tableurs ou des outils de BI pour examiner l’activité, repérer les tendances et créer des rapports d’audit ou d’exploitation.",
   "export.upgradeTitle": "Changez de forfait pour exporter les journaux",
   "filter.annotation.all": "Tous",
   "filter.annotation.annotated": "Améliorations annotées ({{count}} éléments)",

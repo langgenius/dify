@@ -77,7 +77,7 @@
   "export.submit": "ส่งออก CSV",
   "export.timeRange": "ช่วงเวลา",
   "export.title": "ส่งออกบันทึก",
-  "export.upgradeDescription": "ส่งออกบันทึกแอปเป็น CSV ด้วยแผนแบบชำระเงิน",
+  "export.upgradeDescription": "อัปเกรดแพ็กเกจเพื่อส่งออกบันทึกของแอปนี้เป็น CSV นำเข้าบันทึกในสเปรดชีตหรือเครื่องมือ BI เพื่อดูกิจกรรม สังเกตแนวโน้ม และสร้างรายงานการตรวจสอบหรือการดำเนินงาน",
   "export.upgradeTitle": "อัปเกรดเพื่อส่งออกบันทึก",
   "filter.annotation.all": "ทั้งหมด",
   "filter.annotation.annotated": "การปรับปรุงที่มีคําอธิบายประกอบ ({{count}} รายการ)",

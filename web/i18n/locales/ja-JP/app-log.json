@@ -77,7 +77,7 @@
   "export.submit": "CSV をエクスポート",
   "export.timeRange": "期間",
   "export.title": "ログをエクスポート",
-  "export.upgradeDescription": "有料プランでアプリのログを CSV としてエクスポートできます。",
+  "export.upgradeDescription": "プランをアップグレードすると、このアプリのログを CSV でエクスポートできます。ログをスプレッドシートや BI ツールに取り込み、アクティビティの確認、傾向の把握、監査や運用レポートの作成に活用できます。",
   "export.upgradeTitle": "アップグレードしてログをエクスポート",
   "filter.annotation.all": "すべて",
   "filter.annotation.annotated": "注釈付きの改善 ({{count}} アイテム)",

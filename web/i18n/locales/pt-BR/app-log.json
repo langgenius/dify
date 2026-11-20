@@ -77,7 +77,7 @@
   "export.submit": "Exportar CSV",
   "export.timeRange": "Intervalo de tempo",
   "export.title": "Exportar logs",
-  "export.upgradeDescription": "Exporte os logs do aplicativo como CSV com um plano pago.",
+  "export.upgradeDescription": "Faça upgrade do plano para exportar os logs deste aplicativo em CSV. Importe seus logs em planilhas ou ferramentas de BI para revisar atividades, identificar tendências e criar relatórios de auditoria ou operacionais.",
   "export.upgradeTitle": "Faça upgrade para exportar logs",
   "filter.annotation.all": "Tudo",
   "filter.annotation.annotated": "Melhorias Anotadas ({{count}} itens)",

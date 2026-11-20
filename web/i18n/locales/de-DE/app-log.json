@@ -77,7 +77,7 @@
   "export.submit": "CSV exportieren",
   "export.timeRange": "Zeitraum",
   "export.title": "Protokolle exportieren",
-  "export.upgradeDescription": "Mit einem kostenpflichtigen Tarif können App-Protokolle als CSV exportiert werden.",
+  "export.upgradeDescription": "Führe ein Upgrade durch, um die Protokolle dieser App als CSV zu exportieren. Importiere deine Protokolle in Tabellenkalkulationen oder BI-Tools, um Aktivitäten zu prüfen, Trends zu erkennen und Audit- oder Betriebsberichte zu erstellen.",
   "export.upgradeTitle": "Upgrade für den Protokollexport",
   "filter.annotation.all": "Alle",
   "filter.annotation.annotated": "Markierte Verbesserungen ({{count}} Elemente)",

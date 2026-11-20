@@ -77,7 +77,7 @@
   "export.submit": "Exportar CSV",
   "export.timeRange": "Intervalo de tiempo",
   "export.title": "Exportar registros",
-  "export.upgradeDescription": "Exporta los registros de la aplicación como CSV con un plan de pago.",
+  "export.upgradeDescription": "Mejora tu plan para exportar los registros de esta aplicación a CSV. Importa tus registros en hojas de cálculo o herramientas de BI para revisar la actividad, detectar tendencias y crear informes de auditoría u operaciones.",
   "export.upgradeTitle": "Actualiza tu plan para exportar registros",
   "filter.annotation.all": "Todos",
   "filter.annotation.annotated": "Mejoras Anotadas ({{count}} elementos)",

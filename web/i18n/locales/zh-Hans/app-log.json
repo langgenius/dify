@@ -77,7 +77,7 @@
   "export.submit": "导出 CSV",
   "export.timeRange": "时间范围",
   "export.title": "导出日志",
-  "export.upgradeDescription": "升级付费套餐后可将应用日志导出为 CSV。",
+  "export.upgradeDescription": "升级后即可将此应用的日志导出为 CSV。将日志导入电子表格或 BI 工具，查看活动、发现趋势，并生成审计或运营报告。",
   "export.upgradeTitle": "升级以导出日志",
   "filter.annotation.all": "全部",
   "filter.annotation.annotated": "已标注改进（{{count}} 项）",

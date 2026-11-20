@@ -77,7 +77,7 @@
   "export.submit": "Ekspor CSV",
   "export.timeRange": "Rentang waktu",
   "export.title": "Ekspor log",
-  "export.upgradeDescription": "Ekspor log aplikasi sebagai CSV dengan paket berbayar.",
+  "export.upgradeDescription": "Tingkatkan paket untuk mengekspor log aplikasi ini sebagai CSV. Impor log Anda ke spreadsheet atau alat BI untuk meninjau aktivitas, menemukan tren, dan membuat laporan audit atau operasional.",
   "export.upgradeTitle": "Tingkatkan paket untuk mengekspor log",
   "filter.annotation.all": "Semua",
   "filter.annotation.annotated": "Peningkatan yang Diberi Catatan ({{count}} item)",

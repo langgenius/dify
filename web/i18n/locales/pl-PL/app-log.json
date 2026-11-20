@@ -77,7 +77,7 @@
   "export.submit": "Eksportuj CSV",
   "export.timeRange": "Zakres dat",
   "export.title": "Eksportuj dzienniki",
-  "export.upgradeDescription": "Eksportuj dzienniki aplikacji do CSV w ramach płatnego planu.",
+  "export.upgradeDescription": "Przejdź na wyższy plan, aby eksportować dzienniki tej aplikacji do plików CSV. Importuj dzienniki do arkuszy kalkulacyjnych lub narzędzi BI, aby przeglądać aktywność, wychwytywać trendy i tworzyć raporty audytowe lub operacyjne.",
   "export.upgradeTitle": "Zmień plan, aby eksportować dzienniki",
   "filter.annotation.all": "Wszystkie",
   "filter.annotation.annotated": "Zanotowane usprawnienia ({{count}} elementów)",

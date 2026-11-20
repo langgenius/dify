@@ -77,7 +77,7 @@
   "export.submit": "Xuất CSV",
   "export.timeRange": "Khoảng thời gian",
   "export.title": "Xuất nhật ký",
-  "export.upgradeDescription": "Xuất nhật ký ứng dụng dưới dạng CSV với gói trả phí.",
+  "export.upgradeDescription": "Nâng cấp gói để xuất nhật ký của ứng dụng này dưới dạng CSV. Nhập nhật ký vào bảng tính hoặc công cụ BI để xem lại hoạt động, phát hiện xu hướng và tạo báo cáo kiểm toán hoặc vận hành.",
   "export.upgradeTitle": "Nâng cấp để xuất nhật ký",
   "filter.annotation.all": "Tất cả",
   "filter.annotation.annotated": "Đã chú thích ({{count}} mục)",

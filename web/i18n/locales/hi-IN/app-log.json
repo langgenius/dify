@@ -77,7 +77,7 @@
   "export.submit": "CSV निर्यात करें",
   "export.timeRange": "समय सीमा",
   "export.title": "लॉग निर्यात करें",
-  "export.upgradeDescription": "सशुल्क प्लान के साथ ऐप के लॉग CSV में निर्यात करें।",
+  "export.upgradeDescription": "इस ऐप के लॉग CSV में निर्यात करने के लिए अपना प्लान अपग्रेड करें। गतिविधि की समीक्षा करने, रुझान पहचानने और ऑडिट या संचालन रिपोर्ट बनाने के लिए अपने लॉग स्प्रेडशीट या BI टूल में इंपोर्ट करें।",
   "export.upgradeTitle": "लॉग निर्यात करने के लिए अपग्रेड करें",
   "filter.annotation.all": "सभी",
   "filter.annotation.annotated": "एनोटेट किए गए सुधार ({{count}} आइटम)",

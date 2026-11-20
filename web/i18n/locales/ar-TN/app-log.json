@@ -77,7 +77,7 @@
   "export.submit": "تصدير CSV",
   "export.timeRange": "الفترة الزمنية",
   "export.title": "تصدير السجلات",
-  "export.upgradeDescription": "صدّر سجلات التطبيق بتنسيق CSV باستخدام خطة مدفوعة.",
+  "export.upgradeDescription": "رقِّ خطتك لتصدير سجلات هذا التطبيق بصيغة CSV. استورد سجلاتك إلى جداول البيانات أو أدوات ذكاء الأعمال لمراجعة النشاط ورصد الاتجاهات وإعداد تقارير التدقيق أو العمليات.",
   "export.upgradeTitle": "رقِّ خطتك لتصدير السجلات",
   "filter.annotation.all": "الكل",
   "filter.annotation.annotated": "تحسينات موصوفة ({{count}})",

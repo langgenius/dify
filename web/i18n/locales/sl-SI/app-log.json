@@ -77,7 +77,7 @@
   "export.submit": "Izvozi CSV",
   "export.timeRange": "Časovno obdobje",
   "export.title": "Izvozi dnevnike",
-  "export.upgradeDescription": "S plačljivim paketom lahko izvozite dnevnike aplikacije v CSV.",
+  "export.upgradeDescription": "Nadgradi paket, da omogočiš izvoz dnevnikov te aplikacije v CSV. Uvozi dnevnike v preglednice ali orodja BI, da pregledaš dejavnost, prepoznaš trende in pripraviš revizijska ali operativna poročila.",
   "export.upgradeTitle": "Nadgradite paket za izvoz dnevnikov",
   "filter.annotation.all": "Vse",
   "filter.annotation.annotated": "Označene izboljšave ({{count}} elementov)",

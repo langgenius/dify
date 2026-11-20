@@ -77,7 +77,7 @@
   "export.submit": "CSV exporteren",
   "export.timeRange": "Periode",
   "export.title": "Logboeken exporteren",
-  "export.upgradeDescription": "Exporteer app-logboeken als CSV met een betaald abonnement.",
+  "export.upgradeDescription": "Upgrade je abonnement om de logboeken van deze app als CSV te exporteren. Importeer je logboeken in spreadsheets of BI-tools om activiteiten te bekijken, trends te herkennen en audit- of operationele rapporten te maken.",
   "export.upgradeTitle": "Upgrade om logboeken te exporteren",
   "filter.annotation.all": "All",
   "filter.annotation.annotated": "Annotated Improvements ({{count}} items)",

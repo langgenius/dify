@@ -77,7 +77,7 @@
   "export.submit": "CSV ixrac et",
   "export.timeRange": "Vaxt aralığı",
   "export.title": "Jurnalları ixrac et",
-  "export.upgradeDescription": "Ödənişli planla tətbiq jurnallarını CSV formatında ixrac edin.",
+  "export.upgradeDescription": "Bu tətbiqin jurnallarını CSV formatında ixrac etmək üçün planınızı yüksəldin. Fəaliyyəti nəzərdən keçirmək, tendensiyaları müəyyən etmək və audit və ya əməliyyat hesabatları hazırlamaq üçün jurnallarınızı elektron cədvəllərə və ya BI alətlərinə idxal edin.",
   "export.upgradeTitle": "Jurnalları ixrac etmək üçün planı yüksəldin",
   "filter.annotation.all": "Hamısı",
   "filter.annotation.annotated": "Qeydlə işarələnmiş təkmilləşdirmələr ({{count}} element)",
