@@ -171,7 +171,12 @@ class WeightRerankRunner(BaseRerankRunner):
         for document in documents:
             # calculate cosine similarity
             if document.metadata and "score" in document.metadata:
-                query_vector_scores.append(document.metadata["score"])
+                raw_score = document.metadata["score"]
+                # External knowledge bases copy the provider's score into metadata
+                # unconditionally (dataset_retrieval), so the key can be present with a
+                # None value when the provider returns no score. Such a document
+                # contributes no vector score instead of failing the whole retrieval.
+                query_vector_scores.append(float(raw_score) if raw_score is not None else 0.0)
             else:
                 if query_vector is None:
                     query_vector = CacheEmbedding.get_cached_query_embedding(
