@@ -6,19 +6,25 @@ import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Popover,
+  PopoverPopup,
+  PopoverPortal,
+  PopoverPositioner,
+} from '@langgenius/dify-ui/popover'
 import { useAtomValue } from 'jotai'
 import {
   forwardRef,
   memo,
   useCallback,
   useEffect,
+  useId,
   useImperativeHandle,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from 'react'
-import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
 import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
@@ -62,6 +68,8 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const highlightContentRef = useRef<HTMLDivElement>(null)
     const lineProbeRef = useRef<HTMLDivElement>(null)
+    const rootRef = useRef<HTMLDivElement>(null)
+    const listboxId = useId()
 
     // Expose textarea ref to parent component
     useImperativeHandle(forwardedRef, () => textareaRef.current!, [])
@@ -207,6 +215,15 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
       )
     }, [mentionUsers, mentionQuery])
 
+    const isMentionMenuOpen = showMentionDropdown && filteredMentionUsers.length > 0
+
+    useEffect(() => {
+      if (!isMentionMenuOpen) return
+      document
+        .getElementById(`${listboxId}-${selectedMentionIndex}`)
+        ?.scrollIntoView({ block: 'nearest' })
+    }, [isMentionMenuOpen, listboxId, selectedMentionIndex])
+
     const shouldDisableMentionButton = useMemo(() => {
       if (showMentionDropdown) return true
 
@@ -217,25 +234,6 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
       const textBeforeCursor = value.slice(0, cursorPosition)
       return /@\w*$/.test(textBeforeCursor)
     }, [showMentionDropdown, value])
-
-    const dropdownPosition = useMemo(() => {
-      if (!showMentionDropdown || !textareaRef.current)
-        return { x: 0, y: 0, placement: 'bottom' as const }
-
-      const textareaRect = textareaRef.current.getBoundingClientRect()
-      const dropdownHeight = 160 // max-h-40 = 10rem = 160px
-      const viewportHeight = window.innerHeight
-      const spaceBelow = viewportHeight - textareaRect.bottom
-      const spaceAbove = textareaRect.top
-
-      const shouldPlaceAbove = spaceBelow < dropdownHeight && spaceAbove > spaceBelow
-
-      return {
-        x: textareaRect.left,
-        y: shouldPlaceAbove ? textareaRect.top - 4 : textareaRect.bottom + 4,
-        placement: shouldPlaceAbove ? ('top' as const) : ('bottom' as const),
-      }
-    }, [showMentionDropdown])
 
     const handleContentChange = useCallback(
       (newValue: string) => {
@@ -359,7 +357,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
             setSelectedMentionIndex((prev) =>
               prev > 0 ? prev - 1 : filteredMentionUsers.length - 1,
             )
-          } else if (e.key === 'Enter') {
+          } else if (e.key === 'Enter' || e.key === 'Tab') {
             e.preventDefault()
             if (filteredMentionUsers[selectedMentionIndex])
               insertMention(filteredMentionUsers[selectedMentionIndex])
@@ -418,6 +416,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
     return (
       <>
         <div
+          ref={rootRef}
           className={cn(
             'relative flex body-sm-regular leading-4.5 pointer-coarse:text-base pointer-coarse:leading-6',
             isEditing || isMultiline ? 'flex-col gap-1' : 'items-end',
@@ -443,6 +442,10 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
               value={value}
               disabled={disabled || loading}
               onChange={(e) => handleContentChange(e.target.value)}
+              aria-controls={isMentionMenuOpen ? listboxId : undefined}
+              aria-activedescendant={
+                isMentionMenuOpen ? `${listboxId}-${selectedMentionIndex}` : undefined
+              }
               onKeyDown={handleKeyDown}
               onScroll={syncHighlightScroll}
             />
@@ -524,45 +527,50 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
           )}
         </div>
 
-        {showMentionDropdown &&
-          filteredMentionUsers.length > 0 &&
-          typeof document !== 'undefined' &&
-          createPortal(
-            <div
-              className="fixed max-h-62 w-70 overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[10px]"
-              style={{
-                left: dropdownPosition.x,
-                [dropdownPosition.placement === 'top' ? 'bottom' : 'top']:
-                  dropdownPosition.placement === 'top'
-                    ? window.innerHeight - dropdownPosition.y
-                    : dropdownPosition.y,
-              }}
-              data-mention-dropdown
-            >
-              {filteredMentionUsers.map((user, index) => (
-                <div
-                  key={user.id}
-                  className={cn(
-                    'flex cursor-pointer items-center gap-2 rounded-lg py-1 ps-2 pe-3 hover:bg-state-base-hover',
-                    index === selectedMentionIndex && 'bg-state-base-hover',
-                  )}
-                  onClick={() => insertMention(user)}
-                >
-                  <Avatar size="sm" className="shrink-0" aria-hidden="true">
-                    <AvatarFallback>{getAvatarInitial(user.name)}</AvatarFallback>
-                    <AvatarImage src={user.avatar_url || undefined} alt="" />
-                  </Avatar>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate system-xs-medium text-text-primary">{user.name}</div>
-                    <div className="truncate system-xs-regular text-text-tertiary">
-                      {user.email}
+        <Popover
+          open={isMentionMenuOpen}
+          onOpenChange={(open) => {
+            if (!open) setShowMentionDropdown(false)
+          }}
+        >
+          <PopoverPortal>
+            <PopoverPositioner anchor={rootRef} side="bottom" align="start" sideOffset={4}>
+              <PopoverPopup
+                id={listboxId}
+                role="listbox"
+                aria-label={t(($) => $['nodes.agent.task.mention'], { ns: 'workflowAgent' })}
+                initialFocus={false}
+                finalFocus={false}
+                data-mention-dropdown
+                className="max-h-62 w-70 overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[10px]"
+              >
+                {filteredMentionUsers.map((user, index) => (
+                  <div
+                    key={user.id}
+                    id={`${listboxId}-${index}`}
+                    role="option"
+                    aria-selected={index === selectedMentionIndex}
+                    tabIndex={-1}
+                    className="flex cursor-pointer items-center gap-2 rounded-lg py-1 ps-2 pe-3 hover:bg-state-base-hover aria-selected:bg-state-base-hover"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => insertMention(user)}
+                  >
+                    <Avatar size="sm" className="shrink-0" aria-hidden="true">
+                      <AvatarFallback>{getAvatarInitial(user.name)}</AvatarFallback>
+                      <AvatarImage src={user.avatar_url || undefined} alt="" />
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate system-xs-medium text-text-primary">{user.name}</div>
+                      <div className="truncate system-xs-regular text-text-tertiary">
+                        {user.email}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>,
-            document.body,
-          )}
+                ))}
+              </PopoverPopup>
+            </PopoverPositioner>
+          </PopoverPortal>
+        </Popover>
       </>
     )
   },
