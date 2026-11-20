@@ -304,6 +304,7 @@ it('keeps an in-flight create request single-submission until it succeeds', asyn
     keys: '[MouseLeft]',
     coords: { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 },
   })
+  await pending.arrived
   expect(fake.console.apps.post).toHaveBeenCalledOnce()
   expect(mocks.push).not.toHaveBeenCalled()
   pending.resolve(
