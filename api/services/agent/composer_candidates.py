@@ -26,7 +26,7 @@ from models.agent_config_entities import (
     AgentSoulConfig,
     DeclaredOutputConfig,
 )
-from services.agent.knowledge_datasets import list_agent_soul_knowledge_dataset_ids
+from models.agent_knowledge import list_agent_soul_knowledge_dataset_ids
 
 MAX_CANDIDATES_PER_LIST = 200
 

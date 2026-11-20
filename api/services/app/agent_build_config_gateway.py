@@ -7,8 +7,7 @@ from models.agent_config_entities import AgentSoulConfig
 from models.agent_soul_state import backfill_cli_tool_ids
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import AgentSoulLockedError, InvalidComposerConfigError, PlaintextSecretNotAllowedError
-from services.agent.knowledge_datasets import list_missing_tenant_knowledge_dataset_ids
-from services.agent.knowledge_spaces import read_agent_knowledge_space_roles, require_agent_knowledge_space_access
+from services.agent.knowledge_spaces import authorize_composer_knowledge
 from services.app.agent_build_session_store import (
     AgentBuildInvalidConfigError,
     AgentBuildPlaintextSecretError,
@@ -30,7 +29,12 @@ class AgentBuildConfigGateway:
         backfill_cli_tool_ids(soul)
         try:
             ComposerConfigValidator.validate_draft_save_payload(payload)
-            self._validate_knowledge(context, soul, check_datasets=False)
+            authorize_composer_knowledge(
+                session_factory=self._session_factory,
+                tenant_id=context.active_workspace_id,
+                account_id=context.account_id,
+                soul=soul,
+            )
         except AgentSoulLockedError as exc:
             raise AgentBuildSoulLockedError(exc.description) from exc
         except InvalidComposerConfigError as exc:
@@ -49,32 +53,14 @@ class AgentBuildConfigGateway:
                     save_strategy=ComposerSaveStrategy.SAVE_AS_NEW_VERSION,
                 )
             )
-            self._validate_knowledge(context, soul, check_datasets=True)
+            authorize_composer_knowledge(
+                session_factory=self._session_factory,
+                tenant_id=context.active_workspace_id,
+                account_id=context.account_id,
+                soul=soul,
+                check_datasets=True,
+            )
         except InvalidComposerConfigError as exc:
             raise AgentBuildInvalidConfigError(exc.description) from exc
         except PlaintextSecretNotAllowedError as exc:
             raise AgentBuildPlaintextSecretError(exc.description) from exc
-
-    def _validate_knowledge(self, context: RequestContext, soul: AgentSoulConfig, *, check_datasets: bool) -> None:
-        """Resolve local knowledge facts before asking Enterprise to authorize spaces."""
-        tenant_id = context.active_workspace_id
-        account_id = context.account_id
-        ids = [binding.control_space_id for binding in soul.knowledge.spaces if not binding.is_missing]
-        if check_datasets or ids:
-            with self._session_factory() as session:
-                if check_datasets:
-                    missing = list_missing_tenant_knowledge_dataset_ids(
-                        session=session, tenant_id=tenant_id, agent_soul=soul
-                    )
-                    if missing:
-                        raise InvalidComposerConfigError(
-                            "knowledge_dataset_not_found: knowledge sets reference missing or out-of-scope datasets: "
-                            + ", ".join(missing)
-                        )
-                roles = (
-                    read_agent_knowledge_space_roles(session, tenant_id=tenant_id, account_id=account_id, ids=ids)
-                    if ids
-                    else {}
-                )
-            if ids:
-                require_agent_knowledge_space_access(tenant_id=tenant_id, account_id=account_id, ids=ids, roles=roles)
