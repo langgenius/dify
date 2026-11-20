@@ -44,6 +44,7 @@
   "invalidInvitationCode": "无效的邀请码",
   "invitationCode": "邀请码",
   "invitationCodePlaceholder": "输入邀请码",
+  "invitationWorkspaceFull": "这个工作空间的成员名额已满，暂时无法加入。请联系邀请你的人释放名额或升级套餐。",
   "join": "加入 ",
   "joinTipEnd": " 团队",
   "joinTipStart": "邀请你加入 ",

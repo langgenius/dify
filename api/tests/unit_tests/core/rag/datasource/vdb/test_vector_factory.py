@@ -3,8 +3,10 @@ import json
 import logging
 import sys
 import types
+from collections.abc import Iterator
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from typing import TypedDict
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -44,8 +46,14 @@ def _register_fake_factory_module(monkeypatch: pytest.MonkeyPatch, module_path: 
     return fake_cls
 
 
+class _InitVectorCalls(TypedDict):
+    vector_type: str | None
+    init_args: tuple[Dataset, list[str], str, Session] | None
+
+
 @pytest.fixture
-def vector_factory_module() -> types.ModuleType:
+def vector_factory_module() -> Iterator[types.ModuleType]:
+    """Reload the factory module and leave no cached test factories after the case."""
     import importlib
 
     from core.rag.datasource.vdb import vector_backend_registry as reg
@@ -53,7 +61,11 @@ def vector_factory_module() -> types.ModuleType:
     reg.clear_vector_factory_cache()
     import core.rag.datasource.vdb.vector_factory as module
 
-    return importlib.reload(module)
+    try:
+        yield importlib.reload(module)
+    finally:
+        # Restoring sys.modules does not evict fake classes cached by the registry.
+        reg.clear_vector_factory_cache()
 
 
 def test_gen_index_struct_dict(vector_factory_module: types.ModuleType) -> None:
@@ -294,7 +306,7 @@ def test_lazy_embeddings_query_cache_hit_skips_model_resolution(
 def test_init_vector_prefers_dataset_index_struct(
     vector_factory_module: types.ModuleType, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
 ) -> None:
-    calls: dict[str, object] = {"vector_type": None, "init_args": None}
+    calls: _InitVectorCalls = {"vector_type": None, "init_args": None}
 
     class _Factory:
         def init_vector(
@@ -308,11 +320,11 @@ def test_init_vector_prefers_dataset_index_struct(
             calls["init_args"] = (dataset, attributes, embeddings, session)
             return "vector-processor"
 
-    monkeypatch.setattr(
-        vector_factory_module.Vector,
-        "get_vector_factory",
-        staticmethod(lambda vector_type: calls.update(vector_type=vector_type) or _Factory),
-    )
+    def _get_factory(vector_type: str) -> type[_Factory]:
+        calls["vector_type"] = vector_type
+        return _Factory
+
+    monkeypatch.setattr(vector_factory_module.Vector, "get_vector_factory", staticmethod(_get_factory))
 
     vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
     vector._dataset = _dataset(index_struct_dict={"type": vector_factory_module.VectorType.UPSTASH})
@@ -329,7 +341,7 @@ def test_init_vector_prefers_dataset_index_struct(
 def test_init_vector_uses_whitelist_override(
     vector_factory_module: types.ModuleType, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
-    calls: dict[str, object] = {"vector_type": None}
+    calls: dict[str, str | None] = {"vector_type": None}
 
     class _Factory:
         def init_vector(
@@ -350,11 +362,12 @@ def test_init_vector_uses_whitelist_override(
         VECTOR_STORE=vector_factory_module.VectorType.CHROMA,
         VECTOR_STORE_WHITELIST_ENABLE=True,
     )
-    monkeypatch.setattr(
-        vector_factory_module.Vector,
-        "get_vector_factory",
-        staticmethod(lambda vector_type: calls.update(vector_type=vector_type) or _Factory),
-    )
+
+    def _get_factory(vector_type: str) -> type[_Factory]:
+        calls["vector_type"] = vector_type
+        return _Factory
+
+    monkeypatch.setattr(vector_factory_module.Vector, "get_vector_factory", staticmethod(_get_factory))
 
     vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
     vector._dataset = _dataset(tenant_id=tenant_id, index_struct_dict=None)
@@ -409,7 +422,10 @@ def test_create_logs_batch_count_as_progress_denominator(
     vector_factory_module: types.ModuleType, caplog: pytest.LogCaptureFixture
 ) -> None:
     """Progress logs must report the batch count, not a text count with the raw remainder."""
-    vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
+    factory = MagicMock()
+    factory.return_value.init_vector.return_value = MagicMock()
+    with patch.object(vector_factory_module.Vector, "get_vector_factory", return_value=factory):
+        vector = vector_factory_module.Vector(_dataset(), session=None, vector_type="test")
     vector._embeddings = MagicMock()
     vector._embeddings.embed_documents.side_effect = [
         [[0.1] for _ in range(1000)],

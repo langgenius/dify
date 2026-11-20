@@ -8,10 +8,12 @@ from http import HTTPStatus
 from typing import Any, Final
 
 from flask_restx import Resource
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, ServiceUnavailable
 
 from constants import HIDDEN_VALUE
 from constants.oauth_bearer import Scope
+from constants.personal_access_token import PersonalAccessTokenPolicy
+from controllers.common.errors import PaidPlanRequiredError
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
@@ -23,6 +25,7 @@ from controllers.openapi._errors import (
     RunNotFound,
     SecretMaskNotSecret,
     SecretMaskUnknownId,
+    ServiceApiDisabled,
     VersionNotFound,
     VersionNotRestorable,
     require_uuid,
@@ -63,10 +66,12 @@ from fields.workflow_run_fields import (
 from graphon.variables import SecretVariable, VariableBase
 from graphon.variables.exc import VariableError
 from libs.datetime_utils import naive_utc_now
+from libs.external_api import error_responses
 from libs.helper import to_timestamp
 from models import App, AppMode
 from models.workflow import Workflow, WorkflowDataError, WorkflowRun
 from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
+from services.errors.evaluation import EvaluationEntitlementUnavailableError, EvaluationPlanRequiredError
 from services.workflow.dsl_import import stored_secret_ids
 from services.workflow.graph_check import CONTAINER_NODE_TYPES, GRAPH_MODES
 from services.workflow.graph_diff import draft_token
@@ -174,8 +179,10 @@ class AppRunNodeListApi(Resource):
 
 @openapi_ns.route("/apps/<string:app_id>:publish")
 class AppPublishApi(Resource):
+    @error_responses(PaidPlanRequiredError, ServiceApiDisabled)
     @endpoint(
         op="publish.console_app",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Publish the draft as a new version and make the app use it",
         examples=(
@@ -200,6 +207,10 @@ class AppPublishApi(Resource):
             )
         except ValueError as exc:
             raise BadRequest(str(exc)) from exc
+        except EvaluationPlanRequiredError as exc:
+            raise PaidPlanRequiredError() from exc
+        except EvaluationEntitlementUnavailableError as exc:
+            raise ServiceUnavailable("Billing entitlement is temporarily unavailable.") from exc
         app_in_session = ctx.session.get(App, ctx.app.id)
         if app_in_session:
             app_in_session.workflow_id = workflow.id
@@ -216,6 +227,7 @@ class AppPublishApi(Resource):
 class AppVersionListApi(Resource):
     @endpoint(
         op="get.console_app.version",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="List published versions, newest first",
         examples=(
@@ -258,6 +270,7 @@ class AppVersionListApi(Resource):
 class AppVersionRestoreApi(Resource):
     @endpoint(
         op="restore.console_app.version",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         effect=Effect.DESTRUCTIVE,
         summary="Copy a published version into the draft; publish again to make it live",
@@ -321,6 +334,7 @@ def _patch_env(ctx: Context, *, upserts: list[VariableBase], deletions: list[str
 class AppEnvListApi(Resource):
     @endpoint(
         op="get.console_app.env",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Environment variables of the draft. Each has an id, which set and delete take, "
         "and a name, which nodes use. Secrets with a value are masked; empty secrets read as empty",
@@ -336,6 +350,7 @@ class AppEnvListApi(Resource):
 class AppEnvItemApi(Resource):
     @endpoint(
         op="set.console_app.env",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Add or replace one environment variable of the draft, keyed by its id from get console_app env, "
         "not its name. A new id (e.g. a fresh UUID) adds a variable. Others are left alone",
@@ -371,6 +386,7 @@ class AppEnvItemApi(Resource):
 
     @endpoint(
         op="delete.console_app.env",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Remove one environment variable from the draft, keyed by its id from get console_app env, "
         "not its name. Others are left alone",

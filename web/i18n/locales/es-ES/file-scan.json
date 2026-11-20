@@ -2,7 +2,6 @@
   "dialog.addTitle": "Añadir escáner",
   "dialog.apiKey": "Clave de API",
   "dialog.apiSecret": "Secreto de API",
-  "dialog.clamavHint": "ClamAV se ejecuta dentro de este despliegue. Su dirección la define el administrador del despliegue.",
   "dialog.dataNotice": "El contenido de los archivos se envía a este servicio.",
   "dialog.editTitle": "Editar escáner",
   "dialog.endpoint": "Endpoint (opcional)",

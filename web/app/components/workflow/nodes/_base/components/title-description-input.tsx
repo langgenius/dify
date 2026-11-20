@@ -28,10 +28,11 @@ export const TitleInput = memo(({ value, onBlur }: TitleInputProps) => {
   }, [])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      ;(e.target as HTMLInputElement).blur()
-    }
+    if (e.key !== 'Enter') return
+    // oxlint-disable-next-line typescript/no-deprecated -- Safari can report 229 after composition ends.
+    if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return
+    e.preventDefault()
+    e.currentTarget.blur()
   }, [])
 
   // Sync local state with incoming collaborative updates so remote title edits appear immediately.
@@ -42,7 +43,7 @@ export const TitleInput = memo(({ value, onBlur }: TitleInputProps) => {
   }, [value])
 
   return (
-    <div className="mr-2 min-w-0 grow">
+    <div className="me-2 min-w-0 grow">
       <label htmlFor={inputId} className="sr-only">
         {t(($) => $['common.nodeTitle'], { ns: 'workflow' })}
       </label>

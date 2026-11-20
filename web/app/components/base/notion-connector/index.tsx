@@ -19,7 +19,7 @@ const NotionConnector = ({ onSetting }: NotionConnectorProps) => {
           {t(($) => $['stepOne.notionSyncTitle'], { ns: 'datasetCreation' })}
           <span
             aria-hidden
-            className="relative -top-2.5 -left-1.5 i-custom-vender-line-others-icon-3-dots inline-block size-4 align-middle text-text-secondary"
+            className="relative -inset-s-1.5 -top-2.5 i-custom-vender-line-others-icon-3-dots inline-block size-4 align-middle text-text-secondary"
           />
         </span>
         <div className="system-sm-regular text-text-tertiary">

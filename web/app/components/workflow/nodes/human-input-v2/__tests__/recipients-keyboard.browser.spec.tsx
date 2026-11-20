@@ -19,6 +19,9 @@ import {
 vi.mock('@/service/console', async () => ({
   consoleQuery: (await import('./fixtures/contact-api')).testConsoleQuery,
 }))
+
+// The variable picker needs the full workflow editor context and has its own spec.
+// boundary: render only its real trigger so the footer's Tab order matches production.
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
   default: ({ trigger }: { trigger: React.ReactElement }) => trigger,
 }))

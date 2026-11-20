@@ -10,6 +10,7 @@ import pytest
 from sqlalchemy import event
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.apps.exc import ModerationInvocationError
 from core.entities.knowledge_entities import PreviewDetail
 from core.entities.provider_configuration import ProviderModelBundle
 from core.entities.provider_entities import CustomProviderConfiguration
@@ -17,6 +18,7 @@ from core.model_manager import ModelManager
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.processor.paragraph_index_processor import ParagraphIndexProcessor
+from core.rag.index_processor.processor.parent_child_index_processor import ParentChildIndexProcessor
 from core.rag.models.document import AttachmentDocument, Document
 from extensions.storage.storage_type import StorageType
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
@@ -27,7 +29,9 @@ from models.dataset import Dataset, DocumentCreatedFrom, DocumentSegment, Segmen
 from models.dataset import Document as DatasetDocument
 from models.enums import CreatorUserRole, DataSourceType
 from models.model import UploadFile
+from services.moderation_service import ModerationPhase
 from tests.helpers.unit.core.model_fixtures import make_model_config
+from tests.helpers.unit.core.model_moderation_fixtures import make_failing_moderated_model, make_moderated_manager
 
 
 class TestParagraphIndexProcessor:
@@ -879,3 +883,31 @@ class TestParagraphIndexProcessor:
         empty_files = ParagraphIndexProcessor._extract_images_from_segment_attachments("tenant-1", "seg-1", session)
 
         assert empty_files == []
+
+
+@pytest.mark.parametrize("processor_class", [ParagraphIndexProcessor, ParentChildIndexProcessor])
+@pytest.mark.parametrize("phase", ["input", "output"])
+@pytest.mark.parametrize("unavailable", [False, True])
+def test_summary_preview_preserves_model_moderation_errors(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    processor_class: type[ParagraphIndexProcessor] | type[ParentChildIndexProcessor],
+    phase: ModerationPhase,
+    unavailable: bool,
+) -> None:
+    instance, _ = make_failing_moderated_model(phase=phase, unavailable=unavailable)
+    assert instance.moderation is not None
+    manager, _, provider = make_moderated_manager(moderation=instance.moderation, cache=False, system=False)
+    schema = make_model_config(provider="test-provider", model="test-model", mode="chat").model_schema
+    monkeypatch.setattr(ModelManager, "for_tenant", lambda **_kwargs: manager)
+    monkeypatch.setattr(provider, "get_model_schema", lambda _model, _credentials: schema)
+
+    with pytest.raises(ModerationInvocationError) as rejected:
+        processor_class().generate_summary_preview(
+            "test-tenant-id",
+            [PreviewDetail(content="content")],
+            {"enable": True, "model_name": "test-model", "model_provider_name": "test-provider"},
+            session=sqlite_session,
+        )
+    assert rejected.value.error_code == ("moderation_unavailable" if unavailable else "moderation_rejected")
+    assert provider.invocations == (0 if phase == "input" else 1)

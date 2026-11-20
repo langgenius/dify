@@ -12,7 +12,7 @@ const SnippetListItem = ({ snippet, className, ref, ...props }: SnippetListItemP
     type="button"
     ref={ref}
     className={cn(
-      'flex w-full cursor-pointer flex-col gap-1 rounded-xl border-0 bg-transparent px-3 py-2 text-left outline-hidden hover:bg-background-default-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid data-popup-open:bg-background-default-hover',
+      'flex w-full cursor-pointer flex-col gap-1 rounded-xl border-0 bg-transparent px-3 py-2 text-start outline-hidden hover:bg-background-default-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid data-popup-open:bg-background-default-hover',
       className,
     )}
     {...props}

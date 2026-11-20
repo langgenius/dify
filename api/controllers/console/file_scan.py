@@ -50,7 +50,7 @@ _DATASET_EDIT_ROLES = frozenset(
 
 class FileScanProviderCreatePayload(BaseModel):
     name: str = Field(description="Display name")
-    provider_type: str = Field(description="clamav, cloudmersive, scanii, metadefender or api")
+    provider_type: str = Field(description="cloudmersive, scanii, metadefender or api")
     config: dict[str, Any] = Field(default_factory=dict, description="Non-secret settings")
     credentials: dict[str, str] = Field(default_factory=dict, description="Secret settings; write-only")
 

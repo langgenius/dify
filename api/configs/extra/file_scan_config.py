@@ -11,11 +11,6 @@ class FileScanConfig(BaseSettings):
         default=False,
         description="Expose file malware scanning. Each resource still has to turn it on in its own settings.",
     )
-    FILE_SCAN_CLAMAV_HOST: str = Field(
-        default="",
-        description="Host of a clamd instance offered to every workspace as the ClamAV scanner. Empty hides ClamAV.",
-    )
-    FILE_SCAN_CLAMAV_PORT: PositiveInt = Field(default=3310, description="TCP port of the clamd instance.")
     FILE_SCAN_REQUEST_TIMEOUT_SECONDS: PositiveInt = Field(
         default=300,
         ge=5,

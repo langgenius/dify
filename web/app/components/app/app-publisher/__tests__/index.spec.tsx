@@ -583,3 +583,23 @@ it('preserves deployment configuration after an outside press and restores dismi
   )
   expect(trigger()).toHaveAttribute('aria-expanded', 'false')
 })
+
+it.each([
+  { label: 'withholds', onPublishEvaluation: undefined, visible: false },
+  { label: 'offers', onPublishEvaluation: vi.fn().mockResolvedValue(undefined), visible: true },
+])(
+  '$label evaluation publishing for an unpublished workflow when the caller $label the handler',
+  async ({ onPublishEvaluation, visible }) => {
+    const user = userEvent.setup()
+    api.published.mockResolvedValue(null)
+    renderPublisher({
+      app: { mode: 'workflow' },
+      props: { publishedAt: undefined, onPublishEvaluation },
+    })
+    await user.click(trigger())
+    await screen.findByText('workflow.common.notPublishedYet')
+    expect(screen.queryByText('workflow.common.publishAsEvaluationWorkflow')).toEqual(
+      visible ? expect.anything() : null,
+    )
+  },
+)
