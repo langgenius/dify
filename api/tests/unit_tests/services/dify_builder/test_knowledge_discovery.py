@@ -7,7 +7,16 @@ from typing import TYPE_CHECKING, NoReturn, override
 import pytest
 
 from core.dify_builder.contract import ResourceOption
-from core.dify_builder.models import Action, Actor, ConversationItem, DifyBuilderContext, EntryMode, Session, Turn
+from core.dify_builder.models import (
+    Action,
+    Actor,
+    ContextTaskStatus,
+    ConversationItem,
+    DifyBuilderContext,
+    EntryMode,
+    Session,
+    Turn,
+)
 from core.dify_builder.state import PcState
 from services.dify_builder.agent import build, resources
 from services.dify_builder.application.handlers_build import build_registry
@@ -702,7 +711,7 @@ def test_retained_goal_stays_adjustable_after_sql_stop_resume(
             goal_text=goal,
             reply_language="zh-Hans",
             logical_task_id=logical_task_id,
-            task_status="active",
+            task_status=ContextTaskStatus.ACTIVE,
             resource_selection={"offered_knowledge_ids": [KNOWLEDGE]},
         ),
         [],

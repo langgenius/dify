@@ -1,12 +1,12 @@
 import pytest
 
-from core.dify_builder.contract import ExecutionActivity, ProgressEventData
+from core.dify_builder.contract import ExecutionActivity, ExecutionActivityState, ProgressEventData
 from core.dify_builder.models import NodeEvent
 from core.dify_builder.progress import ProgressReporter
 
 
 def _activity(activity_id: str, label: str) -> ExecutionActivity:
-    return ExecutionActivity(id=activity_id, label=label, state="active")
+    return ExecutionActivity(id=activity_id, label=label, state=ExecutionActivityState.ACTIVE)
 
 
 def test_progress_reporter_reveals_only_started_activities_with_monotonic_revisions() -> None:

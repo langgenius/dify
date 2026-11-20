@@ -7,7 +7,6 @@ lineage only; no invocation permit is spent and no physical capability is ready.
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Literal
 
 from dify_agent.client import DifyAgentClientError
 from dify_agent.protocol.native_testing import (
@@ -25,6 +24,7 @@ from runtime_contracts.builder.native.agent_contracts import (
     AgentParentNodeRef,
     AgentPreparedConfig,
 )
+from runtime_contracts.builder.native.contracts import NativeAgentTestProfile
 from services.dify_builder.native_testing.agent_preparation import (
     AgentPreparationService,
     AgentRuntimeIdentityReader,
@@ -43,7 +43,7 @@ class NativeAgentEndpointContext:
     config: AgentPreparedConfig
     association: AgentNodeAssociation | None
     physical_owner_ready: bool = False
-    native_test_profile: Literal["isolated", "confirmed"] = "isolated"
+    native_test_profile: NativeAgentTestProfile = NativeAgentTestProfile.ISOLATED
 
 
 @dataclass(frozen=True, slots=True)
@@ -235,5 +235,5 @@ class NativeAgentEndpointLineage:
             ref=AgentNativeTestRef.model_validate(parent.ref.model_dump(mode="json")),
             config=config,
             association=association,
-            native_test_profile=actual.native_test_profile,
+            native_test_profile=NativeAgentTestProfile(actual.native_test_profile),
         )

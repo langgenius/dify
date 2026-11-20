@@ -7,6 +7,7 @@ import pytest
 from sqlalchemy import select
 
 from models.dify_builder_native_tests import NativeTestScope
+from runtime_contracts.builder.native.runtime_contracts import NativeTestMode
 from services.dify_builder.native_testing import agent_operations, api_service
 from services.dify_builder.native_testing.context_binding import NativeAdmissionCompiler, NativeRuntimeProfile
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
@@ -89,7 +90,7 @@ def test_admission_deadline_uses_stricter_existing_cap_without_renewal(
                 session_id=session_id,
                 test_input_id=input_id,
                 expected_version=1,
-                mode="native",
+                mode=NativeTestMode.NATIVE,
                 idempotency_key="fixed",
             ).request_id
 

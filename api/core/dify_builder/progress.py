@@ -6,30 +6,35 @@ from dataclasses import dataclass
 from types import TracebackType
 from typing import Literal
 
-from core.dify_builder.contract import ExecutionActivity, ExecutionActivityState, ExecutionProgress, ProgressEventData
+from core.dify_builder.contract import (
+    ExecutionActivity,
+    ExecutionActivityKind,
+    ExecutionActivityState,
+    ExecutionProgress,
+    ExecutionProgressStatus,
+    ProgressEventData,
+)
 from core.dify_builder.models import NodeEvent, Session
 from runtime_contracts.builder.presentation import BuilderText
 
 __all__ = ["ProgressReporter", "node_activity_state"]
 
-_InternalActivityState = Literal["pending", "active", "done", "failed", "stopped"]
-
 
 def node_activity_state(status: str) -> ExecutionActivityState:
     """Translate a native node status into Builder's progress vocabulary."""
     if status in {"success", "succeeded"}:
-        return "done"
+        return ExecutionActivityState.DONE
     if status in {"error", "exception", "failed"}:
-        return "failed"
-    return "active" if status == "running" else "stopped"
+        return ExecutionActivityState.FAILED
+    return ExecutionActivityState.ACTIVE if status == "running" else ExecutionActivityState.STOPPED
 
 
 @dataclass
 class _ActivityRecord:
     id: str
     label: BuilderText
-    state: _InternalActivityState = "pending"
-    kind: Literal["stage", "node"] = "stage"
+    state: ExecutionActivityState | None = None
+    kind: ExecutionActivityKind = ExecutionActivityKind.STAGE
     parent_id: str | None = None
 
 
@@ -61,7 +66,7 @@ class ProgressReporter:
         self._at_version = at_version
         self._operation_id = operation_id or str(uuid.uuid4())
         self._revision = 0
-        self._status: Literal["running", "completed", "error", "stopped"] = "running"
+        self._status: ExecutionProgressStatus = ExecutionProgressStatus.RUNNING
         self._finished = False
         self._activities = [
             _ActivityRecord(
@@ -91,7 +96,10 @@ class ProgressReporter:
             session_id=session.id,
             stage_id=stage_id,
             at_version=session.version + 1,
-            activities=[ExecutionActivity(id=activity_id, label=label, state="active") for activity_id, label in steps],
+            activities=[
+                ExecutionActivity(id=activity_id, label=label, state=ExecutionActivityState.ACTIVE)
+                for activity_id, label in steps
+            ],
             operation_id=operation_id,
             reply_language=reply_language,
         )
@@ -110,19 +118,21 @@ class ProgressReporter:
         _traceback: TracebackType | None,
     ) -> bool:
         if not self._finished:
-            self.finish(status="error" if exc_type is not None else "completed")
+            self.finish(
+                status=ExecutionProgressStatus.ERROR if exc_type is not None else ExecutionProgressStatus.COMPLETED
+            )
         return False
 
     def activate(self, activity_id: str) -> None:
         """Complete prior active work and reveal the next stage."""
         activity = self._find(activity_id)
-        self._status = "running"
+        self._status = ExecutionProgressStatus.RUNNING
         for current in self._activities:
             if current.state == "active" and current.id != activity_id:
-                current.state = "done"
+                current.state = ExecutionActivityState.DONE
                 self._publish(current)
         if activity.state != "active":
-            activity.state = "active"
+            activity.state = ExecutionActivityState.ACTIVE
             self._publish(activity)
 
     def complete(self, activity_id: str) -> None:
@@ -130,7 +140,7 @@ class ProgressReporter:
         activity = self._find(activity_id)
         if activity.state == "done":
             return
-        activity.state = "done"
+        activity.state = ExecutionActivityState.DONE
         self._publish(activity)
 
     def add_steps(self, steps: Iterable[tuple[str, BuilderText]]) -> None:
@@ -147,7 +157,7 @@ class ProgressReporter:
         activity = self._find(activity_id)
         if activity.state == "failed":
             return
-        activity.state = "failed"
+        activity.state = ExecutionActivityState.FAILED
         self._publish(activity)
 
     def observe_node(self, parent_id: str, event: NodeEvent) -> None:
@@ -158,8 +168,8 @@ class ProgressReporter:
             activity = _ActivityRecord(
                 id=activity_id,
                 label=event.title or event.node_id,
-                state="active",
-                kind="node",
+                state=ExecutionActivityState.ACTIVE,
+                kind=ExecutionActivityKind.NODE,
                 parent_id=parent_id,
             )
             self._activities.append(activity)
@@ -173,14 +183,22 @@ class ProgressReporter:
     def finish(
         self,
         *,
-        status: Literal["completed", "error", "stopped"] = "completed",
+        status: Literal[
+            ExecutionProgressStatus.COMPLETED, ExecutionProgressStatus.ERROR, ExecutionProgressStatus.STOPPED
+        ] = ExecutionProgressStatus.COMPLETED,
     ) -> ExecutionProgress:
         """Publish terminal deltas and return the durable full snapshot."""
         if self._finished:
             return self._snapshot()
         active = [activity for activity in self._activities if activity.state == "active"]
         for activity in active:
-            activity.state = "done" if status == "completed" else "failed" if status == "error" else "stopped"
+            activity.state = (
+                ExecutionActivityState.DONE
+                if status == "completed"
+                else ExecutionActivityState.FAILED
+                if status == "error"
+                else ExecutionActivityState.STOPPED
+            )
         self._finished = True
         if not active:
             self._status = status
@@ -202,12 +220,12 @@ class ProgressReporter:
     def _snapshot(self) -> ExecutionProgress:
         return ExecutionProgress(
             status=self._status,
-            activities=[self._as_activity(activity) for activity in self._activities if activity.state != "pending"],
+            activities=[self._as_activity(activity) for activity in self._activities if activity.state is not None],
         )
 
     @staticmethod
     def _as_activity(activity: _ActivityRecord) -> ExecutionActivity:
-        assert activity.state != "pending", "pending execution activities are private"
+        assert activity.state is not None, "pending execution activities are private"
         return ExecutionActivity(
             id=activity.id,
             label=activity.label,

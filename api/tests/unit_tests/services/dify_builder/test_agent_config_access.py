@@ -2,7 +2,7 @@
 
 from collections.abc import Generator
 from dataclasses import replace
-from typing import Literal
+from enum import StrEnum
 from unittest.mock import patch
 
 import pytest
@@ -17,6 +17,15 @@ from tests.unit_tests.installed_spies import installed_mock
 from tests.unit_tests.services.dify_builder import native_owner_fixtures
 from tests.unit_tests.services.dify_builder.test_agent_asset_operations import endpoint_context, protected_config
 from tests.unit_tests.services.dify_builder.test_agent_operation_owner import envelope as dispatch_envelope
+
+
+class SubstitutedField(StrEnum):
+    TENANT_ID = "tenant_id"
+    USER_ID = "user_id"
+    AGENT_ID = "agent_id"
+    CONFIG_VERSION_ID = "config_version_id"
+    CONFIG_VERSION_KIND = "config_version_kind"
+
 
 operations_service = native_owner_fixtures.operations_service
 
@@ -88,20 +97,20 @@ def test_selected_asset_requires_current_config_read_authority(config_read: Conf
 @pytest.mark.parametrize(
     ("field", "value"),
     [
-        ("tenant_id", "other"),
-        ("user_id", "other"),
-        ("agent_id", "other"),
-        ("config_version_id", "other"),
-        ("config_version_kind", "draft"),
+        (SubstitutedField.TENANT_ID, "other"),
+        (SubstitutedField.USER_ID, "other"),
+        (SubstitutedField.AGENT_ID, "other"),
+        (SubstitutedField.CONFIG_VERSION_ID, "other"),
+        (SubstitutedField.CONFIG_VERSION_KIND, "draft"),
     ],
 )
 def test_owner_or_snapshot_substitution_stops_before_config_service(
-    field: Literal["tenant_id", "user_id", "agent_id", "config_version_id", "config_version_kind"],
+    field: SubstitutedField,
     value: str,
     config_read: ConfigReadCase,
 ) -> None:
     context, envelope, service, query = config_read
-    query[field] = value
+    query[field.value] = value
     with pytest.raises(BuilderExecutionPolicyError):
         validate_config_read(context=context, envelope=envelope, operations=service, **query)
 

@@ -92,7 +92,7 @@ from models.model import App
 from models.tools import BuiltinToolProvider
 from models.workflow import Workflow, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
-from runtime_contracts.builder.execution import canonical_digest
+from runtime_contracts.builder.execution import WorkerExit, WorkflowExecutionTransport, canonical_digest
 from services.app_generate_service import AppGenerateService
 from services.dify_builder import graph_ops
 from services.dify_builder.api_tool_effects import is_api_tool, owned_api_definitions
@@ -490,9 +490,15 @@ class _BuilderExecutionLaunch:
     _launch_thread: threading.Thread = field(default_factory=threading.current_thread, init=False)
     _preworker_refusal: BuilderExecutionPolicyError | None = field(default=None, init=False)
     _claim: tuple[str, str] | None = field(default=None, init=False)
-    _candidate: tuple[threading.Thread, str, str, Literal["returned", "policy_refused", "stopped", "failed"]] | None = (
-        field(default=None, init=False)
-    )
+    _candidate: (
+        tuple[
+            threading.Thread,
+            str,
+            str,
+            Literal[WorkerExit.RETURNED, WorkerExit.POLICY_REFUSED, WorkerExit.STOPPED, WorkerExit.FAILED],
+        ]
+        | None
+    ) = field(default=None, init=False)
     _invalid: bool = field(default=False, init=False)
     _completion: TrustedExecutionCompletion | None = field(default=None, init=False)
     finalization_closed: bool = field(default=False, init=False)
@@ -505,7 +511,7 @@ class _BuilderExecutionLaunch:
         task_id: str,
         recorder: BuilderExecutionRecorder | None,
         worker_thread: threading.Thread,
-        exit_kind: Literal["returned", "policy_refused", "stopped", "failed"],
+        exit_kind: Literal[WorkerExit.RETURNED, WorkerExit.POLICY_REFUSED, WorkerExit.STOPPED, WorkerExit.FAILED],
     ) -> None:
         with self._lock:
             try:
@@ -613,7 +619,7 @@ class _BuilderExecutionLaunch:
                 effective_inputs=dict(entity.inputs),
                 root_node_id=root_node_id,
                 call_depth=entity.call_depth,
-                transport="in_process",
+                transport=WorkflowExecutionTransport.IN_PROCESS,
                 resume=resume,
             )
             self.service.claim_launch(
@@ -1479,7 +1485,7 @@ class WorkflowServiceDifyPort:
                     invoke_from=InvokeFrom.DEBUGGER,
                     session=session,
                     streaming=True,
-                    workflow_execution_mode="in_process",
+                    workflow_execution_mode=WorkflowExecutionTransport.IN_PROCESS,
                     builder_execution=context,
                     builder_execution_admit=launch,
                 )
@@ -1979,7 +1985,7 @@ class WorkflowServiceDifyPort:
                             invoke_from=InvokeFrom.DEBUGGER,
                             session=session,
                             streaming=True,
-                            workflow_execution_mode="in_process",
+                            workflow_execution_mode=WorkflowExecutionTransport.IN_PROCESS,
                             builder_mocked_node_ids=mocked,
                             builder_expected_revision=before_revision,
                             builder_tool_credential_bindings={
@@ -2269,7 +2275,7 @@ class WorkflowServiceDifyPort:
                     invoke_from=InvokeFrom.DEBUGGER,
                     session=session,
                     streaming=True,
-                    workflow_execution_mode="in_process",
+                    workflow_execution_mode=WorkflowExecutionTransport.IN_PROCESS,
                     builder_execution=context,
                     builder_execution_admit=launch,
                 )

@@ -9,7 +9,7 @@ import json
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Literal, Protocol
+from typing import Protocol
 
 from dify_agent.adapters.native_testing.client import AgentMaterialization, AgentPhysicalDispatchPayload
 from dify_agent.protocol.native_testing import (
@@ -28,6 +28,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.dify_builder.models import Actor
+from core.dify_builder.real_call_consent import Phase
 from extensions.ext_database import db
 from models.dify_builder import DifyBuilderExecutionRequest
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest, canonical_json
@@ -118,7 +119,7 @@ class NativeAgentCredentialMaterializer:
         intent: EffectIntent,
         permit: DispatchPermit,
         tool_ref: str,
-        phase: Literal["refresh", "business"],
+        phase: Phase,
     ) -> AgentMaterialization:
         if (
             intent.resource_ref != tool_ref
@@ -304,13 +305,13 @@ class NativeAgentCredentialPhases:
             return None
         try:
             materialized = self.materializer.materialize(
-                ref=ref, intent=intent, permit=decision, tool_ref=intent.resource_ref, phase="refresh"
+                ref=ref, intent=intent, permit=decision, tool_ref=intent.resource_ref, phase=Phase.REFRESH
             )
             result_ref = self.state_store.store_result(ref=ref, key=intent.key, result=materialized.runtime_parameters)
         except Exception:
-            self.authorization.record_outcome(permit=decision, outcome="unknown", result_ref=None)
+            self.authorization.record_outcome(permit=decision, outcome=Outcome.UNKNOWN, result_ref=None)
             raise
-        self.authorization.record_outcome(permit=decision, outcome="completed", result_ref=result_ref)
+        self.authorization.record_outcome(permit=decision, outcome=Outcome.COMPLETED, result_ref=result_ref)
         return None
 
 
@@ -388,7 +389,7 @@ class AgentCredentialMaterializer(Protocol):
         intent: EffectIntent,
         permit: DispatchPermit,
         tool_ref: str,
-        phase: Literal["refresh", "business"],
+        phase: Phase,
     ) -> AgentMaterialization: ...
 
 
@@ -414,11 +415,13 @@ class AgentNativeTestingBridge:
             if wait is not None:
                 if wait.wait_reason == "approval":
                     raise BuilderExecutionPolicyError("native_readiness_reason_invalid")
-                return AgentApprovalWait(pending_operation_id=wait.pending_operation_id, wait_reason=wait.wait_reason)
+                return AgentApprovalWait(
+                    pending_operation_id=wait.pending_operation_id, wait_reason=wait.wait_reason.value
+                )
         decision = self.authorization.before_call(ref=owned_ref, intent=effect)
         if isinstance(decision, ApprovalWait):
             return AgentApprovalWait(
-                pending_operation_id=decision.pending_operation_id, wait_reason=decision.wait_reason
+                pending_operation_id=decision.pending_operation_id, wait_reason=decision.wait_reason.value
             )
         if isinstance(decision, PolicyStop):
             return AgentPolicyStop(reason_code=decision.reason_code)
@@ -444,7 +447,7 @@ class AgentNativeTestingBridge:
         return AgentEffectReceipt(
             operation_id=receipt.operation_id,
             attempt_id=receipt.attempt_id,
-            outcome=receipt.outcome,
+            outcome=receipt.outcome.value,
             result_ref=receipt.result_ref,
         )
 
@@ -455,7 +458,7 @@ class AgentNativeTestingBridge:
         intent: AgentEffectIntent,
         permit: AgentDispatchPermit,
         tool_ref: str,
-        phase: Literal["refresh", "business"],
+        phase: Phase,
     ) -> AgentMaterialization:
         owned_ref, effect, native_permit = api_ref(ref), api_intent(intent), api_permit(permit)
         if (

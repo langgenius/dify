@@ -25,7 +25,7 @@ import hashlib
 import hmac
 import uuid
 from dataclasses import dataclass, field
-from typing import Literal
+from enum import StrEnum
 
 from pydantic import ValidationError
 from sqlalchemy import select
@@ -42,8 +42,19 @@ from models.provider_ids import ToolProviderID
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
 from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError, canonical_json
 
-OAuthClientSource = Literal["tenant", "system", "missing"]
-AccessBasis = Literal["owner", "legacy_shared", "all_team", "partial_grant"]
+
+class OAuthClientSource(StrEnum):
+    TENANT = "tenant"
+    SYSTEM = "system"
+    MISSING = "missing"
+
+
+class AccessBasis(StrEnum):
+    OWNER = "owner"
+    LEGACY_SHARED = "legacy_shared"
+    ALL_TEAM = "all_team"
+    PARTIAL_GRANT = "partial_grant"
+
 
 _CREDENTIAL_DOMAIN = b"dify-builder/credential-reference/credential/v1\x00"
 _REFERENCE_DOMAIN = b"dify-builder/credential-reference/reference/v1\x00"
@@ -94,7 +105,7 @@ def oauth_client_revision(
     return _keyed(
         _CLIENT_DOMAIN,
         {
-            "source": source,
+            "source": source.value if isinstance(source, OAuthClientSource) else source,
             "row_id": row_id,
             "encrypted_params": encrypted_params,
             "enabled": enabled,
@@ -137,11 +148,11 @@ def _effective_access(db: Session, row: BuiltinToolProvider, actor: Actor) -> Cr
     """Native documented access for the acting member, read in the caller's session."""
     grants: tuple[GrantSnapshot, ...] = ()
     if row.user_id == actor.account_id:
-        basis: AccessBasis = "owner"
+        basis: AccessBasis = AccessBasis.OWNER
     elif row.user_id is None:
-        basis = "legacy_shared"
+        basis = AccessBasis.LEGACY_SHARED
     elif str(row.visibility) == PermissionEnum.ALL_TEAM:
-        basis = "all_team"
+        basis = AccessBasis.ALL_TEAM
     elif str(row.visibility) == PermissionEnum.PARTIAL_TEAM:
         rows = db.scalars(
             select(CredentialPermission)
@@ -156,7 +167,7 @@ def _effective_access(db: Session, row: BuiltinToolProvider, actor: Actor) -> Cr
         ).all()
         if not rows:
             raise BuilderExecutionPolicyError("credential_reference_unavailable")
-        basis = "partial_grant"
+        basis = AccessBasis.PARTIAL_GRANT
         grants = tuple(
             GrantSnapshot(
                 id=grant.id,
@@ -182,7 +193,7 @@ def _reference_revision(row: BuiltinToolProvider, access: CredentialAccessSnapsh
         {
             "credential": credential_revision(row, key=key),
             "access": {
-                "basis": access.basis,
+                "basis": access.basis.value,
                 "account_id": access.account_id,
                 "tenant_id": access.tenant_id,
                 "grants": [
@@ -238,7 +249,9 @@ def _select_client(
         # An enabled tenant client wins even when unusable; never fall back past it.
         if not tenant_client.encrypted_oauth_params:
             raise BuilderExecutionPolicyError("needs_setup")
-        return OAuthClientSnapshot("tenant", tenant_client.id, tenant_client.encrypted_oauth_params, True)
+        return OAuthClientSnapshot(
+            OAuthClientSource.TENANT, tenant_client.id, tenant_client.encrypted_oauth_params, True
+        )
     # Only positive server-resolved verification makes the system client eligible.
     if verified_plugin is True:
         system_client = db.scalar(
@@ -248,7 +261,9 @@ def _select_client(
             )
         )
         if system_client is not None and system_client.encrypted_oauth_params:
-            return OAuthClientSnapshot("system", system_client.id, system_client.encrypted_oauth_params, True)
+            return OAuthClientSnapshot(
+                OAuthClientSource.SYSTEM, system_client.id, system_client.encrypted_oauth_params, True
+            )
     raise BuilderExecutionPolicyError("needs_setup")
 
 
@@ -297,7 +312,7 @@ def select_builder_credential(
     if str(row.credential_type) == CredentialType.OAUTH2:
         client = _select_client(db, tenant_id=actor.tenant_id, provider=provider, verified_plugin=verified_plugin)
     else:
-        client = OAuthClientSnapshot("missing", None, None, False)
+        client = OAuthClientSnapshot(OAuthClientSource.MISSING, None, None, False)
     try:
         reference = CredentialReference(
             credential_id=row.id,

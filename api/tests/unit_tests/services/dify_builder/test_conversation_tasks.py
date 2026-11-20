@@ -7,11 +7,13 @@ import pytest
 from core.dify_builder.models import (
     Action,
     Actor,
+    ContextTaskStatus,
     ConversationItem,
     DifyBuilderContext,
     EntryMode,
     Run,
     Session,
+    TaskSummaryOutcome,
     TestInput,
     Turn,
 )
@@ -191,7 +193,7 @@ def test_edit_followup_uses_latest_raw_goal_and_preserves_completed_summary() ->
 
     env, repo, session = setup_task("edit")
     _, context = repo.get_session(session.id)
-    record_task_completion(env, session, context, "kept_draft")
+    record_task_completion(env, session, context, TaskSummaryOutcome.KEPT_DRAFT)
     repo.compare_and_advance(session.id, session.version, session.current_state, context, [])
     session, _ = repo.get_session(session.id)
     continue_task(env, session)
@@ -205,7 +207,7 @@ def test_edit_followup_uses_latest_raw_goal_and_preserves_completed_summary() ->
 def test_settled_abandoned_goal_starts_new_task_without_reopening_old_cards() -> None:
     env, repo, session = setup_task("edit")
     _, context = repo.get_session(session.id)
-    context.task_status = "abandoned"
+    context.task_status = ContextTaskStatus.ABANDONED
     context.paused = True
     context.recovery_class = "config_only"
     context.task_control = {"generation": 4, "settlement": "settled"}
@@ -228,7 +230,7 @@ def test_abandoned_goal_waits_for_known_cancellation_settlement(settlement: str)
 
     env, repo, session = setup_task("edit")
     _, context = repo.get_session(session.id)
-    context.task_status = "abandoned"
+    context.task_status = ContextTaskStatus.ABANDONED
     context.task_control = {"generation": 4, "settlement": settlement}
     repo.compare_and_advance(session.id, session.version, session.current_state, context, [])
     session, _ = repo.get_session(session.id)
@@ -246,8 +248,8 @@ def test_abandoned_activation_is_pure_and_prepares_one_new_fenced_task() -> None
 
     env, repo, session = setup_task("edit")
     _, context = repo.get_session(session.id)
-    record_task_completion(env, session, context, "kept_draft")
-    context.task_status = "abandoned"
+    record_task_completion(env, session, context, TaskSummaryOutcome.KEPT_DRAFT)
+    context.task_status = ContextTaskStatus.ABANDONED
     context.paused = True
     context.task_control = {"generation": 4, "settlement": "settled", "lifecycle_receipt": {"id": "abandon"}}
     context.test_input_ref = "old-input"
@@ -281,7 +283,7 @@ def test_pure_abandoned_activation_cannot_bypass_unsettled_effects(settlement: s
 
     _, repo, session = setup_task("edit")
     _, context = repo.get_session(session.id)
-    context.task_status = "abandoned"
+    context.task_status = ContextTaskStatus.ABANDONED
     context.task_control["settlement"] = settlement
     with pytest.raises(ConflictError):
         prepare_abandoned_continuation(session, context, "New goal", {"graph": {}}, "revision")

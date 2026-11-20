@@ -6,7 +6,15 @@ import pytest
 
 from core.dify_builder.contract import RunStatus
 from core.dify_builder.errors import ConflictError
-from core.dify_builder.models import Action, Actor, ConversationItem, DifyBuilderContext, EntryMode, Session
+from core.dify_builder.models import (
+    Action,
+    Actor,
+    ContextTaskStatus,
+    ConversationItem,
+    DifyBuilderContext,
+    EntryMode,
+    Session,
+)
 from core.dify_builder.state import PcState
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.service import DifyBuilderService
@@ -34,7 +42,7 @@ def test_cleared_session_read_is_empty_and_does_not_read_the_workflow(repo: SqlD
     context = DifyBuilderContext(
         paused=True,
         next_seq=3,
-        task_status="abandoned",
+        task_status=ContextTaskStatus.ABANDONED,
         task_control={"conversation_clear": {"version": 1, "seq_floor": 3}},
     )
     repo.create_session(session, context, [ConversationItem(seq=0, kind="user", payload={"text": "old secret"})])
@@ -105,7 +113,7 @@ def test_abandoned_message_starts_one_fresh_task_before_worker_dispatch(repo: Sq
     )
     old = DifyBuilderContext(
         paused=True,
-        task_status="abandoned",
+        task_status=ContextTaskStatus.ABANDONED,
         logical_task_id="old-task",
         goal_text="old",
         task_control={"generation": 4, "settlement": "settled"},
@@ -188,7 +196,9 @@ def test_abandoned_goal_stream_replay_emits_terminal_without_dispatch(repo: SqlD
     repo.create_session(
         session,
         DifyBuilderContext(
-            paused=True, task_status="abandoned", task_control={"generation": 4, "settlement": "settled"}
+            paused=True,
+            task_status=ContextTaskStatus.ABANDONED,
+            task_control={"generation": 4, "settlement": "settled"},
         ),
         [],
     )

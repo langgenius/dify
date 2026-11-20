@@ -17,6 +17,7 @@ from services.dify_builder.application.cognition_policy import (
     CognitionModel,
     CognitionPolicy,
     CognitionPolicyDeniedError,
+    CognitionPolicySource,
 )
 from services.dify_builder.cognition_model_gateway import PolicyModelInstance
 from services.workflow_generation.runner import WorkflowGenerator
@@ -33,7 +34,7 @@ def test_threaded_generation_rechecks_current_policy_without_losing_application_
     database = SQLAlchemy(app)
     monkeypatch.setattr(composition, "db", database)
     policies = Policies()
-    policies.policy = CognitionPolicy(True, (MODEL,), MODEL.id, (), 1, "explicit")
+    policies.policy = CognitionPolicy(True, (MODEL,), MODEL.id, (), 1, CognitionPolicySource.EXPLICIT)
     native = make_model_instance(provider=MODEL.provider, model=MODEL.name)
     calls: list[tuple[int, dict[str, object], bool]] = []
 
@@ -98,7 +99,7 @@ def test_policy_revoked_during_real_metadata_read_prevents_retry_and_inference(m
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite://"
     monkeypatch.setattr(composition, "db", SQLAlchemy(app))
     policies = Policies()
-    policies.policy = CognitionPolicy(True, (MODEL,), MODEL.id, (), 1, "explicit")
+    policies.policy = CognitionPolicy(True, (MODEL,), MODEL.id, (), 1, CognitionPolicySource.EXPLICIT)
     instance = _instance()
 
     class Native(Models):
@@ -146,7 +147,7 @@ def test_cold_static_initial_selection_reaches_fresh_metadata_before_single_unce
     )
     selected = replace(MODEL, provider=instance.provider, name=instance.model_name)
     policies = Policies()
-    policies.policy = CognitionPolicy(True, (selected,), selected.id, (), 1, "explicit")
+    policies.policy = CognitionPolicy(True, (selected,), selected.id, (), 1, CognitionPolicySource.EXPLICIT)
     manager = ModelManager.for_tenant("tenant")
     monkeypatch.setattr(manager, "get_model_instance", lambda **_: instance)
     monkeypatch.setattr(ModelManager, "for_tenant", lambda *_, **__: manager)

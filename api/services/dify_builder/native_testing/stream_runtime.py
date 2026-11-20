@@ -29,6 +29,7 @@ from services.dify_builder.native_testing.control import NativeApprovalWait, Nat
 from services.dify_builder.native_testing.generation_wiring import HostOwnedNativeGeneratorStream
 from services.dify_builder.native_testing.host_capacity import NativeHostCapacity
 from services.dify_builder.native_testing.host_execution import HostAuthorizationPort, NativeHostLaunch
+from services.dify_builder.native_testing.host_lifetime import CloseReason
 from services.dify_builder.native_testing.native_execution import ClosableNativeEventStream
 from services.dify_builder.native_testing.operation_journal import NodeOperationJournal
 
@@ -100,7 +101,7 @@ class DifyNativeStreamOwner:
     def _unknown(self, context: ResolvedNativeTestContext) -> NativeWorkflowOutcome:
         self._host.mark_unknown()
         try:
-            self._host.request_close(reason="failed")
+            self._host.request_close(reason=CloseReason.FAILED)
             if self._stream is not None:
                 self._stream.close()  # Signal only; never concurrently close source.
         except ValueError:
@@ -257,7 +258,7 @@ class DifyNativeStreamOwner:
             self._host.lifetime.start_thread(thread=self._reader)
             self._host.lifetime.wait_until_closing()
             if self._host.settlement_deadline is None:
-                self._host.request_close(reason="failed")
+                self._host.request_close(reason=CloseReason.FAILED)
             if self._host.lifetime.settle() != "settled":
                 return self._unknown(context)
             outcome = self._outcome(context)

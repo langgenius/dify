@@ -29,7 +29,7 @@ from models.model import Account, App, AppMode
 from models.workflow import Workflow
 from repositories.entities.workflow_execution import WorkflowExecutionIdentity
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
-from runtime_contracts.builder.execution import JsonToolExecutionContext
+from runtime_contracts.builder.execution import JsonToolExecutionContext, WorkflowExecutionTransport
 from services.dify_builder.application.execution_policy import BuilderExecutionContext, BuilderExecutionPolicyError
 from services.dify_builder.dify_port import _BuilderExecutionLaunch
 from services.dify_builder.execution_policy_service import ServiceExecutionRecorder
@@ -291,7 +291,9 @@ def test_json_generate_refuses_unsupported_transport_before_workflow_read(
             args={"inputs": {}, "files": [{"id": "file"}]} if transport == "files" else {"inputs": {}},
             invoke_from=InvokeFrom.DEBUGGER,
             session=Session(),
-            workflow_execution_mode="celery" if transport == "celery" else "in_process",
+            workflow_execution_mode=WorkflowExecutionTransport.CELERY
+            if transport == "celery"
+            else WorkflowExecutionTransport.IN_PROCESS,
             builder_execution=marker,
             builder_execution_admit=admit,
         )

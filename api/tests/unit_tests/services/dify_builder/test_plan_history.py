@@ -8,7 +8,7 @@ from pydantic import ValidationError
 import controllers.console.dify_builder as controller
 from controllers.console.dify_builder_fields import DifyBuilderConversationPageResponse
 from core.db.session_factory import get_session_maker
-from core.dify_builder.contract import AssistantTurnItem, ExecutionProgress
+from core.dify_builder.contract import AssistantReplyMode, AssistantTurnItem, ExecutionProgress, ExecutionProgressStatus
 from core.dify_builder.models import Actor, ConversationItem, DifyBuilderContext, EntryMode, Session
 from core.dify_builder.state import PcState
 from services.dify_builder.repository import SqlDifyBuilderRepository
@@ -47,9 +47,9 @@ def test_plan_history_pages_preserve_snapshots_and_cursors(monkeypatch: pytest.M
                 AssistantTurnItem(
                     turn_id=f"turn-{index}",
                     stage_id="edit.plan_approval",
-                    execution=ExecutionProgress(status="completed"),
+                    execution=ExecutionProgress(status=ExecutionProgressStatus.COMPLETED),
                     cards=["plan"],
-                    reply_mode="complete",
+                    reply_mode=AssistantReplyMode.COMPLETE,
                 ).to_item(seq=index * 2 + 1, at_version=index + 1),
             ]
         )

@@ -3,7 +3,12 @@ from collections.abc import Iterable
 
 import pytest
 
-from core.dify_builder.contract import ExecutionActivity, ExecutionProgress
+from core.dify_builder.contract import (
+    ExecutionActivity,
+    ExecutionActivityState,
+    ExecutionProgress,
+    ExecutionProgressStatus,
+)
 from core.dify_builder.models import ConversationItem, Graph
 from services.dify_builder import wiring
 from services.dify_builder.progress_snapshot import ProgressSnapshot
@@ -375,10 +380,10 @@ def test_reconnect_restores_progress_before_live_events_without_replaying_commit
         revision=5,
         reply_language="zh-Hans",
         execution=ExecutionProgress(
-            status="running",
+            status=ExecutionProgressStatus.RUNNING,
             activities=[
-                ExecutionActivity(id="inspect", label="Inspect workflow", state="done"),
-                ExecutionActivity(id="plan", label="Generate plan", state="active"),
+                ExecutionActivity(id="inspect", label="Inspect workflow", state=ExecutionActivityState.DONE),
+                ExecutionActivity(id="plan", label="Generate plan", state=ExecutionActivityState.ACTIVE),
             ],
         ),
     )

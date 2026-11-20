@@ -1,7 +1,7 @@
 import json
 from collections.abc import Sequence
 from copy import deepcopy
-from typing import Literal
+from enum import StrEnum
 
 import pytest
 from sqlalchemy import Engine
@@ -19,6 +19,18 @@ from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.revision import execution_revision
 from services.dify_builder.task_controls import ExecutionFence, draft_binding, execution_scope
 from services.workflow_service import WorkflowService
+
+
+class ResponsePath(StrEnum):
+    TEXT = "text"
+    STREAM = "stream"
+    JSON = "json"
+
+
+class SnapshotKind(StrEnum):
+    HISTORICAL = "historical"
+    FRESH = "fresh"
+    SANITIZED = "sanitized"
 
 
 @pytest.mark.parametrize("field", ["api_key", "apiKey", "X-Api-Key", "access_token", "client_secret", "password"])
@@ -263,8 +275,8 @@ def test_read_task_dsl_withholds_body_code_nested_and_known_echoes(
 @pytest.mark.parametrize("path", ["text", "stream", "json"])
 @pytest.mark.parametrize("snapshot", ["historical", "fresh", "sanitized"])
 def test_final_prompt_projects_synchronized_dsl_without_mutating_snapshot(
-    path: Literal["text", "stream", "json"],
-    snapshot: Literal["historical", "fresh", "sanitized"],
+    path: ResponsePath,
+    snapshot: SnapshotKind,
     captured_private_dsl: tuple[Graph, Workflow],
 ) -> None:
     from services.dify_builder.diagnostic_context import redact_diagnostic_value

@@ -8,6 +8,7 @@ from sqlalchemy import inspect
 from typing_extensions import TypedDict
 
 from models.account import TenantAccountRole
+from runtime_contracts.builder.native.runtime_contracts import NativeWorkflowStatus
 
 if TYPE_CHECKING:
     import services.dify_builder.native_testing.repository as _forward_types_0
@@ -192,7 +193,8 @@ def test_real_stop_rejects_orphan_dispatch_without_mutating_authority_or_outbox(
 
 @pytest.mark.parametrize("status", ["stopped", "unknown"])
 def test_real_stopped_or_unknown_evidence_can_finalize_after_authority_seal(
-    stop_case: tuple[ContinuationCase, NativeDispatchRef], status: Literal["stopped", "unknown"]
+    stop_case: tuple[ContinuationCase, NativeDispatchRef],
+    status: Literal[NativeWorkflowStatus.STOPPED, NativeWorkflowStatus.UNKNOWN],
 ) -> None:
     c, dispatch = stop_case
     seal(c, dispatch)

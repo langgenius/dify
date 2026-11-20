@@ -27,6 +27,7 @@ from runtime_contracts.builder.native.agent_contracts import (
     AgentStartPreparation,
     AgentTestWorkspaceRef,
 )
+from runtime_contracts.builder.native.contracts import NativeAgentTestProfile
 from services.dify_builder.native_testing.agent_runtime_config import NativeAgentRuntimeConfigBuilder
 from services.dify_builder.native_testing.private_reads import validate_invocation_workflow
 
@@ -219,7 +220,7 @@ def prepare_confirmed_agent_request(
     """Persist an inert request using the real normal session owner, before create."""
     context = service.state_store.load_context(ref=ref)
     loader = service.state_store.loader
-    builder = NativeAgentRuntimeConfigBuilder(loader=loader, profile="confirmed")
+    builder = NativeAgentRuntimeConfigBuilder(loader=loader, profile=NativeAgentTestProfile.CONFIRMED)
     definition = builder.load_definition(context=context, node_id=node_id)
     if (
         stored_session.scope.node_id != node_id
@@ -301,7 +302,7 @@ def build_confirmed_agent_preparation(*, actor, backend):
         state_store=NativeExecutionStateStore(loader),
         backend=backend,
         workspace=None,
-        config_builder=NativeAgentRuntimeConfigBuilder(loader=loader, profile="confirmed"),
+        config_builder=NativeAgentRuntimeConfigBuilder(loader=loader, profile=NativeAgentTestProfile.CONFIRMED),
     )
 
 

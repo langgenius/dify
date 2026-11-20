@@ -23,7 +23,7 @@ from models.dify_builder_native_tests import (
 )
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
-from runtime_contracts.builder.native.runtime_contracts import NativeWorkflowOutcome
+from runtime_contracts.builder.native.runtime_contracts import NativeWorkflowOutcome, NativeWorkflowStatus
 from services.dify_builder.native_testing.http_binding import NativeHttpBindingResolver
 from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
 from services.dify_builder.native_testing.repository import OwnedNativeTest, OwnedNativeTestLoader
@@ -306,7 +306,7 @@ def test_lost_stop_commit_ack_is_not_retried_into_acceptance(case: StopSealCase)
 
 @pytest.mark.parametrize("status", ["completed", "waiting"])
 def test_sealed_request_cannot_be_finalized_as_completed_or_resumable_wait(
-    case: StopSealCase, status: Literal["completed", "waiting"]
+    case: StopSealCase, status: Literal[NativeWorkflowStatus.COMPLETED, NativeWorkflowStatus.WAITING]
 ) -> None:
     case.sql.request.state = "sealed"
     for invocation in case.sql.invocations:

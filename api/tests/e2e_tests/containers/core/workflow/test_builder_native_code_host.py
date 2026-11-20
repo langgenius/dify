@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol
 
+from services.dify_builder.native_testing.host_lifetime import CloseReason
+
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
@@ -167,7 +169,7 @@ def _process(mode: str) -> None:
                         if kind == "http":
                             assert isinstance(payload, CodeHttpRequest)
                             if payload.path.endswith("/input"):
-                                self.owner.host.request_close(reason="cancel")
+                                self.owner.host.request_close(reason=CloseReason.CANCEL)
                                 gevent.sleep(0.03)
                         return _service(self, kind, payload)
 
@@ -245,7 +247,7 @@ def _process(mode: str) -> None:
                 assert participant.bridge._loop.is_closed()
                 loops.append(participant.bridge._loop)
                 handles.append(participant.bridge._handle)
-                case.host.request_close(reason="exhausted")
+                case.host.request_close(reason=CloseReason.EXHAUSTED)
                 settlement = case.lifetime.settle()
                 if mode in ("late", "cancelled"):
                     assert settlement == "unknown"

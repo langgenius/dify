@@ -9,9 +9,10 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
-from typing import Literal
 
-FailureResource = tuple[Literal["model", "tool"], str, str]
+from runtime_contracts.builder.execution import FailureResourceKind
+
+FailureResource = tuple[FailureResourceKind, str, str]
 
 
 @dataclass
@@ -101,7 +102,7 @@ def _public_id(value: str) -> bool:
 
 @contextmanager
 def observe_resource(
-    kind: Literal["model", "tool"], provider: str, name: str = "", *, node_id: object = None
+    kind: FailureResourceKind, provider: str, name: str = "", *, node_id: object = None
 ) -> Generator[None]:
     """Attribute only a failed metadata read, never successful earlier reads."""
     try:

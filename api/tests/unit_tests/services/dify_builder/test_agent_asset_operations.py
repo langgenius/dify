@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from models.dify_builder_native_tests import NativeTestScope
 from runtime_contracts.builder.native.agent_contracts import AgentPreparedConfig
+from runtime_contracts.builder.native.contracts import NativeAgentTestProfile
 from services.dify_builder.native_testing.agent_lineage import NativeAgentEndpointContext
 from services.dify_builder.native_testing.agent_operations import AgentOperationService
 from services.dify_builder.native_testing.agent_runtime_config import (
@@ -57,7 +58,7 @@ def endpoint_context(config: AgentPreparedConfig) -> NativeAgentEndpointContext:
         ref=AgentNativeTestRef.model_validate(PARENT.ref.model_dump(mode="json")),
         config=config,
         association=None,
-        native_test_profile="confirmed",
+        native_test_profile=NativeAgentTestProfile.CONFIRMED,
     )
 
 
@@ -85,7 +86,7 @@ def test_confirmed_composer_keeps_published_config_and_shell(
     declarations = AgentToolDeclarationService()
     monkeypatch.setattr(declarations, "prepare", lambda **_kwargs: PreparedAgentToolDeclarations(None, None, ()))
     builder = NativeAgentRuntimeConfigBuilder(
-        loader=operations_service.loader, profile="confirmed", declarations=declarations
+        loader=operations_service.loader, profile=NativeAgentTestProfile.CONFIRMED, declarations=declarations
     )
     request = builder.compose(
         context=resolved_context(),

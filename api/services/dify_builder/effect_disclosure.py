@@ -19,20 +19,29 @@ import json
 import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from typing import Any, Literal
+from enum import StrEnum
+from typing import Any
 from urllib.parse import urlsplit
 
 from core.dify_builder.credentials import is_credential_param_key
 from domain.workflow.agent_node import is_dify_agent_node_data
 from services.dify_builder.revision import node_config_digest, normalize_execution_graph
 
-EffectTier = Literal["pure", "sandboxed", "read", "side_effect", "destructive"]
+
+class EffectTier(StrEnum):
+    PURE = "pure"
+    SANDBOXED = "sandboxed"
+    READ = "read"
+    SIDE_EFFECT = "side_effect"
+    DESTRUCTIVE = "destructive"
+
+
 _CODE_TIERS: dict[str, EffectTier] = {
-    "pure": "sandboxed",
-    "read": "read",
-    "side_effect": "side_effect",
-    "destructive": "destructive",
-    "unknown": "side_effect",
+    "pure": EffectTier.SANDBOXED,
+    "read": EffectTier.READ,
+    "side_effect": EffectTier.SIDE_EFFECT,
+    "destructive": EffectTier.DESTRUCTIVE,
+    "unknown": EffectTier.SIDE_EFFECT,
 }
 
 # Test-data form keys for the per-node confirmation checkboxes. ``:`` never
@@ -344,12 +353,12 @@ def disclose(
                 assessment_status = risk["status"]
                 tier = _CODE_TIERS[risk["classification"]]
                 if api_tool and tier == "sandboxed":
-                    tier = "read"
+                    tier = EffectTier.READ
             else:
                 assessment_status = "unavailable"
                 risk_notice = UNAVAILABLE
             if assessment_status == "unavailable":
-                tier = "side_effect"
+                tier = EffectTier.SIDE_EFFECT
             # The Code facts digest already binds typed inputs and the whole
             # executable graph without canvas labels. Do not reintroduce the
             # older dynamic HTTP/Tool graph signature or stringified inputs.
@@ -368,7 +377,7 @@ def disclose(
                 account = str(definition.get("account") or account)
                 if not definition:
                     assessment_status = "unavailable"
-                    tier = config_tier = "side_effect"
+                    tier = config_tier = EffectTier.SIDE_EFFECT
             else:
                 target = config_target = "Code runtime (destinations depend on the bound source and inputs)"
                 obj = ""
@@ -529,13 +538,13 @@ def confirm_field_key(node_id: str) -> str:
 
 def _classify(node_type: str, data: Mapping[str, Any]) -> tuple[EffectTier, str, str]:
     if node_type in _PURE_TYPES:
-        return "pure", "", ""
+        return EffectTier.PURE, "", ""
     if node_type in _SANDBOXED_TYPES:
-        return "sandboxed", "", ""
+        return EffectTier.SANDBOXED, "", ""
     if node_type in _MODEL_TYPES:
-        return "read", _model_target(data), ""
+        return EffectTier.READ, _model_target(data), ""
     if node_type in _READ_TYPES:
-        return "read", "", ""
+        return EffectTier.READ, "", ""
     if node_type == "http-request":
         return _http(data)
     if node_type == "tool":
@@ -544,7 +553,7 @@ def _classify(node_type: str, data: Mapping[str, Any]) -> tuple[EffectTier, str,
         return _agent_v2(data)
     # Agents may call any tool; datasource/indexing and unknown types are not
     # Workflow test material. All of them need an explicit confirmation.
-    return "side_effect", _model_target(data) or node_type, ""
+    return EffectTier.SIDE_EFFECT, _model_target(data) or node_type, ""
 
 
 def _agent_v2(data: Mapping[str, Any]) -> tuple[EffectTier, str, str]:
@@ -556,7 +565,7 @@ def _agent_v2(data: Mapping[str, Any]) -> tuple[EffectTier, str, str]:
         if isinstance(agent_id, str) and agent_id.strip() and isinstance(snapshot_id, str) and snapshot_id.strip():
             target = _truncate(f"Agent {agent_id} / snapshot {snapshot_id}")
     return (
-        "side_effect",
+        EffectTier.SIDE_EFFECT,
         target,
         "May use its configured model and tools. Nested runtime targets cannot be predicted from this outer node.",
     )
@@ -578,10 +587,10 @@ def _http(data: Mapping[str, Any]) -> tuple[EffectTier, str, str]:
     target = f"{method.upper()} {host}".strip()
     obj = _truncate(url)
     if method in _READ_METHODS:
-        return "read", target, obj
+        return EffectTier.READ, target, obj
     if method in _DESTRUCTIVE_METHODS:
-        return "destructive", target, obj
-    return "side_effect", target, obj
+        return EffectTier.DESTRUCTIVE, target, obj
+    return EffectTier.SIDE_EFFECT, target, obj
 
 
 def _host(url: str) -> str:
@@ -603,19 +612,19 @@ def _tool(data: Mapping[str, Any]) -> tuple[EffectTier, str, str]:
     obj = _constant_parameters(data.get("tool_parameters"))
     if provider_type in {"workflow", "app"}:
         # A child workflow or app can do anything its own graph does.
-        return "side_effect", target, obj
+        return EffectTier.SIDE_EFFECT, target, obj
     words = _words(tool_name) or _words(tool_label)
     if words & _DESTRUCTIVE_WORDS:
-        return "destructive", target, obj
+        return EffectTier.DESTRUCTIVE, target, obj
     if words & _WRITE_WORDS:
-        return "side_effect", target, obj
+        return EffectTier.SIDE_EFFECT, target, obj
     if provider_type == "mcp":
         # Remote names and cached annotations cannot authorize opaque actions.
         # Retain explicit confirmation even for names such as docs_search.
-        return "side_effect", target, obj
+        return EffectTier.SIDE_EFFECT, target, obj
     if words & _READ_WORDS or provider_type == "dataset-retrieval":
-        return "read", target, obj
-    return "side_effect", target, obj
+        return EffectTier.READ, target, obj
+    return EffectTier.SIDE_EFFECT, target, obj
 
 
 def _words(name: str) -> set[str]:

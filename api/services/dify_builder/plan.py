@@ -9,7 +9,17 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 
 from core.dify_builder.contract import PlanCard, ResourceOption
 from core.dify_builder.models import DifyBuilderContext
+from runtime_contracts.builder.string_enum import BuilderStringEnum
 from services.dify_builder.knowledge_source_intent import KnowledgeSourceIntent
+
+
+class ClarificationFieldType(BuilderStringEnum):
+    TEXT = "text"
+    TEXTAREA = "textarea"
+    SELECT = "select"
+    BOOL = "bool"
+    NUMBER = "number"
+
 
 PLAN_PRESENTATION_INSTRUCTION = (
     "Give the plan a short, specific title describing its goal, without a step count. "
@@ -56,7 +66,7 @@ class _ClarificationField(BaseModel):
 
     key: str = Field(min_length=1, max_length=200)
     label: str = Field(min_length=1, max_length=2000)
-    type: Literal["text", "textarea", "select", "bool", "number"]
+    type: ClarificationFieldType
     options: list[str] = Field(default_factory=list, max_length=30)
     required: Literal[True] = True
     hint: str | None = Field(default=None, max_length=2000)

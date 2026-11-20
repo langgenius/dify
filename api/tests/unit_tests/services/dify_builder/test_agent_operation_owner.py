@@ -23,7 +23,7 @@ from models.dify_builder_native_tests import (
     NativeTestInvocation,
 )
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
-from runtime_contracts.builder.native.contracts import JsonValue, NativeTestContextRef
+from runtime_contracts.builder.native.contracts import JsonValue, NativeAgentTestProfile, NativeTestContextRef
 from services.dify_builder.native_testing.agent_operations import AgentOperationService, AgentToolDispatchOwner
 from tests.unit_tests.services.dify_builder import native_owner_fixtures
 from tests.unit_tests.services.dify_builder.native_testing.test_authorization import intent
@@ -156,7 +156,7 @@ def test_confirmed_plugin_declaration_uses_api_owned_core_without_credentials() 
     )
     declarations = AgentToolDeclarationService(
         metadata=lambda **_kwargs: AgentToolMetadata(entity(), "plugin@rev", True)
-    ).prepare(tenant_id="tenant", actor_id="actor", app_id="app", tools=tools, profile="confirmed")
+    ).prepare(tenant_id="tenant", actor_id="actor", app_id="app", tools=tools, profile=NativeAgentTestProfile.CONFIRMED)
     assert declarations.plugin_tools is None
     assert declarations.core_tools is not None
     config = declarations.core_tools.tools[0]
@@ -300,7 +300,7 @@ def test_prepare_actual_call_freezes_builder_reasoning_without_business_or_oauth
             config={},
         ),
         association=None,
-        native_test_profile="confirmed",
+        native_test_profile=NativeAgentTestProfile.CONFIRMED,
     )
     monkeypatch.setattr(service, "_endpoint", lambda _ref: endpoint)
     resolved = ResolvedNativeTestContext(

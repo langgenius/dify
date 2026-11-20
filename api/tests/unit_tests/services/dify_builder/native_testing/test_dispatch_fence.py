@@ -25,7 +25,7 @@ from models.dify_builder_native_tests import (
     NativeTestScope,
 )
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
-from runtime_contracts.builder.native.contracts import EffectIntent, JsonValue, NativeTestContextRef
+from runtime_contracts.builder.native.contracts import EffectIntent, JsonValue, NativeTestContextRef, WaitReason
 from services.dify_builder.native_testing.http_binding import NativeHttpBindingResolver
 from services.dify_builder.native_testing.lifecycle import NativePendingResolution
 from services.dify_builder.native_testing.private_reads import PrivateReadOwner
@@ -478,7 +478,7 @@ def test_approval_pending_uses_actual_local_generation_after_shared_scope_advanc
 
 @pytest.mark.parametrize("category", ["configuration", "interaction"])
 def test_native_pending_owner_uses_local_generation_after_shared_scope_advance(
-    monkeypatch: pytest.MonkeyPatch, category: Literal["configuration", "interaction"]
+    monkeypatch: pytest.MonkeyPatch, category: Literal[WaitReason.CONFIGURATION, WaitReason.INTERACTION]
 ) -> None:
     from contextlib import contextmanager
 
@@ -735,7 +735,7 @@ def test_generation_claim_requires_actual_saved_configuration_resolution(
     monkeypatch.setattr(store, "load_context", lambda **_kw: context)
     monkeypatch.setattr(store, "read_checkpoint", lambda **_kw: payload)
     resolution = NativePendingResolution(
-        category="configuration",
+        category=WaitReason.CONFIGURATION,
         invocation_id="root",
         pending_action_id="pending",
         owner_ref="app",
@@ -778,7 +778,7 @@ def test_coalesced_native_wait_still_validates_requested_pending_owner(monkeypat
         resolver,
         "resolve_pending",
         lambda **_kw: PendingOwner(
-            category="configuration", owner_ref="app", version="1", reference="changed-reference"
+            category=WaitReason.CONFIGURATION, owner_ref="app", version="1", reference="changed-reference"
         ),
     )
     loader = OwnedNativeTestLoader(

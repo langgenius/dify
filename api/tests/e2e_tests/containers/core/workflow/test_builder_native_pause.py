@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Generator
 from typing import TYPE_CHECKING
 
-from runtime_contracts.builder.native.contracts import ApprovalWait
+from runtime_contracts.builder.native.contracts import ApprovalWait, Outcome
 from runtime_contracts.builder.native.runtime_contracts import NodeJournalState
 from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import require_instance
 
@@ -287,7 +287,7 @@ def test_host_journal_real_completed_result_replays_without_second_claim(
     with pytest.raises(BuilderExecutionPolicyError, match="dispatch_already_consumed"):
         guard.claim_dispatch(ref=c.ref, intent=effect, permit=permit)
     result_ref = c.store.store_result(ref=c.ref, key=effect.key, result={"closed": True, "chunks": [True, 1, "1"]})
-    guard.record_outcome(permit=permit, outcome="completed", result_ref=result_ref)
+    guard.record_outcome(permit=permit, outcome=Outcome.COMPLETED, result_ref=result_ref)
     assert isinstance(cursor.before_call(intent=effect), RecordedResult)
     checkpoint = c.store.commit_checkpoint(
         ref=c.ref, generation=0, payload=_payload(c, journals=journal.snapshot(ref=c.ref))
@@ -320,7 +320,7 @@ def test_host_journal_real_unknown_result_never_becomes_replayable(
     permit = cursor.before_call(intent=effect)
     assert isinstance(permit, DispatchPermit)
     guard.claim_dispatch(ref=c.ref, intent=effect, permit=permit)
-    guard.record_outcome(permit=permit, outcome="unknown", result_ref=None)
+    guard.record_outcome(permit=permit, outcome=Outcome.UNKNOWN, result_ref=None)
     cursor.rewind()
     cursor.next_key()
     assert isinstance(cursor.before_call(intent=effect), PolicyStop)

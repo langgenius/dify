@@ -11,7 +11,11 @@ from runtime_contracts.builder.native.runtime_contracts import NativeStatePort, 
 from services.dify_builder.native_testing.context_binding import NativeRuntimeProfile
 from services.dify_builder.native_testing.http_binding import _current_metadata
 from services.dify_builder.native_testing.observation_adapters import NativeObservationError, NativeObservationGuard
-from services.dify_builder.native_testing.observation_privacy import NativeHttpObservationPolicy, _shape
+from services.dify_builder.native_testing.observation_privacy import (
+    NativeHttpObservationPolicy,
+    _observation_context_fields,
+    _shape,
+)
 from services.dify_builder.native_testing.repository import OwnedNativeTestLoader, utc_now
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore, invocation_state
 
@@ -26,8 +30,7 @@ def _checked_context(context: ResolvedNativeTestContext) -> ResolvedNativeTestCo
         raise NativeObservationError()
     # Exact DTO types above make model iteration a raw field read: no serializer
     # can render unchecked values before the shape validator rejects them.
-    data = dict(context)
-    data["ref"] = dict(context.ref)
+    data = _observation_context_fields(context)
     _shape(data)
     return ResolvedNativeTestContext.model_validate(data, strict=True)
 

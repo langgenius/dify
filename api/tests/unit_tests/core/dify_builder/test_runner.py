@@ -13,7 +13,12 @@ from typing import NoReturn, Unpack, override
 
 import pytest
 
-from core.dify_builder.contract import AgentMessageEventData, ConversationItemAppendedEventData, ExecutionProgress
+from core.dify_builder.contract import (
+    AgentMessageEventData,
+    ConversationItemAppendedEventData,
+    ExecutionProgress,
+    ExecutionProgressStatus,
+)
 from core.dify_builder.errors import ConflictError
 from core.dify_builder.models import (
     Action,
@@ -313,7 +318,7 @@ def test_complete_assistant_reply_emits_once_only_after_commit() -> None:
             current,
             fc,
             reply_text=reply,
-            execution=ExecutionProgress(status="completed"),
+            execution=ExecutionProgress(status=ExecutionProgressStatus.COMPLETED),
         )
         notice = ConversationItem(seq=fc.next_seq, kind="notice", payload={"text": "Next item"})
         fc.next_seq += 1

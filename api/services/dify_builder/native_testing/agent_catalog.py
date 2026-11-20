@@ -14,7 +14,19 @@ from models.agent_config_entities import AgentSoulConfig
 from repositories.agent_roster_queries import build_roster_agents_stmt
 from repositories.agent_version_queries import visible_version_operations
 from runtime_contracts.builder.execution import canonical_digest
+from runtime_contracts.builder.string_enum import BuilderStringEnum
 from services.agent import access_service
+
+
+class CapabilitySource(BuilderStringEnum):
+    PUBLISHED_SNAPSHOT_SUMMARY = "published_snapshot.summary"
+    PUBLIC_ROSTER_DESCRIPTION = "public_roster.description"
+    NODE_JOB_REQUIRED = "node_job_required"
+
+
+class PublishedAgentReadiness(BuilderStringEnum):
+    READY = "ready"
+    MISSING_CONFIG = "missing_config"
 
 
 @dataclass(frozen=True)
@@ -27,7 +39,7 @@ class PublishedAgentCandidate:
     name: str
     description: str
     capability: str
-    capability_source: Literal["published_snapshot.summary", "public_roster.description", "node_job_required"]
+    capability_source: CapabilitySource
     dependencies: tuple[str, ...]
     input_schema: dict[str, JsonValue]
     output_schema: None
@@ -37,7 +49,7 @@ class PublishedAgentCandidate:
     # Eligibility of returned actor-scoped catalog entries to be referenced;
     # this never asserts their internal tools/accounts can execute.
     reference_permitted: bool = True
-    readiness: Literal["ready", "missing_config"] = "ready"
+    readiness: PublishedAgentReadiness = PublishedAgentReadiness.READY
 
     @property
     def resource_id(self) -> str:
@@ -85,12 +97,12 @@ def project_published_agent(
     # contract. Keep its provenance explicit when no snapshot summary exists.
     description = snapshot.summary or agent.description or ""
     capability = description or "Published Workspace Agent; caller must declare its node-job outputs."
-    capability_source: Literal["published_snapshot.summary", "public_roster.description", "node_job_required"] = (
-        "published_snapshot.summary"
+    capability_source: CapabilitySource = (
+        CapabilitySource.PUBLISHED_SNAPSHOT_SUMMARY
         if snapshot.summary
-        else "public_roster.description"
+        else CapabilitySource.PUBLIC_ROSTER_DESCRIPTION
         if agent.description
-        else "node_job_required"
+        else CapabilitySource.NODE_JOB_REQUIRED
     )
     digest = canonical_digest(
         {
@@ -99,7 +111,7 @@ def project_published_agent(
             "inputs": inputs,
             "dependencies": list(dependencies),
             "description": description,
-            "capability_source": capability_source,
+            "capability_source": capability_source.value,
             "output_contract_source": "node_job_required",
         }
     )
@@ -118,9 +130,9 @@ def project_published_agent(
         input_contract_source="published_soul.app_variables",
         output_contract_source="node_job_required",
         capability_digest=digest,
-        readiness="missing_config"
+        readiness=PublishedAgentReadiness.MISSING_CONFIG
         if any(item.enabled and item.credential_type == "unauthorized" for item in soul.tools.dify_tools)
-        else "ready",
+        else PublishedAgentReadiness.READY,
     )
 
 

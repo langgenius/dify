@@ -7,12 +7,17 @@ effects. Ambiguous failures and arbitrary Code exception text are not classified
 import json
 import re
 from collections.abc import Mapping
-from typing import Literal
+from enum import StrEnum
 
 from core.dify_builder.models import Run
+from runtime_contracts.builder.execution import FailureResourceKind
 from services.dify_builder.native_launch_observation import FailureResource, _public_id
 
-NativeResourceReason = Literal["service_unavailable", "authentication", "permission_denied"]
+
+class NativeResourceReason(StrEnum):
+    SERVICE_UNAVAILABLE = "service_unavailable"
+    AUTHENTICATION = "authentication"
+    PERMISSION_DENIED = "permission_denied"
 
 
 def native_resource_failure(
@@ -32,11 +37,11 @@ def native_resource_failure(
     nodes = [node for node in graph_nodes if isinstance(node, dict) and node.get("id") == failure.node_id]
     if len(nodes) != 1 or not isinstance(data := nodes[0].get("data"), dict):
         return None
-    kind: Literal["model", "tool"]
+    kind: FailureResourceKind
     if data.get("type") == "llm" and isinstance(model := data.get("model"), dict):
-        kind, provider, name = "model", model.get("provider"), model.get("name")
+        kind, provider, name = FailureResourceKind.MODEL, model.get("provider"), model.get("name")
     elif data.get("type") == "tool" and data.get("provider_type") in {"builtin", "plugin"}:
-        kind, provider, name = "tool", data.get("provider_id"), data.get("tool_name")
+        kind, provider, name = FailureResourceKind.TOOL, data.get("provider_id"), data.get("tool_name")
     else:
         return None
     if not isinstance(provider, str) or not isinstance(name, str) or not _public_id(provider) or not _public_id(name):
@@ -45,9 +50,9 @@ def native_resource_failure(
     return ((kind, provider, name), (failure.node_id,), reason) if reason is not None else None
 
 
-def _native_reason(error: str, kind: Literal["model", "tool"]) -> NativeResourceReason | None:
+def _native_reason(error: str, kind: FailureResourceKind) -> NativeResourceReason | None:
     if re.fullmatch(r"Request to Plugin Daemon Service failed-(?:500|502|503|504)", error.strip()):
-        return "service_unavailable"
+        return NativeResourceReason.SERVICE_UNAVAILABLE
     if len(error) > 32768:
         return None
     envelope = re.fullmatch(r"(?:Run failed: |req_id: [A-Za-z0-9-]{1,128} )?PluginInvokeError: (.+)", error, re.DOTALL)
@@ -71,9 +76,9 @@ def _native_reason(error: str, kind: Literal["model", "tool"]) -> NativeResource
     except (ValueError, TypeError, RecursionError):
         return None
     if (match[1], category) == ("401", "authentication_error"):
-        return "authentication"
+        return NativeResourceReason.AUTHENTICATION
     if (match[1], category) == ("403", "permission_denied"):
-        return "permission_denied"
+        return NativeResourceReason.PERMISSION_DENIED
     return None
 
 

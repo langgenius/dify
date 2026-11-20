@@ -26,6 +26,7 @@ from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
 from core.dify_builder.models import Actor
+from core.dify_builder.real_call_consent import Phase
 from core.tools.entities.tool_entities import ToolProviderType
 from extensions.ext_database import db
 from models.agent import Agent, AgentConfigSnapshot
@@ -45,11 +46,14 @@ from runtime_contracts.builder.native.contracts import (
     EffectIntent,
     FiniteJSON,
     FrozenDTO,
+    NativeAgentTestProfile,
     NativeTestContextRef,
     OperationKey,
+    Outcome,
     operation_digest,
 )
 from runtime_contracts.builder.native.observation import NativeModelFailureStage
+from runtime_contracts.builder.native.runtime_contracts import NativeTestMode
 from services.dify_builder.native_testing.agent_bridge import (
     AgentNativeTestingBridge,
     NativeAgentCredentialMaterializer,
@@ -93,9 +97,9 @@ class AgentToolDispatchOwner:
             result = invoke()
             result_ref = self.state_store.store_result(ref=ref, key=intent.key, result=result)
         except BaseException:
-            self.authorization.record_outcome(permit=permit, outcome="unknown", result_ref=None)
+            self.authorization.record_outcome(permit=permit, outcome=Outcome.UNKNOWN, result_ref=None)
             raise
-        self.authorization.record_outcome(permit=permit, outcome="completed", result_ref=result_ref)
+        self.authorization.record_outcome(permit=permit, outcome=Outcome.COMPLETED, result_ref=result_ref)
         return result
 
 
@@ -645,7 +649,7 @@ class AgentOperationService:
                 ref=AgentNativeTestRef.model_validate(ref.model_dump(mode="json")),
                 config=prepared,
                 association=None,
-                native_test_profile="confirmed",
+                native_test_profile=NativeAgentTestProfile.CONFIRMED,
             )
         composition = prepared.config.get("composition") if isinstance(prepared.config, dict) else None
         layers = composition.get("layers") if isinstance(composition, dict) else None
@@ -1117,19 +1121,19 @@ class AgentOperationService:
         self.bridge.authorization.claim_dispatch(ref=ref, intent=intent, permit=permit)
         complete = False
         receipt = ProtectedModelChunkReceipt()
-        stage: NativeModelFailureStage = "invoke"
+        stage: NativeModelFailureStage = NativeModelFailureStage.INVOKE
         try:
             for chunk in invoke():
                 # Record exactly the public SSE DTO and SDK defaults. Keep the
                 # original provider chunk/history untouched for the stream owner.
-                stage = "receipt_append"
+                stage = NativeModelFailureStage.RECEIPT_APPEND
                 receipt.append(LLMResultChunk.model_validate(model_chunk_to_wire(chunk)))
                 yield chunk
-                stage = "invoke"
-            stage = "result_store"
+                stage = NativeModelFailureStage.INVOKE
+            stage = NativeModelFailureStage.RESULT_STORE
             result_ref = self.state_store.store_result(ref=ref, key=intent.key, result=receipt.value)
-            stage = "outcome_complete"
-            self.bridge.authorization.record_outcome(permit=permit, outcome="completed", result_ref=result_ref)
+            stage = NativeModelFailureStage.OUTCOME_COMPLETE
+            self.bridge.authorization.record_outcome(permit=permit, outcome=Outcome.COMPLETED, result_ref=result_ref)
             complete = True
         except Exception as error:
             with suppress(Exception):
@@ -1138,10 +1142,10 @@ class AgentOperationService:
         finally:
             if not complete:
                 try:
-                    self.bridge.authorization.record_outcome(permit=permit, outcome="unknown", result_ref=None)
+                    self.bridge.authorization.record_outcome(permit=permit, outcome=Outcome.UNKNOWN, result_ref=None)
                 except Exception as error:
                     with suppress(Exception):
-                        on_failure("unknown_settlement", error)
+                        on_failure(NativeModelFailureStage.UNKNOWN_SETTLEMENT, error)
                     raise
 
     def _persist(
@@ -1660,7 +1664,7 @@ class AgentOperationService:
                 # must not relabel that known ACK unknown or reopen its effect.
                 receipt_failed = True
             self.bridge.authorization.record_outcome(
-                permit=api_permit(envelope.permit), outcome="completed", result_ref=result_ref
+                permit=api_permit(envelope.permit), outcome=Outcome.COMPLETED, result_ref=result_ref
             )
             if receipt_failed:
                 raise BuilderExecutionPolicyError("native_agent_job_unavailable")
@@ -1828,7 +1832,7 @@ def _native_tool_runtime(service, *, envelope, request):
         credentials, credential_type = {}, CredentialType.UNAUTHORIZED
     else:
         materialized = materializer.materialize(
-            ref=ref, intent=intent, permit=permit, tool_ref=intent.resource_ref, phase="business"
+            ref=ref, intent=intent, permit=permit, tool_ref=intent.resource_ref, phase=Phase.BUSINESS
         )
         credentials, credential_type = materialized.credentials, CredentialType.of(materialized.credential_type)
     return PluginTool(
@@ -1999,7 +2003,7 @@ def admit_confirmed_agent_execution(
         session_id=session_id,
         test_input_id=test_input_id,
         expected_version=expected_version,
-        mode="native",
+        mode=NativeTestMode.NATIVE,
         request_id=request_id,
         invocation_id=invocation_id,
         native_run_id=native_run_id,

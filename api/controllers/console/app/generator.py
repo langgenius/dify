@@ -30,7 +30,7 @@ from core.helper.code_executor.javascript.javascript_code_provider import Javasc
 from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
 from core.llm_generator.llm_generator import LLMGenerator
-from core.workflow.generator.types import WorkflowGenerateErrorCode
+from core.workflow.generator.types import WorkflowGenerateErrorCode, WorkflowGraphMode
 from fields.base import ResponseModel
 from graphon.model_runtime.entities.llm_entities import LLMMode
 from graphon.model_runtime.errors.invoke import InvokeError
@@ -157,8 +157,8 @@ class WorkflowInstructionImprovePayload(BaseModel):
     """
 
     instruction: str = Field(..., description="The build instruction to expand")
-    mode: Literal["workflow", "advanced-chat"] = Field(
-        default="workflow", description="Target app mode the instruction is written for"
+    mode: WorkflowGraphMode = Field(
+        default=WorkflowGraphMode.WORKFLOW, description="Target app mode the instruction is written for"
     )
     language: str | None = Field(default=None, description="Optional language to write the rewrite in")
 
@@ -204,7 +204,7 @@ class WorkflowGeneratePlanEventResponse(ResponseModel):
     description: str = ""
     app_name: str = ""
     icon: str = ""
-    mode: Literal["workflow", "advanced-chat"]
+    mode: WorkflowGraphMode
     nodes: list[WorkflowPlanNodeResponse]
     start_inputs: list[WorkflowPlanStartInputResponse] = Field(default_factory=list)
 

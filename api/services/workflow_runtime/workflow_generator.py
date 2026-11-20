@@ -59,12 +59,14 @@ from runtime_contracts.builder.execution import (
     BuilderExecutionRecorder,
     ConfirmedToolExecutionContext,
     JsonToolExecutionContext,
+    WorkerExit,
     scalar_inputs_digest,
 )
 from runtime_contracts.builder.native.agent_context import BuilderAgentExecutionContext
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
 from services.app.file_input_defaults import grant_file_default_access
 from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
+from services.dify_builder.native_testing.host_lifetime import CloseReason
 from services.dify_builder.native_testing.observation_adapters import NativeObservationError, NativeObservationGuard
 from services.dify_builder.native_testing.runtime_bridge import NativeRuntimeBridge
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
@@ -140,7 +142,7 @@ class BuilderExecutionAdmission(Protocol):
         task_id: str,
         recorder: BuilderExecutionRecorder | None,
         worker_thread: threading.Thread,
-        exit_kind: Literal["returned", "policy_refused", "stopped", "failed"],
+        exit_kind: Literal[WorkerExit.RETURNED, WorkerExit.POLICY_REFUSED, WorkerExit.STOPPED, WorkerExit.FAILED],
     ) -> None: ...
 
 
@@ -794,12 +796,12 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 if native_host is None:
                     self._join_worker_thread(worker_thread)
                 else:
-                    native_host.request_close(reason="failed")
+                    native_host.request_close(reason=CloseReason.FAILED)
                 raise
 
             if native_host is not None:
                 if not isinstance(converted_response, Generator):
-                    native_host.request_close(reason="failed")
+                    native_host.request_close(reason=CloseReason.FAILED)
                     raise NativeContextUnavailable("native_stream_unavailable")
                 return converted_response
             if isinstance(converted_response, Generator):
@@ -1024,7 +1026,9 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :return:
         """
         execution_recorder = None
-        exit_kind: Literal["returned", "policy_refused", "stopped", "failed"] = "failed"
+        exit_kind: Literal[WorkerExit.RETURNED, WorkerExit.POLICY_REFUSED, WorkerExit.STOPPED, WorkerExit.FAILED] = (
+            WorkerExit.FAILED
+        )
         try:
             from services.dify_builder.native_testing.context_runtime import native_flask_worker_scope
 
@@ -1177,9 +1181,9 @@ class WorkflowAppGenerator(BaseAppGenerator):
                             workflow_execution_repository,
                             workflow_node_execution_repository,
                         )
-                    exit_kind = "returned"
+                    exit_kind = WorkerExit.RETURNED
                 except GenerateTaskStoppedError:
-                    exit_kind = "stopped"
+                    exit_kind = WorkerExit.STOPPED
                     logger.warning("Task stopped", exc_info=native_host is None)
                     pass
                 except InvokeAuthorizationError:
@@ -1187,7 +1191,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                         InvokeAuthorizationError("Incorrect API key provided"), PublishFrom.APPLICATION_MANAGER
                     )
                 except NativeContextUnavailable as e:
-                    exit_kind = "policy_refused"
+                    exit_kind = WorkerExit.POLICY_REFUSED
                     queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
                 except ValidationError as e:
                     if native_host is not None:
@@ -1196,7 +1200,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                         logger.exception("Validation Error when generating")
                         queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
                 except BuilderExecutionPolicyError as e:
-                    exit_kind = "policy_refused"
+                    exit_kind = WorkerExit.POLICY_REFUSED
                     if builder_execution_admit is not None:
                         builder_execution_admit.on_refusal(e)
                     queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
@@ -1214,7 +1218,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                         logger.exception("Unknown Error when generating")
                         queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
         except BaseException:
-            exit_kind = "failed"
+            exit_kind = WorkerExit.FAILED
             if native_host is None:
                 raise
             # Scope entry itself can fail before the inner publisher exists.
@@ -1235,6 +1239,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             except BaseException:
                 raise NativeObservationError() from None
         finally:
+            assert exit_kind is not WorkerExit.NOT_OBSERVED
             if native_host is not None:
                 native_host.worker_finished(worker=threading.current_thread(), exit_kind=exit_kind)
             marker = application_generate_entity.builder_execution

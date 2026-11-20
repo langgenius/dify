@@ -15,7 +15,13 @@ from graphon.nodes.http_request import HttpRequestNode
 from graphon.nodes.http_request.entities import HttpRequestNodeData, Response
 from graphon.runtime import VariablePool
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest
-from runtime_contracts.builder.native.contracts import DispatchPermit, EffectIntent, JsonValue, NativeTestContextRef
+from runtime_contracts.builder.native.contracts import (
+    DispatchPermit,
+    EffectIntent,
+    JsonValue,
+    NativeTestContextRef,
+    WaitReason,
+)
 from runtime_contracts.builder.native.runtime_contracts import NativeStatePort
 from services.dify_builder.native_testing import http_binding as http_binding_module
 from services.dify_builder.native_testing.call_adapter import NativeCallAdapter, ScalarAuthorizationPort
@@ -900,7 +906,7 @@ def test_host_seams_preserve_typed_controls(physical_http: ConcreteHttpCase, bou
 
     c = physical_http
     control = (
-        NativeApprovalWait(ref=c.association.ref, pending_operation_id="pending", wait_reason="approval")
+        NativeApprovalWait(ref=c.association.ref, pending_operation_id="pending", wait_reason=WaitReason.APPROVAL)
         if category == "wait"
         else NativePolicyStop(ref=c.association.ref, reason_code="native_generation_conflict")
     )

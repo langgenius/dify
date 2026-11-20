@@ -27,6 +27,7 @@ from core.dify_builder.models import (
     EntryMode,
     MutationIntent,
     NodeOutput,
+    OutputFindingState,
     Run,
     Snapshot,
     TestInput,
@@ -475,7 +476,11 @@ def test_verification_roundtrip_and_legacy(repo: SqlDifyBuilderRepository) -> No
         terminal_outputs={"null": None, "false": False, "zero": 0, "array": [], "object": {}},
         output_findings=[
             OutputFinding(
-                node_id="end", output_name="result", selector=["tool", "text"], state="present", reason="key_present"
+                node_id="end",
+                output_name="result",
+                selector=["tool", "text"],
+                state=OutputFindingState.PRESENT,
+                reason="key_present",
             )
         ],
         executed_node_ids=["end"],

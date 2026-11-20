@@ -11,6 +11,7 @@ from threading import Lock, Thread, current_thread
 from typing import TYPE_CHECKING, Any
 
 from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
+from services.dify_builder.native_testing.host_lifetime import CloseReason
 from services.dify_builder.native_testing.observation_repository import bind_native_repository_observation
 
 if TYPE_CHECKING:
@@ -159,10 +160,10 @@ class HostOwnedNativeGeneratorStream:
         try:
             return next(self._stream)
         except StopIteration:
-            self._host.request_close(reason="exhausted")
+            self._host.request_close(reason=CloseReason.EXHAUSTED)
             raise
         except BaseException:
-            self._host.request_close(reason="failed")
+            self._host.request_close(reason=CloseReason.FAILED)
             raise
         finally:
             with self._lock:
@@ -171,7 +172,7 @@ class HostOwnedNativeGeneratorStream:
     def close(self) -> None:
         with self._lock:
             self._close_requested = True
-        self._host.request_close(reason="consumer_closed")
+        self._host.request_close(reason=CloseReason.CONSUMER_CLOSED)
 
     def finish_reader(self) -> None:
         """Acknowledge successful owned close once; never retry a failed attempt."""

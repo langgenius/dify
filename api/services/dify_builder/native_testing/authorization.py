@@ -7,7 +7,8 @@ or failed attempts never refund quota and cannot be reissued under another key.
 
 from collections.abc import Callable
 from datetime import datetime, timedelta
-from typing import Literal, overload
+from enum import StrEnum
+from typing import overload
 from uuid import uuid4
 
 from pydantic import ValidationError
@@ -57,6 +58,11 @@ from services.dify_builder.native_testing.transitions import (
     validate_pending_fence,
     validate_pending_history,
 )
+
+
+class EffectApprovalDecision(StrEnum):
+    APPROVED = "approved"
+    DENIED = "denied"
 
 
 def validate_binding(intent: EffectIntent, binding: NativeBinding) -> None:
@@ -402,7 +408,7 @@ class EffectAuthorizationService:
         *,
         ref: NativeTestContextRef,
         intent: EffectIntent,
-        decision: Literal["approved", "denied"],
+        decision: EffectApprovalDecision,
         max_calls: int,
         max_dispatches: int,
         max_cost_units: int,
@@ -416,7 +422,7 @@ class EffectAuthorizationService:
         *,
         ref: NativeTestContextRef,
         intent: EffectIntent,
-        decision: Literal["approved", "denied"],
+        decision: EffectApprovalDecision,
         max_calls: int,
         max_dispatches: int,
         max_cost_units: int,
@@ -429,7 +435,7 @@ class EffectAuthorizationService:
         *,
         ref: NativeTestContextRef,
         intent: EffectIntent,
-        decision: Literal["approved", "denied"],
+        decision: EffectApprovalDecision,
         max_calls: int,
         max_dispatches: int,
         max_cost_units: int,

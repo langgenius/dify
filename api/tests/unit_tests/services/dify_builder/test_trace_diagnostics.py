@@ -6,6 +6,7 @@ from typing import Protocol
 
 import pytest
 
+from core.dify_builder.contract import AssistantReplyMode, ExecutionProgressStatus
 from core.dify_builder.models import Session
 from core.model_manager import ModelInstance
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMUsage
@@ -190,9 +191,9 @@ def test_cas_emission_and_reload_preserve_additive_safe_diagnostics(
         item = AssistantTurnItem(
             turn_id="trace-turn",
             stage_id=str(session.current_state),
-            execution=ExecutionProgress(status="completed"),
+            execution=ExecutionProgress(status=ExecutionProgressStatus.COMPLETED),
             reply_text="Review result",
-            reply_mode="complete",
+            reply_mode=AssistantReplyMode.COMPLETE,
         ).to_item(seq=0, at_version=2)
         return StepResult(next=PcState.FIX_AWAIT_APPROVAL, context=context, items=[item])
 
@@ -614,9 +615,9 @@ def test_repair_details_survive_real_cas_item_history_and_http_projection(repo: 
         item = AssistantTurnItem(
             turn_id="repair-trace",
             stage_id=str(current.current_state),
-            execution=ExecutionProgress(status="completed"),
+            execution=ExecutionProgress(status=ExecutionProgressStatus.COMPLETED),
             reply_text="Review repair",
-            reply_mode="complete",
+            reply_mode=AssistantReplyMode.COMPLETE,
         ).to_item(seq=0, at_version=2)
         return StepResult(next=PcState.FIX_AWAIT_APPROVAL, context=context, items=[item])
 
@@ -788,9 +789,9 @@ def test_planning_facts_survive_sql_cas_and_public_trace_export(
                 AssistantTurnItem(
                     turn_id="plan-trace",
                     stage_id=str(current.current_state),
-                    execution=ExecutionProgress(status="completed"),
+                    execution=ExecutionProgress(status=ExecutionProgressStatus.COMPLETED),
                     reply_text="Review result",
-                    reply_mode="complete",
+                    reply_mode=AssistantReplyMode.COMPLETE,
                 ).to_item(seq=0, at_version=2)
             ],
         )

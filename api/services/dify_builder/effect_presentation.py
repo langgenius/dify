@@ -12,7 +12,7 @@ from core.dify_builder.contract import FormField
 from core.dify_builder.models import NodeOutput
 from runtime_contracts.builder.copy_ids import BuilderCopyId
 from runtime_contracts.builder.presentation import BuilderText, copy_text, text_parts
-from services.dify_builder.effect_disclosure import EffectDisclosure, confirm_field_key
+from services.dify_builder.effect_disclosure import EffectDisclosure, EffectTier, confirm_field_key
 from services.dify_builder.execution_messages import code_risk_unavailable_notice
 
 
@@ -51,8 +51,8 @@ def effect_confirmation_values(disclosure: EffectDisclosure, confirmation: Mappi
 
 def effects_note(disclosure: EffectDisclosure, *, reply_language: str = "") -> BuilderText | None:
     """The reply lines that accompany the form; ``None`` when the run touches nothing outside Dify."""
-    reads = disclosure.by_tier("read")
-    destructive = disclosure.by_tier("destructive")
+    reads = disclosure.by_tier(EffectTier.READ)
+    destructive = disclosure.by_tier(EffectTier.DESTRUCTIVE)
     code = tuple(item for item in disclosure.items if item.node_type == "code" and item.risk_notice)
     if not (reads or destructive or disclosure.confirmable or code):
         return None

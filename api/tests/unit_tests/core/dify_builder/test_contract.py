@@ -14,7 +14,9 @@ from core.dify_builder.contract import (
     CanvasEvent,
     CardKind,
     ExecutionActivity,
+    ExecutionActivityState,
     ExecutionProgress,
+    ExecutionProgressStatus,
     FormCard,
     FormField,
     Phase,
@@ -25,6 +27,9 @@ from core.dify_builder.contract import (
     RunStatus,
     TestResultCard,
     post_canvas_action_id,
+)
+from core.dify_builder.contract import (
+    TestResultStatus as ResultStatus,
 )
 from core.dify_builder.models import EntryMode
 from core.dify_builder.state import PcState
@@ -219,7 +224,7 @@ def test_card_shapes_round_trip() -> None:
 
     # test_result -- intentionally minimal.
     tr = TestResultCard(
-        status="failed",
+        status=ResultStatus.FAILED,
         failure_reason="One node failed",
         dify_run_id="run-1",
     )
@@ -258,8 +263,8 @@ def test_card_shapes_round_trip() -> None:
         turn_id="t1",
         stage_id="build.goal_analysis",
         execution=ExecutionProgress(
-            status="running",
-            activities=[ExecutionActivity(id="s1", label="Reading goal", state="active")],
+            status=ExecutionProgressStatus.RUNNING,
+            activities=[ExecutionActivity(id="s1", label="Reading goal", state=ExecutionActivityState.ACTIVE)],
         ),
         reasoning_text="I should clarify the requested output.",
         reply_text="Looking at your goal...",

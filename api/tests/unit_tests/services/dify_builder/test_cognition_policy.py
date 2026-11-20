@@ -10,6 +10,7 @@ from services.dify_builder.application.cognition_policy import (
     CognitionPolicy,
     CognitionPolicyDeniedError,
     CognitionPolicyService,
+    CognitionPolicySource,
 )
 
 MODEL = CognitionModel("primary", "openai", "gpt", "chat", {"temperature": 0.2})
@@ -35,7 +36,7 @@ class Policies:
         revision = self.policy.revision if self.policy else 0
         if expected_revision != revision:
             raise CognitionPolicyDeniedError("policy_revision_conflict")
-        self.policy = replace(policy, revision=revision + 1, source="explicit")
+        self.policy = replace(policy, revision=revision + 1, source=CognitionPolicySource.EXPLICIT)
         return self.policy
 
 
@@ -78,7 +79,7 @@ def test_absent_policy_projects_native_default_but_preserves_native_session_sele
 
 def test_exact_parameters_and_enabled_configuration_are_required(subject: Subject) -> None:
     service, policies, _ = subject
-    policies.policy = CognitionPolicy(True, (MODEL,), "primary", (), 2, "explicit")
+    policies.policy = CognitionPolicy(True, (MODEL,), "primary", (), 2, CognitionPolicySource.EXPLICIT)
     assert service.select(ACTOR, MODEL.config()) == MODEL
     with pytest.raises(CognitionPolicyDeniedError, match="model_not_allowed"):
         service.select(ACTOR, {**MODEL.config(), "completion_params": {"temperature": 1}})
@@ -89,7 +90,7 @@ def test_exact_parameters_and_enabled_configuration_are_required(subject: Subjec
 
 def test_only_locally_unavailable_models_use_configured_fallback(subject: Subject) -> None:
     service, policies, models = subject
-    policies.policy = CognitionPolicy(True, (MODEL, OTHER), "primary", ("fallback",), 1, "explicit")
+    policies.policy = CognitionPolicy(True, (MODEL, OTHER), "primary", ("fallback",), 1, CognitionPolicySource.EXPLICIT)
     models.unavailable = {"primary"}
     assert service.select(ACTOR, None) == OTHER
     assert models.inspections == ["primary", "fallback"]
@@ -100,7 +101,7 @@ def test_only_locally_unavailable_models_use_configured_fallback(subject: Subjec
 
 def test_policy_admin_admission_and_revision_are_owned_by_repository(subject: Subject) -> None:
     service, policies, _ = subject
-    proposed = CognitionPolicy(True, (MODEL,), "primary", (), 0, "explicit")
+    proposed = CognitionPolicy(True, (MODEL,), "primary", (), 0, CognitionPolicySource.EXPLICIT)
     assert service.put(ACTOR, proposed, expected_revision=0).revision == 1
     with pytest.raises(CognitionPolicyDeniedError, match="policy_revision_conflict"):
         service.put(ACTOR, proposed, expected_revision=0)
@@ -117,14 +118,18 @@ def test_configuration_rejects_secret_fields_and_unconfigured_fallback(subject: 
     with pytest.raises(ValueError, match="completion"):
         CognitionModel("x", "provider", "model", "chat", {"api_key": "secret"})
     with pytest.raises(ValueError, match="fallback"):
-        service.put(ACTOR, CognitionPolicy(True, (MODEL,), "primary", ("missing",), 0, "explicit"), expected_revision=0)
+        service.put(
+            ACTOR,
+            CognitionPolicy(True, (MODEL,), "primary", ("missing",), 0, CognitionPolicySource.EXPLICIT),
+            expected_revision=0,
+        )
 
 
 def test_unknown_primary_metadata_does_not_claim_available_fallback(
     subject: Subject, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     service, policies, models = subject
-    policies.policy = CognitionPolicy(True, (MODEL, OTHER), "primary", ("fallback",), 1, "explicit")
+    policies.policy = CognitionPolicy(True, (MODEL, OTHER), "primary", ("fallback",), 1, CognitionPolicySource.EXPLICIT)
 
     def uncertain(actor: Actor, model: CognitionModel) -> bool:
         assert actor == ACTOR
@@ -142,7 +147,7 @@ def test_unknown_primary_metadata_does_not_claim_available_fallback(
 def test_model_selected_before_metadata_does_not_keep_revoked_admission(subject: Subject) -> None:
     service, policies, _ = subject
     selected = service.select(ACTOR, None)
-    policies.policy = CognitionPolicy(False, (), None, (), 1, "explicit")
+    policies.policy = CognitionPolicy(False, (), None, (), 1, CognitionPolicySource.EXPLICIT)
     with pytest.raises(CognitionPolicyDeniedError, match="builder_disabled"):
         service.authorize_selected(ACTOR, selected)
 
@@ -168,7 +173,7 @@ def test_recovery_continue_reentering_cognition_still_checks_disabled_policy(sub
     from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository
 
     policy, policies, models = subject
-    policies.policy = CognitionPolicy(False, (), None, (), 1, "explicit")
+    policies.policy = CognitionPolicy(False, (), None, (), 1, CognitionPolicySource.EXPLICIT)
     selections: list[str] = []
 
     def resolve() -> Never:
@@ -306,7 +311,9 @@ def test_metadata_cannot_outlive_new_explicit_policy_or_revoked_membership(
             policies.role = None
         else:
             models_allowed = (CognitionModel("new", "openai", "new-only", "chat", {}),)
-            policies.policy = CognitionPolicy(change != "disable", models_allowed, "new", (), 1, "explicit")
+            policies.policy = CognitionPolicy(
+                change != "disable", models_allowed, "new", (), 1, CognitionPolicySource.EXPLICIT
+            )
         return True
 
     monkeypatch.setattr(models, "available", changed)

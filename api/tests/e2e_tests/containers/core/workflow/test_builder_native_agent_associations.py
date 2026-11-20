@@ -14,7 +14,7 @@ from pydantic import JsonValue
 from typing_extensions import TypedDict
 
 from models.workflow import Workflow
-from runtime_contracts.builder.native.contracts import NativeTestContextRef
+from runtime_contracts.builder.native.contracts import NativeAgentTestProfile, NativeTestContextRef
 from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import require_instance
 from tests.e2e_tests.containers.core.workflow.test_builder_restricted_native import NativeOwner
 
@@ -760,7 +760,7 @@ def test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read(
             ref=AgentNativeTestRef.model_validate(ref.model_dump(mode="json")),
             config=config,
             association=association,
-            native_test_profile="confirmed",
+            native_test_profile=NativeAgentTestProfile.CONFIRMED,
         )
         agent_intent = operations.prepare_intent(
             ref=g.agent_runtime_context.ref,

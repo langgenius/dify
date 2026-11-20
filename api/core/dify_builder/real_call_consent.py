@@ -21,14 +21,34 @@ from runtime_contracts.builder.execution import (
     BuilderExecutionPolicyError,
     ConfirmedToolExecutionContext,
     Digest,
+    ExecutionActionState,
     _TrustedModel,
     canonical_json,
 )
+from runtime_contracts.builder.string_enum import BuilderStringEnum
 
-ConsentState = Literal[
-    "prepared", "confirmed", "claimed", "completed", "failed", "unknown", "declined", "expired", "invalidated"
-]
-Phase = Literal["refresh", "business"]
+
+class RealCallDecision(BuilderStringEnum):
+    CONFIRM = "confirm"
+    DECLINE = "decline"
+
+
+class ConsentState(BuilderStringEnum):
+    PREPARED = "prepared"
+    CONFIRMED = "confirmed"
+    CLAIMED = "claimed"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    UNKNOWN = "unknown"
+    DECLINED = "declined"
+    EXPIRED = "expired"
+    INVALIDATED = "invalidated"
+
+
+class Phase(BuilderStringEnum):
+    REFRESH = "refresh"
+    BUSINESS = "business"
+
 
 # One canonical path segment: no slash, dot segment, query, fragment, percent
 # escape, whitespace or non-ASCII. Bytes are bound exactly; nothing is normalized.
@@ -93,7 +113,7 @@ Version = Annotated[StrictInt, Field(ge=0)]
 class ActionOutcome(_TrustedModel):
     """Sanitized terminal outcome; never carries message content or provider text."""
 
-    state: Literal["completed", "failed", "unknown"]
+    state: ExecutionActionState
     reason_code: ReasonCode
 
 

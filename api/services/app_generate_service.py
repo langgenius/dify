@@ -4,7 +4,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Callable, Mapping
-from typing import TYPE_CHECKING, Any, Literal, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
 
 from sqlalchemy.orm import Session
 
@@ -22,6 +22,7 @@ from enums import DeploymentEdition, QuotaType
 from extensions.otel import AppGenerateHandler, trace_span
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow
+from runtime_contracts.builder.execution import WorkflowExecutionTransport
 from runtime_contracts.builder.native.agent_context import BuilderAgentExecutionContext
 from services.dify_builder.application.execution_policy import (
     BuilderExecutionContext,
@@ -31,6 +32,7 @@ from services.dify_builder.application.execution_policy import (
     scalar_inputs_digest,
 )
 from services.dify_builder.execution_policy_service import restricted_admission_snapshot
+from services.dify_builder.native_testing.host_lifetime import CloseReason
 from services.errors.app import (
     QuotaExceededError,
     TriggerWorkflowServiceModeUnavailableError,
@@ -148,7 +150,7 @@ class AppGenerateService:
         session: Session,
         streaming: bool = True,
         root_node_id: str | None = None,
-        workflow_execution_mode: Literal["celery", "in_process"] = "celery",
+        workflow_execution_mode: WorkflowExecutionTransport = WorkflowExecutionTransport.CELERY,
         builder_execution: BuilderExecutionContext
         | ConfirmedToolExecutionContext
         | JsonToolExecutionContext
@@ -341,7 +343,7 @@ class AppGenerateService:
         except Exception:
             if host_owns_release:
                 assert native_host is not None
-                native_host.request_close(reason="failed")
+                native_host.request_close(reason=CloseReason.FAILED)
             else:
                 quota_charge.refund()
                 if streaming:
@@ -350,7 +352,7 @@ class AppGenerateService:
         except BaseException:
             if host_owns_release:
                 assert native_host is not None
-                native_host.request_close(reason="failed")
+                native_host.request_close(reason=CloseReason.FAILED)
             raise
         finally:
             if not streaming and not host_owns_release:
@@ -369,7 +371,7 @@ class AppGenerateService:
         session: Session,
         rate_limit: RateLimit,
         request_id: str,
-        workflow_execution_mode: Literal["celery", "in_process"] = "celery",
+        workflow_execution_mode: WorkflowExecutionTransport = WorkflowExecutionTransport.CELERY,
         builder_execution: BuilderExecutionContext
         | ConfirmedToolExecutionContext
         | JsonToolExecutionContext

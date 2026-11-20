@@ -27,6 +27,7 @@ from services.dify_builder.native_testing.control import (
 )
 from services.dify_builder.native_testing.host_execution import HostBoundCodeCalls
 from services.dify_builder.native_testing.host_lifetime import (
+    CloseReason,
     NativeHostLifetime,
     NativeHostLifetimeRegistry,
 )
@@ -140,7 +141,7 @@ def test_registration_before_reservation_is_retained_and_root_limit_is_two() -> 
                 close_deadline=monotonic() + 2,
             )
     assert case.lifetime.code_participants == (first, second)
-    case.lifetime.request_close(reason="cancel", deadline=monotonic())
+    case.lifetime.request_close(reason=CloseReason.CANCEL, deadline=monotonic())
     assert case.lifetime.settle() == "unknown"
     with pytest.raises(ValueError, match="^native_host_cleanup_incomplete$"):
         case.lifetime.consume_cleanup(ref=REF, generation=0, dispatch_id=case.lifetime.dispatch_id)
@@ -436,7 +437,7 @@ def test_successful_code_cleanup_is_consumed_only_after_actual_host_worker_exit(
     calls, intent, dispatch, owner, _events, _prefix = composed(case, monkeypatch)
     worker(case.lifetime).join(1)
     assert calls.call(ref=REF, intent=intent, dispatch=dispatch) == "ok"
-    case.lifetime.request_close(reason="exhausted", deadline=monotonic() + 1)
+    case.lifetime.request_close(reason=CloseReason.EXHAUSTED, deadline=monotonic() + 1)
     assert case.lifetime.settle() == "settled"
     case.lifetime.consume_cleanup(ref=REF, generation=0, dispatch_id=case.lifetime.dispatch_id)
     assert not case.lifetime.code_participants

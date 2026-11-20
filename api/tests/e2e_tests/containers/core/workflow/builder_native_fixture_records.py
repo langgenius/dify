@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from pydantic import JsonValue
 from typing_extensions import TypedDict
+
+from services.dify_builder.native_testing.authorization import EffectApprovalDecision
+from services.dify_builder.native_testing.lifecycle import NativeRecoveryEvidence
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -275,9 +278,7 @@ class NativeRuntimeWitness:
         del refs
         raise AssertionError("unexpected runtime cancellation")
 
-    def recovery_evidence(
-        self, *, context: ResolvedNativeTestContext, dispatch_id: str
-    ) -> Literal["not_started", "stopped", "unknown"]:
+    def recovery_evidence(self, *, context: ResolvedNativeTestContext, dispatch_id: str) -> NativeRecoveryEvidence:
         del context, dispatch_id
         raise AssertionError("unexpected runtime recovery")
 
@@ -292,7 +293,7 @@ class DecisionTerms(TypedDict, closed=True):
 class InternalDecisionArguments(TypedDict, closed=True):
     ref: NativeTestContextRef
     intent: EffectIntent
-    decision: Literal["approved", "denied"]
+    decision: EffectApprovalDecision
     max_calls: int
     max_dispatches: int
     max_cost_units: int
@@ -302,7 +303,7 @@ class InternalDecisionArguments(TypedDict, closed=True):
 class PublicDecisionArguments(TypedDict, closed=True):
     ref: NativeTestContextRef
     intent: EffectIntent
-    decision: Literal["approved", "denied"]
+    decision: EffectApprovalDecision
     max_calls: int
     max_dispatches: int
     max_cost_units: int

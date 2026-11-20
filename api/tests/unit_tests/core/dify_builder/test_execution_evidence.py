@@ -6,6 +6,7 @@ import pytest
 import pytest_mock
 
 from core.dify_builder.models import Run, RunVerification
+from runtime_contracts.builder.execution import SafetyOutcome
 from services.dify_builder.application import handlers_build, handlers_edit, handlers_fix, verification
 from services.dify_builder.application.execution_policy import ExecutionEvidenceSummary
 from tests.unit_tests.installed_spies import installed_mock
@@ -13,11 +14,11 @@ from tests.unit_tests.installed_spies import installed_mock
 
 def sample(
     outcome: Literal[
-        "restricted_execution_completed",
-        "simulation_completed",
-        "execution_blocked",
-        "native_failed",
-        "execution_evidence_unknown",
+        SafetyOutcome.RESTRICTED_EXECUTION_COMPLETED,
+        SafetyOutcome.SIMULATION_COMPLETED,
+        SafetyOutcome.EXECUTION_BLOCKED,
+        SafetyOutcome.NATIVE_FAILED,
+        SafetyOutcome.EXECUTION_EVIDENCE_UNKNOWN,
     ]
     | None,
     blocked: tuple[str, ...] = (),
@@ -64,11 +65,11 @@ def sample(
 )
 def test_publication_requires_bound_sealed_restricted_evidence(
     outcome: Literal[
-        "restricted_execution_completed",
-        "simulation_completed",
-        "execution_blocked",
-        "native_failed",
-        "execution_evidence_unknown",
+        SafetyOutcome.RESTRICTED_EXECUTION_COMPLETED,
+        SafetyOutcome.SIMULATION_COMPLETED,
+        SafetyOutcome.EXECUTION_BLOCKED,
+        SafetyOutcome.NATIVE_FAILED,
+        SafetyOutcome.EXECUTION_EVIDENCE_UNKNOWN,
     ]
     | None,
     reason: str,
@@ -83,11 +84,11 @@ def test_publication_requires_bound_sealed_restricted_evidence(
 @pytest.mark.parametrize("outcome", ["native_failed", "execution_evidence_unknown", "execution_blocked"])
 def test_denial_ids_block_even_when_native_failed_or_proof_incomplete(
     outcome: Literal[
-        "restricted_execution_completed",
-        "simulation_completed",
-        "execution_blocked",
-        "native_failed",
-        "execution_evidence_unknown",
+        SafetyOutcome.RESTRICTED_EXECUTION_COMPLETED,
+        SafetyOutcome.SIMULATION_COMPLETED,
+        SafetyOutcome.EXECUTION_BLOCKED,
+        SafetyOutcome.NATIVE_FAILED,
+        SafetyOutcome.EXECUTION_EVIDENCE_UNKNOWN,
     ]
     | None,
 ) -> None:
@@ -107,11 +108,11 @@ def test_handlers_keep_denials_out_of_review_and_repair(
     mocker: pytest_mock.MockerFixture,
     flow: str,
     outcome: Literal[
-        "restricted_execution_completed",
-        "simulation_completed",
-        "execution_blocked",
-        "native_failed",
-        "execution_evidence_unknown",
+        SafetyOutcome.RESTRICTED_EXECUTION_COMPLETED,
+        SafetyOutcome.SIMULATION_COMPLETED,
+        SafetyOutcome.EXECUTION_BLOCKED,
+        SafetyOutcome.NATIVE_FAILED,
+        SafetyOutcome.EXECUTION_EVIDENCE_UNKNOWN,
     ]
     | None,
 ) -> None:
@@ -166,7 +167,7 @@ def test_fix_diagnose_does_not_diagnose_persisted_policy_denial(
 
     env, repo = _new_env()
     session = _session()
-    run = sample("native_failed", ("http",))
+    run = sample(SafetyOutcome.NATIVE_FAILED, ("http",))
     run.id = "denied"
     run.status = "failed"
     repo.save_run(session.id, run)

@@ -24,7 +24,7 @@ from graphon.engine.command import InMemoryChannel
 from graphon.engine_events import EngineEvent, GraphRunPausedEvent, GraphRunSucceededEvent, NodeRunStartedEvent
 from graphon.graph import Graph
 from graphon.runtime import RuntimeState, VariablePool
-from runtime_contracts.builder.execution import BuilderExecutionPolicyError
+from runtime_contracts.builder.execution import BuilderExecutionPolicyError, WorkerExit
 from runtime_contracts.builder.native.contracts import (
     ApprovalWait,
     CheckpointRef,
@@ -44,7 +44,11 @@ from services.dify_builder.native_testing.authorization import EffectAuthorizati
 from services.dify_builder.native_testing.checkpoint_bridge import NativeCheckpointBridge
 from services.dify_builder.native_testing.context_runtime import NativeGraphRuntimeState, native_observation_scope
 from services.dify_builder.native_testing.host_execution import HostBoundScalarCalls, NativeHostLaunch
-from services.dify_builder.native_testing.host_lifetime import NativeHostLifetime, NativeHostLifetimeRegistry
+from services.dify_builder.native_testing.host_lifetime import (
+    CloseReason,
+    NativeHostLifetime,
+    NativeHostLifetimeRegistry,
+)
 from services.dify_builder.native_testing.http_binding import (
     NativeHttpBindingProducer,
     build_native_http_profile,
@@ -294,14 +298,14 @@ def run_host(case: SchedulingHostCase) -> list[EngineEvent]:
         except BaseException as error:
             errors.append(type(error).__name__)
         finally:
-            case.host.worker_finished(worker=current_thread(), exit_kind="returned")
+            case.host.worker_finished(worker=current_thread(), exit_kind=WorkerExit.RETURNED)
 
     thread = Thread(target=worker)
     case.host.start_worker(worker=thread)
     thread.join(10)
     assert not thread.is_alive()
     assert errors == []
-    case.host.request_close(reason="exhausted")
+    case.host.request_close(reason=CloseReason.EXHAUSTED)
     assert case.lifetime.settle() == "settled"
     return events
 

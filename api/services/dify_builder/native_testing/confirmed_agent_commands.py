@@ -7,7 +7,6 @@ never admits another parent or child execution.
 
 import logging
 from collections.abc import Callable
-from typing import Literal
 
 from celery.exceptions import SoftTimeLimitExceeded
 from dify_agent.protocol.execution_binding import KeepAliveExecutionBindingRequest, KeepAliveExecutionBindingResponse
@@ -37,10 +36,12 @@ from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest
 from runtime_contracts.builder.native.contracts import ID, CheckpointRef, Counter, FrozenDTO, NativeTestContextRef
-from runtime_contracts.builder.native.runtime_contracts import NativeWorkflowOutcome
+from runtime_contracts.builder.native.runtime_contracts import NativeWorkflowOutcome, NativeWorkflowRunStatus
 from services.dify_builder.native_testing.api_service import NativeTestApiService
 from services.dify_builder.native_testing.confirmed_agent_continuation import PROFILE, ConfirmedAgentContinuation
+from services.dify_builder.native_testing.lifecycle import NativeRecoveryEvidence
 from services.dify_builder.native_testing.private_reads import validate_private_read
+from services.dify_builder.native_testing.public_contracts import NativeTestDecision
 from services.dify_builder.native_testing.repository import utc_now
 from services.dify_builder.native_testing.state_store import (
     NativeExecutionStateStore,
@@ -1093,7 +1094,7 @@ class ConfirmedAgentCommands:
         session_id,
         request_id,
         pending_operation_id,
-        decision: Literal["confirm", "deny"],
+        decision: NativeTestDecision,
         scope_digest,
         expected_version,
         idempotency_key,
@@ -1777,8 +1778,8 @@ class ConfirmedAgentCommands:
                     "wait_reason": waiting.wait_reason,
                 },
             )
-        elif status in ("succeeded", "failed", "partial-succeeded", "stopped"):
-            native_status: Literal["succeeded", "failed", "partial-succeeded", "stopped"] = status
+        elif status in NativeWorkflowRunStatus:
+            native_status = NativeWorkflowRunStatus(status)
             outcome = NativeWorkflowOutcome(status="completed", **{**values, "native_status": native_status})
         else:
             outcome = NativeWorkflowOutcome(status="unknown", **{**values, "reason_code": "native_resume_unknown"})
@@ -1827,17 +1828,17 @@ class _ConfirmedParentRecovery:
     def __init__(self, commands):
         self.commands = commands
 
-    def recovery_evidence(self, *, context, dispatch_id):
+    def recovery_evidence(self, *, context, dispatch_id) -> NativeRecoveryEvidence:
         try:
             protected = self.commands._source_protected(ref=context.ref, dispatch_id=dispatch_id)
             self.commands._terminal_recovery_proof(ref=context.ref, protected=protected)
             with self.commands.loader.session_factory() as session:
                 operations = session.scalars(owner_query(NativeEffectOperation, context.ref, context.tenant_id)).all()
                 if any(operation.state not in {"completed", "failed", "not_dispatched"} for operation in operations):
-                    return "unknown"
-            return "stopped"
+                    return NativeRecoveryEvidence.UNKNOWN
+            return NativeRecoveryEvidence.STOPPED
         except Exception:
-            return "unknown"
+            return NativeRecoveryEvidence.UNKNOWN
 
     def cancel(self, *, refs):
         return ()  # Commands cancels the actual children; this supplies no cleanup ACK.
