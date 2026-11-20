@@ -54,9 +54,9 @@ export type ExternalAgentCapabilitiesResponse = {
 
 export type ExternalAgentVerifyPayload = {
   agent_id?: string | null
-  auth_type: 'bearer' | 'none'
+  auth_type: ExternalAuthType
   credential?: string | null
-  credential_action?: 'keep' | 'remove' | 'replace'
+  credential_action?: ExternalCredentialAction
   endpoint: string
   expected_connection_revision_id?: string | null
 }
@@ -83,9 +83,7 @@ export type VerificationFailedError = ErrorResponse & {
 
 export type ExternalAgentDetailResponse = {
   asset: ExternalAgentAssetResponse
-  connection: {
-    [key: string]: unknown
-  }
+  connection: ExternalAgentConnectionResponse
 }
 
 export type ExternalAgentConnectionPayload = {
@@ -228,6 +226,10 @@ export type ExternalInputFileTypeResponse = {
   media_type: string
 }
 
+export type ExternalAuthType = 'bearer' | 'none'
+
+export type ExternalCredentialAction = 'keep' | 'remove' | 'replace'
+
 export type ExternalAgentConnectionWarningsResponse = {
   business: Array<string>
   technical: Array<string>
@@ -235,6 +237,25 @@ export type ExternalAgentConnectionWarningsResponse = {
 
 export type ExternalAgentVerificationFailureDetailsResponse = {
   reason: VerificationFailureReason
+}
+
+export type ExternalAgentConnectionResponse = {
+  auth_check: string
+  auth_type: string
+  capabilities: {
+    [key: string]: unknown
+  }
+  card: {
+    [key: string]: unknown
+  }
+  endpoint: string
+  has_credential: boolean
+  interface_url: string
+  profile: string
+  revision_id: string
+  saved_at: string
+  saved_by: ExternalConnectionSaverResponse
+  verified_at: string
 }
 
 export type ExternalMetricDayResponse = {
@@ -263,7 +284,7 @@ export type ExternalTestOutputField = {
   default?: ExternalAgentJsonValue
   has_default?: boolean
   item?: ExternalTestOutputField | null
-  kind: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
+  kind: ExternalOutputType
   name: string
   required?: boolean
 }
@@ -296,6 +317,11 @@ export type VerificationFailureReason =
   | 'invalid_agent_card'
   | 'unsupported_protocol'
 
+export type ExternalConnectionSaverResponse = {
+  id: string
+  name: string | null
+}
+
 export type ExternalAgentJsonValue =
   | boolean
   | number
@@ -306,6 +332,8 @@ export type ExternalAgentJsonValue =
       [key: string]: ExternalAgentJsonValue
     }
   | null
+
+export type ExternalOutputType = 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
 
 export type ExternalAgentTimeoutPolicy = 'cancel_and_retry' | 'end_waiting' | 'request_cancellation'
 
