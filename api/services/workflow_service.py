@@ -574,7 +574,7 @@ class WorkflowService:
             elif not graph_only and not preserve_environment_variables:
                 workflow.environment_variables = environment_variables
 
-        from services.agent.workflow_publish_service import WorkflowAgentPublishService
+        from services.agent.legacy_workflow_publish_service import WorkflowAgentPublishService
 
         session.flush()
         retirement_candidates: set[str] = set()
@@ -744,7 +744,7 @@ class WorkflowService:
         if is_new_draft:
             session.add(draft_workflow)
 
-        from services.agent.workflow_publish_service import WorkflowAgentPublishService
+        from services.agent.legacy_workflow_publish_service import WorkflowAgentPublishService
 
         session.flush()
         retirement_candidates = WorkflowAgentPublishService.restore_agent_node_bindings_to_draft(
@@ -820,7 +820,7 @@ class WorkflowService:
         if workflow_kind == WorkflowKind.EVALUATION:
             self._validate_evaluation_workflow_nodes(draft_workflow)
 
-        from services.agent.workflow_publish_service import WorkflowAgentPublishService
+        from services.agent.legacy_workflow_publish_service import WorkflowAgentPublishService
 
         WorkflowAgentPublishService.validate_agent_nodes_for_publish(
             session=session,
