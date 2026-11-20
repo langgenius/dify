@@ -28,6 +28,10 @@ RETRIEVE_DATABASE_URL_TMPL = "https://api.notion.com/v1/databases/{database_id}"
 # dataset extraction indefinitely.
 _REQUEST_TIMEOUT = httpx.Timeout(30.0, connect=5.0)
 
+# Notion paginates block children. A malformed or non-advancing cursor must not
+# keep extraction looping forever, so cap the pages one traversal may follow.
+_MAX_PAGINATION_PAGES = 1000
+
 # if user want split by headings, use the corresponding splitter
 HEADING_SPLITTER = {
     "heading_1": "# ",
@@ -166,10 +170,10 @@ class NotionExtractor(BaseExtractor):
 
     def _get_notion_block_data(self, page_id: str) -> list[str]:
         assert self._notion_access_token is not None, "Notion access token is required"
-        result_lines_arr = []
+        result_lines_arr: list[str] = []
         start_cursor = None
         block_url = BLOCK_CHILD_URL_TMPL.format(block_id=page_id)
-        while True:
+        for _ in range(_MAX_PAGINATION_PAGES):
             query_dict: Mapping[str, Any] = MappingProxyType({}) if not start_cursor else {"start_cursor": start_cursor}
             try:
                 res = httpx.request(
@@ -193,7 +197,7 @@ class NotionExtractor(BaseExtractor):
             for result in data["results"]:
                 result_type = result["type"]
                 result_obj = result[result_type]
-                cur_result_text_arr = []
+                cur_result_text_arr: list[str] = []
                 if result_type == "table":
                     result_block_id = result["id"]
                     text = self._read_table_rows(result_block_id)
@@ -220,18 +224,17 @@ class NotionExtractor(BaseExtractor):
                         result_lines_arr.append(cur_result_text + "\n\n")
 
             if data["next_cursor"] is None:
-                break
-            else:
-                start_cursor = data["next_cursor"]
-        return result_lines_arr
+                return result_lines_arr
+            start_cursor = data["next_cursor"]
+        raise ValueError(f"Error fetching Notion block data: exceeded {_MAX_PAGINATION_PAGES} pages")
 
     def _read_block(self, block_id: str, num_tabs: int = 0) -> str:
         """Read a block."""
         assert self._notion_access_token is not None, "Notion access token is required"
-        result_lines_arr = []
+        result_lines_arr: list[str] = []
         start_cursor = None
         block_url = BLOCK_CHILD_URL_TMPL.format(block_id=block_id)
-        while True:
+        for _ in range(_MAX_PAGINATION_PAGES):
             query_dict: Mapping[str, Any] = MappingProxyType({}) if not start_cursor else {"start_cursor": start_cursor}
 
             res = httpx.request(
@@ -247,11 +250,11 @@ class NotionExtractor(BaseExtractor):
             )
             data = res.json()
             if "results" not in data or data["results"] is None:
-                break
+                return "\n".join(result_lines_arr)
             for result in data["results"]:
                 result_type = result["type"]
                 result_obj = result[result_type]
-                cur_result_text_arr = []
+                cur_result_text_arr: list[str] = []
                 if result_type == "table":
                     result_block_id = result["id"]
                     text = self._read_table_rows(result_block_id)
@@ -277,12 +280,10 @@ class NotionExtractor(BaseExtractor):
                         result_lines_arr.append(cur_result_text + "\n\n")
 
             if data["next_cursor"] is None:
-                break
-            else:
-                start_cursor = data["next_cursor"]
+                return "\n".join(result_lines_arr)
+            start_cursor = data["next_cursor"]
 
-        result_lines = "\n".join(result_lines_arr)
-        return result_lines
+        raise ValueError(f"Error fetching Notion block data: exceeded {_MAX_PAGINATION_PAGES} pages")
 
     @staticmethod
     def _get_cell_text(cell: list[dict[str, Any]]) -> str:
@@ -300,7 +301,7 @@ class NotionExtractor(BaseExtractor):
         """
         assert self._notion_access_token is not None, "Notion access token is required"
         has_more = True
-        result_lines_arr = []
+        result_lines_arr: list[str] = []
         start_cursor = None
         block_url = BLOCK_CHILD_URL_TMPL.format(block_id=block_id)
         while has_more:
