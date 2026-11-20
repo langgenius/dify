@@ -15,8 +15,8 @@ import DocumentFileIcon from '@/app/components/datasets/common/document-file-ico
 import { toast } from '@/app/notifications'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
+import { resolveLogicalDocumentCitation } from '@/service/knowledge-fs/document-citation'
 import { getErrorMessage } from '@/utils/error-message'
-import { resolveLogicalDocumentCitation } from '../documents/resolve-logical-document-id'
 import { newKnowledgeDocumentDetailPath } from '../routes'
 import { retrievalKnowledgeSpaceIdAtom } from './state/inputs'
 

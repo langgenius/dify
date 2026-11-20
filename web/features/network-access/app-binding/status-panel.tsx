@@ -2,8 +2,8 @@
 
 import type { AccessControlDraft, AccessControlPolicy } from './draft'
 import type { AccessControlAppIcon } from './index'
-import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
 import type { AccessControlAnalyticsContext } from '@/features/network-access/analytics'
+import type { AccessPoint } from '@/models/app-access-point'
 import {
   AlertDialog,
   AlertDialogCancelButton,
