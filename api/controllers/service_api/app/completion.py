@@ -51,10 +51,10 @@ from libs.helper import UUIDStrOrEmpty
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
-from services.billing_service import BillingService
 from services.conversation_service import ConversationService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
+from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
 
@@ -419,8 +419,7 @@ class ChatApi(Resource):
             and payload.workflow_id
             and dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
         ):
-            billing_info = BillingService.get_info(app_model.tenant_id, exclude_vector_space=True)
-            if billing_info.subscription.plan == CloudPlan.SANDBOX:
+            if FeatureService.get_workspace_plan(app_model.tenant_id) == CloudPlan.SANDBOX:
                 raise WorkflowVersionExecutionNotAllowedError()
 
         external_trace_id = get_external_trace_id(request)

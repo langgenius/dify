@@ -11,7 +11,7 @@ from blinker import Signal
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from enums import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from graphon.enums import BuiltinNodeTypes
 from models.enums import AppStatus
 from models.model import App, AppMode
@@ -21,7 +21,6 @@ from services.errors.app import WorkflowNotFoundError
 from services.errors.billing import BillingUpstreamUnavailableError
 from services.errors.evaluation import EvaluationEntitlementUnavailableError, EvaluationPlanRequiredError
 from services.workflow_service import WorkflowService
-from tests.helpers import billing_builders as builders
 from tests.helpers.unit.model_factories import make_account, make_app
 
 
@@ -170,16 +169,16 @@ def test_cloud_sandbox_cannot_publish_an_evaluation_workflow(
 
     with (
         patch(
-            "services.workflow_service.BillingService.get_info",
-            return_value=builders.subscription_info("sandbox"),
-        ) as get_info,
+            "services.workflow_service.FeatureService.get_workspace_plan",
+            return_value=CloudPlan.SANDBOX,
+        ) as get_workspace_plan,
         pytest.raises(EvaluationPlanRequiredError),
     ):
         WorkflowService(sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)).publish_workflow(
             session=sqlite_session, app_model=app, account=make_account(), workflow_kind=requested_kind
         )
 
-    get_info.assert_called_once_with(tenant_id, exclude_vector_space=True)
+    get_workspace_plan.assert_called_once_with(tenant_id)
     assert {workflow.id for workflow in sqlite_session.scalars(select(Workflow).where(Workflow.app_id == app_id))} == {
         active.id,
         draft.id,
@@ -467,16 +466,16 @@ def test_cloud_sandbox_rejects_both_conversion_directions(
 
     with (
         patch(
-            "services.workflow_service.BillingService.get_info",
-            return_value=builders.subscription_info("sandbox"),
-        ) as get_info,
+            "services.workflow_service.FeatureService.get_workspace_plan",
+            return_value=CloudPlan.SANDBOX,
+        ) as get_workspace_plan,
         pytest.raises(EvaluationPlanRequiredError),
     ):
         service.convert_published_workflow_kind(
             session=sqlite_session, app_model=app, target_kind=target_kind, account=make_account()
         )
 
-    get_info.assert_called_once_with(app.tenant_id, exclude_vector_space=True)
+    get_workspace_plan.assert_called_once_with(app.tenant_id)
     sqlite_session.refresh(active)
     assert active.resolved_kind == active_kind
 
@@ -505,7 +504,7 @@ def test_cloud_paid_plan_allows_both_conversion_directions(
     sqlite_session.flush()
 
     with (
-        patch("services.workflow_service.BillingService.get_info", return_value=builders.subscription_info(plan)),
+        patch("services.workflow_service.FeatureService.get_workspace_plan", return_value=CloudPlan(plan)),
         patch("services.workflow_service.app_published_workflow_was_updated.send"),
     ):
         converted = WorkflowService(
@@ -534,7 +533,7 @@ def test_enterprise_conversion_skips_cloud_billing(
     sqlite_session.flush()
 
     with (
-        patch("services.workflow_service.BillingService.get_info", side_effect=AssertionError("no billing")),
+        patch("services.workflow_service.FeatureService.get_workspace_plan", side_effect=AssertionError("no billing")),
         patch("services.workflow_service.app_published_workflow_was_updated.send"),
     ):
         converted = WorkflowService(
@@ -551,7 +550,7 @@ def test_cloud_conversion_propagates_billing_failure(config_overrides: Callable[
 
     with (
         patch(
-            "services.workflow_service.BillingService.get_info",
+            "services.workflow_service.FeatureService.get_workspace_plan",
             side_effect=BillingUpstreamUnavailableError("billing unavailable"),
         ),
         pytest.raises(EvaluationEntitlementUnavailableError),
