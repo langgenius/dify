@@ -4,12 +4,14 @@ import { demoGraphBounds } from './demo-graph'
 
 const toolbarInset = 56
 const headerInset = 64
-const threadColumn = 376
+const threadColumn = 448
+const markerWidth = 47
+const markerHeight = 27
 
 export function getDemoViewport(width: number, height: number) {
   const besideThread = width - toolbarInset - threadColumn - 16
   const availableWidth =
-    besideThread / demoGraphBounds.width >= 0.45 ? besideThread : width - toolbarInset - 64
+    besideThread / demoGraphBounds.width >= 0.4 ? besideThread : width - toolbarInset - 64
   const availableHeight = height - headerInset - 64
   const zoom = Math.max(
     0.25,
@@ -30,10 +32,12 @@ export function getThreadPlacement(
   pin: { x: number; y: number },
   canvas: { width: number; height: number },
 ) {
-  return {
-    left: Math.max(8, Math.min(pin.x + 40, canvas.width - 368)),
-    top: Math.max(headerInset, Math.min(pin.y - 28, canvas.height - 520)),
-  }
+  const right = pin.x + markerWidth + 16
+  const left = pin.x - 16 - 360
+  const top = Math.max(headerInset, Math.min(pin.y - 28, canvas.height - 520))
+  if (right + 360 <= canvas.width - 8) return { left: right, top }
+  if (left >= 8) return { left, top }
+  return { left: Math.max(8, Math.min(pin.x, canvas.width - 368)), top: pin.y + markerHeight + 8 }
 }
 
 export function useDemoViewport() {
