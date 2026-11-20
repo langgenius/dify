@@ -29,7 +29,7 @@ export const StepTwoFooter: FC<StepTwoFooterProps> = ({
           <RiArrowLeftLine className="size-4" />
           {t(($) => $['stepTwo.previousStep'], { ns: 'datasetCreation' })}
         </Button>
-        <Button className="ml-auto" loading={isCreating} variant="primary" onClick={onCreate}>
+        <Button className="ms-auto" loading={isCreating} variant="primary" onClick={onCreate}>
           {t(($) => $['stepTwo.nextStep'], { ns: 'datasetCreation' })}
         </Button>
       </div>
@@ -41,7 +41,7 @@ export const StepTwoFooter: FC<StepTwoFooterProps> = ({
       <Button loading={isCreating} variant="primary" onClick={onCreate}>
         {t(($) => $['stepTwo.save'], { ns: 'datasetCreation' })}
       </Button>
-      <Button className="ml-2" onClick={onCancel}>
+      <Button className="ms-2" onClick={onCancel}>
         {t(($) => $['stepTwo.cancel'], { ns: 'datasetCreation' })}
       </Button>
     </div>

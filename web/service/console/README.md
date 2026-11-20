@@ -35,11 +35,15 @@ Do not add an invalidation helper to hide the cache dependencies.
 Use generated options and types directly. A feature-owned options factory is
 appropriate only when it owns a shared request policy or a composed query;
 forwarding hooks and handwritten API DTOs create a second owner.
-
-[Browser transport]: ./browser.ts
 [Instrumentation]: ../../instrumentation.ts
 [QueryClient factory]: ../../app/get-query-client.ts
 [Server transport]: ./server.ts
 [query-policies.ts]: ./query-policies.ts
 [root layout]: ../../app/layout.tsx
 [server configuration]: ../../config/server.ts
+
+`code-based-extension-query.ts` owns the shared projection of plugin-defined JSON
+into the legacy extension form schema. Moderation and external-data-tool workflows
+consume this adapter and retain their own configuration and submission behavior.
+
+[Browser transport]: ./browser.ts

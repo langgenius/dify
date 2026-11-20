@@ -33,7 +33,7 @@ export const LoopStartNodeDumb = () => {
   const { t } = useTranslation(['workflow'])
 
   return (
-    <div className="nodrag relative top-5.25 left-4.25 z-11 flex h-11 w-11 items-center justify-center rounded-2xl border border-workflow-block-border bg-workflow-block-bg">
+    <div className="nodrag relative inset-s-4.25 top-5.25 z-11 flex h-11 w-11 items-center justify-center rounded-2xl border border-workflow-block-border bg-workflow-block-bg">
       <Tooltip>
         <TooltipTrigger
           aria-label={t(($) => $['blocks.loop-start'], { ns: 'workflow' })}
