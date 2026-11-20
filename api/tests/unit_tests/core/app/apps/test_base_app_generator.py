@@ -104,6 +104,19 @@ def test_validate_inputs_with_zero():
     assert result == 0
 
 
+@pytest.mark.parametrize("value", [True, False, [1], {"value": 1}])
+def test_validate_inputs_rejects_non_numeric_values_for_number(value: object):
+    var = VariableEntity(
+        variable="amount",
+        label="amount",
+        type=VariableEntityType.NUMBER,
+        required=True,
+    )
+
+    with pytest.raises(ValueError, match="amount in input form must be a valid number"):
+        BaseAppGenerator()._validate_inputs(variable_entity=var, value=value)
+
+
 def test_validate_input_with_none_for_required_variable():
     base_app_generator = BaseAppGenerator()
 
