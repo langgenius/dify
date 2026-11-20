@@ -2452,11 +2452,6 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/extra-info/service-api/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/formatted-text/flavours/__tests__/edit-slice.spec.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
