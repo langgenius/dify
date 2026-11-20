@@ -16,6 +16,7 @@ from controllers.openapi import bp as openapi_bp
 from controllers.openapi._catalog import (
     CATALOG_HEADER,
     CATALOG_PATH,
+    Bind,
     CatalogOp,
     _catalog_path,
     build_catalog,
@@ -242,3 +243,16 @@ def test_the_op_registry_holds_each_catalog_op_with_its_spec_and_rule_built_once
     for op, registered in registry.items():
         assert registered.spec.catalog.op == op
         assert registered.entry["path"] == _catalog_path(registered.rule.rule)
+
+
+def test_a_file_field_says_what_its_value_is_not_how_it_travels(openapi_app: Flask) -> None:
+    """A file field takes a multipart part or an upload id, so its description names no local path."""
+    descriptions = {
+        (op, name): entry["input"]["properties"][name].get("description", "")
+        for op, entry in build_catalog(openapi_app)["ops"].items()
+        for name, bind in entry["bind"].items()
+        if bind == Bind.FILE
+    }
+
+    assert descriptions
+    assert {key: text for key, text in descriptions.items() if "path" in text.lower()} == {}
