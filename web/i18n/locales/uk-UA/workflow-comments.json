@@ -26,5 +26,7 @@
   "comments.placeholder.editComment": "Редагувати коментар",
   "comments.placeholder.editReply": "Edit reply",
   "comments.placeholder.reply": "Reply",
-  "comments.reply": "Reply"
+  "comments.reply": "Reply",
+  "comments.replyCount_one": "{{count}} відповідь",
+  "comments.replyCount_other": "{{count}} відповідей"
 }

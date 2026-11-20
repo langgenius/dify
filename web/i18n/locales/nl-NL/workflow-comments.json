@@ -26,5 +26,7 @@
   "comments.placeholder.editComment": "Reactie bewerken",
   "comments.placeholder.editReply": "Antwoord bewerken",
   "comments.placeholder.reply": "Antwoord",
-  "comments.reply": "Antwoord"
+  "comments.reply": "Antwoord",
+  "comments.replyCount_one": "{{count}} reactie",
+  "comments.replyCount_other": "{{count}} reacties"
 }

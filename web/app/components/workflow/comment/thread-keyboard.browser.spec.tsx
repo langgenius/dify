@@ -60,7 +60,7 @@ function Fixture({ onDelete }: { onDelete: (id: string) => void }) {
   )
 }
 
-it('returns to the selected reply on cancel and the composer after deleting that reply', async () => {
+it('confirms reply deletion in its menu: cancel returns to the menu button, delete to the composer', async () => {
   // Native Tab and CSS visibility expose regressions hidden by DOM-only tests.
   await page.viewport(1200, 800)
   const onDelete = vi.fn()
@@ -90,19 +90,21 @@ it('returns to the selected reply on cancel and the composer after deleting that
   })
   await expect.element(deleteItem).toHaveFocus()
   await userEvent.keyboard('{Enter}')
-  const confirmation = screen.getByRole('alertdialog', {
-    name: 'workflowComments.comments.confirm.deleteReplyTitle',
-  })
-  await expect.element(confirmation).toBeVisible()
+  // The menu turns into the confirmation and starts on the safe choice.
+  const cancel = screen.getByRole('menuitem', { name: 'common.operation.cancel' })
+  await expect.element(cancel).toHaveFocus()
+  await expect
+    .element(screen.getByText('workflowComments.comments.confirm.deleteReplyTitle'))
+    .toBeVisible()
+  await userEvent.keyboard('{Enter}')
   await expect.element(screen.getByRole('menu')).not.toBeInTheDocument()
-  expect(onDelete).not.toHaveBeenCalled()
-  await confirmation.getByRole('button', { name: 'common.operation.cancel' }).click()
-  await expect.element(confirmation).not.toBeInTheDocument()
   await expect.element(trigger).toHaveFocus()
   expect(trigger.element().checkVisibility({ checkOpacity: true })).toBe(true)
+  expect(onDelete).not.toHaveBeenCalled()
+
   await trigger.click()
   await deleteItem.click()
-  await confirmation.getByRole('button', { name: 'common.operation.delete' }).click()
+  await screen.getByRole('menuitem', { name: 'common.operation.delete' }).click()
   expect(onDelete).toHaveBeenCalledExactlyOnceWith('second-reply')
   await expect.element(screen.getByText('A second reply')).not.toBeInTheDocument()
   await expect.element(screen.getByText('A reply')).toBeVisible()

@@ -26,5 +26,7 @@
   "comments.placeholder.editComment": "ແກ້ໄຂຄຳເຫັນ",
   "comments.placeholder.editReply": "ແກ້ໄຂການຕອບກັບ",
   "comments.placeholder.reply": "ຕອບກັບ",
-  "comments.reply": "ຕອບກັບ"
+  "comments.reply": "ຕອບກັບ",
+  "comments.replyCount_one": "{{count}} ການຕອບກັບ",
+  "comments.replyCount_other": "{{count}} ການຕອບກັບ"
 }

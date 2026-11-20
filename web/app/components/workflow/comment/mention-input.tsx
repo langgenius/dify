@@ -1,7 +1,6 @@
 'use client'
 
 import type { UserProfile } from '@/app/components/workflow/comment/types'
-import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -11,6 +10,7 @@ import {
   PopoverPortal,
   PopoverPositioner,
 } from '@langgenius/dify-ui/popover'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import {
   forwardRef,
@@ -27,11 +27,13 @@ import {
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
 import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleClient } from '@/service/console'
-import { getAvatarInitial } from '@/utils/avatar'
+import { CollaboratorAvatar } from '../collaboration/components/collaborator-avatar'
 import { useStore, useWorkflowStore } from '../store'
 import { CommentComposerActions } from './comment-composer'
 import { highlightMentions } from './mention-highlight'
+import { toCommentCollaborator } from './participants'
 
 type MentionInputProps = {
   value: string
@@ -65,6 +67,10 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
     forwardedRef,
   ) => {
     const { t } = useTranslation(['common', 'workflowComments', 'workflowAgent'])
+    const { data: currentUserId } = useSuspenseQuery({
+      ...userProfileQueryOptions(),
+      select: (data) => data.profile.id,
+    })
     const appId = useAtomValue(editorAppIdAtom)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const highlightContentRef = useRef<HTMLDivElement>(null)
@@ -279,14 +285,14 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
           e.preventDefault()
           e.stopPropagation()
         }
-        // The field stays editable while sending; only one submission runs at a time.
+        // A composer stays editable while sending; only one submission runs at a time.
         if (loading) return
 
         if (value.trim()) {
           try {
+            // Mention state resets when the owner clears the value, so a draft typed while
+            // this one sends keeps its own mentions.
             await onSubmit(value.trim(), mentionedUserIds)
-            setMentionedUserIds([])
-            setShowMentionDropdown(false)
           } catch (error) {
             console.error('Failed to submit', error)
           }
@@ -405,7 +411,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
               minRows={isEditing ? 2 : 1}
               maxRows={isEditing || isMultiline ? 4 : 1}
               value={value}
-              disabled={disabled}
+              disabled={disabled || (isEditing && loading)}
               onChange={(e) => handleContentChange(e.target.value)}
               aria-controls={isMentionMenuOpen ? listboxId : undefined}
               aria-activedescendant={
@@ -497,10 +503,11 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => insertMention(user)}
                   >
-                    <Avatar size="sm" className="shrink-0" aria-hidden="true">
-                      <AvatarFallback>{getAvatarInitial(user.name)}</AvatarFallback>
-                      <AvatarImage src={user.avatar_url || undefined} alt="" />
-                    </Avatar>
+                    <CollaboratorAvatar
+                      size="sm"
+                      className="shrink-0"
+                      collaborator={toCommentCollaborator(user, currentUserId)}
+                    />
                     <div className="min-w-0 flex-1">
                       <div className="truncate system-xs-medium text-text-primary">{user.name}</div>
                       <div className="truncate system-xs-regular text-text-tertiary">

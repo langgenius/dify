@@ -26,5 +26,7 @@
   "comments.placeholder.editComment": "Yorumu düzenle",
   "comments.placeholder.editReply": "Yanıtı düzenle",
   "comments.placeholder.reply": "Yanıtla",
-  "comments.reply": "Yanıtla"
+  "comments.reply": "Yanıtla",
+  "comments.replyCount_one": "{{count}} yanıt",
+  "comments.replyCount_other": "{{count}} yanıt"
 }

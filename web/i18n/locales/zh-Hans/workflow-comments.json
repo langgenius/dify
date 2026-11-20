@@ -26,5 +26,7 @@
   "comments.placeholder.editComment": "编辑评论",
   "comments.placeholder.editReply": "编辑回复",
   "comments.placeholder.reply": "回复",
-  "comments.reply": "回复"
+  "comments.reply": "回复",
+  "comments.replyCount_one": "{{count}} 条回复",
+  "comments.replyCount_other": "{{count}} 条回复"
 }

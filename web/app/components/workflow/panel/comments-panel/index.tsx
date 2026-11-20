@@ -206,7 +206,10 @@ const CommentsPanel = () => {
                 {c.reply_count > 0 && (
                   <div className="mt-2 flex items-center justify-between">
                     <div className="system-2xs-regular text-text-tertiary">
-                      {c.reply_count} {t(($) => $['comments.reply'], { ns: 'workflowComments' })}
+                      {t(($) => $['comments.replyCount'], {
+                        ns: 'workflowComments',
+                        count: c.reply_count,
+                      })}
                     </div>
                   </div>
                 )}

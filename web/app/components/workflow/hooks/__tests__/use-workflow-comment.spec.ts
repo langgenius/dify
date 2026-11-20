@@ -541,6 +541,28 @@ describe('useWorkflowComment', () => {
     expect(mockEmitCommentsUpdate).toHaveBeenCalled()
   })
 
+  it('deselects the last deleted comment and leaves its detail for the closing thread', async () => {
+    const commentA = baseComment()
+    mockFetchWorkflowComments.mockResolvedValue({ data: [] })
+    const { result, store } = renderWorkflowHook(useCommentCanvas, {
+      queryClient: createSeededQueryClient(),
+      initialStoreState: {
+        comments: [commentA],
+        activeCommentId: commentA.id,
+        activeCommentDetail: baseCommentDetail(),
+      },
+    })
+
+    await act(async () => {
+      await result.current.handleCommentDelete(commentA.id)
+    })
+
+    expect(store.getState().activeCommentId).toBeNull()
+    expect(store.getState().activeCommentDetail).not.toBeNull()
+    act(() => result.current.handleActiveCommentClosed())
+    expect(store.getState().activeCommentDetail).toBeNull()
+  })
+
   it('does not update a reply when the content is blank', async () => {
     const { result } = renderWorkflowHook(useCommentCanvas, {
       queryClient: createSeededQueryClient(),

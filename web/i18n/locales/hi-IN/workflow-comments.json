@@ -26,5 +26,7 @@
   "comments.placeholder.editComment": "टिप्पणी संपादित करें",
   "comments.placeholder.editReply": "जवाब संपादित करें",
   "comments.placeholder.reply": "जवाब दें",
-  "comments.reply": "जवाब दें"
+  "comments.reply": "जवाब दें",
+  "comments.replyCount_one": "{{count}} जवाब",
+  "comments.replyCount_other": "{{count}} जवाब"
 }

@@ -46,6 +46,23 @@ describe('CommentPreview', () => {
     expect(screen.getByText('time:10000')).toBeInTheDocument()
   })
 
+  it('highlights mentions of known users and shows how many replies the thread has', () => {
+    render(
+      <CommentPreview comment={createComment({ content: 'Ping @Bob please', reply_count: 3 })} />,
+      {
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+        initialStoreState: {
+          mentionableUsersCache: {
+            'app-1': [{ id: 'user-2', name: 'Bob', email: 'bob@example.com', avatar_url: null }],
+          },
+        },
+      },
+    )
+
+    expect(screen.getByText('@Bob')).toHaveClass('text-text-accent')
+    expect(screen.getByText('workflowComments.comments.replyCount:{"count":3}')).toBeInTheDocument()
+  })
+
   it('tracks hovering and releases the preview on leave or unmount', async () => {
     const user = userEvent.setup()
     const { store, unmount } = render(<CommentPreview comment={createComment()} />)

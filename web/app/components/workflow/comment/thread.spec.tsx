@@ -180,6 +180,29 @@ describe('CommentThread', () => {
     )
   })
 
+  it('locks the edit field while its save is pending', async () => {
+    const user = userEvent.setup()
+    let finishSave = () => {}
+    render(
+      <CommentThreadFixture
+        comment={createComment()}
+        onCommentEdit={() => new Promise<void>((resolve) => (finishSave = resolve))}
+      />,
+    )
+
+    await user.click(screen.getByLabelText('workflowComments.comments.aria.commentActions'))
+    await user.click(screen.getByText('workflowComments.comments.actions.editComment'))
+    const editor = await screen.findByPlaceholderText(
+      'workflowComments.comments.placeholder.editComment',
+    )
+    await user.type(editor, ' more')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    expect(editor).toBeDisabled()
+
+    finishSave()
+    await waitFor(() => expect(editor).not.toBeInTheDocument())
+  })
+
   it('supports editing the root comment when the current user owns the thread', async () => {
     const user = userEvent.setup()
     const onCommentEdit = vi.fn()
@@ -264,7 +287,12 @@ describe('CommentThread', () => {
     })
     await user.click(screen.getByLabelText('workflowComments.comments.aria.replyActions'))
     await user.click(await screen.findByText('workflowComments.comments.actions.deleteReply'))
-    await user.click(await screen.findByRole('button', { name: 'common.operation.delete' }))
+    // The menu turns into its own delete confirmation.
+    expect(
+      await screen.findByText('workflowComments.comments.confirm.deleteReplyTitle'),
+    ).toBeVisible()
+    expect(onReplyDelete).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
 
     expect(onReplyDelete).toHaveBeenCalledWith('reply-1')
   })

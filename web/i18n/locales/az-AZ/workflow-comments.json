@@ -26,5 +26,7 @@
   "comments.placeholder.editComment": "Şərhi redaktə et",
   "comments.placeholder.editReply": "Cavabı redaktə et",
   "comments.placeholder.reply": "Cavab ver",
-  "comments.reply": "Cavab ver"
+  "comments.reply": "Cavab ver",
+  "comments.replyCount_one": "{{count}} cavab",
+  "comments.replyCount_other": "{{count}} cavab"
 }

@@ -9,7 +9,7 @@ import {
   PopoverPortal,
   PopoverPositioner,
 } from '@langgenius/dify-ui/popover'
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -145,7 +145,7 @@ describe('Comment thread focus', () => {
     expect(onPositionUpdate).toHaveBeenCalledTimes(2)
   })
 
-  it('confirms reply deletion outside the menu and restores focus when cancelled', async () => {
+  it('confirms reply deletion inside the reply menu, starting on cancel', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     const onDelete = vi.fn()
     const onClose = vi.fn()
@@ -173,36 +173,33 @@ describe('Comment thread focus', () => {
       name: 'workflowComments.comments.aria.replyActions',
     })
     await user.click(trigger)
-    const deleteItem = screen.getByRole('menuitem', {
-      name: 'workflowComments.comments.actions.deleteReply',
-    })
-    await user.click(deleteItem)
-    const confirm = await screen.findByRole('alertdialog', {
-      name: 'workflowComments.comments.confirm.deleteReplyTitle',
-    })
+    await user.click(
+      screen.getByRole('menuitem', { name: 'workflowComments.comments.actions.deleteReply' }),
+    )
+    expect(screen.getByRole('menu')).toHaveTextContent(
+      'workflowComments.comments.confirm.deleteReplyTitle',
+    )
+    // The safe choice starts focused, so a second Enter cannot delete.
+    await waitFor(() =>
+      expect(screen.getByRole('menuitem', { name: 'common.operation.cancel' })).toHaveFocus(),
+    )
+    await user.keyboard('{Enter}')
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
-    expect(onDelete).not.toHaveBeenCalled()
-    await user.click(within(confirm).getByRole('button', { name: 'common.operation.cancel' }))
     await waitFor(() => expect(trigger).toHaveFocus())
+    expect(onDelete).not.toHaveBeenCalled()
     expect(onClose).not.toHaveBeenCalled()
+
     await user.click(trigger)
     await user.click(
-      await screen.findByRole('menuitem', {
-        name: 'workflowComments.comments.actions.deleteReply',
-      }),
+      screen.getByRole('menuitem', { name: 'workflowComments.comments.actions.deleteReply' }),
     )
-    const reopened = await screen.findByRole('alertdialog')
-    await user.click(within(reopened).getByRole('button', { name: 'common.operation.delete' }))
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
     expect(onDelete).toHaveBeenCalledExactlyOnceWith('reply-1')
-    expect(reopened).toBeVisible()
-    await user.keyboard('{Escape}')
-    await waitFor(() => expect(trigger).toHaveFocus())
     expect(onClose).not.toHaveBeenCalled()
   })
 
-  it('keeps reply deletion pending until the reply disappears, then focuses the reply input', async () => {
+  it('focuses the reply input once a deleted reply is gone', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-    const onDelete = vi.fn()
     let finishDeletion!: () => void
     const deletion = new Promise<void>((resolve) => {
       finishDeletion = resolve
@@ -220,17 +217,16 @@ describe('Comment thread focus', () => {
 
     function Thread() {
       const [comment, setComment] = useState(initial)
+      // Like the canvas, the thread shows its loading state while the reply is deleted.
       const [loading, setLoading] = useState(false)
       return (
         <CommentThreadFixture
           comment={comment}
           loading={loading}
-          onClose={() => {}}
           onReply={() => {}}
           onReplyEdit={() => {}}
-          onReplyDelete={async (id) => {
+          onReplyDelete={async () => {
             setLoading(true)
-            onDelete(id)
             await deletion
             setComment({ ...initial, replies: [] })
             setLoading(false)
@@ -247,21 +243,10 @@ describe('Comment thread focus', () => {
     await user.click(
       screen.getByRole('menuitem', { name: 'workflowComments.comments.actions.deleteReply' }),
     )
-    const dialog = await screen.findByRole('alertdialog')
-    const confirm = within(dialog).getByRole('button', { name: 'common.operation.delete' })
-    await user.click(confirm)
-    await waitFor(() => expect(confirm).toHaveAttribute('aria-disabled', 'true'))
-    expect(within(dialog).getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
-    await user.click(confirm)
-    await user.keyboard('{Escape}')
-    expect(dialog).toBeInTheDocument()
-    expect(onDelete).toHaveBeenCalledExactlyOnceWith('reply-1')
-
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
     await act(async () => finishDeletion())
-    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
-    expect(
-      screen.queryByRole('button', { name: 'workflowComments.comments.aria.replyActions' }),
-    ).not.toBeInTheDocument()
+
+    expect(screen.queryByText('A reply')).not.toBeInTheDocument()
     await waitFor(() => expect(screen.getByRole('textbox')).toHaveFocus())
   })
 
@@ -320,5 +305,33 @@ describe('Comment thread focus', () => {
       await vi.advanceTimersByTimeAsync(100)
     })
     expect(next).toHaveFocus()
+  })
+
+  it('keeps the mentions of a reply drafted while the previous one is still sending', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    mentionableUsers = [{ id: 'user-2', name: 'Bob', email: 'bob@example.com', avatar_url: null }]
+    const sent: Array<[string, string[]]> = []
+    let finishFirst = () => {}
+    renderWithAccountProfile(
+      <CommentThreadFixture
+        comment={createComment()}
+        onReply={(content, ids) => {
+          sent.push([content, ids ?? []])
+          if (sent.length === 1) return new Promise<void>((resolve) => (finishFirst = resolve))
+        }}
+      />,
+    )
+    await act(() => vi.advanceTimersByTimeAsync(100))
+    const reply = screen.getByRole('textbox')
+    await user.type(reply, 'First{Enter}')
+    await user.type(reply, 'Second @Bo')
+    await user.click(await screen.findByText('bob@example.com'))
+    await act(async () => finishFirst())
+    await user.type(reply, '{Enter}')
+
+    expect(sent).toEqual([
+      ['First', []],
+      ['Second @Bob', ['user-2']],
+    ])
   })
 })

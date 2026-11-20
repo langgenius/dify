@@ -26,5 +26,7 @@
   "comments.placeholder.editComment": "Editar comentário",
   "comments.placeholder.editReply": "Edit reply",
   "comments.placeholder.reply": "Reply",
-  "comments.reply": "Reply"
+  "comments.reply": "Reply",
+  "comments.replyCount_one": "{{count}} resposta",
+  "comments.replyCount_other": "{{count}} respostas"
 }

@@ -124,11 +124,7 @@ export function CommentThread({
 
   return (
     <CommentThreadPopup
-      // The reply box is disabled while the thread loads; then the popup's default target takes focus.
-      initialFocus={() => {
-        const reply = replyInputRef.current
-        return reply && !reply.disabled ? reply : true
-      }}
+      initialFocus={sessionProps.onReply ? replyInputRef : undefined}
       onMouseEnter={() => setCommentPreviewHovering(true)}
       onMouseLeave={() => setCommentPreviewHovering(false)}
       title={t(($) => $['comments.panelTitle'], { ns: 'workflowComments' })}
@@ -314,10 +310,6 @@ function CommentThreadSession({
   const currentUserId = userProfile.id
   const { t } = useTranslation(['common', 'workflowComments'])
   const [replyContent, setReplyContent] = useState('')
-  // Reply deletion: the confirmation stays open until the user cancels or the reply is gone.
-  const [deletingReply, setDeletingReply] = useState<{ id: string; cancelled: boolean } | null>(
-    null,
-  )
   const messageListRef = useRef<HTMLDivElement>(null)
   const previousReplyCountRef = useRef<number | undefined>(undefined)
   // This session's own reply box; the shared ref also lets the popup focus it on open.
@@ -341,8 +333,6 @@ function CommentThreadSession({
   )
 
   const replies = comment.replies || []
-  const deletedReplyGone =
-    deletingReply !== null && !replies.some((reply) => reply.id === deletingReply.id)
 
   // Scroll to the newest message when the session opens and when a reply arrives.
   useEffect(() => {
@@ -403,7 +393,17 @@ function CommentThreadSession({
             onSave={onReplyEdit && ((content, ids) => onReplyEdit(reply.id, content, ids))}
             onEditEnd={focusReply}
             deleteLabel={t(($) => $['comments.actions.deleteReply'], { ns: 'workflowComments' })}
-            onDelete={onReplyDelete && (() => setDeletingReply({ id: reply.id, cancelled: false }))}
+            deleteConfirmLabel={t(($) => $['comments.confirm.deleteReplyTitle'], {
+              ns: 'workflowComments',
+            })}
+            onDelete={
+              onReplyDelete &&
+              (async () => {
+                await onReplyDelete(reply.id)
+                // The deleted row takes its menu with it, so focus moves on to the reply box.
+                focusReply()
+              })
+            }
           />
         ))}
       </CommentThreadList>
@@ -426,47 +426,10 @@ function CommentThreadSession({
             placeholder={t(($) => $['comments.placeholder.reply'], {
               ns: 'workflowComments',
             })}
-            disabled={loading}
             loading={replySubmitting}
           />
         </CommentReplyBar>
       )}
-      <AlertDialog
-        open={deletingReply !== null && !deletingReply.cancelled && !deletedReplyGone}
-        onOpenChange={(open, eventDetails) => {
-          if (open) return
-          if (loading) eventDetails.cancel()
-          else setDeletingReply((current) => current && { ...current, cancelled: true })
-        }}
-        onOpenChangeComplete={(open) => {
-          if (!open) setDeletingReply(null)
-        }}
-      >
-        {/* Once the reply is gone its row and menu are too, so focus goes to the reply box. */}
-        <AlertDialogContent finalFocus={deletedReplyGone ? ownReplyInputRef : undefined}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t(($) => $['comments.confirm.deleteReplyTitle'], { ns: 'workflowComments' })}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t(($) => $['comments.confirm.deleteReplyDesc'], { ns: 'workflowComments' })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancelButton disabled={loading}>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </AlertDialogCancelButton>
-            <AlertDialogConfirmButton
-              loading={loading}
-              onClick={() => {
-                if (deletingReply) return onReplyDelete?.(deletingReply.id)
-              }}
-            >
-              {t(($) => $['operation.delete'], { ns: 'common' })}
-            </AlertDialogConfirmButton>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   )
 }
@@ -486,7 +449,9 @@ type CommentThreadEntryProps = {
   /** Called after an edit is saved or cancelled. */
   onEditEnd: () => void
   deleteLabel?: string
-  onDelete?: () => void
+  /** Asked inside the menu before onDelete runs. */
+  deleteConfirmLabel?: string
+  onDelete?: () => Promise<void> | void
 }
 
 /** One message in a thread. Its author gets an actions menu with Edit and, for replies, Delete. */
@@ -504,14 +469,16 @@ function CommentThreadEntry({
   onSave,
   onEditEnd,
   deleteLabel,
+  deleteConfirmLabel,
   onDelete,
 }: CommentThreadEntryProps) {
-  const { t } = useTranslation(['workflowComments'])
+  const { t } = useTranslation(['common', 'workflowComments'])
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
   })
   const [draft, setDraft] = useState<string | null>(null)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [savingDraft, setSavingDraft] = useState(false)
   const editing = draft !== null
 
@@ -537,7 +504,11 @@ function CommentThreadEntry({
   return (
     <CommentThreadItem>
       {isOwn && !editing && (
-        <Menu>
+        <Menu
+          onOpenChange={(open) => {
+            if (!open) setConfirmingDelete(false)
+          }}
+        >
           <MenuTrigger
             className="absolute inset-e-2 top-2 flex size-6 items-center justify-center rounded-md text-text-tertiary opacity-0 group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus:opacity-100 data-popup-open:opacity-100 [@media(hover:none)]:opacity-100"
             aria-label={actionsLabel}
@@ -545,13 +516,42 @@ function CommentThreadEntry({
             <span aria-hidden className="i-ri-more-fill size-4" />
           </MenuTrigger>
           <MenuContent align="end" className="w-36 backdrop-blur-[10px]">
-            <MenuItem className="px-3" disabled={!onSave} onClick={() => setDraft(content)}>
-              {editLabel}
-            </MenuItem>
-            {onDelete && (
-              <MenuItem className="px-3" variant="destructive" onClick={onDelete}>
-                {deleteLabel}
-              </MenuItem>
+            {confirmingDelete ? (
+              <div className="flex flex-col gap-1.5 px-1 pt-0.5 pb-1">
+                <div className="system-sm-semibold text-text-primary">{deleteConfirmLabel}</div>
+                <div className="flex gap-1">
+                  <MenuItem
+                    // Start on the safe choice so a second Enter cannot delete.
+                    ref={focusOnMount}
+                    className="h-6 flex-1 justify-center rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-1.5 system-xs-medium text-components-button-secondary-text shadow-xs data-highlighted:bg-components-button-secondary-bg-hover"
+                  >
+                    {t(($) => $['operation.cancel'], { ns: 'common' })}
+                  </MenuItem>
+                  <MenuItem
+                    disabled={disabled}
+                    className="h-6 flex-1 justify-center rounded-md bg-components-button-destructive-primary-bg px-1.5 system-xs-medium text-components-button-destructive-primary-text data-highlighted:bg-components-button-destructive-primary-bg-hover"
+                    onClick={() => onDelete?.()}
+                  >
+                    {t(($) => $['operation.delete'], { ns: 'common' })}
+                  </MenuItem>
+                </div>
+              </div>
+            ) : (
+              <>
+                <MenuItem className="px-3" disabled={!onSave} onClick={() => setDraft(content)}>
+                  {editLabel}
+                </MenuItem>
+                {onDelete && (
+                  <MenuItem
+                    className="px-3"
+                    variant="destructive"
+                    closeOnClick={false}
+                    onClick={() => setConfirmingDelete(true)}
+                  >
+                    {deleteLabel}
+                  </MenuItem>
+                )}
+              </>
             )}
           </MenuContent>
         </Menu>
@@ -598,6 +598,14 @@ function CommentThreadEntry({
       )}
     </CommentThreadItem>
   )
+}
+
+// Focus after the menu's own focus handling for the commit that mounted the element.
+function focusOnMount(element: HTMLElement | null) {
+  if (!element) return
+  queueMicrotask(() => {
+    if (element.isConnected) element.focus()
+  })
 }
 
 // An edit field opens focused with its text ready to extend. The menu that started the

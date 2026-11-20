@@ -26,5 +26,7 @@
   "comments.placeholder.editComment": "Chỉnh sửa bình luận",
   "comments.placeholder.editReply": "Edit reply",
   "comments.placeholder.reply": "Reply",
-  "comments.reply": "Reply"
+  "comments.reply": "Reply",
+  "comments.replyCount_one": "{{count}} phản hồi",
+  "comments.replyCount_other": "{{count}} phản hồi"
 }

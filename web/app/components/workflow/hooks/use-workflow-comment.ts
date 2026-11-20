@@ -381,7 +381,7 @@ export const useWorkflowComment = () => {
           const nextComment = currentComments[0]
           handleCommentIconClick(nextComment!)
         } else {
-          setActiveComment(null)
+          // Deselect only; the detail clears once the thread finishes closing.
           setActiveCommentId(null)
           activeCommentIdRef.current = null
         }
@@ -396,7 +396,6 @@ export const useWorkflowComment = () => {
       comments,
       handleCommentIconClick,
       loadComments,
-      setActiveComment,
       setActiveCommentId,
       setActiveCommentLoading,
       setCommentDetailCache,

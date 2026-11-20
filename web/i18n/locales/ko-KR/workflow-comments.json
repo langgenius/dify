@@ -26,5 +26,7 @@
   "comments.placeholder.editComment": "댓글 편집",
   "comments.placeholder.editReply": "답글 편집",
   "comments.placeholder.reply": "답글",
-  "comments.reply": "답글"
+  "comments.reply": "답글",
+  "comments.replyCount_one": "답글 {{count}}개",
+  "comments.replyCount_other": "답글 {{count}}개"
 }

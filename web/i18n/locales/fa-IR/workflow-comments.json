@@ -26,5 +26,7 @@
   "comments.placeholder.editComment": "ویرایش دیدگاه",
   "comments.placeholder.editReply": "ویرایش پاسخ",
   "comments.placeholder.reply": "پاسخ",
-  "comments.reply": "پاسخ"
+  "comments.reply": "پاسخ",
+  "comments.replyCount_one": "{{count}} پاسخ",
+  "comments.replyCount_other": "{{count}} پاسخ"
 }

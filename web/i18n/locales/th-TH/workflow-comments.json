@@ -26,5 +26,7 @@
   "comments.placeholder.editComment": "แก้ไขความคิดเห็น",
   "comments.placeholder.editReply": "Edit reply",
   "comments.placeholder.reply": "Reply",
-  "comments.reply": "Reply"
+  "comments.reply": "Reply",
+  "comments.replyCount_one": "{{count}} การตอบกลับ",
+  "comments.replyCount_other": "{{count}} การตอบกลับ"
 }

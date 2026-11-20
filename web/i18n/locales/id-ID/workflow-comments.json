@@ -26,5 +26,7 @@
   "comments.placeholder.editComment": "Edit komentar",
   "comments.placeholder.editReply": "Edit balasan",
   "comments.placeholder.reply": "Balas",
-  "comments.reply": "Balas"
+  "comments.reply": "Balas",
+  "comments.replyCount_one": "{{count}} balasan",
+  "comments.replyCount_other": "{{count}} balasan"
 }

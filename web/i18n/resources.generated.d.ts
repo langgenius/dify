@@ -6926,6 +6926,7 @@ export default interface Resources {
     'comments.placeholder.editReply': 'Edit reply'
     'comments.placeholder.reply': 'Reply'
     'comments.reply': 'Reply'
+    'comments.replyCount': '{{count}} reply' | '{{count}} replies'
   }
   workflowDebug: {
     'debug.lastOutput': 'Last Output'

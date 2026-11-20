@@ -26,5 +26,7 @@
   "comments.placeholder.editComment": "تعديل التعليق",
   "comments.placeholder.editReply": "تعديل الرد",
   "comments.placeholder.reply": "رد",
-  "comments.reply": "رد"
+  "comments.reply": "رد",
+  "comments.replyCount_one": "{{count}} رد",
+  "comments.replyCount_other": "{{count}} ردود"
 }
