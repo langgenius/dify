@@ -11,8 +11,6 @@ export const rosterQueryParamNames = {
   sortBy: 'sort_by',
 } as const
 
-export const rosterTypeQueryParser = parseAsStringLiteral(['dify', 'external']).withDefault('dify')
-
 export const externalRosterQueryParsers = {
   external_keyword: parseAsString.withDefault(''),
   external_status: parseAsStringLiteral(['all', 'enabled', 'disabled']).withDefault('all'),
@@ -37,3 +35,13 @@ export const rosterCreatedByMeQueryParser = parseAsBoolean.withDefault(false)
 export const rosterSortByQueryParser = parseAsStringLiteral(
   zGetAgentQuery.shape.sort_by.unwrap().unwrap().options,
 ).withDefault(zGetAgentQuery.shape.sort_by.parse(undefined))
+
+export const rosterTabQueryParsers = {
+  [rosterQueryParamNames.type]: parseAsStringLiteral(['dify', 'external']).withDefault('dify'),
+  [rosterQueryParamNames.keyword]: rosterKeywordQueryParser,
+  [rosterQueryParamNames.filter]: rosterFilterQueryParser,
+  [rosterQueryParamNames.tagIds]: rosterTagIdsQueryParser,
+  [rosterQueryParamNames.createdByMe]: rosterCreatedByMeQueryParser,
+  [rosterQueryParamNames.sortBy]: rosterSortByQueryParser,
+  ...externalRosterQueryParsers,
+}

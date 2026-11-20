@@ -28,6 +28,10 @@ const requests = vi.hoisted(() => ({
   remove: vi.fn(),
   difyList: vi.fn(),
 }))
+const agentTags = vi.hoisted(() => [
+  { id: 'research', name: 'Research', type: 'agent' as const },
+  { id: 'finance', name: 'Finance', type: 'agent' as const },
+])
 // boundary: replace Console transport responses while retaining generated keys, policies and observers.
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -36,7 +40,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'agent.get': requests.difyList,
-      'tags.get': () => [],
+      'tags.get': () => agentTags,
       'externalAgents.get': requests.list,
       'externalAgents.capabilities.get': requests.capabilities,
       'externalAgents.byAgentId.get': requests.detail,
@@ -148,7 +152,21 @@ it('queries server filters and clears them without touching Dify parameters', as
     searchParams: '?filter=drafts&keyword=keep-dify&layout=grid',
   })
   await expect.element(card('Contract Review Agent')).toBeVisible()
+  const filtered = createDeferred<ExternalAgentListResponse>()
+  requests.list.mockImplementationOnce(() => filtered.promise)
   await page.getByRole('radio', { name: 'Disabled 1', exact: true }).click()
+  await expect.element(page.getByRole('radio', { name: 'Enabled 1', exact: true })).toBeVisible()
+  await expect.element(page.getByRole('radio', { name: 'Disabled 1', exact: true })).toBeChecked()
+  await expect.element(card('Contract Review Agent')).toBeVisible()
+  await expect.element(page.getByRole('status')).not.toBeInTheDocument()
+  filtered.resolve({
+    items: [server.assets[0]!],
+    enabled_count: 1,
+    disabled_count: 1,
+    total: 1,
+    page: 1,
+    limit: 20,
+  })
   await expect.element(card('Vendor Screening Agent')).toBeVisible()
   await expect.element(card('Contract Review Agent')).not.toBeInTheDocument()
   await page.getByRole('checkbox', { name: 'Connected by me', exact: true }).click()
@@ -190,10 +208,12 @@ it('keeps a failed initial list distinct from empty results without a query erro
   requests.list.mockImplementation(() => pending.promise)
   await setup()
   await expect.element(page.getByRole('status')).toBeVisible()
+  await expect.element(page.getByRole('radio', { name: 'Enabled 0', exact: true })).toBeVisible()
+  await expect.element(page.getByRole('radio', { name: 'Disabled 0', exact: true })).toBeVisible()
   pending.reject(new ORPCError('INTERNAL_SERVER_ERROR', { status: 500 }))
   await expect.element(page.getByRole('status')).not.toBeInTheDocument()
-  await expect.element(page.getByRole('radio', { name: 'Enabled', exact: true })).toBeVisible()
-  await expect.element(page.getByRole('radio', { name: 'Disabled', exact: true })).toBeVisible()
+  await expect.element(page.getByRole('radio', { name: 'Enabled 0', exact: true })).toBeVisible()
+  await expect.element(page.getByRole('radio', { name: 'Disabled 0', exact: true })).toBeVisible()
   await expect
     .element(page.getByText('No external agents yet', { exact: true }))
     .not.toBeInTheDocument()
@@ -450,29 +470,42 @@ it('requires a deletion-impact response and retains reachable focus after server
     .toHaveFocus()
 })
 
-it('opens the external page without requesting Dify data and preserves each tab’s filters', async () => {
+it('loads only the active roster and removes outgoing filters from the URL on tab changes', async () => {
   const { onUrlUpdate } = await setup({
     pageOwner: true,
     searchParams:
-      '?agent_type=external&keyword=internal&filter=drafts&created_by_me=true&sort_by=earliest_created',
+      '?agent_type=external&external_keyword=Contract&external_status=enabled' +
+      '&external_connected_by_me=true&external_sort_by=earliest_created' +
+      '&keyword=internal&filter=drafts&tag_ids=research;finance&created_by_me=true' +
+      '&sort_by=earliest_created&utm_source=blog',
   })
   await expect.element(card('Contract Review Agent')).toBeVisible()
   expect(requests.difyList).not.toHaveBeenCalled()
-  await page.getByRole('radio', { name: 'Disabled 1', exact: true }).click()
+  const urlParams = () => Object.fromEntries(onUrlUpdate.mock.lastCall?.[0].searchParams ?? [])
+
   await page.getByRole('tab', { name: 'Dify agents', exact: true }).click()
+  await expect.poll(urlParams).toEqual({
+    keyword: 'internal',
+    filter: 'drafts',
+    tag_ids: 'research;finance',
+    created_by_me: 'true',
+    sort_by: 'earliest_created',
+    utm_source: 'blog',
+  })
   await expect.poll(() => requests.difyList.mock.calls).toHaveLength(1)
   expect(requests.difyList).toHaveBeenCalledWith({
     query: {
       limit: 30,
       page: 1,
       name: 'internal',
+      tag_ids: ['research', 'finance'],
       is_created_by_me: true,
       publication_status: 'drafts',
       sort_by: 'earliest_created',
     },
   })
-  const params = onUrlUpdate.mock.lastCall?.[0].searchParams
-  expect(params?.get('external_status')).toBe('disabled')
-  expect(params?.get('keyword')).toBe('internal')
-  expect(params?.get('filter')).toBe('drafts')
+
+  await page.getByRole('tab', { name: 'External agents', exact: true }).click()
+  await expect.poll(urlParams).toEqual({ agent_type: 'external', utm_source: 'blog' })
+  await expect.element(card('Vendor Screening Agent')).toBeVisible()
 })

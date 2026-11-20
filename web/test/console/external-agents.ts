@@ -47,6 +47,8 @@ export function createExternalAgentDetail(
       has_credential: true,
       auth_check: 'verified',
       verified_at: '2026-11-01T12:00:00Z',
+      saved_at: '2026-11-01T12:00:00Z',
+      saved_by: { id: '11111111-1111-4111-8111-111111111111', name: 'Test User' },
       profile: 'a2a_v1',
       capabilities: { traceability_supported: true },
       card: {
