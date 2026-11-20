@@ -191,32 +191,33 @@ describe('dev proxy CLI', () => {
     // Arrange
     const tempDir = await createTempDir()
     const port = await getFreePort()
-    await fs.writeFile(
-      path.join(tempDir, 'dev-proxy.config.ts'),
-      `
-      export default {
-        routes: [{ paths: '/api', target: 'https://api.example.com' }],
-      }
-    `,
-    )
-
-    let output = ''
+    await fs.writeFile(path.join(tempDir, 'dev-proxy.config.mjs'), 'export default { routes: [] }')
+    // The HTTP listener itself must keep the process alive.
     const child = spawnCli(
-      ['--config', './dev-proxy.config.ts', '--host', '127.0.0.1', '--port', String(port)],
+      [
+        '--config',
+        './dev-proxy.config.mjs',
+        '--host',
+        '127.0.0.1',
+        '--port',
+        String(port),
+        '--no-watch',
+      ],
       tempDir,
     )
-    child.stdout.on('data', (chunk) => (output += chunk.toString()))
-    child.stderr.on('data', (chunk) => (output += chunk.toString()))
 
-    // Act
-    await waitForOutput(child, () => output, `[dev-proxy] listening on http://127.0.0.1:${port}`)
-    await new Promise((resolve) => setTimeout(resolve, 100))
-    const response = await fetch(`http://127.0.0.1:${port}/not-proxied`)
-
-    // Assert
+    // A cold Node launch and config load can take over 3s on Windows CI.
+    await expect
+      .poll(
+        async () => {
+          const response = await fetch(`http://127.0.0.1:${port}/not-proxied`)
+          return response.status
+        },
+        { timeout: 4000 },
+      )
+      .toBe(404)
     expect(child.exitCode).toBeNull()
     expect(child.signalCode).toBeNull()
-    expect(response.status).toBe(404)
   })
 
   // Scenario: editing the configured env file should reload route targets without restarting the CLI process.
