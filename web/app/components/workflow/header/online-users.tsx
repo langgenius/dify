@@ -1,7 +1,7 @@
 'use client'
 
+import type { Collaborator } from '../collaboration/components/collaborator-avatar'
 import type { OnlineUser } from '../collaboration/types/collaboration'
-import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -13,7 +13,8 @@ import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
 import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { getAvatarInitial } from '@/utils/avatar'
+import { CollaboratorAvatar } from '../collaboration/components/collaborator-avatar'
+import { CollaboratorPill } from '../collaboration/components/collaborator-pill'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import { useCollaboration } from '../collaboration/hooks/use-collaboration'
 import { collaborationUpgradeDialogAtom } from '../collaboration/upgrade-state'
@@ -102,12 +103,15 @@ const OnlineUsers = () => {
               aria-label={collaborationLabel}
               className="flex h-8 cursor-pointer items-center rounded-full border-[0.5px] border-components-panel-border bg-components-panel-bg px-1.5 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[10px] hover:bg-state-base-hover"
             >
-              <Avatar size="sm" aria-hidden="true" className="ring-1 ring-components-panel-bg">
-                <AvatarFallback>
-                  {getAvatarInitial(currentUser.name || fallbackUsername)}
-                </AvatarFallback>
-                <AvatarImage src={currentUser.avatarUrl || undefined} alt="" />
-              </Avatar>
+              <CollaboratorAvatar
+                size="sm"
+                className="ring-1 ring-components-panel-bg"
+                collaborator={{
+                  id: currentUser.id,
+                  name: currentUser.name || fallbackUsername,
+                  avatarUrl: currentUser.avatarUrl,
+                }}
+              />
             </DialogTrigger>
           }
         />
@@ -124,19 +128,17 @@ const OnlineUsers = () => {
   const visibleUsers = onlineUsers.slice(0, shouldShowCount ? 2 : 3)
   const remainingCount = onlineUsers.length - visibleUsers.length
 
-  const renderAvatar = (user: OnlineUser) => {
-    const isCurrentUser = user.user_id === currentUserId
-    const userColor = isCurrentUser ? undefined : getUserColor(user.user_id)
-    const avatarUrl = isConnected ? avatarUrls?.[user.sid] : undefined
-    return (
-      <Avatar size="sm" aria-hidden="true" className="ring-1 ring-components-panel-bg">
-        <AvatarFallback style={userColor ? { backgroundColor: userColor } : undefined}>
-          {getAvatarInitial(user.username || fallbackUsername)}
-        </AvatarFallback>
-        <AvatarImage src={avatarUrl || undefined} alt="" />
-      </Avatar>
-    )
-  }
+  const toCollaborator = (user: OnlineUser, avatarUrl: string | undefined): Collaborator => ({
+    id: user.sid,
+    name: user.username || fallbackUsername,
+    avatarUrl,
+    color: user.user_id === currentUserId ? undefined : getUserColor(user.user_id),
+  })
+  const pillCollaborators = visibleUsers.map((user) =>
+    toCollaborator(user, isConnected ? avatarUrls?.[user.sid] : undefined),
+  )
+  const findVisibleUser = (collaborator: Collaborator) =>
+    visibleUsers.find((user) => user.sid === collaborator.id)!
 
   const renderNameTooltip = (user: OnlineUser) => (
     <TooltipContent side="bottom" sideOffset={4} className="max-w-55">
@@ -147,53 +149,36 @@ const OnlineUsers = () => {
     </TooltipContent>
   )
 
-  const pillClassName =
-    'flex items-center gap-px rounded-2xl border-[0.5px] border-components-panel-border py-1 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]'
-
   if (!shouldShowCount) {
     return (
-      <div className={cn(pillClassName, 'bg-components-panel-bg-blur px-1')}>
-        {visibleUsers.map((user, index) => {
+      <CollaboratorPill
+        collaborators={pillCollaborators}
+        renderAvatar={(avatar, collaborator) => {
+          const user = findVisibleUser(collaborator)
           const isCurrentUser = user.user_id === currentUserId
-          const displayName = user.username || fallbackUsername
-          const triggerClassName = cn(
-            'relative flex size-6 items-center justify-center rounded-full',
-            index > 0 && '-ms-1',
-            !isCurrentUser &&
-              'cursor-pointer transition-transform hover:scale-110 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
-          )
-          const triggerStyle = { zIndex: visibleUsers.length - index }
           return (
-            <Tooltip key={user.sid}>
+            <Tooltip>
               <TooltipTrigger
                 render={
                   isCurrentUser ? (
-                    <div
-                      role="img"
-                      aria-label={displayName}
-                      className={triggerClassName}
-                      style={triggerStyle}
-                    >
-                      {renderAvatar(user)}
-                    </div>
+                    <div role="img" aria-label={collaborator.name} className="flex rounded-full" />
                   ) : (
                     <button
                       type="button"
-                      aria-label={displayName}
-                      className={triggerClassName}
-                      style={triggerStyle}
+                      aria-label={collaborator.name}
+                      className="flex cursor-pointer rounded-full transition-transform hover:scale-110 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                       onClick={() => jumpToUserCursor(user.user_id)}
-                    >
-                      {renderAvatar(user)}
-                    </button>
+                    />
                   )
                 }
-              />
+              >
+                {avatar}
+              </TooltipTrigger>
               {renderNameTooltip(user)}
             </Tooltip>
           )
-        })}
-      </div>
+        }}
+      />
     )
   }
 
@@ -206,38 +191,27 @@ const OnlineUsers = () => {
       }}
     >
       <PopoverTrigger
+        nativeButton={false}
         aria-label={t(($) => $['collaboration.viewCollaborators'], {
           ns: 'workflow',
           count: onlineUsers.length,
         })}
-        className={cn(
-          pillClassName,
-          'cursor-pointer bg-components-panel-bg ps-1 pe-1.5 hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
-        )}
-      >
-        {visibleUsers.map((user, index) => (
-          <Tooltip key={user.sid}>
-            <TooltipTrigger
-              render={
-                <span
-                  className={cn('relative flex size-6', index > 0 && '-ms-1')}
-                  style={{ zIndex: visibleUsers.length - index }}
-                />
-              }
-            >
-              {renderAvatar(user)}
-            </TooltipTrigger>
-            {renderNameTooltip(user)}
-          </Tooltip>
-        ))}
-        <span
-          aria-hidden
-          className="-ms-1 flex size-6 items-center justify-center rounded-full bg-components-icon-bg-midnight-solid text-2xs leading-3 font-semibold text-white ring-1 ring-components-panel-bg select-none"
-        >
-          +{remainingCount}
-        </span>
-        <span aria-hidden className="i-ri-arrow-down-s-line size-3 text-text-tertiary" />
-      </PopoverTrigger>
+        render={
+          <CollaboratorPill
+            collaborators={pillCollaborators}
+            overflowCount={remainingCount}
+            className="cursor-pointer hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            renderAvatar={(avatar, collaborator) => (
+              <Tooltip>
+                <TooltipTrigger render={<span className="flex rounded-full" />}>
+                  {avatar}
+                </TooltipTrigger>
+                {renderNameTooltip(findVisibleUser(collaborator))}
+              </Tooltip>
+            )}
+          />
+        }
+      />
       <PopoverContent
         align="start"
         sideOffset={4}
@@ -245,9 +219,7 @@ const OnlineUsers = () => {
       >
         {onlineUsers.map((user) => {
           const isCurrentUser = user.user_id === currentUserId
-          const userColor = isCurrentUser ? undefined : getUserColor(user.user_id)
           const avatarUrl = isConnected && !isFetchingAvatars ? avatarUrls?.[user.sid] : undefined
-          const displayName = user.username || fallbackUsername
           return (
             <button
               type="button"
@@ -262,12 +234,7 @@ const OnlineUsers = () => {
                 setDropdownOpen(false)
               }}
             >
-              <Avatar size="sm" aria-hidden="true">
-                <AvatarFallback style={userColor ? { backgroundColor: userColor } : undefined}>
-                  {getAvatarInitial(displayName)}
-                </AvatarFallback>
-                <AvatarImage src={avatarUrl || undefined} alt="" />
-              </Avatar>
+              <CollaboratorAvatar size="sm" collaborator={toCollaborator(user, avatarUrl)} />
               {renderDisplayName(
                 user,
                 'system-sm-regular text-text-primary',

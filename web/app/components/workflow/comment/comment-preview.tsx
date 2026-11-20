@@ -2,10 +2,13 @@
 
 import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useEffect, useMemo } from 'react'
-import { UserAvatarList } from '@/app/components/base/user-avatar-list'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { CollaboratorAvatarStack } from '../collaboration/components/collaborator-avatar'
 import { useStore } from '../store'
+import { getCommentParticipants } from './participants'
 
 type CommentPreviewProps = {
   comment: WorkflowCommentBasic
@@ -16,13 +19,14 @@ const CommentPreview: FC<CommentPreviewProps> = ({ comment, onClick }) => {
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const setCommentPreviewHovering = useStore((s) => s.setCommentPreviewHovering)
   const authorName = comment.created_by_account?.name ?? ''
-  const participants = useMemo(() => {
-    const list = comment.participants ?? []
-    const author = comment.created_by_account
-    if (!author) return [...list]
-    const rest = list.filter((user) => user.id !== author.id)
-    return [author, ...rest]
-  }, [comment.created_by_account, comment.participants])
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
+  const participants = useMemo(
+    () => getCommentParticipants(comment, currentUserId),
+    [comment, currentUserId],
+  )
   useEffect(
     () => () => {
       setCommentPreviewHovering(false)
@@ -37,7 +41,7 @@ const CommentPreview: FC<CommentPreviewProps> = ({ comment, onClick }) => {
       onMouseEnter={() => setCommentPreviewHovering(true)}
       onMouseLeave={() => setCommentPreviewHovering(false)}
     >
-      <UserAvatarList users={participants} maxVisible={3} size="sm" />
+      <CollaboratorAvatarStack collaborators={participants} />
       <div className="flex flex-col gap-1">
         <div className="flex min-w-0 items-center gap-1">
           <div className="truncate system-xs-medium text-text-primary">{authorName}</div>

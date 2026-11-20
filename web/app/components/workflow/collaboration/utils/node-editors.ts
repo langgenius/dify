@@ -1,12 +1,6 @@
+import type { Collaborator } from '../components/collaborator-avatar'
 import type { NodePanelPresenceMap } from '../types/collaboration'
 import { getUserColor } from './user-color'
-
-export type NodeEditor = {
-  id: string
-  name: string
-  avatarUrl: string | null
-  color: string
-}
 
 /**
  * Other users who have this node's panel open, most recent first.
@@ -16,7 +10,7 @@ export const getNodeEditors = (
   presence: NodePanelPresenceMap | undefined,
   nodeId: string,
   currentUserId: string,
-): NodeEditor[] => {
+): Collaborator[] => {
   const viewers = presence?.[nodeId]
   if (!viewers) return []
 

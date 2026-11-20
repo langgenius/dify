@@ -1,9 +1,9 @@
-import type { NodeEditor } from '../../utils/node-editors'
+import type { Collaborator } from '../collaborator-avatar'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NodeEditorAvatars, NodePanelEditingFrame } from '../node-editors'
 
-const editor = (id: string, name: string, color: string): NodeEditor => ({
+const editor = (id: string, name: string, color: string): Collaborator => ({
   id,
   name,
   avatarUrl: null,
@@ -25,6 +25,17 @@ it('names each editor and shows who is editing on hover', async () => {
   expect(screen.getByText('A')).toHaveStyle({ backgroundColor: '#155AEF' })
   await user.hover(annAvatar)
   expect(await screen.findByText('workflow.collaboration.userEditing:{"name":"Ann"}')).toBeVisible()
+})
+
+it('opens the editing tooltip when an avatar receives keyboard focus', async () => {
+  const user = userEvent.setup()
+  render(<NodeEditorAvatars editors={[bob]} />)
+
+  await user.tab()
+  expect(
+    screen.getByRole('img', { name: 'workflow.collaboration.userEditing:{"name":"Bob"}' }),
+  ).toHaveFocus()
+  expect(await screen.findByText('workflow.collaboration.userEditing:{"name":"Bob"}')).toBeVisible()
 })
 
 it('folds editors beyond the visible limit into a named count', () => {

@@ -2,16 +2,16 @@
 
 import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC, PointerEvent as ReactPointerEvent } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow, useViewport } from 'reactflow'
-import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { getKeyboardMovement } from '../utils/keyboard-movement'
+import { CommentMarker } from './comment-marker'
 import CommentPreview from './comment-preview'
+import { getCommentParticipants } from './participants'
 
 type CommentIconProps = {
   comment: WorkflowCommentBasic
@@ -204,13 +204,10 @@ export const CommentIcon: FC<CommentIconProps> = memo(
       setShowPreview(false)
     }, [])
 
-    const participants = useMemo(() => {
-      const list = comment.participants ?? []
-      const author = comment.created_by_account
-      if (!author) return [...list]
-      const rest = list.filter((user) => user.id !== author.id)
-      return [author, ...rest]
-    }, [comment.created_by_account, comment.participants])
+    const participants = useMemo(
+      () => getCommentParticipants(comment, currentUserId),
+      [comment, currentUserId],
+    )
 
     const pointerEventHandlers = useMemo(
       () => ({
@@ -262,19 +259,13 @@ export const CommentIcon: FC<CommentIconProps> = memo(
             setDragPosition(flowToScreenPosition(next))
           }}
         >
-          <div
-            data-selected={isActive || undefined}
-            className={cn(
-              'relative flex min-h-6.75 min-w-6.75 items-center rounded-[13.5px] rounded-es-[3px] bg-components-panel-bg-blur p-[1.5px] shadow-lg backdrop-blur-[5px]',
-              'after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:border-[0.5px] after:border-components-panel-border',
-              'data-selected:after:border-[1.5px] data-selected:after:border-components-option-card-option-selected-border',
-              cursorClass,
-            )}
+          <CommentMarker
+            participants={participants}
+            selected={isActive}
+            className={cursorClass}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
-          >
-            <UserAvatarList users={participants} maxVisible={2} size="sm" />
-          </div>
+          />
         </IconButton>
         {isAuthor && onPositionUpdate && (
           <span id={descriptionId} className="sr-only" aria-live="polite">

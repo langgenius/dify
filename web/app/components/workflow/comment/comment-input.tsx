@@ -1,14 +1,13 @@
 import type { FC, PointerEvent as ReactPointerEvent } from 'react'
-import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { getAvatarInitial } from '@/utils/avatar'
 import { useStore } from '../store'
 import { getKeyboardMovement } from '../utils/keyboard-movement'
+import { CommentMarker } from './comment-marker'
 import { MentionInput } from './mention-input'
 
 type CommentInputProps = {
@@ -166,7 +165,7 @@ export const CommentInput: FC<CommentInputProps> = memo(
           aria-describedby={moveDescriptionId}
           aria-pressed={keyboardMoving}
           disabled={disabled || !onPositionChange}
-          className="absolute bottom-0 size-auto cursor-move rounded-[13.5px] rounded-es-[3px] bg-components-panel-bg-blur p-[1.5px] shadow-lg backdrop-blur-[5px] after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:border-[1.5px] after:border-components-option-card-option-selected-border hover:bg-components-panel-bg-blur"
+          className="absolute bottom-0 size-auto cursor-move rounded-[13.5px] rounded-es-[3px] p-0 hover:bg-transparent"
           onPointerDown={handleDragPointerDown}
           onClick={(event) => {
             if (event.detail === 0) setKeyboardMoving((value) => !value)
@@ -186,10 +185,12 @@ export const CommentInput: FC<CommentInputProps> = memo(
             })
           }}
         >
-          <Avatar size="sm" aria-hidden="true">
-            <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
-            <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
-          </Avatar>
+          <CommentMarker
+            selected
+            participants={[
+              { id: userProfile.id, name: userProfile.name, avatarUrl: userProfile.avatar_url },
+            ]}
+          />
         </IconButton>
         <span id={moveDescriptionId} className="sr-only" aria-live="polite">
           {t(($) => $['keyboard.moveDraftHelp'], { ns: 'workflow' })}{' '}

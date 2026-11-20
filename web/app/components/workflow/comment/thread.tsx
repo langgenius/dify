@@ -4,7 +4,6 @@ import type {
   WorkflowCommentDetail,
   WorkflowCommentReply,
 } from '@dify/contracts/api/console/apps/types.gen'
-import type { ReactNode } from 'react'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -15,7 +14,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Separator } from '@langgenius/dify-ui/separator'
@@ -25,7 +23,6 @@ import {
   RiArrowUpSLine,
   RiCheckboxCircleFill,
   RiCheckboxCircleLine,
-  RiCloseLine,
   RiDeleteBinLine,
   RiMoreFill,
 } from '@remixicon/react'
@@ -34,13 +31,20 @@ import { useAtomValue } from 'jotai'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow, useViewport } from 'reactflow'
-import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
 import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import { getAvatarInitial } from '@/utils/avatar'
+import { CollaboratorAvatar } from '../collaboration/components/collaborator-avatar'
 import { useStore } from '../store'
+import { CommentComposerFrame } from './comment-composer'
 import { MentionInput } from './mention-input'
+import { toCommentCollaborator } from './participants'
+import {
+  CommentMessage,
+  CommentReplyBar,
+  CommentThreadItem,
+  CommentThreadPanel,
+} from './thread-view'
 
 type CommentThreadProps = {
   comment: WorkflowCommentDetail
@@ -65,113 +69,34 @@ type CommentThreadProps = {
 }
 
 type ThreadMessageProps = {
-  authorId: string
-  authorName: string
-  avatarUrl?: string | null
+  author: WorkflowCommentReply['created_by_account']
   createdAt: number
   content: string
-  mentionableNames: string[]
-  className?: string
+  mentionNames: string[]
 }
 
-function ThreadMessage({
-  authorId,
-  authorName,
-  avatarUrl,
-  createdAt,
-  content,
-  mentionableNames,
-  className,
-}: ThreadMessageProps) {
+function ThreadMessage({ author, createdAt, content, mentionNames }: ThreadMessageProps) {
+  const { t } = useTranslation(['workflowComments'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
   })
-  const isCurrentUser = authorId === currentUserId
-  const userColor = isCurrentUser ? undefined : getUserColor(authorId)
-
-  const highlightedContent = useMemo<ReactNode>(() => {
-    if (!content) return ''
-
-    // Extract valid user names from mentionableNames, sorted by length (longest first)
-    const normalizedNames = Array.from(
-      new Set(mentionableNames.map((name) => name.trim()).filter(Boolean)),
-    )
-    normalizedNames.sort((a, b) => b.length - a.length)
-
-    if (normalizedNames.length === 0) return content
-
-    const segments: ReactNode[] = []
-    let hasMention = false
-    let cursor = 0
-
-    while (cursor < content.length) {
-      let nextMatchStart = -1
-      let matchedName = ''
-
-      for (const name of normalizedNames) {
-        const searchStart = content.indexOf(`@${name}`, cursor)
-        if (searchStart === -1) continue
-
-        const previousChar = searchStart > 0 ? content[searchStart - 1] : ''
-        if (searchStart > 0 && !/\s/.test(previousChar!)) continue
-
-        if (
-          nextMatchStart === -1 ||
-          searchStart < nextMatchStart ||
-          (searchStart === nextMatchStart && name.length > matchedName.length)
-        ) {
-          nextMatchStart = searchStart
-          matchedName = name
-        }
-      }
-
-      if (nextMatchStart === -1) break
-
-      if (nextMatchStart > cursor)
-        segments.push(<span key={`text-${cursor}`}>{content.slice(cursor, nextMatchStart)}</span>)
-
-      const mentionEnd = nextMatchStart + matchedName.length + 1
-      segments.push(
-        <span key={`mention-${nextMatchStart}`} className="text-text-accent">
-          {content.slice(nextMatchStart, mentionEnd)}
-        </span>,
-      )
-      hasMention = true
-      cursor = mentionEnd
-    }
-
-    if (!hasMention) return content
-
-    if (cursor < content.length)
-      segments.push(<span key={`text-${cursor}`}>{content.slice(cursor)}</span>)
-
-    return segments
-  }, [content, mentionableNames])
 
   return (
-    <div className={cn('flex gap-3', className)}>
-      <div className="shrink-0">
-        <Avatar size="sm" aria-hidden="true">
-          <AvatarFallback style={userColor ? { backgroundColor: userColor } : undefined}>
-            {getAvatarInitial(authorName)}
-          </AvatarFallback>
-          <AvatarImage src={avatarUrl || undefined} alt="" />
-        </Avatar>
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <div className="flex flex-wrap items-center gap-x-1">
-          <span className="system-sm-medium text-text-primary">{authorName}</span>
-          <span className="system-xs-regular text-text-tertiary">
-            {formatTimeFromNow(createdAt * 1000)}
-          </span>
-        </div>
-        <div className="body-sm-regular leading-4.5 wrap-break-word whitespace-pre-wrap text-text-secondary">
-          {highlightedContent}
-        </div>
-      </div>
-    </div>
+    <CommentMessage
+      author={toCommentCollaborator(
+        {
+          id: author?.id ?? '',
+          name: author?.name || t(($) => $['comments.fallback.user'], { ns: 'workflowComments' }),
+          avatar_url: author?.avatar_url ?? null,
+        },
+        currentUserId,
+      )}
+      timeLabel={formatTimeFromNow(createdAt * 1000)}
+      content={content}
+      mentionNames={mentionNames}
+    />
   )
 }
 
@@ -214,6 +139,7 @@ function CommentThreadComponent({
 
   // Focus management refs
   const replyInputRef = useRef<HTMLTextAreaElement>(null)
+  const editInputRef = useRef<HTMLTextAreaElement>(null)
 
   // Get mentionable users from store
   const mentionUsersFromStore = useStore((state) =>
@@ -250,11 +176,17 @@ function CommentThreadComponent({
 
   const canReply = Boolean(onReply)
 
-  // Focus on thread transitions, not callback changes after position updates.
+  // Focus on thread and edit transitions, not callback changes after position updates.
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (replyInputRef.current && !editingReply.id && !isCommentEditing && canReply)
-        replyInputRef.current.focus()
+      if (editingReply.id || isCommentEditing) {
+        const editInput = editInputRef.current
+        if (!editInput) return
+        editInput.focus()
+        editInput.setSelectionRange(editInput.value.length, editInput.value.length)
+        return
+      }
+      if (replyInputRef.current && canReply) replyInputRef.current.focus()
     }, 100)
 
     return () => clearTimeout(timer)
@@ -441,8 +373,14 @@ function CommentThreadComponent({
       onMouseEnter={() => setCommentPreviewHovering(true)}
       onMouseLeave={() => setCommentPreviewHovering(false)}
     >
-      {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- The thread handles bubbling Escape after its child editor and menus have handled it. */}
-      <div
+      <CommentThreadPanel
+        title={t(($) => $['comments.panelTitle'], { ns: 'workflowComments' })}
+        closeLabel={t(($) => $['comments.aria.closeComment'], { ns: 'workflowComments' })}
+        onClose={onClose}
+        listRef={messageListRef}
+        loadingLabel={
+          loading ? t(($) => $['comments.loading'], { ns: 'workflowComments' }) : undefined
+        }
         onKeyDown={(event) => {
           if (event.defaultPrevented || event.nativeEvent.isComposing || event.key !== 'Escape')
             return
@@ -451,15 +389,8 @@ function CommentThreadComponent({
           event.stopPropagation()
           onClose()
         }}
-        className="relative flex max-h-100 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl backdrop-blur-[5px]"
-        role="dialog"
-        aria-labelledby="comment-thread-title"
-      >
-        <div className="flex shrink-0 items-center justify-between border-b border-divider-subtle py-1 ps-4 pe-2">
-          <div id="comment-thread-title" className="system-sm-semibold text-text-primary uppercase">
-            {t(($) => $['comments.panelTitle'], { ns: 'workflowComments' })}
-          </div>
-          <div className="flex items-center">
+        actions={
+          <>
             <Tooltip>
               <TooltipTrigger
                 render={
@@ -553,235 +484,210 @@ function CommentThreadComponent({
                 {t(($) => $['comments.aria.nextComment'], { ns: 'workflowComments' })}
               </TooltipContent>
             </Tooltip>
-            <button
-              type="button"
-              className="flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
-              onClick={onClose}
-              aria-label={t(($) => $['comments.aria.closeComment'], { ns: 'workflowComments' })}
+          </>
+        }
+        footer={
+          onReply && (
+            <CommentReplyBar
+              author={toCommentCollaborator(
+                {
+                  id: currentUserId,
+                  name: userProfile?.name || t(($) => $.you, { ns: 'common' }),
+                  avatar_url: userProfile?.avatar_url ?? null,
+                },
+                currentUserId,
+              )}
             >
-              <RiCloseLine className="size-4" />
-            </button>
-          </div>
-        </div>
-        <div ref={messageListRef} className="relative min-h-0 flex-1 overflow-y-auto">
-          <div className="group relative py-3 ps-4 pe-3 transition-colors hover:bg-components-panel-on-panel-item-bg-hover">
-            {isOwnComment && !isCommentEditing && (
-              <Menu
-                open={activeReplyMenuId === comment.id}
-                onOpenChange={(open) => setActiveReplyMenuId(open ? comment.id : null)}
-              >
-                <MenuTrigger
-                  className="absolute inset-e-2 top-2 flex size-6 items-center justify-center rounded-md text-text-tertiary opacity-0 group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus:opacity-100 data-popup-open:opacity-100 [@media(hover:none)]:opacity-100"
-                  aria-label={t(($) => $['comments.aria.commentActions'], {
-                    ns: 'workflowComments',
-                  })}
-                >
-                  <RiMoreFill className="size-4" />
-                </MenuTrigger>
-                <MenuContent align="end" className="w-36 backdrop-blur-[10px]">
-                  <MenuItem
-                    className="px-3"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleStartCommentEdit()
-                    }}
-                  >
-                    {t(($) => $['comments.actions.editComment'], { ns: 'workflowComments' })}
-                  </MenuItem>
-                </MenuContent>
-              </Menu>
-            )}
-            {isCommentEditing ? (
-              <div className="flex gap-3">
-                <div className="shrink-0">
-                  <Avatar size="sm" aria-hidden="true">
-                    <AvatarFallback>
-                      {getAvatarInitial(
-                        comment.created_by_account?.name ||
-                          t(($) => $['comments.fallback.user'], { ns: 'workflowComments' }),
-                      )}
-                    </AvatarFallback>
-                    <AvatarImage src={comment.created_by_account?.avatar_url || undefined} alt="" />
-                  </Avatar>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-1 shadow-md backdrop-blur-[5px]">
-                    <MentionInput
-                      value={editingCommentContent}
-                      onChange={setEditingCommentContent}
-                      onSubmit={handleCommentEditSubmit}
-                      onCancel={handleCancelCommentEdit}
-                      placeholder={t(($) => $['comments.placeholder.editComment'], {
-                        ns: 'workflowComments',
-                      })}
-                      disabled={loading}
-                      loading={isSubmittingEdit}
-                      isEditing={true}
-                      autoFocus
-                    />
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <ThreadMessage
-                authorId={comment.created_by_account?.id || ''}
-                authorName={
-                  comment.created_by_account?.name ||
-                  t(($) => $['comments.fallback.user'], { ns: 'workflowComments' })
-                }
-                avatarUrl={comment.created_by_account?.avatar_url || null}
-                createdAt={comment.created_at ?? comment.updated_at ?? 0}
-                content={comment.content}
-                mentionableNames={mentionableNames}
+              <MentionInput
+                ref={replyInputRef}
+                value={replyContent}
+                onChange={setReplyContent}
+                onSubmit={handleReplySubmit}
+                placeholder={t(($) => $['comments.placeholder.reply'], {
+                  ns: 'workflowComments',
+                })}
+                disabled={loading}
+                loading={replySubmitting}
               />
-            )}
-          </div>
-          {replies.length > 0 && (
-            <div>
-              {replies.map((reply) => {
-                const isReplyEditing = editingReply?.id === reply.id
-                const isOwnReply = reply.created_by_account?.id === currentUserId
-                return (
-                  <div
-                    key={reply.id}
-                    className="group relative py-3 ps-4 pe-3 transition-colors hover:bg-components-panel-on-panel-item-bg-hover"
-                  >
-                    {isOwnReply && !isReplyEditing && (
-                      <Menu
-                        open={activeReplyMenuId === reply.id}
-                        onOpenChange={(open) => {
-                          setActiveReplyMenuId(open ? reply.id : null)
-                        }}
+            </CommentReplyBar>
+          )
+        }
+      >
+        <CommentThreadItem>
+          {isOwnComment && !isCommentEditing && (
+            <Menu
+              open={activeReplyMenuId === comment.id}
+              onOpenChange={(open) => setActiveReplyMenuId(open ? comment.id : null)}
+            >
+              <MenuTrigger
+                className="absolute inset-e-2 top-2 flex size-6 items-center justify-center rounded-md text-text-tertiary opacity-0 group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus:opacity-100 data-popup-open:opacity-100 [@media(hover:none)]:opacity-100"
+                aria-label={t(($) => $['comments.aria.commentActions'], {
+                  ns: 'workflowComments',
+                })}
+              >
+                <RiMoreFill className="size-4" />
+              </MenuTrigger>
+              <MenuContent align="end" className="w-36 backdrop-blur-[10px]">
+                <MenuItem
+                  className="px-3"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleStartCommentEdit()
+                  }}
+                >
+                  {t(($) => $['comments.actions.editComment'], { ns: 'workflowComments' })}
+                </MenuItem>
+              </MenuContent>
+            </Menu>
+          )}
+          {isCommentEditing ? (
+            <div className="flex gap-3">
+              <CollaboratorAvatar
+                size="sm"
+                className="shrink-0"
+                collaborator={toCommentCollaborator(
+                  {
+                    id: comment.created_by_account?.id ?? '',
+                    name:
+                      comment.created_by_account?.name ||
+                      t(($) => $['comments.fallback.user'], { ns: 'workflowComments' }),
+                    avatar_url: comment.created_by_account?.avatar_url ?? null,
+                  },
+                  currentUserId,
+                )}
+              />
+              <div className="min-w-0 flex-1">
+                <CommentComposerFrame>
+                  <MentionInput
+                    ref={editInputRef}
+                    value={editingCommentContent}
+                    onChange={setEditingCommentContent}
+                    onSubmit={handleCommentEditSubmit}
+                    onCancel={handleCancelCommentEdit}
+                    placeholder={t(($) => $['comments.placeholder.editComment'], {
+                      ns: 'workflowComments',
+                    })}
+                    disabled={loading}
+                    loading={isSubmittingEdit}
+                    isEditing={true}
+                  />
+                </CommentComposerFrame>
+              </div>
+            </div>
+          ) : (
+            <ThreadMessage
+              author={comment.created_by_account}
+              createdAt={comment.created_at ?? comment.updated_at ?? 0}
+              content={comment.content}
+              mentionNames={mentionableNames}
+            />
+          )}
+        </CommentThreadItem>
+        {replies.length > 0 && (
+          <div>
+            {replies.map((reply) => {
+              const isReplyEditing = editingReply?.id === reply.id
+              const isOwnReply = reply.created_by_account?.id === currentUserId
+              return (
+                <CommentThreadItem key={reply.id}>
+                  {isOwnReply && !isReplyEditing && (
+                    <Menu
+                      open={activeReplyMenuId === reply.id}
+                      onOpenChange={(open) => {
+                        setActiveReplyMenuId(open ? reply.id : null)
+                      }}
+                    >
+                      <MenuTrigger
+                        className="absolute inset-e-2 top-2 flex size-6 items-center justify-center rounded-md text-text-tertiary opacity-0 group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus:opacity-100 data-popup-open:opacity-100 [@media(hover:none)]:opacity-100"
+                        data-reply-menu
+                        aria-label={t(($) => $['comments.aria.replyActions'], {
+                          ns: 'workflowComments',
+                        })}
                       >
-                        <MenuTrigger
-                          className="absolute inset-e-2 top-2 flex size-6 items-center justify-center rounded-md text-text-tertiary opacity-0 group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus:opacity-100 data-popup-open:opacity-100 [@media(hover:none)]:opacity-100"
-                          data-reply-menu
-                          aria-label={t(($) => $['comments.aria.replyActions'], {
+                        <RiMoreFill className="size-4" />
+                      </MenuTrigger>
+                      <MenuContent
+                        align="end"
+                        className="w-36 backdrop-blur-[10px]"
+                        data-reply-menu
+                      >
+                        <MenuItem
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            handleStartEdit(reply)
+                          }}
+                        >
+                          {t(($) => $['comments.actions.editReply'], {
                             ns: 'workflowComments',
                           })}
+                        </MenuItem>
+                        <MenuItem
+                          variant="destructive"
+                          disabled={!onReplyDelete}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            setDeletingReplyId(reply.id)
+                          }}
                         >
-                          <RiMoreFill className="size-4" />
-                        </MenuTrigger>
-                        <MenuContent
-                          align="end"
-                          className="w-36 backdrop-blur-[10px]"
-                          data-reply-menu
-                        >
-                          <MenuItem
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              handleStartEdit(reply)
-                            }}
-                          >
-                            {t(($) => $['comments.actions.editReply'], {
-                              ns: 'workflowComments',
-                            })}
-                          </MenuItem>
-                          <MenuItem
-                            variant="destructive"
-                            disabled={!onReplyDelete}
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              setDeletingReplyId(reply.id)
-                            }}
-                          >
-                            {t(($) => $['comments.actions.deleteReply'], {
-                              ns: 'workflowComments',
-                            })}
-                          </MenuItem>
-                        </MenuContent>
-                      </Menu>
-                    )}
-                    {isReplyEditing ? (
-                      <div className="flex gap-3">
-                        <div className="shrink-0">
-                          <Avatar size="sm" aria-hidden="true">
-                            <AvatarFallback>
-                              {getAvatarInitial(
-                                reply.created_by_account?.name ||
-                                  t(($) => $['comments.fallback.user'], { ns: 'workflowComments' }),
-                              )}
-                            </AvatarFallback>
-                            <AvatarImage
-                              src={reply.created_by_account?.avatar_url || undefined}
-                              alt=""
-                            />
-                          </Avatar>
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-1 shadow-md backdrop-blur-[5px]">
-                            <MentionInput
-                              value={editingReply?.content ?? ''}
-                              onChange={(newContent) =>
-                                setEditingReply((prev) =>
-                                  prev ? { ...prev, content: newContent } : prev,
-                                )
-                              }
-                              onSubmit={handleEditSubmit}
-                              onCancel={handleCancelEdit}
-                              placeholder={t(($) => $['comments.placeholder.editReply'], {
-                                ns: 'workflowComments',
-                              })}
-                              disabled={loading}
-                              loading={replyUpdating || isSubmittingEdit}
-                              isEditing={true}
-                              autoFocus
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <ThreadMessage
-                        authorId={reply.created_by_account?.id || ''}
-                        authorName={
-                          reply.created_by_account?.name ||
-                          t(($) => $['comments.fallback.user'], { ns: 'workflowComments' })
-                        }
-                        avatarUrl={reply.created_by_account?.avatar_url || null}
-                        createdAt={reply.created_at ?? 0}
-                        content={reply.content}
-                        mentionableNames={mentionableNames}
+                          {t(($) => $['comments.actions.deleteReply'], {
+                            ns: 'workflowComments',
+                          })}
+                        </MenuItem>
+                      </MenuContent>
+                    </Menu>
+                  )}
+                  {isReplyEditing ? (
+                    <div className="flex gap-3">
+                      <CollaboratorAvatar
+                        size="sm"
+                        className="shrink-0"
+                        collaborator={toCommentCollaborator(
+                          {
+                            id: reply.created_by_account?.id ?? '',
+                            name:
+                              reply.created_by_account?.name ||
+                              t(($) => $['comments.fallback.user'], { ns: 'workflowComments' }),
+                            avatar_url: reply.created_by_account?.avatar_url ?? null,
+                          },
+                          currentUserId,
+                        )}
                       />
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-        {loading && (
-          <div className="absolute inset-0 z-30 flex items-center justify-center bg-components-panel-bg/70 text-sm text-text-tertiary">
-            {t(($) => $['comments.loading'], { ns: 'workflowComments' })}
+                      <div className="min-w-0 flex-1">
+                        <CommentComposerFrame>
+                          <MentionInput
+                            ref={editInputRef}
+                            value={editingReply?.content ?? ''}
+                            onChange={(newContent) =>
+                              setEditingReply((prev) =>
+                                prev ? { ...prev, content: newContent } : prev,
+                              )
+                            }
+                            onSubmit={handleEditSubmit}
+                            onCancel={handleCancelEdit}
+                            placeholder={t(($) => $['comments.placeholder.editReply'], {
+                              ns: 'workflowComments',
+                            })}
+                            disabled={loading}
+                            loading={replyUpdating || isSubmittingEdit}
+                            isEditing={true}
+                          />
+                        </CommentComposerFrame>
+                      </div>
+                    </div>
+                  ) : (
+                    <ThreadMessage
+                      author={reply.created_by_account}
+                      createdAt={reply.created_at ?? 0}
+                      content={reply.content}
+                      mentionNames={mentionableNames}
+                    />
+                  )}
+                </CommentThreadItem>
+              )
+            })}
           </div>
         )}
-        {onReply && (
-          <div className="shrink-0 border-t-[0.5px] border-divider-subtle bg-linear-to-b from-background-gradient-bg-fill-chat-bg-1 to-background-gradient-bg-fill-chat-bg-2 py-3 ps-4 pe-3">
-            <div className="flex items-start gap-3">
-              <div className="shrink-0 py-2">
-                <Avatar size="sm" aria-hidden="true">
-                  <AvatarFallback>
-                    {getAvatarInitial(userProfile?.name || t(($) => $.you, { ns: 'common' }))}
-                  </AvatarFallback>
-                  <AvatarImage src={userProfile?.avatar_url || undefined} alt="" />
-                </Avatar>
-              </div>
-              <div className="min-w-0 flex-1 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-1 shadow-md backdrop-blur-[5px]">
-                <MentionInput
-                  ref={replyInputRef}
-                  value={replyContent}
-                  onChange={setReplyContent}
-                  onSubmit={handleReplySubmit}
-                  placeholder={t(($) => $['comments.placeholder.reply'], {
-                    ns: 'workflowComments',
-                  })}
-                  disabled={loading}
-                  loading={replySubmitting}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      </CommentThreadPanel>
       <AlertDialog
         open={deletingReplyId !== null && !replyWasDeleted}
         onOpenChangeComplete={(open) => {
