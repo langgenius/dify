@@ -1,7 +1,6 @@
 import uuid
 from collections.abc import Callable
 from types import SimpleNamespace
-from typing import cast
 
 import pytest
 from flask import Flask
@@ -20,7 +19,7 @@ from controllers.openapi._models import (
 from controllers.openapi.api_tool_providers import ApiToolProviderApi, ApiToolProvidersApi
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import AccountSubject
-from core.tools.entities.api_entities import ToolProviderApiEntity
+from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.errors import ApiToolProviderNotFoundError
@@ -97,7 +96,7 @@ def _entity() -> ToolProviderApiEntity:
 
 def test_list_returns_typed_summaries(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
     entity = _entity()
-    entity.tools = [cast(object, SimpleNamespace(name="forecast"))]
+    entity.tools = [ToolApiEntity.model_construct(name="forecast")]
     monkeypatch.setattr(ApiToolManageService, "list_api_tools", lambda *_a: [entity])
 
     api = ApiToolProvidersApi()
