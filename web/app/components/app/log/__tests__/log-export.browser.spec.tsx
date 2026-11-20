@@ -5,6 +5,7 @@ import type {
 } from '@dify/contracts/api/console/apps/types.gen'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import appLogCopy from '@/i18n/locales/en-US/app-log.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createAppDetailFixture } from '@/test/fixtures/app'
@@ -14,7 +15,12 @@ import Logs from '../index'
 vi.mock('react-i18next', async (importOriginal) => {
   const original = await importOriginal<typeof import('react-i18next')>()
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  const mock = createReactI18nextMock()
+  const { default: copy } = await import('@/i18n/locales/en-US/app-log.json')
+  const mock = createReactI18nextMock({
+    'export.previewRows': copy['export.previewRows'],
+    'export.previewSize': copy['export.previewSize'],
+    'export.previewChatflowDescription': copy['export.previewChatflowDescription'],
+  })
   return {
     ...original,
     ...mock,
@@ -239,9 +245,7 @@ it('previews CSV rows and submits a Completion export with the selected identity
   await dialog.getByRole('combobox', { name: 'appLog.table.header.endUser' }).click()
   await page.getByRole('option', { name: 'appLog.export.identitiesSelected' }).click()
   await dialog.getByRole('checkbox', { name: 'user-1024' }).click()
-  await expect
-    .element(dialog.getByRole('status'))
-    .toHaveTextContent('appLog.export.previewRows:{"rows":2}')
+  await expect.element(dialog.getByRole('status')).toHaveTextContent('CSV rows 2.')
   await dialog.getByRole('button', { name: 'appLog.export.submit' }).click()
   await expect
     .element(lastExport.getByRole('button', { name: 'common.operation.download' }))
@@ -264,7 +268,7 @@ it('can export the same filters again after a CSV is ready', async () => {
     .toHaveTextContent('appLog.export.current')
   await expect
     .element(dialog.getByRole('status'))
-    .toHaveTextContent('appLog.export.previewSize:{"conversations":2,"rows":4}')
+    .toHaveTextContent('Conversations 2 · CSV rows 4.')
   expect(previews.at(-1)?.get('keyword')).toBe('refund')
   expect(previews.at(-1)?.has('page')).toBe(false)
   await submit.click()
@@ -372,7 +376,7 @@ it('shows an inline identity list and previews selections beyond the visible Log
   await identities.getByRole('checkbox', { name: 'user-1024' }).click()
   await expect
     .element(dialog.getByRole('status'))
-    .toHaveTextContent('appLog.export.previewSize:{"conversations":1,"rows":2}')
+    .toHaveTextContent('Conversations 1 · CSV rows 2.')
   await identities.getByRole('checkbox', { name: 'Mia Chen' }).click()
   await expect
     .element(dialog.getByRole('button', { name: 'common.operation.clear' }))
@@ -382,7 +386,7 @@ it('shows an inline identity list and previews selections beyond the visible Log
   await identities.getByRole('checkbox', { name: olderEndUser.label }).click()
   await expect
     .element(dialog.getByRole('status'))
-    .toHaveTextContent('appLog.export.previewSize:{"conversations":3,"rows":6}')
+    .toHaveTextContent('Conversations 3 · CSV rows 6.')
   await expect.element(submit).toBeEnabled()
   expect(previews.at(-1)?.getAll('end_user_ids')).toEqual([endUserId, olderEndUser.id])
   expect(previews.at(-1)?.getAll('account_ids')).toEqual([accountId])
@@ -406,21 +410,21 @@ it('keeps the export dialog height stable while recounting after an identity cha
   )
   await trigger.click()
   const count = dialog.getByRole('status')
-  await expect
-    .element(count)
-    .toHaveTextContent('appLog.export.previewSize:{"conversations":2,"rows":4}')
+  await expect.element(count).toHaveTextContent('Conversations 2 · CSV rows 4.')
+  expect(count.element().parentElement?.textContent).toBe(
+    `Conversations 2 · CSV rows 4. ${appLogCopy['export.previewChatflowDescription']}`,
+  )
   const dialogHeight = () => (dialog.element() as HTMLElement).offsetHeight
   const initialHeight = dialogHeight()
 
   await dialog.getByRole('combobox', { name: 'appLog.table.header.endUser' }).click()
   await page.getByRole('option', { name: 'user-1024' }).click()
-  await expect.element(count).toHaveTextContent('appLog.detail.loading')
+  await expect.element(count).toHaveTextContent('appLog.detail.loading…')
+  await expect.element(dialog.getByRole('button', { name: 'appLog.export.submit' })).toBeDisabled()
   expect(dialogHeight()).toBe(initialHeight)
 
   recount.resolve()
-  await expect
-    .element(count)
-    .toHaveTextContent('appLog.export.previewSize:{"conversations":1,"rows":2}')
+  await expect.element(count).toHaveTextContent('Conversations 1 · CSV rows 2.')
   expect(dialogHeight()).toBe(initialHeight)
 })
 
@@ -487,7 +491,7 @@ it('shares the Chatflow list filters with export while keeping a separate export
     .element(dialog.getByRole('button', { name: /common.sorting.sortBy/ }))
     .not.toBeInTheDocument()
   await expect
-    .element(dialog.getByText('appLog.export.previewChatflowDescription', { exact: true }))
+    .element(dialog.getByText(appLogCopy['export.previewChatflowDescription'], { exact: true }))
     .toBeVisible()
   expect(previews.at(-1)?.getAll('end_user_ids')).toEqual([endUserId])
   expect(previews.at(-1)?.getAll('account_ids')).toEqual([accountId])

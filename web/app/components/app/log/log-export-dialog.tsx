@@ -29,7 +29,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
-import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  keepPreviousData,
+  skipToken,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
@@ -268,8 +274,8 @@ export function LogExportDialog({
   const busy = exporting || latest.isPending || (retryStatus && latest.isFetching)
   const filtersLocked = busy || retryStatus
 
-  const preview = useQuery(
-    exportsApi.preview.get.queryOptions({
+  const preview = useQuery({
+    ...exportsApi.preview.get.queryOptions({
       input:
         open && planState === 'unrestricted' && validFilters && !filtersLocked
           ? { params: { app_id: appId }, query: filters }
@@ -278,10 +284,12 @@ export function LogExportDialog({
       retry: false,
       refetchOnWindowFocus: false,
     }),
-  )
+    placeholderData: keepPreviousData,
+  })
   const counts = preview.data?.counts
-  const noMatches = counts?.message_count === 0
-  const canExport = validFilters && !preview.isPending && !noMatches
+  const previewPending = preview.isPending || preview.isPlaceholderData
+  const noMatches = !previewPending && counts?.message_count === 0
+  const canExport = validFilters && !previewPending && !noMatches
   const title = t(($) => $['export.title'], { ns: 'appLog' })
   const exportingLabel = t(($) => $['operation.exporting'], { ns: 'common' })
   const closeLabel = t(($) => $['operation.close'], { ns: 'common' })
@@ -296,20 +304,24 @@ export function LogExportDialog({
     : appMode === 'advanced-chat'
       ? 'export.previewChatflowDescription'
       : 'export.previewConversationDescription'
-  const showPreviewDescription = !filtersLocked && !noMatches && (preview.isPending || !!counts)
-
-  let summary
-  if (exporting) summary = actionLabel
-  else if (preview.isPending) summary = t(($) => $['detail.loading'], { ns: 'appLog' })
-  else if (counts) {
-    summary = isCompletion
+  const previewDescription =
+    !filtersLocked && !noMatches && (previewPending || !!counts)
+      ? t(($) => $[descriptionKey], { ns: 'appLog' })
+      : null
+  const countSummary = counts
+    ? isCompletion
       ? t(($) => $['export.previewRows'], { ns: 'appLog', rows: counts.message_count })
       : t(($) => $['export.previewSize'], {
           ns: 'appLog',
           conversations: counts.conversation_count,
           rows: counts.message_count,
         })
-  } else summary = t(($) => $['export.previewUnavailable'], { ns: 'appLog' })
+    : null
+
+  let summary
+  if (exporting) summary = actionLabel
+  else if (previewPending) summary = `${t(($) => $['detail.loading'], { ns: 'appLog' })}…`
+  else summary = countSummary ?? t(($) => $['export.previewUnavailable'], { ns: 'appLog' })
 
   let error
   if (create.isError) error = t(($) => $['export.failed'], { ns: 'appLog' })
@@ -500,9 +512,21 @@ export function LogExportDialog({
                 )}
               </fieldset>
               {!taskInProgress && (busy || (validFilters && !retryStatus)) && (
-                <div className="space-y-1 rounded-lg bg-background-section-burn px-3 py-2.5 system-sm-regular text-text-secondary">
-                  <p role="status">{summary}</p>
-                  {showPreviewDescription && <p>{t(($) => $[descriptionKey], { ns: 'appLog' })}</p>}
+                <div className="grid rounded-lg bg-background-section-burn px-3 py-2.5 system-sm-regular text-text-secondary">
+                  {preview.isPlaceholderData && countSummary && previewDescription && (
+                    <p aria-hidden className="invisible col-start-1 row-start-1">
+                      {countSummary} {previewDescription}
+                    </p>
+                  )}
+                  <p className="col-start-1 row-start-1">
+                    <span role="status">{summary}</span>
+                    {previewDescription && (
+                      <>
+                        {' '}
+                        <span>{previewDescription}</span>
+                      </>
+                    )}
+                  </p>
                 </div>
               )}
               {error && (
