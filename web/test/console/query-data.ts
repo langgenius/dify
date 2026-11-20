@@ -145,10 +145,6 @@ export const seedEducationStatus = (
   return data
 }
 
-export const createFeaturesFixture = (
-  overrides: DeepPartial<GetFeaturesResponse> = {},
-): GetFeaturesResponse => zGetFeaturesResponse.parse(overrides)
-
 // Matches the default Community system features: plan quotas are unlimited outside Cloud.
 const unlimitedCount = { size: 0, limit: 0 }
 const unlimitedPeriodic = { usage: 0, limit: -1, reset_date: -1 }
