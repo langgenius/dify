@@ -738,19 +738,3 @@ export function hold<F extends AnyFunction>(spy: Mock<F>): HeldRequest<F> {
     },
   }
 }
-
-/**
- * Replace a spy's implementation with one built on its current implementation, such as a stateful
- * handler that should answer differently for one case. Use `{ once: true }` for the next call only.
- */
-export function wrap<F extends AnyFunction>(
-  spy: Mock<F>,
-  build: (current: F) => F,
-  { once = false } = {},
-) {
-  const current = spy.getMockImplementation()
-  if (!current) throw new Error('Fake API: wrap needs a spy with an implementation')
-  const next = build(current as unknown as F) as never
-  if (once) spy.mockImplementationOnce(next)
-  else spy.mockImplementation(next)
-}

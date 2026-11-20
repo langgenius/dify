@@ -10,7 +10,6 @@ import {
   route,
   setupFakeApi,
   sseResponse,
-  wrap,
 } from '../fake-api'
 
 const groupList = {
@@ -426,33 +425,6 @@ describe('hold release', () => {
     request.release()
 
     expect((await response).groups).toEqual([])
-    fake()
-  })
-})
-
-describe('wrap', () => {
-  it('builds a new implementation on the current one, for every call or just the next', async () => {
-    let groups = [createNetworkAccessGroupFixture()]
-    const fake = installFakeApi({
-      console: {
-        workspaces: { current: { networkAccessGroups: { get: () => ({ ...groupList, groups }) } } },
-      },
-    })
-    const spy = fake.console.workspaces.current.networkAccessGroups.get
-    const names = async () =>
-      (await consoleClient.workspaces.current.networkAccessGroups.get({})).groups.map(
-        (group) => group.name,
-      )
-
-    wrap(spy, (list) => async (input) => {
-      const result = await list(input)
-      return { ...result, groups: result.groups.slice(0, 1) }
-    })
-    groups = [...groups, createNetworkAccessGroupFixture({ name: 'Second' })]
-    expect(await names()).toEqual(['Internal Network'])
-    wrap(spy, () => () => ({ ...groupList, groups: [] }), { once: true })
-    expect(await names()).toEqual([])
-    expect(await names()).toEqual(['Internal Network'])
     fake()
   })
 })
