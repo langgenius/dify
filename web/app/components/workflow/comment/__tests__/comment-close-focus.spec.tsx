@@ -84,16 +84,19 @@ function CommentCanvas() {
     ? comments.findIndex((item) => item.id === activeComment.id)
     : -1
   const open = activeComment !== null && activeIndex !== -1
+  // Like the canvas, keep showing the last comment until the popup finishes closing.
+  const [threadComment, setThreadComment] = useState(activeComment)
+  if (open && activeComment !== threadComment) setThreadComment(activeComment)
 
   return (
     <div id="workflow-container">
       {comments.map((item) =>
-        item.id === activeComment?.id || showUserComments ? (
+        item.id === threadComment?.id || showUserComments ? (
           <CommentIcon
             key={item.id}
             comment={item}
             threadHandle={threadHandle}
-            isActive={item.id === activeComment?.id}
+            isActive={open && item.id === activeComment?.id}
             onPositionUpdate={(position) => handleCommentPositionUpdate(item.id, position)}
           />
         ) : null,
@@ -109,14 +112,17 @@ function CommentCanvas() {
           )
           if (item) handleCommentIconClick(item)
         }}
+        onOpenChangeComplete={(nextOpen) => {
+          if (!nextOpen) setThreadComment(null)
+        }}
       >
         <PopoverPortal>
           <PopoverPositioner {...commentThreadPlacement}>
-            {open && (
+            {threadComment && (
               <CommentThread
-                comment={activeComment}
+                comment={threadComment}
                 loading={activeCommentLoading}
-                onReply={(content, ids) => handleCommentReply(activeComment.id, content, ids)}
+                onReply={(content, ids) => handleCommentReply(threadComment.id, content, ids)}
                 onPrev={activeIndex > 0 ? () => handleCommentNavigate('prev') : undefined}
                 onNext={
                   activeIndex < comments.length - 1

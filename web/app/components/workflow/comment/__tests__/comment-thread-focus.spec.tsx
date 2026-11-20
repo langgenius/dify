@@ -291,4 +291,34 @@ describe('Comment thread focus', () => {
     expect(next).toHaveFocus()
     expect(screen.getByRole('textbox')).toHaveValue('')
   })
+
+  it('does not pull focus to a newer comment when an earlier reply finishes sending', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    let finishReply = () => {}
+
+    function Comments() {
+      const [comment, setComment] = useState(createComment)
+      return (
+        <CommentThreadFixture
+          comment={comment}
+          onReply={() => new Promise<void>((resolve) => (finishReply = resolve))}
+          canGoNext
+          onNext={() => setComment((current) => ({ ...current, id: 'comment-2' }))}
+        />
+      )
+    }
+
+    renderWithAccountProfile(<Comments />)
+    await act(() => vi.advanceTimersByTimeAsync(100))
+    await user.type(screen.getByRole('textbox'), 'Sent from the first comment{Enter}')
+    const next = screen.getByRole('button', { name: 'workflowComments.comments.aria.nextComment' })
+    await user.click(next)
+    expect(next).toHaveFocus()
+
+    await act(async () => {
+      finishReply()
+      await vi.advanceTimersByTimeAsync(100)
+    })
+    expect(next).toHaveFocus()
+  })
 })

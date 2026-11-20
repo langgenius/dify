@@ -722,7 +722,7 @@ export const Workflow: FC<WorkflowProps> = memo(
                   replySubmitting={replySubmitting}
                   replyUpdating={replyUpdating}
                   onResolve={() => handleCommentResolve(threadComment.id)}
-                  onDelete={() => handleCommentDelete(threadComment.id)}
+                  onDelete={handleCommentDelete}
                   onCommentEdit={(content, ids) =>
                     handleCommentUpdate(threadComment.id, content, ids ?? [])
                   }

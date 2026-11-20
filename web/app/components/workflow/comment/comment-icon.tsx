@@ -94,6 +94,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(
     const handlePointerDown = useCallback(
       (event: ReactPointerEvent<HTMLElement>) => {
         if (event.button !== 0) return
+        dragEndedRef.current = false
 
         event.stopPropagation()
         event.preventDefault()
@@ -170,7 +171,8 @@ export const CommentIcon: FC<CommentIconProps> = memo(
         setShowPreview(false)
 
         if (didDrag) {
-          dragEndedRef.current = true
+          // Only a drag on the marker itself is followed by a click on it to swallow.
+          dragEndedRef.current = event.currentTarget.dataset.role === 'comment-marker'
           if (onPositionUpdate) {
             const flowPosition = screenToFlowPosition({
               x: finalScreenPosition.x,

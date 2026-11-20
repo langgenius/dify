@@ -2,6 +2,7 @@ import type { WorkflowCommentDetail } from '@dify/contracts/api/console/apps/typ
 import type { ReactElement } from 'react'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderWorkflowFlowComponent } from '../__tests__/workflow-test-env'
 import { CommentThreadFixture } from './__tests__/comment-thread-fixture'
@@ -106,6 +107,34 @@ describe('CommentThread', () => {
     await waitFor(() =>
       expect(screen.getByRole('dialog')).toContainElement(document.activeElement as HTMLElement),
     )
+  })
+
+  it('dismisses the delete confirmation once deleting moves the thread to another comment', async () => {
+    const user = userEvent.setup()
+    const onDelete = vi.fn()
+
+    function Thread() {
+      const [comment, setComment] = useState(createComment)
+      return (
+        <CommentThreadFixture
+          comment={comment}
+          onDelete={(commentId) => {
+            onDelete(commentId)
+            // The canvas opens the next comment after a successful delete.
+            setComment((current) => ({ ...current, id: 'comment-2', content: 'Next comment' }))
+          }}
+        />
+      )
+    }
+
+    render(<Thread />)
+    await user.click(screen.getByLabelText('workflowComments.comments.aria.deleteComment'))
+    const confirmation = await screen.findByRole('alertdialog')
+    await user.click(within(confirmation).getByRole('button', { name: 'common.operation.delete' }))
+
+    expect(onDelete).toHaveBeenCalledExactlyOnceWith('comment-1')
+    expect(await screen.findByText('Next comment')).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
   })
 
   it('closes on an outside press', async () => {

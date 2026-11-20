@@ -52,7 +52,7 @@ type CommentThreadProps = {
   loading?: boolean
   replySubmitting?: boolean
   replyUpdating?: boolean
-  onDelete?: () => Promise<void> | void
+  onDelete?: (commentId: string) => Promise<void> | void
   onResolve?: () => void
   onPrev?: () => void
   onNext?: () => void
@@ -118,7 +118,8 @@ export function CommentThread({
 }: CommentThreadProps) {
   const { t } = useTranslation(['common', 'workflowComments'])
   const setCommentPreviewHovering = useStore((state) => state.setCommentPreviewHovering)
-  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  // The comment a delete confirmation was opened for; navigating away dismisses it.
+  const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null)
   const replyInputRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(
@@ -153,7 +154,7 @@ export function CommentThread({
                   className={cn(
                     'flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
                   )}
-                  onClick={() => setConfirmingDelete(true)}
+                  onClick={() => setDeletingCommentId(comment.id)}
                   aria-label={t(($) => $['comments.aria.deleteComment'], {
                     ns: 'workflowComments',
                   })}
@@ -248,13 +249,13 @@ export function CommentThread({
         {...sessionProps}
       />
       <AlertDialog
-        open={confirmingDelete}
+        open={deletingCommentId === comment.id}
         onOpenChange={(open, eventDetails) => {
           if (!open && loading) {
             eventDetails.cancel()
             return
           }
-          setConfirmingDelete(open)
+          if (!open) setDeletingCommentId(null)
         }}
       >
         <AlertDialogContent>
@@ -270,7 +271,14 @@ export function CommentThread({
             <AlertDialogCancelButton disabled={loading}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton loading={loading} onClick={() => onDelete?.()}>
+            <AlertDialogConfirmButton
+              loading={loading}
+              onClick={async () => {
+                if (!deletingCommentId) return
+                await onDelete?.(deletingCommentId)
+                setDeletingCommentId(null)
+              }}
+            >
               {t(($) => $['operation.delete'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogFooter>
@@ -312,6 +320,15 @@ function CommentThreadSession({
   })
   const currentUserId = userProfile.id
   const { t } = useTranslation(['common', 'workflowComments'])
+  // Async completions focus this session's own reply box, never one a later comment mounted.
+  const ownReplyInputRef = useRef<HTMLTextAreaElement | null>(null)
+  const attachReplyInput = useCallback(
+    (textarea: HTMLTextAreaElement | null) => {
+      ownReplyInputRef.current = textarea
+      replyInputRef.current = textarea
+    },
+    [replyInputRef],
+  )
   const [replyContent, setReplyContent] = useState('')
   const [editingCommentContent, setEditingCommentContent] = useState('')
   const [activeReplyMenuId, setActiveReplyMenuId] = useState<string | null>(null)
@@ -348,14 +365,14 @@ function CommentThreadSession({
 
         // P0: Restore focus to reply input after successful submission
         setTimeout(() => {
-          replyInputRef.current?.focus()
+          ownReplyInputRef.current?.focus()
         }, 0)
       } catch (error) {
         console.error('Failed to send reply', error)
         setReplyContent(content)
       }
     },
-    [onReply, replyInputRef, replySubmitting],
+    [onReply, replySubmitting],
   )
 
   const handleStartEdit = useCallback((reply: WorkflowCommentReply) => {
@@ -376,18 +393,18 @@ function CommentThreadSession({
 
     // P1: Restore focus to reply input after canceling edit
     setTimeout(() => {
-      replyInputRef.current?.focus()
+      ownReplyInputRef.current?.focus()
     }, 0)
-  }, [replyInputRef])
+  }, [])
 
   const handleCancelCommentEdit = useCallback(() => {
     setEditingCommentContent('')
     setIsCommentEditing(false)
 
     setTimeout(() => {
-      replyInputRef.current?.focus()
+      ownReplyInputRef.current?.focus()
     }, 0)
-  }, [replyInputRef])
+  }, [])
 
   const handleCommentEditSubmit = useCallback(
     async (content: string, mentionedUserIds: string[]) => {
@@ -402,7 +419,7 @@ function CommentThreadSession({
         setIsCommentEditing(false)
 
         setTimeout(() => {
-          replyInputRef.current?.focus()
+          ownReplyInputRef.current?.focus()
         }, 0)
       } catch (error) {
         console.error('Failed to edit comment', error)
@@ -410,7 +427,7 @@ function CommentThreadSession({
         setIsSubmittingEdit(false)
       }
     },
-    [onCommentEdit, replyInputRef],
+    [onCommentEdit],
   )
 
   const handleEditSubmit = useCallback(
@@ -426,7 +443,7 @@ function CommentThreadSession({
 
         // P1: Restore focus to reply input after saving edit
         setTimeout(() => {
-          replyInputRef.current?.focus()
+          ownReplyInputRef.current?.focus()
         }, 0)
       } catch (error) {
         console.error('Failed to edit reply', error)
@@ -434,7 +451,7 @@ function CommentThreadSession({
         setIsSubmittingEdit(false)
       }
     },
-    [editingReply, onReplyEdit, replyInputRef],
+    [editingReply, onReplyEdit],
   )
 
   const replies = comment.replies || []
@@ -676,7 +693,7 @@ function CommentThreadSession({
           )}
         >
           <MentionInput
-            ref={replyInputRef}
+            ref={attachReplyInput}
             value={replyContent}
             onChange={setReplyContent}
             onSubmit={handleReplySubmit}
@@ -701,7 +718,7 @@ function CommentThreadSession({
           if (!open) setDeletingReplyId(null)
         }}
       >
-        <AlertDialogContent finalFocus={replyWasDeleted ? replyInputRef : undefined}>
+        <AlertDialogContent finalFocus={replyWasDeleted ? ownReplyInputRef : undefined}>
           <AlertDialogHeader>
             <AlertDialogTitle>
               {t(($) => $['comments.confirm.deleteReplyTitle'], { ns: 'workflowComments' })}
