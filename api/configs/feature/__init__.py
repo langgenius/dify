@@ -1199,6 +1199,60 @@ class AuthConfig(BaseSettings):
         default=500,
     )
 
+    FILE_TRANSFER_TTL_SECONDS: PositiveInt = Field(
+        description="How long a file transfer id can be used in calls, in seconds, before the transfer is deleted.",
+        default=1800,
+    )
+
+    FILE_TRANSFER_UPLOAD_LINK_SECONDS: PositiveInt = Field(
+        description="How long after a transfer is prepared its upload link accepts the file, in seconds.",
+        default=300,
+    )
+
+    FILE_TRANSFER_DOWNLOAD_LINK_SECONDS: PositiveInt = Field(
+        description="How long after a file is parked its download link works, in seconds.",
+        default=300,
+    )
+
+    FILE_TRANSFER_MAX_BYTES: PositiveInt = Field(
+        description="Largest file one transfer holds, in bytes. One upload request must also fit the reverse "
+        "proxy's body limit (100 MB in the bundled nginx).",
+        default=96 * 1024 * 1024,
+    )
+
+    FILE_TRANSFER_MAX_UNPACKED_BYTES: PositiveInt = Field(
+        description="Largest total size of a folder transfer after its zip is unpacked, in bytes.",
+        default=96 * 1024 * 1024,
+    )
+
+    FILE_TRANSFER_MAX_UNPACKED_FILES: PositiveInt = Field(
+        description="Most files in a folder transfer after its zip is unpacked.",
+        default=1000,
+    )
+
+    FILE_TRANSFER_MAX_PER_OWNER: PositiveInt = Field(
+        description="Live file transfers per owner. Creating one more first deletes the owner's expired "
+        "transfers, then its oldest.",
+        default=20,
+    )
+
+    FILE_TRANSFER_MAX_ACTIVE: PositiveInt = Field(
+        description="Max requests that hold file transfer bytes in one API process at the same time. Each holds "
+        "one of the worker's SERVER_WORKER_CONNECTIONS (10 by default) and the file in memory, so raise it only "
+        "together with that number and the process's memory.",
+        default=2,
+    )
+
+    FILE_TRANSFER_BUSY_RETRY_AFTER_SECONDS: PositiveInt = Field(
+        description="The Retry-After, in seconds, told to a file transfer request that found every slot taken.",
+        default=5,
+    )
+
+    FILE_TRANSFER_CLEAN_INTERVAL_MINUTES: PositiveInt = Field(
+        description="How often the cleanup job deletes expired file transfers, in minutes.",
+        default=10,
+    )
+
     DEVICE_FLOW_APPROVE_RATE_LIMIT_PER_HOUR: PositiveInt = Field(
         description="Max device-flow approve requests per session per hour on /openapi/oauth/device/approve.",
         default=10,
@@ -1606,6 +1660,10 @@ class CeleryScheduleTasksConfig(BaseSettings):
     OAUTH_ACCESS_TOKEN_RETENTION_DAYS: PositiveInt = Field(
         description="Days to retain revoked OAuth access-token rows before deletion.",
         default=30,
+    )
+    ENABLE_CLEAN_FILE_TRANSFERS_TASK: bool = Field(
+        description="Enable the scheduled deletion of expired file transfers and their stored bytes.",
+        default=True,
     )
     ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK: bool = Field(
         description="Enable mail clean document notify task",
