@@ -100,6 +100,14 @@ describe('CommentThread', () => {
     expect(onClose).toHaveBeenCalledTimes(2)
   })
 
+  it('keeps focus inside the thread when it opens while still loading', async () => {
+    render(<CommentThreadFixture comment={createComment()} loading onReply={vi.fn()} />)
+
+    await waitFor(() =>
+      expect(screen.getByRole('dialog')).toContainElement(document.activeElement as HTMLElement),
+    )
+  })
+
   it('closes on an outside press', async () => {
     const user = userEvent.setup()
     const onClose = vi.fn()

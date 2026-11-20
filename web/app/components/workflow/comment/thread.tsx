@@ -137,7 +137,11 @@ export function CommentThread({
 
   return (
     <CommentThreadPopup
-      initialFocus={sessionProps.onReply ? replyInputRef : undefined}
+      // The reply box is disabled while the thread loads; then the popup's default target takes focus.
+      initialFocus={() => {
+        const reply = replyInputRef.current
+        return reply && !reply.disabled ? reply : true
+      }}
       onMouseEnter={() => setCommentPreviewHovering(true)}
       onMouseLeave={() => setCommentPreviewHovering(false)}
       title={t(($) => $['comments.panelTitle'], { ns: 'workflowComments' })}
