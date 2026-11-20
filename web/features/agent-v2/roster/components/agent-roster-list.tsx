@@ -50,7 +50,7 @@ export type AgentRosterListState =
   | {
       status: 'ready'
       agents: AgentAppPartial[]
-      emptyState: 'roster' | 'filtered'
+      emptyState: 'roster' | { type: 'filtered'; onClearFilters: () => void }
       footer: AgentRosterListFooterState
       isFetching: boolean
     }
@@ -116,22 +116,18 @@ function AgentRosterSkeleton() {
 }
 
 function AgentRosterPlaceholderState({
-  onRetry,
+  action,
+  description,
   role,
   title,
 }: {
-  onRetry?: () => void
+  action?: { label: string; onClick: () => void }
+  description?: string
   role?: 'alert' | 'status'
   title: string
 }) {
-  const { t } = useTranslation(['common'])
-
   return (
-    <div
-      aria-labelledby="agent-roster-placeholder-title"
-      className="relative min-h-[calc(100vh-142px)] overflow-hidden"
-      role={role}
-    >
+    <div className="relative min-h-[calc(100vh-142px)] overflow-hidden">
       <div
         className={cn(
           'pointer-events-none absolute inset-0 grid-rows-4',
@@ -144,21 +140,24 @@ function AgentRosterPlaceholderState({
       </div>
       <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-background-body/0 to-background-body" />
       <div className="absolute inset-0 flex items-center justify-center overflow-hidden p-2">
-        <div className="flex flex-col items-center gap-3">
-          <div className="flex size-14 items-center justify-center rounded-[10px]">
-            <div className="flex size-full min-w-px items-center justify-center overflow-hidden rounded-xl border border-dashed border-divider-regular bg-components-card-bg p-1 backdrop-blur-md">
-              <span aria-hidden className="i-ri-robot-2-line size-6 text-text-tertiary" />
-            </div>
-          </div>
-          <h2
-            id="agent-roster-placeholder-title"
-            className="system-sm-regular whitespace-nowrap text-text-tertiary"
+        <div className="flex max-w-full flex-col items-center gap-3 text-center system-sm-regular text-text-tertiary">
+          <div
+            role={role}
+            aria-labelledby="agent-roster-placeholder-title"
+            className="flex flex-col items-center gap-3"
           >
-            {title}
-          </h2>
-          {onRetry && (
-            <Button size="small" variant="secondary" onClick={onRetry}>
-              {t(($) => $['operation.retry'])}
+            <span
+              aria-hidden
+              className="flex size-14 items-center justify-center rounded-xl border border-dashed border-divider-regular bg-components-card-bg p-1 backdrop-blur-md"
+            >
+              <span className="i-ri-robot-line size-6" />
+            </span>
+            <h2 id="agent-roster-placeholder-title">{title}</h2>
+            {description && <p>{description}</p>}
+          </div>
+          {action && (
+            <Button size="small" variant="secondary" onClick={action.onClick}>
+              {action.label}
             </Button>
           )}
         </div>
@@ -512,21 +511,26 @@ export function AgentRosterList({
         )}
         {state.status === 'error' && (
           <AgentRosterPlaceholderState
-            onRetry={state.onRetry}
+            action={{ label: tCommon(($) => $['operation.retry']), onClick: state.onRetry }}
             role="alert"
             title={t(($) => $['roster.loadingError'], { ns: 'agentRoster' })}
           />
         )}
-        {state.status === 'ready' && state.agents.length === 0 && (
-          <AgentRosterPlaceholderState
-            role={state.emptyState === 'filtered' ? 'status' : undefined}
-            title={
-              state.emptyState === 'filtered'
-                ? t(($) => $['roster.emptySearch'], { ns: 'agentRoster' })
-                : t(($) => $['roster.empty'], { ns: 'agentRoster' })
-            }
-          />
-        )}
+        {state.status === 'ready' &&
+          state.agents.length === 0 &&
+          (state.emptyState === 'roster' ? (
+            <AgentRosterPlaceholderState title={t(($) => $['roster.empty'])} />
+          ) : (
+            <AgentRosterPlaceholderState
+              role="status"
+              title={t(($) => $['roster.emptySearch'])}
+              description={t(($) => $['roster.emptySearchDescription'])}
+              action={{
+                label: t(($) => $['roster.clearFilters']),
+                onClick: state.emptyState.onClearFilters,
+              }}
+            />
+          ))}
         {state.status === 'ready' && state.agents.length > 0 && (
           <ul
             // Safari list semantics: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/list-style#accessibility

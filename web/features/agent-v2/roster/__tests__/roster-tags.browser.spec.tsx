@@ -147,6 +147,51 @@ it('paginates filtered Agents, restarts for a second tag and clears only the tag
     .toBeVisible()
 })
 
+it('clears an unmatched search and all roster filters while preserving other URL state and restoring search focus', async () => {
+  api.list.mockImplementation(async (input) => {
+    const query = input?.query
+    const filtered =
+      query?.name || query?.publication_status || query?.is_created_by_me || query?.tag_ids?.length
+    return rosterPage(filtered ? [] : [analyst])
+  })
+  const { onUrlUpdate } = await renderRoster(
+    [],
+    '?keyword=kkkkk&sort_by=earliest_created&layout=grid',
+  )
+  const search = page.getByRole('searchbox', { name: 'agentRoster.roster.searchLabel' })
+  await expect.element(search).toHaveValue('kkkkk')
+  const clear = page.getByRole('button', { name: 'agentRoster.roster.clearFilters' })
+  await expect.element(clear).toBeVisible()
+
+  await page.getByRole('radio', { name: /agentRoster\.roster\.filters\.drafts/ }).click()
+  await page.getByRole('checkbox', { name: 'agentRoster.roster.filters.createdByMe' }).click()
+  await page.getByRole('combobox', { name: 'common.tag.placeholder' }).click()
+  await page.getByRole('option', { name: 'Research' }).click()
+  await userEvent.keyboard('{Escape}')
+  await expect
+    .poll(() => api.list.mock.lastCall?.[0]?.query)
+    .toEqual({
+      name: 'kkkkk',
+      publication_status: 'drafts',
+      is_created_by_me: true,
+      tag_ids: [research.id],
+      sort_by: 'earliest_created',
+      page: 1,
+      limit: 30,
+    })
+
+  await clear.click()
+  await expect.element(search).toHaveFocus()
+  await expect.element(search).toHaveValue('')
+  await expect.element(page.getByRole('listitem', { name: 'Analyst' })).toBeVisible()
+  await expect
+    .poll(() => Object.fromEntries(onUrlUpdate.mock.lastCall?.[0].searchParams ?? []))
+    .toEqual({
+      sort_by: 'earliest_created',
+      layout: 'grid',
+    })
+})
+
 it('restores loaded roster pages when returning from another route with the same filters', async () => {
   api.list.mockImplementation(async (input) =>
     input?.query?.page === 2 ? rosterPage([reviewer], 2) : rosterPage([analyst], 1, true),
@@ -223,7 +268,8 @@ it('lets an Agent editor change bindings without permission to manage shared tag
     .element(page.getByRole('listitem', { name: 'Reviewer' }).getByRole('combobox'))
     .not.toBeInTheDocument()
   await page.getByRole('combobox', { name: 'Research: Analyst' }).click()
-  const search = page.getByRole('combobox', { name: 'common.placeholder.search' })
+  const search = page.getByRole('combobox', { name: 'common.tag.searchTags' })
+  await expect.element(search).toHaveAttribute('placeholder', 'common.tag.searchTags')
   await search.fill('Planning')
   await expect.element(page.getByText('common.tag.noTag')).toBeVisible()
   await expect

@@ -4,7 +4,7 @@ import type { AgentPublicationCountsResponse } from '@dify/contracts/api/console
 import type { AgentRosterListState } from './components/agent-roster-list'
 import { keepPreviousData, useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
-import { useQueryState } from 'nuqs'
+import { useQueryState, useQueryStates } from 'nuqs'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import { consoleQuery } from '@/service/console'
@@ -20,6 +20,12 @@ import {
 } from './query-params'
 
 const ROSTER_PAGE_SIZE = 30
+const rosterFilters = {
+  [rosterQueryParamNames.keyword]: rosterKeywordQueryParser,
+  [rosterQueryParamNames.filter]: rosterFilterQueryParser,
+  [rosterQueryParamNames.createdByMe]: rosterCreatedByMeQueryParser,
+  [rosterQueryParamNames.tagIds]: rosterTagIdsQueryParser,
+}
 const EMPTY_PUBLICATION_COUNTS: AgentPublicationCountsResponse = {
   drafts: 0,
   published: 0,
@@ -27,12 +33,9 @@ const EMPTY_PUBLICATION_COUNTS: AgentPublicationCountsResponse = {
 
 export function DifyRoster({ labelledBy }: { labelledBy: string }) {
   const queryClient = useQueryClient()
-  const [keyword] = useQueryState(rosterQueryParamNames.keyword, rosterKeywordQueryParser)
-  const [rosterFilter] = useQueryState(rosterQueryParamNames.filter, rosterFilterQueryParser)
-  const [urlTagIds, setUrlTagIds] = useQueryState(
-    rosterQueryParamNames.tagIds,
-    rosterTagIdsQueryParser,
-  )
+  const [filters, setFilters] = useQueryStates(rosterFilters)
+  const { keyword, filter: rosterFilter, created_by_me: createdByMe, tag_ids: urlTagIds } = filters
+  const searchRef = useRef<HTMLInputElement>(null)
   const tagCatalog = useQuery(
     consoleQuery.tags.get.queryOptions({
       input: { query: { type: 'agent' } },
@@ -48,16 +51,14 @@ export function DifyRoster({ labelledBy }: { labelledBy: string }) {
   useEffect(() => {
     if (tagIds.length === urlTagIds.length) return
     // oxlint-disable-next-line eslint-react/set-state-in-effect -- Keep the external URL in sync with the loaded tag catalog.
-    void setUrlTagIds(tagIds)
-  }, [tagIds, urlTagIds, setUrlTagIds])
+    void setFilters({ tag_ids: tagIds })
+  }, [tagIds, urlTagIds, setFilters])
   const scrollViewportRef = useRef<HTMLDivElement>(null)
   const [tagManagementOpen, setTagManagementOpen] = useState(false)
-  const [createdByMe] = useQueryState(
-    rosterQueryParamNames.createdByMe,
-    rosterCreatedByMeQueryParser,
-  )
   const [sortBy] = useQueryState(rosterQueryParamNames.sortBy, rosterSortByQueryParser)
-  const debouncedKeyword = useDebounce(keyword.trim(), { wait: 300 })
+  const trimmedKeyword = keyword.trim()
+  const delayedKeyword = useDebounce(trimmedKeyword, { wait: 300 })
+  const debouncedKeyword = trimmedKeyword ? delayedKeyword : ''
   const rosterQueryInput = (page: number, selectedTagIds: string[]) => ({
     query: {
       page,
@@ -101,7 +102,13 @@ export function DifyRoster({ labelledBy }: { labelledBy: string }) {
           agents: rosterItems,
           emptyState:
             debouncedKeyword || rosterFilter !== 'all' || createdByMe || tagIds.length
-              ? 'filtered'
+              ? {
+                  type: 'filtered',
+                  onClearFilters: () => {
+                    void setFilters(null)
+                    searchRef.current?.focus()
+                  },
+                }
               : 'roster',
           footer: isFetchNextPageError
             ? { status: 'error', onRetry: () => void fetchNextPage() }
@@ -125,6 +132,7 @@ export function DifyRoster({ labelledBy }: { labelledBy: string }) {
     >
       <div className="sticky top-0 z-10 shrink-0 bg-background-body px-2 pt-3.5 pb-2 sm:px-8">
         <RosterToolbar
+          searchRef={searchRef}
           publicationCounts={publicationCounts}
           tagIds={tagIds}
           onTagIdsChange={(nextIds) => {
@@ -137,7 +145,7 @@ export function DifyRoster({ labelledBy }: { labelledBy: string }) {
               type: 'inactive',
             })
             scrollViewportRef.current?.scrollTo({ top: 0 })
-            void setUrlTagIds(nextIds)
+            void setFilters({ tag_ids: nextIds })
           }}
           onOpenTagManagement={openTagManagement}
         />
