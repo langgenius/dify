@@ -44,12 +44,23 @@ def send_abort_command(task_id: str, reason: str | None = None, *, redis: RedisC
         logger.exception("Failed to send Engine abort command for task %s", task_id)
 
 
-def set_app_task_stop_flag(task_id: str, *, redis: RedisClientWrapper | None = None) -> None:
+def set_app_task_stop_flag(task_id: str, *, reason: str | None = None, redis: RedisClientWrapper | None = None) -> None:
     if not task_id:
         return
 
     client = redis if redis is not None else redis_client
-    client.setex(app_task_stop_flag_key(task_id), 600, 1)
+    client.setex(app_task_stop_flag_key(task_id), 600, reason or 1)
+
+
+def get_app_task_stop_reason(task_id: str) -> str | None:
+    if not task_id:
+        return None
+
+    value = redis_client.get(app_task_stop_flag_key(task_id))
+    if value is None:
+        return None
+
+    return "User requested stop" if value == b"1" else value.decode("utf-8")
 
 
 def is_app_task_stop_flag_set(task_id: str) -> bool:
@@ -214,7 +225,7 @@ class AppExecutionCoordinator:
 
     def _abort_execution(self, reason: str) -> None:
         try:
-            set_app_task_stop_flag(self._task_id)
+            set_app_task_stop_flag(self._task_id, reason=reason)
         except Exception:
             logger.exception(
                 "Failed to set stop flag for app execution task=%s attempt=%s",

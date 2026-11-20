@@ -76,7 +76,9 @@ class TestWorkflowAppQueueManager:
             messages = list(manager.listen())
 
             assert any(isinstance(message.event, QueueStopEvent) for message in messages)
-            execution_redis.setex.assert_called_once_with("generate_task_stopped:task", 600, 1)
+            execution_redis.setex.assert_called_once_with(
+                "generate_task_stopped:task", 600, "App execution exceeded 0 seconds"
+            )
             send_abort_command.assert_called_once_with(
                 "task",
                 reason="App execution exceeded 0 seconds",
