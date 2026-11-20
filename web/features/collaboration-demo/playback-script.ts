@@ -2,9 +2,10 @@ import type { DemoNodeId } from './demo-graph'
 import type { DemoUserId } from './demo-users'
 
 type Point = { x: number; y: number }
-type Waypoint = readonly [seconds: number, x: number, y: number]
+export type CursorAnchor = Point | 'reply'
+type Waypoint = readonly [seconds: number, anchor: CursorAnchor]
 
-export const demoCommentPosition: Point = { x: 850, y: 370 }
+export const demoCommentPosition: Point = { x: 1280, y: 300 }
 
 export const demoMessages: readonly {
   id: 'alexAsk' | 'samReply' | 'alexConfirm'
@@ -23,26 +24,26 @@ export const demoDuration = 19.5
 const markerPlacedAt = 1
 
 const alexPath: Waypoint[] = [
-  [0, 1150, 640],
-  [1, demoCommentPosition.x, demoCommentPosition.y],
-  [4.6, demoCommentPosition.x, demoCommentPosition.y],
-  [5.6, 760, 640],
-  [14.2, 760, 640],
-  [14.8, 990, 625],
-  [17.8, 990, 625],
-  [18.6, 1180, 520],
+  [0, { x: 1100, y: 600 }],
+  [1, demoCommentPosition],
+  [4.6, demoCommentPosition],
+  [5.6, { x: 1060, y: 590 }],
+  [14.2, { x: 1060, y: 590 }],
+  [14.8, 'reply'],
+  [17.8, 'reply'],
+  [18.6, { x: 1120, y: 120 }],
 ]
 
 const samPath: Waypoint[] = [
-  [0, 1250, 120],
-  [4.8, 1250, 120],
-  [5.6, 470, 300],
-  [7.4, 470, 300],
-  [8.2, 790, 480],
-  [9.8, 790, 480],
-  [10.4, 980, 625],
-  [14, 980, 625],
-  [14.8, 1220, 260],
+  [0, { x: 1180, y: 110 }],
+  [4.8, { x: 1180, y: 110 }],
+  [5.6, { x: 470, y: 300 }],
+  [7.4, { x: 470, y: 300 }],
+  [8.2, { x: 790, y: 480 }],
+  [9.8, { x: 790, y: 480 }],
+  [10.4, 'reply'],
+  [14, 'reply'],
+  [14.8, { x: 1150, y: 560 }],
 ]
 
 const presence: { node: DemoNodeId; from: number; to: number }[] = [
@@ -52,18 +53,19 @@ const presence: { node: DemoNodeId; from: number; to: number }[] = [
 
 const easeInOut = (p: number) => (p < 0.5 ? 4 * p * p * p : 1 - (-2 * p + 2) ** 3 / 2)
 
-function pointAt(path: Waypoint[], seconds: number, reducedMotion: boolean): Point {
+function cursorAt(path: Waypoint[], seconds: number, reducedMotion: boolean) {
   const next = path.findIndex(([at]) => at > seconds)
-  if (next === -1) {
-    const [, x, y] = path[path.length - 1]!
-    return { x, y }
+  if (next <= 0) {
+    const [, anchor] = path[next === 0 ? 0 : path.length - 1]!
+    return { from: anchor, to: anchor, progress: 1 }
   }
-  if (next === 0) return { x: path[0]![1], y: path[0]![2] }
-  const [t0, x0, y0] = path[next - 1]!
-  const [t1, x1, y1] = path[next]!
-  if (reducedMotion) return { x: x1, y: y1 }
-  const p = easeInOut((seconds - t0) / (t1 - t0))
-  return { x: x0 + (x1 - x0) * p, y: y0 + (y1 - y0) * p }
+  const [t0, from] = path[next - 1]!
+  const [t1, to] = path[next]!
+  return {
+    from,
+    to,
+    progress: reducedMotion ? 1 : easeInOut((seconds - t0) / (t1 - t0)),
+  }
 }
 
 export function getPlaybackFrame(seconds: number, reducedMotion = false) {
@@ -72,8 +74,8 @@ export function getPlaybackFrame(seconds: number, reducedMotion = false) {
   const lastAuthor = demoMessages[Math.max(0, visibleMessages - 1)]!.author
 
   return {
-    alex: pointAt(alexPath, seconds, reducedMotion),
-    sam: pointAt(samPath, seconds, reducedMotion),
+    alex: cursorAt(alexPath, seconds, reducedMotion),
+    sam: cursorAt(samPath, seconds, reducedMotion),
     marker:
       seconds < markerPlacedAt
         ? undefined

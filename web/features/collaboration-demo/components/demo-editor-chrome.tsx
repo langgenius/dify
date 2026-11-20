@@ -8,6 +8,7 @@ import { Toggle } from '@langgenius/dify-ui/toggle'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
 import { MiniMap, useViewport } from 'reactflow'
+import { useDemoViewport } from '../demo-viewport'
 import { DemoMembers } from './demo-members'
 
 function ToolIcon({ icon, pressed }: { icon: string; pressed?: boolean }) {
@@ -37,7 +38,9 @@ export function DemoHeader({ membersGuide, membersRef, onExit }: DemoHeaderProps
   return (
     <div className="absolute inset-s-0 top-7 z-10 flex h-0 w-full items-center justify-between bg-mask-top2bottom-gray-50-to-transparent px-3">
       <div className="flex w-full items-center justify-between">
-        <h1 className="system-sm-semibold text-text-primary">{t(($) => $.title)}</h1>
+        <h1 className="system-sm-semibold whitespace-nowrap text-text-primary">
+          {t(($) => $.title)}
+        </h1>
         <div className="flex items-center gap-2">
           <DemoMembers guide={membersGuide} pillRef={membersRef} />
           <div inert aria-hidden className="flex items-center gap-2">
@@ -55,7 +58,7 @@ export function DemoHeader({ membersGuide, membersRef, onExit }: DemoHeaderProps
                 <span className="i-ri-list-check-3 size-4 text-components-button-ghost-text" />
               </span>
             </div>
-            <div className="flex shrink-0 rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs backdrop-blur-[10px]">
+            <div className="flex shrink-0 rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs backdrop-blur-[10px] max-lg:hidden">
               {[
                 'i-custom-vender-line-others-bubble-x',
                 'i-custom-vender-line-others-env',
@@ -69,7 +72,7 @@ export function DemoHeader({ membersGuide, membersRef, onExit }: DemoHeaderProps
                 </span>
               ))}
             </div>
-            <Button className="inset-ring-1 inset-ring-transparent dark:bg-white/10 dark:inset-ring-black/5 dark:backdrop-blur-xs">
+            <Button className="inset-ring-1 inset-ring-transparent max-lg:hidden dark:bg-white/10 dark:inset-ring-black/5 dark:backdrop-blur-xs">
               <span className="i-ri-apps-2-add-line size-4 text-components-button-secondary-text" />
               {t(($) => $['common.features'], { ns: 'workflow' })}
             </Button>
@@ -147,6 +150,7 @@ export function DemoToolbar({
 export function DemoEditorCanvasChrome() {
   const { t } = useTranslation(['workflowDebug'])
   const { zoom } = useViewport()
+  useDemoViewport()
 
   return (
     <div inert aria-hidden className="absolute inset-x-0 bottom-0 z-10 px-1">

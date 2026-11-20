@@ -18,10 +18,21 @@ export const demoNodePositions = {
   lookupRefund: { x: 680, y: 140 },
   generateReply: { x: 680, y: 440 },
   refundStatus: { x: 1000, y: 140 },
-  askOrder: { x: 1000, y: 700 },
+  askOrder: { x: 1000, y: 440 },
 } as const
 
 export type DemoNodeId = keyof typeof demoNodePositions
+
+const positions = Object.values(demoNodePositions)
+const graphLeft = Math.min(...positions.map(({ x }) => x))
+const graphTop = Math.min(...positions.map(({ y }) => y))
+
+export const demoGraphBounds = {
+  x: graphLeft,
+  y: graphTop,
+  width: Math.max(...positions.map(({ x }) => x)) + 240 - graphLeft,
+  height: Math.max(...positions.map(({ y }) => y)) + 100 - graphTop,
+}
 
 const node = (id: DemoNodeId, type: BlockEnum, title: string, extra: object = {}): Node =>
   ({

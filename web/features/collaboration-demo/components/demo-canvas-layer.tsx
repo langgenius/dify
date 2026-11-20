@@ -2,15 +2,16 @@
 
 import type { Ref } from 'react'
 import type { DemoUserId } from '../demo-users'
-import type { PlaybackFrame } from '../playback-script'
+import type { CursorAnchor, PlaybackFrame } from '../playback-script'
 import { AvatarGroup } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useViewport } from 'reactflow'
+import { useStore, useViewport } from 'reactflow'
 import { demoNodePositions } from '../demo-graph'
 import { demoUsers } from '../demo-users'
+import { getThreadPlacement } from '../demo-viewport'
 import { demoCommentPosition, demoMessages } from '../playback-script'
 import { DemoAvatar } from './demo-avatar'
 
@@ -19,7 +20,7 @@ type Point = { x: number; y: number }
 function RemoteCursor({ user, x, y }: { user: DemoUserId } & Point) {
   const { color, name } = demoUsers[user]
   return (
-    <div aria-hidden className="pointer-events-none absolute z-8" style={{ left: x, top: y }}>
+    <div aria-hidden className="pointer-events-none absolute z-40" style={{ left: x, top: y }}>
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="drop-shadow-md">
         <path
           d="M5 3L5 15L8 11.5L11 16L13 15L10 10.5L14 10.5L5 3Z"
@@ -110,6 +111,8 @@ export function DemoCanvasLayer({
 }: DemoCanvasLayerProps) {
   const { t } = useTranslation(['collaborationDemo', 'workflow', 'workflowComments'])
   const { x: vx, y: vy, zoom } = useViewport()
+  const width = useStore((state) => state.width)
+  const height = useStore((state) => state.height)
   const listRef = useRef<HTMLDivElement>(null)
   const toScreen = ({ x, y }: Point) => ({ x: x * zoom + vx, y: y * zoom + vy })
   const visibleMessages = frame?.visibleMessages ?? 0
@@ -123,6 +126,17 @@ export function DemoCanvasLayer({
   if (!frame) return null
 
   const pin = toScreen(demoCommentPosition)
+  const thread = getThreadPlacement(pin, { width, height })
+  const anchorToScreen = (anchor: CursorAnchor) =>
+    anchor === 'reply' ? { x: thread.left + 90, y: thread.top + 326 } : toScreen(anchor)
+  const cursorPosition = ({ from, to, progress }: PlaybackFrame['alex']) => {
+    const start = anchorToScreen(from)
+    const end = anchorToScreen(to)
+    return {
+      x: start.x + (end.x - start.x) * progress,
+      y: start.y + (end.y - start.y) * progress,
+    }
+  }
   const viewing = frame.samViewing && toScreen(demoNodePositions[frame.samViewing])
   const participants: DemoUserId[] = visibleMessages > 1 ? ['alex', 'sam'] : ['alex']
   const messages = demoMessages.slice(0, visibleMessages)
@@ -146,7 +160,7 @@ export function DemoCanvasLayer({
         <div
           aria-hidden
           className="absolute flex w-96 items-center gap-3"
-          style={{ left: pin.x, top: pin.y }}
+          style={{ left: Math.min(pin.x, width - 392), top: pin.y }}
         >
           <div className="relative aspect-square h-8 w-8 shrink-0 rounded-ss-full rounded-se-full rounded-ee-full bg-primary-500 p-0.5">
             <div className="flex size-full items-center justify-center overflow-hidden rounded-ss-full rounded-se-full rounded-ee-full bg-components-panel-bg-blur p-0.5">
@@ -191,8 +205,8 @@ export function DemoCanvasLayer({
           {threadOpen && (
             <section
               aria-labelledby="collaboration-demo-thread-title"
-              className="nowheel nopan pointer-events-auto absolute z-30 w-90 max-w-90 -translate-y-1/5"
-              style={{ left: pin.x + 40, top: pin.y }}
+              className="nowheel nopan pointer-events-auto absolute z-30 w-90 max-w-90"
+              style={thread}
             >
               <div className="relative flex h-90 flex-col overflow-hidden rounded-2xl border border-components-panel-border bg-components-panel-bg shadow-xl">
                 <div className="flex items-center justify-between rounded-t-2xl border-b border-components-panel-border bg-components-panel-bg-blur px-4 py-3">
@@ -263,8 +277,8 @@ export function DemoCanvasLayer({
         </>
       )}
 
-      <RemoteCursor user="alex" {...toScreen(frame.alex)} />
-      <RemoteCursor user="sam" {...toScreen(frame.sam)} />
+      <RemoteCursor user="alex" {...cursorPosition(frame.alex)} />
+      <RemoteCursor user="sam" {...cursorPosition(frame.sam)} />
     </div>
   )
 }

@@ -30,7 +30,7 @@ export function DemoStepGuide({ step, target, onAction, onExit }: DemoStepGuideP
     step === 'members'
       ? {
           index: 1,
-          side: 'inline-start' as const,
+          side: 'bottom' as const,
           title: t(($) => $['steps.members.title']),
           description: t(($) => $['steps.members.description']),
           action: t(($) => $['steps.members.action']),
