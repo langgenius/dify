@@ -13,6 +13,7 @@ from core.datasource.entities.datasource_entities import DatasourceProviderEntit
 from core.plugin.entities.base import BasePluginEntity
 from core.plugin.entities.parameters import PluginParameterOption
 from core.plugin.entities.plugin import PluginDeclaration, PluginEntity, PluginInstallationSource
+from core.schemas.resolver import SchemaType
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin
 from core.trigger.entities.entities import TriggerProviderEntity
@@ -49,7 +50,7 @@ class PluginDaemonRawResponse(BaseModel):
     data: JsonValue | None = None
 
 
-def validate_plugin_daemon_json_value(value: object) -> JsonValue:
+def validate_plugin_daemon_json_value(value: SchemaType) -> JsonValue:
     """Validate a transformed plugin-daemon JSON value at its Pydantic boundary.
 
     Preconditions: ``value`` is a schema produced by the plugin-schema resolver.
