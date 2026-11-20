@@ -1767,6 +1767,7 @@ Get available TTS voices for an Agent and language
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent version restored | **application/json**: [AgentConfigSnapshotRestoreResponse](#agentconfigsnapshotrestoreresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -3348,14 +3349,14 @@ Export application configuration as DSL
 | format | query | Export format; defaults to ifpkg for all Apps | No | string, <br>**Available values:** "ifpkg", "yaml" |
 | include_secret | query | Include secrets in export | No | boolean |
 | version_id | query | Published Agent version ID to export; requires a paid plan on Cloud. If omitted, exports the shared draft, falling back to the active snapshot when no draft exists. | No | string (uuid) |
-| workflow_id | query | Specific workflow ID to export | No | string |
+| workflow_id | query | Specific workflow ID to export; requires a paid plan on Cloud | No | string |
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | App exported successfully | **application/json**: [AppExportResponse](#appexportresponse)<br>**application/zip**: binary<br> |
-| 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Insufficient permissions | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [RosterAgentPackageExportFailedError](#rosteragentpackageexportfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -5824,6 +5825,7 @@ Restore a published workflow version into the draft workflow
 | ---- | ----------- | ------ |
 | 200 | Workflow restored successfully | **application/json**: [WorkflowRestoreResponse](#workflowrestoreresponse)<br> |
 | 400 | Source workflow must be published | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Workflow not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -13011,6 +13013,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineWorkflowSyncResponse](#ragpipelineworkflowsyncresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -13936,6 +13939,7 @@ Update published snippet workflow attributes
 | ---- | ----------- | ------ |
 | 200 | Workflow restored successfully | **application/json**: [WorkflowRestoreResponse](#workflowrestoreresponse)<br> |
 | 400 | Source workflow must be published | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Workflow not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -15056,13 +15060,14 @@ Export snippet configuration as DSL
 | ---- | ---------- | ----------- | -------- | ------ |
 | snippet_id | path | Snippet ID to export | Yes | string (uuid) |
 | include_secret | query | Whether to include secret variables | No | string, <br>**Default:** false |
-| workflow_id | query | Specific published workflow version to export | No | string |
+| workflow_id | query | Specific published workflow version to export; requires a paid plan on Cloud | No | string |
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Snippet exported successfully | **application/json**: [TextFileResponse](#textfileresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Snippet not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -22827,7 +22832,7 @@ This class is used to store the schema information of an api based tool.
 | format | string, <br>**Available values:** "ifpkg", "yaml" | Export format; defaults to ifpkg for all Apps | No |
 | include_secret | boolean | Include secrets in export | No |
 | version_id | string | Published Agent version ID to export; requires a paid plan on Cloud. If omitted, exports the shared draft, falling back to the active snapshot when no draft exists. | No |
-| workflow_id | string | Specific workflow ID to export | No |
+| workflow_id | string | Specific workflow ID to export; requires a paid plan on Cloud | No |
 
 #### AppExportResponse
 
@@ -27564,6 +27569,8 @@ Effective feature availability and limits for the current workspace.
 | members | [LimitationModel](#limitationmodel) |  | Yes |
 | model_load_balancing_enabled | boolean |  | Yes |
 | trigger_event | [Quota](#quota) |  | Yes |
+| version_restore_enabled | boolean |  | Yes |
+| version_restore_upgrade_available | boolean |  | Yes |
 | webapp_copyright_enabled | boolean |  | Yes |
 | workflow_collaboration_enabled | boolean |  | Yes |
 | workflow_collaboration_upgrade_available | boolean |  | Yes |
@@ -36722,7 +36729,7 @@ Query parameters for exporting a snippet workflow as DSL.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | include_secret | string, <br>**Default:** false | Whether to include secret variables | No |
-| workflow_id | string | Specific published workflow version to export | No |
+| workflow_id | string | Specific published workflow version to export; requires a paid plan on Cloud | No |
 
 #### SnippetImportPayload
 

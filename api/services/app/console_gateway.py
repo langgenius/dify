@@ -15,7 +15,6 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.rbac import RBACPermission, RBACResourceScope
-from enums import DeploymentEdition
 from events.app_event import app_was_updated
 from graphon.enums import BuiltinNodeTypes
 from graphon.model_runtime.entities.llm_entities import LLMMode
@@ -257,9 +256,7 @@ class EnterpriseConsoleAppAccess(ConsoleAppAccess):
 
     @override
     def can_export_version(self, workspace_id: str) -> bool:
-        return dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD or (
-            (plan := FeatureService.get_workspace_plan(workspace_id)) is not None and plan.is_paid
-        )
+        return FeatureService.can_use_version_restore(workspace_id)
 
 
 class AppTransferGateway(AppTransfers, AppDefinitionImports):

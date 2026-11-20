@@ -159,6 +159,7 @@ const communityFeatures = {
   documents_upload_quota: unlimitedCount,
   trigger_event: unlimitedPeriodic,
   api_rate_limit: unlimitedPeriodic,
+  version_restore_enabled: true,
 } satisfies DeepPartial<GetFeaturesResponse>
 
 export const seedFeatures = (

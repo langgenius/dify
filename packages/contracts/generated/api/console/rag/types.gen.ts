@@ -398,6 +398,11 @@ export type WorkflowUpdatePayload = {
   marked_name?: string | null
 }
 
+export type PaidPlanRequiredError = ErrorResponse & {
+  code: 'paid_plan_required'
+  status: 403
+}
+
 export type RagPipelineIconInfo = {
   icon: string
   icon_background?: string | null
@@ -2289,6 +2294,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }

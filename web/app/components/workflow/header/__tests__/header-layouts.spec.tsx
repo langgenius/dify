@@ -179,11 +179,10 @@ describe('Header layout components', () => {
       expect(screen.getByRole('button', { name: 'workflow.common.restore' })).toBeDisabled()
     })
 
-    it('opens the upgrade dialog without restoring for a Cloud sandbox workspace', async () => {
+    it('opens the upgrade dialog without restoring when restore requires an upgrade', async () => {
       const user = userEvent.setup()
       const { queryClient } = createConsoleQueryWrapper({
-        systemFeatures: { deployment_edition: 'CLOUD' },
-        features: { billing: { subscription: { plan: 'sandbox' } } },
+        features: { version_restore_enabled: false, version_restore_upgrade_available: true },
       })
       renderWorkflowComponent(<HeaderInRestoring />, {
         queryClient,

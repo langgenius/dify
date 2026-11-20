@@ -5,8 +5,9 @@ from typing import Literal, Self, override
 from flask import send_file
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator, model_validator
-from werkzeug.exceptions import BadRequest, Forbidden, NotFound
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound, ServiceUnavailable
 
+from controllers.common.errors import PaidPlanRequiredError
 from controllers.common.fields import RedirectUrlResponse, SimpleResultResponse
 from controllers.common.rbac import AgentBehindApp, PlainApp, RBACCheck, Workspace
 from controllers.common.schema import (
@@ -90,6 +91,7 @@ from services.entities.app_entities import (
 )
 from services.entities.dsl_entities import ImportStatus
 from services.errors.base import NoPermissionError
+from services.errors.billing import BillingError
 from services.knowledge.entities.knowledge_entities import (
     DataSource,
     InfoList,
@@ -205,7 +207,9 @@ class AppExportQuery(BaseModel):
         default=None, description="Export format; defaults to ifpkg for all Apps"
     )
     include_secret: bool = Field(default=False, description="Include secrets in export")
-    workflow_id: str | None = Field(default=None, description="Specific workflow ID to export")
+    workflow_id: str | None = Field(
+        default=None, description="Specific workflow ID to export; requires a paid plan on Cloud"
+    )
     version_id: uuid.UUID | None = Field(
         default=None,
         description=(
@@ -325,7 +329,9 @@ class AppResource(Resource):
             raise AppNotFoundError() from error
         except (InvalidAppExportError, InvalidAppAccessModesError) as error:
             raise BadRequest(str(error)) from error
-        except (AppExportPaidPlanRequiredError, NoPermissionError) as error:
+        except AppExportPaidPlanRequiredError as error:
+            raise PaidPlanRequiredError() from error
+        except NoPermissionError as error:
             raise Forbidden(str(error)) from error
         except CreatorsPlatformDisabledError as error:
             return {"error": str(error)}, HTTPStatus.FORBIDDEN
@@ -503,7 +509,7 @@ class AppCopyApi(AppResource):
 
 @console_ns.route("/apps/<uuid:app_id>/export")
 class AppExportApi(AppResource):
-    @error_responses(RosterAgentPackageExportFailedError)
+    @error_responses(RosterAgentPackageExportFailedError, PaidPlanRequiredError)
     @console_ns.doc("export_app")
     @console_ns.doc(description="Export application configuration as DSL")
     @console_ns.doc(params={"app_id": "Application ID to export"})
@@ -523,9 +529,12 @@ class AppExportApi(AppResource):
     )
     def get(self, context: RequestContext, app_id: uuid.UUID):
         query = validate_request(AppExportQuery)
-        exported = application_services().apps.console.export(
-            context, str(app_id), AppExportOptions(**query.model_dump())
-        )
+        try:
+            exported = application_services().apps.console.export(
+                context, str(app_id), AppExportOptions(**query.model_dump())
+            )
+        except BillingError as exc:
+            raise ServiceUnavailable("Billing entitlement is temporarily unavailable.") from exc
         if isinstance(exported, str):
             return AppExportResponse(data=exported).model_dump(mode="json")
         try:

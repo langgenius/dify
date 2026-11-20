@@ -524,11 +524,12 @@ class ConsoleAppService:
 
     def export(self, context: RequestContext, app_id: str, options: AppExportOptions) -> str | RosterAgentPackageExport:
         app = self._apps.get_reference(context, app_id)
-        if options.version_id is not None:
-            if app.mode != "agent":
-                raise InvalidAppExportError("version_id is only available for Agent Apps")
-            if not self._access.can_export_version(context.active_workspace_id):
-                raise AppExportPaidPlanRequiredError("This feature requires a paid plan.")
+        if options.version_id is not None and app.mode != "agent":
+            raise InvalidAppExportError("version_id is only available for Agent Apps")
+        if (options.version_id is not None or options.workflow_id is not None) and not self._access.can_export_version(
+            context.active_workspace_id
+        ):
+            raise AppExportPaidPlanRequiredError("This feature requires a paid plan.")
         if options.format == "yaml":
             return self._transfers.export_dsl(context, app.id, options)
         return self._export_package(context, app, options)

@@ -657,6 +657,11 @@ export type AppExportResponse = {
   data: string
 }
 
+export type PaidPlanRequiredError = ErrorResponse & {
+  code: 'paid_plan_required'
+  status: 403
+}
+
 export type RosterAgentPackageExportFailedError = ErrorResponse & {
   code: 'roster_agent_package_export_failed'
   status: 500
@@ -795,11 +800,6 @@ export type NetworkAccessInvalidInputError = ErrorResponse & {
 export type NetworkAccessUnsupportedAccessPointsError = ErrorResponse & {
   code: 'network_access_unsupported_access_points'
   status: 400
-}
-
-export type PaidPlanRequiredError = ErrorResponse & {
-  code: 'paid_plan_required'
-  status: 403
 }
 
 export type NetworkAccessGroupNotFoundError = ErrorResponse & {
@@ -6700,7 +6700,7 @@ export type GetAppsByAppIdExportData = {
 }
 
 export type GetAppsByAppIdExportErrors = {
-  403: ErrorResponse
+  403: PaidPlanRequiredError | ErrorResponse
   500: RosterAgentPackageExportFailedError | ErrorResponse
   default: ErrorResponse
 }
@@ -9832,6 +9832,7 @@ export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreData = {
 
 export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreErrors = {
   400: ErrorResponse
+  403: PaidPlanRequiredError | ErrorResponse
   404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }

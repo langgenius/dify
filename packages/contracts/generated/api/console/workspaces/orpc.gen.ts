@@ -889,6 +889,7 @@ export const get6 = oc
     }),
   )
   .output(zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const export_ = {
   get: get6,

@@ -42,6 +42,7 @@ from controllers.console.wraps import (
     model_validate,
     rbac_permission_required,
     setup_required,
+    version_restore_plan_required,
     with_current_user,
 )
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -405,6 +406,7 @@ class SnippetDraftWorkflowRestoreApi(Resource):
     @get_snippet
     @edit_permission_required
     @rbac_permission_required(RBACCheck(RBACPermission.SNIPPETS_CREATE_AND_MODIFY, Workspace()))
+    @version_restore_plan_required
     def post(self, current_user: Account, snippet: CustomizedSnippet, workflow_id: str):
         """Restore a published snippet workflow version into the draft workflow."""
         snippet_service = _snippet_service()

@@ -15,8 +15,7 @@ const exportState = vi.hoisted(() => ({
   canRestore: true,
   restoreVersion: vi.fn(async (_input: unknown) => ({ result: 'success' })),
   isExporting: false,
-  edition: 'CLOUD' as 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE',
-  plan: 'professional' as 'professional' | 'sandbox' | undefined,
+  restoreAccess: 'enabled' as 'enabled' | 'upgrade' | 'loading',
   exportAppDsl: vi.fn(),
   onUrlUpdate: vi.fn(),
 }))
@@ -63,8 +62,11 @@ const versions: AgentConfigSnapshotSummaryResponse[] = [
 function render(ui: ReactElement, options?: Parameters<typeof renderAccountProfile>[1]) {
   const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ onUrlUpdate: exportState.onUrlUpdate })
   const { queryClient } = createConsoleQueryWrapper({
-    systemFeatures: { deployment_edition: exportState.edition },
-    features: exportState.plan ? { billing: { subscription: { plan: exportState.plan } } } : null,
+    features: {
+      enabled: { version_restore_enabled: true },
+      upgrade: { version_restore_upgrade_available: true },
+      loading: null,
+    }[exportState.restoreAccess],
   })
   queryClient.setQueryData(
     consoleQuery.agent.byAgentId.versions.get.queryKey({
@@ -105,8 +107,7 @@ describe('AgentPreviewVersionsPanel', () => {
     exportState.canRestore = true
     exportState.restoreVersion.mockResolvedValue({ result: 'success' })
     exportState.isExporting = false
-    exportState.edition = 'CLOUD'
-    exportState.plan = 'professional'
+    exportState.restoreAccess = 'enabled'
   })
 
   describe('Version export', () => {
@@ -143,8 +144,8 @@ describe('AgentPreviewVersionsPanel', () => {
       expect(screen.queryByRole('button', { name: /moreActions/ })).not.toBeInTheDocument()
     })
 
-    it('opens pricing instead of exporting on the Cloud sandbox plan', async () => {
-      exportState.plan = 'sandbox'
+    it('opens pricing instead of exporting when export requires an upgrade', async () => {
+      exportState.restoreAccess = 'upgrade'
       const user = userEvent.setup()
       renderPanel()
       await user.click(screen.getByRole('button', { name: /moreActions.*Initial release/ }))
@@ -155,24 +156,9 @@ describe('AgentPreviewVersionsPanel', () => {
       expect(exportState.exportAppDsl).not.toHaveBeenCalled()
     })
 
-    it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
-      'allows export on %s without a Cloud plan',
-      async (edition) => {
-        exportState.edition = edition
-        exportState.plan = undefined
-        const user = userEvent.setup()
-        renderPanel()
-        await user.click(screen.getByRole('button', { name: /moreActions.*Initial release/ }))
-        await user.click(screen.getByRole('menuitem', { name: /agentV2\.exportAgent/ }))
-        expect(exportState.exportAppDsl).toHaveBeenCalledWith(
-          expect.objectContaining({ versionId: 'version-0' }),
-        )
-      },
-    )
-
-    it.each(['loading-plan', 'exporting'])('disables export while %s', async (state) => {
-      if (state === 'loading-plan') exportState.plan = undefined
-      else exportState.isExporting = true
+    it.each(['loading', 'exporting'] as const)('disables export when %s', async (state) => {
+      if (state === 'exporting') exportState.isExporting = true
+      else exportState.restoreAccess = state
       const user = userEvent.setup()
       renderPanel()
       await user.click(screen.getByRole('button', { name: /moreActions.*Initial release/ }))
@@ -249,8 +235,8 @@ describe('AgentPreviewVersionsPanel', () => {
       expect(onSelectVersion).not.toHaveBeenCalled()
     })
 
-    it('dismisses the agent upgrade dialog without restoring or opening pricing on the Cloud sandbox plan', async () => {
-      exportState.plan = 'sandbox'
+    it('dismisses the agent upgrade dialog without restoring or opening pricing when restore requires an upgrade', async () => {
+      exportState.restoreAccess = 'upgrade'
       const user = userEvent.setup()
       renderPanel()
       await openRestore(user)
@@ -268,24 +254,8 @@ describe('AgentPreviewVersionsPanel', () => {
       expect(exportState.restoreVersion).not.toHaveBeenCalled()
     })
 
-    it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
-      'allows restoration on %s without a Cloud plan',
-      async (edition) => {
-        exportState.edition = edition
-        exportState.plan = undefined
-        const user = userEvent.setup()
-        renderPanel()
-        await openRestore(user)
-        await user.click(
-          within(await screen.findByRole('alertdialog')).getByRole('button', { name: /restore/i }),
-        )
-        await waitFor(() => expect(exportState.restoreVersion).toHaveBeenCalledTimes(1))
-        expect(exportState.onUrlUpdate).not.toHaveBeenCalled()
-      },
-    )
-
-    it('disables restoration until the Cloud plan is loaded', async () => {
-      exportState.plan = undefined
+    it('disables restoration while features load', async () => {
+      exportState.restoreAccess = 'loading'
       const user = userEvent.setup()
       renderPanel()
       await user.click(screen.getByRole('button', { name: /moreActions.*Initial release/ }))

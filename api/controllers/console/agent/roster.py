@@ -7,7 +7,9 @@ from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import ServiceUnavailable
 
+from controllers.common.errors import PaidPlanRequiredError
 from controllers.common.rbac import AgentId, RBACCheck, Workspace
 from controllers.common.schema import (
     query_params_from_model,
@@ -111,6 +113,7 @@ from services.app_service import AppResponseView, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import ComposerSavePayload, RosterListQuery
 from services.entities.app_entities import AppListParams, UpdateAppParams
+from services.errors.billing import BillingError
 from services.system_feature_service import SystemFeatureService
 
 AgentPublicationStatus = Literal["published", "drafts"]
@@ -1092,7 +1095,7 @@ class AgentRosterVersionDetailApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/versions/<uuid:version_id>/restore")
 class AgentRosterVersionRestoreApi(Resource):
-    @error_responses(AgentNotFoundError, AgentVersionNotFoundError)
+    @error_responses(AgentNotFoundError, AgentVersionNotFoundError, PaidPlanRequiredError)
     @console_ns.response(
         HTTPStatus.OK, "Agent version restored", console_ns.models[AgentConfigSnapshotRestoreResponse.__name__]
     )
@@ -1107,6 +1110,8 @@ class AgentRosterVersionRestoreApi(Resource):
             raise AgentNotFoundError from exc
         except AgentVersionUnavailableError as exc:
             raise AgentVersionNotFoundError from exc
-        except AgentVersionPlanRequiredError:
-            abort(HTTPStatus.FORBIDDEN, description="This feature requires a paid plan.")
+        except AgentVersionPlanRequiredError as exc:
+            raise PaidPlanRequiredError() from exc
+        except BillingError as exc:
+            raise ServiceUnavailable("Billing entitlement is temporarily unavailable.") from exc
         return dump_response(AgentConfigSnapshotRestoreResponse, restored)

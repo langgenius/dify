@@ -157,6 +157,9 @@ class FeatureModel(FeatureResponseModel):
     # Evaluation (including Snippet evaluation) is usable now; the upgrade flag marks Cloud Sandbox.
     evaluation_enabled: bool = False
     evaluation_upgrade_available: bool = False
+    # Restoring or exporting a published version is usable now; the upgrade flag marks Cloud Sandbox.
+    version_restore_enabled: bool = False
+    version_restore_upgrade_available: bool = False
     members: LimitationModel = LimitationModel(size=0, limit=1)
     apps: LimitationModel = LimitationModel(size=0, limit=10)
     # Indexing tasks still consume this internally; Console queries vector usage separately.

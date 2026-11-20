@@ -42,6 +42,7 @@ from controllers.console.wraps import (
     model_validate,
     rbac_permission_required,
     setup_required,
+    version_restore_plan_required,
     with_current_tenant_id,
     with_current_user,
 )
@@ -772,6 +773,7 @@ class RagPipelineDraftWorkflowRestoreApi(Resource):
     @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetByPipeline()))
     @with_current_user
     @get_rag_pipeline
+    @version_restore_plan_required
     def post(self, current_user: Account, pipeline: Pipeline, workflow_id: str):
         rag_pipeline_service = RagPipelineService(db.session())
 

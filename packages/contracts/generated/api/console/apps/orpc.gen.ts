@@ -2188,6 +2188,7 @@ export const get31 = oc
   )
   .output(zGetAppsByAppIdExportResponse)
   .errors({
+    paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
     roster_agent_package_export_failed: { status: 500, data: zRosterAgentPackageExportFailedError },
   })
 
@@ -5244,7 +5245,10 @@ export const post69 = oc
   })
   .input(z.object({ params: zPostAppsByAppIdWorkflowsByWorkflowIdRestorePath }))
   .output(zPostAppsByAppIdWorkflowsByWorkflowIdRestoreResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+  })
 
 export const restore = {
   post: post69,

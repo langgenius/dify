@@ -102,6 +102,73 @@ def test_evaluation_feature_and_upgrade_use_the_loaded_plan(
 
 
 @pytest.mark.parametrize(
+    ("edition", "plan", "expected", "upgrade_available"),
+    [
+        (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, False, True),
+        (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL, True, False),
+        (DeploymentEdition.CLOUD, CloudPlan.TEAM, True, False),
+        (DeploymentEdition.ENTERPRISE, CloudPlan.SANDBOX, True, False),
+        (DeploymentEdition.COMMUNITY, CloudPlan.SANDBOX, True, False),
+    ],
+)
+def test_version_restore_feature_and_upgrade_use_the_loaded_plan(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    edition: DeploymentEdition,
+    plan: CloudPlan,
+    expected: bool,
+    upgrade_available: bool,
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=edition)
+
+    def fill_billing(features: FeatureModel, *_args: object, **_kwargs: object) -> None:
+        features.billing.subscription.plan = plan
+
+    def fail_extra_plan_lookup(_tenant_id: str) -> CloudPlan:
+        raise AssertionError("the loaded plan should be reused")
+
+    monkeypatch.setattr(FeatureService, "_fulfill_params_from_billing_api", fill_billing)
+    monkeypatch.setattr(FeatureService, "get_workspace_plan", fail_extra_plan_lookup)
+    monkeypatch.setattr(feature_service_module.EnterpriseService, "get_workspace_info", lambda _tenant_id: {})
+
+    features = FeatureService.get_features("tenant-1")
+
+    assert features.version_restore_enabled is expected
+    assert features.version_restore_upgrade_available is upgrade_available
+
+
+@pytest.mark.parametrize(
+    ("edition", "plan", "allowed", "reads_billing"),
+    [
+        (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, False, True),
+        (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL, True, True),
+        (DeploymentEdition.CLOUD, CloudPlan.TEAM, True, True),
+        (DeploymentEdition.COMMUNITY, CloudPlan.SANDBOX, True, False),
+        (DeploymentEdition.ENTERPRISE, CloudPlan.SANDBOX, True, False),
+    ],
+)
+def test_version_restore_only_reads_billing_on_cloud(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    edition: DeploymentEdition,
+    plan: CloudPlan,
+    allowed: bool,
+    reads_billing: bool,
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=edition)
+    reads: list[str] = []
+
+    def get_plan(tenant_id: str) -> CloudPlan:
+        reads.append(tenant_id)
+        return plan
+
+    monkeypatch.setattr(FeatureService, "get_workspace_plan", get_plan)
+
+    assert FeatureService.can_use_version_restore("tenant") is allowed
+    assert reads == (["tenant"] if reads_billing else [])
+
+
+@pytest.mark.parametrize(
     ("edition", "plan", "expected"),
     [
         (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, False),

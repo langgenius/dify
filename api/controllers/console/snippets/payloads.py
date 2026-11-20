@@ -172,4 +172,6 @@ class IncludeSecretQuery(BaseModel):
 class SnippetExportQuery(IncludeSecretQuery):
     """Query parameters for exporting a snippet workflow as DSL."""
 
-    workflow_id: str | None = Field(default=None, description="Specific published workflow version to export")
+    workflow_id: str | None = Field(
+        default=None, description="Specific published workflow version to export; requires a paid plan on Cloud"
+    )

@@ -10,7 +10,6 @@ import { editorResourceAtom } from '@/app/components/workflow/editor-resource/st
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import {
   useInvalidateAllLastRun,
@@ -29,11 +28,12 @@ export type HeaderInRestoringProps = {
 const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
   const { t } = useTranslation(['billing', 'workflow', 'workflowHistory'])
   const [isRestorePlanUpgradeModalOpen, setIsRestorePlanUpgradeModalOpen] = useState(false)
-  const deploymentEdition = useAtomValue(deploymentEditionAtom)
-  const { data: plan } = useQuery(
+  const { data: versionRestore } = useQuery(
     consoleQuery.features.get.queryOptions({
-      enabled: deploymentEdition === 'CLOUD',
-      select: (data) => data.billing.subscription.plan,
+      select: ({ version_restore_enabled, version_restore_upgrade_available }) => ({
+        version_restore_enabled,
+        version_restore_upgrade_available,
+      }),
     }),
   )
   const workflowStore = useWorkflowStore()
@@ -54,7 +54,6 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
   const canRestore =
     !!currentVersion?.id && !!resourceId && currentVersion.version !== WorkflowVersion.Draft
-  const isPlanUnavailable = deploymentEdition === 'CLOUD' && plan === undefined
   const canEmitCollaborationEvents = resource.kind === 'app'
 
   const handleCancelRestore = useCallback(() => {
@@ -109,12 +108,13 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
   }, [canEmitCollaborationEvents, resourceId])
 
   const handleRestore = useCallback(async () => {
-    if (isPlanUnavailable || !canRestore || !currentVersion) return
+    if (!versionRestore || !canRestore || !currentVersion) return
 
-    if (deploymentEdition === 'CLOUD' && plan === 'sandbox') {
+    if (versionRestore.version_restore_upgrade_available) {
       setIsRestorePlanUpgradeModalOpen(true)
       return
     }
+    if (!versionRestore.version_restore_enabled) return
 
     setShowWorkflowVersionHistoryPanel(false)
     await emitRestoreIntent()
@@ -137,11 +137,9 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
       onRestoreSettled?.()
     }
   }, [
-    isPlanUnavailable,
+    versionRestore,
     canRestore,
     currentVersion,
-    deploymentEdition,
-    plan,
     setShowWorkflowVersionHistoryPanel,
     emitRestoreIntent,
     restoreWorkflow,
@@ -164,7 +162,7 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
       <div className="flex items-center justify-end gap-x-2">
         <Button
           onClick={handleRestore}
-          disabled={isPlanUnavailable || !canRestore}
+          disabled={!versionRestore || !canRestore}
           variant="primary"
           className="rounded-lg inset-ring-1 inset-ring-transparent dark:bg-white/10 dark:inset-ring-black/5 dark:backdrop-blur-xs"
         >

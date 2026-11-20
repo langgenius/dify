@@ -382,6 +382,8 @@ export const putErrors = { invalid_request: { status: 400, data: zInvalidRequest
 
 export const get4Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
 
+export const get6Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+
 export const get13Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
 
 export const post24Errors = {

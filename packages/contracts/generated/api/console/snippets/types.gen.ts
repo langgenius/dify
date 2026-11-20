@@ -328,6 +328,11 @@ export type WorkflowUpdatePayload = {
   marked_name?: string | null
 }
 
+export type PaidPlanRequiredError = ErrorResponse & {
+  code: 'paid_plan_required'
+  status: 403
+}
+
 export type WorkflowRunForListResponse = {
   created_at?: number | null
   created_by_account?: SimpleAccountResponse | null
@@ -2129,6 +2134,7 @@ export type PostSnippetsBySnippetIdWorkflowsByWorkflowIdRestoreData = {
 
 export type PostSnippetsBySnippetIdWorkflowsByWorkflowIdRestoreErrors = {
   400: ErrorResponse
+  403: PaidPlanRequiredError | ErrorResponse
   404: ErrorResponse
   default: ErrorResponse
 }

@@ -1,24 +1,20 @@
-import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
-import {
-  createConsoleQueryClient,
-  seedFeatures,
-  seedSystemFeatures,
-} from '@/test/console/query-data'
+import { createConsoleQueryClient, seedFeatures } from '@/test/console/query-data'
 import { renderWorkflowComponent } from '../../../../__tests__/workflow-test-env'
 import { VersionHistoryContextMenuOptions } from '../../../../types'
 import ActionMenu from '../index'
 
-let mockPlanType: CloudPlan = 'professional'
-let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'CLOUD'
+let versionRestoreAccess = {
+  version_restore_enabled: true,
+  version_restore_upgrade_available: false,
+}
 
 const renderActionMenu = (ui: React.ReactElement, pipelineId?: string) => {
   const queryClient = createConsoleQueryClient()
-  seedFeatures(queryClient, { billing: { subscription: { plan: mockPlanType } } })
-  seedSystemFeatures(queryClient, { deployment_edition: deploymentEdition })
+  seedFeatures(queryClient, versionRestoreAccess)
   return renderWorkflowComponent(<NuqsTestingAdapter>{ui}</NuqsTestingAdapter>, {
     queryClient,
     resource: pipelineId
@@ -32,8 +28,10 @@ afterEach(() => vi.unstubAllGlobals())
 describe('ActionMenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPlanType = 'professional'
-    deploymentEdition = 'CLOUD'
+    versionRestoreAccess = {
+      version_restore_enabled: true,
+      version_restore_upgrade_available: false,
+    }
   })
 
   it('closes the menu before invoking the selected action with focus on its trigger', async () => {
@@ -94,12 +92,15 @@ describe('ActionMenu', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('keeps upgrade badges within one menu action for sandbox users', async () => {
+  it('keeps upgrade badges within one menu action when the workspace can upgrade into restore', async () => {
     const user = userEvent.setup()
     const handleClickActionMenuItem = vi.fn()
     const trackUpgrade = vi.fn()
     vi.stubGlobal('gtag', trackUpgrade)
-    mockPlanType = 'sandbox'
+    versionRestoreAccess = {
+      version_restore_enabled: false,
+      version_restore_upgrade_available: true,
+    }
 
     renderActionMenu(
       <ActionMenu

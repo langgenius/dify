@@ -86,6 +86,18 @@ class FeatureService:
         return cls._is_paid_cloud_workspace(tenant_id, plan)
 
     @classmethod
+    def can_use_version_restore(cls, tenant_id: str, *, plan: CloudPlan | None = None) -> bool:
+        """Return whether the workspace may restore or export a published version; Cloud needs a paid plan.
+
+        Other editions never query billing. On Cloud, billing failures propagate to the caller.
+        """
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return True
+        if not tenant_id:
+            return False
+        return cls._is_paid_cloud_workspace(tenant_id, plan)
+
+    @classmethod
     def get_features(cls, tenant_id: str, exclude_vector_space: bool = False) -> feature_entities.FeatureModel:
         features = feature_entities.FeatureModel()
         features.im_centrally_managed = cls.is_im_centrally_managed()
@@ -126,6 +138,12 @@ class FeatureService:
             dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
             and plan == CloudPlan.SANDBOX
             and cls.can_use_evaluation(tenant_id, plan=CloudPlan.PROFESSIONAL)
+        )
+        features.version_restore_enabled = cls.can_use_version_restore(tenant_id, plan=plan)
+        features.version_restore_upgrade_available = (
+            dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
+            and plan == CloudPlan.SANDBOX
+            and cls.can_use_version_restore(tenant_id, plan=CloudPlan.PROFESSIONAL)
         )
 
         return features

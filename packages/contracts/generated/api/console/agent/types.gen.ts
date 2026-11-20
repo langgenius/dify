@@ -772,6 +772,11 @@ export type AgentConfigSnapshotRestoreResponse = {
   result: 'success'
 }
 
+export type PaidPlanRequiredError = ErrorResponse & {
+  code: 'paid_plan_required'
+  status: 403
+}
+
 export type AgentAppPartial = {
   access_mode?: WebAppAccessMode | null
   active_config_is_published?: boolean
@@ -4569,6 +4574,7 @@ export type PostAgentByAgentIdVersionsByVersionIdRestoreData = {
 }
 
 export type PostAgentByAgentIdVersionsByVersionIdRestoreErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }

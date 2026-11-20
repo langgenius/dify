@@ -27,9 +27,15 @@ type PublishMock = Mock<PublishHandler>
 
 const restoreAccess = vi.hoisted(() => ({
   canRestore: true,
-  plan: 'professional',
+  requiresUpgrade: false,
   onUrlUpdate: vi.fn(),
 }))
+function versionRestoreFeatures() {
+  return {
+    version_restore_enabled: !restoreAccess.requiresUpgrade,
+    version_restore_upgrade_available: restoreAccess.requiresUpgrade,
+  }
+}
 vi.mock('@/features/agent-v2/permissions', () => ({
   useAgentPermissions: () => ({ canReleaseAndVersion: restoreAccess.canRestore }),
 }))
@@ -82,7 +88,7 @@ vi.mock('@/service/console', async (importOriginal) => {
         deployment_edition: 'CLOUD',
         webapp_auth: { enabled: false },
       }),
-      'features.get': async () => ({ billing: { subscription: { plan: restoreAccess.plan } } }),
+      'features.get': async () => versionRestoreFeatures(),
       'agent.byAgentId.get': async () => agentDetail.data,
       'agent.byAgentId.composer.get': async () => {
         if (composerQuery.shouldFail) throw new Error('Composer query failed')
@@ -190,9 +196,10 @@ function renderPublishBar({
       mutations: { retry: false },
     },
   })
-  queryClient.setQueryData<unknown>(consoleQuery.features.get.queryOptions({}).queryKey, {
-    billing: { subscription: { plan: restoreAccess.plan } },
-  })
+  queryClient.setQueryData<unknown>(
+    consoleQuery.features.get.queryOptions({}).queryKey,
+    versionRestoreFeatures(),
+  )
   const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ onUrlUpdate: restoreAccess.onUrlUpdate })
   queryClient.setQueryData<unknown>(
     consoleQuery.agent.byAgentId.get.queryOptions({ input: { params: { agent_id: 'agent-1' } } })
@@ -291,7 +298,7 @@ describe('AgentConfigurePublishBar', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     restoreAccess.canRestore = true
-    restoreAccess.plan = 'professional'
+    restoreAccess.requiresUpgrade = false
     restoreVersionMutation.mockResolvedValue({
       active_config_snapshot_id: 'snapshot-2',
       result: 'success',
@@ -426,8 +433,8 @@ describe('AgentConfigurePublishBar', () => {
     )
   })
 
-  it('shows the agent upgrade dialog before opening pricing on the sandbox plan', async () => {
-    restoreAccess.plan = 'sandbox'
+  it('shows the agent upgrade dialog before opening pricing when restore requires an upgrade', async () => {
+    restoreAccess.requiresUpgrade = true
     const user = userEvent.setup()
     const { onExitVersions, onVersionRestored } = renderPublishBar({
       selectedVersionSnapshot: activeConfigSnapshot,
