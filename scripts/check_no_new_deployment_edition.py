@@ -10,9 +10,10 @@ per module. Existing code and Git-detected file renames retain their baseline;
 copies, changed decisions and moves out of exempt modules do not. Import
 formatting and alias renames do not introduce a new dependency.
 
-ast-grep locates candidate syntax. Python AST filtering resolves imports in the
-same file and direct assignment aliases outside function and lambda bodies.
-It does not resolve shadowed names, dynamic imports or reflection.
+ast-grep locates candidate syntax. Python AST filtering keeps function-local
+imports in their own scopes and tracks direct assignment aliases outside
+function and lambda bodies. It does not resolve other forms of shadowing,
+dynamic imports or reflection.
 
 Run from the repository root with Git and ast-grep available. --staged checks
 the index against HEAD; --base-rev checks committed HEAD against that revision.
@@ -29,6 +30,7 @@ import ast
 import copy
 import sys
 from collections import Counter, deque
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import override
@@ -89,10 +91,25 @@ def _contains_edition(node: ast.AST, bindings: dict[str, str]) -> bool:
     return any(_is_edition_reference(child, bindings) for child in ast.walk(node))
 
 
-def _source_bindings(tree: ast.Module) -> dict[str, str]:
-    """Precondition: tree is a parsed module. Postcondition: map imports and edition aliases outside function bodies."""
+def _scope_nodes(roots: Iterable[ast.AST]) -> Iterator[ast.AST]:
+    """Precondition: roots are parsed nodes. Postcondition: walk up to function and lambda bodies."""
+    pending = deque(roots)
+    while pending:
+        node = pending.popleft()
+        yield node
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            # Defaults and decorators are evaluated in the enclosing scope.
+            pending.extend(child for child in ast.iter_child_nodes(node) if not isinstance(child, ast.stmt))
+        elif isinstance(node, ast.Lambda):
+            pending.append(node.args)
+        else:
+            pending.extend(ast.iter_child_nodes(node))
+
+
+def _import_bindings(nodes: Iterable[ast.AST]) -> dict[str, str]:
+    """Precondition: nodes do not cross function boundaries. Postcondition: map imports to qualified names."""
     bindings: dict[str, str] = {}
-    for node in ast.walk(tree):
+    for node in nodes:
         if isinstance(node, ast.Import):
             for alias in node.names:
                 bindings[alias.asname or alias.name.split(".")[0]] = (
@@ -105,17 +122,13 @@ def _source_bindings(tree: ast.Module) -> dict[str, str]:
                     bindings["DeploymentEdition"] = "enums.DeploymentEdition"
                 elif alias.name != "*":
                     bindings[alias.asname or alias.name] = f"{module}.{alias.name}"
-    pending = deque(ast.iter_child_nodes(tree))
-    while pending:
-        node = pending.popleft()
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            # Defaults and decorators are evaluated in the enclosing scope.
-            pending.extend(child for child in ast.iter_child_nodes(node) if not isinstance(child, ast.stmt))
-        elif isinstance(node, ast.Lambda):
-            pending.append(node.args)
-        else:
-            pending.extend(ast.iter_child_nodes(node))
+    return bindings
 
+
+def _module_bindings(nodes: list[ast.AST]) -> dict[str, str]:
+    """Precondition: nodes exclude function and lambda bodies. Postcondition: map imports and direct edition aliases."""
+    bindings = _import_bindings(nodes)
+    for node in nodes:
         if (
             isinstance(node, ast.Assign)
             and _is_edition_reference(node.value, bindings)
@@ -132,6 +145,17 @@ def _source_bindings(tree: ast.Module) -> dict[str, str]:
             ):
                 bindings[node.target.id] = reference
     return bindings
+
+
+def _nodes_with_bindings(nodes: list[ast.AST], bindings: dict[str, str]) -> Iterator[tuple[ast.AST, dict[str, str]]]:
+    """Precondition: bindings apply to nodes. Postcondition: yield nodes with imports local to each function."""
+    for node in nodes:
+        yield node, bindings
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            body = list(_scope_nodes(node.body))
+            yield from _nodes_with_bindings(body, bindings | _import_bindings(body))
+        elif isinstance(node, ast.Lambda):
+            yield from ((child, bindings) for child in ast.walk(node.body))
 
 
 class _NormalizeBindings(ast.NodeTransformer):
@@ -154,13 +178,13 @@ def _fingerprint(node: ast.AST, bindings: dict[str, str]) -> str:
 def _occurrences(source: str, path: str) -> list[_Occurrence]:
     """Precondition: source is Python. Postcondition: return edition occurrences; parse and scan failures propagate."""
     tree = ast.parse(source, filename=path)
-    bindings = _source_bindings(tree)
+    module_nodes = list(_scope_nodes(tree.body))
     candidate_lines = {
         match.line_number for match in run_ast_grep(source, rule=rule_path("no_new_deployment_edition.yml"))
     }
     occurrences = []
     # Use nodes from the complete file: a multiline comparison need not be valid Python without its outer parentheses.
-    for statement in ast.walk(tree):
+    for statement, bindings in _nodes_with_bindings(module_nodes, _module_bindings(module_nodes)):
         if (
             isinstance(statement, ast.ImportFrom)
             and statement.lineno in candidate_lines

@@ -181,6 +181,10 @@ def test_does_not_exempt_stubs_or_similarly_named_modules(repo: Path, path: str)
     [
         ("from enums import DeploymentEdition as Edition\n", "enabled = edition == Edition.CLOUD\n"),
         ("def check():\n    from enums import DeploymentEdition as Edition\n", "    return edition == Edition.CLOUD\n"),
+        (
+            IMPORT + "\ndef unrelated():\n    from external import DeploymentEdition\n    return DeploymentEdition\n",
+            "\ndef check(edition):\n    return edition == DeploymentEdition.CLOUD\n",
+        ),
         ("import enums as constants\n", "enabled = edition == constants.DeploymentEdition.CLOUD\n"),
         (IMPORT, "match edition:\n    case DeploymentEdition.CLOUD:\n        enable()\n"),
         (IMPORT, "Alias = DeploymentEdition\nCLOUD = Alias.CLOUD\nenabled = edition == CLOUD\n"),
@@ -195,6 +199,18 @@ def test_existing_import_does_not_allow_new_decisions(repo: Path, source: str, d
     result = run_guard(repo, "--staged")
     assert result.returncode == 1, result.stderr
     assert f"{SOURCE_PATH}:" in result.stderr
+
+
+def test_function_import_does_not_leak_into_a_sibling(repo: Path) -> None:
+    """Precondition: one function imports the enum. Postcondition: its binding stays local to that function."""
+    source = "def get_edition_type():\n    from enums import DeploymentEdition\n    return DeploymentEdition\n"
+    write_source(repo, source)
+    commit(repo)
+    decision = "\ndef check(edition, DeploymentEdition):\n    return edition == DeploymentEdition.CLOUD\n"
+    write_source(repo, source + decision)
+    git(repo, "add", ".")
+    result = run_guard(repo, "--staged")
+    assert result.returncode == 0, result.stderr
 
 
 def test_changing_a_multiline_condition_cannot_reuse_its_start_line(repo: Path) -> None:
