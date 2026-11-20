@@ -11,6 +11,7 @@ from core.memory.token_buffer_memory import PreparedHistory, TokenBufferMemory
 from core.prompt.utils.extract_thread_messages import extract_thread_messages
 from core.prompt.utils.get_thread_messages_length import get_thread_messages_length
 from core.workflow.file_reference import build_file_reference
+from graphon.enums import WorkflowExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.utils.encoders import jsonable_encoder
@@ -33,6 +34,7 @@ from models.model import (
     UploadFile,
     load_annotation_reply_config,
 )
+from models.workflow import WorkflowRun
 from repositories.human_input.form_repository import HumanInputFormRepositoryImpl
 from repositories.knowledge.upload_file_repository import query_upload_files
 from services.agent.log_contracts import (
@@ -356,9 +358,28 @@ class AppGenerationRepository:
             message.workflow_run_id = workflow_run_id
 
     def save_message(self, identity: MessageIdentity, update: MessageUpdate) -> Message:
+        """Persist an owned message, usage and files in one transaction.
+
+        Pause saves require an app-owned PAUSED run, locked before the message
+        to serialize with durable stop. Missing or non-paused runs cannot leave
+        the message paused. A missing message raises MessageNotExistsError and
+        rolls back all changes; success returns the committed, detached row.
+        """
         with self._sessions.begin() as session:
+            workflow_run_status = None
+            if update.paused_workflow_run_id is not None:
+                # Durable stop also locks the run before updating its messages.
+                workflow_run_status = session.scalar(
+                    select(WorkflowRun.status)
+                    .where(
+                        WorkflowRun.id == update.paused_workflow_run_id,
+                        WorkflowRun.tenant_id == identity.tenant_id,
+                        WorkflowRun.app_id == identity.app_id,
+                    )
+                    .with_for_update()
+                )
             message = self._message(session, identity)
-            if update.paused:
+            if workflow_run_status == WorkflowExecutionStatus.PAUSED:
                 message.status = MessageStatus.PAUSED
             elif message.status == MessageStatus.PAUSED:
                 message.status = MessageStatus.NORMAL

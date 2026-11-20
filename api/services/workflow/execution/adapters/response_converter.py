@@ -46,6 +46,7 @@ from core.app.entities.task_entities import (
     WorkflowStartStreamResponse,
 )
 from core.plugin.impl.datasource import PluginDatasourceManager
+from core.plugin.impl.trigger import PluginTriggerClient
 from core.tools.entities.tool_entities import ToolProviderType
 from core.workflow.human_input_policy import (
     FormDisposition,
@@ -73,10 +74,11 @@ from graphon.variables.variables import Variable
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.datetime_utils import naive_utc_now, to_utc_timestamp
 from models import Account, EndUser
+from models.provider_ids import TriggerProviderID
+from models.utils.trigger_endpoint import generate_trigger_plugin_icon_url
 from models.workflow import WorkflowRun
 from services.tools.provider_queries import ToolProviderIcons
 from services.tools.tool_manager import ToolManager
-from services.trigger.provider_loader import TriggerManager
 from services.variable_truncator import BaseTruncator, DummyVariableTruncator, VariableTruncator
 from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
 from services.workflow.execution.ports import ExecutionContexts
@@ -559,9 +561,10 @@ class WorkflowResponseConverter:
                     self._application_generate_entity.app_config.tenant_id
                 )
             elif event.node_type == TRIGGER_PLUGIN_NODE_TYPE:
-                response.data.extras["icon"] = TriggerManager.get_trigger_plugin_icon(
-                    self._application_generate_entity.app_config.tenant_id,
-                    event.provider_id,
+                tenant_id = self._application_generate_entity.app_config.tenant_id
+                provider = PluginTriggerClient().fetch_trigger_provider(tenant_id, TriggerProviderID(event.provider_id))
+                response.data.extras["icon"] = generate_trigger_plugin_icon_url(
+                    tenant_id, provider.declaration.identity.icon
                 )
         except Exception:
             # metadata fetch may fail, for example, the plugin daemon is down or plugin is uninstalled.
