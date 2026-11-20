@@ -1,6 +1,7 @@
 import type { ExternalConnectionSettings } from '../../roster/components/external-connection-verification'
 import type { ExternalAgentOverview } from '../model'
 import { Alert, AlertDescription, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
 import { useTranslation } from 'react-i18next'
@@ -9,13 +10,19 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 export function EditConnectionConflict({
   settings,
   latest,
+  latestSavedAudit,
   loading,
+  loadFailed,
+  onRetry,
 }: {
   settings: ExternalConnectionSettings
   latest?: ExternalAgentOverview
+  latestSavedAudit?: string
   loading: boolean
+  loadFailed: boolean
+  onRetry: () => void
 }) {
-  const { t } = useTranslation(['agentRoster'])
+  const { t } = useTranslation(['agentRoster', 'common'])
   const authentication = (value: ExternalConnectionSettings['authentication']) =>
     value === 'bearer'
       ? t(($) => $['external.connection.bearerToken'])
@@ -48,8 +55,20 @@ export function EditConnectionConflict({
         </Field>
       )}
       <div className="h-px bg-divider-subtle" />
+      {latest && !loading && !loadFailed && (
+        <p className="system-xs-regular wrap-anywhere text-text-tertiary">{latestSavedAudit}</p>
+      )}
       {loading ? (
         <LoadingPlaceholder className="h-20" />
+      ) : loadFailed ? (
+        <div className="space-y-2">
+          <p role="alert" className="system-xs-regular text-text-destructive">
+            {t(($) => $['external.connection.conflict.loadFailed'])}
+          </p>
+          <Button variant="secondary" onClick={onRetry}>
+            {t(($) => $['operation.retry'], { ns: 'common' })}
+          </Button>
+        </div>
       ) : changes.length ? (
         <div className="overflow-hidden rounded-lg border border-divider-subtle">
           <table className="w-full table-fixed text-start system-xs-regular text-text-secondary">

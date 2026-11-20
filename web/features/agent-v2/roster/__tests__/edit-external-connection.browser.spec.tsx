@@ -102,26 +102,6 @@ it('enables verification only while the connection has edits and disables it aga
   expect(requests.save).not.toHaveBeenCalled()
 })
 
-it('shows a fixed verification failure title with the server conflict reason', async () => {
-  requests.verify.mockRejectedValueOnce(
-    new ORPCError('conflict', {
-      status: 409,
-      message: 'The connection changed; load its current configuration.',
-    }),
-  )
-  await setup()
-  await endpoint().fill('https://my-change.example.test/agent')
-  await verify().click()
-  await expect
-    .element(dialog().getByRole('alert'))
-    .toMatchTextContent('Could not verify the connection.')
-  await expect
-    .element(dialog().getByRole('alert'))
-    .toMatchTextContent('The connection changed; load its current configuration.')
-  await expect.element(endpoint()).toHaveValue('https://my-change.example.test/agent')
-  expect(requests.save).not.toHaveBeenCalled()
-})
-
 it.each([
   [
     'an unpunctuated generic server reason',

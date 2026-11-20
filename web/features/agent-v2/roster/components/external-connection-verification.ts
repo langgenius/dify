@@ -86,6 +86,7 @@ export function useExternalConnectionVerification(edit?: {
   const verify = (
     settings: ExternalConnectionSettings,
     onVerified: (result: ExternalAgentVerificationResponse) => void,
+    onConflict?: () => void,
   ) => {
     if (verification.isPending || !workspaceId || !profile.data?.profile.id) return
     const requestEpoch = ++epochRef.current
@@ -116,6 +117,9 @@ export function useExternalConnectionVerification(edit?: {
           }
           setProof({ scope, evidence: result })
           onVerified(result)
+        },
+        onError: (error) => {
+          if (requestEpoch === epochRef.current && getHttpErrorStatus(error) === 409) onConflict?.()
         },
       },
     )
