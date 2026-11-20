@@ -182,6 +182,25 @@ describe('error-handle path', () => {
       })
     })
 
+    it('should offer a numeric editor for an integer output default', async () => {
+      const user = userEvent.setup()
+      const onFormChange = vi.fn()
+      render(
+        <DefaultValue
+          forms={[{ key: 'page', type: VarType.integer, value: 12 }]}
+          onFormChange={onFormChange}
+        />,
+      )
+
+      await user.type(screen.getByRole('spinbutton', { name: 'page' }), '3')
+
+      expect(onFormChange).toHaveBeenLastCalledWith({
+        key: 'page',
+        type: VarType.integer,
+        value: '123',
+      })
+    })
+
     it('should toggle the selector popup and report the selected strategy', async () => {
       const user = userEvent.setup()
       const onSelected = vi.fn()
