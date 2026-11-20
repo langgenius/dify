@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Never
 
 import pytest
 from sqlalchemy import select
@@ -6,8 +7,6 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom, WorkflowAppGenerateEntity
-from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
-from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.system_variables import build_system_variables
 from graphon.engine import Engine
@@ -19,9 +18,15 @@ from graphon.runtime import RuntimeState, VariablePool
 from models import Account, AppMode
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
+from repositories.workflow.execution_writer import SQLAlchemyWorkflowExecutionRepository
+from repositories.workflow.node_execution_writer import SQLAlchemyWorkflowNodeExecutionRepository
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from services.workflow_run_index import WorkflowRunIndex
 from tests.workflow_test_utils import build_test_graph_init_params
+
+
+def _unexpected_workflow_offload(*, filename: str, content: bytes) -> Never:
+    pytest.fail(f"workflow payload offload was not expected: {filename} ({len(content)} bytes)")
 
 
 def _history(execution_id: str, index: int) -> WorkflowNodeExecution:
@@ -82,6 +87,7 @@ def test_engine_indices_are_available_before_delivery_and_match_persistence(
         user=user,
         app_id="app",
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        upload_file=_unexpected_workflow_offload,
     )
     history = _history("earlier", 7)
     node_repo.save(history)

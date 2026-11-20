@@ -3,7 +3,7 @@
 from collections.abc import Callable
 
 from models.enums import CreatorUserRole
-from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from services.workflow.run_repository import APIWorkflowRunRepository
 
 
 class OpenApiExecutionNotFoundError(Exception):

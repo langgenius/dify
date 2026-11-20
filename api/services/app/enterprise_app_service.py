@@ -14,7 +14,7 @@ from graphon.enums import WorkflowExecutionStatus
 from libs.pagination import PaginatedResult
 from models.enums import MessageStatus, WorkflowRunTriggeredFrom
 from models.model import AppMode, IconType
-from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from services.workflow.run_repository import APIWorkflowRunRepository
 
 EnterpriseAppSortBy = Literal["created_at", "name"]
 EnterpriseAppSortOrder = Literal["asc", "desc"]

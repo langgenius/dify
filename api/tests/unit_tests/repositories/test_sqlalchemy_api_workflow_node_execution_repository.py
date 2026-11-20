@@ -11,6 +11,7 @@ from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
 from core.workflow.node_execution_process_data import (
     WORKFLOW_TOOL_ROOT_APP_ID_KEY,
 )
+from extensions.application_services import workflow_storage
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
 from graphon.enums import WorkflowNodeExecutionStatus
@@ -22,11 +23,10 @@ from models.workflow import (
     WorkflowNodeExecutionOffload,
     WorkflowNodeExecutionTriggeredFrom,
 )
-from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
-from repositories.factory import DifyAPIRepositoryFactory
-from repositories.sqlalchemy_api_workflow_node_execution_repository import (
+from repositories.workflow.node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
 )
+from services.workflow.node_execution_queries import DifyAPIWorkflowNodeExecutionRepository
 from tests.helpers.unit.config_override import apply_config_overrides
 
 
@@ -245,13 +245,10 @@ def test_app_deletion_removes_nested_caller_records_and_offloads(
     if logstore:
         apply_config_overrides(
             monkeypatch,
-            API_WORKFLOW_NODE_EXECUTION_REPOSITORY=(
-                "extensions.logstore.repositories.logstore_api_workflow_node_execution_repository."
-                "LogstoreAPIWorkflowNodeExecutionRepository"
-            ),
+            WORKFLOW_NODE_EXECUTION_STORAGE_BACKEND="logstore",
         )
-        with patch("extensions.logstore.repositories.logstore_api_workflow_node_execution_repository.AliyunLogStore"):
-            repository = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(sqlite_session_factory)
+        with patch("repositories.workflow.logstore.node_execution_repository.AliyunLogStore"):
+            repository = workflow_storage.create_api_workflow_node_execution_repository(sqlite_session_factory)
     else:
         repository = DifyAPISQLAlchemyWorkflowNodeExecutionRepository(sqlite_session_factory)
 

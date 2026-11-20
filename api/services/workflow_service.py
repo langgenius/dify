@@ -17,7 +17,6 @@ from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.file_access import DatabaseFileAccessController
 from core.entities import PluginCredentialType
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
-from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
 from core.workflow.human_input_adapter import (
     DeliveryChannelConfig,
@@ -61,6 +60,7 @@ from domain.workflow.agent_node import is_dify_agent_node_data
 from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
 from enums import CloudPlan, DeploymentEdition
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
+from extensions.application_services import workflow_storage, workflow_writers
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from factories.file_factory import build_from_mapping, build_from_mappings
@@ -102,7 +102,6 @@ from models.workflow import (
     WorkflowType,
     resolve_workflow_kind,
 )
-from repositories.factory import DifyAPIRepositoryFactory
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.app.access import AppRunAccessFilter
 from services.billing_service import BillingService
@@ -233,7 +232,7 @@ class WorkflowService:
         """Initialize WorkflowService with repository dependencies."""
         if session_maker is None:
             session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-        self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+        self._node_execution_service_repo = workflow_storage.create_api_workflow_node_execution_repository(
             session_maker
         )
 
@@ -1525,7 +1524,7 @@ class WorkflowService:
             variable_loader=variable_loader,
         )
 
-        repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        repository = workflow_writers.create_workflow_node_execution_repository(
             session_factory=db.engine,
             tenant_id=app_model.tenant_id,
             user=account,

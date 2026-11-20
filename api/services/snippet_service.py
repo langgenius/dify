@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from core.workflow.node_factory import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from enums import DeploymentEdition
+from extensions.application_services import workflow_storage
 from graphon.enums import BuiltinNodeTypes, NodeType
 from libs.helper import escape_like_pattern
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
@@ -38,7 +39,6 @@ from models.workflow import (
     WorkflowRun,
     WorkflowType,
 )
-from repositories.factory import DifyAPIRepositoryFactory
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
@@ -79,10 +79,10 @@ class SnippetService:
             raise ValueError("SnippetService requires a session or session_maker.")
         self._session = session
         self._session_maker = session_maker
-        self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+        self._node_execution_service_repo = workflow_storage.create_api_workflow_node_execution_repository(
             session_maker
         )
-        self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+        self._workflow_run_repo = workflow_storage.create_api_workflow_run_repository(session_maker)
 
     @contextmanager
     def _session_scope(self) -> Generator[Session]:

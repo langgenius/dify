@@ -17,6 +17,7 @@ from graphon.enums import WorkflowExecutionStatus
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import CreatorUserRole, WorkflowRun
 from models.enums import WorkflowRunTriggeredFrom
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.entities.workflow_execution import WorkflowExecution
 
 logger = logging.getLogger(__name__)
@@ -55,6 +56,16 @@ def save_workflow_execution_task(
             existing_run = session.scalar(select(WorkflowRun).where(WorkflowRun.id == execution.id_).with_for_update())
 
             if existing_run:
+                if (
+                    existing_run.tenant_id != tenant_id
+                    or existing_run.app_id != app_id
+                    or existing_run.workflow_id != execution.workflow_id
+                ):
+                    raise ValueError("Unauthorized access to workflow run")
+                # Lifecycle state is committed synchronously by the writer and
+                # pause repository. Delayed logs cannot undo pause/resume/finish.
+                if existing_run.status != execution.status:
+                    return True
                 # Update existing workflow run
                 _update_workflow_run_from_execution(existing_run, execution)
                 logger.debug("Updated existing workflow run: %s", execution.id_)
@@ -96,7 +107,6 @@ def _create_workflow_run_from_execution(
     workflow_run.tenant_id = tenant_id
     workflow_run.app_id = app_id
     workflow_run.workflow_id = execution.workflow_id
-    from models.workflow import WorkflowType as ModelWorkflowType
 
     workflow_run.type = ModelWorkflowType(execution.workflow_type.value)
     workflow_run.triggered_from = triggered_from
@@ -114,6 +124,7 @@ def _create_workflow_run_from_execution(
     workflow_run.elapsed_time = execution.elapsed_time
     workflow_run.total_tokens = execution.total_tokens
     workflow_run.total_steps = execution.total_steps
+    workflow_run.exceptions_count = execution.exceptions_count
     workflow_run.created_by_role = creator_user_role
     workflow_run.created_by = creator_user_id
     workflow_run.created_at = execution.started_at
@@ -124,17 +135,13 @@ def _create_workflow_run_from_execution(
 
 def _update_workflow_run_from_execution(workflow_run: WorkflowRun, execution: WorkflowExecution):
     """
-    Update a WorkflowRun database model from a WorkflowExecution domain entity.
+    Fill the SQL log payload without replacing synchronously persisted control state.
     """
     if workflow_run.stop_requested_at is not None and workflow_run.status == WorkflowExecutionStatus.STOPPED:
         return
     json_converter = WorkflowRuntimeTypeConverter()
-    workflow_run.status = execution.status
+    workflow_run.graph = json.dumps(json_converter.to_json_encodable(execution.graph), ensure_ascii=False)
+    workflow_run.inputs = json.dumps(json_converter.to_json_encodable(execution.inputs), ensure_ascii=False)
     workflow_run.outputs = (
         json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else "{}"
     )
-    workflow_run.error = execution.error_message
-    workflow_run.elapsed_time = execution.elapsed_time
-    workflow_run.total_tokens = execution.total_tokens
-    workflow_run.total_steps = execution.total_steps
-    workflow_run.finished_at = execution.finished_at

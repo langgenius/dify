@@ -13,12 +13,10 @@ from core.entities.execution_extra_content import (
     HumanInputFormSubmissionData,
 )
 from core.workflow.nodes.human_input_v2.runtime import PreparedForm
+from extensions.application_services import workflow_storage
 from factories.human_input_v2_form_presentation import build_form_presentation, render_filled_content
 from libs.datetime_utils import to_utc_timestamp
 from repositories.execution_extra_content_repository import ExecutionExtraContentRepository, HumanInputFormReference
-from repositories.sqlalchemy_api_workflow_node_execution_repository import (
-    DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
-)
 from services.human_input_v2.form_service import load_prepared_forms
 
 logger = logging.getLogger(__name__)
@@ -43,7 +41,7 @@ def load_message_extra_contents(
                 references_by_run[content.workflow_run_id].append(content)
 
     restored: dict[HumanInputFormReference, HumanInputContent] = {}
-    nodes = DifyAPISQLAlchemyWorkflowNodeExecutionRepository(session_maker=session_factory)
+    nodes = workflow_storage.create_api_workflow_node_execution_repository(session_factory)
     for run_id, references in references_by_run.items():
         prepared_forms = load_prepared_forms(
             workflow_run_id=run_id,

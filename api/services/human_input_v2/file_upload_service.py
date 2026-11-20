@@ -14,9 +14,9 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.workflow.nodes.human_input.enums import HumanInputFormKind
+from extensions.application_services import workflow_storage
 from graphon.file import helpers as file_helpers
 from libs.datetime_utils import to_utc_timestamp
-from repositories.factory import DifyAPIRepositoryFactory
 from repositories.human_input_v2.form_repository import Form
 from repositories.human_input_v2.sqlalchemy_file_upload_repository import SQLAlchemyFileUploadRepository
 from services.file_service import FileService, FileUploadActor
@@ -101,7 +101,7 @@ class HumanInputV2FileUploadService:
 
     def _resolve_owner(self, form: Form) -> FileUploadActor:
         if form.workflow_run_id is not None:
-            runs = DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._sessions)
+            runs = workflow_storage.create_api_workflow_run_repository(self._sessions)
             run = runs.get_workflow_run_by_id(
                 tenant_id=str(form.tenant_id), app_id=form.app_id, run_id=form.workflow_run_id
             )

@@ -17,11 +17,11 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
 from core.workflow.human_input_adapter import DeliveryMethodType
+from extensions.application_services import workflow_storage
 from extensions.ext_database import db
 from extensions.ext_mail import mail
 from graphon.runtime import RuntimeState, VariablePool
 from models.human_input import HumanInputForm
-from repositories.factory import DifyAPIRepositoryFactory
 from services.feature_service import FeatureService
 from services.human_input_form_delivery_provider import (
     HumanInputFormDeliveryContext,
@@ -43,7 +43,7 @@ def _load_variable_pool(workflow_run_id: str | None) -> VariablePool | None:
         return None
 
     session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
-    workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_factory)
+    workflow_run_repo = workflow_storage.create_api_workflow_run_repository(session_factory)
     pause_entity = workflow_run_repo.get_workflow_pause(workflow_run_id)
     if pause_entity is None:
         logger.info("No pause state found for workflow run %s", workflow_run_id)

@@ -1,7 +1,7 @@
 import json
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Protocol, cast
+from typing import Never, Protocol, cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -9,14 +9,19 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 from typing_extensions import TypedDict
 
-from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from graphon.entities import WorkflowNodeExecution
 from graphon.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
 from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus, WorkflowNodeExecutionStatus, WorkflowType
 from models import Account
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
-from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from models.enums import CreatorUserRole, ExecutionOffLoadType, WorkflowRunTriggeredFrom
+from models.workflow import (
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionOffload,
+    WorkflowNodeExecutionTriggeredFrom,
+    WorkflowRun,
+)
 from models.workflow import WorkflowType as ModelWorkflowType
+from repositories.workflow.node_execution_writer import SQLAlchemyWorkflowNodeExecutionRepository
 from tasks.workflow_node_execution_tasks import (
     _create_node_execution_from_domain,
     _update_node_execution_from_domain,
@@ -71,6 +76,10 @@ class _TaskWithRequestContext(Protocol):
     def push_request(self, *, retries: int) -> None: ...
 
     def pop_request(self) -> None: ...
+
+
+def _unexpected_upload_file(*, filename: str, content: bytes) -> Never:
+    pytest.fail(f"Unexpected workflow node payload offload: {filename} ({len(content)} bytes)")
 
 
 def _execution(
@@ -166,7 +175,8 @@ def test_create_helper_builds_real_mapped_model_with_serialized_runtime_values()
     assert model.inputs_dict == {"question": "hello"}
     assert model.process_data_dict == {"attempt": 1}
     assert model.outputs_dict == {"answer": "world"}
-    assert json.loads(model.execution_metadata or "{}") == {"total_tokens": 12, "total_price": 0.01}
+    assert model.execution_metadata_dict == {"total_tokens": 12, "total_price": 0.01}
+    assert model.execution_attempt_version == "2026-08-12T01:00:00.000000"
 
 
 def test_update_helper_preserves_binding_identity_and_immutable_ownership() -> None:
@@ -233,7 +243,7 @@ def test_task_updates_only_mutable_execution_state(
         outputs={"partial": True},
         error="provider failed",
         elapsed_time=2.5,
-        created_at=datetime(2026, 8, 12, 2, tzinfo=UTC),
+        created_at=datetime(2026, 8, 12, 1, tzinfo=UTC),
         finished_at=finished_at,
     )
 
@@ -264,6 +274,51 @@ def test_task_updates_only_mutable_execution_state(
         assert persisted.error == "provider failed"
         assert persisted.elapsed_time == 2.5
         assert persisted.finished_at == finished_at.replace(tzinfo=None)
+
+
+@pytest.mark.parametrize("offloaded", list(ExecutionOffLoadType))
+@pytest.mark.parametrize("batched", [False, True], ids=["single", "batch"])
+def test_task_preserves_only_the_offloaded_payload(
+    sqlite_session_factory: sessionmaker[Session], offloaded: ExecutionOffLoadType, batched: bool
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        stored = _stored_execution(process_data={"old": "process_data"})
+        stored.offload_data.append(
+            WorkflowNodeExecutionOffload(
+                tenant_id=TENANT_ID,
+                app_id=APP_ID,
+                node_execution_id=EXECUTION_ID,
+                type_=offloaded,
+                file_id="00000000-0000-0000-0000-000000000080",
+            )
+        )
+        session.add(stored)
+        original = getattr(stored, offloaded.value)
+
+    updated = {"attempt": 2}
+    execution = _execution(
+        status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=updated, process_data=updated, outputs=updated
+    )
+    context = _ExecutionTaskKwargs(
+        tenant_id=TENANT_ID,
+        app_id=APP_ID,
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
+        creator_user_id=ACCOUNT_ID,
+        creator_user_role=CreatorUserRole.ACCOUNT.value,
+    )
+    if batched:
+        assert save_workflow_node_executions_task.run(executions_data=[execution.model_dump()], **context)
+    else:
+        assert save_workflow_node_execution_task.run(execution_data=execution.model_dump(), **context)
+
+    with sqlite_session_factory() as session:
+        saved = session.get(WorkflowNodeExecutionModel, EXECUTION_ID)
+        assert saved is not None
+        assert saved.status == WorkflowNodeExecutionStatus.SUCCEEDED
+        assert getattr(saved, offloaded.value) == original
+        for field in ExecutionOffLoadType:
+            if field != offloaded:
+                assert json.loads(getattr(saved, field.value)) == updated
 
 
 def test_task_does_not_overwrite_same_id_from_another_tenant(
@@ -347,7 +402,7 @@ def test_task_repeated_delivery_updates_one_row(
     created_at = datetime(2026, 8, 12, 1, tzinfo=UTC)
     first = _execution(created_at=created_at, outputs={"delivery": 1})
     second = _execution(
-        created_at=created_at + timedelta(minutes=1),
+        created_at=created_at,
         status=WorkflowNodeExecutionStatus.SUCCEEDED,
         outputs={"delivery": 2},
         finished_at=created_at + timedelta(seconds=5),
@@ -361,6 +416,7 @@ def test_task_repeated_delivery_updates_one_row(
     }
 
     assert save_workflow_node_execution_task.run(execution_data=first.model_dump(), **task_kwargs)
+    assert save_workflow_node_execution_task.run(execution_data=second.model_dump(), **task_kwargs)
     assert save_workflow_node_execution_task.run(execution_data=second.model_dump(), **task_kwargs)
 
     with sqlite_session_factory() as observer:
@@ -427,6 +483,7 @@ def test_delayed_nonterminal_node_write_cannot_revive_or_insert_a_live_node_afte
             app_id=APP_ID,
             user=user,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            upload_file=_unexpected_upload_file,
         )
         if writer == "sql":
             repository.save(execution)
