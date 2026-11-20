@@ -25,6 +25,7 @@ from controllers.openapi._mcp_call import OpCall, OpResult, UnknownOp
 from controllers.openapi._mcp_tools import (
     FIND_LIMIT,
     FIND_TOOL,
+    FOLDER_UPLOAD_ID_SCHEMA,
     MCP_INSTRUCTIONS,
     UPLOAD_ID_EXAMPLE,
     UPLOAD_ID_SCHEMA,
@@ -253,6 +254,44 @@ def test_named_file_fields_keep_their_shape_with_upload_ids() -> None:
     for example in described["examples"]:
         for name in file_names & set(example["input"]):
             assert set(_string_leaves(example["input"][name])) == {UPLOAD_ID_EXAMPLE}
+
+
+_UPLOAD_IDS_BY_NAME = {
+    "type": "object",
+    "additionalProperties": {"anyOf": [UPLOAD_ID_SCHEMA, {"type": "array", "items": UPLOAD_ID_SCHEMA}]},
+}
+
+
+@pytest.mark.usefixtures("in_request")
+def test_a_mapping_file_field_also_takes_one_folder_upload_id() -> None:
+    files = describe_op("import.skill", token=_ACCOUNT)["input"]["properties"]["files"]
+
+    assert files["anyOf"] == [FOLDER_UPLOAD_ID_SCHEMA, _UPLOAD_IDS_BY_NAME]
+    assert files["description"] == "The skill folder; SKILL.md at its root"
+    assert "type" not in files
+    assert "additionalProperties" not in files
+
+
+@pytest.mark.usefixtures("in_request")
+def test_an_optional_mapping_file_field_also_takes_one_folder_upload_id() -> None:
+    files = describe_op(_START_WORKFLOW, token=_ACCOUNT)["input"]["properties"]["files"]
+
+    assert files["anyOf"] == [{"anyOf": [FOLDER_UPLOAD_ID_SCHEMA, _UPLOAD_IDS_BY_NAME]}, {"type": "null"}]
+
+
+@pytest.mark.usefixtures("in_request")
+@pytest.mark.parametrize(
+    ("op", "field", "expected"),
+    [
+        (_UPLOAD, "file", UPLOAD_ID_SCHEMA),
+        (_START_WORKFLOW, "attachments", [{"type": "array", "items": UPLOAD_ID_SCHEMA}, {"type": "null"}]),
+    ],
+)
+def test_a_single_file_or_list_field_takes_no_folder_upload_id(op: str, field: str, expected: object) -> None:
+    described = describe_op(op, token=_ACCOUNT)["input"]["properties"][field]
+
+    assert described.get("anyOf", described) == expected
+    assert FOLDER_UPLOAD_ID_SCHEMA["description"] not in json.dumps(described)
 
 
 @pytest.mark.usefixtures("in_request")
