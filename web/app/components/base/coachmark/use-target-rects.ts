@@ -2,22 +2,22 @@
 
 import { useLayoutEffect, useRef, useState } from 'react'
 
-export type StepByStepTourTargetRect = {
+export type TargetRect = {
   height: number
   left: number
   top: number
   width: number
 }
 
-export type StepByStepTourTargetRects = {
-  anchorRect: StepByStepTourTargetRect
+export type TargetRects = {
+  anchorRect: TargetRect
   highlightPartsReady: boolean
-  highlightRect: StepByStepTourTargetRect
+  highlightRect: TargetRect
   rectSettled: boolean
   targetElement: HTMLElement
 }
 
-const EMPTY_HIGHLIGHT_PART_SELECTORS: string[] = []
+const EMPTY_HIGHLIGHT_SELECTORS: string[] = []
 const MAX_RECT_SETTLE_FRAMES = 8
 const ATTRIBUTE_OBSERVER_OPTIONS: MutationObserverInit = {
   attributeFilter: [
@@ -32,14 +32,14 @@ const ATTRIBUTE_OBSERVER_OPTIONS: MutationObserverInit = {
   attributes: true,
 }
 
-const rectFromDOMRect = (rect: DOMRect): StepByStepTourTargetRect => ({
+const rectFromDOMRect = (rect: DOMRect): TargetRect => ({
   height: rect.height,
   left: rect.left,
   top: rect.top,
   width: rect.width,
 })
 
-const unionTargetRects = (rects: StepByStepTourTargetRect[]): StepByStepTourTargetRect => {
+const unionTargetRects = (rects: TargetRect[]): TargetRect => {
   const left = Math.min(...rects.map((rect) => rect.left))
   const top = Math.min(...rects.map((rect) => rect.top))
   const right = Math.max(...rects.map((rect) => rect.left + rect.width))
@@ -67,7 +67,7 @@ const getHighlightPartRectState = (selectors: string[]) => {
   const rectsBySelector = selectors.map((selector) =>
     Array.from(document.querySelectorAll<HTMLElement>(selector))
       .map(getVisibleElementRect)
-      .filter((rect): rect is StepByStepTourTargetRect => Boolean(rect)),
+      .filter((rect): rect is TargetRect => Boolean(rect)),
   )
 
   return {
@@ -76,9 +76,9 @@ const getHighlightPartRectState = (selectors: string[]) => {
   }
 }
 
-const getTargetRects = (targetElement: HTMLElement, highlightPartSelectors: string[] = []) => {
+const getTargetRects = (targetElement: HTMLElement, highlightSelectors: string[] = []) => {
   const anchorRect = rectFromDOMRect(targetElement.getBoundingClientRect())
-  const highlightPartRectState = getHighlightPartRectState(highlightPartSelectors)
+  const highlightPartRectState = getHighlightPartRectState(highlightSelectors)
   const rects = [anchorRect, ...highlightPartRectState.rects]
 
   return {
@@ -91,16 +91,13 @@ const getTargetRects = (targetElement: HTMLElement, highlightPartSelectors: stri
 
 const getInitialTargetRects = (
   targetElement: HTMLElement,
-  highlightPartSelectors: string[] = [],
-): StepByStepTourTargetRects => ({
-  ...getTargetRects(targetElement, highlightPartSelectors),
-  rectSettled: highlightPartSelectors.length === 0,
+  highlightSelectors: string[] = [],
+): TargetRects => ({
+  ...getTargetRects(targetElement, highlightSelectors),
+  rectSettled: highlightSelectors.length === 0,
 })
 
-const areTargetRectsEqual = (
-  currentRect: StepByStepTourTargetRect,
-  nextRect: StepByStepTourTargetRect,
-) => {
+const areTargetRectsEqual = (currentRect: TargetRect, nextRect: TargetRect) => {
   return (
     currentRect.height === nextRect.height &&
     currentRect.left === nextRect.left &&
@@ -109,10 +106,7 @@ const areTargetRectsEqual = (
   )
 }
 
-const areTargetRectSetsEqual = (
-  currentRects: StepByStepTourTargetRects,
-  nextRects: StepByStepTourTargetRects,
-) => {
+const areTargetRectSetsEqual = (currentRects: TargetRects, nextRects: TargetRects) => {
   return (
     areTargetRectsEqual(currentRects.anchorRect, nextRects.anchorRect) &&
     currentRects.highlightPartsReady === nextRects.highlightPartsReady &&
@@ -123,8 +117,8 @@ const areTargetRectSetsEqual = (
 }
 
 const areMeasuredTargetRectSetsEqual = (
-  currentRects: Omit<StepByStepTourTargetRects, 'rectSettled'>,
-  nextRects: Omit<StepByStepTourTargetRects, 'rectSettled'>,
+  currentRects: Omit<TargetRects, 'rectSettled'>,
+  nextRects: Omit<TargetRects, 'rectSettled'>,
 ) => {
   return (
     areTargetRectsEqual(currentRects.anchorRect, nextRects.anchorRect) &&
@@ -134,12 +128,12 @@ const areMeasuredTargetRectSetsEqual = (
   )
 }
 
-export const useStepByStepTourTargetRect = (
+export const useTargetRects = (
   targetElement: HTMLElement | null,
-  highlightPartSelectors: string[] = EMPTY_HIGHLIGHT_PART_SELECTORS,
+  highlightSelectors: string[] = EMPTY_HIGHLIGHT_SELECTORS,
 ) => {
-  const [targetRects, setTargetRects] = useState<StepByStepTourTargetRects | null>(() =>
-    targetElement ? getInitialTargetRects(targetElement, highlightPartSelectors) : null,
+  const [targetRects, setTargetRects] = useState<TargetRects | null>(() =>
+    targetElement ? getInitialTargetRects(targetElement, highlightSelectors) : null,
   )
   const targetRectsRef = useRef(targetRects)
 
@@ -150,7 +144,7 @@ export const useStepByStepTourTargetRect = (
     let animationFrame = 0
     let resizeObserver: ResizeObserver | undefined
     let mutationObserver: MutationObserver | undefined
-    let previousMeasuredRects: Omit<StepByStepTourTargetRects, 'rectSettled'> | undefined
+    let previousMeasuredRects: Omit<TargetRects, 'rectSettled'> | undefined
     let settleFrameCount = 0
     const observedResizeElements = new Set<HTMLElement>()
     const observedAttributeElements = new Set<HTMLElement>()
@@ -178,11 +172,11 @@ export const useStepByStepTourTargetRect = (
 
     function syncRect() {
       animationFrame = 0
-      const highlightPartElements = getElementsBySelectors(highlightPartSelectors)
+      const highlightPartElements = getElementsBySelectors(highlightSelectors)
       highlightPartElements.forEach(observeHighlightPart)
 
-      const nextMeasuredRects = getTargetRects(target, highlightPartSelectors)
-      if (highlightPartSelectors.length === 0) {
+      const nextMeasuredRects = getTargetRects(target, highlightSelectors)
+      if (highlightSelectors.length === 0) {
         previousMeasuredRects = nextMeasuredRects
         settleFrameCount = 0
         commitTargetRects({
@@ -225,7 +219,7 @@ export const useStepByStepTourTargetRect = (
       scheduleSyncRect()
     }
 
-    function commitTargetRects(nextRects: StepByStepTourTargetRects) {
+    function commitTargetRects(nextRects: TargetRects) {
       if (targetRectsRef.current && areTargetRectSetsEqual(targetRectsRef.current, nextRects))
         return
 
@@ -263,7 +257,7 @@ export const useStepByStepTourTargetRect = (
       window.removeEventListener('resize', scheduleSyncRect)
       window.removeEventListener('scroll', scheduleSyncRect, true)
     }
-  }, [highlightPartSelectors, targetElement])
+  }, [highlightSelectors, targetElement])
 
   return targetElement ? targetRects : null
 }
