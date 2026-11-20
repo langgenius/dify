@@ -71,6 +71,10 @@ export type WorkflowToolDrawerPayload = {
 export type WorkflowToolDrawerProps = {
   isAdd?: boolean
   payload: WorkflowToolDrawerPayload
+  /** Names verified safe by the workflow graph. Absent outside the workflow editor. */
+  nonConflictingOutputNames?: string[]
+  /** Names reused on exclusive branches with clashing types, mapped to those types. Editor only. */
+  outputTypeConflicts?: Record<string, string[]>
   onHide: () => void
   onRemove?: () => void
   onCreate?: (payload: WorkflowToolProviderRequest & { workflow_app_id: string }) => void
@@ -146,10 +150,13 @@ const WorkflowToolDrawerFrame = ({
 
 const WorkflowToolOutputName = React.memo(
   ({
+    conflictingTypes,
     duplicateSources,
     item,
     reservedOutputParameters,
   }: {
+    /** Set when the repeated name only clashes on type (exclusive branches). */
+    conflictingTypes?: string[]
     duplicateSources?: WorkflowToolOutputSource[]
     item: WorkflowToolProviderOutputParameter
     reservedOutputParameters: WorkflowToolProviderOutputParameter[]
@@ -162,10 +169,16 @@ const WorkflowToolOutputName = React.memo(
       { ns: 'tools' },
     )
     const sourceNodeLabel = t(($) => $['createTool.toolOutput.sourceNode'], { ns: 'tools' })
-    const duplicateOutputTip = t(($) => $['errorMsg.duplicateOutputVariable'], {
-      ns: 'workflow',
-      variable: normalizeWorkflowOutputName(item.name),
-    })
+    const duplicateOutputTip = conflictingTypes
+      ? t(($) => $['errorMsg.conflictingOutputVariableTypes'], {
+          ns: 'workflow',
+          variable: normalizeWorkflowOutputName(item.name),
+          types: conflictingTypes.join(', '),
+        })
+      : t(($) => $['errorMsg.duplicateOutputVariable'], {
+          ns: 'workflow',
+          variable: normalizeWorkflowOutputName(item.name),
+        })
     const hasReservedNameConflict =
       !item.reserved && hasReservedWorkflowOutputConflict(reservedOutputParameters, item.name)
     const hasDuplicateNameConflict = !item.reserved && !!duplicateSources
@@ -233,6 +246,8 @@ const WorkflowToolOutputName = React.memo(
 export function WorkflowToolDrawer({
   isAdd,
   payload,
+  nonConflictingOutputNames,
+  outputTypeConflicts,
   onHide,
   onRemove,
   onSave,
@@ -258,11 +273,15 @@ export function WorkflowToolDrawer({
     const groups = getDuplicateWorkflowOutputGroups(outputParameters)
     const sourceGroups = new Map<string, WorkflowToolOutputSource[]>()
 
-    for (const [name, outputs] of groups)
-      sourceGroups.set(name, getUniqueWorkflowOutputSources(outputs))
+    const safeNames = new Set(nonConflictingOutputNames)
+    for (const [name, outputs] of groups) {
+      // Only the editor has the graph needed to prove mutual exclusivity. Keep the warning in
+      // standalone tool configuration (or whenever any Output node still has a conflict).
+      if (!safeNames.has(name)) sourceGroups.set(name, getUniqueWorkflowOutputSources(outputs))
+    }
 
     return sourceGroups
-  }, [outputParameters])
+  }, [outputParameters, nonConflictingOutputNames])
 
   const handleParameterChange = (key: string, value: string, index: number) => {
     const newData = produce(parameters, (draft: WorkflowToolProviderParameter[]) => {
@@ -535,6 +554,9 @@ export function WorkflowToolDrawer({
                       >
                         <td className="max-w-39 p-2 ps-3">
                           <WorkflowToolOutputName
+                            conflictingTypes={
+                              outputTypeConflicts?.[normalizeWorkflowOutputName(item.name)]
+                            }
                             duplicateSources={duplicateOutputSourceGroups.get(
                               normalizeWorkflowOutputName(item.name),
                             )}

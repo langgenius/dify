@@ -2,7 +2,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
-from graphon.nodes.base.entities import OutputVariableEntity
+from graphon.nodes.base.entities import OutputVariableEntity, OutputVariableType
 from graphon.variables.input_entities import VariableEntity
 
 
@@ -38,7 +38,12 @@ class WorkflowToolConfigurationUtils:
                 if variable not in variable_order:
                     variable_order.append(variable)
 
-                # Later end nodes override duplicated variable definitions.
+                # End nodes on mutually exclusive branches may reuse a name. The schema has one entry per name,
+                # so it must cover every branch: differing declarations (e.g. `any` or an omitted type on one
+                # branch, `string` on another) publish `any`, whichever End node comes first.
+                previous = outputs_by_variable.get(variable)
+                if previous is not None and previous.value_type != entity.value_type:
+                    entity = entity.model_copy(update={"value_type": OutputVariableType.ANY})
                 outputs_by_variable[variable] = entity
 
         return [outputs_by_variable[variable] for variable in variable_order]

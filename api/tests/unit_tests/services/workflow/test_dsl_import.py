@@ -217,3 +217,39 @@ def test_prepare_preserves_github_blob_path_components(
     assert requested == [download_url]
     assert prepared["app"]["mode"] == "workflow"
     assert [node["id"] for node in prepared["workflow"]["graph"]["nodes"]] == ["start", "end"]
+
+
+def _branching_dsl(second_target_handle: str) -> str:
+    def end(node_id: str) -> dict[str, object]:
+        output = {"variable": "result", "value_type": "string", "value_selector": ["sys", "query"]}
+        return {"id": node_id, "data": {"type": "end", "title": node_id, "outputs": [output]}}
+
+    case: dict[str, object] = {"case_id": "true", "logical_operator": "and", "conditions": []}
+    branch = {"id": "branch", "data": {"type": "if-else", "title": "If", "cases": [case]}}
+    edges = [
+        {"id": "e1", "source": "start", "target": "branch", "sourceHandle": "source"},
+        {"id": "e2", "source": "branch", "target": "a", "sourceHandle": "true"},
+        {
+            "id": "e3",
+            "source": second_target_handle,
+            "target": "b",
+            "sourceHandle": "false" if second_target_handle == "branch" else "source",
+        },
+    ]
+    workflow = {"graph": {"nodes": [_START, branch, end("a"), end("b")], "edges": edges}}
+    return yaml.safe_dump({"app": {"mode": "workflow", "name": "x"}, "workflow": workflow})
+
+
+def test_prepare_accepts_an_output_name_reused_on_exclusive_branches() -> None:
+    # The editor publishes this graph, so the import must accept it too.
+    assert _prepare(_Store(), source=_branching_dsl("branch"), app_id=None)
+
+
+def test_prepare_refuses_an_output_name_used_by_end_nodes_running_together() -> None:
+    with pytest.raises(DslRefusedError) as exc_info:
+        _prepare(_Store(), source=_branching_dsl("start"), app_id=None)
+
+    assert sorted((i.code, i.node_id) for i in exc_info.value.issues) == [
+        (IssueCode.OUTPUT_NAME_DUPLICATE, "a"),
+        (IssueCode.OUTPUT_NAME_DUPLICATE, "b"),
+    ]
