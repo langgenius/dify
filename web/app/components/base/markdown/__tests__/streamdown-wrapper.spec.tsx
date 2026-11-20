@@ -4,6 +4,21 @@ import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import StreamdownWrapper from '../streamdown-wrapper'
 
 const TILDE_RANGE_RE = /0\.3~8mm/
+const INLINE_PNG =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAIAAADYYG7QAAADZElEQVR4nOyYQWgiVxzGv+0k5CATuyasmWqT0oMNMYfVtQeRrC0kutTdWkFITAmm4E3oIYfeCmlKe8+hNEi7uTW4JGCkuKYNxNDuoUSFpUlbskS0a6IrC9tmA0ndMq8Mzzqro46mpc1hfgzD8z/f431+838+sIsQgovEC/+3gXoUQ3IohuRQDMmhGJJDMSSHYkgOxZAcXdLS4eHh1tZW9WN3dzfHcaOjoxqNRir+7Sm+/QGvG/EKV1N/8BCpn/AnL4xdNlzubdsRkRCLxaQyhmGcTmcqlaoTez8guEZeulFT/PBzcski1Ol1f1+6SFMaJFTF7XazLFsul7PZbDKZ3NjYSCQS0WjU4XBUNX88E+7lZ+Kse/fx8RfQX8EblkrlRbbteFontL8vfrXd3V2DwQBgYGDg5OSkWi88Jp/dIT8+EKd/eltI5e25DlJpN6HnMRqN4XDYZDIVi8VIJPKm491ESgzg8e/C4O49PHmK1M/COP8IX8UrghtW/pu7d3iet9lsQ0NDtLi5uVkqlQwGg8ViOU9ClJGREQDBYDD2vdgiuEbeel94etVXU3y+h6xWK4C5uUpuZ2dnvb1Cn6+srNQt0dm2Hx4eBpDNZnVX4L8pXKbXxKe3rguVq8KLxcvaisB/E5dZTE1NAYhGo1S5vb19fHzMsqzb7a5fo6OEJicnATidzmrlky/FhCgfhRr00NHREcMwAPb29gghwWAQwOzsrHT1zhLK5XIAOI7raBadYrfbAUQiEZ7n19fXAczMzEiVHRgqFArpdBqA2Wzu1BAAn89H31oymczn8zqdjlo8p6HT09NAIFAul3t6erxe7zkMeTwehmF2dnZCoRD1R19iHa22/erqqlarJYQcHByEw+FMJgNgfn6e47ivv0PpiaChm/zhI9yu9CvSvwj3X4ti5R07NGr09fVNTEzE4/Hl5eVqYA1o0dR1qNXqxcVFqrG+13iHN9v2FGqF/qpJ16U0SEiv1wcCATHDrq7+/n6z2exwOFQqFS3eug7jqy3CrUHz98k6NjZGB9PT003VzZz+u2QymaWlJZfLRc/pXC7XTPkfGVpbW6tGsLCw0ELZ7ln2DxkcHPT7/SqVyuPxjI+Pt1BeUv6wkkExJIdiSA7FkByKITkUQ3IohuS4cIb+CgAA///1U72NT4oCcgAAAABJRU5ErkJggg=='
+
+const mockedConfig = vi.hoisted(() => ({ allowUnsafeDataScheme: false }))
+
+// Keep the real configuration and only make the data-scheme flag switchable:
+// the wrapper reads it on every render, so a getter lets one file cover both
+// sides of the flag without resetting modules or re-importing the component.
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return Object.defineProperty({ ...actual }, 'ALLOW_UNSAFE_DATA_SCHEME', {
+    get: () => mockedConfig.allowUnsafeDataScheme,
+    enumerable: true,
+  })
+})
 
 vi.mock('@/app/components/base/markdown-blocks/code-block', () => ({
   CodeBlock: ({ children }: PropsWithChildren) => <code>{children}</code>,
@@ -58,6 +73,46 @@ describe('StreamdownWrapper', () => {
       // We mocked code block to return <code>{children}</code>
       const codeElement = await screen.findByText('console.log("hello")')
       expect(codeElement)!.toBeInTheDocument()
+    })
+  })
+
+  describe('Inline data: images', () => {
+    afterEach(() => {
+      mockedConfig.allowUnsafeDataScheme = false
+    })
+
+    it('should render an inline base64 image when ALLOW_UNSAFE_DATA_SCHEME is enabled', () => {
+      // Arrange - the sanitize schema has to admit the scheme for the src to
+      // survive until rehype-harden, which is the stage that allows data images
+      mockedConfig.allowUnsafeDataScheme = true
+
+      // Act
+      render(<StreamdownWrapper latexContent={`![dify-icon](${INLINE_PNG})`} />)
+
+      // Assert
+      expect(screen.getByTestId('gallery-image')).toHaveAttribute('src', INLINE_PNG)
+    })
+
+    it('should keep blocking inline base64 images when the flag is disabled', () => {
+      // Act - default configuration
+      render(<StreamdownWrapper latexContent={`![dify-icon](${INLINE_PNG})`} />)
+
+      // Assert
+      expect(screen.queryByTestId('gallery-image')).toBeNull()
+      expect(screen.getByText('[Image blocked: dify-icon]')).toBeInTheDocument()
+    })
+
+    it('should keep blocking data: links even when the flag is enabled', () => {
+      // Arrange - only image sources are widened, never link targets
+      mockedConfig.allowUnsafeDataScheme = true
+
+      // Act
+      render(<StreamdownWrapper latexContent={'[open](data:text/html;base64,PHNjcmlwdD4=)'} />)
+
+      // Assert - the link is dropped instead of becoming an anchor; the
+      // renderer keeps the label and flags the blocked target
+      expect(screen.queryByRole('link')).toBeNull()
+      expect(document.body.textContent).toContain('open')
     })
   })
 
