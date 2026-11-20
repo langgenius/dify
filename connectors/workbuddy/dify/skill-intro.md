@@ -6,6 +6,5 @@ WorkBuddy reaches your Dify server through the tools `dify_find`, `dify_read`, `
 - The token reaches only the workspaces chosen when it was created. If `get.workspace` lists no workspace, ask the human to give the token access to the workspace they want you to use, or for the workspace id. Do not guess an id.
 - When the server refuses the token, WorkBuddy reports the Dify connection as unauthorized instead of returning a tool result. The token has expired or was revoked. Ask the human to open the Dify connector in WorkBuddy and connect again with a new token.
 - A workspace token can only find and run apps. When the task needs more, such as plugins, model providers, tool credentials or filling in a human-input form, ask the human to connect again with a personal access token.
-- No token can create, change or publish apps through these tools. For that, the human uses the Dify console.
 
 Talk to the human in their language.
