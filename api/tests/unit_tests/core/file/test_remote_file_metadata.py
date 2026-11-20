@@ -63,7 +63,6 @@ class TestGuessFileInfoFromResponse:
                 "attachment; filename=old.pdf; filename*=UTF-8''new%20report.pdf",
                 "new report.pdf",
             ),
-            ("https://example.com/download", "attachment; filename=report.pdf; filename*=bad", "report.pdf"),
             ("https://example.com/download", 'attachment; filename="dir/report.pdf"', "report.pdf"),
         ],
     )

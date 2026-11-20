@@ -31,8 +31,8 @@ from core.rag.extractor.unstructured.unstructured_xml_extractor import Unstructu
 from core.rag.extractor.watercrawl.extractor import WaterCrawlWebExtractor
 from core.rag.extractor.word_extractor import WordExtractor
 from core.rag.models.document import Document
-from libs.http_headers import content_disposition_filename
 from extensions.ext_storage import storage
+from libs.http_headers import content_disposition_filename
 from models.model import UploadFile
 
 SUPPORT_URL_CONTENT_TYPES = ["application/pdf", "text/plain", "application/json"]

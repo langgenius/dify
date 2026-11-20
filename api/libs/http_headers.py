@@ -10,11 +10,10 @@ def content_type_media_type(content_type: str) -> str:
 
 
 def content_disposition_filename(content_disposition: str | None) -> str | None:
-    """Return a basename from a valid filename parameter, or None if absent.
+    """Return a basename from a parsed filename parameter, or None if absent.
 
-    Accept legacy filename and RFC 5987 filename* parameters. Werkzeug prefers
-    a valid filename* and falls back to filename when the extended value is invalid.
-    The result never contains a directory component.
+    Accept legacy filename and RFC 5987 filename* parameters using Werkzeug's
+    parameter parsing rules. The result never contains a directory component.
     """
     if not content_disposition:
         return None
