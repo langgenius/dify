@@ -2,8 +2,8 @@ import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.
 import { page, userEvent } from 'vite-plus/test/browser'
 import { toast } from '@/app/notifications'
 import { apiError, hold, setupFakeApi } from '@/test/fake-api'
-import { TagManagementDialog } from '../tag-management-dialog'
 import { renderWithTags } from '@/test/tag-management'
+import { TagManagementDialog } from '../tag-management-dialog'
 
 let serverTags: Tag[] = []
 // Tag routes address tags by UUID.

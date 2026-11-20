@@ -2,8 +2,8 @@ import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.
 import { page, userEvent } from 'vite-plus/test/browser'
 import { toast } from '@/app/notifications'
 import { apiError, setupFakeApi } from '@/test/fake-api'
-import { TagSelector } from '../tag-selector'
 import { renderWithTags } from '@/test/tag-management'
+import { TagSelector } from '../tag-selector'
 
 let serverTags: Tag[] = []
 const tags: Tag[] = [

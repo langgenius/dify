@@ -3,8 +3,8 @@ import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { toast } from '@/app/notifications'
 import { apiError, hold, setupFakeApi } from '@/test/fake-api'
-import { TagManagementDialog } from '../tag-management-dialog'
 import { renderWithTags } from '@/test/tag-management'
+import { TagManagementDialog } from '../tag-management-dialog'
 
 const tags = [
   { id: 'tag-1', name: 'Frontend', type: 'app' as const, binding_count: '' },
