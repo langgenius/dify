@@ -83,7 +83,8 @@ def browser(
 def test_profile_admits_a_session_without_a_workspace_and_records_activity(
     browser: FlaskClient, sqlite_session_factory: sessionmaker[Session], account_id: str
 ) -> None:
-    response = browser.get("/console/api/account/profile")
+    assert browser.get("/console/api/account/profile").status_code == 401
+    response = browser.get("/console/api/account/end_user_profile")
 
     assert response.status_code == 200, response.get_json()
     assert response.get_json()["email"] == "invitee@example.com"
@@ -116,7 +117,7 @@ def test_profile_refuses_a_banned_account(
         assert account is not None
         account.status = AccountStatus.BANNED
 
-    assert browser.get("/console/api/account/profile").status_code == 401
+    assert browser.get("/console/api/account/end_user_profile").status_code == 401
 
 
 def test_workspace_routes_still_require_a_workspace(browser: FlaskClient) -> None:

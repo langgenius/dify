@@ -78,9 +78,15 @@ function setup({ data = invitation(), email = 'invitee@example.com' } = {}) {
     consoleQuery.activate.check.get.queryKey({ input: { query: { token: 'invite-token' } } }),
     data,
   )
+  queryClient.setQueryData(consoleQuery.account.endUserProfile.get.queryKey(), {
+    id: 'account-id',
+    email,
+    name: 'Invitee',
+    avatar_url: null,
+    is_password_set: false,
+  })
   return renderWithConsoleQuery(<InviteSettingsPage />, {
     queryClient,
-    accountProfile: { id: 'account-id', email },
     systemFeatures: { branding: { enabled: true, application_title: 'Acme AI' } },
   })
 }
@@ -125,7 +131,7 @@ describe('Invitation activation', () => {
     { locale: 'zh-Hans', expected: 'zh-Hans' },
     { locale: 'unsupported-locale', expected: 'en-US' },
   ])(
-    'submits setup fields with $locale and refreshes the signed-in account',
+    'submits setup fields with $locale without requiring a Console profile',
     async ({ locale, expected }) => {
       vi.mocked(useLocale).mockReturnValue(locale as ReturnType<typeof useLocale>)
       const user = userEvent.setup()
@@ -141,9 +147,8 @@ describe('Invitation activation', () => {
             timezone: 'Asia/Shanghai',
           },
         },
-        { context: { silent: true } },
+        { context: { silent: true, handleUnauthorizedLocally: true } },
       )
-      expect(mocks.profile).toHaveBeenCalled()
       expect(setLocaleOnClient).toHaveBeenCalledExactlyOnceWith(expected)
     },
   )
@@ -159,7 +164,7 @@ describe('Invitation activation', () => {
       await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/'))
       expect(mocks.activate).toHaveBeenCalledExactlyOnceWith(
         { body: { token: 'invite-token' } },
-        { context: { silent: true } },
+        { context: { silent: true, handleUnauthorizedLocally: true } },
       )
       expect(setLocaleOnClient).not.toHaveBeenCalled()
     },
@@ -221,6 +226,22 @@ describe('Invitation activation', () => {
     )
     expect(screen.queryByRole('button', { name: 'Rejoindre Acme' })).not.toBeInTheDocument()
     expect(mocks.activate).not.toHaveBeenCalled()
+  })
+
+  it('returns an expired invitation session to sign-in without losing the invitation', async () => {
+    const user = userEvent.setup()
+    mocks.activate.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 401 }), {
+        code: 'unauthorized',
+        message: 'Unauthorized',
+        status: 401,
+      }),
+    )
+    setup({ data: invitation({ requires_setup: false }) })
+    await user.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
+    await waitFor(() =>
+      expect(mocks.replace).toHaveBeenCalledWith('/signin?invite_token=invite-token'),
+    )
   })
 
   it('accepts a case-insensitive email match', async () => {

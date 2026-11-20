@@ -240,9 +240,7 @@ def build_account_services(
             passwords=passwords,
             human_verification=TurnstileHumanVerificationGateway(),
             sessions=RedisAccountSessionGateway(redis=redis),
-            refresh_preparation=SQLAlchemyAccountRefreshPreparationGateway(
-                accounts=accounts, defer_workspace_creation=deployment_edition == DeploymentEdition.CLOUD
-            ),
+            refresh_preparation=SQLAlchemyAccountRefreshPreparationGateway(accounts=accounts),
             account_provisioning=workspace_provisioning,
             account_registration=lifecycle,
             workspace_provisioning=workspace_provisioning,

@@ -353,8 +353,14 @@ class InvitedAccountRegistration(Protocol):
         language: str | None,
         status: str,
         is_setup: bool,
+        create_workspace_required: bool,
         check_normalized_email: bool,
-    ) -> AccountSnapshot: ...
+    ) -> AccountSnapshot:
+        """Register under account policy, skipping personal provisioning when not requested.
+
+        Skipping provisioning does not suppress the Enterprise default workspace join.
+        """
+        ...
 
 
 class InvitationWorkspaceStore(Protocol):
@@ -594,6 +600,7 @@ class WorkspaceInvitationService:
                 language=language,
                 status="pending",
                 is_setup=True,
+                create_workspace_required=False,
                 check_normalized_email=True,
             )
             if rbac_enabled:

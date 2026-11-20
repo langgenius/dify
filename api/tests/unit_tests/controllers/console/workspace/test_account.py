@@ -67,7 +67,6 @@ from extensions.ext_application_services import ApplicationServices
 from libs.exception import BaseHTTPException
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
-from machinery.errors import ActiveWorkspaceRequiredError
 from models import Account, Tenant, TenantAccountJoin
 from models import AccountStatus as _workspace_account_AccountStatus
 from models.account import AccountStatus as _accounts_AccountStatus
@@ -921,36 +920,6 @@ class TestAccountsCases:
             assert result["has_owned_tenant"] is False
             assert result["has_tenant"] is False
             get_profile.assert_called_once_with(request_context)
-
-        def test_get_profile_admits_an_account_without_a_workspace(
-            self, app: Flask, account_services: AccountServices
-        ) -> None:
-            user = make_account()
-            contexts: list[RequestContext] = []
-
-            def get_profile(context: RequestContext) -> Account:
-                contexts.append(context)
-                return user
-
-            with (
-                app.test_request_context("/account/profile"),
-                patch("controllers.console.wraps._is_setup_completed", return_value=True),
-                config_overrides_context(LOGIN_DISABLED=True),
-                patch(
-                    "controllers.console.flask_admission.current_account_with_tenant_optional",
-                    return_value=(user, None),
-                ),
-                patch(
-                    "controllers.console.flask_admission.current_account_with_tenant",
-                    side_effect=ActiveWorkspaceRequiredError(),
-                ),
-                patch.object(account_services.profile, "get", get_profile),
-            ):
-                result = AccountProfileApi().get()
-
-            assert isinstance(result, dict)
-            assert result["id"] == user.id
-            assert [context.active_workspace_id for context in contexts] == [""]
 
     class TestAccountProfilePatchApi:
         def test_json_schema_matches_runtime_patch_rules(self) -> None:
