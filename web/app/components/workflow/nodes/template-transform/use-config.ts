@@ -90,6 +90,7 @@ const useConfig = (id: string, payload: TemplateTransformNodeType) => {
     const supportedVariableTypes: readonly VarType[] = [
       VarType.string,
       VarType.number,
+      VarType.integer,
       VarType.boolean,
       VarType.object,
       VarType.array,
