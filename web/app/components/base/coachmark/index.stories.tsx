@@ -26,7 +26,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Popover anchored to an arbitrary page element with a spotlight cut-out. The root waits until the target is measured, visible and accessible, keeps the last ready step in place while the next target settles, and glides between steps.',
+          'Popover anchored to an arbitrary page element with a spotlight cut-out. `open` follows Base UI: controlled or `defaultOpen`, and `onOpenChange` reports only Escape and the close part. While open, the popup appears once the target is measured, in the viewport and accessible; when `target` changes it keeps the shown step and content until the next target is ready, then glides. The spotlight covers the target plus the `highlightSelectors` elements present when the step is shown.',
       },
     },
   },
@@ -60,43 +60,39 @@ function Tour() {
           {title}
         </Button>
       ))}
-      {open && (
-        <Coachmark
-          target={targets[step.id] ?? null}
-          step={step.id}
-          payload={step}
-          onOpenChange={(nextOpen) => setOpen(nextOpen)}
-        >
-          {({ payload }) => (
-            <CoachmarkPortal>
-              <CoachmarkSpotlight />
-              <CoachmarkPositioner>
-                <CoachmarkPopup initialFocus={nextRef}>
-                  <CoachmarkArrow />
-                  <CoachmarkTitle className="system-md-medium text-text-primary">
-                    {payload.title}
-                  </CoachmarkTitle>
-                  <CoachmarkDescription className="mt-1 system-xs-regular text-text-secondary">
-                    {payload.description}
-                  </CoachmarkDescription>
-                  <div className="mt-4 flex items-center justify-between">
-                    <CoachmarkClose className="system-sm-regular text-text-tertiary">
-                      Skip
-                    </CoachmarkClose>
-                    <Button
-                      ref={nextRef}
-                      variant="primary"
-                      onClick={() => setIndex((current) => (current + 1) % steps.length)}
-                    >
-                      Next
-                    </Button>
-                  </div>
-                </CoachmarkPopup>
-              </CoachmarkPositioner>
-            </CoachmarkPortal>
-          )}
-        </Coachmark>
-      )}
+      <Coachmark
+        open={open}
+        onOpenChange={(nextOpen) => setOpen(nextOpen)}
+        target={targets[step.id] ?? null}
+      >
+        <CoachmarkPortal>
+          <CoachmarkSpotlight />
+          <CoachmarkPositioner>
+            <CoachmarkPopup initialFocus={nextRef}>
+              <CoachmarkArrow />
+              <CoachmarkTitle className="system-md-medium text-text-primary">
+                {step.title}
+              </CoachmarkTitle>
+              <CoachmarkDescription className="mt-1 system-xs-regular text-text-secondary">
+                {step.description}
+              </CoachmarkDescription>
+              <div className="mt-4 flex items-center justify-between">
+                <CoachmarkClose className="system-sm-regular text-text-tertiary">
+                  Skip
+                </CoachmarkClose>
+                <Button
+                  ref={nextRef}
+                  variant="primary"
+                  onClick={() => setIndex((current) => (current + 1) % steps.length)}
+                >
+                  Next
+                </Button>
+              </div>
+            </CoachmarkPopup>
+          </CoachmarkPositioner>
+        </CoachmarkPortal>
+      </Coachmark>
+      {!open && <Button onClick={() => setOpen(true)}>Restart</Button>}
     </div>
   )
 }

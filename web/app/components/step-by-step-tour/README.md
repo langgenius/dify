@@ -12,4 +12,4 @@ This directory owns the cross-route Step-by-step Tour capability.
 Server state remains canonical in the TanStack Query cache. Components consume narrow derived atoms
 and write-only commands instead of a combined account-state facade.
 
-The checklist uses Dify UI Popover. The coachmark composes `app/components/base/coachmark`, which owns the target spotlight, pointer blockers, anchoring, and step glide.
+The checklist uses Dify UI Popover. The coachmark composes `app/components/base/coachmark`, which owns target readiness, the spotlight, pointer blocking and keyboard scope, anchoring, and step glide.

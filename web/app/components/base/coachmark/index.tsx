@@ -3,13 +3,15 @@
 import type {
   PopoverArrowProps,
   PopoverBackdropProps,
+  PopoverChangeEventDetails,
+  PopoverChangeEventReason,
   PopoverCloseProps,
   PopoverPopupProps,
   PopoverPositionerProps,
   PopoverProps,
 } from '@langgenius/dify-ui/popover'
 import type { ReactNode, RefObject } from 'react'
-import type { TargetRect } from './use-target-rects'
+import type { ShownStep } from './use-shown-step'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
@@ -24,33 +26,28 @@ import {
 } from '@langgenius/dify-ui/popover'
 import { useMergedRefs } from '@langgenius/dify-ui/use-merged-refs'
 import { createContext, use, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { useTargetRects } from './use-target-rects'
-import { waitForAccessibleElement } from './wait-for-accessible-element'
+import { useShownStep } from './use-shown-step'
 
 const HIGHLIGHT_PADDING = 4
 const GLIDE_CLASS_NAME =
-  'data-gliding:duration-300 data-gliding:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none'
+  'motion-safe:data-gliding:duration-300 motion-safe:data-gliding:ease-[cubic-bezier(0.22,1,0.36,1)]'
+const HIDDEN_BOUNDARY_SELECTOR = '[aria-hidden="true"], [inert]'
 const TABBABLE_SELECTOR =
   'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'
 
-type CoachmarkInteraction = 'blocked' | 'target-only' | 'unblocked'
+type CoachmarkModal = boolean | 'allow-target'
 type CoachmarkSide = 'bottom' | 'inline-end' | 'inline-start' | 'top'
-
-type CoachmarkOverlay<Payload> = {
-  anchorRect: TargetRect
-  highlightRect: TargetRect
-  interaction: CoachmarkInteraction
-  payload: Payload
-  step: string
+type CoachmarkChangeEventReason = Extract<PopoverChangeEventReason, 'close-press' | 'escape-key'>
+type CoachmarkChangeEventDetails = PopoverChangeEventDetails & {
+  reason: CoachmarkChangeEventReason
 }
 
 type CoachmarkContextValue = {
-  open: boolean
-  overlay: CoachmarkOverlay<unknown>
   gliding: boolean
-  readyStep: string | undefined
-  spotlightRect: TargetRect
-  target: HTMLElement | null
+  modal: CoachmarkModal
+  open: boolean
+  pending: boolean
+  step: ShownStep
 }
 
 const CoachmarkContext = createContext<CoachmarkContextValue | null>(null)
@@ -61,13 +58,22 @@ function useCoachmarkContext() {
   return context
 }
 
-const isRectInViewport = ({ height, left, top, width }: TargetRect) =>
-  top < window.innerHeight && top + height > 0 && left < window.innerWidth && left + width > 0
+function getTabbables(root: HTMLElement) {
+  return [
+    ...(root.matches(TABBABLE_SELECTOR) ? [root] : []),
+    ...root.querySelectorAll<HTMLElement>(TABBABLE_SELECTOR),
+  ].filter(
+    (element) =>
+      !element.closest('[hidden], [inert]') &&
+      (typeof element.checkVisibility !== 'function' ||
+        element.checkVisibility({ visibilityProperty: true })),
+  )
+}
 
-function useGliding(step: string | undefined) {
-  const [glide, setGlide] = useState({ gliding: false, step })
-  if (glide.step !== step)
-    setGlide({ gliding: glide.step !== undefined && step !== undefined, step })
+function useGliding(target: HTMLElement | undefined) {
+  const [glide, setGlide] = useState({ gliding: false, target })
+  if (glide.target !== target)
+    setGlide({ gliding: glide.target !== undefined && target !== undefined, target })
 
   useEffect(() => {
     if (!glide.gliding) return
@@ -82,103 +88,75 @@ function useGliding(step: string | undefined) {
   return glide.gliding
 }
 
-type CoachmarkRenderState<Payload> = {
-  payload: Payload
-  stale: boolean
-}
-
-type CoachmarkProps<Payload = undefined> = {
+type CoachmarkProps = {
+  open?: boolean
+  defaultOpen?: boolean
+  onOpenChange?: (open: boolean, eventDetails: CoachmarkChangeEventDetails) => void
   target: HTMLElement | null
-  targetPending?: boolean
   highlightSelectors?: string[]
-  step?: string
-  payload?: Payload
-  interaction?: CoachmarkInteraction
-  onOpenChange?: PopoverProps['onOpenChange']
-  children: ReactNode | ((state: CoachmarkRenderState<Payload>) => ReactNode)
+  modal?: CoachmarkModal
+  children?: ReactNode
 }
 
-function Coachmark<Payload = undefined>({
-  target,
-  targetPending = false,
-  highlightSelectors,
-  step = '',
-  payload,
-  interaction = 'blocked',
+function Coachmark({
+  open: openProp,
+  defaultOpen = false,
   onOpenChange,
+  target,
+  highlightSelectors,
+  modal = true,
   children,
-}: CoachmarkProps<Payload>) {
-  const targetRects = useTargetRects(target, highlightSelectors)
-  const lastOverlayRef = useRef<CoachmarkOverlay<Payload> | undefined>(undefined)
+}: CoachmarkProps) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen)
+  const open = openProp ?? uncontrolledOpen
+  const [step, setStep] = useShownStep(open, target, highlightSelectors)
+  const shown = open && !!step && !step.detached
+  const pending = shown && target !== step.target
+  const gliding = useGliding(shown ? step.target : undefined)
 
-  const currentOverlay: CoachmarkOverlay<Payload> | undefined =
-    target &&
-    !targetPending &&
-    targetRects?.targetElement === target &&
-    targetRects.highlightPartsReady &&
-    targetRects.rectSettled
-      ? {
-          anchorRect: targetRects.anchorRect,
-          highlightRect: targetRects.highlightRect,
-          interaction,
-          payload: payload as Payload,
-          step,
-        }
-      : undefined
-
-  const [awaitingTarget, setAwaitingTarget] = useState(true)
-  if (!target && !awaitingTarget) setAwaitingTarget(true)
-  const canOpen = !!currentOverlay && isRectInViewport(currentOverlay.highlightRect)
+  const shownChildrenRef = useRef(children)
   useLayoutEffect(() => {
-    if (awaitingTarget && canOpen && target)
-      return waitForAccessibleElement(target, () => setAwaitingTarget(false))
-  }, [awaitingTarget, canOpen, target])
-
-  useLayoutEffect(() => {
-    if (currentOverlay) lastOverlayRef.current = currentOverlay
+    if (!pending) shownChildrenRef.current = children
   })
 
-  const overlay = currentOverlay ?? lastOverlayRef.current
-  const open = Boolean(!awaitingTarget && overlay)
-  const gliding = useGliding(open ? overlay?.step : undefined)
+  const handleOpenChange: PopoverProps['onOpenChange'] = (nextOpen, eventDetails) => {
+    if (eventDetails.reason !== 'close-press' && eventDetails.reason !== 'escape-key') return
+    onOpenChange?.(nextOpen, eventDetails as CoachmarkChangeEventDetails)
+    if (!eventDetails.isCanceled) setUncontrolledOpen(nextOpen)
+  }
 
   return (
     <Popover
-      open={open}
-      onOpenChange={onOpenChange}
-      modal={overlay?.interaction === 'blocked' ? 'trap-focus' : false}
+      open={shown}
+      onOpenChange={handleOpenChange}
+      onOpenChangeComplete={(nextOpen) => {
+        if (!nextOpen) setStep(null)
+      }}
+      modal={modal === true ? 'trap-focus' : false}
     >
-      {overlay && (
-        <CoachmarkContext
-          value={{
-            gliding,
-            open,
-            overlay,
-            readyStep: currentOverlay?.step,
-            spotlightRect: {
-              height: overlay.highlightRect.height + HIGHLIGHT_PADDING * 2,
-              left: overlay.highlightRect.left - HIGHLIGHT_PADDING,
-              top: overlay.highlightRect.top - HIGHLIGHT_PADDING,
-              width: overlay.highlightRect.width + HIGHLIGHT_PADDING * 2,
-            },
-            target,
-          }}
-        >
-          {typeof children === 'function'
-            ? children({ payload: overlay.payload, stale: !currentOverlay })
-            : children}
+      {step && (
+        <CoachmarkContext value={{ gliding, modal, open: shown, pending, step }}>
+          {pending ? shownChildrenRef.current : children}
         </CoachmarkContext>
       )}
     </Popover>
   )
 }
 
+const getSpotlightRect = ({ highlightRect }: ShownStep) => ({
+  height: highlightRect.height + HIGHLIGHT_PADDING * 2,
+  left: highlightRect.left - HIGHLIGHT_PADDING,
+  top: highlightRect.top - HIGHLIGHT_PADDING,
+  width: highlightRect.width + HIGHLIGHT_PADDING * 2,
+})
+
 type CoachmarkPortalProps = {
   children?: ReactNode
 }
 
 function CoachmarkPortal({ children }: CoachmarkPortalProps) {
-  const { open, overlay, spotlightRect, target } = useCoachmarkContext()
+  const { gliding, modal, open, step } = useCoachmarkContext()
+  const { target } = step
   const portalRef = useRef<HTMLDivElement>(null)
 
   const [portalKey, setPortalKey] = useState(0)
@@ -187,25 +165,23 @@ function CoachmarkPortal({ children }: CoachmarkPortalProps) {
     if (
       open &&
       portal &&
-      target &&
-      (!portal.closest('[aria-hidden="true"], [inert]') ||
-        !target.closest('[aria-hidden="true"], [inert]')) &&
+      (!portal.closest(HIDDEN_BOUNDARY_SELECTOR) || !target.closest(HIDDEN_BOUNDARY_SELECTOR)) &&
       portal.compareDocumentPosition(target) & Node.DOCUMENT_POSITION_FOLLOWING
     )
       setPortalKey((key) => key + 1)
   }, [open, target])
 
-  const { height, left, top, width } = spotlightRect
+  const { height, left, top, width } = getSpotlightRect(step)
 
   return (
     <PopoverPortal key={portalKey} ref={portalRef} className="aria-hidden:invisible">
-      {open && overlay.interaction !== 'unblocked' && (
+      {open && modal !== false && (
         <div
           aria-hidden="true"
           className="fixed inset-0 cursor-default"
           style={{
             clipPath:
-              overlay.interaction === 'target-only'
+              modal === 'allow-target' && !gliding
                 ? `polygon(evenodd,0% 0%,100% 0%,100% 100%,0% 100%,0% 0%,${left}px ${top}px,${left}px ${top + height}px,${left + width}px ${top + height}px,${left + width}px ${top}px,${left}px ${top}px)`
                 : undefined,
           }}
@@ -221,17 +197,17 @@ type CoachmarkSpotlightProps = Omit<PopoverBackdropProps, 'className' | 'style'>
 }
 
 function CoachmarkSpotlight({ className, ...props }: CoachmarkSpotlightProps) {
-  const { gliding, spotlightRect } = useCoachmarkContext()
+  const { gliding, step } = useCoachmarkContext()
 
   return (
     <PopoverBackdrop
       data-gliding={gliding ? '' : undefined}
       className={cn(
-        'pointer-events-none inset-auto rounded-xl shadow-[0_0_0_9999px_var(--color-background-overlay)] transition-opacity data-ending-style:opacity-0 data-gliding:transition-[top,left,width,height,opacity] data-starting-style:opacity-0',
+        'pointer-events-none inset-auto rounded-xl shadow-[0_0_0_9999px_var(--color-background-overlay)] data-ending-style:opacity-0 data-starting-style:opacity-0 motion-safe:transition-opacity motion-safe:data-gliding:transition-[top,left,width,height,opacity]',
         GLIDE_CLASS_NAME,
         className,
       )}
-      style={spotlightRect}
+      style={getSpotlightRect(step)}
       {...props}
     />
   )
@@ -246,8 +222,8 @@ type CoachmarkPositionerProps = Omit<
 }
 
 function CoachmarkPositioner({ className, side = 'bottom', ...props }: CoachmarkPositionerProps) {
-  const { gliding, overlay } = useCoachmarkContext()
-  const { anchorRect, highlightRect } = overlay
+  const { gliding, step } = useCoachmarkContext()
+  const { anchorRect, highlightRect } = step
   const inline = side === 'inline-end' || side === 'inline-start'
 
   const anchoring = useMemo(() => {
@@ -281,44 +257,112 @@ function CoachmarkPositioner({ className, side = 'bottom', ...props }: Coachmark
       collisionAvoidance={{ side: 'flip', align: 'shift', fallbackAxisSide: 'none' }}
       positionMethod="fixed"
       data-gliding={gliding ? '' : undefined}
-      className={cn('data-gliding:transition-[top,left,transform]', GLIDE_CLASS_NAME, className)}
+      className={cn(
+        'motion-safe:data-gliding:transition-[top,left,transform]',
+        GLIDE_CLASS_NAME,
+        className,
+      )}
       {...props}
     />
   )
 }
 
-type CoachmarkPopupProps = Omit<PopoverPopupProps, 'className' | 'finalFocus' | 'initialFocus'> & {
+type CoachmarkPopupProps = Omit<PopoverPopupProps, 'className' | 'initialFocus'> & {
   className?: string
   initialFocus?: RefObject<HTMLElement | null>
 }
 
-function CoachmarkPopup({ className, initialFocus, ref, ...props }: CoachmarkPopupProps) {
-  const { readyStep } = useCoachmarkContext()
+function CoachmarkPopup({
+  className,
+  initialFocus,
+  finalFocus = false,
+  onClickCapture,
+  onKeyDown,
+  ref,
+  ...props
+}: CoachmarkPopupProps) {
+  const { modal, open, pending, step } = useCoachmarkContext()
+  const { target } = step
   const popupRef = useRef<HTMLDivElement>(null)
   const mergedRef = useMergedRefs(popupRef, ref)
+  const previousTargetRef = useRef(target)
+
+  useEffect(() => {
+    const previousTarget = previousTargetRef.current
+    previousTargetRef.current = target
+    const popup = popupRef.current
+    if (!open || !popup) return
+
+    const activeElement = document.activeElement
+    const focusLost =
+      !activeElement ||
+      activeElement === document.body ||
+      !!activeElement.closest(HIDDEN_BOUNDARY_SELECTOR)
+    const advanced =
+      previousTarget !== target &&
+      !!activeElement &&
+      (popup.contains(activeElement) || previousTarget.contains(activeElement))
+    if (focusLost || advanced) (initialFocus?.current ?? popup).focus()
+  }, [initialFocus, open, target])
 
   useEffect(() => {
     const popup = popupRef.current
-    if (readyStep === undefined || !popup) return
+    if (modal !== 'allow-target' || !popup) return
 
-    const activeElement = document.activeElement
-    if (
-      activeElement &&
-      activeElement !== document.body &&
-      !activeElement.closest('[aria-hidden="true"]')
-    )
-      return
+    const handleTargetKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab' || event.defaultPrevented) return
+      const targetTabbables = getTabbables(target)
+      const popupTabbables = getTabbables(popup)
+      const next = event.shiftKey ? popupTabbables.at(-1) : popupTabbables[0]
+      const boundary = event.shiftKey ? targetTabbables[0] : targetTabbables.at(-1)
+      if (!next || event.target !== boundary) return
 
-    ;(initialFocus?.current ?? popup).focus()
-  }, [readyStep, initialFocus])
+      event.preventDefault()
+      next.focus()
+    }
+
+    target.addEventListener('keydown', handleTargetKeyDown)
+    return () => target.removeEventListener('keydown', handleTargetKeyDown)
+  }, [modal, target])
+
+  const handleKeyDown: CoachmarkPopupProps['onKeyDown'] = (event) => {
+    onKeyDown?.(event)
+    const popup = popupRef.current
+    if (modal !== 'allow-target' || event.key !== 'Tab' || event.defaultPrevented || !popup) return
+
+    const targetTabbables = getTabbables(target)
+    const popupTabbables = getTabbables(popup)
+    const index = popupTabbables.findIndex((element) => element === document.activeElement)
+    const next = event.shiftKey
+      ? (targetTabbables.at(-1) ?? popupTabbables.at(-1))
+      : (targetTabbables[0] ?? popupTabbables[0])
+    const atBoundary = event.shiftKey ? index <= 0 : index === popupTabbables.length - 1
+    if (!next || !atBoundary) return
+
+    event.preventDefault()
+    next.focus()
+  }
 
   return (
     <PopoverPopup
       ref={mergedRef}
       initialFocus={() => initialFocus?.current ?? popupRef.current}
-      finalFocus={false}
+      finalFocus={finalFocus}
+      data-pending={pending ? '' : undefined}
+      onClickCapture={(event) => {
+        onClickCapture?.(event)
+        if (
+          pending &&
+          event.target instanceof Element &&
+          !event.target.closest('[data-coachmark-close]')
+        ) {
+          event.preventDefault()
+          event.stopPropagation()
+        }
+      }}
+      onKeyDown={handleKeyDown}
       className={cn(
-        'relative flex w-88 max-w-[calc(100vw-16px)] flex-col rounded-2xl border-[0.5px] border-state-accent-hover-alt bg-state-accent-hover p-4 shadow-[0_20px_24px_-4px_var(--color-shadow-shadow-5),0_8px_8px_-4px_var(--color-shadow-shadow-1)] backdrop-blur-[5px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid focus-visible:outline-solid',
+        'relative flex max-h-(--available-height) w-88 max-w-[calc(100vw-16px)] flex-col rounded-2xl border-[0.5px] border-state-accent-hover-alt bg-state-accent-hover p-4 shadow-[0_20px_24px_-4px_var(--color-shadow-shadow-5),0_8px_8px_-4px_var(--color-shadow-shadow-1)] backdrop-blur-[5px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid focus-visible:outline-solid',
         className,
       )}
       {...props}
@@ -364,30 +408,8 @@ const CoachmarkDescription = PopoverDescription
 
 type CoachmarkCloseProps = PopoverCloseProps
 
-function CoachmarkClose({ onKeyDown, ...props }: CoachmarkCloseProps) {
-  const { overlay, target } = useCoachmarkContext()
-
-  const handleKeyDown: CoachmarkCloseProps['onKeyDown'] = (event) => {
-    onKeyDown?.(event)
-    if (
-      event.defaultPrevented ||
-      overlay.interaction !== 'target-only' ||
-      event.key !== 'Tab' ||
-      event.shiftKey ||
-      !target
-    )
-      return
-
-    const targetTabbable = target.matches(TABBABLE_SELECTOR)
-      ? target
-      : target.querySelector<HTMLElement>(TABBABLE_SELECTOR)
-    if (!targetTabbable) return
-
-    event.preventDefault()
-    targetTabbable.focus()
-  }
-
-  return <PopoverClose onKeyDown={handleKeyDown} {...props} />
+function CoachmarkClose(props: CoachmarkCloseProps) {
+  return <PopoverClose data-coachmark-close="" {...props} />
 }
 
 export {
@@ -401,4 +423,16 @@ export {
   CoachmarkSpotlight,
   CoachmarkTitle,
 }
-export type { CoachmarkInteraction, CoachmarkSide }
+export type {
+  CoachmarkArrowProps,
+  CoachmarkChangeEventDetails,
+  CoachmarkChangeEventReason,
+  CoachmarkCloseProps,
+  CoachmarkModal,
+  CoachmarkPopupProps,
+  CoachmarkPortalProps,
+  CoachmarkPositionerProps,
+  CoachmarkProps,
+  CoachmarkSide,
+  CoachmarkSpotlightProps,
+}
