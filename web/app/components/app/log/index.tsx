@@ -8,13 +8,13 @@ import type { FC } from 'react'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
-import dayjs from 'dayjs'
-import { omit } from 'es-toolkit/object'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { APP_PAGE_LIMIT } from '@/config'
 import { useDocLink } from '@/context/i18n'
+import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import PageTitle from '../log-annotation/page-title'
@@ -23,8 +23,10 @@ import {
   resolveLogTimePeriodOption,
   useCloudSandboxPlanStatus,
 } from './cloud-sandbox-retention'
-import Filter, { TIME_PERIOD_MAPPING } from './filter'
+import Filter from './filter'
 import List from './list'
+import { LogExportDialog } from './log-export-dialog'
+import { getLogIdentities, logDateRange, TIME_PERIOD_MAPPING } from './log-filters'
 import { RetentionUpgradeNotice } from './retention-upgrade-notice'
 
 type ILogsProps = {
@@ -57,6 +59,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const pageParam = Number.parseInt(searchParams.get('page') || '1', 10)
   const currPage = Number.isNaN(pageParam) || pageParam < 1 ? 0 : pageParam - 1
   const cloudSandboxPlanState = useCloudSandboxPlanStatus()
+  const canExportLogs = useAtomValue(isCurrentWorkspaceManagerAtom)
   const cachedState = logsStateCache.get(appDetail.id)
   const [queryParams, setQueryParams] = useState<QueryParam>(
     cachedState?.queryParams ?? defaultQueryParams,
@@ -69,30 +72,26 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const effectiveQueryParams = { ...queryParams, period: effectivePeriod }
   const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
   const requestQueryParams = { ...debouncedQueryParams, period: effectivePeriod }
-  const requestTimePeriod = resolveLogTimePeriodOption(
-    requestQueryParams.period,
-    TIME_PERIOD_MAPPING[requestQueryParams.period]!,
-    cloudSandboxPlanState,
-  )
-
-  // Get the app type first
   const isChatMode = appDetail.mode !== 'completion'
+  const supportsLogExport =
+    !isChatMode ||
+    appDetail.mode === 'chat' ||
+    appDetail.mode === 'advanced-chat' ||
+    appDetail.mode === 'agent-chat'
 
-  const query = {
-    page: currPage + 1,
-    limit,
-    ...(requestQueryParams.period !== '9'
-      ? {
-          start: dayjs()
-            .subtract(requestTimePeriod.value, 'day')
-            .startOf('day')
-            .format('YYYY-MM-DD HH:mm'),
-          end: dayjs().endOf('day').format('YYYY-MM-DD HH:mm'),
-        }
-      : {}),
-    ...(isChatMode ? { sort_by: requestQueryParams.sort_by } : {}),
-    ...omit(requestQueryParams, ['period']),
+  const toFilters = (params: QueryParam) => {
+    const { period, ...filters } = params
+    const timePeriod = resolveLogTimePeriodOption(
+      period,
+      TIME_PERIOD_MAPPING[period]!,
+      cloudSandboxPlanState,
+    )
+    return {
+      ...filters,
+      ...(period !== '9' ? logDateRange(timePeriod.value) : {}),
+    }
   }
+  const query = { ...toFilters(requestQueryParams), page: currPage + 1, limit }
 
   // When the details are obtained, proceed to the next request
   const { data: chatConversations, refetch: mutateChatList } = useQuery(
@@ -107,7 +106,8 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     }),
   )
 
-  const total = isChatMode ? chatConversations?.total : completionConversations?.total
+  const logs = isChatMode ? chatConversations : completionConversations
+  const total = logs?.total
   const totalPages = total ? Math.max(Math.ceil(total / limit), 1) : 1
 
   const handlePageChange = useCallback(
@@ -146,10 +146,24 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
           appId={appDetail.id}
           queryParams={effectiveQueryParams}
           setQueryParams={handleQueryParamsChange}
+          actions={
+            supportsLogExport &&
+            canExportLogs && (
+              <LogExportDialog
+                key={appDetail.id}
+                appId={appDetail.id}
+                appName={appDetail.name}
+                appMode={appDetail.mode}
+                currentFilters={toFilters(effectiveQueryParams)}
+                identityOptions={getLogIdentities(logs?.data ?? [])}
+                planState={cloudSandboxPlanState}
+              />
+            )
+          }
         />
         <RetentionUpgradeNotice />
         <List
-          logs={isChatMode ? chatConversations : completionConversations}
+          logs={logs}
           appDetail={appDetail}
           onRefresh={isChatMode ? mutateChatList : mutateCompletionList}
         />

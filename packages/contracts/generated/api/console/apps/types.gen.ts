@@ -542,6 +542,10 @@ export type ConversationWithSummaryPagination = {
   total: number
 }
 
+export type ConversationLogIdentitySearchResponse = {
+  data: Array<ConversationLogIdentityResponse>
+}
+
 export type ConversationNotFoundError = ErrorResponse & {
   code: 'conversation_not_found'
   status: 404
@@ -612,6 +616,66 @@ export type CompletionMessagePayload = {
   query?: string
   response_mode?: 'blocking' | 'streaming'
   retriever_from?: string
+}
+
+export type ConversationLogExportCreatePayload = {
+  account_ids?: Array<string>
+  annotation_status?: 'all' | 'annotated' | 'not_annotated'
+  end?: string | null
+  end_user_ids?: Array<string>
+  keyword?: string | null
+  sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
+  start?: string | null
+}
+
+export type ConversationLogExportTaskResponse = {
+  status: 'pending'
+  task_id: string
+}
+
+export type ForbiddenError = ErrorResponse & {
+  code: 'forbidden'
+  status: 403
+}
+
+export type PaidPlanRequiredError = ErrorResponse & {
+  code: 'paid_plan_required'
+  status: 403
+}
+
+export type UnprocessableEntityError = ErrorResponse & {
+  code: 'unprocessable_entity'
+  status: 422
+}
+
+export type ConversationLogExportLatestResponse = {
+  task: ConversationLogExportLatestTaskResponse | null
+}
+
+export type ConversationLogExportPreviewResponse = {
+  counts: ConversationLogExportCountsResponse | null
+}
+
+export type ConversationLogExportStatusResponse = {
+  status: ConversationLogExportStatus
+  task_id: string
+}
+
+export type ConversationLogExportTaskNotFoundError = ErrorResponse & {
+  code: 'conversation_log_export_task_not_found'
+  status: 404
+}
+
+export type BinaryFileResponse = Blob | File
+
+export type ConversationLogExportFileNotFoundError = ErrorResponse & {
+  code: 'conversation_log_export_file_not_found'
+  status: 404
+}
+
+export type ConversationLogExportTaskNotReadyError = ErrorResponse & {
+  code: 'conversation_log_export_task_not_ready'
+  status: 409
 }
 
 export type PaginatedConversationVariableResponse = {
@@ -795,11 +859,6 @@ export type NetworkAccessInvalidInputError = ErrorResponse & {
 export type NetworkAccessUnsupportedAccessPointsError = ErrorResponse & {
   code: 'network_access_unsupported_access_points'
   status: 400
-}
-
-export type PaidPlanRequiredError = ErrorResponse & {
-  code: 'paid_plan_required'
-  status: 403
 }
 
 export type NetworkAccessGroupNotFoundError = ErrorResponse & {
@@ -1209,11 +1268,6 @@ export type SandboxReadResponse = {
 
 export type WorkflowCommentBasicList = {
   data: Array<WorkflowCommentBasic>
-}
-
-export type ForbiddenError = ErrorResponse & {
-  code: 'forbidden'
-  status: 403
 }
 
 export type WorkflowCommentCreatePayload = {
@@ -2015,6 +2069,12 @@ export type ConversationWithSummary = {
   user_feedback_stats?: FeedbackStat | null
 }
 
+export type ConversationLogIdentityResponse = {
+  id: string
+  label: string
+  source: ConsoleLogIdentitySource
+}
+
 export type FeedbackStat = {
   dislike: number
   like: number
@@ -2075,6 +2135,19 @@ export type MessageDetail = {
   status: string
   workflow_run_id?: string | null
 }
+
+export type ConversationLogExportLatestTaskResponse = {
+  filters: ConversationLogExportFiltersResponse
+  status: ConversationLogExportStatus
+  task_id: string
+}
+
+export type ConversationLogExportCountsResponse = {
+  conversation_count: number
+  message_count: number
+}
+
+export type ConversationLogExportStatus = 'failed' | 'pending' | 'processing' | 'ready'
 
 export type ConversationVariableResponse = {
   created_at?: number | null
@@ -3180,6 +3253,8 @@ export type StatusCount = {
   success: number
 }
 
+export type ConsoleLogIdentitySource = 'account' | 'end-user'
+
 export type SimpleMessageDetail = {
   answer: string
   inputs: {
@@ -3187,6 +3262,15 @@ export type SimpleMessageDetail = {
   }
   message: string
   query: string
+}
+
+export type ConversationLogExportFiltersResponse = {
+  account_ids: Array<string>
+  annotation_status: ConversationAnnotationStatus
+  end: string | null
+  end_user_ids: Array<string>
+  keyword: string | null
+  start: string | null
 }
 
 export type SimpleAccount = {
@@ -3924,6 +4008,8 @@ export type StringListSource = {
   type: ValueSourceType
   value?: Array<string>
 }
+
+export type ConversationAnnotationStatus = 'all' | 'annotated' | 'not_annotated'
 
 export type AppProviderAgentToolPayload = {
   credential_id?: string | null
@@ -6277,8 +6363,10 @@ export type GetAppsByAppIdChatConversationsData = {
     app_id: string
   }
   query?: {
+    account_ids?: Array<string>
     annotation_status?: 'all' | 'annotated' | 'not_annotated'
     end?: string
+    end_user_ids?: Array<string>
     keyword?: string
     limit?: number
     page?: number
@@ -6306,6 +6394,32 @@ export type GetAppsByAppIdChatConversationsResponses = {
 
 export type GetAppsByAppIdChatConversationsResponse =
   GetAppsByAppIdChatConversationsResponses[keyof GetAppsByAppIdChatConversationsResponses]
+
+export type GetAppsByAppIdChatConversationsIdentityOptionsData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query: {
+    keyword: string
+  }
+  url: '/apps/{app_id}/chat-conversations/identity-options'
+}
+
+export type GetAppsByAppIdChatConversationsIdentityOptionsErrors = {
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdChatConversationsIdentityOptionsError =
+  GetAppsByAppIdChatConversationsIdentityOptionsErrors[keyof GetAppsByAppIdChatConversationsIdentityOptionsErrors]
+
+export type GetAppsByAppIdChatConversationsIdentityOptionsResponses = {
+  200: ConversationLogIdentitySearchResponse
+}
+
+export type GetAppsByAppIdChatConversationsIdentityOptionsResponse =
+  GetAppsByAppIdChatConversationsIdentityOptionsResponses[keyof GetAppsByAppIdChatConversationsIdentityOptionsResponses]
 
 export type DeleteAppsByAppIdChatConversationsByConversationIdData = {
   body?: never
@@ -6596,6 +6710,147 @@ export type PostAppsByAppIdCompletionMessagesByTaskIdStopResponses = {
 
 export type PostAppsByAppIdCompletionMessagesByTaskIdStopResponse =
   PostAppsByAppIdCompletionMessagesByTaskIdStopResponses[keyof PostAppsByAppIdCompletionMessagesByTaskIdStopResponses]
+
+export type PostAppsByAppIdConversationLogExportsData = {
+  body: ConversationLogExportCreatePayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/conversation-log-exports'
+}
+
+export type PostAppsByAppIdConversationLogExportsErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  422: UnprocessableEntityError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdConversationLogExportsError =
+  PostAppsByAppIdConversationLogExportsErrors[keyof PostAppsByAppIdConversationLogExportsErrors]
+
+export type PostAppsByAppIdConversationLogExportsResponses = {
+  202: ConversationLogExportTaskResponse
+}
+
+export type PostAppsByAppIdConversationLogExportsResponse =
+  PostAppsByAppIdConversationLogExportsResponses[keyof PostAppsByAppIdConversationLogExportsResponses]
+
+export type GetAppsByAppIdConversationLogExportsLatestData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/conversation-log-exports/latest'
+}
+
+export type GetAppsByAppIdConversationLogExportsLatestErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdConversationLogExportsLatestError =
+  GetAppsByAppIdConversationLogExportsLatestErrors[keyof GetAppsByAppIdConversationLogExportsLatestErrors]
+
+export type GetAppsByAppIdConversationLogExportsLatestResponses = {
+  200: ConversationLogExportLatestResponse
+}
+
+export type GetAppsByAppIdConversationLogExportsLatestResponse =
+  GetAppsByAppIdConversationLogExportsLatestResponses[keyof GetAppsByAppIdConversationLogExportsLatestResponses]
+
+export type GetAppsByAppIdConversationLogExportsPreviewData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    account_ids?: Array<string>
+    annotation_status?: 'all' | 'annotated' | 'not_annotated'
+    end?: string
+    end_user_ids?: Array<string>
+    keyword?: string
+    sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
+    start?: string
+  }
+  url: '/apps/{app_id}/conversation-log-exports/preview'
+}
+
+export type GetAppsByAppIdConversationLogExportsPreviewErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdConversationLogExportsPreviewError =
+  GetAppsByAppIdConversationLogExportsPreviewErrors[keyof GetAppsByAppIdConversationLogExportsPreviewErrors]
+
+export type GetAppsByAppIdConversationLogExportsPreviewResponses = {
+  200: ConversationLogExportPreviewResponse
+}
+
+export type GetAppsByAppIdConversationLogExportsPreviewResponse =
+  GetAppsByAppIdConversationLogExportsPreviewResponses[keyof GetAppsByAppIdConversationLogExportsPreviewResponses]
+
+export type GetAppsByAppIdConversationLogExportsByTaskIdData = {
+  body?: never
+  path: {
+    app_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/conversation-log-exports/{task_id}'
+}
+
+export type GetAppsByAppIdConversationLogExportsByTaskIdErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AppNotFoundError | ConversationLogExportTaskNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdConversationLogExportsByTaskIdError =
+  GetAppsByAppIdConversationLogExportsByTaskIdErrors[keyof GetAppsByAppIdConversationLogExportsByTaskIdErrors]
+
+export type GetAppsByAppIdConversationLogExportsByTaskIdResponses = {
+  200: ConversationLogExportStatusResponse
+}
+
+export type GetAppsByAppIdConversationLogExportsByTaskIdResponse =
+  GetAppsByAppIdConversationLogExportsByTaskIdResponses[keyof GetAppsByAppIdConversationLogExportsByTaskIdResponses]
+
+export type GetAppsByAppIdConversationLogExportsByTaskIdFileData = {
+  body?: never
+  path: {
+    app_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/conversation-log-exports/{task_id}/file'
+}
+
+export type GetAppsByAppIdConversationLogExportsByTaskIdFileErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404:
+    | AppNotFoundError
+    | ConversationLogExportFileNotFoundError
+    | ConversationLogExportTaskNotFoundError
+    | ErrorResponse
+  409: ConversationLogExportTaskNotReadyError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdConversationLogExportsByTaskIdFileError =
+  GetAppsByAppIdConversationLogExportsByTaskIdFileErrors[keyof GetAppsByAppIdConversationLogExportsByTaskIdFileErrors]
+
+export type GetAppsByAppIdConversationLogExportsByTaskIdFileResponses = {
+  200: BinaryFileResponse
+}
+
+export type GetAppsByAppIdConversationLogExportsByTaskIdFileResponse =
+  GetAppsByAppIdConversationLogExportsByTaskIdFileResponses[keyof GetAppsByAppIdConversationLogExportsByTaskIdFileResponses]
 
 export type GetAppsByAppIdConversationVariablesData = {
   body?: never

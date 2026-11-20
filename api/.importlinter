@@ -1133,6 +1133,7 @@ source_modules =
     services.conversation_command_service
     services.conversation_query_service
     services.conversation_variable_command_service
+    services.retention.conversation.log_export_service
 forbidden_modules =
     controllers
     extensions

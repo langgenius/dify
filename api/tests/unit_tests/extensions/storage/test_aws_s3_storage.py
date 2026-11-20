@@ -40,6 +40,28 @@ def test_generate_presigned_url(s3_storage: tuple[AwsS3Storage, MagicMock]) -> N
     )
 
 
+def test_generate_presigned_url_for_attachment(s3_storage: tuple[AwsS3Storage, MagicMock]) -> None:
+    storage, client = s3_storage
+
+    storage.generate_presigned_url(
+        "logs/export.csv",
+        expires_in=300,
+        content_type="text/csv; charset=utf-8",
+        download_filename="应用日志.csv",
+    )
+
+    client.generate_presigned_url.assert_called_once_with(
+        "get_object",
+        Params={
+            "Bucket": "dify-files",
+            "Key": "logs/export.csv",
+            "ResponseContentType": "text/csv; charset=utf-8",
+            "ResponseContentDisposition": "attachment; filename*=UTF-8''%E5%BA%94%E7%94%A8%E6%97%A5%E5%BF%97.csv",
+        },
+        ExpiresIn=300,
+    )
+
+
 def test_scan_lists_recursive_files_and_derived_directories(
     s3_storage: tuple[AwsS3Storage, MagicMock],
 ) -> None:
