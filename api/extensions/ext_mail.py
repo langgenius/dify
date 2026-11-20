@@ -17,6 +17,7 @@ class Mail:
         return self._client is not None
 
     def init_app(self, app: Flask):
+        """Initialize the configured provider, raising ValueError for missing required settings."""
         mail_type = dify_config.MAIL_TYPE
         if not mail_type:
             logger.warning("MAIL_TYPE is not set")
@@ -64,6 +65,13 @@ class Mail:
                 self._client = SendGridClient(
                     sendgrid_api_key=dify_config.SENDGRID_API_KEY, _from=dify_config.MAIL_DEFAULT_SEND_FROM or ""
                 )
+            case "rasket":
+                from libs.rasket import RasketClient
+
+                if not dify_config.RASKET_API_KEY:
+                    raise ValueError("RASKET_API_KEY is required for Rasket mail type")
+
+                self._client = RasketClient(api_key=dify_config.RASKET_API_KEY)
             case _:
                 raise ValueError(f"Unsupported mail type {mail_type}")
 
