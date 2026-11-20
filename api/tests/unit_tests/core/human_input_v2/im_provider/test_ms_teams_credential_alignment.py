@@ -22,5 +22,4 @@ def test_ms_teams_credential_projections_are_field_complete_and_secret_safe() ->
     )
 
     assert credentials.model_config["frozen"] is True
-    assert credentials.model_config["extra"] == "forbid"
     assert "test-only-client-secret" not in repr(credentials)

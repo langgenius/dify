@@ -16,7 +16,7 @@ const TypeSwitch: FC<Props> = ({ className, isVariable, onIsVariableChange }) =>
     <button
       type="button"
       className={cn(
-        'inline-flex h-6 cursor-pointer items-center space-x-1 rounded-md border-none bg-transparent py-0 pr-2 pl-1.5 text-left text-text-tertiary select-none hover:bg-components-button-ghost-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
+        'inline-flex h-6 cursor-pointer items-center space-x-1 rounded-md border-none bg-transparent py-0 ps-1.5 pe-2 text-start text-text-tertiary select-none hover:bg-components-button-ghost-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
         className,
       )}
       onClick={() => onIsVariableChange?.(!isVariable)}

@@ -1,41 +1,22 @@
 import type { HumanInputSharedNodeType } from '../../shared/types'
 import { detectPlatform } from '@tanstack/react-hotkeys'
-import { useState } from 'react'
-import { ReactFlowProvider } from 'reactflow'
+import ReactFlow, { ReactFlowProvider, useNodes } from 'reactflow'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { WorkflowContext } from '@/app/components/workflow/context'
+import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
+import { HooksStoreContext } from '@/app/components/workflow/hooks-store/provider'
+import { createHooksStore } from '@/app/components/workflow/hooks-store/store'
+import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import useHumanInputFormContent from '../../shared/use-form-content'
 import FormContent from '../form-content'
-
-const mockUseNodeCrud = vi.hoisted(() => vi.fn())
-
-vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
-  default: (...args: unknown[]) => mockUseNodeCrud(...args),
-}))
-
-vi.mock('@/app/components/workflow/hooks/use-workflow-variables', () => ({
-  useWorkflowVariableType: () => () => 'string',
-  useWorkflowVariables: () => ({ getCurrentVariableType: () => 'string' }),
-}))
-
-vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
-  useIsChatMode: () => false,
-  useWorkflow: () => ({ handleOutVarRenameChange: vi.fn() }),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', () => ({
-  default: () => ({ availableVars: [], availableNodesWithParent: [] }),
-}))
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: { isWorkflowDataLoaded: boolean }) => unknown) =>
-    selector({ isWorkflowDataLoaded: true }),
-}))
-
-vi.mock('@/service/use-plugins', () => ({
-  useFetchDynamicOptions: () => ({ mutateAsync: vi.fn() }),
-}))
 
 const fieldLabel = 'workflowHumanInput.nodes.humanInput.insertInputField.saveResponseAs'
 const insertLabel = /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/
@@ -48,22 +29,28 @@ function placeCaretAtText(editor: Element, text: string, offset: number) {
   window.getSelection()?.collapse(node, offset)
 }
 
-function FormContentHarness() {
-  const [payload, setPayload] = useState<HumanInputSharedNodeType>({
-    title: 'Human Input',
-    desc: '',
-    type: BlockEnum.HumanInput,
-    form_content: 'Before After',
-    inputs: [],
-    user_actions: [],
-    timeout: 1,
-    timeout_unit: 'day',
-  })
-  mockUseNodeCrud.mockReturnValue({ inputs: payload, setInputs: setPayload })
+const initialPayload: HumanInputSharedNodeType = {
+  title: 'Human Input',
+  desc: '',
+  type: BlockEnum.HumanInput,
+  form_content: 'Before After',
+  inputs: [],
+  user_actions: [],
+  timeout: 1,
+  timeout_unit: 'day',
+}
+
+// Edits flow through the real node CRUD hooks into the React Flow node, as in the editor panel.
+function LiveFormContent() {
+  const node = useNodes<HumanInputSharedNodeType>().find((item) => item.id === 'human-input')
+  return node ? <FormContentHarness payload={node.data} /> : null
+}
+
+function FormContentHarness({ payload }: { payload: HumanInputSharedNodeType }) {
   const config = useHumanInputFormContent('human-input', payload)
 
   return (
-    <ReactFlowProvider>
+    <>
       <section aria-label="Form content" style={{ width: 480 }}>
         <FormContent
           nodeId="human-input"
@@ -83,7 +70,39 @@ function FormContentHarness() {
       <output aria-label="Saved fields">
         {payload.inputs.map((input) => input.output_variable_name).join(',')}
       </output>
-    </ReactFlowProvider>
+    </>
+  )
+}
+
+async function renderFormContent() {
+  onTestFinished(guardUnexpectedFetch())
+  const { queryClient, wrapper: QueryProvider } = createConsoleQueryWrapper()
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+  return render(
+    <QueryProvider>
+      <EditorResourceScope resource={{ kind: 'snippet', snippetId: 'human-input-test' }}>
+        <WorkflowContext value={createWorkflowStore({})}>
+          <HooksStoreContext value={createHooksStore({ doSyncWorkflowDraft: async () => {} })}>
+            <EventEmitterContextProvider>
+              <ReactFlowProvider>
+                <div style={{ width: 1, height: 1 }}>
+                  <ReactFlow
+                    defaultNodes={[createNode({ id: 'human-input', data: initialPayload })]}
+                  />
+                </div>
+                <LiveFormContent />
+              </ReactFlowProvider>
+            </EventEmitterContextProvider>
+          </HooksStoreContext>
+        </WorkflowContext>
+      </EditorResourceScope>
+    </QueryProvider>,
   )
 }
 
@@ -93,7 +112,7 @@ describe('Human input output-variable insertion', () => {
     // Chromium must exercise that transition; a command-only test skips the regression.
     const modifier = detectPlatform() === 'mac' ? 'Meta' : 'Control'
     const shortcut = `{${modifier}>}/{/${modifier}}`
-    const screen = await render(<FormContentHarness />)
+    const screen = await renderFormContent()
     const content = screen.getByRole('region', { name: 'Form content' })
     const editor = content.getByRole('textbox')
     await editor.click()
@@ -103,9 +122,9 @@ describe('Human input output-variable insertion', () => {
     await page.getByRole('button', { name: insertLabel }).click()
 
     await expect.element(content.getByText('first_response', { exact: true })).toBeVisible()
-    expect(
-      screen.getByRole('status', { name: 'Saved form content' }).element().textContent,
-    ).toMatch(/Before\s+\{\{#\$output.first_response#\}\}\s+After/)
+    await expect
+      .element(screen.getByRole('status', { name: 'Saved form content' }))
+      .toMatchTextContent(/Before\s+\{\{#\$output.first_response#\}\}\s+After/)
     await expect
       .element(screen.getByRole('status', { name: 'Saved fields' }))
       .toHaveTextContent('first_response')
@@ -121,9 +140,11 @@ describe('Human input output-variable insertion', () => {
       .element(screen.getByRole('status', { name: 'Saved fields' }))
       .toHaveTextContent('first_response,second_response')
     const savedContent = screen.getByRole('status', { name: 'Saved form content' })
-    expect(savedContent.element().textContent).toMatch(
-      /Before\s+\{\{#\$output.first_response#\}\}\s+After\s+\{\{#\$output.second_response#\}\}/,
-    )
+    await expect
+      .element(savedContent)
+      .toMatchTextContent(
+        /Before\s+\{\{#\$output.first_response#\}\}\s+After\s+\{\{#\$output.second_response#\}\}/,
+      )
     const contentBeforeCancel = savedContent.element().textContent
 
     await content.getByText('After', { exact: true }).click()
@@ -137,6 +158,6 @@ describe('Human input output-variable insertion', () => {
     await expect
       .element(screen.getByRole('status', { name: 'Saved fields' }))
       .toHaveTextContent('first_response,second_response')
-    expect(savedContent.element().textContent).toBe(contentBeforeCancel)
+    await expect.poll(() => savedContent.element().textContent).toBe(contentBeforeCancel)
   })
 })

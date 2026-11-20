@@ -156,7 +156,7 @@ export function SkillDisplayNameEditor({
     <button
       type="button"
       aria-label={tCommon(($) => $['operation.rename'])}
-      className="w-full cursor-text truncate rounded-md px-1 py-0.5 text-left system-md-semibold text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+      className="w-full cursor-text truncate rounded-md px-1 py-0.5 text-start system-md-semibold text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
       onClick={() => {
         setDraftName(displayName)
         onEditingChange(true)

@@ -172,14 +172,14 @@ function AgentSkillPackageUploader({
               {t(($) => $['agentDetail.configure.skills.upload.dropzone'])}
               <button
                 type="button"
-                className="inline cursor-pointer border-none bg-transparent p-0 pl-1 text-left text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                className="inline cursor-pointer border-none bg-transparent p-0 ps-1 text-start text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                 onClick={() => fileInputRef.current?.click()}
               >
                 {t(($) => $['agentDetail.configure.skills.upload.browse'])}
               </button>
             </div>
           </div>
-          {dragging && <div className="absolute top-0 left-0 size-full" />}
+          {dragging && <div className="absolute inset-s-0 top-0 size-full" />}
         </div>
       )}
       {file && (
@@ -187,7 +187,7 @@ function AgentSkillPackageUploader({
           <div className="flex items-center justify-center p-3">
             <span aria-hidden className="i-ri-file-zip-line size-6 shrink-0 text-text-tertiary" />
           </div>
-          <div className="flex min-w-0 grow flex-col items-start gap-0.5 py-1 pr-2">
+          <div className="flex min-w-0 grow flex-col items-start gap-0.5 py-1 pe-2">
             <span className="max-w-full min-w-0 truncate text-[12px] leading-4 font-medium text-text-secondary">
               {file.name}
             </span>
@@ -197,7 +197,7 @@ function AgentSkillPackageUploader({
               <span>{formatFileSize(file.size)}</span>
             </div>
           </div>
-          <div className="flex items-center pr-3">
+          <div className="flex items-center pe-3">
             <Tooltip>
               <TooltipTrigger
                 render={

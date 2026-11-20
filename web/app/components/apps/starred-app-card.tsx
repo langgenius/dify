@@ -105,7 +105,7 @@ export const StarredAppCard = memo(
             aria-labelledby={appNameId}
             data-step-by-step-tour-target={stepByStepTourCardTarget}
             data-step-by-step-tour-highlight-part={stepByStepTourCardHighlightPart}
-            className={cn(cardClassName, 'text-left')}
+            className={cn(cardClassName, 'text-start')}
             onClick={showPreviewOnlyAccessWarning}
           >
             {cardContent}

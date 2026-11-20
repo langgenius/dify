@@ -100,7 +100,7 @@ export function WorkflowLaunchDialog({
   if (!hiddenVariables.length) return null
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange} disablePointerDismissal>
       <DialogContent className="w-140">
         <DialogHeader>
           <DialogTitle>

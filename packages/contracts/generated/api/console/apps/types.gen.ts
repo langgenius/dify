@@ -1630,6 +1630,12 @@ export type WorkflowPublishResponse = {
   warning?: string | null
 }
 
+export type TriggerNodeLimitExceededError = ErrorResponse & {
+  code: 'trigger_node_limit_exceeded'
+  details?: TriggerNodeLimitDetails
+  status: 403
+}
+
 export type WebhookTriggerResponse = {
   created_at?: string | null
   id: string
@@ -2910,6 +2916,11 @@ export type RecursiveJsonValue =
   | Array<RecursiveJsonValue>
   | null
 
+export type TriggerNodeLimitDetails = {
+  count: number
+  limit: number
+}
+
 export type ModelConfigPartial = {
   created_at?: number | null
   created_by?: string | null
@@ -3013,8 +3024,8 @@ export type AppModelSelectionResponse = {
     [key: string]: JsonValue
   }
   mode?: LlmMode | ''
-  name?: string
-  provider?: string
+  name?: string | null
+  provider?: string | null
   [key: string]: unknown
 }
 
@@ -9581,7 +9592,7 @@ export type PostAppsByAppIdWorkflowsPublishData = {
 }
 
 export type PostAppsByAppIdWorkflowsPublishErrors = {
-  403: PaidPlanRequiredError | ErrorResponse
+  403: PaidPlanRequiredError | TriggerNodeLimitExceededError | ErrorResponse
   404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }

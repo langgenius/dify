@@ -123,7 +123,7 @@ function MarketplaceSuggestionList({
               <AutocompleteItem
                 key={item.id}
                 value={item}
-                className="items-start gap-1 py-1 pr-1 pl-3"
+                className="items-start gap-1 py-1 ps-3 pe-1"
                 onClick={() => onSelect(item.selection)}
               >
                 <span className="flex shrink-0 items-start py-1">

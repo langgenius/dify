@@ -164,7 +164,7 @@ export function AgentPromptSlashMenu({
               type="button"
               {...agentPromptSlashMenuItemProps}
               data-agent-prompt-menu-category={category.key}
-              className="flex h-6 w-full items-center gap-1 rounded-md pr-2 pl-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-agent-prompt-menu-active:bg-state-base-hover"
+              className="flex h-6 w-full items-center gap-1 rounded-md ps-3 pe-2 text-start hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-agent-prompt-menu-active:bg-state-base-hover"
               onClick={() => onOpenCategory(category.key)}
             >
               <span
@@ -192,7 +192,7 @@ export function AgentPromptSlashMenu({
           type="button"
           {...agentPromptSlashMenuItemProps}
           data-agent-prompt-menu-back=""
-          className="flex h-6 w-full items-center gap-1 rounded-md pr-2 pl-3 text-left text-text-tertiary hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-agent-prompt-menu-active:bg-state-base-hover"
+          className="flex h-6 w-full items-center gap-1 rounded-md ps-3 pe-2 text-start text-text-tertiary hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-agent-prompt-menu-active:bg-state-base-hover"
           onClick={onBack}
         >
           <span aria-hidden className="i-ri-arrow-left-line size-4 shrink-0" />
@@ -255,7 +255,7 @@ export function AgentPromptSlashMenu({
             <button
               type="button"
               {...agentPromptSlashMenuItemProps}
-              className="flex h-6 w-full items-center gap-1 rounded-md pr-2 pl-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-agent-prompt-menu-active:bg-state-base-hover"
+              className="flex h-6 w-full items-center gap-1 rounded-md ps-3 pe-2 text-start hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-agent-prompt-menu-active:bg-state-base-hover"
               onClick={() => handleAddFromFooter()}
             >
               <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-secondary" />
@@ -285,7 +285,7 @@ function AgentPromptSkillAddButton({
     <button
       type="button"
       {...agentPromptSlashMenuItemProps}
-      className="flex h-6 w-full items-center gap-1 rounded-md pr-2 pl-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-agent-prompt-menu-active:bg-state-base-hover"
+      className="flex h-6 w-full items-center gap-1 rounded-md ps-3 pe-2 text-start hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-agent-prompt-menu-active:bg-state-base-hover"
       onClick={onClick}
     >
       <span aria-hidden className={`${icon} size-4 shrink-0 text-text-secondary`} />
@@ -665,7 +665,7 @@ function AgentPromptProviderToolRow({
       <button
         type="button"
         {...agentPromptSlashMenuItemProps}
-        className="flex min-w-0 flex-1 items-center gap-1.5 rounded-l-md py-1 pr-1 pl-2 text-left group-hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-agent-prompt-menu-active:bg-state-base-hover"
+        className="flex min-w-0 flex-1 items-center gap-1.5 rounded-s-md py-1 ps-2 pe-1 text-start group-hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-agent-prompt-menu-active:bg-state-base-hover"
         onClick={onClick}
       >
         <AgentPromptProviderIcon provider={provider} getProviderIcon={getProviderIcon} />
@@ -674,7 +674,7 @@ function AgentPromptProviderToolRow({
             {providerLabel}
           </span>
           {selectedToolsCount > 0 && selectedToolsCount < provider.tools.length && (
-            <span className="ml-1.5 shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
+            <span className="ms-1.5 shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
               {selectedToolsCount}
             </span>
           )}
@@ -686,7 +686,7 @@ function AgentPromptProviderToolRow({
         {...agentPromptSlashMenuItemProps}
         aria-label={providerLabel}
         aria-expanded={isExpanded}
-        className="flex size-7 shrink-0 items-center justify-center rounded-r-md text-text-tertiary group-hover:bg-state-base-hover hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-agent-prompt-menu-active:bg-state-base-hover"
+        className="flex size-7 shrink-0 items-center justify-center rounded-e-md text-text-tertiary group-hover:bg-state-base-hover hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-agent-prompt-menu-active:bg-state-base-hover"
         onClick={onToggle}
       >
         <span
@@ -724,7 +724,7 @@ function AgentPromptToolFooter({ onAddCliTool }: { onAddCliTool?: () => void }) 
           target="_blank"
           rel="noreferrer"
           {...agentPromptSlashMenuItemProps}
-          className="flex h-7 w-full items-center gap-1.5 rounded-md px-2 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-agent-prompt-menu-active:bg-state-base-hover"
+          className="flex h-7 w-full items-center gap-1.5 rounded-md px-2 text-start hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-agent-prompt-menu-active:bg-state-base-hover"
         >
           <span aria-hidden className="i-ri-store-2-line size-4 shrink-0 text-text-secondary" />
           <span className="system-sm-regular text-text-secondary">
@@ -736,7 +736,7 @@ function AgentPromptToolFooter({ onAddCliTool }: { onAddCliTool?: () => void }) 
         <button
           type="button"
           {...agentPromptSlashMenuItemProps}
-          className="flex h-7 w-full items-center gap-1.5 rounded-md px-2 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-agent-prompt-menu-active:bg-state-base-hover"
+          className="flex h-7 w-full items-center gap-1.5 rounded-md px-2 text-start hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-agent-prompt-menu-active:bg-state-base-hover"
           onClick={onAddCliTool}
         >
           <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-secondary" />
@@ -762,11 +762,11 @@ function AgentPromptProviderToolActionRow({
     <button
       type="button"
       {...agentPromptSlashMenuItemProps}
-      className="flex h-6 w-full items-center gap-1 rounded-md text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-agent-prompt-menu-active:bg-state-base-hover"
+      className="flex h-6 w-full items-center gap-1 rounded-md text-start hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-agent-prompt-menu-active:bg-state-base-hover"
       onClick={onClick}
     >
-      <span className="ml-4 h-full w-px shrink-0 bg-divider-subtle" />
-      <span className="flex min-w-0 flex-1 items-center gap-1 py-1 pr-2 pl-3">
+      <span className="ms-4 h-full w-px shrink-0 bg-divider-subtle" />
+      <span className="flex min-w-0 flex-1 items-center gap-1 py-1 ps-3 pe-2">
         <span className="min-w-0 flex-1 truncate system-sm-regular text-text-secondary">
           {getLocalizedText(tool.label, language) || tool.name}
         </span>
@@ -788,10 +788,10 @@ function AgentPromptCliToolRow({
     <button
       type="button"
       {...agentPromptSlashMenuItemProps}
-      className="flex h-7 w-full items-center gap-1 rounded-md text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-agent-prompt-menu-active:bg-state-base-hover"
+      className="flex h-7 w-full items-center gap-1 rounded-md text-start hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-agent-prompt-menu-active:bg-state-base-hover"
       onClick={onClick}
     >
-      <span className="flex min-w-0 flex-1 items-center gap-1.5 py-1 pr-8 pl-2">
+      <span className="flex min-w-0 flex-1 items-center gap-1.5 py-1 ps-2 pe-8">
         <span className="flex size-5 shrink-0 items-center justify-center rounded-md border-[0.5px] border-effects-icon-border bg-background-default-dodge">
           <span aria-hidden className="i-ri-terminal-box-line size-3.5 text-text-tertiary" />
         </span>
@@ -864,10 +864,10 @@ function AgentPromptSubmenuRow({
     <button
       type="button"
       {...agentPromptSlashMenuItemProps}
-      className="flex h-6 w-full items-center gap-1 rounded-md text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-agent-prompt-menu-active:bg-state-base-hover"
+      className="flex h-6 w-full items-center gap-1 rounded-md text-start hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-agent-prompt-menu-active:bg-state-base-hover"
       onClick={onClick}
     >
-      <span className={`flex min-w-0 flex-1 items-center gap-1 ${indent} pr-2`}>
+      <span className={`flex min-w-0 flex-1 items-center gap-1 ${indent} pe-2`}>
         {typeof icon === 'string' && (
           <span aria-hidden className={`${icon} size-4 shrink-0 text-text-secondary`} />
         )}
@@ -879,7 +879,7 @@ function AgentPromptSubmenuRow({
       {hasChildren && (
         <span
           aria-hidden
-          className="mr-1.5 i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary"
+          className="me-1.5 i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary"
         />
       )}
     </button>

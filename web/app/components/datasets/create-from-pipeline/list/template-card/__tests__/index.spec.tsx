@@ -92,6 +92,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 const template = createPipelineTemplate()
+const detailIcon = { ...template.icon, icon: '📈' }
 const datasetListKey = consoleQuery.datasets.get.queryKey({ input: { query: { page: 1 } } })
 const templateListKey = consoleQuery.rag.pipeline.templates.get.queryKey({
   input: { query: { type: 'customized' } },
@@ -125,7 +126,7 @@ beforeEach(() => {
     name: 'Test Pipeline',
     description: 'Description',
     export_data: 'yaml_template',
-    icon_info: {},
+    icon_info: detailIcon,
     chunk_structure: 'text_model',
     graph: { nodes: [], edges: [] },
   })
@@ -153,7 +154,7 @@ it.each(['card', 'details'])(
       query: { type: 'customized' },
     })
     expect(mockCreateDataset).toHaveBeenCalledExactlyOnceWith({
-      body: { yaml_content: 'yaml_template' },
+      body: { yaml_content: 'yaml_template', icon_info: detailIcon },
     })
     expect(queryClient.getQueryState(datasetListKey)?.isInvalidated).toBe(true)
     expect(mockPush).not.toHaveBeenCalled()

@@ -63,7 +63,7 @@ export function AgentBuildDraftBar({
       <AgentBuildGridTexture
         aria-hidden
         cellOpacityMultiplier={3}
-        className="pointer-events-none absolute -top-26 -left-292.75 z-0 opacity-70"
+        className="pointer-events-none absolute -inset-s-292.75 -top-26 z-0 opacity-70"
         dotClassName="bg-[#5C90FF]"
       />
       <CollapsiblePanel
@@ -81,7 +81,7 @@ export function AgentBuildDraftBar({
         ref={collapsedBarRef}
         className="relative z-1 flex h-12.5 max-w-full min-w-0 items-center gap-2 p-2 group-data-open/build-draft:justify-end"
       >
-        <div className="flex min-w-0 flex-1 items-center gap-3 pr-8 pl-2 group-data-open/build-draft:hidden">
+        <div className="flex min-w-0 flex-1 items-center gap-3 ps-2 pe-8 group-data-open/build-draft:hidden">
           <p className="min-w-0 truncate system-sm-semibold text-text-primary">
             {t(($) => $['agentDetail.configure.buildDraft.title'])}
           </p>

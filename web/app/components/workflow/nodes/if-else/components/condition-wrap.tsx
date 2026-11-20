@@ -140,14 +140,14 @@ const ConditionWrap: FC<Props> = ({
                   {!readOnly && casesLength > 1 && (
                     <IconButton
                       {...keyboardSort.getHandleProps(index)}
-                      className="handle pointer-events-none absolute top-1 -left-2 z-10 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus:pointer-events-auto focus:opacity-100 aria-pressed:pointer-events-auto aria-pressed:opacity-100"
+                      className="handle pointer-events-none absolute -inset-s-2 top-1 z-10 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus:pointer-events-auto focus:opacity-100 aria-pressed:pointer-events-auto aria-pressed:opacity-100"
                     >
                       <span aria-hidden="true" className="i-ri-draggable size-3" />
                     </IconButton>
                   )}
                   <div
                     className={cn(
-                      'absolute left-4 text-[13px] leading-4 font-semibold text-text-secondary',
+                      'absolute inset-s-4 text-[13px] leading-4 font-semibold text-text-secondary',
                       casesLength === 1 ? 'top-2.5' : 'top-1',
                     )}
                   >
@@ -191,10 +191,10 @@ const ConditionWrap: FC<Props> = ({
 
               <div
                 className={cn(
-                  'flex items-center justify-between pr-7.5',
+                  'flex items-center justify-between pe-7.5',
                   !item.conditions.length && !isSubVariable && 'mt-1',
                   !item.conditions.length && isSubVariable && 'mt-2',
-                  !isSubVariable && 'pl-15',
+                  !isSubVariable && 'ps-15',
                 )}
               >
                 {isSubVariable ? (
@@ -258,7 +258,7 @@ const ConditionWrap: FC<Props> = ({
           </div>
         ))}
       </ReactSortable>
-      {cases.length === 0 && (
+      {isSubVariable && casesLength === 0 && (
         <Button
           size="small"
           disabled={readOnly}
