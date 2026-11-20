@@ -1,6 +1,7 @@
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { act, configure, getConfig, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { replacePromptEditorText } from '@/app/components/base/prompt-editor/plugins/__tests__/test-helpers'
+import { consoleQuery } from '@/service/console'
 import { createDeferred } from '@/test/deferred'
 import {
   api,
@@ -30,6 +31,25 @@ import {
 
 beforeEach(setupConfigureTest)
 afterEach(cleanupConfigureTest)
+
+const persistedConversationId = 'old-build'
+
+async function openPersistedBuild() {
+  const env = createEnvironment({
+    buildDraft: createBuildDraft(),
+    conversationId: persistedConversationId,
+  })
+  const input = {
+    params: { agent_id: 'agent-1' },
+    query: { conversation_id: persistedConversationId },
+  }
+  const history = await api.history(input)
+  env.queryClient.setQueryData(
+    consoleQuery.agent.byAgentId.chatMessages.get.queryKey({ input }),
+    history,
+  )
+  return env.render()
+}
 
 describe('Starting Build', () => {
   it('keeps the composer editable while resetting the session, then saves before forcing checkout and sending', async () => {
@@ -327,21 +347,31 @@ describe('Build stream completion', () => {
     'does not let a %s refresh overwrite or unlock a newer Build run',
     async (phase) => {
       const user = userEvent.setup()
-      createEnvironment({ buildDraft: createBuildDraft() }).render()
+      await openPersistedBuild()
       const staleRefresh = createDeferred<ReturnType<typeof createBuildDraft>>()
       if (phase === 'in-flight') api.getBuildDraft.mockReturnValueOnce(staleRefresh.promise)
-      await send(user)
-      await receive()
-      vi.useFakeTimers({ shouldAdvanceTime: true })
+      await send(user, 'build', 'Go')
+      await receive(0, persistedConversationId)
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
       await complete()
       if (phase === 'in-flight') {
         await flushBuildRefresh()
         expect(api.getBuildDraft).toHaveBeenCalledTimes(1)
       }
-      vi.useRealTimers()
-      await send(user, 'build', 'Follow-up request')
-      await receive(1, 'new-build', 'Second answer')
-      vi.useFakeTimers({ shouldAdvanceTime: true })
+
+      const originalAsyncWrapper = getConfig().asyncWrapper
+      // RTL's asyncWrapper waits on a timer it only advances through Jest globals.
+      configure({ asyncWrapper: (callback) => callback() })
+      try {
+        const timedUser = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+        await act(async () => timedUser.type(chatInput(), 'Next'))
+        await act(async () => timedUser.keyboard('{Enter}'))
+        expect(ssePost).toHaveBeenCalledTimes(2)
+        await receive(1, persistedConversationId, 'Second answer')
+      } finally {
+        configure({ asyncWrapper: originalAsyncWrapper })
+      }
+
       if (phase === 'in-flight')
         await act(async () =>
           staleRefresh.resolve(createBuildDraft(createSoul('Stale instructions'))),
@@ -361,10 +391,9 @@ describe('Build stream completion', () => {
 
   it('reopens persisted Build history without retaining a previous page action lock', async () => {
     const user = userEvent.setup()
-    const env = createEnvironment({ buildDraft: createBuildDraft() })
-    const view = env.render()
-    await send(user)
-    await receive()
+    const view = await openPersistedBuild()
+    await send(user, 'build', 'Go')
+    await waitFor(() => expect(ssePost).toHaveBeenCalledTimes(1))
     expect(applyButton()).toBeDisabled()
     view.show(false)
     expect(screen.queryByRole('button', { name: 'custom.apply' })).not.toBeInTheDocument()

@@ -58,7 +58,8 @@ const FeaturesTrigger = () => {
       select: (features) => features.billing.subscription.plan,
     }),
   )
-  const { isVisible: evaluationEnabled } = useEvaluationAccess()
+  // Publishing or switching the workflow kind needs a plan that includes Evaluation, so hide them on Sandbox.
+  const { canAccess: evaluationEnabled } = useEvaluationAccess()
   const publishedAt = useStore((s) => s.publishedAt)
   const draftUpdatedAt = useStore((s) => s.draftUpdatedAt)
   const toolPublished = useStore((s) => s.toolPublished)

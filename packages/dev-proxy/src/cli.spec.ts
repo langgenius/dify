@@ -120,8 +120,11 @@ const spawnCli = (args: readonly string[], cwd: string) => {
 const stopChildProcess = async (child: DevProxyCliProcess) => {
   if (child.exitCode !== null || child.signalCode !== null) return
 
-  child.kill('SIGTERM')
-  await once(child, 'exit')
+  const exited = once(child, 'exit')
+  // These tests exercise serving and reloading. Terminate the fixture even if
+  // the CLI's graceful shutdown is still waiting for watchers or HTTP requests.
+  child.kill('SIGKILL')
+  await exited
 }
 
 const closeHttpServer = async (server: Server) => {
@@ -132,6 +135,7 @@ const closeHttpServer = async (server: Server) => {
       if (error) reject(error)
       else resolve()
     })
+    server.closeAllConnections()
   })
 }
 

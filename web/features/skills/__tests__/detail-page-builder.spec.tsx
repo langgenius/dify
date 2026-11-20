@@ -479,7 +479,14 @@ describe('SkillDetailPage builder', () => {
     const promptInput = await screen.findByPlaceholderText(
       'skill.skillManagement.detail.builder.modifyPlaceholder',
     )
-    await user.type(promptInput, 'Update the skill{Enter}')
+    await user.click(promptInput)
+    await user.paste('Update the skill')
+
+    const sendButton = screen.getByRole('button', {
+      name: 'skill.skillManagement.detail.builder.send',
+    })
+    await waitFor(() => expect(sendButton).toBeEnabled())
+    await user.keyboard('{Enter}')
 
     expect(mocks.sendSkillAssistMessage).toHaveBeenCalledWith(
       expect.objectContaining({
