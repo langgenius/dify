@@ -15,6 +15,7 @@ from core.entities.provider_entities import (
     QuotaUnit,
     RestrictModel,
     SystemConfiguration,
+    TokenerHostedModelCredentials,
 )
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError
 from core.model_billing_profile import ModelBillingSource, TenantModelBillingResolution
@@ -33,7 +34,6 @@ from models.provider import ProviderType
 from models.provider_ids import ModelProviderID
 from models.tokener import TenantTokenerIntegrationStatus
 from tests.helpers.unit.core.model_moderation_fixtures import make_tenant_moderation_provider
-from services.entities.hosted_model_routing import TokenerHostedModelCredentials
 
 
 @pytest.fixture(autouse=True)

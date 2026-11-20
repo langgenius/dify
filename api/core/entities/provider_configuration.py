@@ -22,6 +22,7 @@ from core.entities.provider_entities import (
     ModelSettings,
     SystemConfiguration,
     SystemConfigurationStatus,
+    TokenerHostedModelCredentials,
 )
 from core.helper import encrypter
 from core.helper.model_provider_cache import (
@@ -54,7 +55,6 @@ from models.provider import (
     TenantPreferredModelProvider,
 )
 from models.provider_ids import ModelProviderID
-from services.entities.hosted_model_routing import TokenerHostedModelCredentials
 
 logger = logging.getLogger(__name__)
 

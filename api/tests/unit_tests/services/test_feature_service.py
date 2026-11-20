@@ -1,12 +1,18 @@
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 from unittest.mock import Mock, patch
 
 import pytest
 from pydantic import TypeAdapter
 from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session
 
 from enums import CloudPlan, DeploymentEdition, HostedTrialProvider
+from models.account import Account, Tenant
+from models.model_billing import TenantModelBillingProfile
+from models.tokener import AccountTokenerSignupIntent
+from repositories.tokener_signup_canary_repository import CANARY_BILLING_URL
 from services import feature_service as feature_service_module
 from services.account_education_service import EDUCATION_EDITIONS
 from services.billing_client import billing
@@ -482,6 +488,83 @@ def test_get_trial_models_filters_providers_by_workspace_plan(
 
     assert result == expected
     get_workspace_plan.assert_called_once_with("tenant_1")
+
+
+@pytest.mark.parametrize(
+    ("plugin_uid", "billing_source", "billing_url", "shows_paid_catalog"),
+    [
+        ("langgenius/tokener-staging:0.4.4@fixture", "tokener", CANARY_BILLING_URL, True),
+        ("langgenius/tokener-staging:0.4.4@fixture", None, CANARY_BILLING_URL, False),
+        (None, "tokener", CANARY_BILLING_URL, False),
+        ("langgenius/tokener:0.4.4@fixture", "tokener", CANARY_BILLING_URL, False),
+        ("langgenius/tokener-staging:0.4.4@fixture", "tokener", "", False),
+        (
+            "langgenius/tokener-staging:0.4.4@fixture",
+            "tokener",
+            "http://tokener-signup-billing-candidate:8081",
+            False,
+        ),
+    ],
+)
+def test_get_trial_models_opens_paid_catalog_only_for_isolated_staging_signup(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    plugin_uid: str | None,
+    billing_source: str | None,
+    billing_url: str,
+    shows_paid_catalog: bool,
+) -> None:
+    """Use persisted ownership, not a Tokener profile or a staging URL alone."""
+    tenant = Tenant(name="Hosted catalog test")
+    owner = Account(name="Hosted catalog signup", email="catalog-signup@example.invalid")
+    sqlite_session.add_all([tenant, owner])
+    sqlite_session.flush()
+    if plugin_uid is not None:
+        sqlite_session.add(
+            AccountTokenerSignupIntent(
+                account_id=owner.id,
+                consumed_tenant_id=tenant.id,
+                consumed_at=datetime(2026, 11, 19, 4, 0),
+                plugin_unique_identifier=plugin_uid,
+            )
+        )
+    if billing_source is not None:
+        sqlite_session.add(TenantModelBillingProfile(tenant_id=tenant.id, model_billing_source=billing_source))
+    sqlite_session.commit()
+
+    env: dict[str, object] = {
+        f"HOSTED_{provider.config_key}_{quota_type}_ENABLED": False
+        for provider in HostedTrialProvider
+        for quota_type in ("PAID", "TRIAL")
+    }
+    config_overrides(
+        **(
+            env
+            | {
+                "DEPLOYMENT_EDITION": DeploymentEdition.CLOUD,
+                "TOKENER_SIGNUP_VALIDATION_BILLING_API_URL": billing_url,
+                "HOSTED_OPENAI_TRIAL_ENABLED": True,
+                "HOSTED_ANTHROPIC_PAID_ENABLED": True,
+            }
+        )
+    )
+
+    plan_reads: list[str] = []
+
+    def read_sandbox_plan(tenant_id: str, *, exclude_vector_space: bool) -> BillingInfo:
+        """Return only the external plan response; signup and profile checks stay real."""
+        assert exclude_vector_space
+        plan_reads.append(tenant_id)
+        return _legacy_subscription.validate_python(builders.subscription_info("sandbox").model_dump(exclude_none=True))
+
+    monkeypatch.setattr(feature_service_module.BillingService, "get_info", read_sandbox_plan)
+
+    expected = [HostedTrialProvider.OPENAI.value]
+    if shows_paid_catalog:
+        expected.append(HostedTrialProvider.ANTHROPIC.value)
+    assert FeatureService.get_trial_models(tenant.id) == expected
+    assert plan_reads == ([] if shows_paid_catalog else [tenant.id])
 
 
 def test_get_features_exclude_vector_space_sets_vector_space_to_none(config_overrides: Callable[..., None]) -> None:

@@ -4,13 +4,13 @@ from datetime import datetime
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
+from core.entities.provider_entities import TokenerHostedModelCredentials
 from core.plugin.impl import model as plugin_model
 from models.account import Account, Tenant
 from models.model_billing import TenantModelBillingProfile
 from models.provider import ProviderCredential
 from models.tokener import AccountTokenerSignupIntent, TenantTokenerIntegration, TenantTokenerIntegrationStatus
 from repositories.tokener_signup_canary_repository import CANARY_STAGING_PROVIDER
-from services.entities.hosted_model_routing import TokenerHostedModelCredentials
 
 
 def test_hosted_signup_uses_only_pinned_target_and_preserves_raw_payload(

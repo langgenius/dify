@@ -25,6 +25,7 @@ from core.credit_usage import (
     normalize_credit_usage_created_by,
 )
 from core.entities.provider_configuration import ProviderModelBundle
+from core.entities.provider_entities import TokenerHostedModelCredentials
 from graphon.file import File, FileUploadConfig
 from graphon.model_runtime.entities.model_entities import AIModelEntity
 from models.model import AppMode
@@ -184,7 +185,6 @@ class ModelConfigWithCredentialsEntity(BaseModel):
     @classmethod
     def preserve_trusted_invocation_binding(cls, value: Any, handler: ValidatorFunctionWrapHandler) -> dict[str, Any]:
         from core.model_invocation_routing import LegacyModelCredentials, RoutedModelCredentials
-        from services.entities.hosted_model_routing import TokenerHostedModelCredentials
 
         if isinstance(value, (LegacyModelCredentials, RoutedModelCredentials, TokenerHostedModelCredentials)):
             return value
