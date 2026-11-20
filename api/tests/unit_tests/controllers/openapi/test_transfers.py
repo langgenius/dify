@@ -636,3 +636,24 @@ def test_a_zip_of_the_folder_itself_keeps_its_extra_first_segment(
     members = {"skill/SKILL.md": b"a", "skill/run.py": b"b"}
 
     assert _imported_paths(world, openapi_app, members, monkeypatch) == ["skill/SKILL.md", "skill/run.py"]
+
+
+_MALFORMED_ID = "not-a-uuid"
+
+
+def test_a_malformed_id_on_the_byte_route_answers_like_an_unknown_one(world: TransferWorld) -> None:
+    url = f"{_HOST}/openapi/v1/transfers/{_MALFORMED_ID}?token=anything"
+
+    answers = [world.get(url), world.upload(url)]
+
+    assert [answer.status_code for answer in answers] == [404, 404]
+    assert {answer.get_json()["code"] for answer in answers} == {OpenApiErrorCode.UPLOAD_NOT_FOUND}
+
+
+def test_a_malformed_id_in_a_body_field_answers_like_an_unknown_one(
+    world: TransferWorld, recording_files: _RecordingFiles
+) -> None:
+    response = _uploaded_with_json(world, {"file": _MALFORMED_ID})
+
+    assert (response.status_code, response.get_json()["code"]) == (400, OpenApiErrorCode.UPLOAD_NOT_FOUND)
+    assert recording_files.received == []
