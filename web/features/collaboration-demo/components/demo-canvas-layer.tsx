@@ -111,7 +111,7 @@ function DraftInput({
 
 type DemoCanvasLayerProps = {
   frame: PlaybackFrame
-  playing: boolean
+  markerInteractive: boolean
   reducedMotion: boolean
   threadOpen: boolean
   onThreadOpenChange: (open: boolean) => void
@@ -121,14 +121,14 @@ type DemoCanvasLayerProps = {
 
 export function DemoCanvasLayer({
   frame,
-  playing,
+  markerInteractive,
   reducedMotion,
   threadOpen,
   onThreadOpenChange,
   markerRef,
   threadCloseRef,
 }: DemoCanvasLayerProps) {
-  const { t } = useTranslation(['collaborationDemo', 'workflow', 'workflowComments'])
+  const { t } = useTranslation(['collaborationDemo', 'workflowComments'])
   const messageText = useMessageText()
   const { x: vx, y: vy, zoom } = useViewport()
   const width = useStore((state) => state.width)
@@ -200,21 +200,21 @@ export function DemoCanvasLayer({
       )}
 
       {frame.marker === 'thread' &&
-        (threadOpen ? (
+        (threadOpen || !markerInteractive ? (
           <div
             aria-hidden
             className="absolute -translate-y-full"
             style={{ left: pin.x, top: pin.y }}
           >
-            <MarkerBubble participants={participants} selected />
+            <MarkerBubble participants={participants} selected={threadOpen} />
           </div>
         ) : (
           <button
             ref={markerRef}
             type="button"
-            aria-label={t(($) => $['keyboard.openComment'], {
-              ns: 'workflow',
+            aria-label={t(($) => $['thread.open'], {
               name: demoUsers.alex.name,
+              count: visibleMessages - 1,
             })}
             className="pointer-events-auto absolute -translate-y-full cursor-pointer rounded-[13.5px] rounded-es-[3px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             style={{ left: pin.x, top: pin.y }}
@@ -248,13 +248,7 @@ export function DemoCanvasLayer({
               <span aria-hidden className="i-ri-close-line size-4" />
             </button>
           </div>
-          <div
-            ref={listRef}
-            role="log"
-            aria-live={playing ? 'polite' : 'off'}
-            aria-relevant="additions"
-            className="max-h-70 overflow-y-auto"
-          >
+          <div ref={listRef} className="max-h-70 overflow-y-auto">
             {demoMessages.slice(0, visibleMessages).map((message) => (
               <article
                 key={message.id}

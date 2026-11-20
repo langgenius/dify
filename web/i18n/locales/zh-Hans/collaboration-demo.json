@@ -43,5 +43,6 @@
   "steps.members.title": "看看谁在与你一起编辑",
   "thread.close": "关闭评论",
   "thread.justNow": "刚刚",
+  "thread.open": "打开 {{name}} 的评论，{{count}} 条回复",
   "title": "团队协作演示"
 }
