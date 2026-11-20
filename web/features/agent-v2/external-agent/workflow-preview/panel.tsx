@@ -14,7 +14,7 @@ import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/compo
 import { mergeDefaultValue } from '@/app/components/workflow/nodes/_base/components/error-handle/utils'
 import { AgentOutputVariables } from '@/app/components/workflow/nodes/agent-v2/components/agent-output-variables'
 import { useCreateInlineAgentBinding } from '@/app/components/workflow/nodes/agent-v2/hooks'
-import { useStore } from '@/app/components/workflow/store'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { consoleQuery } from '@/service/console'
 import { toExternalAgentOverview } from '../model'
 import { ExternalAgentField } from './agent-field'
@@ -42,10 +42,12 @@ export function ExternalAgentWorkflowPreviewPanel({
   const collaborativeWorkflow = useCollaborativeWorkflow()
   const { handleNodeDataUpdate, handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
-  const setOpenInlineAgentPanelNodeId = useStore((state) => state.setOpenInlineAgentPanelNodeId)
+  const workflowStore = useWorkflowStore()
   const { createInlineAgentBinding } = useCreateInlineAgentBinding()
   const { nodesReadOnly } = useNodesReadOnly()
   const [outputsCollapsed, setOutputsCollapsed] = useState(false)
+  const [isStartingFromScratch, setIsStartingFromScratch] = useState(false)
+  const [hasStartFromScratchError, setHasStartFromScratchError] = useState(false)
   const agentId = data.agent_binding?.agent_id
   const agent = useQuery(
     consoleQuery.externalAgents.byAgentId.get.queryOptions({
@@ -82,61 +84,31 @@ export function ExternalAgentWorkflowPreviewPanel({
     [doSyncWorkflowDraft, switchToDifyAgent],
   )
   const startFromScratch = useCallback(async () => {
-    const restoreExternalAgent = () => {
-      handleNodeDataUpdate({
-        id,
-        data: {
-          agent_node_kind: 'external_a2a',
-          agent_binding: data.agent_binding,
-          agent_declared_outputs: data.agent_declared_outputs,
-          external_wait: data.external_wait,
-          error_strategy: data.error_strategy,
-          default_value: data.default_value,
-          retry_config: data.retry_config,
-          _targetBranches: data._targetBranches,
-          _openInlineAgentPanel: undefined,
-        },
-      })
-      setOpenInlineAgentPanelNodeId(undefined)
-      void doSyncWorkflowDraft(true)
-    }
-    setOpenInlineAgentPanelNodeId(id)
-    switchToDifyAgent({ binding_type: 'inline_agent' })
-    handleNodeDataUpdate({ id, data: { _openInlineAgentPanel: true } })
+    setIsStartingFromScratch(true)
+    setHasStartFromScratchError(false)
+    const { debouncedSyncWorkflowDraft, setOpenInlineAgentPanelNodeId } = workflowStore.getState()
+    debouncedSyncWorkflowDraft.cancel?.()
     try {
+      // Persist the external node before the composer replaces its binding.
       const saved = await doSyncWorkflowDraft(true)
       if (!saved?.hash) {
-        restoreExternalAgent()
+        setHasStartFromScratchError(true)
         return
       }
       await createInlineAgentBinding(id, {
-        onError: restoreExternalAgent,
+        onError: () => setHasStartFromScratchError(true),
         onSuccess: (binding) => {
-          handleNodeDataUpdateWithSyncDraft(
-            { id, data: { agent_binding: binding } },
-            { sync: true },
-          )
+          switchToDifyAgent(binding)
+          void doSyncWorkflowDraft(true)
+          setOpenInlineAgentPanelNodeId(id)
         },
       })
     } catch {
-      restoreExternalAgent()
+      setHasStartFromScratchError(true)
+    } finally {
+      setIsStartingFromScratch(false)
     }
-  }, [
-    createInlineAgentBinding,
-    data.agent_binding,
-    data.agent_declared_outputs,
-    data.default_value,
-    data.error_strategy,
-    data.external_wait,
-    data.retry_config,
-    data._targetBranches,
-    doSyncWorkflowDraft,
-    handleNodeDataUpdate,
-    handleNodeDataUpdateWithSyncDraft,
-    id,
-    setOpenInlineAgentPanelNodeId,
-    switchToDifyAgent,
-  ])
+  }, [createInlineAgentBinding, doSyncWorkflowDraft, id, switchToDifyAgent, workflowStore])
   const task = data.agent_task ?? ''
   const outputs = data.agent_declared_outputs?.length
     ? data.agent_declared_outputs
@@ -182,10 +154,13 @@ export function ExternalAgentWorkflowPreviewPanel({
       <ExternalAgentField
         binding={data.agent_binding}
         overview={agent.data}
-        isChanging={isChanging}
-        hasError={hasError}
+        isChanging={isChanging || isStartingFromScratch}
+        hasError={hasError || hasStartFromScratchError}
         readOnly={nodesReadOnly}
-        onChange={changeAgent}
+        onChange={(agent) => {
+          setHasStartFromScratchError(false)
+          return changeAgent(agent)
+        }}
         onSelectDify={selectDifyAgent}
         onStartFromScratch={() => void startFromScratch()}
       />
