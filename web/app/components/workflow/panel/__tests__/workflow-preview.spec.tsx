@@ -11,6 +11,7 @@ import {
 } from '@/app/components/workflow/__tests__/fixtures'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 import { BlockEnum, InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { useWorkflowGeneratorStore } from '@/app/components/workflow/workflow-generator/store'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { submitHumanInputForm } from '@/service/workflow'
@@ -20,6 +21,7 @@ import WorkflowPreview from '../workflow-preview'
 
 vi.mock('@/config', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/config')>()),
+  ENABLE_FEATURE_PREVIEW: true,
   ENABLE_HITL_IM: true,
 }))
 
@@ -128,8 +130,48 @@ beforeEach(() => {
   mockSubmitHumanInputForm.mockReset().mockResolvedValue({ result: 'success' })
   vi.mocked(copy).mockReset().mockResolvedValue(true)
   vi.spyOn(toast, 'success')
+  useWorkflowGeneratorStore.setState({ isOpen: false })
 })
 afterEach(() => vi.restoreAllMocks())
+
+const createFailedRun = (error: string) =>
+  createPreviewRunningData({
+    result: createWorkflowResult({ status: WorkflowRunningStatus.Failed, error: 'Run failed' }),
+    tracing: [createNodeTracing({ title: 'Summarize', status: 'failed', error })],
+  })
+
+it.each(['workflow', 'advanced-chat'] as const)(
+  'opens refine for %s with the failed node diagnostic',
+  async (mode) => {
+    const user = userEvent.setup()
+    renderPreview({
+      resource: { kind: 'app', appId: 'app-1', mode, collaborationEnabled: false },
+      initialStoreState: { workflowRunningData: createFailedRun('Variable summary not found') },
+    })
+
+    await user.click(screen.getByRole('button', { name: /workflowGenerator\.refineTitle/i }))
+
+    expect(useWorkflowGeneratorStore.getState()).toMatchObject({
+      isOpen: true,
+      intent: 'refine',
+      mode,
+      currentAppMode: mode,
+      currentAppId: 'app-1',
+      initialInstruction: expect.stringContaining('Variable summary not found'),
+    })
+  },
+)
+
+it('does not offer workflow refinement for a provider failure', () => {
+  renderPreview({
+    resource: { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled: false },
+    initialStoreState: { workflowRunningData: createFailedRun('Provider quota exceeded') },
+  })
+
+  expect(
+    screen.queryByRole('button', { name: /workflowGenerator\.refineTitle/i }),
+  ).not.toBeInTheDocument()
+})
 
 it('validates the real input form before starting a run and clears the preview state on close', async () => {
   const user = userEvent.setup()
