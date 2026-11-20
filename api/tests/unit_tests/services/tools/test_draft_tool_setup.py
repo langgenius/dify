@@ -10,12 +10,12 @@ from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
 import services.app_generate_service as generate_module
 import services.workflow_service as workflow_module
 from core.tools.errors import ToolProviderCredentialValidationError
+from enums import CloudPlan
 from models.enums import PermissionEnum
 from models.model import AppMode
 from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService
 from services.workflow_service import WorkflowService
-from tests.helpers import billing_builders as builders
 from tests.unit_tests.services.dify_builder.draft_tool_inventory import APP_ID, AUTH_PROVIDER, DRAFT_ID, FREE_PROVIDER
 from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
     ACCOUNT_A,
@@ -65,9 +65,9 @@ def builder_disabled_deployment(
     config_overrides(DEPLOYMENT_EDITION=request.param, DIFY_BUILDER_ENABLED=False)
     monkeypatch.setattr(generate_module.QuotaService, "reserve", lambda *_args: generate_module.unlimited())
     monkeypatch.setattr(
-        workflow_module.BillingService,
-        "get_info",
-        lambda *_args: builders.subscription_info("team"),
+        workflow_module.FeatureService,
+        "get_workspace_plan",
+        lambda *_args: CloudPlan.TEAM,
     )
 
 

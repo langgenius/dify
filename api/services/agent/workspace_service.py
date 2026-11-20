@@ -24,6 +24,7 @@ from core.agent.workspace import (
     WorkspaceOwnerScope,
 )
 from core.db.session_factory import session_factory
+from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.agent import (
     AgentConfigVersionKind,
