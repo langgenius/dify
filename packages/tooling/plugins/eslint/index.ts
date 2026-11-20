@@ -1,5 +1,6 @@
 import type { ESLint } from 'eslint'
 import consistentPlaceholders from './rules/consistent-placeholders.ts'
+import featureBoundaries from './rules/feature-boundaries.ts'
 import i18nFlatKey from './rules/i18n-flat-key.ts'
 import marketplaceBoundary from './rules/marketplace-boundary.ts'
 import noExtraKeys from './rules/no-extra-keys.ts'
@@ -18,6 +19,7 @@ const plugin: ESLint.Plugin = {
   },
   rules: {
     'consistent-placeholders': consistentPlaceholders,
+    'feature-boundaries': featureBoundaries,
     'i18n-flat-key': i18nFlatKey,
     'marketplace-boundary': marketplaceBoundary,
     'no-extra-keys': noExtraKeys,

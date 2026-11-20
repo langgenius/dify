@@ -1935,6 +1935,7 @@ export const lintConfig = {
     {
       ...handwrittenApiScope,
       rules: {
+        'dify/feature-boundaries': 'error',
         'dify/no-module-scope-clock': 'error',
       },
     },

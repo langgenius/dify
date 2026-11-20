@@ -23,13 +23,11 @@ import {
 } from '@/app/components/base/prompt-editor/plugins/agent-output-block/utils'
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { useStore } from '@/app/components/workflow/store'
+import { AgentRosterConfigurationPanel } from '@/features/agent-v2/agent-editor/roster-panel'
+import { WorkflowInlineAgentEditor } from '@/features/agent-v2/agent-editor/workflow-panel'
 import { consoleQuery } from '@/service/console'
 import { useNodeDataUpdate } from '../../hooks/use-node-data-update'
 import useNodeCrud from '../_base/hooks/use-node-crud'
-import {
-  WorkflowInlineAgentConfigureWorkspace,
-  WorkflowRosterAgentOrchestratePanelContent,
-} from './components/agent-orchestrate-panel-content'
 import { AgentOutputRoutes } from './components/agent-output-routes'
 import { AgentOutputVariables } from './components/agent-output-variables'
 import { OutputEditCard } from './components/agent-output-variables/edit-card'
@@ -679,7 +677,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
           panelBody={
             isAgentPanelOpen && displayedAgent ? (
               isInlineAgentReady || isInlineAgentPending ? (
-                <WorkflowInlineAgentConfigureWorkspace
+                <WorkflowInlineAgentEditor
                   agentId={inlineAgentId ?? undefined}
                   resource={inlineAgentResource ?? undefined}
                   inlineComposerState={inlineComposerStateForPanel}
@@ -691,7 +689,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
                   open={isAgentPanelOpen}
                 />
               ) : (
-                <WorkflowRosterAgentOrchestratePanelContent
+                <AgentRosterConfigurationPanel
                   agentId={rosterAgentId}
                   nodeId={id}
                   open={isAgentPanelOpen}

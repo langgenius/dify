@@ -23,7 +23,7 @@ import {
 } from '@/app/components/snippets/utils/permission'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { TagSelector } from '@/features/tag-management/components/tag-selector'
+import { TagSelector } from '@/features/tag-management/tag-selector'
 import { consoleQuery } from '@/service/console'
 import {
   useDeleteSnippetMutation,

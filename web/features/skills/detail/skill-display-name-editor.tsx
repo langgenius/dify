@@ -1,19 +1,14 @@
 'use client'
 
 import type { SkillDetailResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { SkillFileMutationCoordinator } from './shared'
+import type { SkillFileMutationCoordinator } from './files/mutations'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
-import {
-  getErrorCode,
-  getErrorDetailString,
-  invalidateSkillDetail,
-  runSkillFileMutation,
-  setSkillDetailCache,
-} from './shared'
+import { getSkillErrorCode, getSkillErrorDetailString } from '../error'
+import { invalidateSkillDetail, runSkillFileMutation, setSkillDetailCache } from './files/mutations'
 
 export function SkillDisplayNameEditor({
   detail,
@@ -103,10 +98,10 @@ export function SkillDisplayNameEditor({
     } catch (error) {
       setDraftName(displayName)
 
-      if (getErrorCode(error) === 'skill_name_conflict') {
+      if (getSkillErrorCode(error) === 'skill_name_conflict') {
         toast.error(
           t(($) => $['skillManagement.errors.nameConflict'], {
-            name: getErrorDetailString(error, 'name') ?? '',
+            name: getSkillErrorDetailString(error, 'name') ?? '',
           }),
         )
       } else {
