@@ -38,6 +38,12 @@ class ConversationLogExportFileNotFoundHTTPError(BaseHTTPException):
     code = HTTPStatus.NOT_FOUND
 
 
+class WorkflowLogExportTaskNotFoundHTTPError(BaseHTTPException):
+    error_code = "workflow_log_export_task_not_found"
+    description = "Workflow log export task not found."
+    code = HTTPStatus.NOT_FOUND
+
+
 class AppTriggerNotFoundError(BaseHTTPException):
     error_code = "app_trigger_not_found"
     description = "Trigger not found."

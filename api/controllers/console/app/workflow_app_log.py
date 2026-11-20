@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from http import HTTPStatus
 from typing import Any, Literal
 from uuid import UUID
@@ -6,7 +6,7 @@ from uuid import UUID
 from dateutil.parser import isoparse
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_serializer, field_validator
 
 from configs import dify_config
 from controllers.common.errors import ForbiddenError, InvalidArgumentError, PaidPlanRequiredError
@@ -18,7 +18,7 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
-from controllers.console.app.error import AppNotFoundError
+from controllers.console.app.error import AppNotFoundError, WorkflowLogExportTaskNotFoundHTTPError
 from controllers.console.app.wraps import get_app_model
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import RBACPermission, is_cloud_edition_billing_paid_plan, model_validate
@@ -39,7 +39,12 @@ from models import App
 from models.model import AppMode
 from services.app.console_service import ConsoleAppNotFoundError
 from services.entities.conversation_entities import ConsoleLogIdentitySource
-from services.retention.workflow_run.log_export_service import WorkflowLogExportFilters, WorkflowLogExportScope
+from services.retention.log_export_task import LogExportStatus
+from services.retention.workflow_run.log_export_service import (
+    WorkflowLogExportFilters,
+    WorkflowLogExportScope,
+    WorkflowLogExportTaskNotFoundError,
+)
 
 
 class WorkflowAppLogQuery(BaseModel):
@@ -243,6 +248,37 @@ class WorkflowLogExportTaskResponse(ResponseModel):
     status: Literal["pending"]
 
 
+class WorkflowLogExportStatusResponse(ResponseModel):
+    task_id: str
+    status: LogExportStatus
+
+
+class WorkflowLogExportFiltersResponse(ResponseModel):
+    """Submitted filters for the export, with log time bounds in UTC."""
+
+    keyword: str | None
+    status: WorkflowExecutionStatus | None
+    created_at__before: datetime | None = Field(validation_alias="created_at_before")
+    created_at__after: datetime | None = Field(validation_alias="created_at_after")
+    end_user_ids: tuple[str, ...]
+    account_ids: tuple[str, ...]
+
+    @field_serializer("created_at__before", "created_at__after")
+    def _serialize_utc_bound(self, value: datetime | None) -> datetime | None:
+        """Serialize a present bound as UTC so the Console can display it in local time."""
+        return ensure_naive_utc(value).replace(tzinfo=UTC) if value is not None else None
+
+
+class WorkflowLogExportLatestTaskResponse(WorkflowLogExportStatusResponse):
+    filters: WorkflowLogExportFiltersResponse
+
+
+class WorkflowLogExportLatestResponse(ResponseModel):
+    task: WorkflowLogExportLatestTaskResponse | None = Field(
+        description="Null if the caller has no live export task for this app"
+    )
+
+
 class WorkflowLogExportIdentityResponse(ResponseModel):
     id: str
     label: str
@@ -280,6 +316,8 @@ register_response_schema_models(
     WorkflowLogExportIdentityResponse,
     WorkflowLogExportIdentitySearchResponse,
     WorkflowLogExportTaskResponse,
+    WorkflowLogExportStatusResponse,
+    WorkflowLogExportLatestResponse,
 )
 
 
@@ -363,3 +401,48 @@ class WorkflowLogExportApi(Resource):
             filters=payload.to_filters(),
         )
         return dump_response(WorkflowLogExportTaskResponse, task), HTTPStatus.ACCEPTED
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflow-log-exports/latest")
+class WorkflowLogExportLatestApi(Resource):
+    @error_responses(AppNotFoundError, ForbiddenError, PaidPlanRequiredError)
+    @console_ns.doc("get_latest_workflow_log_export")
+    @console_ns.doc(description="Read the caller's latest Workflow CSV export and its submitted filters")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.response(HTTPStatus.OK, "Latest export", console_ns.models[WorkflowLogExportLatestResponse.__name__])
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.APP_LOG_AND_ANNOTATION, PlainApp()),))
+    def get(
+        self, request_context: RequestContext, app_id: UUID
+    ) -> tuple[dict[str, object], HTTPStatus, dict[str, str]]:
+        """Return the caller's latest live export for this app, or null if it is unavailable."""
+        scope = _resolve_log_export_scope(request_context, app_id)
+        task = application_services().workflow_log_exports.get_latest_task(
+            scope=scope, requested_by=request_context.account_id
+        )
+        return (
+            dump_response(WorkflowLogExportLatestResponse, {"task": task}),
+            HTTPStatus.OK,
+            {"Cache-Control": "no-store"},
+        )
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflow-log-exports/<uuid:task_id>")
+class WorkflowLogExportTaskApi(Resource):
+    @error_responses(AppNotFoundError, WorkflowLogExportTaskNotFoundHTTPError, ForbiddenError, PaidPlanRequiredError)
+    @console_ns.doc("get_workflow_log_export_status")
+    @console_ns.doc(description="Get the current status of a Workflow CSV export task")
+    @console_ns.doc(params={"app_id": "Application ID", "task_id": "Export task ID"})
+    @console_ns.response(
+        HTTPStatus.OK, "Export task status", console_ns.models[WorkflowLogExportStatusResponse.__name__]
+    )
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.APP_LOG_AND_ANNOTATION, PlainApp()),))
+    def get(
+        self, request_context: RequestContext, app_id: UUID, task_id: UUID
+    ) -> tuple[dict[str, object], HTTPStatus, dict[str, str]]:
+        """Return the state of a live task for the admitted workspace and Workflow app."""
+        scope = _resolve_log_export_scope(request_context, app_id)
+        try:
+            task = application_services().workflow_log_exports.get_task(scope=scope, task_id=str(task_id))
+        except WorkflowLogExportTaskNotFoundError as exc:
+            raise WorkflowLogExportTaskNotFoundHTTPError() from exc
+        return dump_response(WorkflowLogExportStatusResponse, task), HTTPStatus.OK, {"Cache-Control": "no-store"}

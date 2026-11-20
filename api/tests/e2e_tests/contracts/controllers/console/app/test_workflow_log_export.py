@@ -1,10 +1,10 @@
-"""Create and prepare Workflow CSV exports through Console admission and the worker."""
+"""Create, prepare, and poll Workflow CSV exports through the Console API."""
 
 import csv
 import json
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from functools import partial
 from io import StringIO
 from pathlib import Path
@@ -17,6 +17,7 @@ from flask import Flask
 from flask.testing import FlaskClient
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.test import TestResponse
 
 from constants import COOKIE_NAME_CSRF_TOKEN, HEADER_NAME_CSRF_TOKEN
 from controllers.console.app import workflow_app_log
@@ -61,6 +62,14 @@ class _ExportClient:
     storage: Mock
     files: dict[str, str]
     run_id: str
+
+    def get_status(self, task_id: str) -> TestResponse:
+        """Poll the identified task under the admitted app."""
+        return self.client.get(f"{self.path}/{task_id}", headers=self.headers)
+
+    def get_latest(self) -> TestResponse:
+        """Read this account's last task under the admitted app."""
+        return self.client.get(f"{self.path}/latest", headers=self.headers)
 
 
 @pytest.fixture
@@ -172,7 +181,11 @@ def export_client(
             write_csv=WorkflowLogCsvWriter(logs=logs).write_csv,
         ),
     )
-    ExternalApi(app).add_resource(workflow_app_log.WorkflowLogExportApi, "/apps/<uuid:app_id>/workflow-log-exports")
+    api = ExternalApi(app)
+    path = "/apps/<uuid:app_id>/workflow-log-exports"
+    api.add_resource(workflow_app_log.WorkflowLogExportApi, path)
+    api.add_resource(workflow_app_log.WorkflowLogExportLatestApi, f"{path}/latest")
+    api.add_resource(workflow_app_log.WorkflowLogExportTaskApi, f"{path}/<uuid:task_id>")
 
     client = app.test_client()
     with client.session_transaction() as session:
@@ -255,13 +268,16 @@ def test_create_workflow_log_export_rejects_invalid_filters(
     export_client.redis.setex.assert_not_called()
 
 
-def test_create_workflow_log_export_requires_cloud_entitlement(export_client: _ExportClient) -> None:
+def test_workflow_log_export_requires_cloud_entitlement(export_client: _ExportClient) -> None:
     export_client.paid.return_value = False
 
     response = export_client.client.post(export_client.path, headers=export_client.headers, json={})
 
     assert response.status_code == 403
+    assert export_client.get_status(str(uuid4())).status_code == 403
+    assert export_client.get_latest().status_code == 403
     export_client.redis.setex.assert_not_called()
+    export_client.redis.get.assert_not_called()
 
 
 def test_workflow_export_worker_uploads_once_and_marks_task_ready(export_client: _ExportClient) -> None:
@@ -271,6 +287,9 @@ def test_workflow_export_worker_uploads_once_and_marks_task_ready(export_client:
         json={"status": "succeeded", "account_ids": [export_client.account_id]},
     )
     assert response.status_code == 202
+    task_id = response.json["task_id"]
+    pending = export_client.get_status(task_id)
+    assert (pending.status_code, pending.json) == (200, {"task_id": task_id, "status": "pending"})
     arguments = export_client.publish.call_args.kwargs["kwargs"]
     with export_client.client.application.app_context():
         prepare_log_export_task.run(**arguments)
@@ -292,6 +311,10 @@ def test_workflow_export_worker_uploads_once_and_marks_task_ready(export_client:
     assert row["account_id"] == export_client.account_id
     assert json.loads(row["app_response"]) == {"result": "ready"}
     export_client.storage.save_file.assert_called_once()
+    ready = export_client.get_status(task_id)
+    assert (ready.status_code, ready.json) == (200, {"task_id": task_id, "status": "ready"})
+    assert ready.headers["Cache-Control"] == "no-store"
+    assert export_client.get_latest().json["task"]["status"] == "ready"
 
 
 def test_workflow_export_marks_task_failed_if_publication_fails(export_client: _ExportClient) -> None:
@@ -304,3 +327,69 @@ def test_workflow_export_marks_task_failed_if_publication_fails(export_client: _
     task = WorkflowLogExportTask.model_validate_json(export_client.redis.get(key))
     assert task.status is LogExportStatus.FAILED
     export_client.storage.save_file.assert_not_called()
+    assert export_client.get_status(task.task_id).json == {"task_id": task.task_id, "status": "failed"}
+
+
+def test_latest_workflow_export_returns_saved_filters_in_utc(export_client: _ExportClient) -> None:
+    empty = export_client.get_latest()
+    assert (empty.status_code, empty.json) == (200, {"task": None})
+    missing = export_client.get_status(str(uuid4()))
+    assert missing.status_code == 404
+    assert missing.json["code"] == "workflow_log_export_task_not_found"
+
+    previous = export_client.client.post(export_client.path, headers=export_client.headers, json={})
+    assert previous.status_code == 202
+    end_user_id = str(uuid4())
+    submitted = export_client.client.post(
+        export_client.path,
+        headers=export_client.headers,
+        json={
+            "keyword": "report",
+            "status": "succeeded",
+            "created_at__after": "2026-01-02T12:00:00+08:00",
+            "created_at__before": "2026-01-03T00:00:00+08:00",
+            "end_user_ids": [end_user_id],
+            "account_ids": [export_client.account_id],
+        },
+    )
+    assert submitted.status_code == 202
+
+    latest = export_client.get_latest()
+    assert latest.status_code == 200
+    assert latest.headers["Cache-Control"] == "no-store"
+    assert latest.json == {
+        "task": {
+            "task_id": submitted.json["task_id"],
+            "status": "pending",
+            "filters": {
+                "keyword": "report",
+                "status": "succeeded",
+                "created_at__after": "2026-01-02T04:00:00Z",
+                "created_at__before": "2026-01-02T16:00:00Z",
+                "end_user_ids": [end_user_id],
+                "account_ids": [export_client.account_id],
+            },
+        },
+    }
+
+
+@pytest.mark.parametrize(
+    ("changes", "task_status"),
+    [
+        pytest.param({"expires_at": datetime(2000, 1, 1, tzinfo=UTC)}, 404, id="expired"),
+        pytest.param({"tenant_id": str(uuid4())}, 404, id="other-workspace"),
+        pytest.param({"app_id": str(uuid4())}, 404, id="other-app"),
+        pytest.param({"requested_by": str(uuid4())}, 200, id="other-requester"),
+    ],
+)
+def test_workflow_export_status_and_latest_respect_their_scope(
+    export_client: _ExportClient, changes: dict[str, object], task_status: int
+) -> None:
+    response = export_client.client.post(export_client.path, headers=export_client.headers, json={})
+    assert response.status_code == 202
+    key, ttl, raw = export_client.redis.setex.call_args_list[0].args
+    task = WorkflowLogExportTask.model_validate_json(raw).model_copy(update=changes)
+    export_client.redis.setex(key, ttl, task.model_dump_json())
+
+    assert export_client.get_status(task.task_id).status_code == task_status
+    assert export_client.get_latest().json == {"task": None}

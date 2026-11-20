@@ -1,4 +1,4 @@
-"""Create and prepare CSV exports for published runs in an admitted Workflow app."""
+"""Create, prepare, and read CSV export tasks for an admitted Workflow app."""
 
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -38,8 +38,12 @@ class WorkflowLogExportFilters:
 WorkflowLogExportTask = LogExportTask[WorkflowLogExportFilters]
 
 
+class WorkflowLogExportTaskNotFoundError(Exception):
+    """The requested export task is unavailable for the admitted app."""
+
+
 class WorkflowLogExportService:
-    """Create and prepare Workflow exports from their admitted scope and filters."""
+    """Manage Workflow CSV export tasks within their admitted app scope."""
 
     def __init__(
         self,
@@ -67,6 +71,17 @@ class WorkflowLogExportService:
         )
         save_and_dispatch_log_export_task(task, tasks=self._tasks, dispatch=self._dispatch)
         return task
+
+    def get_task(self, *, scope: WorkflowLogExportScope, task_id: str) -> WorkflowLogExportTask:
+        """Return a live task in the admitted workspace and app, or raise if unavailable."""
+        task = self._tasks.get(tenant_id=scope.tenant_id, app_id=scope.app_id, task_id=task_id)
+        if task is None:
+            raise WorkflowLogExportTaskNotFoundError()
+        return task
+
+    def get_latest_task(self, *, scope: WorkflowLogExportScope, requested_by: str) -> WorkflowLogExportTask | None:
+        """Return the admitted caller's latest live export for the app, or None if it is unavailable."""
+        return self._tasks.get_latest(tenant_id=scope.tenant_id, app_id=scope.app_id, requested_by=requested_by)
 
     def prepare_task(self, *, tenant_id: str, app_id: str, task_id: str) -> None:
         """Load the task for the workspace and app and prepare its CSV if it is still pending."""
