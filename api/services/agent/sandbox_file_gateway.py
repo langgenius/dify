@@ -12,7 +12,7 @@ from clients.agent_backend.factory import create_agent_backend_client
 from configs import dify_config
 from core.tools.signature import bind_file_uri
 from machinery.context import RequestContext
-from services.app.agent_app_contracts import (
+from services.agent.sandbox_contracts import (
     AgentSandboxBinding,
     AgentSandboxCaller,
     AgentSandboxDownload,

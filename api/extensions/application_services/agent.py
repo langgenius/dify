@@ -17,9 +17,10 @@ from repositories.app.agent_sandbox_repository import AgentSandboxRepository
 from services.agent.build_session_service import AgentBuildSessionService
 from services.agent.invite_options import AgentInviteOptionsService
 from services.agent.observability_contracts import AgentObservability
+from services.agent.sandbox_file_gateway import AgentSandboxFileGateway, create_sandbox_client
+from services.agent.sandbox_service import AgentAppSandboxService
 from services.agent.version_service import AgentVersionService
 from services.app.agent_app_feature_gateway import AgentAppFeatureValidator
-from services.app.agent_app_sandbox_service import AgentAppSandboxService
 from services.app.agent_app_service import (
     AgentApiAccessService,
     AgentAppAccessService,
@@ -28,7 +29,6 @@ from services.app.agent_app_service import (
     AgentAppDetailService,
     AgentAppFeatureConfigService,
 )
-from services.app.agent_sandbox_file_gateway import AgentSandboxFileGateway, create_sandbox_client
 from services.app.console_gateway import (
     AgentAppDetailPresentationGateway,
     notify_agent_app_updated,

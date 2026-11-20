@@ -40,8 +40,7 @@ from models.model import App, AppMode, Conversation
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from repositories.app.agent_app_repository import AgentAppRepository
 from repositories.app.agent_sandbox_repository import AgentSandboxRepository
-from services.app.agent_app_contracts import (
-    AgentAppNotFoundError,
+from services.agent.sandbox_contracts import (
     AgentSandboxBindingNotFoundError,
     AgentSandboxCaller,
     AgentSandboxDownloadUnavailableError,
@@ -50,8 +49,9 @@ from services.app.agent_app_contracts import (
     WorkflowSandboxAppNotFoundError,
     WorkflowSandboxCaller,
 )
-from services.app.agent_app_sandbox_service import AgentAppSandboxService
-from services.app.agent_sandbox_file_gateway import AgentSandboxFileGateway, create_sandbox_client
+from services.agent.sandbox_file_gateway import AgentSandboxFileGateway, create_sandbox_client
+from services.agent.sandbox_service import AgentAppSandboxService
+from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.evaluation_service import EvaluationService
 from services.file_request_service import DownloadFileRequestResult, FileRequestService
 from tests.helpers.unit.config_override import apply_config_overrides

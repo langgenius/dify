@@ -1318,11 +1318,13 @@ forbidden_modules =
     werkzeug
 
 [importlinter:contract:agent-app-access-service-boundary]
-name = Agent App access services and contracts are framework and persistence neutral
+name = Agent App access and Sandbox services and contracts are framework and persistence neutral
 type = forbidden
 source_modules =
     services.app.agent_app_service
     services.app.agent_app_contracts
+    services.agent.sandbox_service
+    services.agent.sandbox_contracts
 forbidden_modules =
     configs
     controllers
@@ -1335,10 +1337,11 @@ forbidden_modules =
 allow_indirect_imports = True
 
 [importlinter:contract:console-agent-api-access-boundary]
-name = Agent API access controller reaches persistence through the composition root
+name = Agent API access and Sandbox controllers reach persistence through the composition root
 type = forbidden
 source_modules =
     controllers.console.agent.api_access
+    controllers.console.app.agent_app_sandbox
 forbidden_modules =
     extensions.ext_database
     models.model

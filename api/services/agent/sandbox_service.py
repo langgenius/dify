@@ -5,7 +5,7 @@ from typing import Protocol
 from dify_agent.protocol import BindingFileListResponse, BindingFileReadResponse
 
 from machinery.context import RequestContext
-from services.app.agent_app_contracts import (
+from services.agent.sandbox_contracts import (
     AgentSandboxBinding,
     AgentSandboxDownload,
     AgentSandboxInfo,
