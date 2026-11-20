@@ -560,10 +560,9 @@ class TestEmailI18nIntegration:
 
     def test_mail_extension_wires_the_i18n_gateway(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Extension bootstrap must wire the same initialized sender used by tasks."""
+        from configs import DifyConfig
         from extensions import ext_mail
         from libs import email_i18n
-
-        from configs import DifyConfig
 
         gateway = ext_mail.Mail()
         monkeypatch.setattr(email_i18n, "mail", None)
