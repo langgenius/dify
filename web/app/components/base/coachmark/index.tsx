@@ -380,8 +380,8 @@ function CoachmarkArrow(props: CoachmarkArrowProps) {
           ? cn(
               'pointer-events-none size-3 rotate-45 border-state-accent-hover-alt bg-state-accent-hover',
               state.side === 'inline-end'
-                ? '-inset-s-1.5 border-s-[0.5px] border-b-[0.5px]'
-                : '-inset-e-1.5 border-e-[0.5px] border-t-[0.5px]',
+                ? '-inset-s-1.5 border-s-[0.5px] border-b-[0.5px] [clip-path:polygon(0_0,0_100%,100%_100%)]'
+                : '-inset-e-1.5 border-e-[0.5px] border-t-[0.5px] [clip-path:polygon(0_0,100%_0,100%_100%)]',
             )
           : cn(
               'pointer-events-none h-7 w-0.5',
