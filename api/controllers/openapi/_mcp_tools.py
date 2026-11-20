@@ -26,7 +26,7 @@ from controllers.openapi._mcp_call import (
     UnsafePathValue,
     call_op,
 )
-from controllers.openapi._upload import is_binary_leaf
+from controllers.openapi._upload import has_binary_leaf, is_binary_leaf
 from controllers.openapi.app_start import START_MODES
 from controllers.openapi.auth.spec import Effect, EndpointSpec, Kind
 from core.mcp import types as mcp_types
@@ -51,7 +51,15 @@ UPLOAD_ID_SCHEMA: Final = {
     "type": "string",
     "description": "An upload id from prepare.upload, or the id of a file result",
 }
+FOLDER_UPLOAD_ID_SCHEMA: Final = {
+    "type": "string",
+    "description": (
+        'The id of a folder upload (prepare.upload with "folder": true); '
+        "the server unpacks it and its paths become the keys"
+    ),
+}
 UPLOAD_ID_EXAMPLE: Final = "<upload id>"
+_MAPPING_SHAPE_KEYS: Final = ("type", "additionalProperties")
 _ID_SEPARATOR: Final = "."
 _ABSENT_OP_VALUES: Final = (None, "")
 
@@ -232,14 +240,30 @@ def describe_op(op: str, *, token: str | None) -> dict[str, Any]:
 
 
 def _with_upload_ids(node: Any) -> Any:
-    """Postcondition: a copy of the schema ``node`` with every file part replaced by ``UPLOAD_ID_SCHEMA``."""
+    """Postcondition: a copy of the schema ``node`` with every file part replaced by ``UPLOAD_ID_SCHEMA``, and
+    every mapping of file parts also taking one folder upload id, as the parse layer accepts."""
     if isinstance(node, list):
         return [_with_upload_ids(item) for item in node]
     if not isinstance(node, Mapping):
         return copy.deepcopy(node)
     if is_binary_leaf(node):
         return dict(UPLOAD_ID_SCHEMA)
-    return {key: _with_upload_ids(value) for key, value in node.items()}
+    rewritten = {key: _with_upload_ids(value) for key, value in node.items()}
+    if _is_part_mapping(node):
+        return _or_folder_upload_id(rewritten)
+    return rewritten
+
+
+def _is_part_mapping(node: Mapping[str, Any]) -> bool:
+    if node.get("type") != "object":
+        return False
+    return has_binary_leaf(node.get("additionalProperties"))
+
+
+def _or_folder_upload_id(mapping: dict[str, Any]) -> dict[str, Any]:
+    """Postcondition: ``mapping`` or one folder upload id; the field's title and description stay outside."""
+    shape = {key: mapping.pop(key) for key in _MAPPING_SHAPE_KEYS}
+    return {**mapping, "anyOf": [dict(FOLDER_UPLOAD_ID_SCHEMA), shape]}
 
 
 def _example_input(input: Mapping[str, Any], files: set[str]) -> dict[str, Any]:
