@@ -295,12 +295,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(
                 }`}
               >
                 <div className="flex size-full items-center justify-center px-1">
-                  <UserAvatarList
-                    users={participants}
-                    maxVisible={3}
-                    size="sm"
-                    className="translate-y-[-1.5px]"
-                  />
+                  <UserAvatarList users={participants} maxVisible={3} size="sm" />
                 </div>
               </div>
             </div>
