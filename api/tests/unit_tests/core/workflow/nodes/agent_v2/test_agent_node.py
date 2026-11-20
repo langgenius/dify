@@ -433,9 +433,10 @@ class ToolCallThenFailingStreamBackendClient(FakeAgentBackendRunClient):
         run_id: str,
         *,
         after: str | None = None,
+        timeout_seconds: float | None = None,
         should_stop: Callable[[], bool] | None = None,
     ) -> Iterator[RunEvent]:
-        del after, should_stop
+        del after, timeout_seconds, should_stop
         created_at = datetime(2026, 1, 1, tzinfo=UTC)
         yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
         yield PydanticAIStreamRunEvent(
@@ -480,8 +481,9 @@ class ToolCallThenUncancellableStreamEndBackendClient(FakeAgentBackendRunClient)
         request: CancelRunRequest | None = None,
         *,
         after: str | None = None,
+        timeout_seconds: float | None = None,
     ) -> RunCancelledEvent:
-        del run_id, request, after
+        del run_id, request, after, timeout_seconds
         raise RuntimeError("cancel request failed")
 
 
@@ -496,9 +498,10 @@ class FailingStreamBackendClient(FakeAgentBackendRunClient):
         run_id: str,
         *,
         after: str | None = None,
+        timeout_seconds: float | None = None,
         should_stop: Callable[[], bool] | None = None,
     ) -> Iterator[RunEvent]:
-        del run_id, after, should_stop
+        del run_id, after, timeout_seconds, should_stop
         raise AgentBackendStreamError("stream reconnect attempts exhausted")
         yield
 
@@ -512,9 +515,10 @@ class FailingStreamBackendClient(FakeAgentBackendRunClient):
         request: CancelRunRequest | None = None,
         *,
         after: str | None = None,
+        timeout_seconds: float | None = None,
     ) -> RunCancelledEvent:
         self.cancel_after.append(after)
-        return super().cancel_run_and_wait(run_id, request=request, after=after)
+        return super().cancel_run_and_wait(run_id, request=request, after=after, timeout_seconds=timeout_seconds)
 
 
 class FailingAfterStartedStreamBackendClient(FailingStreamBackendClient):
@@ -523,9 +527,10 @@ class FailingAfterStartedStreamBackendClient(FailingStreamBackendClient):
         run_id: str,
         *,
         after: str | None = None,
+        timeout_seconds: float | None = None,
         should_stop: Callable[[], bool] | None = None,
     ) -> Iterator[RunEvent]:
-        del after, should_stop
+        del after, timeout_seconds, should_stop
         yield RunStartedEvent(id="cursor-1", run_id=run_id)
         raise AgentBackendStreamError("stream failed after started")
 
@@ -557,9 +562,10 @@ class EmptyStreamBackendClient(FailingStreamBackendClient):
         run_id: str,
         *,
         after: str | None = None,
+        timeout_seconds: float | None = None,
         should_stop: Callable[[], bool] | None = None,
     ) -> Iterator[RunEvent]:
-        del run_id, after, should_stop
+        del run_id, after, timeout_seconds, should_stop
         return
         yield
 
@@ -570,9 +576,10 @@ class GenericFailingStreamBackendClient(FailingStreamBackendClient):
         run_id: str,
         *,
         after: str | None = None,
+        timeout_seconds: float | None = None,
         should_stop: Callable[[], bool] | None = None,
     ) -> Iterator[RunEvent]:
-        del run_id, after, should_stop
+        del run_id, after, timeout_seconds, should_stop
         raise RuntimeError("unexpected stream failure")
         yield
 

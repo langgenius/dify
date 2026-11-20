@@ -231,8 +231,8 @@ class AgentAppGenerator(MessageBasedAppGenerator):
 
         Requires an admitted Console account and its resolved debug conversation id.
         Commits pending conversation mapping creation and ends the read transaction
-        opened by Agent/draft resolution before the external dify-agent stream, so
-        this session's locks and pooled connection are not held for streamed I/O.
+        opened by Agent/draft resolution before delegating to the runner, which
+        applies the execution deadline to the backend calls.
         Model and runtime failures propagate; no input guards or chat persistence run.
         """
         agent = self._resolve_bound_agent(app_model, session=session)

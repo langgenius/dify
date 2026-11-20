@@ -89,6 +89,7 @@ export default function PersonalAccessTokens() {
             </p>
           </div>
           <Dialog
+            disablePointerDismissal
             onOpenChange={(open, details) => {
               if (!open && creating) details.cancel()
             }}
@@ -96,7 +97,7 @@ export default function PersonalAccessTokens() {
             <DialogTrigger render={<Button ref={createButtonRef} variant="primary" />}>
               {t(($) => $['personalAccessToken.createButton'])}
             </DialogTrigger>
-            <DialogContent className="w-150 has-[[data-pat-created]]:w-130">
+            <DialogContent className="w-150 has-data-pat-created:w-130">
               <TokenForm />
             </DialogContent>
           </Dialog>
@@ -169,7 +170,7 @@ export default function PersonalAccessTokens() {
                                 </TooltipTrigger>
                                 <TooltipContent>{token.name}</TooltipContent>
                               </Tooltip>
-                              <DialogContent className="w-150 has-[[data-pat-created]]:w-130">
+                              <DialogContent className="w-150 has-data-pat-created:w-130">
                                 <ScopeDetails tokenId={token.id} />
                               </DialogContent>
                             </Dialog>
@@ -285,6 +286,7 @@ export default function PersonalAccessTokens() {
       </section>
       <Dialog
         handle={formDialogHandle}
+        disablePointerDismissal
         onOpenChange={(open, details) => {
           if (!open && (creating || updating) && details.reason !== 'imperative-action')
             details.cancel()

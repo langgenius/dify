@@ -1410,11 +1410,11 @@ def test_finalization_commits_mapping_and_retries_without_creating_chat_state(
 
     class ObservingClient(FakeAgentBackendRunClient):
         @override
-        def create_run(self, request: CreateRunRequest) -> CreateRunResponse:
+        def create_run(self, request: CreateRunRequest, *, timeout_seconds: float | None = None) -> CreateRunResponse:
             assert not sqlite_session.in_transaction()
             with sqlite_session_factory() as observer:
                 assert observer.scalar(select(AgentDebugConversation.conversation_id)) == "conv"
-            return super().create_run(request)
+            return super().create_run(request, timeout_seconds=timeout_seconds)
 
     client = ObservingClient()
     monkeypatch.setattr(module, "create_agent_backend_run_client", lambda **_kwargs: client)

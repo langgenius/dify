@@ -30,7 +30,9 @@ from clients.agent_backend import (
     AgentBackendRunFailedInternalEvent,
     AgentBackendRunSucceededInternalEvent,
     AgentBackendStreamInternalEvent,
+    AgentBackendTimeoutError,
 )
+from configs import dify_config
 from core.app.apps.agent_app.runtime_request_builder import (
     AgentAppRuntimeBuildContext,
     AgentAppRuntimeRequest,
@@ -83,6 +85,8 @@ class _DefaultSessionScopeSnapshotId:
 
 
 _DEFAULT_SESSION_SCOPE_SNAPSHOT_ID = _DefaultSessionScopeSnapshotId()
+_FINALIZATION_CANCEL_WAIT_TIMEOUT_SECONDS = 5.0
+_FINALIZATION_TIMEOUT_MESSAGE = "Build chat finalization timed out."
 
 _BUILD_CHAT_FINALIZATION_QUERY = """Finalize this Build chat configuration for the agent.
 
@@ -833,10 +837,13 @@ class AgentAppRunner:
     ) -> None:
         """Finalize a resolved build draft using its existing chat history.
 
-        May create the draft's workspace binding and update its config note through
-        the runtime. Success and failure leave chat records, session history, and
-        message traces untouched. Stream errors trigger best-effort cancellation
-        before propagating; unsuccessful terminals raise the shared runtime errors.
+        Requires a Flask application context and may allocate a draft workspace
+        binding. Releases the request-scoped database session after building the
+        request, before starting the backend run. Run creation and event consumption
+        share the positive app execution budget. After a run is accepted, timeouts
+        and stream errors trigger cancellation under a separate deadline. The runtime may
+        update the config note. Finalization leaves chat records, session history,
+        and message traces untouched.
 
         Discard terminal.session_snapshot even after success: if build-draft/apply
         fails, continued Build chat or another Apply must reuse history without the
@@ -870,35 +877,64 @@ class AgentAppRunner:
             stored=stored,
             collect_message_trace=False,
         )
-        create_response = self._agent_backend_client.create_run(runtime.request)
+        # Configuration and tool resolution can use the request-scoped session
+        # independently of the generator's local session.
+        db.session.close()
+
+        execution_timeout = dify_config.APP_MAX_EXECUTION_TIME
+        deadline = time.monotonic() + execution_timeout if execution_timeout > 0 else None
+        create_timeout = float(execution_timeout) if deadline is not None else None
+        try:
+            run_id = self._agent_backend_client.create_run(runtime.request, timeout_seconds=create_timeout).run_id
+        except AgentBackendError as exc:
+            if isinstance(exc, AgentBackendTimeoutError) or (deadline is not None and time.monotonic() >= deadline):
+                raise AgentBackendError(_FINALIZATION_TIMEOUT_MESSAGE) from exc
+            raise
+        remaining = None if deadline is None else deadline - time.monotonic()
         terminal = None
         last_event_id: str | None = None
-        try:
-            public_events = iter(self._agent_backend_client.stream_events(create_response.run_id))
-            while terminal is None and (public_event := next(public_events, None)) is not None:
-                if public_event.id is not None:
-                    last_event_id = public_event.id
-                terminal = next(
-                    (
-                        event
-                        for event in self._event_adapter.adapt(public_event)
-                        if isinstance(
-                            event,
-                            AgentBackendRunSucceededInternalEvent
-                            | AgentBackendRunFailedInternalEvent
-                            | AgentBackendRunCancelledInternalEvent,
-                        )
-                    ),
-                    None,
-                )
-        except Exception:
+        stream_error: Exception | None = None
+        if remaining is None or remaining > 0:
             try:
-                self._agent_backend_client.cancel_run_and_wait(create_response.run_id, after=last_event_id)
-            except Exception:
-                logger.warning(
-                    "Failed to cancel Agent App finalization run: run_id=%s", create_response.run_id, exc_info=True
+                public_events = self._agent_backend_client.stream_events(run_id, timeout_seconds=remaining)
+                while terminal is None and (public_event := next(public_events, None)) is not None:
+                    if public_event.id is not None:
+                        last_event_id = public_event.id
+                    terminal = next(
+                        (
+                            event
+                            for event in self._event_adapter.adapt(public_event)
+                            if isinstance(
+                                event,
+                                AgentBackendRunSucceededInternalEvent
+                                | AgentBackendRunFailedInternalEvent
+                                | AgentBackendRunCancelledInternalEvent,
+                            )
+                        ),
+                        None,
+                    )
+            except Exception as exc:
+                stream_error = exc
+
+        timed_out = (
+            terminal is None
+            and deadline is not None
+            and (time.monotonic() >= deadline or isinstance(stream_error, AgentBackendTimeoutError))
+        )
+        if timed_out or stream_error is not None:
+            cancel_timeout = _FINALIZATION_CANCEL_WAIT_TIMEOUT_SECONDS
+            if execution_timeout > 0:
+                cancel_timeout = min(cancel_timeout, float(execution_timeout))
+            try:
+                self._agent_backend_client.cancel_run_and_wait(
+                    run_id, after=last_event_id, timeout_seconds=cancel_timeout
                 )
-            raise
+            except Exception:
+                logger.warning("Failed to cancel Agent App finalization run: run_id=%s", run_id, exc_info=True)
+        if timed_out:
+            raise AgentBackendError(_FINALIZATION_TIMEOUT_MESSAGE) from stream_error
+        if stream_error is not None:
+            raise stream_error
         _raise_for_unsuccessful_terminal(terminal)
 
     def _build_session_scope(

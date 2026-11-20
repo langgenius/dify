@@ -1,3 +1,4 @@
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { Role } from '@/models/access-control'
 import { createRef } from 'react'
 import { render } from 'vitest-browser-react'
@@ -31,8 +32,12 @@ export function rolePage(roles: Role[]) {
     pagination: { current_page: 1, total_pages: 1, total_count: roles.length, per_page: 20 },
   }
 }
-export async function renderRolePage(canManage = true) {
+export async function renderRolePage({
+  canManage = true,
+  deploymentEdition = 'ENTERPRISE',
+}: { canManage?: boolean; deploymentEdition?: DeploymentEdition } = {}) {
   const { queryClient, wrapper: Providers } = createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: deploymentEdition, rbac_enabled: true },
     workspacePermissionKeys: canManage ? ['workspace.role.manage'] : [],
   })
   queryClient.setQueryData(
@@ -40,11 +45,17 @@ export async function renderRolePage(canManage = true) {
     {
       groups: [
         {
-          group_key: 'workspace_management',
-          group_name: 'Workspace management',
+          group_key: 'workspace',
+          group_name: 'Workspace',
           description: '',
           permissions: [
             { key: 'workspace.member.manage', name: 'Manage members', description: '' },
+            { key: 'ip_policy.view', name: 'View IP Policies', description: '' },
+            {
+              key: 'ip_policy.manage',
+              name: 'Create, Edit and Delete IP Policies',
+              description: '',
+            },
           ],
         },
       ],
