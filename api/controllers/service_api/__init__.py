@@ -11,6 +11,7 @@ from controllers.common.errors import (
     UnauthorizedError,
     register_moderation_error_handlers,
     register_permission_error_handler,
+    register_resource_error_handlers,
 )
 from libs.external_api import ExternalApi
 
@@ -25,6 +26,7 @@ api = ExternalApi(
     register_default_root=False,
 )
 register_permission_error_handler(api)
+register_resource_error_handlers(api)
 register_moderation_error_handlers(api)
 # ``invalid_param`` is what the surface's ValueError handler already emits on any operation;
 # ``not_found``, ``unauthorized`` and ``internal_server_error`` are the codes Werkzeug's own

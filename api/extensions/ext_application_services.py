@@ -51,6 +51,10 @@ from extensions.application_services.tracing import TracingServices, build_traci
 from extensions.application_services.trial_app import TrialAppServices, build_trial_app_services
 from extensions.application_services.trigger import TriggerServices, build_trigger_services
 from extensions.application_services.workflow import build_workflow_suggestions
+from extensions.application_services.workflow_variables import (
+    build_console_workflow_variables,
+    build_workflow_variable_service,
+)
 from extensions.application_services.workspace import (
     WorkspaceServices,
     build_workspace_membership_services,
@@ -257,7 +261,9 @@ from services.web_passport_gateways import (
 from services.web_passport_service import WebPassportService
 from services.webapp_access_adapters import EnterpriseWebAppAccessPolicyGateway
 from services.webapp_access_query_service import WebAppAccessQueryService, WebAppAccessUnavailableError
+from services.workflow.console_variable_service import ConsoleWorkflowVariableService
 from services.workflow.generation.suggestions import WorkflowInstructionSuggestions
+from services.workflow.variable_service import WorkflowVariableService
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
@@ -318,6 +324,8 @@ class AppScopedEndUserServices:
 
 @dataclass(frozen=True, slots=True)
 class ApplicationServices:
+    workflow_variables: WorkflowVariableService
+    console_workflow_variables: ConsoleWorkflowVariableService
     workflow_suggestions: WorkflowInstructionSuggestions
     moderation: ModerationService
     annotation_commands: AnnotationCommandService
@@ -644,6 +652,7 @@ def build_application_services(
         trigger_builders=triggers.builders,
         trigger_providers=trigger_providers,
     )
+    workflow_variables = build_workflow_variable_service(database_client=database_client)
     conversations = ConversationRepository(session_factory=database_client)
     conversation_names = ConversationNameService(
         conversations=conversations,
@@ -668,6 +677,10 @@ def build_application_services(
     )
 
     return ApplicationServices(
+        workflow_variables=workflow_variables,
+        console_workflow_variables=build_console_workflow_variables(
+            database_client=database_client, variables=workflow_variables
+        ),
         workflow_suggestions=build_workflow_suggestions(database_client),
         moderation=build_moderation_service(database_client=database_client),
         annotation_commands=AnnotationCommandService(
