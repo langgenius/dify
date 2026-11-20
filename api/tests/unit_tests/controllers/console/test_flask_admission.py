@@ -147,12 +147,25 @@ def test_password_login_prepares_workspace_only_for_console(
     assert browser.get(PROFILE_PATH).status_code == profile_status
 
 
-def test_cloud_invitation_sign_in_does_not_prepare_a_workspace(
+@pytest.mark.parametrize(
+    ("allow_create_workspace", "expected_profile_status", "expected_workspace_names"),
+    [
+        (True, 200, ["Invitee's Workspace"]),
+        (False, 401, []),
+    ],
+    ids=["creation-allowed", "creation-disabled"],
+)
+def test_cloud_invitation_sign_in_provisions_personal_workspace_only_when_allowed(
     cloud_console: tuple[DifyApp, AccountDomain],
+    config_overrides: Callable[..., None],
     redis_transport: tuple[RedisClientWrapper, MagicMock],
+    allow_create_workspace: bool,
+    expected_profile_status: int,
+    expected_workspace_names: list[str],
 ) -> None:
-    """An invited End User gets an account-only session verified through invitation check without workspace changes."""
+    """Invitation sign-in best-effort provisions a personal workspace without blocking when disallowed."""
     app, account_domain = cloud_console
+    config_overrides(ALLOW_CREATE_WORKSPACE=allow_create_workspace)
     inviter = account_domain.accounts.create_account("owner@example.com", "Owner", "en-US")
     team = account_domain.provisioning.create(name="Team", owner_email=inviter.email)
     invitee = account_domain.accounts.create_account(
@@ -168,12 +181,13 @@ def test_cloud_invitation_sign_in_does_not_prepare_a_workspace(
     console_login = _password_login(browser, invitee.email, invite_token=token)
     assert console_login.status_code == 200, console_login.json
     assert console_login.get_json()["result"] == "success"
-    assert browser.get(PROFILE_PATH).status_code == 401
+    assert browser.get(PROFILE_PATH).status_code == expected_profile_status
     check = browser.get(f"/console/api/activate/check?token={token}")
     assert check.status_code == 200, check.json
     assert check.headers["Cache-Control"] == "no-store"
     assert check.get_json()["data"]["is_current_account"] is True
-    assert account_domain.workspaces.list_ids_for_account(invitee.id) == ()
+    active_workspaces = account_domain.workspaces.list_for_account(invitee.id)
+    assert [workspace.name for workspace in active_workspaces] == expected_workspace_names
 
 
 def test_workspace_less_session_is_rejected_by_console_profile_without_revocation(
