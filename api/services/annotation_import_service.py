@@ -77,7 +77,9 @@ class AnnotationImportJobStore(Protocol):
 
     def count_active(self, *, tenant_id: str, now_ms: int) -> int: ...
 
-    def create(self, *, tenant_id: str, app_id: str, job_id: str, now_ms: int) -> None: ...
+    def create(
+        self, *, tenant_id: str, app_id: str, job_id: str, now_ms: int, max_concurrent: int | None = None
+    ) -> bool: ...
 
     def release(self, *, tenant_id: str, app_id: str, job_id: str) -> None:
         """Remove the owned job and its active reservation after publication fails."""
@@ -177,7 +179,26 @@ class AnnotationImportService:
             quota.validate(record_count=len(records))
         job_id = str(uuid4())
         try:
-            self._jobs.create(tenant_id=tenant_id, app_id=app_id, job_id=job_id, now_ms=int(time.time() * 1000))
+            reserved = self._jobs.create(
+                tenant_id=tenant_id,
+                app_id=app_id,
+                job_id=job_id,
+                now_ms=int(time.time() * 1000),
+                max_concurrent=self._limits.max_concurrent,
+            )
+        except Exception:
+            # Preserve the registration error even when Redis cleanup also fails.
+            try:
+                self._jobs.release(tenant_id=tenant_id, app_id=app_id, job_id=job_id)
+            except Exception:
+                logger.exception("Failed to release annotation import job %s in workspace %s", job_id, tenant_id)
+            raise
+        if not reserved:
+            raise AnnotationImportLimitError(
+                f"Too many concurrent import tasks. Maximum {self._limits.max_concurrent} "
+                "concurrent imports allowed per workspace. Please wait for existing imports to complete."
+            )
+        try:
             self._publish(job_id=job_id, content_list=records, app_id=app_id, tenant_id=tenant_id, user_id=account_id)
         except Exception:
             # Preserve the publishing error even when Redis cleanup also fails.
@@ -213,7 +234,7 @@ class AnnotationImportService:
                 f"Too many annotation import requests. Maximum {self._limits.requests_per_hour} "
                 "requests per hour allowed. Please try again later."
             )
-        # Keep the existing separate admission/registration steps; atomic reservations need a worker lifecycle change.
+        # Keep this early rejection path; create() atomically checks the limit again when reserving a job.
         if self._jobs.count_active(tenant_id=tenant_id, now_ms=now_ms) >= self._limits.max_concurrent:
             raise AnnotationImportLimitError(
                 f"Too many concurrent import tasks. Maximum {self._limits.max_concurrent} "

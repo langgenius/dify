@@ -45,6 +45,9 @@ def batch_import_annotations_task(
         )
 
         if app:
+            # Keep long-running work visible to concurrency-limit cleanup. The TTL bounds
+            # reservations left behind if a worker dies before reaching its finally block.
+            redis_client.setex(indexing_cache_key, 24 * 60 * 60, "running")
             try:
                 documents = []
                 for content in content_list:
