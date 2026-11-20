@@ -1,8 +1,13 @@
-"""Create Workflow CSV export tasks through Console admission and the Redis adapter."""
+"""Create and prepare Workflow CSV exports through Console admission and the worker."""
 
+import csv
+import json
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from functools import partial
+from io import StringIO
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 from uuid import UUID, uuid4
@@ -23,16 +28,22 @@ from extensions.ext_redis import RedisClientWrapper
 from graphon.enums import WorkflowExecutionStatus
 from libs.external_api import ExternalApi
 from libs.token import generate_csrf_token
-from models import Account, Tenant, TenantAccountJoin
+from models import Account, Tenant, TenantAccountJoin, WorkflowAppLog, WorkflowRun
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import AppMode
+from models.workflow import WorkflowAppLogCreatedFrom, WorkflowType
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
+from services.retention import log_export_adapters
+from services.retention.log_export_task import LogExportStatus
 from services.retention.log_export_task_cache import RedisLogExportTasks
+from services.retention.workflow_run.log_export_csv import WorkflowLogCsvWriter
 from services.retention.workflow_run.log_export_service import (
     WorkflowLogExportFilters,
     WorkflowLogExportService,
     WorkflowLogExportTask,
 )
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
+from tasks.log_export_tasks import prepare_log_export_task
 from tests.helpers.unit.model_factories import make_account, make_app
 
 
@@ -46,6 +57,10 @@ class _ExportClient:
     account_id: str
     redis: Mock
     paid: Mock
+    publish: Mock
+    storage: Mock
+    files: dict[str, str]
+    run_id: str
 
 
 @pytest.fixture
@@ -67,12 +82,38 @@ def export_client(
     tenant = Tenant(name="Workflow workspace")
     account = make_account(account_id=str(uuid4()))
     target = make_app(app_id=str(uuid4()), tenant_id=tenant.id, mode=AppMode.WORKFLOW)
+    run = WorkflowRun(
+        tenant_id=tenant.id,
+        app_id=target.id,
+        workflow_id=str(uuid4()),
+        type=WorkflowType.WORKFLOW,
+        triggered_from=WorkflowRunTriggeredFrom.SCHEDULE,
+        status=WorkflowExecutionStatus.SUCCEEDED,
+        version="2026-01-02",
+        inputs='{"query":"report"}',
+        outputs='{"result":"ready"}',
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=account.id,
+    )
+    run.created_at = datetime(2026, 1, 2, 4)
+    log = WorkflowAppLog(
+        tenant_id=tenant.id,
+        app_id=target.id,
+        workflow_id=run.workflow_id,
+        workflow_run_id=run.id,
+        created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=account.id,
+    )
+    log.created_at = run.created_at
     with sqlite_session_factory.begin() as session:
         session.add_all(
             [
                 account,
                 tenant,
                 target,
+                run,
+                log,
                 TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole.OWNER),
             ]
         )
@@ -94,17 +135,41 @@ def export_client(
                 loaded.set_tenant_id_with_session(tenant.id, session=session)
             return loaded
 
+    cache: dict[str, str] = {}
     redis = Mock(spec=RedisClientWrapper)
+    redis.setex.side_effect = lambda key, _ttl, value: cache.__setitem__(key, value)
+    redis.get.side_effect = cache.get
+
+    def transition(*, keys: list[str], args: list[str]) -> int:
+        """Emulate the adapter's compare-and-set on the stored task."""
+        key = keys[0]
+        if key not in cache or json.loads(cache[key])["status"] != args[0]:
+            return 0
+        cache[key] = args[1]
+        return 1
+
+    redis.register_script.return_value = transition
     paid = Mock(return_value=True)
     monkeypatch.setattr(workflow_app_log, "is_cloud_edition_billing_paid_plan", paid)
+    publish = Mock()
+    monkeypatch.setattr(prepare_log_export_task, "apply_async", publish)
+    files: dict[str, str] = {}
+    storage = Mock()
+
+    def save_file(key: str, path: Path) -> None:
+        """Read the completed file while it is available for upload."""
+        files[key] = path.read_text(encoding="utf-8-sig")
+
+    storage.save_file.side_effect = save_file
+    monkeypatch.setattr(log_export_adapters, "storage", storage)
+    logs = WorkflowAppLogQueryService(logs=WorkflowAppLogQueryRepository(session_factory=sqlite_session_factory))
     app.extensions["application_services"] = SimpleNamespace(
-        workflow_app_logs=WorkflowAppLogQueryService(
-            logs=WorkflowAppLogQueryRepository(session_factory=sqlite_session_factory)
-        ),
+        workflow_app_logs=logs,
         workflow_log_exports=WorkflowLogExportService(
-            save_task=RedisLogExportTasks(
-                redis=redis, task_type=WorkflowLogExportTask, key_prefix="workflow_log_export"
-            ).save,
+            tasks=RedisLogExportTasks(redis=redis, task_type=WorkflowLogExportTask, key_prefix="workflow_log_export"),
+            dispatch=partial(log_export_adapters.dispatch_log_export, export_kind="workflow"),
+            store_csv=log_export_adapters.store_log_export_csv,
+            write_csv=WorkflowLogCsvWriter(logs=logs).write_csv,
         ),
     )
     ExternalApi(app).add_resource(workflow_app_log.WorkflowLogExportApi, "/apps/<uuid:app_id>/workflow-log-exports")
@@ -124,6 +189,10 @@ def export_client(
         account.id,
         redis,
         paid,
+        publish,
+        storage,
+        files,
+        run.id,
     )
     with app.app_context():
         db.session.remove()
@@ -161,6 +230,16 @@ def test_create_workflow_log_export_saves_the_admitted_scope_and_filters(export_
         ttl,
         task_id,
     )
+    export_client.publish.assert_called_once_with(
+        kwargs={
+            "tenant_id": export_client.tenant_id,
+            "app_id": export_client.app_id,
+            "task_id": task_id,
+            "export_kind": "workflow",
+        },
+        task_id=task_id,
+        expires=task.expires_at,
+    )
 
 
 @pytest.mark.parametrize(
@@ -183,3 +262,45 @@ def test_create_workflow_log_export_requires_cloud_entitlement(export_client: _E
 
     assert response.status_code == 403
     export_client.redis.setex.assert_not_called()
+
+
+def test_workflow_export_worker_uploads_once_and_marks_task_ready(export_client: _ExportClient) -> None:
+    response = export_client.client.post(
+        export_client.path,
+        headers=export_client.headers,
+        json={"status": "succeeded", "account_ids": [export_client.account_id]},
+    )
+    assert response.status_code == 202
+    arguments = export_client.publish.call_args.kwargs["kwargs"]
+    with export_client.client.application.app_context():
+        prepare_log_export_task.run(**arguments)
+        prepare_log_export_task.run(**arguments)
+
+    key = export_client.redis.setex.call_args_list[0].args[0]
+    task = WorkflowLogExportTask.model_validate_json(export_client.redis.get(key))
+    assert task.status is LogExportStatus.READY
+    assert (
+        task.storage_key == f"workflow-log-exports/{export_client.tenant_id}/{export_client.app_id}/{task.task_id}.csv"
+    )
+    (row,) = csv.DictReader(StringIO(export_client.files[task.storage_key]))
+    assert (row["app_type"], row["run_id"], row["status"], row["trigger_by"]) == (
+        "Workflow",
+        export_client.run_id,
+        "succeeded",
+        "schedule",
+    )
+    assert row["account_id"] == export_client.account_id
+    assert json.loads(row["app_response"]) == {"result": "ready"}
+    export_client.storage.save_file.assert_called_once()
+
+
+def test_workflow_export_marks_task_failed_if_publication_fails(export_client: _ExportClient) -> None:
+    export_client.publish.side_effect = RuntimeError("broker unavailable")
+
+    response = export_client.client.post(export_client.path, headers=export_client.headers, json={})
+
+    assert response.status_code == 500
+    key = export_client.redis.setex.call_args_list[0].args[0]
+    task = WorkflowLogExportTask.model_validate_json(export_client.redis.get(key))
+    assert task.status is LogExportStatus.FAILED
+    export_client.storage.save_file.assert_not_called()

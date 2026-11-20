@@ -31,8 +31,8 @@ from services.entities.conversation_entities import ConsoleConversationLogFilter
 from services.retention.conversation.log_export_service import (
     ConversationLogExportService,
     ConversationLogExportTask,
-    ConversationLogExportTaskStore,
 )
+from services.retention.log_export_task import LogExportTaskStore
 from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_message
 
 
@@ -103,7 +103,7 @@ def test_prepare_export_records_only_claimed_work(outcome: Literal["claim_lost",
         created_at=created_at,
         expires_at=created_at + timedelta(days=1),
     )
-    tasks = Mock(spec=ConversationLogExportTaskStore)
+    tasks = Mock(spec=LogExportTaskStore)
     tasks.get.return_value = task
     tasks.transition.return_value = outcome != "claim_lost"
     store_csv = Mock(side_effect=OSError("upload failed") if outcome == "failed" else None)
@@ -246,7 +246,7 @@ def test_console_log_csv_exports_all_turns_of_matching_conversations_in_batches(
     repository = ConversationRepository(session_factory=sqlite_session_factory)
     service = ConversationLogExportService(
         conversations=repository,
-        tasks=Mock(spec=ConversationLogExportTaskStore),
+        tasks=Mock(spec=LogExportTaskStore),
         dispatch=Mock(),
         store_csv=Mock(),
         open_csv=Mock(),

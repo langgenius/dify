@@ -6,6 +6,7 @@ import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from functools import partial
 from typing import cast
 from uuid import uuid4
 
@@ -219,12 +220,9 @@ from services.recommended_app_package_service import RecommendedAppPackageServic
 from services.recommended_app_query_service import RecommendedAppQueryService
 from services.remote_file_service import RemoteFileService
 from services.resource_access_token_service import ResourceAccessTokenService
-from services.retention.conversation.log_export_adapters import (
-    dispatch_conversation_log_export,
-    open_conversation_log_export_csv,
-    store_conversation_log_export_csv,
-)
+from services.retention.conversation.log_export_adapters import open_conversation_log_export_csv
 from services.retention.conversation.log_export_service import ConversationLogExportService, ConversationLogExportTask
+from services.retention.log_export_adapters import dispatch_log_export, store_log_export_csv
 from services.retention.log_export_task_cache import RedisLogExportTasks
 from services.retention.workflow_run.archive_download_adapters import (
     dispatch_workflow_run_archive_deletion_task,
@@ -233,6 +231,7 @@ from services.retention.workflow_run.archive_download_adapters import (
 )
 from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
 from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveService
+from services.retention.workflow_run.log_export_csv import WorkflowLogCsvWriter
 from services.retention.workflow_run.log_export_service import WorkflowLogExportService, WorkflowLogExportTask
 from services.saved_message_service import SavedMessageService
 from services.schema_definition_service import SchemaDefinitionService
@@ -667,6 +666,7 @@ def build_application_services(
         session_factory=database_client,
         repository=messages,
     )
+    workflow_app_logs = WorkflowAppLogQueryService(logs=WorkflowAppLogQueryRepository(session_factory=database_client))
 
     return ApplicationServices(
         annotation_commands=AnnotationCommandService(
@@ -704,8 +704,8 @@ def build_application_services(
             tasks=RedisLogExportTasks(
                 redis=redis, task_type=ConversationLogExportTask, key_prefix="conversation_log_export"
             ),
-            dispatch=dispatch_conversation_log_export,
-            store_csv=store_conversation_log_export_csv,
+            dispatch=partial(dispatch_log_export, export_kind="conversation"),
+            store_csv=store_log_export_csv,
             open_csv=open_conversation_log_export_csv,
         ),
         accounts=account_services,
@@ -918,13 +918,12 @@ def build_application_services(
         ),
         workspaces=workspace_services,
         triggers=triggers,
-        workflow_app_logs=WorkflowAppLogQueryService(
-            logs=WorkflowAppLogQueryRepository(session_factory=database_client),
-        ),
+        workflow_app_logs=workflow_app_logs,
         workflow_log_exports=WorkflowLogExportService(
-            save_task=RedisLogExportTasks(
-                redis=redis, task_type=WorkflowLogExportTask, key_prefix="workflow_log_export"
-            ).save,
+            tasks=RedisLogExportTasks(redis=redis, task_type=WorkflowLogExportTask, key_prefix="workflow_log_export"),
+            dispatch=partial(dispatch_log_export, export_kind="workflow"),
+            store_csv=store_log_export_csv,
+            write_csv=WorkflowLogCsvWriter(logs=workflow_app_logs).write_csv,
         ),
         workflow_comments=WorkflowCommentService(
             threads=workflow_comment_repository,

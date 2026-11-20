@@ -1,7 +1,6 @@
 """Create export tasks and write CSV for the logs of one Console conversation app."""
 
 import json
-import logging
 from collections.abc import Callable, Generator, Iterable
 from datetime import UTC
 from typing import Protocol, TextIO
@@ -15,11 +14,14 @@ from services.entities.conversation_entities import (
 )
 from services.retention.log_export_csv import write_log_export_csv
 from services.retention.log_export_task import LogExportStatus as ConversationLogExportStatus
-from services.retention.log_export_task import LogExportTask
+from services.retention.log_export_task import (
+    LogExportTask,
+    LogExportTaskStore,
+    StoreLogExportFile,
+    prepare_log_export_task,
+    save_and_dispatch_log_export_task,
+)
 
-logger = logging.getLogger(__name__)
-
-type StoreLogExportFile = Callable[[str, Callable[[TextIO], int]], None]
 type LogExportDownload = str | tuple[bytes, Generator[bytes]]
 
 _LOG_EXPORT_DOWNLOAD_URL_TTL_SECONDS = 3600
@@ -50,24 +52,6 @@ class ConversationLogExportFileNotFoundError(Exception):
     """The completed export's CSV could not be opened."""
 
 
-class ConversationLogExportTaskStore(Protocol):
-    def save(self, task: ConversationLogExportTask) -> None:
-        """Persist a new task and remember it as its requester's latest for the app."""
-        ...
-
-    def get(self, *, tenant_id: str, app_id: str, task_id: str) -> ConversationLogExportTask | None:
-        """Return a live task for the exact workspace and app, or None if absent or expired."""
-        ...
-
-    def get_latest(self, *, tenant_id: str, app_id: str, requested_by: str) -> ConversationLogExportTask | None:
-        """Return the requester's latest live task for this app, or None if unavailable."""
-        ...
-
-    def transition(self, task: ConversationLogExportTask, *, from_status: ConversationLogExportStatus) -> bool:
-        """Replace a live task only from the expected status, keeping its original expiration."""
-        ...
-
-
 class ConversationLogExportStore(Protocol):
     def get_console_log_export_scope(self, context: RequestContext, app_id: str) -> ConsoleConversationScope:
         """Return the owned conversation app scope for an admitted Console caller."""
@@ -87,7 +71,7 @@ class ConversationLogExportService:
         self,
         *,
         conversations: ConversationLogExportStore,
-        tasks: ConversationLogExportTaskStore,
+        tasks: LogExportTaskStore[ConsoleConversationLogFilters],
         dispatch: Callable[[ConversationLogExportTask], None],
         store_csv: StoreLogExportFile,
         open_csv: Callable[[str, int, str], LogExportDownload],
@@ -119,12 +103,7 @@ class ConversationLogExportService:
             requested_by=requested_by,
             filters=filters,
         )
-        try:
-            self._tasks.save(task)
-            self._dispatch(task)
-        except Exception:
-            self._mark_failed(task)
-            raise
+        save_and_dispatch_log_export_task(task, tasks=self._tasks, dispatch=self._dispatch)
         return task
 
     def get_task(self, *, scope: ConsoleConversationScope, task_id: str) -> ConversationLogExportTask:
@@ -152,49 +131,15 @@ class ConversationLogExportService:
         return self._open_csv(task.storage_key, expires_in, filename)
 
     def prepare_task(self, *, tenant_id: str, app_id: str, task_id: str) -> None:
-        """Claim a live pending task and store its CSV before setting ready.
-
-        Resolve the app against the saved workspace and account. Only the worker that
-        claims the pending state may write the artifact. Record ordinary failures before
-        propagating them, and leave missing or previously claimed tasks alone.
-        """
+        """Load the task for the workspace and app and prepare its CSV if it is still pending."""
         task = self._tasks.get(tenant_id=tenant_id, app_id=app_id, task_id=task_id)
-        if task is None or task.status is not ConversationLogExportStatus.PENDING:
-            return
-        processing = task.model_copy(update={"status": ConversationLogExportStatus.PROCESSING})
-        if not self._tasks.transition(processing, from_status=ConversationLogExportStatus.PENDING):
-            return
-
-        context = RequestContext(
-            request_id=task.task_id, trace_id=None, account_id=task.requested_by, active_workspace_id=task.tenant_id
+        prepare_log_export_task(
+            task,
+            tasks=self._tasks,
+            storage_prefix="conversation-log-exports",
+            store_csv=self._store_csv,
+            write_csv=self.write_csv,
         )
-        storage_key = f"conversation-log-exports/{task.tenant_id}/{task.app_id}/{task.task_id}.csv"
-        try:
-            self._store_csv(
-                storage_key, lambda output: self.write_csv(context, task.app_id, filters=task.filters, output=output)
-            )
-            ready = processing.model_copy(
-                update={"status": ConversationLogExportStatus.READY, "storage_key": storage_key}
-            )
-            self._tasks.transition(ready, from_status=ConversationLogExportStatus.PROCESSING)
-        except Exception:
-            self._mark_failed(processing)
-            raise
-
-    def _mark_failed(self, task: ConversationLogExportTask) -> None:
-        """Record failure from the last owned state while preserving the original exception."""
-        try:
-            self._tasks.transition(
-                task.model_copy(update={"status": ConversationLogExportStatus.FAILED}),
-                from_status=task.status,
-            )
-        except Exception:
-            logger.exception(
-                "Failed to record conversation log export failure: tenant=%s app=%s task=%s",
-                task.tenant_id,
-                task.app_id,
-                task.task_id,
-            )
 
     def write_csv(
         self,
