@@ -100,7 +100,7 @@ async function openExport(hasExistingTask = false) {
         return Response.json({ data: conversations, total: 38, page: 2, limit: 10, has_more: true })
       case 'chat-conversations/identity-options':
         return Response.json({
-          data: url.searchParams.get('keyword') === olderEndUser.label ? [olderEndUser] : [],
+          data: url.searchParams.get('keyword') === '42' ? [olderEndUser] : [],
         })
       case 'annotations/count':
         return Response.json({ count: 0 })
@@ -312,7 +312,7 @@ it('shows an inline identity list and previews selections beyond the visible Log
     .element(dialog.getByRole('button', { name: 'common.operation.clear' }))
     .not.toBeInTheDocument()
   const search = dialog.getByRole('searchbox', { name: 'common.operation.search' })
-  await search.fill(olderEndUser.label)
+  await search.fill('42')
   await identities.getByRole('checkbox', { name: olderEndUser.label }).click()
   await expect
     .element(dialog.getByRole('status'))

@@ -283,7 +283,7 @@ class ConversationRepository:
     def search_console_log_identities(
         self, context: RequestContext, app_id: str, *, keyword: str
     ) -> tuple[ConsoleLogIdentity, ...]:
-        """Find exact end-user IDs and matching workspace accounts with visible app logs."""
+        """Find identities with visible app logs, matching labels by substring or IDs exactly."""
         try:
             identity_id = str(UUID(keyword))
         except ValueError:
@@ -299,23 +299,24 @@ class ConversationRepository:
                     keyword=None, start=None, end=None, annotation_status="all", sort_by="-created_at"
                 ),
             )
-            end_user_match = EndUser.session_id == keyword
-            account_match = Account.name.ilike(f"%{escape_like_pattern(keyword)}%", escape="\\")
+            pattern = f"%{escape_like_pattern(keyword)}%"
+            exact_end_user_match = EndUser.session_id == keyword
+            account_match = Account.name.ilike(pattern, escape="\\")
             if identity_id is not None:
-                end_user_match = or_(end_user_match, EndUser.id == identity_id)
+                exact_end_user_match = or_(exact_end_user_match, EndUser.id == identity_id)
                 account_match = or_(account_match, Account.id == identity_id)
 
             end_users = session.execute(
                 select(EndUser.id, EndUser.session_id)
                 .where(
                     EndUser.tenant_id == app.tenant_id,
-                    end_user_match,
+                    or_(exact_end_user_match, EndUser.session_id.ilike(pattern, escape="\\")),
                     visible_logs.where(
                         Conversation.from_source == ConversationFromSource.API,
                         Conversation.from_end_user_id == EndUser.id,
                     ).exists(),
                 )
-                .order_by(EndUser.id)
+                .order_by(exact_end_user_match.desc(), EndUser.id)
                 .limit(_LOG_IDENTITY_SEARCH_LIMIT)
             ).all()
             accounts = session.execute(

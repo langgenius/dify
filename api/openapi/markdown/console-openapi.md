@@ -3067,7 +3067,7 @@ Search for end users or workspace accounts with visible chat logs in this app
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string (uuid) |
-| keyword | query | Full end-user ID, account name, or account ID | Yes | string |
+| keyword | query | Part of an end-user ID or account name, or an exact internal ID | Yes | string |
 
 #### Responses
 

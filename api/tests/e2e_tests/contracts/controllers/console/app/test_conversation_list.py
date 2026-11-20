@@ -399,6 +399,7 @@ def test_list_and_export_preview_filter_by_selected_identities(
 def test_search_log_identities_matches_only_visible_logs_in_the_app(harness: _Harness) -> None:
     harness.mode(AppMode.ADVANCED_CHAT)
     user_ids = [str(uuid4()) for _ in range(5)]
+    partial_user_id = str(UUID(int=1))
     conversations = (
         _conversation(harness),
         _conversation(harness, app_id=str(uuid4())),
@@ -406,6 +407,7 @@ def test_search_log_identities_matches_only_visible_logs_in_the_app(harness: _Ha
         _conversation(harness, invoke_from="debugger"),
         _conversation(harness),
     )
+    partial_log = _conversation(harness)
     account_log = _conversation(harness, invoke_from="explore")
     with harness.factory.begin() as session:
         for index, (conversation, user_id) in enumerate(zip(conversations, user_ids, strict=True)):
@@ -420,6 +422,17 @@ def test_search_log_identities_matches_only_visible_logs_in_the_app(harness: _Ha
             stored = session.get_one(Conversation, conversation.id)
             stored.from_end_user_id = user_id
             stored.from_account_id = None
+        session.add(
+            make_end_user(
+                end_user_id=partial_user_id,
+                tenant_id=harness.tenant.id,
+                app_id=harness.target.id,
+                session_id="other-customer-42",
+            )
+        )
+        stored_partial = session.get_one(Conversation, partial_log.id)
+        stored_partial.from_end_user_id = partial_user_id
+        stored_partial.from_account_id = None
         session.get_one(Conversation, account_log.id).from_source = ConversationFromSource.CONSOLE
         session.get_one(Account, harness.account.id).name = "Support Agent"
         other = make_account(account_id=str(uuid4()), name="Support Admin", email="admin@example.test")
@@ -427,9 +440,12 @@ def test_search_log_identities_matches_only_visible_logs_in_the_app(harness: _Ha
         session.add(TenantAccountJoin(tenant_id=harness.tenant.id, account_id=other.id))
 
     end_user = {"id": user_ids[0], "label": "customer-42", "source": "end-user"}
+    partial_user = {"id": partial_user_id, "label": "other-customer-42", "source": "end-user"}
     account = {"id": harness.account.id, "label": "Support Agent", "source": "account"}
     for keyword, expected in (
-        (" customer-42 ", [end_user]),
+        (" customer-42 ", [end_user, partial_user]),
+        ("42", [partial_user, end_user]),
+        ("MER-4", [partial_user, end_user]),
         (user_ids[0], [end_user]),
         ("port ag", [account]),
         (harness.account.id, [account]),

@@ -117,7 +117,9 @@ class ChatConversationQuery(BaseConversationQuery, ChatConversationFilterQuery):
 class ConversationLogIdentitySearchQuery(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    keyword: str = Field(min_length=1, max_length=255, description="Full end-user ID, account name, or account ID")
+    keyword: str = Field(
+        min_length=1, max_length=255, description="Part of an end-user ID or account name, or an exact internal ID"
+    )
 
 
 class ConversationLogIdentityResponse(ResponseModel):
