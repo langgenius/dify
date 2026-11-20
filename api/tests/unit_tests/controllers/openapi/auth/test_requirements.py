@@ -1048,6 +1048,7 @@ ROUTES: tuple[Route, ...] = (
         frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
     ),
     Route("node_types.list", "GET", "/node-types", frozenset({Trait.ACCOUNT_PRIMARY, Trait.EXTERNAL_REACHABLE})),
+    Route("transfers.prepare", "POST", "/transfers", frozenset({Trait.ACCOUNT_PRIMARY, Trait.EXTERNAL_REACHABLE})),
     Route(
         "node_types.describe",
         "GET",
@@ -1637,6 +1638,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     "app_dsl.check": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "app_create.workflow": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "node_types.list": dict(_ANY_BEARER),
+    "transfers.prepare": dict(_ANY_BEARER),
     "app_workflow.node_run.workflow": dict(_ACCOUNT_EDITOR_APP),
     "app_info.describe.workflow": dict(_ACCOUNT_READER_SETTINGS),
     "app_info.set.workflow": dict(_ACCOUNT_EDITOR_SETTINGS),
@@ -1855,6 +1857,7 @@ def _draft_req(mode: _auth_matrix_AppMode) -> tuple[Requirement, ...]:
 
 
 _REQ_NODE_TYPES: tuple[Requirement, ...] = ()
+_REQ_TRANSFER_PREPARE = (CheckSubject(allowed=(*_ACCOUNT_OR_EXTERNAL, ResourceAccessSubject)),)
 _REQ_APP_CREATE = (
     CheckSubject(allowed=_ACCOUNT),
     CheckScope(Scope.WORKSPACE_WRITE),
@@ -2123,6 +2126,7 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "app_workflow.env.delete": _REQ_ENV_WRITE,
     "node_types.list": _REQ_NODE_TYPES,
     "node_types.describe": _REQ_NODE_TYPES,
+    "transfers.prepare": _REQ_TRANSFER_PREPARE,
     "app_create.workflow": _REQ_APP_CREATE,
     "app_create.advanced_chat": _REQ_APP_CREATE,
     "app_workflow.node_run.workflow": _draft_req(_auth_matrix_AppMode.WORKFLOW),
@@ -2713,6 +2717,9 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("delete", "/workspaces/{workspace_id}/workflow-tools/{workflow_tool_id}"): frozenset({"200", "default"}),
     ("get", "/_health"): frozenset({"200", "default"}),
     ("post", "/mcp"): frozenset({"200", "default"}),
+    ("post", "/transfers"): frozenset({"201", "422", "default"}),
+    ("post", "/transfers/{transfer_id}"): frozenset({"200", "default"}),
+    ("get", "/transfers/{transfer_id}"): frozenset({"200", "default"}),
     ("get", "/_version"): frozenset({"200", "default"}),
     ("get", "/account"): frozenset({"200", "default"}),
     ("get", "/account/sessions"): frozenset({"200", "422", "default"}),
@@ -3153,10 +3160,10 @@ class TestAuthMatrixCases:
 
         expected = {(route.method, _rule_path(route)) for route in ROUTES}
         assert guarded == expected
-        # The remainder is the device-flow, documentation and catalog surface. Its size is
+        # The remainder is the device-flow, documentation, catalog, MCP and transfer-byte surface. Its size is
         # pinned rather than enumerated: a list of exemptions rots silently — the one this
         # replaced still named `swagger.json`, a route that is not registered at all.
-        assert len(unguarded) == 15
+        assert len(unguarded) == 17
 
     @staticmethod
     @pytest.mark.parametrize("route", ROUTES, ids=[route.id for route in ROUTES])

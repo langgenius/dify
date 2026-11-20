@@ -119,6 +119,15 @@ class OpenApiErrorCode(StrEnum):
     SKILL_PACKAGE_INVALID = "skill_package_invalid"
     SKILL_REQUEST_REJECTED = "skill_request_rejected"
     MAX_KEYS_EXCEEDED = "max_keys_exceeded"
+    UPLOAD_NOT_FOUND = "upload_not_found"
+    UPLOAD_NOT_RECEIVED = "upload_not_received"
+    UPLOAD_LINK_EXPIRED = "upload_link_expired"
+    DOWNLOAD_LINK_EXPIRED = "download_link_expired"
+    UPLOAD_ALREADY_RECEIVED = "upload_already_received"
+    UPLOAD_TOO_LARGE = "upload_too_large"
+    UPLOAD_NOT_A_ZIP = "upload_not_a_zip"
+    UPLOAD_ARCHIVE_INVALID = "upload_archive_invalid"
+    TRANSFERS_BUSY = "transfers_busy"
 
 
 class ErrorDetail(BaseModel):
@@ -641,6 +650,79 @@ class AppApiKeyNotReady(OpenApiError):  # noqa: N818
     code = 409
     error_code = OpenApiErrorCode.AGENT_NOT_PUBLISHED
     description = "Publish the Agent before enabling Web App or API access."
+
+
+class UploadNotFound(OpenApiError):  # noqa: N818
+    """404 on the transfer byte route; 400 when the id sits in a request body."""
+
+    error_code = OpenApiErrorCode.UPLOAD_NOT_FOUND
+    description = "No upload for this login. It is unknown, expired, or was dropped to make room."
+
+    def __init__(self, message: str, *, status_code: int) -> None:
+        super().__init__(message)
+        self.code = status_code
+
+
+class UploadNotReceived(OpenApiError):  # noqa: N818
+    code = 400
+    error_code = OpenApiErrorCode.UPLOAD_NOT_RECEIVED
+    description = "The upload was prepared but no file reached this server."
+
+
+class UploadLinkExpired(OpenApiError):  # noqa: N818
+    code = 410
+    error_code = OpenApiErrorCode.UPLOAD_LINK_EXPIRED
+    description = "The upload link has expired. Prepare again."
+
+
+class DownloadLinkExpired(OpenApiError):  # noqa: N818
+    code = 410
+    error_code = OpenApiErrorCode.DOWNLOAD_LINK_EXPIRED
+    description = (
+        "The download link has expired. Pass the id to an operation, or run the operation again for a new link."
+    )
+
+
+class UploadAlreadyReceived(OpenApiError):  # noqa: N818
+    code = 409
+    error_code = OpenApiErrorCode.UPLOAD_ALREADY_RECEIVED
+    description = "This upload already holds a different file. Prepare again to send another."
+
+
+class UploadTooLarge(OpenApiError):  # noqa: N818
+    code = 413
+    error_code = OpenApiErrorCode.UPLOAD_TOO_LARGE
+    description = "The file is larger than this server allows."
+
+
+class UploadNotAZip(OpenApiError):  # noqa: N818
+    code = 400
+    error_code = OpenApiErrorCode.UPLOAD_NOT_A_ZIP
+    description = "Send a zip of the folder's contents."
+
+
+class UploadArchiveInvalid(OpenApiError):  # noqa: N818
+    code = 400
+    error_code = OpenApiErrorCode.UPLOAD_ARCHIVE_INVALID
+    description = "The folder's zip cannot be unpacked."
+
+
+class UploadNotOneFile(OpenApiError):  # noqa: N818
+    code = 400
+    error_code = OpenApiErrorCode.BAD_REQUEST
+    description = "Send exactly one file part."
+
+
+class TransfersBusy(OpenApiError):  # noqa: N818
+    """429 with ``Retry-After``: every slot for transfer bytes in this process is taken."""
+
+    code = 429
+    error_code = OpenApiErrorCode.TRANSFERS_BUSY
+    description = "This server is moving as many files as it allows."
+
+    def __init__(self, *, retry_after_seconds: int) -> None:
+        super().__init__(f"{self.description} Retry after {retry_after_seconds} seconds.")
+        self.headers = {"Retry-After": str(retry_after_seconds)}
 
 
 def require_uuid(value: str, *, not_found: type[OpenApiError]) -> str:
