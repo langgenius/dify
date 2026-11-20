@@ -234,12 +234,14 @@ def test_setup_persists_initialized_owner_before_telemetry(
             raise FileNotFoundError
         return files[filename]
 
-    def save(filename: str, encoded: bytes) -> None:
-        assert filename not in files
+    def save_if_absent(filename: str, encoded: bytes) -> bool:
+        if filename in files:
+            return False
         files[filename] = encoded
+        return True
 
     storage.load_once.side_effect = load
-    storage.save.side_effect = save
+    storage.save_if_absent.side_effect = save_if_absent
     credential_keys = DeploymentCredentialService(
         sqlite_session_factory,
         LocalDeploymentKeyBackend(storage),

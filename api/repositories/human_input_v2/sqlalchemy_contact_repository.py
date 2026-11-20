@@ -603,7 +603,7 @@ class SQLAlchemyContactIMBindingRepository:
         """Require resolved Contact IDs; return only current Channel defaults, ignoring overrides."""
         if self._channel is None or not contact_ids:
             return ()
-        selected_ids = set(contact_ids)
+        bindings = SQLAlchemyIMBindingRepository(self._session, self._channel.id).list_all(contact_ids=contact_ids)
         return tuple(
             IMBinding(
                 id=binding.id,
@@ -612,8 +612,7 @@ class SQLAlchemyContactIMBindingRepository:
                 identity_id=binding.identity_id,
                 provider=self._channel.provider,
             )
-            for binding in SQLAlchemyIMBindingRepository(self._session, self._channel.id).list_all()
-            if binding.contact_id in selected_ids
+            for binding in bindings
         )
 
     def get_im_bindings(

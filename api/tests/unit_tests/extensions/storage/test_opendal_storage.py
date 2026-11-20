@@ -65,6 +65,18 @@ class TestOpenDALFsDefaultRoot:
         # Cleanup
         storage.delete("test_env_root.txt")
 
+    def test_atomic_creation_preserves_existing_bytes(self, tmp_path: Path) -> None:
+        storage = OpenDALStorage("fs", root=str(tmp_path))
+        assert storage.save_if_absent("keys/private.pem", b"original")
+        assert not storage.save_if_absent("keys/private.pem", b"replacement")
+        assert storage.load_once("keys/private.pem") == b"original"
+
+    def test_unsupported_conditional_write_fails_without_creating_material(self) -> None:
+        storage = OpenDALStorage("memory")
+        with pytest.raises(OSError, match="atomic creation failed"):
+            storage.save_if_absent("key", b"material")
+        assert not storage.exists("key")
+
 
 class TestOpenDAL:
     @pytest.fixture(autouse=True)

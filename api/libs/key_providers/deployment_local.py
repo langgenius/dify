@@ -21,7 +21,7 @@ _KEY_ERROR = "Deployment credential key is unavailable"
 
 class DeploymentKeyStorage(Protocol):
     def load_once(self, filename: str) -> bytes: ...
-    def save(self, filename: str, data: bytes) -> None: ...
+    def save_if_absent(self, filename: str, data: bytes) -> bool: ...
 
 
 class LocalDeploymentKeyBackend:
@@ -29,7 +29,7 @@ class LocalDeploymentKeyBackend:
         self._storage = storage
 
     def provision(self, instance_id: str, reference: str | None) -> str:
-        """Require serialized provisioning; create/recover without replacing existing material."""
+        """Recover or atomically create material; even an expired initializer cannot replace a successor's key."""
         path = self._path(instance_id)
         try:
             encoded = self._storage.load_once(path)
@@ -38,8 +38,9 @@ class LocalDeploymentKeyBackend:
                 raise CredentialKeyUnavailableError(_KEY_ERROR) from None
             private_key = RSA.generate(2048)
             try:
-                self._storage.save(path, private_key.export_key())
-            except OSError:
+                if not self._storage.save_if_absent(path, private_key.export_key()):
+                    private_key = self._private_key(self._storage.load_once(path))
+            except (OSError, NotImplementedError):
                 raise CredentialKeyUnavailableError(_KEY_ERROR) from None
         except OSError:
             raise CredentialKeyUnavailableError(_KEY_ERROR) from None

@@ -60,8 +60,11 @@ class _Storage:
             raise FileNotFoundError
         return self.files[filename]
 
-    def save(self, filename: str, data: bytes) -> None:
+    def save_if_absent(self, filename: str, data: bytes) -> bool:
+        if filename in self.files:
+            return False
         self.files[filename] = data
+        return True
 
 
 @pytest.fixture(scope="module")

@@ -286,6 +286,33 @@ def _directory_service(session: Session) -> ContactManagementService:
     )
 
 
+def test_organization_binding_reads_materialize_only_the_requested_defaults(binding_context: _BindingContext) -> None:
+    """A Contact read must not load the other Contacts' deployment bindings or workspace overrides."""
+    with binding_context.sessions.begin() as session:
+        repository = SQLAlchemyIMBindingRepository(session, _CHANNEL_ID)
+        selected = repository.create(IMBindingAssignment(_CONTACT_ID, _IDENTITY_ID, _NOW), bound_by_account_id=None)
+        repository.create(IMBindingAssignment(_OTHER_CONTACT_ID, _OTHER_IDENTITY_ID, _NOW), bound_by_account_id=None)
+        repository.set_workspace_override(
+            _TENANT_ID,
+            IMBindingAssignment(_CONTACT_ID, _OTHER_IDENTITY_ID, _NOW),
+            bound_by_account_id=None,
+        )
+    loaded: set[str] = set()
+
+    def observe_loaded(_session: Session, record: object) -> None:
+        if isinstance(record, HumanInputIMBinding):
+            loaded.add(record.id)
+
+    with binding_context.sessions() as session:
+        event.listen(session, "loaded_as_persistent", observe_loaded)
+        repository = SQLAlchemyContactIMBindingRepository(session, _channel())
+        bindings = repository.get_organization_im_bindings((_CONTACT_ID, _CONTACT_ID))
+        assert tuple(binding.id for binding in bindings) == (selected.id,)
+        assert bindings[0].scope is IMBindingScope.ORGANIZATION
+        assert repository.get_organization_im_bindings(()) == ()
+    assert loaded == {str(selected.id)}
+
+
 def test_organization_defaults_and_workspace_overrides_share_contact_identity(binding_context: _BindingContext) -> None:
     """One service composes both Directories without leaking effective workspace overrides into Organization reads."""
     with binding_context.sessions.begin() as session:

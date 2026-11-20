@@ -28,7 +28,12 @@ class HuaweiObsStorage(BaseStorage):
     @override
     def load_once(self, filename: str) -> bytes:
         # TODO: Huawei SDK lacks proper typing
-        data: bytes = self.client.getObject(bucketName=self.bucket_name, objectKey=filename).body.response.read()  # type: ignore
+        response: Any = self.client.getObject(bucketName=self.bucket_name, objectKey=filename)
+        if response.status == 404 and response.errorCode == "NoSuchKey":
+            raise FileNotFoundError("File not found")
+        if response.status >= 300:
+            raise OSError("OBS read failed")
+        data: bytes = response.body.response.read()
         return data
 
     @override
