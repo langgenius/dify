@@ -1,11 +1,13 @@
 """Agent API access uses real admission, persistence and committed update events."""
 
+import json
 from collections.abc import Iterator
 from dataclasses import dataclass
 from http import HTTPStatus
 from uuid import uuid4
 
 import pytest
+from dify_agent.protocol.tool_call_limits import AGENT_TOOL_ACTIVITY_META_KEY, AgentToolActivity, ToolCallLimitMetadata
 from flask import Blueprint, Flask
 from flask.testing import FlaskClient
 from redis import Redis
@@ -15,8 +17,10 @@ from werkzeug.test import TestResponse
 
 from constants import HEADER_NAME_CSRF_TOKEN
 from controllers.console.agent.api_access import AgentApiAccessApi, AgentApiStatusApi
-from controllers.console.agent.roster import AgentAppApi
+from controllers.console.agent.roster import AgentAppApi, AgentLogMessagesApi
+from controllers.console.app.message import AgentChatMessageListApi
 from controllers.console.wraps import _is_setup_completed
+from core.app.entities.app_invoke_entities import InvokeFrom
 from enums import DeploymentEdition
 from events.app_event import app_was_updated
 from extensions.ext_application_services import build_application_services
@@ -30,10 +34,11 @@ from models import Account, DifySetup, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole
 from models.agent import Agent, AgentConfigRevision, AgentConfigRevisionOperation, AgentScope, AgentSource
 from models.engine import db
-from models.enums import ApiTokenType
-from models.model import ApiToken, App, AppMode
+from models.enums import ApiTokenType, ConversationFromSource, CreatorUserRole, MessageStatus
+from models.model import ApiToken, App, AppMode, MessageAgentThought
 from services.entities.app_entities import AppEvent
 from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.model_factories import make_conversation, make_message
 
 
 @dataclass(frozen=True)
@@ -128,6 +133,8 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
         api.add_resource(AgentApiAccessApi, "/agent/<uuid:agent_id>/api-access")
         api.add_resource(AgentApiStatusApi, "/agent/<uuid:agent_id>/api-enable")
         api.add_resource(AgentAppApi, "/agent/<uuid:agent_id>")
+        api.add_resource(AgentLogMessagesApi, "/agent/<uuid:agent_id>/logs/<uuid:conversation_id>/messages")
+        api.add_resource(AgentChatMessageListApi, "/agent/<uuid:agent_id>/chat-messages")
         app.register_blueprint(blueprint)
         now = naive_utc_now()
         with sqlite_session_factory.begin() as session:
@@ -307,3 +314,99 @@ def test_rbac_agent_owner_can_change_access_as_a_member(harness: Harness) -> Non
         app = session.get(App, app_id)
         assert app is not None
         assert app.enable_api
+
+
+def test_agent_chat_history_and_logs_return_persisted_activity_without_tracing(harness: Harness) -> None:
+    agent_id, app_id = harness.create_agent()
+    conversation_id, message_id = str(uuid4()), str(uuid4())
+    activity = AgentToolActivity(
+        id="runtime-1:search-4",
+        run_id="runtime-1",
+        tool_call_id="search-4",
+        tool_name="search",
+        status="not_executed",
+        error="Call limit reached (3 per run). This request was not executed.",
+        call_limit=ToolCallLimitMetadata(
+            tool_identity="provider-operation",
+            limit=3,
+            used=3,
+            execution_status="not_executed",
+            reason="call_limit_reached",
+        ),
+    )
+    with harness.sessions.begin() as session:
+        session.add(
+            make_conversation(
+                conversation_id=conversation_id,
+                app_id=app_id,
+                mode=AppMode.AGENT,
+                name="With quota",
+                inputs={},
+                from_source=ConversationFromSource.CONSOLE,
+                from_account_id=harness.account_id,
+                invoke_from=InvokeFrom.EXPLORE,
+            )
+        )
+        session.add(
+            make_message(
+                message_id=message_id,
+                app_id=app_id,
+                conversation_id=conversation_id,
+                inputs={},
+                query="Research",
+                message={},
+                answer="Partial result",
+                status=MessageStatus.NORMAL,
+                from_source=ConversationFromSource.CONSOLE,
+                from_account_id=harness.account_id,
+                invoke_from=InvokeFrom.EXPLORE,
+                currency="USD",
+            )
+        )
+        session.add_all(
+            [
+                MessageAgentThought(
+                    message_id=message_id,
+                    position=2,
+                    tool="search",
+                    created_by_role=CreatorUserRole.ACCOUNT,
+                    created_by=harness.account_id,
+                    tool_meta_str=json.dumps(
+                        {
+                            AGENT_TOOL_ACTIVITY_META_KEY: activity.model_dump(mode="json"),
+                            "old_tool_config": {"credential": "private-config"},
+                        }
+                    ),
+                ),
+                MessageAgentThought(
+                    message_id=message_id,
+                    position=1,
+                    tool="legacy",
+                    created_by_role=CreatorUserRole.ACCOUNT,
+                    created_by=harness.account_id,
+                    observation="3/3 not executed",
+                ),
+            ]
+        )
+    base = f"/console/api/agent/{agent_id}"
+    with config_overrides_context(OPS_AGENT_TRACE_ENABLED=False):
+        logs = harness.client.get(f"{base}/logs/{conversation_id}/messages?sources=console", headers=harness.headers)
+        history = harness.client.get(f"{base}/chat-messages?conversation_id={conversation_id}", headers=harness.headers)
+    for response in (logs, history):
+        assert response.status_code == HTTPStatus.OK
+        message = response.get_json()["data"][0]
+        assert message["id"] == message_id
+        assert [thought["position"] for thought in message["agent_thoughts"]] == [1, 2]
+        assert "tool_activity" not in message["agent_thoughts"][0]
+        assert message["agent_thoughts"][1]["tool_activity"] == activity.model_dump(mode="json")
+        assert "private-config" not in response.get_data(as_text=True)
+    assert logs.get_json()["data"][0]["status"] == "success"
+    foreign_agent_id, _foreign_app_id = harness.create_agent(tenant_id=str(uuid4()))
+    for path in (
+        f"logs/{conversation_id}/messages?sources=console",
+        f"chat-messages?conversation_id={conversation_id}",
+    ):
+        assert (
+            harness.client.get(f"/console/api/agent/{foreign_agent_id}/{path}", headers=harness.headers).status_code
+            == HTTPStatus.NOT_FOUND
+        )
