@@ -68,6 +68,10 @@ class BasicVariablesConfigManager:
                 VariableEntityType.CHECKBOX,
             }:
                 variable = variables[variable_type]
+                default = variable.get("default")
+                # Studio saves selects and checkboxes left without a default as `default: ""`.
+                if default == "" and variable_type in {VariableEntityType.SELECT, VariableEntityType.CHECKBOX}:
+                    default = None
                 variable_entities.append(
                     VariableEntity(
                         type=cast(VariableEntityType, variable_type),
@@ -75,6 +79,7 @@ class BasicVariablesConfigManager:
                         description=variable.get("description") or "",
                         label=variable["label"],
                         required=variable.get("required", False),
+                        default=default,
                         max_length=variable.get("max_length"),
                         options=variable.get("options") or [],
                     )
