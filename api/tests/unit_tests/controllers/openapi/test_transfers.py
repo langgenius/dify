@@ -39,6 +39,7 @@ from extensions.ext_application_services import ApplicationServices
 from libs.datetime_utils import to_utc_iso
 from libs.oauth_bearer import AuthContext, reset_auth_ctx, set_auth_ctx
 from machinery.context import RequestContext
+from models.file_transfer import MIME_TYPE_MAX_LENGTH, NAME_MAX_LENGTH
 from repositories.file_transfer_repository import SQLAlchemyFileTransferRepository
 from services.file_transfer import (
     FileTransferService,
@@ -670,3 +671,24 @@ def test_a_wrong_download_token_is_refused_before_a_slot_is_needed(world: Transf
     response = world.get(f"{_HOST}/openapi/v1/transfers/{parked.transfer.id}?token=nope")
 
     assert (response.status_code, response.get_json()["code"]) == (404, OpenApiErrorCode.UPLOAD_NOT_FOUND)
+
+
+def test_a_file_name_longer_than_its_column_answers_400(world: TransferWorld) -> None:
+    url = world.prepare().get_json()["upload_url"]
+
+    response = world.upload(url, name="x" * (NAME_MAX_LENGTH + 1))
+
+    assert (response.status_code, response.get_json()["code"]) == (400, OpenApiErrorCode.UPLOAD_FIELD_TOO_LONG)
+    assert response.get_json()["message"] == (
+        f"The file name is longer than {NAME_MAX_LENGTH} characters. Send the file under a shorter one."
+    )
+    assert world.blobs.files == {}
+
+
+def test_a_mime_type_longer_than_its_column_answers_400(world: TransferWorld) -> None:
+    url = world.prepare().get_json()["upload_url"]
+    long_type = "application/" + "x" * MIME_TYPE_MAX_LENGTH
+
+    response = world.post(url, data={"file": (io.BytesIO(b"x"), "a.txt", long_type)})
+
+    assert (response.status_code, response.get_json()["code"]) == (400, OpenApiErrorCode.UPLOAD_FIELD_TOO_LONG)

@@ -1,11 +1,15 @@
 """One file parked on the server for a short time, owned by the caller that prepared or received it."""
 
 from datetime import datetime
+from typing import Final
 
 import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column
 
 from models.base import DefaultFieldsDCMixin, TypeBase
+
+NAME_MAX_LENGTH: Final = 255
+MIME_TYPE_MAX_LENGTH: Final = 255
 
 
 class FileTransfer(DefaultFieldsDCMixin, TypeBase):
@@ -27,8 +31,8 @@ class FileTransfer(DefaultFieldsDCMixin, TypeBase):
     direction: Mapped[str] = mapped_column(sa.String(8), nullable=False)
     folder: Mapped[bool] = mapped_column(sa.Boolean, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False)
-    name: Mapped[str | None] = mapped_column(sa.String(255), default=None)
-    mime_type: Mapped[str | None] = mapped_column(sa.String(255), default=None)
+    name: Mapped[str | None] = mapped_column(sa.String(NAME_MAX_LENGTH), default=None)
+    mime_type: Mapped[str | None] = mapped_column(sa.String(MIME_TYPE_MAX_LENGTH), default=None)
     size: Mapped[int | None] = mapped_column(sa.BigInteger, default=None)
     sha256: Mapped[str | None] = mapped_column(sa.String(64), default=None)
     received_at: Mapped[datetime | None] = mapped_column(sa.DateTime, default=None)

@@ -24,6 +24,7 @@ from controllers.openapi._errors import (
     TransfersBusy,
     UploadAlreadyReceived,
     UploadArchiveInvalid,
+    UploadFieldTooLong,
     UploadLinkExpired,
     UploadNotAZip,
     UploadNotFound,
@@ -44,6 +45,7 @@ from services.file_transfer import (
     TransferNotAZipError,
     TransferNotFoundError,
     TransferNotReceivedError,
+    TransferTextTooLongError,
     TransferTicket,
     TransferTooLargeError,
 )
@@ -215,6 +217,13 @@ def _(error: TransferAlreadyReceivedError, field: str | None) -> OpenApiError:
 @_refusal.register
 def _(error: TransferTooLargeError, field: str | None) -> OpenApiError:
     return UploadTooLarge(f"The file is larger than this server's limit of {error.limit / BYTES_PER_MIB:g} MiB.")
+
+
+@_refusal.register
+def _(error: TransferTextTooLongError, field: str | None) -> OpenApiError:
+    return UploadFieldTooLong(
+        f"The {error.text.label} is longer than {error.limit} characters. Send the file under a shorter one."
+    )
 
 
 @_refusal.register

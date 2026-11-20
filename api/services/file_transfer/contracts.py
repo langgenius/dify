@@ -26,6 +26,21 @@ class TransferDirection(StrEnum):
         return member
 
 
+class StoredText(StrEnum):
+    """Text a transfer stores about its file; ``label`` names it for the caller."""
+
+    label: str
+
+    NAME = ("name", "file name")
+    MIME_TYPE = ("mime_type", "MIME type")
+
+    def __new__(cls, value: str, label: str) -> StoredText:
+        member = str.__new__(cls, value)
+        member._value_ = value
+        member.label = label
+        return member
+
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class TransferLimits:
     """Every bound the module enforces. The module reads no configuration; its host fills this once."""
@@ -112,6 +127,8 @@ class TransferRepository(Protocol):
     Expiry: ``find``, ``get`` and ``token_digest`` see only transfers whose ``expires_at`` is after ``now``.
     First write wins: ``claim`` is one conditional write that records the file only while none is recorded,
     so of two concurrent claims exactly one returns True.
+    Stored text: ``create`` and ``claim`` refuse a file whose name or MIME type is longer than the table holds
+    with ``TransferTextTooLongError``, before anything is written.
     """
 
     def create(
@@ -178,6 +195,13 @@ class TransferTooLargeError(FileTransferError):
     def __init__(self, *, limit: int) -> None:
         self.limit = limit
         super().__init__(f"The file is larger than the limit of {limit} bytes.")
+
+
+class TransferTextTooLongError(FileTransferError):
+    def __init__(self, text: StoredText, *, limit: int) -> None:
+        self.text = text
+        self.limit = limit
+        super().__init__(f"The {text.label} is longer than {limit} characters.")
 
 
 class TransferNotAZipError(FileTransferError):

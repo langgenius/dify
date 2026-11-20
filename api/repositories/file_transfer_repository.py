@@ -8,8 +8,15 @@ from uuid import UUID
 from sqlalchemy import CursorResult, Select, delete, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.file_transfer import FileTransfer
-from services.file_transfer import StoredFile, Transfer, TransferDirection, TransferRepository
+from models.file_transfer import MIME_TYPE_MAX_LENGTH, NAME_MAX_LENGTH, FileTransfer
+from services.file_transfer import (
+    StoredFile,
+    StoredText,
+    Transfer,
+    TransferDirection,
+    TransferRepository,
+    TransferTextTooLongError,
+)
 
 
 def _record(row: FileTransfer) -> Transfer:
@@ -69,6 +76,7 @@ class SQLAlchemyFileTransferRepository(TransferRepository):
         row.created_at = now
         row.updated_at = now
         if file is not None:
+            _check_text(file)
             _write_file(row, file)
         with self._session_factory.begin() as session:
             session.add(row)
@@ -77,6 +85,7 @@ class SQLAlchemyFileTransferRepository(TransferRepository):
 
     @override
     def claim(self, *, transfer_id: str, file: StoredFile) -> bool:
+        _check_text(file)
         statement = (
             update(FileTransfer)
             .where(FileTransfer.id == transfer_id, FileTransfer.received_at.is_(None))
@@ -164,6 +173,16 @@ class SQLAlchemyFileTransferRepository(TransferRepository):
     def _all(self, statement: Select[tuple[FileTransfer]]) -> list[Transfer]:
         with self._session_factory() as session:
             return [_record(row) for row in session.scalars(statement)]
+
+
+def _check_text(file: StoredFile) -> None:
+    """Postcondition: the file's name and MIME type fit their columns, or ``TransferTextTooLongError``."""
+    for text, value, limit in (
+        (StoredText.NAME, file.name, NAME_MAX_LENGTH),
+        (StoredText.MIME_TYPE, file.mime_type, MIME_TYPE_MAX_LENGTH),
+    ):
+        if len(value) > limit:
+            raise TransferTextTooLongError(text, limit=limit)
 
 
 def _is_uuid(value: str) -> bool:
