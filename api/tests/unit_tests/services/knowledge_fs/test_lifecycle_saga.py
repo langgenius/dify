@@ -5,8 +5,10 @@ from datetime import datetime, timedelta
 from typing import override
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from models.file_scan import FileScanPolicy, FileScanProvider
 from models.knowledge_fs import (
     KnowledgeFSAuthorizationRevision,
     KnowledgeFSControlSpace,
@@ -17,6 +19,7 @@ from models.knowledge_fs import (
     KnowledgeFSLifecycleOutboxStatus,
     KnowledgeFSRevokeCommandPayload,
 )
+from services.file_scan import FileScanProviderInUseError, FileScanProviderService
 from services.knowledge_fs.control_space_commands import (
     KnowledgeFSControlSpaceCommandService,
     KnowledgeFSProvisionIntent,
@@ -204,7 +207,7 @@ def test_provision_replay_ack_does_not_overwrite_a_higher_remote_revision(sqlite
 
 @pytest.mark.parametrize(
     "sqlite_session",
-    [(KnowledgeFSControlSpace, KnowledgeFSLifecycleOutbox)],
+    [(KnowledgeFSControlSpace, KnowledgeFSLifecycleOutbox, FileScanProvider, FileScanPolicy)],
     indirect=True,
 )
 def test_deletion_saga_crosses_irreversible_point_and_remains_retryable_when_product_off(
@@ -220,6 +223,18 @@ def test_deletion_saga_crosses_irreversible_point_and_remains_retryable_when_pro
         state=KnowledgeFSControlSpaceState.ACTIVE,
     )
     sqlite_session.add(control_space)
+    scanner = FileScanProvider(tenant_id="tenant-1", name="Scanner", provider_type="scanii")
+    sqlite_session.add(scanner)
+    sqlite_session.flush()
+    sqlite_session.add(
+        FileScanPolicy(
+            tenant_id="tenant-1",
+            scope_type="knowledge_fs_space",
+            scope_id=control_space.id,
+            enabled=True,
+            provider_id=scanner.id,
+        )
+    )
     sqlite_session.commit()
     deletion = KnowledgeFSControlSpaceCommandService(session_maker).request_deletion(
         tenant_id="tenant-1",
@@ -244,6 +259,17 @@ def test_deletion_saga_crosses_irreversible_point_and_remains_retryable_when_pro
         lease_duration=timedelta(minutes=1),
         product_enabled=False,
     )
+    with session_maker() as session:
+        policy_during_deletion = session.scalar(
+            select(FileScanPolicy).where(
+                FileScanPolicy.tenant_id == "tenant-1",
+                FileScanPolicy.provider_id == scanner.id,
+            )
+        )
+    assert policy_during_deletion is not None
+    with pytest.raises(FileScanProviderInUseError):
+        FileScanProviderService(session_maker).delete(tenant_id="tenant-1", provider_id=scanner.id)
+
     second = runner.dispatch_one(
         worker_id="worker-1",
         now=irreversible_at + timedelta(seconds=3),
@@ -262,6 +288,17 @@ def test_deletion_saga_crosses_irreversible_point_and_remains_retryable_when_pro
     assert persisted.knowledge_space_revision == 4
     assert command is not None
     assert command.status is KnowledgeFSLifecycleOutboxStatus.SUCCEEDED
+    # A policy must remain attached while remote deletion is retryable, then be removed
+    # atomically with the local transition to DELETED so its scanner can be retired.
+    with session_maker() as session:
+        policy = session.scalar(
+            select(FileScanPolicy).where(
+                FileScanPolicy.tenant_id == "tenant-1",
+                FileScanPolicy.provider_id == scanner.id,
+            )
+        )
+    assert policy is None
+    FileScanProviderService(session_maker).delete(tenant_id="tenant-1", provider_id=scanner.id)
     assert len(remote.deletion_requests) == 2
     assert [metric.status for metric in metrics.lifecycle_tasks] == [
         "running",
@@ -269,6 +306,44 @@ def test_deletion_saga_crosses_irreversible_point_and_remains_retryable_when_pro
         "running",
         "succeeded",
     ]
+
+
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(KnowledgeFSControlSpace, FileScanProvider, FileScanPolicy)],
+    indirect=True,
+)
+def test_replaying_delete_for_deleted_space_cleans_legacy_scan_policy(sqlite_session: Session) -> None:
+    session_maker = _session_maker(sqlite_session)
+    control_space = KnowledgeFSControlSpace(
+        tenant_id="tenant-1",
+        owner_account_id="account-1",
+        provisioning_key="deleted-space",
+        state=KnowledgeFSControlSpaceState.DELETED,
+    )
+    scanner = FileScanProvider(tenant_id="tenant-1", name="Scanner", provider_type="scanii")
+    sqlite_session.add_all((control_space, scanner))
+    sqlite_session.flush()
+    sqlite_session.add(
+        FileScanPolicy(
+            tenant_id="tenant-1",
+            scope_type="knowledge_fs_space",
+            scope_id=control_space.id,
+            enabled=True,
+            provider_id=scanner.id,
+        )
+    )
+    sqlite_session.commit()
+
+    result = KnowledgeFSControlSpaceCommandService(session_maker).request_deletion(
+        tenant_id="tenant-1",
+        control_space_id=control_space.id,
+        operation_id="retry-delete",
+        idempotency_key="retry-delete-key",
+    )
+
+    assert result.outbox is None
+    FileScanProviderService(session_maker).delete(tenant_id="tenant-1", provider_id=scanner.id)
 
 
 @pytest.mark.parametrize(
