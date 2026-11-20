@@ -2,7 +2,6 @@
 
 import type { ReactNode } from 'react'
 import type { UserProfile } from '@/app/components/workflow/comment/types'
-import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -21,9 +20,9 @@ import {
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
+import { UserAvatar } from '@/app/components/base/user-avatar'
 import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { consoleClient } from '@/service/console'
-import { getAvatarInitial } from '@/utils/avatar'
 import { useStore, useWorkflowStore } from '../store'
 
 type MentionInputProps = {
@@ -661,10 +660,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
                   )}
                   onClick={() => insertMention(user)}
                 >
-                  <Avatar size="sm" className="shrink-0" aria-hidden="true">
-                    <AvatarFallback>{getAvatarInitial(user.name)}</AvatarFallback>
-                    <AvatarImage src={user.avatar_url || undefined} alt="" />
-                  </Avatar>
+                  <UserAvatar size="sm" name={user.name} src={user.avatar_url} aria-hidden="true" />
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-medium text-text-primary">
                       {user.name}
