@@ -17,14 +17,28 @@ from core.dify_builder.models import ChecklistError, DifyBuilderContext, Run
 from libs.json_in_md_parser import parse_json_markdown
 from runtime_contracts.builder.execution import canonical_digest, canonical_json
 from runtime_contracts.builder.native.contracts import FrozenDTO
+from runtime_contracts.builder.string_enum import BuilderStringEnum
 from services.dify_builder.application.cognition_policy import CognitionPolicyDeniedError
 from services.dify_builder.diagnostic_context import redact_diagnostic_value
 from services.dify_builder.effect_disclosure import _has_upstream_reference, _referenced_start_inputs
 from services.dify_builder.revision import normalize_execution_graph
 
+
+class CodeRiskAssessmentStatus(BuilderStringEnum):
+    ASSESSED = "assessed"
+    UNAVAILABLE = "unavailable"
+
+
 VERSION = "builder-code-risk-v1"
 UNAVAILABLE = "code_risk_assessment_unavailable"
-Classification = Literal["pure", "read", "side_effect", "destructive", "unknown"]
+
+
+class Classification(BuilderStringEnum):
+    PURE = "pure"
+    READ = "read"
+    SIDE_EFFECT = "side_effect"
+    DESTRUCTIVE = "destructive"
+    UNKNOWN = "unknown"
 
 
 class CodeRisk(FrozenDTO):
@@ -36,7 +50,7 @@ class CodeRiskAssessment(CodeRisk):
     node_id: str = Field(strict=True, min_length=1, max_length=1024)
     facts_digest: str = Field(strict=True, pattern=r"^[a-f0-9]{64}$")
     assessment_version: Literal["builder-code-risk-v1"] = VERSION
-    status: Literal["assessed", "unavailable"]
+    status: CodeRiskAssessmentStatus
 
 
 @dataclass(frozen=True)

@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from inspect import unwrap
 from pathlib import Path
 from types import FunctionType
-from typing import Annotated, NamedTuple, NoReturn, Self, get_args, override
+from typing import Annotated, NamedTuple, NoReturn, Self, override
 from unittest.mock import Mock, call
 
 import pytest
@@ -1520,7 +1520,7 @@ def test_unexpected_consent_failure_is_not_serialized(
 
 
 def test_every_mapped_refusal_reason_is_a_declared_public_reason() -> None:
-    declared = set(get_args(DifyBuilderRealCallRefusalReason))
+    declared = {reason.value for reason in DifyBuilderRealCallRefusalReason}
     assert set(wiring.REAL_CALL_REFUSAL_REASONS) == declared
     assert "real_call_unavailable" in declared
     assert "session_busy" in declared

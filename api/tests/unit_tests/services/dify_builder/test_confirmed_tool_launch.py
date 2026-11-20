@@ -37,7 +37,7 @@ from core.dify_builder.models import (
     RunVerification,
     StartSchema,
 )
-from core.dify_builder.real_call_consent import ConfirmedToolBinding, ConsentReceipt
+from core.dify_builder.real_call_consent import ConfirmedToolBinding, ConsentReceipt, Phase
 from core.dify_builder.state import PcState
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from libs.datetime_utils import naive_utc_now
@@ -50,6 +50,7 @@ from models.workflow import (
     WorkflowRun,
     WorkflowType,
 )
+from runtime_contracts.builder.execution import ExecutionActionState, SafetyOutcome, WorkerExit
 from services.dify_builder.application.execution_policy import (
     BuilderExecutionObservation,
     BuilderExecutionPolicyError,
@@ -411,18 +412,21 @@ def test_generic_actions_cannot_carry_the_internal_confirmed_action(consent_owne
 # --- worker reload, duplicate delivery and recovery ------------------------------------------
 
 
-SafetyOutcome = Literal["confirmed_tool_completed", "execution_evidence_unknown"]
+ConfirmedSafetyOutcome = Literal[SafetyOutcome.CONFIRMED_TOOL_COMPLETED, SafetyOutcome.EXECUTION_EVIDENCE_UNKNOWN]
 
 
 class ConfirmedSpyPort(FakeDifyPort):
     """Records the shared port call; returns a sealed confirmed Run shape."""
 
     def __init__(
-        self, outcome: SafetyOutcome = "confirmed_tool_completed", *, refusal: "BuilderExecutionRefusal | None" = None
+        self,
+        outcome: ConfirmedSafetyOutcome = SafetyOutcome.CONFIRMED_TOOL_COMPLETED,
+        *,
+        refusal: "BuilderExecutionRefusal | None" = None,
     ) -> None:
         super().__init__()
         self.confirmed_calls: list[dict[str, object]] = []
-        self.outcome: SafetyOutcome = outcome
+        self.outcome: ConfirmedSafetyOutcome = outcome
         # Set: answer like a delivery whose launch was refused (e.g. lost to another delivery).
         self.refusal = refusal
 
@@ -825,7 +829,7 @@ def test_terminal_repair_is_bounded_and_unknown_stays_final(consent_owner: Owner
     binding = owner.service().claim_tool(
         context=context, node_id="tool", native_run_id=run_id, native_node_execution_id="node-exec-1"
     )
-    owner.service().claim_phase(binding=binding, phase="business", final_parameters=APPROVED)
+    owner.service().claim_phase(binding=binding, phase=Phase.BUSINESS, final_parameters=APPROVED)
     from core.dify_builder.real_call_consent import ActionOutcome
     from models.dify_builder import DifyBuilderSession
 
@@ -1372,9 +1376,9 @@ def test_stale_observation_never_settles_a_progressing_worker(consent_owner: Own
             context=context, node_id="tool", native_run_id=run_id, native_node_execution_id="node-exec-1"
         )
         if progress == "refresh_finish":
-            service.claim_phase(binding=binding, phase="refresh", final_parameters=None)
+            service.claim_phase(binding=binding, phase=Phase.REFRESH, final_parameters=None)
         elif progress == "outcome":
-            service.claim_phase(binding=binding, phase="business", final_parameters=APPROVED)
+            service.claim_phase(binding=binding, phase=Phase.BUSINESS, final_parameters=APPROVED)
     observation = service.observe_stranded(session_id=owner.session_id, session_version=_head_version(owner))
     assert observation is not None
 
@@ -1392,7 +1396,7 @@ def test_stale_observation_never_settles_a_progressing_worker(consent_owner: Own
         elif progress == "outcome":
             service.finish(binding=binding, outcome=ActionOutcome(state="completed", reason_code="message_returned"))
         else:
-            phase = "refresh" if progress == "refresh_claim" else "business"
+            phase = Phase.REFRESH if progress == "refresh_claim" else Phase.BUSINESS
             service.claim_phase(binding=binding, phase=phase, final_parameters=None if phase == "refresh" else APPROVED)
 
     before = owner.consent_row(reserved.consent_id)
@@ -1438,7 +1442,7 @@ def test_stale_observation_cannot_downgrade_a_newly_sealed_native_completion(con
 
 @pytest.mark.parametrize("phase", [None, "refresh", "business"])
 def test_same_stranded_observation_settles_a_claimed_grant_once_without_reopening(
-    consent_owner: Owner, phase: Literal["refresh", "business"] | None
+    consent_owner: Owner, phase: Phase | None
 ) -> None:
     """Unchanged old claims settle unknown; repeating the original observation cannot reset a spend."""
     owner = consent_owner
@@ -1473,15 +1477,15 @@ def test_same_stranded_observation_settles_a_claimed_grant_once_without_reopenin
         int(phase == "business"),
     )
     with pytest.raises(BuilderExecutionPolicyError):
-        service.claim_phase(binding=binding, phase="business", final_parameters=APPROVED)
+        service.claim_phase(binding=binding, phase=Phase.BUSINESS, final_parameters=APPROVED)
 
 
 def test_publication_accepts_only_sealed_exact_revision_confirmed_success() -> None:
     def run(
-        outcome: SafetyOutcome,
+        outcome: ConfirmedSafetyOutcome,
         *,
         sealed: bool = True,
-        action: Literal["completed", "unknown"] = "completed",
+        action: Literal[ExecutionActionState.COMPLETED, ExecutionActionState.UNKNOWN] = ExecutionActionState.COMPLETED,
         revision: str = "r1",
     ) -> Run:
         summary = ExecutionEvidenceSummary(
@@ -1520,10 +1524,10 @@ def test_publication_accepts_only_sealed_exact_revision_confirmed_success() -> N
     def decide(candidate: Run) -> PublicationDecision:
         return publication_decision(candidate, session_id="s-1", current_revision="r1", current_graph_revision="g1")
 
-    assert decide(run("confirmed_tool_completed")).allowed is True
-    assert decide(run("confirmed_tool_completed", sealed=False)).allowed is False
-    assert decide(run("confirmed_tool_completed", revision="stale")).reason == "stale_revision"
-    assert decide(run("execution_evidence_unknown", action="unknown")).allowed is False
+    assert decide(run(SafetyOutcome.CONFIRMED_TOOL_COMPLETED)).allowed is True
+    assert decide(run(SafetyOutcome.CONFIRMED_TOOL_COMPLETED, sealed=False)).allowed is False
+    assert decide(run(SafetyOutcome.CONFIRMED_TOOL_COMPLETED, revision="stale")).reason == "stale_revision"
+    assert decide(run(SafetyOutcome.EXECUTION_EVIDENCE_UNKNOWN, action=ExecutionActionState.UNKNOWN)).allowed is False
 
 
 # --- sanitization of Builder-side projections ----------------------------------------------
@@ -1697,7 +1701,7 @@ def install_native_generation(owner: Owner, monkeypatch: pytest.MonkeyPatch) -> 
                 task_id="task",
                 recorder=recorder,
                 worker_thread=threading.current_thread(),
-                exit_kind="returned",
+                exit_kind=WorkerExit.RETURNED,
             )
 
         thread = threading.Thread(target=worker)
@@ -1816,7 +1820,7 @@ def test_port_launches_reserved_command_natively_and_projects_sanitized_builder_
                 task_id="task",
                 recorder=recorder,
                 worker_thread=threading.current_thread(),
-                exit_kind="returned",
+                exit_kind=WorkerExit.RETURNED,
             )
 
         thread = threading.Thread(target=worker)

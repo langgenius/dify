@@ -2,13 +2,13 @@ import json
 import logging
 from collections.abc import Callable, Sequence
 from datetime import datetime
-from typing import Literal
 from unittest.mock import patch
 
 import pytest
 
 from core.app.app_config.entities import ModelConfig
 from core.dify_builder.models import BuildNodesResult, Graph, MutationIntent
+from core.workflow.generator.types import WorkflowGraphMode
 from services.dify_builder.agent import build, resources
 
 
@@ -1669,7 +1669,7 @@ def test_full_build_completeness_preserves_legacy_aggregator_identity() -> None:
     graph["nodes"][5]["data"]["type"] = "variable-assigner"
     before = deepcopy(graph)
 
-    assert generated_graph_completeness_problems(graph, mode="workflow", current_graph=None) == []
+    assert generated_graph_completeness_problems(graph, mode=WorkflowGraphMode.WORKFLOW, current_graph=None) == []
     assert graph == before
 
 
@@ -1708,9 +1708,7 @@ def test_full_build_completeness_does_not_change_authored_partial_edit_preflight
 
 
 @pytest.mark.parametrize(("mode", "terminal"), [("workflow", "end"), ("advanced-chat", "answer")])
-def test_full_build_completeness_uses_the_actual_mode_terminal(
-    mode: Literal["advanced-chat", "workflow"], terminal: str
-) -> None:
+def test_full_build_completeness_uses_the_actual_mode_terminal(mode: WorkflowGraphMode, terminal: str) -> None:
     from copy import deepcopy
 
     from services.dify_builder.generated_graph_completeness import generated_graph_completeness_problems
@@ -1737,8 +1735,8 @@ def test_full_build_completeness_leaves_refinement_context_unrestricted() -> Non
     ]
     before = deepcopy(partial)
 
-    assert generated_graph_completeness_problems(partial, mode="workflow", current_graph=before) == []
-    assert generated_graph_completeness_problems(partial, mode="workflow", current_graph={}) == []
+    assert generated_graph_completeness_problems(partial, mode=WorkflowGraphMode.WORKFLOW, current_graph=before) == []
+    assert generated_graph_completeness_problems(partial, mode=WorkflowGraphMode.WORKFLOW, current_graph={}) == []
     assert partial == before
 
 
@@ -1769,10 +1767,10 @@ def test_full_build_completeness_treats_nested_container_children_as_internal_ex
     }
     before = deepcopy(graph)
 
-    assert generated_graph_completeness_problems(graph, mode="workflow", current_graph=None) == []
+    assert generated_graph_completeness_problems(graph, mode=WorkflowGraphMode.WORKFLOW, current_graph=None) == []
     assert graph == before
     graph["edges"].pop(1)
-    assert generated_graph_completeness_problems(graph, mode="workflow", current_graph=None)
+    assert generated_graph_completeness_problems(graph, mode=WorkflowGraphMode.WORKFLOW, current_graph=None)
 
 
 @pytest.mark.parametrize("parent", ["missing", "entry", "leaf"])
@@ -1788,7 +1786,7 @@ def test_full_build_completeness_does_not_hide_unowned_children(parent: str) -> 
         "edges": [{"source": "entry", "target": "exit"}],
     }
 
-    problems = generated_graph_completeness_problems(graph, mode="workflow", current_graph=None)
+    problems = generated_graph_completeness_problems(graph, mode=WorkflowGraphMode.WORKFLOW, current_graph=None)
 
     assert problems
     assert "leaf" in problems[0]
@@ -1806,7 +1804,7 @@ def test_full_build_completeness_requires_one_actual_start(extra_start: bool) ->
         graph["nodes"] += [{"id": "a", "data": {"type": "start"}}, {"id": "b", "data": {"type": "start"}}]
         graph["edges"] += [{"source": "a", "target": "exit"}, {"source": "b", "target": "exit"}]
 
-    assert generated_graph_completeness_problems(graph, mode="workflow", current_graph=None)
+    assert generated_graph_completeness_problems(graph, mode=WorkflowGraphMode.WORKFLOW, current_graph=None)
 
 
 def test_full_build_accepts_native_assembled_nested_containers() -> None:
@@ -1874,7 +1872,7 @@ def test_full_build_completeness_does_not_trust_data_only_container_markers(meta
         "edges": [{"source": "entry", "target": "exit"}],
     }
 
-    problems = generated_graph_completeness_problems(graph, mode="workflow", current_graph=None)
+    problems = generated_graph_completeness_problems(graph, mode=WorkflowGraphMode.WORKFLOW, current_graph=None)
 
     assert problems
     assert "leaf" in problems[0]
@@ -1898,9 +1896,9 @@ def test_full_build_completeness_accepts_complete_parallel_fanout_only() -> None
         ],
     }
 
-    assert generated_graph_completeness_problems(graph, mode="workflow", current_graph=None) == []
+    assert generated_graph_completeness_problems(graph, mode=WorkflowGraphMode.WORKFLOW, current_graph=None) == []
     graph["edges"].pop()
-    problems = generated_graph_completeness_problems(graph, mode="workflow", current_graph=None)
+    problems = generated_graph_completeness_problems(graph, mode=WorkflowGraphMode.WORKFLOW, current_graph=None)
     assert len(problems) == 1
     assert "'b'" in problems[0]
 

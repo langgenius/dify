@@ -15,7 +15,11 @@ from graphon.model_runtime.entities.message_entities import AssistantPromptMessa
 from models.dify_builder import DifyBuilderSession as DomainRow
 from services.dify_builder.application.runner import Env, StepResult
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
-from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
+from services.dify_builder.native_testing.public_contracts import (
+    NativePublicOutcome,
+    NativePublicStatus,
+    NativeTestPublicReceipt,
+)
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.service import DifyBuilderService
 from services.dify_builder.test_actions import BuilderTestActions
@@ -213,8 +217,8 @@ def test_native_stop_settlement_is_truthful_and_unknown_never_resumes(
     service: DifyBuilderService,
     repo: SqlDifyBuilderRepository,
     monkeypatch: pytest.MonkeyPatch,
-    outcome: Literal["cancelled", "unknown"] | None,
-    status: Literal["running", "terminal"],
+    outcome: Literal[NativePublicOutcome.CANCELLED, NativePublicOutcome.UNKNOWN] | None,
+    status: Literal[NativePublicStatus.RUNNING, NativePublicStatus.TERMINAL],
     expected: str,
     editable: bool,
 ) -> None:

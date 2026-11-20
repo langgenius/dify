@@ -14,6 +14,7 @@ from functools import wraps
 from typing import Any, Literal
 from uuid import UUID, uuid4
 
+from runtime_contracts.builder.execution import ExecutionFailureReason
 from runtime_contracts.builder.native.observation import parse_native_model_failure
 
 DiagnosticCallback = Callable[[dict[str, Any]], None]
@@ -347,17 +348,7 @@ def project(record: Mapping[str, Any]) -> dict[str, Any]:
     return result
 
 
-FailureReason = Literal[
-    "connection_refused",
-    "timeout",
-    "authentication",
-    "permission_denied",
-    "credential_unavailable",
-    "authorization_lookup_failed",
-    "rate_limit",
-    "service_unavailable",
-    "unknown",
-]
+FailureReason = ExecutionFailureReason
 
 
 def plugin_activation_unavailable(error: Exception) -> bool:
@@ -402,7 +393,7 @@ def failure_reason(error: Exception | None) -> FailureReason:
         # Implicit context may be an unrelated failure being handled. Only
         # an explicit cause carries the original provider failure attribution.
         current = current.__cause__
-    return "unknown"
+    return ExecutionFailureReason.UNKNOWN
 
 
 def credential_scope(error: Exception | None) -> Literal["enterprise_global"] | None:
@@ -468,33 +459,37 @@ def _failure_reason(error: BaseException) -> FailureReason:
     from services.tools.draft_tool_setup import DraftToolSetupError
 
     if isinstance(error, DraftToolSetupError) and error.setup_failure is not None:
-        return error.setup_failure.reason
+        return ExecutionFailureReason(error.setup_failure.reason)
     if isinstance(error, CredentialPolicyViolationError):
-        return "permission_denied" if credential_scope(error) else "authorization_lookup_failed"
+        return (
+            ExecutionFailureReason.PERMISSION_DENIED
+            if credential_scope(error)
+            else ExecutionFailureReason.AUTHORIZATION_LOOKUP_FAILED
+        )
     if isinstance(error, ToolProviderCredentialValidationError):
-        return "credential_unavailable"
+        return ExecutionFailureReason.CREDENTIAL_UNAVAILABLE
     if isinstance(error, PluginInvokeError) and _metadata_gateway_unavailable(error):
-        return "service_unavailable"
+        return ExecutionFailureReason.SERVICE_UNAVAILABLE
     if isinstance(error, Exception) and plugin_activation_unavailable(error):
-        return "service_unavailable"
+        return ExecutionFailureReason.SERVICE_UNAVAILABLE
     if isinstance(error, ConnectionRefusedError):
-        return "connection_refused"
+        return ExecutionFailureReason.CONNECTION_REFUSED
     if isinstance(error, TimeoutError):
-        return "timeout"
+        return ExecutionFailureReason.TIMEOUT
     if isinstance(error, InvokeAuthorizationError):
-        return "authentication"
+        return ExecutionFailureReason.AUTHENTICATION
     if isinstance(error, PermissionError):
-        return "permission_denied"
+        return ExecutionFailureReason.PERMISSION_DENIED
     if isinstance(error, HTTPStatusError):
         if error.response.status_code == 401:
-            return "authentication"
+            return ExecutionFailureReason.AUTHENTICATION
         if error.response.status_code == 403:
-            return "permission_denied"
+            return ExecutionFailureReason.PERMISSION_DENIED
         if error.response.status_code == 429:
-            return "rate_limit"
+            return ExecutionFailureReason.RATE_LIMIT
         if 500 <= error.response.status_code <= 599:
-            return "service_unavailable"
-    return "unknown"
+            return ExecutionFailureReason.SERVICE_UNAVAILABLE
+    return ExecutionFailureReason.UNKNOWN
 
 
 @contextmanager

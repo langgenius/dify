@@ -13,7 +13,12 @@ from runtime_contracts.builder.native.runtime_contracts import NativeWorkflowOut
 from services.dify_builder.execution_policy_service import check_execution_permission
 from services.dify_builder.native_testing.private_reads import validate_invocation_workflow
 from services.dify_builder.native_testing.repository import native_workflow_revision, utc_now
-from services.dify_builder.native_testing.state_store import NativeExecutionStateStore, invocation_state, owner_query
+from services.dify_builder.native_testing.state_store import (
+    NativeExecutionStateStore,
+    PayloadKind,
+    invocation_state,
+    owner_query,
+)
 from services.dify_builder.native_testing.transitions import (
     dispatch_readiness,
     has_unknown_descendant,
@@ -146,7 +151,7 @@ class NativeChildInvocationService:
         receipt = self.store.prepare_object(
             ref=child_ref,
             tenant_id=parent.tenant_id,
-            kind="context",
+            kind=PayloadKind.CONTEXT,
             logical_key="context",
             payload=child.model_dump(mode="json"),
         )

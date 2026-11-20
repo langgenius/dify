@@ -34,6 +34,7 @@ from graphon.model_runtime.model_providers.base.large_language_model import norm
 from graphon.model_runtime.protocols.runtime import ModelRuntime
 from graphon.model_runtime.protocols.tts_runtime import TTSChunk, TTSModelVoice
 from models.provider_ids import ModelProviderID
+from runtime_contracts.builder.execution import FailureResourceKind
 from services.plugin.dispatch_identity import PluginDispatchIdentity
 
 logger = logging.getLogger(__name__)
@@ -272,7 +273,7 @@ class PluginModelRuntime(ModelRuntime):
         plugin_id, provider_name = self._split_provider(provider)
         from services.dify_builder.native_launch_observation import observe_resource
 
-        with observe_resource("model", provider, model):
+        with observe_resource(FailureResourceKind.MODEL, provider, model):
             schema = self.client.get_model_schema(
                 tenant_id=self.tenant_id,
                 user_id=self.user_id,

@@ -1,6 +1,6 @@
 """Only prepared static plugin declarations qualify for the metadata gate."""
 
-from typing import Literal
+from enum import StrEnum
 
 import pytest
 
@@ -11,6 +11,15 @@ from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFr
 from models.provider import ProviderType
 from services.dify_builder import cognition_model_gateway as gateway
 from tests.helpers.unit.core.model_fixtures import make_model_instance
+
+
+class UnqualifiedModelCase(StrEnum):
+    CUSTOM_OVERRIDE = "custom_override"
+    CUSTOM_DECLARATION = "custom_declaration"
+    UNPINNED = "unpinned"
+    SYSTEM = "system"
+    PENDING_LB = "pending_lb"
+
 
 IDENTIFIER = "langgenius/anthropic:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
@@ -72,7 +81,7 @@ def test_qualified_metadata_gate_bypasses_schema_cache_and_preserves_prepared_cr
 @pytest.mark.parametrize("unqualified", ["custom_override", "custom_declaration", "unpinned", "system", "pending_lb"])
 def test_config_dependent_or_unpinned_models_keep_existing_dispatch_behavior(
     monkeypatch: pytest.MonkeyPatch,
-    unqualified: Literal["custom_override", "custom_declaration", "unpinned", "system", "pending_lb"],
+    unqualified: UnqualifiedModelCase,
 ) -> None:
     instance = _instance()
     declaration = instance.model_type_instance.provider_schema

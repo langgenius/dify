@@ -16,10 +16,61 @@ from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from typing import Any, ClassVar, Literal, override
 
-from core.dify_builder.models import ConversationItem, EntryMode, TaskSummary
-from runtime_contracts.builder.execution import HttpResponseFixtureV1, decode_http_fixture_submission
+from core.dify_builder.models import BusinessAcceptanceState, ConversationItem, EntryMode, TaskSummary
+from runtime_contracts.builder.execution import (
+    EvidenceExecutionMode,
+    EvidenceFailurePhase,
+    EvidencePolicyVersion,
+    ExecutionActionState,
+    ExecutionFailureReason,
+    HttpResponseFixtureV1,
+    SafetyOutcome,
+    decode_http_fixture_submission,
+)
 from runtime_contracts.builder.native.canvas_path import NativeCanvasPath
 from runtime_contracts.builder.presentation import BuilderPresentation, BuilderText
+from runtime_contracts.builder.string_enum import BuilderStringEnum
+
+
+class SessionTaskStatus(BuilderStringEnum):
+    ACTIVE = "active"
+    PAUSED = "paused"
+    COMPLETED = "completed"
+    ABANDONED = "abandoned"
+
+
+class LifecycleSettlement(BuilderStringEnum):
+    SETTLED = "settled"
+    PENDING = "pending"
+    UNKNOWN = "unknown"
+
+
+class InteractionKind(BuilderStringEnum):
+    CHOICE = "choice"
+    FORM = "form"
+    RESOURCE = "resource"
+
+
+class AssistantReplyMode(BuilderStringEnum):
+    STREAM = "stream"
+    COMPLETE = "complete"
+
+
+class TestResultStatus(BuilderStringEnum):
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+
+
+class TestResultOutcome(BuilderStringEnum):
+    EXECUTION_SUCCEEDED_NEEDS_REVIEW = "execution_succeeded_needs_review"
+    REQUIRED_OUTPUT_UNRESOLVED = "required_output_unresolved"
+    EXECUTION_FAILED = "execution_failed"
+    EXECUTION_UNKNOWN = "execution_unknown"
+
+
+class CanvasChangeCause(BuilderStringEnum):
+    APPLY = "apply"
+    RESTORE = "restore"
 
 
 class Phase(StrEnum):
@@ -400,12 +451,12 @@ class SessionView:
     attachments: list[dict[str, Any]] = field(default_factory=list)
     # Logical task identity is independent from the worker's execution generation.
     task_id: str = ""
-    task_status: Literal["active", "paused", "completed", "abandoned"] = "active"
+    task_status: SessionTaskStatus = SessionTaskStatus.ACTIVE
     task_summaries: list[TaskSummary] = field(default_factory=list)
     conversation_cleared: bool = False
     # Current clear/abandon execution state, never physical cleanup proof.
     # None means no applicable control; absent applicable evidence is unknown.
-    lifecycle_settlement: Literal["settled", "pending", "unknown"] | None = None
+    lifecycle_settlement: LifecycleSettlement | None = None
     pending_fix_context: "RunContextCard | PreflightContextCard | None" = None
 
 
@@ -426,9 +477,23 @@ class PreflightIssue:
     plugin_missing: bool = False
 
 
-ExecutionActivityState = Literal["active", "done", "failed", "stopped"]
-ExecutionActivityKind = Literal["stage", "node"]
-ExecutionProgressStatus = Literal["running", "completed", "error", "stopped"]
+class ExecutionActivityState(BuilderStringEnum):
+    ACTIVE = "active"
+    DONE = "done"
+    FAILED = "failed"
+    STOPPED = "stopped"
+
+
+class ExecutionActivityKind(BuilderStringEnum):
+    STAGE = "stage"
+    NODE = "node"
+
+
+class ExecutionProgressStatus(BuilderStringEnum):
+    RUNNING = "running"
+    COMPLETED = "completed"
+    ERROR = "error"
+    STOPPED = "stopped"
 
 
 @dataclass
@@ -442,7 +507,7 @@ class ExecutionActivity:
     id: str
     label: BuilderText
     state: ExecutionActivityState
-    kind: ExecutionActivityKind = "stage"
+    kind: ExecutionActivityKind = ExecutionActivityKind.STAGE
     parent_id: str | None = None
 
 
@@ -514,7 +579,7 @@ class InteractionResponseItem(_Card, BuilderPresentation):
 
     kind: ClassVar[CardKind] = CardKind.INTERACTION_RESPONSE
 
-    interaction_kind: Literal["choice", "form", "resource"]
+    interaction_kind: InteractionKind
     question: BuilderText
     answer: BuilderText = ""
     fields: list[InteractionResponseField] = field(default_factory=list)
@@ -570,7 +635,7 @@ class AssistantTurnItem(_Card, BuilderPresentation):
     diagnostics: list[dict[str, Any]] = field(default_factory=list)
     reasoning_text: str | None = None
     reply_text: BuilderText | None = None
-    reply_mode: Literal["stream", "complete"] = "stream"
+    reply_mode: AssistantReplyMode = AssistantReplyMode.STREAM
     cards: list[str] = field(default_factory=list)
     card_state: str | None = None
 
@@ -634,73 +699,34 @@ class TestResultCard(_Card, BuilderPresentation):
 
     kind: ClassVar[CardKind] = CardKind.TEST_RESULT
 
-    status: Literal["succeeded", "failed"]
+    status: TestResultStatus
     failure_reason: BuilderText | None = None
     # The Dify workflow run these results came from, so a client can reopen
     # the run on the canvas later. Persisted because SSE does not survive a
     # page reload. "" when no run backs the card.
     dify_run_id: str = ""
-    outcome: (
-        Literal[
-            "execution_succeeded_needs_review", "required_output_unresolved", "execution_failed", "execution_unknown"
-        ]
-        | None
-    ) = None
+    outcome: TestResultOutcome | None = None
     # Machine status only; presentation owners localize any displayed copy.
-    business_acceptance_state: Literal["passed", "failed", "unverified"] | None = None
+    business_acceptance_state: BusinessAcceptanceState | None = None
     business_acceptance_case_id: str | None = None
     terminal_outputs: dict[str, Any] | None = None
     executed_node_ids: list[str] = field(default_factory=list)
     native_canvas_path: NativeCanvasPath | None = None
     resumed_progress: ResumedTestProgress | None = None
     review_note: BuilderText | None = None
-    execution_mode: Literal["restricted", "mock", "confirmed_tool", "confirmed_run"] | None = None
-    safety_outcome: (
-        Literal[
-            "unsupported_safe_execution",
-            "execution_blocked",
-            "simulation_completed",
-            "restricted_execution_completed",
-            "confirmed_tool_completed",
-            "confirmed_run_completed",
-            "execution_evidence_unknown",
-            "native_failed",
-            "preparation_failed",
-        ]
-        | None
-    ) = None
+    execution_mode: EvidenceExecutionMode | None = None
+    safety_outcome: SafetyOutcome | None = None
     failure_resource: str | None = None
     failure_node_ids: list[str] = field(default_factory=list)
-    failure_phase: Literal["preparation", "execution"] | None = None
-    failure_code: (
-        Literal[
-            "connection_refused",
-            "timeout",
-            "authentication",
-            "permission_denied",
-            "credential_unavailable",
-            "authorization_lookup_failed",
-            "rate_limit",
-            "service_unavailable",
-            "unknown",
-        ]
-        | None
-    ) = None
+    failure_phase: EvidenceFailurePhase | None = None
+    failure_code: ExecutionFailureReason | None = None
     simulated_node_ids: list[str] = field(default_factory=list)
     blocked_node_ids: list[str] = field(default_factory=list)
     # Confirmed Tool runs only: the policy, the spent grant and its sanitized
     # outcome. Message content stays in the native authorized Run.
-    policy_version: (
-        Literal[
-            "builder-restricted-v1",
-            "builder-confirmed-gmail-read-v1",
-            "builder-json-parse-v1",
-            "builder-confirmed-run-v1",
-        ]
-        | None
-    ) = None
+    policy_version: EvidencePolicyVersion | None = None
     consent_id: str | None = None
-    action_state: Literal["completed", "failed", "unknown"] | None = None
+    action_state: ExecutionActionState | None = None
     action_reason_code: str | None = None
 
 
@@ -832,7 +858,7 @@ class CanvasEventData(_SseEventData):
     revision: int
     event: CanvasEvent
     kind: Literal["canvas"] = "canvas"
-    cause: Literal["apply", "restore"] | None = None
+    cause: CanvasChangeCause | None = None
     node_ids: list[str] = field(default_factory=list)
 
 

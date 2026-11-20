@@ -8,7 +8,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from threading import Thread, local
-from typing import TYPE_CHECKING, Concatenate, Literal, NoReturn, Self, Unpack, override
+from typing import TYPE_CHECKING, Concatenate, NoReturn, Self, Unpack, override
 
 import pytest
 from httpx._models import Response
@@ -45,10 +45,12 @@ from runtime_contracts.builder.native.contracts import (
 )
 from runtime_contracts.builder.native.runtime_contracts import (
     NativeCheckpointPayload,
+    NativeTestMode,
     NativeWorkflowOutcome,
     ResolvedNativeTestContext,
 )
 from services.dify_builder.native_testing.host_execution import _HostObservationLayer
+from services.dify_builder.native_testing.host_lifetime import NativeNodePhase, Settlement, ThreadRole
 from services.dify_builder.native_testing.http_binding import NativeHttpBindingResolver
 from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
 from services.dify_builder.native_testing.repository import OwnedNativeTest, OwnedNativeTestLoader
@@ -680,7 +682,7 @@ def test_real_dify_initial_http_wait_and_claimed_resume_keep_same_run(
                 layer.on_graph_end(None)
                 assert hook in layer._hooks
                 host._root_terminal = terminal
-                with host.node_scope(node=node, phase="resume_container"):
+                with host.node_scope(node=node, phase=NativeNodePhase.RESUME_CONTAINER):
                     layer.on_graph_end(None)
                     assert hook in layer._hooks
                     assert host.lifetime.active_node_scopes
@@ -1543,7 +1545,7 @@ def test_same_worker_reclaims_over_128_closed_consumed_requests_but_keeps_unknow
             live.host.lifetime.thread_finished(thread=current_thread())
 
     worker = Thread(target=background)
-    live.host.lifetime.register_thread(thread=worker, role="worker")
+    live.host.lifetime.register_thread(thread=worker, role=ThreadRole.WORKER)
     live.host.lifetime.start_thread(thread=worker)
     try:
         assert entered.wait(2)
@@ -1815,7 +1817,7 @@ def cancel_composition(case: ObservationOwnerCase, monkeypatch: pytest.MonkeyPat
         session_id="session",
         test_input_id="input",
         expected_version=1,
-        mode="native",
+        mode=NativeTestMode.NATIVE,
         idempotency_key="cancel-composed-start",
     )
     return CancellationCase(
@@ -1924,7 +1926,7 @@ def test_consumed_generation_zero_in_other_owner_cannot_ack_live_generation_one(
             current.host.lifetime.thread_finished(thread=current_thread())
 
     worker = Thread(target=work)
-    current.host.lifetime.register_thread(thread=worker, role="worker")
+    current.host.lifetime.register_thread(thread=worker, role=ThreadRole.WORKER)
     current.host.lifetime.start_thread(thread=worker)
     try:
         assert entered.wait(2)
@@ -1969,13 +1971,13 @@ def test_cancel_original_joined_owner_rechecks_retained_snapshot(
     checked_row(NativeDispatch, c.rows[NativeDispatch][0]).state = "claimed"  # SQL claim boundary.
     runtime._start(runtime.context)
     worker = Thread(target=lambda: runtime.host.lifetime.thread_finished(thread=current_thread()))
-    runtime.host.lifetime.register_thread(thread=worker, role="worker")
+    runtime.host.lifetime.register_thread(thread=worker, role=ThreadRole.WORKER)
     runtime.host.lifetime.start_thread(thread=worker)
     worker.join(2)
     assert not worker.is_alive()
     actual_settle = runtime.host.lifetime.settle
 
-    def settle() -> Literal["settled", "unknown"]:
+    def settle() -> Settlement:
         result = actual_settle()
         if replace_after_settlement:
             # Race at the actual unlocked physical settlement boundary. Both
@@ -2093,7 +2095,7 @@ def test_over_128_delivered_unclaimed_logical_cancellations_reclaim_same_worker_
                 session_id="session",
                 test_input_id="input",
                 expected_version=1,
-                mode="native",
+                mode=NativeTestMode.NATIVE,
                 idempotency_key="unclaimed-" + str(index),
             )
         )
@@ -2175,7 +2177,7 @@ def test_logical_preclaim_retirement_rechecks_proof_and_exact_retained_owners(
             # disposal must refuse even this conservative late activation.
             runtime.registry.activate(lifetime=runtime.host.lifetime)
             worker = Thread(target=work)
-            runtime.host.lifetime.register_thread(thread=worker, role="worker")
+            runtime.host.lifetime.register_thread(thread=worker, role=ThreadRole.WORKER)
             runtime.host.lifetime.start_thread(thread=worker)
             assert entered.wait(2)
             runtime.host.mark_unknown()

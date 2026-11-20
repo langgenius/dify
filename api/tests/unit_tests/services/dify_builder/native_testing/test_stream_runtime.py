@@ -21,6 +21,7 @@ from core.dify_builder.models import Actor
 from graphon.enums import WorkflowExecutionStatus
 from models.enums import CreatorUserRole
 from models.workflow import WorkflowRun
+from runtime_contracts.builder.execution import WorkerExit
 from runtime_contracts.builder.native.contracts import (
     ApprovalWait,
     CheckpointRef,
@@ -202,7 +203,7 @@ class StreamCase:
         try:
             list(self.entry.run())
         finally:
-            self.case.host.worker_finished(worker=current_thread(), exit_kind="returned")
+            self.case.host.worker_finished(worker=current_thread(), exit_kind=WorkerExit.RETURNED)
             self.done.set()
 
     def source(self) -> Generator[str]:

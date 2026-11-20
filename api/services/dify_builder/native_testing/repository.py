@@ -24,8 +24,23 @@ from models.dify_builder_native_tests import NativeTestInvocation, NativeTestSco
 from models.model import App
 from models.workflow import Workflow
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest
-from runtime_contracts.builder.native.contracts import ID, Counter, FrozenDTO, NativeTestContextRef, OperationKey
+from runtime_contracts.builder.native.contracts import (
+    ID,
+    Counter,
+    EffectKind,
+    FrozenDTO,
+    NativeTestContextRef,
+    OperationKey,
+    WaitReason,
+)
+from runtime_contracts.builder.string_enum import BuilderStringEnum
 from services.dify_builder import progress_bus
+
+
+class EffectApprovalScope(BuilderStringEnum):
+    OPERATION = "operation"
+    BATCH = "batch"
+
 
 Limits = dict[ID, Annotated[int, Field(strict=True, ge=0, le=2**63 - 1)]]
 
@@ -41,7 +56,7 @@ class NativeBinding(FrozenDTO):
     """
 
     intent_digest: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
-    kind: Literal["code", "model", "http", "tool", "oauth", "knowledge", "file", "shell", "bootstrap"]
+    kind: EffectKind
     resource_ref: ID
     implementation_revision: ID
     account_ref: ID | None
@@ -52,7 +67,7 @@ class NativeBinding(FrozenDTO):
     egress: StrictBool
     new_data: StrictBool
     destructive: StrictBool
-    approval_scope: Literal["operation", "batch"] = "batch"
+    approval_scope: EffectApprovalScope = EffectApprovalScope.BATCH
     cost_units: Counter
     budget: Limits
     execution_id: ID
@@ -60,7 +75,7 @@ class NativeBinding(FrozenDTO):
 
 
 class PendingOwner(FrozenDTO):
-    category: Literal["configuration", "interaction"]
+    category: Literal[WaitReason.CONFIGURATION, WaitReason.INTERACTION]
     owner_ref: ID
     version: ID
     reference: ID
@@ -100,7 +115,7 @@ class NativeBindingResolver(Protocol):
         *,
         session: Session,
         owned: OwnedNativeTest,
-        category: Literal["configuration", "interaction"],
+        category: Literal[WaitReason.CONFIGURATION, WaitReason.INTERACTION],
         reference: str,
     ) -> PendingOwner: ...
 

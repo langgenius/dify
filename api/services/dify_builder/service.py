@@ -26,8 +26,10 @@ from core.dify_builder.contract import (
     CheckpointRef,
     ConversationPage,
     Decision,
+    InteractionKind,
     InteractionResponseField,
     InteractionResponseItem,
+    LifecycleSettlement,
     Phase,
     PreflightContextCard,
     PreflightIssue,
@@ -35,6 +37,7 @@ from core.dify_builder.contract import (
     RunContextCard,
     RunStatus,
     SessionModel,
+    SessionTaskStatus,
     SessionView,
     UserItem,
 )
@@ -754,7 +757,7 @@ def _interaction_response_for(
         title, _description = _decision_copy_for(session.current_state, visible_actions)
         return InteractionResponseItem(
             reply_language=reply_language,
-            interaction_kind="choice",
+            interaction_kind=InteractionKind.CHOICE,
             question=title,
             answer=selected_action.label,
             submitted_data={"option_id": selected_action.id},
@@ -777,7 +780,7 @@ def _interaction_response_for(
         ]
         return InteractionResponseItem(
             reply_language=reply_language,
-            interaction_kind="resource",
+            interaction_kind=InteractionKind.RESOURCE,
             question=stored_text(card.payload.get("title") or copy_text(BuilderCopyId.RESOURCES_TITLE)),
             answer=", ".join(label for label in selected_labels if label)
             or copy_text(BuilderCopyId.RECEIPTS_NO_RESOURCES_SELECTED),
@@ -815,7 +818,7 @@ def _interaction_response_for(
     )
     return InteractionResponseItem(
         reply_language=reply_language,
-        interaction_kind="form",
+        interaction_kind=InteractionKind.FORM,
         question=stored_text(card.payload.get("title") or fallback_title),
         fields=response_fields,
         submitted_data=normalized_values,
@@ -1732,7 +1735,7 @@ class DifyBuilderService:
         if is_conversation_cleared(fc):
             view = cleared_session_view(s, fc)
             if view.lifecycle_settlement == "pending" and self._repo.cleared_execution_settled(s):
-                view.lifecycle_settlement = "settled"
+                view.lifecycle_settlement = LifecycleSettlement.SETTLED
             return view
         if fc.paused and fc.task_control.get("settlement") in {"pending", "unknown"}:
             from services.dify_builder.task_control_service import observe_stop
@@ -1897,11 +1900,13 @@ class DifyBuilderService:
         return SessionView(
             lifecycle_settlement=lifecycle_settlement(fc),
             task_id=task_identity(s, fc),
-            task_status="completed"
+            task_status=SessionTaskStatus.COMPLETED
             if is_terminal(st)
-            else "paused"
+            else SessionTaskStatus.PAUSED
             if fc.paused and fc.task_status != "abandoned"
-            else fc.task_status or "active",
+            else SessionTaskStatus(fc.task_status)
+            if fc.task_status
+            else SessionTaskStatus.ACTIVE,
             task_summaries=fc.task_summaries,
             pending_fix_context=pending_context,
             test_execution=test_execution,
@@ -2241,7 +2246,7 @@ class DifyBuilderService:
                 raise ConflictError("test request is no longer current")
             response = InteractionResponseItem(
                 reply_language=fc.reply_language,
-                interaction_kind="choice",
+                interaction_kind=InteractionKind.CHOICE,
                 question=control_title(action.kind),
                 answer=control_label(action.kind),
                 submitted_data={"option_id": action.kind},

@@ -5,7 +5,7 @@ from collections.abc import Generator, Mapping
 from enum import StrEnum
 from functools import partial
 from time import perf_counter
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any
 
 from celery import shared_task
 from flask import current_app, json
@@ -49,6 +49,13 @@ from services.workflow_ref_service import WorkflowRef
 from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_runtime.chatflow_generator import AdvancedChatAppGenerator
 from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
+
+
+class ConfirmedResumePhase(StrEnum):
+    PREFLIGHT = "preflight"
+    ORDINARY_PAUSE_RESTORE = "ordinary_pause_restore"
+    CLAIM = "claim"
+
 
 logger = logging.getLogger(__name__)
 
@@ -538,9 +545,7 @@ def workflow_based_app_execution_task(
 
 
 @contextlib.contextmanager
-def _confirmed_resume_phase(
-    payload: dict[str, Any], phase: Literal["preflight", "ordinary_pause_restore", "claim"]
-) -> Generator[None]:
+def _confirmed_resume_phase(payload: dict[str, Any], phase: ConfirmedResumePhase) -> Generator[None]:
     """Disjoint task setup phases; nested native read timings must not be added again."""
     try:
         dispatch = payload["builder_agent_dispatch"]
@@ -573,7 +578,7 @@ def _confirmed_resume_phase(
 def _resume_app_execution(payload: dict[str, Any]) -> None:
     from services.dify_builder.native_testing.confirmed_agent_commands import preflight_confirmed_agent_resume
 
-    with _confirmed_resume_phase(payload, "preflight"):
+    with _confirmed_resume_phase(payload, ConfirmedResumePhase.PREFLIGHT):
         if not preflight_confirmed_agent_resume(payload=payload):
             return
     workflow_run_id = payload["workflow_run_id"]
@@ -587,7 +592,7 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
         return
 
     try:
-        with _confirmed_resume_phase(payload, "ordinary_pause_restore"):
+        with _confirmed_resume_phase(payload, ConfirmedResumePhase.ORDINARY_PAUSE_RESTORE):
             resumption_context = WorkflowResumptionContext.loads(pause_entity.get_state().decode())
     except Exception:
         logger.exception("Failed to load resumption context for workflow run %s", workflow_run_id)
@@ -596,7 +601,7 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
     generate_entity = resumption_context.get_generate_entity()
     from services.dify_builder.native_testing.confirmed_agent_commands import guard_confirmed_agent_resume
 
-    with _confirmed_resume_phase(payload, "claim"):
+    with _confirmed_resume_phase(payload, ConfirmedResumePhase.CLAIM):
         if not guard_confirmed_agent_resume(payload=payload, generate_entity=generate_entity):
             return
     if generate_entity.native_test_required or generate_entity.native_test_ref is not None:

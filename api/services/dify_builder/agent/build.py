@@ -11,7 +11,7 @@ import re
 from collections.abc import Callable, Sequence
 from dataclasses import asdict, replace
 from datetime import UTC, datetime
-from typing import Any, Literal
+from typing import Any
 from urllib.parse import urlsplit
 
 import json_repair
@@ -22,6 +22,7 @@ from core.dify_builder.contract import ResourceOption
 from core.dify_builder.models import BuildNodesResult, MutationIntent
 from core.workflow.generator.prompts.builder_prompts import CODE_FAILURE_POLICY_RULES, TOOL_OUTPUT_SEMANTICS_RULES
 from core.workflow.generator.tool_catalogue import score_tool_relevance
+from core.workflow.generator.types import WorkflowGraphMode
 from graphon.enums import BUILT_IN_NODE_TYPES
 from runtime_contracts.builder.copy_ids import BuilderCopyId
 from runtime_contracts.builder.presentation import copy_text
@@ -1689,7 +1690,7 @@ def _prepare_build_candidate(
     grounding_mc: ModelConfig,
     trusted_text: str,
     *,
-    mode: Literal["workflow", "advanced-chat"],
+    mode: WorkflowGraphMode,
 ) -> preflight.VettedIntents:
     """Translate, ground, and vet the complete candidate as the write guard does.
 
@@ -1789,7 +1790,9 @@ def build_nodes(
         mc = _generator_model_config(tenant_id, model_config)
         tool_refs = _installed_tool_refs(tenant_id, account_id)
         ready_tool_keys = frozenset(tool_refs)
-        graph_mode: Literal["workflow", "advanced-chat"] = "advanced-chat" if mode == "advanced-chat" else "workflow"
+        graph_mode: WorkflowGraphMode = (
+            WorkflowGraphMode.ADVANCED_CHAT if mode == "advanced-chat" else WorkflowGraphMode.WORKFLOW
+        )
         agent_refs = (
             _selected_agent_resources(
                 _inventory_for_selection(tenant_id, account_id=account_id, resource_ids=resource_ids), resource_ids
@@ -1841,7 +1844,7 @@ def build_nodes(
             return dict(
                 WorkflowGeneratorService.generate_workflow_graph(
                     tenant_id=tenant_id,
-                    mode=graph_mode,
+                    mode=graph_mode.value,
                     instruction=append_material(instruction),
                     model_config=mc,
                     current_graph=None,

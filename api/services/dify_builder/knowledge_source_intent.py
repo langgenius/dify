@@ -6,16 +6,25 @@ Existing actor, version, resource and explicit waiver owners remain authoritativ
 """
 
 import json
-from typing import Literal, NotRequired, TypedDict
+from typing import NotRequired, TypedDict
 
 from core.dify_builder.models import DifyBuilderContext
 from runtime_contracts.builder.execution import canonical_digest
+from runtime_contracts.builder.string_enum import BuilderStringEnum
+
+
+class KnowledgeSourceIntentState(BuilderStringEnum):
+    REQUIRED = "required"
+    EXCLUDED = "excluded"
+    UNSPECIFIED = "unspecified"
+    UNKNOWN = "unknown"
+
 
 SOURCE_INPUT = "_builder_knowledge_source"
 
 
 class KnowledgeSourceIntent(TypedDict):
-    state: Literal["required", "excluded", "unspecified", "unknown"]
+    state: KnowledgeSourceIntentState
     evidence: list[str]
     # Added only by the planning adapter, never accepted from model JSON.
     source_digest: NotRequired[str]
@@ -82,7 +91,7 @@ def parse_source_intent(value: object, source: dict) -> KnowledgeSourceIntent | 
         return None
     match state:
         case "required" | "excluded" | "unspecified" | "unknown":
-            return {"state": state, "evidence": list(evidence)}
+            return {"state": KnowledgeSourceIntentState(state), "evidence": list(evidence)}
         case _:
             return None
 

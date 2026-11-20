@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from runtime_contracts.builder.native.contracts import JsonValue
+from runtime_contracts.builder.native.contracts import JsonValue, WaitReason
 
 
 def test_pending_resolution_cannot_claim_configuration_without_account() -> None:
@@ -11,7 +11,7 @@ def test_pending_resolution_cannot_claim_configuration_without_account() -> None
 
     with pytest.raises(ValidationError):
         NativePendingResolution(
-            category="configuration",
+            category=WaitReason.CONFIGURATION,
             invocation_id="inv",
             pending_action_id="pending",
             owner_ref="owner",
@@ -27,7 +27,7 @@ def test_pending_resolution_cannot_replace_form_answer_with_account() -> None:
 
     with pytest.raises(ValidationError):
         NativePendingResolution(
-            category="interaction",
+            category=WaitReason.INTERACTION,
             invocation_id="inv",
             pending_action_id="pending",
             owner_ref="owner",

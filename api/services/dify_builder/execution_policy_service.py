@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Literal
+from typing import Any
 from uuid import uuid4
 
 from pydantic import TypeAdapter, ValidationError
@@ -29,6 +29,7 @@ from models.dify_builder import (
 )
 from models.model import App
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowRun
+from runtime_contracts.builder.execution import WorkflowExecutionTransport
 from services.dify_builder.application import gmail_read_policy
 from services.dify_builder.application.execution_policy import (
     MAX_OBSERVATIONS,
@@ -654,7 +655,7 @@ class BuilderExecutionPolicyService:
         effective_inputs: Inputs,
         root_node_id: str,
         call_depth: int,
-        transport: Literal["in_process", "celery"],
+        transport: WorkflowExecutionTransport,
         resume: bool,
     ) -> None:
         from services.dify_builder.task_controls import check_current

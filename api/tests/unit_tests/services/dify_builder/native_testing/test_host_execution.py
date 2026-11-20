@@ -25,6 +25,7 @@ from graphon.engine_events.node import NodeRunStartedEvent
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.nodes.base.node import Node
 from graphon.nodes.container_effects import IterationFrameRequest
+from runtime_contracts.builder.execution import WorkerExit
 from runtime_contracts.builder.native.contracts import (
     ApprovalWait,
     CheckpointRef,
@@ -32,6 +33,7 @@ from runtime_contracts.builder.native.contracts import (
     JsonValue,
     NativeTestContextRef,
     WaitingReceipt,
+    WaitReason,
 )
 from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
 from services.dify_builder.native_testing.checkpoint_bridge import NativeCheckpointBridge
@@ -43,7 +45,12 @@ from services.dify_builder.native_testing.control import (
     NativePolicyStop,
 )
 from services.dify_builder.native_testing.host_execution import HostBoundScalarCalls, NativeHostLaunch
-from services.dify_builder.native_testing.host_lifetime import NativeHostLifetime, NativeHostLifetimeRegistry
+from services.dify_builder.native_testing.host_lifetime import (
+    CloseReason,
+    NativeHostLifetime,
+    NativeHostLifetimeRegistry,
+    NativeNodePhase,
+)
 from services.dify_builder.native_testing.http_adapter import PreparedHttpBinding, PreparedHttpRequest
 from services.dify_builder.native_testing.operation_journal import NodeOperationJournal
 from services.workflow_runtime.entry import WorkflowEntry
@@ -192,7 +199,7 @@ def record(case: LaunchCase, node: Node[BaseNodeData], *, stop: bool = False) ->
     control = (
         NativePolicyStop(ref=REF, reason_code="outcome_unknown")
         if stop
-        else NativeApprovalWait(ref=REF, pending_operation_id="pending", wait_reason="approval")
+        else NativeApprovalWait(ref=REF, pending_operation_id="pending", wait_reason=WaitReason.APPROVAL)
     )
     value = NativeControlRecord(
         control=control, node_id=node.id, native_execution_id=node.execution_id, carrier_ref="carrier"
@@ -263,11 +270,11 @@ def test_actual_prepared_timeout_snapshot_contributes_to_max_sum_and_fixed_deadl
     try:
         assert entered.wait(1)
         before = monotonic()
-        case.host.request_close(reason="cancel")
+        case.host.request_close(reason=CloseReason.CANCEL)
         deadline = case.host.settlement_deadline
         assert deadline is not None
         assert before + 14 <= deadline <= monotonic() + 14
-        case.host.request_close(reason="consumer_closed")
+        case.host.request_close(reason=CloseReason.CONSUMER_CLOSED)
         assert case.host.settlement_deadline == deadline
     finally:
         release.set()
@@ -279,7 +286,7 @@ def test_actual_prepared_timeout_snapshot_contributes_to_max_sum_and_fixed_deadl
 def test_typed_control_is_accepted_only_after_exact_durable_port_ack(stop: bool) -> None:
     case = LaunchCase()
     node = case.own_node()
-    with case.host.node_scope(node=node, phase="run"):
+    with case.host.node_scope(node=node, phase=NativeNodePhase.RUN):
         value = record(case, node, stop=stop)
         result = case.host.control_sink.record_control(record=value)
         assert type(result) is NativeControlAccepted
@@ -304,7 +311,7 @@ def test_ambiguous_fence_never_retries_or_accepts(failure: str, monkeypatch: pyt
         monkeypatch.setattr(case.host, "_fence_pending", malformed_fence)
     case.ports.error = RuntimeError("lost acknowledgement") if failure == "lost-ack" else None
     node = case.own_node()
-    with case.host.node_scope(node=node, phase="run"):
+    with case.host.node_scope(node=node, phase=NativeNodePhase.RUN):
         value = record(case, node)
         assert type(case.host.control_sink.record_control(record=value)) is NativeControlRefused
         assert type(case.host.control_sink.record_control(record=value)) is NativeControlRefused
@@ -321,7 +328,7 @@ def test_registered_callback_releases_admission_mutex_before_real_io() -> None:
 
     def control() -> None:
         try:
-            with case.host.node_scope(node=node, phase="run"):
+            with case.host.node_scope(node=node, phase=NativeNodePhase.RUN):
                 value = record(case, node)
                 assert type(case.host.control_sink.record_control(record=value)) is NativeControlAccepted
         except BaseException as exc:
@@ -478,7 +485,7 @@ def test_owned_start_refusal_and_actual_start_exception_are_retained(monkeypatch
     failed = FailedStart()
     with pytest.raises(RuntimeError, match="actual startup failed"):
         case.host.start_worker(worker=failed)
-    case.host.request_close(reason="failed")
+    case.host.request_close(reason=CloseReason.FAILED)
     assert case.lifetime.settle() == "settled"
     case.lifetime.consume_cleanup(ref=REF, generation=0, dispatch_id="dispatch")
 
@@ -489,7 +496,7 @@ def test_worker_finally_callback_never_substitutes_for_actual_thread_exit(monkey
     finished, release = Event(), Event()
 
     def run() -> None:
-        case.host.worker_finished(worker=current_thread(), exit_kind="returned")
+        case.host.worker_finished(worker=current_thread(), exit_kind=WorkerExit.RETURNED)
         finished.set()
         release.wait(2)
 
@@ -497,7 +504,7 @@ def test_worker_finally_callback_never_substitutes_for_actual_thread_exit(monkey
     case.host.start_worker(worker=thread)
     try:
         assert finished.wait(1)
-        case.host.request_close(reason="cancel")
+        case.host.request_close(reason=CloseReason.CANCEL)
         assert case.lifetime.settle() == "unknown"
         assert thread.is_alive()
         with pytest.raises(ValueError, match="^native_host_cleanup_incomplete$"):
@@ -605,7 +612,7 @@ def test_root_observation_retains_actual_business_terminal_without_payload(monke
     worker = Thread(target=lambda: _run_observed(case, entry))
     case.host.start_worker(worker=worker)
     worker.join(2)
-    case.host.request_close(reason="exhausted")
+    case.host.request_close(reason=CloseReason.EXHAUSTED)
     assert case.lifetime.settle() == "settled"
     observed = case.host.root_observation
     assert observed.terminal == "succeeded"
@@ -624,7 +631,7 @@ def _run_observed(case: LaunchCase, entry: WorkflowEntry) -> None:
     try:
         list(entry.run())
     finally:
-        case.host.worker_finished(worker=current_thread(), exit_kind="returned")
+        case.host.worker_finished(worker=current_thread(), exit_kind=WorkerExit.RETURNED)
 
 
 def test_nested_pool_lifecycle_events_do_not_attest_root_terminal(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -657,7 +664,7 @@ def test_nested_pool_lifecycle_events_do_not_attest_root_terminal(monkeypatch: p
     thread = Thread(target=lambda: _run_observed(case, entry))
     case.host.start_worker(worker=thread)
     thread.join(2)
-    case.host.request_close(reason="exhausted")
+    case.host.request_close(reason=CloseReason.EXHAUSTED)
     assert case.lifetime.settle() == "settled", (
         case.host.root_observation,
         case.host.boundary_owner.reason_code,
@@ -704,11 +711,11 @@ def test_cross_thread_end_never_closes_active_physical_phase_or_scalar_hook(
 
     def run() -> None:
         try:
-            with case.host.node_scope(node=node, phase="resume_container"), layer.node_run_context(node):
+            with case.host.node_scope(node=node, phase=NativeNodePhase.RESUME_CONTAINER), layer.node_run_context(node):
                 entered.set()
                 release.wait(2)
         finally:
-            case.host.worker_finished(worker=current_thread(), exit_kind="returned")
+            case.host.worker_finished(worker=current_thread(), exit_kind=WorkerExit.RETURNED)
 
     thread = Thread(target=run)
     case.host.start_worker(worker=thread)
@@ -727,7 +734,7 @@ def test_cross_thread_end_never_closes_active_physical_phase_or_scalar_hook(
         assert len(case.lifetime.active_node_scopes) == 2
         layer.on_node_run_end(node, None)
         assert len(case.lifetime.active_node_scopes) == 2
-        case.host.request_close(reason="cancel")
+        case.host.request_close(reason=CloseReason.CANCEL)
         assert case.lifetime.settle() == "unknown"
         assert thread.is_alive()
     finally:
@@ -771,7 +778,7 @@ def test_first_real_native_hook_is_owned_before_later_start_hook_blocks(monkeypa
         except BaseException as exc:
             errors.append(exc)
         finally:
-            case.host.worker_finished(worker=current_thread(), exit_kind="returned")
+            case.host.worker_finished(worker=current_thread(), exit_kind=WorkerExit.RETURNED)
 
     worker = Thread(target=run)
     case.host.start_worker(worker=worker)
@@ -783,7 +790,7 @@ def test_first_real_native_hook_is_owned_before_later_start_hook_blocks(monkeypa
         assert scopes[0].runtime_state is factory.runtime
         assert scopes[0].thread is not worker
         assert scopes[0].thread.is_alive()
-        case.host.request_close(reason="cancel")
+        case.host.request_close(reason=CloseReason.CANCEL)
         assert case.lifetime.settle() == "unknown"
         assert case.lifetime.active_node_scopes
     finally:
@@ -812,7 +819,7 @@ def test_actual_native_resume_container_scope_is_retained_across_its_yield(monke
             release.wait(2)
         finally:
             stream.close()
-            case.host.worker_finished(worker=current_thread(), exit_kind="returned")
+            case.host.worker_finished(worker=current_thread(), exit_kind=WorkerExit.RETURNED)
 
     worker = Thread(target=run)
     case.host.start_worker(worker=worker)
@@ -823,7 +830,7 @@ def test_actual_native_resume_container_scope_is_retained_across_its_yield(monke
         assert scope.runtime_state is factory.runtime
         assert scope.thread is worker
         assert scope.phase == "resume_container"
-        case.host.request_close(reason="consumer_closed")
+        case.host.request_close(reason=CloseReason.CONSUMER_CLOSED)
         assert case.lifetime.settle() == "unknown"
     finally:
         release.set()
@@ -845,12 +852,12 @@ def test_launch_identity_is_not_replaceable_and_retirement_requires_real_cleanup
     assert released == []
 
     def run() -> None:
-        case.host.worker_finished(worker=current_thread(), exit_kind="returned")
+        case.host.worker_finished(worker=current_thread(), exit_kind=WorkerExit.RETURNED)
 
     thread = Thread(target=run)
     case.host.start_worker(worker=thread)
     thread.join(1)
-    case.host.request_close(reason="exhausted")
+    case.host.request_close(reason=CloseReason.EXHAUSTED)
     assert case.lifetime.settle() == "settled"
     case.lifetime.consume_cleanup(ref=REF, generation=0, dispatch_id="dispatch")
     case.host.retire()
@@ -881,10 +888,10 @@ def test_late_fence_acknowledgement_never_restores_control_acceptance(
 
     def run() -> None:
         try:
-            with case.host.node_scope(node=node, phase="run"):
+            with case.host.node_scope(node=node, phase=NativeNodePhase.RUN):
                 results.append(case.host.control_sink.record_control(record=record(case, node)))
         finally:
-            case.host.worker_finished(worker=current_thread(), exit_kind="returned")
+            case.host.worker_finished(worker=current_thread(), exit_kind=WorkerExit.RETURNED)
 
     thread = Thread(target=run)
     case.host.start_worker(worker=thread)
@@ -937,10 +944,10 @@ def test_control_arms_before_stuck_admission_and_refuses_late_physical_entry(
         except BaseException as exc:
             outcomes.append(exc)
         finally:
-            case.host.worker_finished(worker=current_thread(), exit_kind="returned")
+            case.host.worker_finished(worker=current_thread(), exit_kind=WorkerExit.RETURNED)
 
     def control() -> None:
-        with case.host.node_scope(node=node, phase="run"):
+        with case.host.node_scope(node=node, phase=NativeNodePhase.RUN):
             value = record(case, node)
             control_started.set()
             controls.append(case.host.control_sink.record_control(record=value))
@@ -983,7 +990,7 @@ def test_late_common_wait_and_completed_replay_reach_real_adapter_and_journal() 
     waiting.ports.on_fence = lambda: waiting.authorization.decisions.__setitem__(
         0, ApprovalWait(pending_operation_id="pending")
     )
-    with waiting.host.node_scope(node=node, phase="run"):
+    with waiting.host.node_scope(node=node, phase=NativeNodePhase.RUN):
         assert type(waiting.host.control_sink.record_control(record=record(waiting, node))) is NativeControlAccepted
     for _ in range(2):
         with pytest.raises(NativeApprovalWait) as caught:
@@ -1000,7 +1007,7 @@ def test_late_common_wait_and_completed_replay_reach_real_adapter_and_journal() 
     binding = completed.prepared()
     assert completed.calls().call(ref=REF, intent=binding.intent, dispatch=lambda _permit: "done") == "done"
     node = completed.own_node()
-    with completed.host.node_scope(node=node, phase="run"):
+    with completed.host.node_scope(node=node, phase=NativeNodePhase.RUN):
         assert type(completed.host.control_sink.record_control(record=record(completed, node))) is NativeControlAccepted
     assert (
         completed.calls().call(
@@ -1033,13 +1040,13 @@ def test_result_storage_keeps_ticket_and_capacity_owned_after_callback_returns(m
         except BaseException as exc:
             errors.append(exc)
         finally:
-            case.host.worker_finished(worker=current_thread(), exit_kind="returned")
+            case.host.worker_finished(worker=current_thread(), exit_kind=WorkerExit.RETURNED)
 
     thread = Thread(target=run)
     case.host.start_worker(worker=thread)
     try:
         assert storing.wait(1)
-        case.host.request_close(reason="cancel")
+        case.host.request_close(reason=CloseReason.CANCEL)
         assert case.lifetime.settle() == "unknown"
         with pytest.raises(ValueError, match="^native_host_cleanup_incomplete$"):
             case.lifetime.consume_cleanup(ref=REF, generation=0, dispatch_id="dispatch")
@@ -1116,7 +1123,7 @@ def test_launch_retirement_releases_layer_and_real_control_traceback_payloads(mo
             try:
                 list(node.run())  # Real native boundary, sink and control traceback.
             finally:
-                case.host.worker_finished(worker=current_thread(), exit_kind="returned")
+                case.host.worker_finished(worker=current_thread(), exit_kind=WorkerExit.RETURNED)
 
         worker = Thread(target=run)
         case.host.start_worker(worker=worker)
@@ -1222,7 +1229,7 @@ def test_elapsed_ordinary_work_has_no_deadline_and_independent_work_keeps_runnin
             entered.wait(1)
             release.wait(2)
         finally:
-            case.host.worker_finished(worker=current_thread(), exit_kind="returned")
+            case.host.worker_finished(worker=current_thread(), exit_kind=WorkerExit.RETURNED)
 
     def independent() -> None:
         independent_release.wait(2)
@@ -1237,7 +1244,7 @@ def test_elapsed_ordinary_work_has_no_deadline_and_independent_work_keeps_runnin
         assert case.host.settlement_deadline is None
         assert not case.lifetime.unknown
         before = monotonic()
-        case.host.request_close(reason="consumer_closed")
+        case.host.request_close(reason=CloseReason.CONSUMER_CLOSED)
         deadline = case.host.settlement_deadline
         assert deadline is not None
         assert deadline >= before + 0.06
@@ -1256,7 +1263,7 @@ def test_prestart_launch_releases_actual_bound_resource_once_only_after_exact_cl
     case = LaunchCase()
     released: list[str] = []
     case.host.bind_release(release=lambda: released.append("actual rate resource"))
-    case.host.request_close(reason="failed")
+    case.host.request_close(reason=CloseReason.FAILED)
     with pytest.raises(ValueError, match="native_host_cleanup_incomplete"):
         case.lifetime.consume_cleanup(ref=REF, generation=0, dispatch_id="dispatch")
     with pytest.raises(ValueError, match="native_host_cleanup_unconsumed"):
@@ -1286,7 +1293,7 @@ def test_prestart_launch_releases_actual_bound_resource_once_only_after_exact_cl
 def test_prestart_launch_delegate_cannot_certify_bound_actual_native_runtime(monkeypatch: pytest.MonkeyPatch) -> None:
     case = LaunchCase()
     native_entry(case, monkeypatch)
-    case.host.request_close(reason="failed")
+    case.host.request_close(reason=CloseReason.FAILED)
     with pytest.raises(ValueError, match="^native_host_never_started_unproven$"):
         case.host.confirm_never_started()
     with pytest.raises(ValueError, match="native_host_cleanup_incomplete"):

@@ -17,7 +17,11 @@ from models.dify_builder import DifyBuilderSession, DifyBuilderTestInput
 from models.workflow import Workflow
 from runtime_contracts.builder.execution import canonical_digest
 from runtime_contracts.builder.native.contracts import ID, Counter, FrozenDTO, JsonValue, NativeTestContextRef
-from runtime_contracts.builder.native.runtime_contracts import NativeStatePort, ResolvedNativeTestContext
+from runtime_contracts.builder.native.runtime_contracts import (
+    NativeStatePort,
+    NativeTestMode,
+    ResolvedNativeTestContext,
+)
 from services.dify_builder.execution_policy_service import check_execution_permission, load_execution_owners
 from services.dify_builder.native_testing.repository import admitted_workflow_revision, native_workflow_revision
 
@@ -106,7 +110,7 @@ class NativeAdmissionCompiler:
         session_id: str,
         test_input_id: str,
         expected_version: int,
-        mode: Literal["native", "mock"],
+        mode: NativeTestMode,
         request_id: str,
         invocation_id: str,
         native_run_id: str,
@@ -170,7 +174,7 @@ class NativeAdmissionCompiler:
             "execution_revision": revision,
             "input_revision": canonical_digest(inputs),
             "start_schema_hash": schema_hash,
-            "mode": mode,
+            "mode": mode.value if isinstance(mode, NativeTestMode) else mode,
             "profile": profile.model_dump(mode="json"),
             "resource_manifest_digest": canonical_digest(list(manifest)),
         }

@@ -3,9 +3,10 @@ from __future__ import annotations
 import logging
 from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager, suppress
+from enum import StrEnum
 from functools import singledispatchmethod
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, Literal, override
+from typing import TYPE_CHECKING, Any, override
 
 from dify_agent.protocol import CancelRunRequest
 from dify_agent.protocol.snapshot import SessionSnapshot
@@ -78,6 +79,14 @@ from services.agent.prompt_mentions import extract_workflow_node_output_selector
 from services.agent.workspace_service import AgentWorkspaceNotFoundError
 from services.workflow_runtime.agent_binding import WorkflowAgentBindingError, WorkflowAgentBindingResolver
 
+
+class ConfirmedNodePhase(StrEnum):
+    PARENT_RESTORE = "parent_restore"
+    RECOVER_EXISTING = "recover_existing"
+    LOAD_WAIT = "load_wait"
+    CONTINUE_WAIT = "continue_wait"
+
+
 if TYPE_CHECKING:
     from core.evaluation.agent.agent_v2_trace_collector import AgentV2TraceCollector
     from core.workflow.nodes.agent_v2.tool_snapshot import AgentRuntimeToolDefinition
@@ -94,7 +103,7 @@ logger = logging.getLogger(__name__)
 @contextmanager
 def _confirmed_node_phase(
     context: BuilderAgentExecutionContext,
-    phase: Literal["parent_restore", "recover_existing", "load_wait", "continue_wait"],
+    phase: ConfirmedNodePhase,
 ) -> Generator[None]:
     """Disjoint node recovery phases; their native reads and transport spans are nested."""
     started, error_type = perf_counter(), "none"
@@ -689,11 +698,11 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         )
         client = self._agent_backend_client
         assert isinstance(client, AgentCreateRecoveryClient)
-        with _confirmed_node_phase(marker, "parent_restore"):
+        with _confirmed_node_phase(marker, ConfirmedNodePhase.PARENT_RESTORE):
             parent = load_confirmed_agent_parent(
                 state_store=self._agent_preparation.state_store, ref=marker.ref, execution_id=self.execution_id
             )
-        with _confirmed_node_phase(marker, "recover_existing"):
+        with _confirmed_node_phase(marker, ConfirmedNodePhase.RECOVER_EXISTING):
             response = self._agent_run_recovery.recover_existing(
                 scope=scope,
                 client=client,
@@ -704,12 +713,12 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 # A previously prepared occurrence cannot acquire first-POST
                 # authority merely because another process stopped before ACK.
                 raise AgentCreateAcknowledgementUnknown("Agent create acknowledgement is unknown")
-            with _confirmed_node_phase(marker, "load_wait"):
+            with _confirmed_node_phase(marker, ConfirmedNodePhase.LOAD_WAIT):
                 protected = self._agent_commands.load_wait(ref=marker.ref, parent_node=parent)
             if protected is not None:
                 if protected.association.agent_run_id != response.run_id:
                     raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
-                with _confirmed_node_phase(marker, "continue_wait"):
+                with _confirmed_node_phase(marker, ConfirmedNodePhase.CONTINUE_WAIT):
                     continued = self._agent_commands.continue_wait(ref=marker.ref, parent_node=parent)
                 if continued.association.agent_run_id != response.run_id or continued.wait is None:
                     raise BuilderExecutionPolicyError("native_agent_owner_mismatch")

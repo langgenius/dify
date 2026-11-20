@@ -28,7 +28,12 @@ from graphon.engine_events import (
 from graphon.graph.scoping import resolve_container_id
 from models.dify_builder import DifyBuilderExecutionRequest
 from models.dify_builder_native_tests import NativeTestScope
-from runtime_contracts.builder.native.canvas_path import NativeCanvasEdge, NativeCanvasNodeStatus, NativeCanvasPath
+from runtime_contracts.builder.native.canvas_path import (
+    NativeCanvasEdge,
+    NativeCanvasNodeStatus,
+    NativeCanvasPath,
+    NativeCanvasStatus,
+)
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
 from services.dify_builder.progress_bus import publish_native_change
 
@@ -161,23 +166,23 @@ class NativeCanvasPathLayer(Layer):
                     return
                 self._taken[edge] = None
             case NodeRunRetryEvent():
-                self._mark_node(event, "retry")
+                self._mark_node(event, NativeCanvasStatus.RETRY)
             case NodeRunStartedEvent():
-                self._mark_node(event, "running")
+                self._mark_node(event, NativeCanvasStatus.RUNNING)
             case NodeRunPauseRequestedEvent():
-                self._mark_node(event, "paused")
+                self._mark_node(event, NativeCanvasStatus.PAUSED)
             case NodeRunSucceededEvent():
-                self._mark_node(event, "succeeded")
+                self._mark_node(event, NativeCanvasStatus.SUCCEEDED)
             case NodeRunFailedEvent():
-                self._mark_node(event, "failed")
+                self._mark_node(event, NativeCanvasStatus.FAILED)
             case NodeRunExceptionEvent():
-                self._mark_node(event, "exception")
+                self._mark_node(event, NativeCanvasStatus.EXCEPTION)
             case GraphRunAbortedEvent():
-                self._settle_active("stopped")
+                self._settle_active(NativeCanvasStatus.STOPPED)
             case GraphRunFailedEvent():
-                self._settle_active("failed")
+                self._settle_active(NativeCanvasStatus.FAILED)
             case GraphRunPausedEvent():
-                self._settle_active("paused")
+                self._settle_active(NativeCanvasStatus.PAUSED)
             case _:
                 return
         self._persist(allow_cancelled=isinstance(event, GraphRunAbortedEvent))

@@ -1,6 +1,7 @@
 from collections.abc import Callable, Sequence
+from enum import StrEnum
 from types import SimpleNamespace
-from typing import Literal, Unpack
+from typing import Unpack
 
 import pytest
 from pytest_mock import MockerFixture
@@ -11,6 +12,11 @@ from core.plugin.entities.plugin_daemon import CredentialType, PluginToolProvide
 from core.plugin.impl.exc import PluginDaemonError
 from core.plugin.impl.tool import PluginToolManager
 from tests.unit_tests.services.dify_builder.installed_tool_inventory import DaemonRequest, FakeToolDaemon
+
+
+class RouteDefect(StrEnum):
+    FAIL_ROUTES = "fail_routes"
+    MALFORMED_ROUTES = "malformed_routes"
 
 
 class RouteFailures(TypedDict, total=False, closed=True):
@@ -433,14 +439,14 @@ class TestFetchToolProvidersAuthoritativeInventory:
         assert sorted(plugin_id for plugin_id, _provider in _single_ids(daemon)) == sorted(missing)
         _assert_metadata_only(daemon)
 
-    @pytest.mark.parametrize("defect", ["fail_routes", "malformed_routes"])
+    @pytest.mark.parametrize("defect", list(RouteDefect))
     def test_an_installed_id_lookup_failure_fails_the_fetch(
-        self, monkeypatch: pytest.MonkeyPatch, defect: Literal["fail_routes", "malformed_routes"]
+        self, monkeypatch: pytest.MonkeyPatch, defect: RouteDefect
     ) -> None:
         from tests.unit_tests.services.dify_builder.installed_tool_inventory import INSTALLED_IDS
 
         failures: RouteFailures = {}
-        failures[defect] = frozenset({INSTALLED_IDS})
+        failures[defect.value] = frozenset({INSTALLED_IDS})
         _daemon(monkeypatch, providers_by_tenant={"tenant-1": _providers(3)}, **failures)
 
         with pytest.raises(_INVENTORY_FAILURES):
@@ -582,15 +588,15 @@ class TestFetchToolProvidersRecoveryControls:
     recovery path keeping the bulk path's output-schema resolution and
     normalized identities."""
 
-    @pytest.mark.parametrize("defect", ["fail_routes", "malformed_routes"])
+    @pytest.mark.parametrize("defect", list(RouteDefect))
     def test_a_failed_installation_batch_fails_the_fetch(
-        self, monkeypatch: pytest.MonkeyPatch, defect: Literal["fail_routes", "malformed_routes"]
+        self, monkeypatch: pytest.MonkeyPatch, defect: RouteDefect
     ) -> None:
         from tests.unit_tests.services.dify_builder.installed_tool_inventory import INSTALLATION_BATCH
 
         rows = _providers(5)
         failures: RouteFailures = {}
-        failures[defect] = frozenset({INSTALLATION_BATCH})
+        failures[defect.value] = frozenset({INSTALLATION_BATCH})
         _daemon(
             monkeypatch,
             providers_by_tenant={"tenant-1": rows},

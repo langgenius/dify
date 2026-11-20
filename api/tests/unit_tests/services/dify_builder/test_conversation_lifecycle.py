@@ -13,6 +13,7 @@ from core.dify_builder.errors import BadRequestError, ConflictError, NotFoundErr
 from core.dify_builder.models import (
     Actor,
     Checkpoint,
+    ContextTaskStatus,
     ConversationItem,
     DifyBuilderContext,
     EntryMode,
@@ -242,7 +243,9 @@ def test_applicable_lifecycle_without_current_control_evidence_is_unknown(
         entry_mode=EntryMode.BUILD,
         current_state=PcState.BUILD_PLAN_APPROVAL,
     )
-    context = DifyBuilderContext(task_status="abandoned", last_command_id="current", task_control=dict(evidence))
+    context = DifyBuilderContext(
+        task_status=ContextTaskStatus.ABANDONED, last_command_id="current", task_control=dict(evidence)
+    )
     if cleared:
         context.task_control["conversation_clear"] = {"version": 1, "seq_floor": 0}
     repo.create_session(session, context, [])

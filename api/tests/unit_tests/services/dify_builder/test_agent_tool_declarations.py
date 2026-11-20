@@ -4,13 +4,14 @@ import importlib
 import importlib.util
 from collections.abc import Generator, Iterator
 from types import ModuleType
-from typing import Literal, Never
+from typing import Never
 
 import pytest
 from pydantic import JsonValue
 from sqlalchemy import Select
 from sqlalchemy.orm import Session
 
+from core.dify_builder.real_call_consent import Phase
 from core.plugin.entities.plugin_daemon import PluginOAuthCredentialsResponse
 from core.tools.entities.tool_entities import ToolEntity
 from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentDifyToolsBuilder
@@ -21,9 +22,11 @@ from runtime_contracts.builder.native.contracts import (
     DispatchPermit,
     EffectIntent,
     NativeTestContextRef,
+    WaitReason,
 )
 from services.dify_builder.native_testing.agent_operations import AgentOperationService
 from services.dify_builder.native_testing.agent_tool_declarations import AgentToolMetadata
+from services.tools.builder_credential_reference import AccessBasis, OAuthClientSource
 from tests.unit_tests.services.dify_builder import native_owner_fixtures
 
 operations_service = native_owner_fixtures.operations_service
@@ -561,7 +564,7 @@ def test_private_native_routes_require_existing_service_auth(path: str) -> None:
 
 @pytest.mark.parametrize("reason", ["approval", "configuration", "interaction"])
 def test_private_before_call_bridge_serialization_preserves_wait_reason(
-    reason: Literal["approval", "configuration", "interaction"],
+    reason: WaitReason,
     monkeypatch: pytest.MonkeyPatch,
     operations_service: AgentOperationService,
 ) -> None:
@@ -700,7 +703,7 @@ def test_native_materializer_phase_rejected_before_credential_selection(
                 permit_id="permit", attempt_id="attempt", operation_id="operation", expires_at="2030-01-01T00:00:00Z"
             ),
             tool_ref=intent().resource_ref,
-            phase="refresh",
+            phase=Phase.REFRESH,
         )
 
 
@@ -738,8 +741,10 @@ def test_actual_native_materializer_uses_existing_oauth_owner_then_cas_before_bu
     snapshot = BuilderCredentialSnapshot(
         reference=reference,
         encrypted_credentials='{"token":"fixture"}',
-        client=OAuthClientSnapshot(source="tenant", row_id="client", encrypted_params="{}", enabled=True),
-        access=CredentialAccessSnapshot(basis="owner", account_id="actor", tenant_id="tenant", grants=()),
+        client=OAuthClientSnapshot(
+            source=OAuthClientSource.TENANT, row_id="client", encrypted_params="{}", enabled=True
+        ),
+        access=CredentialAccessSnapshot(basis=AccessBasis.OWNER, account_id="actor", tenant_id="tenant", grants=()),
     )
     selection = BuilderCredentialRuntime(snapshot=snapshot, owner_user_id="owner")
     binding = module.AgentCredentialBinding(
@@ -849,7 +854,7 @@ def test_actual_native_materializer_uses_existing_oauth_owner_then_cas_before_bu
         intent=business,
         permit=permit,
         tool_ref="resource",
-        phase="business",
+        phase=Phase.BUSINESS,
     )
     assert result.credentials == {"token": "rotated-fixture"}
     assert events.count("refresh") == events.count("cas") == events.count("claim") == 1
@@ -1159,8 +1164,10 @@ def test_native_refresh_cas_rechecks_detached_snapshot_before_write(
             oauth_client_revision="b" * 64,
             expires_at=1,
         ),
-        access=CredentialAccessSnapshot(basis="owner", account_id="actor", tenant_id="tenant", grants=()),
-        client=OAuthClientSnapshot(source="tenant", row_id="client", encrypted_params="{}", enabled=True),
+        access=CredentialAccessSnapshot(basis=AccessBasis.OWNER, account_id="actor", tenant_id="tenant", grants=()),
+        client=OAuthClientSnapshot(
+            source=OAuthClientSource.TENANT, row_id="client", encrypted_params="{}", enabled=True
+        ),
         encrypted_credentials="old-ciphertext",
     )
     selected = module.BuilderCredentialRuntime(snapshot=snapshot, owner_user_id="owner")

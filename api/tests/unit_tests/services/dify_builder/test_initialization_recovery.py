@@ -8,6 +8,7 @@ import pytest
 from sqlalchemy import Engine
 
 from core.plugin.entities.plugin_daemon import PluginDaemonInnerError
+from runtime_contracts.builder.execution import FailureResourceKind
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.native_launch_observation import begin_preparation, mark_dispatched, observe_resource
 from services.workflow_run_agg import WorkflowRunAgg
@@ -44,7 +45,7 @@ def test_root_metadata_failure_is_sealed_but_other_worker_failures_remain_unknow
     events: list[Mapping[str, object]] = []
 
     def metadata_failure() -> None:
-        with observe_resource("model", "provider", "model"):
+        with observe_resource(FailureResourceKind.MODEL, "provider", "model"):
             raise PluginDaemonInnerError(code=-500, message="private endpoint token=secret")
 
     def worker() -> None:

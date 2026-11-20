@@ -33,7 +33,7 @@ from models.workflow import (
     WorkflowRun,
     WorkflowType,
 )
-from runtime_contracts.builder.execution import TrustedExecutionCompletion
+from runtime_contracts.builder.execution import ExecutionObservationKind, TrustedExecutionCompletion
 from services.dify_builder.application import execution_policy as domain
 from services.dify_builder.serde import context_to_dict
 from tests.helpers.unit.config_override import apply_config_overrides
@@ -996,7 +996,7 @@ def test_complete_non_success_native_status_remains_native_failed(owned: Owned, 
 )
 def test_http_receipts_and_unknown_first_precedence(
     owned: Owned,
-    kind: Literal["effect_blocked", "fixture_served"] | None,
+    kind: Literal[ExecutionObservationKind.EFFECT_BLOCKED, ExecutionObservationKind.FIXTURE_SERVED] | None,
     status: str,
     missing: bool | str,
     outcome: str,

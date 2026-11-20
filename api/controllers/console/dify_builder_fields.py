@@ -10,12 +10,15 @@ from core.dify_builder.contract import (
     ActionKind,
     AssistantTurnItem,
     BuilderErrorCode,
+    CanvasChangeCause,
     Decision,
     DecisionItem,
     ExecutionActivityState,
     ExecutionProgressStatus,
     FormCard,
+    InteractionKind,
     InteractionResponseItem,
+    LifecycleSettlement,
     NoticeItem,
     Phase,
     PlanCard,
@@ -25,15 +28,39 @@ from core.dify_builder.contract import (
     RunContextCard,
     RunStatus,
     SessionModel,
+    SessionTaskStatus,
     TestResultCard,
     UserItem,
 )
 from core.dify_builder.models import TaskSummary
-from core.dify_builder.real_call_consent import ConsentState
+from core.dify_builder.real_call_consent import ConsentState, RealCallDecision
 from fields.base import ResponseModel
 from fields.workflow_stream_fields import WorkflowStreamPayload
 from runtime_contracts.builder.presentation import BuilderText
+from runtime_contracts.builder.string_enum import BuilderStringEnum
 from services.dify_builder.native_testing.public_contracts import NativeTestInputBinding, NativeTestPublicReceipt
+
+
+class FixControlOperation(BuilderStringEnum):
+    FIX = "fix"
+    DISMISS_FIX = "dismiss_fix"
+    STOP_AND_SWITCH_FIX = "stop_and_switch_fix"
+
+
+class AttachmentState(BuilderStringEnum):
+    PENDING = "pending"
+    CONSUMED = "consumed"
+    TRUNCATED = "truncated"
+    REJECTED = "rejected"
+
+
+class MaterialReceiptStatus(BuilderStringEnum):
+    PENDING = "pending"
+    CONSUMED = "consumed"
+    TRUNCATED = "truncated"
+    REJECTED = "rejected"
+    SUPERSEDED = "superseded"
+
 
 NonEmptyString = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 ClientTurnId = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
@@ -132,7 +159,7 @@ class DifyBuilderReceiptFieldSnapshot(DifyBuilderPayload):
 class DifyBuilderReceiptSnapshot(DifyBuilderPayload):
     """Localized display only; submitted values remain in action.payload."""
 
-    interaction_kind: Literal["choice", "form", "resource"]
+    interaction_kind: InteractionKind
     reply_language: Annotated[str, StringConstraints(min_length=1, max_length=35)]
     # Display metadata must not impose limits absent from action.payload.
     question: str
@@ -181,7 +208,7 @@ class DifyBuilderFixIntentPayload(DifyBuilderPayload):
 
 
 class DifyBuilderFixControlQuery(DifyBuilderPayload):
-    operation: Literal["fix", "dismiss_fix", "stop_and_switch_fix"]
+    operation: FixControlOperation
     client_action_id: ClientTurnId
     base_version: int = Field(ge=1)
     fix_intent_id: NonEmptyString | None = None
@@ -196,7 +223,7 @@ class DifyBuilderFixControlQuery(DifyBuilderPayload):
 
 class DifyBuilderFixControlResponse(ResponseModel):
     session_id: str
-    operation: Literal["fix", "dismiss_fix", "stop_and_switch_fix"]
+    operation: FixControlOperation
     client_action_id: str
     base_version: int
     fix_intent_id: str
@@ -213,7 +240,7 @@ class DifyBuilderConversationLifecycleResponse(ResponseModel):
     task_status: Literal["abandoned"]
     conversation_cleared: bool
     conversation_last_seq: int
-    settlement: Literal["settled", "pending", "unknown"]
+    settlement: LifecycleSettlement
 
 
 class DifyBuilderSubmitActionPayload(DifyBuilderPayload):
@@ -271,7 +298,7 @@ class DifyBuilderPrepareRealCallPayload(DifyBuilderPayload):
 
 
 class DifyBuilderConfirmRealCallPayload(DifyBuilderPayload):
-    decision: Literal["confirm", "decline"]
+    decision: RealCallDecision
     scope_digest: ScopeDigest
     at_version: StrictInt = Field(ge=1)
     idempotency_key: IdempotencyKey
@@ -399,7 +426,7 @@ class DifyBuilderAttachmentStateResponse(ResponseModel):
     name: str
     extension: str
     size: int
-    status: Literal["pending", "consumed", "truncated", "rejected"]
+    status: AttachmentState
     digest: str = ""
     reason: str = ""
 
@@ -412,7 +439,7 @@ class DifyBuilderMaterialReceiptResponse(ResponseModel):
     task_id: str
     generation: int
     client_turn_id: str
-    status: Literal["pending", "consumed", "truncated", "rejected", "superseded"]
+    status: MaterialReceiptStatus
     consumed_version: int | None
     test_input_candidate: bool
     attachments: list[DifyBuilderAttachmentStateResponse] = Field(max_length=5)
@@ -440,10 +467,10 @@ class DifyBuilderSessionStateResponse(ResponseModel):
     model: SessionModel | None = None
     app_revision: DifyBuilderAppRevisionResponse | None = None
     task_id: str = ""
-    task_status: Literal["active", "paused", "completed", "abandoned"] = "active"
+    task_status: SessionTaskStatus = SessionTaskStatus.ACTIVE
     task_summaries: list[TaskSummary] = Field(default_factory=list, max_length=8)
     conversation_cleared: bool = False
-    lifecycle_settlement: Literal["settled", "pending", "unknown"] | None = Field(
+    lifecycle_settlement: LifecycleSettlement | None = Field(
         default=None,
         description=(
             "Known execution state of the current clear/abandon control, not physical cleanup proof. "
@@ -522,7 +549,7 @@ class DifyBuilderCanvasEventBase(ResponseModel):
 
 class DifyBuilderGraphChangedEventData(DifyBuilderCanvasEventBase):
     event: Literal["graph_changed"]
-    cause: Literal["apply", "restore"]
+    cause: CanvasChangeCause
 
 
 class DifyBuilderEditTargetsChangedEventData(DifyBuilderCanvasEventBase):
@@ -775,64 +802,68 @@ class DifyBuilderRealCallConsentResponse(ResponseModel):
     )
 
 
-DifyBuilderRealCallRefusalCode = Literal[
-    "needs_setup", "needs_permission", "unsupported_action", "unavailable_metadata", "conflict"
-]
-DifyBuilderRealCallRefusalReason = Literal[
+class DifyBuilderRealCallRefusalCode(BuilderStringEnum):
+    NEEDS_SETUP = "needs_setup"
+    NEEDS_PERMISSION = "needs_permission"
+    UNSUPPORTED_ACTION = "unsupported_action"
+    UNAVAILABLE_METADATA = "unavailable_metadata"
+    CONFLICT = "conflict"
+
+
+class DifyBuilderRealCallRefusalReason(BuilderStringEnum):
     # needs_setup
-    "needs_setup",
-    "credential_required",
-    "credential_binding_mismatch",
-    "credential_provider_mismatch",
-    "unsupported_test_input",
+    NEEDS_SETUP = "needs_setup"
+    CREDENTIAL_REQUIRED = "credential_required"
+    CREDENTIAL_BINDING_MISMATCH = "credential_binding_mismatch"
+    CREDENTIAL_PROVIDER_MISMATCH = "credential_provider_mismatch"
+    UNSUPPORTED_TEST_INPUT = "unsupported_test_input"
     # needs_permission
-    "credential_reference_unavailable",
-    "credential_policy_refused",
+    CREDENTIAL_REFERENCE_UNAVAILABLE = "credential_reference_unavailable"
+    CREDENTIAL_POLICY_REFUSED = "credential_policy_refused"
     # unsupported_action
-    "unsupported_action",
-    "unsupported_tool_node",
-    "unsupported_tool_parameters",
-    "unsupported_tool_configuration",
-    "unsafe_message_id",
-    "unsupported_session_state",
-    "unsupported_graph",
-    "unsupported_workflow",
-    "unsupported_node_retry",
-    "unsupported_default_output",
-    "unsupported_selector",
-    "unsupported_node_implementation",
-    "unsupported_node_configuration",
-    "invalid_node_configuration",
-    "unsupported_start_input",
-    "unsupported_input_value",
-    "unsupported_features",
-    "unsupported_variables",
-    "unsupported_external_tracing",
+    UNSUPPORTED_ACTION = "unsupported_action"
+    UNSUPPORTED_TOOL_NODE = "unsupported_tool_node"
+    UNSUPPORTED_TOOL_PARAMETERS = "unsupported_tool_parameters"
+    UNSUPPORTED_TOOL_CONFIGURATION = "unsupported_tool_configuration"
+    UNSAFE_MESSAGE_ID = "unsafe_message_id"
+    UNSUPPORTED_SESSION_STATE = "unsupported_session_state"
+    UNSUPPORTED_GRAPH = "unsupported_graph"
+    UNSUPPORTED_WORKFLOW = "unsupported_workflow"
+    UNSUPPORTED_NODE_RETRY = "unsupported_node_retry"
+    UNSUPPORTED_DEFAULT_OUTPUT = "unsupported_default_output"
+    UNSUPPORTED_SELECTOR = "unsupported_selector"
+    UNSUPPORTED_NODE_IMPLEMENTATION = "unsupported_node_implementation"
+    UNSUPPORTED_NODE_CONFIGURATION = "unsupported_node_configuration"
+    INVALID_NODE_CONFIGURATION = "invalid_node_configuration"
+    UNSUPPORTED_START_INPUT = "unsupported_start_input"
+    UNSUPPORTED_INPUT_VALUE = "unsupported_input_value"
+    UNSUPPORTED_FEATURES = "unsupported_features"
+    UNSUPPORTED_VARIABLES = "unsupported_variables"
+    UNSUPPORTED_EXTERNAL_TRACING = "unsupported_external_tracing"
     # unavailable_metadata
-    "installed_tool_unavailable",
-    "invalid_graph_metadata",
-    "session_state_unavailable",
-    "real_call_unavailable",
+    INSTALLED_TOOL_UNAVAILABLE = "installed_tool_unavailable"
+    INVALID_GRAPH_METADATA = "invalid_graph_metadata"
+    SESSION_STATE_UNAVAILABLE = "session_state_unavailable"
+    REAL_CALL_UNAVAILABLE = "real_call_unavailable"
     # conflict
-    "stale_session_version",
-    "stale_app_revision",
-    "stale_consent_version",
-    "stale_execution_revision",
-    "test_input_binding_mismatch",
-    "consent_scope_mismatch",
-    "consent_scope_changed",
-    "consent_invalidated",
-    "consent_expired",
-    "consent_not_prepared",
-    "consent_not_confirmed",
-    "consent_already_claimed",
-    "consent_decision_conflict",
-    "idempotency_conflict",
-    "execution_already_launched",
-    "command_lineage_changed",
-    "session_busy",
-    "session_conflict",
-]
+    STALE_SESSION_VERSION = "stale_session_version"
+    STALE_APP_REVISION = "stale_app_revision"
+    STALE_CONSENT_VERSION = "stale_consent_version"
+    STALE_EXECUTION_REVISION = "stale_execution_revision"
+    TEST_INPUT_BINDING_MISMATCH = "test_input_binding_mismatch"
+    CONSENT_SCOPE_MISMATCH = "consent_scope_mismatch"
+    CONSENT_SCOPE_CHANGED = "consent_scope_changed"
+    CONSENT_INVALIDATED = "consent_invalidated"
+    CONSENT_EXPIRED = "consent_expired"
+    CONSENT_NOT_PREPARED = "consent_not_prepared"
+    CONSENT_NOT_CONFIRMED = "consent_not_confirmed"
+    CONSENT_ALREADY_CLAIMED = "consent_already_claimed"
+    CONSENT_DECISION_CONFLICT = "consent_decision_conflict"
+    IDEMPOTENCY_CONFLICT = "idempotency_conflict"
+    EXECUTION_ALREADY_LAUNCHED = "execution_already_launched"
+    COMMAND_LINEAGE_CHANGED = "command_lineage_changed"
+    SESSION_BUSY = "session_busy"
+    SESSION_CONFLICT = "session_conflict"
 
 
 class DifyBuilderRealCallRefusalResponse(ResponseModel):

@@ -8,9 +8,21 @@ Fallback is permitted only for local unavailability before an invocation starts.
 import math
 import re
 from dataclasses import dataclass
-from typing import Any, Literal, Protocol
+from typing import Any, Protocol
 
 from core.dify_builder.models import Actor
+from runtime_contracts.builder.string_enum import BuilderStringEnum
+
+
+class CognitionPolicySource(BuilderStringEnum):
+    EXPLICIT = "explicit"
+    WORKSPACE_DEFAULT = "workspace_default"
+
+
+class CognitionModelHealth(BuilderStringEnum):
+    CONFIGURED = "configured"
+    UNAVAILABLE = "unavailable"
+    UNKNOWN = "unknown"
 
 
 class CognitionPolicyDeniedError(Exception):
@@ -81,13 +93,13 @@ class CognitionPolicy:
     default_model_id: str | None
     fallback_model_ids: tuple[str, ...]
     revision: int
-    source: Literal["explicit", "workspace_default"]
+    source: CognitionPolicySource
 
 
 @dataclass(frozen=True)
 class CognitionPolicyStatus:
     policy: CognitionPolicy
-    health: dict[str, Literal["configured", "unavailable", "unknown"]]
+    health: dict[str, CognitionModelHealth]
     available: bool
     reason_code: str | None
 
@@ -131,7 +143,9 @@ class CognitionPolicyService:
         if policy is not None:
             return policy
         model = self._models.workspace_default(actor)
-        return CognitionPolicy(True, (model,) if model else (), model.id if model else None, (), 0, "workspace_default")
+        return CognitionPolicy(
+            True, (model,) if model else (), model.id if model else None, (), 0, CognitionPolicySource.WORKSPACE_DEFAULT
+        )
 
     def get(self, actor: Actor) -> CognitionPolicy:
         self._repository.require_member(actor, admin=True)
@@ -215,10 +229,10 @@ class CognitionPolicyService:
         except CognitionPolicyDeniedError as error:
             if error.reason != "model_availability_unknown":
                 raise
-            policy = CognitionPolicy(True, (), None, (), 0, "workspace_default")
+            policy = CognitionPolicy(True, (), None, (), 0, CognitionPolicySource.WORKSPACE_DEFAULT)
             return CognitionPolicyStatus(policy, {}, False, "model_availability_unknown")
         except Exception:
-            policy = CognitionPolicy(True, (), None, (), 0, "workspace_default")
+            policy = CognitionPolicy(True, (), None, (), 0, CognitionPolicySource.WORKSPACE_DEFAULT)
             return CognitionPolicyStatus(policy, {}, False, "model_availability_unknown")
         return self._status(actor, policy)
 
@@ -227,12 +241,16 @@ class CognitionPolicyService:
         return self._status(actor, saved)
 
     def _status(self, actor: Actor, policy: CognitionPolicy) -> CognitionPolicyStatus:
-        health: dict[str, Literal["configured", "unavailable", "unknown"]] = {}
+        health: dict[str, CognitionModelHealth] = {}
         for model in policy.models:
             try:
-                health[model.id] = "configured" if self._models.available(actor, model) else "unavailable"
+                health[model.id] = (
+                    CognitionModelHealth.CONFIGURED
+                    if self._models.available(actor, model)
+                    else CognitionModelHealth.UNAVAILABLE
+                )
             except Exception:
-                health[model.id] = "unknown"
+                health[model.id] = CognitionModelHealth.UNKNOWN
         if not policy.enabled:
             return CognitionPolicyStatus(policy, health, False, "builder_disabled")
         for model_id in (policy.default_model_id, *policy.fallback_model_ids):

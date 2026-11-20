@@ -8,7 +8,8 @@ import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any, Literal, Protocol
+from enum import StrEnum
+from typing import TYPE_CHECKING, Any, Protocol
 from uuid import NAMESPACE_URL, uuid5
 
 from pydantic import ValidationError
@@ -41,6 +42,13 @@ from services.dify_builder import trace_diagnostics
 from services.dify_builder.execution_policy_service import load_execution_owners
 from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
 
+
+class NativeTestCommandMethod(StrEnum):
+    DECIDE = "decide"
+    RESUME = "resume"
+    CANCEL = "cancel"
+
+
 if TYPE_CHECKING:
     from services.dify_builder.native_testing.confirmed_agent_commands import ProfiledNativeTestCommands
 
@@ -68,7 +76,7 @@ class TestCancelPayload(FrozenDTO):
 
 @dataclass(frozen=True)
 class TestCommand:
-    method: Literal["decide", "resume", "cancel"]
+    method: NativeTestCommandMethod
     request_id: str
     native_payload: dict[str, Any]
 
@@ -82,7 +90,7 @@ def parse_test_action(kind: str, payload: dict[str, Any]) -> TestCommand:
         if kind in {"confirm_test_operation", "deny_test_operation"}:
             operation = TestOperationPayload.model_validate(payload)
             return TestCommand(
-                "decide",
+                NativeTestCommandMethod.DECIDE,
                 operation.request_id,
                 {
                     "pending_operation_id": operation.pending_operation_id,
@@ -93,10 +101,12 @@ def parse_test_action(kind: str, payload: dict[str, Any]) -> TestCommand:
             )
         if kind == "resume_test":
             resume = TestResumePayload.model_validate(payload)
-            return TestCommand("resume", resume.request_id, {"expected_generation": resume.expected_generation})
+            return TestCommand(
+                NativeTestCommandMethod.RESUME, resume.request_id, {"expected_generation": resume.expected_generation}
+            )
         if kind == "cancel_test":
             cancel = TestCancelPayload.model_validate(payload)
-            return TestCommand("cancel", cancel.request_id, {})
+            return TestCommand(NativeTestCommandMethod.CANCEL, cancel.request_id, {})
     except ValidationError:
         raise BadRequestError("invalid test action payload") from None
     raise BadRequestError("unsupported test action")

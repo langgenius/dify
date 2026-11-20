@@ -5,7 +5,8 @@ import pytest
 from typing_extensions import TypedDict
 
 from core.dify_builder import models
-from core.dify_builder.models import Run
+from core.dify_builder.models import OutputFindingState, Run
+from runtime_contracts.builder.execution import ExecutionActionState, SafetyOutcome
 from services.dify_builder.application.execution_policy import ExecutionEvidenceSummary
 from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
 
@@ -92,9 +93,7 @@ def test_verification_evidence_denies(field: str, value: str | bool, reason: str
 
 
 @pytest.mark.parametrize(("state", "allowed"), [("present", True), ("unknown", True), ("unresolved", False)])
-def test_verification_present_null_and_unknown_are_reviewable(
-    state: Literal["present", "unknown", "unresolved"], allowed: bool
-) -> None:
+def test_verification_present_null_and_unknown_are_reviewable(state: OutputFindingState, allowed: bool) -> None:
     from services.dify_builder.application.verification import publication_decision, result_card
 
     run = verified()
@@ -115,14 +114,16 @@ def test_verification_present_null_and_unknown_are_reviewable(
     assert "not verified" in english_text(card.review_note)
 
 
-ConfirmedOutcome = Literal["confirmed_tool_completed", "execution_evidence_unknown", "native_failed"]
-ActionState = Literal["completed", "failed", "unknown"]
+ConfirmedOutcome = Literal[
+    SafetyOutcome.CONFIRMED_TOOL_COMPLETED, SafetyOutcome.EXECUTION_EVIDENCE_UNKNOWN, SafetyOutcome.NATIVE_FAILED
+]
+ActionState = ExecutionActionState
 
 
 def confirmed_run(
-    outcome: ConfirmedOutcome = "confirmed_tool_completed",
+    outcome: ConfirmedOutcome = SafetyOutcome.CONFIRMED_TOOL_COMPLETED,
     *,
-    action: ActionState = "completed",
+    action: ActionState = ExecutionActionState.COMPLETED,
     status: str = "succeeded",
     execution_revision: str | None = None,
 ) -> models.Run:
@@ -157,8 +158,14 @@ def test_confirmed_success_is_publishable_only_when_sealed_and_revision_exact() 
 
     assert decide(confirmed_run()).allowed is True
     assert decide(confirmed_run(execution_revision="other")).reason == "stale_revision"
-    assert decide(confirmed_run("execution_evidence_unknown", action="unknown")).reason == "execution_evidence_unknown"
-    assert decide(confirmed_run("native_failed", action="failed", status="failed")).allowed is False
+    assert (
+        decide(confirmed_run(SafetyOutcome.EXECUTION_EVIDENCE_UNKNOWN, action=ExecutionActionState.UNKNOWN)).reason
+        == "execution_evidence_unknown"
+    )
+    assert (
+        decide(confirmed_run(SafetyOutcome.NATIVE_FAILED, action=ExecutionActionState.FAILED, status="failed")).allowed
+        is False
+    )
 
 
 @pytest.mark.parametrize(
@@ -192,9 +199,11 @@ def test_confirmed_card_has_ids_status_and_reasons_but_no_native_content(
 
 def json_run(
     *,
-    outcome: Literal["restricted_execution_completed", "execution_evidence_unknown", "native_failed"] = (
-        "restricted_execution_completed"
-    ),
+    outcome: Literal[
+        SafetyOutcome.RESTRICTED_EXECUTION_COMPLETED,
+        SafetyOutcome.EXECUTION_EVIDENCE_UNKNOWN,
+        SafetyOutcome.NATIVE_FAILED,
+    ] = (SafetyOutcome.RESTRICTED_EXECUTION_COMPLETED),
     status: str = "succeeded",
     text: str = "result",
 ) -> models.Run:
@@ -237,7 +246,11 @@ def test_json_completion_preserves_required_output_and_revision_gates() -> None:
     assert run.verification is not None
     run.verification.output_findings = [
         models.OutputFinding(
-            node_id="end", output_name="result", selector=["tool", "text"], state="unresolved", reason="key_presence"
+            node_id="end",
+            output_name="result",
+            selector=["tool", "text"],
+            state=OutputFindingState.UNRESOLVED,
+            reason="key_presence",
         )
     ]
     card = result_card(run)
@@ -260,7 +273,11 @@ def test_json_completion_preserves_required_output_and_revision_gates() -> None:
     ],
 )
 def test_json_noncompletion_blocks_publication(
-    outcome: Literal["restricted_execution_completed", "execution_evidence_unknown", "native_failed"],
+    outcome: Literal[
+        SafetyOutcome.RESTRICTED_EXECUTION_COMPLETED,
+        SafetyOutcome.EXECUTION_EVIDENCE_UNKNOWN,
+        SafetyOutcome.NATIVE_FAILED,
+    ],
     status: str,
     expected: str,
 ) -> None:

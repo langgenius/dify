@@ -27,6 +27,7 @@ from core.dify_builder.models import Graph as BuilderGraph
 from core.dify_builder.state import PcState
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderSession, DifyBuilderTestInput
 from models.workflow import Workflow
+from runtime_contracts.builder.execution import WorkflowExecutionTransport
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.revision import executable_graph_revision, execution_revision
 from services.dify_builder.service import DifyBuilderService
@@ -795,7 +796,7 @@ def test_json_metadata_io_rechecks_execution_configuration_and_owned_state(
             effective_inputs=inputs,
             root_node_id="node1",
             call_depth=0,
-            transport="in_process",
+            transport=WorkflowExecutionTransport.IN_PROCESS,
             resume=False,
         )
 

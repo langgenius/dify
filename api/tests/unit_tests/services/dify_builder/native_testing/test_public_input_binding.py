@@ -11,6 +11,7 @@ from core.dify_builder.models import Actor
 from models.dify_builder import DifyBuilderSession, DifyBuilderSessionCommit, DifyBuilderTestInput
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
+from runtime_contracts.builder.native.runtime_contracts import NativeTestMode
 from services.dify_builder.native_testing.context_binding import NativeAdmissionCompilation
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import Owned
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import owned as owned  # noqa: PLC0414
@@ -110,7 +111,12 @@ def test_standalone_start_refuses_noncurrent_same_session_input_before_compilati
     )
     with pytest.raises(BuilderExecutionPolicyError, match="native_revision_drift"):
         service.start(
-            actor=actor, session_id=sid, test_input_id=other, expected_version=1, mode="native", idempotency_key="start"
+            actor=actor,
+            session_id=sid,
+            test_input_id=other,
+            expected_version=1,
+            mode=NativeTestMode.NATIVE,
+            idempotency_key="start",
         )
 
 
@@ -155,7 +161,12 @@ def test_start_rechecks_current_input_under_admission_lock_before_insert(
     )
     with pytest.raises(BuilderExecutionPolicyError, match="native_current_input_unavailable"):
         service.start(
-            actor=actor, session_id=sid, test_input_id=tid, expected_version=1, mode="native", idempotency_key="start"
+            actor=actor,
+            session_id=sid,
+            test_input_id=tid,
+            expected_version=1,
+            mode=NativeTestMode.NATIVE,
+            idempotency_key="start",
         )
     with factory() as session:
         assert session.scalar(select(func.count()).select_from(DifyBuilderExecutionRequest)) == 0

@@ -7,7 +7,7 @@ from collections.abc import Sequence
 import pytest
 
 from core.app.app_config.entities import ModelConfig
-from core.workflow.generator.types import WorkflowGenerateResultDict
+from core.workflow.generator.types import WorkflowGenerateResultDict, WorkflowGraphMode
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
 from graphon.nodes.llm.entities import LLMNodeData
@@ -111,7 +111,9 @@ def test_corrected_node_configuration_keeps_selected_model_and_prompt(wrapped_no
         {"provider": _PROVIDER, "name": _WORKFLOW_MODEL, "mode": "chat", "completion_params": {}}
     )
 
-    candidate = build._prepare_build_candidate(dict(generated["graph"]), selected_model, "", mode="advanced-chat")
+    candidate = build._prepare_build_candidate(
+        dict(generated["graph"]), selected_model, "", mode=WorkflowGraphMode.ADVANCED_CHAT
+    )
     assert candidate.rejections == []
     draft = graph_ops.filter_applicable({"nodes": [], "edges": []}, candidate.applicable)
     assert draft.rejected == []

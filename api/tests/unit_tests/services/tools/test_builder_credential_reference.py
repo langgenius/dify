@@ -105,7 +105,7 @@ def test_default_flag_is_not_part_of_the_revision() -> None:
 
 def _client(
     *,
-    source: OAuthClientSource = "tenant",
+    source: OAuthClientSource = OAuthClientSource.TENANT,
     row_id: str | None = "client",
     encrypted_params: str | None = TENANT_CLIENT_CIPHERTEXT,
     enabled: bool = True,
@@ -143,7 +143,7 @@ def test_revisions_are_keyed() -> None:
 @pytest.mark.parametrize(
     "changed",
     [
-        lambda: _client(source="system"),
+        lambda: _client(source=OAuthClientSource.SYSTEM),
         lambda: _client(row_id="other-client"),
         lambda: _client(encrypted_params='{"client_id":"rotated"}'),
         lambda: _client(enabled=False),
@@ -157,7 +157,7 @@ def test_every_client_snapshot_field_changes_client_revision(changed: Callable[[
 
 
 def test_client_source_is_closed() -> None:
-    assert _client(source="missing", row_id=None, encrypted_params=None, enabled=False) != _client()
+    assert _client(source=OAuthClientSource.MISSING, row_id=None, encrypted_params=None, enabled=False) != _client()
     with pytest.raises(BuilderExecutionPolicyError, match="invalid_oauth_client_source"):
         methodcaller("__call__", source="debug")(_client)
 
@@ -730,7 +730,7 @@ def test_api_key_credential_binds_the_missing_client_state(world: World) -> None
     reference = resolve(world)
     assert reference.credential_type == "api-key"
     assert reference.oauth_client_revision == _client(
-        source="missing", row_id=None, encrypted_params=None, enabled=False, tenant_id=world.tenant_id
+        source=OAuthClientSource.MISSING, row_id=None, encrypted_params=None, enabled=False, tenant_id=world.tenant_id
     )
 
 

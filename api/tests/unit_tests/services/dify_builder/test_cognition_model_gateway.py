@@ -7,6 +7,7 @@ import pytest
 from core.dify_builder.models import Actor
 from core.entities.provider_entities import CustomProviderConfiguration, ModelLoadBalancingConfiguration
 from core.model_manager import LBModelManager
+from services.dify_builder.application.cognition_policy import CognitionPolicySource
 from services.dify_builder.cognition_model_gateway import NativeCognitionModels
 from tests.helpers.unit.core.model_fixtures import make_model_instance
 
@@ -103,7 +104,9 @@ def test_configured_custom_model_schema_failure_stays_unknown_without_fallback(
     policies = Policies()
     primary = CognitionModel("primary", "openai", "custom-primary", "chat", {})
     fallback = CognitionModel("fallback", "openai", "backup", "chat", {})
-    policies.policy = CognitionPolicy(True, (primary, fallback), "primary", ("fallback",), 1, "explicit")
+    policies.policy = CognitionPolicy(
+        True, (primary, fallback), "primary", ("fallback",), 1, CognitionPolicySource.EXPLICIT
+    )
     service = CognitionPolicyService(policies, gateway)
     with pytest.raises(CognitionPolicyDeniedError, match="model_availability_unknown"):
         service.select(actor, None)
@@ -223,7 +226,7 @@ def test_hosted_customizable_schema_uncertainty_never_chooses_available_fallback
         "primary",
         ("fallback",),
         1,
-        "explicit",
+        CognitionPolicySource.EXPLICIT,
     )
     service = CognitionPolicyService(policies, gateway)
     with pytest.raises(CognitionPolicyDeniedError, match="model_availability_unknown"):

@@ -6,11 +6,13 @@ from contextvars import copy_context
 
 import pytest
 
+from core.dify_builder.contract import AssistantReplyMode, ExecutionProgressStatus
 from core.plugin.entities.plugin_daemon import PluginDaemonInnerError
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import PluginModelRuntime
 from core.plugin.plugin_service import PluginService
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
+from runtime_contracts.builder.execution import FailureResourceKind
 from services.dify_builder import trace_diagnostics as diagnostics
 from services.dify_builder.native_launch_observation import (
     NativeLaunchObservation,
@@ -68,7 +70,7 @@ def test_text_and_malformed_envelopes_cannot_claim_activation(error: Exception) 
     with diagnostics.scope(records.append, "native"), observation.track():
         begin_preparation()
         with pytest.raises(type(error)):
-            with observe_resource("model", "provider", "model"):
+            with observe_resource(FailureResourceKind.MODEL, "provider", "model"):
                 raise error
     assert records == []
 
@@ -244,9 +246,9 @@ def test_emitted_and_persisted_trace_retains_actual_worker_resource(
         item = AssistantTurnItem(
             turn_id="resource-trace-turn",
             stage_id=str(session.current_state),
-            execution=ExecutionProgress(status="completed"),
+            execution=ExecutionProgress(status=ExecutionProgressStatus.COMPLETED),
             reply_text="Review existing Run",
-            reply_mode="complete",
+            reply_mode=AssistantReplyMode.COMPLETE,
         ).to_item(seq=0, at_version=2)
         return StepResult(next=PcState.FIX_AWAIT_APPROVAL, context=context, items=[item])
 
@@ -273,7 +275,7 @@ def test_trace_projection_rejects_unsafe_resource_identifiers(identifier: str) -
         begin_preparation()
         mark_dispatched()
         with pytest.raises(PluginDaemonInnerError):
-            with observe_resource("model", identifier, identifier):
+            with observe_resource(FailureResourceKind.MODEL, identifier, identifier):
                 raise _typed()
     assert records[0]["reason"] == "service_unavailable"
     assert "provider" not in records[0]
@@ -286,7 +288,7 @@ def test_tool_resource_name_does_not_become_a_model_identifier() -> None:
     with diagnostics.scope(records.append, "native"), NativeLaunchObservation().track():
         begin_preparation()
         with pytest.raises(PluginDaemonInnerError):
-            with observe_resource("tool", "synthetic/tool", "send_message"):
+            with observe_resource(FailureResourceKind.TOOL, "synthetic/tool", "send_message"):
                 raise _typed()
     assert records[0]["provider"] == "synthetic/tool"
     assert "model" not in records[0]

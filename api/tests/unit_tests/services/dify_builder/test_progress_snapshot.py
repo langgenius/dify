@@ -10,7 +10,13 @@ from unittest.mock import Mock, patch
 import pytest
 from redis import Redis
 
-from core.dify_builder.contract import ExecutionActivity, ExecutionProgress
+from core.dify_builder.contract import (
+    ExecutionActivity,
+    ExecutionActivityKind,
+    ExecutionActivityState,
+    ExecutionProgress,
+    ExecutionProgressStatus,
+)
 from extensions.redis_names import serialize_redis_name
 from runtime_contracts.builder.copy_ids import BuilderCopyId
 from runtime_contracts.builder.presentation import copy_text
@@ -26,13 +32,21 @@ def _snapshot() -> progress_snapshot.ProgressSnapshot:
         revision=7,
         reply_language="zh-Hans",
         execution=ExecutionProgress(
-            status="running",
+            status=ExecutionProgressStatus.RUNNING,
             activities=[
                 ExecutionActivity(
-                    id="inspect", label=copy_text(BuilderCopyId.PROGRESS_INSPECT_THE_CURRENT_WORKFLOW), state="done"
+                    id="inspect",
+                    label=copy_text(BuilderCopyId.PROGRESS_INSPECT_THE_CURRENT_WORKFLOW),
+                    state=ExecutionActivityState.DONE,
                 ),
-                ExecutionActivity(id="plan", label="Generate change plan", state="active"),
-                ExecutionActivity(id="node:llm", label="LLM", state="active", kind="node", parent_id="plan"),
+                ExecutionActivity(id="plan", label="Generate change plan", state=ExecutionActivityState.ACTIVE),
+                ExecutionActivity(
+                    id="node:llm",
+                    label="LLM",
+                    state=ExecutionActivityState.ACTIVE,
+                    kind=ExecutionActivityKind.NODE,
+                    parent_id="plan",
+                ),
             ],
         ),
     )

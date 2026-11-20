@@ -15,7 +15,7 @@ from core.dify_builder.state import PcState
 from extensions.storage.storage_type import StorageType
 from models.enums import CreatorUserRole
 from models.model import UploadFile
-from services.dify_builder.attachment_extraction import ExtractedContext
+from services.dify_builder.attachment_extraction import AttachmentExtractionStatus, ExtractedContext
 from services.dify_builder.attachment_intake import (
     BuilderAttachmentIntake,
     MaterialReceipt,
@@ -119,7 +119,7 @@ def test_watermark_cas_survives_checkpoint_update_and_rejects_stopped_results(
     def extract(_upload: NativeContextUpload) -> ExtractedContext:
         stopped = DifyBuilderContext(goal_text=context.goal_text, paused=True, task_control={"generation": 1})
         repo.compare_and_advance(session.id, session.version, session.current_state, stopped, [])
-        return ExtractedContext("ready", "Late results")
+        return ExtractedContext(AttachmentExtractionStatus.READY, "Late results")
 
     with pytest.raises(ConflictError):
         BuilderAttachmentIntake(repo, extract).consume(session, context, actor)

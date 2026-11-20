@@ -15,6 +15,8 @@ from typing_extensions import TypedDict
 
 from models.account import Account
 from models.workflow import Workflow
+from runtime_contracts.builder.native.runtime_contracts import NativeTestMode
+from services.dify_builder.native_testing.public_contracts import NativeTestDecision
 from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import (
     NativeDeliveryMessage,
     require_instance,
@@ -287,7 +289,7 @@ def runtime_case(
             session_id=session_id,
             test_input_id=input_id,
             expected_version=version,
-            mode="native",
+            mode=NativeTestMode.NATIVE,
             idempotency_key="actual-initial",
         )
         assert len(published) == 1
@@ -338,7 +340,7 @@ def confirm(c: RuntimeDeliveryCase) -> NativeTestPublicReceipt:
             session_id=c.session_id,
             request_id=c.request_id,
             pending_operation_id=pending.pending_operation_id,
-            decision="confirm",
+            decision=NativeTestDecision.CONFIRM,
             scope_digest=pending.scope_digest,
             expected_version=receipt.version,
             idempotency_key="confirmation-" + pending.pending_operation_id,
@@ -1169,7 +1171,7 @@ def test_actual_known_stop_settles_sql_cleanup_and_finalizes_exact_source(
             session_id=c.session_id,
             request_id=c.request_id,
             pending_operation_id=pending.pending_operation_id,
-            decision="confirm",
+            decision=NativeTestDecision.CONFIRM,
             scope_digest=require_instance(pending.scope_digest, str),
             expected_version=receipt.version,
             idempotency_key="known-stop-decision",
@@ -1275,7 +1277,7 @@ def test_actual_denied_pending_cannot_borrow_stop_settlement_for_resume(runtime_
         session_id=c.session_id,
         request_id=c.request_id,
         pending_operation_id=pending.pending_operation_id,
-        decision="deny",
+        decision=NativeTestDecision.DENY,
         scope_digest=require_instance(pending.scope_digest, str),
         expected_version=receipt.version,
         idempotency_key="known-stop-denial-admission-negative",

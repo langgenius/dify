@@ -13,6 +13,12 @@ from pydantic import ConfigDict, Field
 
 from core.app.entities import task_entities as events
 from fields.base import ResponseModel
+from runtime_contracts.builder.string_enum import BuilderStringEnum
+
+
+class WorkflowAudioEvent(BuilderStringEnum):
+    TTS_MESSAGE = "tts_message"
+    TTS_MESSAGE_END = "tts_message_end"
 
 
 class WorkflowStreamEvent[Event: str, Data](ResponseModel):
@@ -75,7 +81,7 @@ class WorkflowStreamMessageReplace(WorkflowStreamMessageEvent[Literal["message_r
     reason: str
 
 
-class WorkflowStreamAudio(WorkflowStreamMessageEvent[Literal["tts_message", "tts_message_end"]]):
+class WorkflowStreamAudio(WorkflowStreamMessageEvent[WorkflowAudioEvent]):
     audio: str
     audio_type: str | None = None
 

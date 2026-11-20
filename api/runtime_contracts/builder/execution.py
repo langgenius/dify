@@ -4,6 +4,7 @@ import hashlib
 import json
 import math
 from collections.abc import Mapping
+from enum import StrEnum
 from typing import Annotated, Any, Literal, Protocol
 
 from pydantic import (
@@ -16,6 +17,116 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+
+from runtime_contracts.builder.string_enum import BuilderStringEnum
+
+
+class HttpFixtureSource(BuilderStringEnum):
+    USER_SAMPLE = "user_sample"
+    GENERATED_SAMPLE = "generated_sample"
+
+
+class HttpFixtureContentType(BuilderStringEnum):
+    APPLICATION_JSON = "application/json"
+    TEXT_PLAIN = "text/plain"
+
+
+class RestrictedExecutionMode(BuilderStringEnum):
+    RESTRICTED = "restricted"
+    MOCK = "mock"
+
+
+class RestrictedSandboxProfile(BuilderStringEnum):
+    DISABLED = "disabled"
+    NETWORK_DISABLED_V1 = "network-disabled-v1"
+
+
+class JsonToolRuntimeType(BuilderStringEnum):
+    LOCAL = "local"
+    SERVERLESS = "serverless"
+
+
+class ExecutionObservationKind(BuilderStringEnum):
+    FIXTURE_SERVED = "fixture_served"
+    EFFECT_BLOCKED = "effect_blocked"
+    SANDBOX_STARTED = "sandbox_started"
+    SANDBOX_COMPLETED = "sandbox_completed"
+    SANDBOX_FAILED = "sandbox_failed"
+    QUALIFIED_JSON_COMPLETED = "qualified_json_completed"
+
+
+class EvidencePolicyVersion(BuilderStringEnum):
+    BUILDER_RESTRICTED_V1 = "builder-restricted-v1"
+    BUILDER_CONFIRMED_GMAIL_READ_V1 = "builder-confirmed-gmail-read-v1"
+    BUILDER_JSON_PARSE_V1 = "builder-json-parse-v1"
+    BUILDER_CONFIRMED_RUN_V1 = "builder-confirmed-run-v1"
+
+
+class EvidenceExecutionMode(BuilderStringEnum):
+    RESTRICTED = "restricted"
+    MOCK = "mock"
+    CONFIRMED_TOOL = "confirmed_tool"
+    CONFIRMED_RUN = "confirmed_run"
+
+
+class SafetyOutcome(BuilderStringEnum):
+    UNSUPPORTED_SAFE_EXECUTION = "unsupported_safe_execution"
+    EXECUTION_BLOCKED = "execution_blocked"
+    SIMULATION_COMPLETED = "simulation_completed"
+    RESTRICTED_EXECUTION_COMPLETED = "restricted_execution_completed"
+    CONFIRMED_TOOL_COMPLETED = "confirmed_tool_completed"
+    CONFIRMED_RUN_COMPLETED = "confirmed_run_completed"
+    EXECUTION_EVIDENCE_UNKNOWN = "execution_evidence_unknown"
+    NATIVE_FAILED = "native_failed"
+    PREPARATION_FAILED = "preparation_failed"
+
+
+class EvidenceFailurePhase(BuilderStringEnum):
+    PREPARATION = "preparation"
+    EXECUTION = "execution"
+
+
+class ExecutionFailureReason(BuilderStringEnum):
+    CONNECTION_REFUSED = "connection_refused"
+    TIMEOUT = "timeout"
+    AUTHENTICATION = "authentication"
+    PERMISSION_DENIED = "permission_denied"
+    CREDENTIAL_UNAVAILABLE = "credential_unavailable"
+    AUTHORIZATION_LOOKUP_FAILED = "authorization_lookup_failed"
+    RATE_LIMIT = "rate_limit"
+    SERVICE_UNAVAILABLE = "service_unavailable"
+    UNKNOWN = "unknown"
+
+
+class FailureResourceKind(BuilderStringEnum):
+    MODEL = "model"
+    TOOL = "tool"
+
+
+class EvidenceSandboxProfile(BuilderStringEnum):
+    DISABLED = "disabled"
+    NETWORK_DISABLED_V1 = "network-disabled-v1"
+    NATIVE = "native"
+
+
+class ExecutionActionState(BuilderStringEnum):
+    COMPLETED = "completed"
+    FAILED = "failed"
+    UNKNOWN = "unknown"
+
+
+class WorkerExit(BuilderStringEnum):
+    RETURNED = "returned"
+    POLICY_REFUSED = "policy_refused"
+    STOPPED = "stopped"
+    FAILED = "failed"
+    NOT_OBSERVED = "not_observed"
+
+
+class WorkflowExecutionTransport(StrEnum):
+    CELERY = "celery"
+    IN_PROCESS = "in_process"
+
 
 ScalarValue = str | int | float | bool | None
 BoundedID = Annotated[str, Field(strict=True, min_length=1, max_length=128)]
@@ -93,9 +204,9 @@ class HttpResponseFixtureV1(_TrustedModel):
         "graphon.nodes.http_request.node.HttpRequestNode"
     )
     node_version: Literal["1"] = "1"
-    source: Literal["user_sample", "generated_sample"]
+    source: HttpFixtureSource
     status_code: Annotated[int, Field(strict=True, ge=100, le=599)]
-    content_type: Literal["application/json", "text/plain"]
+    content_type: HttpFixtureContentType
     body: Annotated[str, Field(strict=True)]
 
     @field_validator("schema_version", mode="before")
@@ -184,8 +295,8 @@ class BuilderExecutionContext(_TrustedModel):
     effective_inputs_digest: Digest
     fixture_digest: Digest
     context_digest: Digest
-    mode: Literal["restricted", "mock"]
-    sandbox_profile: Literal["disabled", "network-disabled-v1"]
+    mode: RestrictedExecutionMode
+    sandbox_profile: RestrictedSandboxProfile
     admitted_nodes: Annotated[tuple[AdmittedNodeBinding, ...], Field(max_length=128)]
     http_fixtures: Annotated[tuple[HttpResponseFixtureV1, ...], Field(max_length=128)]
 
@@ -232,7 +343,7 @@ class QualifiedJsonToolBinding(_TrustedModel):
     checksum: Digest
     provider_schema_digest: Digest
     tool_schema_digest: Digest
-    runtime_type: Literal["local", "serverless"]
+    runtime_type: JsonToolRuntimeType
     qualification_digest: Digest
     final_parameters_digest: Digest
 
@@ -312,14 +423,7 @@ class BuilderExecutionObservation(_TrustedModel):
     invocation_id: BoundedID
     request_id: BoundedID
     node_id: BoundedID
-    kind: Literal[
-        "fixture_served",
-        "effect_blocked",
-        "sandbox_started",
-        "sandbox_completed",
-        "sandbox_failed",
-        "qualified_json_completed",
-    ]
+    kind: ExecutionObservationKind
     implementation_version: Annotated[str, Field(strict=True, min_length=1, max_length=256)]
     reason_code: Annotated[str, Field(strict=True, pattern=r"^[a-z][a-z0-9_]{0,127}$")]
     fixture_digest: Digest | None = None
@@ -377,43 +481,15 @@ class ExecutionEvidenceSummary(_TrustedModel):
     """
 
     request_id: BoundedID
-    policy_version: Literal[
-        "builder-restricted-v1",
-        "builder-confirmed-gmail-read-v1",
-        "builder-json-parse-v1",
-        "builder-confirmed-run-v1",
-    ] = "builder-restricted-v1"
-    mode: Literal["restricted", "mock", "confirmed_tool", "confirmed_run"]
+    policy_version: EvidencePolicyVersion = EvidencePolicyVersion.BUILDER_RESTRICTED_V1
+    mode: EvidenceExecutionMode
     sealed: bool
-    safety_outcome: Literal[
-        "unsupported_safe_execution",
-        "execution_blocked",
-        "simulation_completed",
-        "restricted_execution_completed",
-        "confirmed_tool_completed",
-        "confirmed_run_completed",
-        "execution_evidence_unknown",
-        "native_failed",
-        "preparation_failed",
-    ]
-    failure_phase: Literal["preparation", "execution"] | None = None
-    failure_reason: (
-        Literal[
-            "connection_refused",
-            "timeout",
-            "authentication",
-            "permission_denied",
-            "credential_unavailable",
-            "authorization_lookup_failed",
-            "rate_limit",
-            "service_unavailable",
-            "unknown",
-        ]
-        | None
-    ) = None
+    safety_outcome: SafetyOutcome
+    failure_phase: EvidenceFailurePhase | None = None
+    failure_reason: ExecutionFailureReason | None = None
     failure_resource: (
         tuple[
-            Literal["model", "tool"],
+            FailureResourceKind,
             Annotated[str, Field(strict=True, pattern=r"^[A-Za-z0-9][A-Za-z0-9_./:@+-]{0,127}$")],
             Annotated[str, Field(strict=True, pattern=r"^([A-Za-z0-9][A-Za-z0-9_./:@+-]{0,127})?$")],
         ]
@@ -424,13 +500,13 @@ class ExecutionEvidenceSummary(_TrustedModel):
     simulated_node_ids: tuple[BoundedID, ...] = ()
     blocked_node_ids: tuple[BoundedID, ...] = ()
     # ``native`` only for a confirmed run, which uses the workspace's ordinary sandbox.
-    sandbox_profile: Literal["disabled", "network-disabled-v1", "native"]
+    sandbox_profile: EvidenceSandboxProfile
     # ``None`` only for a confirmed run, which serves no fixtures.
     fixture_digest: Digest | None = None
     native_run_id: BoundedID | None = None
     # Confirmed only: the grant this launch spent and its sanitized outcome, if recorded.
     consent_id: BoundedID | None = None
-    action_state: Literal["completed", "failed", "unknown"] | None = None
+    action_state: ExecutionActionState | None = None
     action_reason_code: ReasonCode | None = None
 
     @model_validator(mode="before")
@@ -554,7 +630,7 @@ class TrustedExecutionCompletion(_TrustedModel):
     native_run_id: BoundedID | None
     task_id: BoundedID | None
     worker_finished: StrictBool
-    worker_exit: Literal["returned", "policy_refused", "stopped", "failed", "not_observed"]
+    worker_exit: WorkerExit
     recorder_healthy: StrictBool
     response_completed: StrictBool
     refusal: BuilderExecutionRefusal | None = None

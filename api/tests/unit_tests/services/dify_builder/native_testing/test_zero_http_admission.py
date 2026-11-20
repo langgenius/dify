@@ -26,7 +26,7 @@ from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
-from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
+from runtime_contracts.builder.native.runtime_contracts import NativeTestMode, ResolvedNativeTestContext
 from services.dify_builder.execution_policy_service import ExecutionOwnerSnapshot
 from services.dify_builder.native_testing import context_binding, http_binding
 from services.dify_builder.native_testing.context_binding import NativeAdmissionCompilation, NativeAdmissionCompiler
@@ -61,7 +61,7 @@ class ZeroHttpCase:
             session_id="session",
             test_input_id="input",
             expected_version=1,
-            mode="native",
+            mode=NativeTestMode.NATIVE,
             request_id="request",
             invocation_id="invocation",
             native_run_id="run",

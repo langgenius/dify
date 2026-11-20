@@ -1,6 +1,6 @@
 """Conservative selector facts from the executed native graph and persisted node rows."""
 
-from core.dify_builder.models import Graph, NodeOutput, OutputFinding
+from core.dify_builder.models import Graph, NodeOutput, OutputFinding, OutputFindingState
 from domain.workflow.agent_node import is_dify_agent_node_data
 from services.dify_builder.native_agent_output_contract import declares_native_agent_output
 
@@ -25,18 +25,18 @@ def collect_output_findings(graph: Graph, per_node: list[NodeOutput]) -> list[Ou
             continue
         for output in data.get("outputs", []):
             selector = output.get("value_selector")
-            state, reason = "unknown", "insufficient_provenance"
+            state, reason = OutputFindingState.UNKNOWN, "insufficient_provenance"
             if (
                 not isinstance(selector, list)
                 or len(selector) < 2
                 or not all(isinstance(s, str) and s for s in selector)
             ):
-                state, reason = "unresolved", "invalid_selector"
+                state, reason = OutputFindingState.UNRESOLVED, "invalid_selector"
                 selector = selector if isinstance(selector, list) and all(isinstance(s, str) for s in selector) else []
             elif selector[0] in _SPECIAL_NAMESPACES:
                 reason = "special_namespace"
             elif selector[0] not in nodes:
-                state, reason = "unresolved", "producer_absent"
+                state, reason = OutputFindingState.UNRESOLVED, "producer_absent"
             else:
                 source = nodes[selector[0]]
                 config = source.get("data", {})
@@ -63,7 +63,9 @@ def collect_output_findings(graph: Graph, per_node: list[NodeOutput]) -> list[Ou
                 ):
                     row = source_rows[0]
                     if row.status == "succeeded" and row.outputs_available:
-                        state = "present" if selector[1] in row.outputs else "unresolved"
+                        state = (
+                            OutputFindingState.PRESENT if selector[1] in row.outputs else OutputFindingState.UNRESOLVED
+                        )
                         reason = "key_present" if state == "present" else "key_absent"
             findings.append(
                 OutputFinding(

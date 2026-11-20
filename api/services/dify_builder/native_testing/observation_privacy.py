@@ -75,6 +75,7 @@ from runtime_contracts.builder.execution import (
 )
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
 from runtime_contracts.builder.native.runtime_contracts import (
+    NativeTestMode,
     ResolvedNativeTestContext,
 )
 from services.dify_builder.native_testing.context_binding import NativeRuntimeProfile
@@ -182,6 +183,16 @@ def _count(value: Any) -> int:
     if type(value) is not int or not 0 <= value <= 2**63 - 1:
         _refuse()
     return value
+
+
+def _observation_context_fields(context: ResolvedNativeTestContext) -> dict[str, Any]:
+    """Read a checked context DTO without serializing unchecked nested values."""
+    data = dict(context)
+    data["ref"] = dict(context.ref)
+    mode = context.execution_mode
+    if type(mode) is NativeTestMode:
+        data["execution_mode"] = mode.value
+    return data
 
 
 def _shape(value: Any, *, depth: int = 0, budget: list[int] | None = None) -> dict[str, Any]:
@@ -312,8 +323,7 @@ class NativeHttpObservationPolicy:
                 code_qualification.validate_profile(NativeRuntimeProfile.model_validate(profile_data))
             else:
                 validate_native_http_profile(NativeRuntimeProfile.model_validate(profile_data))
-            context_data = dict(context)
-            context_data["ref"] = dict(context.ref)
+            context_data = _observation_context_fields(context)
             _shape(context_data)
             checked = ResolvedNativeTestContext.model_validate(context_data)
             if (
