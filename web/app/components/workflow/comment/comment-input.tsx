@@ -38,7 +38,7 @@ export const CommentInput: FC<CommentInputProps> = memo(
     const visibleCanvasWidth = useStore(
       (state) => (state.workflowCanvasWidth ?? Infinity) - (state.rightPanelWidth ?? 0),
     )
-    const opensLeft = position.x + 42 + 320 > visibleCanvasWidth && position.x - 12 - 320 >= 0
+    const opensLeft = position.x + 39 + 320 > visibleCanvasWidth && position.x - 12 - 320 >= 0
     const dragStateRef = useRef<
       {
         pointerId: number | null
@@ -166,7 +166,7 @@ export const CommentInput: FC<CommentInputProps> = memo(
           aria-describedby={moveDescriptionId}
           aria-pressed={keyboardMoving}
           disabled={disabled || !onPositionChange}
-          className="absolute bottom-0 size-auto cursor-move rounded-[13.5px] rounded-es-[3px] border-[1.5px] border-components-option-card-option-selected-border bg-components-panel-bg-blur p-[1.5px] shadow-lg backdrop-blur-[5px] hover:bg-components-panel-bg-blur"
+          className="absolute bottom-0 size-auto cursor-move rounded-[13.5px] rounded-es-[3px] bg-components-panel-bg-blur p-[1.5px] shadow-lg inset-ring-[1.5px] inset-ring-components-option-card-option-selected-border backdrop-blur-[5px] hover:bg-components-panel-bg-blur"
           onPointerDown={handleDragPointerDown}
           onClick={(event) => {
             if (event.detail === 0) setKeyboardMoving((value) => !value)
@@ -196,8 +196,8 @@ export const CommentInput: FC<CommentInputProps> = memo(
           {t(($) => $['keyboard.position'], { ns: 'workflow', x: position.x, y: position.y })}
         </span>
         <div
-          className="absolute -top-9 z-10 w-80 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]"
-          style={opensLeft ? { right: 12 } : { left: 42 }}
+          className="absolute -top-8.5 z-10 w-80 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]"
+          style={opensLeft ? { right: 12 } : { left: 39 }}
         >
           <MentionInput
             value={content}

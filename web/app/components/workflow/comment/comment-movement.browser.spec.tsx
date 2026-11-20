@@ -121,3 +121,42 @@ it('preserves draft mouse dragging and lets keyboard users move the same handle'
   await userEvent.keyboard('{Enter}')
   await expect.element(handle).toHaveAttribute('aria-pressed', 'false')
 })
+
+function SelectableMarker() {
+  const [active, setActive] = useState(false)
+  return (
+    <>
+      <button type="button" onClick={() => setActive((value) => !value)}>
+        Toggle selection
+      </button>
+      <div id="workflow-container" style={{ position: 'relative', width: 800, height: 600 }}>
+        <CommentIcon comment={comment} onClick={() => {}} isActive={active} />
+        <ReactFlow nodes={[]} />
+      </div>
+    </>
+  )
+}
+
+it('keeps the marker size and its tip on the stored point when it becomes selected', async () => {
+  // Browser-owned: rendered border and padding geometry of the marker bubble.
+  await page.viewport(1000, 800)
+  const { queryClient } = createConsoleQueryWrapper({
+    accountProfile: { id: 'author', name: 'Alice', avatar_url: null },
+  })
+  const screen = await render(<SelectableMarker />, {
+    queryClient,
+    initialStoreState: { mentionableUsersCache: { 'app-1': [] } },
+  })
+  const marker = screen.getByRole('button', { name: /workflow.keyboard.openComment/ })
+  await expect.element(marker).toBeVisible()
+  const collapsed = marker.element().firstElementChild!.getBoundingClientRect()
+  await screen.getByRole('button', { name: 'Toggle selection' }).click()
+  await expect
+    .poll(() => getComputedStyle(marker.element().firstElementChild!).boxShadow)
+    .toContain('1.5px')
+  const selected = marker.element().firstElementChild!.getBoundingClientRect()
+  expect(selected.width).toBe(collapsed.width)
+  expect(selected.height).toBe(collapsed.height)
+  expect(selected.left).toBe(collapsed.left)
+  expect(selected.bottom).toBe(collapsed.bottom)
+})

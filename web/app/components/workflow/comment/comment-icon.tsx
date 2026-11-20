@@ -264,10 +264,10 @@ export const CommentIcon: FC<CommentIconProps> = memo(
         >
           <div
             className={cn(
-              'flex min-h-7 min-w-7 items-center rounded-[13.5px] rounded-es-[3px] bg-components-panel-bg-blur p-[1.5px] shadow-lg backdrop-blur-[5px]',
+              'flex min-h-6.75 min-w-6.75 items-center rounded-[13.5px] rounded-es-[3px] bg-components-panel-bg-blur p-[1.5px] shadow-lg backdrop-blur-[5px]',
               isActive
-                ? 'border-[1.5px] border-components-option-card-option-selected-border'
-                : 'border-[0.5px] border-components-panel-border',
+                ? 'inset-ring-[1.5px] inset-ring-components-option-card-option-selected-border'
+                : 'inset-ring-[0.5px] inset-ring-components-panel-border',
               cursorClass,
             )}
             onMouseEnter={handleMouseEnter}
