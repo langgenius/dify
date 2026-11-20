@@ -478,6 +478,39 @@ class FileUploadPayload(BaseModel):
     )
 
 
+class UploadPreparePayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    folder: bool = Field(
+        default=False,
+        description="Leave out for one file. true when the upload is a zip of a folder's contents; "
+        "the server unpacks it.",
+    )
+
+
+class UploadCommands(BaseModel):
+    sh: str = Field(description="Sends the upload from a POSIX shell")
+    powershell: str = Field(description="Sends the upload from PowerShell")
+
+
+class UploadPrepared(BaseModel):
+    id: str = Field(description="Put this id in the file field of the operation you call next")
+    upload_url: str = Field(description="Send the file here with one multipart request; it needs no login")
+    upload_commands: UploadCommands
+    upload_before: datetime = Field(description="When the upload link stops accepting the file")
+    expires_at: datetime = Field(description="When the id stops working")
+    max_bytes: int = Field(description="The largest file this upload takes")
+
+
+class UploadReceived(BaseModel):
+    id: str
+    name: str
+    size: int
+    sha256: str
+    expires_at: datetime
+    next: str
+
+
 class DeviceCodeRequest(BaseModel):
     client_id: str
     device_label: str
