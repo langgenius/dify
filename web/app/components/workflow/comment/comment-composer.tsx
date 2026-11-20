@@ -2,7 +2,6 @@ import type { ComponentProps, MouseEvent } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
-import { highlightMentions } from './mention-highlight'
 
 /** The rounded input box around a comment composer. */
 export function CommentComposerFrame({ className, ...props }: ComponentProps<'div'>) {
@@ -65,48 +64,6 @@ export function CommentComposerActions({
           />
         )}
       </IconButton>
-    </div>
-  )
-}
-
-type CommentComposerPreviewProps = {
-  value: string
-  placeholder?: string
-  /** Names that render as highlighted @mentions inside `value`. */
-  mentionNames?: string[]
-  /** Put the actions below the text, as the live composer does once text wraps. */
-  stacked?: boolean
-  sending?: boolean
-}
-
-/**
- * A read-only rendering of the single-line comment composer, for showing a
- * draft being typed without the editing and mention machinery.
- */
-export function CommentComposerPreview({
-  value,
-  placeholder,
-  mentionNames = [],
-  stacked = false,
-  sending,
-}: CommentComposerPreviewProps) {
-  return (
-    <div
-      className={cn(
-        'relative flex body-sm-regular leading-4.5 pointer-coarse:text-base pointer-coarse:leading-6',
-        stacked ? 'flex-col gap-1' : 'items-end',
-      )}
-    >
-      <div className="min-w-0 flex-1 px-2 py-1.75 wrap-break-word whitespace-pre-wrap">
-        {value ? (
-          <span className="text-text-secondary">{highlightMentions(value, mentionNames)}</span>
-        ) : (
-          <span className="text-components-input-text-placeholder">{placeholder}</span>
-        )}
-      </div>
-      <div inert aria-hidden className="flex self-end">
-        <CommentComposerActions canSend={Boolean(value.trim())} sending={sending} mentionDisabled />
-      </div>
     </div>
   )
 }

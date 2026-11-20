@@ -417,7 +417,11 @@ it('navigates unresolved comments and deletes a thread only after confirmation',
   await user.click(
     screen.getByRole('button', { name: 'workflowComments.comments.aria.deleteComment' }),
   )
-  await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+  await user.click(
+    within(await screen.findByRole('alertdialog')).getByRole('button', {
+      name: 'common.operation.delete',
+    }),
+  )
   await waitFor(() =>
     expect(api.deleteComment).toHaveBeenCalledExactlyOnceWith({
       params: { app_id: 'app-1', comment_id: 'user-1' },
@@ -468,7 +472,7 @@ it('deletes a reply through the real thread confirmation and refreshes its conte
     await screen.findByRole('menuitem', { name: 'workflowComments.comments.actions.deleteReply' }),
   )
   expect(api.deleteReply).not.toHaveBeenCalled()
-  await user.click(await screen.findByRole('button', { name: 'common.operation.delete' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'common.operation.delete' }))
   await waitFor(() =>
     expect(api.deleteReply).toHaveBeenCalledExactlyOnceWith({
       params: { app_id: 'app-1', comment_id: 'user-1', reply_id: 'reply-1' },

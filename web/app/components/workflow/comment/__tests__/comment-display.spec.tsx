@@ -1,7 +1,6 @@
 import { Popover, PopoverPortal, PopoverPositioner } from '@langgenius/dify-ui/popover'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { CommentComposerPreview } from '../comment-composer'
 import { CommentMarker } from '../comment-marker'
 import {
   CommentMessage,
@@ -51,7 +50,7 @@ it('renders a thread dialog with its messages, mentions and close action', async
               </CommentThreadItem>
             </CommentThreadList>
             <CommentReplyBar author={{ id: 'me', name: 'Me' }}>
-              <CommentComposerPreview value="" placeholder="Reply" />
+              <textarea placeholder="Reply" />
             </CommentReplyBar>
           </CommentThreadPopup>
         </PopoverPositioner>
@@ -62,17 +61,7 @@ it('renders a thread dialog with its messages, mentions and close action', async
   expect(screen.getByRole('dialog', { name: 'Comments' })).toBeInTheDocument()
   expect(screen.getByText('2 minutes ago')).toBeInTheDocument()
   expect(screen.getByText('@Bob')).toHaveClass('text-text-accent')
-  expect(screen.getByText('Reply')).toBeInTheDocument()
+  expect(screen.getByPlaceholderText('Reply')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Close comment' }))
   expect(onClose).toHaveBeenCalledTimes(1)
-})
-
-it('shows the preview send state without exposing inert buttons', () => {
-  const { container, rerender } = render(<CommentComposerPreview value="   " placeholder="Reply" />)
-  expect(screen.queryByRole('button')).not.toBeInTheDocument()
-  expect(container.querySelector('[aria-label="common.operation.send"]')).toBeDisabled()
-
-  rerender(<CommentComposerPreview value="Looks good" placeholder="Reply" />)
-  expect(container.querySelector('[aria-label="common.operation.send"]')).toBeEnabled()
-  expect(screen.getByText('Looks good')).toBeInTheDocument()
 })

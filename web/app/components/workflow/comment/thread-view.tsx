@@ -117,7 +117,7 @@ export function CommentMessage({
 
 type CommentReplyBarProps = {
   author: Collaborator
-  /** The composer, for example `MentionInput` or `CommentComposerPreview`. */
+  /** The composer, for example `MentionInput`. */
   children: ReactNode
 }
 
