@@ -185,9 +185,6 @@
     }
   },
   "web/app/components/app/app-access-control/access-control-form.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    },
     "shadcn/no-restyle": {
       "count": 1
     }
@@ -894,11 +891,6 @@
   "web/app/components/base/chat/chat/answer/workflow-process.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 1
-    }
-  },
-  "web/app/components/base/chat/chat/chat-input-area/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
     }
   },
   "web/app/components/base/chat/chat/chat-input-area/operation.tsx": {
@@ -1828,11 +1820,6 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/create/embedding-process/indexing-progress-item.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 6
-    }
-  },
   "web/app/components/datasets/create/file-uploader/__tests__/index.spec.tsx": {
     "typescript/no-deprecated": {
       "count": 1
@@ -1877,11 +1864,6 @@
   "web/app/components/datasets/create/step-three/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
-    }
-  },
-  "web/app/components/datasets/create/step-two/components/general-chunking-options.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
     }
   },
   "web/app/components/datasets/create/step-two/components/index.ts": {
@@ -2918,20 +2900,12 @@
       "count": 1
     }
   },
-  "web/app/components/plugins/plugin-detail-panel/multiple-tool-selector/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/plugins/plugin-detail-panel/strategy-item.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
     }
   },
   "web/app/components/plugins/plugin-detail-panel/subscription-list/create/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 8
-    },
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
     },
@@ -2960,11 +2934,6 @@
   "web/app/components/plugins/plugin-detail-panel/subscription-list/selector-entry.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
-    }
-  },
-  "web/app/components/plugins/plugin-detail-panel/subscription-list/selector-view.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 7
     }
   },
   "web/app/components/plugins/plugin-detail-panel/subscription-list/subscription-card.tsx": {
@@ -4462,16 +4431,6 @@
       "count": 6
     }
   },
-  "web/app/components/workflow/nodes/knowledge-base/components/retrieval-setting/search-method-option.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 8
-    }
-  },
-  "web/app/components/workflow/nodes/knowledge-base/components/retrieval-setting/top-k-and-score-threshold.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    }
-  },
   "web/app/components/workflow/nodes/knowledge-base/node.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3
@@ -4645,11 +4604,6 @@
       "count": 3
     }
   },
-  "web/app/components/workflow/nodes/llm/components/json-schema-config-modal/json-schema-generator/prompt-editor.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    }
-  },
   "web/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/add-field.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
@@ -4693,11 +4647,6 @@
   "web/app/components/workflow/nodes/llm/components/panel-memory-section.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
-    }
-  },
-  "web/app/components/workflow/nodes/llm/components/panel-output-section.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
     }
   },
   "web/app/components/workflow/nodes/llm/components/resolution-picker.tsx": {
@@ -4791,11 +4740,6 @@
       "count": 4
     }
   },
-  "web/app/components/workflow/nodes/parameter-extractor/panel.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/parameter-extractor/use-config.ts": {
     "eslint-react/set-state-in-effect": {
       "count": 2
@@ -4807,11 +4751,6 @@
   "web/app/components/workflow/nodes/parameter-extractor/use-single-run-form-params.ts": {
     "typescript/no-explicit-any": {
       "count": 6
-    }
-  },
-  "web/app/components/workflow/nodes/question-classifier/components/advanced-setting.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
     }
   },
   "web/app/components/workflow/nodes/question-classifier/use-single-run-form-params.ts": {
@@ -5201,9 +5140,6 @@
     }
   },
   "web/app/components/workflow/panel/env-panel/variable-modal.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    },
     "eslint-react/set-state-in-effect": {
       "count": 4
     }
@@ -5661,16 +5597,6 @@
   "web/features/agent-v2/agent-detail/configure/components/orchestrate/build-draft-changes-panel.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
-    }
-  },
-  "web/features/agent-v2/agent-detail/configure/components/orchestrate/common/section.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/features/agent-v2/agent-detail/configure/components/orchestrate/files/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 7
     }
   },
   "web/features/agent-v2/agent-detail/configure/components/orchestrate/files/upload-dialog.tsx": {

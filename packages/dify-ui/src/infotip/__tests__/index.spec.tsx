@@ -44,4 +44,34 @@ describe('Infotip composition', () => {
     await screen.getByRole('button', { name: 'Unavailable details' }).click()
     expect(onOpenChange).not.toHaveBeenCalled()
   })
+
+  it.each([
+    ['sm', 12, 12],
+    ['md', 16, 14],
+    ['lg', 16, 16],
+  ] as const)(
+    'keeps the %s layout box while accepting a 24px pointer target',
+    async (size, box, icon) => {
+      const screen = await render(
+        <div className="p-6">
+          <Infotip>
+            <InfotipTrigger aria-label="Details" size={size} openOnHover={false} />
+            <InfotipContent aria-label="Details">Explanation</InfotipContent>
+          </Infotip>
+        </div>,
+      )
+      const trigger = screen.getByRole('button', { name: 'Details' }).element()
+      const rect = trigger.getBoundingClientRect()
+      expect(rect.width).toBe(box)
+      expect(rect.height).toBe(box)
+      expect(trigger.firstElementChild?.getBoundingClientRect().width).toBe(icon)
+
+      const target = getComputedStyle(trigger, '::before')
+      expect(target.width).toBe('24px')
+      expect(target.height).toBe('24px')
+
+      const edge = document.elementFromPoint(rect.left - (24 - box) / 2 + 1, rect.top + box / 2)
+      expect(edge).toBe(trigger)
+    },
+  )
 })
