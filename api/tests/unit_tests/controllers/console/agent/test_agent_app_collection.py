@@ -34,6 +34,7 @@ from repositories.app.agent_app_repository import AgentAppRepository
 from services.agent.invite_options_store import AgentInviteOptionsPage
 from services.enterprise.base import EnterpriseRequest
 from services.entities.app_entities import AppEvent, AppListParams
+from services.evaluation_service import EvaluationService
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.helpers.unit.model_factories import make_workflow
 from tests.unit_tests.controllers.console.agent.test_api_access import Harness
@@ -95,7 +96,9 @@ def test_list_applies_visible_agent_ids_before_pagination_and_counts(harness: Ha
             app = session.get(App, app_id)
             assert app is not None
             app.maintainer = str(uuid4())
-    repository = AgentAppRepository(session_factory=harness.sessions)
+    repository = AgentAppRepository(
+        session_factory=harness.sessions, stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup
+    )
     context = RequestContext("test", None, harness.account_id, harness.tenant_id)
     result = repository.list_apps(context, AppListParams(mode="agent"), accessible_agent_ids={first_id})
     assert result.total == 1
@@ -113,7 +116,9 @@ def test_list_rolls_back_build_conversation_if_app_projection_fails(harness: Har
         session.flush()
         app.app_model_config_id = config.id
 
-    repository = AgentAppRepository(session_factory=harness.sessions)
+    repository = AgentAppRepository(
+        session_factory=harness.sessions, stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup
+    )
     context = RequestContext("test", None, harness.account_id, harness.tenant_id)
     with pytest.raises(json.JSONDecodeError):
         repository.list_apps(context, AppListParams(mode="agent"), accessible_agent_ids=None)

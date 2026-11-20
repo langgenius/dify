@@ -44,6 +44,7 @@
   "invalidInvitationCode": "Codice di invito non valido",
   "invitationCode": "Codice di invito",
   "invitationCodePlaceholder": "Il tuo codice di invito",
+  "invitationWorkspaceFull": "Questo spazio di lavoro non ha più posti disponibili, quindi non puoi ancora unirti. Chiedi alla persona che ti ha invitato di liberare un posto o di passare a un piano superiore.",
   "join": "Unisciti",
   "joinTipEnd": "team su Dify",
   "joinTipStart": "Invitato a unirti al",

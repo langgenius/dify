@@ -9,16 +9,12 @@ import { useTranslation } from 'react-i18next'
 
 export default function TokenActions({
   token,
-  onDelete,
   deleteDialogHandle,
   formDialogHandle,
-  onFormOpen,
 }: {
   token: PersonalAccessTokenResponse
-  onDelete: (token: PersonalAccessTokenResponse, trigger: HTMLButtonElement) => void
-  deleteDialogHandle: AlertDialogHandle
+  deleteDialogHandle: AlertDialogHandle<PersonalAccessTokenResponse>
   formDialogHandle: DialogHandle<SavedTokenFormPayload>
-  onFormOpen: (trigger: HTMLButtonElement) => void
 }) {
   const { t } = useTranslation(['common'])
   return (
@@ -26,7 +22,6 @@ export default function TokenActions({
       <DialogTrigger
         handle={formDialogHandle}
         payload={{ tokenId: token.id, duplicate: false }}
-        onClick={(event) => onFormOpen(event.currentTarget)}
         render={
           <IconButton
             aria-label={t(($) => $['operation.edit'])}
@@ -40,7 +35,6 @@ export default function TokenActions({
       <DialogTrigger
         handle={formDialogHandle}
         payload={{ tokenId: token.id, duplicate: true }}
-        onClick={(event) => onFormOpen(event.currentTarget)}
         render={
           <IconButton aria-label={t(($) => $['operation.duplicate'])} size="sm">
             <span aria-hidden="true" className="i-ri-file-copy-line size-4" />
@@ -49,7 +43,7 @@ export default function TokenActions({
       />
       <AlertDialogTrigger
         handle={deleteDialogHandle}
-        onClick={(event) => onDelete(token, event.currentTarget)}
+        payload={token}
         render={
           <IconButton size="sm" tone="destructive" aria-label={t(($) => $['operation.delete'])}>
             <span aria-hidden="true" className="i-ri-delete-bin-line size-4" />

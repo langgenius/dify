@@ -4,7 +4,6 @@ import { basePath } from '@/utils/var'
 
 // Each vendor's own mark, taken from its official site, so a scanner is recognizable at a glance.
 const BRAND_LOGOS: Partial<Record<FileScanProviderType, string>> = {
-  clamav: 'clamav.png',
   cloudmersive: 'cloudmersive.png',
   scanii: 'scanii.svg',
   metadefender: 'metadefender.png',

@@ -8,6 +8,7 @@ import pytest
 from flask import has_app_context
 from sqlalchemy import Engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import QueuePool
 
 from core import provider_manager as provider_manager_module
 from core.entities.model_entities import (
@@ -1008,9 +1009,9 @@ def test_update_default_model_record_updates_existing_record(provider_db: Sessio
     with patch.object(manager, "get_configurations", return_value=provider_configurations):
         result = manager.update_default_model_record("tenant-id", ModelType.LLM, "openai", "gpt-3.5-turbo")
 
-    assert result is existing_default_model
-    assert existing_default_model.provider_name == "openai"
-    assert existing_default_model.model_name == "gpt-3.5-turbo"
+    assert result.id == existing_default_model.id
+    assert result.provider_name == "openai"
+    assert result.model_name == "gpt-3.5-turbo"
     provider_db.expire_all()
     persisted_default = provider_db.get(TenantDefaultModel, existing_default_model.id)
     assert persisted_default is not None
@@ -1045,6 +1046,50 @@ def test_update_default_model_record_creates_record_with_origin_model_type(provi
     assert result.model_type == ModelType.LLM
     persisted_defaults = list(provider_db.scalars(select(TenantDefaultModel)).all())
     assert {record.tenant_id for record in persisted_defaults} == {"tenant-id", "other-tenant"}
+
+
+def test_get_default_model_leaves_no_connection_checked_out(provider_db: Session, sqlite_engine: Engine) -> None:
+    provider_db.add(
+        TenantDefaultModel(
+            tenant_id="other-tenant",
+            provider_name="openai",
+            model_name="gpt-4",
+            model_type=ModelType.LLM,
+        )
+    )
+    provider_db.commit()
+
+    result = _build_provider_manager().get_default_model("tenant-id", ModelType.LLM)
+
+    assert result is None
+    pool = sqlite_engine.pool
+    assert isinstance(pool, QueuePool)
+    assert pool.checkedout() == 0
+
+
+def test_update_default_model_record_does_not_commit_the_callers_pending_work(provider_db: Session) -> None:
+    manager = _build_provider_manager()
+    provider_db.add(
+        TenantDefaultModel(
+            tenant_id="other-tenant",
+            provider_name="anthropic",
+            model_name="claude",
+            model_type=ModelType.LLM,
+        )
+    )
+
+    with (
+        patch.object(manager, "get_configurations", return_value={}),
+        patch.object(manager, "_validate_default_model"),
+    ):
+        manager.update_default_model_record("tenant-id", ModelType.LLM, "openai", "gpt-4")
+
+    provider_db.rollback()
+    persisted = {
+        (record.tenant_id, record.provider_name, record.model_name)
+        for record in provider_db.scalars(select(TenantDefaultModel))
+    }
+    assert persisted == {("tenant-id", "openai", "gpt-4")}
 
 
 @pytest.mark.parametrize("clear_all", [False, True])

@@ -11,7 +11,7 @@ import logging
 from collections.abc import Sequence
 from dataclasses import replace
 from datetime import datetime
-from typing import Any, cast, override
+from typing import Any, Protocol, cast, override
 
 import sqlalchemy as sa
 from pydantic import TypeAdapter
@@ -36,6 +36,7 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.enums import AppStatus
+from models.evaluation import EvaluationTargetType
 from models.model import App, AppMode, AppModelConfig, AppStar, IconType
 from models.skill import AgentSkillBinding
 from models.workflow import Workflow
@@ -82,6 +83,14 @@ from services.openapi.visibility import apply_openapi_gate
 logger = logging.getLogger(__name__)
 
 _app_trace_settings_adapter = TypeAdapter(AppTraceSettings)
+
+
+class StageTargetEvaluationCleanup(Protocol):
+    """Stage target evaluation cleanup in an existing transaction, deferring external effects until commit."""
+
+    def __call__(self, *, session: Session, tenant_id: str, target_type: str, target_id: str) -> None:
+        """Delete evaluation records in the caller's session without committing it."""
+        ...
 
 
 def find_console_app(session: Session, *, workspace_id: str, app_id: str) -> App | None:
@@ -1040,10 +1049,24 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
         return app
 
     @classmethod
-    def delete_app_record(cls, app: App, *, account_id: str | None, session: Session) -> AppDeletion:
-        """Stage deletion of the resolved App and retirement of its resources in the caller transaction."""
+    def delete_app_record(
+        cls,
+        app: App,
+        *,
+        account_id: str | None,
+        session: Session,
+        stage_evaluation_cleanup: StageTargetEvaluationCleanup,
+    ) -> AppDeletion:
+        """Stage App deletion, evaluation cleanup and resource retirement in the caller's transaction."""
         app_event = AppEvent(app.id, app.tenant_id, str(app.mode))
         backing_agent = cls._get_backing_agent(app, session=session)
+        if backing_agent is not None:
+            stage_evaluation_cleanup(
+                session=session,
+                tenant_id=app.tenant_id,
+                target_type=EvaluationTargetType.AGENTS.value,
+                target_id=backing_agent.id,
+            )
         workflow_agent_ids = set(
             session.scalars(
                 select(Agent.id).where(

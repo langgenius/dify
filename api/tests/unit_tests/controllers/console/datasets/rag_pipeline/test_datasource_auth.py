@@ -28,6 +28,7 @@ from controllers.console.datasets.rag_pipeline.datasource_auth import (
     DatasourceUpdateNamePayload,
     DatasourceUpdateProviderNameApi,
 )
+from core.plugin.entities.plugin_daemon import PluginOAuthCredentialsResponse
 from core.plugin.impl.oauth import OAuthHandler
 from extensions.application_services.data_sources import build_data_source_credentials
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -60,7 +61,7 @@ def _i18n(text: str) -> dict[str, str]:
     return {"en_US": text, "zh_Hans": text, "pt_BR": text, "ja_JP": text}
 
 
-def _provider_config(name: str, type_: str, label: str, *, required: bool = True) -> dict:
+def _provider_config(name: str, type_: str, label: str, *, required: bool = True) -> dict[str, object]:
     return {
         "type": type_,
         "name": name,
@@ -76,7 +77,7 @@ def _provider_config(name: str, type_: str, label: str, *, required: bool = True
     }
 
 
-def _datasource_credential(credential_id: str = "cred-1", *, is_default: bool = True) -> dict:
+def _datasource_credential(credential_id: str = "cred-1", *, is_default: bool = True) -> dict[str, object]:
     return {
         "credential": {
             "api_key": "******",
@@ -91,7 +92,7 @@ def _datasource_credential(credential_id: str = "cred-1", *, is_default: bool = 
     }
 
 
-def _datasource_auth() -> dict:
+def _datasource_auth() -> dict[str, object]:
     return {
         "author": "Dify",
         "provider": "notion",
@@ -125,7 +126,7 @@ def _success_response() -> dict[str, str]:
 
 
 class TestDatasourcePluginOAuthAuthorizationUrl:
-    def test_get_success(self, app: Flask):
+    def test_get_success(self, app: Flask) -> None:
         api = DatasourcePluginOAuthAuthorizationUrl()
         method = inspect.unwrap(api.get)
 
@@ -181,7 +182,7 @@ class TestDatasourcePluginOAuthAuthorizationUrl:
         assert get_authorization_url.call_args.kwargs["provider"] == "notion"
         assert get_authorization_url.call_args.kwargs["system_credentials"] == oauth_client
 
-    def test_get_no_oauth_config(self, app: Flask):
+    def test_get_no_oauth_config(self, app: Flask) -> None:
         api = DatasourcePluginOAuthAuthorizationUrl()
         method = inspect.unwrap(api.get)
         user = _account()
@@ -197,7 +198,7 @@ class TestDatasourcePluginOAuthAuthorizationUrl:
             with pytest.raises(ValueError, match="No OAuth Client Config for notion"):
                 method(api, "tenant-1", user, "notion")
 
-    def test_get_without_credential_id_sets_cookie(self, app: Flask):
+    def test_get_without_credential_id_sets_cookie(self, app: Flask) -> None:
         api = DatasourcePluginOAuthAuthorizationUrl()
         method = inspect.unwrap(api.get)
 
@@ -254,15 +255,16 @@ class TestDatasourceOAuthCallback:
             with pytest.raises(Forbidden, match="Plugin changed"):
                 inspect.unwrap(api.get)(api, _PROVIDER_ID)
 
-    def test_callback_success_new_credential(self, app: Flask):
+    def test_callback_success_new_credential(self, app: Flask) -> None:
         api = DatasourceOAuthCallback()
         method = inspect.unwrap(api.get)
 
-        oauth_response = MagicMock()
-        oauth_response.credentials = {"token": "abc"}
-        expires_at = datetime(2024, 1, 2, 3, 4, 5, tzinfo=UTC)
-        oauth_response.expires_at = expires_at
-        oauth_response.metadata = {"name": "Workspace Bot", "avatar_url": "https://avatar.example.com/bot.png"}
+        expires_at = int(datetime(2024, 1, 2, 3, 4, 5, tzinfo=UTC).timestamp())
+        oauth_response = PluginOAuthCredentialsResponse(
+            credentials={"token": "abc"},
+            expires_at=expires_at,
+            metadata={"name": "Workspace Bot", "avatar_url": "https://avatar.example.com/bot.png"},
+        )
 
         context = {
             "user_id": "user-1",
@@ -319,7 +321,7 @@ class TestDatasourceOAuthCallback:
         }
         assert str(add_oauth_provider.call_args.kwargs["provider_id"]) == _PROVIDER_ID
 
-    def test_callback_missing_context(self, app: Flask):
+    def test_callback_missing_context(self, app: Flask) -> None:
         api = DatasourceOAuthCallback()
         method = inspect.unwrap(api.get)
 
@@ -327,7 +329,7 @@ class TestDatasourceOAuthCallback:
             with pytest.raises(Forbidden):
                 method(api, "notion")
 
-    def test_callback_invalid_context(self, app: Flask):
+    def test_callback_invalid_context(self, app: Flask) -> None:
         api = DatasourceOAuthCallback()
         method = inspect.unwrap(api.get)
 
@@ -342,7 +344,7 @@ class TestDatasourceOAuthCallback:
             with pytest.raises(Forbidden):
                 method(api, "notion")
 
-    def test_callback_oauth_config_not_found(self, app: Flask):
+    def test_callback_oauth_config_not_found(self, app: Flask) -> None:
         api = DatasourceOAuthCallback()
         method = inspect.unwrap(api.get)
 
@@ -364,14 +366,12 @@ class TestDatasourceOAuthCallback:
             with pytest.raises(NotFound):
                 method(api, "notion")
 
-    def test_callback_reauthorize_existing_credential(self, app: Flask):
+    def test_callback_reauthorize_existing_credential(self, app: Flask) -> None:
         api = DatasourceOAuthCallback()
         method = inspect.unwrap(api.get)
 
-        oauth_response = MagicMock()
-        oauth_response.credentials = {"token": "abc"}
-        oauth_response.expires_at = None
-        oauth_response.metadata = {}  # avatar + name missing
+        # avatar + name missing
+        oauth_response = PluginOAuthCredentialsResponse(credentials={"token": "abc"})
 
         context = {
             "user_id": "user-1",
@@ -415,14 +415,11 @@ class TestDatasourceOAuthCallback:
         assert reauthorize_provider.call_args.kwargs["credential_id"] == "cred-1"
         assert reauthorize_provider.call_args.kwargs["credentials"] == {"token": "abc"}
 
-    def test_callback_context_id_from_cookie(self, app: Flask):
+    def test_callback_context_id_from_cookie(self, app: Flask) -> None:
         api = DatasourceOAuthCallback()
         method = inspect.unwrap(api.get)
 
-        oauth_response = MagicMock()
-        oauth_response.credentials = {"token": "abc"}
-        oauth_response.expires_at = None
-        oauth_response.metadata = {}
+        oauth_response = PluginOAuthCredentialsResponse(credentials={"token": "abc"})
 
         context = {
             "user_id": "user-1",
@@ -463,7 +460,7 @@ class TestDatasourceOAuthCallback:
 
 
 class TestDatasourceAuth:
-    def test_post_success(self, app: Flask):
+    def test_post_success(self, app: Flask) -> None:
         api = DatasourceAuth()
         method = inspect.unwrap(api.post)
 
@@ -496,7 +493,7 @@ class TestDatasourceAuth:
         assert add_api_key_provider.call_args.kwargs["credentials"] == payload["credentials"]
         assert add_api_key_provider.call_args.kwargs["name"] == "Engineering Notion"
 
-    def test_post_invalid_credentials(self, app: Flask):
+    def test_post_invalid_credentials(self, app: Flask) -> None:
         api = DatasourceAuth()
         method = inspect.unwrap(api.post)
 
@@ -514,7 +511,7 @@ class TestDatasourceAuth:
             with pytest.raises(ValueError, match="invalid"):
                 method(api, DatasourceCredentialPayload.model_validate(payload), "tenant-1", "notion")
 
-    def test_get_success(self, app: Flask):
+    def test_get_success(self, app: Flask) -> None:
         api = DatasourceAuth()
         method = inspect.unwrap(api.get)
         user = _account()
@@ -532,7 +529,7 @@ class TestDatasourceAuth:
         assert status == 200
         assert response == {"result": [_datasource_credential()]}
 
-    def test_post_missing_credentials(self, app: Flask):
+    def test_post_missing_credentials(self, app: Flask) -> None:
         api = DatasourceAuth()
         method = inspect.unwrap(api.post)
 
@@ -545,7 +542,7 @@ class TestDatasourceAuth:
             with pytest.raises(ValueError, match="1 validation error for DatasourceCredentialPayload\\\ncredentials"):
                 method(api, DatasourceCredentialPayload.model_validate(payload), "tenant-1", "notion")
 
-    def test_get_empty_list(self, app: Flask):
+    def test_get_empty_list(self, app: Flask) -> None:
         api = DatasourceAuth()
         method = inspect.unwrap(api.get)
         user = _account()
@@ -565,7 +562,7 @@ class TestDatasourceAuth:
 
 
 class TestDatasourceAuthDeleteApi:
-    def test_delete_success(self, app: Flask, unbound_session: Session):
+    def test_delete_success(self, app: Flask, unbound_session: Session) -> None:
         api = DatasourceAuthDeleteApi()
         method = inspect.unwrap(api.post)
 
@@ -593,7 +590,7 @@ class TestDatasourceAuthDeleteApi:
             session=unbound_session,
         )
 
-    def test_delete_missing_credential_id(self, app: Flask, unbound_session: Session):
+    def test_delete_missing_credential_id(self, app: Flask, unbound_session: Session) -> None:
         api = DatasourceAuthDeleteApi()
         method = inspect.unwrap(api.post)
 
@@ -616,7 +613,7 @@ class TestDatasourceAuthDeleteApi:
 
 
 class TestDatasourceAuthUpdateApi:
-    def test_update_success(self, app: Flask):
+    def test_update_success(self, app: Flask) -> None:
         api = DatasourceAuthUpdateApi()
         method = inspect.unwrap(api.post)
 
@@ -649,7 +646,7 @@ class TestDatasourceAuthUpdateApi:
             name="Updated Notion",
         )
 
-    def test_update_with_credentials_none(self, app: Flask):
+    def test_update_with_credentials_none(self, app: Flask) -> None:
         api = DatasourceAuthUpdateApi()
         method = inspect.unwrap(api.post)
 
@@ -672,7 +669,7 @@ class TestDatasourceAuthUpdateApi:
         assert update_mock.call_args.kwargs["credentials"] == {}
         assert status == 201
 
-    def test_update_name_only(self, app: Flask):
+    def test_update_name_only(self, app: Flask) -> None:
         api = DatasourceAuthUpdateApi()
         method = inspect.unwrap(api.post)
 
@@ -693,11 +690,11 @@ class TestDatasourceAuthUpdateApi:
         assert response == _success_response()
         assert status == 201
 
-    def test_update_with_empty_credentials_dict(self, app: Flask):
+    def test_update_with_empty_credentials_dict(self, app: Flask) -> None:
         api = DatasourceAuthUpdateApi()
         method = inspect.unwrap(api.post)
 
-        payload = {"credential_id": "id", "credentials": {}}
+        payload = {"credential_id": "id", "credentials": dict[str, object]()}
 
         with (
             app.test_request_context("/", json=payload),
@@ -717,7 +714,7 @@ class TestDatasourceAuthUpdateApi:
 
 
 class TestDatasourceAuthListApi:
-    def test_list_success(self, app: Flask, unbound_session: Session):
+    def test_list_success(self, app: Flask, unbound_session: Session) -> None:
         api = DatasourceAuthListApi()
         method = inspect.unwrap(api.get)
         user = MagicMock(id="user-1")
@@ -739,7 +736,7 @@ class TestDatasourceAuthListApi:
         assert get_all.call_args.kwargs["user"] is user
         assert get_all.call_args.kwargs["session"] is unbound_session
 
-    def test_auth_list_empty(self, app: Flask, unbound_session: Session):
+    def test_auth_list_empty(self, app: Flask, unbound_session: Session) -> None:
         api = DatasourceAuthListApi()
         method = inspect.unwrap(api.get)
         user = MagicMock(id="user-1")
@@ -757,7 +754,7 @@ class TestDatasourceAuthListApi:
         assert status == 200
         assert response["result"] == []
 
-    def test_hardcode_list_empty(self, app: Flask, unbound_session: Session):
+    def test_hardcode_list_empty(self, app: Flask, unbound_session: Session) -> None:
         api = DatasourceHardCodeAuthListApi()
         method = inspect.unwrap(api.get)
         user = MagicMock(id="user-1")
@@ -777,7 +774,7 @@ class TestDatasourceAuthListApi:
 
 
 class TestDatasourceHardCodeAuthListApi:
-    def test_list_success(self, app: Flask, unbound_session: Session):
+    def test_list_success(self, app: Flask, unbound_session: Session) -> None:
         api = DatasourceHardCodeAuthListApi()
         method = inspect.unwrap(api.get)
         user = MagicMock(id="user-1")
@@ -798,7 +795,7 @@ class TestDatasourceHardCodeAuthListApi:
 
 
 class TestDatasourceAuthOauthCustomClient:
-    def test_post_success(self, app: Flask):
+    def test_post_success(self, app: Flask) -> None:
         api = DatasourceAuthOauthCustomClient()
         method = inspect.unwrap(api.post)
 
@@ -831,7 +828,7 @@ class TestDatasourceAuthOauthCustomClient:
         assert setup_custom_client.call_args.kwargs["client_params"] == payload["client_params"]
         assert setup_custom_client.call_args.kwargs["enabled"] is True
 
-    def test_delete_success(self, app: Flask):
+    def test_delete_success(self, app: Flask) -> None:
         api = DatasourceAuthOauthCustomClient()
         method = inspect.unwrap(api.delete)
 
@@ -850,7 +847,7 @@ class TestDatasourceAuthOauthCustomClient:
         remove_custom_client.assert_called_once()
         assert str(remove_custom_client.call_args.kwargs["datasource_provider_id"]) == _PROVIDER_ID
 
-    def test_post_empty_payload(self, app: Flask):
+    def test_post_empty_payload(self, app: Flask) -> None:
         api = DatasourceAuthOauthCustomClient()
         method = inspect.unwrap(api.post)
 
@@ -871,7 +868,7 @@ class TestDatasourceAuthOauthCustomClient:
         assert response == _success_response()
         assert status == 200
 
-    def test_post_disabled_flag(self, app: Flask):
+    def test_post_disabled_flag(self, app: Flask) -> None:
         api = DatasourceAuthOauthCustomClient()
         method = inspect.unwrap(api.post)
 
@@ -900,7 +897,7 @@ class TestDatasourceAuthOauthCustomClient:
 
 
 class TestDatasourceAuthDefaultApi:
-    def test_set_default_success(self, app: Flask):
+    def test_set_default_success(self, app: Flask) -> None:
         api = DatasourceAuthDefaultApi()
         method = inspect.unwrap(api.post)
 
@@ -925,7 +922,7 @@ class TestDatasourceAuthDefaultApi:
         assert str(set_default_datasource_provider.call_args.kwargs["datasource_provider_id"]) == _PROVIDER_ID
         assert set_default_datasource_provider.call_args.kwargs["credential_id"] == "cred-1"
 
-    def test_default_missing_id(self, app: Flask):
+    def test_default_missing_id(self, app: Flask) -> None:
         api = DatasourceAuthDefaultApi()
         method = inspect.unwrap(api.post)
 
@@ -940,7 +937,7 @@ class TestDatasourceAuthDefaultApi:
 
 
 class TestDatasourceUpdateProviderNameApi:
-    def test_update_name_success(self, app: Flask):
+    def test_update_name_success(self, app: Flask) -> None:
         api = DatasourceUpdateProviderNameApi()
         method = inspect.unwrap(api.post)
 
@@ -966,7 +963,7 @@ class TestDatasourceUpdateProviderNameApi:
         assert update_datasource_provider_name.call_args.kwargs["name"] == "New Name"
         assert update_datasource_provider_name.call_args.kwargs["credential_id"] == "cred-1"
 
-    def test_update_name_too_long(self, app: Flask):
+    def test_update_name_too_long(self, app: Flask) -> None:
         api = DatasourceUpdateProviderNameApi()
         method = inspect.unwrap(api.post)
 
@@ -982,7 +979,7 @@ class TestDatasourceUpdateProviderNameApi:
             with pytest.raises(ValueError, match="1 validation error for DatasourceUpdateNamePayload\\\nname"):
                 method(api, DatasourceUpdateNamePayload.model_validate(payload), "tenant-1", "notion")
 
-    def test_update_name_missing_credential_id(self, app: Flask):
+    def test_update_name_missing_credential_id(self, app: Flask) -> None:
         api = DatasourceUpdateProviderNameApi()
         method = inspect.unwrap(api.post)
 

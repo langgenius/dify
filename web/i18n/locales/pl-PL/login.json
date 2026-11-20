@@ -44,6 +44,7 @@
   "invalidInvitationCode": "Niewłaściwy kod zaproszenia",
   "invitationCode": "Kod zaproszenia",
   "invitationCodePlaceholder": "Twój kod zaproszenia",
+  "invitationWorkspaceFull": "W tym obszarze roboczym nie ma wolnych miejsc, więc nie możesz jeszcze dołączyć. Poproś osobę, która Cię zaprosiła, o zwolnienie miejsca lub zmianę planu na wyższy.",
   "join": "Dołącz",
   "joinTipEnd": "zespołu na Dify",
   "joinTipStart": "Zapraszam Cię do dołączenia do",
