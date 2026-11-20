@@ -29,10 +29,10 @@ from repositories.human_input_v2.email_channel.ports import (
 from repositories.human_input_v2.im_channel_repository import IMChannel
 from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from repositories.human_input_v2.sqlalchemy_im_binding_repository import SQLAlchemyIMBindingRepository
-from repositories.human_input_v2.sqlalchemy_im_channel_repository import WorkspaceIMChannelReader
 from repositories.human_input_v2.sqlalchemy_im_identity_repository import SQLAlchemyIMIdentityRepository
 from services.human_input_v2.email_credential_codec import load_email_credentials
 from services.human_input_v2.form_service import HumanInputDeliveryTestFormService, HumanInputTestFormError
+from services.human_input_v2.im_channel_runtime import read_current_im_channel, workspace_runtime_im_scope
 from services.human_input_v2.im_credential_codec import IMCredentialError
 from services.human_input_v2.resend_channel import ResendProviderGateway
 
@@ -215,8 +215,10 @@ class MessageTemplateTestService:
             raise MessageTemplateSendError("The Email provider did not accept the test message.") from None
 
     def _load_im_destination(self, channel: DebugChannel) -> tuple[IMChannel, IMBindingId, ProviderUserId]:
+        """Read the current owner's IM Channel and the editor's effective workspace binding."""
+        owner_scope = workspace_runtime_im_scope(self._tenant_id)
         with self._sessions() as session:
-            im_channel = WorkspaceIMChannelReader(session, self._tenant_id).get()
+            im_channel = read_current_im_channel(session, owner_scope)
             if im_channel is None or im_channel.provider.value != channel.value:
                 raise MessageTemplateTestError("The selected IM channel is not configured in this workspace.")
             contact = SQLAlchemyContactRepository(session).get_contact_by_account_id(self._tenant_id, self._account_id)

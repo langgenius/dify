@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from datetime import timedelta
 from typing import override
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
@@ -29,8 +28,9 @@ from .runtime import DifyHumanInputRuntime
 
 
 def build_human_input_delivery_service(
-    *, tenant_id: TenantId, session_factory: Callable[[], Session]
+    *, tenant_id: TenantId, session_factory: sessionmaker[Session]
 ) -> HumanInputDeliveryService:
+    """Bind notifications and credential reads to the workflow's configured database."""
     return HumanInputDeliveryService(
         session_factory=session_factory,
         email_client=build_email_client(tenant_id=tenant_id, session_factory=session_factory),
@@ -101,9 +101,8 @@ class WorkflowHumanInputRuntime(HumanInputRuntime):
                 else None
             ),
         )
+        sessions = session_factory.get_session_maker()
         return DifyHumanInputRuntime(
-            form_service=HumanInputFormService(session_factory=session_factory.get_session_maker(), context=context),
-            delivery_service=build_human_input_delivery_service(
-                tenant_id=context.tenant_id, session_factory=session_factory.create_session
-            ),
+            form_service=HumanInputFormService(session_factory=sessions, context=context),
+            delivery_service=build_human_input_delivery_service(tenant_id=context.tenant_id, session_factory=sessions),
         ).prepare_form(node_execution_id=node_execution_id, node_data=node_data, variable_pool=variable_pool)

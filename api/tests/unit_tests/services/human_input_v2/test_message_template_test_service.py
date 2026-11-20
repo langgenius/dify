@@ -26,6 +26,7 @@ from core.human_input_v2.im_integration.adapters.protocols import IMProviderAdap
 from core.human_input_v2.resolved_form import ParagraphInput, SelectInput
 from core.human_input_v2.shared.values import AccountId, TenantId
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from enums import DeploymentEdition
 from graphon.variables.segments import ArrayStringSegment, StringSegment
 from graphon.variables.variables import StringVariable
 from libs.datetime_utils import naive_utc_now
@@ -664,7 +665,49 @@ def test_environment_variables_use_saved_values_and_ignore_request_overrides(con
     assert "B" in sent["html"]
 
 
-def test_workspace_override_is_used_instead_of_default_binding(context: _Context) -> None:
+@pytest.mark.parametrize("centrally_managed", [False, True])
+def test_workspace_override_is_used_instead_of_default_binding(
+    context: _Context, monkeypatch: pytest.MonkeyPatch, centrally_managed: bool
+) -> None:
+    if centrally_managed:
+        from cryptography.fernet import Fernet
+
+        from core.human_input_v2.im_integration.adapters import factory
+        from core.human_input_v2.im_integration.adapters.credentials import SlackCredentials
+        from extensions.ext_database import db
+        from libs.credential_cipher import BoundCredentialCipher
+        from services import deployment_credential_composition
+        from services.human_input_v2.im_credential_codec import IMCredentialCodec
+        from services.human_input_v2.message_template_test_composition import build_message_template_test_service
+
+        monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE)
+        monkeypatch.setattr(type(db), "engine", property(lambda _: context.sessions.kw["bind"]))
+        fernet = Fernet(Fernet.generate_key())
+        cipher = create_autospec(BoundCredentialCipher, instance=True)
+        cipher.encrypt.side_effect = lambda text: fernet.encrypt(text.encode())
+        cipher.decrypt.side_effect = lambda ciphertext: fernet.decrypt(ciphertext).decode()
+        monkeypatch.setattr(deployment_credential_composition, "build_deployment_credential_cipher", lambda **_: cipher)
+        credentials = SlackCredentials(
+            provider=IMProvider.SLACK,
+            client_id="client",
+            client_secret="secret",
+            signing_secret="sign",
+            bot_token="xoxb-test",
+        )
+
+        def build_adapter(recovered: SlackCredentials) -> IMProviderAdapter:
+            assert recovered == credentials
+            return context.adapter
+
+        monkeypatch.setattr(factory, "build_im_provider_adapter", build_adapter)
+        with context.sessions.begin() as session:
+            configured = session.query(HumanInputIMChannel).one()
+            configured.owner_key = "deployment"
+            configured.encrypted_credentials = IMCredentialCodec(cipher).seal(credentials)
+        context.service = build_message_template_test_service(
+            tenant_id=_TENANT, account_id=_ACCOUNT, account_email="editor@example.com"
+        )
+
     override_identity_id = "00000000-0000-0000-0000-000000000008"
     with context.sessions.begin() as session:
         identity = HumanInputIMIdentity(
