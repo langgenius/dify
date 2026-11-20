@@ -6,6 +6,7 @@ import type { PromptConfig, SavedMessage, TextToSpeechConfig } from '@/models/de
 import type { SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
 import { useCallback, useState } from 'react'
@@ -22,6 +23,7 @@ import UnofficialAppWarning from '@/app/components/share/connections/unofficial-
 import WebAppConnectionControls from '@/app/components/share/connections/webapp-connection-controls'
 import WebAppConnectionSetup from '@/app/components/share/connections/webapp-connection-setup'
 import { appDefaultIconBackground } from '@/config'
+import BuildAppLink from '../build-app-link'
 import MyAppsLink from '../my-apps-link'
 import SignIn from '../sign-in'
 import { useWebAppEntry } from '../webapp-entry'
@@ -90,6 +92,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
   const { t } = useTranslation(['share'])
   const entry = useWebAppEntry()
   const showAccountFooter = !isInstalledApp && entry && 'account' in entry
+  const showBuildAppLink = showAccountFooter && entry.account === 'authenticated'
   const showWorkflowLayout = isWorkflow && showAccountFooter
   const [descExpanded, setDescExpanded] = useState(false)
   const [showDescToggle, setShowDescToggle] = useState(false)
@@ -307,6 +310,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
               : !isBelowMd
                 ? 'gap-1.5 px-8'
                 : 'gap-1.5 px-4',
+            showBuildAppLink && 'flex-wrap gap-y-2',
             isBelowMd && resultExisted && 'rounded-b-2xl border-b-[0.5px] border-divider-regular',
           )}
         >
@@ -314,15 +318,33 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
             (entry.showSignIn ? (
               <SignIn className="system-sm-medium" />
             ) : (
-              <TextGenerationMenu
-                hideLogout={isInstalledApp}
-                data={siteInfo}
-                side="top"
-                align="start"
-              />
+              <div className="flex min-w-0 items-center gap-2">
+                <TextGenerationMenu
+                  hideLogout={isInstalledApp}
+                  data={siteInfo}
+                  side="top"
+                  align="start"
+                />
+                {showBuildAppLink && (
+                  <>
+                    <Separator
+                      decorative
+                      orientation="vertical"
+                      className="hidden h-4 not-last:block"
+                    />
+                    <BuildAppLink variant="footer" />
+                  </>
+                )}
+              </div>
             ))}
           {!customConfig?.remove_webapp_brand && (
-            <div className={cn('flex items-center gap-1.5', showAccountFooter && 'px-2')}>
+            <div
+              className={cn(
+                'flex items-center gap-1.5',
+                showAccountFooter && 'px-2',
+                showBuildAppLink && 'ms-auto',
+              )}
+            >
               <div className="system-2xs-medium-uppercase text-text-tertiary">
                 {t(($) => $['chat.poweredBy'], { ns: 'share' })}
               </div>

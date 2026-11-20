@@ -1,12 +1,20 @@
+import type {
+  WebAccountProfileResponse,
+  WebSystemFeatureResponse,
+} from '@dify/contracts/api/web/types.gen'
 import type { ComponentProps } from 'react'
 import type { PromptConfig, SavedMessage } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionSettings } from '@/types/app'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useRef, useState } from 'react'
 import { AccessMode } from '@/models/access-control'
+import { webAppQuery } from '@/service/webapp'
+import { getWebAppAuthSessionSnapshot } from '@/service/webapp-auth'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
+import { createTestQueryClient } from '@/test/query-client'
 import { Resolution, TransferMethod } from '@/types/app'
 import SignIn from '../../sign-in'
 import { getWebAppEntryState, WebAppEntryContext } from '../../webapp-entry'
@@ -142,6 +150,8 @@ const authenticatedEntry = getWebAppEntryState({
   hasError: false,
 })
 
+const buildAppLabel = 'app.endUser.buildYourOwnApp'
+
 const createAnonymousEntry = (parameters: Partial<typeof entryParameters> = {}) =>
   getWebAppEntryState({
     parameters: { ...entryParameters, ...parameters },
@@ -179,10 +189,31 @@ const createEntryWithConnections = (authenticated: boolean) =>
   })
 
 const renderWorkflow = (overrides: Partial<typeof baseProps> = {}, entry = authenticatedEntry) => {
+  const queryClient = createTestQueryClient()
+  queryClient.setQueryData<WebSystemFeatureResponse>(webAppQuery.systemFeatures.get.queryKey(), {
+    ...createSystemFeaturesFixture(),
+    console_web_url: entryParameters.console_web_url,
+  })
+  queryClient.setQueryData<WebAccountProfileResponse>(
+    [...webAppQuery.account.profile.get.queryKey(), getWebAppAuthSessionSnapshot()],
+    {
+      name: 'Alice',
+      email: 'alice@example.com',
+      is_password_set: false,
+      interface_language: 'en-US',
+      interface_theme: 'system',
+      timezone: 'UTC',
+      avatar: null,
+      avatar_url: null,
+      has_tenant: true,
+    },
+  )
   return render(
-    <WebAppEntryContext value={entry}>
-      <TextGenerationSidebar {...baseProps} isWorkflow {...overrides} />
-    </WebAppEntryContext>,
+    <QueryClientProvider client={queryClient}>
+      <WebAppEntryContext value={entry}>
+        <TextGenerationSidebar {...baseProps} isWorkflow {...overrides} />
+      </WebAppEntryContext>
+    </QueryClientProvider>,
   )
 }
 
@@ -353,7 +384,7 @@ describe('TextGenerationSidebar', () => {
     { isWorkflow: false, removeBrand: true },
     { isWorkflow: true, removeBrand: true },
   ])(
-    'keeps the Webapp account menu after run content regardless of branding: %o',
+    'shows authenticated Webapp footer actions after run content regardless of branding: %o',
     ({ isWorkflow, removeBrand }) => {
       renderWorkflow({
         isWorkflow,
@@ -362,13 +393,24 @@ describe('TextGenerationSidebar', () => {
 
       const runContent = screen.getByRole('button', { name: 'share.generation.run' })
       const accountMenu = screen.getByRole('button', { name: 'Account menu' })
+      const buildAppLink = screen.getByRole('link', { name: buildAppLabel })
       expect(
         runContent.compareDocumentPosition(accountMenu) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy()
       expect(accountMenu).toBeVisible()
+      expect(
+        accountMenu.compareDocumentPosition(buildAppLink) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(buildAppLink).toHaveAttribute('href', 'https://accounts.example/')
       expect(screen.getByRole('button', { name: 'Configure connections' })).toBeVisible()
       if (removeBrand) expect(screen.queryByText('share.chat.poweredBy')).not.toBeInTheDocument()
-      else expect(screen.getByText('share.chat.poweredBy')).toBeVisible()
+      else {
+        const poweredBy = screen.getByText('share.chat.poweredBy')
+        expect(poweredBy).toBeVisible()
+        expect(
+          buildAppLink.compareDocumentPosition(poweredBy) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy()
+      }
     },
   )
 
@@ -383,6 +425,7 @@ describe('TextGenerationSidebar', () => {
           screen.getByRole('button', { name: 'share.generation.run' }),
         ) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy()
+      expect(screen.queryByRole('link', { name: buildAppLabel })).not.toBeInTheDocument()
     },
   )
 
@@ -405,6 +448,7 @@ describe('TextGenerationSidebar', () => {
           .compareDocumentPosition(signIn) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy()
       expect(screen.queryByRole('button', { name: 'Account menu' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: buildAppLabel })).not.toBeInTheDocument()
     },
   )
 
