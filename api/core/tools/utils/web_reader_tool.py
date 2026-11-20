@@ -121,7 +121,7 @@ def extract_using_readabilipy(html: str):
 
 
 def get_image_upload_file_ids(content):
-    pattern = r"!\[image\]\((https?://.*?(file-preview|image-preview))\)"
+    pattern = r"!\[image\]\((https?://.*?(file-preview|image-preview)(?:[?#][^)]*)?)\)"
     matches = re.findall(pattern, content)
     image_upload_file_ids = []
     for match in matches:
